@@ -183,16 +183,23 @@ const CleaningCalendar = () => {
                 <div className="w-48 flex-shrink-0 p-3 border-r bg-white">
                   <span className="font-medium text-gray-700">Trabajadores</span>
                 </div>
-                <div className="flex-1 flex">
+                <div className="flex-1 relative">
                   {timeSlots.map((time, index) => (
                     <div 
                       key={time} 
-                      className={`flex-1 p-2 text-center text-xs font-medium text-gray-600 border-r ${
+                      className={`absolute top-0 bottom-0 flex items-center justify-center text-xs font-medium text-gray-600 ${
                         time.endsWith(':00') ? 'bg-gray-100' : 'bg-gray-50'
                       }`}
-                      style={{ minWidth: '50px' }}
+                      style={{ 
+                        left: `${(index / timeSlots.length) * 100}%`,
+                        width: `${(1 / timeSlots.length) * 100}%`
+                      }}
                     >
                       {time.endsWith(':00') ? time : ''}
+                      {/* Línea divisoria vertical */}
+                      <div className={`absolute right-0 top-0 bottom-0 w-px ${
+                        time.endsWith(':00') ? 'bg-gray-200' : 'bg-gray-100'
+                      }`} />
                     </div>
                   ))}
                 </div>
@@ -218,16 +225,15 @@ const CleaningCalendar = () => {
 
                     {/* Área de tareas con franjas horarias */}
                     <div className="flex-1 relative" style={{ height: '80px' }}>
-                      {/* Líneas de separación horaria */}
+                      {/* Líneas de separación horaria que coinciden exactamente con el header */}
                       {timeSlots.map((time, index) => (
                         <div 
                           key={`${cleaner}-${time}`}
-                          className={`absolute top-0 bottom-0 border-r ${
-                            time.endsWith(':00') ? 'border-gray-200' : 'border-gray-100'
+                          className={`absolute top-0 bottom-0 w-px ${
+                            time.endsWith(':00') ? 'bg-gray-200' : 'bg-gray-100'
                           }`}
                           style={{ 
-                            left: `${(index / timeSlots.length) * 100}%`,
-                            width: '1px'
+                            left: `${((index + 1) / timeSlots.length) * 100}%`
                           }}
                         />
                       ))}
