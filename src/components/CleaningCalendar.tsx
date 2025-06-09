@@ -151,12 +151,23 @@ const CleaningCalendar = () => {
 
     const startMinutes = timeToMinutes(startTime);
     const endMinutes = timeToMinutes(endTime);
+    
+    // Each time slot is 75px wide and represents 30 minutes
+    const slotWidth = 75; // pixels
+    const minutesPerSlot = 30; // minutes
     const dayStartMinutes = 6 * 60; // 6:00 AM
     
-    const leftPercent = ((startMinutes - dayStartMinutes) / (16 * 60)) * 100;
-    const widthPercent = ((endMinutes - startMinutes) / (16 * 60)) * 100;
+    // Calculate position based on slots from day start
+    const slotsFromStart = (startMinutes - dayStartMinutes) / minutesPerSlot;
+    const durationInSlots = (endMinutes - startMinutes) / minutesPerSlot;
     
-    return { left: `${leftPercent}%`, width: `${widthPercent}%` };
+    const leftPixels = slotsFromStart * slotWidth;
+    const widthPixels = durationInSlots * slotWidth;
+    
+    return { 
+      left: `${leftPixels}px`, 
+      width: `${Math.max(widthPixels, 120)}px` // Minimum width of 120px
+    };
   };
 
   // Check if a time slot is occupied
@@ -291,8 +302,7 @@ const CleaningCalendar = () => {
                               className="absolute top-1 bottom-1 z-10"
                               style={{
                                 left: position.left,
-                                width: position.width,
-                                minWidth: '120px'
+                                width: position.width
                               }}
                             >
                               <TaskCard
