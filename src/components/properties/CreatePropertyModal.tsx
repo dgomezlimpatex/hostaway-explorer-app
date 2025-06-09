@@ -13,6 +13,7 @@ import { CharacteristicsSection } from './forms/CharacteristicsSection';
 import { ServiceSection } from './forms/ServiceSection';
 import { TextileSection } from './forms/TextileSection';
 import { ClientSelectionSection } from './forms/ClientSelectionSection';
+import { CreatePropertyData } from '@/types/property';
 
 export const CreatePropertyModal = () => {
   const [open, setOpen] = useState(false);
@@ -37,7 +38,23 @@ export const CreatePropertyModal = () => {
   });
 
   const onSubmit = (data: PropertyFormData) => {
-    createProperty.mutate(data, {
+    // Explicitly cast to CreatePropertyData to ensure type safety
+    const propertyData: CreatePropertyData = {
+      codigo: data.codigo,
+      nombre: data.nombre,
+      direccion: data.direccion,
+      numeroCamas: data.numeroCamas,
+      numeroBanos: data.numeroBanos,
+      duracionServicio: data.duracionServicio,
+      costeServicio: data.costeServicio,
+      numeroSabanas: data.numeroSabanas,
+      numeroToallasGrandes: data.numeroToallasGrandes,
+      numeroTotallasPequenas: data.numeroTotallasPequenas,
+      numeroAlfombrines: data.numeroAlfombrines,
+      clienteId: data.clienteId,
+    };
+
+    createProperty.mutate(propertyData, {
       onSuccess: () => {
         setOpen(false);
         form.reset();
