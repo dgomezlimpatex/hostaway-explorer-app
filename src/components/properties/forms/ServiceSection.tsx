@@ -72,6 +72,47 @@ export const ServiceSection = ({ control }: ServiceSectionProps) => {
           )}
         />
       </div>
+      
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <FormField
+          control={control}
+          name="checkOutPredeterminado"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel className="flex items-center gap-2">
+                🚪 Check-out Predeterminado
+              </FormLabel>
+              <FormControl>
+                <Input 
+                  {...field} 
+                  type="time" 
+                  placeholder="11:00"
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={control}
+          name="checkInPredeterminado"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel className="flex items-center gap-2">
+                🏠 Check-in Predeterminado
+              </FormLabel>
+              <FormControl>
+                <Input 
+                  {...field} 
+                  type="time" 
+                  placeholder="15:00"
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+      </div>
     </div>
   );
 };

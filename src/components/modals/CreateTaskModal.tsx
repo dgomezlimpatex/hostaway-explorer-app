@@ -53,6 +53,13 @@ export const CreateTaskModal = ({
   
   const { toast } = useToast();
 
+  // Función para convertir minutos a formato HH:MM
+  const convertMinutesToTime = (minutes: number): string => {
+    const hours = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+    return `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}`;
+  };
+
   // Autocompletar campos cuando se selecciona una propiedad
   useEffect(() => {
     if (selectedProperty && selectedClient) {
@@ -63,7 +70,9 @@ export const CreateTaskModal = ({
         duracion: selectedProperty.duracionServicio,
         coste: selectedProperty.costeServicio,
         metodoPago: selectedClient.metodoPago,
-        supervisor: selectedClient.supervisor
+        supervisor: selectedClient.supervisor,
+        checkOut: selectedProperty.checkOutPredeterminado || '',
+        checkIn: selectedProperty.checkInPredeterminado || ''
       }));
     }
   }, [selectedProperty, selectedClient]);
@@ -186,13 +195,13 @@ export const CreateTaskModal = ({
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="duracion">Duración (min)</Label>
+              <Label htmlFor="duracion">Duración</Label>
               <Input
                 id="duracion"
-                type="number"
-                value={formData.duracion}
+                value={convertMinutesToTime(formData.duracion)}
                 readOnly
                 className="bg-gray-50"
+                placeholder="00:00"
               />
             </div>
             
@@ -233,22 +242,24 @@ export const CreateTaskModal = ({
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="checkOut">Check-out</Label>
+              <Label htmlFor="checkOut">Check-out (auto)</Label>
               <Input
                 id="checkOut"
                 type="time"
                 value={formData.checkOut}
-                onChange={(e) => handleChange('checkOut', e.target.value)}
+                readOnly
+                className="bg-gray-50"
               />
             </div>
             
             <div className="space-y-2">
-              <Label htmlFor="checkIn">Check-in</Label>
+              <Label htmlFor="checkIn">Check-in (auto)</Label>
               <Input
                 id="checkIn"
                 type="time"
                 value={formData.checkIn}
-                onChange={(e) => handleChange('checkIn', e.target.value)}
+                readOnly
+                className="bg-gray-50"
               />
             </div>
           </div>

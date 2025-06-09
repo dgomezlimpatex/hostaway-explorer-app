@@ -14,6 +14,10 @@ export interface Property {
   duracionServicio: number; // en minutos
   costeServicio: number; // en euros
   
+  // Horarios predeterminados
+  checkInPredeterminado: string; // formato HH:MM
+  checkOutPredeterminado: string; // formato HH:MM
+  
   // Apartado téxtil
   numeroSabanas: number;
   numeroToallasGrandes: number;
@@ -40,6 +44,8 @@ export interface CreatePropertyData {
   numeroBanos: number;
   duracionServicio: number;
   costeServicio: number;
+  checkInPredeterminado: string;
+  checkOutPredeterminado: string;
   numeroSabanas: number;
   numeroToallasGrandes: number;
   numeroTotallasPequenas: number;
