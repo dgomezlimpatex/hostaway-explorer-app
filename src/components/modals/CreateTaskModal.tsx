@@ -65,23 +65,10 @@ export const CreateTaskModal = ({
         metodoPago: selectedClient.metodoPago,
         supervisor: selectedClient.supervisor
       }));
-
-      // Calcular hora de fin basándose en la duración
-      if (prev.startTime && selectedProperty.duracionServicio) {
-        const [hours, minutes] = prev.startTime.split(':').map(Number);
-        const startMinutes = hours * 60 + minutes;
-        const endMinutes = startMinutes + selectedProperty.duracionServicio;
-        const endHours = Math.floor(endMinutes / 60);
-        const endMins = endMinutes % 60;
-        setFormData(current => ({
-          ...current,
-          endTime: `${endHours.toString().padStart(2, '0')}:${endMins.toString().padStart(2, '0')}`
-        }));
-      }
     }
   }, [selectedProperty, selectedClient]);
 
-  // Recalcular hora de fin cuando cambia la hora de inicio
+  // Recalcular hora de fin cuando cambia la hora de inicio o la duración
   useEffect(() => {
     if (formData.startTime && formData.duracion > 0) {
       const [hours, minutes] = formData.startTime.split(':').map(Number);
