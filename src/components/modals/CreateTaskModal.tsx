@@ -12,15 +12,22 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useToast } from "@/hooks/use-toast";
 import { Task } from "@/hooks/useCalendarData";
 
 interface CreateTaskModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onCreateTask: (task: Omit<Task, 'id'>) => void;
+  onCreateTask: (taskData: Omit<Task, 'id'>) => void;
+  currentDate?: Date;
 }
 
-export const CreateTaskModal = ({ open, onOpenChange, onCreateTask }: CreateTaskModalProps) => {
+export const CreateTaskModal = ({ 
+  open, 
+  onOpenChange, 
+  onCreateTask,
+  currentDate = new Date()
+}: CreateTaskModalProps) => {
   const [formData, setFormData] = useState({
     property: '',
     address: '',
@@ -30,16 +37,26 @@ export const CreateTaskModal = ({ open, onOpenChange, onCreateTask }: CreateTask
     status: 'pending' as const,
     checkOut: '',
     checkIn: '',
+    cleaner: '',
+    date: currentDate.toISOString().split('T')[0]
   });
+  
+  const { toast } = useToast();
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!formData.property || !formData.startTime || !formData.endTime) {
+      toast({
+        title: "Error",
+        description: "Por favor completa los campos obligatorios.",
+        variant: "destructive",
+      });
       return;
     }
 
     onCreateTask(formData);
+    onOpenChange(false);
     
     // Reset form
     setFormData({
@@ -51,9 +68,14 @@ export const CreateTaskModal = ({ open, onOpenChange, onCreateTask }: CreateTask
       status: 'pending',
       checkOut: '',
       checkIn: '',
+      cleaner: '',
+      date: currentDate.toISOString().split('T')[0]
     });
     
-    onOpenChange(false);
+    toast({
+      title: "Tarea creada",
+      description: "La nueva tarea se ha creado correctamente.",
+    });
   };
 
   const handleChange = (field: string, value: string) => {
@@ -94,7 +116,17 @@ export const CreateTaskModal = ({ open, onOpenChange, onCreateTask }: CreateTask
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-3 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="date">Fecha</Label>
+              <Input
+                id="date"
+                type="date"
+                value={formData.date}
+                onChange={(e) => handleChange('date', e.target.value)}
+              />
+            </div>
+            
             <div className="space-y-2">
               <Label htmlFor="startTime">Hora Inicio *</Label>
               <Input
@@ -157,7 +189,7 @@ export const CreateTaskModal = ({ open, onOpenChange, onCreateTask }: CreateTask
             
             <div className="space-y-2">
               <Label htmlFor="status">Estado</Label>
-              <Select value={formData.status} onValueChange={(value) => handleChange('status', value as Task['status'])}>
+              <Select value={formData.status} onValueChange={(value) => handleChange('status', value)}>
                 <SelectTrigger>
                   <SelectValue placeholder="Seleccionar estado" />
                 </SelectTrigger>

@@ -350,6 +350,7 @@ const CleaningCalendar = () => {
         open={isCreateModalOpen}
         onOpenChange={setIsCreateModalOpen}
         onCreateTask={handleCreateTask}
+        currentDate={currentDate}
       />
 
       <TaskDetailsModal
