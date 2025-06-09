@@ -1,4 +1,3 @@
-
 import { Card, CardContent } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useState, useMemo } from "react";
@@ -235,7 +234,7 @@ const CleaningCalendar = () => {
               </div>
 
               {/* Timeline Body */}
-              <ScrollArea className="flex-1">
+              <div className="flex-1 overflow-x-auto">
                 <div style={{ minWidth: '800px' }}>
                   {cleaners.map((cleaner) => {
                     const cleanerTasks = assignedTasks.filter(task => task.cleaner === cleaner.name);
@@ -288,7 +287,7 @@ const CleaningCalendar = () => {
                     );
                   })}
                 </div>
-              </ScrollArea>
+              </div>
             </div>
           </div>
         </CardContent>
