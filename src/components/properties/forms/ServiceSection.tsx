@@ -9,6 +9,17 @@ interface ServiceSectionProps {
 }
 
 export const ServiceSection = ({ control }: ServiceSectionProps) => {
+  const convertMinutesToTime = (minutes: number): string => {
+    const hours = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+    return `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}`;
+  };
+
+  const convertTimeToMinutes = (time: string): number => {
+    const [hours, minutes] = time.split(':').map(Number);
+    return (hours || 0) * 60 + (minutes || 0);
+  };
+
   return (
     <div className="space-y-4">
       <h3 className="text-lg font-semibold text-blue-600 flex items-center gap-2">
@@ -21,15 +32,17 @@ export const ServiceSection = ({ control }: ServiceSectionProps) => {
           render={({ field }) => (
             <FormItem>
               <FormLabel className="flex items-center gap-2">
-                ⏱️ Duración del Servicio (minutos)
+                ⏱️ Duración del Servicio (HH:MM)
               </FormLabel>
               <FormControl>
                 <Input 
-                  {...field} 
-                  type="number" 
-                  min="15"
-                  placeholder="120"
-                  onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
+                  type="time" 
+                  value={convertMinutesToTime(field.value)}
+                  onChange={(e) => {
+                    const minutes = convertTimeToMinutes(e.target.value);
+                    field.onChange(minutes);
+                  }}
+                  className="w-full"
                 />
               </FormControl>
               <FormMessage />
