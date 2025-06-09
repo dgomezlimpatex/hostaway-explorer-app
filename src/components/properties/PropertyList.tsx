@@ -3,18 +3,16 @@ import { useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { useProperties, useDeleteProperty } from '@/hooks/useProperties';
 import { useClients } from '@/hooks/useClients';
 import { Property } from '@/types/property';
-import { Edit, Trash2, Home, MapPin, Bed, Bath, Clock, Euro } from 'lucide-react';
+import { Edit, Trash2, Home, MapPin, Bed, Bath, Clock, Euro, User } from 'lucide-react';
 import { EditPropertyModal } from './EditPropertyModal';
 
 const PropertyCard = ({ property }: { property: Property }) => {
   const [editModalOpen, setEditModalOpen] = useState(false);
   const deleteProperty = useDeleteProperty();
-  const { data: clients } = useClients();
-  
-  const client = clients?.find(c => c.id === property.clienteId);
 
   const handleDelete = () => {
     if (window.confirm('¿Estás seguro de que quieres eliminar esta propiedad?')) {
@@ -36,11 +34,6 @@ const PropertyCard = ({ property }: { property: Property }) => {
                 <Badge variant="outline" className="text-sm">
                   {property.codigo}
                 </Badge>
-                {client && (
-                  <Badge className="bg-blue-100 text-blue-800">
-                    {client.nombre}
-                  </Badge>
-                )}
               </div>
             </div>
           </div>
@@ -69,7 +62,7 @@ const PropertyCard = ({ property }: { property: Property }) => {
           <div className="grid grid-cols-2 gap-4 pt-2 border-t">
             <div className="flex items-center gap-2 text-sm">
               <Clock className="h-4 w-4 text-gray-500" />
-              <span>{property.duracionServicio} min</span>
+              <span>{Math.floor(property.duracionServicio / 60)}h {property.duracionServicio % 60}min</span>
             </div>
             <div className="flex items-center gap-2 text-sm">
               <Euro className="h-4 w-4 text-gray-500" />
@@ -126,6 +119,7 @@ const PropertyCard = ({ property }: { property: Property }) => {
 
 export const PropertyList = () => {
   const { data: properties, isLoading, error } = useProperties();
+  const { data: clients } = useClients();
 
   if (isLoading) {
     return (
@@ -153,11 +147,47 @@ export const PropertyList = () => {
     );
   }
 
+  // Agrupar propiedades por cliente
+  const propertiesByClient = properties.reduce((acc, property) => {
+    const clientId = property.clienteId;
+    if (!acc[clientId]) {
+      acc[clientId] = [];
+    }
+    acc[clientId].push(property);
+    return acc;
+  }, {} as Record<string, Property[]>);
+
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-      {properties.map((property) => (
-        <PropertyCard key={property.id} property={property} />
-      ))}
+    <div className="space-y-4">
+      <Accordion type="multiple" className="space-y-4">
+        {Object.entries(propertiesByClient).map(([clientId, clientProperties]) => {
+          const client = clients?.find(c => c.id === clientId);
+          const clientName = client?.nombre || 'Cliente desconocido';
+          
+          return (
+            <AccordionItem key={clientId} value={clientId} className="border rounded-lg">
+              <AccordionTrigger className="px-4 py-3 hover:no-underline">
+                <div className="flex items-center gap-3 text-left">
+                  <User className="h-5 w-5 text-blue-600" />
+                  <div>
+                    <h3 className="font-semibold text-gray-900">{clientName}</h3>
+                    <p className="text-sm text-gray-500">
+                      {clientProperties.length} propiedad{clientProperties.length !== 1 ? 'es' : ''}
+                    </p>
+                  </div>
+                </div>
+              </AccordionTrigger>
+              <AccordionContent className="px-4 pb-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {clientProperties.map((property) => (
+                    <PropertyCard key={property.id} property={property} />
+                  ))}
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+          );
+        })}
+      </Accordion>
     </div>
   );
 };
