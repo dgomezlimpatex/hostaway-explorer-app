@@ -2,7 +2,8 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { ChevronLeft, ChevronRight, Search, Settings, User, Moon, Plus } from "lucide-react";
+import { ChevronLeft, ChevronRight, Search, Settings, User, Moon, Plus, ArrowLeft } from "lucide-react";
+import { Link } from "react-router-dom";
 
 interface CalendarHeaderProps {
   currentDate: Date;
@@ -51,6 +52,12 @@ export const CalendarHeader = ({
       {/* Top bar */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
+          <Link to="/">
+            <Button variant="ghost" size="sm" className="hover:bg-gray-100">
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Volver al Menú
+            </Button>
+          </Link>
           <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
             🏠 Gestión de Limpiezas
           </h1>
