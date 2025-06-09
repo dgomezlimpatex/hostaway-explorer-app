@@ -1,7 +1,7 @@
 
 import { TaskReport, BillingReport, SummaryReport } from '@/types/reports';
 
-export const exportToCSV = (data: any[], filename: string, type: 'tasks' | 'billing' | 'summary') => {
+export const exportToCSV = (data: any, filename: string, type: 'tasks' | 'billing' | 'summary') => {
   let csvContent = '';
   
   switch (type) {

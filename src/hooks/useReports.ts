@@ -90,9 +90,14 @@ const generateBillingReport = (tasks: any[], properties: any[], clients: any[]):
     const property = properties.find(p => p.nombre === task.property);
     const client = property ? clients.find(c => c.id === property.clienteId) : null;
     
-    const startTime = new Date(`1970-01-01T${task.startTime}:00`);
-    const endTime = new Date(`1970-01-01T${task.endTime}:00`);
-    const duration = (endTime.getTime() - startTime.getTime()) / (1000 * 60); // minutes
+    // Parse time strings properly
+    const startTimeParts = task.startTime.split(':');
+    const endTimeParts = task.endTime.split(':');
+    
+    const startMinutes = parseInt(startTimeParts[0]) * 60 + parseInt(startTimeParts[1]);
+    const endMinutes = parseInt(endTimeParts[0]) * 60 + parseInt(endTimeParts[1]);
+    
+    const duration = endMinutes - startMinutes;
     
     return {
       id: task.id,
@@ -100,7 +105,7 @@ const generateBillingReport = (tasks: any[], properties: any[], clients: any[]):
       client: client?.nombre || 'Cliente desconocido',
       date: task.date,
       serviceType: task.type,
-      duration,
+      duration: duration > 0 ? duration : 0,
       cost: property?.costeServicio || 0,
       status: task.status
     };
@@ -118,7 +123,7 @@ const generateSummaryReport = (tasks: any[]): SummaryReport => {
   }, {} as Record<string, number>);
   
   const topCleaners = Object.entries(cleanerCounts)
-    .map(([name, tasks]) => ({ name, tasks }))
+    .map(([name, tasks]) => ({ name, tasks: tasks as number }))
     .sort((a, b) => b.tasks - a.tasks)
     .slice(0, 5);
 

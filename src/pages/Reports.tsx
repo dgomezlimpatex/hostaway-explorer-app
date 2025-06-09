@@ -54,15 +54,15 @@ export default function Reports() {
           </div>
         ) : (
           <div className="space-y-6">
-            {filters.reportType === 'tasks' && reportData && (
+            {filters.reportType === 'tasks' && reportData && Array.isArray(reportData) && (
               <TaskReportTable data={reportData as any[]} />
             )}
             
-            {filters.reportType === 'billing' && reportData && (
+            {filters.reportType === 'billing' && reportData && Array.isArray(reportData) && (
               <BillingReportTable data={reportData as any[]} />
             )}
             
-            {filters.reportType === 'summary' && reportData && (
+            {filters.reportType === 'summary' && reportData && !Array.isArray(reportData) && (
               <SummaryReportCard data={reportData as any} />
             )}
           </div>
