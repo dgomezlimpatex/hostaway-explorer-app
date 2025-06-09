@@ -1,6 +1,6 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef } from "react";
 import { useCalendarData } from "@/hooks/useCalendarData";
 import { CalendarHeader } from "./calendar/CalendarHeader";
 import { TaskCard } from "./calendar/TaskCard";
@@ -32,6 +32,10 @@ const CleaningCalendar = () => {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
+  
+  // Refs for scroll synchronization
+  const headerScrollRef = useRef<HTMLDivElement>(null);
+  const bodyScrollRef = useRef<HTMLDivElement>(null);
 
   // Generate time slots
   const timeSlots = useMemo(() => {
@@ -44,6 +48,19 @@ const CleaningCalendar = () => {
     }
     return slots;
   }, []);
+
+  // Handle scroll synchronization
+  const handleHeaderScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    if (bodyScrollRef.current) {
+      bodyScrollRef.current.scrollLeft = e.currentTarget.scrollLeft;
+    }
+  };
+
+  const handleBodyScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    if (headerScrollRef.current) {
+      headerScrollRef.current.scrollLeft = e.currentTarget.scrollLeft;
+    }
+  };
 
   // Handle task assignment
   const handleTaskAssign = async (taskId: string, cleanerId: string, startTime: string) => {
@@ -216,7 +233,11 @@ const CleaningCalendar = () => {
             {/* Timeline Area */}
             <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
               {/* Time Header - Scrollable */}
-              <div className="h-16 bg-white border-b border-gray-200 overflow-x-auto">
+              <div 
+                ref={headerScrollRef}
+                className="h-16 bg-white border-b border-gray-200 overflow-x-auto"
+                onScroll={handleHeaderScroll}
+              >
                 <div className="flex h-full" style={{ minWidth: '1200px' }}>
                   {timeSlots.map((time, index) => (
                     <div 
@@ -232,7 +253,11 @@ const CleaningCalendar = () => {
               </div>
 
               {/* Timeline Body - Scrollable */}
-              <div className="flex-1 overflow-x-auto overflow-y-auto">
+              <div 
+                ref={bodyScrollRef}
+                className="flex-1 overflow-x-auto overflow-y-auto"
+                onScroll={handleBodyScroll}
+              >
                 <div style={{ minWidth: '1200px' }}>
                   {cleaners.map((cleaner) => {
                     const cleanerTasks = assignedTasks.filter(task => task.cleaner === cleaner.name);
