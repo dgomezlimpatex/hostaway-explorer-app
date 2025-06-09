@@ -7,8 +7,11 @@ import { CalendarHeader } from "./calendar/CalendarHeader";
 import { TaskCard } from "./calendar/TaskCard";
 import { TimeSlot } from "./calendar/TimeSlot";
 import { DragPreview } from "./calendar/DragPreview";
+import { CreateTaskModal } from "./modals/CreateTaskModal";
+import { TaskDetailsModal } from "./modals/TaskDetailsModal";
 import { useDragAndDrop } from "@/hooks/useDragAndDrop";
 import { useToast } from "@/hooks/use-toast";
+import { Task } from "@/hooks/useCalendarData";
 
 const CleaningCalendar = () => {
   const {
@@ -21,10 +24,15 @@ const CleaningCalendar = () => {
     navigateDate,
     goToToday,
     updateTask,
-    assignTask
+    assignTask,
+    createTask,
+    deleteTask
   } = useCalendarData();
 
   const { toast } = useToast();
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+  const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
 
   // Generate time slots
   const timeSlots = useMemo(() => {
@@ -66,14 +74,56 @@ const CleaningCalendar = () => {
 
   // Handle new task creation
   const handleNewTask = () => {
-    console.log('Creating new task...');
-    // TODO: Implement new task modal
+    setIsCreateModalOpen(true);
+  };
+
+  // Handle task creation
+  const handleCreateTask = async (taskData: Omit<Task, 'id'>) => {
+    try {
+      await createTask(taskData);
+      toast({
+        title: "Tarea creada",
+        description: "La nueva tarea se ha creado correctamente.",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "No se pudo crear la tarea.",
+        variant: "destructive",
+      });
+    }
   };
 
   // Handle task details
-  const handleTaskClick = (task: any) => {
-    console.log('Showing task details:', task);
-    // TODO: Implement task details modal
+  const handleTaskClick = (task: Task) => {
+    setSelectedTask(task);
+    setIsTaskModalOpen(true);
+  };
+
+  // Handle task update
+  const handleUpdateTask = async (taskId: string, updates: Partial<Task>) => {
+    try {
+      await updateTask({ taskId, updates });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "No se pudo actualizar la tarea.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Handle task deletion
+  const handleDeleteTask = async (taskId: string) => {
+    try {
+      await deleteTask(taskId);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "No se pudo eliminar la tarea.",
+        variant: "destructive",
+      });
+    }
   };
 
   // Get task position for timeline
@@ -294,6 +344,21 @@ const CleaningCalendar = () => {
           <span>Completado</span>
         </div>
       </div>
+
+      {/* Modals */}
+      <CreateTaskModal
+        open={isCreateModalOpen}
+        onOpenChange={setIsCreateModalOpen}
+        onCreateTask={handleCreateTask}
+      />
+
+      <TaskDetailsModal
+        task={selectedTask}
+        open={isTaskModalOpen}
+        onOpenChange={setIsTaskModalOpen}
+        onUpdateTask={handleUpdateTask}
+        onDeleteTask={handleDeleteTask}
+      />
 
       {/* CSS for drag effects */}
       <style>{`

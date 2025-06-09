@@ -128,6 +128,32 @@ export const useCalendarData = () => {
     },
   });
 
+  const createTaskMutation = useMutation({
+    mutationFn: async (taskData: Omit<Task, 'id'>) => {
+      // Replace with actual API call
+      const newTask = {
+        ...taskData,
+        id: Date.now().toString(), // Temporary ID generation
+      };
+      console.log('Creating task:', newTask);
+      return newTask;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['tasks'] });
+    },
+  });
+
+  const deleteTaskMutation = useMutation({
+    mutationFn: async (taskId: string) => {
+      // Replace with actual API call
+      console.log('Deleting task:', taskId);
+      return { success: true };
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['tasks'] });
+    },
+  });
+
   // Navigation functions
   const navigateDate = useCallback((direction: 'prev' | 'next') => {
     const newDate = new Date(currentDate);
@@ -162,9 +188,13 @@ export const useCalendarData = () => {
     goToToday,
     updateTask: updateTaskMutation.mutate,
     assignTask: assignTaskMutation.mutate,
+    createTask: createTaskMutation.mutate,
+    deleteTask: deleteTaskMutation.mutate,
     
     // Mutation states
     isUpdatingTask: updateTaskMutation.isPending,
     isAssigningTask: assignTaskMutation.isPending,
+    isCreatingTask: createTaskMutation.isPending,
+    isDeletingTask: deleteTaskMutation.isPending,
   };
 };
