@@ -1,6 +1,6 @@
+
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Calendar, Users, Home, BarChart3 } from "lucide-react";
 import { Link } from "react-router-dom";
 
 export default function Index() {
@@ -20,19 +20,28 @@ export default function Index() {
           {/* Calendario */}
           <Link to="/calendar" className="group">
             <Card className="h-full transition-all duration-300 hover:shadow-lg hover:scale-105 cursor-pointer border-2 hover:border-blue-300">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Calendar className="h-5 w-5 text-blue-600" />
+              <CardHeader className="text-center">
+                <div className="text-4xl mb-2 group-hover:scale-110 transition-transform">📅</div>
+                <CardTitle className="text-xl font-semibold text-gray-800">
                   Calendario
                 </CardTitle>
-                <CardDescription>
-                  Gestiona tareas y horarios de limpieza
-                </CardDescription>
               </CardHeader>
               <CardContent>
-                <Button className="w-full">
-                  Ir al Calendario
-                </Button>
+                <CardDescription className="text-center text-gray-600 mb-4">
+                  Gestiona tareas y horarios de limpieza de manera eficiente. 
+                  Programa y organiza todas tus actividades diarias.
+                </CardDescription>
+                <div className="mt-4 flex flex-wrap gap-2 justify-center">
+                  <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full">
+                    Programación
+                  </span>
+                  <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full">
+                    Horarios
+                  </span>
+                  <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full">
+                    Tareas
+                  </span>
+                </div>
               </CardContent>
             </Card>
           </Link>
@@ -40,19 +49,28 @@ export default function Index() {
           {/* Clientes */}
           <Link to="/clients" className="group">
             <Card className="h-full transition-all duration-300 hover:shadow-lg hover:scale-105 cursor-pointer border-2 hover:border-green-300">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Users className="h-5 w-5 text-green-600" />
+              <CardHeader className="text-center">
+                <div className="text-4xl mb-2 group-hover:scale-110 transition-transform">👥</div>
+                <CardTitle className="text-xl font-semibold text-gray-800">
                   Clientes
                 </CardTitle>
-                <CardDescription>
-                  Administra la información de tus clientes
-                </CardDescription>
               </CardHeader>
               <CardContent>
-                <Button className="w-full">
-                  Gestionar Clientes
-                </Button>
+                <CardDescription className="text-center text-gray-600 mb-4">
+                  Administra la información completa de tus clientes. 
+                  Gestiona contactos, direcciones y preferencias de servicio.
+                </CardDescription>
+                <div className="mt-4 flex flex-wrap gap-2 justify-center">
+                  <span className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full">
+                    Contactos
+                  </span>
+                  <span className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full">
+                    Direcciones
+                  </span>
+                  <span className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full">
+                    Servicios
+                  </span>
+                </div>
               </CardContent>
             </Card>
           </Link>
@@ -60,19 +78,28 @@ export default function Index() {
           {/* Propiedades */}
           <Link to="/properties" className="group">
             <Card className="h-full transition-all duration-300 hover:shadow-lg hover:scale-105 cursor-pointer border-2 hover:border-purple-300">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Home className="h-5 w-5 text-purple-600" />
+              <CardHeader className="text-center">
+                <div className="text-4xl mb-2 group-hover:scale-110 transition-transform">🏠</div>
+                <CardTitle className="text-xl font-semibold text-gray-800">
                   Propiedades
                 </CardTitle>
-                <CardDescription>
-                  Gestiona pisos y propiedades de limpieza
-                </CardDescription>
               </CardHeader>
               <CardContent>
-                <Button className="w-full">
-                  Gestionar Propiedades
-                </Button>
+                <CardDescription className="text-center text-gray-600 mb-4">
+                  Gestiona pisos y propiedades de limpieza. 
+                  Controla características, servicios y detalles específicos.
+                </CardDescription>
+                <div className="mt-4 flex flex-wrap gap-2 justify-center">
+                  <span className="bg-purple-100 text-purple-800 text-xs px-2 py-1 rounded-full">
+                    Pisos
+                  </span>
+                  <span className="bg-purple-100 text-purple-800 text-xs px-2 py-1 rounded-full">
+                    Características
+                  </span>
+                  <span className="bg-purple-100 text-purple-800 text-xs px-2 py-1 rounded-full">
+                    Servicios
+                  </span>
+                </div>
               </CardContent>
             </Card>
           </Link>
@@ -87,7 +114,7 @@ export default function Index() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <CardDescription className="text-center text-gray-600">
+                <CardDescription className="text-center text-gray-600 mb-4">
                   Genera reportes detallados de tareas, facturación y resúmenes. 
                   Exporta datos en CSV con filtros avanzados.
                 </CardDescription>
@@ -107,38 +134,56 @@ export default function Index() {
           </Link>
 
           {/* Estadísticas */}
-          <Card className="h-full transition-all duration-300 hover:shadow-lg border-2 hover:border-indigo-300">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <BarChart3 className="h-5 w-5 text-orange-600" />
+          <Card className="h-full transition-all duration-300 hover:shadow-lg hover:scale-105 cursor-pointer border-2 hover:border-indigo-300">
+            <CardHeader className="text-center">
+              <div className="text-4xl mb-2 hover:scale-110 transition-transform">📈</div>
+              <CardTitle className="text-xl font-semibold text-gray-800">
                 Estadísticas
               </CardTitle>
-              <CardDescription>
-                Análisis y estadísticas del negocio
-              </CardDescription>
             </CardHeader>
             <CardContent>
-              <Button className="w-full">
-                Ver Estadísticas
-              </Button>
+              <CardDescription className="text-center text-gray-600 mb-4">
+                Análisis y estadísticas del negocio en tiempo real. 
+                Métricas de rendimiento y dashboards interactivos.
+              </CardDescription>
+              <div className="mt-4 flex flex-wrap gap-2 justify-center">
+                <span className="bg-indigo-100 text-indigo-800 text-xs px-2 py-1 rounded-full">
+                  Métricas
+                </span>
+                <span className="bg-indigo-100 text-indigo-800 text-xs px-2 py-1 rounded-full">
+                  Dashboards
+                </span>
+                <span className="bg-indigo-100 text-indigo-800 text-xs px-2 py-1 rounded-full">
+                  Análisis
+                </span>
+              </div>
             </CardContent>
           </Card>
 
           {/* Configuración */}
-          <Card className="h-full transition-all duration-300 hover:shadow-lg border-2 hover:border-gray-300">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Home className="h-5 w-5 text-gray-600" />
+          <Card className="h-full transition-all duration-300 hover:shadow-lg hover:scale-105 cursor-pointer border-2 hover:border-gray-300">
+            <CardHeader className="text-center">
+              <div className="text-4xl mb-2 hover:scale-110 transition-transform">⚙️</div>
+              <CardTitle className="text-xl font-semibold text-gray-800">
                 Configuración
               </CardTitle>
-              <CardDescription>
-                Configura tu sistema de limpieza
-              </CardDescription>
             </CardHeader>
             <CardContent>
-              <Button className="w-full">
-                Configurar
-              </Button>
+              <CardDescription className="text-center text-gray-600 mb-4">
+                Configura tu sistema de limpieza personalizado. 
+                Ajusta preferencias, usuarios y parámetros del sistema.
+              </CardDescription>
+              <div className="mt-4 flex flex-wrap gap-2 justify-center">
+                <span className="bg-gray-100 text-gray-800 text-xs px-2 py-1 rounded-full">
+                  Preferencias
+                </span>
+                <span className="bg-gray-100 text-gray-800 text-xs px-2 py-1 rounded-full">
+                  Usuarios
+                </span>
+                <span className="bg-gray-100 text-gray-800 text-xs px-2 py-1 rounded-full">
+                  Sistema
+                </span>
+              </div>
             </CardContent>
           </Card>
         </div>
