@@ -1,10 +1,13 @@
+
 import { Card, CardContent } from "@/components/ui/card";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { useState, useMemo, useRef } from "react";
 import { useCalendarData } from "@/hooks/useCalendarData";
 import { CalendarHeader } from "./calendar/CalendarHeader";
-import { TaskCard } from "./calendar/TaskCard";
-import { TimeSlot } from "./calendar/TimeSlot";
+import { WorkersColumn } from "./calendar/WorkersColumn";
+import { TimelineHeader } from "./calendar/TimelineHeader";
+import { CalendarGrid } from "./calendar/CalendarGrid";
+import { UnassignedTasks } from "./calendar/UnassignedTasks";
+import { StatusLegend } from "./calendar/StatusLegend";
 import { DragPreview } from "./calendar/DragPreview";
 import { CreateTaskModal } from "./modals/CreateTaskModal";
 import { TaskDetailsModal } from "./modals/TaskDetailsModal";
@@ -209,147 +212,45 @@ const CleaningCalendar = () => {
         <CardContent className="p-0">
           <div className="flex h-[600px] overflow-hidden">
             {/* Workers Column */}
-            <div className="w-48 bg-gray-50 border-r border-gray-200 flex-shrink-0">
-              {/* Header */}
-              <div className="h-16 bg-white border-b border-gray-200 flex items-center px-4">
-                <span className="font-semibold text-gray-700">Trabajadores</span>
-              </div>
-              
-              {/* Workers List */}
-              <ScrollArea className="h-[544px]">
-                {cleaners.map((cleaner) => (
-                  <div 
-                    key={cleaner.id} 
-                    className="h-20 border-b border-gray-200 p-3 flex items-center hover:bg-gray-100 transition-colors"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center text-white font-medium">
-                        {cleaner.name.split(' ').map(n => n[0]).join('').toUpperCase()}
-                      </div>
-                      <div>
-                        <div className="font-medium text-gray-900 text-sm">{cleaner.name}</div>
-                        <div className="flex items-center gap-1">
-                          <div className={`w-2 h-2 rounded-full ${cleaner.isActive ? 'bg-green-400' : 'bg-gray-400'}`} />
-                          <span className="text-xs text-gray-500">
-                            {cleaner.isActive ? 'Activo' : 'Inactivo'}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </ScrollArea>
-            </div>
+            <WorkersColumn cleaners={cleaners} />
 
             {/* Timeline Area */}
             <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
               {/* Time Header - Scrollable */}
-              <div 
+              <TimelineHeader
                 ref={headerScrollRef}
-                className="h-16 bg-white border-b border-gray-200 overflow-x-auto"
+                timeSlots={timeSlots}
                 onScroll={handleHeaderScroll}
-              >
-                <div className="flex h-full" style={{ minWidth: '1200px' }}>
-                  {timeSlots.map((time, index) => (
-                    <div 
-                      key={time} 
-                      className={`min-w-[75px] h-16 flex items-center justify-center text-xs font-medium text-gray-600 border-r border-gray-100 ${
-                        time.endsWith(':00') ? 'bg-gray-50' : 'bg-white'
-                      }`}
-                    >
-                      {time.endsWith(':00') ? time : ''}
-                    </div>
-                  ))}
-                </div>
-              </div>
+              />
 
               {/* Timeline Body - Scrollable */}
-              <div 
+              <CalendarGrid
                 ref={bodyScrollRef}
-                className="flex-1 overflow-x-auto overflow-y-auto"
+                cleaners={cleaners}
+                timeSlots={timeSlots}
+                assignedTasks={assignedTasks}
+                dragState={dragState}
                 onScroll={handleBodyScroll}
-              >
-                <div style={{ minWidth: '1200px' }}>
-                  {cleaners.map((cleaner) => {
-                    const cleanerTasks = assignedTasks.filter(task => task.cleaner === cleaner.name);
-                    
-                    return (
-                      <div key={cleaner.id} className="h-20 border-b border-gray-100 relative hover:bg-gray-25 transition-colors flex">
-                        {/* Time slots for this cleaner */}
-                        {timeSlots.map((time, index) => {
-                          const [hour, minute] = time.split(':').map(Number);
-                          const isOccupied = isTimeSlotOccupied(cleaner.id, hour, minute);
-                          
-                          return (
-                            <TimeSlot
-                              key={`${cleaner.id}-${time}`}
-                              hour={hour}
-                              minute={minute}
-                              cleanerId={cleaner.id}
-                              isOccupied={isOccupied}
-                              onDragOver={handleDragOver}
-                              onDrop={handleDrop}
-                            />
-                          );
-                        })}
-
-                        {/* Tasks for this cleaner */}
-                        {cleanerTasks.map((task) => {
-                          const position = getTaskPosition(task.startTime, task.endTime);
-                          return (
-                            <div
-                              key={task.id}
-                              className="absolute top-1 bottom-1 z-10"
-                              style={{
-                                left: position.left,
-                                width: position.width
-                              }}
-                            >
-                              <TaskCard
-                                task={task}
-                                onClick={() => handleTaskClick(task)}
-                                isDragging={dragState.draggedTask?.id === task.id}
-                                onDragStart={handleDragStart}
-                                onDragEnd={handleDragEnd}
-                                style={{ height: '100%' }}
-                              />
-                            </div>
-                          );
-                        })}
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
+                onDragOver={handleDragOver}
+                onDrop={handleDrop}
+                onDragStart={handleDragStart}
+                onDragEnd={handleDragEnd}
+                onTaskClick={handleTaskClick}
+                getTaskPosition={getTaskPosition}
+                isTimeSlotOccupied={isTimeSlotOccupied}
+              />
             </div>
           </div>
         </CardContent>
       </Card>
 
       {/* Unassigned Tasks */}
-      {unassignedTasks.length > 0 && (
-        <Card className="border border-orange-200 shadow-lg">
-          <CardContent className="p-4">
-            <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
-              📋 Tareas Sin Asignar 
-              <span className="bg-orange-100 text-orange-800 text-xs px-2 py-1 rounded-full">
-                {unassignedTasks.length}
-              </span>
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-              {unassignedTasks.map((task) => (
-                <TaskCard
-                  key={task.id}
-                  task={task}
-                  onClick={() => handleTaskClick(task)}
-                  onDragStart={handleDragStart}
-                  onDragEnd={handleDragEnd}
-                />
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
+      <UnassignedTasks
+        tasks={unassignedTasks}
+        onTaskClick={handleTaskClick}
+        onDragStart={handleDragStart}
+        onDragEnd={handleDragEnd}
+      />
 
       {/* Drag Preview */}
       {dragState.draggedTask && (
@@ -361,21 +262,7 @@ const CleaningCalendar = () => {
       )}
 
       {/* Status Legend */}
-      <div className="flex items-center gap-6 text-sm bg-white p-4 rounded-lg shadow-sm">
-        <span className="text-gray-600 font-medium">Estado:</span>
-        <div className="flex items-center gap-2">
-          <div className="w-3 h-3 bg-red-500 rounded-full"></div>
-          <span>Pendiente</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
-          <span>En Progreso</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-          <span>Completado</span>
-        </div>
-      </div>
+      <StatusLegend />
 
       {/* Modals */}
       <CreateTaskModal
