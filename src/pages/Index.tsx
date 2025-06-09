@@ -1,5 +1,5 @@
 
-import { Calendar, Clock, MapPin, CheckCircle, AlertCircle, Users } from "lucide-react";
+import { Calendar, Clock, MapPin, CheckCircle, AlertCircle, Users, Building } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -7,6 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import CleaningCalendar from "@/components/CleaningCalendar";
 import CleaningList from "@/components/CleaningList";
 import StatsCards from "@/components/StatsCards";
+import { Link } from "react-router-dom";
 
 const Index = () => {
   return (
@@ -20,6 +21,16 @@ const Index = () => {
           <p className="text-gray-600 text-sm md:text-base">
             Coordina y gestiona todas las limpiezas de tus propiedades
           </p>
+          
+          {/* Navigation Links */}
+          <div className="flex justify-center gap-4 mt-4">
+            <Link to="/clients">
+              <Button variant="outline" className="flex items-center gap-2">
+                <Building className="h-4 w-4" />
+                Gestión de Clientes
+              </Button>
+            </Link>
+          </div>
         </div>
 
         {/* Stats Cards */}
