@@ -1,62 +1,97 @@
 
-import { Calendar, Clock, MapPin, CheckCircle, AlertCircle, Users, Building } from "lucide-react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import CleaningCalendar from "@/components/CleaningCalendar";
-import CleaningList from "@/components/CleaningList";
-import StatsCards from "@/components/StatsCards";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Calendar, Users, Home, BarChart3 } from "lucide-react";
 import { Link } from "react-router-dom";
 
 const Index = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
-      <div className="container mx-auto px-4 py-6 space-y-6">
-        {/* Header */}
-        <div className="text-center space-y-2">
-          <h1 className="text-3xl md:text-4xl font-bold text-gray-900">
-            Gestión de Limpiezas
+      <div className="container mx-auto px-4 py-8">
+        <div className="text-center mb-12">
+          <h1 className="text-4xl font-bold text-gray-900 mb-4">
+            Sistema de Gestión de Limpieza
           </h1>
-          <p className="text-gray-600 text-sm md:text-base">
-            Coordina y gestiona todas las limpiezas de tus propiedades
+          <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+            Administra tu negocio de limpieza de manera eficiente con nuestro sistema integral
           </p>
-          
-          {/* Navigation Links */}
-          <div className="flex justify-center gap-4 mt-4">
-            <Link to="/clients">
-              <Button variant="outline" className="flex items-center gap-2">
-                <Building className="h-4 w-4" />
-                Gestión de Clientes
-              </Button>
-            </Link>
-          </div>
         </div>
 
-        {/* Stats Cards */}
-        <StatsCards />
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <Link to="/calendar">
+            <Card className="hover:shadow-lg transition-shadow cursor-pointer">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Calendar className="h-5 w-5 text-blue-600" />
+                  Calendario
+                </CardTitle>
+                <CardDescription>
+                  Gestiona tareas y horarios de limpieza
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Button className="w-full">
+                  Ir al Calendario
+                </Button>
+              </CardContent>
+            </Card>
+          </Link>
 
-        {/* Main Content */}
-        <Tabs defaultValue="calendar" className="w-full">
-          <TabsList className="grid w-full grid-cols-2 mb-6">
-            <TabsTrigger value="calendar" className="flex items-center gap-2">
-              <Calendar className="h-4 w-4" />
-              <span className="hidden sm:inline">Calendario</span>
-            </TabsTrigger>
-            <TabsTrigger value="list" className="flex items-center gap-2">
-              <Users className="h-4 w-4" />
-              <span className="hidden sm:inline">Lista</span>
-            </TabsTrigger>
-          </TabsList>
+          <Link to="/clients">
+            <Card className="hover:shadow-lg transition-shadow cursor-pointer">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Users className="h-5 w-5 text-green-600" />
+                  Clientes
+                </CardTitle>
+                <CardDescription>
+                  Administra la información de tus clientes
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Button className="w-full">
+                  Gestionar Clientes
+                </Button>
+              </CardContent>
+            </Card>
+          </Link>
 
-          <TabsContent value="calendar" className="space-y-6">
-            <CleaningCalendar />
-          </TabsContent>
+          <Link to="/properties">
+            <Card className="hover:shadow-lg transition-shadow cursor-pointer">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Home className="h-5 w-5 text-purple-600" />
+                  Propiedades
+                </CardTitle>
+                <CardDescription>
+                  Gestiona pisos y propiedades de limpieza
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Button className="w-full">
+                  Gestionar Propiedades
+                </Button>
+              </CardContent>
+            </Card>
+          </Link>
 
-          <TabsContent value="list" className="space-y-6">
-            <CleaningList />
-          </TabsContent>
-        </Tabs>
+          <Card className="hover:shadow-lg transition-shadow cursor-pointer opacity-50">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <BarChart3 className="h-5 w-5 text-orange-600" />
+                Reportes
+              </CardTitle>
+              <CardDescription>
+                Análisis y estadísticas del negocio
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button className="w-full" disabled>
+                Próximamente
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </div>
   );
