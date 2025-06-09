@@ -1,4 +1,3 @@
-
 import { TaskReport, BillingReport, SummaryReport } from '@/types/reports';
 
 export const exportToCSV = (data: any, filename: string, type: 'tasks' | 'billing' | 'summary') => {
@@ -32,29 +31,29 @@ export const exportToCSV = (data: any, filename: string, type: 'tasks' | 'billin
 
 const exportTasksToCSV = (tasks: TaskReport[]): string => {
   const headers = [
-    'ID',
-    'Propiedad',
-    'Dirección',
-    'Fecha',
-    'Hora Inicio',
-    'Hora Fin',
-    'Tipo',
-    'Estado',
-    'Trabajador',
-    'Cliente'
+    'Fecha del servicio',
+    'Supervisor responsable',
+    'Cliente',
+    'Tipo de servicio',
+    'Estado de la Tarea',
+    'Coste total del Servicio',
+    'Horas de trabajo',
+    'Equipo de trabajo (Nombre y Apellido)',
+    'Método de pago',
+    'Incidencias'
   ];
   
   const rows = tasks.map(task => [
-    task.id,
-    task.property,
-    task.address,
     task.date,
-    task.startTime,
-    task.endTime,
+    'Sin asignar', // Supervisor responsable - placeholder
+    task.client,
     task.type,
     task.status,
+    '0', // Coste total del Servicio - placeholder
+    `${task.startTime} - ${task.endTime}`, // Horas de trabajo
     task.cleaner,
-    task.client
+    'Sin especificar', // Método de pago - placeholder
+    'Ninguna' // Incidencias - placeholder
   ]);
   
   return [headers, ...rows].map(row => 
