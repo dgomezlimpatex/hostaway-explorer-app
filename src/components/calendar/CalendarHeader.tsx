@@ -2,7 +2,7 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { ChevronLeft, ChevronRight, Search, Settings, User, Moon, Plus, ArrowLeft } from "lucide-react";
+import { ChevronLeft, ChevronRight, Search, Settings, User, Moon, Plus, ArrowLeft, CheckSquare } from "lucide-react";
 import { Link } from "react-router-dom";
 
 interface CalendarHeaderProps {
@@ -75,6 +75,14 @@ export const CalendarHeader = ({
               className="pl-10 w-64"
             />
           </div>
+          
+          {/* Tasks button */}
+          <Link to="/tasks">
+            <Button variant="outline" size="sm" className="hover:bg-gray-50">
+              <CheckSquare className="h-4 w-4 mr-2" />
+              Gestión de Tareas
+            </Button>
+          </Link>
           
           {/* Action buttons */}
           <Button variant="ghost" size="sm">

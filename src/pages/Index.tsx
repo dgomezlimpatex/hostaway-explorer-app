@@ -46,6 +46,35 @@ export default function Index() {
             </Card>
           </Link>
 
+          {/* Tareas */}
+          <Link to="/tasks" className="group">
+            <Card className="h-full transition-all duration-300 hover:shadow-lg hover:scale-105 cursor-pointer border-2 hover:border-yellow-300">
+              <CardHeader className="text-center">
+                <div className="text-4xl mb-2 group-hover:scale-110 transition-transform">✅</div>
+                <CardTitle className="text-xl font-semibold text-gray-800">
+                  Gestión de Tareas
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <CardDescription className="text-center text-gray-600 mb-4">
+                  Administra y supervisa todas las tareas de limpieza. 
+                  Filtra, organiza y controla el estado de cada trabajo.
+                </CardDescription>
+                <div className="mt-4 flex flex-wrap gap-2 justify-center">
+                  <span className="bg-yellow-100 text-yellow-800 text-xs px-2 py-1 rounded-full">
+                    Lista de Tareas
+                  </span>
+                  <span className="bg-yellow-100 text-yellow-800 text-xs px-2 py-1 rounded-full">
+                    Filtros
+                  </span>
+                  <span className="bg-yellow-100 text-yellow-800 text-xs px-2 py-1 rounded-full">
+                    Estados
+                  </span>
+                </div>
+              </CardContent>
+            </Card>
+          </Link>
+
           {/* Clientes */}
           <Link to="/clients" className="group">
             <Card className="h-full transition-all duration-300 hover:shadow-lg hover:scale-105 cursor-pointer border-2 hover:border-green-300">
