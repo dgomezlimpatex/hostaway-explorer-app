@@ -13,6 +13,8 @@ export const propertySchema = z.object({
   numeroToallasGrandes: z.number().min(0, 'El número de toallas grandes debe ser positivo'),
   numeroTotallasPequenas: z.number().min(0, 'El número de toallas pequeñas debe ser positivo'),
   numeroAlfombrines: z.number().min(0, 'El número de alfombrines debe ser positivo'),
+  numeroFundasAlmohada: z.number().min(0, 'El número de fundas de almohada debe ser positivo'),
+  notas: z.string().optional(),
   clienteId: z.string().min(1, 'Debe seleccionar un cliente'),
 });
 

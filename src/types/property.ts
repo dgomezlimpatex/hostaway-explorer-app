@@ -19,6 +19,10 @@ export interface Property {
   numeroToallasGrandes: number;
   numeroTotallasPequenas: number;
   numeroAlfombrines: number;
+  numeroFundasAlmohada: number;
+  
+  // Notas
+  notas: string;
   
   // Vinculación
   clienteId: string;
@@ -40,5 +44,7 @@ export interface CreatePropertyData {
   numeroToallasGrandes: number;
   numeroTotallasPequenas: number;
   numeroAlfombrines: number;
+  numeroFundasAlmohada: number;
+  notas: string;
   clienteId: string;
 }
