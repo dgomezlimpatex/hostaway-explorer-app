@@ -1,16 +1,29 @@
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { ChevronLeft, ChevronRight, Clock, MapPin } from "lucide-react";
-import { useState } from "react";
+import { useState, useMemo } from "react";
+import { useCalendarData } from "@/hooks/useCalendarData";
+import { CalendarHeader } from "./calendar/CalendarHeader";
+import { TaskCard } from "./calendar/TaskCard";
 
 const CleaningCalendar = () => {
-  const [currentDate, setCurrentDate] = useState(new Date());
+  const {
+    tasks,
+    cleaners,
+    currentDate,
+    currentView,
+    isLoading,
+    setCurrentView,
+    navigateDate,
+    goToToday,
+    updateTask,
+    assignTask
+  } = useCalendarData();
 
-  // Generar franjas horarias de 30 minutos desde las 6:00 hasta las 22:00
-  const generateTimeSlots = () => {
+  const [draggedTask, setDraggedTask] = useState<string | null>(null);
+
+  // Generate time slots
+  const timeSlots = useMemo(() => {
     const slots = [];
     for (let hour = 6; hour <= 22; hour++) {
       slots.push(`${hour.toString().padStart(2, '0')}:00`);
@@ -19,271 +32,208 @@ const CleaningCalendar = () => {
       }
     }
     return slots;
+  }, []);
+
+  // Handle new task creation
+  const handleNewTask = () => {
+    console.log('Creating new task...');
+    // TODO: Implement new task modal
   };
 
-  const timeSlots = generateTimeSlots();
-
-  // Trabajadores/Empleados de limpieza
-  const cleaners = [
-    "María García",
-    "Ana López", 
-    "Carlos Ruiz",
-    "Jhoana Quintero",
-    "Jaritza",
-    "Lali Freire",
-    "Katerine Samboni",
-    "Thalia Martínez"
-  ];
-
-  // Datos simulados de limpiezas para el día actual
-  const todayCleanings = [
-    {
-      id: 1,
-      cleaner: "María García",
-      property: "Blue Ocean Portonovo Studio 1°D",
-      address: "Turquoise Apartments SL",
-      startTime: "11:00",
-      endTime: "13:30",
-      type: "checkout-checkin",
-      status: "pending",
-      checkOut: "11:00",
-      checkIn: "15:00"
-    },
-    {
-      id: 2,
-      cleaner: "Ana López",
-      property: "Villa Costa del Sol",
-      address: "Av. Marítima 45",
-      startTime: "09:00",
-      endTime: "12:00",
-      type: "checkout-checkin",
-      status: "in-progress",
-      checkOut: "10:00",
-      checkIn: "16:00"
-    },
-    {
-      id: 3,
-      cleaner: "Carlos Ruiz",
-      property: "Apartamento Retiro Premium",
-      address: "Plaza del Retiro 12",
-      startTime: "14:00",
-      endTime: "17:00",
-      type: "maintenance",
-      status: "pending",
-      checkOut: "12:00",
-      checkIn: "18:00"
-    },
-    {
-      id: 4,
-      cleaner: "Thalia Martínez",
-      property: "Casas Coruña CB",
-      address: "MOSTEIRO BRIBES",
-      startTime: "16:00",
-      endTime: "20:00",
-      type: "checkout-checkin",
-      status: "pending",
-      checkOut: "16:00",
-      checkIn: "21:00"
-    }
-  ];
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "completed":
-        return "bg-green-500";
-      case "in-progress":
-        return "bg-yellow-500";
-      case "pending":
-        return "bg-red-500";
-      default:
-        return "bg-gray-500";
-    }
+  // Handle task details
+  const handleTaskClick = (task: any) => {
+    console.log('Showing task details:', task);
+    // TODO: Implement task details modal
   };
 
-  const timeToMinutes = (time: string) => {
-    const [hours, minutes] = time.split(':').map(Number);
-    return hours * 60 + minutes;
-  };
-
+  // Get task position for timeline
   const getTaskPosition = (startTime: string, endTime: string) => {
+    const timeToMinutes = (time: string) => {
+      const [hours, minutes] = time.split(':').map(Number);
+      return hours * 60 + minutes;
+    };
+
     const startMinutes = timeToMinutes(startTime);
     const endMinutes = timeToMinutes(endTime);
     const dayStartMinutes = 6 * 60; // 6:00 AM
     
-    const leftPercent = ((startMinutes - dayStartMinutes) / (16 * 60)) * 100; // 16 horas de trabajo
+    const leftPercent = ((startMinutes - dayStartMinutes) / (16 * 60)) * 100;
     const widthPercent = ((endMinutes - startMinutes) / (16 * 60)) * 100;
     
     return { left: `${leftPercent}%`, width: `${widthPercent}%` };
   };
 
-  const formatDate = (date: Date) => {
-    return date.toLocaleDateString('es-ES', { 
-      weekday: 'long', 
-      day: 'numeric', 
-      month: 'long',
-      year: 'numeric'
-    });
-  };
+  // Get tasks assigned to cleaners
+  const assignedTasks = tasks.filter(task => task.cleaner);
+  const unassignedTasks = tasks.filter(task => !task.cleaner);
 
-  const navigateDate = (direction: 'prev' | 'next') => {
-    const newDate = new Date(currentDate);
-    if (direction === 'prev') {
-      newDate.setDate(currentDate.getDate() - 1);
-    } else {
-      newDate.setDate(currentDate.getDate() + 1);
-    }
-    setCurrentDate(newDate);
-  };
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+        <span className="ml-2 text-gray-600">Cargando calendario...</span>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
-      {/* Header con navegación */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <h3 className="text-xl font-semibold text-gray-900">
-            Calendario Diario
-          </h3>
-          <div className="flex items-center gap-2">
-            <Button 
-              variant="outline" 
-              size="sm"
-              onClick={() => navigateDate('prev')}
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
-            <span className="text-sm text-gray-600 px-3 min-w-[200px] text-center">
-              {formatDate(currentDate)}
-            </span>
-            <Button 
-              variant="outline" 
-              size="sm"
-              onClick={() => navigateDate('next')}
-            >
-              <ChevronRight className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
-        <div className="flex gap-2">
-          <Button size="sm" variant="outline">
-            Hoy
-          </Button>
-          <Button size="sm" className="bg-blue-600 hover:bg-blue-700">
-            Nueva Limpieza
-          </Button>
-        </div>
-      </div>
+      {/* Modern Header */}
+      <CalendarHeader
+        currentDate={currentDate}
+        currentView={currentView}
+        onNavigateDate={navigateDate}
+        onGoToToday={goToToday}
+        onViewChange={setCurrentView}
+        onNewTask={handleNewTask}
+      />
 
-      {/* Calendario horizontal */}
-      <Card className="border-0 shadow-lg">
+      {/* Main Calendar */}
+      <Card className="border-0 shadow-xl overflow-hidden">
         <CardContent className="p-0">
-          <div className="overflow-x-auto">
-            <div className="min-w-[1200px]">
-              {/* Header de horas */}
-              <div className="flex border-b bg-gray-50">
-                <div className="w-48 flex-shrink-0 p-3 border-r bg-white">
-                  <span className="font-medium text-gray-700">Trabajadores</span>
-                </div>
-                <div className="flex-1 relative">
-                  {timeSlots.map((time, index) => (
-                    <div 
-                      key={time} 
-                      className={`absolute top-0 bottom-0 flex items-center justify-center text-xs font-medium text-gray-600 ${
-                        time.endsWith(':00') ? 'bg-gray-100' : 'bg-gray-50'
-                      }`}
-                      style={{ 
-                        left: `${(index / timeSlots.length) * 100}%`,
-                        width: `${(1 / timeSlots.length) * 100}%`
-                      }}
-                    >
-                      {time.endsWith(':00') ? time : ''}
-                      {/* Línea divisoria vertical */}
-                      <div className={`absolute right-0 top-0 bottom-0 w-px ${
-                        time.endsWith(':00') ? 'bg-gray-200' : 'bg-gray-100'
-                      }`} />
-                    </div>
-                  ))}
-                </div>
+          <div className="flex h-[600px]">
+            {/* Workers Column */}
+            <div className="w-48 bg-gray-50 border-r border-gray-200">
+              {/* Header */}
+              <div className="h-16 bg-white border-b border-gray-200 flex items-center px-4">
+                <span className="font-semibold text-gray-700">Trabajadores</span>
               </div>
-
-              {/* Filas de trabajadores */}
-              <div className="relative">
-                {cleaners.map((cleaner, cleanerIndex) => (
-                  <div key={cleaner} className="flex border-b hover:bg-gray-50">
-                    {/* Nombre del trabajador */}
-                    <div className="w-48 flex-shrink-0 p-3 border-r bg-white">
-                      <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                          <span className="text-xs font-medium text-blue-600">
-                            {cleaner.split(' ').map(n => n[0]).join('')}
+              
+              {/* Workers List */}
+              <ScrollArea className="h-[544px]">
+                {cleaners.map((cleaner) => (
+                  <div 
+                    key={cleaner.id} 
+                    className="h-20 border-b border-gray-200 p-3 flex items-center hover:bg-gray-100 transition-colors"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center text-white font-medium">
+                        {cleaner.name.split(' ').map(n => n[0]).join('').toUpperCase()}
+                      </div>
+                      <div>
+                        <div className="font-medium text-gray-900 text-sm">{cleaner.name}</div>
+                        <div className="flex items-center gap-1">
+                          <div className={`w-2 h-2 rounded-full ${cleaner.isActive ? 'bg-green-400' : 'bg-gray-400'}`} />
+                          <span className="text-xs text-gray-500">
+                            {cleaner.isActive ? 'Activo' : 'Inactivo'}
                           </span>
                         </div>
-                        <span className="text-sm font-medium text-gray-900 truncate">
-                          {cleaner}
-                        </span>
                       </div>
-                    </div>
-
-                    {/* Área de tareas con franjas horarias */}
-                    <div className="flex-1 relative" style={{ height: '80px' }}>
-                      {/* Líneas de separación horaria que coinciden exactamente con el header */}
-                      {timeSlots.map((time, index) => (
-                        <div 
-                          key={`${cleaner}-${time}`}
-                          className={`absolute top-0 bottom-0 w-px ${
-                            time.endsWith(':00') ? 'bg-gray-200' : 'bg-gray-100'
-                          }`}
-                          style={{ 
-                            left: `${((index + 1) / timeSlots.length) * 100}%`
-                          }}
-                        />
-                      ))}
-
-                      {/* Tareas de limpieza */}
-                      {todayCleanings
-                        .filter(cleaning => cleaning.cleaner === cleaner)
-                        .map((cleaning) => {
-                          const position = getTaskPosition(cleaning.startTime, cleaning.endTime);
-                          return (
-                            <div
-                              key={cleaning.id}
-                              className={`absolute top-2 bottom-2 ${getStatusColor(cleaning.status)} rounded-md p-2 text-white shadow-sm hover:shadow-md transition-shadow cursor-pointer`}
-                              style={position}
-                            >
-                              <div className="text-xs font-medium truncate">
-                                {cleaning.property}
-                              </div>
-                              <div className="text-xs opacity-90 truncate">
-                                {cleaning.startTime} - {cleaning.endTime}
-                              </div>
-                              <div className="text-xs opacity-80 flex items-center gap-1 mt-1">
-                                <Clock className="h-3 w-3" />
-                                Out: {cleaning.checkOut} | In: {cleaning.checkIn}
-                              </div>
-                            </div>
-                          );
-                        })}
                     </div>
                   </div>
                 ))}
+              </ScrollArea>
+            </div>
+
+            {/* Timeline Area */}
+            <div className="flex-1 flex flex-col">
+              {/* Time Header */}
+              <div className="h-16 bg-white border-b border-gray-200 flex">
+                <div className="flex-1 relative overflow-x-auto">
+                  <div className="flex" style={{ minWidth: '800px' }}>
+                    {timeSlots.map((time, index) => (
+                      <div 
+                        key={time} 
+                        className={`min-w-[50px] h-16 flex items-center justify-center text-xs font-medium text-gray-600 border-r border-gray-100 ${
+                          time.endsWith(':00') ? 'bg-gray-50' : 'bg-white'
+                        }`}
+                      >
+                        {time.endsWith(':00') ? time : ''}
+                      </div>
+                    ))}
+                  </div>
+                </div>
               </div>
+
+              {/* Timeline Body */}
+              <ScrollArea className="flex-1">
+                <div style={{ minWidth: '800px' }}>
+                  {cleaners.map((cleaner) => {
+                    const cleanerTasks = assignedTasks.filter(task => task.cleaner === cleaner.name);
+                    
+                    return (
+                      <div key={cleaner.id} className="h-20 border-b border-gray-100 relative hover:bg-gray-25 transition-colors">
+                        {/* Time grid */}
+                        <div className="absolute inset-0 flex">
+                          {timeSlots.map((time, index) => (
+                            <div 
+                              key={`${cleaner.id}-${time}`}
+                              className="min-w-[50px] h-full border-r border-gray-100"
+                              style={{ 
+                                backgroundColor: time.endsWith(':00') ? '#fafafa' : 'white'
+                              }}
+                            />
+                          ))}
+                        </div>
+
+                        {/* Tasks for this cleaner */}
+                        {cleanerTasks.map((task) => {
+                          const position = getTaskPosition(task.startTime, task.endTime);
+                          return (
+                            <div
+                              key={task.id}
+                              className="absolute top-1 bottom-1"
+                              style={{
+                                left: position.left,
+                                width: position.width,
+                                minWidth: '120px'
+                              }}
+                            >
+                              <TaskCard
+                                task={task}
+                                onClick={() => handleTaskClick(task)}
+                                isDragging={draggedTask === task.id}
+                                style={{ height: '100%' }}
+                              />
+                            </div>
+                          );
+                        })}
+                      </div>
+                    );
+                  })}
+                </div>
+              </ScrollArea>
             </div>
           </div>
         </CardContent>
       </Card>
 
-      {/* Leyenda */}
-      <div className="flex items-center gap-4 text-sm">
-        <span className="text-gray-600">Estado:</span>
+      {/* Unassigned Tasks */}
+      {unassignedTasks.length > 0 && (
+        <Card className="border border-orange-200 shadow-lg">
+          <CardContent className="p-4">
+            <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
+              📋 Tareas Sin Asignar 
+              <span className="bg-orange-100 text-orange-800 text-xs px-2 py-1 rounded-full">
+                {unassignedTasks.length}
+              </span>
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+              {unassignedTasks.map((task) => (
+                <TaskCard
+                  key={task.id}
+                  task={task}
+                  onClick={() => handleTaskClick(task)}
+                />
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Status Legend */}
+      <div className="flex items-center gap-6 text-sm bg-white p-4 rounded-lg shadow-sm">
+        <span className="text-gray-600 font-medium">Estado:</span>
         <div className="flex items-center gap-2">
-          <div className="w-3 h-3 bg-red-500 rounded"></div>
+          <div className="w-3 h-3 bg-red-500 rounded-full"></div>
           <span>Pendiente</span>
         </div>
         <div className="flex items-center gap-2">
-          <div className="w-3 h-3 bg-yellow-500 rounded"></div>
+          <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
           <span>En Progreso</span>
         </div>
         <div className="flex items-center gap-2">
-          <div className="w-3 h-3 bg-green-500 rounded"></div>
+          <div className="w-3 h-3 bg-green-500 rounded-full"></div>
           <span>Completado</span>
         </div>
       </div>
