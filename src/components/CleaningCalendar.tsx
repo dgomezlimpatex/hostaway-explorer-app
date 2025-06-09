@@ -41,7 +41,7 @@ const CleaningCalendar = () => {
   // Handle task assignment
   const handleTaskAssign = async (taskId: string, cleanerId: string, startTime: string) => {
     try {
-      await assignTask(taskId, cleanerId);
+      await assignTask({ taskId, cleanerId });
       toast({
         title: "Tarea asignada",
         description: "La tarea se ha asignado correctamente.",
@@ -296,7 +296,7 @@ const CleaningCalendar = () => {
       </div>
 
       {/* CSS for drag effects */}
-      <style jsx>{`
+      <style>{`
         .drag-over .drop-indicator {
           opacity: 1;
         }
