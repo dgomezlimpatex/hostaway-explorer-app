@@ -1,10 +1,10 @@
-
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useClients, useDeleteClient } from '@/hooks/useClients';
 import { Client } from '@/types/client';
 import { Edit, Trash2, Users, Phone, Mail, MapPin } from 'lucide-react';
+import { EditClientModal } from './EditClientModal';
 
 const ServiceTypeBadge = ({ type }: { type: string }) => {
   const variants = {
@@ -103,14 +103,19 @@ const ClientCard = ({ client }: { client: Client }) => {
 
         {/* Acciones */}
         <div className="flex justify-end gap-2 pt-2">
-          <Button
-            variant="outline"
-            size="sm"
-            className="flex items-center gap-1"
-          >
-            <Edit className="h-3 w-3" />
-            Editar
-          </Button>
+          <EditClientModal
+            client={client}
+            trigger={
+              <Button
+                variant="outline"
+                size="sm"
+                className="flex items-center gap-1"
+              >
+                <Edit className="h-3 w-3" />
+                Editar
+              </Button>
+            }
+          />
           <Button
             variant="outline"
             size="sm"
