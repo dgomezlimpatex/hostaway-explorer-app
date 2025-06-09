@@ -14,7 +14,11 @@ let tasksStorage: Task[] = [
     checkOut: '11:00',
     checkIn: '15:00',
     cleaner: 'María García',
-    date: new Date().toISOString().split('T')[0]
+    date: new Date().toISOString().split('T')[0],
+    duracion: 150,
+    coste: 45.00,
+    metodoPago: 'transferencia',
+    supervisor: 'Ana López'
   },
   {
     id: '2',
@@ -27,7 +31,11 @@ let tasksStorage: Task[] = [
     checkOut: '10:00',
     checkIn: '16:00',
     cleaner: 'Ana López',
-    date: new Date().toISOString().split('T')[0]
+    date: new Date().toISOString().split('T')[0],
+    duracion: 180,
+    coste: 60.00,
+    metodoPago: 'efectivo',
+    supervisor: 'Carlos Ruiz'
   },
   {
     id: '3',
@@ -40,7 +48,11 @@ let tasksStorage: Task[] = [
     checkOut: '12:00',
     checkIn: '18:00',
     cleaner: 'Carlos Ruiz',
-    date: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+    date: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+    duracion: 180,
+    coste: 75.00,
+    metodoPago: 'bizum',
+    supervisor: 'María García'
   },
   {
     id: '4',
@@ -53,7 +65,11 @@ let tasksStorage: Task[] = [
     checkOut: '16:00',
     checkIn: '21:00',
     cleaner: 'Thalia Martínez',
-    date: new Date().toISOString().split('T')[0]
+    date: new Date().toISOString().split('T')[0],
+    duracion: 240,
+    coste: 80.00,
+    metodoPago: 'transferencia',
+    supervisor: 'Ana López'
   }
 ];
 

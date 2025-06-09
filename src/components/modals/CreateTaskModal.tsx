@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -13,7 +13,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Task } from "@/hooks/useCalendarData";
+import { Task } from "@/types/calendar";
+import { Client } from "@/types/client";
+import { Property } from "@/types/property";
+import { ClientPropertySelector } from "./ClientPropertySelector";
 
 interface CreateTaskModalProps {
   open: boolean;
@@ -28,6 +31,9 @@ export const CreateTaskModal = ({
   onCreateTask,
   currentDate = new Date()
 }: CreateTaskModalProps) => {
+  const [selectedClient, setSelectedClient] = useState<Client | null>(null);
+  const [selectedProperty, setSelectedProperty] = useState<Property | null>(null);
+  
   const [formData, setFormData] = useState({
     property: '',
     address: '',
@@ -38,27 +44,82 @@ export const CreateTaskModal = ({
     checkOut: '',
     checkIn: '',
     cleaner: '',
-    date: currentDate.toISOString().split('T')[0]
+    date: currentDate.toISOString().split('T')[0],
+    duracion: 0,
+    coste: 0,
+    metodoPago: '',
+    supervisor: ''
   });
   
   const { toast } = useToast();
 
+  // Autocompletar campos cuando se selecciona una propiedad
+  useEffect(() => {
+    if (selectedProperty && selectedClient) {
+      setFormData(prev => ({
+        ...prev,
+        property: `${selectedProperty.codigo} - ${selectedProperty.nombre}`,
+        address: selectedProperty.direccion,
+        duracion: selectedProperty.duracionServicio,
+        coste: selectedProperty.costeServicio,
+        metodoPago: selectedClient.metodoPago,
+        supervisor: selectedClient.supervisor
+      }));
+
+      // Calcular hora de fin basándose en la duración
+      if (prev.startTime && selectedProperty.duracionServicio) {
+        const [hours, minutes] = prev.startTime.split(':').map(Number);
+        const startMinutes = hours * 60 + minutes;
+        const endMinutes = startMinutes + selectedProperty.duracionServicio;
+        const endHours = Math.floor(endMinutes / 60);
+        const endMins = endMinutes % 60;
+        setFormData(current => ({
+          ...current,
+          endTime: `${endHours.toString().padStart(2, '0')}:${endMins.toString().padStart(2, '0')}`
+        }));
+      }
+    }
+  }, [selectedProperty, selectedClient]);
+
+  // Recalcular hora de fin cuando cambia la hora de inicio
+  useEffect(() => {
+    if (formData.startTime && formData.duracion > 0) {
+      const [hours, minutes] = formData.startTime.split(':').map(Number);
+      const startMinutes = hours * 60 + minutes;
+      const endMinutes = startMinutes + formData.duracion;
+      const endHours = Math.floor(endMinutes / 60);
+      const endMins = endMinutes % 60;
+      setFormData(prev => ({
+        ...prev,
+        endTime: `${endHours.toString().padStart(2, '0')}:${endMins.toString().padStart(2, '0')}`
+      }));
+    }
+  }, [formData.startTime, formData.duracion]);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.property || !formData.startTime || !formData.endTime) {
+    if (!selectedClient || !selectedProperty || !formData.startTime) {
       toast({
         title: "Error",
-        description: "Por favor completa los campos obligatorios.",
+        description: "Por favor selecciona cliente, propiedad y hora de inicio.",
         variant: "destructive",
       });
       return;
     }
 
-    onCreateTask(formData);
+    const taskData = {
+      ...formData,
+      clienteId: selectedClient.id,
+      propiedadId: selectedProperty.id
+    };
+
+    onCreateTask(taskData);
     onOpenChange(false);
     
     // Reset form
+    setSelectedClient(null);
+    setSelectedProperty(null);
     setFormData({
       property: '',
       address: '',
@@ -69,7 +130,11 @@ export const CreateTaskModal = ({
       checkOut: '',
       checkIn: '',
       cleaner: '',
-      date: currentDate.toISOString().split('T')[0]
+      date: currentDate.toISOString().split('T')[0],
+      duracion: 0,
+      coste: 0,
+      metodoPago: '',
+      supervisor: ''
     });
     
     toast({
@@ -78,43 +143,25 @@ export const CreateTaskModal = ({
     });
   };
 
-  const handleChange = (field: string, value: string) => {
+  const handleChange = (field: string, value: string | number) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Crear Nueva Tarea</DialogTitle>
           <DialogDescription>
-            Completa los detalles para crear una nueva tarea de limpieza.
+            Selecciona el cliente y propiedad para autocompletar los detalles.
           </DialogDescription>
         </DialogHeader>
         
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="property">Propiedad *</Label>
-              <Input
-                id="property"
-                value={formData.property}
-                onChange={(e) => handleChange('property', e.target.value)}
-                placeholder="Nombre de la propiedad"
-                required
-              />
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="address">Dirección</Label>
-              <Input
-                id="address"
-                value={formData.address}
-                onChange={(e) => handleChange('address', e.target.value)}
-                placeholder="Dirección completa"
-              />
-            </div>
-          </div>
+          <ClientPropertySelector
+            onClientChange={setSelectedClient}
+            onPropertyChange={setSelectedProperty}
+          />
 
           <div className="grid grid-cols-3 gap-4">
             <div className="space-y-2">
@@ -139,13 +186,60 @@ export const CreateTaskModal = ({
             </div>
             
             <div className="space-y-2">
-              <Label htmlFor="endTime">Hora Fin *</Label>
+              <Label htmlFor="endTime">Hora Fin (auto)</Label>
               <Input
                 id="endTime"
                 type="time"
                 value={formData.endTime}
-                onChange={(e) => handleChange('endTime', e.target.value)}
-                required
+                readOnly
+                className="bg-gray-50"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="duracion">Duración (min)</Label>
+              <Input
+                id="duracion"
+                type="number"
+                value={formData.duracion}
+                readOnly
+                className="bg-gray-50"
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="coste">Coste (€)</Label>
+              <Input
+                id="coste"
+                type="number"
+                step="0.01"
+                value={formData.coste}
+                readOnly
+                className="bg-gray-50"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="metodoPago">Método de Pago</Label>
+              <Input
+                id="metodoPago"
+                value={formData.metodoPago}
+                readOnly
+                className="bg-gray-50"
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="supervisor">Supervisor</Label>
+              <Input
+                id="supervisor"
+                value={formData.supervisor}
+                readOnly
+                className="bg-gray-50"
               />
             </div>
           </div>
@@ -183,6 +277,7 @@ export const CreateTaskModal = ({
                   <SelectItem value="checkout-checkin">Check-out/Check-in</SelectItem>
                   <SelectItem value="maintenance">Mantenimiento</SelectItem>
                   <SelectItem value="deep-cleaning">Limpieza Profunda</SelectItem>
+                  <SelectItem value="cristaleria">Cristalería</SelectItem>
                 </SelectContent>
               </Select>
             </div>

@@ -12,6 +12,13 @@ export interface Task {
   cleaner?: string;
   backgroundColor?: string;
   date: string;
+  // Nuevos campos para vinculación
+  clienteId?: string;
+  propiedadId?: string;
+  duracion?: number; // en minutos
+  coste?: number; // en euros
+  metodoPago?: string;
+  supervisor?: string;
 }
 
 export interface Cleaner {
