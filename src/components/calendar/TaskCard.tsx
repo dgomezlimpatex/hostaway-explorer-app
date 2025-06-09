@@ -1,6 +1,6 @@
 
 import { Badge } from "@/components/ui/badge";
-import { Clock, MapPin } from "lucide-react";
+import { Clock, MapPin, GripVertical } from "lucide-react";
 import { Task } from "@/hooks/useCalendarData";
 
 interface TaskCardProps {
@@ -8,9 +8,18 @@ interface TaskCardProps {
   onClick?: () => void;
   isDragging?: boolean;
   style?: React.CSSProperties;
+  onDragStart?: (e: React.DragEvent, task: Task) => void;
+  onDragEnd?: (e: React.DragEvent) => void;
 }
 
-export const TaskCard = ({ task, onClick, isDragging, style }: TaskCardProps) => {
+export const TaskCard = ({ 
+  task, 
+  onClick, 
+  isDragging, 
+  style,
+  onDragStart,
+  onDragEnd 
+}: TaskCardProps) => {
   const getStatusColor = (status: string) => {
     switch (status) {
       case "completed":
@@ -37,18 +46,39 @@ export const TaskCard = ({ task, onClick, isDragging, style }: TaskCardProps) =>
     }
   };
 
+  const handleDragStart = (e: React.DragEvent) => {
+    if (onDragStart) {
+      onDragStart(e, task);
+    }
+  };
+
+  const handleDragEnd = (e: React.DragEvent) => {
+    if (onDragEnd) {
+      onDragEnd(e);
+    }
+  };
+
   return (
     <div
       className={`
         ${getStatusColor(task.status)} rounded-lg p-3 text-white shadow-lg 
-        hover:shadow-xl transition-all duration-200 cursor-pointer
-        ${isDragging ? 'opacity-50 scale-95' : ''}
-        relative overflow-hidden
+        hover:shadow-xl transition-all duration-200 cursor-move group
+        ${isDragging ? 'opacity-50 scale-95 rotate-3' : ''}
+        relative overflow-hidden select-none
       `}
       style={style}
       onClick={onClick}
-      draggable
+      draggable={!!onDragStart}
+      onDragStart={handleDragStart}
+      onDragEnd={handleDragEnd}
     >
+      {/* Drag handle */}
+      {onDragStart && (
+        <div className="absolute top-1 right-1 opacity-0 group-hover:opacity-70 transition-opacity">
+          <GripVertical className="h-3 w-3" />
+        </div>
+      )}
+
       {/* Background pattern */}
       <div className="absolute inset-0 opacity-10 bg-gradient-to-br from-white to-transparent" />
       
@@ -89,6 +119,11 @@ export const TaskCard = ({ task, onClick, isDragging, style }: TaskCardProps) =>
 
       {/* Hover effect */}
       <div className="absolute inset-0 bg-white opacity-0 hover:opacity-10 transition-opacity duration-200" />
+      
+      {/* Drag feedback overlay */}
+      {isDragging && (
+        <div className="absolute inset-0 bg-blue-500 opacity-20 animate-pulse" />
+      )}
     </div>
   );
 };

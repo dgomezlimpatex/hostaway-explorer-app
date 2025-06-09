@@ -5,6 +5,10 @@ import { useState, useMemo } from "react";
 import { useCalendarData } from "@/hooks/useCalendarData";
 import { CalendarHeader } from "./calendar/CalendarHeader";
 import { TaskCard } from "./calendar/TaskCard";
+import { TimeSlot } from "./calendar/TimeSlot";
+import { DragPreview } from "./calendar/DragPreview";
+import { useDragAndDrop } from "@/hooks/useDragAndDrop";
+import { useToast } from "@/hooks/use-toast";
 
 const CleaningCalendar = () => {
   const {
@@ -20,7 +24,7 @@ const CleaningCalendar = () => {
     assignTask
   } = useCalendarData();
 
-  const [draggedTask, setDraggedTask] = useState<string | null>(null);
+  const { toast } = useToast();
 
   // Generate time slots
   const timeSlots = useMemo(() => {
@@ -33,6 +37,32 @@ const CleaningCalendar = () => {
     }
     return slots;
   }, []);
+
+  // Handle task assignment
+  const handleTaskAssign = async (taskId: string, cleanerId: string, startTime: string) => {
+    try {
+      await assignTask(taskId, cleanerId);
+      toast({
+        title: "Tarea asignada",
+        description: "La tarea se ha asignado correctamente.",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "No se pudo asignar la tarea.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Initialize drag and drop
+  const {
+    dragState,
+    handleDragStart,
+    handleDragEnd,
+    handleDragOver,
+    handleDrop
+  } = useDragAndDrop(handleTaskAssign);
 
   // Handle new task creation
   const handleNewTask = () => {
@@ -61,6 +91,15 @@ const CleaningCalendar = () => {
     const widthPercent = ((endMinutes - startMinutes) / (16 * 60)) * 100;
     
     return { left: `${leftPercent}%`, width: `${widthPercent}%` };
+  };
+
+  // Check if a time slot is occupied
+  const isTimeSlotOccupied = (cleanerId: string, hour: number, minute: number) => {
+    const timeString = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
+    return assignedTasks.some(task => 
+      task.cleaner === cleaners.find(c => c.id === cleanerId)?.name &&
+      task.startTime <= timeString && task.endTime > timeString
+    );
   };
 
   // Get tasks assigned to cleaners
@@ -152,19 +191,24 @@ const CleaningCalendar = () => {
                     const cleanerTasks = assignedTasks.filter(task => task.cleaner === cleaner.name);
                     
                     return (
-                      <div key={cleaner.id} className="h-20 border-b border-gray-100 relative hover:bg-gray-25 transition-colors">
-                        {/* Time grid */}
-                        <div className="absolute inset-0 flex">
-                          {timeSlots.map((time, index) => (
-                            <div 
+                      <div key={cleaner.id} className="h-20 border-b border-gray-100 relative hover:bg-gray-25 transition-colors flex">
+                        {/* Time slots for this cleaner */}
+                        {timeSlots.map((time, index) => {
+                          const [hour, minute] = time.split(':').map(Number);
+                          const isOccupied = isTimeSlotOccupied(cleaner.id, hour, minute);
+                          
+                          return (
+                            <TimeSlot
                               key={`${cleaner.id}-${time}`}
-                              className="min-w-[50px] h-full border-r border-gray-100"
-                              style={{ 
-                                backgroundColor: time.endsWith(':00') ? '#fafafa' : 'white'
-                              }}
+                              hour={hour}
+                              minute={minute}
+                              cleanerId={cleaner.id}
+                              isOccupied={isOccupied}
+                              onDragOver={handleDragOver}
+                              onDrop={handleDrop}
                             />
-                          ))}
-                        </div>
+                          );
+                        })}
 
                         {/* Tasks for this cleaner */}
                         {cleanerTasks.map((task) => {
@@ -172,7 +216,7 @@ const CleaningCalendar = () => {
                           return (
                             <div
                               key={task.id}
-                              className="absolute top-1 bottom-1"
+                              className="absolute top-1 bottom-1 z-10"
                               style={{
                                 left: position.left,
                                 width: position.width,
@@ -182,7 +226,9 @@ const CleaningCalendar = () => {
                               <TaskCard
                                 task={task}
                                 onClick={() => handleTaskClick(task)}
-                                isDragging={draggedTask === task.id}
+                                isDragging={dragState.draggedTask?.id === task.id}
+                                onDragStart={handleDragStart}
+                                onDragEnd={handleDragEnd}
                                 style={{ height: '100%' }}
                               />
                             </div>
@@ -214,11 +260,22 @@ const CleaningCalendar = () => {
                   key={task.id}
                   task={task}
                   onClick={() => handleTaskClick(task)}
+                  onDragStart={handleDragStart}
+                  onDragEnd={handleDragEnd}
                 />
               ))}
             </div>
           </CardContent>
         </Card>
+      )}
+
+      {/* Drag Preview */}
+      {dragState.draggedTask && (
+        <DragPreview
+          task={dragState.draggedTask}
+          isDragging={dragState.isDragging}
+          offset={dragState.dragOffset}
+        />
       )}
 
       {/* Status Legend */}
@@ -237,6 +294,26 @@ const CleaningCalendar = () => {
           <span>Completado</span>
         </div>
       </div>
+
+      {/* CSS for drag effects */}
+      <style jsx>{`
+        .drag-over .drop-indicator {
+          opacity: 1;
+        }
+        
+        .time-cell:hover .drop-indicator {
+          opacity: 0.3;
+        }
+        
+        @keyframes dragPulse {
+          0%, 100% { transform: scale(1); }
+          50% { transform: scale(1.05); }
+        }
+        
+        .dragging {
+          animation: dragPulse 1s infinite;
+        }
+      `}</style>
     </div>
   );
 };
