@@ -21,6 +21,7 @@ export const ClientPropertySelector = ({
   selectedPropertyId = ''
 }: ClientPropertySelectorProps) => {
   const [clientId, setClientId] = useState(selectedClientId);
+  const [propertyId, setPropertyId] = useState(selectedPropertyId);
   const { data: clients = [] } = useClients();
   const { data: properties = [] } = usePropertiesByClient(clientId);
 
@@ -30,14 +31,20 @@ export const ClientPropertySelector = ({
   }, [clientId, clients, onClientChange]);
 
   useEffect(() => {
-    const selectedProperty = properties.find(p => p.id === selectedPropertyId);
+    const selectedProperty = properties.find(p => p.id === propertyId);
     onPropertyChange(selectedProperty || null);
-  }, [selectedPropertyId, properties, onPropertyChange]);
+  }, [propertyId, properties, onPropertyChange]);
 
   const handleClientChange = (value: string) => {
     setClientId(value);
-    // Reset property selection when client changes
+    setPropertyId(''); // Reset property selection when client changes
     onPropertyChange(null);
+  };
+
+  const handlePropertyChange = (value: string) => {
+    setPropertyId(value);
+    const selectedProperty = properties.find(p => p.id === value);
+    onPropertyChange(selectedProperty || null);
   };
 
   return (
@@ -61,11 +68,8 @@ export const ClientPropertySelector = ({
       <div className="space-y-2">
         <Label htmlFor="propiedad">Propiedad *</Label>
         <Select 
-          value={selectedPropertyId} 
-          onValueChange={(value) => {
-            const selectedProperty = properties.find(p => p.id === value);
-            onPropertyChange(selectedProperty || null);
-          }}
+          value={propertyId} 
+          onValueChange={handlePropertyChange}
           disabled={!clientId}
         >
           <SelectTrigger>
