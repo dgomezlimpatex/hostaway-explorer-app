@@ -179,9 +179,9 @@ const CleaningCalendar = () => {
       {/* Main Calendar */}
       <Card className="border-0 shadow-xl overflow-hidden">
         <CardContent className="p-0">
-          <div className="flex h-[600px]">
+          <div className="flex h-[600px] overflow-hidden">
             {/* Workers Column */}
-            <div className="w-48 bg-gray-50 border-r border-gray-200">
+            <div className="w-48 bg-gray-50 border-r border-gray-200 flex-shrink-0">
               {/* Header */}
               <div className="h-16 bg-white border-b border-gray-200 flex items-center px-4">
                 <span className="font-semibold text-gray-700">Trabajadores</span>
@@ -214,28 +214,26 @@ const CleaningCalendar = () => {
             </div>
 
             {/* Timeline Area */}
-            <div className="flex-1 flex flex-col">
-              {/* Time Header */}
-              <div className="h-16 bg-white border-b border-gray-200 flex">
-                <div className="flex-1 relative overflow-x-auto">
-                  <div className="flex" style={{ minWidth: '800px' }}>
-                    {timeSlots.map((time, index) => (
-                      <div 
-                        key={time} 
-                        className={`min-w-[50px] h-16 flex items-center justify-center text-xs font-medium text-gray-600 border-r border-gray-100 ${
-                          time.endsWith(':00') ? 'bg-gray-50' : 'bg-white'
-                        }`}
-                      >
-                        {time.endsWith(':00') ? time : ''}
-                      </div>
-                    ))}
-                  </div>
+            <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+              {/* Time Header - Scrollable */}
+              <div className="h-16 bg-white border-b border-gray-200 overflow-x-auto">
+                <div className="flex h-full" style={{ minWidth: '1200px' }}>
+                  {timeSlots.map((time, index) => (
+                    <div 
+                      key={time} 
+                      className={`min-w-[75px] h-16 flex items-center justify-center text-xs font-medium text-gray-600 border-r border-gray-100 ${
+                        time.endsWith(':00') ? 'bg-gray-50' : 'bg-white'
+                      }`}
+                    >
+                      {time.endsWith(':00') ? time : ''}
+                    </div>
+                  ))}
                 </div>
               </div>
 
-              {/* Timeline Body */}
-              <div className="flex-1 overflow-x-auto">
-                <div style={{ minWidth: '800px' }}>
+              {/* Timeline Body - Scrollable */}
+              <div className="flex-1 overflow-x-auto overflow-y-auto">
+                <div style={{ minWidth: '1200px' }}>
                   {cleaners.map((cleaner) => {
                     const cleanerTasks = assignedTasks.filter(task => task.cleaner === cleaner.name);
                     
