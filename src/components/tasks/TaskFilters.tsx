@@ -1,8 +1,11 @@
+
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { RotateCcw } from "lucide-react";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { RotateCcw, ChevronDown, ChevronUp } from "lucide-react";
+import { useState } from "react";
 import { useCleaners } from '@/hooks/useCleaners';
 import { useClients } from '@/hooks/useClients';
 import { useProperties } from '@/hooks/useProperties';
@@ -19,6 +22,7 @@ interface TaskFiltersProps {
 }
 
 export const TaskFilters = ({ filters, onFiltersChange }: TaskFiltersProps) => {
+  const [isOpen, setIsOpen] = useState(false);
   const { cleaners } = useCleaners();
   const { data: clients = [] } = useClients();
   const { data: properties = [] } = useProperties();
@@ -51,108 +55,125 @@ export const TaskFilters = ({ filters, onFiltersChange }: TaskFiltersProps) => {
 
   return (
     <Card>
-      <CardHeader>
-        <div className="flex items-center justify-between">
-          <CardTitle>Filtros</CardTitle>
-          <Button 
-            variant="outline" 
-            size="sm" 
-            onClick={handleResetFilters}
-            className="flex items-center gap-2"
-          >
-            <RotateCcw className="h-4 w-4" />
-            Limpiar
-          </Button>
-        </div>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="space-y-2">
-          <Label htmlFor="status">Estado</Label>
-          <Select value={filters.status} onValueChange={(value) => handleFilterChange('status', value)}>
-            <SelectTrigger>
-              <SelectValue placeholder="Todos los estados" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todos</SelectItem>
-              <SelectItem value="pending">Pendiente</SelectItem>
-              <SelectItem value="in-progress">En Progreso</SelectItem>
-              <SelectItem value="completed">Completado</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
+      <Collapsible open={isOpen} onOpenChange={setIsOpen}>
+        <CollapsibleTrigger asChild>
+          <CardHeader className="cursor-pointer hover:bg-gray-50 transition-colors">
+            <div className="flex items-center justify-between">
+              <CardTitle>Filtros</CardTitle>
+              <div className="flex items-center gap-2">
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleResetFilters();
+                  }}
+                  className="flex items-center gap-2"
+                >
+                  <RotateCcw className="h-4 w-4" />
+                  Limpiar
+                </Button>
+                {isOpen ? (
+                  <ChevronUp className="h-4 w-4" />
+                ) : (
+                  <ChevronDown className="h-4 w-4" />
+                )}
+              </div>
+            </div>
+          </CardHeader>
+        </CollapsibleTrigger>
+        
+        <CollapsibleContent>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="status">Estado</Label>
+              <Select value={filters.status} onValueChange={(value) => handleFilterChange('status', value)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Todos los estados" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos</SelectItem>
+                  <SelectItem value="pending">Pendiente</SelectItem>
+                  <SelectItem value="in-progress">En Progreso</SelectItem>
+                  <SelectItem value="completed">Completado</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
 
-        <div className="space-y-2">
-          <Label htmlFor="cleaner">Limpiador</Label>
-          <Select value={filters.cleaner} onValueChange={(value) => handleFilterChange('cleaner', value)}>
-            <SelectTrigger>
-              <SelectValue placeholder="Todos los limpiadores" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todos</SelectItem>
-              {cleaners.map((cleaner) => (
-                <SelectItem key={cleaner.id} value={cleaner.name}>
-                  {cleaner.name}
-                </SelectItem>
-              ))}
-              <SelectItem value="unassigned">Sin asignar</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
+            <div className="space-y-2">
+              <Label htmlFor="cleaner">Limpiador</Label>
+              <Select value={filters.cleaner} onValueChange={(value) => handleFilterChange('cleaner', value)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Todos los limpiadores" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos</SelectItem>
+                  {cleaners.map((cleaner) => (
+                    <SelectItem key={cleaner.id} value={cleaner.name}>
+                      {cleaner.name}
+                    </SelectItem>
+                  ))}
+                  <SelectItem value="unassigned">Sin asignar</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
 
-        <div className="space-y-2">
-          <Label htmlFor="cliente">Cliente</Label>
-          <Select value={filters.cliente} onValueChange={(value) => handleFilterChange('cliente', value)}>
-            <SelectTrigger>
-              <SelectValue placeholder="Todos los clientes" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todos</SelectItem>
-              {clients.map((cliente) => (
-                <SelectItem key={cliente.id} value={cliente.id}>
-                  {cliente.nombre}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+            <div className="space-y-2">
+              <Label htmlFor="cliente">Cliente</Label>
+              <Select value={filters.cliente} onValueChange={(value) => handleFilterChange('cliente', value)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Todos los clientes" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos</SelectItem>
+                  {clients.map((cliente) => (
+                    <SelectItem key={cliente.id} value={cliente.id}>
+                      {cliente.nombre}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
 
-        <div className="space-y-2">
-          <Label htmlFor="propiedad">Propiedad</Label>
-          <Select 
-            value={filters.propiedad} 
-            onValueChange={(value) => handleFilterChange('propiedad', value)}
-            disabled={filters.cliente === 'all'}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder={filters.cliente === 'all' ? "Selecciona un cliente primero" : "Todas las propiedades"} />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todas</SelectItem>
-              {filteredProperties.map((propiedad) => (
-                <SelectItem key={propiedad.id} value={propiedad.id}>
-                  {propiedad.codigo} - {propiedad.nombre}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+            <div className="space-y-2">
+              <Label htmlFor="propiedad">Propiedad</Label>
+              <Select 
+                value={filters.propiedad} 
+                onValueChange={(value) => handleFilterChange('propiedad', value)}
+                disabled={filters.cliente === 'all'}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder={filters.cliente === 'all' ? "Selecciona un cliente primero" : "Todas las propiedades"} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todas</SelectItem>
+                  {filteredProperties.map((propiedad) => (
+                    <SelectItem key={propiedad.id} value={propiedad.id}>
+                      {propiedad.codigo} - {propiedad.nombre}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
 
-        <div className="space-y-2">
-          <Label htmlFor="dateRange">Período</Label>
-          <Select value={filters.dateRange} onValueChange={(value) => handleFilterChange('dateRange', value)}>
-            <SelectTrigger>
-              <SelectValue placeholder="Todas las fechas" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todas</SelectItem>
-              <SelectItem value="today">Hoy</SelectItem>
-              <SelectItem value="tomorrow">Mañana</SelectItem>
-              <SelectItem value="this-week">Esta semana</SelectItem>
-              <SelectItem value="next-week">Próxima semana</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-      </CardContent>
+            <div className="space-y-2">
+              <Label htmlFor="dateRange">Período</Label>
+              <Select value={filters.dateRange} onValueChange={(value) => handleFilterChange('dateRange', value)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Todas las fechas" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todas</SelectItem>
+                  <SelectItem value="today">Hoy</SelectItem>
+                  <SelectItem value="tomorrow">Mañana</SelectItem>
+                  <SelectItem value="this-week">Esta semana</SelectItem>
+                  <SelectItem value="next-week">Próxima semana</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </CardContent>
+        </CollapsibleContent>
+      </Collapsible>
     </Card>
   );
 };
