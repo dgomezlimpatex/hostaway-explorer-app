@@ -11,6 +11,7 @@ interface TaskCardProps {
   style?: React.CSSProperties;
   onDragStart?: (e: React.DragEvent, task: Task) => void;
   onDragEnd?: (e: React.DragEvent) => void;
+  draggable?: boolean;
 }
 
 export const TaskCard = ({ 
@@ -19,7 +20,8 @@ export const TaskCard = ({
   isDragging, 
   style,
   onDragStart,
-  onDragEnd 
+  onDragEnd,
+  draggable = false
 }: TaskCardProps) => {
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -75,13 +77,13 @@ export const TaskCard = ({
       )}
       style={style}
       onClick={onClick}
-      draggable={!!onDragStart}
+      draggable={draggable}
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
       onDragOver={handleDragOver}
     >
       {/* Drag handle */}
-      {onDragStart && (
+      {draggable && (
         <div className="absolute top-1 right-1 opacity-0 group-hover:opacity-70 transition-opacity">
           <GripVertical className="h-3 w-3" />
         </div>
