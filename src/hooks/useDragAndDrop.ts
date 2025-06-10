@@ -6,6 +6,7 @@ interface DragState {
   draggedTask: Task | null;
   isDragging: boolean;
   dragOffset: { x: number; y: number };
+  draggedFromPosition?: { cleanerId: string; timeSlot: string };
 }
 
 export const useDragAndDrop = (onTaskAssign: (taskId: string, cleanerId: string, cleaners: any[], timeSlot?: string) => void) => {
@@ -30,13 +31,20 @@ export const useDragAndDrop = (onTaskAssign: (taskId: string, cleanerId: string,
       y: e.clientY - rect.top
     };
 
+    // Store original position for assigned tasks
+    const draggedFromPosition = task.cleaner ? {
+      cleanerId: task.cleanerId || '',
+      timeSlot: task.startTime
+    } : undefined;
+
     setDragState({
       draggedTask: task,
       isDragging: true,
-      dragOffset: offset
+      dragOffset: offset,
+      draggedFromPosition
     });
 
-    console.log('✅ Drag state set:', { taskId: task.id, isDragging: true });
+    console.log('✅ Drag state set:', { taskId: task.id, isDragging: true, draggedFromPosition });
   }, []);
 
   const handleDragEnd = useCallback((e: React.DragEvent) => {
@@ -78,8 +86,17 @@ export const useDragAndDrop = (onTaskAssign: (taskId: string, cleanerId: string,
     console.log('📋 useDragAndDrop - taskId from drag data:', taskId);
     
     if (taskId) {
-      console.log('🔄 useDragAndDrop - calling onTaskAssign with:', { taskId, cleanerId, cleanersCount: cleaners.length, timeSlot });
-      onTaskAssign(taskId, cleanerId, cleaners, timeSlot);
+      // Check if we're dropping in the same position
+      const currentTask = dragState.draggedTask;
+      const isSamePosition = currentTask?.cleanerId === cleanerId && 
+                           currentTask?.startTime === timeSlot;
+      
+      if (!isSamePosition) {
+        console.log('🔄 useDragAndDrop - calling onTaskAssign with:', { taskId, cleanerId, cleanersCount: cleaners.length, timeSlot });
+        onTaskAssign(taskId, cleanerId, cleaners, timeSlot);
+      } else {
+        console.log('📍 useDragAndDrop - task dropped in same position, no action needed');
+      }
     } else {
       console.error('❌ useDragAndDrop - No task ID found in drag data');
     }
@@ -90,7 +107,7 @@ export const useDragAndDrop = (onTaskAssign: (taskId: string, cleanerId: string,
       isDragging: false,
       dragOffset: { x: 0, y: 0 }
     });
-  }, [onTaskAssign]);
+  }, [onTaskAssign, dragState.draggedTask]);
 
   // Memoize the return object to prevent unnecessary re-renders
   const returnValue = useMemo(() => ({

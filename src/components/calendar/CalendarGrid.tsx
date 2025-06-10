@@ -1,4 +1,3 @@
-
 import { forwardRef, memo, useMemo } from "react";
 import { cn } from "@/lib/utils";
 import { TimeSlot } from "./TimeSlot";
@@ -82,7 +81,7 @@ const CleanerRow = memo(({
           key={task.id}
           className={cn(
             "absolute top-1 bottom-1 z-10",
-            isBeingDragged && "pointer-events-none"
+            isBeingDragged && "opacity-50 pointer-events-none"
           )}
           style={{
             left: position.left,

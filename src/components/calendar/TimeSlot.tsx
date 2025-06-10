@@ -47,8 +47,11 @@ export const TimeSlot = memo(({
     onDrop(e, cleanerId, timeString);
   }, [onDrop, cleanerId, timeString]);
 
-  // Allow drop even if occupied by the same task being dragged
-  const allowDrop = !isOccupied || (draggedTaskId && children);
+  // Allow drop if:
+  // 1. The slot is not occupied, OR
+  // 2. The slot is occupied by the task being dragged (allow moving to same position), OR
+  // 3. We're dragging any task (to allow repositioning)
+  const allowDrop = !isOccupied || draggedTaskId !== null;
 
   return (
     <div
@@ -66,7 +69,7 @@ export const TimeSlot = memo(({
       {children}
       
       {/* Drop indicator - show only when dragging and drop is allowed */}
-      {allowDrop && (
+      {allowDrop && draggedTaskId && (
         <div className="absolute inset-0 border-2 border-dashed border-blue-400 bg-blue-50 opacity-0 transition-opacity duration-200 pointer-events-none drop-indicator" />
       )}
       
