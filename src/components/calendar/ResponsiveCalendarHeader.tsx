@@ -5,6 +5,7 @@ import { ChevronLeft, ChevronRight, Calendar, Plus } from "lucide-react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { cn } from "@/lib/utils";
+import { ViewType } from "@/types/calendar";
 import {
   Tooltip,
   TooltipContent,
@@ -14,10 +15,10 @@ import {
 
 interface ResponsiveCalendarHeaderProps {
   currentDate: Date;
-  currentView: 'day' | 'week' | 'month';
+  currentView: ViewType;
   onNavigateDate: (direction: 'prev' | 'next') => void;
   onGoToToday: () => void;
-  onViewChange: (view: 'day' | 'week' | 'month') => void;
+  onViewChange: (view: ViewType) => void;
   onNewTask: () => void;
 }
 
@@ -33,10 +34,12 @@ export const ResponsiveCalendarHeader = ({
     switch (currentView) {
       case 'day':
         return format(currentDate, "EEEE, d 'de' MMMM 'de' yyyy", { locale: es });
+      case 'three-day':
+        const endDate = new Date(currentDate);
+        endDate.setDate(endDate.getDate() + 2);
+        return `${format(currentDate, "d 'de' MMM", { locale: es })} - ${format(endDate, "d 'de' MMM 'de' yyyy", { locale: es })}`;
       case 'week':
         return format(currentDate, "'Semana del' d 'de' MMMM", { locale: es });
-      case 'month':
-        return format(currentDate, "MMMM 'de' yyyy", { locale: es });
       default:
         return format(currentDate, "d 'de' MMMM 'de' yyyy", { locale: es });
     }
@@ -71,7 +74,7 @@ export const ResponsiveCalendarHeader = ({
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent>
-                    <p>Ir al {currentView === 'day' ? 'día' : currentView === 'week' ? 'semana' : 'mes'} anterior</p>
+                    <p>Ir al {currentView === 'day' ? 'día' : currentView === 'three-day' ? '3 días' : 'semana'} anterior</p>
                   </TooltipContent>
                 </Tooltip>
 
@@ -104,7 +107,7 @@ export const ResponsiveCalendarHeader = ({
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent>
-                    <p>Ir al {currentView === 'day' ? 'día' : currentView === 'week' ? 'semana' : 'mes'} siguiente</p>
+                    <p>Ir al {currentView === 'day' ? 'día' : currentView === 'three-day' ? '3 días' : 'semana'} siguiente</p>
                   </TooltipContent>
                 </Tooltip>
               </div>
@@ -120,7 +123,7 @@ export const ResponsiveCalendarHeader = ({
             <div className="flex items-center gap-2">
               {/* Selectores de vista - Hidden en móvil para ahorrar espacio */}
               <div className="hidden sm:flex items-center gap-1">
-                {(['day', 'week', 'month'] as const).map((view) => (
+                {(['day', 'three-day', 'week'] as const).map((view) => (
                   <Tooltip key={view}>
                     <TooltipTrigger asChild>
                       <Button
@@ -132,11 +135,11 @@ export const ResponsiveCalendarHeader = ({
                           currentView === view && "transform scale-105"
                         )}
                       >
-                        {view === 'day' ? 'Día' : view === 'week' ? 'Semana' : 'Mes'}
+                        {view === 'day' ? 'Día' : view === 'three-day' ? '3 Días' : 'Semana'}
                       </Button>
                     </TooltipTrigger>
                     <TooltipContent>
-                      <p>Vista {view === 'day' ? 'diaria' : view === 'week' ? 'semanal' : 'mensual'}</p>
+                      <p>Vista {view === 'day' ? 'diaria' : view === 'three-day' ? 'de 3 días' : 'semanal'}</p>
                     </TooltipContent>
                   </Tooltip>
                 ))}
@@ -167,7 +170,7 @@ export const ResponsiveCalendarHeader = ({
 
         {/* Vista móvil para selectores de vista */}
         <div className="flex sm:hidden items-center gap-1 mt-3 pt-3 border-t border-border">
-          {(['day', 'week', 'month'] as const).map((view) => (
+          {(['day', 'three-day', 'week'] as const).map((view) => (
             <Button
               key={view}
               variant={currentView === view ? "default" : "outline"}
@@ -178,7 +181,7 @@ export const ResponsiveCalendarHeader = ({
                 currentView === view && "transform scale-105"
               )}
             >
-              {view === 'day' ? 'Día' : view === 'week' ? 'Semana' : 'Mes'}
+              {view === 'day' ? 'Día' : view === 'three-day' ? '3 Días' : 'Semana'}
             </Button>
           ))}
         </div>
