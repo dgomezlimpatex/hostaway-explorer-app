@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -15,7 +14,6 @@ import { CreateTaskModal } from '@/components/modals/CreateTaskModal';
 import { BatchCreateTaskModal } from '@/components/modals/BatchCreateTaskModal';
 import { useTasks } from '@/hooks/useTasks';
 import { Task } from '@/types/calendar';
-
 export default function TasksPage() {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isBatchCreateModalOpen, setIsBatchCreateModalOpen] = useState(false);
@@ -29,7 +27,6 @@ export default function TasksPage() {
   });
   const [selectedTaskForHistory, setSelectedTaskForHistory] = useState<Task | null>(null);
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
-
   const {
     tasks,
     createTask,
@@ -38,43 +35,32 @@ export default function TasksPage() {
 
   // Memoize filtered tasks to avoid recalculation on every render
   const filteredTasks = useMemo(() => {
-    return tasks.filter(task => 
-      task.property.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      task.address.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (task.cleaner && task.cleaner.toLowerCase().includes(searchTerm.toLowerCase()))
-    );
+    return tasks.filter(task => task.property.toLowerCase().includes(searchTerm.toLowerCase()) || task.address.toLowerCase().includes(searchTerm.toLowerCase()) || task.cleaner && task.cleaner.toLowerCase().includes(searchTerm.toLowerCase()));
   }, [tasks, searchTerm]);
 
   // Memoize handlers to prevent unnecessary re-renders
   const handleCreateTask = React.useCallback((taskData: any) => {
     createTask(taskData);
   }, [createTask]);
-
   const handleBatchCreateTasks = React.useCallback((tasksData: any[]) => {
     tasksData.forEach(taskData => {
       createTask(taskData);
     });
   }, [createTask]);
-
   const handleShowHistory = React.useCallback((task: Task) => {
     setSelectedTaskForHistory(task);
     setIsHistoryModalOpen(true);
   }, []);
-
   const handleOpenCreateModal = React.useCallback(() => {
     setIsCreateModalOpen(true);
   }, []);
-
   const handleOpenBatchModal = React.useCallback(() => {
     setIsBatchCreateModalOpen(true);
   }, []);
-
   console.log('TasksPage - tasks:', tasks);
   console.log('TasksPage - filteredTasks:', filteredTasks);
   console.log('TasksPage - isLoading:', isLoading);
-
-  return (
-    <div className="min-h-screen bg-gray-50">
+  return <div className="min-h-screen bg-gray-50">
       <div className="bg-white border-b border-gray-200 px-6 py-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
@@ -85,26 +71,17 @@ export default function TasksPage() {
               </Button>
             </Link>
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">Gestión de Tareas</h1>
-              <p className="text-gray-600">Administra todas las tareas de limpieza</p>
+              
+              
             </div>
           </div>
           <div className="flex items-center gap-3">
             {/* Search */}
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-              <Input
-                placeholder="Buscar tareas..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10 w-64"
-              />
+              <Input placeholder="Buscar tareas..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="pl-10 w-64" />
             </div>
-            <Button 
-              onClick={handleOpenBatchModal} 
-              variant="outline"
-              className="flex items-center gap-2 border-blue-200 text-blue-700 hover:bg-blue-50"
-            >
+            <Button onClick={handleOpenBatchModal} variant="outline" className="flex items-center gap-2 border-blue-200 text-blue-700 hover:bg-blue-50">
               <Users className="h-4 w-4" />
               Crear Múltiples
             </Button>
@@ -135,35 +112,17 @@ export default function TasksPage() {
                 </div>
               </CardHeader>
               <CardContent>
-                <TasksList 
-                  tasks={filteredTasks} 
-                  filters={filters} 
-                  isLoading={isLoading} 
-                  onShowHistory={handleShowHistory} 
-                />
+                <TasksList tasks={filteredTasks} filters={filters} isLoading={isLoading} onShowHistory={handleShowHistory} />
               </CardContent>
             </Card>
           </div>
         </div>
 
-        <CreateTaskModal 
-          open={isCreateModalOpen} 
-          onOpenChange={setIsCreateModalOpen} 
-          onCreateTask={handleCreateTask} 
-        />
+        <CreateTaskModal open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen} onCreateTask={handleCreateTask} />
 
-        <BatchCreateTaskModal
-          open={isBatchCreateModalOpen}
-          onOpenChange={setIsBatchCreateModalOpen}
-          onCreateTasks={handleBatchCreateTasks}
-        />
+        <BatchCreateTaskModal open={isBatchCreateModalOpen} onOpenChange={setIsBatchCreateModalOpen} onCreateTasks={handleBatchCreateTasks} />
 
-        <TaskHistoryModal 
-          task={selectedTaskForHistory} 
-          open={isHistoryModalOpen} 
-          onOpenChange={setIsHistoryModalOpen} 
-        />
+        <TaskHistoryModal task={selectedTaskForHistory} open={isHistoryModalOpen} onOpenChange={setIsHistoryModalOpen} />
       </div>
-    </div>
-  );
+    </div>;
 }
