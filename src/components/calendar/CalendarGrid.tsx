@@ -1,5 +1,6 @@
 
 import { forwardRef } from "react";
+import { cn } from "@/lib/utils";
 import { TimeSlot } from "./TimeSlot";
 import { TaskCard } from "./TaskCard";
 import { Task, Cleaner } from "@/types/calendar";
