@@ -1,4 +1,3 @@
-
 import { Card, CardContent } from "@/components/ui/card";
 import { useState, useMemo, useRef } from "react";
 import { useCalendarData } from "@/hooks/useCalendarData";
@@ -233,7 +232,7 @@ const CleaningCalendar = () => {
                   dragState={dragState}
                   onScroll={handleBodyScroll}
                   onDragOver={handleDragOver}
-                  onDrop={handleDrop}
+                  onDrop={(e, cleanerId, startTime, cleaners) => handleDrop(e, cleanerId, startTime, cleaners)}
                   onDragStart={handleDragStart}
                   onDragEnd={handleDragEnd}
                   onTaskClick={handleTaskClick}

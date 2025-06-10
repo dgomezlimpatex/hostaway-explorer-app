@@ -1,6 +1,6 @@
 
 import { useState, useCallback } from 'react';
-import { Task } from './useCalendarData';
+import { Task } from '@/types/calendar';
 
 interface DragState {
   draggedTask: Task | null;
@@ -8,7 +8,7 @@ interface DragState {
   dragOffset: { x: number; y: number };
 }
 
-export const useDragAndDrop = (onTaskAssign: (taskId: string, cleanerId: string, startTime: string) => void) => {
+export const useDragAndDrop = (onTaskAssign: (taskId: string, cleanerId: string, cleaners: any[]) => void) => {
   const [dragState, setDragState] = useState<DragState>({
     draggedTask: null,
     isDragging: false,
@@ -56,12 +56,17 @@ export const useDragAndDrop = (onTaskAssign: (taskId: string, cleanerId: string,
     e.dataTransfer.dropEffect = 'move';
   }, []);
 
-  const handleDrop = useCallback((e: React.DragEvent, cleanerId: string, startTime: string) => {
+  const handleDrop = useCallback((e: React.DragEvent, cleanerId: string, startTime: string, cleaners: any[]) => {
     e.preventDefault();
     e.stopPropagation();
     
     if (dragState.draggedTask) {
-      onTaskAssign(dragState.draggedTask.id, cleanerId, startTime);
+      console.log('useDragAndDrop - handleDrop called with:', { 
+        taskId: dragState.draggedTask.id, 
+        cleanerId, 
+        cleaners 
+      });
+      onTaskAssign(dragState.draggedTask.id, cleanerId, cleaners);
     }
 
     setDragState({
