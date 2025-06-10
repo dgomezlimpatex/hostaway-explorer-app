@@ -1,11 +1,11 @@
-
 import { useState } from 'react';
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Clock, MapPin, User, Calendar, Edit, Trash2 } from "lucide-react";
+import { Clock, MapPin, User, Calendar, Edit, Trash2, UserPlus } from "lucide-react";
 import { Task } from "@/types/calendar";
 import { TaskDetailsModal } from '@/components/modals/TaskDetailsModal';
+import { AssignCleanerModal } from '@/components/modals/AssignCleanerModal';
 import { useTasks } from '@/hooks/useTasks';
 import { useToast } from '@/hooks/use-toast';
 
@@ -22,7 +22,9 @@ interface TasksListProps {
 export const TasksList = ({ tasks, filters, isLoading }: TasksListProps) => {
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const { updateTask, deleteTask } = useTasks(new Date(), 'day');
+  const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
+  const [taskToAssign, setTaskToAssign] = useState<Task | null>(null);
+  const { updateTask, deleteTask, assignTask } = useTasks(new Date(), 'day');
   const { toast } = useToast();
 
   const getStatusColor = (status: string) => {
@@ -74,7 +76,7 @@ export const TasksList = ({ tasks, filters, isLoading }: TasksListProps) => {
     });
   };
 
-  const handleQuickStatusChange = (task: Task, newStatus: string) => {
+  const handleQuickStatusChange = (task: Task, newStatus: "completed" | "in-progress" | "pending") => {
     updateTask({ 
       taskId: task.id, 
       updates: { status: newStatus }
@@ -83,6 +85,15 @@ export const TasksList = ({ tasks, filters, isLoading }: TasksListProps) => {
       title: "Estado actualizado",
       description: `La tarea se marcó como ${getStatusText(newStatus).toLowerCase()}.`,
     });
+  };
+
+  const handleAssignCleaner = (task: Task) => {
+    setTaskToAssign(task);
+    setIsAssignModalOpen(true);
+  };
+
+  const handleAssignCleanerComplete = (taskId: string, cleanerId: string, cleaners: any[]) => {
+    assignTask({ taskId, cleanerId, cleaners });
   };
 
   const filteredTasks = tasks.filter(task => {
@@ -221,6 +232,15 @@ export const TasksList = ({ tasks, filters, isLoading }: TasksListProps) => {
                     size="sm" 
                     variant="outline" 
                     className="flex items-center gap-1"
+                    onClick={() => handleAssignCleaner(task)}
+                  >
+                    <UserPlus className="h-3 w-3" />
+                    Asignar
+                  </Button>
+                  <Button 
+                    size="sm" 
+                    variant="outline" 
+                    className="flex items-center gap-1"
                     onClick={() => handleEditTask(task)}
                   >
                     <Edit className="h-3 w-3" />
@@ -249,6 +269,14 @@ export const TasksList = ({ tasks, filters, isLoading }: TasksListProps) => {
         onOpenChange={setIsModalOpen}
         onUpdateTask={handleUpdateTask}
         onDeleteTask={handleDeleteTask}
+      />
+
+      {/* Assign Cleaner Modal */}
+      <AssignCleanerModal
+        task={taskToAssign}
+        open={isAssignModalOpen}
+        onOpenChange={setIsAssignModalOpen}
+        onAssignCleaner={handleAssignCleanerComplete}
       />
     </>
   );
