@@ -81,14 +81,14 @@ export const CalendarIntegrationWidget = ({
                         <div className="p-1 bg-blue-50 rounded">
                           <Clock className="h-3 w-3 text-blue-600" />
                         </div>
-                        <span className="text-xs font-medium text-blue-700 bg-blue-50 px-2 py-1 rounded">
+                        <span className="text-blue-700 bg-blue-50 rounded px-[2px] my-0 py-0 text-xs font-thin">
                           {task.startTime} - {task.endTime}
                         </span>
                       </div>
                       <p className="font-medium text-sm text-slate-900 truncate mb-1">
                         {task.property}
                       </p>
-                      <p className="text-xs text-slate-500 truncate">
+                      <p className="text-xs text-slate-500 truncate font-normal mx-0">
                         {task.address}
                       </p>
                     </div>
