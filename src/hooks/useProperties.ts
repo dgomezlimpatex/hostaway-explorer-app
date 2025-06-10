@@ -31,8 +31,8 @@ export const useCreateProperty = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (propertyData: CreatePropertyData) => {
-      return Promise.resolve(propertyStorage.create(propertyData));
+    mutationFn: async (propertyData: CreatePropertyData) => {
+      return await propertyStorage.create(propertyData);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['properties'] });
@@ -41,7 +41,8 @@ export const useCreateProperty = () => {
         description: "La propiedad ha sido creada exitosamente.",
       });
     },
-    onError: () => {
+    onError: (error) => {
+      console.error('Create property error:', error);
       toast({
         title: "Error",
         description: "Ha ocurrido un error al crear la propiedad.",
@@ -55,10 +56,10 @@ export const useUpdateProperty = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ id, updates }: { id: string; updates: Partial<CreatePropertyData> }) => {
-      const result = propertyStorage.update(id, updates);
+    mutationFn: async ({ id, updates }: { id: string; updates: Partial<CreatePropertyData> }) => {
+      const result = await propertyStorage.update(id, updates);
       if (!result) throw new Error('Propiedad no encontrada');
-      return Promise.resolve(result);
+      return result;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['properties'] });
@@ -68,7 +69,8 @@ export const useUpdateProperty = () => {
         description: "Los datos de la propiedad han sido actualizados.",
       });
     },
-    onError: () => {
+    onError: (error) => {
+      console.error('Update property error:', error);
       toast({
         title: "Error",
         description: "Ha ocurrido un error al actualizar la propiedad.",
@@ -82,10 +84,10 @@ export const useDeleteProperty = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (id: string) => {
-      const success = propertyStorage.delete(id);
+    mutationFn: async (id: string) => {
+      const success = await propertyStorage.delete(id);
       if (!success) throw new Error('Propiedad no encontrada');
-      return Promise.resolve(success);
+      return success;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['properties'] });
@@ -94,7 +96,8 @@ export const useDeleteProperty = () => {
         description: "La propiedad ha sido eliminada exitosamente.",
       });
     },
-    onError: () => {
+    onError: (error) => {
+      console.error('Delete property error:', error);
       toast({
         title: "Error",
         description: "Ha ocurrido un error al eliminar la propiedad.",

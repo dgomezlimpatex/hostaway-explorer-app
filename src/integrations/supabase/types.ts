@@ -9,6 +9,39 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      cleaners: {
+        Row: {
+          avatar: string | null
+          created_at: string
+          email: string | null
+          id: string
+          is_active: boolean
+          name: string
+          telefono: string | null
+          updated_at: string
+        }
+        Insert: {
+          avatar?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          telefono?: string | null
+          updated_at?: string
+        }
+        Update: {
+          avatar?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          telefono?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       clients: {
         Row: {
           cif_nif: string
@@ -65,6 +98,292 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      properties: {
+        Row: {
+          check_in_predeterminado: string
+          check_out_predeterminado: string
+          cliente_id: string
+          codigo: string
+          coste_servicio: number
+          created_at: string
+          direccion: string
+          duracion_servicio: number
+          fecha_actualizacion: string
+          fecha_creacion: string
+          id: string
+          nombre: string
+          notas: string | null
+          numero_alfombrines: number
+          numero_banos: number
+          numero_camas: number
+          numero_fundas_almohada: number
+          numero_sabanas: number
+          numero_toallas_grandes: number
+          numero_toallas_pequenas: number
+          updated_at: string
+        }
+        Insert: {
+          check_in_predeterminado?: string
+          check_out_predeterminado?: string
+          cliente_id: string
+          codigo: string
+          coste_servicio?: number
+          created_at?: string
+          direccion: string
+          duracion_servicio?: number
+          fecha_actualizacion?: string
+          fecha_creacion?: string
+          id?: string
+          nombre: string
+          notas?: string | null
+          numero_alfombrines?: number
+          numero_banos?: number
+          numero_camas?: number
+          numero_fundas_almohada?: number
+          numero_sabanas?: number
+          numero_toallas_grandes?: number
+          numero_toallas_pequenas?: number
+          updated_at?: string
+        }
+        Update: {
+          check_in_predeterminado?: string
+          check_out_predeterminado?: string
+          cliente_id?: string
+          codigo?: string
+          coste_servicio?: number
+          created_at?: string
+          direccion?: string
+          duracion_servicio?: number
+          fecha_actualizacion?: string
+          fecha_creacion?: string
+          id?: string
+          nombre?: string
+          notas?: string | null
+          numero_alfombrines?: number
+          numero_banos?: number
+          numero_camas?: number
+          numero_fundas_almohada?: number
+          numero_sabanas?: number
+          numero_toallas_grandes?: number
+          numero_toallas_pequenas?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "properties_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      recurring_tasks: {
+        Row: {
+          check_in: string
+          check_out: string
+          cleaner: string | null
+          cleaner_id: string | null
+          cliente_id: string | null
+          coste: number | null
+          created_at: string
+          day_of_month: number | null
+          days_of_week: number[] | null
+          description: string | null
+          duracion: number | null
+          end_date: string | null
+          end_time: string
+          frequency: string
+          id: string
+          interval_days: number
+          is_active: boolean
+          last_execution: string | null
+          metodo_pago: string | null
+          name: string
+          next_execution: string
+          propiedad_id: string | null
+          start_date: string
+          start_time: string
+          supervisor: string | null
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          check_in: string
+          check_out: string
+          cleaner?: string | null
+          cleaner_id?: string | null
+          cliente_id?: string | null
+          coste?: number | null
+          created_at?: string
+          day_of_month?: number | null
+          days_of_week?: number[] | null
+          description?: string | null
+          duracion?: number | null
+          end_date?: string | null
+          end_time: string
+          frequency: string
+          id?: string
+          interval_days?: number
+          is_active?: boolean
+          last_execution?: string | null
+          metodo_pago?: string | null
+          name: string
+          next_execution: string
+          propiedad_id?: string | null
+          start_date: string
+          start_time: string
+          supervisor?: string | null
+          type: string
+          updated_at?: string
+        }
+        Update: {
+          check_in?: string
+          check_out?: string
+          cleaner?: string | null
+          cleaner_id?: string | null
+          cliente_id?: string | null
+          coste?: number | null
+          created_at?: string
+          day_of_month?: number | null
+          days_of_week?: number[] | null
+          description?: string | null
+          duracion?: number | null
+          end_date?: string | null
+          end_time?: string
+          frequency?: string
+          id?: string
+          interval_days?: number
+          is_active?: boolean
+          last_execution?: string | null
+          metodo_pago?: string | null
+          name?: string
+          next_execution?: string
+          propiedad_id?: string | null
+          start_date?: string
+          start_time?: string
+          supervisor?: string | null
+          type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recurring_tasks_cleaner_id_fkey"
+            columns: ["cleaner_id"]
+            isOneToOne: false
+            referencedRelation: "cleaners"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recurring_tasks_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recurring_tasks_propiedad_id_fkey"
+            columns: ["propiedad_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tasks: {
+        Row: {
+          address: string
+          background_color: string | null
+          check_in: string
+          check_out: string
+          cleaner: string | null
+          cleaner_id: string | null
+          cliente_id: string | null
+          coste: number | null
+          created_at: string
+          date: string
+          duracion: number | null
+          end_time: string
+          id: string
+          metodo_pago: string | null
+          property: string
+          propiedad_id: string | null
+          start_time: string
+          status: string
+          supervisor: string | null
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          address: string
+          background_color?: string | null
+          check_in: string
+          check_out: string
+          cleaner?: string | null
+          cleaner_id?: string | null
+          cliente_id?: string | null
+          coste?: number | null
+          created_at?: string
+          date: string
+          duracion?: number | null
+          end_time: string
+          id?: string
+          metodo_pago?: string | null
+          property: string
+          propiedad_id?: string | null
+          start_time: string
+          status?: string
+          supervisor?: string | null
+          type: string
+          updated_at?: string
+        }
+        Update: {
+          address?: string
+          background_color?: string | null
+          check_in?: string
+          check_out?: string
+          cleaner?: string | null
+          cleaner_id?: string | null
+          cliente_id?: string | null
+          coste?: number | null
+          created_at?: string
+          date?: string
+          duracion?: number | null
+          end_time?: string
+          id?: string
+          metodo_pago?: string | null
+          property?: string
+          propiedad_id?: string | null
+          start_time?: string
+          status?: string
+          supervisor?: string | null
+          type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tasks_cleaner_id_fkey"
+            columns: ["cleaner_id"]
+            isOneToOne: false
+            referencedRelation: "cleaners"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tasks_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tasks_propiedad_id_fkey"
+            columns: ["propiedad_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {

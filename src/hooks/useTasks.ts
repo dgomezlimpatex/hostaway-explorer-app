@@ -11,7 +11,7 @@ export const useTasks = (currentDate: Date, currentView: ViewType) => {
     queryFn: async () => {
       console.log('useTasks - queryFn called with:', { currentDate, currentView });
       const currentDateStr = currentDate.toISOString().split('T')[0];
-      const allTasks = taskStorageService.getTasks();
+      const allTasks = await taskStorageService.getTasks();
       console.log('useTasks - allTasks from storage:', allTasks);
       
       // Filter tasks based on current view and date

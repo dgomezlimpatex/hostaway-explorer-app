@@ -23,8 +23,8 @@ export const useCreateRecurringTask = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (taskData: Omit<RecurringTask, 'id' | 'createdAt' | 'nextExecution'>) => {
-      return Promise.resolve(recurringTaskStorage.create(taskData));
+    mutationFn: async (taskData: Omit<RecurringTask, 'id' | 'createdAt' | 'nextExecution'>) => {
+      return await recurringTaskStorage.create(taskData);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['recurring-tasks'] });
@@ -33,7 +33,8 @@ export const useCreateRecurringTask = () => {
         description: "La tarea recurrente ha sido configurada exitosamente.",
       });
     },
-    onError: () => {
+    onError: (error) => {
+      console.error('Create recurring task error:', error);
       toast({
         title: "Error",
         description: "Ha ocurrido un error al crear la tarea recurrente.",
@@ -47,8 +48,10 @@ export const useUpdateRecurringTask = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ id, updates }: { id: string; updates: Partial<RecurringTask> }) => {
-      return Promise.resolve(recurringTaskStorage.update(id, updates));
+    mutationFn: async ({ id, updates }: { id: string; updates: Partial<RecurringTask> }) => {
+      const result = await recurringTaskStorage.update(id, updates);
+      if (!result) throw new Error('Tarea recurrente no encontrada');
+      return result;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['recurring-tasks'] });
@@ -58,7 +61,8 @@ export const useUpdateRecurringTask = () => {
         description: "Los cambios han sido guardados exitosamente.",
       });
     },
-    onError: () => {
+    onError: (error) => {
+      console.error('Update recurring task error:', error);
       toast({
         title: "Error",
         description: "Ha ocurrido un error al actualizar la tarea recurrente.",
@@ -72,8 +76,10 @@ export const useDeleteRecurringTask = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (id: string) => {
-      return Promise.resolve(recurringTaskStorage.delete(id));
+    mutationFn: async (id: string) => {
+      const success = await recurringTaskStorage.delete(id);
+      if (!success) throw new Error('Tarea recurrente no encontrada');
+      return success;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['recurring-tasks'] });
@@ -82,7 +88,8 @@ export const useDeleteRecurringTask = () => {
         description: "La tarea recurrente ha sido eliminada exitosamente.",
       });
     },
-    onError: () => {
+    onError: (error) => {
+      console.error('Delete recurring task error:', error);
       toast({
         title: "Error",
         description: "Ha ocurrido un error al eliminar la tarea recurrente.",
@@ -96,8 +103,8 @@ export const useProcessRecurringTasks = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: () => {
-      return Promise.resolve(recurringTaskStorage.processRecurringTasks());
+    mutationFn: async () => {
+      return await recurringTaskStorage.processRecurringTasks();
     },
     onSuccess: (generatedTasks) => {
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
@@ -110,7 +117,8 @@ export const useProcessRecurringTasks = () => {
         });
       }
     },
-    onError: () => {
+    onError: (error) => {
+      console.error('Process recurring tasks error:', error);
       toast({
         title: "Error",
         description: "Ha ocurrido un error al procesar las tareas recurrentes.",

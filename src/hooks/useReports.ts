@@ -9,7 +9,7 @@ export const useReports = (filters: ReportFilters) => {
   return useQuery({
     queryKey: ['reports', filters],
     queryFn: async () => {
-      const tasks = taskStorageService.getTasks();
+      const tasks = await taskStorageService.getTasks();
       const clients = await clientStorage.getAll();
       const properties = await propertyStorage.getAll();
       
