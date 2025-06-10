@@ -2,8 +2,10 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { Clock, MapPin, User, Calendar, Edit, Trash2, UserPlus, History, Euro, Timer } from "lucide-react";
+import { Clock, MapPin, User, Calendar, Edit, Trash2, UserPlus, History, Euro, Timer, Building, Users } from "lucide-react";
 import { Task } from "@/types/calendar";
+import { useClients } from "@/hooks/useClients";
+import { useProperties } from "@/hooks/useProperties";
 
 interface TaskCardProps {
   task: Task;
@@ -26,6 +28,33 @@ export const TaskCard = ({
   getStatusColor,
   getStatusText
 }: TaskCardProps) => {
+  const { clients } = useClients();
+  const { properties } = useProperties();
+
+  // Buscar cliente y propiedad vinculados
+  const linkedClient = task.clienteId ? clients.find(c => c.id === task.clienteId) : null;
+  const linkedProperty = task.propiedadId ? properties.find(p => p.id === task.propiedadId) : null;
+
+  const getTypeDisplayName = (type: string) => {
+    const typeMap: { [key: string]: string } = {
+      'limpieza-mantenimiento': 'Limpieza de Mantenimiento',
+      'mantenimiento-cristaleria': 'Mantenimiento de Cristalería',
+      'mantenimiento-airbnb': 'Mantenimiento Airbnb',
+      'limpieza-puesta-punto': 'Limpieza de Puesta a Punto',
+      'limpieza-final-obra': 'Limpieza Final de Obra',
+      'check-in': 'Check In',
+      'desplazamiento': 'Desplazamiento',
+      'limpieza-especial': 'Limpieza Especial',
+      'trabajo-extraordinario': 'Trabajo Extraordinario',
+      // Mantener compatibilidad con tipos antiguos
+      'checkout-checkin': 'Check-out/Check-in',
+      'maintenance': 'Mantenimiento',
+      'deep-cleaning': 'Limpieza Profunda',
+      'cristaleria': 'Cristalería'
+    };
+    return typeMap[type] || type;
+  };
+
   return (
     <Card className="hover:shadow-md transition-all duration-200 border border-gray-200">
       <CardHeader className="pb-2 pt-3 px-4">
@@ -41,7 +70,6 @@ export const TaskCard = ({
             <Badge className={`${getStatusColor(task.status)} text-white font-medium px-2 py-0.5 text-xs`}>
               {getStatusText(task.status)}
             </Badge>
-            {/* Quick status change buttons */}
             {task.status === 'pending' && (
               <Button
                 size="sm"
@@ -66,6 +94,26 @@ export const TaskCard = ({
       </CardHeader>
       
       <CardContent className="pt-0 px-4 pb-3">
+        {/* Información vinculada de cliente y propiedad */}
+        {(linkedClient || linkedProperty) && (
+          <div className="mb-2 p-2 bg-blue-50 rounded text-xs space-y-1">
+            {linkedClient && (
+              <div className="flex items-center gap-1">
+                <Users className="h-3 w-3 text-blue-600" />
+                <span className="font-medium text-blue-800">{linkedClient.nombre}</span>
+                <span className="text-blue-600">• {linkedClient.telefono}</span>
+              </div>
+            )}
+            {linkedProperty && (
+              <div className="flex items-center gap-1">
+                <Building className="h-3 w-3 text-blue-600" />
+                <span className="font-medium text-blue-800">{linkedProperty.codigo}</span>
+                <span className="text-blue-600">• {linkedProperty.nombre}</span>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Información de fecha y hora - más compacta */}
         <div className="grid grid-cols-2 gap-2 mb-2 p-2 bg-gray-50 rounded text-xs">
           <div className="flex items-center gap-1">
@@ -101,7 +149,9 @@ export const TaskCard = ({
         {/* Detalles del servicio - layout horizontal más compacto */}
         <div className="flex gap-2 mb-2 text-xs">
           <div className="flex-1 text-center p-1.5 bg-white border rounded">
-            <div className="text-gray-500 uppercase tracking-wide mb-0.5 text-xs">{task.type}</div>
+            <div className="text-gray-500 uppercase tracking-wide mb-0.5 text-xs">
+              {getTypeDisplayName(task.type)}
+            </div>
           </div>
           {task.duracion && (
             <div className="flex-1 text-center p-1.5 bg-white border rounded">

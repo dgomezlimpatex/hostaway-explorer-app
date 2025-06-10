@@ -20,10 +20,15 @@ export const TypeStatusSection = ({ formData, onFieldChange }: TypeStatusSection
             <SelectValue placeholder="Seleccionar tipo" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="checkout-checkin">Check-out/Check-in</SelectItem>
-            <SelectItem value="maintenance">Mantenimiento</SelectItem>
-            <SelectItem value="deep-cleaning">Limpieza Profunda</SelectItem>
-            <SelectItem value="cristaleria">Cristalería</SelectItem>
+            <SelectItem value="limpieza-mantenimiento">Limpieza de Mantenimiento</SelectItem>
+            <SelectItem value="mantenimiento-cristaleria">Mantenimiento de Cristalería</SelectItem>
+            <SelectItem value="mantenimiento-airbnb">Mantenimiento Airbnb</SelectItem>
+            <SelectItem value="limpieza-puesta-punto">Limpieza de Puesta a Punto</SelectItem>
+            <SelectItem value="limpieza-final-obra">Limpieza Final de Obra</SelectItem>
+            <SelectItem value="check-in">Check In</SelectItem>
+            <SelectItem value="desplazamiento">Desplazamiento</SelectItem>
+            <SelectItem value="limpieza-especial">Limpieza Especial</SelectItem>
+            <SelectItem value="trabajo-extraordinario">Trabajo Extraordinario</SelectItem>
           </SelectContent>
         </Select>
       </div>

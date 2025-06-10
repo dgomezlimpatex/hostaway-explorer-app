@@ -29,7 +29,7 @@ export const useCreateTaskForm = (currentDate: Date) => {
     address: '',
     startTime: '',
     endTime: '',
-    type: 'checkout-checkin',
+    type: 'mantenimiento-airbnb',
     status: 'pending' as const,
     checkOut: '',
     checkIn: '',
@@ -55,12 +55,12 @@ export const useCreateTaskForm = (currentDate: Date) => {
         ...prev,
         property: `${selectedProperty.codigo} - ${selectedProperty.nombre}`,
         address: selectedProperty.direccion,
-        duracion: selectedProperty.duracionServicio,
-        coste: selectedProperty.costeServicio,
-        metodoPago: selectedClient.metodoPago,
-        supervisor: selectedClient.supervisor,
-        checkOut: selectedProperty.checkOutPredeterminado || '',
-        checkIn: selectedProperty.checkInPredeterminado || ''
+        duracion: selectedProperty.duracionServicio || 120, // Default 2 horas
+        coste: selectedProperty.costeServicio || 0,
+        metodoPago: selectedClient.metodoPago || '',
+        supervisor: selectedClient.supervisor || '',
+        checkOut: selectedProperty.checkOutPredeterminado || '11:00',
+        checkIn: selectedProperty.checkInPredeterminado || '15:00'
       }));
     }
   }, [selectedProperty, selectedClient]);
@@ -92,7 +92,7 @@ export const useCreateTaskForm = (currentDate: Date) => {
       address: '',
       startTime: '',
       endTime: '',
-      type: 'checkout-checkin',
+      type: 'mantenimiento-airbnb',
       status: 'pending',
       checkOut: '',
       checkIn: '',
