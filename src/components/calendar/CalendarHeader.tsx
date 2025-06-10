@@ -65,7 +65,7 @@ export const CalendarHeader = ({
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
           <Link to="/">
-            <Button variant="ghost" size="sm" className="hover:bg-gray-100">
+            <Button variant="ghost" size="sm" className="text-fuchsia-600 mx-0 my-0 px-0 text-lg bg-violet-100">
               <ArrowLeft className="h-4 w-4 mr-2" />
               Volver al Menú
             </Button>
