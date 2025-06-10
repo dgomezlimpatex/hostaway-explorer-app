@@ -1,4 +1,3 @@
-
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -12,6 +11,8 @@ interface CalendarHeaderProps {
   onGoToToday: () => void;
   onViewChange: (view: 'day' | 'three-day' | 'week') => void;
   onNewTask: () => void;
+  searchTerm?: string;
+  onSearchChange?: (term: string) => void;
 }
 
 export const CalendarHeader = ({
@@ -20,7 +21,9 @@ export const CalendarHeader = ({
   onNavigateDate,
   onGoToToday,
   onViewChange,
-  onNewTask
+  onNewTask,
+  searchTerm = '',
+  onSearchChange
 }: CalendarHeaderProps) => {
   const formatDate = (date: Date) => {
     return date.toLocaleDateString('es-ES', { 
@@ -73,6 +76,8 @@ export const CalendarHeader = ({
             <Input 
               placeholder="Buscar tareas..." 
               className="pl-10 w-64"
+              value={searchTerm}
+              onChange={(e) => onSearchChange?.(e.target.value)}
             />
           </div>
           
