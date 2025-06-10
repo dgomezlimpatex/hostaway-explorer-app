@@ -84,6 +84,16 @@ const CleaningCalendar = () => {
           onNewTask={handleNewTask}
         />
 
+        {/* Enhanced Unassigned Tasks - Only show when there are unassigned tasks */}
+        {unassignedTasks.length > 0 && (
+          <UnassignedTasks
+            tasks={unassignedTasks}
+            onTaskClick={handleTaskClick}
+            onDragStart={handleDragStart}
+            onDragEnd={handleDragEnd}
+          />
+        )}
+
         {/* Main Calendar with Enhanced Design */}
         <CalendarLayout
           cleaners={cleaners}
@@ -101,14 +111,6 @@ const CleaningCalendar = () => {
           onTaskClick={handleTaskClick}
           getTaskPosition={getTaskPosition}
           isTimeSlotOccupied={checkTimeSlotOccupied}
-        />
-
-        {/* Enhanced Unassigned Tasks */}
-        <UnassignedTasks
-          tasks={unassignedTasks}
-          onTaskClick={handleTaskClick}
-          onDragStart={handleDragStart}
-          onDragEnd={handleDragEnd}
         />
 
         {/* Drag Preview with Enhanced Styling */}
