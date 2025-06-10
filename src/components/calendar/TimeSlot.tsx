@@ -8,7 +8,7 @@ interface TimeSlotProps {
   isOccupied: boolean;
   draggedTaskId?: string | null;
   onDragOver: (e: React.DragEvent) => void;
-  onDrop: (e: React.DragEvent, cleanerId: string, startTime: string) => void;
+  onDrop: (e: React.DragEvent, cleanerId: string) => void;
   children?: React.ReactNode;
 }
 
@@ -42,7 +42,7 @@ export const TimeSlot = ({
     e.preventDefault();
     e.stopPropagation();
     (e.currentTarget as HTMLElement).classList.remove('drag-over');
-    onDrop(e, cleanerId, timeString);
+    onDrop(e, cleanerId);
   };
 
   // Allow drop even if occupied by the same task being dragged

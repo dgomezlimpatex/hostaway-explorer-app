@@ -56,7 +56,7 @@ export const useDragAndDrop = (onTaskAssign: (taskId: string, cleanerId: string,
     e.dataTransfer.dropEffect = 'move';
   }, []);
 
-  const handleDrop = useCallback((e: React.DragEvent, cleanerId: string, startTime: string, cleaners: any[]) => {
+  const handleDrop = useCallback((e: React.DragEvent, cleanerId: string, cleaners: any[]) => {
     e.preventDefault();
     e.stopPropagation();
     

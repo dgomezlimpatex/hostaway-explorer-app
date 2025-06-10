@@ -232,7 +232,7 @@ const CleaningCalendar = () => {
                   dragState={dragState}
                   onScroll={handleBodyScroll}
                   onDragOver={handleDragOver}
-                  onDrop={(e, cleanerId, startTime, cleaners) => handleDrop(e, cleanerId, startTime, cleaners)}
+                  onDrop={handleDrop}
                   onDragStart={handleDragStart}
                   onDragEnd={handleDragEnd}
                   onTaskClick={handleTaskClick}

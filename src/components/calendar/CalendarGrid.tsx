@@ -12,7 +12,7 @@ interface CalendarGridProps {
   dragState: any;
   onScroll: (e: React.UIEvent<HTMLDivElement>) => void;
   onDragOver: (e: React.DragEvent) => void;
-  onDrop: (e: React.DragEvent, cleanerId: string, startTime: string, cleaners: any[]) => void;
+  onDrop: (e: React.DragEvent, cleanerId: string, cleaners: any[]) => void;
   onDragStart: (e: React.DragEvent, task: Task) => void;
   onDragEnd: (e: React.DragEvent) => void;
   onTaskClick: (task: Task) => void;
@@ -83,7 +83,7 @@ export const CalendarGrid = forwardRef<HTMLDivElement, CalendarGridProps>(
                         isOccupied={isOccupied}
                         draggedTaskId={dragState.draggedTask?.id}
                         onDragOver={onDragOver}
-                        onDrop={(e, cleanerId, startTime) => onDrop(e, cleanerId, startTime, cleaners)}
+                        onDrop={(e, cleanerId) => onDrop(e, cleanerId, cleaners)}
                       />
                     );
                   })}
@@ -105,7 +105,7 @@ export const CalendarGrid = forwardRef<HTMLDivElement, CalendarGridProps>(
                           width: position.width
                         }}
                         onDragOver={onDragOver}
-                        onDrop={(e) => onDrop(e, cleaner.id, task.startTime, cleaners)}
+                        onDrop={(e) => onDrop(e, cleaner.id, cleaners)}
                       >
                         <EnhancedTaskCard
                           task={task}
