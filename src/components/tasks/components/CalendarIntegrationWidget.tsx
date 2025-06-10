@@ -1,23 +1,18 @@
-
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Calendar, Clock, MapPin, Calendar as CalendarIcon, ExternalLink } from "lucide-react";
 import { Task } from "@/types/calendar";
 import { Link } from "react-router-dom";
-
 interface CalendarIntegrationWidgetProps {
   tasks: Task[];
 }
-
-export const CalendarIntegrationWidget = ({ tasks }: CalendarIntegrationWidgetProps) => {
+export const CalendarIntegrationWidget = ({
+  tasks
+}: CalendarIntegrationWidgetProps) => {
   const today = new Date().toISOString().split('T')[0];
   const todayTasks = tasks.filter(task => task.date === today);
-  const upcomingTasks = tasks
-    .filter(task => task.date > today)
-    .slice(0, 3)
-    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-
+  const upcomingTasks = tasks.filter(task => task.date > today).slice(0, 3).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
   const getStatusColor = (status: string) => {
     switch (status) {
       case "completed":
@@ -30,7 +25,6 @@ export const CalendarIntegrationWidget = ({ tasks }: CalendarIntegrationWidgetPr
         return "bg-slate-50 text-slate-700 border-slate-200";
     }
   };
-
   const getStatusText = (status: string) => {
     switch (status) {
       case "completed":
@@ -43,19 +37,17 @@ export const CalendarIntegrationWidget = ({ tasks }: CalendarIntegrationWidgetPr
         return "Sin estado";
     }
   };
-
-  return (
-    <Card className="shadow-sm border-0 bg-gradient-to-br from-blue-50 to-indigo-50">
+  return <Card className="shadow-sm border-0 bg-gradient-to-br from-blue-50 to-indigo-50">
       <CardHeader className="pb-4">
         <div className="flex items-center justify-between">
-          <CardTitle className="flex items-center gap-2 text-lg font-semibold text-slate-800">
+          <CardTitle className="flex items-center gap-2 font-semibold text-slate-800 text-sm text-left mx-0 my-0 px-0 py-[26px]">
             <div className="p-1.5 bg-blue-100 rounded-lg">
               <CalendarIcon className="h-5 w-5 text-blue-600" />
             </div>
             Vista Rápida del Calendario
           </CardTitle>
           <Link to="/calendar">
-            <Button variant="outline" size="sm" className="text-xs bg-white hover:bg-blue-50 border-blue-200 text-blue-700 shadow-sm">
+            <Button variant="outline" size="sm" className="text-xs bg-white hover:bg-blue-50 border-blue-200 text-blue-700 shadow-sm my-0 px-0 py-0">
               <ExternalLink className="h-3 w-3 mr-1" />
               Ver Completo
             </Button>
@@ -75,18 +67,14 @@ export const CalendarIntegrationWidget = ({ tasks }: CalendarIntegrationWidgetPr
             </Badge>
           </div>
           
-          {todayTasks.length === 0 ? (
-            <div className="text-center py-6 bg-white rounded-lg border border-blue-100">
+          {todayTasks.length === 0 ? <div className="text-center py-6 bg-white rounded-lg border border-blue-100">
               <div className="text-blue-300 mb-3">
                 <Calendar className="h-10 w-10 mx-auto" />
               </div>
               <p className="text-sm text-slate-500 font-medium">No hay tareas para hoy</p>
               <p className="text-xs text-slate-400 mt-1">¡Día libre!</p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {todayTasks.slice(0, 3).map(task => (
-                <div key={task.id} className="bg-white border border-blue-100 rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow">
+            </div> : <div className="space-y-3">
+              {todayTasks.slice(0, 3).map(task => <div key={task.id} className="bg-white border border-blue-100 rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow">
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-2">
@@ -108,17 +96,13 @@ export const CalendarIntegrationWidget = ({ tasks }: CalendarIntegrationWidgetPr
                       {getStatusText(task.status)}
                     </Badge>
                   </div>
-                </div>
-              ))}
-              {todayTasks.length > 3 && (
-                <div className="text-center py-2">
+                </div>)}
+              {todayTasks.length > 3 && <div className="text-center py-2">
                   <p className="text-xs text-slate-500">
                     +{todayTasks.length - 3} tareas más
                   </p>
-                </div>
-              )}
-            </div>
-          )}
+                </div>}
+            </div>}
         </div>
 
         {/* Próximas Tareas */}
@@ -128,18 +112,14 @@ export const CalendarIntegrationWidget = ({ tasks }: CalendarIntegrationWidgetPr
             Próximas Tareas
           </h4>
           
-          {upcomingTasks.length === 0 ? (
-            <div className="text-center py-6 bg-white rounded-lg border border-indigo-100">
+          {upcomingTasks.length === 0 ? <div className="text-center py-6 bg-white rounded-lg border border-indigo-100">
               <div className="text-indigo-300 mb-3">
                 <MapPin className="h-10 w-10 mx-auto" />
               </div>
               <p className="text-sm text-slate-500 font-medium">No hay próximas tareas</p>
               <p className="text-xs text-slate-400 mt-1">Todo al día</p>
-            </div>
-          ) : (
-            <div className="space-y-2">
-              {upcomingTasks.map(task => (
-                <div key={task.id} className="bg-white border border-indigo-100 rounded-lg p-3 shadow-sm hover:shadow-md transition-shadow">
+            </div> : <div className="space-y-2">
+              {upcomingTasks.map(task => <div key={task.id} className="bg-white border border-indigo-100 rounded-lg p-3 shadow-sm hover:shadow-md transition-shadow">
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-2">
@@ -147,10 +127,10 @@ export const CalendarIntegrationWidget = ({ tasks }: CalendarIntegrationWidgetPr
                           <MapPin className="h-3 w-3 text-indigo-600" />
                         </div>
                         <span className="text-xs text-indigo-700 bg-indigo-50 px-2 py-1 rounded font-medium">
-                          {new Date(task.date).toLocaleDateString('es-ES', { 
-                            day: 'numeric', 
-                            month: 'short' 
-                          })} • {task.startTime}
+                          {new Date(task.date).toLocaleDateString('es-ES', {
+                      day: 'numeric',
+                      month: 'short'
+                    })} • {task.startTime}
                         </span>
                       </div>
                       <p className="font-medium text-sm text-slate-900 truncate">
@@ -161,12 +141,9 @@ export const CalendarIntegrationWidget = ({ tasks }: CalendarIntegrationWidgetPr
                       {task.cleaner || 'Sin asignar'}
                     </Badge>
                   </div>
-                </div>
-              ))}
-            </div>
-          )}
+                </div>)}
+            </div>}
         </div>
       </CardContent>
-    </Card>
-  );
+    </Card>;
 };
