@@ -38,10 +38,24 @@ export const CalendarGrid = forwardRef<HTMLDivElement, CalendarGridProps>(
     return (
       <div 
         ref={ref}
-        className="flex-1 overflow-x-auto overflow-y-auto"
+        className="flex-1 overflow-x-auto overflow-y-auto relative"
         onScroll={onScroll}
       >
-        <div style={{ minWidth: '1200px' }}>
+        {/* Fixed horizontal divider lines */}
+        <div className="absolute inset-0 pointer-events-none z-0">
+          {cleaners.map((_, index) => (
+            <div 
+              key={`divider-${index}`}
+              className="absolute w-full border-b-2 border-gray-400"
+              style={{ 
+                top: `${(index + 1) * 80}px`,
+                height: '2px'
+              }}
+            />
+          ))}
+        </div>
+
+        <div style={{ minWidth: '1200px' }} className="relative z-10">
           {cleaners.map((cleaner, index) => {
             const cleanerTasks = assignedTasks.filter(task => task.cleaner === cleaner.name);
             
@@ -50,7 +64,6 @@ export const CalendarGrid = forwardRef<HTMLDivElement, CalendarGridProps>(
                 key={cleaner.id} 
                 className={cn(
                   "h-20 relative hover:bg-gray-50 transition-colors flex",
-                  "border-b-2 border-gray-300",
                   index % 2 === 0 ? "bg-white" : "bg-gray-50"
                 )}
               >
