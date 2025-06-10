@@ -1,41 +1,8 @@
 
 import { Client, CreateClientData } from '@/types/client';
 
-// Simulamos almacenamiento en memoria
-let clients: Client[] = [
-  {
-    id: '1',
-    nombre: 'Hotel Vista Mar',
-    cifNif: 'B12345678',
-    telefono: '+34 666 123 456',
-    email: 'info@hotelvistamar.com',
-    direccionFacturacion: 'Calle de la Playa, 123',
-    codigoPostal: '28001',
-    ciudad: 'Madrid',
-    tipoServicio: 'mantenimiento-airbnb',
-    metodoPago: 'transferencia',
-    supervisor: 'Ana García',
-    factura: true,
-    fechaCreacion: '2024-01-15',
-    fechaActualizacion: '2024-01-15'
-  },
-  {
-    id: '2',
-    nombre: 'Apartamentos Sol',
-    cifNif: 'A87654321',
-    telefono: '+34 677 987 654',
-    email: 'contacto@apartamentossol.es',
-    direccionFacturacion: 'Avenida del Sol, 45',
-    codigoPostal: '08002',
-    ciudad: 'Barcelona',
-    tipoServicio: 'limpieza-mantenimiento',
-    metodoPago: 'bizum',
-    supervisor: 'Carlos López',
-    factura: false,
-    fechaCreacion: '2024-02-01',
-    fechaActualizacion: '2024-02-01'
-  }
-];
+// Simulamos almacenamiento en memoria - iniciamos con array vacío
+let clients: Client[] = [];
 
 export const clientStorage = {
   getAll: (): Client[] => {
