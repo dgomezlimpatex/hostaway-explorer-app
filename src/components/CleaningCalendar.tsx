@@ -2,13 +2,14 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { useState, useMemo, useRef } from "react";
 import { useCalendarData } from "@/hooks/useCalendarData";
-import { CalendarHeader } from "./calendar/CalendarHeader";
+import { ResponsiveCalendarHeader } from "./calendar/ResponsiveCalendarHeader";
 import { WorkersColumn } from "./calendar/WorkersColumn";
 import { TimelineHeader } from "./calendar/TimelineHeader";
 import { CalendarGrid } from "./calendar/CalendarGrid";
 import { UnassignedTasks } from "./calendar/UnassignedTasks";
 import { StatusLegend } from "./calendar/StatusLegend";
 import { DragPreview } from "./calendar/DragPreview";
+import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { CreateTaskModal } from "./modals/CreateTaskModal";
 import { TaskDetailsModal } from "./modals/TaskDetailsModal";
 import { useDragAndDrop } from "@/hooks/useDragAndDrop";
@@ -188,117 +189,98 @@ const CleaningCalendar = () => {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-        <span className="ml-2 text-gray-600">Cargando calendario...</span>
+      <div className="flex items-center justify-center h-screen bg-background">
+        <LoadingSpinner size="lg" text="Cargando calendario..." />
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
-      {/* Modern Header */}
-      <CalendarHeader
-        currentDate={currentDate}
-        currentView={currentView}
-        onNavigateDate={navigateDate}
-        onGoToToday={goToToday}
-        onViewChange={setCurrentView}
-        onNewTask={handleNewTask}
-      />
-
-      {/* Main Calendar */}
-      <Card className="border-0 shadow-xl overflow-hidden">
-        <CardContent className="p-0">
-          <div className="flex h-[600px] overflow-hidden">
-            {/* Workers Column */}
-            <WorkersColumn cleaners={cleaners} />
-
-            {/* Timeline Area */}
-            <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-              {/* Time Header - Scrollable */}
-              <TimelineHeader
-                ref={headerScrollRef}
-                timeSlots={timeSlots}
-                onScroll={handleHeaderScroll}
-              />
-
-              {/* Timeline Body - Scrollable */}
-              <CalendarGrid
-                ref={bodyScrollRef}
-                cleaners={cleaners}
-                timeSlots={timeSlots}
-                assignedTasks={assignedTasks}
-                dragState={dragState}
-                onScroll={handleBodyScroll}
-                onDragOver={handleDragOver}
-                onDrop={handleDrop}
-                onDragStart={handleDragStart}
-                onDragEnd={handleDragEnd}
-                onTaskClick={handleTaskClick}
-                getTaskPosition={getTaskPosition}
-                isTimeSlotOccupied={isTimeSlotOccupied}
-              />
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Unassigned Tasks */}
-      <UnassignedTasks
-        tasks={unassignedTasks}
-        onTaskClick={handleTaskClick}
-        onDragStart={handleDragStart}
-        onDragEnd={handleDragEnd}
-      />
-
-      {/* Drag Preview */}
-      {dragState.draggedTask && (
-        <DragPreview
-          task={dragState.draggedTask}
-          isDragging={dragState.isDragging}
-          offset={dragState.dragOffset}
+    <div className="min-h-screen bg-background text-foreground transition-colors duration-300">
+      <div className="space-y-6 container-responsive py-6">
+        {/* Enhanced Responsive Header */}
+        <ResponsiveCalendarHeader
+          currentDate={currentDate}
+          currentView={currentView}
+          onNavigateDate={navigateDate}
+          onGoToToday={goToToday}
+          onViewChange={setCurrentView}
+          onNewTask={handleNewTask}
         />
-      )}
 
-      {/* Status Legend */}
-      <StatusLegend />
+        {/* Main Calendar with Enhanced Design */}
+        <Card className="border-0 shadow-xl overflow-hidden bg-card animate-fade-in">
+          <CardContent className="p-0">
+            <div className="flex h-[600px] overflow-hidden">
+              {/* Workers Column */}
+              <WorkersColumn cleaners={cleaners} />
 
-      {/* Modals */}
-      <CreateTaskModal
-        open={isCreateModalOpen}
-        onOpenChange={setIsCreateModalOpen}
-        onCreateTask={handleCreateTask}
-        currentDate={currentDate}
-      />
+              {/* Timeline Area */}
+              <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+                {/* Time Header - Scrollable */}
+                <TimelineHeader
+                  ref={headerScrollRef}
+                  timeSlots={timeSlots}
+                  onScroll={handleHeaderScroll}
+                />
 
-      <TaskDetailsModal
-        task={selectedTask}
-        open={isTaskModalOpen}
-        onOpenChange={setIsTaskModalOpen}
-        onUpdateTask={handleUpdateTask}
-        onDeleteTask={handleDeleteTask}
-      />
+                {/* Timeline Body - Scrollable */}
+                <CalendarGrid
+                  ref={bodyScrollRef}
+                  cleaners={cleaners}
+                  timeSlots={timeSlots}
+                  assignedTasks={assignedTasks}
+                  dragState={dragState}
+                  onScroll={handleBodyScroll}
+                  onDragOver={handleDragOver}
+                  onDrop={handleDrop}
+                  onDragStart={handleDragStart}
+                  onDragEnd={handleDragEnd}
+                  onTaskClick={handleTaskClick}
+                  getTaskPosition={getTaskPosition}
+                  isTimeSlotOccupied={isTimeSlotOccupied}
+                />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
-      {/* CSS for drag effects */}
-      <style>{`
-        .drag-over .drop-indicator {
-          opacity: 1;
-        }
-        
-        .time-cell:hover .drop-indicator {
-          opacity: 0.3;
-        }
-        
-        @keyframes dragPulse {
-          0%, 100% { transform: scale(1); }
-          50% { transform: scale(1.05); }
-        }
-        
-        .dragging {
-          animation: dragPulse 1s infinite;
-        }
-      `}</style>
+        {/* Enhanced Unassigned Tasks */}
+        <UnassignedTasks
+          tasks={unassignedTasks}
+          onTaskClick={handleTaskClick}
+          onDragStart={handleDragStart}
+          onDragEnd={handleDragEnd}
+        />
+
+        {/* Drag Preview with Enhanced Styling */}
+        {dragState.draggedTask && (
+          <DragPreview
+            task={dragState.draggedTask}
+            isDragging={dragState.isDragging}
+            offset={dragState.dragOffset}
+          />
+        )}
+
+        {/* Enhanced Status Legend */}
+        <StatusLegend />
+
+        {/* Modals */}
+        <CreateTaskModal
+          open={isCreateModalOpen}
+          onOpenChange={setIsCreateModalOpen}
+          onCreateTask={handleCreateTask}
+          currentDate={currentDate}
+        />
+
+        <TaskDetailsModal
+          task={selectedTask}
+          open={isTaskModalOpen}
+          onOpenChange={setIsTaskModalOpen}
+          onUpdateTask={handleUpdateTask}
+          onDeleteTask={handleDeleteTask}
+        />
+      </div>
     </div>
   );
 };

@@ -1,19 +1,25 @@
 
+import { StatusIndicator } from "@/components/ui/status-indicator";
+
 export const StatusLegend = () => {
   return (
-    <div className="flex items-center gap-6 text-sm bg-white p-4 rounded-lg shadow-sm">
-      <span className="text-gray-600 font-medium">Estado:</span>
+    <div className="flex items-center gap-6 text-sm bg-card p-4 rounded-lg shadow-sm border animate-fade-in">
+      <span className="text-muted-foreground font-medium">Estado de las tareas:</span>
       <div className="flex items-center gap-2">
-        <div className="w-3 h-3 bg-red-500 rounded-full"></div>
-        <span>Pendiente</span>
+        <StatusIndicator status="pending" size="sm" showTooltip={false} />
+        <span className="text-foreground">Pendiente</span>
       </div>
       <div className="flex items-center gap-2">
-        <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
-        <span>En Progreso</span>
+        <StatusIndicator status="in-progress" size="sm" showTooltip={false} />
+        <span className="text-foreground">En Progreso</span>
       </div>
       <div className="flex items-center gap-2">
-        <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-        <span>Completado</span>
+        <StatusIndicator status="completed" size="sm" showTooltip={false} />
+        <span className="text-foreground">Completado</span>
+      </div>
+      <div className="flex items-center gap-2">
+        <StatusIndicator status="cancelled" size="sm" showTooltip={false} />
+        <span className="text-foreground">Cancelado</span>
       </div>
     </div>
   );

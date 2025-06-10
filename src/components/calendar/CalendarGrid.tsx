@@ -2,7 +2,7 @@
 import { forwardRef } from "react";
 import { cn } from "@/lib/utils";
 import { TimeSlot } from "./TimeSlot";
-import { TaskCard } from "./TaskCard";
+import { EnhancedTaskCard } from "./EnhancedTaskCard";
 import { Task, Cleaner } from "@/types/calendar";
 
 interface CalendarGridProps {
@@ -37,12 +37,12 @@ export const CalendarGrid = forwardRef<HTMLDivElement, CalendarGridProps>(
   }, ref) => {
     return (
       <div className="flex-1 overflow-hidden relative">
-        {/* Fixed horizontal divider lines - positioned absolutely to stay fixed */}
+        {/* Fixed horizontal divider lines */}
         <div className="absolute left-0 right-0 top-0 bottom-0 pointer-events-none z-20">
           {cleaners.map((_, index) => (
             <div 
               key={`fixed-divider-${index}`}
-              className="absolute left-0 right-0 border-b-2 border-gray-400"
+              className="absolute left-0 right-0 border-b-2 border-border dark:border-border"
               style={{ 
                 top: `${(index + 1) * 80}px`,
                 height: '2px'
@@ -65,8 +65,8 @@ export const CalendarGrid = forwardRef<HTMLDivElement, CalendarGridProps>(
                 <div 
                   key={cleaner.id} 
                   className={cn(
-                    "h-20 relative hover:bg-gray-50 transition-colors flex",
-                    index % 2 === 0 ? "bg-white" : "bg-gray-50"
+                    "h-20 relative hover:bg-accent/50 dark:hover:bg-accent/30 transition-colors flex",
+                    index % 2 === 0 ? "bg-background" : "bg-muted/30"
                   )}
                 >
                   {/* Time slots for this cleaner */}
@@ -88,7 +88,7 @@ export const CalendarGrid = forwardRef<HTMLDivElement, CalendarGridProps>(
                     );
                   })}
 
-                  {/* Tasks for this cleaner */}
+                  {/* Enhanced Tasks for this cleaner */}
                   {cleanerTasks.map((task) => {
                     const position = getTaskPosition(task.startTime, task.endTime);
                     const isBeingDragged = dragState.draggedTask?.id === task.id;
@@ -107,7 +107,7 @@ export const CalendarGrid = forwardRef<HTMLDivElement, CalendarGridProps>(
                         onDragOver={onDragOver}
                         onDrop={(e) => onDrop(e, cleaner.id, task.startTime)}
                       >
-                        <TaskCard
+                        <EnhancedTaskCard
                           task={task}
                           onClick={() => onTaskClick(task)}
                           isDragging={isBeingDragged}
