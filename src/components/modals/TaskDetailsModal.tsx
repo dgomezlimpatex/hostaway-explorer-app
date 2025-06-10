@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import {
   Dialog,
@@ -13,7 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Trash2, Edit3, Save, X } from "lucide-react";
+import { Trash2, Edit3, Save, X, UserX } from "lucide-react";
 import { Task } from "@/hooks/useCalendarData";
 import { useToast } from "@/hooks/use-toast";
 
@@ -23,6 +22,7 @@ interface TaskDetailsModalProps {
   onOpenChange: (open: boolean) => void;
   onUpdateTask: (taskId: string, updates: Partial<Task>) => void;
   onDeleteTask: (taskId: string) => void;
+  onUnassignTask?: (taskId: string) => void;
 }
 
 export const TaskDetailsModal = ({ 
@@ -30,7 +30,8 @@ export const TaskDetailsModal = ({
   open, 
   onOpenChange, 
   onUpdateTask, 
-  onDeleteTask 
+  onDeleteTask,
+  onUnassignTask 
 }: TaskDetailsModalProps) => {
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState<Partial<Task>>({});
@@ -71,6 +72,19 @@ export const TaskDetailsModal = ({
         title: "Tarea eliminada",
         description: "La tarea se ha eliminado correctamente.",
       });
+    }
+  };
+
+  const handleUnassign = () => {
+    if (onUnassignTask && task.cleaner) {
+      if (window.confirm('¿Estás seguro de que quieres desasignar esta tarea?')) {
+        onUnassignTask(task.id);
+        onOpenChange(false);
+        toast({
+          title: "Tarea desasignada",
+          description: "La tarea se ha enviado a la lista de tareas sin asignar.",
+        });
+      }
     }
   };
 
@@ -244,15 +258,29 @@ export const TaskDetailsModal = ({
 
         <DialogFooter>
           <div className="flex items-center justify-between w-full">
-            <Button
-              variant="destructive"
-              size="sm"
-              onClick={handleDelete}
-              className="flex items-center gap-2"
-            >
-              <Trash2 className="h-4 w-4" />
-              Eliminar
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={handleDelete}
+                className="flex items-center gap-2"
+              >
+                <Trash2 className="h-4 w-4" />
+                Eliminar
+              </Button>
+              
+              {task.cleaner && onUnassignTask && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleUnassign}
+                  className="flex items-center gap-2"
+                >
+                  <UserX className="h-4 w-4" />
+                  Desasignar
+                </Button>
+              )}
+            </div>
             
             <div className="flex items-center gap-2">
               {isEditing ? (

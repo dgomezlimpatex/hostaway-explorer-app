@@ -37,7 +37,8 @@ const CleaningCalendar = () => {
     handleCreateTask,
     handleTaskClick,
     handleUpdateTask,
-    handleDeleteTask
+    handleDeleteTask,
+    handleUnassignTask
   } = useCalendarLogic();
 
   // Handle scroll synchronization
@@ -133,6 +134,7 @@ const CleaningCalendar = () => {
           onCreateTask={handleCreateTask}
           onUpdateTask={handleUpdateTask}
           onDeleteTask={handleDeleteTask}
+          onUnassignTask={handleUnassignTask}
         />
       </div>
     </div>

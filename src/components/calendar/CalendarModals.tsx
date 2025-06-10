@@ -13,6 +13,7 @@ interface CalendarModalsProps {
   onCreateTask: (taskData: Omit<Task, 'id'>) => Promise<void>;
   onUpdateTask: (taskId: string, updates: Partial<Task>) => Promise<void>;
   onDeleteTask: (taskId: string) => Promise<void>;
+  onUnassignTask: (taskId: string) => Promise<void>;
 }
 
 export const CalendarModals = ({
@@ -24,7 +25,8 @@ export const CalendarModals = ({
   currentDate,
   onCreateTask,
   onUpdateTask,
-  onDeleteTask
+  onDeleteTask,
+  onUnassignTask
 }: CalendarModalsProps) => {
   return (
     <>
@@ -41,6 +43,7 @@ export const CalendarModals = ({
         onOpenChange={setIsTaskModalOpen}
         onUpdateTask={onUpdateTask}
         onDeleteTask={onDeleteTask}
+        onUnassignTask={onUnassignTask}
       />
     </>
   );

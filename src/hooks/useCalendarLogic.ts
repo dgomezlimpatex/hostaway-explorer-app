@@ -153,6 +153,30 @@ export const useCalendarLogic = () => {
     }
   };
 
+  // Handle task unassignment
+  const handleUnassignTask = async (taskId: string) => {
+    try {
+      await updateTask({ 
+        taskId, 
+        updates: { 
+          cleaner: null, 
+          cleanerId: null 
+        } 
+      });
+      toast({
+        title: "Tarea desasignada",
+        description: "La tarea se ha enviado a la lista de tareas sin asignar.",
+      });
+    } catch (error) {
+      console.error('Error unassigning task:', error);
+      toast({
+        title: "Error",
+        description: "No se pudo desasignar la tarea.",
+        variant: "destructive",
+      });
+    }
+  };
+
   return {
     // Data
     tasks,
@@ -188,6 +212,7 @@ export const useCalendarLogic = () => {
     handleCreateTask,
     handleTaskClick,
     handleUpdateTask,
-    handleDeleteTask
+    handleDeleteTask,
+    handleUnassignTask
   };
 };
