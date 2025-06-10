@@ -29,8 +29,8 @@ export const useCalendarData = () => {
   } = useTasks(currentDate, currentView);
 
   // Wrapper for assign task to include cleaners data
-  const assignTask = ({ taskId, cleanerId }: { taskId: string; cleanerId: string }) => {
-    assignTaskMutation({ taskId, cleanerId, cleaners });
+  const assignTask = ({ taskId, cleanerId, cleaners: cleanersArray }: { taskId: string; cleanerId: string; cleaners: any[] }) => {
+    assignTaskMutation({ taskId, cleanerId, cleaners: cleanersArray });
   };
 
   return {
