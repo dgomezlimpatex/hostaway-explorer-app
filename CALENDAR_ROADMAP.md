@@ -1,3 +1,4 @@
+
 # 🗓️ Calendar Optimization Roadmap
 
 ## Estado Actual
@@ -23,6 +24,10 @@
 - ✅ **REFACTORIZACIÓN MODULAR COMPLETA** - **COMPLETADO**
 - ✅ **FILTROS PLEGABLES EN PÁGINA DE TAREAS** - **COMPLETADO**
 - ✅ **WIDGET DE VISTA RÁPIDA CALENDAR MEJORADO** - **COMPLETADO**
+- ✅ **MEJORAS VISUALES DEL CALENDARIO** - **NUEVO**
+  - ✅ Líneas divisorias horizontales fijas entre trabajadores
+  - ✅ Separación visual clara de filas de trabajadores
+  - ✅ Sincronización de scroll mejorada
 
 ## 🎯 Objetivos de Optimización
 
@@ -32,11 +37,12 @@
 - ✅ **1.3** Refactorizar hooks grandes en archivos pequeños y enfocados - **COMPLETADO**
 - ✅ **1.4** Persistencia de datos implementada con localStorage - **COMPLETADO**
 - ✅ **1.5** Refactorización completa de modales en componentes pequeños - **COMPLETADO**
-- [ ] **1.6** Optimizar renderizado con React.memo y useMemo
-- [ ] **1.7** Implementar gestión de estado con Context API
-- [ ] **1.8** Añadir TypeScript tipos estrictos
+- ✅ **1.6** Mejoras visuales del calendario implementadas - **COMPLETADO**
+- [ ] **1.7** Optimizar renderizado con React.memo y useMemo
+- [ ] **1.8** Implementar gestión de estado con Context API
+- [ ] **1.9** Añadir TypeScript tipos estrictos
 
-### Fase 2: Diseño Moderno y UI/UX ✅ COMPLETADA
+### Fase 2: Diseño Moderno y UI/UX ✅ PARCIALMENTE COMPLETADA
 - ✅ **2.1** Rediseñar header con mejor navegación
 - ✅ **2.2** Mejorar diseño de tarjetas de tareas
 - ✅ **2.3** Unificar estilo de tarjetas en página principal - **COMPLETADO**
@@ -44,11 +50,12 @@
 - ✅ **2.5** Estadísticas visuales mejoradas en página de tareas - **COMPLETADO**
 - ✅ **2.6** Filtros plegables con diseño mejorado - **COMPLETADO**
 - ✅ **2.7** Widget de calendario refinado y reposicionado - **COMPLETADO**
-- [ ] **2.8** Implementar animaciones suaves
-- [ ] **2.9** Añadir tema dark/light
-- [ ] **2.10** Responsive design mejorado
-- [ ] **2.11** Indicadores visuales de estados
-- [ ] **2.12** Tooltips informativos
+- ✅ **2.8** Mejoras visuales del calendario - **COMPLETADO**
+- [ ] **2.9** Implementar animaciones suaves
+- [ ] **2.10** Añadir tema dark/light
+- [ ] **2.11** Responsive design mejorado
+- [ ] **2.12** Indicadores visuales de estados
+- [ ] **2.13** Tooltips informativos
 
 ### Fase 3: Funcionalidades Avanzadas ✅ PARCIALMENTE COMPLETADA
 - [ ] **3.1** Vista semanal y mensual mejorada
@@ -176,13 +183,41 @@
 - [ ] **9.15** Estimación automática de duración
 - [ ] **9.16** Asignación inteligente de trabajadores
 
-### Fase 10: Sistema de Roles y Permisos 🔐
-- [ ] **10.1** Gestión de roles (Admin, Supervisor, Empleado)
-- [ ] **10.2** Sistema de permisos granular
-- [ ] **10.3** Dashboard personalizado por rol
-- [ ] **10.4** Notificaciones específicas por rol
-- [ ] **10.5** Supervisores asignados a clientes/propiedades
+### Fase 10: Gestión Avanzada de Trabajadores 👷‍♀️ 🚧 EN DESARROLLO
+- [ ] **10.1** CRUD completo de trabajadores - **PRÓXIMO**
+  - [ ] Información personal (nombre, teléfono, email)
+  - [ ] Datos laborales (fecha de alta, horario, salario)
+  - [ ] Especialidades y habilidades
+  - [ ] Estado activo/inactivo
+  - [ ] Foto de perfil
+  - [ ] Historial laboral
+- [ ] **10.2** Sistema de horarios y disponibilidad - **PRÓXIMO**
+  - [ ] Configuración de horarios de trabajo
+  - [ ] Gestión de vacaciones y días libres
+  - [ ] Disponibilidad por días y horarios
+  - [ ] Conflictos de horarios
+- [ ] **10.3** Métricas y rendimiento de trabajadores
+  - [ ] Tareas completadas por periodo
+  - [ ] Tiempo promedio por tarea
+  - [ ] Calificaciones de clientes
+  - [ ] Eficiencia y productividad
+- [ ] **10.4** Asignación inteligente de trabajadores
+  - [ ] Algoritmo de asignación basado en disponibilidad
+  - [ ] Consideración de especialidades
+  - [ ] Optimización de rutas geográficas
+  - [ ] Balanceado de carga de trabajo
+- [ ] **10.5** Comunicación con trabajadores
+  - [ ] Notificaciones de nuevas asignaciones
+  - [ ] Chat interno
+  - [ ] Confirmación de tareas
+  - [ ] Reportes de incidencias
 
+### Fase 11: Sistema de Roles y Permisos 🔐
+- [ ] **11.1** Gestión de roles (Admin, Supervisor, Empleado)
+- [ ] **11.2** Sistema de permisos granular
+- [ ] **11.3** Dashboard personalizado por rol
+- [ ] **11.4** Notificaciones específicas por rol
+- [ ] **11.5** Supervisores asignados a clientes/propiedades
 
 ### Fase 12: Historial y Analytics 📊 ✅ PARCIALMENTE COMPLETADA
 - ✅ **12.1** Modal de historial de tareas implementado - **COMPLETADO**
@@ -220,53 +255,46 @@
 - [ ] **16.6** Recordatorios inteligentes
 
 ## 📋 Tareas Completadas Recientemente
-- ✅ **SISTEMA DE CREACIÓN MÚLTIPLE DE TAREAS** - Modal completo para crear varias tareas a la vez
-- ✅ **REFACTORIZACIÓN MODULAR COMPLETA** - Todos los modales divididos en componentes pequeños y enfocados
-- ✅ **ARQUITECTURA MEJORADA** - Hooks reutilizables y separación clara de responsabilidades
+- ✅ **MEJORAS VISUALES DEL CALENDARIO** - Líneas divisorias horizontales fijas entre trabajadores para mejor separación visual
+- ✅ **SINCRONIZACIÓN DE SCROLL MEJORADA** - Las líneas divisorias se mantienen fijas durante el scroll horizontal
+- ✅ **SEPARACIÓN CLARA DE FILAS** - Cada trabajador tiene su área claramente delimitada
 
-## 🎯 PRIORIDADES INMEDIATAS - ENFOQUE CALENDAR
+## 🎯 PRIORIDADES INMEDIATAS - ENFOQUE TRABAJADORES
 
-### 🥇 ALTA PRIORIDAD (Actual sprint - MEJORAS DE CALENDARIO)
-1. **Vista Semanal Completa** (3.1)
-   - Implementar vista semanal más amplia y funcional
-   - Mejorar navegación entre semanas
-   - Optimizar visualización de múltiples días
+### 🥇 ALTA PRIORIDAD (Actual sprint - GESTIÓN DE TRABAJADORES)
+1. **CRUD Completo de Trabajadores** (10.1)
+   - Crear página dedicada para gestión de trabajadores
+   - Formularios de creación y edición
+   - Lista visual con tarjetas de trabajadores
+   - Información completa: personal, laboral, especialidades
 
-2. **Vista Mensual Avanzada** (3.1)
-   - Vista mensual con mini tarjetas de tareas
-   - Resumen por día en el calendario mensual
-   - Navegación fluida entre vistas
+2. **Sistema de Horarios y Disponibilidad** (10.2)
+   - Configuración de horarios de trabajo
+   - Gestión de vacaciones y días libres
+   - Integración con el calendario principal
+   - Validación de conflictos de horarios
 
-3. **Mejoras de Performance en Calendar** (1.6)
-   - React.memo para componentes del calendario
-   - useMemo para cálculos de fechas y tareas
-   - Optimización de renders en drag & drop
+3. **Métricas Básicas de Trabajadores** (10.3)
+   - Dashboard de rendimiento individual
+   - Estadísticas de tareas completadas
+   - Tiempo promedio por tarea
+   - Integración con reportes existentes
 
-4. **Búsqueda en Tiempo Real en Calendar** (3.3)
-   - Búsqueda rápida de tareas en vista calendario
-   - Filtros visuales en tiempo real
-   - Resaltado de resultados
-
-5. **Animaciones Suaves en Calendar** (2.8)
-   - Transiciones entre vistas
-   - Animaciones de drag & drop mejoradas
-   - Feedback visual en interacciones
-
-### 🥉 MEDIA PRIORIDAD
-6. **Sistema de Plantillas de Tareas** (9.10)
-7. **Checklist Dinámico por Tipo de Servicio** (9.11)
-8. **Control Visual Avanzado** (9.12-9.14)
+### 🥈 MEDIA PRIORIDAD
+4. **Asignación Inteligente** (10.4)
+5. **Vista Semanal Completa** (3.1)
+6. **Vista Mensual Avanzada** (3.1)
 
 ### 🥉 BAJA PRIORIDAD (Futuro)
-9. **Sistema de Roles y Permisos** (Fase 10)
-10. **Mobile App** (Fase 14)
+7. **Sistema de Roles y Permisos** (Fase 11)
+8. **Mobile App** (Fase 14)
 
-## 🚀 Próximos Pasos Inmediatos - CALENDAR FOCUS
-1. **Mejorar vista semanal** - Visualización más amplia y funcional
-2. **Implementar vista mensual avanzada** - Mini tarjetas y resumen por día
-3. **Optimizar performance** - Mejor experiencia con grandes volúmenes
-4. **Añadir búsqueda en tiempo real** - Localización rápida de tareas
-5. **Implementar animaciones** - Transiciones suaves entre vistas
+## 🚀 Próximos Pasos Inmediatos - WORKERS FOCUS
+1. **Crear página de gestión de trabajadores** - CRUD completo con información detallada
+2. **Implementar sistema de horarios** - Disponibilidad y conflictos
+3. **Añadir métricas de trabajadores** - Dashboard de rendimiento
+4. **Mejorar asignación de tareas** - Algoritmo inteligente basado en disponibilidad
+5. **Integrar con calendario existente** - Visualización de horarios y disponibilidad
 
 ## 🎉 Estado Actual del Proyecto
 El sistema cuenta con **funcionalidad completamente operativa y profesional**:
@@ -280,15 +308,16 @@ El sistema cuenta con **funcionalidad completamente operativa y profesional**:
 - ✅ **Arquitectura modular y mantenible** con componentes pequeños y enfocados
 - ✅ **Interfaz moderna y responsive** 
 - ✅ **Navegación fluida** entre todas las páginas
+- ✅ **Calendario con mejoras visuales** y separación clara de trabajadores
 
-**Próximo objetivo principal:** Mejorar significativamente la experiencia del calendario con vistas avanzadas, mejor performance y funcionalidades de búsqueda en tiempo real.
+**Próximo objetivo principal:** Implementar un sistema completo de gestión de trabajadores con CRUD, horarios, disponibilidad y métricas de rendimiento.
 
 ## 🆕 ÚLTIMAS MEJORAS IMPLEMENTADAS
 
-### 📋 Optimizaciones en Página de Tareas ✅ COMPLETADO
-- **Filtros plegables** que se contraen por defecto para ahorrar espacio
-- **Widget de calendario reposicionado** encima de tareas recurrentes
-- **Diseño refinado** del widget de vista rápida del calendario
-- **UX mejorada** con mejor organización visual
+### 📅 Mejoras Visuales del Calendario ✅ COMPLETADO
+- **Líneas divisorias horizontales fijas** entre filas de trabajadores
+- **Separación visual clara** de cada trabajador en el calendario
+- **Sincronización mejorada** que mantiene las líneas fijas durante scroll horizontal
+- **UX mejorada** con delimitación clara de áreas de trabajo
 
-**Meta inmediata:** Enfocar esfuerzos en mejorar la página de calendario (/calendar) con vistas avanzadas, mejor performance y funcionalidades de búsqueda para una experiencia de usuario superior.
+**Meta inmediata:** Enfocar esfuerzos en crear un sistema completo de gestión de trabajadores que complemente el calendario existente, incluyendo CRUD, horarios, disponibilidad y métricas de rendimiento.
