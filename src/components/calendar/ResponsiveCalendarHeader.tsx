@@ -1,11 +1,12 @@
 
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
-import { ChevronLeft, ChevronRight, Calendar, Plus } from "lucide-react";
+import { ChevronLeft, ChevronRight, Calendar, Plus, ArrowLeft } from "lucide-react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { ViewType } from "@/types/calendar";
+import { Link } from "react-router-dom";
 import {
   Tooltip,
   TooltipContent,
@@ -51,11 +52,32 @@ export const ResponsiveCalendarHeader = ({
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           {/* Título y navegación */}
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-            <div className="flex items-center gap-2">
-              <Calendar className="h-6 w-6 text-primary" />
-              <h1 className="text-xl md:text-2xl font-bold text-foreground">
-                Calendario de Limpieza
-              </h1>
+            <div className="flex items-center gap-3">
+              {/* Botón de volver al menú */}
+              <Link to="/">
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="flex items-center gap-2 transition-all duration-200 hover:scale-105"
+                    >
+                      <ArrowLeft className="h-4 w-4" />
+                      <span className="hidden sm:inline">Menú</span>
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Volver al menú principal</p>
+                  </TooltipContent>
+                </Tooltip>
+              </Link>
+
+              <div className="flex items-center gap-2">
+                <Calendar className="h-6 w-6 text-primary" />
+                <h1 className="text-xl md:text-2xl font-bold text-foreground">
+                  Calendario de Limpieza
+                </h1>
+              </div>
             </div>
             
             {/* Navegación de fecha - Responsive */}
