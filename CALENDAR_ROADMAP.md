@@ -187,7 +187,6 @@
 - [ ] **12.3** Modelo de HistorialTarea completo
 - [ ] **12.4** Dashboard de métricas operativas
 - [ ] **12.5** Análisis de rendimiento por trabajador
-- [ ] **12.6** Reportes de satisfacción del cliente
 - [ ] **12.7** Predicción de demanda
 - [ ] **12.8** Optimización de rutas y horarios
 
@@ -195,7 +194,6 @@
 - [ ] **13.1** Integración con Hostaway
 - [ ] **13.2** Integración con Google Calendar
 - [ ] **13.3** Integración con WhatsApp Business
-- [ ] **13.4** Integración con sistemas de pago
 
 ### Fase 14: Mobile App 📱
 - [ ] **14.1** App móvil para trabajadores
@@ -206,11 +204,9 @@
 - [ ] **14.6** Escáner QR para propiedades
 
 ### Fase 15: Sistema de Comunicación 💬
-- [ ] **15.1** Chat interno entre trabajadores
 - [ ] **15.2** Notificaciones en tiempo real
 - [ ] **15.3** Sistema de incidencias
 - [ ] **15.4** Comentarios y notas en tareas
-- [ ] **15.5** Evaluaciones de servicio
 
 ### Fase 16: Automatización Avanzada 🤖
 - [ ] **16.1** IA para optimización de rutas
@@ -240,11 +236,6 @@
    - Notas y observaciones por tarea
    - Checklists personalizables por cliente
 
-### 🥈 MEDIA PRIORIDAD (Siguientes sprints)
-3. **Búsqueda en Tiempo Real** (3.3)
-   - Búsqueda por nombre, cliente, propiedad
-   - Filtrado instantáneo mientras escribes
-   - Destacado de resultados
 
 4. **Vistas de Calendario Adicionales** (3.1)
    - Vista semanal completa
