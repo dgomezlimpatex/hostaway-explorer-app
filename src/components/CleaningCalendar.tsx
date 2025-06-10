@@ -1,19 +1,14 @@
-import { Card, CardContent } from "@/components/ui/card";
-import { useState, useMemo, useRef } from "react";
-import { useCalendarData } from "@/hooks/useCalendarData";
+
+import { useState } from "react";
 import { ResponsiveCalendarHeader } from "./calendar/ResponsiveCalendarHeader";
-import { WorkersColumn } from "./calendar/WorkersColumn";
-import { TimelineHeader } from "./calendar/TimelineHeader";
-import { CalendarGrid } from "./calendar/CalendarGrid";
+import { CalendarLayout } from "./calendar/CalendarLayout";
 import { UnassignedTasks } from "./calendar/UnassignedTasks";
 import { StatusLegend } from "./calendar/StatusLegend";
 import { DragPreview } from "./calendar/DragPreview";
+import { CalendarModals } from "./calendar/CalendarModals";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
-import { CreateTaskModal } from "./modals/CreateTaskModal";
-import { TaskDetailsModal } from "./modals/TaskDetailsModal";
-import { useDragAndDrop } from "@/hooks/useDragAndDrop";
-import { useToast } from "@/hooks/use-toast";
-import { Task } from "@/hooks/useCalendarData";
+import { useCalendarLogic } from "@/hooks/useCalendarLogic";
+import { getTaskPosition, isTimeSlotOccupied } from "@/utils/taskPositioning";
 
 const CleaningCalendar = () => {
   const {
@@ -22,35 +17,28 @@ const CleaningCalendar = () => {
     currentDate,
     currentView,
     isLoading,
+    timeSlots,
+    headerScrollRef,
+    bodyScrollRef,
+    isCreateModalOpen,
+    setIsCreateModalOpen,
+    selectedTask,
+    isTaskModalOpen,
+    setIsTaskModalOpen,
+    dragState,
+    handleDragStart,
+    handleDragEnd,
+    handleDragOver,
+    handleDrop,
     setCurrentView,
     navigateDate,
     goToToday,
-    updateTask,
-    assignTask,
-    createTask,
-    deleteTask
-  } = useCalendarData();
-
-  const { toast } = useToast();
-  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
-  const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
-  
-  // Refs for scroll synchronization
-  const headerScrollRef = useRef<HTMLDivElement>(null);
-  const bodyScrollRef = useRef<HTMLDivElement>(null);
-
-  // Generate time slots
-  const timeSlots = useMemo(() => {
-    const slots = [];
-    for (let hour = 6; hour <= 22; hour++) {
-      slots.push(`${hour.toString().padStart(2, '0')}:00`);
-      if (hour < 22) {
-        slots.push(`${hour.toString().padStart(2, '0')}:30`);
-      }
-    }
-    return slots;
-  }, []);
+    handleNewTask,
+    handleCreateTask,
+    handleTaskClick,
+    handleUpdateTask,
+    handleDeleteTask
+  } = useCalendarLogic();
 
   // Handle scroll synchronization
   const handleHeaderScroll = (e: React.UIEvent<HTMLDivElement>) => {
@@ -65,157 +53,14 @@ const CleaningCalendar = () => {
     }
   };
 
-  // Handle task assignment with optional time slot
-  const handleTaskAssign = async (taskId: string, cleanerId: string, cleaners: any[], timeSlot?: string) => {
-    console.log('CleaningCalendar - handleTaskAssign called with:', { taskId, cleanerId, cleaners, timeSlot });
-    try {
-      // If timeSlot is provided, also update the task's start time
-      if (timeSlot) {
-        const task = tasks.find(t => t.id === taskId);
-        if (task) {
-          // Calculate end time based on original duration
-          const [startHour, startMinute] = task.startTime.split(':').map(Number);
-          const [endHour, endMinute] = task.endTime.split(':').map(Number);
-          const originalDurationMinutes = (endHour * 60 + endMinute) - (startHour * 60 + startMinute);
-          
-          const [newStartHour, newStartMinute] = timeSlot.split(':').map(Number);
-          const newEndTotalMinutes = (newStartHour * 60 + newStartMinute) + originalDurationMinutes;
-          const newEndHour = Math.floor(newEndTotalMinutes / 60);
-          const newEndMinute = newEndTotalMinutes % 60;
-          
-          const newEndTime = `${newEndHour.toString().padStart(2, '0')}:${newEndMinute.toString().padStart(2, '0')}`;
-          
-          // Update both assignment and time
-          await updateTask({
-            taskId,
-            updates: {
-              startTime: timeSlot,
-              endTime: newEndTime
-            }
-          });
-        }
-      }
-      
-      await assignTask({ taskId, cleanerId, cleaners });
-      toast({
-        title: "Tarea asignada",
-        description: timeSlot 
-          ? `La tarea se ha asignado correctamente para las ${timeSlot}.`
-          : "La tarea se ha asignado correctamente.",
-      });
-    } catch (error) {
-      console.error('Error assigning task:', error);
-      toast({
-        title: "Error",
-        description: "No se pudo asignar la tarea.",
-        variant: "destructive",
-      });
-    }
-  };
-
-  // Initialize drag and drop
-  const {
-    dragState,
-    handleDragStart,
-    handleDragEnd,
-    handleDragOver,
-    handleDrop
-  } = useDragAndDrop(handleTaskAssign);
-
-  // Handle new task creation
-  const handleNewTask = () => {
-    setIsCreateModalOpen(true);
-  };
-
-  // Handle task creation
-  const handleCreateTask = async (taskData: Omit<Task, 'id'>) => {
-    try {
-      await createTask(taskData);
-      toast({
-        title: "Tarea creada",
-        description: "La nueva tarea se ha creado correctamente.",
-      });
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "No se pudo crear la tarea.",
-        variant: "destructive",
-      });
-    }
-  };
-
-  // Handle task details
-  const handleTaskClick = (task: Task) => {
-    setSelectedTask(task);
-    setIsTaskModalOpen(true);
-  };
-
-  // Handle task update
-  const handleUpdateTask = async (taskId: string, updates: Partial<Task>) => {
-    try {
-      await updateTask({ taskId, updates });
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "No se pudo actualizar la tarea.",
-        variant: "destructive",
-      });
-    }
-  };
-
-  // Handle task deletion
-  const handleDeleteTask = async (taskId: string) => {
-    try {
-      await deleteTask(taskId);
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "No se pudo eliminar la tarea.",
-        variant: "destructive",
-      });
-    }
-  };
-
-  // Get task position for timeline
-  const getTaskPosition = (startTime: string, endTime: string) => {
-    const timeToMinutes = (time: string) => {
-      const [hours, minutes] = time.split(':').map(Number);
-      return hours * 60 + minutes;
-    };
-
-    const startMinutes = timeToMinutes(startTime);
-    const endMinutes = timeToMinutes(endTime);
-    
-    // Each time slot is 75px wide and represents 30 minutes
-    const slotWidth = 75; // pixels
-    const minutesPerSlot = 30; // minutes
-    const dayStartMinutes = 6 * 60; // 6:00 AM
-    
-    // Calculate position based on slots from day start
-    const slotsFromStart = (startMinutes - dayStartMinutes) / minutesPerSlot;
-    const durationInSlots = (endMinutes - startMinutes) / minutesPerSlot;
-    
-    const leftPixels = slotsFromStart * slotWidth;
-    const widthPixels = durationInSlots * slotWidth;
-    
-    return { 
-      left: `${leftPixels}px`, 
-      width: `${Math.max(widthPixels, 120)}px` // Minimum width of 120px
-    };
-  };
-
-  // Check if a time slot is occupied
-  const isTimeSlotOccupied = (cleanerId: string, hour: number, minute: number) => {
-    const timeString = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
-    return assignedTasks.some(task => 
-      task.cleaner === cleaners.find(c => c.id === cleanerId)?.name &&
-      task.startTime <= timeString && task.endTime > timeString
-    );
-  };
-
   // Get tasks assigned to cleaners
   const assignedTasks = tasks.filter(task => task.cleaner);
   const unassignedTasks = tasks.filter(task => !task.cleaner);
+
+  // Wrapper for time slot occupation check
+  const checkTimeSlotOccupied = (cleanerId: string, hour: number, minute: number) => {
+    return isTimeSlotOccupied(cleanerId, hour, minute, assignedTasks, cleaners);
+  };
 
   if (isLoading) {
     return (
@@ -239,45 +84,23 @@ const CleaningCalendar = () => {
         />
 
         {/* Main Calendar with Enhanced Design */}
-        <Card className="border-0 shadow-xl overflow-hidden bg-card animate-fade-in">
-          <CardContent className="p-0">
-            <div className="flex h-[600px] overflow-hidden">
-              {/* Workers Column */}
-              <WorkersColumn 
-                cleaners={cleaners} 
-                onDragOver={handleDragOver}
-                onDrop={handleDrop}
-              />
-
-              {/* Timeline Area */}
-              <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-                {/* Time Header - Scrollable */}
-                <TimelineHeader
-                  ref={headerScrollRef}
-                  timeSlots={timeSlots}
-                  onScroll={handleHeaderScroll}
-                />
-
-                {/* Timeline Body - Scrollable */}
-                <CalendarGrid
-                  ref={bodyScrollRef}
-                  cleaners={cleaners}
-                  timeSlots={timeSlots}
-                  assignedTasks={assignedTasks}
-                  dragState={dragState}
-                  onScroll={handleBodyScroll}
-                  onDragOver={handleDragOver}
-                  onDrop={handleDrop}
-                  onDragStart={handleDragStart}
-                  onDragEnd={handleDragEnd}
-                  onTaskClick={handleTaskClick}
-                  getTaskPosition={getTaskPosition}
-                  isTimeSlotOccupied={isTimeSlotOccupied}
-                />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+        <CalendarLayout
+          cleaners={cleaners}
+          timeSlots={timeSlots}
+          assignedTasks={assignedTasks}
+          dragState={dragState}
+          headerScrollRef={headerScrollRef}
+          bodyScrollRef={bodyScrollRef}
+          onHeaderScroll={handleHeaderScroll}
+          onBodyScroll={handleBodyScroll}
+          onDragOver={handleDragOver}
+          onDrop={handleDrop}
+          onDragStart={handleDragStart}
+          onDragEnd={handleDragEnd}
+          onTaskClick={handleTaskClick}
+          getTaskPosition={getTaskPosition}
+          isTimeSlotOccupied={checkTimeSlotOccupied}
+        />
 
         {/* Enhanced Unassigned Tasks */}
         <UnassignedTasks
@@ -300,17 +123,14 @@ const CleaningCalendar = () => {
         <StatusLegend />
 
         {/* Modals */}
-        <CreateTaskModal
-          open={isCreateModalOpen}
-          onOpenChange={setIsCreateModalOpen}
-          onCreateTask={handleCreateTask}
+        <CalendarModals
+          isCreateModalOpen={isCreateModalOpen}
+          setIsCreateModalOpen={setIsCreateModalOpen}
+          selectedTask={selectedTask}
+          isTaskModalOpen={isTaskModalOpen}
+          setIsTaskModalOpen={setIsTaskModalOpen}
           currentDate={currentDate}
-        />
-
-        <TaskDetailsModal
-          task={selectedTask}
-          open={isTaskModalOpen}
-          onOpenChange={setIsTaskModalOpen}
+          onCreateTask={handleCreateTask}
           onUpdateTask={handleUpdateTask}
           onDeleteTask={handleDeleteTask}
         />
