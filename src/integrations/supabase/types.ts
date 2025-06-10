@@ -9,7 +9,63 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      clients: {
+        Row: {
+          cif_nif: string
+          ciudad: string
+          codigo_postal: string
+          created_at: string
+          direccion_facturacion: string
+          email: string
+          factura: boolean
+          fecha_actualizacion: string
+          fecha_creacion: string
+          id: string
+          metodo_pago: string
+          nombre: string
+          supervisor: string
+          telefono: string
+          tipo_servicio: string
+          updated_at: string
+        }
+        Insert: {
+          cif_nif: string
+          ciudad: string
+          codigo_postal: string
+          created_at?: string
+          direccion_facturacion: string
+          email: string
+          factura?: boolean
+          fecha_actualizacion?: string
+          fecha_creacion?: string
+          id?: string
+          metodo_pago: string
+          nombre: string
+          supervisor: string
+          telefono: string
+          tipo_servicio: string
+          updated_at?: string
+        }
+        Update: {
+          cif_nif?: string
+          ciudad?: string
+          codigo_postal?: string
+          created_at?: string
+          direccion_facturacion?: string
+          email?: string
+          factura?: boolean
+          fecha_actualizacion?: string
+          fecha_creacion?: string
+          id?: string
+          metodo_pago?: string
+          nombre?: string
+          supervisor?: string
+          telefono?: string
+          tipo_servicio?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
