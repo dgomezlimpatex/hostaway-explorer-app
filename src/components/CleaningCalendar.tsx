@@ -1,4 +1,3 @@
-
 import { Card, CardContent } from "@/components/ui/card";
 import { useState, useMemo, useRef } from "react";
 import { useCalendarData } from "@/hooks/useCalendarData";
@@ -66,14 +65,43 @@ const CleaningCalendar = () => {
     }
   };
 
-  // Handle task assignment
-  const handleTaskAssign = async (taskId: string, cleanerId: string, cleaners: any[]) => {
-    console.log('CleaningCalendar - handleTaskAssign called with:', { taskId, cleanerId, cleaners });
+  // Handle task assignment with optional time slot
+  const handleTaskAssign = async (taskId: string, cleanerId: string, cleaners: any[], timeSlot?: string) => {
+    console.log('CleaningCalendar - handleTaskAssign called with:', { taskId, cleanerId, cleaners, timeSlot });
     try {
+      // If timeSlot is provided, also update the task's start time
+      if (timeSlot) {
+        const task = tasks.find(t => t.id === taskId);
+        if (task) {
+          // Calculate end time based on original duration
+          const [startHour, startMinute] = task.startTime.split(':').map(Number);
+          const [endHour, endMinute] = task.endTime.split(':').map(Number);
+          const originalDurationMinutes = (endHour * 60 + endMinute) - (startHour * 60 + startMinute);
+          
+          const [newStartHour, newStartMinute] = timeSlot.split(':').map(Number);
+          const newEndTotalMinutes = (newStartHour * 60 + newStartMinute) + originalDurationMinutes;
+          const newEndHour = Math.floor(newEndTotalMinutes / 60);
+          const newEndMinute = newEndTotalMinutes % 60;
+          
+          const newEndTime = `${newEndHour.toString().padStart(2, '0')}:${newEndMinute.toString().padStart(2, '0')}`;
+          
+          // Update both assignment and time
+          await updateTask({
+            taskId,
+            updates: {
+              startTime: timeSlot,
+              endTime: newEndTime
+            }
+          });
+        }
+      }
+      
       await assignTask({ taskId, cleanerId, cleaners });
       toast({
         title: "Tarea asignada",
-        description: "La tarea se ha asignado correctamente.",
+        description: timeSlot 
+          ? `La tarea se ha asignado correctamente para las ${timeSlot}.`
+          : "La tarea se ha asignado correctamente.",
       });
     } catch (error) {
       console.error('Error assigning task:', error);

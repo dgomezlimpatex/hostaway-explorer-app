@@ -1,9 +1,12 @@
+
 import React from "react";
 import { Task } from "@/types/calendar";
 import { StatusIndicator } from "@/components/ui/status-indicator";
 import { Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { useClientData } from "@/hooks/useClientData";
+
 interface EnhancedTaskCardProps {
   task: Task;
   onClick?: () => void;
@@ -12,6 +15,7 @@ interface EnhancedTaskCardProps {
   onDragEnd?: (e: React.DragEvent) => void;
   style?: React.CSSProperties;
 }
+
 export const EnhancedTaskCard = React.memo(({
   task,
   onClick,
@@ -20,6 +24,8 @@ export const EnhancedTaskCard = React.memo(({
   onDragEnd,
   style
 }: EnhancedTaskCardProps) => {
+  const { getClientName } = useClientData();
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'completed':
@@ -32,17 +38,34 @@ export const EnhancedTaskCard = React.memo(({
         return 'bg-amber-100 border-amber-300 dark:bg-amber-900/20 dark:border-amber-700';
     }
   };
+
   const handleDragStart = (e: React.DragEvent) => {
     if (onDragStart) {
       onDragStart(e, task);
     }
   };
-  return <TooltipProvider>
+
+  const clientName = getClientName(task.clienteId || '');
+
+  return (
+    <TooltipProvider>
       <Tooltip>
         <TooltipTrigger asChild>
-          <div draggable onClick={onClick} onDragStart={handleDragStart} onDragEnd={onDragEnd} style={style} className={cn("relative p-2 rounded-lg border-l-4 cursor-pointer transition-all duration-300", "hover:shadow-lg hover:scale-[1.02] hover:-translate-y-0.5", "focus:outline-none focus:ring-2 focus:ring-primary/50", "transform-gpu overflow-hidden",
-        // Added overflow-hidden
-        getStatusColor(task.status), isDragging && "opacity-50 rotate-2 scale-95 shadow-2xl z-50")}>
+          <div
+            draggable
+            onClick={onClick}
+            onDragStart={handleDragStart}
+            onDragEnd={onDragEnd}
+            style={style}
+            className={cn(
+              "relative p-2 rounded-lg border-l-4 cursor-pointer transition-all duration-300",
+              "hover:shadow-lg hover:scale-[1.02] hover:-translate-y-0.5",
+              "focus:outline-none focus:ring-2 focus:ring-primary/50",
+              "transform-gpu overflow-hidden",
+              getStatusColor(task.status),
+              isDragging && "opacity-50 rotate-2 scale-95 shadow-2xl z-50"
+            )}
+          >
             {/* Header con estado */}
             <div className="flex items-center justify-between mb-2">
               <StatusIndicator status={task.status as any} size="sm" showTooltip={false} />
@@ -60,15 +83,19 @@ export const EnhancedTaskCard = React.memo(({
               </h3>
               
               {/* Nombre del cliente */}
-              {task.clienteId && <p className="text-xs truncate text-left text-zinc-900 mx-[28px]">
-                  Cliente: {task.clienteId}
-                </p>}
+              {clientName && (
+                <p className="text-xs truncate text-left text-zinc-900 mx-[28px]">
+                  Cliente: {clientName}
+                </p>
+              )}
             </div>
 
             {/* Indicador de arrastre */}
             <div className="absolute top-1 right-1 opacity-30 group-hover:opacity-100 transition-opacity duration-200">
               <div className="grid grid-cols-2 gap-0.5">
-                {[...Array(6)].map((_, i) => <div key={i} className="w-1 h-1 rounded-full bg-gray-400 dark:bg-gray-500" />)}
+                {[...Array(6)].map((_, i) => (
+                  <div key={i} className="w-1 h-1 rounded-full bg-gray-400 dark:bg-gray-500" />
+                ))}
               </div>
             </div>
           </div>
@@ -79,15 +106,21 @@ export const EnhancedTaskCard = React.memo(({
             <p className="text-xs text-muted-foreground">
               {task.startTime} - {task.endTime}
             </p>
-            {task.clienteId && <p className="text-xs">
-                <span className="font-medium">Cliente:</span> {task.clienteId}
-              </p>}
-            {task.address && <p className="text-xs">
+            {clientName && (
+              <p className="text-xs">
+                <span className="font-medium">Cliente:</span> {clientName}
+              </p>
+            )}
+            {task.address && (
+              <p className="text-xs">
                 <span className="font-medium">Dirección:</span> {task.address}
-              </p>}
+              </p>
+            )}
           </div>
         </TooltipContent>
       </Tooltip>
-    </TooltipProvider>;
+    </TooltipProvider>
+  );
 });
+
 EnhancedTaskCard.displayName = "EnhancedTaskCard";

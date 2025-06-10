@@ -8,7 +8,7 @@ interface TimeSlotProps {
   isOccupied: boolean;
   draggedTaskId?: string | null;
   onDragOver: (e: React.DragEvent) => void;
-  onDrop: (e: React.DragEvent, cleanerId: string) => void;
+  onDrop: (e: React.DragEvent, cleanerId: string, timeSlot?: string) => void;
   children?: React.ReactNode;
 }
 
@@ -42,7 +42,8 @@ export const TimeSlot = ({
     e.preventDefault();
     e.stopPropagation();
     (e.currentTarget as HTMLElement).classList.remove('drag-over');
-    onDrop(e, cleanerId);
+    // Pass the time slot information when dropping
+    onDrop(e, cleanerId, timeString);
   };
 
   // Allow drop even if occupied by the same task being dragged
@@ -67,6 +68,11 @@ export const TimeSlot = ({
       {allowDrop && (
         <div className="absolute inset-0 border-2 border-dashed border-blue-400 bg-blue-50 opacity-0 transition-opacity duration-200 pointer-events-none drop-indicator" />
       )}
+      
+      {/* Time slot indicator when hovering during drag */}
+      <div className="absolute bottom-0 left-0 right-0 text-xs text-center text-gray-500 opacity-0 transition-opacity duration-200 pointer-events-none time-indicator bg-white/80 py-1">
+        {timeString}
+      </div>
     </div>
   );
 };

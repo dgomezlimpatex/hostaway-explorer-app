@@ -51,6 +51,7 @@ export const useTasks = (currentDate: Date, currentView: ViewType) => {
 
   const updateTaskMutation = useMutation({
     mutationFn: async ({ taskId, updates }: { taskId: string; updates: Partial<Task> }) => {
+      console.log('updateTaskMutation - updating task:', { taskId, updates });
       return taskStorageService.updateTask(taskId, updates);
     },
     onSuccess: () => {

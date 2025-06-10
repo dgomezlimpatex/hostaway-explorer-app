@@ -8,7 +8,7 @@ interface DragState {
   dragOffset: { x: number; y: number };
 }
 
-export const useDragAndDrop = (onTaskAssign: (taskId: string, cleanerId: string, cleaners: any[]) => void) => {
+export const useDragAndDrop = (onTaskAssign: (taskId: string, cleanerId: string, cleaners: any[], timeSlot?: string) => void) => {
   const [dragState, setDragState] = useState<DragState>({
     draggedTask: null,
     isDragging: false,
@@ -54,11 +54,11 @@ export const useDragAndDrop = (onTaskAssign: (taskId: string, cleanerId: string,
     e.dataTransfer.dropEffect = 'move';
   }, []);
 
-  const handleDrop = useCallback((e: React.DragEvent, cleanerId: string, cleaners: any[]) => {
+  const handleDrop = useCallback((e: React.DragEvent, cleanerId: string, cleaners: any[], timeSlot?: string) => {
     e.preventDefault();
     e.stopPropagation();
     
-    console.log('🎯 useDragAndDrop - handleDrop called with cleanerId:', cleanerId);
+    console.log('🎯 useDragAndDrop - handleDrop called with:', { cleanerId, timeSlot });
     
     // Try to get task ID from different data formats
     let taskId = e.dataTransfer.getData('text/plain');
@@ -78,8 +78,8 @@ export const useDragAndDrop = (onTaskAssign: (taskId: string, cleanerId: string,
     console.log('📋 useDragAndDrop - taskId from drag data:', taskId);
     
     if (taskId) {
-      console.log('🔄 useDragAndDrop - calling onTaskAssign with:', { taskId, cleanerId, cleanersCount: cleaners.length });
-      onTaskAssign(taskId, cleanerId, cleaners);
+      console.log('🔄 useDragAndDrop - calling onTaskAssign with:', { taskId, cleanerId, cleanersCount: cleaners.length, timeSlot });
+      onTaskAssign(taskId, cleanerId, cleaners, timeSlot);
     } else {
       console.error('❌ useDragAndDrop - No task ID found in drag data');
     }
