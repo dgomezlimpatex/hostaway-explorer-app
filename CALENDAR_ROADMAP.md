@@ -28,6 +28,19 @@
   - ✅ Líneas divisorias horizontales fijas entre trabajadores
   - ✅ Separación visual clara de filas de trabajadores
   - ✅ Sincronización de scroll mejorada
+- ✅ **REFACTORIZACIÓN DEL CALENDARIO PRINCIPAL** - **NUEVO ✨**
+  - ✅ Separación de lógica en hooks especializados
+  - ✅ Componentes modulares para layout y modales
+  - ✅ Utilidades de posicionamiento extraídas
+  - ✅ Código más mantenible y legible
+- ✅ **MEJORAS UX EN DESASIGNACIÓN DE TAREAS** - **NUEVO ✨**
+  - ✅ Botón de desasignar en modal de detalles de tarea
+  - ✅ Integración fluida con lista de tareas sin asignar
+  - ✅ Feedback visual mejorado con toasts
+- ✅ **OPTIMIZACIÓN DE TAREAS SIN ASIGNAR** - **NUEVO ✨**
+  - ✅ Posicionamiento mejorado encima del calendario
+  - ✅ Visibilidad condicional (solo cuando hay tareas sin asignar)
+  - ✅ UX más limpia y menos intrusiva
 
 ## 🎯 Objetivos de Optimización
 
@@ -38,11 +51,12 @@
 - ✅ **1.4** Persistencia de datos implementada con localStorage - **COMPLETADO**
 - ✅ **1.5** Refactorización completa de modales en componentes pequeños - **COMPLETADO**
 - ✅ **1.6** Mejoras visuales del calendario implementadas - **COMPLETADO**
-- [ ] **1.7** Optimizar renderizado con React.memo y useMemo
-- [ ] **1.8** Implementar gestión de estado con Context API
-- [ ] **1.9** Añadir TypeScript tipos estrictos
+- ✅ **1.7** Refactorización del calendario principal en módulos - **COMPLETADO** ✨
+- [ ] **1.8** Optimizar renderizado con React.memo y useMemo
+- [ ] **1.9** Implementar gestión de estado con Context API
+- [ ] **1.10** Añadir TypeScript tipos estrictos
 
-### Fase 2: Diseño Moderno y UI/UX ✅ PARCIALMENTE COMPLETADA
+### Fase 2: Diseño Moderno y UI/UX ✅ COMPLETADA
 - ✅ **2.1** Rediseñar header con mejor navegación
 - ✅ **2.2** Mejorar diseño de tarjetas de tareas
 - ✅ **2.3** Unificar estilo de tarjetas en página principal - **COMPLETADO**
@@ -51,11 +65,12 @@
 - ✅ **2.6** Filtros plegables con diseño mejorado - **COMPLETADO**
 - ✅ **2.7** Widget de calendario refinado y reposicionado - **COMPLETADO**
 - ✅ **2.8** Mejoras visuales del calendario - **COMPLETADO**
-- [ ] **2.9** Implementar animaciones suaves
-- [ ] **2.10** Añadir tema dark/light
-- [ ] **2.11** Responsive design mejorado
-- [ ] **2.12** Indicadores visuales de estados
-- [ ] **2.13** Tooltips informativos
+- ✅ **2.9** UX optimizada para tareas sin asignar - **COMPLETADO** ✨
+- [ ] **2.10** Implementar animaciones suaves
+- [ ] **2.11** Añadir tema dark/light
+- [ ] **2.12** Responsive design mejorado
+- [ ] **2.13** Indicadores visuales de estados
+- [ ] **2.14** Tooltips informativos
 
 ### Fase 3: Funcionalidades Avanzadas ✅ PARCIALMENTE COMPLETADA
 - [ ] **3.1** Vista semanal y mensual mejorada
@@ -66,8 +81,9 @@
 - ✅ **3.6** Página dedicada de gestión de tareas - **COMPLETADO**
 - ✅ **3.7** Sistema de historial de tareas - **COMPLETADO**
 - ✅ **3.8** Creación múltiple de tareas (batch create) - **COMPLETADO**
-- [ ] **3.9** Notificaciones push
-- [ ] **3.10** Exportar calendario (PDF, Excel)
+- ✅ **3.9** Sistema de desasignación mejorado - **COMPLETADO** ✨
+- [ ] **3.10** Notificaciones push
+- [ ] **3.11** Exportar calendario (PDF, Excel)
 
 ### Fase 4: Gestión de Datos 📊 ✅ COMPLETADA
 - ✅ **4.1** CRUD completo de tareas funcional - **COMPLETADO**
@@ -89,7 +105,7 @@
 - [ ] **5.4** Documentación técnica
 - [ ] **5.5** Deploy optimizado
 
-## 🏢 NUEVAS FASES - SISTEMA COMPLETO DE GESTIÓN
+## 🏢 SISTEMA COMPLETO DE GESTIÓN
 
 ### Fase 6: Gestión de Clientes 👥 ✅ COMPLETADA
 - ✅ **6.1** Modelo y CRUD de Clientes - **COMPLETADO**
@@ -175,15 +191,19 @@
   - ✅ Componentes pequeños y enfocados
   - ✅ Hooks reutilizables
   - ✅ Separación clara de responsabilidades
-- [ ] **9.10** Sistema de plantillas de tareas
-- [ ] **9.11** Checklist dinámico por tipo de servicio
-- [ ] **9.12** Fotos antes/después de limpieza
-- [ ] **9.13** QR codes para check-in/check-out
-- [ ] **9.14** Geolocalización y control de presencia
-- [ ] **9.15** Estimación automática de duración
-- [ ] **9.16** Asignación inteligente de trabajadores
+- ✅ **9.10** UX mejorada para desasignación de tareas - **COMPLETADO** ✨
+  - ✅ Botón de desasignar integrado en modal de detalles
+  - ✅ Flujo intuitivo de desasignación
+  - ✅ Feedback visual con toasts
+- [ ] **9.11** Sistema de plantillas de tareas
+- [ ] **9.12** Checklist dinámico por tipo de servicio
+- [ ] **9.13** Fotos antes/después de limpieza
+- [ ] **9.14** QR codes para check-in/check-out
+- [ ] **9.15** Geolocalización y control de presencia
+- [ ] **9.16** Estimación automática de duración
+- [ ] **9.17** Asignación inteligente de trabajadores
 
-### Fase 10: Gestión Avanzada de Trabajadores 👷‍♀️ 🚧 EN DESARROLLO
+### Fase 10: Gestión Avanzada de Trabajadores 👷‍♀️ 🚧 SIGUIENTE PRIORIDAD
 - [ ] **10.1** CRUD completo de trabajadores - **PRÓXIMO**
   - [ ] Información personal (nombre, teléfono, email)
   - [ ] Datos laborales (fecha de alta, horario, salario)
@@ -212,89 +232,103 @@
   - [ ] Confirmación de tareas
   - [ ] Reportes de incidencias
 
-### Fase 11: Sistema de Roles y Permisos 🔐
-- [ ] **11.1** Gestión de roles (Admin, Supervisor, Empleado)
-- [ ] **11.2** Sistema de permisos granular
-- [ ] **11.3** Dashboard personalizado por rol
-- [ ] **11.4** Notificaciones específicas por rol
-- [ ] **11.5** Supervisores asignados a clientes/propiedades
+## 🆕 NUEVAS PROPUESTAS DE FUNCIONALIDADES
 
-### Fase 12: Historial y Analytics 📊 ✅ PARCIALMENTE COMPLETADA
-- ✅ **12.1** Modal de historial de tareas implementado - **COMPLETADO**
-- ✅ **12.2** Estadísticas básicas en página de tareas - **COMPLETADO**
-- [ ] **12.3** Modelo de HistorialTarea completo
-- [ ] **12.4** Dashboard de métricas operativas
-- [ ] **12.5** Análisis de rendimiento por trabajador
-- [ ] **12.7** Predicción de demanda
-- [ ] **12.8** Optimización de rutas y horarios
+### Fase 11: Calendario Avanzado 📅 **NUEVA PROPUESTA**
+- [ ] **11.1** Vista semanal completa y mejorada
+  - [ ] Visualización de 7 días completos
+  - [ ] Navegación fluida entre semanas
+  - [ ] Resumen semanal de tareas
+- [ ] **11.2** Vista mensual con mini-calendario
+  - [ ] Vista de todo el mes con indicadores
+  - [ ] Zoom in/out para detalles
+  - [ ] Navegación rápida entre meses
+- [ ] **11.3** Timeline horizontal mejorado
+  - [ ] Zoom temporal (horas, días, semanas)
+  - [ ] Marcadores de tiempo actuales
+  - [ ] Indicadores de horas de trabajo
+- [ ] **11.4** Sistema de notificaciones visuales
+  - [ ] Alertas de tareas próximas
+  - [ ] Conflictos de horarios
+  - [ ] Recordatorios de check-in/check-out
+- [ ] **11.5** Integración con calendario externo
+  - [ ] Sincronización con Google Calendar
+  - [ ] Exportación ICS
+  - [ ] Importación de eventos externos
 
-### Fase 13: Integraciones Externas 🔗
-- [ ] **13.1** Integración con Hostaway
-- [ ] **13.2** Integración con Google Calendar
-- [ ] **13.3** Integración con WhatsApp Business
+### Fase 12: Analytics y Dashboard 📊 **NUEVA PROPUESTA**
+- [ ] **12.1** Dashboard ejecutivo
+  - [ ] KPIs principales del negocio
+  - [ ] Gráficos de tendencias
+  - [ ] Comparativas mensuales
+- [ ] **12.2** Analytics de trabajadores
+  - [ ] Ranking de productividad
+  - [ ] Análisis de tiempos
+  - [ ] Patrones de trabajo
+- [ ] **12.3** Analytics de clientes
+  - [ ] Frecuencia de servicios
+  - [ ] Satisfacción y calificaciones
+  - [ ] Análisis de rentabilidad
+- [ ] **12.4** Reportes automáticos
+  - [ ] Reportes semanales automáticos
+  - [ ] Alertas de anomalías
+  - [ ] Predicciones de demanda
 
-### Fase 14: Mobile App 📱
-- [ ] **14.1** App móvil para trabajadores
-- [ ] **14.2** Check-in/Check-out con GPS
-- [ ] **14.3** Cámara integrada para fotos
-- [ ] **14.4** Notificaciones push
-- [ ] **14.5** Modo offline para áreas sin conexión
-- [ ] **14.6** Escáner QR para propiedades
+### Fase 13: Optimización de Rendimiento 🚀 **NUEVA PROPUESTA**
+- [ ] **13.1** Optimización de renderizado
+  - [ ] Virtualización de listas largas
+  - [ ] Lazy loading de componentes
+  - [ ] Memoización inteligente
+- [ ] **13.2** Cache avanzado
+  - [ ] Cache de consultas con React Query
+  - [ ] Invalidación inteligente
+  - [ ] Persistencia optimizada
+- [ ] **13.3** Optimización de bundle
+  - [ ] Code splitting por rutas
+  - [ ] Tree shaking avanzado
+  - [ ] Compresión de assets
 
-### Fase 15: Sistema de Comunicación 💬
-- [ ] **15.2** Notificaciones en tiempo real
-- [ ] **15.3** Sistema de incidencias
-- [ ] **15.4** Comentarios y notas en tareas
+### Fase 14: Mobile First 📱 **NUEVA PROPUESTA**
+- [ ] **14.1** Responsive design completo
+  - [ ] Optimización para tablets
+  - [ ] Experiencia móvil nativa
+  - [ ] Gestos táctiles mejorados
+- [ ] **14.2** PWA (Progressive Web App)
+  - [ ] Instalación en dispositivos
+  - [ ] Trabajo offline
+  - [ ] Notificaciones push
+- [ ] **14.3** App móvil nativa
+  - [ ] Versión React Native
+  - [ ] GPS y geolocalización
+  - [ ] Cámara integrada
 
-### Fase 16: Automatización Avanzada 🤖
-- [ ] **16.1** IA para optimización de rutas
-- [ ] **16.2** Predicción de tiempos de limpieza
-- [ ] **16.3** Asignación automática inteligente
-- [ ] **16.4** Detección de patrones de demanda
-- [ ] **16.5** Automatización de facturación
-- [ ] **16.6** Recordatorios inteligentes
+## 🎯 PRIORIDADES RECOMENDADAS - PRÓXIMOS PASOS
 
-## 📋 Tareas Completadas Recientemente
-- ✅ **MEJORAS VISUALES DEL CALENDARIO** - Líneas divisorias horizontales fijas entre trabajadores para mejor separación visual
-- ✅ **SINCRONIZACIÓN DE SCROLL MEJORADA** - Las líneas divisorias se mantienen fijas durante el scroll horizontal
-- ✅ **SEPARACIÓN CLARA DE FILAS** - Cada trabajador tiene su área claramente delimitada
+### 🥇 ALTA PRIORIDAD (Sprint Actual)
+1. **Vista Semanal Completa** (11.1)
+   - Implementar vista de 7 días con navegación fluida
+   - Mejorar la visualización para planificación semanal
+   - Agregar resumen de estadísticas semanales
 
-## 🎯 PRIORIDADES INMEDIATAS - ENFOQUE TRABAJADORES
+2. **Optimización de Rendimiento Básica** (13.1)
+   - Implementar React.memo en componentes principales
+   - Optimizar re-renderizados con useMemo y useCallback
+   - Mejorar performance del drag & drop
 
-### 🥇 ALTA PRIORIDAD (Actual sprint - GESTIÓN DE TRABAJADORES)
-1. **CRUD Completo de Trabajadores** (10.1)
-   - Crear página dedicada para gestión de trabajadores
-   - Formularios de creación y edición
-   - Lista visual con tarjetas de trabajadores
-   - Información completa: personal, laboral, especialidades
-
-2. **Sistema de Horarios y Disponibilidad** (10.2)
-   - Configuración de horarios de trabajo
-   - Gestión de vacaciones y días libres
-   - Integración con el calendario principal
-   - Validación de conflictos de horarios
-
-3. **Métricas Básicas de Trabajadores** (10.3)
-   - Dashboard de rendimiento individual
-   - Estadísticas de tareas completadas
-   - Tiempo promedio por tarea
-   - Integración con reportes existentes
+3. **Dashboard Ejecutivo Básico** (12.1)
+   - Crear página de dashboard con KPIs principales
+   - Gráficos básicos de productividad
+   - Métricas de tiempo real
 
 ### 🥈 MEDIA PRIORIDAD
-4. **Asignación Inteligente** (10.4)
-5. **Vista Semanal Completa** (3.1)
-6. **Vista Mensual Avanzada** (3.1)
+4. **Sistema de Notificaciones** (11.4)
+5. **CRUD de Trabajadores** (10.1)
+6. **Vista Mensual** (11.2)
 
 ### 🥉 BAJA PRIORIDAD (Futuro)
-7. **Sistema de Roles y Permisos** (Fase 11)
-8. **Mobile App** (Fase 14)
-
-## 🚀 Próximos Pasos Inmediatos - WORKERS FOCUS
-1. **Crear página de gestión de trabajadores** - CRUD completo con información detallada
-2. **Implementar sistema de horarios** - Disponibilidad y conflictos
-3. **Añadir métricas de trabajadores** - Dashboard de rendimiento
-4. **Mejorar asignación de tareas** - Algoritmo inteligente basado en disponibilidad
-5. **Integrar con calendario existente** - Visualización de horarios y disponibilidad
+7. **PWA Implementation** (14.2)
+8. **Analytics Avanzados** (12.2-12.4)
+9. **Mobile App** (14.3)
 
 ## 🎉 Estado Actual del Proyecto
 El sistema cuenta con **funcionalidad completamente operativa y profesional**:
@@ -309,15 +343,18 @@ El sistema cuenta con **funcionalidad completamente operativa y profesional**:
 - ✅ **Interfaz moderna y responsive** 
 - ✅ **Navegación fluida** entre todas las páginas
 - ✅ **Calendario con mejoras visuales** y separación clara de trabajadores
+- ✅ **Sistema de desasignación optimizado** y UX mejorada
+- ✅ **Refactorización completa del calendario** en módulos especializados
 
-**Próximo objetivo principal:** Implementar un sistema completo de gestión de trabajadores con CRUD, horarios, disponibilidad y métricas de rendimiento.
+**Próximo objetivo principal:** Implementar vista semanal completa y optimizaciones de rendimiento para mejorar la experiencia de usuario y planificación de tareas.
 
-## 🆕 ÚLTIMAS MEJORAS IMPLEMENTADAS
+## 🆕 ÚLTIMAS MEJORAS IMPLEMENTADAS ✨
 
-### 📅 Mejoras Visuales del Calendario ✅ COMPLETADO
-- **Líneas divisorias horizontales fijas** entre filas de trabajadores
-- **Separación visual clara** de cada trabajador en el calendario
-- **Sincronización mejorada** que mantiene las líneas fijas durante scroll horizontal
-- **UX mejorada** con delimitación clara de áreas de trabajo
+### 📅 Refactorización y UX del Calendario ✅ COMPLETADO
+- **Refactorización modular** del componente principal CleaningCalendar
+- **Separación de responsabilidades** en hooks y componentes especializados
+- **Mejoras UX para desasignación** con botón integrado en modal de detalles
+- **Optimización de tareas sin asignar** con posicionamiento mejorado y visibilidad condicional
+- **Código más mantenible** y fácil de modificar
 
-**Meta inmediata:** Enfocar esfuerzos en crear un sistema completo de gestión de trabajadores que complemente el calendario existente, incluyendo CRUD, horarios, disponibilidad y métricas de rendimiento.
+**Meta inmediata:** Implementar vista semanal completa y optimizaciones de rendimiento para potenciar aún más la experiencia de usuario.
