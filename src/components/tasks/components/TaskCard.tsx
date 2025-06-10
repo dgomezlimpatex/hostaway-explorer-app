@@ -1,80 +1,119 @@
-import { Badge } from "@/components/ui/badge";
+
+import React from 'react';
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { Clock, MapPin, User, Calendar, Edit, Trash2, UserPlus, History, Euro, Timer, Building, Users } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Clock, MapPin, User, Euro, Calendar, Edit2, Trash2, UserPlus, History } from "lucide-react";
 import { Task } from "@/types/calendar";
-import { useClients } from "@/hooks/useClients";
-import { useProperties } from "@/hooks/useProperties";
 
 interface TaskCardProps {
   task: Task;
   onEditTask: (task: Task) => void;
   onDeleteTask: (taskId: string) => void;
-  onQuickStatusChange: (task: Task, newStatus: "completed" | "in-progress" | "pending") => void;
+  onQuickStatusChange: (taskId: string, status: string) => void;
   onAssignCleaner: (task: Task) => void;
   onShowHistory?: (task: Task) => void;
   getStatusColor: (status: string) => string;
   getStatusText: (status: string) => string;
 }
 
-export const TaskCard = ({
-  task,
-  onEditTask,
-  onDeleteTask,
-  onQuickStatusChange,
-  onAssignCleaner,
+export const TaskCard = React.memo(({ 
+  task, 
+  onEditTask, 
+  onDeleteTask, 
+  onQuickStatusChange, 
+  onAssignCleaner, 
   onShowHistory,
   getStatusColor,
-  getStatusText
+  getStatusText 
 }: TaskCardProps) => {
-  const { data: clients = [] } = useClients();
-  const { data: properties = [] } = useProperties();
+  const serviceTypeLabels = React.useMemo(() => ({
+    'limpieza-mantenimiento': 'Limpieza de Mantenimiento',
+    'mantenimiento-cristaleria': 'Mantenimiento de Cristalería',
+    'mantenimiento-airbnb': 'Mantenimiento Airbnb',
+    'limpieza-puesta-punto': 'Limpieza de Puesta a Punto',
+    'limpieza-final-obra': 'Limpieza Final de Obra',
+    'check-in': 'Check In',
+    'desplazamiento': 'Desplazamiento',
+    'limpieza-especial': 'Limpieza Especial',
+    'trabajo-extraordinario': 'Trabajo Extraordinario'
+  }), []);
 
-  // Buscar cliente y propiedad vinculados
-  const linkedClient = task.clienteId ? clients.find(c => c.id === task.clienteId) : null;
-  const linkedProperty = task.propiedadId ? properties.find(p => p.id === task.propiedadId) : null;
+  const handleEditClick = React.useCallback(() => {
+    onEditTask(task);
+  }, [onEditTask, task]);
 
-  const getTypeDisplayName = (type: string) => {
-    const typeMap: { [key: string]: string } = {
-      'limpieza-mantenimiento': 'Limpieza de Mantenimiento',
-      'mantenimiento-cristaleria': 'Mantenimiento de Cristalería',
-      'mantenimiento-airbnb': 'Mantenimiento Airbnb',
-      'limpieza-puesta-punto': 'Limpieza de Puesta a Punto',
-      'limpieza-final-obra': 'Limpieza Final de Obra',
-      'check-in': 'Check In',
-      'desplazamiento': 'Desplazamiento',
-      'limpieza-especial': 'Limpieza Especial',
-      'trabajo-extraordinario': 'Trabajo Extraordinario',
-      // Mantener compatibilidad con tipos antiguos
-      'checkout-checkin': 'Check-out/Check-in',
-      'maintenance': 'Mantenimiento',
-      'deep-cleaning': 'Limpieza Profunda',
-      'cristaleria': 'Cristalería'
-    };
-    return typeMap[type] || type;
-  };
+  const handleDeleteClick = React.useCallback(() => {
+    onDeleteTask(task.id);
+  }, [onDeleteTask, task.id]);
+
+  const handleAssignClick = React.useCallback(() => {
+    onAssignCleaner(task);
+  }, [onAssignCleaner, task]);
+
+  const handleHistoryClick = React.useCallback(() => {
+    onShowHistory?.(task);
+  }, [onShowHistory, task]);
+
+  const handleStatusChange = React.useCallback((status: string) => {
+    onQuickStatusChange(task.id, status);
+  }, [onQuickStatusChange, task.id]);
 
   return (
-    <Card className="hover:shadow-md transition-all duration-200 border border-gray-200">
-      <CardHeader className="pb-2 pt-3 px-4">
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex-1 min-w-0">
-            <h3 className="text-lg font-semibold text-gray-900 mb-1 truncate">{task.property}</h3>
-            <div className="flex items-center gap-1 text-xs text-gray-600">
-              <MapPin className="h-3 w-3 flex-shrink-0" />
+    <Card className="hover:shadow-md transition-shadow duration-200">
+      <CardContent className="p-4">
+        <div className="flex items-start justify-between mb-3">
+          <div className="flex-1">
+            <div className="flex items-center gap-2 mb-1">
+              <h3 className="font-semibold text-lg text-gray-900 truncate">{task.property}</h3>
+              <Badge 
+                variant="secondary"
+                className={`text-xs ${getStatusColor(task.status)}`}
+              >
+                {getStatusText(task.status)}
+              </Badge>
+            </div>
+            <div className="flex items-center gap-1 text-sm text-gray-600 mb-2">
+              <MapPin className="h-3 w-3" />
               <span className="truncate">{task.address}</span>
             </div>
           </div>
-          <div className="flex flex-col items-end gap-1 flex-shrink-0">
-            <Badge className={`${getStatusColor(task.status)} text-white font-medium px-2 py-0.5 text-xs`}>
-              {getStatusText(task.status)}
-            </Badge>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3 text-sm mb-3">
+          <div className="flex items-center gap-1">
+            <Clock className="h-3 w-3 text-gray-400" />
+            <span>{task.startTime} - {task.endTime}</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <Calendar className="h-3 w-3 text-gray-400" />
+            <span>{new Date(task.date).toLocaleDateString()}</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <User className="h-3 w-3 text-gray-400" />
+            <span>{task.cleaner || 'Sin asignar'}</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <Euro className="h-3 w-3 text-gray-400" />
+            <span>{task.coste?.toFixed(2) || 'N/A'}€</span>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-1 mb-3">
+          <Badge variant="outline" className="text-xs">
+            {serviceTypeLabels[task.type as keyof typeof serviceTypeLabels] || task.type}
+          </Badge>
+        </div>
+
+        {/* Quick Actions */}
+        <div className="flex items-center justify-between">
+          <div className="flex gap-1">
             {task.status === 'pending' && (
               <Button
                 size="sm"
                 variant="outline"
-                onClick={() => onQuickStatusChange(task, 'in-progress')}
-                className="text-yellow-600 hover:text-yellow-700 border-yellow-300 hover:bg-yellow-50 h-6 px-2 text-xs"
+                onClick={() => handleStatusChange('in-progress')}
+                className="h-7 px-2 text-xs"
               >
                 Iniciar
               </Button>
@@ -82,148 +121,57 @@ export const TaskCard = ({
             {task.status === 'in-progress' && (
               <Button
                 size="sm"
-                className="bg-green-600 hover:bg-green-700 text-white h-6 px-2 text-xs"
-                onClick={() => onQuickStatusChange(task, 'completed')}
+                variant="outline"
+                onClick={() => handleStatusChange('completed')}
+                className="h-7 px-2 text-xs"
               >
                 Completar
               </Button>
             )}
           </div>
-        </div>
-      </CardHeader>
-      
-      <CardContent className="pt-0 px-4 pb-3">
-        {/* Información vinculada de cliente y propiedad */}
-        {(linkedClient || linkedProperty) && (
-          <div className="mb-2 p-2 bg-blue-50 rounded text-xs space-y-1">
-            {linkedClient && (
-              <div className="flex items-center gap-1">
-                <Users className="h-3 w-3 text-blue-600" />
-                <span className="font-medium text-blue-800">{linkedClient.nombre}</span>
-                <span className="text-blue-600">• {linkedClient.telefono}</span>
-              </div>
+          
+          <div className="flex gap-1">
+            {onShowHistory && (
+              <Button 
+                size="sm" 
+                variant="ghost" 
+                onClick={handleHistoryClick}
+                className="h-7 w-7 p-0"
+              >
+                <History className="h-3 w-3" />
+              </Button>
             )}
-            {linkedProperty && (
-              <div className="flex items-center gap-1">
-                <Building className="h-3 w-3 text-blue-600" />
-                <span className="font-medium text-blue-800">{linkedProperty.codigo}</span>
-                <span className="text-blue-600">• {linkedProperty.nombre}</span>
-              </div>
+            {!task.cleaner && (
+              <Button 
+                size="sm" 
+                variant="ghost" 
+                onClick={handleAssignClick}
+                className="h-7 w-7 p-0"
+              >
+                <UserPlus className="h-3 w-3" />
+              </Button>
             )}
-          </div>
-        )}
-
-        {/* Información de fecha y hora - más compacta */}
-        <div className="grid grid-cols-2 gap-2 mb-2 p-2 bg-gray-50 rounded text-xs">
-          <div className="flex items-center gap-1">
-            <Calendar className="h-3 w-3 text-blue-600" />
-            <span className="font-medium text-gray-700">
-              {new Date(task.date).toLocaleDateString('es-ES', { 
-                day: 'numeric', 
-                month: 'short' 
-              })}
-            </span>
-          </div>
-          <div className="flex items-center gap-1">
-            <Clock className="h-3 w-3 text-blue-600" />
-            <span className="font-medium text-gray-700">{task.startTime}-{task.endTime}</span>
-          </div>
-        </div>
-
-        {/* Información del personal - más compacta */}
-        <div className="flex items-center justify-between mb-2 p-2 bg-blue-50 rounded">
-          <div className="flex items-center gap-1">
-            <User className="h-3 w-3 text-blue-600" />
-            <span className="text-xs font-medium text-gray-700">
-              {task.cleaner || 'Sin asignar'}
-            </span>
-          </div>
-          {!task.cleaner && (
-            <Badge variant="outline" className="text-red-600 border-red-300 text-xs px-1 py-0">
-              Sin asignar
-            </Badge>
-          )}
-        </div>
-
-        {/* Detalles del servicio - layout horizontal más compacto */}
-        <div className="flex gap-2 mb-2 text-xs">
-          <div className="flex-1 text-center p-1.5 bg-white border rounded">
-            <div className="text-gray-500 uppercase tracking-wide mb-0.5 text-xs">
-              {getTypeDisplayName(task.type)}
-            </div>
-          </div>
-          {task.duracion && (
-            <div className="flex-1 text-center p-1.5 bg-white border rounded">
-              <div className="flex items-center justify-center gap-0.5 text-gray-500 mb-0.5">
-                <Timer className="h-2.5 w-2.5" />
-                <span className="text-xs">{task.duracion}m</span>
-              </div>
-            </div>
-          )}
-          {task.coste && (
-            <div className="flex-1 text-center p-1.5 bg-white border rounded">
-              <div className="flex items-center justify-center gap-0.5 text-green-600 mb-0.5">
-                <Euro className="h-2.5 w-2.5" />
-                <span className="text-xs font-medium">€{task.coste}</span>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Check-in/Check-out - inline y más compacto */}
-        <div className="flex gap-2 mb-2 text-xs">
-          <div className="flex-1 flex items-center justify-between p-1.5 bg-gray-50 rounded">
-            <span className="text-gray-500">Out:</span>
-            <span className="font-medium text-gray-900">{task.checkOut}</span>
-          </div>
-          <div className="flex-1 flex items-center justify-between p-1.5 bg-gray-50 rounded">
-            <span className="text-gray-500">In:</span>
-            <span className="font-medium text-gray-900">{task.checkIn}</span>
-          </div>
-        </div>
-
-        {/* Botones de acción - más compactos */}
-        <div className="flex flex-wrap gap-1 pt-2 border-t border-gray-200">
-          {onShowHistory && (
             <Button 
               size="sm" 
-              variant="outline" 
-              className="flex items-center gap-1 hover:bg-gray-50 h-7 px-2 text-xs"
-              onClick={() => onShowHistory(task)}
+              variant="ghost" 
+              onClick={handleEditClick}
+              className="h-7 w-7 p-0"
             >
-              <History className="h-3 w-3" />
-              Historial
+              <Edit2 className="h-3 w-3" />
             </Button>
-          )}
-          <Button 
-            size="sm" 
-            variant="outline" 
-            className="flex items-center gap-1 hover:bg-blue-50 text-blue-600 border-blue-300 h-7 px-2 text-xs"
-            onClick={() => onAssignCleaner(task)}
-          >
-            <UserPlus className="h-3 w-3" />
-            Asignar
-          </Button>
-          <Button 
-            size="sm" 
-            variant="outline" 
-            className="flex items-center gap-1 hover:bg-green-50 text-green-600 border-green-300 h-7 px-2 text-xs"
-            onClick={() => onEditTask(task)}
-          >
-            <Edit className="h-3 w-3" />
-            Editar
-          </Button>
-          <Button 
-            size="sm" 
-            variant="outline" 
-            className="flex items-center gap-1 hover:bg-red-50 text-red-600 border-red-300 h-7 px-2 text-xs"
-            onClick={() => onDeleteTask(task.id)}
-          >
-            <Trash2 className="h-3 w-3" />
-            Eliminar
-          </Button>
+            <Button 
+              size="sm" 
+              variant="ghost" 
+              onClick={handleDeleteClick}
+              className="h-7 w-7 p-0 text-red-600 hover:text-red-700"
+            >
+              <Trash2 className="h-3 w-3" />
+            </Button>
+          </div>
         </div>
       </CardContent>
     </Card>
   );
-};
+});
+
+TaskCard.displayName = 'TaskCard';

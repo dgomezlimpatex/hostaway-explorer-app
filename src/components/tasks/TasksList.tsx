@@ -1,4 +1,5 @@
 
+import React from 'react';
 import { Task } from "@/types/calendar";
 import { TaskDetailsModal } from '@/components/modals/TaskDetailsModal';
 import { AssignCleanerModal } from '@/components/modals/AssignCleanerModal';
@@ -19,7 +20,7 @@ interface TasksListProps {
   onShowHistory?: (task: Task) => void;
 }
 
-export const TasksList = ({ tasks, filters, isLoading, onShowHistory }: TasksListProps) => {
+export const TasksList = React.memo(({ tasks, filters, isLoading, onShowHistory }: TasksListProps) => {
   const {
     selectedTask,
     isModalOpen,
@@ -37,7 +38,10 @@ export const TasksList = ({ tasks, filters, isLoading, onShowHistory }: TasksLis
     handleAssignCleanerComplete,
   } = useTaskActions();
 
-  const filteredTasks = filterTasks(tasks, filters);
+  const filteredTasks = React.useMemo(() => 
+    filterTasks(tasks, filters), 
+    [tasks, filters]
+  );
 
   if (isLoading) {
     return (
@@ -91,4 +95,6 @@ export const TasksList = ({ tasks, filters, isLoading, onShowHistory }: TasksLis
       />
     </>
   );
-};
+});
+
+TasksList.displayName = 'TasksList';
