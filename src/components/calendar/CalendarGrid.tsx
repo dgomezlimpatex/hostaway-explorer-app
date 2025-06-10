@@ -81,14 +81,12 @@ const CleanerRow = memo(({
           key={task.id}
           className={cn(
             "absolute top-1 bottom-1 z-10",
-            isBeingDragged && "opacity-50 pointer-events-none"
+            isBeingDragged && "opacity-30"
           )}
           style={{
             left: position.left,
             width: position.width
           }}
-          onDragOver={onDragOver}
-          onDrop={(e) => onDrop(e, cleaner.id, cleaners)}
         >
           <EnhancedTaskCard
             task={task}
@@ -101,7 +99,7 @@ const CleanerRow = memo(({
         </div>
       );
     });
-  }, [cleanerTasks, getTaskPosition, dragState.draggedTask?.id, onDragOver, onDrop, cleaner.id, cleaners, onTaskClick, onDragStart, onDragEnd]);
+  }, [cleanerTasks, getTaskPosition, dragState.draggedTask?.id, onTaskClick, onDragStart, onDragEnd]);
 
   return (
     <div 

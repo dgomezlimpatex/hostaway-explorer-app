@@ -85,11 +85,11 @@ export const useDragAndDrop = (onTaskAssign: (taskId: string, cleanerId: string,
     
     console.log('📋 useDragAndDrop - taskId from drag data:', taskId);
     
-    if (taskId) {
+    if (taskId && dragState.draggedTask) {
       // Check if we're dropping in the same position
       const currentTask = dragState.draggedTask;
-      const isSamePosition = currentTask?.cleanerId === cleanerId && 
-                           currentTask?.startTime === timeSlot;
+      const isSamePosition = currentTask.cleanerId === cleanerId && 
+                           currentTask.startTime === timeSlot;
       
       if (!isSamePosition) {
         console.log('🔄 useDragAndDrop - calling onTaskAssign with:', { taskId, cleanerId, cleanersCount: cleaners.length, timeSlot });
@@ -98,7 +98,7 @@ export const useDragAndDrop = (onTaskAssign: (taskId: string, cleanerId: string,
         console.log('📍 useDragAndDrop - task dropped in same position, no action needed');
       }
     } else {
-      console.error('❌ useDragAndDrop - No task ID found in drag data');
+      console.error('❌ useDragAndDrop - No task ID or dragged task found:', { taskId, draggedTask: dragState.draggedTask });
     }
 
     // Reset drag state

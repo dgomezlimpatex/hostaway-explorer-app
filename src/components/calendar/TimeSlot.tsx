@@ -28,6 +28,7 @@ export const TimeSlot = memo(({
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    e.dataTransfer.dropEffect = 'move';
     onDragOver(e);
     (e.currentTarget as HTMLElement).classList.add('drag-over');
   }, [onDragOver]);
@@ -42,23 +43,20 @@ export const TimeSlot = memo(({
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    console.log('💧 TimeSlot - handleDrop called for:', { cleanerId, timeString, draggedTaskId });
     (e.currentTarget as HTMLElement).classList.remove('drag-over');
     // Pass the time slot information when dropping
     onDrop(e, cleanerId, timeString);
-  }, [onDrop, cleanerId, timeString]);
+  }, [onDrop, cleanerId, timeString, draggedTaskId]);
 
-  // Allow drop if:
-  // 1. The slot is not occupied, OR
-  // 2. The slot is occupied by the task being dragged (allow moving to same position), OR
-  // 3. We're dragging any task (to allow repositioning)
-  const allowDrop = !isOccupied || draggedTaskId !== null;
+  // Always allow drop when dragging (we'll handle conflicts in the drop handler)
+  const allowDrop = draggedTaskId !== null;
 
   return (
     <div
       className={cn(
         "relative min-w-[75px] w-[75px] h-20 border-r border-gray-200 transition-colors flex-shrink-0",
-        allowDrop && "hover:bg-blue-50 cursor-pointer",
-        isOccupied && !draggedTaskId && "cursor-not-allowed"
+        allowDrop && "hover:bg-blue-50 cursor-pointer"
       )}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
@@ -68,8 +66,8 @@ export const TimeSlot = memo(({
     >
       {children}
       
-      {/* Drop indicator - show only when dragging and drop is allowed */}
-      {allowDrop && draggedTaskId && (
+      {/* Drop indicator - show when dragging over this slot */}
+      {allowDrop && (
         <div className="absolute inset-0 border-2 border-dashed border-blue-400 bg-blue-50 opacity-0 transition-opacity duration-200 pointer-events-none drop-indicator" />
       )}
       
