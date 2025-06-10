@@ -3,12 +3,16 @@ import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Plus, Search, ArrowLeft } from "lucide-react";
+import { Plus, Search, ArrowLeft, History } from "lucide-react";
 import { Link } from "react-router-dom";
 import { TasksList } from './TasksList';
 import { TaskFilters } from './TaskFilters';
+import { TaskStatsCard } from './components/TaskStatsCard';
+import { CalendarIntegrationWidget } from './components/CalendarIntegrationWidget';
+import { TaskHistoryModal } from './components/TaskHistoryModal';
 import { CreateTaskModal } from '@/components/modals/CreateTaskModal';
 import { useCalendarData } from '@/hooks/useCalendarData';
+import { Task } from '@/types/calendar';
 
 export default function TasksPage() {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -18,11 +22,18 @@ export default function TasksPage() {
     cleaner: 'all',
     dateRange: 'all'
   });
+  const [selectedTaskForHistory, setSelectedTaskForHistory] = useState<Task | null>(null);
+  const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
 
   const { tasks, createTask, isLoading } = useCalendarData();
 
   const handleCreateTask = (taskData: any) => {
     createTask(taskData);
+  };
+
+  const handleShowHistory = (task: Task) => {
+    setSelectedTaskForHistory(task);
+    setIsHistoryModalOpen(true);
   };
 
   // Filter tasks by search term
@@ -68,18 +79,42 @@ export default function TasksPage() {
       </div>
 
       <div className="container mx-auto p-6 space-y-6">
+        {/* Estadísticas */}
+        <TaskStatsCard tasks={filteredTasks} />
+
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-          <div className="lg:col-span-1">
+          <div className="lg:col-span-1 space-y-6">
             <TaskFilters filters={filters} onFiltersChange={setFilters} />
+            <CalendarIntegrationWidget tasks={tasks} />
           </div>
           
           <div className="lg:col-span-3">
             <Card>
               <CardHeader>
-                <CardTitle>Lista de Tareas ({filteredTasks.length})</CardTitle>
+                <div className="flex items-center justify-between">
+                  <CardTitle>Lista de Tareas ({filteredTasks.length})</CardTitle>
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => {
+                      if (filteredTasks.length > 0) {
+                        handleShowHistory(filteredTasks[0]);
+                      }
+                    }}
+                    className="flex items-center gap-2"
+                  >
+                    <History className="h-4 w-4" />
+                    Ver Historial
+                  </Button>
+                </div>
               </CardHeader>
               <CardContent>
-                <TasksList tasks={filteredTasks} filters={filters} isLoading={isLoading} />
+                <TasksList 
+                  tasks={filteredTasks} 
+                  filters={filters} 
+                  isLoading={isLoading}
+                  onShowHistory={handleShowHistory}
+                />
               </CardContent>
             </Card>
           </div>
@@ -89,6 +124,12 @@ export default function TasksPage() {
           open={isCreateModalOpen}
           onOpenChange={setIsCreateModalOpen}
           onCreateTask={handleCreateTask}
+        />
+
+        <TaskHistoryModal
+          task={selectedTaskForHistory}
+          open={isHistoryModalOpen}
+          onOpenChange={setIsHistoryModalOpen}
         />
       </div>
     </div>

@@ -11,9 +11,12 @@ import {
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { User } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { User, AlertTriangle } from "lucide-react";
 import { Task } from "@/types/calendar";
 import { useToast } from "@/hooks/use-toast";
+import { useCleaners } from "@/hooks/useCleaners";
+import { useTasks } from "@/hooks/useTasks";
 
 interface AssignCleanerModalProps {
   task: Task | null;
@@ -30,23 +33,47 @@ export const AssignCleanerModal = ({
 }: AssignCleanerModalProps) => {
   const [selectedCleaner, setSelectedCleaner] = useState('');
   const { toast } = useToast();
-
-  // Mock cleaners data - en un caso real vendría de un hook useCleaners
-  const cleaners = [
-    { id: '1', name: 'María García', available: true },
-    { id: '2', name: 'Ana López', available: true },
-    { id: '3', name: 'Carlos Ruiz', available: false },
-    { id: '4', name: 'Laura Martín', available: true },
-    { id: '5', name: 'Thalia Martínez', available: true }
-  ];
+  const { cleaners, isLoading: isLoadingCleaners } = useCleaners();
+  const { tasks } = useTasks(task ? new Date(task.date) : new Date(), 'day');
 
   if (!task) return null;
+
+  // Check for time conflicts
+  const checkTimeConflicts = (cleanerId: string) => {
+    const cleaner = cleaners.find(c => c.id === cleanerId);
+    if (!cleaner) return [];
+
+    const taskStart = new Date(`${task.date}T${task.startTime}`);
+    const taskEnd = new Date(`${task.date}T${task.endTime}`);
+
+    return tasks.filter(t => 
+      t.id !== task.id &&
+      t.cleaner === cleaner.name &&
+      t.date === task.date
+    ).filter(t => {
+      const existingStart = new Date(`${t.date}T${t.startTime}`);
+      const existingEnd = new Date(`${t.date}T${t.endTime}`);
+      
+      return (taskStart < existingEnd && taskEnd > existingStart);
+    });
+  };
+
+  const conflicts = selectedCleaner ? checkTimeConflicts(selectedCleaner) : [];
 
   const handleAssign = () => {
     if (!selectedCleaner) {
       toast({
         title: "Error",
         description: "Por favor selecciona un limpiador.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (conflicts.length > 0) {
+      toast({
+        title: "Conflicto de horarios",
+        description: "El limpiador seleccionado tiene tareas conflictivas en ese horario.",
         variant: "destructive",
       });
       return;
@@ -82,7 +109,7 @@ export const AssignCleanerModal = ({
 
           <div className="space-y-2">
             <label className="text-sm font-medium">Nuevo limpiador:</label>
-            <Select value={selectedCleaner} onValueChange={setSelectedCleaner}>
+            <Select value={selectedCleaner} onValueChange={setSelectedCleaner} disabled={isLoadingCleaners}>
               <SelectTrigger>
                 <SelectValue placeholder="Seleccionar limpiador" />
               </SelectTrigger>
@@ -91,13 +118,13 @@ export const AssignCleanerModal = ({
                   <SelectItem 
                     key={cleaner.id} 
                     value={cleaner.id}
-                    disabled={!cleaner.available}
+                    disabled={!cleaner.isActive}
                   >
                     <div className="flex items-center gap-2">
                       <span>{cleaner.name}</span>
-                      {!cleaner.available && (
+                      {!cleaner.isActive && (
                         <Badge variant="secondary" className="text-xs">
-                          No disponible
+                          Inactivo
                         </Badge>
                       )}
                     </div>
@@ -106,13 +133,29 @@ export const AssignCleanerModal = ({
               </SelectContent>
             </Select>
           </div>
+
+          {conflicts.length > 0 && (
+            <Alert variant="destructive">
+              <AlertTriangle className="h-4 w-4" />
+              <AlertDescription>
+                Conflicto de horarios detectado. El limpiador tiene {conflicts.length} tarea(s) en el mismo período:
+                <ul className="mt-2 space-y-1">
+                  {conflicts.map(conflict => (
+                    <li key={conflict.id} className="text-xs">
+                      • {conflict.property} ({conflict.startTime} - {conflict.endTime})
+                    </li>
+                  ))}
+                </ul>
+              </AlertDescription>
+            </Alert>
+          )}
         </div>
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancelar
           </Button>
-          <Button onClick={handleAssign}>
+          <Button onClick={handleAssign} disabled={conflicts.length > 0}>
             Asignar Limpiador
           </Button>
         </DialogFooter>

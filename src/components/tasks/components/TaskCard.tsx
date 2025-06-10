@@ -2,7 +2,7 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Clock, MapPin, User, Calendar, Edit, Trash2, UserPlus } from "lucide-react";
+import { Clock, MapPin, User, Calendar, Edit, Trash2, UserPlus, History } from "lucide-react";
 import { Task } from "@/types/calendar";
 
 interface TaskCardProps {
@@ -11,6 +11,7 @@ interface TaskCardProps {
   onDeleteTask: (taskId: string) => void;
   onQuickStatusChange: (task: Task, newStatus: "completed" | "in-progress" | "pending") => void;
   onAssignCleaner: (task: Task) => void;
+  onShowHistory?: (task: Task) => void;
   getStatusColor: (status: string) => string;
   getStatusText: (status: string) => string;
 }
@@ -21,6 +22,7 @@ export const TaskCard = ({
   onDeleteTask,
   onQuickStatusChange,
   onAssignCleaner,
+  onShowHistory,
   getStatusColor,
   getStatusText
 }: TaskCardProps) => {
@@ -89,6 +91,17 @@ export const TaskCard = ({
           </div>
 
           <div className="flex gap-2 justify-end">
+            {onShowHistory && (
+              <Button 
+                size="sm" 
+                variant="outline" 
+                className="flex items-center gap-1"
+                onClick={() => onShowHistory(task)}
+              >
+                <History className="h-3 w-3" />
+                Historial
+              </Button>
+            )}
             <Button 
               size="sm" 
               variant="outline" 

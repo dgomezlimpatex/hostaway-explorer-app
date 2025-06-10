@@ -14,9 +14,10 @@ interface TasksListProps {
     dateRange: string;
   };
   isLoading: boolean;
+  onShowHistory?: (task: Task) => void;
 }
 
-export const TasksList = ({ tasks, filters, isLoading }: TasksListProps) => {
+export const TasksList = ({ tasks, filters, isLoading, onShowHistory }: TasksListProps) => {
   const {
     selectedTask,
     isModalOpen,
@@ -63,6 +64,7 @@ export const TasksList = ({ tasks, filters, isLoading }: TasksListProps) => {
             onDeleteTask={handleDeleteTask}
             onQuickStatusChange={handleQuickStatusChange}
             onAssignCleaner={handleAssignCleaner}
+            onShowHistory={onShowHistory}
             getStatusColor={getStatusColor}
             getStatusText={getStatusText}
           />
