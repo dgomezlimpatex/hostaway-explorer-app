@@ -1,4 +1,3 @@
-
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -28,8 +27,8 @@ export const TaskCard = ({
   getStatusColor,
   getStatusText
 }: TaskCardProps) => {
-  const { clients } = useClients();
-  const { properties } = useProperties();
+  const { data: clients = [] } = useClients();
+  const { data: properties = [] } = useProperties();
 
   // Buscar cliente y propiedad vinculados
   const linkedClient = task.clienteId ? clients.find(c => c.id === task.clienteId) : null;
