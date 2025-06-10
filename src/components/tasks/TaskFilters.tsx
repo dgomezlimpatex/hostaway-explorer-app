@@ -1,7 +1,8 @@
-
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
+import { RotateCcw } from "lucide-react";
 import { useCleaners } from '@/hooks/useCleaners';
 import { useClients } from '@/hooks/useClients';
 import { useProperties } from '@/hooks/useProperties';
@@ -33,6 +34,16 @@ export const TaskFilters = ({ filters, onFiltersChange }: TaskFiltersProps) => {
     onFiltersChange(newFilters);
   };
 
+  const handleResetFilters = () => {
+    onFiltersChange({
+      status: 'all',
+      cleaner: 'all',
+      dateRange: 'all',
+      cliente: 'all',
+      propiedad: 'all'
+    });
+  };
+
   // Filtrar propiedades por cliente seleccionado
   const filteredProperties = filters.cliente && filters.cliente !== 'all' 
     ? properties.filter(p => p.clienteId === filters.cliente)
@@ -41,7 +52,18 @@ export const TaskFilters = ({ filters, onFiltersChange }: TaskFiltersProps) => {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Filtros</CardTitle>
+        <div className="flex items-center justify-between">
+          <CardTitle>Filtros</CardTitle>
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={handleResetFilters}
+            className="flex items-center gap-2"
+          >
+            <RotateCcw className="h-4 w-4" />
+            Limpiar
+          </Button>
+        </div>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="space-y-2">
