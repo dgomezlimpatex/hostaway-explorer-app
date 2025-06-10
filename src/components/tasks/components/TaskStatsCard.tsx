@@ -47,17 +47,22 @@ export const TaskStatsCard = ({ tasks }: TaskStatsCardProps) => {
           <CardTitle className="text-sm font-medium text-gray-600">Tasa de Finalización</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold text-green-600">{completionRate}%</div>
-          <div className="flex gap-1 mt-2">
-            <Badge variant="secondary" className="text-xs bg-green-100 text-green-800">
-              {completedTasks} completadas
-            </Badge>
-            <Badge variant="secondary" className="text-xs bg-yellow-100 text-yellow-800">
-              {inProgressTasks} en progreso
-            </Badge>
-            <Badge variant="secondary" className="text-xs bg-red-100 text-red-800">
-              {pendingTasks} pendientes
-            </Badge>
+          <div className="text-center">
+            <div className="text-2xl font-bold text-green-600 mb-3">{completionRate}%</div>
+            <div className="grid grid-cols-3 gap-1 text-xs">
+              <div className="bg-green-100 rounded-lg p-2 text-center">
+                <div className="font-semibold text-green-800">{completedTasks}</div>
+                <div className="text-green-600">completadas</div>
+              </div>
+              <div className="bg-yellow-100 rounded-lg p-2 text-center">
+                <div className="font-semibold text-yellow-800">{inProgressTasks}</div>
+                <div className="text-yellow-600">en progreso</div>
+              </div>
+              <div className="bg-red-100 rounded-lg p-2 text-center">
+                <div className="font-semibold text-red-800">{pendingTasks}</div>
+                <div className="text-red-600">pendientes</div>
+              </div>
+            </div>
           </div>
         </CardContent>
       </Card>
