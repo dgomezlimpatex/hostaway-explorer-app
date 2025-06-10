@@ -82,7 +82,7 @@ export const CalendarHeader = ({
           </div>
           
           {/* Tasks button */}
-          <Link to="/tasks">
+          <Link to="/tasks" className="mx-0.5 my-0 px-0 py-[10px]">
             <Button variant="outline" size="sm" className="mx-[62px] my-px px-[42px] py-[8px] text-xl text-fuchsia-500 font-normal bg-pink-50 rounded">
               <CheckSquare className="h-4 w-4 mr-2" />
               Gestión de Tareas
