@@ -1,3 +1,4 @@
+
 import { Card, CardContent } from "@/components/ui/card";
 import { useState, useMemo, useRef } from "react";
 import { useCalendarData } from "@/hooks/useCalendarData";
@@ -67,6 +68,7 @@ const CleaningCalendar = () => {
 
   // Handle task assignment
   const handleTaskAssign = async (taskId: string, cleanerId: string, cleaners: any[]) => {
+    console.log('CleaningCalendar - handleTaskAssign called with:', { taskId, cleanerId, cleaners });
     try {
       await assignTask({ taskId, cleanerId, cleaners });
       toast({
@@ -74,6 +76,7 @@ const CleaningCalendar = () => {
         description: "La tarea se ha asignado correctamente.",
       });
     } catch (error) {
+      console.error('Error assigning task:', error);
       toast({
         title: "Error",
         description: "No se pudo asignar la tarea.",
@@ -212,7 +215,11 @@ const CleaningCalendar = () => {
           <CardContent className="p-0">
             <div className="flex h-[600px] overflow-hidden">
               {/* Workers Column */}
-              <WorkersColumn cleaners={cleaners} />
+              <WorkersColumn 
+                cleaners={cleaners} 
+                onDragOver={handleDragOver}
+                onDrop={handleDrop}
+              />
 
               {/* Timeline Area */}
               <div className="flex-1 flex flex-col min-w-0 overflow-hidden">

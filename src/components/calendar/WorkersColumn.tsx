@@ -5,9 +5,23 @@ import { cn } from "@/lib/utils";
 
 interface WorkersColumnProps {
   cleaners: Cleaner[];
+  onDragOver: (e: React.DragEvent) => void;
+  onDrop: (e: React.DragEvent, cleanerId: string, cleaners: any[]) => void;
 }
 
-export const WorkersColumn = ({ cleaners }: WorkersColumnProps) => {
+export const WorkersColumn = ({ cleaners, onDragOver, onDrop }: WorkersColumnProps) => {
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    onDragOver(e);
+  };
+
+  const handleDrop = (e: React.DragEvent, cleanerId: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    onDrop(e, cleanerId, cleaners);
+  };
+
   return (
     <div className="w-48 bg-gray-50 border-r border-gray-200 flex-shrink-0">
       {/* Header */}
@@ -21,9 +35,11 @@ export const WorkersColumn = ({ cleaners }: WorkersColumnProps) => {
           <div 
             key={cleaner.id} 
             className={cn(
-              "h-20 border-b-2 border-gray-300 p-3 flex items-center hover:bg-gray-100 transition-colors",
+              "h-20 border-b-2 border-gray-300 p-3 flex items-center hover:bg-gray-100 transition-colors cursor-pointer",
               index % 2 === 0 ? "bg-white" : "bg-gray-50"
             )}
+            onDragOver={handleDragOver}
+            onDrop={(e) => handleDrop(e, cleaner.id)}
           >
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center text-white font-medium">
