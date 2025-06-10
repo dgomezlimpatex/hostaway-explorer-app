@@ -82,7 +82,8 @@ export const useTasks = (currentDate: Date, currentView: ViewType) => {
       if (!cleaner) {
         throw new Error('Cleaner not found');
       }
-      return taskStorageService.assignTask(taskId, cleaner.name);
+      console.log('assignTaskMutation - assigning task:', { taskId, cleanerId, cleanerName: cleaner.name });
+      return taskStorageService.assignTask(taskId, cleaner.name, cleanerId);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tasks'] });

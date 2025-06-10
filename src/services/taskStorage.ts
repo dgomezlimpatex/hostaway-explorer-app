@@ -32,7 +32,8 @@ export const taskStorageService = {
       duracion: row.duracion,
       coste: row.coste,
       metodoPago: row.metodo_pago,
-      supervisor: row.supervisor
+      supervisor: row.supervisor,
+      cleanerId: row.cleaner_id
     })) || [];
   },
 
@@ -56,7 +57,8 @@ export const taskStorageService = {
         duracion: task.duracion,
         coste: task.coste,
         metodo_pago: task.metodoPago,
-        supervisor: task.supervisor
+        supervisor: task.supervisor,
+        cleaner_id: task.cleanerId
       })
       .select()
       .single();
@@ -84,7 +86,8 @@ export const taskStorageService = {
       duracion: data.duracion,
       coste: data.coste,
       metodoPago: data.metodo_pago,
-      supervisor: data.supervisor
+      supervisor: data.supervisor,
+      cleanerId: data.cleaner_id
     };
   },
 
@@ -108,6 +111,7 @@ export const taskStorageService = {
     if (updates.coste !== undefined) updateData.coste = updates.coste;
     if (updates.metodoPago !== undefined) updateData.metodo_pago = updates.metodoPago;
     if (updates.supervisor !== undefined) updateData.supervisor = updates.supervisor;
+    if (updates.cleanerId !== undefined) updateData.cleaner_id = updates.cleanerId;
 
     const { data, error } = await supabase
       .from('tasks')
@@ -139,7 +143,8 @@ export const taskStorageService = {
       duracion: data.duracion,
       coste: data.coste,
       metodoPago: data.metodo_pago,
-      supervisor: data.supervisor
+      supervisor: data.supervisor,
+      cleanerId: data.cleaner_id
     };
   },
 
@@ -157,10 +162,21 @@ export const taskStorageService = {
     return true;
   },
 
-  assignTask: async (taskId: string, cleanerName: string): Promise<Task> => {
+  assignTask: async (taskId: string, cleanerName: string, cleanerId?: string): Promise<Task> => {
+    console.log('assignTask called with:', { taskId, cleanerName, cleanerId });
+    
+    const updateData: any = { 
+      cleaner: cleanerName,
+      updated_at: new Date().toISOString()
+    };
+    
+    if (cleanerId) {
+      updateData.cleaner_id = cleanerId;
+    }
+
     const { data, error } = await supabase
       .from('tasks')
-      .update({ cleaner: cleanerName })
+      .update(updateData)
       .eq('id', taskId)
       .select()
       .single();
@@ -188,7 +204,8 @@ export const taskStorageService = {
       duracion: data.duracion,
       coste: data.coste,
       metodoPago: data.metodo_pago,
-      supervisor: data.supervisor
+      supervisor: data.supervisor,
+      cleanerId: data.cleaner_id
     };
   }
 };
