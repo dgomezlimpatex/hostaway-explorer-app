@@ -13,6 +13,20 @@ interface UnassignedTasksProps {
 export const UnassignedTasks = ({ tasks, onTaskClick, onDragStart, onDragEnd }: UnassignedTasksProps) => {
   if (tasks.length === 0) return null;
 
+  const handleTaskDragStart = (e: React.DragEvent, task: Task) => {
+    console.log('UnassignedTasks - handleTaskDragStart:', task.id);
+    // Store task data in multiple formats for compatibility
+    e.dataTransfer.setData('text/plain', task.id);
+    e.dataTransfer.setData('application/json', JSON.stringify(task));
+    e.dataTransfer.effectAllowed = 'move';
+    onDragStart(e, task);
+  };
+
+  const handleTaskDragEnd = (e: React.DragEvent) => {
+    console.log('UnassignedTasks - handleTaskDragEnd');
+    onDragEnd(e);
+  };
+
   return (
     <Card className="border border-orange-200 shadow-lg">
       <CardContent className="p-4">
@@ -28,8 +42,9 @@ export const UnassignedTasks = ({ tasks, onTaskClick, onDragStart, onDragEnd }: 
               key={task.id}
               task={task}
               onClick={() => onTaskClick(task)}
-              onDragStart={onDragStart}
-              onDragEnd={onDragEnd}
+              onDragStart={(e) => handleTaskDragStart(e, task)}
+              onDragEnd={handleTaskDragEnd}
+              draggable={true}
             />
           ))}
         </div>

@@ -16,6 +16,7 @@ export const useDragAndDrop = (onTaskAssign: (taskId: string, cleanerId: string,
   });
 
   const handleDragStart = useCallback((e: React.DragEvent, task: Task) => {
+    console.log('useDragAndDrop - handleDragStart called with task:', task.id);
     e.dataTransfer.effectAllowed = 'move';
     e.dataTransfer.setData('text/plain', task.id);
     
@@ -35,11 +36,12 @@ export const useDragAndDrop = (onTaskAssign: (taskId: string, cleanerId: string,
     // Add visual feedback
     (e.target as HTMLElement).style.opacity = '0.5';
     
-    // Allow dragging over task cards
+    // Store task data for access during drop
     e.dataTransfer.setData('application/json', JSON.stringify(task));
   }, []);
 
   const handleDragEnd = useCallback((e: React.DragEvent) => {
+    console.log('useDragAndDrop - handleDragEnd called');
     setDragState({
       draggedTask: null,
       isDragging: false,
@@ -60,21 +62,26 @@ export const useDragAndDrop = (onTaskAssign: (taskId: string, cleanerId: string,
     e.preventDefault();
     e.stopPropagation();
     
-    if (dragState.draggedTask) {
-      console.log('useDragAndDrop - handleDrop called with:', { 
-        taskId: dragState.draggedTask.id, 
-        cleanerId, 
-        cleaners 
-      });
-      onTaskAssign(dragState.draggedTask.id, cleanerId, cleaners);
+    console.log('useDragAndDrop - handleDrop called with cleanerId:', cleanerId);
+    
+    // Get task ID from drag data
+    const taskId = e.dataTransfer.getData('text/plain');
+    console.log('useDragAndDrop - taskId from drag data:', taskId);
+    
+    if (taskId) {
+      console.log('useDragAndDrop - calling onTaskAssign with:', { taskId, cleanerId, cleaners: cleaners.length });
+      onTaskAssign(taskId, cleanerId, cleaners);
+    } else {
+      console.error('useDragAndDrop - No task ID found in drag data');
     }
 
+    // Reset drag state
     setDragState({
       draggedTask: null,
       isDragging: false,
       dragOffset: { x: 0, y: 0 }
     });
-  }, [dragState.draggedTask, onTaskAssign]);
+  }, [onTaskAssign]);
 
   return {
     dragState,

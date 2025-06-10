@@ -13,13 +13,37 @@ export const WorkersColumn = ({ cleaners, onDragOver, onDrop }: WorkersColumnPro
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    e.dataTransfer.dropEffect = 'move';
     onDragOver(e);
+    // Add visual feedback
+    const target = e.currentTarget as HTMLElement;
+    target.classList.add('bg-blue-100');
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    // Remove visual feedback when leaving
+    const target = e.currentTarget as HTMLElement;
+    target.classList.remove('bg-blue-100');
   };
 
   const handleDrop = (e: React.DragEvent, cleanerId: string) => {
     e.preventDefault();
     e.stopPropagation();
-    onDrop(e, cleanerId, cleaners);
+    console.log('WorkersColumn - handleDrop called with cleanerId:', cleanerId);
+    
+    // Remove visual feedback
+    const target = e.currentTarget as HTMLElement;
+    target.classList.remove('bg-blue-100');
+    
+    // Get task data from drag event
+    const taskId = e.dataTransfer.getData('text/plain');
+    console.log('WorkersColumn - taskId from drag data:', taskId);
+    
+    if (taskId) {
+      onDrop(e, cleanerId, cleaners);
+    } else {
+      console.error('WorkersColumn - No task ID found in drag data');
+    }
   };
 
   return (
@@ -39,6 +63,7 @@ export const WorkersColumn = ({ cleaners, onDragOver, onDrop }: WorkersColumnPro
               index % 2 === 0 ? "bg-white" : "bg-gray-50"
             )}
             onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
             onDrop={(e) => handleDrop(e, cleaner.id)}
           >
             <div className="flex items-center gap-3">
