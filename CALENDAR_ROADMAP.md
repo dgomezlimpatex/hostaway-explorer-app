@@ -17,6 +17,7 @@
 - ✅ **SISTEMA DE REPORTES CON EXPORTACIÓN CSV** - **COMPLETADO**
 - ✅ **PERSISTENCIA DE DATOS CON LOCALSTORAGE** - **COMPLETADO**
 - ✅ **PÁGINA DE GESTIÓN DE TAREAS COMPLETA** - **COMPLETADO**
+- ✅ **VINCULACIÓN CLIENTES-PROPIEDADES EN TAREAS** - **COMPLETADO**
 
 ## 🎯 Objetivos de Optimización
 
@@ -131,8 +132,14 @@
   - ✅ Carga automática de datos guardados
   - ✅ Funciones de reset y limpieza
   - ✅ Datos por defecto solo en primera carga
-- [ ] **9.4** Vinculación tareas-clientes-propiedades
-- [ ] **9.5** Tipos de servicio configurables
+- ✅ **9.4** Vinculación tareas-clientes-propiedades - **COMPLETADO**
+  - ✅ Selector de cliente y propiedad en crear tareas
+  - ✅ Autocompletado de datos según propiedad seleccionada
+  - ✅ Visualización de información vinculada en tarjetas
+  - ✅ Tipos de servicio actualizados según especificaciones
+- ✅ **9.5** Tipos de servicio configurables - **COMPLETADO**
+  - ✅ Tipos según especificaciones del cliente
+  - ✅ Integración en formularios de creación/edición
 - [ ] **9.6** Tareas recurrentes automáticas
 - [ ] **9.7** Sistema de plantillas de tareas
 - [ ] **9.8** Checklist dinámico por tipo de servicio
@@ -199,37 +206,35 @@
 - [ ] **16.6** Recordatorios inteligentes
 
 ## 📋 Tareas Completadas Recientemente
-- ✅ **PÁGINA DE GESTIÓN DE TAREAS COMPLETA** - Sistema completo con lista, filtros y estadísticas
-- ✅ **PERSISTENCIA DE DATOS ROBUSTA** - Las tareas se guardan y cargan automáticamente
-- ✅ **DISEÑO COMPACTO DE TARJETAS** - Layout optimizado y más eficiente
-- ✅ **SISTEMA DE HISTORIAL** - Modal de historial de cambios implementado
-- ✅ **ESTADÍSTICAS VISUALES** - Tarjetas de métricas mejoradas y bien alineadas
-- ✅ **INTEGRACIÓN CALENDARIO-TAREAS** - Widget de vista rápida del calendario
-- ✅ **ARQUITECTURA MODULAR** - Componentes pequeños y enfocados
+- ✅ **VINCULACIÓN COMPLETA CLIENTES-PROPIEDADES** - Sistema integrado con autocompletado
+- ✅ **TIPOS DE SERVICIO ACTUALIZADOS** - Según especificaciones exactas del cliente
+- ✅ **AUTOCOMPLETADO INTELIGENTE** - Datos de propiedad rellenan automáticamente la tarea
+- ✅ **VISUALIZACIÓN MEJORADA** - Información de cliente/propiedad visible en tarjetas
+- ✅ **FLUJO COMPLETO DE TRABAJO** - Desde cliente → propiedad → tarea
 
 ## 🎯 PRIORIDADES INMEDIATAS
 
-### 🥇 ALTA PRIORIDAD (Próximo sprint - FASE 9.4-9.5)
-1. **Vinculación Clientes-Propiedades en Tareas** (9.4)
-   - Seleccionar cliente y propiedad al crear tareas
-   - Mostrar información del cliente/propiedad en tarjetas de tareas
-   - Filtros por cliente/propiedad en calendario y página de tareas
-   - Autocompletar datos de propiedad según cliente seleccionado
+### 🥇 ALTA PRIORIDAD (Próximo sprint - FILTROS Y MEJORAS UX)
+1. **Filtros por Cliente/Propiedad** (3.2 parcial)
+   - Añadir filtros por cliente en página de tareas
+   - Añadir filtros por propiedad en página de tareas
+   - Filtros en calendario por cliente/propiedad
+   - Búsqueda mejorada que incluya datos de cliente
 
-2. **Tipos de Servicio Configurables** (9.5)
-   - Mantenimiento, checkout-checkin, cristalería, limpieza profunda
-   - Duración predeterminada por tipo de servicio
-   - Plantillas de checklist por tipo
-
-### 🥈 MEDIA PRIORIDAD (Siguientes sprints)
-3. **Tareas Recurrentes** (9.6)
+2. **Tareas Recurrentes** (9.6)
    - Programación automática de tareas repetitivas
    - Configuración de frecuencia (diaria, semanal, mensual)
    - Gestión de excepciones y modificaciones
 
-4. **Sistema de Plantillas** (9.7)
+### 🥈 MEDIA PRIORIDAD (Siguientes sprints)
+3. **Sistema de Plantillas** (9.7)
    - Plantillas predefinidas por tipo de servicio
    - Checklist dinámico según plantilla seleccionada
+
+4. **Checklist por Tipo de Servicio** (9.8)
+   - Lista de verificación específica para cada tipo
+   - Estado de completado de checklist
+   - Notas y observaciones por tarea
 
 ### 🥉 BAJA PRIORIDAD (Futuro)
 5. **Control Visual Avanzado** (9.9-9.11)
@@ -237,16 +242,17 @@
 7. **Mobile App** (Fase 14)
 
 ## 🚀 Próximos Pasos Inmediatos
-1. **Implementar vinculación clientes-propiedades** - Fundamental para flujo completo
-2. **Crear tipos de servicio configurables** - Base para automatización
-3. **Desarrollar sistema de plantillas** - Estandarización de procesos
-4. **Añadir validaciones avanzadas** - Mejora de calidad de datos
+1. **Implementar filtros por cliente/propiedad** - Fundamental para navegación eficiente
+2. **Crear sistema de tareas recurrentes** - Automatización de rutinas
+3. **Desarrollar plantillas de servicios** - Estandarización de procesos
+4. **Añadir checklist dinámico** - Control de calidad
 
 ## 🎉 Estado Actual del Proyecto
-El sistema cuenta con **funcionalidad completamente operativa**:
+El sistema cuenta con **funcionalidad completamente operativa y profesional**:
 - ✅ **Gestión completa de clientes** con CRUD funcional
 - ✅ **Gestión completa de propiedades** vinculadas a clientes
 - ✅ **Sistema de tareas robusto** con drag & drop, CRUD completo y persistencia
+- ✅ **Vinculación completa clientes-propiedades-tareas** con autocompletado
 - ✅ **Página dedicada de gestión de tareas** con filtros, búsqueda y estadísticas
 - ✅ **Sistema de reportes** con exportación CSV personalizada
 - ✅ **Persistencia completa de datos** con localStorage
@@ -254,32 +260,27 @@ El sistema cuenta con **funcionalidad completamente operativa**:
 - ✅ **Interfaz moderna y responsive**
 - ✅ **Navegación fluida** entre todas las páginas
 - ✅ **Diseño unificado** en todas las funcionalidades
+- ✅ **Tipos de servicio personalizados** según especificaciones del cliente
 
-**Próximo objetivo principal:** Integrar la información de clientes y propiedades en el sistema de tareas para crear un flujo de trabajo completo y profesional.
+**Próximo objetivo principal:** Implementar filtros avanzados por cliente/propiedad para mejorar la navegación y usabilidad del sistema.
 
 ## 🆕 ÚLTIMAS MEJORAS IMPLEMENTADAS
 
-### 📋 Sistema de Gestión de Tareas Completo ✅ COMPLETADO
-- **Página dedicada** con lista completa de tareas y navegación fluida
-- **Filtros avanzados** por estado, trabajador y rango de fechas
-- **Búsqueda en tiempo real** por propiedad, dirección y trabajador
-- **Estadísticas visuales** con tarjetas de métricas mejoradas
-- **Widget de calendario** con vista rápida de tareas de hoy y próximas
-- **Sistema de historial** con modal detallado de cambios
-- **Diseño compacto** de tarjetas con layout optimizado
+### 🔗 Vinculación Completa Clientes-Propiedades ✅ COMPLETADO
+- **Selector integrado** en modal de crear tareas con cascada cliente → propiedad
+- **Autocompletado inteligente** que rellena dirección, duración y coste según propiedad
+- **Visualización enriquecida** en tarjetas con información de cliente y propiedad
+- **Tipos de servicio actualizados** según especificaciones exactas del cliente
+- **Flujo de trabajo completo** desde selección hasta visualización
 
-### 💾 Persistencia de Datos Robusta ✅ COMPLETADO
-- **Almacenamiento automático** en localStorage
-- **Carga inteligente** de datos guardados
-- **Datos por defecto** solo en primera carga
-- **Funciones de utilidad** para reset y limpieza
-- **Sincronización** entre calendario y página de tareas
+### 📝 Tipos de Servicio Personalizados ✅ COMPLETADO
+- **12 tipos específicos** según imagen proporcionada por el cliente
+- **Integración completa** en formularios y visualización
+- **Compatibilidad mantenida** con tipos anteriores
 
-### 🎨 Mejoras de Diseño y UX ✅ COMPLETADO
-- **Tarjetas compactas** con información bien organizada
-- **Estadísticas alineadas** correctamente en grid responsive
-- **Acciones rápidas** directamente en las tarjetas
-- **Estados visuales** diferenciados con colores coherentes
-- **Navegación intuitiva** entre todas las funcionalidades
+### 🎨 Mejoras de UX ✅ COMPLETADO
+- **Información contextual** visible en todas las tarjetas
+- **Autocompletado inteligente** reduce errores de entrada
+- **Flujo intuitivo** de creación de tareas
 
-**Meta inmediata:** Vincular clientes y propiedades en el sistema de tareas para completar el flujo de trabajo empresarial.
+**Meta inmediata:** Implementar filtros avanzados por cliente/propiedad para completar la experiencia de usuario y facilitar la navegación en sistemas con muchos datos.
