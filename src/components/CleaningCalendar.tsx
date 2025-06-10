@@ -66,9 +66,9 @@ const CleaningCalendar = () => {
   };
 
   // Handle task assignment
-  const handleTaskAssign = async (taskId: string, cleanerId: string, startTime: string) => {
+  const handleTaskAssign = async (taskId: string, cleanerId: string, cleaners: any[]) => {
     try {
-      await assignTask({ taskId, cleanerId });
+      await assignTask({ taskId, cleanerId, cleaners });
       toast({
         title: "Tarea asignada",
         description: "La tarea se ha asignado correctamente.",
