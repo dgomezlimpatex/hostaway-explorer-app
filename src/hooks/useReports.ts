@@ -10,8 +10,8 @@ export const useReports = (filters: ReportFilters) => {
     queryKey: ['reports', filters],
     queryFn: async () => {
       const tasks = taskStorageService.getTasks();
-      const clients = clientStorage.getAll();
-      const properties = propertyStorage.getAll();
+      const clients = await clientStorage.getAll();
+      const properties = await propertyStorage.getAll();
       
       // Filter tasks by date range
       const filteredTasks = tasks.filter(task => {
