@@ -180,15 +180,6 @@
 - [ ] **10.4** Notificaciones específicas por rol
 - [ ] **10.5** Supervisores asignados a clientes/propiedades
 
-### Fase 11: Sistema de Facturación 💰
-- [ ] **11.1** Generación automática de facturas
-- [ ] **11.2** Seguimiento de pagos de clientes
-- [ ] **11.3** Control de costes por servicio
-- [ ] **11.4** Cálculo automático de nóminas
-- [ ] **11.5** Reportes financieros
-- [ ] **11.6** Integración con sistemas contables
-- [ ] **11.7** Gestión de impuestos (IVA, IRPF)
-- [ ] **11.8** Facturación por horas vs precio fijo
 
 ### Fase 12: Historial y Analytics 📊 ✅ PARCIALMENTE COMPLETADA
 - ✅ **12.1** Modal de historial de tareas implementado - **COMPLETADO**
