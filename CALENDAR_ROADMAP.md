@@ -1,4 +1,3 @@
-
 # 🗓️ Calendar Optimization Roadmap
 
 ## Estado Actual
@@ -22,6 +21,8 @@
 - ✅ **FILTROS AVANZADOS CON BOTÓN DE RESET** - **COMPLETADO**
 - ✅ **SISTEMA DE CREACIÓN MÚLTIPLE DE TAREAS** - **COMPLETADO**
 - ✅ **REFACTORIZACIÓN MODULAR COMPLETA** - **COMPLETADO**
+- ✅ **FILTROS PLEGABLES EN PÁGINA DE TAREAS** - **COMPLETADO**
+- ✅ **WIDGET DE VISTA RÁPIDA CALENDAR MEJORADO** - **COMPLETADO**
 
 ## 🎯 Objetivos de Optimización
 
@@ -41,14 +42,16 @@
 - ✅ **2.3** Unificar estilo de tarjetas en página principal - **COMPLETADO**
 - ✅ **2.4** Diseño compacto y optimizado de tarjetas de tareas - **COMPLETADO**
 - ✅ **2.5** Estadísticas visuales mejoradas en página de tareas - **COMPLETADO**
-- [ ] **2.6** Implementar animaciones suaves
-- [ ] **2.7** Añadir tema dark/light
-- [ ] **2.8** Responsive design mejorado
-- [ ] **2.9** Indicadores visuales de estados
-- [ ] **2.10** Tooltips informativos
+- ✅ **2.6** Filtros plegables con diseño mejorado - **COMPLETADO**
+- ✅ **2.7** Widget de calendario refinado y reposicionado - **COMPLETADO**
+- [ ] **2.8** Implementar animaciones suaves
+- [ ] **2.9** Añadir tema dark/light
+- [ ] **2.10** Responsive design mejorado
+- [ ] **2.11** Indicadores visuales de estados
+- [ ] **2.12** Tooltips informativos
 
 ### Fase 3: Funcionalidades Avanzadas ✅ PARCIALMENTE COMPLETADA
-- [ ] **3.1** Vista semanal y mensual
+- [ ] **3.1** Vista semanal y mensual mejorada
 - ✅ **3.2** Filtros avanzados (trabajador, estado, fecha, cliente, propiedad) - **COMPLETADO**
 - [ ] **3.3** Búsqueda en tiempo real
 - ✅ **3.4** Drag & drop mejorado con preview
@@ -221,42 +224,49 @@
 - ✅ **REFACTORIZACIÓN MODULAR COMPLETA** - Todos los modales divididos en componentes pequeños y enfocados
 - ✅ **ARQUITECTURA MEJORADA** - Hooks reutilizables y separación clara de responsabilidades
 
-## 🎯 PRIORIDADES INMEDIATAS
+## 🎯 PRIORIDADES INMEDIATAS - ENFOQUE CALENDAR
 
-### 🥇 ALTA PRIORIDAD (Próximo sprint - PLANTILLAS Y CHECKLISTS)
-1. **Sistema de Plantillas de Tareas** (9.10)
-   - Plantillas predefinidas por tipo de servicio
-   - Configuración de campos automáticos según plantilla
-   - Reutilización de configuraciones comunes
-   - Plantillas específicas para edificios/apartahoteles
+### 🥇 ALTA PRIORIDAD (Actual sprint - MEJORAS DE CALENDARIO)
+1. **Vista Semanal Completa** (3.1)
+   - Implementar vista semanal más amplia y funcional
+   - Mejorar navegación entre semanas
+   - Optimizar visualización de múltiples días
 
-2. **Checklist Dinámico por Tipo de Servicio** (9.11)
-   - Lista de verificación específica para cada tipo
-   - Estado de completado de checklist
-   - Notas y observaciones por tarea
-   - Checklists personalizables por cliente
+2. **Vista Mensual Avanzada** (3.1)
+   - Vista mensual con mini tarjetas de tareas
+   - Resumen por día en el calendario mensual
+   - Navegación fluida entre vistas
 
+3. **Mejoras de Performance en Calendar** (1.6)
+   - React.memo para componentes del calendario
+   - useMemo para cálculos de fechas y tareas
+   - Optimización de renders en drag & drop
 
-4. **Vistas de Calendario Adicionales** (3.1)
-   - Vista semanal completa
-   - Vista mensual con resumen
-   - Vista de agenda por trabajador
+4. **Búsqueda en Tiempo Real en Calendar** (3.3)
+   - Búsqueda rápida de tareas en vista calendario
+   - Filtros visuales en tiempo real
+   - Resaltado de resultados
 
-5. **Optimización de Performance** (1.6)
-   - React.memo para componentes pesados
-   - useMemo para cálculos costosos
-   - Lazy loading de modales
+5. **Animaciones Suaves en Calendar** (2.8)
+   - Transiciones entre vistas
+   - Animaciones de drag & drop mejoradas
+   - Feedback visual en interacciones
+
+### 🥉 MEDIA PRIORIDAD
+6. **Sistema de Plantillas de Tareas** (9.10)
+7. **Checklist Dinámico por Tipo de Servicio** (9.11)
+8. **Control Visual Avanzado** (9.12-9.14)
 
 ### 🥉 BAJA PRIORIDAD (Futuro)
-6. **Control Visual Avanzado** (9.12-9.14)
-7. **Sistema de Roles y Permisos** (Fase 10)
-8. **Mobile App** (Fase 14)
+9. **Sistema de Roles y Permisos** (Fase 10)
+10. **Mobile App** (Fase 14)
 
-## 🚀 Próximos Pasos Inmediatos
-1. **Implementar sistema de plantillas** - Estandarización y eficiencia para edificios
-2. **Crear checklist dinámico** - Control de calidad por tipo de servicio
-3. **Añadir búsqueda en tiempo real** - Mejora significativa de UX
-4. **Optimizar performance** - Mejor experiencia con grandes volúmenes de datos
+## 🚀 Próximos Pasos Inmediatos - CALENDAR FOCUS
+1. **Mejorar vista semanal** - Visualización más amplia y funcional
+2. **Implementar vista mensual avanzada** - Mini tarjetas y resumen por día
+3. **Optimizar performance** - Mejor experiencia con grandes volúmenes
+4. **Añadir búsqueda en tiempo real** - Localización rápida de tareas
+5. **Implementar animaciones** - Transiciones suaves entre vistas
 
 ## 🎉 Estado Actual del Proyecto
 El sistema cuenta con **funcionalidad completamente operativa y profesional**:
@@ -264,37 +274,21 @@ El sistema cuenta con **funcionalidad completamente operativa y profesional**:
 - ✅ **Gestión completa de propiedades** vinculadas a clientes
 - ✅ **Sistema de tareas robusto** con drag & drop, CRUD completo y persistencia
 - ✅ **Creación múltiple de tareas** para edificios y apartahoteles
-- ✅ **Vinculación completa clientes-propiedades-tareas** con autocompletado
-- ✅ **Página dedicada de gestión de tareas** con filtros, búsqueda y estadísticas
+- ✅ **Página de gestión de tareas optimizada** con filtros plegables y widget refinado
 - ✅ **Sistema de reportes** con exportación CSV personalizada
 - ✅ **Persistencia completa de datos** con localStorage
 - ✅ **Arquitectura modular y mantenible** con componentes pequeños y enfocados
 - ✅ **Interfaz moderna y responsive** 
 - ✅ **Navegación fluida** entre todas las páginas
-- ✅ **Diseño unificado** en todas las funcionalidades
-- ✅ **Tipos de servicio personalizados** según especificaciones del cliente
-- ✅ **Sistema de tareas recurrentes** completamente funcional
-- ✅ **Filtros avanzados** con cascada cliente-propiedad y reset
 
-**Próximo objetivo principal:** Implementar sistema de plantillas de tareas para estandarizar procesos específicos de edificios y apartahoteles, mejorando la eficiencia operativa.
+**Próximo objetivo principal:** Mejorar significativamente la experiencia del calendario con vistas avanzadas, mejor performance y funcionalidades de búsqueda en tiempo real.
 
 ## 🆕 ÚLTIMAS MEJORAS IMPLEMENTADAS
 
-### 📝 Sistema de Creación Múltiple de Tareas ✅ COMPLETADO
-- **Modal especializado** para seleccionar múltiples propiedades
-- **Configuración común** aplicable a todas las tareas seleccionadas
-- **Integración perfecta** con el flujo de trabajo existente
-- **UX optimizada** para casos de uso de edificios con múltiples apartamentos
+### 📋 Optimizaciones en Página de Tareas ✅ COMPLETADO
+- **Filtros plegables** que se contraen por defecto para ahorrar espacio
+- **Widget de calendario reposicionado** encima de tareas recurrentes
+- **Diseño refinado** del widget de vista rápida del calendario
+- **UX mejorada** con mejor organización visual
 
-### 🔧 Refactorización Modular Completa ✅ COMPLETADO
-- **Componentes pequeños y enfocados** en lugar de archivos grandes
-- **Hooks reutilizables** para lógica de negocio compartida
-- **Separación clara** entre UI y lógica de negocio
-- **Mantenibilidad mejorada** para futuras expansiones
-
-### 🎨 Mejoras de Arquitectura ✅ COMPLETADO
-- **TypeScript mejorado** con types más estrictos
-- **Reutilización de componentes** entre diferentes modales
-- **Consistencia visual** en todos los formularios
-
-**Meta inmediata:** Implementar sistema de plantillas para estandarizar los procesos de limpieza específicos por tipo de edificio y servicio, facilitando la creación rápida de tareas con configuraciones predefinidas.
+**Meta inmediata:** Enfocar esfuerzos en mejorar la página de calendario (/calendar) con vistas avanzadas, mejor performance y funcionalidades de búsqueda para una experiencia de usuario superior.
