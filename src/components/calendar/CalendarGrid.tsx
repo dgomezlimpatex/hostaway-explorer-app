@@ -42,11 +42,18 @@ export const CalendarGrid = forwardRef<HTMLDivElement, CalendarGridProps>(
         onScroll={onScroll}
       >
         <div style={{ minWidth: '1200px' }}>
-          {cleaners.map((cleaner) => {
+          {cleaners.map((cleaner, index) => {
             const cleanerTasks = assignedTasks.filter(task => task.cleaner === cleaner.name);
             
             return (
-              <div key={cleaner.id} className="h-20 border-b border-gray-100 relative hover:bg-gray-25 transition-colors flex">
+              <div 
+                key={cleaner.id} 
+                className={cn(
+                  "h-20 relative hover:bg-gray-25 transition-colors flex",
+                  "border-b border-gray-200",
+                  index % 2 === 0 ? "bg-white" : "bg-gray-25"
+                )}
+              >
                 {/* Time slots for this cleaner */}
                 {timeSlots.map((time) => {
                   const [hour, minute] = time.split(':').map(Number);

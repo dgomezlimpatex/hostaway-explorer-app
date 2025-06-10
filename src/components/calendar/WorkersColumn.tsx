@@ -1,6 +1,7 @@
 
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Cleaner } from "@/types/calendar";
+import { cn } from "@/lib/utils";
 
 interface WorkersColumnProps {
   cleaners: Cleaner[];
@@ -16,10 +17,13 @@ export const WorkersColumn = ({ cleaners }: WorkersColumnProps) => {
       
       {/* Workers List */}
       <ScrollArea className="h-[544px]">
-        {cleaners.map((cleaner) => (
+        {cleaners.map((cleaner, index) => (
           <div 
             key={cleaner.id} 
-            className="h-20 border-b border-gray-200 p-3 flex items-center hover:bg-gray-100 transition-colors"
+            className={cn(
+              "h-20 border-b border-gray-200 p-3 flex items-center hover:bg-gray-100 transition-colors",
+              index % 2 === 0 ? "bg-white" : "bg-gray-25"
+            )}
           >
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center text-white font-medium">
