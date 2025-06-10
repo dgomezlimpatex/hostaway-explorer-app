@@ -34,6 +34,9 @@ export const useDragAndDrop = (onTaskAssign: (taskId: string, cleanerId: string,
 
     // Add visual feedback
     (e.target as HTMLElement).style.opacity = '0.5';
+    
+    // Allow dragging over task cards
+    e.dataTransfer.setData('application/json', JSON.stringify(task));
   }, []);
 
   const handleDragEnd = useCallback((e: React.DragEvent) => {
@@ -49,11 +52,13 @@ export const useDragAndDrop = (onTaskAssign: (taskId: string, cleanerId: string,
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
+    e.stopPropagation();
     e.dataTransfer.dropEffect = 'move';
   }, []);
 
   const handleDrop = useCallback((e: React.DragEvent, cleanerId: string, startTime: string) => {
     e.preventDefault();
+    e.stopPropagation();
     
     if (dragState.draggedTask) {
       onTaskAssign(dragState.draggedTask.id, cleanerId, startTime);

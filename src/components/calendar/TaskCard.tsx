@@ -2,6 +2,7 @@
 import { Badge } from "@/components/ui/badge";
 import { Clock, MapPin, GripVertical } from "lucide-react";
 import { Task } from "@/hooks/useCalendarData";
+import { cn } from "@/lib/utils";
 
 interface TaskCardProps {
   task: Task;
@@ -48,29 +49,36 @@ export const TaskCard = ({
 
   const handleDragStart = (e: React.DragEvent) => {
     if (onDragStart) {
+      e.stopPropagation();
       onDragStart(e, task);
     }
   };
 
   const handleDragEnd = (e: React.DragEvent) => {
     if (onDragEnd) {
+      e.stopPropagation();
       onDragEnd(e);
     }
   };
 
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
   return (
     <div
-      className={`
-        ${getStatusColor(task.status)} rounded-lg p-3 text-white shadow-lg 
-        hover:shadow-xl transition-all duration-200 cursor-move group
-        ${isDragging ? 'opacity-50 scale-95 rotate-3' : ''}
-        relative overflow-hidden select-none
-      `}
+      className={cn(
+        getStatusColor(task.status),
+        "rounded-lg p-3 text-white shadow-lg hover:shadow-xl transition-all duration-200 cursor-move group relative overflow-hidden select-none",
+        isDragging && "opacity-50 scale-95 rotate-3"
+      )}
       style={style}
       onClick={onClick}
       draggable={!!onDragStart}
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
+      onDragOver={handleDragOver}
     >
       {/* Drag handle */}
       {onDragStart && (

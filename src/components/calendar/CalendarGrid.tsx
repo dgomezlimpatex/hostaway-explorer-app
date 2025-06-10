@@ -58,6 +58,7 @@ export const CalendarGrid = forwardRef<HTMLDivElement, CalendarGridProps>(
                       minute={minute}
                       cleanerId={cleaner.id}
                       isOccupied={isOccupied}
+                      draggedTaskId={dragState.draggedTask?.id}
                       onDragOver={onDragOver}
                       onDrop={onDrop}
                     />
@@ -67,19 +68,26 @@ export const CalendarGrid = forwardRef<HTMLDivElement, CalendarGridProps>(
                 {/* Tasks for this cleaner */}
                 {cleanerTasks.map((task) => {
                   const position = getTaskPosition(task.startTime, task.endTime);
+                  const isBeingDragged = dragState.draggedTask?.id === task.id;
+                  
                   return (
                     <div
                       key={task.id}
-                      className="absolute top-1 bottom-1 z-10"
+                      className={cn(
+                        "absolute top-1 bottom-1 z-10",
+                        isBeingDragged && "pointer-events-none"
+                      )}
                       style={{
                         left: position.left,
                         width: position.width
                       }}
+                      onDragOver={onDragOver}
+                      onDrop={(e) => onDrop(e, cleaner.id, task.startTime)}
                     >
                       <TaskCard
                         task={task}
                         onClick={() => onTaskClick(task)}
-                        isDragging={dragState.draggedTask?.id === task.id}
+                        isDragging={isBeingDragged}
                         onDragStart={onDragStart}
                         onDragEnd={onDragEnd}
                         style={{ height: '100%' }}
