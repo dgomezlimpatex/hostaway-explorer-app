@@ -51,8 +51,7 @@ export const TimeSlot = ({
   return (
     <div
       className={cn(
-        "relative min-w-[75px] w-[75px] h-20 border-r border-gray-100 transition-colors flex-shrink-0",
-        hour % 2 === 0 ? "bg-gray-50" : "bg-white",
+        "relative min-w-[75px] w-[75px] h-20 border-r border-gray-200 transition-colors flex-shrink-0",
         allowDrop && "hover:bg-blue-50 cursor-pointer",
         isOccupied && !draggedTaskId && "cursor-not-allowed"
       )}
