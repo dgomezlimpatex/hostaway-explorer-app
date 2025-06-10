@@ -19,11 +19,14 @@ export interface Task {
   coste?: number; // en euros
   metodoPago?: string;
   supervisor?: string;
+  cleanerId?: string; // ID del limpiador asignado
 }
 
 export interface Cleaner {
   id: string;
   name: string;
+  email?: string;
+  telefono?: string;
   avatar?: string;
   isActive: boolean;
 }
