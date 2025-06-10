@@ -1,8 +1,10 @@
 
 import { Task } from '@/types/calendar';
 
-// In-memory storage for tasks (simulating a database)
-let tasksStorage: Task[] = [
+const STORAGE_KEY = 'cleaning_tasks';
+
+// Datos por defecto que se cargan solo si no hay datos en localStorage
+const defaultTasks: Task[] = [
   {
     id: '1',
     property: 'Blue Ocean Portonovo Studio 1°D',
@@ -73,6 +75,32 @@ let tasksStorage: Task[] = [
   }
 ];
 
+// Función para cargar tareas desde localStorage
+const loadTasksFromStorage = (): Task[] => {
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    if (stored) {
+      return JSON.parse(stored);
+    }
+  } catch (error) {
+    console.error('Error loading tasks from localStorage:', error);
+  }
+  return defaultTasks;
+};
+
+// Función para guardar tareas en localStorage
+const saveTasksToStorage = (tasks: Task[]): void => {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
+    console.log('Tasks saved to localStorage:', tasks.length, 'tasks');
+  } catch (error) {
+    console.error('Error saving tasks to localStorage:', error);
+  }
+};
+
+// Cargar tareas al inicializar
+let tasksStorage: Task[] = loadTasksFromStorage();
+
 export const taskStorageService = {
   getTasks: () => [...tasksStorage],
   
@@ -83,6 +111,7 @@ export const taskStorageService = {
       date: taskData.date || new Date().toISOString().split('T')[0]
     };
     tasksStorage.push(newTask);
+    saveTasksToStorage(tasksStorage);
     console.log('Task created:', newTask);
     return newTask;
   },
@@ -91,6 +120,7 @@ export const taskStorageService = {
     const taskIndex = tasksStorage.findIndex(task => task.id === taskId);
     if (taskIndex !== -1) {
       tasksStorage[taskIndex] = { ...tasksStorage[taskIndex], ...updates };
+      saveTasksToStorage(tasksStorage);
       console.log('Task updated:', tasksStorage[taskIndex]);
       return tasksStorage[taskIndex];
     }
@@ -101,6 +131,7 @@ export const taskStorageService = {
     const taskIndex = tasksStorage.findIndex(task => task.id === taskId);
     if (taskIndex !== -1) {
       const deletedTask = tasksStorage.splice(taskIndex, 1)[0];
+      saveTasksToStorage(tasksStorage);
       console.log('Task deleted:', deletedTask);
       return { success: true, deletedTask };
     }
@@ -114,9 +145,26 @@ export const taskStorageService = {
         ...tasksStorage[taskIndex], 
         cleaner: cleanerName 
       };
+      saveTasksToStorage(tasksStorage);
       console.log('Task assigned:', tasksStorage[taskIndex]);
       return tasksStorage[taskIndex];
     }
     throw new Error('Task not found');
+  },
+
+  // Función para resetear a datos por defecto (útil para desarrollo)
+  resetToDefaults: () => {
+    tasksStorage = [...defaultTasks];
+    saveTasksToStorage(tasksStorage);
+    console.log('Tasks reset to defaults');
+    return tasksStorage;
+  },
+
+  // Función para limpiar completamente el almacenamiento
+  clearAll: () => {
+    tasksStorage = [];
+    localStorage.removeItem(STORAGE_KEY);
+    console.log('All tasks cleared');
+    return [];
   }
 };
