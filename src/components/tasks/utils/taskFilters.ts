@@ -5,6 +5,8 @@ interface TaskFilters {
   status: string;
   cleaner: string;
   dateRange: string;
+  cliente: string;
+  propiedad: string;
 }
 
 export const filterTasks = (tasks: Task[], filters: TaskFilters): Task[] => {
@@ -14,6 +16,7 @@ export const filterTasks = (tasks: Task[], filters: TaskFilters): Task[] => {
       return false;
     }
 
+    // Filtro por limpiador
     if (filters.cleaner !== 'all') {
       if (filters.cleaner === 'unassigned' && task.cleaner) {
         return false;
@@ -23,6 +26,17 @@ export const filterTasks = (tasks: Task[], filters: TaskFilters): Task[] => {
       }
     }
 
+    // Filtro por cliente
+    if (filters.cliente !== 'all' && task.clienteId !== filters.cliente) {
+      return false;
+    }
+
+    // Filtro por propiedad
+    if (filters.propiedad !== 'all' && task.propiedadId !== filters.propiedad) {
+      return false;
+    }
+
+    // Filtro por fecha
     if (filters.dateRange !== 'all') {
       const taskDate = new Date(task.date);
       const today = new Date();
