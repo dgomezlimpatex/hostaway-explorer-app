@@ -13,7 +13,7 @@ import { RecurringTasksWidget } from './components/RecurringTasksWidget';
 import { TaskHistoryModal } from './components/TaskHistoryModal';
 import { CreateTaskModal } from '@/components/modals/CreateTaskModal';
 import { BatchCreateTaskModal } from '@/components/modals/BatchCreateTaskModal';
-import { useCalendarData } from '@/hooks/useCalendarData';
+import { useTasks } from '@/hooks/useTasks';
 import { Task } from '@/types/calendar';
 
 export default function TasksPage() {
@@ -34,7 +34,7 @@ export default function TasksPage() {
     tasks,
     createTask,
     isLoading
-  } = useCalendarData();
+  } = useTasks(new Date(), 'day');
 
   // Memoize filtered tasks to avoid recalculation on every render
   const filteredTasks = useMemo(() => {
@@ -68,6 +68,10 @@ export default function TasksPage() {
   const handleOpenBatchModal = React.useCallback(() => {
     setIsBatchCreateModalOpen(true);
   }, []);
+
+  console.log('TasksPage - tasks:', tasks);
+  console.log('TasksPage - filteredTasks:', filteredTasks);
+  console.log('TasksPage - isLoading:', isLoading);
 
   return (
     <div className="min-h-screen bg-gray-50">
