@@ -9,18 +9,26 @@ interface ClientPropertySelectorProps {
   onClientChange: (client: any) => void;
   onPropertyChange: (property: any) => void;
   showPropertySelector?: boolean;
+  selectedClientId?: string;
+  selectedPropertyId?: string;
 }
 
 export const ClientPropertySelector = ({ 
   onClientChange, 
   onPropertyChange, 
-  showPropertySelector = true 
+  showPropertySelector = true,
+  selectedClientId: externalSelectedClientId,
+  selectedPropertyId: externalSelectedPropertyId
 }: ClientPropertySelectorProps) => {
-  const [selectedClientId, setSelectedClientId] = useState<string>('');
-  const [selectedPropertyId, setSelectedPropertyId] = useState<string>('');
+  const [internalSelectedClientId, setInternalSelectedClientId] = useState<string>('');
+  const [internalSelectedPropertyId, setInternalSelectedPropertyId] = useState<string>('');
   
   const { data: clients = [] } = useClients();
   const { data: properties = [] } = useProperties();
+
+  // Use external props if provided, otherwise use internal state
+  const selectedClientId = externalSelectedClientId !== undefined ? externalSelectedClientId : internalSelectedClientId;
+  const selectedPropertyId = externalSelectedPropertyId !== undefined ? externalSelectedPropertyId : internalSelectedPropertyId;
 
   // Filter properties by selected client
   const availableProperties = selectedClientId 
@@ -28,8 +36,12 @@ export const ClientPropertySelector = ({
     : [];
 
   const handleClientSelect = (clientId: string) => {
-    setSelectedClientId(clientId);
-    setSelectedPropertyId(''); // Reset property selection
+    if (externalSelectedClientId === undefined) {
+      setInternalSelectedClientId(clientId);
+    }
+    if (externalSelectedPropertyId === undefined) {
+      setInternalSelectedPropertyId(''); // Reset property selection
+    }
     
     const client = clients.find(c => c.id === clientId);
     onClientChange(client || null);
@@ -40,7 +52,9 @@ export const ClientPropertySelector = ({
   };
 
   const handlePropertySelect = (propertyId: string) => {
-    setSelectedPropertyId(propertyId);
+    if (externalSelectedPropertyId === undefined) {
+      setInternalSelectedPropertyId(propertyId);
+    }
     const property = properties.find(p => p.id === propertyId);
     onPropertyChange(property || null);
   };
