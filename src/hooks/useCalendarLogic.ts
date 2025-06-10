@@ -1,5 +1,5 @@
 
-import { useState, useMemo, useRef } from "react";
+import { useState, useMemo, useRef, useCallback } from "react";
 import { useCalendarData } from "@/hooks/useCalendarData";
 import { useDragAndDrop } from "@/hooks/useDragAndDrop";
 import { useToast } from "@/hooks/use-toast";
@@ -30,7 +30,7 @@ export const useCalendarLogic = () => {
   const headerScrollRef = useRef<HTMLDivElement>(null);
   const bodyScrollRef = useRef<HTMLDivElement>(null);
 
-  // Generate time slots
+  // Memoized time slots generation
   const timeSlots = useMemo(() => {
     const slots = [];
     for (let hour = 6; hour <= 22; hour++) {
@@ -42,8 +42,8 @@ export const useCalendarLogic = () => {
     return slots;
   }, []);
 
-  // Handle task assignment with optional time slot
-  const handleTaskAssign = async (taskId: string, cleanerId: string, cleaners: any[], timeSlot?: string) => {
+  // Memoized task assignment handler with useCallback
+  const handleTaskAssign = useCallback(async (taskId: string, cleanerId: string, cleaners: any[], timeSlot?: string) => {
     console.log('useCalendarLogic - handleTaskAssign called with:', { taskId, cleanerId, cleaners, timeSlot });
     try {
       // If timeSlot is provided, also update the task's start time
@@ -88,9 +88,9 @@ export const useCalendarLogic = () => {
         variant: "destructive",
       });
     }
-  };
+  }, [tasks, updateTask, assignTask, toast]);
 
-  // Initialize drag and drop
+  // Initialize drag and drop with memoized handler
   const {
     dragState,
     handleDragStart,
@@ -99,13 +99,12 @@ export const useCalendarLogic = () => {
     handleDrop
   } = useDragAndDrop(handleTaskAssign);
 
-  // Handle new task creation
-  const handleNewTask = () => {
+  // Memoized handlers with useCallback
+  const handleNewTask = useCallback(() => {
     setIsCreateModalOpen(true);
-  };
+  }, []);
 
-  // Handle task creation
-  const handleCreateTask = async (taskData: Omit<Task, 'id'>) => {
+  const handleCreateTask = useCallback(async (taskData: Omit<Task, 'id'>) => {
     try {
       await createTask(taskData);
       toast({
@@ -119,16 +118,14 @@ export const useCalendarLogic = () => {
         variant: "destructive",
       });
     }
-  };
+  }, [createTask, toast]);
 
-  // Handle task details
-  const handleTaskClick = (task: Task) => {
+  const handleTaskClick = useCallback((task: Task) => {
     setSelectedTask(task);
     setIsTaskModalOpen(true);
-  };
+  }, []);
 
-  // Handle task update
-  const handleUpdateTask = async (taskId: string, updates: Partial<Task>) => {
+  const handleUpdateTask = useCallback(async (taskId: string, updates: Partial<Task>) => {
     try {
       await updateTask({ taskId, updates });
     } catch (error) {
@@ -138,10 +135,9 @@ export const useCalendarLogic = () => {
         variant: "destructive",
       });
     }
-  };
+  }, [updateTask, toast]);
 
-  // Handle task deletion
-  const handleDeleteTask = async (taskId: string) => {
+  const handleDeleteTask = useCallback(async (taskId: string) => {
     try {
       await deleteTask(taskId);
     } catch (error) {
@@ -151,10 +147,9 @@ export const useCalendarLogic = () => {
         variant: "destructive",
       });
     }
-  };
+  }, [deleteTask, toast]);
 
-  // Handle task unassignment
-  const handleUnassignTask = async (taskId: string) => {
+  const handleUnassignTask = useCallback(async (taskId: string) => {
     try {
       await updateTask({ 
         taskId, 
@@ -175,7 +170,7 @@ export const useCalendarLogic = () => {
         variant: "destructive",
       });
     }
-  };
+  }, [updateTask, toast]);
 
   return {
     // Data
@@ -204,7 +199,7 @@ export const useCalendarLogic = () => {
     handleDragOver,
     handleDrop,
     
-    // Actions
+    // Memoized actions
     setCurrentView,
     navigateDate,
     goToToday,

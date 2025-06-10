@@ -1,4 +1,5 @@
 
+import { memo, useCallback } from "react";
 import { cn } from "@/lib/utils";
 
 interface TimeSlotProps {
@@ -12,7 +13,7 @@ interface TimeSlotProps {
   children?: React.ReactNode;
 }
 
-export const TimeSlot = ({ 
+export const TimeSlot = memo(({ 
   hour, 
   minute, 
   cleanerId, 
@@ -24,27 +25,27 @@ export const TimeSlot = ({
 }: TimeSlotProps) => {
   const timeString = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
   
-  const handleDragOver = (e: React.DragEvent) => {
+  const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
     onDragOver(e);
     (e.currentTarget as HTMLElement).classList.add('drag-over');
-  };
+  }, [onDragOver]);
 
-  const handleDragLeave = (e: React.DragEvent) => {
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
     // Only remove drag-over if we're actually leaving this element
     if (!e.currentTarget.contains(e.relatedTarget as Node)) {
       (e.currentTarget as HTMLElement).classList.remove('drag-over');
     }
-  };
+  }, []);
 
-  const handleDrop = (e: React.DragEvent) => {
+  const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
     (e.currentTarget as HTMLElement).classList.remove('drag-over');
     // Pass the time slot information when dropping
     onDrop(e, cleanerId, timeString);
-  };
+  }, [onDrop, cleanerId, timeString]);
 
   // Allow drop even if occupied by the same task being dragged
   const allowDrop = !isOccupied || (draggedTaskId && children);
@@ -75,4 +76,6 @@ export const TimeSlot = ({
       </div>
     </div>
   );
-};
+});
+
+TimeSlot.displayName = "TimeSlot";

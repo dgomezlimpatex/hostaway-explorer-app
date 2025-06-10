@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { ResponsiveCalendarHeader } from "./calendar/ResponsiveCalendarHeader";
 import { CalendarLayout } from "./calendar/CalendarLayout";
 import { UnassignedTasks } from "./calendar/UnassignedTasks";
@@ -41,27 +41,30 @@ const CleaningCalendar = () => {
     handleUnassignTask
   } = useCalendarLogic();
 
-  // Handle scroll synchronization
-  const handleHeaderScroll = (e: React.UIEvent<HTMLDivElement>) => {
+  // Memoized scroll handlers with useCallback
+  const handleHeaderScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
     if (bodyScrollRef.current) {
       bodyScrollRef.current.scrollLeft = e.currentTarget.scrollLeft;
     }
-  };
+  }, []);
 
-  const handleBodyScroll = (e: React.UIEvent<HTMLDivElement>) => {
+  const handleBodyScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
     if (headerScrollRef.current) {
       headerScrollRef.current.scrollLeft = e.currentTarget.scrollLeft;
     }
-  };
+  }, []);
 
-  // Get tasks assigned to cleaners
-  const assignedTasks = tasks.filter(task => task.cleaner);
-  const unassignedTasks = tasks.filter(task => !task.cleaner);
+  // Memoized task filtering
+  const { assignedTasks, unassignedTasks } = useMemo(() => {
+    const assigned = tasks.filter(task => task.cleaner);
+    const unassigned = tasks.filter(task => !task.cleaner);
+    return { assignedTasks: assigned, unassignedTasks: unassigned };
+  }, [tasks]);
 
-  // Wrapper for time slot occupation check
-  const checkTimeSlotOccupied = (cleanerId: string, hour: number, minute: number) => {
+  // Memoized time slot occupation check wrapper
+  const checkTimeSlotOccupied = useCallback((cleanerId: string, hour: number, minute: number) => {
     return isTimeSlotOccupied(cleanerId, hour, minute, assignedTasks, cleaners);
-  };
+  }, [assignedTasks, cleaners]);
 
   if (isLoading) {
     return (

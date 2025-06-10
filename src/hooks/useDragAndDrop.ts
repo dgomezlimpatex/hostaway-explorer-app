@@ -1,5 +1,5 @@
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { Task } from '@/types/calendar';
 
 interface DragState {
@@ -92,11 +92,14 @@ export const useDragAndDrop = (onTaskAssign: (taskId: string, cleanerId: string,
     });
   }, [onTaskAssign]);
 
-  return {
+  // Memoize the return object to prevent unnecessary re-renders
+  const returnValue = useMemo(() => ({
     dragState,
     handleDragStart,
     handleDragEnd,
     handleDragOver,
     handleDrop
-  };
+  }), [dragState, handleDragStart, handleDragEnd, handleDragOver, handleDrop]);
+
+  return returnValue;
 };
