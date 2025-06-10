@@ -166,8 +166,7 @@ export const taskStorageService = {
     console.log('assignTask called with:', { taskId, cleanerName, cleanerId });
     
     const updateData: any = { 
-      cleaner: cleanerName,
-      updated_at: new Date().toISOString()
+      cleaner: cleanerName
     };
     
     if (cleanerId) {
