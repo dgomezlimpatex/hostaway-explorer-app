@@ -9,7 +9,17 @@ export const clientSchema = z.object({
   direccionFacturacion: z.string().min(1, 'La dirección es obligatoria'),
   codigoPostal: z.string().min(1, 'El código postal es obligatorio'),
   ciudad: z.string().min(1, 'La ciudad es obligatoria'),
-  tipoServicio: z.enum(['mantenimiento', 'cristaleria', 'airbnb', 'otro']),
+  tipoServicio: z.enum([
+    'limpieza-mantenimiento',
+    'mantenimiento-cristaleria', 
+    'mantenimiento-airbnb',
+    'limpieza-puesta-punto',
+    'limpieza-final-obra',
+    'check-in',
+    'desplazamiento',
+    'limpieza-especial',
+    'trabajo-extraordinario'
+  ]),
   metodoPago: z.enum(['transferencia', 'efectivo', 'bizum']),
   supervisor: z.string().min(1, 'El supervisor es obligatorio'),
   factura: z.boolean(),

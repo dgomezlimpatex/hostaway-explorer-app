@@ -34,7 +34,7 @@ export const CreateClientModal = () => {
       direccionFacturacion: '',
       codigoPostal: '',
       ciudad: '',
-      tipoServicio: 'airbnb',
+      tipoServicio: 'mantenimiento-airbnb',
       metodoPago: 'transferencia',
       supervisor: '',
       factura: false,

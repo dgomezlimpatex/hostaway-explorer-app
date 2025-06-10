@@ -34,20 +34,40 @@ export const ServiceInfoSection = ({ control }: ServiceInfoSectionProps) => {
                   className="flex flex-col space-y-1"
                 >
                   <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="mantenimiento" id="mantenimiento" />
-                    <Label htmlFor="mantenimiento">Mantenimiento</Label>
+                    <RadioGroupItem value="limpieza-mantenimiento" id="limpieza-mantenimiento" />
+                    <Label htmlFor="limpieza-mantenimiento">Limpieza de Mantenimiento</Label>
                   </div>
                   <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="cristaleria" id="cristaleria" />
-                    <Label htmlFor="cristaleria">Cristalería</Label>
+                    <RadioGroupItem value="mantenimiento-cristaleria" id="mantenimiento-cristaleria" />
+                    <Label htmlFor="mantenimiento-cristaleria">Mantenimiento de Cristalería</Label>
                   </div>
                   <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="airbnb" id="airbnb" />
-                    <Label htmlFor="airbnb">Airbnb</Label>
+                    <RadioGroupItem value="mantenimiento-airbnb" id="mantenimiento-airbnb" />
+                    <Label htmlFor="mantenimiento-airbnb">Mantenimiento Airbnb</Label>
                   </div>
                   <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="otro" id="otro" />
-                    <Label htmlFor="otro">Otro</Label>
+                    <RadioGroupItem value="limpieza-puesta-punto" id="limpieza-puesta-punto" />
+                    <Label htmlFor="limpieza-puesta-punto">Limpieza de Puesta a Punto</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="limpieza-final-obra" id="limpieza-final-obra" />
+                    <Label htmlFor="limpieza-final-obra">Limpieza Final de Obra</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="check-in" id="check-in" />
+                    <Label htmlFor="check-in">Check In</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="desplazamiento" id="desplazamiento" />
+                    <Label htmlFor="desplazamiento">Desplazamiento</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="limpieza-especial" id="limpieza-especial" />
+                    <Label htmlFor="limpieza-especial">Limpieza Especial</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="trabajo-extraordinario" id="trabajo-extraordinario" />
+                    <Label htmlFor="trabajo-extraordinario">Trabajo Extraordinario</Label>
                   </div>
                 </RadioGroup>
               </FormControl>
