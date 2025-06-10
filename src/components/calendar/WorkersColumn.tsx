@@ -21,8 +21,8 @@ export const WorkersColumn = ({ cleaners }: WorkersColumnProps) => {
           <div 
             key={cleaner.id} 
             className={cn(
-              "h-20 border-b border-gray-200 p-3 flex items-center hover:bg-gray-100 transition-colors",
-              index % 2 === 0 ? "bg-white" : "bg-gray-25"
+              "h-20 border-b-2 border-gray-300 p-3 flex items-center hover:bg-gray-100 transition-colors",
+              index % 2 === 0 ? "bg-white" : "bg-gray-50"
             )}
           >
             <div className="flex items-center gap-3">

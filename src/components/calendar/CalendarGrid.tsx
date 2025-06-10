@@ -49,9 +49,9 @@ export const CalendarGrid = forwardRef<HTMLDivElement, CalendarGridProps>(
               <div 
                 key={cleaner.id} 
                 className={cn(
-                  "h-20 relative hover:bg-gray-25 transition-colors flex",
-                  "border-b border-gray-200",
-                  index % 2 === 0 ? "bg-white" : "bg-gray-25"
+                  "h-20 relative hover:bg-gray-50 transition-colors flex",
+                  "border-b-2 border-gray-300",
+                  index % 2 === 0 ? "bg-white" : "bg-gray-50"
                 )}
               >
                 {/* Time slots for this cleaner */}
