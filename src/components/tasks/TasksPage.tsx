@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Plus, Search, ArrowLeft } from "lucide-react";
+import { Plus, Search, ArrowLeft, Users } from "lucide-react";
 import { Link } from "react-router-dom";
 import { TasksList } from './TasksList';
 import { TaskFilters } from './TaskFilters';
@@ -12,11 +12,13 @@ import { CalendarIntegrationWidget } from './components/CalendarIntegrationWidge
 import { RecurringTasksWidget } from './components/RecurringTasksWidget';
 import { TaskHistoryModal } from './components/TaskHistoryModal';
 import { CreateTaskModal } from '@/components/modals/CreateTaskModal';
+import { BatchCreateTaskModal } from '@/components/modals/BatchCreateTaskModal';
 import { useCalendarData } from '@/hooks/useCalendarData';
 import { Task } from '@/types/calendar';
 
 export default function TasksPage() {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isBatchCreateModalOpen, setIsBatchCreateModalOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [filters, setFilters] = useState({
     status: 'all',
@@ -36,6 +38,12 @@ export default function TasksPage() {
 
   const handleCreateTask = (taskData: any) => {
     createTask(taskData);
+  };
+
+  const handleBatchCreateTasks = (tasksData: any[]) => {
+    tasksData.forEach(taskData => {
+      createTask(taskData);
+    });
   };
 
   const handleShowHistory = (task: Task) => {
@@ -77,6 +85,14 @@ export default function TasksPage() {
                 className="pl-10 w-64"
               />
             </div>
+            <Button 
+              onClick={() => setIsBatchCreateModalOpen(true)} 
+              variant="outline"
+              className="flex items-center gap-2 border-blue-200 text-blue-700 hover:bg-blue-50"
+            >
+              <Users className="h-4 w-4" />
+              Crear Múltiples
+            </Button>
             <Button onClick={() => setIsCreateModalOpen(true)} className="flex items-center gap-2">
               <Plus className="h-4 w-4" />
               Nueva Tarea
@@ -119,6 +135,12 @@ export default function TasksPage() {
           open={isCreateModalOpen} 
           onOpenChange={setIsCreateModalOpen} 
           onCreateTask={handleCreateTask} 
+        />
+
+        <BatchCreateTaskModal
+          open={isBatchCreateModalOpen}
+          onOpenChange={setIsBatchCreateModalOpen}
+          onCreateTasks={handleBatchCreateTasks}
         />
 
         <TaskHistoryModal 

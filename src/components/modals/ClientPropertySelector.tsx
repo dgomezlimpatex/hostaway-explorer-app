@@ -1,59 +1,57 @@
 
 import { useState, useEffect } from 'react';
-import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
 import { useClients } from '@/hooks/useClients';
-import { usePropertiesByClient } from '@/hooks/useProperties';
-import { Client } from '@/types/client';
-import { Property } from '@/types/property';
+import { useProperties } from '@/hooks/useProperties';
 
 interface ClientPropertySelectorProps {
-  onClientChange: (client: Client | null) => void;
-  onPropertyChange: (property: Property | null) => void;
-  selectedClientId?: string;
-  selectedPropertyId?: string;
+  onClientChange: (client: any) => void;
+  onPropertyChange: (property: any) => void;
+  showPropertySelector?: boolean;
 }
 
-export const ClientPropertySelector = ({
-  onClientChange,
-  onPropertyChange,
-  selectedClientId = '',
-  selectedPropertyId = ''
+export const ClientPropertySelector = ({ 
+  onClientChange, 
+  onPropertyChange, 
+  showPropertySelector = true 
 }: ClientPropertySelectorProps) => {
-  const [clientId, setClientId] = useState(selectedClientId);
-  const [propertyId, setPropertyId] = useState(selectedPropertyId);
+  const [selectedClientId, setSelectedClientId] = useState<string>('');
+  const [selectedPropertyId, setSelectedPropertyId] = useState<string>('');
+  
   const { data: clients = [] } = useClients();
-  const { data: properties = [] } = usePropertiesByClient(clientId);
+  const { data: properties = [] } = useProperties();
 
-  useEffect(() => {
-    const selectedClient = clients.find(c => c.id === clientId);
-    onClientChange(selectedClient || null);
-  }, [clientId, clients, onClientChange]);
+  // Filter properties by selected client
+  const availableProperties = selectedClientId 
+    ? properties.filter(property => property.clienteId === selectedClientId)
+    : [];
 
-  useEffect(() => {
-    const selectedProperty = properties.find(p => p.id === propertyId);
-    onPropertyChange(selectedProperty || null);
-  }, [propertyId, properties, onPropertyChange]);
-
-  const handleClientChange = (value: string) => {
-    setClientId(value);
-    setPropertyId(''); // Reset property selection when client changes
-    onPropertyChange(null);
+  const handleClientSelect = (clientId: string) => {
+    setSelectedClientId(clientId);
+    setSelectedPropertyId(''); // Reset property selection
+    
+    const client = clients.find(c => c.id === clientId);
+    onClientChange(client || null);
+    
+    if (showPropertySelector) {
+      onPropertyChange(null); // Reset property in parent
+    }
   };
 
-  const handlePropertyChange = (value: string) => {
-    setPropertyId(value);
-    const selectedProperty = properties.find(p => p.id === value);
-    onPropertyChange(selectedProperty || null);
+  const handlePropertySelect = (propertyId: string) => {
+    setSelectedPropertyId(propertyId);
+    const property = properties.find(p => p.id === propertyId);
+    onPropertyChange(property || null);
   };
 
   return (
-    <div className="grid grid-cols-2 gap-4">
+    <div className="space-y-4">
       <div className="space-y-2">
-        <Label htmlFor="cliente">Cliente *</Label>
-        <Select value={clientId} onValueChange={handleClientChange}>
+        <Label htmlFor="client">Cliente</Label>
+        <Select value={selectedClientId} onValueChange={handleClientSelect}>
           <SelectTrigger>
-            <SelectValue placeholder="Seleccionar cliente" />
+            <SelectValue placeholder="Selecciona un cliente" />
           </SelectTrigger>
           <SelectContent>
             {clients.map((client) => (
@@ -65,25 +63,29 @@ export const ClientPropertySelector = ({
         </Select>
       </div>
 
-      <div className="space-y-2">
-        <Label htmlFor="propiedad">Propiedad *</Label>
-        <Select 
-          value={propertyId} 
-          onValueChange={handlePropertyChange}
-          disabled={!clientId}
-        >
-          <SelectTrigger>
-            <SelectValue placeholder={clientId ? "Seleccionar propiedad" : "Primero selecciona un cliente"} />
-          </SelectTrigger>
-          <SelectContent>
-            {properties.map((property) => (
-              <SelectItem key={property.id} value={property.id}>
-                {property.codigo} - {property.nombre}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
+      {showPropertySelector && (
+        <div className="space-y-2">
+          <Label htmlFor="property">Propiedad</Label>
+          <Select 
+            value={selectedPropertyId} 
+            onValueChange={handlePropertySelect}
+            disabled={!selectedClientId}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder={
+                selectedClientId ? "Selecciona una propiedad" : "Primero selecciona un cliente"
+              } />
+            </SelectTrigger>
+            <SelectContent>
+              {availableProperties.map((property) => (
+                <SelectItem key={property.id} value={property.id}>
+                  {property.codigo} - {property.nombre}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
     </div>
   );
 };
