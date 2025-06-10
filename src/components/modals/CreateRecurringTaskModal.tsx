@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -11,6 +10,8 @@ import { Separator } from "@/components/ui/separator";
 import { ClientPropertySelector } from "./ClientPropertySelector";
 import { useCreateRecurringTask } from "@/hooks/useRecurringTasks";
 import { RecurringTask } from "@/types/recurring";
+import { Client } from "@/types/client";
+import { Property } from "@/types/property";
 
 interface CreateRecurringTaskModalProps {
   open: boolean;
@@ -43,6 +44,21 @@ export const CreateRecurringTaskModal = ({ open, onOpenChange }: CreateRecurring
   });
 
   const createRecurringTask = useCreateRecurringTask();
+
+  const handleClientChange = (client: Client | null) => {
+    setFormData(prev => ({ 
+      ...prev, 
+      clienteId: client?.id || '',
+      propiedadId: '' // Reset property when client changes
+    }));
+  };
+
+  const handlePropertyChange = (property: Property | null) => {
+    setFormData(prev => ({ 
+      ...prev, 
+      propiedadId: property?.id || ''
+    }));
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -154,8 +170,8 @@ export const CreateRecurringTaskModal = ({ open, onOpenChange }: CreateRecurring
             <ClientPropertySelector
               selectedClientId={formData.clienteId}
               selectedPropertyId={formData.propiedadId}
-              onClientChange={(clientId) => setFormData(prev => ({ ...prev, clienteId, propiedadId: '' }))}
-              onPropertyChange={(propertyId) => setFormData(prev => ({ ...prev, propiedadId: propertyId }))}
+              onClientChange={handleClientChange}
+              onPropertyChange={handlePropertyChange}
             />
           </div>
 

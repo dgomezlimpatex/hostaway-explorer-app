@@ -12,6 +12,8 @@ interface TasksListProps {
     status: string;
     cleaner: string;
     dateRange: string;
+    cliente: string;
+    propiedad: string;
   };
   isLoading: boolean;
   onShowHistory?: (task: Task) => void;
