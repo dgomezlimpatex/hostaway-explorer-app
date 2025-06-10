@@ -2,7 +2,7 @@
 import React from "react";
 import { Task } from "@/types/calendar";
 import { StatusIndicator } from "@/components/ui/status-indicator";
-import { Clock, MapPin, User } from "lucide-react";
+import { Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   Tooltip,
@@ -57,51 +57,37 @@ export const EnhancedTaskCard = React.memo(({
               "relative p-2 rounded-lg border-l-4 cursor-pointer transition-all duration-300",
               "hover:shadow-lg hover:scale-[1.02] hover:-translate-y-0.5",
               "focus:outline-none focus:ring-2 focus:ring-primary/50",
-              "transform-gpu", // Hardware acceleration
+              "transform-gpu overflow-hidden", // Added overflow-hidden
               getStatusColor(task.status),
               isDragging && "opacity-50 rotate-2 scale-95 shadow-2xl z-50"
             )}
           >
             {/* Header con estado */}
-            <div className="flex items-center justify-between mb-1">
-              <div className="flex items-center gap-2">
-                <StatusIndicator 
-                  status={task.status as any} 
-                  size="sm" 
-                  showTooltip={false}
-                />
-                <span className="text-xs font-medium text-gray-600 dark:text-gray-300 uppercase tracking-wide">
-                  {task.type}
-                </span>
-              </div>
+            <div className="flex items-center justify-between mb-2">
+              <StatusIndicator 
+                status={task.status as any} 
+                size="sm" 
+                showTooltip={false}
+              />
               <div className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400">
-                <Clock className="w-3 h-3" />
-                <span>{task.startTime} - {task.endTime}</span>
+                <Clock className="w-3 h-3 flex-shrink-0" />
+                <span className="whitespace-nowrap">{task.startTime} - {task.endTime}</span>
               </div>
             </div>
 
-            {/* Contenido principal */}
+            {/* Contenido principal - Información específica solicitada */}
             <div className="space-y-1">
-              <h3 className="font-semibold text-sm text-gray-900 dark:text-gray-100 line-clamp-2">
+              {/* Código y nombre del piso */}
+              <h3 className="font-semibold text-sm text-gray-900 dark:text-gray-100 truncate">
                 {task.property}
               </h3>
               
-              {/* Información de ubicación y cliente */}
-              <div className="space-y-1">
-                {task.clienteId && (
-                  <div className="flex items-center gap-1 text-xs text-gray-600 dark:text-gray-300">
-                    <User className="w-3 h-3 flex-shrink-0" />
-                    <span className="truncate">Cliente: {task.clienteId}</span>
-                  </div>
-                )}
-                
-                {task.address && (
-                  <div className="flex items-center gap-1 text-xs text-gray-600 dark:text-gray-300">
-                    <MapPin className="w-3 h-3 flex-shrink-0" />
-                    <span className="truncate">{task.address}</span>
-                  </div>
-                )}
-              </div>
+              {/* Nombre del cliente */}
+              {task.clienteId && (
+                <p className="text-xs text-gray-600 dark:text-gray-300 truncate">
+                  Cliente: {task.clienteId}
+                </p>
+              )}
             </div>
 
             {/* Indicador de arrastre */}
@@ -123,12 +109,9 @@ export const EnhancedTaskCard = React.memo(({
             <p className="text-xs text-muted-foreground">
               {task.startTime} - {task.endTime}
             </p>
-            <p className="text-xs">
-              Check-in: {task.checkIn} | Check-out: {task.checkOut}
-            </p>
-            {task.cleaner && (
+            {task.clienteId && (
               <p className="text-xs">
-                <span className="font-medium">Limpiador:</span> {task.cleaner}
+                <span className="font-medium">Cliente:</span> {task.clienteId}
               </p>
             )}
             {task.address && (
