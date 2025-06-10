@@ -83,22 +83,22 @@ export const EnhancedTaskCard = React.memo(({
             {/* Contenido principal */}
             <div className="space-y-1">
               <h3 className="font-semibold text-sm text-gray-900 dark:text-gray-100 line-clamp-2">
-                {task.title}
+                {task.property}
               </h3>
               
               {/* Información de ubicación y cliente */}
               <div className="space-y-1">
-                {task.cliente && (
+                {task.clienteId && (
                   <div className="flex items-center gap-1 text-xs text-gray-600 dark:text-gray-300">
                     <User className="w-3 h-3 flex-shrink-0" />
-                    <span className="truncate">{task.cliente}</span>
+                    <span className="truncate">Cliente: {task.clienteId}</span>
                   </div>
                 )}
                 
-                {task.propiedad && (
+                {task.address && (
                   <div className="flex items-center gap-1 text-xs text-gray-600 dark:text-gray-300">
                     <MapPin className="w-3 h-3 flex-shrink-0" />
-                    <span className="truncate">{task.propiedad}</span>
+                    <span className="truncate">{task.address}</span>
                   </div>
                 )}
               </div>
@@ -119,16 +119,21 @@ export const EnhancedTaskCard = React.memo(({
         </TooltipTrigger>
         <TooltipContent side="top" className="max-w-xs">
           <div className="space-y-1">
-            <p className="font-medium">{task.title}</p>
+            <p className="font-medium">{task.property}</p>
             <p className="text-xs text-muted-foreground">
               {task.startTime} - {task.endTime}
             </p>
-            {task.description && (
-              <p className="text-xs">{task.description}</p>
-            )}
+            <p className="text-xs">
+              Check-in: {task.checkIn} | Check-out: {task.checkOut}
+            </p>
             {task.cleaner && (
               <p className="text-xs">
                 <span className="font-medium">Limpiador:</span> {task.cleaner}
+              </p>
+            )}
+            {task.address && (
+              <p className="text-xs">
+                <span className="font-medium">Dirección:</span> {task.address}
               </p>
             )}
           </div>
