@@ -61,10 +61,10 @@ export const useTaskActions = () => {
     });
   };
 
-  const handleQuickStatusChange = (task: Task, newStatus: "completed" | "in-progress" | "pending") => {
+  const handleQuickStatusChange = (taskId: string, newStatus: string) => {
     updateTask({ 
-      taskId: task.id, 
-      updates: { status: newStatus }
+      taskId, 
+      updates: { status: newStatus as "completed" | "in-progress" | "pending" }
     });
     toast({
       title: "Estado actualizado",
