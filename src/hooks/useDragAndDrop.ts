@@ -16,9 +16,12 @@ export const useDragAndDrop = (onTaskAssign: (taskId: string, cleanerId: string,
   });
 
   const handleDragStart = useCallback((e: React.DragEvent, task: Task) => {
-    console.log('useDragAndDrop - handleDragStart called with task:', task.id);
+    console.log('🚀 useDragAndDrop - handleDragStart called with task:', task.id, task.property);
     e.dataTransfer.effectAllowed = 'move';
+    
+    // Set multiple data formats for better compatibility
     e.dataTransfer.setData('text/plain', task.id);
+    e.dataTransfer.setData('application/json', JSON.stringify({ taskId: task.id, taskData: task }));
     
     // Calculate offset for smooth positioning
     const rect = (e.target as HTMLElement).getBoundingClientRect();
@@ -33,23 +36,16 @@ export const useDragAndDrop = (onTaskAssign: (taskId: string, cleanerId: string,
       dragOffset: offset
     });
 
-    // Add visual feedback
-    (e.target as HTMLElement).style.opacity = '0.5';
-    
-    // Store task data for access during drop
-    e.dataTransfer.setData('application/json', JSON.stringify(task));
+    console.log('✅ Drag state set:', { taskId: task.id, isDragging: true });
   }, []);
 
   const handleDragEnd = useCallback((e: React.DragEvent) => {
-    console.log('useDragAndDrop - handleDragEnd called');
+    console.log('🏁 useDragAndDrop - handleDragEnd called');
     setDragState({
       draggedTask: null,
       isDragging: false,
       dragOffset: { x: 0, y: 0 }
     });
-
-    // Reset visual feedback
-    (e.target as HTMLElement).style.opacity = '1';
   }, []);
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
@@ -62,17 +58,30 @@ export const useDragAndDrop = (onTaskAssign: (taskId: string, cleanerId: string,
     e.preventDefault();
     e.stopPropagation();
     
-    console.log('useDragAndDrop - handleDrop called with cleanerId:', cleanerId);
+    console.log('🎯 useDragAndDrop - handleDrop called with cleanerId:', cleanerId);
     
-    // Get task ID from drag data
-    const taskId = e.dataTransfer.getData('text/plain');
-    console.log('useDragAndDrop - taskId from drag data:', taskId);
+    // Try to get task ID from different data formats
+    let taskId = e.dataTransfer.getData('text/plain');
+    
+    if (!taskId) {
+      try {
+        const jsonData = e.dataTransfer.getData('application/json');
+        if (jsonData) {
+          const parsed = JSON.parse(jsonData);
+          taskId = parsed.taskId;
+        }
+      } catch (error) {
+        console.error('Error parsing JSON data:', error);
+      }
+    }
+    
+    console.log('📋 useDragAndDrop - taskId from drag data:', taskId);
     
     if (taskId) {
-      console.log('useDragAndDrop - calling onTaskAssign with:', { taskId, cleanerId, cleaners: cleaners.length });
+      console.log('🔄 useDragAndDrop - calling onTaskAssign with:', { taskId, cleanerId, cleanersCount: cleaners.length });
       onTaskAssign(taskId, cleanerId, cleaners);
     } else {
-      console.error('useDragAndDrop - No task ID found in drag data');
+      console.error('❌ useDragAndDrop - No task ID found in drag data');
     }
 
     // Reset drag state
