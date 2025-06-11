@@ -21,10 +21,12 @@ export const useCalendarData = () => {
     updateTask,
     createTask,
     deleteTask,
+    deleteAllTasks,
     assignTask: assignTaskMutation,
     isUpdatingTask,
     isCreatingTask,
     isDeletingTask,
+    isDeletingAllTasks,
     isAssigningTask
   } = useTasks(currentDate, currentView);
 
@@ -52,12 +54,14 @@ export const useCalendarData = () => {
     assignTask,
     createTask,
     deleteTask,
+    deleteAllTasks,
     
     // Mutation states
     isUpdatingTask,
     isAssigningTask,
     isCreatingTask,
     isDeletingTask,
+    isDeletingAllTasks,
   };
 };
 

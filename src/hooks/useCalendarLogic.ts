@@ -18,7 +18,8 @@ export const useCalendarLogic = () => {
     updateTask,
     assignTask,
     createTask,
-    deleteTask
+    deleteTask,
+    deleteAllTasks
   } = useCalendarData();
 
   const { toast } = useToast();
@@ -149,6 +150,24 @@ export const useCalendarLogic = () => {
     }
   }, [deleteTask, toast]);
 
+  const handleDeleteAllTasks = useCallback(async () => {
+    if (window.confirm('¿Estás seguro de que quieres eliminar TODAS las tareas? Esta acción no se puede deshacer.')) {
+      try {
+        await deleteAllTasks();
+        toast({
+          title: "Todas las tareas eliminadas",
+          description: "Se han eliminado todas las tareas correctamente.",
+        });
+      } catch (error) {
+        toast({
+          title: "Error",
+          description: "No se pudieron eliminar las tareas.",
+          variant: "destructive",
+        });
+      }
+    }
+  }, [deleteAllTasks, toast]);
+
   const handleUnassignTask = useCallback(async (taskId: string) => {
     try {
       await updateTask({ 
@@ -208,6 +227,7 @@ export const useCalendarLogic = () => {
     handleTaskClick,
     handleUpdateTask,
     handleDeleteTask,
+    handleDeleteAllTasks,
     handleUnassignTask
   };
 };

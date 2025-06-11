@@ -1,3 +1,4 @@
+
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Task, ViewType } from '@/types/calendar';
 import { taskStorageService } from '@/services/taskStorage';
@@ -8,11 +9,15 @@ export const useTasks = (currentDate: Date, currentView: ViewType) => {
   const { data: tasks = [], isLoading } = useQuery({
     queryKey: ['tasks', currentDate, currentView],
     queryFn: async () => {
-      console.log('useTasks - queryFn called with:', { currentDate, currentView });
+      console.log('useTasks - queryFn called with:', { 
+        currentDate: currentDate.toISOString(),
+        currentDateString: currentDate.toISOString().split('T')[0],
+        currentView 
+      });
       
       // Obtener TODAS las tareas
       const allTasks = await taskStorageService.getTasks();
-      console.log('useTasks - allTasks from storage:', allTasks);
+      console.log('useTasks - allTasks from storage:', allTasks.length, 'tasks');
       
       // Si no hay tareas, devolver array vacío
       if (!allTasks || allTasks.length === 0) {
@@ -20,9 +25,9 @@ export const useTasks = (currentDate: Date, currentView: ViewType) => {
         return [];
       }
 
-      // Calcular fechas basadas en la vista actual
+      // Calcular fechas basadas en la vista actual usando fecha local
       const currentDateStr = currentDate.toISOString().split('T')[0];
-      console.log('useTasks - currentDateStr:', currentDateStr);
+      console.log('useTasks - currentDateStr for filtering:', currentDateStr);
       
       let filteredTasks = [];
       
@@ -30,9 +35,7 @@ export const useTasks = (currentDate: Date, currentView: ViewType) => {
         // Vista de día: mostrar solo las tareas del día actual
         filteredTasks = allTasks.filter(task => {
           const match = task.date === currentDateStr;
-          if (match) {
-            console.log('useTasks - task matches current date:', task);
-          }
+          console.log(`useTasks - day view: task ${task.id} date ${task.date} matches ${currentDateStr}:`, match);
           return match;
         });
       } else if (currentView === 'three-day') {
@@ -48,7 +51,7 @@ export const useTasks = (currentDate: Date, currentView: ViewType) => {
         filteredTasks = allTasks.filter(task => {
           const match = dates.includes(task.date);
           if (match) {
-            console.log('useTasks - task matches three-day range:', task);
+            console.log('useTasks - task matches three-day range:', task.property, task.date);
           }
           return match;
         });
@@ -66,14 +69,37 @@ export const useTasks = (currentDate: Date, currentView: ViewType) => {
         filteredTasks = allTasks.filter(task => {
           const match = task.date >= startDateStr && task.date <= endDateStr;
           if (match) {
-            console.log('useTasks - task matches week range:', task);
+            console.log('useTasks - task matches week range:', task.property, task.date);
           }
           return match;
         });
       }
       
-      console.log('useTasks - filteredTasks:', filteredTasks);
+      console.log(`useTasks - filteredTasks for ${currentView} view:`, filteredTasks.length, 'tasks');
+      filteredTasks.forEach(task => {
+        console.log(`  - ${task.property} on ${task.date} at ${task.startTime}`);
+      });
+      
       return filteredTasks;
+    },
+  });
+
+  // Mutación para eliminar TODAS las tareas
+  const deleteAllTasksMutation = useMutation({
+    mutationFn: async () => {
+      console.log('deleteAllTasksMutation - deleting all tasks');
+      const allTasks = await taskStorageService.getTasks();
+      
+      for (const task of allTasks) {
+        await taskStorageService.deleteTask(task.id);
+        console.log(`deleteAllTasksMutation - deleted task ${task.id}: ${task.property}`);
+      }
+      
+      return true;
+    },
+    onSuccess: () => {
+      console.log('deleteAllTasksMutation - all tasks deleted successfully');
+      queryClient.invalidateQueries({ queryKey: ['tasks'] });
     },
   });
 
@@ -125,10 +151,12 @@ export const useTasks = (currentDate: Date, currentView: ViewType) => {
     updateTask: updateTaskMutation.mutate,
     createTask: createTaskMutation.mutate,
     deleteTask: deleteTaskMutation.mutate,
+    deleteAllTasks: deleteAllTasksMutation.mutate,
     assignTask: assignTaskMutation.mutate,
     isUpdatingTask: updateTaskMutation.isPending,
     isCreatingTask: createTaskMutation.isPending,
     isDeletingTask: deleteTaskMutation.isPending,
+    isDeletingAllTasks: deleteAllTasksMutation.isPending,
     isAssigningTask: assignTaskMutation.isPending,
   };
 };
