@@ -76,6 +76,13 @@ const CleaningCalendar = () => {
     );
   }
 
+  // Calcular fechas para el debug info
+  const today = new Date().toLocaleString("en-US", {timeZone: "Europe/Madrid"});
+  const todayStr = new Date(today).toISOString().split('T')[0];
+  const tomorrow = new Date(today);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  const tomorrowStr = tomorrow.toISOString().split('T')[0];
+
   return (
     <div className="min-h-screen bg-background text-foreground transition-colors duration-300">
       <div className="space-y-6 container-responsive py-6">
@@ -93,7 +100,9 @@ const CleaningCalendar = () => {
         <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
           <h3 className="font-semibold text-yellow-800 mb-2">Debug Info</h3>
           <p className="text-sm text-yellow-700 mb-2">
-            Fecha actual: {currentDate.toISOString().split('T')[0]} | 
+            Hoy (Madrid): {todayStr} | 
+            Mañana será: {tomorrowStr} | 
+            Fecha del calendario: {currentDate.toISOString().split('T')[0]} | 
             Vista: {currentView} | 
             Tareas cargadas: {tasks.length} | 
             Asignadas: {assignedTasks.length} | 

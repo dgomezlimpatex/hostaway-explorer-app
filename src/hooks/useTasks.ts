@@ -1,4 +1,3 @@
-
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Task, ViewType } from '@/types/calendar';
 import { taskStorageService } from '@/services/taskStorage';
@@ -84,23 +83,19 @@ export const useTasks = (currentDate: Date, currentView: ViewType) => {
     },
   });
 
-  // Mutación para eliminar TODAS las tareas
+  // Mutación para eliminar TODAS las tareas usando el nuevo método
   const deleteAllTasksMutation = useMutation({
     mutationFn: async () => {
-      console.log('deleteAllTasksMutation - deleting all tasks');
-      const allTasks = await taskStorageService.getTasks();
-      
-      for (const task of allTasks) {
-        await taskStorageService.deleteTask(task.id);
-        console.log(`deleteAllTasksMutation - deleted task ${task.id}: ${task.property}`);
-      }
-      
-      return true;
+      console.log('deleteAllTasksMutation - using taskStorageService.deleteAllTasks');
+      return await taskStorageService.deleteAllTasks();
     },
     onSuccess: () => {
       console.log('deleteAllTasksMutation - all tasks deleted successfully');
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
     },
+    onError: (error) => {
+      console.error('deleteAllTasksMutation - error:', error);
+    }
   });
 
   const updateTaskMutation = useMutation({
