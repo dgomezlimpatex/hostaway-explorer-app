@@ -133,7 +133,34 @@ serve(async (req) => {
 
     console.log(`Usando cliente ID: ${clienteId}`);
 
-    const propertiesToInsert = properties.map(prop => ({
+    // Verificar qué propiedades ya existen
+    const { data: existingProperties } = await supabase
+      .from('properties')
+      .select('codigo');
+
+    const existingCodes = existingProperties?.map(p => p.codigo) || [];
+    console.log(`Propiedades existentes: ${existingCodes.length}`);
+
+    // Filtrar propiedades que no existen aún
+    const newProperties = properties.filter(prop => !existingCodes.includes(prop.codigo));
+    console.log(`Propiedades nuevas a insertar: ${newProperties.length}`);
+
+    if (newProperties.length === 0) {
+      return new Response(JSON.stringify({
+        success: true,
+        message: 'Todas las propiedades ya existen en la base de datos',
+        existingCount: existingCodes.length,
+        newCount: 0
+      }), {
+        status: 200,
+        headers: {
+          'Content-Type': 'application/json',
+          ...corsHeaders,
+        },
+      });
+    }
+
+    const propertiesToInsert = newProperties.map(prop => ({
       codigo: prop.codigo,
       nombre: prop.nombre,
       direccion: prop.direccion,
@@ -163,11 +190,14 @@ serve(async (req) => {
       throw insertError;
     }
 
-    console.log(`✅ Se insertaron ${insertedProperties.length} propiedades exitosamente`);
+    console.log(`✅ Se insertaron ${insertedProperties.length} propiedades nuevas exitosamente`);
 
     return new Response(JSON.stringify({
       success: true,
-      message: `Se insertaron ${insertedProperties.length} propiedades exitosamente`,
+      message: `Se insertaron ${insertedProperties.length} propiedades nuevas exitosamente`,
+      existingCount: existingCodes.length,
+      newCount: insertedProperties.length,
+      totalProperties: existingCodes.length + insertedProperties.length,
       properties: insertedProperties
     }), {
       status: 200,

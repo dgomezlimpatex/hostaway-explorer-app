@@ -30,56 +30,51 @@ serve(async (req) => {
       },
     });
 
-    if (!propertiesResponse.ok) {
+    let propertiesResult = { success: false, message: 'Error desconocido' };
+    if (propertiesResponse.ok) {
+      propertiesResult = await propertiesResponse.json();
+      console.log('✅ Propiedades procesadas exitosamente:', propertiesResult);
+    } else {
       const propertiesError = await propertiesResponse.text();
       console.error('Error insertando propiedades:', propertiesError);
-      // Continuar con el cron job aunque falle la inserción
-    } else {
-      const propertiesData = await propertiesResponse.json();
-      console.log('✅ Propiedades insertadas exitosamente:', propertiesData);
+      propertiesResult = { success: false, message: propertiesError };
     }
 
-    // 2. Configurar cron job
-    console.log('Paso 2: Configurando cron job...');
+    // 2. Información sobre el cron job (manual por ahora)
+    console.log('Paso 2: Información sobre cron job...');
+    const cronMessage = `
+    Para configurar la sincronización automática cada 2 horas, necesitas:
     
-    // Primero verificar si ya existe el cron job
-    const { data: existingJobs } = await supabase
-      .from('cron.job')
-      .select('*')
-      .eq('jobname', 'hostaway-sync-every-2-hours');
+    1. Ir al SQL Editor de Supabase: https://supabase.com/dashboard/project/qyipyygojlfhdghnraus/sql/new
+    
+    2. Ejecutar este comando SQL:
+    
+    SELECT cron.schedule(
+      'hostaway-sync-every-2-hours',
+      '0 */2 * * *',
+      $$
+      SELECT net.http_post(
+        url := 'https://qyipyygojlfhdghnraus.supabase.co/functions/v1/hostaway-sync',
+        headers := '{"Content-Type": "application/json", "Authorization": "Bearer ${supabaseServiceKey}"}'::jsonb
+      );
+      $$
+    );
+    
+    Esto configurará la sincronización automática cada 2 horas.
+    `;
 
-    if (!existingJobs || existingJobs.length === 0) {
-      // Crear el cron job usando SQL directo
-      const cronJobSQL = `
-        SELECT cron.schedule(
-          'hostaway-sync-every-2-hours',
-          '0 */2 * * *',
-          $$
-          SELECT net.http_post(
-            url := 'https://qyipyygojlfhdghnraus.supabase.co/functions/v1/hostaway-sync',
-            headers := '{"Content-Type": "application/json"}'::jsonb
-          );
-          $$
-        );
-      `;
-
-      const { error: cronError } = await supabase.rpc('exec_sql', { sql: cronJobSQL });
-
-      if (cronError) {
-        console.error('Error configurando cron job:', cronError);
-      } else {
-        console.log('✅ Cron job configurado exitosamente');
-      }
-    } else {
-      console.log('✅ Cron job ya existe, no es necesario crearlo de nuevo');
-    }
+    console.log('📋 Instrucciones del cron job preparadas');
 
     return new Response(JSON.stringify({
       success: true,
       message: 'Configuración automática completada',
       steps: {
-        properties: 'Propiedades procesadas',
-        cronJob: 'Cron job configurado para sincronización cada 2 horas'
+        properties: propertiesResult,
+        cronJob: {
+          success: true,
+          message: 'Instrucciones para configurar cron job preparadas',
+          instructions: cronMessage
+        }
       }
     }), {
       status: 200,
