@@ -1,85 +1,91 @@
-
 import React from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
-import { RefreshCw, Calendar, CheckCircle, XCircle, Clock, AlertTriangle } from "lucide-react";
-import { useQuery } from '@tanstack/react-query';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
+import { CalendarDays, Sync, Settings, CheckCircle } from 'lucide-react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { hostawaySync } from '@/services/hostawaySync';
-import { useToast } from '@/hooks/use-toast';
+import { toast } from '@/hooks/use-toast';
+import { supabase } from "@/integrations/supabase/client";
 
-export const HostawayIntegrationWidget = () => {
-  const { toast } = useToast();
+export function HostawayIntegrationWidget() {
+  const queryClient = useQueryClient();
 
-  const { data: stats, isLoading: statsLoading, refetch: refetchStats } = useQuery({
-    queryKey: ['hostaway-stats'],
-    queryFn: hostawaySync.getSyncStats,
-    refetchInterval: 60000, // Actualizar cada minuto
+  // Obtener estadísticas de sincronización
+  const { data: syncStats, isLoading } = useQuery({
+    queryKey: ['hostaway-sync-stats'],
+    queryFn: () => hostawaySync.getSyncStats(),
+    refetchInterval: 30000, // Refrescar cada 30 segundos
   });
 
-  const { data: logs, isLoading: logsLoading } = useQuery({
-    queryKey: ['hostaway-logs'],
-    queryFn: () => hostawaySync.getSyncLogs(5),
-    refetchInterval: 60000,
-  });
-
-  const handleManualSync = async () => {
-    try {
+  // Mutación para configuración automática
+  const setupAutomationMutation = useMutation({
+    mutationFn: async () => {
+      const { data, error } = await supabase.functions.invoke('setup-automation');
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['hostaway-sync-stats'] });
       toast({
-        title: "Sincronización iniciada",
-        description: "Sincronizando con Hostaway...",
+        title: "Configuración completada",
+        description: "Las propiedades han sido insertadas y el cron job configurado exitosamente.",
       });
-
-      await hostawaySync.runSync();
-      
+    },
+    onError: (error) => {
+      console.error('Error en configuración automática:', error);
       toast({
-        title: "Sincronización completada",
-        description: "Los datos se han actualizado correctamente.",
-      });
-
-      refetchStats();
-    } catch (error) {
-      console.error('Error en sincronización manual:', error);
-      toast({
-        title: "Error en sincronización",
-        description: "No se pudo completar la sincronización. Revisa la consola para más detalles.",
+        title: "Error en configuración",
+        description: "Ha ocurrido un error durante la configuración automática.",
         variant: "destructive",
       });
-    }
-  };
+    },
+  });
 
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'completed':
-        return <CheckCircle className="h-4 w-4 text-green-500" />;
-      case 'failed':
-        return <XCircle className="h-4 w-4 text-red-500" />;
-      case 'running':
-        return <RefreshCw className="h-4 w-4 text-blue-500 animate-spin" />;
-      default:
-        return <Clock className="h-4 w-4 text-gray-500" />;
-    }
-  };
+  // Mutación para sincronización manual
+  const syncMutation = useMutation({
+    mutationFn: () => hostawaySync.runSync(),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['hostaway-sync-stats'] });
+      toast({
+        title: "Sincronización completada",
+        description: "Las reservas han sido sincronizadas exitosamente.",
+      });
+    },
+    onError: (error) => {
+      console.error('Error en sincronización:', error);
+      toast({
+        title: "Error en sincronización",
+        description: "Ha ocurrido un error durante la sincronización.",
+        variant: "destructive",
+      });
+    },
+  });
 
+  // Formatear fecha
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleString('es-ES');
+    const date = new Date(dateString);
+    return date.toLocaleDateString('es-ES', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
   };
 
-  if (statsLoading || logsLoading) {
+  if (isLoading) {
     return (
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Calendar className="h-5 w-5" />
+            <CalendarDays className="h-5 w-5" />
             Integración Hostaway
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="text-center py-4">
-            <RefreshCw className="h-6 w-6 animate-spin mx-auto mb-2 text-gray-400" />
-            <p className="text-sm text-gray-500">Cargando datos de sincronización...</p>
-          </div>
+          <p>Cargando estadísticas...</p>
         </CardContent>
       </Card>
     );
@@ -88,121 +94,129 @@ export const HostawayIntegrationWidget = () => {
   return (
     <Card>
       <CardHeader>
-        <div className="flex items-center justify-between">
-          <CardTitle className="flex items-center gap-2">
-            <Calendar className="h-5 w-5" />
-            Integración Hostaway
-          </CardTitle>
-          <Button 
-            onClick={handleManualSync} 
-            size="sm" 
-            variant="outline"
-            className="flex items-center gap-2"
-          >
-            <RefreshCw className="h-4 w-4" />
-            Sincronizar
-          </Button>
-        </div>
+        <CardTitle className="flex items-center gap-2">
+          <CalendarDays className="h-5 w-5" />
+          Integración Hostaway
+        </CardTitle>
+        <CardDescription>
+          Sincronización automática de reservas desde Hostaway
+        </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        {/* Estado actual */}
-        <div className="grid grid-cols-2 gap-4">
-          <div className="text-center p-3 bg-blue-50 rounded-lg">
-            <div className="text-2xl font-bold text-blue-600">
-              {typeof stats?.totalReservations === 'number' ? stats.totalReservations : 0}
-            </div>
-            <div className="text-sm text-blue-700">Reservas Total</div>
-          </div>
-          <div className="text-center p-3 bg-green-50 rounded-lg">
-            <div className="text-2xl font-bold text-green-600">
-              {typeof stats?.activeTasks === 'number' ? stats.activeTasks : 0}
-            </div>
-            <div className="text-sm text-green-700">Tareas Activas</div>
-          </div>
+        {/* Configuración Automática */}
+        <div className="space-y-2">
+          <h4 className="font-medium">Configuración Inicial</h4>
+          <Button
+            onClick={() => setupAutomationMutation.mutate()}
+            disabled={setupAutomationMutation.isPending}
+            className="w-full"
+            variant="outline"
+          >
+            <Settings className="mr-2 h-4 w-4" />
+            {setupAutomationMutation.isPending 
+              ? 'Configurando...' 
+              : 'Ejecutar Configuración Automática'
+            }
+          </Button>
+          <p className="text-sm text-muted-foreground">
+            Inserta las propiedades y configura la sincronización automática cada 2 horas.
+          </p>
         </div>
 
         <Separator />
 
-        {/* Última sincronización */}
-        {stats?.lastSync && (
-          <div>
-            <h4 className="font-medium mb-2 flex items-center gap-2">
-              {getStatusIcon(stats.lastSyncStatus)}
-              Última Sincronización
-            </h4>
-            <div className="text-sm text-gray-600 mb-2">
-              {formatDate(stats.lastSync)}
-            </div>
-            
-            {stats.lastSyncStats && (
-              <div className="grid grid-cols-2 gap-2 text-xs">
-                <div className="flex justify-between">
-                  <span>Nuevas:</span>
-                  <Badge variant="secondary">{stats.lastSyncStats.newReservations}</Badge>
-                </div>
-                <div className="flex justify-between">
-                  <span>Actualizadas:</span>
-                  <Badge variant="secondary">{stats.lastSyncStats.updatedReservations}</Badge>
-                </div>
-                <div className="flex justify-between">
-                  <span>Canceladas:</span>
-                  <Badge variant="destructive">{stats.lastSyncStats.cancelledReservations}</Badge>
-                </div>
-                <div className="flex justify-between">
-                  <span>Tareas:</span>
-                  <Badge variant="default">{stats.lastSyncStats.tasksCreated}</Badge>
-                </div>
-              </div>
-            )}
+        {/* Estado de la última sincronización */}
+        <div className="space-y-2">
+          <h4 className="font-medium">Estado de Sincronización</h4>
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-muted-foreground">Última sincronización:</span>
+            <span className="text-sm">
+              {syncStats?.lastSync ? formatDate(syncStats.lastSync) : 'Nunca'}
+            </span>
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-muted-foreground">Estado:</span>
+            <Badge variant={
+              syncStats?.lastSyncStatus === 'completed' ? 'default' :
+              syncStats?.lastSyncStatus === 'failed' ? 'destructive' : 'secondary'
+            }>
+              {syncStats?.lastSyncStatus === 'completed' ? 'Completada' :
+               syncStats?.lastSyncStatus === 'failed' ? 'Fallida' :
+               syncStats?.lastSyncStatus === 'running' ? 'En progreso' : 'Pendiente'}
+            </Badge>
+          </div>
+        </div>
 
-            {stats.lastSyncStats?.errors && stats.lastSyncStats.errors.length > 0 && (
-              <div className="mt-2 p-2 bg-red-50 rounded text-xs">
-                <div className="flex items-center gap-1 text-red-700 mb-1">
-                  <AlertTriangle className="h-3 w-3" />
-                  {stats.lastSyncStats.errors.length} Error(es)
-                </div>
+        {/* Estadísticas */}
+        {syncStats?.lastSyncStats && (
+          <div className="space-y-2">
+            <h4 className="font-medium">Última Sincronización</h4>
+            <div className="grid grid-cols-2 gap-4 text-sm">
+              <div>
+                <span className="text-muted-foreground">Procesadas:</span>
+                <span className="ml-2 font-medium">
+                  {syncStats.lastSyncStats.reservationsProcessed?.toString() || '0'}
+                </span>
               </div>
-            )}
+              <div>
+                <span className="text-muted-foreground">Nuevas:</span>
+                <span className="ml-2 font-medium text-green-600">
+                  {syncStats.lastSyncStats.newReservations?.toString() || '0'}
+                </span>
+              </div>
+              <div>
+                <span className="text-muted-foreground">Actualizadas:</span>
+                <span className="ml-2 font-medium text-blue-600">
+                  {syncStats.lastSyncStats.updatedReservations?.toString() || '0'}
+                </span>
+              </div>
+              <div>
+                <span className="text-muted-foreground">Canceladas:</span>
+                <span className="ml-2 font-medium text-red-600">
+                  {syncStats.lastSyncStats.cancelledReservations?.toString() || '0'}
+                </span>
+              </div>
+            </div>
           </div>
         )}
 
         <Separator />
 
-        {/* Historial reciente */}
-        <div>
-          <h4 className="font-medium mb-2">Historial Reciente</h4>
-          <div className="space-y-2">
-            {logs && logs.length > 0 ? (
-              logs.slice(0, 3).map((log) => (
-                <div key={log.id} className="flex items-center justify-between text-xs">
-                  <div className="flex items-center gap-2">
-                    {getStatusIcon(log.status)}
-                    <span>{formatDate(log.sync_started_at)}</span>
-                  </div>
-                  <div className="flex gap-1">
-                    {log.new_reservations > 0 && (
-                      <Badge variant="secondary" className="text-xs">
-                        +{log.new_reservations}
-                      </Badge>
-                    )}
-                    {log.cancelled_reservations > 0 && (
-                      <Badge variant="destructive" className="text-xs">
-                        -{log.cancelled_reservations}
-                      </Badge>
-                    )}
-                  </div>
-                </div>
-              ))
-            ) : (
-              <p className="text-xs text-gray-500">No hay sincronizaciones recientes</p>
-            )}
+        {/* Totales */}
+        <div className="space-y-2">
+          <h4 className="font-medium">Totales</h4>
+          <div className="grid grid-cols-2 gap-4 text-sm">
+            <div>
+              <span className="text-muted-foreground">Reservas totales:</span>
+              <span className="ml-2 font-medium">
+                {syncStats?.totalReservations?.toString() || '0'}
+              </span>
+            </div>
+            <div>
+              <span className="text-muted-foreground">Tareas activas:</span>
+              <span className="ml-2 font-medium">
+                {syncStats?.activeTasks?.toString() || '0'}
+              </span>
+            </div>
           </div>
         </div>
 
-        <div className="text-xs text-gray-500 text-center">
-          Sincronización automática cada 2 horas
+        {/* Sincronización manual */}
+        <Button
+          onClick={() => syncMutation.mutate()}
+          disabled={syncMutation.isPending}
+          className="w-full"
+        >
+          <Sync className="mr-2 h-4 w-4" />
+          {syncMutation.isPending ? 'Sincronizando...' : 'Sincronizar Ahora'}
+        </Button>
+
+        <div className="text-xs text-muted-foreground space-y-1">
+          <p>• La sincronización automática se ejecuta cada 2 horas</p>
+          <p>• Las nuevas reservas crean tareas automáticamente</p>
+          <p>• Las cancelaciones eliminan las tareas correspondientes</p>
         </div>
       </CardContent>
     </Card>
   );
-};
+}

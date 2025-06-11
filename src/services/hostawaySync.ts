@@ -2,6 +2,34 @@
 import { supabase } from "@/integrations/supabase/client";
 
 export const hostawaySync = {
+  // Ejecutar inserción de propiedades
+  async insertProperties() {
+    console.log('Ejecutando inserción de propiedades...');
+    
+    const { data, error } = await supabase.functions.invoke('insert-properties');
+    
+    if (error) {
+      console.error('Error en inserción de propiedades:', error);
+      throw error;
+    }
+    
+    return data;
+  },
+
+  // Configurar cron job
+  async setupCronJob() {
+    console.log('Configurando cron job para sincronización...');
+    
+    const { data, error } = await supabase.rpc('setup_hostaway_cron');
+    
+    if (error) {
+      console.error('Error configurando cron job:', error);
+      throw error;
+    }
+    
+    return data;
+  },
+
   // Ejecutar sincronización manual
   async runSync() {
     console.log('Ejecutando sincronización manual con Hostaway...');
