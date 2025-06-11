@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.50.0";
 import { Resend } from "npm:resend@2.0.0";
@@ -209,6 +210,16 @@ async function syncReservations() {
   const syncId = crypto.randomUUID();
   console.log(`🚀 Iniciando sincronización ${syncId}`);
 
+  // Obtener fecha actual correcta
+  const today = new Date();
+  const todayStr = today.toISOString().split('T')[0];
+  const tomorrow = new Date(today);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  const tomorrowStr = tomorrow.toISOString().split('T')[0];
+  
+  console.log(`📅 Fecha actual: ${todayStr}`);
+  console.log(`📅 Mañana será: ${tomorrowStr}`);
+
   // Verificar cuántas propiedades tienen hostaway_listing_id
   const { data: propertiesWithHostaway, error: propError } = await supabase
     .from('properties')
@@ -252,8 +263,7 @@ async function syncReservations() {
     const token = await getHostawayToken();
     
     // Sincronizar desde HOY hasta dentro de 14 días
-    const today = new Date();
-    const startDate = today.toISOString().split('T')[0]; // Desde hoy
+    const startDate = todayStr; // Desde hoy
     const endDate = new Date();
     endDate.setDate(endDate.getDate() + 14); // Hasta 14 días en el futuro
     const endDateStr = endDate.toISOString().split('T')[0];
@@ -265,18 +275,28 @@ async function syncReservations() {
 
     console.log(`📊 Total de reservas obtenidas para los próximos 14 días: ${reservations.length}`);
 
-    // Filtrar reservas para mañana (12/06/2025) para debugging
-    const tomorrow = new Date();
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    const tomorrowStr = tomorrow.toISOString().split('T')[0];
-    
+    // Filtrar reservas para mañana para debugging específico
     const tomorrowReservations = reservations.filter(r => 
       r.departureDate === tomorrowStr || r.arrivalDate === tomorrowStr
     );
     console.log(`📅 Reservas para mañana (${tomorrowStr}): ${tomorrowReservations.length}`);
     tomorrowReservations.forEach(r => {
-      console.log(`  - Reserva ${r.id}: llegada ${r.arrivalDate}, salida ${r.departureDate}, listingMapId: ${r.listingMapId}, status: ${r.status}`);
+      console.log(`  - Reserva ${r.id}: llegada ${r.arrivalDate}, salida ${r.departureDate}, listingMapId: ${r.listingMapId}, status: ${r.status}, guest: ${r.guestName}`);
     });
+
+    // Buscar reservas de propiedades específicas mencionadas
+    const targetProperties = [
+      'Downtown La Torre Penthouse',
+      'Metropolitan Boutique Studio 3', 
+      'Main Street Deluxe Apartment 1B'
+    ];
+    
+    console.log(`🔍 Buscando reservas de propiedades específicas para mañana...`);
+    const targetReservations = reservations.filter(r => 
+      r.departureDate === tomorrowStr && 
+      targetProperties.some(prop => r.guestName?.includes(prop) || String(r.listingMapId).includes('258'))
+    );
+    console.log(`🎯 Reservas de propiedades objetivo encontradas: ${targetReservations.length}`);
 
     for (const reservation of reservations) {
       try {
@@ -286,6 +306,7 @@ async function syncReservations() {
         console.log(`   - Status: ${reservation.status}`);
         console.log(`   - Arrival: ${reservation.arrivalDate}`);
         console.log(`   - Departure: ${reservation.departureDate}`);
+        console.log(`   - Guest: ${reservation.guestName}`);
 
         // Buscar si ya existe esta reserva
         const { data: existingReservation } = await supabase
@@ -326,8 +347,14 @@ async function syncReservations() {
           
           let taskId = null;
           
-          // Solo crear tarea si la reserva está activa (no cancelada)
-          if (reservation.status !== 'cancelled' && reservation.status !== 'inquiry') {
+          // Solo crear tarea si la reserva está activa (no cancelada ni inquiry)
+          // Estados válidos para crear tareas: confirmed, new, modified, etc.
+          const validStatusesForTasks = ['confirmed', 'new', 'modified', 'awaiting_payment'];
+          const shouldCreateTask = validStatusesForTasks.includes(reservation.status.toLowerCase());
+          
+          console.log(`📋 ¿Crear tarea? Status: ${reservation.status}, válido: ${shouldCreateTask}`);
+          
+          if (shouldCreateTask) {
             console.log(`📋 Creando tarea para reserva activa (status: ${reservation.status})...`);
             try {
               const task = await createTaskForReservation(reservation, property);
