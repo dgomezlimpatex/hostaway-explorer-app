@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.50.0";
 import { Resend } from "npm:resend@2.0.0";
@@ -40,8 +41,6 @@ const corsHeaders = {
 async function getHostawayToken(): Promise<string> {
   console.log('Obteniendo token de Hostaway...');
   
-  // En producción, estos valores deberían venir de secrets de Supabase
-  // Por ahora usamos valores de ejemplo que el usuario deberá configurar
   const clientId = Deno.env.get('HOSTAWAY_CLIENT_ID');
   const clientSecret = Deno.env.get('HOSTAWAY_CLIENT_SECRET');
   
@@ -117,17 +116,32 @@ async function fetchHostawayProperties(token: string): Promise<HostawayProperty[
 }
 
 async function findPropertyByHostawayId(listingMapId: number) {
-  const { data: property } = await supabase
+  console.log(`🔍 Buscando propiedad con hostaway_listing_id: ${listingMapId}`);
+  
+  const { data: property, error } = await supabase
     .from('properties')
     .select('*')
     .eq('hostaway_listing_id', listingMapId)
     .single();
   
+  if (error) {
+    console.log(`❌ Error buscando propiedad por hostaway_listing_id ${listingMapId}:`, error);
+    return null;
+  }
+  
+  if (property) {
+    console.log(`✅ Propiedad encontrada: ${property.nombre} (ID: ${property.id})`);
+  } else {
+    console.log(`❌ No se encontró propiedad con hostaway_listing_id: ${listingMapId}`);
+  }
+  
   return property;
 }
 
 async function createTaskForReservation(reservation: HostawayReservation, property: any) {
-  console.log(`Creando tarea para reserva ${reservation.id} en propiedad ${property.nombre}`);
+  console.log(`📋 Creando tarea para reserva ${reservation.id} en propiedad ${property.nombre}`);
+  console.log(`📋 Fecha de salida: ${reservation.departureDate}`);
+  console.log(`📋 Duración del servicio: ${property.duracion_servicio} minutos`);
   
   // Calcular hora de fin basada en la duración del servicio de la propiedad
   const startTime = '11:00';
@@ -155,6 +169,8 @@ async function createTaskForReservation(reservation: HostawayReservation, proper
     background_color: '#3B82F6'
   };
 
+  console.log(`📋 Datos de la tarea a crear:`, taskData);
+
   const { data: task, error } = await supabase
     .from('tasks')
     .insert(taskData)
@@ -162,16 +178,32 @@ async function createTaskForReservation(reservation: HostawayReservation, proper
     .single();
 
   if (error) {
-    console.error('Error creando tarea:', error);
+    console.error('❌ Error creando tarea:', error);
     throw error;
   }
 
+  console.log(`✅ Tarea creada exitosamente: ${task.id}`);
   return task;
 }
 
 async function syncReservations() {
   const syncId = crypto.randomUUID();
-  console.log(`Iniciando sincronización ${syncId}`);
+  console.log(`🚀 Iniciando sincronización ${syncId}`);
+
+  // Verificar cuántas propiedades tienen hostaway_listing_id
+  const { data: propertiesWithHostaway, error: propError } = await supabase
+    .from('properties')
+    .select('id, nombre, hostaway_listing_id')
+    .not('hostaway_listing_id', 'is', null);
+
+  if (propError) {
+    console.error('❌ Error obteniendo propiedades:', propError);
+  } else {
+    console.log(`📊 Propiedades con hostaway_listing_id: ${propertiesWithHostaway?.length || 0}`);
+    propertiesWithHostaway?.forEach(prop => {
+      console.log(`  - ${prop.nombre}: hostaway_listing_id = ${prop.hostaway_listing_id}`);
+    });
+  }
 
   // Crear log de sincronización
   const { data: syncLog, error: logError } = await supabase
@@ -212,11 +244,16 @@ async function syncReservations() {
       endDate.toISOString().split('T')[0]
     );
 
-    console.log(`Procesando ${reservations.length} reservas de Hostaway`);
+    console.log(`📊 Procesando ${reservations.length} reservas de Hostaway`);
 
     for (const reservation of reservations) {
       try {
         stats.reservations_processed++;
+        console.log(`\n🔄 Procesando reserva ${reservation.id} (${stats.reservations_processed}/${reservations.length})`);
+        console.log(`   - listingMapId: ${reservation.listingMapId}`);
+        console.log(`   - Status: ${reservation.status}`);
+        console.log(`   - Arrival: ${reservation.arrivalDate}`);
+        console.log(`   - Departure: ${reservation.departureDate}`);
 
         // Buscar si ya existe esta reserva
         const { data: existingReservation } = await supabase
@@ -229,8 +266,9 @@ async function syncReservations() {
         const property = await findPropertyByHostawayId(reservation.listingMapId);
         
         if (!property) {
-          console.warn(`Propiedad no encontrada para listingMapId: ${reservation.listingMapId}`);
-          stats.errors.push(`Propiedad no encontrada para listingMapId: ${reservation.listingMapId}`);
+          const errorMsg = `Propiedad no encontrada para listingMapId: ${reservation.listingMapId}`;
+          console.warn(`⚠️ ${errorMsg}`);
+          stats.errors.push(errorMsg);
           continue;
         }
 
@@ -250,20 +288,25 @@ async function syncReservations() {
 
         if (!existingReservation) {
           // Nueva reserva
-          console.log(`Nueva reserva encontrada: ${reservation.id}`);
+          console.log(`🆕 Nueva reserva encontrada: ${reservation.id}`);
           
           let taskId = null;
           
           // Solo crear tarea si la reserva está activa (no cancelada)
           if (reservation.status !== 'cancelled' && reservation.status !== 'inquiry') {
+            console.log(`📋 Creando tarea para reserva activa...`);
             try {
               const task = await createTaskForReservation(reservation, property);
               taskId = task.id;
               stats.tasks_created++;
+              console.log(`✅ Tarea creada con ID: ${taskId}`);
             } catch (error) {
-              console.error(`Error creando tarea para reserva ${reservation.id}:`, error);
-              stats.errors.push(`Error creando tarea para reserva ${reservation.id}: ${error.message}`);
+              const errorMsg = `Error creando tarea para reserva ${reservation.id}: ${error.message}`;
+              console.error(`❌ ${errorMsg}`);
+              stats.errors.push(errorMsg);
             }
+          } else {
+            console.log(`⏭️ Saltando creación de tarea para reserva ${reservation.status}`);
           }
 
           await supabase
@@ -282,11 +325,11 @@ async function syncReservations() {
             existingReservation.cancellation_date !== (reservation.cancellationDate || null);
 
           if (hasChanges) {
-            console.log(`Cambios detectados en reserva: ${reservation.id}`);
+            console.log(`🔄 Cambios detectados en reserva: ${reservation.id}`);
 
             // Verificar si fue cancelada
             if (reservation.status === 'cancelled' && existingReservation.status !== 'cancelled') {
-              console.log(`Reserva cancelada: ${reservation.id}`);
+              console.log(`❌ Reserva cancelada: ${reservation.id}`);
               stats.cancelled_reservations++;
 
               // Eliminar tarea asociada si existe
@@ -295,6 +338,7 @@ async function syncReservations() {
                   .from('tasks')
                   .delete()
                   .eq('id', existingReservation.task_id);
+                console.log(`🗑️ Tarea eliminada: ${existingReservation.task_id}`);
               }
 
               // Enviar email de cancelación
@@ -316,8 +360,9 @@ async function syncReservations() {
           }
         }
       } catch (error) {
-        console.error(`Error procesando reserva ${reservation.id}:`, error);
-        stats.errors.push(`Error procesando reserva ${reservation.id}: ${error.message}`);
+        const errorMsg = `Error procesando reserva ${reservation.id}: ${error.message}`;
+        console.error(`❌ ${errorMsg}`);
+        stats.errors.push(errorMsg);
       }
     }
 
@@ -334,11 +379,11 @@ async function syncReservations() {
     // Enviar email resumen
     await sendSyncSummaryEmail(stats);
 
-    console.log(`Sincronización ${syncId} completada:`, stats);
+    console.log(`🎉 Sincronización ${syncId} completada:`, stats);
     return { success: true, stats };
 
   } catch (error) {
-    console.error(`Error en sincronización ${syncId}:`, error);
+    console.error(`💥 Error en sincronización ${syncId}:`, error);
     
     // Actualizar log con error
     await supabase
@@ -420,7 +465,7 @@ serve(async (req) => {
   }
 
   try {
-    console.log('Iniciando sincronización con Hostaway...');
+    console.log('🚀 Iniciando sincronización con Hostaway...');
     const result = await syncReservations();
     
     return new Response(JSON.stringify(result), {
@@ -431,7 +476,7 @@ serve(async (req) => {
       },
     });
   } catch (error) {
-    console.error('Error en la sincronización:', error);
+    console.error('💥 Error en la sincronización:', error);
     
     return new Response(JSON.stringify({ 
       error: error.message,
