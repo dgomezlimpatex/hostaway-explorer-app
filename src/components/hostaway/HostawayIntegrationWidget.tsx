@@ -108,11 +108,15 @@ export const HostawayIntegrationWidget = () => {
         {/* Estado actual */}
         <div className="grid grid-cols-2 gap-4">
           <div className="text-center p-3 bg-blue-50 rounded-lg">
-            <div className="text-2xl font-bold text-blue-600">{stats?.totalReservations || 0}</div>
+            <div className="text-2xl font-bold text-blue-600">
+              {typeof stats?.totalReservations === 'number' ? stats.totalReservations : 0}
+            </div>
             <div className="text-sm text-blue-700">Reservas Total</div>
           </div>
           <div className="text-center p-3 bg-green-50 rounded-lg">
-            <div className="text-2xl font-bold text-green-600">{stats?.activeTasks || 0}</div>
+            <div className="text-2xl font-bold text-green-600">
+              {typeof stats?.activeTasks === 'number' ? stats.activeTasks : 0}
+            </div>
             <div className="text-sm text-green-700">Tareas Activas</div>
           </div>
         </div>
