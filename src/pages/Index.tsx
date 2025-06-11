@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Calendar, Users, Building, ClipboardList, BarChart3, User } from "lucide-react";
 import { Link } from "react-router-dom";
+import { HostawayIntegrationWidget } from "@/components/hostaway/HostawayIntegrationWidget";
 
 const Index = () => {
   const menuItems = [
@@ -60,6 +61,11 @@ const Index = () => {
           <p className="text-lg text-gray-600">
             Administra tu negocio de limpieza de manera eficiente
           </p>
+        </div>
+
+        {/* Widget de Hostaway */}
+        <div className="mb-8">
+          <HostawayIntegrationWidget />
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
