@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.50.0";
 import { Resend } from "npm:resend@2.0.0";
@@ -358,8 +357,8 @@ async function syncReservations() {
 
 async function sendCancellationEmail(reservation: HostawayReservation, property: any) {
   const emailData = {
-    from: 'Sistema de Gestión <noreply@tu-dominio.com>',
-    to: ['tu-email@ejemplo.com'], // Cambiar por tu email
+    from: 'Sistema de Gestión <noreply@limpatex.com>',
+    to: ['dgomezlimpatex@gmail.com'],
     subject: '🚨 Cancelación de Reserva - Hostaway',
     html: `
       <h2>Cancelación de Reserva</h2>
@@ -386,8 +385,8 @@ async function sendSyncSummaryEmail(stats: any) {
   }
 
   const emailData = {
-    from: 'Sistema de Gestión <noreply@tu-dominio.com>',
-    to: ['tu-email@ejemplo.com'], // Cambiar por tu email
+    from: 'Sistema de Gestión <noreply@limpatex.com>',
+    to: ['dgomezlimpatex@gmail.com'],
     subject: '📊 Resumen de Sincronización - Hostaway',
     html: `
       <h2>Resumen de Sincronización</h2>

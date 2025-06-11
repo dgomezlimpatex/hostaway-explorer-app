@@ -4,6 +4,11 @@ project_id = "qyipyygojlfhdghnraus"
 [functions.hostaway-sync]
 verify_jwt = false
 
+[functions.insert-properties]
+verify_jwt = false
+
 [functions]
   [functions.hostaway-sync]
+    import_map = "import_map.json"
+  [functions.insert-properties]
     import_map = "import_map.json"
