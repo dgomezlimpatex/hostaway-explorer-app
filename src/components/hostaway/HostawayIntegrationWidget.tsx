@@ -1,9 +1,10 @@
+
 import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { CalendarDays, Sync, Settings, CheckCircle } from 'lucide-react';
+import { CalendarDays, RotateCw, Settings, CheckCircle } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { hostawaySync } from '@/services/hostawaySync';
 import { toast } from '@/hooks/use-toast';
@@ -207,7 +208,7 @@ export function HostawayIntegrationWidget() {
           disabled={syncMutation.isPending}
           className="w-full"
         >
-          <Sync className="mr-2 h-4 w-4" />
+          <RotateCw className="mr-2 h-4 w-4" />
           {syncMutation.isPending ? 'Sincronizando...' : 'Sincronizar Ahora'}
         </Button>
 

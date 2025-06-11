@@ -16,14 +16,14 @@ export const hostawaySync = {
     return data;
   },
 
-  // Configurar cron job
-  async setupCronJob() {
-    console.log('Configurando cron job para sincronización...');
+  // Configurar automatización completa (propiedades + cron job)
+  async setupAutomation() {
+    console.log('Ejecutando configuración automática...');
     
-    const { data, error } = await supabase.rpc('setup_hostaway_cron');
+    const { data, error } = await supabase.functions.invoke('setup-automation');
     
     if (error) {
-      console.error('Error configurando cron job:', error);
+      console.error('Error en configuración automática:', error);
       throw error;
     }
     
