@@ -251,19 +251,19 @@ async function syncReservations() {
   try {
     const token = await getHostawayToken();
     
-    // Sincronizar desde HOY hasta dentro de 60 días (ampliamos el rango futuro)
+    // Sincronizar desde HOY hasta dentro de 14 días
     const today = new Date();
     const startDate = today.toISOString().split('T')[0]; // Desde hoy
     const endDate = new Date();
-    endDate.setDate(endDate.getDate() + 60); // Hasta 60 días en el futuro
+    endDate.setDate(endDate.getDate() + 14); // Hasta 14 días en el futuro
     const endDateStr = endDate.toISOString().split('T')[0];
 
-    console.log(`📅 Buscando reservas desde ${startDate} hasta ${endDateStr}`);
+    console.log(`📅 Buscando reservas desde ${startDate} hasta ${endDateStr} (14 días)`);
 
-    // Obtener TODAS las reservas (sin límite de 100)
+    // Obtener reservas para los próximos 14 días
     const reservations = await fetchAllHostawayReservations(token, startDate, endDateStr);
 
-    console.log(`📊 Total de reservas obtenidas: ${reservations.length}`);
+    console.log(`📊 Total de reservas obtenidas para los próximos 14 días: ${reservations.length}`);
 
     // Filtrar reservas para mañana (12/06/2025) para debugging
     const tomorrow = new Date();
