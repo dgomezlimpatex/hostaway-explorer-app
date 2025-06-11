@@ -210,15 +210,19 @@ async function syncReservations() {
   const syncId = crypto.randomUUID();
   console.log(`🚀 Iniciando sincronización ${syncId}`);
 
-  // Obtener fecha actual correcta
-  const today = new Date();
-  const todayStr = today.toISOString().split('T')[0];
-  const tomorrow = new Date(today);
+  // Obtener fecha actual en zona horaria local (España)
+  const now = new Date();
+  // Ajustar para zona horaria española (UTC+1/UTC+2)
+  const madridTime = new Date(now.getTime() + (2 * 60 * 60 * 1000)); // UTC+2 para horario de verano
+  const today = madridTime.toISOString().split('T')[0];
+  
+  const tomorrow = new Date(madridTime);
   tomorrow.setDate(tomorrow.getDate() + 1);
   const tomorrowStr = tomorrow.toISOString().split('T')[0];
   
-  console.log(`📅 Fecha actual: ${todayStr}`);
+  console.log(`📅 Fecha actual (Madrid): ${today}`);
   console.log(`📅 Mañana será: ${tomorrowStr}`);
+  console.log(`📅 Hora actual: ${madridTime.toLocaleString('es-ES')}`);
 
   // Verificar cuántas propiedades tienen hostaway_listing_id
   const { data: propertiesWithHostaway, error: propError } = await supabase
@@ -262,13 +266,13 @@ async function syncReservations() {
   try {
     const token = await getHostawayToken();
     
-    // Sincronizar desde HOY hasta dentro de 14 días
-    const startDate = todayStr; // Desde hoy
-    const endDate = new Date();
+    // Sincronizar desde HOY hasta dentro de 14 días (usando fecha local)
+    const startDate = today; // Desde hoy (fecha local)
+    const endDate = new Date(madridTime);
     endDate.setDate(endDate.getDate() + 14); // Hasta 14 días en el futuro
     const endDateStr = endDate.toISOString().split('T')[0];
 
-    console.log(`📅 Buscando reservas desde ${startDate} hasta ${endDateStr} (14 días)`);
+    console.log(`📅 Rango de búsqueda: desde ${startDate} hasta ${endDateStr} (14 días desde hoy)`);
 
     // Obtener reservas para los próximos 14 días
     const reservations = await fetchAllHostawayReservations(token, startDate, endDateStr);
@@ -297,6 +301,16 @@ async function syncReservations() {
       targetProperties.some(prop => r.guestName?.includes(prop) || String(r.listingMapId).includes('258'))
     );
     console.log(`🎯 Reservas de propiedades objetivo encontradas: ${targetReservations.length}`);
+
+    // Filtrar y mostrar todas las reservas para hoy y mañana
+    const todayAndTomorrowReservations = reservations.filter(r => 
+      r.departureDate === today || r.departureDate === tomorrowStr ||
+      r.arrivalDate === today || r.arrivalDate === tomorrowStr
+    );
+    console.log(`📋 Reservas para hoy y mañana (${today} y ${tomorrowStr}): ${todayAndTomorrowReservations.length}`);
+    todayAndTomorrowReservations.forEach(r => {
+      console.log(`  📍 Reserva ${r.id}: ${r.arrivalDate} → ${r.departureDate}, listing: ${r.listingMapId}, status: ${r.status}, guest: ${r.guestName}`);
+    });
 
     for (const reservation of reservations) {
       try {
