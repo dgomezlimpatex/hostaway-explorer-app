@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.50.0";
 import { Resend } from "npm:resend@2.0.0";
@@ -69,15 +68,16 @@ async function getHostawayToken(): Promise<string> {
   return data.access_token;
 }
 
-async function fetchHostawayReservations(token: string, startDate: string, endDate: string): Promise<HostawayReservation[]> {
-  console.log(`Obteniendo reservas de Hostaway desde ${startDate} hasta ${endDate}`);
+async function fetchHostawayReservations(token: string, startDate: string, endDate: string, offset: number = 0): Promise<HostawayReservation[]> {
+  console.log(`Obteniendo reservas de Hostaway desde ${startDate} hasta ${endDate}, offset: ${offset}`);
   
   const url = new URL(`${HOSTAWAY_API_BASE}/reservations`);
   url.searchParams.append('accountId', HOSTAWAY_ACCOUNT_ID.toString());
   url.searchParams.append('arrivalStartDate', startDate);
   url.searchParams.append('arrivalEndDate', endDate);
   url.searchParams.append('includeResolved', 'true');
-  url.searchParams.append('limit', '100');
+  url.searchParams.append('limit', '200'); // Aumentar límite
+  url.searchParams.append('offset', offset.toString());
 
   const response = await fetch(url.toString(), {
     headers: {
@@ -92,6 +92,25 @@ async function fetchHostawayReservations(token: string, startDate: string, endDa
 
   const data = await response.json();
   return data.result || [];
+}
+
+async function fetchAllHostawayReservations(token: string, startDate: string, endDate: string): Promise<HostawayReservation[]> {
+  let allReservations: HostawayReservation[] = [];
+  let offset = 0;
+  let hasMore = true;
+
+  while (hasMore) {
+    const reservations = await fetchHostawayReservations(token, startDate, endDate, offset);
+    allReservations = allReservations.concat(reservations);
+    
+    console.log(`📊 Obtenidas ${reservations.length} reservas en esta página (total: ${allReservations.length})`);
+    
+    // Si obtenemos menos de 200, es la última página
+    hasMore = reservations.length === 200;
+    offset += 200;
+  }
+
+  return allReservations;
 }
 
 async function fetchHostawayProperties(token: string): Promise<HostawayProperty[]> {
@@ -232,19 +251,32 @@ async function syncReservations() {
   try {
     const token = await getHostawayToken();
     
-    // Sincronizar desde hace 7 días hasta dentro de 30 días
-    const startDate = new Date();
-    startDate.setDate(startDate.getDate() - 7);
+    // Sincronizar desde HOY hasta dentro de 60 días (ampliamos el rango futuro)
+    const today = new Date();
+    const startDate = today.toISOString().split('T')[0]; // Desde hoy
     const endDate = new Date();
-    endDate.setDate(endDate.getDate() + 30);
+    endDate.setDate(endDate.getDate() + 60); // Hasta 60 días en el futuro
+    const endDateStr = endDate.toISOString().split('T')[0];
 
-    const reservations = await fetchHostawayReservations(
-      token,
-      startDate.toISOString().split('T')[0],
-      endDate.toISOString().split('T')[0]
+    console.log(`📅 Buscando reservas desde ${startDate} hasta ${endDateStr}`);
+
+    // Obtener TODAS las reservas (sin límite de 100)
+    const reservations = await fetchAllHostawayReservations(token, startDate, endDateStr);
+
+    console.log(`📊 Total de reservas obtenidas: ${reservations.length}`);
+
+    // Filtrar reservas para mañana (12/06/2025) para debugging
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const tomorrowStr = tomorrow.toISOString().split('T')[0];
+    
+    const tomorrowReservations = reservations.filter(r => 
+      r.departureDate === tomorrowStr || r.arrivalDate === tomorrowStr
     );
-
-    console.log(`📊 Procesando ${reservations.length} reservas de Hostaway`);
+    console.log(`📅 Reservas para mañana (${tomorrowStr}): ${tomorrowReservations.length}`);
+    tomorrowReservations.forEach(r => {
+      console.log(`  - Reserva ${r.id}: llegada ${r.arrivalDate}, salida ${r.departureDate}, listingMapId: ${r.listingMapId}, status: ${r.status}`);
+    });
 
     for (const reservation of reservations) {
       try {
@@ -272,6 +304,8 @@ async function syncReservations() {
           continue;
         }
 
+        console.log(`✅ Propiedad encontrada: ${property.nombre} (hostaway_listing_id: ${property.hostaway_listing_id})`);
+
         const reservationData = {
           hostaway_reservation_id: reservation.id,
           property_id: property.id,
@@ -294,12 +328,12 @@ async function syncReservations() {
           
           // Solo crear tarea si la reserva está activa (no cancelada)
           if (reservation.status !== 'cancelled' && reservation.status !== 'inquiry') {
-            console.log(`📋 Creando tarea para reserva activa...`);
+            console.log(`📋 Creando tarea para reserva activa (status: ${reservation.status})...`);
             try {
               const task = await createTaskForReservation(reservation, property);
               taskId = task.id;
               stats.tasks_created++;
-              console.log(`✅ Tarea creada con ID: ${taskId}`);
+              console.log(`✅ Tarea creada con ID: ${taskId} para fecha: ${reservation.departureDate}`);
             } catch (error) {
               const errorMsg = `Error creando tarea para reserva ${reservation.id}: ${error.message}`;
               console.error(`❌ ${errorMsg}`);
