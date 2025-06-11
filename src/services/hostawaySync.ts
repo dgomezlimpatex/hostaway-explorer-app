@@ -44,6 +44,24 @@ export const hostawaySync = {
     return data;
   },
 
+  // Eliminar todas las reservas de Hostaway
+  async deleteAllHostawayReservations() {
+    console.log('Eliminando todas las reservas de Hostaway...');
+    
+    const { error } = await supabase
+      .from('hostaway_reservations')
+      .delete()
+      .neq('id', '00000000-0000-0000-0000-000000000000'); // This will delete all reservations
+
+    if (error) {
+      console.error('Error eliminando reservas de Hostaway:', error);
+      throw error;
+    }
+
+    console.log('Todas las reservas de Hostaway eliminadas exitosamente');
+    return true;
+  },
+
   // Obtener logs de sincronización
   async getSyncLogs(limit = 10) {
     const { data, error } = await supabase

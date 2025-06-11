@@ -10,8 +10,11 @@ import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { Button } from "@/components/ui/button";
 import { useCalendarLogic } from "@/hooks/useCalendarLogic";
 import { getTaskPosition, isTimeSlotOccupied } from "@/utils/taskPositioning";
+import { hostawaySync } from "@/services/hostawaySync";
+import { useToast } from "@/hooks/use-toast";
 
 const CleaningCalendar = () => {
+  const { toast } = useToast();
   const {
     tasks,
     cleaners,
@@ -68,6 +71,26 @@ const CleaningCalendar = () => {
     return isTimeSlotOccupied(cleanerId, hour, minute, assignedTasks, cleaners);
   }, [assignedTasks, cleaners]);
 
+  // Handle deleting all Hostaway reservations
+  const handleDeleteAllHostawayReservations = async () => {
+    if (window.confirm('¿Estás seguro de que quieres eliminar TODAS las reservas de Hostaway de la base de datos? Esta acción no se puede deshacer.')) {
+      try {
+        await hostawaySync.deleteAllHostawayReservations();
+        toast({
+          title: "Reservas eliminadas",
+          description: "Todas las reservas de Hostaway han sido eliminadas de la base de datos.",
+        });
+      } catch (error) {
+        console.error('Error eliminando reservas de Hostaway:', error);
+        toast({
+          title: "Error",
+          description: "No se pudieron eliminar las reservas de Hostaway.",
+          variant: "destructive",
+        });
+      }
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-screen bg-background">
@@ -77,8 +100,8 @@ const CleaningCalendar = () => {
   }
 
   // Calcular fechas para el debug info
-  const today = new Date().toLocaleString("en-US", {timeZone: "Europe/Madrid"});
-  const todayStr = new Date(today).toISOString().split('T')[0];
+  const today = new Date();
+  const todayStr = today.toISOString().split('T')[0];
   const tomorrow = new Date(today);
   tomorrow.setDate(tomorrow.getDate() + 1);
   const tomorrowStr = tomorrow.toISOString().split('T')[0];
@@ -100,8 +123,8 @@ const CleaningCalendar = () => {
         <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
           <h3 className="font-semibold text-yellow-800 mb-2">Debug Info</h3>
           <p className="text-sm text-yellow-700 mb-2">
-            Hoy (Madrid): {todayStr} | 
-            Mañana será: {tomorrowStr} | 
+            Hoy: {todayStr} | 
+            Mañana: {tomorrowStr} | 
             Fecha del calendario: {currentDate.toISOString().split('T')[0]} | 
             Vista: {currentView} | 
             Tareas cargadas: {tasks.length} | 
@@ -115,6 +138,13 @@ const CleaningCalendar = () => {
               onClick={handleDeleteAllTasks}
             >
               Eliminar todas las tareas
+            </Button>
+            <Button 
+              variant="destructive" 
+              size="sm"
+              onClick={handleDeleteAllHostawayReservations}
+            >
+              Eliminar todas las reservas Hostaway
             </Button>
           </div>
         </div>
