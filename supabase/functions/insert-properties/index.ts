@@ -74,6 +74,7 @@ async function fetchHostawayProperties(token: string): Promise<HostawayProperty[
   }
 
   const data = await response.json();
+  console.log(`Propiedades obtenidas de Hostaway: ${data.result?.length || 0}`);
   return data.result || [];
 }
 
@@ -132,18 +133,28 @@ serve(async (req) => {
     
     console.log(`Obtenidas ${hostawayProperties.length} propiedades de Hostaway`);
 
+    // Primero obtener todas las propiedades existentes
+    const { data: existingProperties, error: fetchError } = await supabase
+      .from('properties')
+      .select('*');
+
+    if (fetchError) {
+      console.error('Error obteniendo propiedades existentes:', fetchError);
+      throw fetchError;
+    }
+
+    console.log(`Propiedades existentes en la base de datos: ${existingProperties?.length || 0}`);
+
     let insertedCount = 0;
     let updatedCount = 0;
     let errorCount = 0;
 
     for (const property of hostawayProperties) {
       try {
-        // Verificar si la propiedad ya existe por hostaway_listing_id
-        const { data: existingProperty } = await supabase
-          .from('properties')
-          .select('*')
-          .eq('hostaway_listing_id', property.listingMapId)
-          .single();
+        console.log(`Procesando propiedad: ${property.internalName} (listingMapId: ${property.listingMapId})`);
+
+        // Buscar si la propiedad ya existe por hostaway_listing_id
+        const existingProperty = existingProperties?.find(p => p.hostaway_listing_id === property.listingMapId);
 
         const propertyData = {
           cliente_id: clientId,
@@ -168,12 +179,10 @@ serve(async (req) => {
 
         if (existingProperty) {
           // Actualizar propiedad existente
+          console.log(`Actualizando propiedad existente: ${existingProperty.id}`);
           const { error: updateError } = await supabase
             .from('properties')
-            .update({
-              ...propertyData,
-              fecha_actualizacion: new Date().toISOString().split('T')[0]
-            })
+            .update(propertyData)
             .eq('id', existingProperty.id);
 
           if (updateError) {
@@ -184,17 +193,46 @@ serve(async (req) => {
             updatedCount++;
           }
         } else {
-          // Insertar nueva propiedad
-          const { error: insertError } = await supabase
-            .from('properties')
-            .insert(propertyData);
+          // Buscar si existe una propiedad que coincida por nombre pero sin hostaway_listing_id
+          const similarProperty = existingProperties?.find(p => 
+            !p.hostaway_listing_id && (
+              p.nombre.toLowerCase().includes(property.internalName?.toLowerCase() || '') ||
+              property.internalName?.toLowerCase().includes(p.nombre.toLowerCase())
+            )
+          );
 
-          if (insertError) {
-            console.error(`Error insertando propiedad ${property.listingMapId}:`, insertError);
-            errorCount++;
+          if (similarProperty) {
+            // Actualizar la propiedad similar con el hostaway_listing_id
+            console.log(`Actualizando propiedad similar: ${similarProperty.nombre} -> ${property.internalName}`);
+            const { error: updateError } = await supabase
+              .from('properties')
+              .update({
+                ...propertyData,
+                fecha_actualizacion: new Date().toISOString().split('T')[0]
+              })
+              .eq('id', similarProperty.id);
+
+            if (updateError) {
+              console.error(`Error actualizando propiedad similar ${property.listingMapId}:`, updateError);
+              errorCount++;
+            } else {
+              console.log(`✅ Propiedad similar actualizada: ${property.internalName} (ID: ${property.listingMapId})`);
+              updatedCount++;
+            }
           } else {
-            console.log(`✅ Propiedad insertada: ${property.internalName} (ID: ${property.listingMapId})`);
-            insertedCount++;
+            // Insertar nueva propiedad
+            console.log(`Insertando nueva propiedad: ${property.internalName}`);
+            const { error: insertError } = await supabase
+              .from('properties')
+              .insert(propertyData);
+
+            if (insertError) {
+              console.error(`Error insertando propiedad ${property.listingMapId}:`, insertError);
+              errorCount++;
+            } else {
+              console.log(`✅ Propiedad insertada: ${property.internalName} (ID: ${property.listingMapId})`);
+              insertedCount++;
+            }
           }
         }
       } catch (error) {
@@ -202,6 +240,14 @@ serve(async (req) => {
         errorCount++;
       }
     }
+
+    // Verificar cuántas propiedades tienen hostaway_listing_id después del proceso
+    const { data: updatedPropertiesCheck } = await supabase
+      .from('properties')
+      .select('hostaway_listing_id')
+      .not('hostaway_listing_id', 'is', null);
+
+    console.log(`Propiedades con hostaway_listing_id después del proceso: ${updatedPropertiesCheck?.length || 0}`);
 
     const summary = {
       success: true,
@@ -211,7 +257,8 @@ serve(async (req) => {
         inserted: insertedCount,
         updated: updatedCount,
         errors: errorCount,
-        client_id: clientId
+        client_id: clientId,
+        properties_with_hostaway_id: updatedPropertiesCheck?.length || 0
       }
     };
 
