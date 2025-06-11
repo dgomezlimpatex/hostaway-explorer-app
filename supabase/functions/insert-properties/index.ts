@@ -7,77 +7,75 @@ const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
+// Configuración Hostaway
+const HOSTAWAY_ACCOUNT_ID = 80687;
+const HOSTAWAY_API_BASE = 'https://api.hostaway.com/v1';
+
+interface HostawayProperty {
+  id: number;
+  internalName: string;
+  listingMapId: number;
+  address?: string;
+  city?: string;
+}
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// Función para convertir duración de "HH:MM:SS" a minutos
-function timeToMinutes(timeStr: string): number {
-  const [hours, minutes] = timeStr.split(':').map(Number);
-  return hours * 60 + minutes;
+async function getHostawayToken(): Promise<string> {
+  console.log('Obteniendo token de Hostaway...');
+  
+  const clientId = Deno.env.get('HOSTAWAY_CLIENT_ID');
+  const clientSecret = Deno.env.get('HOSTAWAY_CLIENT_SECRET');
+  
+  if (!clientId || !clientSecret) {
+    throw new Error('Credenciales de Hostaway no configuradas');
+  }
+
+  const response = await fetch(`${HOSTAWAY_API_BASE}/accessTokens`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+    },
+    body: new URLSearchParams({
+      grant_type: 'client_credentials',
+      client_id: clientId,
+      client_secret: clientSecret,
+      scope: 'general',
+    }),
+  });
+
+  if (!response.ok) {
+    throw new Error(`Error obteniendo token: ${response.statusText}`);
+  }
+
+  const data = await response.json();
+  return data.access_token;
 }
 
-const properties = [
-  { nombre: "Blue Ocean Apartment", codigo: "RMA44.2C", direccion: "Ronda de Monte Alto 44, 2ºC", coste: 66.0, duracion: "2:00:00" },
-  { nombre: "Blue Ocean Penthouse", codigo: "RMA44.7D", direccion: "Ronda de Monte Alto 44, 7º", coste: 107.0, duracion: "3:30:00" },
-  { nombre: "Blue Ocean Portonovo Apartment 2ºD", codigo: "PORTONOVO.2D", direccion: "Av. de Pontevedra, 18 Sanxenxo", coste: 92.0, duracion: "2:15:00" },
-  { nombre: "Blue Ocean Portonovo Apartment 2ºI", codigo: "PORTONOVO.2I", direccion: "Av. de Pontevedra, 18 Sanxenxo", coste: 92.0, duracion: "2:15:00" },
-  { nombre: "Blue Ocean Portonovo Apartment 3ºD", codigo: "PORTONOVO.3D", direccion: "Av. de Pontevedra, 18 Sanxenxo", coste: 92.0, duracion: "2:15:00" },
-  { nombre: "Blue Ocean Portonovo Apartment 3ºI", codigo: "PORTONOVO.3I", direccion: "Av. de Pontevedra, 18 Sanxenxo", coste: 92.0, duracion: "2:15:00" },
-  { nombre: "Blue Ocean Portonovo Apartment 4ºD", codigo: "PORTONOVO.4D", direccion: "Av. de Pontevedra, 18 Sanxenxo", coste: 92.0, duracion: "2:15:00" },
-  { nombre: "Blue Ocean Portonovo Apartment 4ºI", codigo: "PORTONOVO.4I", direccion: "Av. de Pontevedra, 18 Sanxenxo", coste: 92.0, duracion: "2:15:00" },
-  { nombre: "Blue Ocean Portonovo Studio 1ºD", codigo: "PORTONOVO.1D", direccion: "Av. de Pontevedra, 18 Sanxenxo", coste: 53.0, duracion: "1:15:00" },
-  { nombre: "Blue Ocean Portonovo Studio 1ºI", codigo: "PORTONOVO.1I", direccion: "Av. de Pontevedra, 18 Sanxenxo", coste: 53.0, duracion: "1:15:00" },
-  { nombre: "Blue Ocean Portonovo Terrace Penthouse", codigo: "PORTONOVO.5", direccion: "Av. de Pontevedra, 18 Sanxenxo", coste: 145.0, duracion: "4:00:00" },
-  { nombre: "Blue Ocean Portonovo Terrace Rooftop D", codigo: "PORTONOVO.6D", direccion: "Av. de Pontevedra, 18 Sanxenxo", coste: 60.0, duracion: "1:30:00" },
-  { nombre: "Blue Ocean Portonovo Terrace Rooftop I", codigo: "PORTONOVO.6I", direccion: "Av. de Pontevedra, 18 Sanxenxo", coste: 60.0, duracion: "1:30:00" },
-  { nombre: "Central Hideaway Apartment", codigo: "CDA10.1", direccion: "Campo de Artillería,10, 1º", coste: 70.0, duracion: "2:15:00" },
-  { nombre: "Central Hideaway Penthouse", codigo: "CDA10.4", direccion: "Campo de Artillería, 10", coste: 70.0, duracion: "2:15:00" },
-  { nombre: "Central Square Deluxe Apartment", codigo: "CF41", direccion: "Calle Franja 41, 3º", coste: 70.0, duracion: "2:00:00" },
-  { nombre: "Downtown La Torre 1", codigo: "LT34.1", direccion: "Calle La Torre 34", coste: 74.0, duracion: "2:15:00" },
-  { nombre: "Downtown La Torre 2", codigo: "LT34.2", direccion: "Calle La Torre 34", coste: 74.0, duracion: "2:15:00" },
-  { nombre: "Downtown La Torre Penthouse", codigo: "LT34.3", direccion: "Calle La Torre 34", coste: 90.0, duracion: "3:00:00" },
-  { nombre: "Main Street Deluxe Apartment 1", codigo: "MD18.1", direccion: "Medico Duran 18", coste: 60.0, duracion: "1:45:00" },
-  { nombre: "Main Street Deluxe Apartment 1B", codigo: "MD18.1B", direccion: "Pasadizo Pernas 11-13", coste: 70.0, duracion: "1:45:00" },
-  { nombre: "Main Street Deluxe Apartment 2A", codigo: "MD18.2A", direccion: "Pasadizo Pernas 11-13", coste: 80.0, duracion: "2:15:00" },
-  { nombre: "Main Street Deluxe Apartment 2B", codigo: "MD18.2B", direccion: "Pasadizo Pernas 11-13", coste: 70.0, duracion: "1:45:00" },
-  { nombre: "Main Street Deluxe Apartment 3", codigo: "MD18.3", direccion: "Medico Duran 18", coste: 70.0, duracion: "1:45:00" },
-  { nombre: "Main Street Deluxe Apartment 3B", codigo: "MD18.3B", direccion: "Pasadizo Pernas 11-13", coste: 70.0, duracion: "1:45:00" },
-  { nombre: "Main Street Deluxe Apartment 4", codigo: "MD18.4", direccion: "MEDICO DURAN 18", coste: 70.0, duracion: "1:45:00" },
-  { nombre: "Main Street Deluxe Apartment 4B", codigo: "MD18.4B", direccion: "Pasadizo Pernas 11-13", coste: 70.0, duracion: "1:45:00" },
-  { nombre: "Main Street Deluxe Penthouse", codigo: "MD18.5", direccion: "MEDICO DURAN 18", coste: 70.0, duracion: "1:45:00" },
-  { nombre: "Main Street Deluxe Penthouse A", codigo: "MD18.5A", direccion: "Pasadizo Pernas 11-13", coste: 80.0, duracion: "2:15:00" },
-  { nombre: "Main Street Deluxe Penthouse B", codigo: "MD18.5B", direccion: "Pasadizo Pernas 11-13", coste: 70.0, duracion: "1:45:00" },
-  { nombre: "Metropolitan Boutique Apt 1", codigo: "MR16.1", direccion: "Calle Médico Rodríguez 16", coste: 75.0, duracion: "2:45:00" },
-  { nombre: "Metropolitan Boutique Apt 2", codigo: "MR16.2", direccion: "Médico Rodríguez 16", coste: 70.0, duracion: "2:30:00" },
-  { nombre: "Metropolitan Boutique Penthouse", codigo: "MR16.6", direccion: "MÉDICO RODRÍGUEZ 16", coste: 92.0, duracion: "3:00:00" },
-  { nombre: "Metropolitan Boutique Studio 3", codigo: "MR16.3", direccion: "MÉDICO RODRIGUEZ 16", coste: 65.0, duracion: "2:30:00" },
-  { nombre: "Metropolitan Boutique Studio 4", codigo: "MR16.4", direccion: "Médico Rodríguez 16", coste: 65.0, duracion: "2:30:00" },
-  { nombre: "Metropolitan Boutique Studio 5", codigo: "MR16.5", direccion: "Médico Rodríguez 16", coste: 65.0, duracion: "2:30:00" },
-  { nombre: "Ocean View Penthouse", codigo: "FR3.5D", direccion: "Rúa Fonte de Ramos, 3 5º D", coste: 0.0, duracion: "2:15:00" },
-  { nombre: "Old Quarter Boutique Apartment 1", codigo: "PA10.1", direccion: "Puerta de Aires 10", coste: 36.0, duracion: "1:00:00" },
-  { nombre: "Old Quarter Boutique Apartment 2", codigo: "PA10.2", direccion: "Puerta de Aires 10", coste: 36.0, duracion: "1:00:00" },
-  { nombre: "Old Quarter Boutique Apartment 3", codigo: "PA10.3", direccion: "Puerta de aires 10", coste: 36.0, duracion: "1:00:00" },
-  { nombre: "Orzan Beach Surf Apartment", codigo: "SS13.1B", direccion: "Salgado Somoza 13", coste: 46.0, duracion: "1:30:00" },
-  { nombre: "Orzan Deluxe Apartment", codigo: "CP12.1C", direccion: "Calle Perillana, 12", coste: 42.0, duracion: "1:30:00" },
-  { nombre: "Orzan Deluxe Penthouse", codigo: "CP12.4B", direccion: "Calle Perillana 12", coste: 52.0, duracion: "1:45:00" },
-  { nombre: "Prioral Countryside Villa", codigo: "PRIORAL", direccion: "Aldea Graña, 3, 15635 Miño, A Coruña, España", coste: 225.0, duracion: "2:00:00" },
-  { nombre: "Quiet and Cozy Downtown Apartment", codigo: "CAV13", direccion: "Calle Alfonso VII 13, 2 Izq", coste: 46.0, duracion: "1:00:00" },
-  { nombre: "Riazor Deluxe Penthouse", codigo: "AV11.6", direccion: "Alfredo Vicenti, 11", coste: 110.0, duracion: "3:30:00" },
-  { nombre: "Riazor Ocean View Apartment", codigo: "ASR5.1A", direccion: "Avenida de San Roque de Afuera, 5", coste: 70.0, duracion: "2:30:00" },
-  { nombre: "San Amaro Beach Apartment 5", codigo: "SA6.5C", direccion: "Calle San Amaro 6", coste: 66.0, duracion: "2:00:00" },
-  { nombre: "Santa Lucia Apartment 1", codigo: "AB1.1B", direccion: "Calle Argudin Bolivar 1", coste: 65.0, duracion: "1:45:00" },
-  { nombre: "Santa Lucia Apartment 2", codigo: "AB1.2B", direccion: "Calle Argudin Bolivar 1", coste: 65.0, duracion: "1:45:00" },
-  { nombre: "Santa Lucia Apartment 3", codigo: "AB1.3B", direccion: "Calle Argudin Bolivar 1", coste: 65.0, duracion: "1:45:00" },
-  { nombre: "Santa Lucia Apartment 4", codigo: "AB1.4B", direccion: "Calle Argudin Bolivar 1", coste: 65.0, duracion: "1:45:00" },
-  { nombre: "Santa Lucia Apartment 5", codigo: "AB1.5B", direccion: "Calle Argudin Bolivar 1", coste: 65.0, duracion: "1:45:00" },
-  { nombre: "Santa Lucia Gallery Apartment 1", codigo: "AB1.1A", direccion: "Calle Argudin Bolivar 1", coste: 70.0, duracion: "2:00:00" },
-  { nombre: "Santa Lucia Gallery Apartment 2", codigo: "AB1.2A", direccion: "Calle Argudin Bolivar 1", coste: 70.0, duracion: "2:00:00" },
-  { nombre: "Santa Lucia Gallery Apartment 3", codigo: "AB1.3A", direccion: "Calle Argudin Bolivar 1", coste: 70.0, duracion: "2:00:00" },
-  { nombre: "Santa Lucia Terrace Penthouse", codigo: "AB1.4A", direccion: "Calle Argudin Bolivar 1", coste: 65.0, duracion: "1:30:00" },
-  { nombre: "Santa Lucia Terrace Rooftop", codigo: "AB1.5A", direccion: "Calle Argudin Bolivar 1", coste: 65.0, duracion: "1:30:00" }
-];
+async function fetchHostawayProperties(token: string): Promise<HostawayProperty[]> {
+  console.log('Obteniendo propiedades de Hostaway...');
+  
+  const url = new URL(`${HOSTAWAY_API_BASE}/listings`);
+  url.searchParams.append('accountId', HOSTAWAY_ACCOUNT_ID.toString());
+  url.searchParams.append('limit', '100');
+
+  const response = await fetch(url.toString(), {
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(`Error obteniendo propiedades: ${response.statusText}`);
+  }
+
+  const data = await response.json();
+  return data.result || [];
+}
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -85,121 +83,141 @@ serve(async (req) => {
   }
 
   try {
-    console.log('Iniciando inserción de propiedades...');
+    console.log('Iniciando inserción de propiedades desde Hostaway...');
 
-    // Primero necesitamos obtener un cliente genérico para asociar las propiedades
-    // Si no hay clientes, creamos uno por defecto
-    let { data: clients, error: clientError } = await supabase
+    // Verificar si ya existe el cliente Blue Ocean Properties
+    let { data: existingClient } = await supabase
       .from('clients')
-      .select('id')
-      .limit(1);
+      .select('*')
+      .eq('nombre', 'Blue Ocean Properties')
+      .single();
 
-    if (clientError) {
-      console.error('Error obteniendo clientes:', clientError);
-      throw clientError;
-    }
+    let clientId: string;
 
-    let clienteId: string;
-
-    if (!clients || clients.length === 0) {
-      // Crear cliente por defecto
-      const { data: newClient, error: createClientError } = await supabase
+    if (!existingClient) {
+      console.log('Creando cliente Blue Ocean Properties...');
+      const { data: newClient, error: clientError } = await supabase
         .from('clients')
         .insert({
           nombre: 'Blue Ocean Properties',
-          cif_nif: 'B00000000',
-          telefono: '+34000000000',
-          email: 'dgomezlimpatex@gmail.com',
-          direccion_facturacion: 'A Coruña, España',
-          tipo_servicio: 'limpieza',
-          ciudad: 'A Coruña',
-          codigo_postal: '15001',
-          supervisor: 'David Gómez',
-          metodo_pago: 'transferencia',
-          factura: true
+          email: 'info@blueoceanproperties.com',
+          telefono: '+34900000000',
+          direccion_facturacion: 'Calle Principal, 123, Madrid',
+          cif_nif: 'B12345678',
+          tipo_servicio: 'Limpieza Airbnb',
+          metodo_pago: 'Transferencia',
+          supervisor: 'Administrador',
+          factura: true,
+          ciudad: 'Madrid',
+          codigo_postal: '28001'
         })
-        .select('id')
+        .select()
         .single();
 
-      if (createClientError) {
-        console.error('Error creando cliente por defecto:', createClientError);
-        throw createClientError;
+      if (clientError) {
+        console.error('Error creando cliente:', clientError);
+        throw clientError;
       }
 
-      clienteId = newClient.id;
+      clientId = newClient.id;
+      console.log('Cliente creado con ID:', clientId);
     } else {
-      clienteId = clients[0].id;
+      clientId = existingClient.id;
+      console.log('Cliente existente encontrado con ID:', clientId);
     }
 
-    console.log(`Usando cliente ID: ${clienteId}`);
+    // Obtener propiedades de Hostaway
+    const token = await getHostawayToken();
+    const hostawayProperties = await fetchHostawayProperties(token);
+    
+    console.log(`Obtenidas ${hostawayProperties.length} propiedades de Hostaway`);
 
-    // Verificar qué propiedades ya existen
-    const { data: existingProperties } = await supabase
-      .from('properties')
-      .select('codigo');
+    let insertedCount = 0;
+    let updatedCount = 0;
+    let errorCount = 0;
 
-    const existingCodes = existingProperties?.map(p => p.codigo) || [];
-    console.log(`Propiedades existentes: ${existingCodes.length}`);
+    for (const property of hostawayProperties) {
+      try {
+        // Verificar si la propiedad ya existe por hostaway_listing_id
+        const { data: existingProperty } = await supabase
+          .from('properties')
+          .select('*')
+          .eq('hostaway_listing_id', property.listingMapId)
+          .single();
 
-    // Filtrar propiedades que no existen aún
-    const newProperties = properties.filter(prop => !existingCodes.includes(prop.codigo));
-    console.log(`Propiedades nuevas a insertar: ${newProperties.length}`);
+        const propertyData = {
+          cliente_id: clientId,
+          nombre: property.internalName || `Propiedad ${property.listingMapId}`,
+          codigo: `HOST_${property.listingMapId}`,
+          direccion: property.address || `Dirección de ${property.internalName}`,
+          numero_camas: 1,
+          numero_banos: 1,
+          numero_sabanas: 2,
+          numero_fundas_almohada: 2,
+          numero_toallas_pequenas: 2,
+          numero_toallas_grandes: 2,
+          numero_alfombrines: 1,
+          duracion_servicio: 60,
+          coste_servicio: 50.00,
+          check_in_predeterminado: '15:00:00',
+          check_out_predeterminado: '11:00:00',
+          hostaway_listing_id: property.listingMapId,
+          hostaway_internal_name: property.internalName,
+          notas: `Propiedad importada de Hostaway. Listing Map ID: ${property.listingMapId}`
+        };
 
-    if (newProperties.length === 0) {
-      return new Response(JSON.stringify({
-        success: true,
-        message: 'Todas las propiedades ya existen en la base de datos',
-        existingCount: existingCodes.length,
-        newCount: 0
-      }), {
-        status: 200,
-        headers: {
-          'Content-Type': 'application/json',
-          ...corsHeaders,
-        },
-      });
+        if (existingProperty) {
+          // Actualizar propiedad existente
+          const { error: updateError } = await supabase
+            .from('properties')
+            .update({
+              ...propertyData,
+              fecha_actualizacion: new Date().toISOString().split('T')[0]
+            })
+            .eq('id', existingProperty.id);
+
+          if (updateError) {
+            console.error(`Error actualizando propiedad ${property.listingMapId}:`, updateError);
+            errorCount++;
+          } else {
+            console.log(`✅ Propiedad actualizada: ${property.internalName} (ID: ${property.listingMapId})`);
+            updatedCount++;
+          }
+        } else {
+          // Insertar nueva propiedad
+          const { error: insertError } = await supabase
+            .from('properties')
+            .insert(propertyData);
+
+          if (insertError) {
+            console.error(`Error insertando propiedad ${property.listingMapId}:`, insertError);
+            errorCount++;
+          } else {
+            console.log(`✅ Propiedad insertada: ${property.internalName} (ID: ${property.listingMapId})`);
+            insertedCount++;
+          }
+        }
+      } catch (error) {
+        console.error(`Error procesando propiedad ${property.listingMapId}:`, error);
+        errorCount++;
+      }
     }
 
-    const propertiesToInsert = newProperties.map(prop => ({
-      codigo: prop.codigo,
-      nombre: prop.nombre,
-      direccion: prop.direccion,
-      numero_camas: 1, // Valor por defecto
-      numero_banos: 1, // Valor por defecto
-      duracion_servicio: timeToMinutes(prop.duracion),
-      coste_servicio: prop.coste,
-      check_in_predeterminado: '15:00:00',
-      check_out_predeterminado: '11:00:00',
-      numero_sabanas: 0,
-      numero_toallas_grandes: 0,
-      numero_toallas_pequenas: 0,
-      numero_alfombrines: 0,
-      numero_fundas_almohada: 0,
-      notas: '',
-      cliente_id: clienteId,
-      hostaway_internal_name: prop.nombre
-    }));
-
-    const { data: insertedProperties, error: insertError } = await supabase
-      .from('properties')
-      .insert(propertiesToInsert)
-      .select();
-
-    if (insertError) {
-      console.error('Error insertando propiedades:', insertError);
-      throw insertError;
-    }
-
-    console.log(`✅ Se insertaron ${insertedProperties.length} propiedades nuevas exitosamente`);
-
-    return new Response(JSON.stringify({
+    const summary = {
       success: true,
-      message: `Se insertaron ${insertedProperties.length} propiedades nuevas exitosamente`,
-      existingCount: existingCodes.length,
-      newCount: insertedProperties.length,
-      totalProperties: existingCodes.length + insertedProperties.length,
-      properties: insertedProperties
-    }), {
+      message: `Proceso completado: ${insertedCount} propiedades insertadas, ${updatedCount} actualizadas, ${errorCount} errores`,
+      details: {
+        total_properties: hostawayProperties.length,
+        inserted: insertedCount,
+        updated: updatedCount,
+        errors: errorCount,
+        client_id: clientId
+      }
+    };
+
+    console.log('Resumen final:', summary);
+
+    return new Response(JSON.stringify(summary), {
       status: 200,
       headers: {
         'Content-Type': 'application/json',
@@ -208,7 +226,7 @@ serve(async (req) => {
     });
 
   } catch (error) {
-    console.error('Error en la inserción:', error);
+    console.error('Error en inserción de propiedades:', error);
     
     return new Response(JSON.stringify({ 
       error: error.message,
