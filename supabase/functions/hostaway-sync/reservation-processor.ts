@@ -58,9 +58,10 @@ export async function processReservation(
     
     let taskId = null;
     
-    // Solo crear tarea si la reserva está activa
-    const validStatusesForTasks = ['confirmed', 'new', 'modified', 'awaiting_payment'];
-    const shouldCreateTask = validStatusesForTasks.includes(reservation.status.toLowerCase());
+    // Crear tarea para TODAS las reservas activas (no canceladas)
+    const shouldCreateTask = reservation.status.toLowerCase() !== 'cancelled' && 
+                           reservation.status.toLowerCase() !== 'inquiry' &&
+                           reservation.status.toLowerCase() !== 'declined';
     
     console.log(`📋 ¿Crear tarea? Status: ${reservation.status}, válido: ${shouldCreateTask}`);
     

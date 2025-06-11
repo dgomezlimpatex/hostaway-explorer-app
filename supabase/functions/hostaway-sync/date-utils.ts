@@ -1,20 +1,23 @@
 
 export function getMadridTime() {
   const now = new Date();
-  // Ajustar para zona horaria española (UTC+1/UTC+2)
-  return new Date(now.getTime() + (2 * 60 * 60 * 1000)); // UTC+2 para horario de verano
+  // Convertir a hora de Madrid (UTC+1 en invierno, UTC+2 en verano)
+  const madridTime = new Date(now.toLocaleString("en-US", {timeZone: "Europe/Madrid"}));
+  return madridTime;
 }
 
 export function getDateRange() {
   const madridTime = getMadridTime();
   const today = madridTime.toISOString().split('T')[0];
   
+  // Calcular mañana correctamente
   const tomorrow = new Date(madridTime);
   tomorrow.setDate(tomorrow.getDate() + 1);
   const tomorrowStr = tomorrow.toISOString().split('T')[0];
 
+  // Calcular fecha de fin (desde hoy + 30 días para asegurar que capturamos todas las reservas)
   const endDate = new Date(madridTime);
-  endDate.setDate(endDate.getDate() + 14);
+  endDate.setDate(endDate.getDate() + 30);
   const endDateStr = endDate.toISOString().split('T')[0];
   
   return {
@@ -28,5 +31,5 @@ export function getDateRange() {
 export function logDateInfo(today: string, tomorrow: string, madridTime: Date) {
   console.log(`📅 Fecha actual (Madrid): ${today}`);
   console.log(`📅 Mañana será: ${tomorrow}`);
-  console.log(`📅 Hora actual: ${madridTime.toLocaleString('es-ES')}`);
+  console.log(`📅 Hora actual: ${madridTime.toLocaleString('es-ES', {timeZone: 'Europe/Madrid'})}`);
 }
