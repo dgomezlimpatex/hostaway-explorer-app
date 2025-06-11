@@ -1,4 +1,3 @@
-
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.50.0";
 import { HostawayReservation } from './types.ts';
 
@@ -72,7 +71,7 @@ export async function createTaskForReservation(reservation: HostawayReservation,
     throw error;
   }
 
-  console.log(`✅ Tarea creada exitosamente: ${task.id}`);
+  console.log(`✅ Tarea creada exitosamente: ${task.id} para fecha ${task.date}`);
   return task;
 }
 

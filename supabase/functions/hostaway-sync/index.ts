@@ -37,12 +37,12 @@ async function syncReservations() {
   try {
     const token = await getHostawayToken();
     
-    console.log(`📅 Rango de búsqueda: desde ${today} hasta ${endDate} (14 días desde hoy)`);
+    console.log(`📅 Rango de búsqueda: desde ${today} hasta ${endDate} (30 días desde hoy)`);
 
-    // Obtener reservas para los próximos 14 días
+    // Obtener reservas para los próximos 30 días
     const reservations = await fetchAllHostawayReservations(token, today, endDate);
 
-    console.log(`📊 Total de reservas obtenidas para los próximos 14 días: ${reservations.length}`);
+    console.log(`📊 Total de reservas obtenidas para los próximos 30 días: ${reservations.length}`);
 
     // Filtrar reservas para mañana para debugging específico
     const tomorrowReservations = reservations.filter(r => 
@@ -52,20 +52,6 @@ async function syncReservations() {
     tomorrowReservations.forEach(r => {
       console.log(`  - Reserva ${r.id}: llegada ${r.arrivalDate}, salida ${r.departureDate}, listingMapId: ${r.listingMapId}, status: ${r.status}, guest: ${r.guestName}`);
     });
-
-    // Buscar reservas de propiedades específicas mencionadas
-    const targetProperties = [
-      'Downtown La Torre Penthouse',
-      'Metropolitan Boutique Studio 3', 
-      'Main Street Deluxe Apartment 1B'
-    ];
-    
-    console.log(`🔍 Buscando reservas de propiedades específicas para mañana...`);
-    const targetReservations = reservations.filter(r => 
-      r.departureDate === tomorrow && 
-      targetProperties.some(prop => r.guestName?.includes(prop) || String(r.listingMapId).includes('258'))
-    );
-    console.log(`🎯 Reservas de propiedades objetivo encontradas: ${targetReservations.length}`);
 
     // Filtrar y mostrar todas las reservas para hoy y mañana
     const todayAndTomorrowReservations = reservations.filter(r => 
@@ -77,6 +63,7 @@ async function syncReservations() {
       console.log(`  📍 Reserva ${r.id}: ${r.arrivalDate} → ${r.departureDate}, listing: ${r.listingMapId}, status: ${r.status}, guest: ${r.guestName}`);
     });
 
+    // Procesar todas las reservas
     for (const [index, reservation] of reservations.entries()) {
       try {
         stats.reservations_processed++;

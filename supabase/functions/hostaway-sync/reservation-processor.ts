@@ -58,7 +58,7 @@ export async function processReservation(
     
     let taskId = null;
     
-    // Crear tarea para TODAS las reservas activas (no canceladas)
+    // Determinar si debe crear tarea basándose en el status y fechas
     const shouldCreateTask = reservation.status.toLowerCase() !== 'cancelled' && 
                            reservation.status.toLowerCase() !== 'inquiry' &&
                            reservation.status.toLowerCase() !== 'declined';
@@ -67,6 +67,8 @@ export async function processReservation(
     
     if (shouldCreateTask) {
       console.log(`📋 Creando tarea para reserva activa (status: ${reservation.status})...`);
+      console.log(`📋 Fecha de salida (para la tarea): ${reservation.departureDate}`);
+      
       try {
         const task = await createTaskForReservation(reservation, property);
         taskId = task.id;
@@ -78,7 +80,7 @@ export async function processReservation(
         stats.errors.push(errorMsg);
       }
     } else {
-      console.log(`⏭️ Saltando creación de tarea para reserva ${reservation.status}`);
+      console.log(`⏭️ No se crea tarea para reserva con status: ${reservation.status}`);
     }
 
     await insertReservation({
@@ -87,6 +89,7 @@ export async function processReservation(
     });
 
     stats.new_reservations++;
+    console.log(`📝 Nueva reserva guardada en BD: ${reservation.id}, task_id: ${taskId}`);
   } else {
     // Reserva existente - verificar cambios
     const hasChanges = 
@@ -96,6 +99,8 @@ export async function processReservation(
 
     if (hasChanges) {
       console.log(`🔄 Cambios detectados en reserva: ${reservation.id}`);
+      console.log(`   - Status anterior: ${existingReservation.status} -> nuevo: ${reservation.status}`);
+      console.log(`   - Fecha salida anterior: ${existingReservation.departure_date} -> nueva: ${reservation.departureDate}`);
 
       // Verificar si fue cancelada
       if (reservation.status === 'cancelled' && existingReservation.status !== 'cancelled') {
@@ -104,8 +109,12 @@ export async function processReservation(
 
         // Eliminar tarea asociada si existe
         if (existingReservation.task_id) {
-          await deleteTask(existingReservation.task_id);
-          console.log(`🗑️ Tarea eliminada: ${existingReservation.task_id}`);
+          try {
+            await deleteTask(existingReservation.task_id);
+            console.log(`🗑️ Tarea eliminada: ${existingReservation.task_id}`);
+          } catch (error) {
+            console.error(`Error eliminando tarea ${existingReservation.task_id}:`, error);
+          }
         }
 
         // Enviar email de cancelación
@@ -115,11 +124,26 @@ export async function processReservation(
           console.error('Error enviando email de cancelación:', error);
           stats.errors.push(`Error enviando email de cancelación: ${error.message}`);
         }
+      } else if (reservation.status !== 'cancelled' && existingReservation.status === 'cancelled') {
+        // Reserva reactivada - crear nueva tarea
+        console.log(`🔄 Reserva reactivada: ${reservation.id}`);
+        try {
+          const task = await createTaskForReservation(reservation, property);
+          reservationData.task_id = task.id;
+          stats.tasks_created++;
+          console.log(`✅ Nueva tarea creada para reserva reactivada: ${task.id}`);
+        } catch (error) {
+          console.error(`Error creando tarea para reserva reactivada:`, error);
+          stats.errors.push(`Error creando tarea para reserva reactivada: ${error.message}`);
+        }
       }
 
       // Actualizar reserva
       await updateReservation(existingReservation.id, reservationData);
       stats.updated_reservations++;
+      console.log(`📝 Reserva actualizada en BD: ${reservation.id}`);
+    } else {
+      console.log(`✅ No hay cambios en reserva: ${reservation.id}`);
     }
   }
 }
