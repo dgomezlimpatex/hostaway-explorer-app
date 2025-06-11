@@ -99,6 +99,124 @@ export type Database = {
         }
         Relationships: []
       }
+      hostaway_reservations: {
+        Row: {
+          adults: number | null
+          arrival_date: string
+          cancellation_date: string | null
+          cliente_id: string | null
+          created_at: string
+          departure_date: string
+          hostaway_reservation_id: number
+          id: string
+          last_sync_at: string
+          nights: number | null
+          property_id: string | null
+          reservation_date: string | null
+          status: string
+          task_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          adults?: number | null
+          arrival_date: string
+          cancellation_date?: string | null
+          cliente_id?: string | null
+          created_at?: string
+          departure_date: string
+          hostaway_reservation_id: number
+          id?: string
+          last_sync_at?: string
+          nights?: number | null
+          property_id?: string | null
+          reservation_date?: string | null
+          status: string
+          task_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          adults?: number | null
+          arrival_date?: string
+          cancellation_date?: string | null
+          cliente_id?: string | null
+          created_at?: string
+          departure_date?: string
+          hostaway_reservation_id?: number
+          id?: string
+          last_sync_at?: string
+          nights?: number | null
+          property_id?: string | null
+          reservation_date?: string | null
+          status?: string
+          task_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hostaway_reservations_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hostaway_reservations_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hostaway_reservations_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      hostaway_sync_logs: {
+        Row: {
+          cancelled_reservations: number | null
+          created_at: string
+          errors: string[] | null
+          id: string
+          new_reservations: number | null
+          reservations_processed: number | null
+          status: string
+          sync_completed_at: string | null
+          sync_started_at: string
+          tasks_created: number | null
+          updated_reservations: number | null
+        }
+        Insert: {
+          cancelled_reservations?: number | null
+          created_at?: string
+          errors?: string[] | null
+          id?: string
+          new_reservations?: number | null
+          reservations_processed?: number | null
+          status?: string
+          sync_completed_at?: string | null
+          sync_started_at: string
+          tasks_created?: number | null
+          updated_reservations?: number | null
+        }
+        Update: {
+          cancelled_reservations?: number | null
+          created_at?: string
+          errors?: string[] | null
+          id?: string
+          new_reservations?: number | null
+          reservations_processed?: number | null
+          status?: string
+          sync_completed_at?: string | null
+          sync_started_at?: string
+          tasks_created?: number | null
+          updated_reservations?: number | null
+        }
+        Relationships: []
+      }
       properties: {
         Row: {
           check_in_predeterminado: string
@@ -111,6 +229,8 @@ export type Database = {
           duracion_servicio: number
           fecha_actualizacion: string
           fecha_creacion: string
+          hostaway_internal_name: string | null
+          hostaway_listing_id: number | null
           id: string
           nombre: string
           notas: string | null
@@ -134,6 +254,8 @@ export type Database = {
           duracion_servicio?: number
           fecha_actualizacion?: string
           fecha_creacion?: string
+          hostaway_internal_name?: string | null
+          hostaway_listing_id?: number | null
           id?: string
           nombre: string
           notas?: string | null
@@ -157,6 +279,8 @@ export type Database = {
           duracion_servicio?: number
           fecha_actualizacion?: string
           fecha_creacion?: string
+          hostaway_internal_name?: string | null
+          hostaway_listing_id?: number | null
           id?: string
           nombre?: string
           notas?: string | null
