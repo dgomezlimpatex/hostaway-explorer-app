@@ -91,7 +91,7 @@ const CleaningCalendar = () => {
 
   return (
     <div className="min-h-screen bg-background text-foreground transition-colors duration-300">
-      <div className="space-y-6 container-responsive py-6">
+      <div className="space-y-4 px-2 py-4 max-w-full">
         {/* Enhanced Responsive Header */}
         <ResponsiveCalendarHeader
           currentDate={currentDate}

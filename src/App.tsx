@@ -21,16 +21,18 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Index />} />
-          <Route path="/calendar" element={<Calendar />} />
-          <Route path="/tasks" element={<Tasks />} />
-          <Route path="/clients" element={<Clients />} />
-          <Route path="/properties" element={<Properties />} />
-          <Route path="/workers" element={<Workers />} />
-          <Route path="/reports" element={<Reports />} />
-          <Route path="*" element={<NotFound />} />
-        </Routes>
+        <div className="w-full max-w-none">
+          <Routes>
+            <Route path="/" element={<Index />} />
+            <Route path="/calendar" element={<Calendar />} />
+            <Route path="/tasks" element={<Tasks />} />
+            <Route path="/clients" element={<Clients />} />
+            <Route path="/properties" element={<Properties />} />
+            <Route path="/workers" element={<Workers />} />
+            <Route path="/reports" element={<Reports />} />
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </div>
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
