@@ -55,7 +55,7 @@ export const TimeSlot = memo(({
   return (
     <div
       className={cn(
-        "relative min-w-[75px] w-[75px] h-20 border-r border-gray-200 transition-colors flex-shrink-0",
+        "relative min-w-[60px] w-[60px] h-20 border-r border-gray-200 transition-colors flex-shrink-0",
         allowDrop && "hover:bg-blue-50 cursor-pointer"
       )}
       onDragOver={handleDragOver}
