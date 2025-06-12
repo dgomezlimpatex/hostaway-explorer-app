@@ -31,19 +31,24 @@ export const isTimeSlotOccupied = (
   hour: number, 
   minute: number, 
   assignedTasks: any[], 
-  cleaners: any[]
+  cleaners: any[],
+  excludeTaskId?: string // Nuevo parámetro opcional para excluir la tarea que se está arrastrando
 ) => {
   const timeString = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
   const cleanerName = cleaners.find(c => c.id === cleanerId)?.name;
   
   // Don't consider a time slot occupied by the task that's currently being dragged
   return assignedTasks.some(task => {
+    // Excluir la tarea que se está arrastrando
+    if (excludeTaskId && task.id === excludeTaskId) {
+      return false;
+    }
+    
     const taskStartMinutes = timeToMinutes(task.startTime);
     const taskEndMinutes = timeToMinutes(task.endTime);
     const slotMinutes = timeToMinutes(timeString);
     
     // A slot is occupied if the task covers this time slot
-    // But we need to allow dropping within the same task's time range
     return task.cleaner === cleanerName &&
            slotMinutes >= taskStartMinutes && 
            slotMinutes < taskEndMinutes;

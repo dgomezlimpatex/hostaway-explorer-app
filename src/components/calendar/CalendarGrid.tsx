@@ -1,3 +1,4 @@
+
 import { forwardRef, memo, useMemo } from "react";
 import { cn } from "@/lib/utils";
 import { TimeSlot } from "./TimeSlot";
@@ -53,6 +54,7 @@ const CleanerRow = memo(({
   const timeSlotElements = useMemo(() => {
     return timeSlots.map((time) => {
       const [hour, minute] = time.split(':').map(Number);
+      // Pasar el ID de la tarea que se está arrastrando para excluirla del cálculo de ocupación
       const isOccupied = isTimeSlotOccupied(cleaner.id, hour, minute);
       
       return (

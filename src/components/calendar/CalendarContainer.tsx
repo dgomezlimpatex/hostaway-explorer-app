@@ -66,9 +66,16 @@ export const CalendarContainer = ({
     return { assignedTasks: assigned, unassignedTasks: unassigned };
   }, [tasks]);
 
-  // Memoized time slot occupation check wrapper
+  // Memoized time slot occupation check wrapper que excluye la tarea que se está arrastrando
   const checkTimeSlotOccupied = (cleanerId: string, hour: number, minute: number) => {
-    return isTimeSlotOccupied(cleanerId, hour, minute, assignedTasks, cleaners);
+    return isTimeSlotOccupied(
+      cleanerId, 
+      hour, 
+      minute, 
+      assignedTasks, 
+      cleaners, 
+      dragState.draggedTask?.id // Pasar el ID de la tarea que se está arrastrando
+    );
   };
 
   return (
