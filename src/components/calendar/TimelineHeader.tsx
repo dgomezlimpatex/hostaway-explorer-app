@@ -18,7 +18,7 @@ export const TimelineHeader = forwardRef<HTMLDivElement, TimelineHeaderProps>(
           {timeSlots.map((time) => (
             <div 
               key={time} 
-              className={`min-w-[75px] h-16 flex items-center justify-center text-xs font-medium text-gray-600 border-r border-gray-100 ${
+              className={`min-w-[60px] h-16 flex items-center justify-center text-xs font-medium text-gray-600 border-r border-gray-100 ${
                 time.endsWith(':00') ? 'bg-gray-50' : 'bg-white'
               }`}
             >
