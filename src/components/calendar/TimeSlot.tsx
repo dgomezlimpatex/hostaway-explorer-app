@@ -45,8 +45,14 @@ export const TimeSlot = memo(({
     e.stopPropagation();
     console.log('💧 TimeSlot - handleDrop called for:', { cleanerId, timeString, draggedTaskId });
     (e.currentTarget as HTMLElement).classList.remove('drag-over');
-    // Siempre permitir el drop cuando hay una tarea siendo arrastrada
-    onDrop(e, cleanerId, timeString);
+    
+    // Always allow drop when there's a dragged task - no conditions
+    if (draggedTaskId) {
+      console.log('✅ TimeSlot - Processing drop for task:', draggedTaskId);
+      onDrop(e, cleanerId, timeString);
+    } else {
+      console.log('⚠️ TimeSlot - No dragged task, ignoring drop');
+    }
   }, [onDrop, cleanerId, timeString, draggedTaskId]);
 
   // Permitir drop siempre que haya una tarea siendo arrastrada
@@ -59,7 +65,7 @@ export const TimeSlot = memo(({
       className={cn(
         "relative min-w-[60px] w-[60px] h-20 border-r border-gray-200 transition-colors flex-shrink-0",
         allowDrop && "hover:bg-blue-50 cursor-pointer",
-        showAsOccupied && !allowDrop && "bg-gray-100"
+        showAsOccupied && "bg-gray-100"
       )}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}

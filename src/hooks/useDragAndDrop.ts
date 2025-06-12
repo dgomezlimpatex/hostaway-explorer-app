@@ -66,7 +66,7 @@ export const useDragAndDrop = (onTaskAssign: (taskId: string, cleanerId: string,
     e.preventDefault();
     e.stopPropagation();
     
-    console.log('🎯 useDragAndDrop - handleDrop called with:', { cleanerId, timeSlot });
+    console.log('🎯 useDragAndDrop - handleDrop called with:', { cleanerId, timeSlot, draggedTaskId: dragState.draggedTask?.id });
     
     // Try to get task ID from different data formats
     let taskId = e.dataTransfer.getData('text/plain');
@@ -86,17 +86,9 @@ export const useDragAndDrop = (onTaskAssign: (taskId: string, cleanerId: string,
     console.log('📋 useDragAndDrop - taskId from drag data:', taskId);
     
     if (taskId && dragState.draggedTask) {
-      // Check if we're dropping in the same position
-      const currentTask = dragState.draggedTask;
-      const isSamePosition = currentTask.cleanerId === cleanerId && 
-                           currentTask.startTime === timeSlot;
-      
-      if (!isSamePosition) {
-        console.log('🔄 useDragAndDrop - calling onTaskAssign with:', { taskId, cleanerId, cleanersCount: cleaners.length, timeSlot });
-        onTaskAssign(taskId, cleanerId, cleaners, timeSlot);
-      } else {
-        console.log('📍 useDragAndDrop - task dropped in same position, no action needed');
-      }
+      console.log('🔄 useDragAndDrop - calling onTaskAssign with:', { taskId, cleanerId, cleanersCount: cleaners.length, timeSlot });
+      // Always call onTaskAssign - let the backend handle if it's the same position
+      onTaskAssign(taskId, cleanerId, cleaners, timeSlot);
     } else {
       console.error('❌ useDragAndDrop - No task ID or dragged task found:', { taskId, draggedTask: dragState.draggedTask });
     }
