@@ -1,7 +1,6 @@
 
 import { useState, useCallback, useMemo } from "react";
 import { ResponsiveCalendarHeader } from "./calendar/ResponsiveCalendarHeader";
-import { DebugInfo } from "./calendar/DebugInfo";
 import { CalendarContainer } from "./calendar/CalendarContainer";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { useCalendarLogic } from "@/hooks/useCalendarLogic";
@@ -61,26 +60,6 @@ const CleaningCalendar = () => {
     return { assignedTasks: assigned, unassignedTasks: unassigned };
   }, [tasks]);
 
-  // Handle deleting all Hostaway reservations
-  const handleDeleteAllHostawayReservations = async () => {
-    if (window.confirm('¿Estás seguro de que quieres eliminar TODAS las reservas de Hostaway de la base de datos? Esta acción no se puede deshacer.')) {
-      try {
-        await hostawaySync.deleteAllHostawayReservations();
-        toast({
-          title: "Reservas eliminadas",
-          description: "Todas las reservas de Hostaway han sido eliminadas de la base de datos.",
-        });
-      } catch (error) {
-        console.error('Error eliminando reservas de Hostaway:', error);
-        toast({
-          title: "Error",
-          description: "No se pudieron eliminar las reservas de Hostaway.",
-          variant: "destructive",
-        });
-      }
-    }
-  };
-
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-screen bg-background">
@@ -100,17 +79,6 @@ const CleaningCalendar = () => {
           onGoToToday={goToToday}
           onViewChange={setCurrentView}
           onNewTask={handleNewTask}
-        />
-
-        {/* Debug info and controls */}
-        <DebugInfo
-          currentDate={currentDate}
-          currentView={currentView}
-          tasks={tasks}
-          assignedTasks={assignedTasks}
-          unassignedTasks={unassignedTasks}
-          onDeleteAllTasks={handleDeleteAllTasks}
-          onDeleteAllHostawayReservations={handleDeleteAllHostawayReservations}
         />
 
         {/* Calendar Container */}
