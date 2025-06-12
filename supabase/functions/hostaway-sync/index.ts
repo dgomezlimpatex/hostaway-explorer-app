@@ -37,12 +37,31 @@ async function syncReservations() {
   try {
     const token = await getHostawayToken();
     
-    console.log(`📅 Rango de búsqueda: desde ${today} hasta ${endDate} (30 días desde hoy)`);
+    console.log(`📅 RANGO DE BÚSQUEDA MEJORADO: desde ${today} hasta ${endDate} (30 días desde hoy)`);
+    console.log(`🎯 Nota: Se buscarán reservas tanto por fecha de llegada como de salida para capturar todas las posibles`);
 
-    // Obtener reservas para los próximos 30 días
+    // Obtener reservas para los próximos 30 días (mejorado para capturar tanto llegadas como salidas)
     const reservations = await fetchAllHostawayReservations(token, today, endDate);
 
-    console.log(`📊 Total de reservas obtenidas para los próximos 30 días: ${reservations.length}`);
+    console.log(`📊 TOTAL DE RESERVAS OBTENIDAS: ${reservations.length}`);
+
+    // Análisis detallado para el sábado 14 de junio (día mencionado por el usuario)
+    const saturdayReservations = reservations.filter(r => 
+      r.departureDate === '2025-06-14' || r.arrivalDate === '2025-06-14'
+    );
+    console.log(`🎯 ANÁLISIS ESPECÍFICO PARA SÁBADO 14/06/2025:`);
+    console.log(`   - Total reservas encontradas: ${saturdayReservations.length}`);
+    console.log(`   - Detalle por status:`);
+    
+    const statusCount = {};
+    saturdayReservations.forEach(r => {
+      statusCount[r.status] = (statusCount[r.status] || 0) + 1;
+      console.log(`     • ${r.id}: ${r.status} | ${r.arrivalDate} → ${r.departureDate} | ${r.listingMapId} | ${r.guestName}`);
+    });
+    
+    Object.entries(statusCount).forEach(([status, count]) => {
+      console.log(`   - ${status}: ${count} reservas`);
+    });
 
     // Filtrar reservas para mañana para debugging específico
     const tomorrowReservations = reservations.filter(r => 
@@ -64,16 +83,37 @@ async function syncReservations() {
     });
 
     // Procesar todas las reservas
+    console.log(`🔄 INICIANDO PROCESAMIENTO DE ${reservations.length} RESERVAS...`);
+    let tasksCreatedCount = 0;
     for (const [index, reservation] of reservations.entries()) {
       try {
+        const statsBefore = { ...stats };
         stats.reservations_processed++;
         await processReservation(reservation, stats, index, reservations.length);
+        
+        // Contabilizar si se creó una tarea
+        if (stats.tasks_created > statsBefore.tasks_created) {
+          tasksCreatedCount++;
+          console.log(`✅ Tarea #${tasksCreatedCount} creada para reserva ${reservation.id}`);
+        }
       } catch (error) {
         const errorMsg = `Error procesando reserva ${reservation.id}: ${error.message}`;
         console.error(`❌ ${errorMsg}`);
         stats.errors.push(errorMsg);
       }
     }
+
+    // Resumen final con enfoque en el sábado 14
+    console.log(`🎯 RESUMEN FINAL PARA SÁBADO 14/06/2025:`);
+    const saturday14Tasks = saturdayReservations.filter(r => {
+      const validStatuses = ['confirmed', 'new', 'modified', 'awaiting_payment'];
+      return validStatuses.includes(r.status.toLowerCase()) || 
+             !['cancelled', 'inquiry', 'declined', 'expired'].includes(r.status.toLowerCase());
+    });
+    console.log(`   - Reservas que deberían generar tareas: ${saturday14Tasks.length}`);
+    saturday14Tasks.forEach(r => {
+      console.log(`     • ${r.id} (${r.status}): ${r.guestName} en listing ${r.listingMapId}`);
+    });
 
     // Actualizar log de sincronización
     await updateSyncLog(syncLog.id, {
@@ -86,6 +126,13 @@ async function syncReservations() {
     await sendSyncSummaryEmail(stats);
 
     console.log(`🎉 Sincronización ${syncId} completada:`, stats);
+    console.log(`📊 ESTADÍSTICAS FINALES:`);
+    console.log(`   - Reservas procesadas: ${stats.reservations_processed}`);
+    console.log(`   - Nuevas reservas: ${stats.new_reservations}`);
+    console.log(`   - Reservas actualizadas: ${stats.updated_reservations}`);
+    console.log(`   - Tareas creadas: ${stats.tasks_created}`);
+    console.log(`   - Errores: ${stats.errors.length}`);
+    
     return { success: true, stats };
 
   } catch (error) {

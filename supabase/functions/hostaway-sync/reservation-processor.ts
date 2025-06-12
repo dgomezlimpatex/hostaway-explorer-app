@@ -58,12 +58,11 @@ export async function processReservation(
     
     let taskId = null;
     
-    // Determinar si debe crear tarea basándose en el status y fechas
-    const shouldCreateTask = reservation.status.toLowerCase() !== 'cancelled' && 
-                           reservation.status.toLowerCase() !== 'inquiry' &&
-                           reservation.status.toLowerCase() !== 'declined';
+    // MEJORAR: Determinar si debe crear tarea con lógica más robusta
+    const shouldCreateTask = shouldCreateTaskForReservation(reservation);
     
     console.log(`📋 ¿Crear tarea? Status: ${reservation.status}, válido: ${shouldCreateTask}`);
+    console.log(`📋 Motivo: ${getTaskCreationReason(reservation)}`);
     
     if (shouldCreateTask) {
       console.log(`📋 Creando tarea para reserva activa (status: ${reservation.status})...`);
@@ -74,13 +73,14 @@ export async function processReservation(
         taskId = task.id;
         stats.tasks_created++;
         console.log(`✅ Tarea creada con ID: ${taskId} para fecha: ${reservation.departureDate}`);
+        console.log(`✅ Detalles de la tarea: ${task.property} - ${task.start_time} a ${task.end_time}`);
       } catch (error) {
         const errorMsg = `Error creando tarea para reserva ${reservation.id}: ${error.message}`;
         console.error(`❌ ${errorMsg}`);
         stats.errors.push(errorMsg);
       }
     } else {
-      console.log(`⏭️ No se crea tarea para reserva con status: ${reservation.status}`);
+      console.log(`⏭️ No se crea tarea para reserva: ${getTaskCreationReason(reservation)}`);
     }
 
     await insertReservation({
@@ -95,11 +95,13 @@ export async function processReservation(
     const hasChanges = 
       existingReservation.status !== reservation.status ||
       existingReservation.departure_date !== reservation.departureDate ||
+      existingReservation.arrival_date !== reservation.arrivalDate ||
       existingReservation.cancellation_date !== (reservation.cancellationDate || null);
 
     if (hasChanges) {
       console.log(`🔄 Cambios detectados en reserva: ${reservation.id}`);
       console.log(`   - Status anterior: ${existingReservation.status} -> nuevo: ${reservation.status}`);
+      console.log(`   - Fecha llegada anterior: ${existingReservation.arrival_date} -> nueva: ${reservation.arrivalDate}`);
       console.log(`   - Fecha salida anterior: ${existingReservation.departure_date} -> nueva: ${reservation.departureDate}`);
 
       // Verificar si fue cancelada
@@ -124,7 +126,7 @@ export async function processReservation(
           console.error('Error enviando email de cancelación:', error);
           stats.errors.push(`Error enviando email de cancelación: ${error.message}`);
         }
-      } else if (reservation.status !== 'cancelled' && existingReservation.status === 'cancelled') {
+      } else if (shouldCreateTaskForReservation(reservation) && existingReservation.status === 'cancelled') {
         // Reserva reactivada - crear nueva tarea
         console.log(`🔄 Reserva reactivada: ${reservation.id}`);
         try {
@@ -136,6 +138,22 @@ export async function processReservation(
           console.error(`Error creando tarea para reserva reactivada:`, error);
           stats.errors.push(`Error creando tarea para reserva reactivada: ${error.message}`);
         }
+      } else if (shouldCreateTaskForReservation(reservation) && !existingReservation.task_id) {
+        // Reserva que debería tener tarea pero no la tiene
+        console.log(`🔄 Creando tarea faltante para reserva: ${reservation.id}`);
+        try {
+          const task = await createTaskForReservation(reservation, property);
+          reservationData.task_id = task.id;
+          stats.tasks_created++;
+          console.log(`✅ Tarea faltante creada: ${task.id}`);
+        } catch (error) {
+          console.error(`Error creando tarea faltante:`, error);
+          stats.errors.push(`Error creando tarea faltante: ${error.message}`);
+        }
+      } else if (existingReservation.task_id && (reservation.departureDate !== existingReservation.departure_date || reservation.arrivalDate !== existingReservation.arrival_date)) {
+        // Fechas cambiaron - actualizar tarea existente
+        console.log(`📅 Fechas cambiaron, actualizando tarea: ${existingReservation.task_id}`);
+        // Aquí podrías implementar lógica para actualizar la fecha de la tarea si es necesario
       }
 
       // Actualizar reserva
@@ -144,6 +162,62 @@ export async function processReservation(
       console.log(`📝 Reserva actualizada en BD: ${reservation.id}`);
     } else {
       console.log(`✅ No hay cambios en reserva: ${reservation.id}`);
+      
+      // Verificar si debería tener tarea pero no la tiene
+      if (shouldCreateTaskForReservation(reservation) && !existingReservation.task_id) {
+        console.log(`🔍 Detectada reserva sin tarea que debería tenerla: ${reservation.id}`);
+        try {
+          const task = await createTaskForReservation(reservation, property);
+          const updateData = { ...reservationData, task_id: task.id };
+          await updateReservation(existingReservation.id, updateData);
+          stats.tasks_created++;
+          console.log(`✅ Tarea faltante creada y reserva actualizada: ${task.id}`);
+        } catch (error) {
+          console.error(`Error creando tarea faltante para reserva existente:`, error);
+          stats.errors.push(`Error creando tarea faltante: ${error.message}`);
+        }
+      }
     }
   }
+}
+
+// Nueva función para determinar si se debe crear una tarea
+function shouldCreateTaskForReservation(reservation: HostawayReservation): boolean {
+  const validStatuses = ['confirmed', 'new', 'modified', 'awaiting_payment'];
+  const invalidStatuses = ['cancelled', 'inquiry', 'declined', 'expired'];
+  
+  // Verificar status
+  const statusLower = reservation.status.toLowerCase();
+  
+  if (invalidStatuses.includes(statusLower)) {
+    return false;
+  }
+  
+  if (validStatuses.includes(statusLower)) {
+    return true;
+  }
+  
+  // Para otros statuses, asumir que sí se debe crear tarea (enfoque conservador)
+  console.log(`⚠️ Status desconocido: ${reservation.status}, creando tarea por precaución`);
+  return true;
+}
+
+// Nueva función para explicar por qué no se crea una tarea
+function getTaskCreationReason(reservation: HostawayReservation): string {
+  const statusLower = reservation.status.toLowerCase();
+  
+  if (statusLower === 'cancelled') {
+    return 'Reserva cancelada';
+  }
+  if (statusLower === 'inquiry') {
+    return 'Solo es una consulta, no una reserva confirmada';
+  }
+  if (statusLower === 'declined') {
+    return 'Reserva rechazada';
+  }
+  if (statusLower === 'expired') {
+    return 'Reserva expirada';
+  }
+  
+  return 'Status válido para crear tarea';
 }
