@@ -26,7 +26,7 @@ export const UnassignedTasks = ({
     console.log('UnassignedTasks - handleTaskDragEnd');
     onDragEnd(e);
   };
-  return <Card className="border border-orange-200 shadow-lg h-full">
+  return <Card className="border border-orange-200 shadow-lg h-full py-[15px] rounded-xl bg-white">
       <CardContent className="p-4 h-full flex flex-col mx-[14px] my-0 px-[18px] py-[4px]">
         <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2 flex-shrink-0">
           📋 Tareas Sin Asignar 
