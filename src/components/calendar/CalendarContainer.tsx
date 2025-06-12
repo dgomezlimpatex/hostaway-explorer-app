@@ -77,7 +77,7 @@ export const CalendarContainer = ({
       <div className="flex gap-2 h-[600px] w-full">
         {/* Unassigned Tasks Column - Only show when there are unassigned tasks */}
         {unassignedTasks.length > 0 && (
-          <div className="w-80 flex-shrink-0">
+          <div className="w-64 flex-shrink-0">
             <UnassignedTasks
               tasks={unassignedTasks}
               onTaskClick={handleTaskClick}
