@@ -73,34 +73,41 @@ export const CalendarContainer = ({
 
   return (
     <>
-      {/* Enhanced Unassigned Tasks - Only show when there are unassigned tasks */}
-      {unassignedTasks.length > 0 && (
-        <UnassignedTasks
-          tasks={unassignedTasks}
-          onTaskClick={handleTaskClick}
-          onDragStart={handleDragStart}
-          onDragEnd={handleDragEnd}
-        />
-      )}
+      {/* Main Layout with Unassigned Tasks on Left and Calendar on Right */}
+      <div className="flex gap-6 h-[600px]">
+        {/* Unassigned Tasks Column - Only show when there are unassigned tasks */}
+        {unassignedTasks.length > 0 && (
+          <div className="w-80 flex-shrink-0">
+            <UnassignedTasks
+              tasks={unassignedTasks}
+              onTaskClick={handleTaskClick}
+              onDragStart={handleDragStart}
+              onDragEnd={handleDragEnd}
+            />
+          </div>
+        )}
 
-      {/* Main Calendar with Enhanced Design */}
-      <CalendarLayout
-        cleaners={cleaners}
-        timeSlots={timeSlots}
-        assignedTasks={assignedTasks}
-        dragState={dragState}
-        headerScrollRef={headerScrollRef}
-        bodyScrollRef={bodyScrollRef}
-        onHeaderScroll={handleHeaderScroll}
-        onBodyScroll={handleBodyScroll}
-        onDragOver={handleDragOver}
-        onDrop={handleDrop}
-        onDragStart={handleDragStart}
-        onDragEnd={handleDragEnd}
-        onTaskClick={handleTaskClick}
-        getTaskPosition={getTaskPosition}
-        isTimeSlotOccupied={checkTimeSlotOccupied}
-      />
+        {/* Main Calendar */}
+        <div className="flex-1 min-w-0">
+          <CalendarLayout
+            cleaners={cleaners}
+            timeSlots={timeSlots}
+            assignedTasks={assignedTasks}
+            dragState={dragState}
+            headerScrollRef={headerScrollRef}
+            bodyScrollRef={bodyScrollRef}
+            onHeaderScroll={handleHeaderScroll}
+            onBodyScroll={handleBodyScroll}
+            onDragOver={handleDragOver}
+            onDrop={handleDrop}
+            onDragStart={handleDragStart}
+            onDragEnd={handleDragEnd}
+            onTaskClick={handleTaskClick}
+            getTaskPosition={getTaskPosition}
+            isTimeSlotOccupied={checkTimeSlotOccupied}
+          />
+        </div>
+      </div>
 
       {/* Drag Preview with Enhanced Styling */}
       {dragState.draggedTask && (
