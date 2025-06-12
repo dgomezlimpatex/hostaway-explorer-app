@@ -32,14 +32,13 @@ export const isTimeSlotOccupied = (
   minute: number, 
   assignedTasks: any[], 
   cleaners: any[],
-  excludeTaskId?: string // Nuevo parámetro opcional para excluir la tarea que se está arrastrando
+  excludeTaskId?: string // Parámetro para excluir la tarea que se está arrastrando
 ) => {
   const timeString = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
   const cleanerName = cleaners.find(c => c.id === cleanerId)?.name;
   
-  // Don't consider a time slot occupied by the task that's currently being dragged
   return assignedTasks.some(task => {
-    // Excluir la tarea que se está arrastrando
+    // Excluir completamente la tarea que se está arrastrando del cálculo
     if (excludeTaskId && task.id === excludeTaskId) {
       return false;
     }
@@ -48,7 +47,8 @@ export const isTimeSlotOccupied = (
     const taskEndMinutes = timeToMinutes(task.endTime);
     const slotMinutes = timeToMinutes(timeString);
     
-    // A slot is occupied if the task covers this time slot
+    // Un slot está ocupado si la tarea cubre este intervalo de tiempo
+    // y pertenece al mismo limpiador
     return task.cleaner === cleanerName &&
            slotMinutes >= taskStartMinutes && 
            slotMinutes < taskEndMinutes;

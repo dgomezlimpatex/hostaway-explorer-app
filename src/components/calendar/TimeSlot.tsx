@@ -45,18 +45,21 @@ export const TimeSlot = memo(({
     e.stopPropagation();
     console.log('💧 TimeSlot - handleDrop called for:', { cleanerId, timeString, draggedTaskId });
     (e.currentTarget as HTMLElement).classList.remove('drag-over');
-    // Pass the time slot information when dropping
+    // Siempre permitir el drop cuando hay una tarea siendo arrastrada
     onDrop(e, cleanerId, timeString);
   }, [onDrop, cleanerId, timeString, draggedTaskId]);
 
-  // Always allow drop when dragging (we'll handle conflicts in the drop handler)
+  // Permitir drop siempre que haya una tarea siendo arrastrada
   const allowDrop = draggedTaskId !== null;
+  // Mostrar como ocupado solo si realmente está ocupado Y no hay tarea siendo arrastrada
+  const showAsOccupied = isOccupied && !draggedTaskId;
 
   return (
     <div
       className={cn(
         "relative min-w-[60px] w-[60px] h-20 border-r border-gray-200 transition-colors flex-shrink-0",
-        allowDrop && "hover:bg-blue-50 cursor-pointer"
+        allowDrop && "hover:bg-blue-50 cursor-pointer",
+        showAsOccupied && !allowDrop && "bg-gray-100"
       )}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
@@ -66,7 +69,7 @@ export const TimeSlot = memo(({
     >
       {children}
       
-      {/* Drop indicator - show when dragging over this slot */}
+      {/* Drop indicator - mostrar cuando se está arrastrando sobre este slot */}
       {allowDrop && (
         <div className="absolute inset-0 border-2 border-dashed border-blue-400 bg-blue-50 opacity-0 transition-opacity duration-200 pointer-events-none drop-indicator" />
       )}
