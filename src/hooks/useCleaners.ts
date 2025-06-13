@@ -77,6 +77,31 @@ export const useUpdateCleaner = () => {
   });
 };
 
+export const useUpdateCleanersOrder = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (cleaners: { id: string; sortOrder: number }[]) => {
+      return await cleanerStorage.updateOrder(cleaners);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['cleaners'] });
+      toast({
+        title: "Orden actualizado",
+        description: "El orden de los trabajadores ha sido actualizado.",
+      });
+    },
+    onError: (error) => {
+      console.error('Update cleaners order error:', error);
+      toast({
+        title: "Error",
+        description: "Ha ocurrido un error al actualizar el orden.",
+        variant: "destructive",
+      });
+    },
+  });
+};
+
 export const useDeleteCleaner = () => {
   const queryClient = useQueryClient();
 

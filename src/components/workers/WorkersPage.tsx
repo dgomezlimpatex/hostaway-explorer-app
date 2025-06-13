@@ -18,7 +18,7 @@ export default function WorkersPage() {
   
   const { cleaners, isLoading } = useCleaners();
 
-  // Filter workers based on search term
+  // Filter workers based on search term (sin ordenamiento automático)
   const filteredWorkers = cleaners.filter(worker => 
     worker.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -46,7 +46,7 @@ export default function WorkersPage() {
                 <Users className="h-6 w-6" />
                 Gestión de Trabajadores
               </h1>
-              <p className="text-gray-600">Administra tu equipo de limpieza</p>
+              <p className="text-gray-600">Administra tu equipo de limpieza y arrastra para reordenar</p>
             </div>
           </div>
           <div className="flex items-center gap-3">
@@ -107,6 +107,7 @@ export default function WorkersPage() {
           <CardHeader>
             <div className="flex items-center justify-between">
               <CardTitle>Lista de Trabajadores ({filteredWorkers.length})</CardTitle>
+              <p className="text-sm text-gray-500">Arrastra las filas para reordenar</p>
             </div>
           </CardHeader>
           <CardContent>

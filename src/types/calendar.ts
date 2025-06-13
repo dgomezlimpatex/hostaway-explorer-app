@@ -30,6 +30,7 @@ export interface Cleaner {
   telefono?: string;
   avatar?: string;
   isActive: boolean;
+  sortOrder?: number; // Campo para el orden manual
 }
 
 export type ViewType = 'day' | 'three-day' | 'week';

@@ -11,9 +11,9 @@ import {
   TableHeader, 
   TableRow 
 } from "@/components/ui/table";
-import { Edit, Calendar, Clock, User } from "lucide-react";
+import { Edit, Calendar, Clock, User, GripVertical } from "lucide-react";
 import { Cleaner } from "@/types/calendar";
-import { useDeleteCleaner } from "@/hooks/useCleaners";
+import { useDeleteCleaner, useUpdateCleanersOrder } from "@/hooks/useCleaners";
 import { AvailabilityModal } from './AvailabilityModal';
 import {
   AlertDialog,
@@ -35,10 +35,63 @@ interface WorkersListProps {
 
 export const WorkersList = ({ workers, isLoading, onEditWorker }: WorkersListProps) => {
   const [availabilityWorker, setAvailabilityWorker] = useState<Cleaner | null>(null);
+  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+  const [localWorkers, setLocalWorkers] = useState<Cleaner[]>(workers);
+  
   const deleteCleaner = useDeleteCleaner();
+  const updateCleanersOrder = useUpdateCleanersOrder();
+
+  // Sincronizar workers locales cuando cambien los props
+  React.useEffect(() => {
+    setLocalWorkers(workers);
+  }, [workers]);
 
   const handleDelete = (workerId: string) => {
     deleteCleaner.mutate(workerId);
+  };
+
+  const handleDragStart = (e: React.DragEvent, index: number) => {
+    setDraggedIndex(index);
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', index.toString());
+  };
+
+  const handleDragOver = (e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+  };
+
+  const handleDrop = (e: React.DragEvent, dropIndex: number) => {
+    e.preventDefault();
+    
+    if (draggedIndex === null || draggedIndex === dropIndex) {
+      setDraggedIndex(null);
+      return;
+    }
+
+    const newWorkers = [...localWorkers];
+    const draggedWorker = newWorkers[draggedIndex];
+    
+    // Remover el elemento arrastrado
+    newWorkers.splice(draggedIndex, 1);
+    
+    // Insertar en la nueva posición
+    newWorkers.splice(dropIndex, 0, draggedWorker);
+    
+    setLocalWorkers(newWorkers);
+    setDraggedIndex(null);
+
+    // Actualizar el orden en la base de datos
+    const orderUpdates = newWorkers.map((worker, index) => ({
+      id: worker.id,
+      sortOrder: index
+    }));
+    
+    updateCleanersOrder.mutate(orderUpdates);
+  };
+
+  const handleDragEnd = () => {
+    setDraggedIndex(null);
   };
 
   if (isLoading) {
@@ -50,7 +103,7 @@ export const WorkersList = ({ workers, isLoading, onEditWorker }: WorkersListPro
     );
   }
 
-  if (workers.length === 0) {
+  if (localWorkers.length === 0) {
     return (
       <div className="text-center py-8">
         <User className="mx-auto h-12 w-12 text-gray-400" />
@@ -68,6 +121,7 @@ export const WorkersList = ({ workers, isLoading, onEditWorker }: WorkersListPro
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead className="w-10"></TableHead>
               <TableHead>Trabajador</TableHead>
               <TableHead>Contacto</TableHead>
               <TableHead>Estado</TableHead>
@@ -75,8 +129,23 @@ export const WorkersList = ({ workers, isLoading, onEditWorker }: WorkersListPro
             </TableRow>
           </TableHeader>
           <TableBody>
-            {workers.map((worker) => (
-              <TableRow key={worker.id}>
+            {localWorkers.map((worker, index) => (
+              <TableRow 
+                key={worker.id}
+                draggable
+                onDragStart={(e) => handleDragStart(e, index)}
+                onDragOver={(e) => handleDragOver(e, index)}
+                onDrop={(e) => handleDrop(e, index)}
+                onDragEnd={handleDragEnd}
+                className={`cursor-move hover:bg-gray-50 transition-colors ${
+                  draggedIndex === index ? 'opacity-50' : ''
+                }`}
+              >
+                <TableCell>
+                  <div className="flex items-center justify-center">
+                    <GripVertical className="h-4 w-4 text-gray-400" />
+                  </div>
+                </TableCell>
                 <TableCell>
                   <div className="flex items-center space-x-3">
                     <Avatar className="h-8 w-8">
