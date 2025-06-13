@@ -1,11 +1,10 @@
-
 import { forwardRef, memo, useMemo } from "react";
 import { cn } from "@/lib/utils";
 import { TimeSlot } from "./TimeSlot";
 import { EnhancedTaskCard } from "./EnhancedTaskCard";
 import { Task, Cleaner } from "@/types/calendar";
 import { CleanerAvailability } from "@/hooks/useCleanerAvailability";
-import { getCleanerAvailabilityForDay, timeToMinutes } from "@/utils/availabilityUtils";
+import { getCleanerAvailabilityForDay, timeToMinutes, isCleanerAvailableAtTime } from "@/utils/availabilityUtils";
 
 interface CalendarGridProps {
   cleaners: Cleaner[];
@@ -58,24 +57,28 @@ const CleanerRow = memo(({
   isTimeSlotOccupied: (cleanerId: string, hour: number, minute: number) => boolean;
   cleaners: Cleaner[];
 }) => {
-  // Get availability for this cleaner for the current date
-  const cleanerAvailability = useMemo(() => {
-    return getCleanerAvailabilityForDay(cleaner.id, currentDate, availability);
-  }, [cleaner.id, currentDate, availability]);
+  console.log('🔍 CleanerRow - checking availability for:', cleaner.name, 'on date:', currentDate);
+  console.log('📊 CleanerRow - available data:', availability);
 
   // Function to check if a time slot is within available hours
   const isTimeSlotAvailable = useMemo(() => {
     return (hour: number, minute: number) => {
-      if (!cleanerAvailability) return true; // If no availability set, assume available
-      if (!cleanerAvailability.is_available) return false; // Marked as not available
-
-      const slotTime = hour * 60 + minute;
-      const startTime = cleanerAvailability.start_time ? timeToMinutes(cleanerAvailability.start_time) : 0;
-      const endTime = cleanerAvailability.end_time ? timeToMinutes(cleanerAvailability.end_time) : 24 * 60;
-
-      return slotTime >= startTime && slotTime < endTime;
+      const timeString = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
+      
+      // Check if cleaner is available at this specific time using the utility function
+      const availabilityCheck = isCleanerAvailableAtTime(
+        cleaner.id,
+        currentDate,
+        timeString,
+        timeString, // For slot check, start and end are the same
+        availability
+      );
+      
+      console.log(`⏰ TimeSlot check for ${cleaner.name} at ${timeString}:`, availabilityCheck);
+      
+      return availabilityCheck.available;
     };
-  }, [cleanerAvailability]);
+  }, [cleaner.id, currentDate, availability]);
 
   // Memoize time slots for this cleaner
   const timeSlotElements = useMemo(() => {
@@ -83,6 +86,8 @@ const CleanerRow = memo(({
       const [hour, minute] = time.split(':').map(Number);
       const isOccupied = isTimeSlotOccupied(cleaner.id, hour, minute);
       const isAvailable = isTimeSlotAvailable(hour, minute);
+      
+      console.log(`🎯 TimeSlot ${time} for ${cleaner.name}: occupied=${isOccupied}, available=${isAvailable}`);
       
       return (
         <TimeSlot
@@ -98,7 +103,7 @@ const CleanerRow = memo(({
         />
       );
     });
-  }, [timeSlots, cleaner.id, isTimeSlotOccupied, isTimeSlotAvailable, dragState.draggedTask?.id, onDragOver, onDrop, cleaners]);
+  }, [timeSlots, cleaner.id, cleaner.name, isTimeSlotOccupied, isTimeSlotAvailable, dragState.draggedTask?.id, onDragOver, onDrop, cleaners]);
 
   // Memoize task elements for this cleaner
   const taskElements = useMemo(() => {

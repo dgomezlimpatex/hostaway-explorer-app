@@ -10,18 +10,34 @@ export const isCleanerAvailableAtTime = (
 ): { available: boolean; reason?: string } => {
   const dayOfWeek = date.getDay(); // 0=Domingo, 1=Lunes, ..., 6=Sábado
   
+  console.log('🔍 isCleanerAvailableAtTime called with:', {
+    cleanerId,
+    date: date.toISOString(),
+    dayOfWeek,
+    startTime,
+    endTime,
+    availabilityRecords: availability.length
+  });
+  
   // Buscar la disponibilidad para este trabajador en este día
   const dayAvailability = availability.find(
     avail => avail.cleaner_id === cleanerId && avail.day_of_week === dayOfWeek
   );
 
-  // Si no hay configuración para este día, asumimos que está disponible
+  console.log('📅 Found availability record:', dayAvailability);
+
+  // Si no hay configuración para este día, asumimos que NO está disponible por defecto
   if (!dayAvailability) {
-    return { available: true };
+    console.log('❌ No availability configuration found for this day');
+    return { 
+      available: false, 
+      reason: 'Sin configuración de disponibilidad para este día' 
+    };
   }
 
   // Si está marcado como no disponible
   if (!dayAvailability.is_available) {
+    console.log('❌ Marked as not available');
     return { 
       available: false, 
       reason: 'No disponible este día' 
@@ -33,7 +49,11 @@ export const isCleanerAvailableAtTime = (
   const availableEnd = dayAvailability.end_time;
 
   if (!availableStart || !availableEnd) {
-    return { available: true };
+    console.log('❌ No start/end time configured');
+    return { 
+      available: false, 
+      reason: 'Horarios no configurados' 
+    };
   }
 
   const taskStart = timeToMinutes(startTime);
@@ -41,13 +61,24 @@ export const isCleanerAvailableAtTime = (
   const availStart = timeToMinutes(availableStart);
   const availEnd = timeToMinutes(availableEnd);
 
+  console.log('⏰ Time comparison:', {
+    taskStart,
+    taskEnd,
+    availStart,
+    availEnd,
+    taskStartOk: taskStart >= availStart,
+    taskEndOk: taskEnd <= availEnd
+  });
+
   if (taskStart < availStart || taskEnd > availEnd) {
+    console.log('❌ Outside available hours');
     return { 
       available: false, 
       reason: `Disponible solo de ${availableStart} a ${availableEnd}` 
     };
   }
 
+  console.log('✅ Available');
   return { available: true };
 };
 
