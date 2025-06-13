@@ -96,7 +96,7 @@ export const EnhancedTaskCard = React.memo(({
               {/* Nombre del cliente - pegado a la izquierda */}
               {clientName && (
                 <p className="text-xs truncate text-left text-zinc-900">
-                  Cliente: {clientName}
+                  {clientName}
                 </p>
               )}
             </div>

@@ -3,6 +3,7 @@ import { Badge } from "@/components/ui/badge";
 import { Clock, MapPin, GripVertical } from "lucide-react";
 import { Task } from "@/hooks/useCalendarData";
 import { cn } from "@/lib/utils";
+import { useClientData } from "@/hooks/useClientData";
 
 interface TaskCardProps {
   task: Task;
@@ -23,6 +24,8 @@ export const TaskCard = ({
   onDragEnd,
   draggable = false
 }: TaskCardProps) => {
+  const { getClientName } = useClientData();
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case "completed":
@@ -77,6 +80,8 @@ export const TaskCard = ({
     e.stopPropagation();
   };
 
+  const clientName = getClientName(task.clienteId || '');
+
   return (
     <div 
       className={cn(
@@ -109,9 +114,11 @@ export const TaskCard = ({
         </div>
         
         {/* Cliente - pegado a la izquierda al mismo nivel */}
-        <div className="text-xs opacity-90 text-left leading-tight">
-          Cliente: {task.clienteId || 'Sin asignar'}
-        </div>
+        {clientName && (
+          <div className="text-xs opacity-90 text-left leading-tight">
+            {clientName}
+          </div>
+        )}
         
         {/* Time and status - más compacto */}
         <div className="flex items-center justify-between text-xs">
