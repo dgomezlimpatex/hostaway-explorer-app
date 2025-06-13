@@ -55,6 +55,14 @@ export const EnhancedTaskCard = React.memo(({
 
   const clientName = getClientName(task.clienteId || '');
 
+  // Formatear el nombre de la propiedad para mostrar código y nombre
+  const displayPropertyName = () => {
+    if (task.propertyCode) {
+      return `${task.propertyCode} - ${task.property}`;
+    }
+    return task.property;
+  };
+
   return (
     <TooltipProvider>
       <Tooltip>
@@ -88,7 +96,7 @@ export const EnhancedTaskCard = React.memo(({
             <div className="space-y-1">
               {/* Código y nombre del piso - pegado a la izquierda */}
               <h3 className="font-semibold text-sm truncate text-left text-zinc-950">
-                {task.property}
+                {displayPropertyName()}
               </h3>
               
               {/* Nombre del cliente - pegado a la izquierda */}
@@ -111,7 +119,7 @@ export const EnhancedTaskCard = React.memo(({
         </TooltipTrigger>
         <TooltipContent side="top" className="max-w-xs">
           <div className="space-y-1">
-            <p className="font-medium">{task.property}</p>
+            <p className="font-medium">{displayPropertyName()}</p>
             <p className="text-xs text-muted-foreground">
               {formatTime(task.startTime)} - {formatTime(task.endTime)}
             </p>

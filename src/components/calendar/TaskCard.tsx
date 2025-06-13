@@ -69,6 +69,14 @@ export const TaskCard = ({
 
   const clientName = getClientName(task.clienteId || '');
 
+  // Formatear el nombre de la propiedad para mostrar código y nombre
+  const displayPropertyName = () => {
+    if (task.propertyCode) {
+      return `${task.propertyCode} - ${task.property}`;
+    }
+    return task.property;
+  };
+
   return (
     <div 
       className={cn(
@@ -95,9 +103,9 @@ export const TaskCard = ({
       
       {/* Content */}
       <div className="relative z-10 space-y-1">
-        {/* Property name y código - pegado a la izquierda */}
+        {/* Property code y nombre - pegado a la izquierda */}
         <div className="font-semibold text-sm leading-tight line-clamp-2 text-left">
-          {task.property}
+          {displayPropertyName()}
         </div>
         
         {/* Cliente - pegado a la izquierda al mismo nivel */}
