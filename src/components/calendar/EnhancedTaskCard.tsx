@@ -39,6 +39,15 @@ export const EnhancedTaskCard = React.memo(({
     }
   };
 
+  // Función para formatear tiempo de HH:MM:SS a HH:MM
+  const formatTime = (time: string) => {
+    if (time.includes(':')) {
+      const parts = time.split(':');
+      return `${parts[0]}:${parts[1]}`;
+    }
+    return time;
+  };
+
   const handleDragStart = (e: React.DragEvent) => {
     if (onDragStart) {
       onDragStart(e, task);
@@ -67,24 +76,26 @@ export const EnhancedTaskCard = React.memo(({
             )}
           >
             {/* Header con estado */}
-            <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center justify-between mb-1">
               <StatusIndicator status={task.status as any} size="sm" showTooltip={false} />
               <div className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400">
                 <Clock className="w-3 h-3 flex-shrink-0" />
-                <span className="whitespace-nowrap">{task.startTime} - {task.endTime}</span>
+                <span className="whitespace-nowrap">
+                  {formatTime(task.startTime)} - {formatTime(task.endTime)}
+                </span>
               </div>
             </div>
 
             {/* Contenido principal - Información específica solicitada */}
             <div className="space-y-1">
-              {/* Código y nombre del piso */}
-              <h3 className="font-semibold text-sm truncate text-left text-zinc-950 mx-[27px]">
+              {/* Código y nombre del piso - pegado a la izquierda */}
+              <h3 className="font-semibold text-sm truncate text-left text-zinc-950">
                 {task.property}
               </h3>
               
-              {/* Nombre del cliente */}
+              {/* Nombre del cliente - pegado a la izquierda */}
               {clientName && (
-                <p className="text-xs truncate text-left text-zinc-900 mx-[28px]">
+                <p className="text-xs truncate text-left text-zinc-900">
                   Cliente: {clientName}
                 </p>
               )}
@@ -104,7 +115,7 @@ export const EnhancedTaskCard = React.memo(({
           <div className="space-y-1">
             <p className="font-medium">{task.property}</p>
             <p className="text-xs text-muted-foreground">
-              {task.startTime} - {task.endTime}
+              {formatTime(task.startTime)} - {formatTime(task.endTime)}
             </p>
             {clientName && (
               <p className="text-xs">
