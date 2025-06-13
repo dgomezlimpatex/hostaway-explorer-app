@@ -1,14 +1,11 @@
 
-import { useState, useCallback, useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import { ResponsiveCalendarHeader } from "./calendar/ResponsiveCalendarHeader";
 import { CalendarContainer } from "./calendar/CalendarContainer";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { useCalendarLogic } from "@/hooks/useCalendarLogic";
-import { hostawaySync } from "@/services/hostawaySync";
-import { useToast } from "@/hooks/use-toast";
 
 const CleaningCalendar = () => {
-  const { toast } = useToast();
   const {
     tasks,
     cleaners,
@@ -16,6 +13,7 @@ const CleaningCalendar = () => {
     currentView,
     isLoading,
     timeSlots,
+    availability,
     headerScrollRef,
     bodyScrollRef,
     isCreateModalOpen,
@@ -87,6 +85,7 @@ const CleaningCalendar = () => {
           cleaners={cleaners}
           currentDate={currentDate}
           timeSlots={timeSlots}
+          availability={availability}
           headerScrollRef={headerScrollRef}
           bodyScrollRef={bodyScrollRef}
           isCreateModalOpen={isCreateModalOpen}

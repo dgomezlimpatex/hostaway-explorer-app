@@ -7,6 +7,7 @@ interface TimeSlotProps {
   minute: number;
   cleanerId: string;
   isOccupied: boolean;
+  isAvailable?: boolean;
   draggedTaskId?: string | null;
   onDragOver: (e: React.DragEvent) => void;
   onDrop: (e: React.DragEvent, cleanerId: string, timeSlot?: string) => void;
@@ -18,6 +19,7 @@ export const TimeSlot = memo(({
   minute, 
   cleanerId, 
   isOccupied, 
+  isAvailable = true,
   draggedTaskId,
   onDragOver, 
   onDrop,
@@ -30,8 +32,12 @@ export const TimeSlot = memo(({
     e.stopPropagation();
     e.dataTransfer.dropEffect = 'move';
     onDragOver(e);
-    (e.currentTarget as HTMLElement).classList.add('drag-over');
-  }, [onDragOver]);
+    
+    // Only add drag-over style if the slot is available
+    if (isAvailable) {
+      (e.currentTarget as HTMLElement).classList.add('drag-over');
+    }
+  }, [onDragOver, isAvailable]);
 
   const handleDragLeave = useCallback((e: React.DragEvent) => {
     // Only remove drag-over if we're actually leaving this element
@@ -43,28 +49,32 @@ export const TimeSlot = memo(({
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    console.log('💧 TimeSlot - handleDrop called for:', { cleanerId, timeString, draggedTaskId });
+    console.log('💧 TimeSlot - handleDrop called for:', { cleanerId, timeString, draggedTaskId, isAvailable });
     (e.currentTarget as HTMLElement).classList.remove('drag-over');
     
-    // Always allow drop when there's a dragged task - no conditions
-    if (draggedTaskId) {
+    // Only allow drop if the slot is available and there's a dragged task
+    if (draggedTaskId && isAvailable) {
       console.log('✅ TimeSlot - Processing drop for task:', draggedTaskId);
       onDrop(e, cleanerId, timeString);
     } else {
-      console.log('⚠️ TimeSlot - No dragged task, ignoring drop');
+      console.log('⚠️ TimeSlot - Drop not allowed:', { draggedTaskId, isAvailable });
     }
-  }, [onDrop, cleanerId, timeString, draggedTaskId]);
+  }, [onDrop, cleanerId, timeString, draggedTaskId, isAvailable]);
 
-  // Permitir drop siempre que haya una tarea siendo arrastrada
-  const allowDrop = draggedTaskId !== null;
-  // Mostrar como ocupado solo si realmente está ocupado Y no hay tarea siendo arrastrada
+  // Allow drop only if there's a dragged task AND the slot is available
+  const allowDrop = draggedTaskId !== null && isAvailable;
+  // Show as occupied if really occupied AND no task being dragged
   const showAsOccupied = isOccupied && !draggedTaskId;
 
   return (
     <div
       className={cn(
         "relative min-w-[60px] w-[60px] h-20 border-r border-gray-200 transition-colors flex-shrink-0",
-        allowDrop && "hover:bg-blue-50 cursor-pointer",
+        // Available slots
+        isAvailable && allowDrop && "hover:bg-blue-50 cursor-pointer",
+        // Unavailable slots - show with different styling
+        !isAvailable && "bg-red-50 border-red-200",
+        // Occupied slots
         showAsOccupied && "bg-gray-100"
       )}
       onDragOver={handleDragOver}
@@ -72,12 +82,21 @@ export const TimeSlot = memo(({
       onDrop={handleDrop}
       data-time={timeString}
       data-cleaner-id={cleanerId}
+      title={!isAvailable ? "Trabajador no disponible en este horario" : undefined}
     >
       {children}
       
-      {/* Drop indicator - mostrar cuando se está arrastrando sobre este slot */}
+      {/* Drop indicator - show when dragging over available slot */}
       {allowDrop && (
         <div className="absolute inset-0 border-2 border-dashed border-blue-400 bg-blue-50 opacity-0 transition-opacity duration-200 pointer-events-none drop-indicator" />
+      )}
+      
+      {/* Unavailable indicator */}
+      {!isAvailable && (
+        <div className="absolute inset-0 flex items-center justify-center">
+          <div className="w-full h-0.5 bg-red-300 transform rotate-45"></div>
+          <div className="w-full h-0.5 bg-red-300 transform -rotate-45 absolute"></div>
+        </div>
       )}
       
       {/* Time slot indicator when hovering during drag */}

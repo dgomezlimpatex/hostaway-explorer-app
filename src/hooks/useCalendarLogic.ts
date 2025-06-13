@@ -2,8 +2,10 @@
 import { useState, useMemo, useRef, useCallback } from "react";
 import { useCalendarData } from "@/hooks/useCalendarData";
 import { useDragAndDrop } from "@/hooks/useDragAndDrop";
+import { useAllCleanersAvailability } from "@/hooks/useAllCleanersAvailability";
 import { useToast } from "@/hooks/use-toast";
 import { Task } from "@/types/calendar";
+import { isCleanerAvailableAtTime } from "@/utils/availabilityUtils";
 
 export const useCalendarLogic = () => {
   const {
@@ -22,6 +24,7 @@ export const useCalendarLogic = () => {
     deleteAllTasks
   } = useCalendarData();
 
+  const { data: availability = [], isLoading: isLoadingAvailability } = useAllCleanersAvailability();
   const { toast } = useToast();
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
@@ -43,35 +46,66 @@ export const useCalendarLogic = () => {
     return slots;
   }, []);
 
-  // Memoized task assignment handler with useCallback
+  // Enhanced task assignment handler with availability check
   const handleTaskAssign = useCallback(async (taskId: string, cleanerId: string, cleaners: any[], timeSlot?: string) => {
     console.log('useCalendarLogic - handleTaskAssign called with:', { taskId, cleanerId, cleaners, timeSlot });
+    
+    const task = tasks.find(t => t.id === taskId);
+    if (!task) {
+      toast({
+        title: "Error",
+        description: "No se pudo encontrar la tarea.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Create a date object for the task
+    const taskDate = new Date(task.date);
+    const startTime = timeSlot || task.startTime;
+    const endTime = task.endTime;
+
+    // Check availability
+    const availabilityCheck = isCleanerAvailableAtTime(
+      cleanerId, 
+      taskDate, 
+      startTime, 
+      endTime, 
+      availability
+    );
+
+    if (!availabilityCheck.available) {
+      toast({
+        title: "Trabajador no disponible",
+        description: availabilityCheck.reason || "El trabajador no está disponible en este horario.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     try {
       // If timeSlot is provided, also update the task's start time
       if (timeSlot) {
-        const task = tasks.find(t => t.id === taskId);
-        if (task) {
-          // Calculate end time based on original duration
-          const [startHour, startMinute] = task.startTime.split(':').map(Number);
-          const [endHour, endMinute] = task.endTime.split(':').map(Number);
-          const originalDurationMinutes = (endHour * 60 + endMinute) - (startHour * 60 + startMinute);
-          
-          const [newStartHour, newStartMinute] = timeSlot.split(':').map(Number);
-          const newEndTotalMinutes = (newStartHour * 60 + newStartMinute) + originalDurationMinutes;
-          const newEndHour = Math.floor(newEndTotalMinutes / 60);
-          const newEndMinute = newEndTotalMinutes % 60;
-          
-          const newEndTime = `${newEndHour.toString().padStart(2, '0')}:${newEndMinute.toString().padStart(2, '0')}`;
-          
-          // Update both assignment and time
-          await updateTask({
-            taskId,
-            updates: {
-              startTime: timeSlot,
-              endTime: newEndTime
-            }
-          });
-        }
+        // Calculate end time based on original duration
+        const [startHour, startMinute] = task.startTime.split(':').map(Number);
+        const [endHour, endMinute] = task.endTime.split(':').map(Number);
+        const originalDurationMinutes = (endHour * 60 + endMinute) - (startHour * 60 + startMinute);
+        
+        const [newStartHour, newStartMinute] = timeSlot.split(':').map(Number);
+        const newEndTotalMinutes = (newStartHour * 60 + newStartMinute) + originalDurationMinutes;
+        const newEndHour = Math.floor(newEndTotalMinutes / 60);
+        const newEndMinute = newEndTotalMinutes % 60;
+        
+        const newEndTime = `${newEndHour.toString().padStart(2, '0')}:${newEndMinute.toString().padStart(2, '0')}`;
+        
+        // Update both assignment and time
+        await updateTask({
+          taskId,
+          updates: {
+            startTime: timeSlot,
+            endTime: newEndTime
+          }
+        });
       }
       
       await assignTask({ taskId, cleanerId, cleaners });
@@ -89,9 +123,9 @@ export const useCalendarLogic = () => {
         variant: "destructive",
       });
     }
-  }, [tasks, updateTask, assignTask, toast]);
+  }, [tasks, updateTask, assignTask, toast, availability]);
 
-  // Initialize drag and drop with memoized handler
+  // Initialize drag and drop with enhanced handler
   const {
     dragState,
     handleDragStart,
@@ -197,8 +231,9 @@ export const useCalendarLogic = () => {
     cleaners,
     currentDate,
     currentView,
-    isLoading,
+    isLoading: isLoading || isLoadingAvailability,
     timeSlots,
+    availability,
     
     // Refs
     headerScrollRef,

@@ -4,11 +4,15 @@ import { cn } from "@/lib/utils";
 import { TimeSlot } from "./TimeSlot";
 import { EnhancedTaskCard } from "./EnhancedTaskCard";
 import { Task, Cleaner } from "@/types/calendar";
+import { CleanerAvailability } from "@/hooks/useCleanerAvailability";
+import { getCleanerAvailabilityForDay, timeToMinutes } from "@/utils/availabilityUtils";
 
 interface CalendarGridProps {
   cleaners: Cleaner[];
   timeSlots: string[];
   assignedTasks: Task[];
+  availability: CleanerAvailability[];
+  currentDate: Date;
   dragState: any;
   onScroll: (e: React.UIEvent<HTMLDivElement>) => void;
   onDragOver: (e: React.DragEvent) => void;
@@ -26,6 +30,8 @@ const CleanerRow = memo(({
   index, 
   timeSlots, 
   cleanerTasks, 
+  availability,
+  currentDate,
   dragState,
   onDragOver,
   onDrop,
@@ -40,6 +46,8 @@ const CleanerRow = memo(({
   index: number;
   timeSlots: string[];
   cleanerTasks: Task[];
+  availability: CleanerAvailability[];
+  currentDate: Date;
   dragState: any;
   onDragOver: (e: React.DragEvent) => void;
   onDrop: (e: React.DragEvent, cleanerId: string, cleaners: any[], timeSlot?: string) => void;
@@ -50,12 +58,31 @@ const CleanerRow = memo(({
   isTimeSlotOccupied: (cleanerId: string, hour: number, minute: number) => boolean;
   cleaners: Cleaner[];
 }) => {
+  // Get availability for this cleaner for the current date
+  const cleanerAvailability = useMemo(() => {
+    return getCleanerAvailabilityForDay(cleaner.id, currentDate, availability);
+  }, [cleaner.id, currentDate, availability]);
+
+  // Function to check if a time slot is within available hours
+  const isTimeSlotAvailable = useMemo(() => {
+    return (hour: number, minute: number) => {
+      if (!cleanerAvailability) return true; // If no availability set, assume available
+      if (!cleanerAvailability.is_available) return false; // Marked as not available
+
+      const slotTime = hour * 60 + minute;
+      const startTime = cleanerAvailability.start_time ? timeToMinutes(cleanerAvailability.start_time) : 0;
+      const endTime = cleanerAvailability.end_time ? timeToMinutes(cleanerAvailability.end_time) : 24 * 60;
+
+      return slotTime >= startTime && slotTime < endTime;
+    };
+  }, [cleanerAvailability]);
+
   // Memoize time slots for this cleaner
   const timeSlotElements = useMemo(() => {
     return timeSlots.map((time) => {
       const [hour, minute] = time.split(':').map(Number);
-      // Pasar el ID de la tarea que se está arrastrando para excluirla del cálculo de ocupación
       const isOccupied = isTimeSlotOccupied(cleaner.id, hour, minute);
+      const isAvailable = isTimeSlotAvailable(hour, minute);
       
       return (
         <TimeSlot
@@ -64,13 +91,14 @@ const CleanerRow = memo(({
           minute={minute}
           cleanerId={cleaner.id}
           isOccupied={isOccupied}
+          isAvailable={isAvailable}
           draggedTaskId={dragState.draggedTask?.id}
           onDragOver={onDragOver}
           onDrop={(e, cleanerId, timeSlot) => onDrop(e, cleanerId, cleaners, timeSlot)}
         />
       );
     });
-  }, [timeSlots, cleaner.id, isTimeSlotOccupied, dragState.draggedTask?.id, onDragOver, onDrop, cleaners]);
+  }, [timeSlots, cleaner.id, isTimeSlotOccupied, isTimeSlotAvailable, dragState.draggedTask?.id, onDragOver, onDrop, cleaners]);
 
   // Memoize task elements for this cleaner
   const taskElements = useMemo(() => {
@@ -123,6 +151,8 @@ export const CalendarGrid = memo(forwardRef<HTMLDivElement, CalendarGridProps>(
     cleaners, 
     timeSlots, 
     assignedTasks, 
+    availability,
+    currentDate,
     dragState,
     onScroll,
     onDragOver,
@@ -159,6 +189,8 @@ export const CalendarGrid = memo(forwardRef<HTMLDivElement, CalendarGridProps>(
             index={index}
             timeSlots={timeSlots}
             cleanerTasks={cleanerTasks}
+            availability={availability}
+            currentDate={currentDate}
             dragState={dragState}
             onDragOver={onDragOver}
             onDrop={onDrop}
@@ -171,7 +203,7 @@ export const CalendarGrid = memo(forwardRef<HTMLDivElement, CalendarGridProps>(
           />
         );
       });
-    }, [cleaners, timeSlots, assignedTasks, dragState, onDragOver, onDrop, onDragStart, onDragEnd, onTaskClick, getTaskPosition, isTimeSlotOccupied]);
+    }, [cleaners, timeSlots, assignedTasks, availability, currentDate, dragState, onDragOver, onDrop, onDragStart, onDragEnd, onTaskClick, getTaskPosition, isTimeSlotOccupied]);
 
     return (
       <div className="flex-1 overflow-hidden relative">

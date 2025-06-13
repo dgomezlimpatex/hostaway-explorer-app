@@ -6,6 +6,7 @@ import { DragPreview } from "./DragPreview";
 import { StatusLegend } from "./StatusLegend";
 import { CalendarModals } from "./CalendarModals";
 import { Task, Cleaner } from "@/types/calendar";
+import { CleanerAvailability } from "@/hooks/useCleanerAvailability";
 import { getTaskPosition, isTimeSlotOccupied } from "@/utils/taskPositioning";
 
 interface CalendarContainerProps {
@@ -13,6 +14,7 @@ interface CalendarContainerProps {
   cleaners: Cleaner[];
   currentDate: Date;
   timeSlots: string[];
+  availability: CleanerAvailability[];
   headerScrollRef: React.RefObject<HTMLDivElement>;
   bodyScrollRef: React.RefObject<HTMLDivElement>;
   isCreateModalOpen: boolean;
@@ -39,6 +41,7 @@ export const CalendarContainer = ({
   cleaners,
   currentDate,
   timeSlots,
+  availability,
   headerScrollRef,
   bodyScrollRef,
   isCreateModalOpen,
@@ -100,6 +103,8 @@ export const CalendarContainer = ({
             cleaners={cleaners}
             timeSlots={timeSlots}
             assignedTasks={assignedTasks}
+            availability={availability}
+            currentDate={currentDate}
             dragState={dragState}
             headerScrollRef={headerScrollRef}
             bodyScrollRef={bodyScrollRef}

@@ -4,11 +4,14 @@ import { WorkersColumn } from "./WorkersColumn";
 import { TimelineHeader } from "./TimelineHeader";
 import { CalendarGrid } from "./CalendarGrid";
 import { Task, Cleaner } from "@/types/calendar";
+import { CleanerAvailability } from "@/hooks/useCleanerAvailability";
 
 interface CalendarLayoutProps {
   cleaners: Cleaner[];
   timeSlots: string[];
   assignedTasks: Task[];
+  availability: CleanerAvailability[];
+  currentDate: Date;
   dragState: any;
   headerScrollRef: React.RefObject<HTMLDivElement>;
   bodyScrollRef: React.RefObject<HTMLDivElement>;
@@ -27,6 +30,8 @@ export const CalendarLayout = ({
   cleaners,
   timeSlots,
   assignedTasks,
+  availability,
+  currentDate,
   dragState,
   headerScrollRef,
   bodyScrollRef,
@@ -66,6 +71,8 @@ export const CalendarLayout = ({
               cleaners={cleaners}
               timeSlots={timeSlots}
               assignedTasks={assignedTasks}
+              availability={availability}
+              currentDate={currentDate}
               dragState={dragState}
               onScroll={onBodyScroll}
               onDragOver={onDragOver}
