@@ -1,6 +1,6 @@
 
 import { Badge } from "@/components/ui/badge";
-import { Clock, MapPin, GripVertical } from "lucide-react";
+import { Clock, GripVertical } from "lucide-react";
 import { Task } from "@/hooks/useCalendarData";
 import { cn } from "@/lib/utils";
 import { useClientData } from "@/hooks/useClientData";
@@ -36,19 +36,6 @@ export const TaskCard = ({
         return "bg-red-500 hover:bg-red-600";
       default:
         return "bg-gray-500 hover:bg-gray-600";
-    }
-  };
-
-  const getStatusText = (status: string) => {
-    switch (status) {
-      case "completed":
-        return "Completado";
-      case "in-progress":
-        return "En Progreso";
-      case "pending":
-        return "Pendiente";
-      default:
-        return "Desconocido";
     }
   };
 
@@ -108,7 +95,7 @@ export const TaskCard = ({
       
       {/* Content */}
       <div className="relative z-10 space-y-1">
-        {/* Property name - pegado a la izquierda */}
+        {/* Property name y código - pegado a la izquierda */}
         <div className="font-semibold text-sm leading-tight line-clamp-2 text-left">
           {task.property}
         </div>
@@ -120,28 +107,13 @@ export const TaskCard = ({
           </div>
         )}
         
-        {/* Time and status - más compacto */}
-        <div className="flex items-center justify-between text-xs">
-          <div className="flex items-center gap-1">
-            <Clock className="h-3 w-3 flex-shrink-0" />
-            <span className="whitespace-nowrap">
-              {formatTime(task.startTime)} - {formatTime(task.endTime)}
-            </span>
-          </div>
-          <Badge variant="secondary" className="bg-white/20 text-white border-white/30 text-xs px-1 py-0 ml-1">
-            {getStatusText(task.status)}
-          </Badge>
+        {/* Solo las horas de inicio y fin */}
+        <div className="flex items-center text-xs">
+          <Clock className="h-3 w-3 flex-shrink-0 mr-1" />
+          <span className="whitespace-nowrap">
+            {formatTime(task.startTime)} - {formatTime(task.endTime)}
+          </span>
         </div>
-
-        {/* Check times - solo si hay espacio */}
-        {task.checkOut && task.checkIn && (
-          <div className="text-xs opacity-80 flex items-center gap-1">
-            <MapPin className="h-3 w-3 flex-shrink-0" />
-            <span className="truncate">
-              Out: {formatTime(task.checkOut)} | In: {formatTime(task.checkIn)}
-            </span>
-          </div>
-        )}
 
         {/* Address - solo si hay espacio suficiente */}
         {task.address && (

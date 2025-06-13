@@ -1,7 +1,6 @@
 
 import React from "react";
 import { Task } from "@/types/calendar";
-import { StatusIndicator } from "@/components/ui/status-indicator";
 import { Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -75,9 +74,8 @@ export const EnhancedTaskCard = React.memo(({
               isDragging && "opacity-50 rotate-2 scale-95 shadow-2xl z-50"
             )}
           >
-            {/* Header con estado */}
+            {/* Header con horas */}
             <div className="flex items-center justify-between mb-1">
-              <StatusIndicator status={task.status as any} size="sm" showTooltip={false} />
               <div className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400">
                 <Clock className="w-3 h-3 flex-shrink-0" />
                 <span className="whitespace-nowrap">
@@ -86,7 +84,7 @@ export const EnhancedTaskCard = React.memo(({
               </div>
             </div>
 
-            {/* Contenido principal - Información específica solicitada */}
+            {/* Contenido principal */}
             <div className="space-y-1">
               {/* Código y nombre del piso - pegado a la izquierda */}
               <h3 className="font-semibold text-sm truncate text-left text-zinc-950">
@@ -119,7 +117,7 @@ export const EnhancedTaskCard = React.memo(({
             </p>
             {clientName && (
               <p className="text-xs">
-                <span className="font-medium">Cliente:</span> {clientName}
+                {clientName}
               </p>
             )}
             {task.address && (
