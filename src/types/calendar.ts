@@ -15,6 +15,7 @@ export interface Task {
   // Nuevos campos para vinculación
   clienteId?: string;
   propiedadId?: string;
+  propertyCode?: string; // Adding the property code field
   duracion?: number; // en minutos
   coste?: number; // en euros
   metodoPago?: string;
