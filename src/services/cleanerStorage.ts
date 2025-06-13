@@ -16,7 +16,7 @@ export const cleanerStorage = {
     const { data, error } = await supabase
       .from('cleaners')
       .select('*')
-      .order('sort_order', { nullsLast: true })
+      .order('sort_order', { nullsFirst: false })
       .order('name');
 
     if (error) {

@@ -58,6 +58,7 @@ export type Database = {
           id: string
           is_active: boolean
           name: string
+          sort_order: number | null
           telefono: string | null
           updated_at: string
         }
@@ -68,6 +69,7 @@ export type Database = {
           id?: string
           is_active?: boolean
           name: string
+          sort_order?: number | null
           telefono?: string | null
           updated_at?: string
         }
@@ -78,6 +80,7 @@ export type Database = {
           id?: string
           is_active?: boolean
           name?: string
+          sort_order?: number | null
           telefono?: string | null
           updated_at?: string
         }
@@ -555,7 +558,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      update_cleaners_order: {
+        Args: { cleaner_updates: Json[] }
+        Returns: undefined
+      }
     }
     Enums: {
       [_ in never]: never
