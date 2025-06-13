@@ -13,7 +13,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Trash2, Clock } from "lucide-react";
+import { Trash2, Clock, CalendarCheck } from "lucide-react";
 import { Cleaner } from "@/types/calendar";
 import { useCleanerAvailability, useCreateOrUpdateAvailability, useDeleteAvailability } from "@/hooks/useCleanerAvailability";
 
@@ -66,8 +66,8 @@ export const AvailabilityModal = ({ worker, open, onOpenChange }: AvailabilityMo
       [dayOfWeek]: {
         ...prev[dayOfWeek],
         isAvailable,
-        startTime: prev[dayOfWeek]?.startTime || '09:00',
-        endTime: prev[dayOfWeek]?.endTime || '17:00',
+        startTime: prev[dayOfWeek]?.startTime || '06:00',
+        endTime: prev[dayOfWeek]?.endTime || '23:00',
       }
     }));
   };
@@ -81,6 +81,18 @@ export const AvailabilityModal = ({ worker, open, onOpenChange }: AvailabilityMo
         isAvailable: prev[dayOfWeek]?.isAvailable ?? true,
       }
     }));
+  };
+
+  const handleFullAvailability = () => {
+    const fullAvailabilityMap: typeof dayAvailability = {};
+    DAYS_OF_WEEK.forEach(day => {
+      fullAvailabilityMap[day.value] = {
+        isAvailable: true,
+        startTime: '06:00',
+        endTime: '23:00',
+      };
+    });
+    setDayAvailability(fullAvailabilityMap);
   };
 
   const handleSave = async () => {
@@ -139,6 +151,18 @@ export const AvailabilityModal = ({ worker, open, onOpenChange }: AvailabilityMo
           <div className="text-center py-4">Cargando disponibilidad...</div>
         ) : (
           <div className="space-y-4">
+            {/* Full Availability Button */}
+            <div className="flex justify-center pb-4 border-b">
+              <Button 
+                onClick={handleFullAvailability}
+                variant="outline"
+                className="flex items-center gap-2"
+              >
+                <CalendarCheck className="h-4 w-4" />
+                Disponibilidad Total (06:00 - 23:00)
+              </Button>
+            </div>
+
             {DAYS_OF_WEEK.map(day => {
               const config = dayAvailability[day.value];
               const isConfigured = config !== undefined;
