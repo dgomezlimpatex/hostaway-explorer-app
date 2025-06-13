@@ -9,6 +9,47 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      cleaner_availability: {
+        Row: {
+          cleaner_id: string
+          created_at: string
+          day_of_week: number
+          end_time: string | null
+          id: string
+          is_available: boolean
+          start_time: string | null
+          updated_at: string
+        }
+        Insert: {
+          cleaner_id: string
+          created_at?: string
+          day_of_week: number
+          end_time?: string | null
+          id?: string
+          is_available?: boolean
+          start_time?: string | null
+          updated_at?: string
+        }
+        Update: {
+          cleaner_id?: string
+          created_at?: string
+          day_of_week?: number
+          end_time?: string | null
+          id?: string
+          is_available?: boolean
+          start_time?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cleaner_availability_cleaner_id_fkey"
+            columns: ["cleaner_id"]
+            isOneToOne: false
+            referencedRelation: "cleaners"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       cleaners: {
         Row: {
           avatar: string | null
