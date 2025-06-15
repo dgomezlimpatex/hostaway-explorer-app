@@ -31,7 +31,9 @@ async function syncReservations() {
     updated_reservations: 0,
     cancelled_reservations: 0,
     tasks_created: 0,
-    errors: []
+    errors: [],
+    tasks_details: [], // Nuevo campo para detalles de tareas
+    reservations_details: [] // Nuevo campo para detalles de reservas
   };
 
   try {
@@ -89,6 +91,8 @@ async function syncReservations() {
       try {
         const statsBefore = { ...stats };
         stats.reservations_processed++;
+        
+        // Pasar stats por referencia para que se actualice con detalles
         await processReservation(reservation, stats, index, reservations.length);
         
         // Contabilizar si se creó una tarea
@@ -97,7 +101,7 @@ async function syncReservations() {
           console.log(`✅ Tarea #${tasksCreatedCount} creada para reserva ${reservation.id}`);
         }
       } catch (error) {
-        const errorMsg = `Error procesando reserva ${reservation.id}: ${error.message}`;
+        const errorMsg = `Error procesando reserva ${reservation.id} (listing: ${reservation.listingMapId}, guest: ${reservation.guestName}): ${error.message}`;
         console.error(`❌ ${errorMsg}`);
         stats.errors.push(errorMsg);
       }
@@ -115,11 +119,13 @@ async function syncReservations() {
       console.log(`     • ${r.id} (${r.status}): ${r.guestName} en listing ${r.listingMapId}`);
     });
 
-    // Actualizar log de sincronización
+    // Actualizar log de sincronización con información detallada
     await updateSyncLog(syncLog.id, {
       sync_completed_at: new Date().toISOString(),
       status: 'completed',
-      ...stats
+      ...stats,
+      tasks_details: stats.tasks_details || [],
+      reservations_details: stats.reservations_details || []
     });
 
     // Enviar email resumen

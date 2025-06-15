@@ -4,7 +4,8 @@ import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Calendar, CheckCircle, XCircle, AlertCircle, RefreshCw } from 'lucide-react';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { ArrowLeft, Calendar, CheckCircle, XCircle, AlertCircle, RefreshCw, ChevronDown, ChevronRight, FileText, Users, Calendar as CalendarIcon } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { hostawaySync } from '@/services/hostawaySync';
 import { useProperties } from '@/hooks/useProperties';
@@ -131,7 +132,7 @@ const HostawaySyncLogs = () => {
                 Logs de Sincronización Hostaway
               </h1>
               <p className="text-gray-600 dark:text-gray-300 mt-1">
-                Historial completo de sincronizaciones con Hostaway
+                Historial completo de sincronizaciones con información detallada
               </p>
             </div>
           </div>
@@ -202,7 +203,7 @@ const HostawaySyncLogs = () => {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                     <div className="bg-purple-50 dark:bg-purple-900/20 p-4 rounded-lg">
                       <div className="text-2xl font-bold text-purple-600 dark:text-purple-400">
                         {log.tasks_created || 0}
@@ -221,19 +222,121 @@ const HostawaySyncLogs = () => {
                     </div>
                   </div>
 
+                  {/* Tareas Creadas - Detalles */}
+                  {log.tasks_details && log.tasks_details.length > 0 && (
+                    <Collapsible className="mb-4">
+                      <CollapsibleTrigger asChild>
+                        <Button variant="outline" className="w-full justify-between">
+                          <div className="flex items-center gap-2">
+                            <CalendarIcon className="h-4 w-4" />
+                            Detalles de Tareas Creadas ({log.tasks_details.length})
+                          </div>
+                          <ChevronDown className="h-4 w-4" />
+                        </Button>
+                      </CollapsibleTrigger>
+                      <CollapsibleContent className="mt-2">
+                        <div className="bg-purple-50 dark:bg-purple-900/20 p-4 rounded-lg">
+                          <div className="space-y-2 text-sm">
+                            {log.tasks_details.map((task, index) => (
+                              <div key={index} className="flex justify-between items-center p-2 bg-white dark:bg-gray-800 rounded">
+                                <div>
+                                  <span className="font-medium">{task.property_name}</span>
+                                  <span className="text-gray-600 dark:text-gray-300 ml-2">
+                                    ({task.guest_name})
+                                  </span>
+                                </div>
+                                <div className="text-right">
+                                  <div className="text-purple-600 dark:text-purple-400 font-medium">
+                                    {task.task_date}
+                                  </div>
+                                  <div className="text-xs text-gray-500">
+                                    Reserva: {task.reservation_id}
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </CollapsibleContent>
+                    </Collapsible>
+                  )}
+
+                  {/* Reservas Procesadas - Detalles */}
+                  {log.reservations_details && log.reservations_details.length > 0 && (
+                    <Collapsible className="mb-4">
+                      <CollapsibleTrigger asChild>
+                        <Button variant="outline" className="w-full justify-between">
+                          <div className="flex items-center gap-2">
+                            <Users className="h-4 w-4" />
+                            Detalles de Reservas Procesadas ({log.reservations_details.length})
+                          </div>
+                          <ChevronDown className="h-4 w-4" />
+                        </Button>
+                      </CollapsibleTrigger>
+                      <CollapsibleContent className="mt-2">
+                        <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg">
+                          <div className="space-y-2 text-sm">
+                            {log.reservations_details.map((reservation, index) => (
+                              <div key={index} className="flex justify-between items-center p-2 bg-white dark:bg-gray-800 rounded">
+                                <div>
+                                  <span className="font-medium">{reservation.property_name}</span>
+                                  <span className="text-gray-600 dark:text-gray-300 ml-2">
+                                    ({reservation.guest_name})
+                                  </span>
+                                  <Badge 
+                                    variant={
+                                      reservation.action === 'created' ? 'default' :
+                                      reservation.action === 'cancelled' ? 'destructive' : 'secondary'
+                                    }
+                                    className="ml-2"
+                                  >
+                                    {reservation.action === 'created' ? 'Nueva' :
+                                     reservation.action === 'cancelled' ? 'Cancelada' : 'Actualizada'}
+                                  </Badge>
+                                </div>
+                                <div className="text-right">
+                                  <div className="text-blue-600 dark:text-blue-400 font-medium">
+                                    {reservation.arrival_date} → {reservation.departure_date}
+                                  </div>
+                                  <div className="text-xs text-gray-500">
+                                    {reservation.status} | Reserva: {reservation.reservation_id}
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </CollapsibleContent>
+                    </Collapsible>
+                  )}
+
+                  {/* Errores */}
                   {log.errors && log.errors.length > 0 && (
-                    <div className="mt-4 p-4 bg-red-50 dark:bg-red-900/20 rounded-lg">
-                      <h4 className="font-medium text-red-800 dark:text-red-200 mb-2">
-                        Errores encontrados:
-                      </h4>
-                      <ul className="space-y-1 text-sm text-red-700 dark:text-red-300">
-                        {log.errors.map((error, index) => (
-                          <li key={index} className="list-disc list-inside break-words">
-                            {enhanceErrorMessage(error)}
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
+                    <Collapsible>
+                      <CollapsibleTrigger asChild>
+                        <Button variant="outline" className="w-full justify-between text-red-600">
+                          <div className="flex items-center gap-2">
+                            <XCircle className="h-4 w-4" />
+                            Errores Encontrados ({log.errors.length})
+                          </div>
+                          <ChevronDown className="h-4 w-4" />
+                        </Button>
+                      </CollapsibleTrigger>
+                      <CollapsibleContent className="mt-2">
+                        <div className="bg-red-50 dark:bg-red-900/20 p-4 rounded-lg">
+                          <h4 className="font-medium text-red-800 dark:text-red-200 mb-2">
+                            Errores encontrados:
+                          </h4>
+                          <ul className="space-y-1 text-sm text-red-700 dark:text-red-300">
+                            {log.errors.map((error, index) => (
+                              <li key={index} className="list-disc list-inside break-words">
+                                {enhanceErrorMessage(error)}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      </CollapsibleContent>
+                    </Collapsible>
                   )}
                 </CardContent>
               </Card>

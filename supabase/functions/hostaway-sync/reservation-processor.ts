@@ -1,5 +1,5 @@
 
-import { HostawayReservation, SyncStats } from './types.ts';
+import { HostawayReservation, SyncStats, TaskDetail, ReservationDetail } from './types.ts';
 import { 
   findPropertyByHostawayId, 
   createTaskForReservation, 
@@ -30,7 +30,7 @@ export async function processReservation(
   const property = await findPropertyByHostawayId(reservation.listingMapId);
   
   if (!property) {
-    const errorMsg = `Propiedad no encontrada para listingMapId: ${reservation.listingMapId}`;
+    const errorMsg = `Propiedad no encontrada para listingMapId: ${reservation.listingMapId} (Reserva: ${reservation.id}, Huésped: ${reservation.guestName})`;
     console.warn(`⚠️ ${errorMsg}`);
     stats.errors.push(errorMsg);
     return;
@@ -52,6 +52,10 @@ export async function processReservation(
     last_sync_at: new Date().toISOString()
   };
 
+  // Inicializar arrays si no existen
+  if (!stats.tasks_details) stats.tasks_details = [];
+  if (!stats.reservations_details) stats.reservations_details = [];
+
   if (!existingReservation) {
     // Nueva reserva
     console.log(`🆕 Nueva reserva encontrada: ${reservation.id}`);
@@ -72,10 +76,22 @@ export async function processReservation(
         const task = await createTaskForReservation(reservation, property);
         taskId = task.id;
         stats.tasks_created++;
+        
+        // Agregar detalles de la tarea creada
+        stats.tasks_details.push({
+          reservation_id: reservation.id,
+          property_name: property.nombre,
+          task_id: task.id,
+          task_date: reservation.departureDate,
+          guest_name: reservation.guestName,
+          listing_id: reservation.listingMapId,
+          status: reservation.status
+        });
+        
         console.log(`✅ Tarea creada con ID: ${taskId} para fecha: ${reservation.departureDate}`);
         console.log(`✅ Detalles de la tarea: ${task.property} - ${task.start_time} a ${task.end_time}`);
       } catch (error) {
-        const errorMsg = `Error creando tarea para reserva ${reservation.id}: ${error.message}`;
+        const errorMsg = `Error creando tarea para reserva ${reservation.id} (${property.nombre}, ${reservation.guestName}): ${error.message}`;
         console.error(`❌ ${errorMsg}`);
         stats.errors.push(errorMsg);
       }
@@ -89,6 +105,19 @@ export async function processReservation(
     });
 
     stats.new_reservations++;
+    
+    // Agregar detalles de la reserva
+    stats.reservations_details.push({
+      reservation_id: reservation.id,
+      property_name: property.nombre,
+      guest_name: reservation.guestName,
+      listing_id: reservation.listingMapId,
+      status: reservation.status,
+      arrival_date: reservation.arrivalDate,
+      departure_date: reservation.departureDate,
+      action: 'created'
+    });
+    
     console.log(`📝 Nueva reserva guardada en BD: ${reservation.id}, task_id: ${taskId}`);
   } else {
     // Reserva existente - verificar cambios
@@ -104,10 +133,13 @@ export async function processReservation(
       console.log(`   - Fecha llegada anterior: ${existingReservation.arrival_date} -> nueva: ${reservation.arrivalDate}`);
       console.log(`   - Fecha salida anterior: ${existingReservation.departure_date} -> nueva: ${reservation.departureDate}`);
 
+      let action: 'updated' | 'cancelled' = 'updated';
+
       // Verificar si fue cancelada
       if (reservation.status === 'cancelled' && existingReservation.status !== 'cancelled') {
         console.log(`❌ Reserva cancelada: ${reservation.id}`);
         stats.cancelled_reservations++;
+        action = 'cancelled';
 
         // Eliminar tarea asociada si existe
         if (existingReservation.task_id) {
@@ -124,7 +156,7 @@ export async function processReservation(
           await sendCancellationEmail(reservation, property);
         } catch (error) {
           console.error('Error enviando email de cancelación:', error);
-          stats.errors.push(`Error enviando email de cancelación: ${error.message}`);
+          stats.errors.push(`Error enviando email de cancelación para ${reservation.id}: ${error.message}`);
         }
       } else if (shouldCreateTaskForReservation(reservation) && existingReservation.status === 'cancelled') {
         // Reserva reactivada - crear nueva tarea
@@ -133,10 +165,22 @@ export async function processReservation(
           const task = await createTaskForReservation(reservation, property);
           reservationData.task_id = task.id;
           stats.tasks_created++;
+          
+          // Agregar detalles de la tarea creada
+          stats.tasks_details.push({
+            reservation_id: reservation.id,
+            property_name: property.nombre,
+            task_id: task.id,
+            task_date: reservation.departureDate,
+            guest_name: reservation.guestName,
+            listing_id: reservation.listingMapId,
+            status: reservation.status
+          });
+          
           console.log(`✅ Nueva tarea creada para reserva reactivada: ${task.id}`);
         } catch (error) {
           console.error(`Error creando tarea para reserva reactivada:`, error);
-          stats.errors.push(`Error creando tarea para reserva reactivada: ${error.message}`);
+          stats.errors.push(`Error creando tarea para reserva reactivada ${reservation.id}: ${error.message}`);
         }
       } else if (shouldCreateTaskForReservation(reservation) && !existingReservation.task_id) {
         // Reserva que debería tener tarea pero no la tiene
@@ -145,10 +189,22 @@ export async function processReservation(
           const task = await createTaskForReservation(reservation, property);
           reservationData.task_id = task.id;
           stats.tasks_created++;
+          
+          // Agregar detalles de la tarea creada
+          stats.tasks_details.push({
+            reservation_id: reservation.id,
+            property_name: property.nombre,
+            task_id: task.id,
+            task_date: reservation.departureDate,
+            guest_name: reservation.guestName,
+            listing_id: reservation.listingMapId,
+            status: reservation.status
+          });
+          
           console.log(`✅ Tarea faltante creada: ${task.id}`);
         } catch (error) {
           console.error(`Error creando tarea faltante:`, error);
-          stats.errors.push(`Error creando tarea faltante: ${error.message}`);
+          stats.errors.push(`Error creando tarea faltante para ${reservation.id}: ${error.message}`);
         }
       } else if (existingReservation.task_id && (reservation.departureDate !== existingReservation.departure_date || reservation.arrivalDate !== existingReservation.arrival_date)) {
         // Fechas cambiaron - actualizar tarea existente
@@ -159,6 +215,19 @@ export async function processReservation(
       // Actualizar reserva
       await updateReservation(existingReservation.id, reservationData);
       stats.updated_reservations++;
+      
+      // Agregar detalles de la reserva actualizada
+      stats.reservations_details.push({
+        reservation_id: reservation.id,
+        property_name: property.nombre,
+        guest_name: reservation.guestName,
+        listing_id: reservation.listingMapId,
+        status: reservation.status,
+        arrival_date: reservation.arrivalDate,
+        departure_date: reservation.departureDate,
+        action
+      });
+      
       console.log(`📝 Reserva actualizada en BD: ${reservation.id}`);
     } else {
       console.log(`✅ No hay cambios en reserva: ${reservation.id}`);
@@ -171,10 +240,22 @@ export async function processReservation(
           const updateData = { ...reservationData, task_id: task.id };
           await updateReservation(existingReservation.id, updateData);
           stats.tasks_created++;
+          
+          // Agregar detalles de la tarea creada
+          stats.tasks_details.push({
+            reservation_id: reservation.id,
+            property_name: property.nombre,
+            task_id: task.id,
+            task_date: reservation.departureDate,
+            guest_name: reservation.guestName,
+            listing_id: reservation.listingMapId,
+            status: reservation.status
+          });
+          
           console.log(`✅ Tarea faltante creada y reserva actualizada: ${task.id}`);
         } catch (error) {
           console.error(`Error creando tarea faltante para reserva existente:`, error);
-          stats.errors.push(`Error creando tarea faltante: ${error.message}`);
+          stats.errors.push(`Error creando tarea faltante para ${reservation.id}: ${error.message}`);
         }
       }
     }
