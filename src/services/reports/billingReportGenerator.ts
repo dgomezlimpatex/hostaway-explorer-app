@@ -17,10 +17,13 @@ export const generateBillingReport = (tasks: any[], properties: any[], clients: 
     
     return {
       id: task.id,
+      created_at: task.created_at || new Date().toISOString(),
+      updated_at: task.updated_at || new Date().toISOString(),
       property: task.property,
       client: client?.nombre || 'Cliente desconocido',
       date: task.date,
       serviceType: task.type,
+      type: task.type,
       duration: duration > 0 ? duration : 0,
       cost: property?.costeServicio || 0,
       status: task.status

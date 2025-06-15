@@ -1,4 +1,6 @@
 
+import { ReportType } from './reports';
+
 export type DateRange = 'today' | 'week' | 'month' | 'custom';
 
 export interface BaseFilters {

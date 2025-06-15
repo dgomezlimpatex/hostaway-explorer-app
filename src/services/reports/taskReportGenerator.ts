@@ -8,6 +8,8 @@ export const generateTaskReport = (tasks: any[], properties: any[], clients: any
     
     return {
       id: task.id,
+      created_at: task.created_at || new Date().toISOString(),
+      updated_at: task.updated_at || new Date().toISOString(),
       property: task.property,
       address: task.address,
       date: task.date,
