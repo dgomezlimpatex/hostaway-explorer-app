@@ -2,9 +2,9 @@
 import { useMemo } from "react";
 import { 
   UnassignedTasksWithSuspense, 
-  CalendarGridWithSuspense, 
   CalendarModalsWithSuspense 
 } from "./LazyCalendarComponents";
+import { CalendarLayout } from "./CalendarLayout";
 import { DragPreview } from "./DragPreview";
 import { StatusLegend } from "./StatusLegend";
 import { Task, Cleaner } from "@/types/calendar";
@@ -101,7 +101,7 @@ export const CalendarContainer = ({
 
         {/* Main Calendar */}
         <div className="flex-1 min-w-0">
-          <CalendarGridWithSuspense
+          <CalendarLayout
             cleaners={cleaners}
             timeSlots={timeSlots}
             assignedTasks={assignedTasks}
