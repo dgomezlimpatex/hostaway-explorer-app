@@ -32,6 +32,8 @@ export const propertyStorage = {
       numeroFundasAlmohada: row.numero_fundas_almohada,
       notas: row.notas || '',
       clienteId: row.cliente_id,
+      hostaway_listing_id: row.hostaway_listing_id,
+      hostaway_internal_name: row.hostaway_internal_name,
       fechaCreacion: row.fecha_creacion,
       fechaActualizacion: row.fecha_actualizacion
     })) || [];
@@ -72,6 +74,8 @@ export const propertyStorage = {
       numeroFundasAlmohada: data.numero_fundas_almohada,
       notas: data.notas || '',
       clienteId: data.cliente_id,
+      hostaway_listing_id: data.hostaway_listing_id,
+      hostaway_internal_name: data.hostaway_internal_name,
       fechaCreacion: data.fecha_creacion,
       fechaActualizacion: data.fecha_actualizacion
     };
@@ -107,6 +111,8 @@ export const propertyStorage = {
       numeroFundasAlmohada: row.numero_fundas_almohada,
       notas: row.notas || '',
       clienteId: row.cliente_id,
+      hostaway_listing_id: row.hostaway_listing_id,
+      hostaway_internal_name: row.hostaway_internal_name,
       fechaCreacion: row.fecha_creacion,
       fechaActualizacion: row.fecha_actualizacion
     })) || [];
@@ -159,6 +165,8 @@ export const propertyStorage = {
       numeroFundasAlmohada: data.numero_fundas_almohada,
       notas: data.notas || '',
       clienteId: data.cliente_id,
+      hostaway_listing_id: data.hostaway_listing_id,
+      hostaway_internal_name: data.hostaway_internal_name,
       fechaCreacion: data.fecha_creacion,
       fechaActualizacion: data.fecha_actualizacion
     };
@@ -219,6 +227,8 @@ export const propertyStorage = {
       numeroFundasAlmohada: data.numero_fundas_almohada,
       notas: data.notas || '',
       clienteId: data.cliente_id,
+      hostaway_listing_id: data.hostaway_listing_id,
+      hostaway_internal_name: data.hostaway_internal_name,
       fechaCreacion: data.fecha_creacion,
       fechaActualizacion: data.fecha_actualizacion
     };
