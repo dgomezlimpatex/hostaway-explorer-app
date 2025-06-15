@@ -4,7 +4,6 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Calendar, Clock, MapPin, User, DollarSign } from 'lucide-react';
 import { Task } from '@/types/calendar';
-import { useTaskActions } from '../hooks/useTaskActions';
 import { CreateReportButton } from './CreateReportButton';
 
 interface TaskCardProps {
@@ -18,8 +17,6 @@ export const TaskCard: React.FC<TaskCardProps> = ({
   onShowHistory,
   onCreateReport,
 }) => {
-  const { handleStatusChange, handleAssignCleaner } = useTaskActions();
-
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'completed': return 'bg-green-100 text-green-800 border-green-200';
@@ -57,7 +54,7 @@ export const TaskCard: React.FC<TaskCardProps> = ({
           
           <div className="flex items-center">
             <Clock className="h-4 w-4 mr-2" />
-            <span>{task.start_time} - {task.end_time}</span>
+            <span>{task.startTime} - {task.endTime}</span>
           </div>
 
           <div className="flex items-center">
@@ -72,10 +69,10 @@ export const TaskCard: React.FC<TaskCardProps> = ({
             </div>
           )}
 
-          {task.coste && (
+          {task.cost && (
             <div className="flex items-center">
               <DollarSign className="h-4 w-4 mr-2" />
-              <span>{task.coste}€</span>
+              <span>{task.cost}€</span>
             </div>
           )}
         </div>
@@ -85,9 +82,9 @@ export const TaskCard: React.FC<TaskCardProps> = ({
             <Badge variant="outline" className="text-xs">
               {task.type}
             </Badge>
-            {task.duracion && (
+            {task.duration && (
               <Badge variant="outline" className="text-xs">
-                {task.duracion} min
+                {task.duration} min
               </Badge>
             )}
           </div>

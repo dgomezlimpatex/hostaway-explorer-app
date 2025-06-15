@@ -1,9 +1,9 @@
 
 import React from 'react';
-import { FixedSizeList as List } from 'react-window';
 import { Task } from '@/types/calendar';
 import { TaskCard } from './components/TaskCard';
 import { Skeleton } from '@/components/ui/skeleton';
+import { VirtualizedTable } from '@/components/ui/virtualized-table';
 
 interface VirtualizedTasksListProps {
   tasks: Task[];
@@ -40,12 +40,11 @@ export const VirtualizedTasksList: React.FC<VirtualizedTasksListProps> = ({
     );
   }
 
-  const TaskItem = ({ index, style }: { index: number; style: React.CSSProperties }) => {
-    const task = tasks[index];
+  const renderTaskItem = (item: Task & { index: number }) => {
     return (
-      <div style={style} className="p-2">
+      <div className="p-2">
         <TaskCard 
-          task={task} 
+          task={item} 
           onShowHistory={onShowHistory}
           onCreateReport={onCreateReport}
         />
@@ -54,13 +53,12 @@ export const VirtualizedTasksList: React.FC<VirtualizedTasksListProps> = ({
   };
 
   return (
-    <List
+    <VirtualizedTable
+      data={tasks}
       height={height}
-      itemCount={tasks.length}
-      itemSize={160} // Altura de cada card + padding
-      width="100%"
-    >
-      {TaskItem}
-    </List>
+      itemHeight={160}
+      renderItem={renderTaskItem}
+      className="w-full"
+    />
   );
 };

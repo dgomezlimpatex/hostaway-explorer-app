@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { TaskReport, TaskChecklistTemplate, TaskMedia, CreateTaskReportData } from '@/types/taskReports';
 
@@ -16,7 +15,11 @@ export class TaskReportsStorageService {
       throw error;
     }
 
-    return data || [];
+    // Transform JSON data to proper types
+    return (data || []).map(item => ({
+      ...item,
+      checklist_items: item.checklist_items as any
+    }));
   }
 
   async getChecklistTemplateByPropertyType(propertyType: string): Promise<TaskChecklistTemplate | null> {
@@ -35,7 +38,10 @@ export class TaskReportsStorageService {
       throw error;
     }
 
-    return data;
+    return {
+      ...data,
+      checklist_items: data.checklist_items as any
+    };
   }
 
   // Reportes de Tareas
@@ -50,7 +56,12 @@ export class TaskReportsStorageService {
       throw error;
     }
 
-    return data || [];
+    // Transform JSON data to proper types
+    return (data || []).map(item => ({
+      ...item,
+      checklist_completed: item.checklist_completed as Record<string, any>,
+      issues_found: item.issues_found as any[]
+    }));
   }
 
   async getTaskReportByTaskId(taskId: string): Promise<TaskReport | null> {
@@ -68,7 +79,11 @@ export class TaskReportsStorageService {
       throw error;
     }
 
-    return data;
+    return {
+      ...data,
+      checklist_completed: data.checklist_completed as Record<string, any>,
+      issues_found: data.issues_found as any[]
+    };
   }
 
   async createTaskReport(reportData: CreateTaskReportData): Promise<TaskReport> {
@@ -83,7 +98,11 @@ export class TaskReportsStorageService {
       throw error;
     }
 
-    return data;
+    return {
+      ...data,
+      checklist_completed: data.checklist_completed as Record<string, any>,
+      issues_found: data.issues_found as any[]
+    };
   }
 
   async updateTaskReport(reportId: string, updates: Partial<TaskReport>): Promise<TaskReport> {
@@ -99,7 +118,11 @@ export class TaskReportsStorageService {
       throw error;
     }
 
-    return data;
+    return {
+      ...data,
+      checklist_completed: data.checklist_completed as Record<string, any>,
+      issues_found: data.issues_found as any[]
+    };
   }
 
   // Media de Reportes

@@ -19,7 +19,7 @@ export const CreateReportButton: React.FC<CreateReportButtonProps> = ({
   const { data: existingReport, isLoading } = useTaskReport(task.id);
 
   // Solo mostrar para limpiadoras y si la tarea está asignada
-  if (userRole !== 'cleaner' || !task.cleaner_id) {
+  if (userRole !== 'cleaner' || !task.cleanerId) {
     return null;
   }
 
