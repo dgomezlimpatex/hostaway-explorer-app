@@ -32,7 +32,7 @@ export const filterTasks = (tasks: Task[], filters: TaskFilters): Task[] => {
     }
 
     // Filtro por propiedad
-    if (filters.propiedad !== 'all' && task.propiedadId !== filters.propiedad) {
+    if (filters.propiedad !== 'all' && task.propertyId !== filters.propiedad) {
       return false;
     }
 

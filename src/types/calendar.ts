@@ -1,3 +1,4 @@
+
 import { BaseEntity } from './common';
 
 export interface Cleaner extends BaseEntity {
@@ -14,9 +15,11 @@ export interface TimeSlot {
   endTime: string;
 }
 
-export interface Task {
-  id: string;
+export type ViewType = 'day' | 'three-day' | 'week';
+
+export interface Task extends BaseEntity {
   property: string;
+  propertyCode?: string;
   address: string;
   date: string;
   startTime: string;

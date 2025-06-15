@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { Task } from '@/types/calendar';
 
@@ -16,6 +15,8 @@ export const taskStorageService = {
 
     return data?.map(row => ({
       id: row.id,
+      created_at: row.created_at,
+      updated_at: row.updated_at,
       property: row.property,
       address: row.address,
       startTime: row.start_time,
@@ -28,16 +29,16 @@ export const taskStorageService = {
       backgroundColor: row.background_color,
       date: row.date,
       clienteId: row.cliente_id,
-      propiedadId: row.propiedad_id,
-      duracion: row.duracion,
-      coste: row.coste,
-      metodoPago: row.metodo_pago,
+      propertyId: row.propiedad_id,
+      duration: row.duracion,
+      cost: row.coste,
+      paymentMethod: row.metodo_pago,
       supervisor: row.supervisor,
       cleanerId: row.cleaner_id
     })) || [];
   },
 
-  createTask: async (task: Omit<Task, 'id'>): Promise<Task> => {
+  createTask: async (task: Omit<Task, 'id' | 'created_at' | 'updated_at'>): Promise<Task> => {
     const { data, error } = await supabase
       .from('tasks')
       .insert({
@@ -53,10 +54,10 @@ export const taskStorageService = {
         background_color: task.backgroundColor,
         date: task.date,
         cliente_id: task.clienteId,
-        propiedad_id: task.propiedadId,
-        duracion: task.duracion,
-        coste: task.coste,
-        metodo_pago: task.metodoPago,
+        propiedad_id: task.propertyId,
+        duracion: task.duration,
+        coste: task.cost,
+        metodo_pago: task.paymentMethod,
         supervisor: task.supervisor,
         cleaner_id: task.cleanerId
       })
@@ -70,6 +71,8 @@ export const taskStorageService = {
 
     return {
       id: data.id,
+      created_at: data.created_at,
+      updated_at: data.updated_at,
       property: data.property,
       address: data.address,
       startTime: data.start_time,
@@ -82,10 +85,10 @@ export const taskStorageService = {
       backgroundColor: data.background_color,
       date: data.date,
       clienteId: data.cliente_id,
-      propiedadId: data.propiedad_id,
-      duracion: data.duracion,
-      coste: data.coste,
-      metodoPago: data.metodo_pago,
+      propertyId: data.propiedad_id,
+      duration: data.duracion,
+      cost: data.coste,
+      paymentMethod: data.metodo_pago,
       supervisor: data.supervisor,
       cleanerId: data.cleaner_id
     };
@@ -106,10 +109,10 @@ export const taskStorageService = {
     if (updates.backgroundColor !== undefined) updateData.background_color = updates.backgroundColor;
     if (updates.date !== undefined) updateData.date = updates.date;
     if (updates.clienteId !== undefined) updateData.cliente_id = updates.clienteId;
-    if (updates.propiedadId !== undefined) updateData.propiedad_id = updates.propiedadId;
-    if (updates.duracion !== undefined) updateData.duracion = updates.duracion;
-    if (updates.coste !== undefined) updateData.coste = updates.coste;
-    if (updates.metodoPago !== undefined) updateData.metodo_pago = updates.metodoPago;
+    if (updates.propertyId !== undefined) updateData.propiedad_id = updates.propertyId;
+    if (updates.duration !== undefined) updateData.duracion = updates.duration;
+    if (updates.cost !== undefined) updateData.coste = updates.cost;
+    if (updates.paymentMethod !== undefined) updateData.metodo_pago = updates.paymentMethod;
     if (updates.supervisor !== undefined) updateData.supervisor = updates.supervisor;
     if (updates.cleanerId !== undefined) updateData.cleaner_id = updates.cleanerId;
 
@@ -127,6 +130,8 @@ export const taskStorageService = {
 
     return {
       id: data.id,
+      created_at: data.created_at,
+      updated_at: data.updated_at,
       property: data.property,
       address: data.address,
       startTime: data.start_time,
@@ -139,10 +144,10 @@ export const taskStorageService = {
       backgroundColor: data.background_color,
       date: data.date,
       clienteId: data.cliente_id,
-      propiedadId: data.propiedad_id,
-      duracion: data.duracion,
-      coste: data.coste,
-      metodoPago: data.metodo_pago,
+      propertyId: data.propiedad_id,
+      duration: data.duracion,
+      cost: data.coste,
+      paymentMethod: data.metodo_pago,
       supervisor: data.supervisor,
       cleanerId: data.cleaner_id
     };
@@ -230,6 +235,8 @@ export const taskStorageService = {
 
     return {
       id: data.id,
+      created_at: data.created_at,
+      updated_at: data.updated_at,
       property: data.property,
       address: data.address,
       startTime: data.start_time,
@@ -242,10 +249,10 @@ export const taskStorageService = {
       backgroundColor: data.background_color,
       date: data.date,
       clienteId: data.cliente_id,
-      propiedadId: data.propiedad_id,
-      duracion: data.duracion,
-      coste: data.coste,
-      metodoPago: data.metodo_pago,
+      propertyId: data.propiedad_id,
+      duration: data.duracion,
+      cost: data.coste,
+      paymentMethod: data.metodo_pago,
       supervisor: data.supervisor,
       cleanerId: data.cleaner_id
     };

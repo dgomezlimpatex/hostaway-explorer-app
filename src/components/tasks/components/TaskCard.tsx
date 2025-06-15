@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -95,7 +94,7 @@ export const TaskCard = React.memo(({
           </div>
           <div className="flex items-center gap-1">
             <Euro className="h-3 w-3 text-gray-400" />
-            <span>{task.coste?.toFixed(2) || 'N/A'}€</span>
+            <span>{task.cost?.toFixed(2) || 'N/A'}€</span>
           </div>
         </div>
 

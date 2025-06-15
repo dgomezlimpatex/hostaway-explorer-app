@@ -1,4 +1,3 @@
-
 import { Badge } from "@/components/ui/badge";
 import { Clock, GripVertical } from "lucide-react";
 import { Task } from "@/hooks/useCalendarData";
@@ -69,11 +68,8 @@ export const TaskCard = ({
 
   const clientName = getClientName(task.clienteId || '');
 
-  // Formatear el nombre de la propiedad para mostrar código y nombre
+  // Formatear el nombre de la propiedad
   const displayPropertyName = () => {
-    if (task.propertyCode) {
-      return `${task.propertyCode} - ${task.property}`;
-    }
     return task.property;
   };
 
@@ -103,7 +99,7 @@ export const TaskCard = ({
       
       {/* Content */}
       <div className="relative z-10 space-y-1">
-        {/* Property code y nombre - pegado a la izquierda */}
+        {/* Property name - pegado a la izquierda */}
         <div className="font-semibold text-sm leading-tight line-clamp-2 text-left">
           {displayPropertyName()}
         </div>

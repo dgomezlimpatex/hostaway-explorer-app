@@ -17,7 +17,7 @@ export const TaskStatsCard = React.memo(({ tasks }: TaskStatsCardProps) => {
     const unassigned = tasks.filter(t => !t.cleaner).length;
     const totalRevenue = tasks
       .filter(t => t.status === 'completed')
-      .reduce((sum, t) => sum + (t.coste || 0), 0);
+      .reduce((sum, t) => sum + (t.cost || 0), 0);
     const todayTasks = tasks.filter(t => t.date === new Date().toISOString().split('T')[0]).length;
 
     return { pending, inProgress, completed, unassigned, totalRevenue, todayTasks };

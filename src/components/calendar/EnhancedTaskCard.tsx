@@ -1,4 +1,3 @@
-
 import React from "react";
 import { Task } from "@/types/calendar";
 import { Clock } from "lucide-react";
@@ -55,11 +54,8 @@ export const EnhancedTaskCard = React.memo(({
 
   const clientName = getClientName(task.clienteId || '');
 
-  // Formatear el nombre de la propiedad para mostrar código y nombre
+  // Formatear el nombre de la propiedad
   const displayPropertyName = () => {
-    if (task.propertyCode) {
-      return `${task.propertyCode} - ${task.property}`;
-    }
     return task.property;
   };
 
