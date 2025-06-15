@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { ReportFiltersComponent } from '@/components/reports/ReportFilters';
-import { TaskReportTable, BillingReportTable, SummaryReportCard } from '@/components/reports/ReportTables';
+import { TaskReportTable, BillingReportTable, SummaryReportCard, LaundryReportTable } from '@/components/reports/ReportTables';
 import { useReports } from '@/hooks/useReports';
 import { exportToCSV } from '@/services/csvExport';
 import { ReportFilters } from '@/types/reports';
@@ -64,6 +64,10 @@ export default function Reports() {
             
             {filters.reportType === 'summary' && reportData && !Array.isArray(reportData) && (
               <SummaryReportCard data={reportData as any} />
+            )}
+
+            {filters.reportType === 'laundry' && reportData && Array.isArray(reportData) && (
+              <LaundryReportTable data={reportData as any[]} />
             )}
           </div>
         )}

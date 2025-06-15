@@ -1,4 +1,3 @@
-
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { TaskReport, BillingReport, SummaryReport } from '@/types/reports';
@@ -177,3 +176,6 @@ export const SummaryReportCard = ({ data }: SummaryReportCardProps) => {
     </div>
   );
 };
+
+// Re-export the new component
+export { LaundryReportTable } from './LaundryReportTable';

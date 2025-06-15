@@ -1,5 +1,5 @@
 
-export type ReportType = 'tasks' | 'billing' | 'summary';
+export type ReportType = 'tasks' | 'billing' | 'summary' | 'laundry';
 
 export type DateRange = 'today' | 'week' | 'month' | 'custom';
 
@@ -44,4 +44,27 @@ export interface SummaryReport {
   averageTaskDuration: number;
   topCleaners: Array<{ name: string; tasks: number }>;
   topClients: Array<{ name: string; tasks: number }>;
+}
+
+export interface LaundryReport {
+  id: string;
+  property: string;
+  address: string;
+  date: string;
+  startTime: string;
+  endTime: string;
+  type: string;
+  status: string;
+  cleaner: string;
+  client: string;
+  textiles: {
+    sabanas: number;
+    toallasGrandes: number;
+    toallasPequenas: number;
+    alfombrines: number;
+    fundasAlmohada: number;
+  };
+  bedrooms: number;
+  bathrooms: number;
+  totalItems: number;
 }
