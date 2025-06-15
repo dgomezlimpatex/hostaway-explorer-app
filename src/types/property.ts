@@ -1,6 +1,7 @@
 
-export interface Property {
-  id: string;
+import { BaseEntity } from './common';
+
+export interface Property extends BaseEntity {
   // Información básica
   codigo: string;
   nombre: string;
@@ -35,7 +36,7 @@ export interface Property {
   hostaway_listing_id: number | null;
   hostaway_internal_name: string | null;
   
-  // Metadatos
+  // Metadatos (mantenemos por compatibilidad, pero usamos los de BaseEntity)
   fechaCreacion: string;
   fechaActualizacion: string;
 }

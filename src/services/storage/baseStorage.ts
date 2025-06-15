@@ -1,23 +1,18 @@
 
 import { supabase } from '@/integrations/supabase/client';
+import { BaseEntity } from '@/types/common';
 
-export interface BaseEntity {
-  id: string;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface StorageConfig<T> {
+export interface StorageConfig<T, CreateData> {
   tableName: string;
   mapFromDB: (row: any) => T;
-  mapToDB: (entity: Partial<T>) => any;
+  mapToDB: (entity: Partial<CreateData>) => any;
 }
 
-export class BaseStorageService<T extends BaseEntity, CreateData = Omit<T, 'id' | 'created_at' | 'updated_at'>> {
-  constructor(private config: StorageConfig<T>) {}
+export class BaseStorageService<T extends BaseEntity, CreateData = Omit<T, keyof BaseEntity>> {
+  constructor(private config: StorageConfig<T, CreateData>) {}
 
   async getAll(orderBy?: { column: string; ascending?: boolean }): Promise<T[]> {
-    let query = supabase.from(this.config.tableName).select('*');
+    let query = supabase.from(this.config.tableName as any).select('*');
     
     if (orderBy) {
       query = query.order(orderBy.column, { ascending: orderBy.ascending ?? true });
@@ -35,7 +30,7 @@ export class BaseStorageService<T extends BaseEntity, CreateData = Omit<T, 'id' 
 
   async getById(id: string): Promise<T | undefined> {
     const { data, error } = await supabase
-      .from(this.config.tableName)
+      .from(this.config.tableName as any)
       .select('*')
       .eq('id', id)
       .single();
@@ -54,7 +49,7 @@ export class BaseStorageService<T extends BaseEntity, CreateData = Omit<T, 'id' 
 
   async create(entityData: CreateData): Promise<T> {
     const { data, error } = await supabase
-      .from(this.config.tableName)
+      .from(this.config.tableName as any)
       .insert(this.config.mapToDB(entityData))
       .select()
       .single();
@@ -69,7 +64,7 @@ export class BaseStorageService<T extends BaseEntity, CreateData = Omit<T, 'id' 
 
   async update(id: string, updates: Partial<CreateData>): Promise<T | null> {
     const { data, error } = await supabase
-      .from(this.config.tableName)
+      .from(this.config.tableName as any)
       .update(this.config.mapToDB(updates))
       .eq('id', id)
       .select()
@@ -89,7 +84,7 @@ export class BaseStorageService<T extends BaseEntity, CreateData = Omit<T, 'id' 
 
   async delete(id: string): Promise<boolean> {
     const { error } = await supabase
-      .from(this.config.tableName)
+      .from(this.config.tableName as any)
       .delete()
       .eq('id', id);
 

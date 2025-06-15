@@ -4,6 +4,8 @@ import { CreateCleanerData } from '@/services/cleanerStorage';
 
 export const mapCleanerFromDB = (row: any): Cleaner => ({
   id: row.id,
+  created_at: row.created_at,
+  updated_at: row.updated_at,
   name: row.name,
   email: row.email,
   telefono: row.telefono,

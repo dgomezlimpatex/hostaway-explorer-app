@@ -3,6 +3,8 @@ import { Client, CreateClientData } from '@/types/client';
 
 export const mapClientFromDB = (row: any): Client => ({
   id: row.id,
+  created_at: row.created_at,
+  updated_at: row.updated_at,
   nombre: row.nombre,
   cifNif: row.cif_nif,
   telefono: row.telefono,

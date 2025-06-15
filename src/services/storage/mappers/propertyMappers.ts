@@ -3,6 +3,8 @@ import { Property, CreatePropertyData } from '@/types/property';
 
 export const mapPropertyFromDB = (row: any): Property => ({
   id: row.id,
+  created_at: row.created_at,
+  updated_at: row.updated_at,
   codigo: row.codigo,
   nombre: row.nombre,
   direccion: row.direccion,

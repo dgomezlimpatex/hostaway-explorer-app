@@ -1,6 +1,7 @@
 
-export interface Client {
-  id: string;
+import { BaseEntity } from './common';
+
+export interface Client extends BaseEntity {
   // Información Personal
   nombre: string;
   cifNif: string;
@@ -20,7 +21,7 @@ export interface Client {
   supervisor: string;
   factura: boolean;
   
-  // Metadatos
+  // Metadatos (mantenemos por compatibilidad, pero usamos los de BaseEntity)
   fechaCreacion: string;
   fechaActualizacion: string;
 }

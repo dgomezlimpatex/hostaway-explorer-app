@@ -1,36 +1,54 @@
+import { BaseEntity } from './common';
 
-export interface Task {
-  id: string;
-  property: string;
-  address: string;
-  startTime: string;
-  endTime: string;
-  type: string;
-  status: 'pending' | 'in-progress' | 'completed';
-  checkOut: string;
-  checkIn: string;
-  cleaner?: string;
-  backgroundColor?: string;
-  date: string;
-  // Nuevos campos para vinculación
-  clienteId?: string;
-  propiedadId?: string;
-  propertyCode?: string; // Adding the property code field
-  duracion?: number; // en minutos
-  coste?: number; // en euros
-  metodoPago?: string;
-  supervisor?: string;
-  cleanerId?: string; // ID del limpiador asignado
-}
-
-export interface Cleaner {
-  id: string;
+export interface Cleaner extends BaseEntity {
   name: string;
   email?: string;
   telefono?: string;
   avatar?: string;
   isActive: boolean;
-  sortOrder?: number; // Campo para el orden manual
+  sortOrder?: number;
 }
 
-export type ViewType = 'day' | 'three-day' | 'week';
+export interface TimeSlot {
+  startTime: string;
+  endTime: string;
+}
+
+export interface Task {
+  id: string;
+  property: string;
+  address: string;
+  date: string;
+  startTime: string;
+  endTime: string;
+  duration?: number;
+  checkIn: string;
+  checkOut: string;
+  type: string;
+  status: 'pending' | 'in-progress' | 'completed';
+  cleaner?: string;
+  cleanerId?: string;
+  client?: string;
+  clienteId?: string;
+  propertyId?: string;
+  cost?: number;
+  paymentMethod?: string;
+  supervisor?: string;
+  backgroundColor?: string;
+}
+
+export interface Assignment {
+  taskId: string;
+  cleanerId: string;
+  date: string;
+  startTime: string;
+  endTime: string;
+}
+
+export interface CleanerAvailability {
+  cleanerId: string;
+  dayOfWeek: number; // 0 = Sunday, 1 = Monday, etc.
+  isAvailable: boolean;
+  startTime?: string; // formato HH:MM
+  endTime?: string; // formato HH:MM
+}
