@@ -10,7 +10,9 @@ export default defineConfig(({ mode }) => ({
     host: "::",
     port: 8080,
     watch: {
-      // Optimizar el sistema de vigilancia de archivos
+      // Usar polling para evitar problemas con demasiados archivos abiertos
+      usePolling: true,
+      interval: 1000,
       ignored: [
         '**/node_modules/**',
         '**/.git/**',
@@ -28,10 +30,6 @@ export default defineConfig(({ mode }) => ({
         '**/.DS_Store',
         '**/Thumbs.db'
       ],
-      // Usar polling en lugar de watchers nativos si es necesario
-      usePolling: false,
-      // Reducir la cantidad de archivos vigilados simultáneamente
-      interval: 1000,
     },
   },
   plugins: [
