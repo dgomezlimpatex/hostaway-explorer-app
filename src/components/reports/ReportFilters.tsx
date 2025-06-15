@@ -7,7 +7,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { CalendarIcon } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { ReportFilters } from '@/types/reports';
+import { ReportFilters } from '@/types/filters';
 import { useClients } from '@/hooks/useClients';
 import { useCleaners } from '@/hooks/useCleaners';
 

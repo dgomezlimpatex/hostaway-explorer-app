@@ -5,7 +5,7 @@ import { ReportFiltersComponent } from '@/components/reports/ReportFilters';
 import { TaskReportTable, BillingReportTable, SummaryReportCard, LaundryReportTable } from '@/components/reports/ReportTables';
 import { useReports } from '@/hooks/useReports';
 import { exportToCSV } from '@/services/csvExport';
-import { ReportFilters } from '@/types/reports';
+import { ReportFilters } from '@/types/filters';
 import { Link } from 'react-router-dom';
 
 export default function Reports() {

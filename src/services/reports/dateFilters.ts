@@ -1,5 +1,5 @@
 
-import { ReportFilters } from '@/types/reports';
+import { ReportFilters } from '@/types/filters';
 
 export const filterTasksByDateRange = (tasks: any[], filters: ReportFilters) => {
   return tasks.filter(task => {

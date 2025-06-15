@@ -1,6 +1,6 @@
 
 import { useQuery } from '@tanstack/react-query';
-import { ReportFilters } from '@/types/reports';
+import { ReportFilters } from '@/types/filters';
 import { taskStorageService } from '@/services/taskStorage';
 import { clientStorage } from '@/services/clientStorage';
 import { propertyStorage } from '@/services/propertyStorage';

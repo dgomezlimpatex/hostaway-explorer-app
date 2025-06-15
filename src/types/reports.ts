@@ -1,38 +1,23 @@
 
+import { BaseEntity, TimeRange, ServiceInfo } from './common';
+
 export type ReportType = 'tasks' | 'billing' | 'summary' | 'laundry';
 
-export type DateRange = 'today' | 'week' | 'month' | 'custom';
-
-export interface ReportFilters {
-  reportType: ReportType;
-  dateRange: DateRange;
-  startDate?: Date;
-  endDate?: Date;
-  clientId?: string;
-  cleanerId?: string;
-}
-
-export interface TaskReport {
-  id: string;
+export interface TaskReport extends BaseEntity, TimeRange {
   property: string;
   address: string;
   date: string;
-  startTime: string;
-  endTime: string;
   type: string;
   status: string;
   cleaner: string;
   client: string;
 }
 
-export interface BillingReport {
-  id: string;
+export interface BillingReport extends BaseEntity, ServiceInfo {
   property: string;
   client: string;
   date: string;
   serviceType: string;
-  duration: number;
-  cost: number;
   status: string;
 }
 
@@ -46,24 +31,16 @@ export interface SummaryReport {
   topClients: Array<{ name: string; tasks: number }>;
 }
 
-export interface LaundryReport {
-  id: string;
-  property: string;
-  address: string;
-  date: string;
-  startTime: string;
-  endTime: string;
-  type: string;
-  status: string;
-  cleaner: string;
-  client: string;
-  textiles: {
-    sabanas: number;
-    toallasGrandes: number;
-    toallasPequenas: number;
-    alfombrines: number;
-    fundasAlmohada: number;
-  };
+export interface LaundryTextiles {
+  sabanas: number;
+  toallasGrandes: number;
+  toallasPequenas: number;
+  alfombrines: number;
+  fundasAlmohada: number;
+}
+
+export interface LaundryReport extends TaskReport {
+  textiles: LaundryTextiles;
   bedrooms: number;
   bathrooms: number;
   totalItems: number;

@@ -1,5 +1,5 @@
 
-import { ReportFilters } from '@/types/reports';
+import { ReportFilters } from '@/types/filters';
 import { useTaskReport } from './useTaskReport';
 import { useBillingReport } from './useBillingReport';
 import { useSummaryReport } from './useSummaryReport';
