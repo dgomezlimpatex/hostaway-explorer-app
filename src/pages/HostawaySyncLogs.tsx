@@ -9,6 +9,7 @@ import { ArrowLeft, Calendar, CheckCircle, XCircle, AlertCircle, RefreshCw, Chev
 import { Link } from 'react-router-dom';
 import { hostawaySync } from '@/services/hostawaySync';
 import { useProperties } from '@/hooks/useProperties';
+import { HostawaySyncLog } from '@/types/hostaway';
 
 const HostawaySyncLogs = () => {
   const { data: logs, isLoading, refetch } = useQuery({
@@ -145,7 +146,7 @@ const HostawaySyncLogs = () => {
         {/* Logs List */}
         <div className="space-y-6">
           {logs && logs.length > 0 ? (
-            logs.map((log) => (
+            logs.map((log: HostawaySyncLog) => (
               <Card key={log.id} className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-0 shadow-lg">
                 <CardHeader>
                   <div className="flex items-center justify-between">

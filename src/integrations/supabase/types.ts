@@ -226,11 +226,13 @@ export type Database = {
           errors: string[] | null
           id: string
           new_reservations: number | null
+          reservations_details: Json | null
           reservations_processed: number | null
           status: string
           sync_completed_at: string | null
           sync_started_at: string
           tasks_created: number | null
+          tasks_details: Json | null
           updated_reservations: number | null
         }
         Insert: {
@@ -239,11 +241,13 @@ export type Database = {
           errors?: string[] | null
           id?: string
           new_reservations?: number | null
+          reservations_details?: Json | null
           reservations_processed?: number | null
           status?: string
           sync_completed_at?: string | null
           sync_started_at: string
           tasks_created?: number | null
+          tasks_details?: Json | null
           updated_reservations?: number | null
         }
         Update: {
@@ -252,11 +256,13 @@ export type Database = {
           errors?: string[] | null
           id?: string
           new_reservations?: number | null
+          reservations_details?: Json | null
           reservations_processed?: number | null
           status?: string
           sync_completed_at?: string | null
           sync_started_at?: string
           tasks_created?: number | null
+          tasks_details?: Json | null
           updated_reservations?: number | null
         }
         Relationships: []

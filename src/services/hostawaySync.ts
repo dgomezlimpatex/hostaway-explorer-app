@@ -1,5 +1,6 @@
 
 import { supabase } from "@/integrations/supabase/client";
+import { HostawaySyncLog } from "@/types/hostaway";
 
 export const hostawaySync = {
   // Ejecutar inserción de propiedades
@@ -63,7 +64,7 @@ export const hostawaySync = {
   },
 
   // Obtener logs de sincronización
-  async getSyncLogs(limit = 10) {
+  async getSyncLogs(limit = 10): Promise<HostawaySyncLog[]> {
     const { data, error } = await supabase
       .from('hostaway_sync_logs')
       .select('*')
@@ -75,7 +76,7 @@ export const hostawaySync = {
       throw error;
     }
     
-    return data;
+    return data || [];
   },
 
   // Obtener reservas de Hostaway
