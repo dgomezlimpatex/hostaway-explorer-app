@@ -1,24 +1,20 @@
 
 import React, { useState, useEffect } from 'react';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { Clock, CheckCircle, AlertCircle } from 'lucide-react';
+import { Progress } from '@/components/ui/progress';
+import { CheckCircle, Clock, Save, FileText, AlertTriangle, Camera, CheckSquare } from 'lucide-react';
 import { Task } from '@/types/calendar';
-import { TaskReport, ChecklistCategory } from '@/types/taskReports';
-import { useTaskReport, useChecklistTemplates, useTaskReports } from '@/hooks/useTaskReports';
-import { useAuth } from '@/hooks/useAuth';
+import { TaskReport, TaskChecklistTemplate } from '@/types/taskReports';
+import { useTaskReports, useTaskReport, useChecklistTemplates } from '@/hooks/useTaskReports';
+import { useToast } from '@/hooks/use-toast';
 import { ChecklistSection } from './task-report/ChecklistSection';
+import { MediaCapture } from './task-report/MediaCapture';
 import { IssuesSection } from './task-report/IssuesSection';
 import { NotesSection } from './task-report/NotesSection';
 import { ReportSummary } from './task-report/ReportSummary';
-import { useToast } from '@/hooks/use-toast';
 
 interface TaskReportModalProps {
   task: Task | null;
@@ -31,234 +27,287 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
   open,
   onOpenChange,
 }) => {
-  const { user } = useAuth();
   const { toast } = useToast();
-  const [activeTab, setActiveTab] = useState('checklist');
-  const [checklist, setChecklist] = useState<Record<string, any>>({});
-  const [issues, setIssues] = useState<any[]>([]);
-  const [notes, setNotes] = useState('');
-  const [reportStatus, setReportStatus] = useState<'pending' | 'in_progress' | 'completed' | 'needs_review'>('pending');
-
-  const { data: existingReport, isLoading: isLoadingReport } = useTaskReport(task?.id || '');
-  const { data: templates } = useChecklistTemplates();
   const { createReport, updateReport, isCreatingReport, isUpdatingReport } = useTaskReports();
+  const { data: existingReport, isLoading: isLoadingReport } = useTaskReport(task?.id || '');
+  const { data: templates, isLoading: isLoadingTemplates } = useChecklistTemplates();
 
-  // Buscar plantilla apropiada para el tipo de propiedad
-  const template = templates?.find(t => 
-    task?.type && t.property_type.toLowerCase() === task.type.toLowerCase()
-  ) || templates?.[0]; // Fallback a la primera plantilla disponible
+  const [currentReport, setCurrentReport] = useState<TaskReport | null>(null);
+  const [checklist, setChecklist] = useState<Record<string, any>>({});
+  const [notes, setNotes] = useState('');
+  const [issues, setIssues] = useState<any[]>([]);
+  const [activeTab, setActiveTab] = useState('checklist');
+  const [currentTemplate, setCurrentTemplate] = useState<TaskChecklistTemplate | undefined>();
 
+  // Initialize report data when modal opens
   useEffect(() => {
-    if (existingReport) {
-      setChecklist(existingReport.checklist_completed || {});
-      setIssues(existingReport.issues_found || []);
-      setNotes(existingReport.notes || '');
-      setReportStatus(existingReport.overall_status);
-    } else {
-      // Reset para nueva tarea
-      setChecklist({});
-      setIssues([]);
-      setNotes('');
-      setReportStatus('pending');
-    }
-  }, [existingReport, task]);
+    if (open && task) {
+      console.log('TaskReportModal - initializing for task:', task.id);
+      
+      if (existingReport) {
+        console.log('TaskReportModal - loading existing report:', existingReport);
+        setCurrentReport(existingReport);
+        setChecklist(existingReport.checklist_completed || {});
+        setNotes(existingReport.notes || '');
+        setIssues(existingReport.issues_found || []);
+      } else {
+        console.log('TaskReportModal - creating new report');
+        setCurrentReport(null);
+        setChecklist({});
+        setNotes('');
+        setIssues([]);
+      }
 
-  const handleStartReport = () => {
-    if (!task || !user) return;
+      // Find appropriate template based on property type or default
+      if (templates && templates.length > 0) {
+        // Try to match by property type first, fallback to first template
+        const template = templates.find(t => 
+          task.type?.toLowerCase().includes(t.property_type?.toLowerCase())
+        ) || templates[0];
+        
+        console.log('TaskReportModal - selected template:', template);
+        setCurrentTemplate(template);
+      }
+    }
+  }, [open, task, existingReport, templates]);
+
+  // Calculate completion percentage
+  const completionPercentage = React.useMemo(() => {
+    if (!currentTemplate) return 0;
+    
+    const totalItems = currentTemplate.checklist_items?.reduce(
+      (acc, category) => acc + category.items.length, 
+      0
+    ) || 0;
+    
+    const completedItems = Object.keys(checklist).length;
+    
+    return totalItems > 0 ? Math.round((completedItems / totalItems) * 100) : 0;
+  }, [checklist, currentTemplate]);
+
+  const handleSave = async () => {
+    if (!task) return;
 
     const reportData = {
       task_id: task.id,
-      cleaner_id: user.id,
-      checklist_template_id: template?.id,
-      overall_status: 'in_progress' as const,
-      start_time: new Date().toISOString(),
-      checklist_completed: {},
-      issues_found: [],
+      checklist_template_id: currentTemplate?.id,
+      checklist_completed: checklist,
+      notes,
+      issues_found: issues,
+      overall_status: completionPercentage >= 80 ? 'completed' as const : 'in_progress' as const,
     };
 
-    createReport(reportData);
-    setReportStatus('in_progress');
+    try {
+      if (currentReport) {
+        console.log('TaskReportModal - updating report:', currentReport.id, reportData);
+        updateReport({ 
+          reportId: currentReport.id, 
+          updates: reportData 
+        });
+      } else {
+        console.log('TaskReportModal - creating new report:', reportData);
+        createReport(reportData);
+      }
+    } catch (error) {
+      console.error('Error saving report:', error);
+    }
   };
 
-  const handleSaveProgress = () => {
-    if (!existingReport) return;
+  const handleComplete = async () => {
+    if (!task || completionPercentage < 80) {
+      toast({
+        title: "Reporte incompleto",
+        description: "Completa al menos el 80% del checklist para finalizar el reporte.",
+        variant: "destructive",
+      });
+      return;
+    }
 
-    const updates = {
+    const reportData = {
+      task_id: task.id,
+      checklist_template_id: currentTemplate?.id,
       checklist_completed: checklist,
-      issues_found: issues,
       notes,
-      overall_status: reportStatus,
-    };
-
-    updateReport({ reportId: existingReport.id, updates });
-  };
-
-  const handleCompleteReport = () => {
-    if (!existingReport) return;
-
-    const updates = {
-      checklist_completed: checklist,
       issues_found: issues,
-      notes,
       overall_status: 'completed' as const,
       end_time: new Date().toISOString(),
     };
 
-    updateReport({ reportId: existingReport.id, updates });
-    toast({
-      title: "Reporte completado",
-      description: "El reporte se ha completado exitosamente.",
-    });
-    onOpenChange(false);
-  };
-
-  const getCompletionPercentage = () => {
-    if (!template?.checklist_items) return 0;
-    
-    const totalItems = template.checklist_items.reduce(
-      (acc, category) => acc + category.items.length, 
-      0
-    );
-    const completedItems = Object.keys(checklist).length;
-    
-    return totalItems > 0 ? Math.round((completedItems / totalItems) * 100) : 0;
-  };
-
-  const canComplete = () => {
-    const percentage = getCompletionPercentage();
-    return percentage >= 80; // Requiere al menos 80% completado
+    try {
+      if (currentReport) {
+        updateReport({ 
+          reportId: currentReport.id, 
+          updates: reportData 
+        });
+      } else {
+        createReport({
+          ...reportData,
+          start_time: new Date().toISOString(),
+        });
+      }
+      
+      toast({
+        title: "Reporte completado",
+        description: "El reporte se ha finalizado exitosamente.",
+      });
+      
+      onOpenChange(false);
+    } catch (error) {
+      console.error('Error completing report:', error);
+    }
   };
 
   if (!task) return null;
 
+  const canComplete = completionPercentage >= 80;
+  const reportStatus = currentReport?.overall_status || 'pending';
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden">
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
         <DialogHeader>
-          <DialogTitle className="flex items-center justify-between">
-            <span>Reporte de Tarea - {task.property}</span>
-            <div className="flex items-center space-x-2">
-              <Badge variant={reportStatus === 'completed' ? 'default' : 'secondary'}>
-                {reportStatus === 'pending' && 'Pendiente'}
-                {reportStatus === 'in_progress' && 'En Progreso'}
-                {reportStatus === 'completed' && 'Completado'}
-                {reportStatus === 'needs_review' && 'Necesita Revisión'}
-              </Badge>
-              {reportStatus === 'in_progress' && (
-                <Badge variant="outline">
-                  {getCompletionPercentage()}% Completado
-                </Badge>
-              )}
-            </div>
+          <DialogTitle className="flex items-center space-x-2">
+            <FileText className="h-5 w-5" />
+            <span>Reporte de Limpieza - {task.property}</span>
           </DialogTitle>
+          <DialogDescription>
+            {task.address} • {task.date} • {task.startTime} - {task.endTime}
+          </DialogDescription>
         </DialogHeader>
 
-        <div className="flex-1 overflow-hidden">
-          {isLoadingReport ? (
-            <div className="flex items-center justify-center h-64">
-              <div className="text-center">
-                <Clock className="h-8 w-8 animate-spin mx-auto mb-2" />
-                <p>Cargando reporte...</p>
-              </div>
+        {/* Progress Header */}
+        <div className="border-b pb-4">
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center space-x-2">
+              <Badge variant={reportStatus === 'completed' ? 'default' : 'secondary'}>
+                {reportStatus === 'completed' ? 'Completado' : 
+                 reportStatus === 'in_progress' ? 'En Progreso' : 'Pendiente'}
+              </Badge>
+              <span className="text-sm text-gray-600">
+                {completionPercentage}% completado
+              </span>
             </div>
-          ) : !existingReport && reportStatus === 'pending' ? (
-            <div className="flex flex-col items-center justify-center h-64 space-y-4">
-              <CheckCircle className="h-16 w-16 text-green-500" />
-              <h3 className="text-xl font-semibold">Iniciar Reporte de Tarea</h3>
-              <p className="text-gray-600 text-center max-w-md">
-                Comienza a documentar tu trabajo en esta propiedad. 
-                Podrás tomar fotos, completar el checklist y reportar cualquier incidencia.
-              </p>
-              <Button 
-                onClick={handleStartReport} 
-                disabled={isCreatingReport}
-                size="lg"
-              >
-                {isCreatingReport ? 'Iniciando...' : 'Iniciar Reporte'}
-              </Button>
+            <div className="flex items-center space-x-2">
+              {isLoadingReport && (
+                <span className="text-sm text-gray-500">Cargando...</span>
+              )}
             </div>
-          ) : (
-            <Tabs value={activeTab} onValueChange={setActiveTab} className="h-full flex flex-col">
-              <TabsList className="grid w-full grid-cols-4">
-                <TabsTrigger value="checklist">Checklist</TabsTrigger>
-                <TabsTrigger value="issues">Incidencias</TabsTrigger>
-                <TabsTrigger value="notes">Notas</TabsTrigger>
-                <TabsTrigger value="summary">Resumen</TabsTrigger>
-              </TabsList>
+          </div>
+          <Progress value={completionPercentage} className="w-full" />
+        </div>
 
-              <div className="flex-1 overflow-auto">
-                <TabsContent value="checklist" className="h-full">
-                  <ChecklistSection
-                    template={template}
-                    checklist={checklist}
-                    onChecklistChange={setChecklist}
-                    reportId={existingReport?.id}
-                  />
-                </TabsContent>
+        {/* Tabs */}
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col overflow-hidden">
+          <TabsList className="grid w-full grid-cols-5">
+            <TabsTrigger value="checklist" className="flex items-center">
+              <CheckSquare className="h-4 w-4 mr-2" />
+              Checklist
+            </TabsTrigger>
+            <TabsTrigger value="issues" className="flex items-center">
+              <AlertTriangle className="h-4 w-4 mr-2" />
+              Incidencias
+              {issues.length > 0 && (
+                <Badge variant="destructive" className="ml-2 text-xs">
+                  {issues.length}
+                </Badge>
+              )}
+            </TabsTrigger>
+            <TabsTrigger value="notes" className="flex items-center">
+              <FileText className="h-4 w-4 mr-2" />
+              Notas
+            </TabsTrigger>
+            <TabsTrigger value="media" className="flex items-center">
+              <Camera className="h-4 w-4 mr-2" />
+              Fotos
+            </TabsTrigger>
+            <TabsTrigger value="summary" className="flex items-center">
+              <CheckCircle className="h-4 w-4 mr-2" />
+              Resumen
+            </TabsTrigger>
+          </TabsList>
 
-                <TabsContent value="issues" className="h-full">
-                  <IssuesSection
-                    issues={issues}
-                    onIssuesChange={setIssues}
-                    reportId={existingReport?.id}
-                  />
-                </TabsContent>
-
-                <TabsContent value="notes" className="h-full">
-                  <NotesSection
-                    notes={notes}
-                    onNotesChange={setNotes}
-                  />
-                </TabsContent>
-
-                <TabsContent value="summary" className="h-full">
-                  <ReportSummary
-                    task={task}
-                    template={template}
-                    checklist={checklist}
-                    issues={issues}
-                    notes={notes}
-                    completionPercentage={getCompletionPercentage()}
-                  />
-                </TabsContent>
-              </div>
-
-              <div className="flex justify-between items-center pt-4 border-t">
-                <Button variant="outline" onClick={() => onOpenChange(false)}>
-                  Cerrar
-                </Button>
-                
-                <div className="flex space-x-2">
-                  {reportStatus === 'in_progress' && (
-                    <>
-                      <Button 
-                        variant="secondary" 
-                        onClick={handleSaveProgress}
-                        disabled={isUpdatingReport}
-                      >
-                        {isUpdatingReport ? 'Guardando...' : 'Guardar Progreso'}
-                      </Button>
-                      
-                      <Button 
-                        onClick={handleCompleteReport}
-                        disabled={!canComplete() || isUpdatingReport}
-                        className="bg-green-600 hover:bg-green-700"
-                      >
-                        {isUpdatingReport ? 'Completando...' : 'Completar Reporte'}
-                      </Button>
-                    </>
-                  )}
-                  
-                  {reportStatus === 'completed' && (
-                    <Badge variant="default" className="px-4 py-2">
-                      <CheckCircle className="h-4 w-4 mr-2" />
-                      Reporte Completado
-                    </Badge>
-                  )}
+          <div className="flex-1 overflow-auto">
+            <TabsContent value="checklist" className="space-y-4 h-full">
+              {isLoadingTemplates ? (
+                <div className="flex items-center justify-center py-8">
+                  <Clock className="h-8 w-8 animate-spin text-gray-400" />
                 </div>
+              ) : (
+                <ChecklistSection
+                  template={currentTemplate}
+                  checklist={checklist}
+                  onChecklistChange={setChecklist}
+                  reportId={currentReport?.id}
+                />
+              )}
+            </TabsContent>
+
+            <TabsContent value="issues" className="space-y-4 h-full">
+              <IssuesSection
+                issues={issues}
+                onIssuesChange={setIssues}
+                reportId={currentReport?.id}
+              />
+            </TabsContent>
+
+            <TabsContent value="notes" className="space-y-4 h-full">
+              <NotesSection
+                notes={notes}
+                onNotesChange={setNotes}
+              />
+            </TabsContent>
+
+            <TabsContent value="media" className="space-y-4 h-full">
+              <div className="space-y-6">
+                <h3 className="text-lg font-semibold">Fotos y Videos</h3>
+                <MediaCapture
+                  onMediaCaptured={(mediaUrl) => {
+                    console.log('Media captured:', mediaUrl);
+                  }}
+                  reportId={currentReport?.id}
+                  existingMedia={[]}
+                />
               </div>
-            </Tabs>
-          )}
+            </TabsContent>
+
+            <TabsContent value="summary" className="space-y-4 h-full">
+              <ReportSummary
+                task={task}
+                template={currentTemplate}
+                checklist={checklist}
+                issues={issues}
+                notes={notes}
+                completionPercentage={completionPercentage}
+              />
+            </TabsContent>
+          </div>
+        </Tabs>
+
+        {/* Footer Actions */}
+        <div className="border-t pt-4 flex items-center justify-between">
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            Cancelar
+          </Button>
+          
+          <div className="flex items-center space-x-2">
+            <Button
+              variant="outline"
+              onClick={handleSave}
+              disabled={isCreatingReport || isUpdatingReport}
+            >
+              <Save className="h-4 w-4 mr-2" />
+              {isCreatingReport || isUpdatingReport ? 'Guardando...' : 'Guardar'}
+            </Button>
+            
+            <Button
+              onClick={handleComplete}
+              disabled={!canComplete || isCreatingReport || isUpdatingReport}
+              className={canComplete ? 'bg-green-600 hover:bg-green-700' : ''}
+            >
+              <CheckCircle className="h-4 w-4 mr-2" />
+              Completar Reporte
+            </Button>
+          </div>
         </div>
       </DialogContent>
     </Dialog>

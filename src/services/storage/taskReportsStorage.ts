@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { TaskReport, TaskChecklistTemplate, TaskMedia, CreateTaskReportData } from '@/types/taskReports';
 
@@ -69,15 +70,14 @@ export class TaskReportsStorageService {
       .from('task_reports')
       .select('*')
       .eq('task_id', taskId)
-      .single();
+      .maybeSingle();
 
     if (error) {
-      if (error.code === 'PGRST116') {
-        return null; // No report found
-      }
       console.error('Error fetching task report:', error);
       throw error;
     }
+
+    if (!data) return null;
 
     return {
       ...data,
