@@ -18,9 +18,16 @@ interface TasksListProps {
   };
   isLoading: boolean;
   onShowHistory?: (task: Task) => void;
+  onCreateReport?: (task: Task) => void;
 }
 
-export const TasksList = React.memo(({ tasks, filters, isLoading, onShowHistory }: TasksListProps) => {
+export const TasksList = React.memo(({ 
+  tasks, 
+  filters, 
+  isLoading, 
+  onShowHistory,
+  onCreateReport 
+}: TasksListProps) => {
   const {
     selectedTask,
     isModalOpen,
@@ -28,8 +35,6 @@ export const TasksList = React.memo(({ tasks, filters, isLoading, onShowHistory 
     isAssignModalOpen,
     setIsAssignModalOpen,
     taskToAssign,
-    getStatusColor,
-    getStatusText,
     handleEditTask,
     handleDeleteTask,
     handleUpdateTask,
@@ -59,6 +64,11 @@ export const TasksList = React.memo(({ tasks, filters, isLoading, onShowHistory 
     );
   }
 
+  // Default handler if not provided
+  const handleCreateReport = onCreateReport || ((task: Task) => {
+    console.log('Create report for task:', task.id);
+  });
+
   return (
     <>
       <div className="space-y-4">
@@ -66,13 +76,8 @@ export const TasksList = React.memo(({ tasks, filters, isLoading, onShowHistory 
           <TaskCard
             key={task.id}
             task={task}
-            onEditTask={handleEditTask}
-            onDeleteTask={handleDeleteTask}
-            onQuickStatusChange={handleQuickStatusChange}
-            onAssignCleaner={handleAssignCleaner}
             onShowHistory={onShowHistory}
-            getStatusColor={getStatusColor}
-            getStatusText={getStatusText}
+            onCreateReport={handleCreateReport}
           />
         ))}
       </div>
