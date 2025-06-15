@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { ArrowLeft, Calendar, CheckCircle, XCircle, AlertCircle, RefreshCw } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { hostawaySync } from '@/services/hostawaySync';
+import { useProperties } from '@/hooks/useProperties';
 
 const HostawaySyncLogs = () => {
   const { data: logs, isLoading, refetch } = useQuery({
@@ -14,6 +15,8 @@ const HostawaySyncLogs = () => {
     queryFn: () => hostawaySync.getSyncLogs(50),
     refetchInterval: 30000,
   });
+
+  const { data: properties } = useProperties();
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -25,6 +28,38 @@ const HostawaySyncLogs = () => {
       minute: '2-digit',
       second: '2-digit',
     });
+  };
+
+  const getPropertyNameFromListingId = (listingId: string | number): string | null => {
+    if (!properties) return null;
+    
+    const numericListingId = typeof listingId === 'string' ? parseInt(listingId) : listingId;
+    const property = properties.find(p => p.hostaway_listing_id === numericListingId);
+    return property ? property.nombre : null;
+  };
+
+  const enhanceErrorMessage = (errorMessage: string): string => {
+    // Buscar diferentes patrones de listing IDs en los mensajes de error
+    const patterns = [
+      /listingMapId[:\s]*(\d+)/gi,
+      /listing[:\s]*(\d+)/gi,
+      /propiedad[:\s]*(\d+)/gi,
+      /property[:\s]*(\d+)/gi
+    ];
+
+    let enhancedMessage = errorMessage;
+
+    patterns.forEach(pattern => {
+      enhancedMessage = enhancedMessage.replace(pattern, (match, listingId) => {
+        const propertyName = getPropertyNameFromListingId(listingId);
+        if (propertyName) {
+          return `${match} (${propertyName})`;
+        }
+        return match;
+      });
+    });
+
+    return enhancedMessage;
   };
 
   const getStatusIcon = (status: string) => {
@@ -193,8 +228,8 @@ const HostawaySyncLogs = () => {
                       </h4>
                       <ul className="space-y-1 text-sm text-red-700 dark:text-red-300">
                         {log.errors.map((error, index) => (
-                          <li key={index} className="list-disc list-inside">
-                            {error}
+                          <li key={index} className="list-disc list-inside break-words">
+                            {enhanceErrorMessage(error)}
                           </li>
                         ))}
                       </ul>
