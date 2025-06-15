@@ -43,7 +43,7 @@ export const useOptimizedTasks = ({
       return filterTasksByView(allTasks, currentDate, currentView);
     },
     staleTime: 5 * 60 * 1000, // 5 minutos
-    cacheTime: 30 * 60 * 1000, // 30 minutos
+    gcTime: 30 * 60 * 1000, // 30 minutos (previously cacheTime)
     enabled,
   });
 
