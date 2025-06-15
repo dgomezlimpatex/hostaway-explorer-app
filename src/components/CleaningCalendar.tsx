@@ -1,5 +1,5 @@
 
-import { useCallback, useMemo } from "react";
+import { useCallback } from "react";
 import { ResponsiveCalendarHeader } from "./calendar/ResponsiveCalendarHeader";
 import { CalendarContainer } from "./calendar/CalendarContainer";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
@@ -43,20 +43,13 @@ const CleaningCalendar = () => {
     if (bodyScrollRef.current) {
       bodyScrollRef.current.scrollLeft = e.currentTarget.scrollLeft;
     }
-  }, []);
+  }, [bodyScrollRef]);
 
   const handleBodyScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
     if (headerScrollRef.current) {
       headerScrollRef.current.scrollLeft = e.currentTarget.scrollLeft;
     }
-  }, []);
-
-  // Memoized task filtering
-  const { assignedTasks, unassignedTasks } = useMemo(() => {
-    const assigned = tasks.filter(task => task.cleaner);
-    const unassigned = tasks.filter(task => !task.cleaner);
-    return { assignedTasks: assigned, unassignedTasks: unassigned };
-  }, [tasks]);
+  }, [headerScrollRef]);
 
   if (isLoading) {
     return (
