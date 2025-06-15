@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import { HostawaySyncLog, TaskDetail, ReservationDetail } from "@/types/hostaway";
 
@@ -78,8 +79,8 @@ export const hostawaySync = {
     // Transform the data to match our interface
     const transformedData: HostawaySyncLog[] = (data || []).map(log => ({
       ...log,
-      tasks_details: Array.isArray(log.tasks_details) ? log.tasks_details as TaskDetail[] : null,
-      reservations_details: Array.isArray(log.reservations_details) ? log.reservations_details as ReservationDetail[] : null,
+      tasks_details: Array.isArray(log.tasks_details) ? log.tasks_details as unknown as TaskDetail[] : null,
+      reservations_details: Array.isArray(log.reservations_details) ? log.reservations_details as unknown as ReservationDetail[] : null,
     }));
     
     return transformedData;
