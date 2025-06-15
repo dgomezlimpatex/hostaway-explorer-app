@@ -3,8 +3,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { UserMenu } from '@/components/auth/UserMenu';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
-import CleaningCalendar from "@/components/CleaningCalendar";
-import CleaningList from "@/components/CleaningList";
+import { HostawayIntegrationWidget } from '@/components/hostaway/HostawayIntegrationWidget';
 import StatsCards from "@/components/StatsCards";
 import { Calendar, Users, MapPin, BarChart3, ClipboardList, Wrench } from "lucide-react";
 
@@ -36,10 +35,9 @@ const Index = () => {
     );
   }
 
-  // Simplificar la lógica de permisos - por ahora mostrar todo si está autenticado
-  // TODO: Implementar correctamente los roles cuando el sistema esté funcionando
-  const canAccessManager = true; // userRole === 'manager';
-  const canAccessSupervisor = true; // canAccessManager || userRole === 'supervisor';
+  // Configurar permisos correctamente basados en el rol del usuario
+  const canAccessManager = userRole === 'manager' || userRole === 'admin';
+  const canAccessSupervisor = canAccessManager || userRole === 'supervisor';
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -69,8 +67,13 @@ const Index = () => {
           <StatsCards />
         </div>
 
+        {/* Hostaway Integration Widget */}
+        <div className="mb-8">
+          <HostawayIntegrationWidget />
+        </div>
+
         {/* Navigation Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           <Link to="/calendar" className="group">
             <div className="bg-white p-6 rounded-lg shadow-sm border hover:shadow-md transition-shadow">
               <div className="flex items-center space-x-3">
@@ -150,23 +153,6 @@ const Index = () => {
               </div>
             </Link>
           )}
-        </div>
-
-        {/* Main Content */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          <div className="bg-white p-6 rounded-lg shadow-sm border">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">
-              Calendario de Limpieza
-            </h2>
-            <CleaningCalendar />
-          </div>
-
-          <div className="bg-white p-6 rounded-lg shadow-sm border">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">
-              Próximas Tareas
-            </h2>
-            <CleaningList />
-          </div>
         </div>
       </div>
     </div>
