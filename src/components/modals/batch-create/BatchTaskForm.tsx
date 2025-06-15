@@ -103,8 +103,8 @@ export const BatchTaskForm = ({ batchData, onFieldChange }: BatchTaskFormProps) 
 
       {/* Método de Pago */}
       <div className="space-y-2">
-        <Label htmlFor="metodoPago">Método de Pago</Label>
-        <Select value={batchData.metodoPago} onValueChange={(value) => onFieldChange('metodoPago', value)}>
+        <Label htmlFor="paymentMethod">Método de Pago</Label>
+        <Select value={batchData.paymentMethod} onValueChange={(value) => onFieldChange('paymentMethod', value)}>
           <SelectTrigger>
             <SelectValue />
           </SelectTrigger>
