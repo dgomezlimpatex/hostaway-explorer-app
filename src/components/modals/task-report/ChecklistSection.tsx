@@ -113,10 +113,10 @@ export const ChecklistSection: React.FC<ChecklistSectionProps> = ({
                         </p>
                         <div className="flex items-center space-x-2">
                           {item.required && (
-                            <Badge variant="destructive" size="sm">Requerido</Badge>
+                            <Badge variant="destructive" className="text-xs">Requerido</Badge>
                           )}
                           {item.photo_required && (
-                            <Badge variant="secondary" size="sm">
+                            <Badge variant="secondary" className="text-xs">
                               <Camera className="h-3 w-3 mr-1" />
                               Foto
                             </Badge>
