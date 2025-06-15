@@ -18,7 +18,7 @@ interface ReportFiltersComponentProps {
 
 export const ReportFiltersComponent = ({ filters, onFiltersChange }: ReportFiltersComponentProps) => {
   const { data: clients = [] } = useClients();
-  const { data: cleaners = [] } = useCleaners();
+  const { cleaners = [] } = useCleaners();
 
   return (
     <Card>
@@ -66,14 +66,14 @@ export const ReportFiltersComponent = ({ filters, onFiltersChange }: ReportFilte
           <div className="space-y-2">
             <label className="text-sm font-medium">Cliente</label>
             <Select 
-              value={filters.clientId || ''} 
-              onValueChange={(value) => onFiltersChange({ ...filters, clientId: value || undefined })}
+              value={filters.clientId || 'all'} 
+              onValueChange={(value) => onFiltersChange({ ...filters, clientId: value === 'all' ? undefined : value })}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Todos los clientes" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Todos los clientes</SelectItem>
+                <SelectItem value="all">Todos los clientes</SelectItem>
                 {clients.map(client => (
                   <SelectItem key={client.id} value={client.id}>
                     {client.nombre}
@@ -87,14 +87,14 @@ export const ReportFiltersComponent = ({ filters, onFiltersChange }: ReportFilte
           <div className="space-y-2">
             <label className="text-sm font-medium">Trabajador</label>
             <Select 
-              value={filters.cleanerId || ''} 
-              onValueChange={(value) => onFiltersChange({ ...filters, cleanerId: value || undefined })}
+              value={filters.cleanerId || 'all'} 
+              onValueChange={(value) => onFiltersChange({ ...filters, cleanerId: value === 'all' ? undefined : value })}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Todos los trabajadores" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Todos los trabajadores</SelectItem>
+                <SelectItem value="all">Todos los trabajadores</SelectItem>
                 {cleaners.map(cleaner => (
                   <SelectItem key={cleaner.id} value={cleaner.name}>
                     {cleaner.name}

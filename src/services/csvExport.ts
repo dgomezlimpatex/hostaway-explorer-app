@@ -1,108 +1,163 @@
-import { TaskReport, BillingReport, SummaryReport } from '@/types/reports';
 
-export const exportToCSV = (data: any, filename: string, type: 'tasks' | 'billing' | 'summary') => {
+import { TaskReport, BillingReport, SummaryReport, LaundryReport } from '@/types/reports';
+
+type ReportData = TaskReport[] | BillingReport[] | SummaryReport | LaundryReport[];
+
+export const exportToCSV = (
+  data: ReportData,
+  filename: string,
+  reportType: 'tasks' | 'billing' | 'summary' | 'laundry'
+) => {
   let csvContent = '';
   
-  switch (type) {
+  switch (reportType) {
     case 'tasks':
-      csvContent = exportTasksToCSV(data as TaskReport[]);
+      csvContent = generateTasksCSV(data as TaskReport[]);
       break;
     case 'billing':
-      csvContent = exportBillingToCSV(data as BillingReport[]);
+      csvContent = generateBillingCSV(data as BillingReport[]);
       break;
     case 'summary':
-      csvContent = exportSummaryToCSV(data as SummaryReport);
+      csvContent = generateSummaryCSV(data as SummaryReport);
       break;
+    case 'laundry':
+      csvContent = generateLaundryCSV(data as LaundryReport[]);
+      break;
+    default:
+      throw new Error(`Tipo de reporte no soportado: ${reportType}`);
   }
-  
+
+  // Create and download the file
   const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
   const link = document.createElement('a');
+  const url = URL.createObjectURL(blob);
   
-  if (link.download !== undefined) {
-    const url = URL.createObjectURL(blob);
-    link.setAttribute('href', url);
-    link.setAttribute('download', `${filename}.csv`);
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  }
+  link.setAttribute('href', url);
+  link.setAttribute('download', `${filename}.csv`);
+  link.style.visibility = 'hidden';
+  
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
 };
 
-const exportTasksToCSV = (tasks: TaskReport[]): string => {
+const generateTasksCSV = (data: TaskReport[]): string => {
   const headers = [
-    'Fecha del servicio',
-    'Supervisor responsable',
-    'Cliente',
-    'Tipo de servicio',
-    'Estado de la Tarea',
-    'Coste total del Servicio',
-    'Horas de trabajo',
-    'Equipo de trabajo (Nombre y Apellido)',
-    'Método de pago',
-    'Incidencias'
+    'Propiedad',
+    'Dirección',
+    'Fecha',
+    'Hora Inicio',
+    'Hora Fin',
+    'Tipo',
+    'Estado',
+    'Trabajador',
+    'Cliente'
   ];
-  
-  const rows = tasks.map(task => [
+
+  const rows = data.map(task => [
+    task.property,
+    task.address,
     task.date,
-    'Sin asignar', // Supervisor responsable - placeholder
-    task.client,
+    task.startTime,
+    task.endTime,
     task.type,
-    task.status,
-    '0', // Coste total del Servicio - placeholder
-    `${task.startTime} - ${task.endTime}`, // Horas de trabajo
+    task.status === 'completed' ? 'Completada' :
+    task.status === 'in-progress' ? 'En Progreso' : 'Pendiente',
     task.cleaner,
-    'Sin especificar', // Método de pago - placeholder
-    'Ninguna' // Incidencias - placeholder
+    task.client
   ]);
-  
+
   return [headers, ...rows].map(row => 
-    row.map(field => `"${field}"`).join(',')
+    row.map(cell => `"${cell}"`).join(',')
   ).join('\n');
 };
 
-const exportBillingToCSV = (billing: BillingReport[]): string => {
+const generateBillingCSV = (data: BillingReport[]): string => {
   const headers = [
-    'ID',
     'Propiedad',
     'Cliente',
     'Fecha',
-    'Tipo Servicio',
+    'Servicio',
     'Duración (min)',
     'Coste (€)',
     'Estado'
   ];
-  
-  const rows = billing.map(item => [
-    item.id,
+
+  const rows = data.map(item => [
     item.property,
     item.client,
     item.date,
     item.serviceType,
     item.duration.toString(),
-    item.cost.toString(),
-    item.status
+    item.cost.toFixed(2),
+    item.status === 'completed' ? 'Facturado' :
+    item.status === 'in-progress' ? 'En Progreso' : 'Pendiente'
   ]);
-  
+
   return [headers, ...rows].map(row => 
-    row.map(field => `"${field}"`).join(',')
+    row.map(cell => `"${cell}"`).join(',')
   ).join('\n');
 };
 
-const exportSummaryToCSV = (summary: SummaryReport): string => {
-  const data = [
+const generateSummaryCSV = (data: SummaryReport): string => {
+  const content = [
     ['Métrica', 'Valor'],
-    ['Total Tareas', summary.totalTasks.toString()],
-    ['Tareas Completadas', summary.completedTasks.toString()],
-    ['Tareas Pendientes', summary.pendingTasks.toString()],
-    ['Ingresos Totales', summary.totalRevenue.toString()],
-    ['Duración Promedio', summary.averageTaskDuration.toString()],
+    ['Total Tareas', data.totalTasks.toString()],
+    ['Tareas Completadas', data.completedTasks.toString()],
+    ['Tareas Pendientes', data.pendingTasks.toString()],
+    ['Ingresos Totales (€)', data.totalRevenue.toFixed(2)],
+    ['Duración Promedio (min)', data.averageTaskDuration.toString()],
     ['', ''],
     ['Top Trabajadores', ''],
-    ...summary.topCleaners.map(cleaner => [cleaner.name, cleaner.tasks.toString()])
+    ...data.topCleaners.map(cleaner => [cleaner.name, `${cleaner.tasks} tareas`]),
+    ['', ''],
+    ['Top Clientes', ''],
+    ...data.topClients.map(client => [client.name, `${client.tasks} tareas`])
   ];
-  
-  return data.map(row => 
-    row.map(field => `"${field}"`).join(',')
+
+  return content.map(row => 
+    row.map(cell => `"${cell}"`).join(',')
+  ).join('\n');
+};
+
+const generateLaundryCSV = (data: LaundryReport[]): string => {
+  const headers = [
+    'Propiedad',
+    'Dirección',
+    'Fecha',
+    'Hora Inicio',
+    'Hora Fin',
+    'Cliente',
+    'Trabajador',
+    'Sábanas',
+    'Toallas Grandes',
+    'Toallas Pequeñas',
+    'Alfombrines',
+    'Fundas Almohada',
+    'Total Items',
+    'Habitaciones',
+    'Baños'
+  ];
+
+  const rows = data.map(item => [
+    item.property,
+    item.address,
+    item.date,
+    item.startTime,
+    item.endTime,
+    item.client,
+    item.cleaner,
+    item.textiles.sabanas.toString(),
+    item.textiles.toallasGrandes.toString(),
+    item.textiles.toallasPequenas.toString(),
+    item.textiles.alfombrines.toString(),
+    item.textiles.fundasAlmohada.toString(),
+    item.totalItems.toString(),
+    item.bedrooms.toString(),
+    item.bathrooms.toString()
+  ]);
+
+  return [headers, ...rows].map(row => 
+    row.map(cell => `"${cell}"`).join(',')
   ).join('\n');
 };
