@@ -1,14 +1,14 @@
-
 import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { CalendarDays, RotateCw, CheckCircle } from 'lucide-react';
+import { CalendarDays, RotateCw, CheckCircle, FileText } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { hostawaySync } from '@/services/hostawaySync';
 import { toast } from '@/hooks/use-toast';
+import { Link } from 'react-router-dom';
 
 export function HostawayIntegrationWidget() {
   const queryClient = useQueryClient();
@@ -173,14 +173,23 @@ export function HostawayIntegrationWidget() {
             </div>
 
             {/* Sincronización manual */}
-            <Button
-              onClick={() => syncMutation.mutate()}
-              disabled={syncMutation.isPending}
-              className="w-full"
-            >
-              <RotateCw className="mr-2 h-4 w-4" />
-              {syncMutation.isPending ? 'Sincronizando...' : 'Sincronizar Ahora'}
-            </Button>
+            <div className="space-y-3">
+              <Button
+                onClick={() => syncMutation.mutate()}
+                disabled={syncMutation.isPending}
+                className="w-full"
+              >
+                <RotateCw className="mr-2 h-4 w-4" />
+                {syncMutation.isPending ? 'Sincronizando...' : 'Sincronizar Ahora'}
+              </Button>
+
+              <Link to="/hostaway-sync-logs" className="block">
+                <Button variant="outline" className="w-full">
+                  <FileText className="mr-2 h-4 w-4" />
+                  Ver Historial de Sincronizaciones
+                </Button>
+              </Link>
+            </div>
 
             <div className="text-xs text-muted-foreground space-y-1">
               <p>• La sincronización automática se ejecuta cada 2 horas</p>
