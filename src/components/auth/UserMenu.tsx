@@ -30,11 +30,9 @@ export const UserMenu = () => {
 
   const getRoleLabel = (role: string | null) => {
     const roleLabels: Record<string, string> = {
-      admin: 'Administrador',
       manager: 'Gerente',
       supervisor: 'Supervisor',
       cleaner: 'Limpiador',
-      client: 'Cliente',
     };
     return role ? roleLabels[role] || role : 'Usuario';
   };

@@ -34,8 +34,8 @@ const Index = () => {
     );
   }
 
-  const canAccessAdmin = userRole === 'admin' || userRole === 'manager';
-  const canAccessSupervisor = canAccessAdmin || userRole === 'supervisor';
+  const canAccessManager = userRole === 'manager';
+  const canAccessSupervisor = canAccessManager || userRole === 'supervisor';
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -116,7 +116,7 @@ const Index = () => {
             </Link>
           )}
 
-          {canAccessAdmin && (
+          {canAccessManager && (
             <Link to="/workers" className="group">
               <div className="bg-white p-6 rounded-lg shadow-sm border hover:shadow-md transition-shadow">
                 <div className="flex items-center space-x-3">
