@@ -275,11 +275,13 @@ export const recurringTaskStorage = {
         backgroundColor: '#3B82F6',
         date: recurringTask.next_execution,
         clienteId: recurringTask.cliente_id,
-        propiedadId: recurringTask.propiedad_id,
-        duracion: recurringTask.duracion,
-        coste: recurringTask.coste,
-        metodoPago: recurringTask.metodo_pago,
-        supervisor: recurringTask.supervisor
+        propertyId: recurringTask.propiedad_id,
+        duration: recurringTask.duracion,
+        cost: recurringTask.coste,
+        paymentMethod: recurringTask.metodo_pago,
+        supervisor: recurringTask.supervisor,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
       };
 
       // Create the task
@@ -298,10 +300,10 @@ export const recurringTaskStorage = {
           background_color: newTask.backgroundColor,
           date: newTask.date,
           cliente_id: newTask.clienteId,
-          propiedad_id: newTask.propiedadId,
-          duracion: newTask.duracion,
-          coste: newTask.coste,
-          metodo_pago: newTask.metodoPago,
+          propiedad_id: newTask.propertyId,
+          duracion: newTask.duration,
+          coste: newTask.cost,
+          metodo_pago: newTask.paymentMethod,
           supervisor: newTask.supervisor
         })
         .select()
@@ -326,11 +328,13 @@ export const recurringTaskStorage = {
         backgroundColor: createdTask.background_color,
         date: createdTask.date,
         clienteId: createdTask.cliente_id,
-        propiedadId: createdTask.propiedad_id,
-        duracion: createdTask.duracion,
-        coste: createdTask.coste,
-        metodoPago: createdTask.metodo_pago,
-        supervisor: createdTask.supervisor
+        propertyId: createdTask.propiedad_id,
+        duration: createdTask.duracion,
+        cost: createdTask.coste,
+        paymentMethod: createdTask.metodo_pago,
+        supervisor: createdTask.supervisor,
+        created_at: createdTask.created_at,
+        updated_at: createdTask.updated_at
       });
 
       // Update the recurring task with new next execution date

@@ -12,7 +12,7 @@ export interface BatchTaskData {
   checkOut: string;
   checkIn: string;
   cleaner?: string;
-  metodoPago: string;
+  paymentMethod: string;
   supervisor: string;
 }
 
@@ -29,7 +29,7 @@ export const useBatchCreateTask = () => {
     status: 'pending',
     checkOut: '11:00',
     checkIn: '15:00',
-    metodoPago: 'transferencia',
+    paymentMethod: 'transferencia',
     supervisor: '',
   });
 
@@ -46,10 +46,12 @@ export const useBatchCreateTask = () => {
         property: `${property.codigo} - ${property.nombre}`,
         address: property.direccion,
         clienteId: property.clienteId,
-        propiedadId: property.id,
-        duracion: property.duracionServicio,
-        coste: property.costeServicio,
+        propertyId: property.id,
+        duration: property.duracionServicio,
+        cost: property.costeServicio,
         ...batchData,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
       };
     }).filter(Boolean) as Omit<Task, 'id'>[];
   };
@@ -65,7 +67,7 @@ export const useBatchCreateTask = () => {
       status: 'pending',
       checkOut: '11:00',
       checkIn: '15:00',
-      metodoPago: 'transferencia',
+      paymentMethod: 'transferencia',
       supervisor: '',
     });
   };

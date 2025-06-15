@@ -55,10 +55,12 @@ export const CreateTaskModal = ({
       return;
     }
 
-    const taskData = {
+    const taskData: Omit<Task, 'id'> = {
       ...formData,
       clienteId: selectedClient.id,
-      propiedadId: selectedProperty.id
+      propertyId: selectedProperty.id,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
     };
 
     onCreateTask(taskData);
