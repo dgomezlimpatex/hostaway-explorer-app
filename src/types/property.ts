@@ -31,6 +31,10 @@ export interface Property {
   // Vinculación
   clienteId: string;
   
+  // Hostaway integration
+  hostaway_listing_id: number | null;
+  hostaway_internal_name: string | null;
+  
   // Metadatos
   fechaCreacion: string;
   fechaActualizacion: string;
