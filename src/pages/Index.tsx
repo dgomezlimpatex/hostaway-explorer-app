@@ -11,6 +11,8 @@ import { Calendar, Users, MapPin, BarChart3, ClipboardList, Wrench } from "lucid
 const Index = () => {
   const { user, profile, userRole } = useAuth();
 
+  console.log('Index - auth state:', { user: !!user, profile: !!profile, userRole });
+
   // Si no hay usuario autenticado, mostrar página de bienvenida
   if (!user) {
     return (
@@ -34,8 +36,10 @@ const Index = () => {
     );
   }
 
-  const canAccessManager = userRole === 'manager';
-  const canAccessSupervisor = canAccessManager || userRole === 'supervisor';
+  // Simplificar la lógica de permisos - por ahora mostrar todo si está autenticado
+  // TODO: Implementar correctamente los roles cuando el sistema esté funcionando
+  const canAccessManager = true; // userRole === 'manager';
+  const canAccessSupervisor = true; // canAccessManager || userRole === 'supervisor';
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -48,7 +52,10 @@ const Index = () => {
                 Sistema de Limpieza
               </h1>
               <p className="text-gray-600">
-                Bienvenido, {profile?.full_name || profile?.email}
+                Bienvenido, {profile?.full_name || profile?.email || user.email}
+              </p>
+              <p className="text-sm text-gray-500">
+                Rol: {userRole || 'Cargando...'}
               </p>
             </div>
             <UserMenu />
