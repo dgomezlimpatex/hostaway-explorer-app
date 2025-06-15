@@ -1,24 +1,18 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { ReportFilters } from '@/types/filters';
-import { taskStorageService } from '@/services/taskStorage';
-import { clientStorage } from '@/services/clientStorage';
-import { propertyStorage } from '@/services/propertyStorage';
-import { filterTasksByDateRange, applyAdditionalFilters } from '@/services/reports/dateFilters';
 import { generateSummaryReport } from '@/services/reports/summaryReportGenerator';
+import { useReportData } from './useReportData';
 
 export const useSummaryReport = (filters: ReportFilters) => {
+  const { data: reportData, isLoading, error } = useReportData(filters);
+
   return useQuery({
     queryKey: ['summaryReport', filters],
     queryFn: async () => {
-      const tasks = await taskStorageService.getTasks();
-      const clients = await clientStorage.getAll();
-      const properties = await propertyStorage.getAll();
-      
-      const filteredByDate = filterTasksByDateRange(tasks, filters);
-      const finalTasks = applyAdditionalFilters(filteredByDate, filters, properties);
-      
-      return generateSummaryReport(finalTasks);
+      if (!reportData) throw new Error('Report data not available');
+      return generateSummaryReport(reportData.tasks);
     },
+    enabled: !!reportData,
   });
 };

@@ -1,24 +1,18 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { ReportFilters } from '@/types/filters';
-import { taskStorageService } from '@/services/taskStorage';
-import { clientStorage } from '@/services/clientStorage';
-import { propertyStorage } from '@/services/propertyStorage';
-import { filterTasksByDateRange, applyAdditionalFilters } from '@/services/reports/dateFilters';
 import { generateTaskReport } from '@/services/reports/taskReportGenerator';
+import { useReportData } from './useReportData';
 
 export const useTaskReport = (filters: ReportFilters) => {
+  const { data: reportData, isLoading, error } = useReportData(filters);
+
   return useQuery({
     queryKey: ['taskReport', filters],
     queryFn: async () => {
-      const tasks = await taskStorageService.getTasks();
-      const clients = await clientStorage.getAll();
-      const properties = await propertyStorage.getAll();
-      
-      const filteredByDate = filterTasksByDateRange(tasks, filters);
-      const finalTasks = applyAdditionalFilters(filteredByDate, filters, properties);
-      
-      return generateTaskReport(finalTasks, properties, clients);
+      if (!reportData) throw new Error('Report data not available');
+      return generateTaskReport(reportData.tasks, reportData.properties, reportData.clients);
     },
+    enabled: !!reportData,
   });
 };
