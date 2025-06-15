@@ -1,10 +1,12 @@
 
 import { useMemo } from "react";
-import { UnassignedTasks } from "./UnassignedTasks";
-import { CalendarLayout } from "./CalendarLayout";
+import { 
+  UnassignedTasksWithSuspense, 
+  CalendarGridWithSuspense, 
+  CalendarModalsWithSuspense 
+} from "./LazyCalendarComponents";
 import { DragPreview } from "./DragPreview";
 import { StatusLegend } from "./StatusLegend";
-import { CalendarModals } from "./CalendarModals";
 import { Task, Cleaner } from "@/types/calendar";
 import { CleanerAvailability } from "@/hooks/useCleanerAvailability";
 import { getTaskPosition, isTimeSlotOccupied } from "@/utils/taskPositioning";
@@ -88,7 +90,7 @@ export const CalendarContainer = ({
         {/* Unassigned Tasks Column - Only show when there are unassigned tasks */}
         {unassignedTasks.length > 0 && (
           <div className="w-64 flex-shrink-0">
-            <UnassignedTasks
+            <UnassignedTasksWithSuspense
               tasks={unassignedTasks}
               onTaskClick={handleTaskClick}
               onDragStart={handleDragStart}
@@ -99,7 +101,7 @@ export const CalendarContainer = ({
 
         {/* Main Calendar */}
         <div className="flex-1 min-w-0">
-          <CalendarLayout
+          <CalendarGridWithSuspense
             cleaners={cleaners}
             timeSlots={timeSlots}
             assignedTasks={assignedTasks}
@@ -133,8 +135,8 @@ export const CalendarContainer = ({
       {/* Enhanced Status Legend */}
       <StatusLegend />
 
-      {/* Modals */}
-      <CalendarModals
+      {/* Modals - Lazy loaded */}
+      <CalendarModalsWithSuspense
         isCreateModalOpen={isCreateModalOpen}
         setIsCreateModalOpen={setIsCreateModalOpen}
         selectedTask={selectedTask}

@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { TasksList } from '../TasksList';
+import { VirtualizedTasksList } from '../VirtualizedTasksList';
 import { TaskFilters } from '../TaskFilters';
 import { TaskStatsCard } from './TaskStatsCard';
 import { CalendarIntegrationWidget } from './CalendarIntegrationWidget';
@@ -73,11 +73,13 @@ export const TasksPageContent = ({
               </div>
             </CardHeader>
             <CardContent>
-              <TasksList 
+              {/* Use virtualized list for better performance */}
+              <VirtualizedTasksList 
                 tasks={paginatedTasks} 
                 filters={filters} 
                 isLoading={isLoading} 
-                onShowHistory={onShowHistory} 
+                onShowHistory={onShowHistory}
+                height={600} 
               />
               
               <TasksPagination
