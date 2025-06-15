@@ -3,9 +3,9 @@ import { useAuth } from '@/hooks/useAuth';
 import { UserMenu } from '@/components/auth/UserMenu';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
-import { CleaningCalendar } from "@/components/CleaningCalendar";
-import { CleaningList } from "@/components/CleaningList";
-import { StatsCards } from "@/components/StatsCards";
+import CleaningCalendar from "@/components/CleaningCalendar";
+import CleaningList from "@/components/CleaningList";
+import StatsCards from "@/components/StatsCards";
 import { Calendar, Users, MapPin, BarChart3, ClipboardList, Wrench } from "lucide-react";
 
 const Index = () => {
