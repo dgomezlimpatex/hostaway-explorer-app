@@ -34,7 +34,7 @@ const App = () => (
               </ProtectedRoute>
             } />
             <Route path="/calendar" element={
-              <ProtectedRoute>
+              <ProtectedRoute requireRole={['admin', 'manager', 'supervisor']}>
                 <Calendar />
               </ProtectedRoute>
             } />

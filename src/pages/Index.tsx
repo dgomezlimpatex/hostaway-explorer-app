@@ -38,6 +38,53 @@ const Index = () => {
   // Configurar permisos correctamente basados en el rol del usuario
   const canAccessManager = userRole === 'manager' || userRole === 'admin';
   const canAccessSupervisor = canAccessManager || userRole === 'supervisor';
+  const isCleaner = userRole === 'cleaner';
+
+  // Si es limpiadora, redirigir automáticamente a las tareas
+  if (isCleaner) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        {/* Header */}
+        <header className="bg-white shadow-sm border-b">
+          <div className="container mx-auto px-4 py-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-2xl font-bold text-gray-900">
+                  Mis Tareas
+                </h1>
+                <p className="text-gray-600">
+                  Bienvenida, {profile?.full_name || profile?.email || user.email}
+                </p>
+                <p className="text-sm text-gray-500">
+                  Rol: Limpiadora
+                </p>
+              </div>
+              <UserMenu />
+            </div>
+          </div>
+        </header>
+
+        <div className="container mx-auto px-4 py-8">
+          <div className="text-center">
+            <div className="bg-white p-8 rounded-lg shadow-sm border">
+              <ClipboardList className="h-16 w-16 text-blue-600 mx-auto mb-4" />
+              <h2 className="text-2xl font-semibold text-gray-900 mb-4">
+                Ver Mis Tareas
+              </h2>
+              <p className="text-gray-600 mb-6">
+                Accede a la lista de tareas que tienes asignadas
+              </p>
+              <Link to="/tasks">
+                <Button size="lg" className="text-lg px-8 py-3">
+                  Ver Mis Tareas
+                </Button>
+              </Link>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">

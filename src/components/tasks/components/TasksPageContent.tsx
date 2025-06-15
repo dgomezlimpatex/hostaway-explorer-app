@@ -1,5 +1,6 @@
 
 import React from 'react';
+import { useAuth } from '@/hooks/useAuth';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { VirtualizedTasksList } from '../VirtualizedTasksList';
 import { TaskFilters } from '../TaskFilters';
@@ -42,15 +43,17 @@ export const TasksPageContent = ({
   onShowHistory,
   onPageChange,
 }: TasksPageContentProps) => {
+  const { userRole } = useAuth();
+  const isCleaner = userRole === 'cleaner';
   const searchFilteredTasks = sortedTasks;
 
   return (
     <div className="container mx-auto p-6 space-y-6">
-      {/* Estadísticas - Solo mostrar para tareas actuales */}
-      {!showPastTasks && <TaskStatsCard tasks={searchFilteredTasks} />}
+      {/* Estadísticas - Solo mostrar para tareas actuales y no para limpiadoras */}
+      {!showPastTasks && !isCleaner && <TaskStatsCard tasks={searchFilteredTasks} />}
 
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-        {!showPastTasks && (
+      <div className={`grid grid-cols-1 ${isCleaner ? 'lg:grid-cols-1' : 'lg:grid-cols-4'} gap-6`}>
+        {!showPastTasks && !isCleaner && (
           <div className="lg:col-span-1 space-y-6">
             <TaskFilters filters={filters} onFiltersChange={onFiltersChange} />
             <CalendarIntegrationWidget tasks={tasks} />
@@ -58,12 +61,15 @@ export const TasksPageContent = ({
           </div>
         )}
         
-        <div className={showPastTasks ? "lg:col-span-4" : "lg:col-span-3"}>
+        <div className={isCleaner ? "lg:col-span-1" : (showPastTasks ? "lg:col-span-4" : "lg:col-span-3")}>
           <Card>
             <CardHeader>
               <div className="flex items-center justify-between">
                 <CardTitle>
-                  {showPastTasks ? 'Historial de Tareas' : 'Lista de Tareas'} ({sortedTasks.length})
+                  {isCleaner 
+                    ? `Mis Tareas Asignadas (${sortedTasks.length})`
+                    : (showPastTasks ? 'Historial de Tareas' : 'Lista de Tareas')
+                  } {!isCleaner && `(${sortedTasks.length})`}
                 </CardTitle>
                 {totalPages > 1 && (
                   <span className="text-sm text-gray-500">

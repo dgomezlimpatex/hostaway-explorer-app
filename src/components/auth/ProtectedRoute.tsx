@@ -43,6 +43,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
         <div className="text-center">
           <h2 className="text-2xl font-bold text-gray-900 mb-2">Acceso denegado</h2>
           <p className="text-gray-600">No tienes permisos para acceder a esta página.</p>
+          <p className="text-sm text-gray-500 mt-2">Tu rol: {userRole}</p>
         </div>
       </div>
     );
