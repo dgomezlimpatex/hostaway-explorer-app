@@ -1,176 +1,105 @@
+
 import React from 'react';
 import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Clock, MapPin, User, Euro, Calendar, Edit2, Trash2, UserPlus, History } from "lucide-react";
-import { Task } from "@/types/calendar";
+import { Calendar, Clock, MapPin, User, DollarSign } from 'lucide-react';
+import { Task } from '@/types/calendar';
+import { useTaskActions } from '../hooks/useTaskActions';
+import { CreateReportButton } from './CreateReportButton';
 
 interface TaskCardProps {
   task: Task;
-  onEditTask: (task: Task) => void;
-  onDeleteTask: (taskId: string) => void;
-  onQuickStatusChange: (taskId: string, status: string) => void;
-  onAssignCleaner: (task: Task) => void;
-  onShowHistory?: (task: Task) => void;
-  getStatusColor: (status: string) => string;
-  getStatusText: (status: string) => string;
+  onShowHistory: (task: Task) => void;
+  onCreateReport: (task: Task) => void;
 }
 
-export const TaskCard = React.memo(({ 
+export const TaskCard: React.FC<TaskCardProps> = ({ 
   task, 
-  onEditTask, 
-  onDeleteTask, 
-  onQuickStatusChange, 
-  onAssignCleaner, 
   onShowHistory,
-  getStatusColor,
-  getStatusText 
-}: TaskCardProps) => {
-  const serviceTypeLabels = React.useMemo(() => ({
-    'limpieza-mantenimiento': 'Limpieza de Mantenimiento',
-    'mantenimiento-cristaleria': 'Mantenimiento de Cristalería',
-    'mantenimiento-airbnb': 'Mantenimiento Airbnb',
-    'limpieza-puesta-punto': 'Limpieza de Puesta a Punto',
-    'limpieza-final-obra': 'Limpieza Final de Obra',
-    'check-in': 'Check In',
-    'desplazamiento': 'Desplazamiento',
-    'limpieza-especial': 'Limpieza Especial',
-    'trabajo-extraordinario': 'Trabajo Extraordinario'
-  }), []);
+  onCreateReport,
+}) => {
+  const { handleStatusChange, handleAssignCleaner } = useTaskActions();
 
-  const handleEditClick = React.useCallback(() => {
-    onEditTask(task);
-  }, [onEditTask, task]);
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'completed': return 'bg-green-100 text-green-800 border-green-200';
+      case 'in_progress': return 'bg-blue-100 text-blue-800 border-blue-200';
+      case 'cancelled': return 'bg-red-100 text-red-800 border-red-200';
+      default: return 'bg-gray-100 text-gray-800 border-gray-200';
+    }
+  };
 
-  const handleDeleteClick = React.useCallback(() => {
-    onDeleteTask(task.id);
-  }, [onDeleteTask, task.id]);
-
-  const handleAssignClick = React.useCallback(() => {
-    onAssignCleaner(task);
-  }, [onAssignCleaner, task]);
-
-  const handleHistoryClick = React.useCallback(() => {
-    onShowHistory?.(task);
-  }, [onShowHistory, task]);
-
-  const handleStatusChange = React.useCallback((status: string) => {
-    onQuickStatusChange(task.id, status);
-  }, [onQuickStatusChange, task.id]);
+  const getStatusText = (status: string) => {
+    switch (status) {
+      case 'pending': return 'Pendiente';
+      case 'in_progress': return 'En Progreso';
+      case 'completed': return 'Completada';
+      case 'cancelled': return 'Cancelada';
+      default: return status;
+    }
+  };
 
   return (
-    <Card className="hover:shadow-md transition-shadow duration-200">
+    <Card className="hover:shadow-md transition-shadow">
       <CardContent className="p-4">
-        <div className="flex items-start justify-between mb-3">
-          <div className="flex-1">
-            <div className="flex items-center gap-2 mb-1">
-              <h3 className="font-semibold text-lg text-gray-900 truncate">{task.property}</h3>
-              <Badge 
-                variant="secondary"
-                className={`text-xs ${getStatusColor(task.status)}`}
-              >
-                {getStatusText(task.status)}
-              </Badge>
-            </div>
-            <div className="flex items-center gap-1 text-sm text-gray-600 mb-2">
-              <MapPin className="h-3 w-3" />
-              <span className="truncate">{task.address}</span>
-            </div>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-2 gap-3 text-sm mb-3">
-          <div className="flex items-center gap-1">
-            <Clock className="h-3 w-3 text-gray-400" />
-            <span>{task.startTime} - {task.endTime}</span>
-          </div>
-          <div className="flex items-center gap-1">
-            <Calendar className="h-3 w-3 text-gray-400" />
-            <span>{new Date(task.date).toLocaleDateString()}</span>
-          </div>
-          <div className="flex items-center gap-1">
-            <User className="h-3 w-3 text-gray-400" />
-            <span>{task.cleaner || 'Sin asignar'}</span>
-          </div>
-          <div className="flex items-center gap-1">
-            <Euro className="h-3 w-3 text-gray-400" />
-            <span>{task.cost?.toFixed(2) || 'N/A'}€</span>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-1 mb-3">
-          <Badge variant="outline" className="text-xs">
-            {serviceTypeLabels[task.type as keyof typeof serviceTypeLabels] || task.type}
+        <div className="flex justify-between items-start mb-3">
+          <h3 className="font-semibold text-lg">{task.property}</h3>
+          <Badge className={getStatusColor(task.status)}>
+            {getStatusText(task.status)}
           </Badge>
         </div>
 
-        {/* Quick Actions */}
-        <div className="flex items-center justify-between">
-          <div className="flex gap-1">
-            {task.status === 'pending' && (
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => handleStatusChange('in-progress')}
-                className="h-7 px-2 text-xs"
-              >
-                Iniciar
-              </Button>
-            )}
-            {task.status === 'in-progress' && (
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => handleStatusChange('completed')}
-                className="h-7 px-2 text-xs"
-              >
-                Completar
-              </Button>
-            )}
+        <div className="space-y-2 text-sm text-gray-600">
+          <div className="flex items-center">
+            <Calendar className="h-4 w-4 mr-2" />
+            <span>{task.date}</span>
           </div>
           
-          <div className="flex gap-1">
-            {onShowHistory && (
-              <Button 
-                size="sm" 
-                variant="ghost" 
-                onClick={handleHistoryClick}
-                className="h-7 w-7 p-0"
-              >
-                <History className="h-3 w-3" />
-              </Button>
+          <div className="flex items-center">
+            <Clock className="h-4 w-4 mr-2" />
+            <span>{task.start_time} - {task.end_time}</span>
+          </div>
+
+          <div className="flex items-center">
+            <MapPin className="h-4 w-4 mr-2" />
+            <span className="truncate">{task.address}</span>
+          </div>
+
+          {task.cleaner && (
+            <div className="flex items-center">
+              <User className="h-4 w-4 mr-2" />
+              <span>{task.cleaner}</span>
+            </div>
+          )}
+
+          {task.coste && (
+            <div className="flex items-center">
+              <DollarSign className="h-4 w-4 mr-2" />
+              <span>{task.coste}€</span>
+            </div>
+          )}
+        </div>
+
+        <div className="flex items-center justify-between mt-4 pt-3 border-t">
+          <div className="flex items-center space-x-2">
+            <Badge variant="outline" className="text-xs">
+              {task.type}
+            </Badge>
+            {task.duracion && (
+              <Badge variant="outline" className="text-xs">
+                {task.duracion} min
+              </Badge>
             )}
-            {!task.cleaner && (
-              <Button 
-                size="sm" 
-                variant="ghost" 
-                onClick={handleAssignClick}
-                className="h-7 w-7 p-0"
-              >
-                <UserPlus className="h-3 w-3" />
-              </Button>
-            )}
-            <Button 
-              size="sm" 
-              variant="ghost" 
-              onClick={handleEditClick}
-              className="h-7 w-7 p-0"
-            >
-              <Edit2 className="h-3 w-3" />
-            </Button>
-            <Button 
-              size="sm" 
-              variant="ghost" 
-              onClick={handleDeleteClick}
-              className="h-7 w-7 p-0 text-red-600 hover:text-red-700"
-            >
-              <Trash2 className="h-3 w-3" />
-            </Button>
+          </div>
+
+          <div className="flex items-center">
+            <CreateReportButton 
+              task={task} 
+              onCreateReport={onCreateReport}
+            />
           </div>
         </div>
       </CardContent>
     </Card>
   );
-});
-
-TaskCard.displayName = 'TaskCard';
+};

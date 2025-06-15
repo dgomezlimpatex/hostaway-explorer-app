@@ -498,6 +498,150 @@ export type Database = {
           },
         ]
       }
+      task_checklists_templates: {
+        Row: {
+          checklist_items: Json
+          created_at: string
+          created_by: string | null
+          id: string
+          is_active: boolean
+          property_type: string
+          template_name: string
+          updated_at: string
+        }
+        Insert: {
+          checklist_items?: Json
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          property_type: string
+          template_name: string
+          updated_at?: string
+        }
+        Update: {
+          checklist_items?: Json
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          property_type?: string
+          template_name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      task_media: {
+        Row: {
+          checklist_item_id: string | null
+          created_at: string
+          description: string | null
+          file_size: number | null
+          file_url: string
+          id: string
+          media_type: Database["public"]["Enums"]["media_type"]
+          task_report_id: string
+          timestamp: string
+        }
+        Insert: {
+          checklist_item_id?: string | null
+          created_at?: string
+          description?: string | null
+          file_size?: number | null
+          file_url: string
+          id?: string
+          media_type: Database["public"]["Enums"]["media_type"]
+          task_report_id: string
+          timestamp?: string
+        }
+        Update: {
+          checklist_item_id?: string | null
+          created_at?: string
+          description?: string | null
+          file_size?: number | null
+          file_url?: string
+          id?: string
+          media_type?: Database["public"]["Enums"]["media_type"]
+          task_report_id?: string
+          timestamp?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_media_task_report_id_fkey"
+            columns: ["task_report_id"]
+            isOneToOne: false
+            referencedRelation: "task_reports"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      task_reports: {
+        Row: {
+          checklist_completed: Json
+          checklist_template_id: string | null
+          cleaner_id: string | null
+          created_at: string
+          end_time: string | null
+          id: string
+          issues_found: Json | null
+          notes: string | null
+          overall_status: Database["public"]["Enums"]["report_status"]
+          start_time: string | null
+          task_id: string
+          updated_at: string
+        }
+        Insert: {
+          checklist_completed?: Json
+          checklist_template_id?: string | null
+          cleaner_id?: string | null
+          created_at?: string
+          end_time?: string | null
+          id?: string
+          issues_found?: Json | null
+          notes?: string | null
+          overall_status?: Database["public"]["Enums"]["report_status"]
+          start_time?: string | null
+          task_id: string
+          updated_at?: string
+        }
+        Update: {
+          checklist_completed?: Json
+          checklist_template_id?: string | null
+          cleaner_id?: string | null
+          created_at?: string
+          end_time?: string | null
+          id?: string
+          issues_found?: Json | null
+          notes?: string | null
+          overall_status?: Database["public"]["Enums"]["report_status"]
+          start_time?: string | null
+          task_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_reports_checklist_template_id_fkey"
+            columns: ["checklist_template_id"]
+            isOneToOne: false
+            referencedRelation: "task_checklists_templates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_reports_cleaner_id_fkey"
+            columns: ["cleaner_id"]
+            isOneToOne: false
+            referencedRelation: "cleaners"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_reports_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tasks: {
         Row: {
           address: string
@@ -636,6 +780,8 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "manager" | "supervisor" | "cleaner" | "client"
+      media_type: "photo" | "video"
+      report_status: "pending" | "in_progress" | "completed" | "needs_review"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -752,6 +898,8 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "manager", "supervisor", "cleaner", "client"],
+      media_type: ["photo", "video"],
+      report_status: ["pending", "in_progress", "completed", "needs_review"],
     },
   },
 } as const

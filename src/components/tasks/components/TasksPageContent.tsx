@@ -27,6 +27,7 @@ interface TasksPageContentProps {
   totalPages: number;
   onFiltersChange: (filters: any) => void;
   onShowHistory: (task: Task) => void;
+  onCreateReport: (task: Task) => void;
   onPageChange: (page: number) => void;
 }
 
@@ -41,6 +42,7 @@ export const TasksPageContent = ({
   totalPages,
   onFiltersChange,
   onShowHistory,
+  onCreateReport,
   onPageChange,
 }: TasksPageContentProps) => {
   const { userRole } = useAuth();
@@ -85,6 +87,7 @@ export const TasksPageContent = ({
                 filters={filters} 
                 isLoading={isLoading} 
                 onShowHistory={onShowHistory}
+                onCreateReport={onCreateReport}
                 height={600} 
               />
               

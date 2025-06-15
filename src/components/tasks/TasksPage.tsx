@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { TasksPageHeader } from './components/TasksPageHeader';
 import { TasksPageContent } from './components/TasksPageContent';
 import { TaskHistoryModal } from './components/TaskHistoryModal';
@@ -7,8 +7,13 @@ import { CreateTaskModal } from '@/components/modals/CreateTaskModal';
 import { BatchCreateTaskModal } from '@/components/modals/BatchCreateTaskModal';
 import { useTasksPageState } from '@/hooks/tasks/useTasksPageState';
 import { useTasksPageActions } from '@/hooks/tasks/useTasksPageActions';
+import { Task } from '@/types/calendar';
+import { useToast } from '@/hooks/use-toast';
 
 export default function TasksPage() {
+  const { toast } = useToast();
+  const [selectedTaskForReport, setSelectedTaskForReport] = useState<Task | null>(null);
+
   const {
     searchTerm,
     filters,
@@ -40,6 +45,16 @@ export default function TasksPage() {
     handleOpenBatchModal,
   } = useTasksPageActions();
 
+  const handleCreateReport = (task: Task) => {
+    console.log('Creating report for task:', task.id);
+    // Por ahora solo mostrar un toast, luego implementaremos el modal del reporte
+    toast({
+      title: "Función en desarrollo",
+      description: `Creando reporte para la tarea: ${task.property}`,
+    });
+    setSelectedTaskForReport(task);
+  };
+
   console.log('TasksPage - rendering with tasks:', tasks.length, 'filtered:', sortedTasks.length, 'paginated:', paginatedTasks.length, 'isLoading:', isLoading);
 
   return (
@@ -64,6 +79,7 @@ export default function TasksPage() {
         totalPages={totalPages}
         onFiltersChange={setFilters}
         onShowHistory={handleShowHistory}
+        onCreateReport={handleCreateReport}
         onPageChange={handlePageChange}
       />
 

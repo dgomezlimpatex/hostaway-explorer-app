@@ -1,85 +1,66 @@
 
-import React, { memo, useMemo, useCallback } from 'react';
-import { VirtualizedTable } from '@/components/ui/virtualized-table';
-import { TaskCard } from './components/TaskCard';
+import React from 'react';
+import { FixedSizeList as List } from 'react-window';
 import { Task } from '@/types/calendar';
-import { useTaskActions } from './hooks/useTaskActions';
+import { TaskCard } from './components/TaskCard';
+import { Skeleton } from '@/components/ui/skeleton';
 
 interface VirtualizedTasksListProps {
   tasks: Task[];
   filters: any;
   isLoading: boolean;
   onShowHistory: (task: Task) => void;
-  height?: number;
+  onCreateReport: (task: Task) => void;
+  height: number;
 }
 
-export const VirtualizedTasksList = memo(({
+export const VirtualizedTasksList: React.FC<VirtualizedTasksListProps> = ({
   tasks,
   filters,
   isLoading,
   onShowHistory,
-  height = 600
-}: VirtualizedTasksListProps) => {
-  const {
-    handleEditTask,
-    handleDeleteTask,
-    handleQuickStatusChange,
-    handleAssignCleaner,
-    getStatusColor,
-    getStatusText
-  } = useTaskActions();
-
-  const memoizedRenderItem = useCallback((item: Task & { index: number }) => (
-    <div className="p-2">
-      <TaskCard
-        key={item.id}
-        task={item}
-        onEditTask={handleEditTask}
-        onDeleteTask={handleDeleteTask}
-        onQuickStatusChange={handleQuickStatusChange}
-        onAssignCleaner={handleAssignCleaner}
-        onShowHistory={onShowHistory}
-        getStatusColor={getStatusColor}
-        getStatusText={getStatusText}
-      />
-    </div>
-  ), [
-    handleEditTask,
-    handleDeleteTask,
-    handleQuickStatusChange,
-    handleAssignCleaner,
-    onShowHistory,
-    getStatusColor,
-    getStatusText
-  ]);
-
+  onCreateReport,
+  height,
+}) => {
   if (isLoading) {
     return (
-      <div className="flex justify-center items-center p-8">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-        <span className="ml-2">Cargando tareas...</span>
+      <div className="space-y-4">
+        {Array.from({ length: 5 }).map((_, index) => (
+          <Skeleton key={index} className="h-32 w-full" />
+        ))}
       </div>
     );
   }
 
   if (tasks.length === 0) {
     return (
-      <div className="text-center p-8 text-gray-500">
-        No se encontraron tareas con los filtros aplicados.
+      <div className="text-center py-8 text-gray-500">
+        <p>No hay tareas disponibles.</p>
       </div>
     );
   }
 
-  return (
-    <VirtualizedTable
-      data={tasks}
-      height={height}
-      itemHeight={200} // Altura estimada de cada TaskCard
-      renderItem={memoizedRenderItem}
-      className="w-full"
-      overscan={3}
-    />
-  );
-});
+  const TaskItem = ({ index, style }: { index: number; style: React.CSSProperties }) => {
+    const task = tasks[index];
+    return (
+      <div style={style} className="p-2">
+        <TaskCard 
+          task={task} 
+          onShowHistory={onShowHistory}
+          onCreateReport={onCreateReport}
+        />
+      </div>
+    );
+  };
 
-VirtualizedTasksList.displayName = 'VirtualizedTasksList';
+  return (
+    <List
+      height={height}
+      itemCount={tasks.length}
+      itemSize={160} // Altura de cada card + padding
+      width="100%"
+    >
+      {TaskItem}
+    </List>
+  );
+};
