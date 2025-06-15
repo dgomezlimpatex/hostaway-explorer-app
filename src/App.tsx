@@ -44,27 +44,27 @@ const App = () => (
               </ProtectedRoute>
             } />
             <Route path="/clients" element={
-              <ProtectedRoute requireRole={['manager', 'supervisor']}>
+              <ProtectedRoute requireRole={['admin', 'manager', 'supervisor']}>
                 <Clients />
               </ProtectedRoute>
             } />
             <Route path="/properties" element={
-              <ProtectedRoute requireRole={['manager', 'supervisor']}>
+              <ProtectedRoute requireRole={['admin', 'manager', 'supervisor']}>
                 <Properties />
               </ProtectedRoute>
             } />
             <Route path="/workers" element={
-              <ProtectedRoute requireRole={['manager']}>
+              <ProtectedRoute requireRole={['admin', 'manager']}>
                 <Workers />
               </ProtectedRoute>
             } />
             <Route path="/reports" element={
-              <ProtectedRoute requireRole={['manager', 'supervisor']}>
+              <ProtectedRoute requireRole={['admin', 'manager', 'supervisor']}>
                 <Reports />
               </ProtectedRoute>
             } />
             <Route path="/hostaway-sync-logs" element={
-              <ProtectedRoute requireRole={['manager']}>
+              <ProtectedRoute requireRole={['admin', 'manager']}>
                 <HostawaySyncLogs />
               </ProtectedRoute>
             } />
