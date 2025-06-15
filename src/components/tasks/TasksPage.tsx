@@ -3,16 +3,16 @@ import React, { useState } from 'react';
 import { TasksPageHeader } from './components/TasksPageHeader';
 import { TasksPageContent } from './components/TasksPageContent';
 import { TaskHistoryModal } from './components/TaskHistoryModal';
+import { TaskReportModal } from '@/components/modals/TaskReportModal';
 import { CreateTaskModal } from '@/components/modals/CreateTaskModal';
 import { BatchCreateTaskModal } from '@/components/modals/BatchCreateTaskModal';
 import { useTasksPageState } from '@/hooks/tasks/useTasksPageState';
 import { useTasksPageActions } from '@/hooks/tasks/useTasksPageActions';
 import { Task } from '@/types/calendar';
-import { useToast } from '@/hooks/use-toast';
 
 export default function TasksPage() {
-  const { toast } = useToast();
   const [selectedTaskForReport, setSelectedTaskForReport] = useState<Task | null>(null);
+  const [isReportModalOpen, setIsReportModalOpen] = useState(false);
 
   const {
     searchTerm,
@@ -46,13 +46,9 @@ export default function TasksPage() {
   } = useTasksPageActions();
 
   const handleCreateReport = (task: Task) => {
-    console.log('Creating report for task:', task.id);
-    // Por ahora solo mostrar un toast, luego implementaremos el modal del reporte
-    toast({
-      title: "Función en desarrollo",
-      description: `Creando reporte para la tarea: ${task.property}`,
-    });
+    console.log('Opening report modal for task:', task.id);
     setSelectedTaskForReport(task);
+    setIsReportModalOpen(true);
   };
 
   console.log('TasksPage - rendering with tasks:', tasks.length, 'filtered:', sortedTasks.length, 'paginated:', paginatedTasks.length, 'isLoading:', isLoading);
@@ -103,6 +99,12 @@ export default function TasksPage() {
         task={selectedTaskForHistory} 
         open={isHistoryModalOpen} 
         onOpenChange={setIsHistoryModalOpen} 
+      />
+
+      <TaskReportModal
+        task={selectedTaskForReport}
+        open={isReportModalOpen}
+        onOpenChange={setIsReportModalOpen}
       />
     </div>
   );
