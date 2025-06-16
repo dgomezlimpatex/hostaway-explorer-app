@@ -1,3 +1,4 @@
+
 import { forwardRef, memo, useMemo } from "react";
 import { cn } from "@/lib/utils";
 import { TimeSlot } from "./TimeSlot";
@@ -5,6 +6,7 @@ import { EnhancedTaskCard } from "./EnhancedTaskCard";
 import { Task, Cleaner } from "@/types/calendar";
 import { CleanerAvailability } from "@/hooks/useCleanerAvailability";
 import { getCleanerAvailabilityForDay, timeToMinutes, isCleanerAvailableAtTime } from "@/utils/availabilityUtils";
+import { getTaskPositionWithCollisions } from "@/utils/taskPositioning";
 
 interface CalendarGridProps {
   cleaners: Cleaner[];
@@ -37,9 +39,9 @@ const CleanerRow = memo(({
   onDragStart,
   onDragEnd,
   onTaskClick,
-  getTaskPosition,
   isTimeSlotOccupied,
-  cleaners
+  cleaners,
+  allTasks
 }: {
   cleaner: Cleaner;
   index: number;
@@ -53,9 +55,9 @@ const CleanerRow = memo(({
   onDragStart: (e: React.DragEvent, task: Task) => void;
   onDragEnd: (e: React.DragEvent) => void;
   onTaskClick: (task: Task) => void;
-  getTaskPosition: (startTime: string, endTime: string) => { left: string; width: string };
   isTimeSlotOccupied: (cleanerId: string, hour: number, minute: number) => boolean;
   cleaners: Cleaner[];
+  allTasks: Task[];
 }) => {
   console.log('🔍 CleanerRow - checking availability for:', cleaner.name, 'on date:', currentDate);
   console.log('📊 CleanerRow - available data:', availability);
@@ -105,22 +107,25 @@ const CleanerRow = memo(({
     });
   }, [timeSlots, cleaner.id, cleaner.name, isTimeSlotOccupied, isTimeSlotAvailable, dragState.draggedTask?.id, onDragOver, onDrop, cleaners]);
 
-  // Memoize task elements for this cleaner
+  // Memoize task elements for this cleaner with collision detection
   const taskElements = useMemo(() => {
     return cleanerTasks.map((task) => {
-      const position = getTaskPosition(task.startTime, task.endTime);
+      const position = getTaskPositionWithCollisions(task, allTasks, cleaner.id);
       const isBeingDragged = dragState.draggedTask?.id === task.id;
       
       return (
         <div
           key={task.id}
           className={cn(
-            "absolute top-1 bottom-1 z-10",
-            isBeingDragged && "opacity-30"
+            "absolute z-10 transition-all duration-200",
+            isBeingDragged && "opacity-30 scale-95"
           )}
           style={{
             left: position.left,
-            width: position.width
+            width: position.width,
+            top: position.top,
+            height: position.height,
+            zIndex: position.zIndex
           }}
         >
           <EnhancedTaskCard
@@ -134,7 +139,7 @@ const CleanerRow = memo(({
         </div>
       );
     });
-  }, [cleanerTasks, getTaskPosition, dragState.draggedTask?.id, onTaskClick, onDragStart, onDragEnd]);
+  }, [cleanerTasks, allTasks, cleaner.id, dragState.draggedTask?.id, onTaskClick, onDragStart, onDragEnd]);
 
   return (
     <div 
@@ -202,13 +207,13 @@ export const CalendarGrid = memo(forwardRef<HTMLDivElement, CalendarGridProps>(
             onDragStart={onDragStart}
             onDragEnd={onDragEnd}
             onTaskClick={onTaskClick}
-            getTaskPosition={getTaskPosition}
             isTimeSlotOccupied={isTimeSlotOccupied}
             cleaners={cleaners}
+            allTasks={assignedTasks}
           />
         );
       });
-    }, [cleaners, timeSlots, assignedTasks, availability, currentDate, dragState, onDragOver, onDrop, onDragStart, onDragEnd, onTaskClick, getTaskPosition, isTimeSlotOccupied]);
+    }, [cleaners, timeSlots, assignedTasks, availability, currentDate, dragState, onDragOver, onDrop, onDragStart, onDragEnd, onTaskClick, isTimeSlotOccupied]);
 
     return (
       <div className="flex-1 overflow-hidden relative">

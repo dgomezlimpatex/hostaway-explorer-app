@@ -1,9 +1,11 @@
+
 import React from "react";
 import { Task } from "@/types/calendar";
 import { Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useClientData } from "@/hooks/useClientData";
+import { CollisionIndicator } from "./CollisionIndicator";
 
 interface EnhancedTaskCardProps {
   task: Task;
@@ -12,6 +14,8 @@ interface EnhancedTaskCardProps {
   onDragStart?: (e: React.DragEvent, task: Task) => void;
   onDragEnd?: (e: React.DragEvent) => void;
   style?: React.CSSProperties;
+  isColliding?: boolean;
+  collisionCount?: number;
 }
 
 export const EnhancedTaskCard = React.memo(({
@@ -20,7 +24,9 @@ export const EnhancedTaskCard = React.memo(({
   isDragging,
   onDragStart,
   onDragEnd,
-  style
+  style,
+  isColliding = false,
+  collisionCount = 1
 }: EnhancedTaskCardProps) => {
   const { getClientName } = useClientData();
 
@@ -75,9 +81,13 @@ export const EnhancedTaskCard = React.memo(({
               "focus:outline-none focus:ring-2 focus:ring-primary/50",
               "transform-gpu overflow-hidden",
               getStatusColor(task.status),
-              isDragging && "opacity-50 rotate-2 scale-95 shadow-2xl z-50"
+              isDragging && "opacity-50 rotate-2 scale-95 shadow-2xl z-50",
+              isColliding && "border-2 border-amber-400 shadow-lg"
             )}
           >
+            {/* Collision indicator */}
+            <CollisionIndicator isColliding={isColliding} collisionCount={collisionCount} />
+
             {/* Header con horas */}
             <div className="flex items-center justify-between mb-1">
               <div className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400">
@@ -127,6 +137,11 @@ export const EnhancedTaskCard = React.memo(({
             {task.address && (
               <p className="text-xs">
                 <span className="font-medium">Dirección:</span> {task.address}
+              </p>
+            )}
+            {isColliding && (
+              <p className="text-xs text-amber-600 font-medium">
+                ⚠️ Se superpone con {collisionCount - 1} tarea{collisionCount > 2 ? 's' : ''}
               </p>
             )}
           </div>
