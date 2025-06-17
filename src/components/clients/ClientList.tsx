@@ -1,3 +1,4 @@
+
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -7,16 +8,36 @@ import { Edit, Trash2, Users, Phone, Mail, MapPin } from 'lucide-react';
 import { EditClientModal } from './EditClientModal';
 
 const ServiceTypeBadge = ({ type }: { type: string }) => {
+  const getServiceLabel = (type: string) => {
+    switch (type) {
+      case 'limpieza-mantenimiento': return 'Limpieza y Mantenimiento';
+      case 'mantenimiento-cristaleria': return 'Mantenimiento Cristalería';
+      case 'mantenimiento-airbnb': return 'Mantenimiento Airbnb';
+      case 'limpieza-puesta-punto': return 'Limpieza Puesta a Punto';
+      case 'limpieza-final-obra': return 'Limpieza Final de Obra';
+      case 'check-in': return 'Check-in';
+      case 'desplazamiento': return 'Desplazamiento';
+      case 'limpieza-especial': return 'Limpieza Especial';
+      case 'trabajo-extraordinario': return 'Trabajo Extraordinario';
+      default: return type;
+    }
+  };
+
   const variants = {
-    mantenimiento: 'bg-blue-100 text-blue-800',
-    cristaleria: 'bg-green-100 text-green-800',
-    airbnb: 'bg-purple-100 text-purple-800',
-    otro: 'bg-gray-100 text-gray-800'
+    'limpieza-mantenimiento': 'bg-blue-100 text-blue-800',
+    'mantenimiento-cristaleria': 'bg-green-100 text-green-800',
+    'mantenimiento-airbnb': 'bg-purple-100 text-purple-800',
+    'limpieza-puesta-punto': 'bg-orange-100 text-orange-800',
+    'limpieza-final-obra': 'bg-red-100 text-red-800',
+    'check-in': 'bg-yellow-100 text-yellow-800',
+    'desplazamiento': 'bg-pink-100 text-pink-800',
+    'limpieza-especial': 'bg-indigo-100 text-indigo-800',
+    'trabajo-extraordinario': 'bg-teal-100 text-teal-800'
   };
 
   return (
-    <Badge className={variants[type as keyof typeof variants] || variants.otro}>
-      {type}
+    <Badge className={variants[type as keyof typeof variants] || 'bg-gray-100 text-gray-800'}>
+      {getServiceLabel(type)}
     </Badge>
   );
 };

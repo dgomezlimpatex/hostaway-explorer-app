@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import * as z from 'zod';
+import { clientSchema, ClientFormData } from './forms/ClientFormSchema';
 import { 
   Dialog, 
   DialogContent, 
@@ -27,20 +27,6 @@ import { useUpdateClient } from '@/hooks/useClients';
 import { CreateClientData, Client } from '@/types/client';
 import { Edit } from 'lucide-react';
 
-const clientSchema = z.object({
-  nombre: z.string().min(1, 'El nombre es obligatorio'),
-  cifNif: z.string().min(1, 'El CIF/NIF es obligatorio'),
-  telefono: z.string().min(1, 'El teléfono es obligatorio'),
-  email: z.string().email('Email inválido'),
-  direccionFacturacion: z.string().min(1, 'La dirección es obligatoria'),
-  codigoPostal: z.string().min(1, 'El código postal es obligatorio'),
-  ciudad: z.string().min(1, 'La ciudad es obligatoria'),
-  tipoServicio: z.enum(['mantenimiento', 'cristaleria', 'airbnb', 'otro']),
-  metodoPago: z.enum(['transferencia', 'efectivo', 'bizum']),
-  supervisor: z.string().min(1, 'El supervisor es obligatorio'),
-  factura: z.boolean(),
-});
-
 interface EditClientModalProps {
   client: Client;
   trigger: React.ReactNode;
@@ -50,7 +36,7 @@ export const EditClientModal = ({ client, trigger }: EditClientModalProps) => {
   const [open, setOpen] = useState(false);
   const updateClient = useUpdateClient();
 
-  const form = useForm<CreateClientData>({
+  const form = useForm<ClientFormData>({
     resolver: zodResolver(clientSchema),
     defaultValues: {
       nombre: client.nombre,
@@ -67,7 +53,7 @@ export const EditClientModal = ({ client, trigger }: EditClientModalProps) => {
     },
   });
 
-  const onSubmit = (data: CreateClientData) => {
+  const onSubmit = (data: ClientFormData) => {
     updateClient.mutate({ id: client.id, updates: data }, {
       onSuccess: () => {
         setOpen(false);
@@ -244,20 +230,40 @@ export const EditClientModal = ({ client, trigger }: EditClientModalProps) => {
                           className="flex flex-col space-y-1"
                         >
                           <div className="flex items-center space-x-2">
-                            <RadioGroupItem value="mantenimiento" id="edit-mantenimiento" />
-                            <Label htmlFor="edit-mantenimiento">Mantenimiento</Label>
+                            <RadioGroupItem value="limpieza-mantenimiento" id="edit-limpieza-mantenimiento" />
+                            <Label htmlFor="edit-limpieza-mantenimiento">Limpieza y Mantenimiento</Label>
                           </div>
                           <div className="flex items-center space-x-2">
-                            <RadioGroupItem value="cristaleria" id="edit-cristaleria" />
-                            <Label htmlFor="edit-cristaleria">Cristalería</Label>
+                            <RadioGroupItem value="mantenimiento-cristaleria" id="edit-mantenimiento-cristaleria" />
+                            <Label htmlFor="edit-mantenimiento-cristaleria">Mantenimiento Cristalería</Label>
                           </div>
                           <div className="flex items-center space-x-2">
-                            <RadioGroupItem value="airbnb" id="edit-airbnb" />
-                            <Label htmlFor="edit-airbnb">Airbnb</Label>
+                            <RadioGroupItem value="mantenimiento-airbnb" id="edit-mantenimiento-airbnb" />
+                            <Label htmlFor="edit-mantenimiento-airbnb">Mantenimiento Airbnb</Label>
                           </div>
                           <div className="flex items-center space-x-2">
-                            <RadioGroupItem value="otro" id="edit-otro" />
-                            <Label htmlFor="edit-otro">Otro</Label>
+                            <RadioGroupItem value="limpieza-puesta-punto" id="edit-limpieza-puesta-punto" />
+                            <Label htmlFor="edit-limpieza-puesta-punto">Limpieza Puesta a Punto</Label>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <RadioGroupItem value="limpieza-final-obra" id="edit-limpieza-final-obra" />
+                            <Label htmlFor="edit-limpieza-final-obra">Limpieza Final de Obra</Label>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <RadioGroupItem value="check-in" id="edit-check-in" />
+                            <Label htmlFor="edit-check-in">Check-in</Label>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <RadioGroupItem value="desplazamiento" id="edit-desplazamiento" />
+                            <Label htmlFor="edit-desplazamiento">Desplazamiento</Label>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <RadioGroupItem value="limpieza-especial" id="edit-limpieza-especial" />
+                            <Label htmlFor="edit-limpieza-especial">Limpieza Especial</Label>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <RadioGroupItem value="trabajo-extraordinario" id="edit-trabajo-extraordinario" />
+                            <Label htmlFor="edit-trabajo-extraordinario">Trabajo Extraordinario</Label>
                           </div>
                         </RadioGroup>
                       </FormControl>
