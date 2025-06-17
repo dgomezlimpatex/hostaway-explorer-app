@@ -5,8 +5,8 @@ export const generateLaundryReport = (tasks: any[], properties: any[], clients: 
   return tasks
     .filter(task => task.status !== 'completed') // Solo tareas pendientes y en progreso
     .map(task => {
-      const property = properties.find(p => p.nombre === task.property);
-      const client = property ? clients.find(c => c.id === property.clienteId) : null;
+      const property = properties.find(p => p.id === task.propiedad_id || p.nombre === task.property);
+      const client = property ? clients.find(c => c.id === property.cliente_id) : null;
       
       // Calcular textiles necesarios basado en la propiedad
       const textiles = property ? {
@@ -25,6 +25,30 @@ export const generateLaundryReport = (tasks: any[], properties: any[], clients: 
 
       const totalItems = Object.values(textiles).reduce((sum, count) => sum + count, 0);
 
+      // Formatear tipo de servicio
+      const formatServiceType = (type: string) => {
+        if (type?.toLowerCase().includes('mantenimiento') && type?.toLowerCase().includes('airbnb')) {
+          return 'Mantenimiento Airbnb';
+        }
+        return type || 'Mantenimiento Airbnb';
+      };
+
+      // Formatear estado de la tarea
+      const formatTaskStatus = (status: string) => {
+        switch (status) {
+          case 'completed': return 'Completada';
+          case 'in-progress': return 'En Progreso';
+          case 'cancelled': return 'Cancelada';
+          default: return 'Pendiente';
+        }
+      };
+
+      // Generar incidencias automáticamente con nombre y código del piso
+      const generateIncidencias = () => {
+        const propertyInfo = property ? `${property.nombre} (${property.codigo})` : task.property;
+        return `Servicio realizado en: ${propertyInfo}`;
+      };
+
       return {
         id: task.id,
         created_at: task.created_at || new Date().toISOString(),
@@ -38,6 +62,16 @@ export const generateLaundryReport = (tasks: any[], properties: any[], clients: 
         status: task.status,
         cleaner: task.cleaner || 'Sin asignar',
         client: client?.nombre || 'Cliente desconocido',
+        // Nuevos campos requeridos por TaskReport
+        serviceDate: task.date,
+        supervisor: task.supervisor || client?.supervisor || 'Sin supervisor',
+        serviceType: formatServiceType(task.type),
+        taskStatus: formatTaskStatus(task.status),
+        totalCost: task.coste || property?.coste_servicio || 0,
+        workTeam: task.cleaner || 'Sin asignar',
+        paymentMethod: task.metodo_pago || client?.metodo_pago || 'Sin especificar',
+        incidents: generateIncidencias(),
+        // Campos específicos de LaundryReport
         textiles,
         bedrooms: property?.numeroCamas || 0,
         bathrooms: property?.numeroBanos || 0,
