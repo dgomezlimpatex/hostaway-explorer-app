@@ -26,8 +26,10 @@ export const generateTaskReport = (tasks: any[], properties: any[], clients: any
 
     // Generar incidencias automáticamente con nombre y código del piso
     const generateIncidencias = () => {
-      const propertyInfo = property ? `${property.nombre} (${property.codigo})` : task.property;
-      return `Servicio realizado en: ${propertyInfo}`;
+      if (property) {
+        return `${property.nombre} (${property.codigo})`;
+      }
+      return task.property || 'Propiedad no especificada';
     };
 
     return {
@@ -45,12 +47,12 @@ export const generateTaskReport = (tasks: any[], properties: any[], clients: any
       client: client?.nombre || 'Cliente desconocido',
       // Nuevos campos para el CSV
       serviceDate: task.date,
-      supervisor: task.supervisor || client?.supervisor || 'Sin supervisor',
+      supervisor: client?.supervisor || 'Sin supervisor',
       serviceType: formatServiceType(task.type),
       taskStatus: formatTaskStatus(task.status),
       totalCost: task.coste || property?.coste_servicio || 0,
       workTeam: task.cleaner || 'Sin asignar',
-      paymentMethod: task.metodo_pago || client?.metodo_pago || 'Sin especificar',
+      paymentMethod: client?.metodoPago || 'Sin especificar',
       incidents: generateIncidencias()
     };
   });
