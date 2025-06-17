@@ -11,6 +11,15 @@ export interface TaskReport extends BaseEntity, TimeRange {
   status: string;
   cleaner: string;
   client: string;
+  // Nuevos campos para exportación CSV
+  serviceDate: string;
+  supervisor: string;
+  serviceType: string;
+  taskStatus: string;
+  totalCost: number;
+  workTeam: string;
+  paymentMethod: string;
+  incidents: string;
 }
 
 export interface BillingReport extends BaseEntity, ServiceInfo {

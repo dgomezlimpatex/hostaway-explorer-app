@@ -42,29 +42,27 @@ export const exportToCSV = (
 };
 
 const generateTasksCSV = (data: TaskReport[]): string => {
+  // Nuevos headers en el orden solicitado
   const headers = [
-    'Propiedad',
-    'Dirección',
-    'Fecha',
-    'Hora Inicio',
-    'Hora Fin',
-    'Tipo',
-    'Estado',
-    'Trabajador',
-    'Cliente'
+    'Fecha del servicio',
+    'Supervisor',
+    'Tipo de servicio',
+    'Estado de la tarea',
+    'Coste total del servicio',
+    'Equipo de trabajo',
+    'Método de pago',
+    'Incidencias'
   ];
 
   const rows = data.map(task => [
-    task.property,
-    task.address,
-    task.date,
-    task.startTime,
-    task.endTime,
-    task.type,
-    task.status === 'completed' ? 'Completada' :
-    task.status === 'in-progress' ? 'En Progreso' : 'Pendiente',
-    task.cleaner,
-    task.client
+    task.serviceDate,
+    task.supervisor,
+    task.serviceType,
+    task.taskStatus,
+    `€${task.totalCost.toFixed(2)}`,
+    task.workTeam,
+    task.paymentMethod,
+    task.incidents
   ]);
 
   return [headers, ...rows].map(row => 
