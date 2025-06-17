@@ -1,4 +1,3 @@
-
 import { TaskReport, BillingReport, SummaryReport, LaundryReport } from '@/types/reports';
 
 type ReportData = TaskReport[] | BillingReport[] | SummaryReport | LaundryReport[];
@@ -42,10 +41,11 @@ export const exportToCSV = (
 };
 
 const generateTasksCSV = (data: TaskReport[]): string => {
-  // Nuevos headers en el orden solicitado
+  // Headers actualizados con "Cliente" entre "Supervisor" y "Tipo de servicio"
   const headers = [
     'Fecha del servicio',
     'Supervisor',
+    'Cliente',
     'Tipo de servicio',
     'Estado de la tarea',
     'Coste total del servicio',
@@ -57,6 +57,7 @@ const generateTasksCSV = (data: TaskReport[]): string => {
   const rows = data.map(task => [
     task.serviceDate,
     task.supervisor,
+    task.client,
     task.serviceType,
     task.taskStatus,
     `€${task.totalCost.toFixed(2)}`,
