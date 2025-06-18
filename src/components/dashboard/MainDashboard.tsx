@@ -1,5 +1,6 @@
 
 import { NavigationCard } from './NavigationCard';
+import { HostawayIntegrationWidget } from '@/components/hostaway/HostawayIntegrationWidget';
 import { 
   Calendar, 
   CheckSquare, 
@@ -96,15 +97,20 @@ export const MainDashboard = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
-      <div className="max-w-7xl mx-auto">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900">
+      <div className="max-w-7xl mx-auto px-6 py-8">
         <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-gray-900 mb-4">
+          <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-4">
             Sistema de Gestión de Limpieza
           </h1>
-          <p className="text-xl text-gray-600">
+          <p className="text-xl text-gray-600 dark:text-gray-300">
             Gestiona eficientemente tus operaciones de limpieza
           </p>
+        </div>
+
+        {/* Widget de Hostaway */}
+        <div className="mb-8">
+          <HostawayIntegrationWidget />
         </div>
         
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
