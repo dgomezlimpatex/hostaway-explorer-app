@@ -17,57 +17,81 @@ export const MainDashboard = () => {
       title: 'Calendario',
       description: 'Gestiona y visualiza todas las tareas de limpieza',
       icon: Calendar,
-      href: '/calendar',
-      color: 'bg-blue-500'
+      to: '/calendar',
+      gradientFrom: 'from-blue-500',
+      gradientTo: 'to-blue-600',
+      iconColor: 'text-white',
+      hoverBorderColor: 'hover:border-blue-200'
     },
     {
       title: 'Tareas',
       description: 'Lista completa de tareas y gestión avanzada',
       icon: CheckSquare,
-      href: '/tasks',
-      color: 'bg-green-500'
+      to: '/tasks',
+      gradientFrom: 'from-green-500',
+      gradientTo: 'to-green-600',
+      iconColor: 'text-white',
+      hoverBorderColor: 'hover:border-green-200'
     },
     {
       title: 'Clientes',
       description: 'Gestión de clientes y su información',
       icon: Users,
-      href: '/clients',
-      color: 'bg-purple-500'
+      to: '/clients',
+      gradientFrom: 'from-purple-500',
+      gradientTo: 'to-purple-600',
+      iconColor: 'text-white',
+      hoverBorderColor: 'hover:border-purple-200'
     },
     {
       title: 'Propiedades',
       description: 'Administra propiedades y sus características',
       icon: Building2,
-      href: '/properties',
-      color: 'bg-orange-500'
+      to: '/properties',
+      gradientFrom: 'from-orange-500',
+      gradientTo: 'to-orange-600',
+      iconColor: 'text-white',
+      hoverBorderColor: 'hover:border-orange-200'
     },
     {
       title: 'Personal',
       description: 'Gestión del equipo de limpieza',
       icon: UserCheck,
-      href: '/workers',
-      color: 'bg-teal-500'
+      to: '/workers',
+      gradientFrom: 'from-teal-500',
+      gradientTo: 'to-teal-600',
+      iconColor: 'text-white',
+      hoverBorderColor: 'hover:border-teal-200'
     },
     {
       title: 'Asignación Automática',
       description: 'Sistema inteligente de asignación de tareas',
       icon: Settings,
-      href: '/property-groups',
-      color: 'bg-indigo-500'
+      to: '/property-groups',
+      gradientFrom: 'from-indigo-500',
+      gradientTo: 'to-indigo-600',
+      iconColor: 'text-white',
+      hoverBorderColor: 'hover:border-indigo-200'
     },
     {
       title: 'Reportes',
       description: 'Análisis y reportes del negocio',
       icon: BarChart3,
-      href: '/reports',
-      color: 'bg-pink-500'
+      to: '/reports',
+      gradientFrom: 'from-pink-500',
+      gradientTo: 'to-pink-600',
+      iconColor: 'text-white',
+      hoverBorderColor: 'hover:border-pink-200'
     },
     {
       title: 'Integración Hostaway',
       description: 'Sincronización y logs de Hostaway',
       icon: FileText,
-      href: '/hostaway-sync-logs',
-      color: 'bg-gray-500'
+      to: '/hostaway-sync-logs',
+      gradientFrom: 'from-gray-500',
+      gradientTo: 'to-gray-600',
+      iconColor: 'text-white',
+      hoverBorderColor: 'hover:border-gray-200'
     }
   ];
 
@@ -85,7 +109,7 @@ export const MainDashboard = () => {
         
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {navigationItems.map((item) => (
-            <NavigationCard key={item.href} {...item} />
+            <NavigationCard key={item.to} {...item} />
           ))}
         </div>
       </div>

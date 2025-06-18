@@ -23,7 +23,7 @@ export const PropertyGroupDetails = ({ group, onEdit, onUpdate }: PropertyGroupD
   const { data: propertyAssignments = [] } = usePropertyAssignments(group.id);
   const { data: cleanerAssignments = [] } = useCleanerAssignments(group.id);
   const { data: allProperties = [] } = useProperties();
-  const { data: allCleaners = [] } = useCleaners();
+  const { cleaners: allCleaners = [] } = useCleaners();
 
   const assignedProperties = allProperties.filter(p => 
     propertyAssignments.some(pa => pa.propertyId === p.id)

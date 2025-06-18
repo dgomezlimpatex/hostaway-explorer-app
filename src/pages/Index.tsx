@@ -29,15 +29,7 @@ const Index = () => {
     );
   }
 
-  return (
-    <MainDashboard
-      userFullName={profile?.full_name}
-      userEmail={profile?.email || user.email}
-      userRole={userRole}
-      canAccessManager={canAccessManager}
-      canAccessSupervisor={canAccessSupervisor}
-    />
-  );
+  return <MainDashboard />;
 };
 
 export default Index;
