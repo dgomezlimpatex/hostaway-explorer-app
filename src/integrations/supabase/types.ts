@@ -9,6 +9,162 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      assignment_patterns: {
+        Row: {
+          avg_completion_time_minutes: number | null
+          cleaner_id: string | null
+          day_of_week: number | null
+          hour_of_day: number | null
+          id: string
+          last_updated: string | null
+          preference_score: number | null
+          property_group_id: string | null
+          sample_size: number | null
+          success_rate: number | null
+        }
+        Insert: {
+          avg_completion_time_minutes?: number | null
+          cleaner_id?: string | null
+          day_of_week?: number | null
+          hour_of_day?: number | null
+          id?: string
+          last_updated?: string | null
+          preference_score?: number | null
+          property_group_id?: string | null
+          sample_size?: number | null
+          success_rate?: number | null
+        }
+        Update: {
+          avg_completion_time_minutes?: number | null
+          cleaner_id?: string | null
+          day_of_week?: number | null
+          hour_of_day?: number | null
+          id?: string
+          last_updated?: string | null
+          preference_score?: number | null
+          property_group_id?: string | null
+          sample_size?: number | null
+          success_rate?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "assignment_patterns_cleaner_id_fkey"
+            columns: ["cleaner_id"]
+            isOneToOne: false
+            referencedRelation: "cleaners"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "assignment_patterns_property_group_id_fkey"
+            columns: ["property_group_id"]
+            isOneToOne: false
+            referencedRelation: "property_groups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      auto_assignment_logs: {
+        Row: {
+          algorithm_used: string | null
+          assigned_cleaner_id: string | null
+          assignment_reason: string | null
+          confidence_score: number | null
+          created_at: string | null
+          id: string
+          property_group_id: string | null
+          task_id: string | null
+          was_manual_override: boolean | null
+        }
+        Insert: {
+          algorithm_used?: string | null
+          assigned_cleaner_id?: string | null
+          assignment_reason?: string | null
+          confidence_score?: number | null
+          created_at?: string | null
+          id?: string
+          property_group_id?: string | null
+          task_id?: string | null
+          was_manual_override?: boolean | null
+        }
+        Update: {
+          algorithm_used?: string | null
+          assigned_cleaner_id?: string | null
+          assignment_reason?: string | null
+          confidence_score?: number | null
+          created_at?: string | null
+          id?: string
+          property_group_id?: string | null
+          task_id?: string | null
+          was_manual_override?: boolean | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "auto_assignment_logs_assigned_cleaner_id_fkey"
+            columns: ["assigned_cleaner_id"]
+            isOneToOne: false
+            referencedRelation: "cleaners"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "auto_assignment_logs_property_group_id_fkey"
+            columns: ["property_group_id"]
+            isOneToOne: false
+            referencedRelation: "property_groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "auto_assignment_logs_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      auto_assignment_rules: {
+        Row: {
+          algorithm: string
+          buffer_time_minutes: number | null
+          consider_travel_time: boolean | null
+          created_at: string | null
+          id: string
+          learn_from_history: boolean | null
+          max_concurrent_tasks: number | null
+          property_group_id: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          algorithm?: string
+          buffer_time_minutes?: number | null
+          consider_travel_time?: boolean | null
+          created_at?: string | null
+          id?: string
+          learn_from_history?: boolean | null
+          max_concurrent_tasks?: number | null
+          property_group_id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          algorithm?: string
+          buffer_time_minutes?: number | null
+          consider_travel_time?: boolean | null
+          created_at?: string | null
+          id?: string
+          learn_from_history?: boolean | null
+          max_concurrent_tasks?: number | null
+          property_group_id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "auto_assignment_rules_property_group_id_fkey"
+            columns: ["property_group_id"]
+            isOneToOne: false
+            referencedRelation: "property_groups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       cleaner_availability: {
         Row: {
           cleaner_id: string
@@ -46,6 +202,57 @@ export type Database = {
             columns: ["cleaner_id"]
             isOneToOne: false
             referencedRelation: "cleaners"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cleaner_group_assignments: {
+        Row: {
+          cleaner_id: string | null
+          created_at: string | null
+          estimated_travel_time_minutes: number | null
+          id: string
+          is_active: boolean
+          max_tasks_per_day: number | null
+          priority: number
+          property_group_id: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          cleaner_id?: string | null
+          created_at?: string | null
+          estimated_travel_time_minutes?: number | null
+          id?: string
+          is_active?: boolean
+          max_tasks_per_day?: number | null
+          priority: number
+          property_group_id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          cleaner_id?: string | null
+          created_at?: string | null
+          estimated_travel_time_minutes?: number | null
+          id?: string
+          is_active?: boolean
+          max_tasks_per_day?: number | null
+          priority?: number
+          property_group_id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cleaner_group_assignments_cleaner_id_fkey"
+            columns: ["cleaner_id"]
+            isOneToOne: false
+            referencedRelation: "cleaners"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cleaner_group_assignments_property_group_id_fkey"
+            columns: ["property_group_id"]
+            isOneToOne: false
+            referencedRelation: "property_groups"
             referencedColumns: ["id"]
           },
         ]
@@ -386,6 +593,78 @@ export type Database = {
           },
         ]
       }
+      property_group_assignments: {
+        Row: {
+          created_at: string | null
+          id: string
+          property_group_id: string | null
+          property_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          property_group_id?: string | null
+          property_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          property_group_id?: string | null
+          property_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "property_group_assignments_property_group_id_fkey"
+            columns: ["property_group_id"]
+            isOneToOne: false
+            referencedRelation: "property_groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "property_group_assignments_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: true
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      property_groups: {
+        Row: {
+          auto_assign_enabled: boolean
+          check_in_time: string
+          check_out_time: string
+          created_at: string | null
+          description: string | null
+          id: string
+          is_active: boolean
+          name: string
+          updated_at: string | null
+        }
+        Insert: {
+          auto_assign_enabled?: boolean
+          check_in_time?: string
+          check_out_time?: string
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          updated_at?: string | null
+        }
+        Update: {
+          auto_assign_enabled?: boolean
+          check_in_time?: string
+          check_out_time?: string
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       recurring_tasks: {
         Row: {
           check_in: string
@@ -645,6 +924,8 @@ export type Database = {
       tasks: {
         Row: {
           address: string
+          assignment_confidence: number | null
+          auto_assigned: boolean | null
           background_color: string | null
           check_in: string
           check_out: string
@@ -668,6 +949,8 @@ export type Database = {
         }
         Insert: {
           address: string
+          assignment_confidence?: number | null
+          auto_assigned?: boolean | null
           background_color?: string | null
           check_in: string
           check_out: string
@@ -691,6 +974,8 @@ export type Database = {
         }
         Update: {
           address?: string
+          assignment_confidence?: number | null
+          auto_assigned?: boolean | null
           background_color?: string | null
           check_in?: string
           check_out?: string
