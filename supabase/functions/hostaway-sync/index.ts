@@ -1,190 +1,157 @@
 
-import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
-import { getHostawayToken, fetchAllHostawayReservations } from './hostaway-api.ts';
-import { getPropertiesWithHostaway, createSyncLog, updateSyncLog } from './database-operations.ts';
-import { sendSyncSummaryEmail } from './email-service.ts';
-import { getDateRange, logDateInfo } from './date-utils.ts';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.50.0';
+import { HostawayReservation, SyncStats } from './types.ts';
+import { getHostawayToken, getReservations } from './hostaway-api.ts';
 import { processReservation } from './reservation-processor.ts';
-import { SyncStats } from './types.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-async function syncReservations() {
-  const syncId = crypto.randomUUID();
-  console.log(`🚀 Iniciando sincronización ${syncId}`);
-
-  const { today, tomorrow, endDate, madridTime } = getDateRange();
-  logDateInfo(today, tomorrow, madridTime);
-
-  // Verificar cuántas propiedades tienen hostaway_listing_id
-  await getPropertiesWithHostaway();
-
-  // Crear log de sincronización
-  const syncLog = await createSyncLog();
-
-  let stats: SyncStats = {
-    reservations_processed: 0,
-    new_reservations: 0,
-    updated_reservations: 0,
-    cancelled_reservations: 0,
-    tasks_created: 0,
-    errors: [],
-    tasks_details: [], // Nuevo campo para detalles de tareas
-    reservations_details: [] // Nuevo campo para detalles de reservas
-  };
-
-  try {
-    const token = await getHostawayToken();
-    
-    console.log(`📅 RANGO DE BÚSQUEDA MEJORADO: desde ${today} hasta ${endDate} (30 días desde hoy)`);
-    console.log(`🎯 Nota: Se buscarán reservas tanto por fecha de llegada como de salida para capturar todas las posibles`);
-
-    // Obtener reservas para los próximos 30 días (mejorado para capturar tanto llegadas como salidas)
-    const reservations = await fetchAllHostawayReservations(token, today, endDate);
-
-    console.log(`📊 TOTAL DE RESERVAS OBTENIDAS: ${reservations.length}`);
-
-    // Análisis detallado para el sábado 14 de junio (día mencionado por el usuario)
-    const saturdayReservations = reservations.filter(r => 
-      r.departureDate === '2025-06-14' || r.arrivalDate === '2025-06-14'
-    );
-    console.log(`🎯 ANÁLISIS ESPECÍFICO PARA SÁBADO 14/06/2025:`);
-    console.log(`   - Total reservas encontradas: ${saturdayReservations.length}`);
-    console.log(`   - Detalle por status:`);
-    
-    const statusCount = {};
-    saturdayReservations.forEach(r => {
-      statusCount[r.status] = (statusCount[r.status] || 0) + 1;
-      console.log(`     • ${r.id}: ${r.status} | ${r.arrivalDate} → ${r.departureDate} | ${r.listingMapId} | ${r.guestName}`);
-    });
-    
-    Object.entries(statusCount).forEach(([status, count]) => {
-      console.log(`   - ${status}: ${count} reservas`);
-    });
-
-    // Filtrar reservas para mañana para debugging específico
-    const tomorrowReservations = reservations.filter(r => 
-      r.departureDate === tomorrow || r.arrivalDate === tomorrow
-    );
-    console.log(`📅 Reservas para mañana (${tomorrow}): ${tomorrowReservations.length}`);
-    tomorrowReservations.forEach(r => {
-      console.log(`  - Reserva ${r.id}: llegada ${r.arrivalDate}, salida ${r.departureDate}, listingMapId: ${r.listingMapId}, status: ${r.status}, guest: ${r.guestName}`);
-    });
-
-    // Filtrar y mostrar todas las reservas para hoy y mañana
-    const todayAndTomorrowReservations = reservations.filter(r => 
-      r.departureDate === today || r.departureDate === tomorrow ||
-      r.arrivalDate === today || r.arrivalDate === tomorrow
-    );
-    console.log(`📋 Reservas para hoy y mañana (${today} y ${tomorrow}): ${todayAndTomorrowReservations.length}`);
-    todayAndTomorrowReservations.forEach(r => {
-      console.log(`  📍 Reserva ${r.id}: ${r.arrivalDate} → ${r.departureDate}, listing: ${r.listingMapId}, status: ${r.status}, guest: ${r.guestName}`);
-    });
-
-    // Procesar todas las reservas
-    console.log(`🔄 INICIANDO PROCESAMIENTO DE ${reservations.length} RESERVAS...`);
-    let tasksCreatedCount = 0;
-    for (const [index, reservation] of reservations.entries()) {
-      try {
-        const statsBefore = { ...stats };
-        stats.reservations_processed++;
-        
-        // Pasar stats por referencia para que se actualice con detalles
-        await processReservation(reservation, stats, index, reservations.length);
-        
-        // Contabilizar si se creó una tarea
-        if (stats.tasks_created > statsBefore.tasks_created) {
-          tasksCreatedCount++;
-          console.log(`✅ Tarea #${tasksCreatedCount} creada para reserva ${reservation.id}`);
-        }
-      } catch (error) {
-        const errorMsg = `Error procesando reserva ${reservation.id} (listing: ${reservation.listingMapId}, guest: ${reservation.guestName}): ${error.message}`;
-        console.error(`❌ ${errorMsg}`);
-        stats.errors.push(errorMsg);
-      }
-    }
-
-    // Resumen final con enfoque en el sábado 14
-    console.log(`🎯 RESUMEN FINAL PARA SÁBADO 14/06/2025:`);
-    const saturday14Tasks = saturdayReservations.filter(r => {
-      const validStatuses = ['confirmed', 'new', 'modified', 'awaiting_payment'];
-      return validStatuses.includes(r.status.toLowerCase()) || 
-             !['cancelled', 'inquiry', 'declined', 'expired'].includes(r.status.toLowerCase());
-    });
-    console.log(`   - Reservas que deberían generar tareas: ${saturday14Tasks.length}`);
-    saturday14Tasks.forEach(r => {
-      console.log(`     • ${r.id} (${r.status}): ${r.guestName} en listing ${r.listingMapId}`);
-    });
-
-    // Actualizar log de sincronización con información detallada
-    await updateSyncLog(syncLog.id, {
-      sync_completed_at: new Date().toISOString(),
-      status: 'completed',
-      ...stats,
-      tasks_details: stats.tasks_details || [],
-      reservations_details: stats.reservations_details || []
-    });
-
-    // Enviar email resumen
-    await sendSyncSummaryEmail(stats);
-
-    console.log(`🎉 Sincronización ${syncId} completada:`, stats);
-    console.log(`📊 ESTADÍSTICAS FINALES:`);
-    console.log(`   - Reservas procesadas: ${stats.reservations_processed}`);
-    console.log(`   - Nuevas reservas: ${stats.new_reservations}`);
-    console.log(`   - Reservas actualizadas: ${stats.updated_reservations}`);
-    console.log(`   - Tareas creadas: ${stats.tasks_created}`);
-    console.log(`   - Errores: ${stats.errors.length}`);
-    
-    return { success: true, stats };
-
-  } catch (error) {
-    console.error(`💥 Error en sincronización ${syncId}:`, error);
-    
-    // Actualizar log con error
-    await updateSyncLog(syncLog.id, {
-      sync_completed_at: new Date().toISOString(),
-      status: 'failed',
-      ...stats,
-      errors: [...stats.errors, error.message]
-    });
-
-    throw error;
-  }
-}
-
-serve(async (req) => {
-  // Handle CORS preflight requests
+Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    console.log('🚀 Iniciando sincronización con Hostaway...');
-    const result = await syncReservations();
-    
-    return new Response(JSON.stringify(result), {
-      status: 200,
-      headers: {
-        'Content-Type': 'application/json',
-        ...corsHeaders,
-      },
-    });
+    const supabase = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+    );
+
+    // Iniciar log de sincronización
+    const { data: syncLog, error: logError } = await supabase
+      .from('hostaway_sync_logs')
+      .insert({
+        sync_started_at: new Date().toISOString(),
+        status: 'running'
+      })
+      .select()
+      .single();
+
+    if (logError) {
+      console.error('Error creating sync log:', logError);
+      throw logError;
+    }
+
+    console.log(`🚀 Iniciando sincronización con Hostaway (Log ID: ${syncLog.id})`);
+
+    const stats: SyncStats = {
+      reservations_processed: 0,
+      new_reservations: 0,
+      updated_reservations: 0,
+      cancelled_reservations: 0,
+      tasks_created: 0,
+      errors: [],
+      tasks_details: [],
+      reservations_details: []
+    };
+
+    try {
+      // Obtener token de acceso
+      console.log('🔑 Obteniendo token de acceso de Hostaway...');
+      const accessToken = await getHostawayToken();
+      console.log('✅ Token obtenido exitosamente');
+
+      // Obtener reservas de Hostaway
+      console.log('📥 Obteniendo reservas de Hostaway...');
+      const reservations = await getReservations(accessToken);
+      console.log(`📊 Obtenidas ${reservations.length} reservas de Hostaway`);
+
+      // Procesar cada reserva
+      for (let i = 0; i < reservations.length; i++) {
+        const reservation = reservations[i];
+        try {
+          await processReservation(reservation, stats, i, reservations.length);
+          stats.reservations_processed++;
+        } catch (error) {
+          console.error(`❌ Error procesando reserva ${reservation.id}:`, error);
+          stats.errors.push(`Error en reserva ${reservation.id}: ${error.message}`);
+        }
+      }
+
+      // Ejecutar asignación automática para las nuevas tareas
+      if (stats.tasks_created > 0) {
+        console.log(`🤖 Ejecutando asignación automática para ${stats.tasks_created} nuevas tareas...`);
+        
+        // Obtener las tareas creadas en esta sincronización
+        const taskIds = stats.tasks_details?.map(td => td.task_id) || [];
+        
+        if (taskIds.length > 0) {
+          try {
+            // Llamar al servicio de asignación automática
+            const { error: autoAssignError } = await supabase.functions.invoke('auto-assign-tasks', {
+              body: { taskIds }
+            });
+
+            if (autoAssignError) {
+              console.error('❌ Error en asignación automática:', autoAssignError);
+              stats.errors.push(`Error en asignación automática: ${autoAssignError.message}`);
+            } else {
+              console.log('✅ Asignación automática completada');
+            }
+          } catch (error) {
+            console.error('❌ Error ejecutando asignación automática:', error);
+            stats.errors.push(`Error ejecutando asignación automática: ${error.message}`);
+          }
+        }
+      }
+
+      // Actualizar log con resultados exitosos
+      await supabase
+        .from('hostaway_sync_logs')
+        .update({
+          sync_completed_at: new Date().toISOString(),
+          status: 'completed',
+          ...stats
+        })
+        .eq('id', syncLog.id);
+
+      console.log('✅ Sincronización completada exitosamente');
+      console.log(`📊 Estadísticas finales:`, stats);
+
+      return new Response(JSON.stringify({
+        success: true,
+        message: 'Sincronización completada exitosamente',
+        stats
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 200
+      });
+
+    } catch (error) {
+      console.error('❌ Error durante la sincronización:', error);
+      stats.errors.push(`Error general: ${error.message}`);
+
+      // Actualizar log con error
+      await supabase
+        .from('hostaway_sync_logs')
+        .update({
+          sync_completed_at: new Date().toISOString(),
+          status: 'error',
+          ...stats
+        })
+        .eq('id', syncLog.id);
+
+      return new Response(JSON.stringify({
+        success: false,
+        error: error.message,
+        stats
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 500
+      });
+    }
+
   } catch (error) {
-    console.error('💥 Error en la sincronización:', error);
-    
-    return new Response(JSON.stringify({ 
-      error: error.message,
-      success: false 
+    console.error('❌ Error crítico:', error);
+    return new Response(JSON.stringify({
+      success: false,
+      error: error.message
     }), {
-      status: 500,
-      headers: {
-        'Content-Type': 'application/json',
-        ...corsHeaders,
-      },
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      status: 500
     });
   }
 });
