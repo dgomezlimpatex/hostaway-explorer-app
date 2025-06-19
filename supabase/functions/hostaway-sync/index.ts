@@ -1,7 +1,7 @@
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.50.0';
 import { HostawayReservation, SyncStats } from './types.ts';
-import { getHostawayToken, getReservations } from './hostaway-api.ts';
+import { getHostawayToken, fetchAllHostawayReservations } from './hostaway-api.ts';
 import { processReservation } from './reservation-processor.ts';
 
 const corsHeaders = {
@@ -54,9 +54,17 @@ Deno.serve(async (req) => {
       const accessToken = await getHostawayToken();
       console.log('✅ Token obtenido exitosamente');
 
+      // Calcular rango de fechas para obtener reservas
+      const now = new Date();
+      const startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000); // 30 días atrás
+      const endDate = new Date(now.getTime() + 60 * 24 * 60 * 60 * 1000); // 60 días adelante
+      
+      const startDateStr = startDate.toISOString().split('T')[0];
+      const endDateStr = endDate.toISOString().split('T')[0];
+
       // Obtener reservas de Hostaway
-      console.log('📥 Obteniendo reservas de Hostaway...');
-      const reservations = await getReservations(accessToken);
+      console.log(`📥 Obteniendo reservas de Hostaway desde ${startDateStr} hasta ${endDateStr}...`);
+      const reservations = await fetchAllHostawayReservations(accessToken, startDateStr, endDateStr);
       console.log(`📊 Obtenidas ${reservations.length} reservas de Hostaway`);
 
       // Procesar cada reserva
