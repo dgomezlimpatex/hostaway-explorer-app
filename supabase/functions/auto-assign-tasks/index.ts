@@ -68,6 +68,7 @@ Deno.serve(async (req) => {
     const { taskIds } = await req.json();
 
     if (!taskIds || !Array.isArray(taskIds)) {
+      console.error('❌ taskIds array is required');
       throw new Error('taskIds array is required');
     }
 
@@ -87,10 +88,12 @@ Deno.serve(async (req) => {
           .single();
 
         if (taskError || !task) {
-          console.error(`❌ Tarea no encontrada: ${taskId}`);
+          console.error(`❌ Tarea no encontrada: ${taskId}`, taskError);
           results.push({ taskId, success: false, reason: 'Task not found' });
           continue;
         }
+
+        console.log(`📋 Tarea encontrada: ${task.property} - ${task.date} (propertyId: ${task.propiedad_id})`);
 
         // Mapear datos de la base de datos al formato esperado
         const mappedTask: Task = {
@@ -131,6 +134,8 @@ Deno.serve(async (req) => {
           continue;
         }
 
+        console.log(`🔍 Buscando grupo para propiedad: ${mappedTask.propertyId}`);
+
         const { data: groupAssignment, error: groupError } = await supabase
           .from('property_group_assignments')
           .select(`
@@ -140,7 +145,7 @@ Deno.serve(async (req) => {
           .single();
 
         if (groupError || !groupAssignment) {
-          console.log(`⚠️ Propiedad ${mappedTask.propertyId} no está en ningún grupo`);
+          console.log(`⚠️ Propiedad ${mappedTask.propertyId} no está en ningún grupo con auto-asignación`);
           results.push({ taskId, success: false, reason: 'Property not in auto-assignment group' });
           continue;
         }
@@ -157,6 +162,8 @@ Deno.serve(async (req) => {
           createdAt: group.created_at,
           updatedAt: group.updated_at
         };
+
+        console.log(`🏢 Grupo encontrado: ${propertyGroup.name} (auto-assign: ${propertyGroup.autoAssignEnabled})`);
 
         if (!propertyGroup.autoAssignEnabled) {
           console.log(`⚠️ Grupo ${propertyGroup.name} no tiene auto-asignación habilitada`);
@@ -178,6 +185,8 @@ Deno.serve(async (req) => {
           continue;
         }
 
+        console.log(`👥 Encontradas ${cleanerAssignments.length} trabajadoras en el grupo`);
+
         // 5. Obtener tareas existentes del día para verificar disponibilidad
         const { data: existingTasks, error: tasksError } = await supabase
           .from('tasks')
@@ -189,6 +198,8 @@ Deno.serve(async (req) => {
           results.push({ taskId, success: false, reason: 'Error fetching existing tasks' });
           continue;
         }
+
+        console.log(`📅 Tareas existentes para ${mappedTask.date}: ${existingTasks?.length || 0}`);
 
         // 6. Calcular scores para cada trabajadora
         const cleanerScores = cleanerAssignments.map(assignment => {
@@ -240,6 +251,8 @@ Deno.serve(async (req) => {
           };
         });
 
+        console.log(`🎯 Scores calculados:`, cleanerScores);
+
         // 7. Seleccionar la mejor trabajadora
         const bestCleaner = cleanerScores
           .filter(cs => cs.score > 0)
@@ -263,6 +276,8 @@ Deno.serve(async (req) => {
           results.push({ taskId, success: false, reason: 'Cleaner not found' });
           continue;
         }
+
+        console.log(`👤 Trabajadora seleccionada: ${cleaner.name} (confianza: ${bestCleaner.score}%)`);
 
         // 9. Asignar la tarea
         const { error: assignError } = await supabase

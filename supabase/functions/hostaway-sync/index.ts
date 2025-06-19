@@ -99,9 +99,11 @@ Deno.serve(async (req) => {
         const taskIds = stats.tasks_details?.map(td => td.task_id) || [];
         
         if (taskIds.length > 0) {
+          console.log(`🎯 Task IDs para asignación automática:`, taskIds);
+          
           try {
             // Llamar al servicio de asignación automática
-            const { error: autoAssignError } = await supabase.functions.invoke('auto-assign-tasks', {
+            const { data: autoAssignResult, error: autoAssignError } = await supabase.functions.invoke('auto-assign-tasks', {
               body: { taskIds }
             });
 
@@ -109,13 +111,22 @@ Deno.serve(async (req) => {
               console.error('❌ Error en asignación automática:', autoAssignError);
               stats.errors.push(`Error en asignación automática: ${autoAssignError.message}`);
             } else {
-              console.log('✅ Asignación automática completada');
+              console.log('✅ Asignación automática completada:', autoAssignResult);
+              
+              // Agregar información de asignación automática a las estadísticas
+              if (autoAssignResult?.summary) {
+                console.log(`📈 Resumen de asignación automática: ${autoAssignResult.summary.assigned}/${autoAssignResult.summary.total} tareas asignadas`);
+              }
             }
           } catch (error) {
             console.error('❌ Error ejecutando asignación automática:', error);
             stats.errors.push(`Error ejecutando asignación automática: ${error.message}`);
           }
+        } else {
+          console.log('⚠️ No se encontraron task IDs para asignación automática');
         }
+      } else {
+        console.log('ℹ️ No se crearon nuevas tareas, saltando asignación automática');
       }
 
       // Actualizar log con resultados exitosos
@@ -177,7 +188,7 @@ Deno.serve(async (req) => {
       error: error.message
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      status: 500
+    status: 500
     });
   }
 });
