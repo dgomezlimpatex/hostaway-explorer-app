@@ -38,71 +38,68 @@ export const TaskCard: React.FC<TaskCardProps> = ({
 
   return (
     <Card className="mb-4 hover:shadow-lg transition-all duration-200 border border-gray-200">
-      <CardContent className="p-6">
-        {/* Header con título y badge - siempre en columnas en móvil */}
-        <div className="flex flex-col gap-3 mb-6">
-          <div className="w-full">
-            <h3 className="font-semibold text-lg text-gray-900 break-words leading-tight pr-2">
-              {task.property}
-            </h3>
-          </div>
-          <div className="flex justify-start">
-            <Badge className={`${getStatusColor(task.status)} px-3 py-1 text-sm font-medium whitespace-nowrap`}>
-              {getStatusText(task.status)}
-            </Badge>
-          </div>
+      <CardContent className="p-4">
+        {/* Header: Property name */}
+        <div className="mb-4">
+          <h3 className="font-semibold text-lg text-gray-900 leading-tight mb-2">
+            {task.property}
+          </h3>
+          <Badge className={`${getStatusColor(task.status)} px-3 py-1 text-sm font-medium`}>
+            {getStatusText(task.status)}
+          </Badge>
         </div>
 
-        {/* Información principal en grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-          <div className="space-y-4">
-            <div className="flex items-center text-gray-600">
-              <Calendar className="h-4 w-4 mr-3 text-blue-500 flex-shrink-0" />
-              <span className="text-sm">{task.date}</span>
-            </div>
-            
-            <div className="flex items-center text-gray-600">
-              <Clock className="h-4 w-4 mr-3 text-green-500 flex-shrink-0" />
-              <span className="text-sm">{task.startTime} - {task.endTime}</span>
-            </div>
+        {/* Main info section */}
+        <div className="space-y-3 mb-4">
+          {/* Date */}
+          <div className="flex items-center text-gray-600">
+            <Calendar className="h-4 w-4 mr-3 text-blue-500 flex-shrink-0" />
+            <span className="text-sm">{task.date}</span>
+          </div>
+          
+          {/* Time */}
+          <div className="flex items-center text-gray-600">
+            <Clock className="h-4 w-4 mr-3 text-green-500 flex-shrink-0" />
+            <span className="text-sm">{task.startTime} - {task.endTime}</span>
+          </div>
 
+          {/* Address */}
+          <div className="flex items-start text-gray-600">
+            <MapPin className="h-4 w-4 mr-3 mt-0.5 text-orange-500 flex-shrink-0" />
+            <span className="text-sm leading-relaxed">{task.address}</span>
+          </div>
+
+          {/* Cleaner */}
+          {task.cleaner && (
             <div className="flex items-start text-gray-600">
-              <MapPin className="h-4 w-4 mr-3 mt-0.5 text-orange-500 flex-shrink-0" />
-              <span className="text-sm break-words leading-relaxed">{task.address}</span>
+              <User className="h-4 w-4 mr-3 mt-0.5 text-purple-500 flex-shrink-0" />
+              <span className="text-sm leading-relaxed">{task.cleaner}</span>
             </div>
-          </div>
+          )}
 
-          <div className="space-y-4">
-            {task.cleaner && (
-              <div className="flex items-start text-gray-600">
-                <User className="h-4 w-4 mr-3 mt-0.5 text-purple-500 flex-shrink-0" />
-                <span className="text-sm break-words leading-relaxed">{task.cleaner}</span>
-              </div>
-            )}
-
-            {task.cost && (
-              <div className="flex items-center text-gray-600">
-                <DollarSign className="h-4 w-4 mr-3 text-emerald-500 flex-shrink-0" />
-                <span className="text-sm font-medium">{task.cost}€</span>
-              </div>
-            )}
-          </div>
+          {/* Cost */}
+          {task.cost && (
+            <div className="flex items-center text-gray-600">
+              <DollarSign className="h-4 w-4 mr-3 text-emerald-500 flex-shrink-0" />
+              <span className="text-sm font-medium">{task.cost}€</span>
+            </div>
+          )}
         </div>
 
-        {/* Footer con badges y botones */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pt-4 border-t border-gray-100">
-          <div className="flex items-center gap-3 flex-wrap">
-            <Badge variant="outline" className="text-xs bg-gray-50 whitespace-nowrap">
+        {/* Footer */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-3 border-t border-gray-100">
+          <div className="flex items-center gap-2 flex-wrap">
+            <Badge variant="outline" className="text-xs bg-gray-50">
               {task.type}
             </Badge>
             {task.duration && (
-              <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700 whitespace-nowrap">
+              <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700">
                 {task.duration} min
               </Badge>
             )}
           </div>
 
-          <div className="flex items-center space-x-2 flex-shrink-0">
+          <div className="flex items-center">
             <CreateReportButton 
               task={task} 
               onCreateReport={onCreateReport}
