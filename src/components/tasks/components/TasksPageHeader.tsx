@@ -8,23 +8,29 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Plus, Calendar, Search, History, ArrowLeft, Home } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { BulkAutoAssignButton } from './BulkAutoAssignButton';
+import { Task } from '@/types/calendar';
 
 interface TasksPageHeaderProps {
   showPastTasks: boolean;
   searchTerm: string;
+  unassignedTasks?: Task[];
   onSearchChange: (value: string) => void;
   onTogglePastTasks: () => void;
   onOpenCreateModal?: () => void;
   onOpenBatchModal?: () => void;
+  onAssignmentComplete?: () => void;
 }
 
 export const TasksPageHeader = ({
   showPastTasks,
   searchTerm,
+  unassignedTasks = [],
   onSearchChange,
   onTogglePastTasks,
   onOpenCreateModal,
   onOpenBatchModal,
+  onAssignmentComplete,
 }: TasksPageHeaderProps) => {
   const { userRole } = useAuth();
   const isCleaner = userRole === 'cleaner';
@@ -96,20 +102,31 @@ export const TasksPageHeader = ({
                   </div>
                 </div>
 
-                {/* Past Tasks Toggle - only for non-cleaners */}
-                {!isCleaner && (
-                  <div className="flex items-center space-x-2">
-                    <Switch
-                      id="past-tasks"
-                      checked={showPastTasks}
-                      onCheckedChange={onTogglePastTasks}
+                {/* Controls */}
+                <div className="flex items-center gap-4">
+                  {/* Bulk Auto Assign Button - only for non-cleaners and current tasks */}
+                  {!isCleaner && !showPastTasks && onAssignmentComplete && (
+                    <BulkAutoAssignButton 
+                      unassignedTasks={unassignedTasks}
+                      onAssignmentComplete={onAssignmentComplete}
                     />
-                    <Label htmlFor="past-tasks" className="flex items-center gap-2 cursor-pointer">
-                      <History className="h-4 w-4" />
-                      Ver Historial
-                    </Label>
-                  </div>
-                )}
+                  )}
+
+                  {/* Past Tasks Toggle - only for non-cleaners */}
+                  {!isCleaner && (
+                    <div className="flex items-center space-x-2">
+                      <Switch
+                        id="past-tasks"
+                        checked={showPastTasks}
+                        onCheckedChange={onTogglePastTasks}
+                      />
+                      <Label htmlFor="past-tasks" className="flex items-center gap-2 cursor-pointer">
+                        <History className="h-4 w-4" />
+                        Ver Historial
+                      </Label>
+                    </div>
+                  )}
+                </div>
               </div>
             </CardContent>
           </Card>

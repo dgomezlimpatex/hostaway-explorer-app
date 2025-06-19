@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { TasksPageHeader } from './components/TasksPageHeader';
 import { TasksPageContent } from './components/TasksPageContent';
 import { TaskHistoryModal } from './components/TaskHistoryModal';
@@ -28,6 +28,7 @@ export default function TasksPage() {
     setFilters,
     handleTogglePastTasks,
     handlePageChange,
+    refetch,
   } = useTasksPageState();
 
   const {
@@ -45,23 +46,36 @@ export default function TasksPage() {
     handleOpenBatchModal,
   } = useTasksPageActions();
 
+  // Calculate unassigned tasks for bulk auto-assignment
+  const unassignedTasks = useMemo(() => {
+    if (showPastTasks) return [];
+    return tasks.filter(task => !task.cleanerId && !task.cleaner);
+  }, [tasks, showPastTasks]);
+
   const handleCreateReport = (task: Task) => {
     console.log('Opening report modal for task:', task.id);
     setSelectedTaskForReport(task);
     setIsReportModalOpen(true);
   };
 
-  console.log('TasksPage - rendering with tasks:', tasks.length, 'filtered:', sortedTasks.length, 'paginated:', paginatedTasks.length, 'isLoading:', isLoading);
+  const handleAssignmentComplete = () => {
+    console.log('Assignment completed, refreshing tasks...');
+    refetch();
+  };
+
+  console.log('TasksPage - rendering with tasks:', tasks.length, 'filtered:', sortedTasks.length, 'paginated:', paginatedTasks.length, 'isLoading:', isLoading, 'unassigned:', unassignedTasks.length);
 
   return (
     <div className="min-h-screen bg-gray-50">
       <TasksPageHeader
         showPastTasks={showPastTasks}
         searchTerm={searchTerm}
+        unassignedTasks={unassignedTasks}
         onSearchChange={setSearchTerm}
         onTogglePastTasks={handleTogglePastTasks}
         onOpenCreateModal={handleOpenCreateModal}
         onOpenBatchModal={handleOpenBatchModal}
+        onAssignmentComplete={handleAssignmentComplete}
       />
 
       <TasksPageContent
