@@ -75,7 +75,7 @@ export const TasksList = React.memo(({
 
   return (
     <>
-      <div className="space-y-4">
+      <div className="space-y-6">
         {filteredTasks.map((task) => (
           <TaskCard
             key={task.id}
