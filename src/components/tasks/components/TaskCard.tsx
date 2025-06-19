@@ -2,20 +2,29 @@
 import React from 'react';
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Calendar, Clock, MapPin, User, DollarSign } from 'lucide-react';
+import { Button } from "@/components/ui/button";
+import { Calendar, Clock, MapPin, User, DollarSign, Edit, FileText, MoreVertical } from 'lucide-react';
 import { Task } from '@/types/calendar';
 import { CreateReportButton } from './CreateReportButton';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 interface TaskCardProps {
   task: Task;
   onShowHistory: (task: Task) => void;
   onCreateReport: (task: Task) => void;
+  onEditTask?: (task: Task) => void;
 }
 
 export const TaskCard: React.FC<TaskCardProps> = ({ 
   task, 
   onShowHistory,
   onCreateReport,
+  onEditTask,
 }) => {
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -36,75 +45,132 @@ export const TaskCard: React.FC<TaskCardProps> = ({
     }
   };
 
-  return (
-    <Card className="mb-4 hover:shadow-lg transition-all duration-200 border border-gray-200">
-      <CardContent className="p-4">
-        {/* Header: Property name */}
-        <div className="mb-4">
-          <h3 className="font-semibold text-lg text-gray-900 leading-tight mb-2">
-            {task.property}
-          </h3>
-          <Badge className={`${getStatusColor(task.status)} px-3 py-1 text-sm font-medium`}>
-            {getStatusText(task.status)}
-          </Badge>
-        </div>
+  const handleEdit = () => {
+    if (onEditTask) {
+      onEditTask(task);
+    }
+  };
 
-        {/* Main info section */}
-        <div className="space-y-3 mb-4">
-          {/* Date */}
-          <div className="flex items-center text-gray-600">
-            <Calendar className="h-4 w-4 mr-3 text-blue-500 flex-shrink-0" />
-            <span className="text-sm">{task.date}</span>
+  const handleHistory = () => {
+    onShowHistory(task);
+  };
+
+  return (
+    <Card className="group hover:shadow-md transition-all duration-200 border border-gray-200 bg-white">
+      <CardContent className="p-6">
+        {/* Header section */}
+        <div className="flex items-start justify-between mb-4">
+          <div className="flex-1 min-w-0">
+            <h3 className="font-semibold text-lg text-gray-900 leading-tight mb-2 pr-4">
+              {task.property}
+            </h3>
+            <div className="flex items-center gap-2 flex-wrap">
+              <Badge className={`${getStatusColor(task.status)} text-xs font-medium`}>
+                {getStatusText(task.status)}
+              </Badge>
+              <Badge variant="outline" className="text-xs bg-gray-50">
+                {task.type}
+              </Badge>
+              {task.duration && (
+                <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700">
+                  {task.duration} min
+                </Badge>
+              )}
+            </div>
           </div>
           
-          {/* Time */}
-          <div className="flex items-center text-gray-600">
-            <Clock className="h-4 w-4 mr-3 text-green-500 flex-shrink-0" />
-            <span className="text-sm">{task.startTime} - {task.endTime}</span>
-          </div>
-
-          {/* Address */}
-          <div className="flex items-start text-gray-600">
-            <MapPin className="h-4 w-4 mr-3 mt-0.5 text-orange-500 flex-shrink-0" />
-            <span className="text-sm leading-relaxed">{task.address}</span>
-          </div>
-
-          {/* Cleaner */}
-          {task.cleaner && (
-            <div className="flex items-start text-gray-600">
-              <User className="h-4 w-4 mr-3 mt-0.5 text-purple-500 flex-shrink-0" />
-              <span className="text-sm leading-relaxed">{task.cleaner}</span>
-            </div>
-          )}
-
-          {/* Cost */}
-          {task.cost && (
-            <div className="flex items-center text-gray-600">
-              <DollarSign className="h-4 w-4 mr-3 text-emerald-500 flex-shrink-0" />
-              <span className="text-sm font-medium">{task.cost}€</span>
-            </div>
-          )}
+          {/* Actions menu */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button 
+                variant="ghost" 
+                size="sm"
+                className="opacity-0 group-hover:opacity-100 transition-opacity h-8 w-8 p-0"
+              >
+                <MoreVertical className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              {onEditTask && (
+                <DropdownMenuItem onClick={handleEdit}>
+                  <Edit className="h-4 w-4 mr-2" />
+                  Editar tarea
+                </DropdownMenuItem>
+              )}
+              <DropdownMenuItem onClick={handleHistory}>
+                <FileText className="h-4 w-4 mr-2" />
+                Ver historial
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
 
-        {/* Footer */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-3 border-t border-gray-100">
-          <div className="flex items-center gap-2 flex-wrap">
-            <Badge variant="outline" className="text-xs bg-gray-50">
-              {task.type}
-            </Badge>
-            {task.duration && (
-              <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700">
-                {task.duration} min
-              </Badge>
-            )}
+        {/* Task details grid */}
+        <div className="space-y-3 mb-4">
+          {/* Date and time row */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="flex items-center text-gray-600">
+              <Calendar className="h-4 w-4 mr-2 text-blue-500 flex-shrink-0" />
+              <span className="text-sm">{task.date}</span>
+            </div>
+            <div className="flex items-center text-gray-600">
+              <Clock className="h-4 w-4 mr-2 text-green-500 flex-shrink-0" />
+              <span className="text-sm">{task.startTime} - {task.endTime}</span>
+            </div>
           </div>
 
-          <div className="flex items-center">
-            <CreateReportButton 
-              task={task} 
-              onCreateReport={onCreateReport}
-            />
+          {/* Address row */}
+          <div className="flex items-start text-gray-600">
+            <MapPin className="h-4 w-4 mr-2 mt-0.5 text-orange-500 flex-shrink-0" />
+            <span className="text-sm leading-relaxed break-words">{task.address}</span>
           </div>
+
+          {/* Cleaner and cost row */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {task.cleaner && (
+              <div className="flex items-center text-gray-600">
+                <User className="h-4 w-4 mr-2 text-purple-500 flex-shrink-0" />
+                <span className="text-sm truncate">{task.cleaner}</span>
+              </div>
+            )}
+            {task.cost && (
+              <div className="flex items-center text-gray-600">
+                <DollarSign className="h-4 w-4 mr-2 text-emerald-500 flex-shrink-0" />
+                <span className="text-sm font-medium">{task.cost}€</span>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Actions footer */}
+        <div className="flex items-center justify-between pt-3 border-t border-gray-100">
+          <div className="flex items-center gap-2">
+            {onEditTask && (
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={handleEdit}
+                className="text-xs"
+              >
+                <Edit className="h-3 w-3 mr-1" />
+                Editar
+              </Button>
+            )}
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={handleHistory}
+              className="text-xs"
+            >
+              <FileText className="h-3 w-3 mr-1" />
+              Historial
+            </Button>
+          </div>
+
+          <CreateReportButton 
+            task={task} 
+            onCreateReport={onCreateReport}
+          />
         </div>
       </CardContent>
     </Card>

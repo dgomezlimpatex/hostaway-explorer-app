@@ -69,6 +69,10 @@ export const TasksList = React.memo(({
     console.log('Create report for task:', task.id);
   });
 
+  const handleShowHistory = onShowHistory || ((task: Task) => {
+    console.log('Show history for task:', task.id);
+  });
+
   return (
     <>
       <div className="space-y-4">
@@ -76,8 +80,9 @@ export const TasksList = React.memo(({
           <TaskCard
             key={task.id}
             task={task}
-            onShowHistory={onShowHistory}
+            onShowHistory={handleShowHistory}
             onCreateReport={handleCreateReport}
+            onEditTask={handleEditTask}
           />
         ))}
       </div>
