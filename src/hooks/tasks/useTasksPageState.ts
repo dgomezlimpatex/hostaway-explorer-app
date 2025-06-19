@@ -4,17 +4,26 @@ import { useAuth } from '@/hooks/useAuth';
 import { useTasks } from '@/hooks/useTasks';
 import { useOptimizedPagination } from '@/hooks/useOptimizedPagination';
 import { Task } from '@/types/calendar';
-import { TaskFilters } from '@/types/filters';
 import { filterTasks, sortTasks } from '@/components/tasks/utils/taskFilters';
+
+interface LocalTaskFilters {
+  status: string;
+  cleaner: string;
+  dateRange: string;
+  cliente: string;
+  propiedad: string;
+}
 
 export const useTasksPageState = () => {
   const { userRole } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
   const [showPastTasks, setShowPastTasks] = useState(false);
-  const [filters, setFilters] = useState<TaskFilters>({
+  const [filters, setFilters] = useState<LocalTaskFilters>({
     status: 'all',
     cleaner: 'all',
     dateRange: 'all',
+    cliente: 'all',
+    propiedad: 'all',
   });
 
   // Use current date and month view for task fetching
@@ -52,11 +61,11 @@ export const useTasksPageState = () => {
   const {
     currentPage,
     totalPages,
-    paginatedItems: paginatedTasks,
-    handlePageChange,
+    paginatedData: paginatedTasks,
+    goToPage: handlePageChange,
   } = useOptimizedPagination({
-    items: sortedTasks,
-    itemsPerPage: 20,
+    data: sortedTasks,
+    pageSize: 20,
   });
 
   const handleTogglePastTasks = () => {

@@ -7,10 +7,46 @@ interface TaskFilters {
   dateRange: string;
   cliente: string;
   propiedad: string;
+  searchTerm?: string;
+  showPastTasks?: boolean;
+  userRole?: string;
 }
 
 export const filterTasks = (tasks: Task[], filters: TaskFilters): Task[] => {
   return tasks.filter(task => {
+    // Search term filter
+    if (filters.searchTerm && filters.searchTerm.trim() !== '') {
+      const searchLower = filters.searchTerm.toLowerCase();
+      const searchableText = [
+        task.propertyCode,
+        task.propertyAddress,
+        task.cleaner,
+        task.clientName,
+        task.notes
+      ].filter(Boolean).join(' ').toLowerCase();
+      
+      if (!searchableText.includes(searchLower)) {
+        return false;
+      }
+    }
+
+    // Past tasks filter
+    if (!filters.showPastTasks) {
+      const today = new Date();
+      const taskDate = new Date(task.date);
+      if (taskDate < today) {
+        return false;
+      }
+    }
+
+    // Role-based filtering
+    if (filters.userRole === 'cleaner') {
+      // Cleaners only see their own tasks
+      if (!task.cleaner || task.cleaner !== filters.userRole) {
+        return false;
+      }
+    }
+
     // Filtro por estado
     if (filters.status !== 'all' && task.status !== filters.status) {
       return false;
@@ -68,5 +104,20 @@ export const filterTasks = (tasks: Task[], filters: TaskFilters): Task[] => {
     }
 
     return true;
+  });
+};
+
+export const sortTasks = (tasks: Task[], showPastTasks: boolean): Task[] => {
+  return [...tasks].sort((a, b) => {
+    const dateA = new Date(a.date);
+    const dateB = new Date(b.date);
+    
+    if (showPastTasks) {
+      // For past tasks, show most recent first
+      return dateB.getTime() - dateA.getTime();
+    } else {
+      // For current/future tasks, show earliest first
+      return dateA.getTime() - dateB.getTime();
+    }
   });
 };

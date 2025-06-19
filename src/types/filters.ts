@@ -1,7 +1,7 @@
 
 import { ReportType } from './reports';
 
-export type DateRange = 'today' | 'week' | 'month' | 'custom';
+export type DateRange = 'today' | 'week' | 'month' | 'custom' | 'all' | 'tomorrow' | 'this-week' | 'next-week';
 
 export interface BaseFilters {
   dateRange: DateRange;
@@ -16,8 +16,11 @@ export interface ReportFilters extends BaseFilters {
 }
 
 export interface TaskFilters extends BaseFilters {
-  status?: 'pending' | 'in-progress' | 'completed';
+  status?: 'pending' | 'in-progress' | 'completed' | 'all';
   propertyId?: string;
+  cleaner?: string;
+  cliente?: string;
+  propiedad?: string;
 }
 
 export interface CalendarFilters extends BaseFilters {
