@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-import { Plus, Calendar, Search, History, ArrowLeft } from 'lucide-react';
+import { Plus, Calendar, Search, History, ArrowLeft, Home } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 interface TasksPageHeaderProps {
@@ -33,17 +33,15 @@ export const TasksPageHeader = ({
     <div className="bg-white border-b shadow-sm">
       <div className="container mx-auto p-6">
         <div className="flex flex-col space-y-4">
-          {/* Header with title and back button for cleaners */}
+          {/* Header with title and buttons */}
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
-              {isCleaner && (
-                <Link to="/">
-                  <Button variant="outline" size="sm">
-                    <ArrowLeft className="h-4 w-4 mr-2" />
-                    Volver
-                  </Button>
-                </Link>
-              )}
+              <Link to="/">
+                <Button variant="outline" size="sm">
+                  <Home className="h-4 w-4 mr-2" />
+                  Menú Principal
+                </Button>
+              </Link>
               <div>
                 <h1 className="text-3xl font-bold text-gray-900">
                   {isCleaner ? 'Mis Tareas' : (showPastTasks ? 'Historial de Tareas' : 'Gestión de Tareas')}
