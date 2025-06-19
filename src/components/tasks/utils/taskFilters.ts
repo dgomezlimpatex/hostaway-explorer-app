@@ -19,10 +19,10 @@ export const filterTasks = (tasks: Task[], filters: TaskFilters): Task[] => {
       const searchLower = filters.searchTerm.toLowerCase();
       const searchableText = [
         task.propertyCode,
-        task.propertyAddress,
+        task.address,
         task.cleaner,
-        task.clientName,
-        task.notes
+        task.client,
+        task.property
       ].filter(Boolean).join(' ').toLowerCase();
       
       if (!searchableText.includes(searchLower)) {
