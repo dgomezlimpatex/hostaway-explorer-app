@@ -43,7 +43,7 @@ class AutoAssignmentEngine {
       // 3. Obtener contexto para la asignación
       const context = await this.buildAssignmentContext(task, propertyGroup);
 
-      // 4. Ejecutar algoritmo de asignación por saturación de prioridad
+      // 4. Ejecutar algoritmo de saturación por prioridad mejorado
       const result = await this.executeAssignmentAlgorithm(context);
 
       // 5. Registrar el resultado
@@ -202,7 +202,9 @@ class AutoAssignmentEngine {
   private async executeAssignmentAlgorithm(context: AssignmentContext): Promise<AssignmentResult> {
     const { task, propertyGroup, cleanerAssignments, existingTasks } = context;
 
-    // Nuevo algoritmo de saturación por prioridad
+    console.log(`🎯 ALGORITMO SATURACIÓN V2 para tarea ${task.id} - ${task.startTime}`);
+
+    // Algoritmo de saturación por prioridad mejorado
     const availableCleaners = cleanerAssignments
       .filter(ca => ca.isActive)
       .sort((a, b) => a.priority - b.priority); // Ordenar por prioridad
@@ -213,23 +215,32 @@ class AutoAssignmentEngine {
         cleanerName: null,
         confidence: 0,
         reason: 'No available cleaners',
-        algorithm: 'priority-saturation'
+        algorithm: 'priority-saturation-v2'
       };
     }
 
-    // Buscar la primera trabajadora disponible por orden de prioridad
+    console.log(`👥 Trabajadoras disponibles por prioridad: ${availableCleaners.map(c => `P${c.priority}`).join(', ')}`);
+
+    // Buscar la primera trabajadora disponible por orden de prioridad que pueda tomar la tarea
     for (const assignment of availableCleaners) {
+      console.log(`🔍 Evaluando trabajadora prioridad ${assignment.priority}`);
+      
       if (this.isCleanerAvailable(assignment, task, existingTasks)) {
         const cleanerTasks = existingTasks.filter(t => t.cleanerId === assignment.cleanerId);
         const cleanerInfo = await this.getCleanerInfo(assignment.cleanerId);
+
+        const reason = `🏆 SATURACIÓN: Prioridad ${assignment.priority}, Carga: ${cleanerTasks.length}/${assignment.maxTasksPerDay}`;
+        console.log(`✅ ASIGNANDO: ${reason}`);
 
         return {
           cleanerId: assignment.cleanerId,
           cleanerName: cleanerInfo?.name || null,
           confidence: 1000 - (assignment.priority * 100) + (assignment.maxTasksPerDay - cleanerTasks.length),
-          reason: `Prioridad ${assignment.priority}, Carga actual: ${cleanerTasks.length}/${assignment.maxTasksPerDay}`,
-          algorithm: 'priority-saturation'
+          reason,
+          algorithm: 'priority-saturation-v2'
         };
+      } else {
+        console.log(`❌ Trabajadora prioridad ${assignment.priority} NO disponible`);
       }
     }
 
@@ -238,7 +249,7 @@ class AutoAssignmentEngine {
       cleanerName: null,
       confidence: 0,
       reason: 'No available cleaners after priority check',
-      algorithm: 'priority-saturation'
+      algorithm: 'priority-saturation-v2'
     };
   }
 
