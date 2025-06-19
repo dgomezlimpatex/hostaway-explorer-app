@@ -35,7 +35,7 @@ Deno.serve(async (req) => {
       throw logError;
     }
 
-    console.log(`🚀 Iniciando sincronización con Hostaway (Log ID: ${syncLog.id})`);
+    console.log(`🚀 Iniciando sincronización optimizada con Hostaway (Log ID: ${syncLog.id})`);
 
     const stats: SyncStats = {
       reservations_processed: 0,
@@ -54,24 +54,36 @@ Deno.serve(async (req) => {
       const accessToken = await getHostawayToken();
       console.log('✅ Token obtenido exitosamente');
 
-      // Calcular rango de fechas para obtener reservas
+      // OPTIMIZADO: Calcular rango de fechas más pequeño (solo próximas 3 semanas)
       const now = new Date();
-      const startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000); // 30 días atrás
-      const endDate = new Date(now.getTime() + 60 * 24 * 60 * 60 * 1000); // 60 días adelante
+      const startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000); // 7 días atrás
+      const endDate = new Date(now.getTime() + 21 * 24 * 60 * 60 * 1000); // 21 días adelante (3 semanas)
       
       const startDateStr = startDate.toISOString().split('T')[0];
       const endDateStr = endDate.toISOString().split('T')[0];
 
-      // Obtener reservas de Hostaway
-      console.log(`📥 Obteniendo reservas de Hostaway desde ${startDateStr} hasta ${endDateStr}...`);
+      // Obtener reservas de Hostaway con rango optimizado
+      console.log(`📥 Obteniendo reservas de Hostaway desde ${startDateStr} hasta ${endDateStr} (rango optimizado)...`);
       const reservations = await fetchAllHostawayReservations(accessToken, startDateStr, endDateStr);
-      console.log(`📊 Obtenidas ${reservations.length} reservas de Hostaway`);
+      console.log(`📊 Obtenidas ${reservations.length} reservas de Hostaway (rango optimizado vs ~1200+ anteriormente)`);
 
-      // Procesar cada reserva
-      for (let i = 0; i < reservations.length; i++) {
-        const reservation = reservations[i];
+      // Filtrar reservas relevantes para reducir procesamiento
+      const relevantReservations = reservations.filter(reservation => {
+        const arrivalDate = new Date(reservation.arrivalDate);
+        const departureDate = new Date(reservation.departureDate);
+        const cutoffDate = new Date(now.getTime() + 21 * 24 * 60 * 60 * 1000); // 3 semanas
+        
+        // Solo procesar reservas que tienen salida en las próximas 3 semanas o llegada reciente
+        return departureDate <= cutoffDate || arrivalDate >= startDate;
+      });
+
+      console.log(`🎯 Reservas relevantes a procesar: ${relevantReservations.length} de ${reservations.length} total`);
+
+      // Procesar cada reserva relevante
+      for (let i = 0; i < relevantReservations.length; i++) {
+        const reservation = relevantReservations[i];
         try {
-          await processReservation(reservation, stats, i, reservations.length);
+          await processReservation(reservation, stats, i, relevantReservations.length);
           stats.reservations_processed++;
         } catch (error) {
           console.error(`❌ Error procesando reserva ${reservation.id}:`, error);
@@ -116,13 +128,19 @@ Deno.serve(async (req) => {
         })
         .eq('id', syncLog.id);
 
-      console.log('✅ Sincronización completada exitosamente');
+      console.log('✅ Sincronización optimizada completada exitosamente');
       console.log(`📊 Estadísticas finales:`, stats);
 
       return new Response(JSON.stringify({
         success: true,
-        message: 'Sincronización completada exitosamente',
-        stats
+        message: 'Sincronización optimizada completada exitosamente',
+        stats,
+        optimization: {
+          dateRange: `${startDateStr} a ${endDateStr}`,
+          totalReservations: reservations.length,
+          relevantReservations: relevantReservations.length,
+          optimization: 'Reducido de ~90 días a 28 días (3 semanas + 1 semana atrás)'
+        }
       }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 200
