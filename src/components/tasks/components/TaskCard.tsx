@@ -1,4 +1,5 @@
 
+
 import React from 'react';
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -49,8 +50,8 @@ export const TaskCard: React.FC<TaskCardProps> = ({
   };
 
   const getPropertyCode = () => {
-    if (task.propiedad_id && properties) {
-      const property = properties.find(p => p.id === task.propiedad_id);
+    if (task.propertyId && properties) {
+      const property = properties.find(p => p.id === task.propertyId);
       return property?.codigo || '';
     }
     return '';
@@ -172,3 +173,4 @@ export const TaskCard: React.FC<TaskCardProps> = ({
     </Card>
   );
 };
+
