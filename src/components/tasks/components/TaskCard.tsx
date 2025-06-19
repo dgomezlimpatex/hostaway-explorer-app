@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -5,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Calendar, Clock, MapPin, User, DollarSign, Edit, FileText, MoreVertical } from 'lucide-react';
 import { Task } from '@/types/calendar';
 import { CreateReportButton } from './CreateReportButton';
+import { useProperties } from '@/hooks/useProperties';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -25,6 +27,8 @@ export const TaskCard: React.FC<TaskCardProps> = ({
   onCreateReport,
   onEditTask,
 }) => {
+  const { data: properties } = useProperties();
+  
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'completed': return 'bg-green-100 text-green-800 border-green-200';
@@ -42,6 +46,22 @@ export const TaskCard: React.FC<TaskCardProps> = ({
       case 'cancelled': return 'Cancelada';
       default: return status;
     }
+  };
+
+  const getPropertyCode = () => {
+    if (task.propiedad_id && properties) {
+      const property = properties.find(p => p.id === task.propiedad_id);
+      return property?.codigo || '';
+    }
+    return '';
+  };
+
+  const displayPropertyName = () => {
+    const propertyCode = getPropertyCode();
+    if (propertyCode) {
+      return `${task.property} - ${propertyCode}`;
+    }
+    return task.property;
   };
 
   const handleEdit = () => {
@@ -67,10 +87,10 @@ export const TaskCard: React.FC<TaskCardProps> = ({
           <FileText className="h-4 w-4" />
         </Button>
 
-        {/* Header section with property name and status */}
+        {/* Header section with property name (including code) and status */}
         <div className="mb-3 pr-10">
           <h3 className="font-semibold text-lg text-gray-900 leading-tight mb-2">
-            {task.property}
+            {displayPropertyName()}
           </h3>
           <div className="flex items-center gap-2 flex-wrap">
             <Badge className={`${getStatusColor(task.status)} text-xs font-medium`}>
