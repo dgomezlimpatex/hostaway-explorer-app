@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { Task } from '@/types/calendar';
 import { PropertyGroup, CleanerGroupAssignment, AssignmentPattern } from '@/types/propertyGroups';
@@ -44,7 +43,7 @@ class AutoAssignmentEngine {
       // 3. Obtener contexto para la asignación
       const context = await this.buildAssignmentContext(task, propertyGroup);
 
-      // 4. Ejecutar algoritmo de asignación
+      // 4. Ejecutar algoritmo de asignación por saturación de prioridad
       const result = await this.executeAssignmentAlgorithm(context);
 
       // 5. Registrar el resultado
@@ -201,120 +200,46 @@ class AutoAssignmentEngine {
   }
 
   private async executeAssignmentAlgorithm(context: AssignmentContext): Promise<AssignmentResult> {
-    const { task, propertyGroup, cleanerAssignments, existingTasks, patterns } = context;
+    const { task, propertyGroup, cleanerAssignments, existingTasks } = context;
 
-    // Aplicar algoritmo de balanceado de carga con prioridades
-    const availableCleaners = await this.getAvailableCleaners(context);
-    
+    // Nuevo algoritmo de saturación por prioridad
+    const availableCleaners = cleanerAssignments
+      .filter(ca => ca.isActive)
+      .sort((a, b) => a.priority - b.priority); // Ordenar por prioridad
+
     if (availableCleaners.length === 0) {
       return {
         cleanerId: null,
         cleanerName: null,
         confidence: 0,
         reason: 'No available cleaners',
-        algorithm: 'workload-balance'
+        algorithm: 'priority-saturation'
       };
     }
 
-    // Ordenar por prioridad y carga de trabajo
-    const cleanerScores = await this.calculateCleanerScores(availableCleaners, context);
-    const bestCleaner = cleanerScores[0];
+    // Buscar la primera trabajadora disponible por orden de prioridad
+    for (const assignment of availableCleaners) {
+      if (this.isCleanerAvailable(assignment, task, existingTasks)) {
+        const cleanerTasks = existingTasks.filter(t => t.cleanerId === assignment.cleanerId);
+        const cleanerInfo = await this.getCleanerInfo(assignment.cleanerId);
 
-    const cleanerInfo = await this.getCleanerInfo(bestCleaner.cleanerId);
+        return {
+          cleanerId: assignment.cleanerId,
+          cleanerName: cleanerInfo?.name || null,
+          confidence: 1000 - (assignment.priority * 100) + (assignment.maxTasksPerDay - cleanerTasks.length),
+          reason: `Prioridad ${assignment.priority}, Carga actual: ${cleanerTasks.length}/${assignment.maxTasksPerDay}`,
+          algorithm: 'priority-saturation'
+        };
+      }
+    }
 
     return {
-      cleanerId: bestCleaner.cleanerId,
-      cleanerName: cleanerInfo?.name || null,
-      confidence: bestCleaner.score,
-      reason: bestCleaner.reason,
-      algorithm: 'workload-balance-priority'
+      cleanerId: null,
+      cleanerName: null,
+      confidence: 0,
+      reason: 'No available cleaners after priority check',
+      algorithm: 'priority-saturation'
     };
-  }
-
-  private async getAvailableCleaners(context: AssignmentContext): Promise<CleanerGroupAssignment[]> {
-    const { task, cleanerAssignments, existingTasks } = context;
-    
-    return cleanerAssignments.filter(assignment => {
-      // Verificar que esté activa
-      if (!assignment.isActive) return false;
-
-      // Verificar disponibilidad de horario
-      return this.isCleanerAvailable(assignment, task, existingTasks);
-    });
-  }
-
-  private isCleanerAvailable(assignment: CleanerGroupAssignment, task: Task, existingTasks: Task[]): boolean {
-    const cleanerTasks = existingTasks.filter(t => t.cleanerId === assignment.cleanerId);
-    
-    // Verificar límite diario de tareas
-    if (cleanerTasks.length >= assignment.maxTasksPerDay) {
-      return false;
-    }
-
-    // Verificar conflictos de horario con tiempo de buffer
-    const taskStart = new Date(`${task.date} ${task.startTime}`);
-    const taskEnd = new Date(`${task.date} ${task.endTime}`);
-    
-    for (const existingTask of cleanerTasks) {
-      const existingStart = new Date(`${existingTask.date} ${existingTask.startTime}`);
-      const existingEnd = new Date(`${existingTask.date} ${existingTask.endTime}`);
-      
-      // Añadir tiempo de buffer (15 minutos por defecto)
-      const bufferMs = assignment.estimatedTravelTimeMinutes * 60 * 1000;
-      existingStart.setTime(existingStart.getTime() - bufferMs);
-      existingEnd.setTime(existingEnd.getTime() + bufferMs);
-      
-      // Verificar solapamiento
-      if (taskStart < existingEnd && taskEnd > existingStart) {
-        return false;
-      }
-    }
-
-    return true;
-  }
-
-  private async calculateCleanerScores(cleaners: CleanerGroupAssignment[], context: AssignmentContext): Promise<Array<{cleanerId: string, score: number, reason: string}>> {
-    const { task, existingTasks, patterns } = context;
-    
-    const scores = cleaners.map(cleaner => {
-      let score = 100; // Base score
-      let reasons = [];
-
-      // Factor de prioridad (más importante)
-      const priorityBonus = (10 - cleaner.priority) * 20; // Prioridad 1 = +180, 2 = +160, etc.
-      score += priorityBonus;
-      reasons.push(`Priority ${cleaner.priority} (+${priorityBonus})`);
-
-      // Factor de carga de trabajo (menos tareas = mejor score)
-      const cleanerTasks = existingTasks.filter(t => t.cleanerId === cleaner.cleanerId);
-      const workloadPenalty = cleanerTasks.length * 10;
-      score -= workloadPenalty;
-      reasons.push(`Workload ${cleanerTasks.length} (-${workloadPenalty})`);
-
-      // Factor de patrones históricos
-      const taskDayOfWeek = new Date(task.date).getDay();
-      const taskHour = parseInt(task.startTime.split(':')[0]);
-      
-      const pattern = patterns.find(p => 
-        p.cleanerId === cleaner.cleanerId && 
-        p.dayOfWeek === taskDayOfWeek && 
-        p.hourOfDay === taskHour
-      );
-
-      if (pattern && pattern.preferenceScore) {
-        const historyBonus = pattern.preferenceScore;
-        score += historyBonus;
-        reasons.push(`History (+${historyBonus})`);
-      }
-
-      return {
-        cleanerId: cleaner.cleanerId,
-        score: Math.max(score, 0),
-        reason: reasons.join(', ')
-      };
-    });
-
-    return scores.sort((a, b) => b.score - a.score);
   }
 
   private async getCleanerInfo(cleanerId: string) {
@@ -351,6 +276,36 @@ class AutoAssignmentEngine {
         assignment_confidence: confidence
       })
       .eq('id', taskId);
+  }
+
+  private isCleanerAvailable(assignment: CleanerGroupAssignment, task: Task, existingTasks: Task[]): boolean {
+    const cleanerTasks = existingTasks.filter(t => t.cleanerId === assignment.cleanerId);
+    
+    // Verificar límite diario de tareas
+    if (cleanerTasks.length >= assignment.maxTasksPerDay) {
+      return false;
+    }
+
+    // Verificar conflictos de horario con tiempo de buffer
+    const taskStart = new Date(`${task.date} ${task.startTime}`);
+    const taskEnd = new Date(`${task.date} ${task.endTime}`);
+    
+    for (const existingTask of cleanerTasks) {
+      const existingStart = new Date(`${existingTask.date} ${existingTask.startTime}`);
+      const existingEnd = new Date(`${existingTask.date} ${existingTask.endTime}`);
+      
+      // Añadir tiempo de buffer (15 minutos por defecto)
+      const bufferMs = assignment.estimatedTravelTimeMinutes * 60 * 1000;
+      existingStart.setTime(existingStart.getTime() - bufferMs);
+      existingEnd.setTime(existingEnd.getTime() + bufferMs);
+      
+      // Verificar solapamiento
+      if (taskStart < existingEnd && taskEnd > existingStart) {
+        return false;
+      }
+    }
+
+    return true;
   }
 }
 

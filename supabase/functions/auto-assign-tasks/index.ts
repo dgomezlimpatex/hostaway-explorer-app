@@ -201,32 +201,29 @@ Deno.serve(async (req) => {
 
         console.log(`📅 Tareas existentes para ${mappedTask.date}: ${existingTasks?.length || 0}`);
 
-        // 6. Calcular scores para cada trabajadora
-        const cleanerScores = cleanerAssignments.map(assignment => {
-          let score = 100;
-          let reasons = [];
-
-          // Factor de prioridad (más importante)
-          const priorityBonus = (10 - assignment.priority) * 20;
-          score += priorityBonus;
-          reasons.push(`Priority ${assignment.priority} (+${priorityBonus})`);
-
-          // Factor de carga de trabajo
+        // 6. NUEVO ALGORITMO: Saturación por prioridad
+        let bestCleaner = null;
+        
+        // Ordenar trabajadoras por prioridad (1, 2, 3...)
+        const sortedCleaners = cleanerAssignments.sort((a, b) => a.priority - b.priority);
+        
+        for (const assignment of sortedCleaners) {
+          console.log(`🔍 Evaluando trabajadora prioridad ${assignment.priority}`);
+          
+          // Verificar si puede tomar la tarea
           const cleanerTasks = existingTasks?.filter(t => t.cleaner_id === assignment.cleaner_id) || [];
-          const workloadPenalty = cleanerTasks.length * 10;
-          score -= workloadPenalty;
-          reasons.push(`Workload ${cleanerTasks.length} (-${workloadPenalty})`);
-
+          
           // Verificar límite diario
           if (cleanerTasks.length >= assignment.max_tasks_per_day) {
-            score = 0;
-            reasons.push('Daily limit reached');
+            console.log(`⚠️ Trabajadora alcanzó límite diario (${cleanerTasks.length}/${assignment.max_tasks_per_day})`);
+            continue;
           }
 
-          // Verificar conflictos de horario
+          // Verificar conflictos de horario con buffer
           const taskStart = new Date(`${mappedTask.date} ${mappedTask.startTime}`);
           const taskEnd = new Date(`${mappedTask.date} ${mappedTask.endTime}`);
           
+          let hasConflict = false;
           for (const existingTask of cleanerTasks) {
             const existingStart = new Date(`${existingTask.date} ${existingTask.start_time}`);
             const existingEnd = new Date(`${existingTask.date} ${existingTask.end_time}`);
@@ -238,25 +235,24 @@ Deno.serve(async (req) => {
             
             // Verificar solapamiento
             if (taskStart < existingEnd && taskEnd > existingStart) {
-              score = 0;
-              reasons.push('Time conflict');
+              hasConflict = true;
+              console.log(`⚠️ Conflicto de horario detectado`);
               break;
             }
           }
 
-          return {
-            cleanerId: assignment.cleaner_id,
-            score: Math.max(score, 0),
-            reason: reasons.join(', ')
-          };
-        });
-
-        console.log(`🎯 Scores calculados:`, cleanerScores);
-
-        // 7. Seleccionar la mejor trabajadora
-        const bestCleaner = cleanerScores
-          .filter(cs => cs.score > 0)
-          .sort((a, b) => b.score - a.score)[0];
+          if (!hasConflict) {
+            // Esta trabajadora puede tomar la tarea
+            bestCleaner = {
+              cleanerId: assignment.cleaner_id,
+              score: 1000 - (assignment.priority * 100) + (assignment.max_tasks_per_day - cleanerTasks.length),
+              reason: `Prioridad ${assignment.priority}, Carga actual: ${cleanerTasks.length}/${assignment.max_tasks_per_day}`
+            };
+            
+            console.log(`✅ Trabajadora prioridad ${assignment.priority} puede tomar la tarea`);
+            break; // Asignar a la primera disponible por prioridad
+          }
+        }
 
         if (!bestCleaner) {
           console.log(`⚠️ No hay trabajadoras disponibles para la tarea ${taskId}`);
@@ -264,7 +260,7 @@ Deno.serve(async (req) => {
           continue;
         }
 
-        // 8. Obtener información de la trabajadora
+        // 7. Obtener información de la trabajadora
         const { data: cleaner, error: cleanerInfoError } = await supabase
           .from('cleaners')
           .select('name')
@@ -277,9 +273,9 @@ Deno.serve(async (req) => {
           continue;
         }
 
-        console.log(`👤 Trabajadora seleccionada: ${cleaner.name} (confianza: ${bestCleaner.score}%)`);
+        console.log(`👤 Trabajadora seleccionada: ${cleaner.name} (${bestCleaner.reason})`);
 
-        // 9. Asignar la tarea
+        // 8. Asignar la tarea
         const { error: assignError } = await supabase
           .from('tasks')
           .update({
@@ -296,20 +292,20 @@ Deno.serve(async (req) => {
           continue;
         }
 
-        // 10. Registrar el log de asignación
+        // 9. Registrar el log de asignación
         await supabase
           .from('auto_assignment_logs')
           .insert({
             task_id: taskId,
             property_group_id: propertyGroup.id,
             assigned_cleaner_id: bestCleaner.cleanerId,
-            algorithm_used: 'workload-balance-priority',
+            algorithm_used: 'priority-saturation',
             assignment_reason: bestCleaner.reason,
             confidence_score: bestCleaner.score,
             was_manual_override: false
           });
 
-        console.log(`✅ Tarea ${taskId} asignada a ${cleaner.name} (confianza: ${bestCleaner.score}%)`);
+        console.log(`✅ Tarea ${taskId} asignada a ${cleaner.name} (${bestCleaner.reason})`);
         results.push({ 
           taskId, 
           success: true, 
