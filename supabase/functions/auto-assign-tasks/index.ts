@@ -72,7 +72,7 @@ Deno.serve(async (req) => {
       throw new Error('taskIds array is required');
     }
 
-    console.log(`🤖 Iniciando asignación automática V3 MEJORADA para ${taskIds.length} tareas`);
+    console.log(`🤖 Iniciando asignación automática V4 SATURACIÓN CORREGIDA para ${taskIds.length} tareas`);
 
     const results = [];
 
@@ -126,7 +126,7 @@ Deno.serve(async (req) => {
         }
 
         const group = groupAssignment.property_groups as any;
-        const propertyGroup: PropertyGroup = {
+        const propertyGroup = {
           id: group.id,
           name: group.name,
           description: group.description,
@@ -160,7 +160,10 @@ Deno.serve(async (req) => {
           continue;
         }
 
-        console.log(`👥 Encontradas ${cleanerAssignments.length} trabajadoras en el grupo`);
+        console.log(`👥 Encontradas ${cleanerAssignments.length} trabajadoras en el grupo:`);
+        cleanerAssignments.forEach(ca => {
+          console.log(`   - Prioridad ${ca.priority}: ${ca.cleaner_id.slice(0,8)} (max: ${ca.max_tasks_per_day} tareas/día)`);
+        });
 
         // Obtener TODAS las tareas del día para evaluar disponibilidad
         const { data: allDayTasks, error: tasksError } = await supabase
@@ -176,30 +179,29 @@ Deno.serve(async (req) => {
 
         console.log(`📅 Tareas totales para ${task.date}: ${allDayTasks?.length || 0}`);
 
-        // Función MEJORADA para verificar disponibilidad secuencial
+        // Función CORREGIDA para verificar disponibilidad
         const canCleanerTakeTask = (assignment: any, taskToAssign: any, existingTasks: any[]) => {
           const cleanerTasks = existingTasks.filter(t => t.cleaner_id === assignment.cleaner_id && t.id !== taskToAssign.id);
           
-          console.log(`🔍 Verificando disponibilidad para trabajadora prioridad ${assignment.priority}:`);
+          console.log(`🔍 Verificando trabajadora P${assignment.priority} (${assignment.cleaner_id.slice(0,8)}):`);
           console.log(`   - Tareas actuales: ${cleanerTasks.length}/${assignment.max_tasks_per_day}`);
+          console.log(`   - Nueva tarea: ${taskToAssign.start_time}-${taskToAssign.end_time}`);
           
           // Verificar límite diario
           if (cleanerTasks.length >= assignment.max_tasks_per_day) {
-            console.log(`❌ Trabajadora prioridad ${assignment.priority} alcanzó límite diario (${cleanerTasks.length}/${assignment.max_tasks_per_day})`);
+            console.log(`❌ P${assignment.priority}: Límite diario alcanzado (${cleanerTasks.length}/${assignment.max_tasks_per_day})`);
             return false;
           }
 
           // Si no hay tareas existentes, está disponible
           if (cleanerTasks.length === 0) {
-            console.log(`✅ Trabajadora prioridad ${assignment.priority} sin tareas, disponible`);
+            console.log(`✅ P${assignment.priority}: Sin tareas previas, DISPONIBLE`);
             return true;
           }
 
-          // Verificar si puede hacer la tarea secuencialmente - LÓGICA MEJORADA
+          // Verificar si puede hacer la tarea secuencialmente
           const taskStart = new Date(`${taskToAssign.date} ${taskToAssign.start_time}`);
           const taskEnd = new Date(`${taskToAssign.date} ${taskToAssign.end_time}`);
-          
-          console.log(`   🔍 Nueva tarea: ${taskStart.toLocaleTimeString()}-${taskEnd.toLocaleTimeString()}`);
           
           // Ordenar tareas existentes por hora de inicio
           const sortedTasks = cleanerTasks.sort((a, b) => {
@@ -208,19 +210,23 @@ Deno.serve(async (req) => {
             return timeA - timeB;
           });
 
+          console.log(`   - Tareas existentes: ${sortedTasks.map(t => `${t.start_time}-${t.end_time}`).join(', ')}`);
+
           // Verificar si puede insertarse entre tareas existentes o al final
           for (let i = 0; i <= sortedTasks.length; i++) {
             let canFitHere = false;
+            let slotDescription = '';
             
             if (i === 0) {
               // Antes de la primera tarea
               if (sortedTasks.length === 0) {
                 canFitHere = true;
+                slotDescription = 'única tarea';
               } else {
                 const firstTaskStart = new Date(`${sortedTasks[0].date} ${sortedTasks[0].start_time}`);
                 const bufferMs = assignment.estimated_travel_time_minutes * 60 * 1000;
                 canFitHere = taskEnd.getTime() + bufferMs <= firstTaskStart.getTime();
-                console.log(`   🔍 Posición 0: Nueva acaba ${taskEnd.toLocaleTimeString()}, primera empieza ${firstTaskStart.toLocaleTimeString()}, puede: ${canFitHere}`);
+                slotDescription = `antes de ${sortedTasks[0].start_time}`;
               }
             } else if (i === sortedTasks.length) {
               // Después de la última tarea
@@ -228,7 +234,7 @@ Deno.serve(async (req) => {
               const lastTaskEnd = new Date(`${lastTask.date} ${lastTask.end_time}`);
               const bufferMs = assignment.estimated_travel_time_minutes * 60 * 1000;
               canFitHere = taskStart.getTime() >= lastTaskEnd.getTime() + bufferMs;
-              console.log(`   🔍 Posición final: Última acaba ${lastTaskEnd.toLocaleTimeString()}, nueva empieza ${taskStart.toLocaleTimeString()}, puede: ${canFitHere}`);
+              slotDescription = `después de ${lastTask.end_time}`;
             } else {
               // Entre dos tareas
               const prevTask = sortedTasks[i - 1];
@@ -239,30 +245,29 @@ Deno.serve(async (req) => {
               
               canFitHere = taskStart.getTime() >= prevTaskEnd.getTime() + bufferMs &&
                            taskEnd.getTime() + bufferMs <= nextTaskStart.getTime();
-              console.log(`   🔍 Posición ${i}: Entre ${prevTaskEnd.toLocaleTimeString()} y ${nextTaskStart.toLocaleTimeString()}, puede: ${canFitHere}`);
+              slotDescription = `entre ${prevTask.end_time} y ${nextTask.start_time}`;
             }
             
+            console.log(`   - Posición ${i} (${slotDescription}): ${canFitHere ? '✅ CABE' : '❌ no cabe'}`);
+            
             if (canFitHere) {
-              console.log(`✅ Trabajadora prioridad ${assignment.priority} PUEDE hacer la tarea en posición ${i}`);
+              console.log(`✅ P${assignment.priority} PUEDE hacer la tarea en posición ${i}`);
               return true;
             }
           }
 
-          console.log(`❌ Trabajadora prioridad ${assignment.priority} NO puede insertar la tarea`);
+          console.log(`❌ P${assignment.priority}: NO puede insertar la tarea`);
           return false;
         };
 
-        // ALGORITMO DE SATURACIÓN POR PRIORIDAD V3 MEJORADO
+        // ALGORITMO DE SATURACIÓN POR PRIORIDAD V4 - CORREGIDO
         let bestCleaner = null;
         
-        // Ordenar trabajadoras por prioridad (1, 2, 3...)
-        const sortedCleaners = cleanerAssignments.sort((a, b) => a.priority - b.priority);
+        console.log(`🎯 INICIANDO SATURACIÓN V4 CORREGIDA - SATURAR POR PRIORIDAD`);
         
-        console.log(`🎯 INICIANDO SATURACIÓN V3 MEJORADA`);
-        
-        // Buscar la primera trabajadora que pueda tomar la tarea
-        for (const assignment of sortedCleaners) {
-          console.log(`🔍 Evaluando trabajadora prioridad ${assignment.priority}`);
+        // BUSCAR TRABAJADORA POR ORDEN DE PRIORIDAD (saturación real)
+        for (const assignment of cleanerAssignments) {
+          console.log(`🔍 Evaluando trabajadora PRIORIDAD ${assignment.priority} (${assignment.cleaner_id.slice(0,8)})`);
           
           if (canCleanerTakeTask(assignment, task, allDayTasks || [])) {
             const cleanerTasks = (allDayTasks || []).filter(t => t.cleaner_id === assignment.cleaner_id);
@@ -270,11 +275,13 @@ Deno.serve(async (req) => {
             bestCleaner = {
               cleanerId: assignment.cleaner_id,
               score: 1000 - (assignment.priority * 100) + (assignment.max_tasks_per_day - cleanerTasks.length),
-              reason: `🏆 SATURACIÓN V3: Prioridad ${assignment.priority}, Carga actual: ${cleanerTasks.length}/${assignment.max_tasks_per_day}`
+              reason: `🏆 SATURACIÓN V4: Prioridad ${assignment.priority}, Carga actual: ${cleanerTasks.length}/${assignment.max_tasks_per_day}`
             };
             
-            console.log(`✅ ASIGNANDO a trabajadora prioridad ${assignment.priority} (${cleanerTasks.length} tareas actuales)`);
-            break; // IMPORTANTE: Solo asignar a la primera disponible por prioridad
+            console.log(`✅ ASIGNANDO a PRIORIDAD ${assignment.priority} (${cleanerTasks.length} tareas actuales)`);
+            break; // IMPORTANTE: Asignar a la primera disponible por prioridad (saturación)
+          } else {
+            console.log(`❌ PRIORIDAD ${assignment.priority} no disponible, probando siguiente...`);
           }
         }
 
@@ -323,7 +330,7 @@ Deno.serve(async (req) => {
             task_id: taskId,
             property_group_id: propertyGroup.id,
             assigned_cleaner_id: bestCleaner.cleanerId,
-            algorithm_used: 'priority-saturation-v3-improved',
+            algorithm_used: 'priority-saturation-v4-corrected',
             assignment_reason: bestCleaner.reason,
             confidence_score: bestCleaner.score,
             was_manual_override: false
@@ -346,7 +353,7 @@ Deno.serve(async (req) => {
     }
 
     const successCount = results.filter(r => r.success).length;
-    console.log(`🎯 SATURACIÓN V3 MEJORADA COMPLETADA: ${successCount}/${taskIds.length} tareas asignadas`);
+    console.log(`🎯 SATURACIÓN V4 CORREGIDA COMPLETADA: ${successCount}/${taskIds.length} tareas asignadas`);
 
     return new Response(JSON.stringify({
       success: true,
