@@ -1,3 +1,4 @@
+
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.50.0';
 
 const corsHeaders = {
@@ -175,17 +176,26 @@ Deno.serve(async (req) => {
 
         console.log(`📅 Tareas totales para ${task.date}: ${allDayTasks?.length || 0}`);
 
-        // Función corregida para verificar si una trabajadora puede tomar la tarea
+        // Función CORREGIDA para verificar si una trabajadora puede tomar la tarea
         const canCleanerTakeTask = (assignment: any, taskToAssign: any, existingTasks: any[]) => {
           const cleanerTasks = existingTasks.filter(t => t.cleaner_id === assignment.cleaner_id && t.id !== taskToAssign.id);
           
+          console.log(`🔍 Verificando disponibilidad para trabajadora prioridad ${assignment.priority}:`);
+          console.log(`   - Tareas actuales: ${cleanerTasks.length}/${assignment.max_tasks_per_day}`);
+          
           // Verificar límite diario
           if (cleanerTasks.length >= assignment.max_tasks_per_day) {
-            console.log(`⚠️ Trabajadora prioridad ${assignment.priority} alcanzó límite diario (${cleanerTasks.length}/${assignment.max_tasks_per_day})`);
+            console.log(`❌ Trabajadora prioridad ${assignment.priority} alcanzó límite diario (${cleanerTasks.length}/${assignment.max_tasks_per_day})`);
             return false;
           }
 
-          // Verificar conflictos de horario con lógica corregida
+          // Si no hay tareas existentes, está disponible
+          if (cleanerTasks.length === 0) {
+            console.log(`✅ Trabajadora prioridad ${assignment.priority} sin tareas, disponible`);
+            return true;
+          }
+
+          // Verificar conflictos de horario con LÓGICA CORREGIDA
           const taskStart = new Date(`${taskToAssign.date} ${taskToAssign.start_time}`);
           const taskEnd = new Date(`${taskToAssign.date} ${taskToAssign.end_time}`);
           
@@ -193,17 +203,25 @@ Deno.serve(async (req) => {
             const existingStart = new Date(`${existingTask.date} ${existingTask.start_time}`);
             const existingEnd = new Date(`${existingTask.date} ${existingTask.end_time}`);
             
-            // Añadir buffer SOLO al final de la tarea existente
+            // Añadir buffer al final de la tarea existente
             const bufferMs = assignment.estimated_travel_time_minutes * 60 * 1000;
             const existingEndWithBuffer = new Date(existingEnd.getTime() + bufferMs);
             
-            // La nueva tarea NO puede empezar antes de que termine la existente + buffer
-            if (taskStart < existingEndWithBuffer && taskEnd > existingStart) {
-              console.log(`⚠️ Trabajadora prioridad ${assignment.priority} tiene conflicto: nueva tarea ${taskStart.toLocaleTimeString()}-${taskEnd.toLocaleTimeString()} vs existente ${existingStart.toLocaleTimeString()}-${existingEndWithBuffer.toLocaleTimeString()}`);
+            console.log(`   🔍 Comparando:
+              Nueva: ${taskStart.toLocaleTimeString()}-${taskEnd.toLocaleTimeString()}
+              Existente: ${existingStart.toLocaleTimeString()}-${existingEnd.toLocaleTimeString()}
+              Con buffer: hasta ${existingEndWithBuffer.toLocaleTimeString()}`);
+            
+            // LÓGICA CORREGIDA: Verificar solapamiento real
+            const hasOverlap = (taskStart < existingEndWithBuffer) && (taskEnd > existingStart);
+            
+            if (hasOverlap) {
+              console.log(`❌ Trabajadora prioridad ${assignment.priority} tiene conflicto`);
               return false;
             }
           }
 
+          console.log(`✅ Trabajadora prioridad ${assignment.priority} DISPONIBLE para nueva tarea`);
           return true;
         };
 
@@ -213,7 +231,7 @@ Deno.serve(async (req) => {
         // Ordenar trabajadoras por prioridad (1, 2, 3...)
         const sortedCleaners = cleanerAssignments.sort((a, b) => a.priority - b.priority);
         
-        console.log(`🎯 INICIANDO SATURACIÓN POR PRIORIDAD`);
+        console.log(`🎯 INICIANDO SATURACIÓN POR PRIORIDAD CORREGIDA`);
         
         // Buscar la primera trabajadora que pueda tomar la tarea
         for (const assignment of sortedCleaners) {
@@ -225,7 +243,7 @@ Deno.serve(async (req) => {
             bestCleaner = {
               cleanerId: assignment.cleaner_id,
               score: 1000 - (assignment.priority * 100) + (assignment.max_tasks_per_day - cleanerTasks.length),
-              reason: `🏆 SATURACIÓN: Prioridad ${assignment.priority}, Carga actual: ${cleanerTasks.length}/${assignment.max_tasks_per_day}`
+              reason: `🏆 SATURACIÓN CORREGIDA: Prioridad ${assignment.priority}, Carga actual: ${cleanerTasks.length}/${assignment.max_tasks_per_day}`
             };
             
             console.log(`✅ ASIGNANDO a trabajadora prioridad ${assignment.priority} (${cleanerTasks.length} tareas actuales)`);
@@ -278,7 +296,7 @@ Deno.serve(async (req) => {
             task_id: taskId,
             property_group_id: propertyGroup.id,
             assigned_cleaner_id: bestCleaner.cleanerId,
-            algorithm_used: 'priority-saturation-v2',
+            algorithm_used: 'priority-saturation-v3-fixed',
             assignment_reason: bestCleaner.reason,
             confidence_score: bestCleaner.score,
             was_manual_override: false
@@ -301,7 +319,7 @@ Deno.serve(async (req) => {
     }
 
     const successCount = results.filter(r => r.success).length;
-    console.log(`🎯 SATURACIÓN COMPLETADA: ${successCount}/${taskIds.length} tareas asignadas`);
+    console.log(`🎯 SATURACIÓN CORREGIDA COMPLETADA: ${successCount}/${taskIds.length} tareas asignadas`);
 
     return new Response(JSON.stringify({
       success: true,

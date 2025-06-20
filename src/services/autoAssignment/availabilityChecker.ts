@@ -8,10 +8,17 @@ export class AvailabilityChecker {
     
     // Verificar límite diario de tareas
     if (cleanerTasks.length >= assignment.maxTasksPerDay) {
+      console.log(`❌ Trabajadora alcanzó límite diario: ${cleanerTasks.length}/${assignment.maxTasksPerDay}`);
       return false;
     }
 
-    // Verificar conflictos de horario con lógica mejorada
+    // Si no hay tareas existentes, está disponible
+    if (cleanerTasks.length === 0) {
+      console.log(`✅ Trabajadora sin tareas asignadas, disponible para nueva tarea`);
+      return true;
+    }
+
+    // Verificar conflictos de horario - LÓGICA CORREGIDA
     const taskStart = new Date(`${task.date} ${task.startTime}`);
     const taskEnd = new Date(`${task.date} ${task.endTime}`);
     
@@ -19,17 +26,28 @@ export class AvailabilityChecker {
       const existingStart = new Date(`${existingTask.date} ${existingTask.startTime}`);
       const existingEnd = new Date(`${existingTask.date} ${existingTask.endTime}`);
       
-      // Añadir tiempo de buffer SOLO al final de la tarea existente
+      // Añadir tiempo de buffer al final de la tarea existente
       const bufferMs = assignment.estimatedTravelTimeMinutes * 60 * 1000;
       const existingEndWithBuffer = new Date(existingEnd.getTime() + bufferMs);
       
-      // Verificar solapamiento real: la nueva tarea NO puede empezar antes de que termine la existente + buffer
-      // Pero SÍ puede empezar después de que termine la existente + buffer
-      if (taskStart < existingEndWithBuffer && taskEnd > existingStart) {
+      console.log(`🔍 Comparando tiempos:
+        Nueva: ${taskStart.toLocaleTimeString()} - ${taskEnd.toLocaleTimeString()}
+        Existente: ${existingStart.toLocaleTimeString()} - ${existingEnd.toLocaleTimeString()}
+        Con buffer: ${existingStart.toLocaleTimeString()} - ${existingEndWithBuffer.toLocaleTimeString()}`);
+      
+      // LÓGICA CORREGIDA: Verificar solapamiento real
+      // La nueva tarea tiene conflicto SI:
+      // 1. Empieza antes de que termine la existente + buffer Y
+      // 2. Termina después de que empiece la existente
+      const hasOverlap = (taskStart < existingEndWithBuffer) && (taskEnd > existingStart);
+      
+      if (hasOverlap) {
+        console.log(`❌ CONFLICTO detectado entre tareas`);
         return false;
       }
     }
 
+    console.log(`✅ Sin conflictos, trabajadora disponible`);
     return true;
   }
 }
