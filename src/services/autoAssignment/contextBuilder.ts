@@ -2,7 +2,8 @@
 import { propertyGroupStorage } from '../storage/propertyGroupStorage';
 import { DatabaseService } from './databaseService';
 import { AssignmentContext } from './types';
-import { Task, PropertyGroup } from '@/types/calendar';
+import { Task } from '@/types/calendar';
+import { PropertyGroup } from '@/types/propertyGroups';
 
 export class ContextBuilder {
   constructor(private databaseService: DatabaseService) {}
