@@ -1,4 +1,3 @@
-
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.50.0';
 
 const corsHeaders = {
@@ -176,7 +175,7 @@ Deno.serve(async (req) => {
 
         console.log(`📅 Tareas totales para ${task.date}: ${allDayTasks?.length || 0}`);
 
-        // Función para verificar si una trabajadora puede tomar la tarea
+        // Función corregida para verificar si una trabajadora puede tomar la tarea
         const canCleanerTakeTask = (assignment: any, taskToAssign: any, existingTasks: any[]) => {
           const cleanerTasks = existingTasks.filter(t => t.cleaner_id === assignment.cleaner_id && t.id !== taskToAssign.id);
           
@@ -186,7 +185,7 @@ Deno.serve(async (req) => {
             return false;
           }
 
-          // Verificar conflictos de horario con buffer
+          // Verificar conflictos de horario con lógica corregida
           const taskStart = new Date(`${taskToAssign.date} ${taskToAssign.start_time}`);
           const taskEnd = new Date(`${taskToAssign.date} ${taskToAssign.end_time}`);
           
@@ -194,14 +193,13 @@ Deno.serve(async (req) => {
             const existingStart = new Date(`${existingTask.date} ${existingTask.start_time}`);
             const existingEnd = new Date(`${existingTask.date} ${existingTask.end_time}`);
             
-            // Añadir tiempo de buffer
+            // Añadir buffer SOLO al final de la tarea existente
             const bufferMs = assignment.estimated_travel_time_minutes * 60 * 1000;
-            existingStart.setTime(existingStart.getTime() - bufferMs);
-            existingEnd.setTime(existingEnd.getTime() + bufferMs);
+            const existingEndWithBuffer = new Date(existingEnd.getTime() + bufferMs);
             
-            // Verificar solapamiento
-            if (taskStart < existingEnd && taskEnd > existingStart) {
-              console.log(`⚠️ Trabajadora prioridad ${assignment.priority} tiene conflicto de horario`);
+            // La nueva tarea NO puede empezar antes de que termine la existente + buffer
+            if (taskStart < existingEndWithBuffer && taskEnd > existingStart) {
+              console.log(`⚠️ Trabajadora prioridad ${assignment.priority} tiene conflicto: nueva tarea ${taskStart.toLocaleTimeString()}-${taskEnd.toLocaleTimeString()} vs existente ${existingStart.toLocaleTimeString()}-${existingEndWithBuffer.toLocaleTimeString()}`);
               return false;
             }
           }
