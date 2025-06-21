@@ -85,37 +85,54 @@ Deno.serve(async (req) => {
         }
       }
 
-      // NUEVO: Detectar tareas duplicadas después de la sincronización
+      // CORREGIDO: Detectar tareas duplicadas usando consulta corregida
       if (stats.tasks_created > 0) {
         console.log(`🔍 Verificando tareas duplicadas...`);
         
         try {
-          const { data: duplicateTasks, error: duplicateError } = await supabase
+          // Obtener todas las tareas en el rango de fechas
+          const { data: allTasks, error: tasksError } = await supabase
             .from('tasks')
-            .select(`
-              date,
-              propiedad_id,
-              properties!inner(nombre),
-              count(*) as task_count
-            `)
+            .select('date, propiedad_id, property:properties!inner(nombre)')
             .gte('date', startDateStr)
             .lte('date', endDateStr)
-            .not('propiedad_id', 'is', null)
-            .group('date, propiedad_id, properties.nombre')
-            .having('count(*)', 'gt', 1);
+            .not('propiedad_id', 'is', null);
 
-          if (duplicateError) {
-            console.error('❌ Error verificando duplicados:', duplicateError);
-            stats.errors.push(`Error verificando duplicados: ${duplicateError.message}`);
-          } else if (duplicateTasks && duplicateTasks.length > 0) {
-            console.log(`⚠️ TAREAS DUPLICADAS DETECTADAS: ${duplicateTasks.length}`);
-            duplicateTasks.forEach(dup => {
-              const warningMsg = `DUPLICADO: ${dup.task_count} tareas para ${dup.properties?.nombre} el ${dup.date}`;
-              console.log(`⚠️ ${warningMsg}`);
-              stats.errors.push(warningMsg);
+          if (tasksError) {
+            console.error('❌ Error obteniendo tareas:', tasksError);
+            stats.errors.push(`Error obteniendo tareas: ${tasksError.message}`);
+          } else if (allTasks && allTasks.length > 0) {
+            // Agrupar manualmente para detectar duplicados
+            const taskGroups = new Map<string, any[]>();
+            
+            allTasks.forEach(task => {
+              const key = `${task.date}-${task.propiedad_id}`;
+              if (!taskGroups.has(key)) {
+                taskGroups.set(key, []);
+              }
+              taskGroups.get(key)!.push(task);
             });
-          } else {
-            console.log(`✅ No se encontraron tareas duplicadas`);
+
+            // Buscar grupos con más de una tarea
+            const duplicates = Array.from(taskGroups.entries())
+              .filter(([_, tasks]) => tasks.length > 1)
+              .map(([key, tasks]) => ({
+                date: key.split('-')[0],
+                propiedad_id: key.split('-')[1],
+                task_count: tasks.length,
+                property_name: tasks[0].property?.nombre || 'Desconocida'
+              }));
+
+            if (duplicates.length > 0) {
+              console.log(`⚠️ TAREAS DUPLICADAS DETECTADAS: ${duplicates.length} grupos`);
+              duplicates.forEach(dup => {
+                const warningMsg = `DUPLICADO: ${dup.task_count} tareas para ${dup.property_name} el ${dup.date}`;
+                console.log(`⚠️ ${warningMsg}`);
+                stats.errors.push(warningMsg);
+              });
+            } else {
+              console.log(`✅ No se encontraron tareas duplicadas`);
+            }
           }
         } catch (error) {
           console.error('❌ Error en verificación de duplicados:', error);
@@ -159,6 +176,22 @@ Deno.serve(async (req) => {
         console.log('ℹ️ No se crearon nuevas tareas, saltando asignación automática');
       }
 
+      // NUEVO: Generar resumen de cancelaciones
+      const cancelledReservations = stats.reservations_details?.filter(r => r.action === 'cancelled') || [];
+      let cancellationSummary = '';
+      
+      if (cancelledReservations.length > 0) {
+        console.log(`📋 RESUMEN DE CANCELACIONES: ${cancelledReservations.length} reservas canceladas`);
+        cancelledReservations.forEach(reservation => {
+          const summaryLine = `- ${reservation.property_name} (${reservation.departure_date}): ${reservation.guest_name}`;
+          console.log(`❌ ${summaryLine}`);
+          cancellationSummary += summaryLine + '\n';
+        });
+      } else {
+        console.log('✅ No hubo cancelaciones en esta sincronización');
+        cancellationSummary = 'No hubo cancelaciones';
+      }
+
       // Actualizar log con resultados exitosos
       await supabase
         .from('hostaway_sync_logs')
@@ -176,13 +209,15 @@ Deno.serve(async (req) => {
         success: true,
         message: 'Sincronización corregida completada exitosamente',
         stats,
+        cancellationSummary,
         optimization: {
           dateRange: `${startDateStr} a ${endDateStr}`,
           totalReservations: reservations.length,
           corrections: [
             'Solo búsqueda por departureDate (fecha de salida)',
             'Rango optimizado: HOY + 14 días (sin días pasados)',
-            'Detección automática de tareas duplicadas'
+            'Detección manual de tareas duplicadas (corregida)',
+            'Resumen detallado de cancelaciones'
           ]
         }
       }), {
