@@ -1,4 +1,3 @@
-
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.50.0';
 import { SyncStats } from './types.ts';
 import { getHostawayToken, fetchAllHostawayReservations } from './hostaway-api.ts';
@@ -99,7 +98,12 @@ export class SyncOrchestrator {
     try {
       const { data: allTasks, error: tasksError } = await this.supabase
         .from('tasks')
-        .select('date, propiedad_id, property:properties!inner(nombre)')
+        .select(`
+          id,
+          date,
+          propiedad_id,
+          property:properties!inner(nombre)
+        `)
         .gte('date', startDateStr)
         .lte('date', endDateStr)
         .not('propiedad_id', 'is', null);
@@ -108,6 +112,8 @@ export class SyncOrchestrator {
         console.error('❌ Error obteniendo tareas:', tasksError);
         this.stats.errors.push(`Error obteniendo tareas: ${tasksError.message}`);
       } else if (allTasks && allTasks.length > 0) {
+        console.log(`📊 Total de tareas encontradas: ${allTasks.length}`);
+        
         const taskGroups = new Map<string, any[]>();
         
         allTasks.forEach(task => {
@@ -126,16 +132,23 @@ export class SyncOrchestrator {
               date,
               propiedad_id: propiedadId,
               task_count: tasks.length,
-              property_name: tasks[0].property?.nombre || 'Desconocida'
+              property_name: tasks[0].property?.nombre || 'Desconocida',
+              task_ids: tasks.map(t => t.id)
             };
           });
 
         if (duplicates.length > 0) {
           console.log(`⚠️ TAREAS DUPLICADAS DETECTADAS: ${duplicates.length} grupos`);
           duplicates.forEach(dup => {
-            const warningMsg = `DUPLICADO: ${dup.task_count} tareas para ${dup.property_name} el ${dup.date}`;
+            const warningMsg = `DUPLICADO: ${dup.task_count} tareas para ${dup.property_name} el ${dup.date} (IDs: ${dup.task_ids.join(', ')})`;
             console.log(`⚠️ ${warningMsg}`);
             this.stats.errors.push(warningMsg);
+          });
+          
+          console.log(`📋 Detalles de duplicados encontrados:`);
+          duplicates.forEach(dup => {
+            console.log(`   - ${dup.property_name}: ${dup.task_count} tareas en ${dup.date}`);
+            console.log(`   - IDs de tareas: ${dup.task_ids.join(', ')}`);
           });
         } else {
           console.log(`✅ No se encontraron tareas duplicadas`);
