@@ -2,6 +2,7 @@
 export interface HostawayReservation {
   id: number;
   listingMapId: number;
+  listingName?: string; // NUEVO: para fallback de mapeo por nombre
   status: string;
   arrivalDate: string;
   departureDate: string;
@@ -10,6 +11,12 @@ export interface HostawayReservation {
   nights: number;
   adults: number;
   guestName: string;
+}
+
+export interface HostawayProperty {
+  id: number;
+  name: string;
+  internalName: string;
 }
 
 export interface SyncStats {

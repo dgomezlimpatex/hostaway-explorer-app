@@ -3,6 +3,39 @@ import { HostawayReservation, HostawayProperty } from './types.ts';
 
 const HOSTAWAY_ACCOUNT_ID = 80687;
 const HOSTAWAY_API_BASE = 'https://api.hostaway.com/v1';
+const REQUEST_TIMEOUT = 30000; // 30 segundos
+const MAX_RETRIES = 3;
+const RETRY_DELAY = 1000; // 1 segundo
+
+async function makeApiRequest(url: string, options: RequestInit, retries = MAX_RETRIES): Promise<Response> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT);
+  
+  try {
+    const response = await fetch(url, {
+      ...options,
+      signal: controller.signal,
+    });
+    
+    clearTimeout(timeoutId);
+    
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+    
+    return response;
+  } catch (error) {
+    clearTimeout(timeoutId);
+    
+    if (retries > 0 && (error.name === 'AbortError' || error.message.includes('fetch'))) {
+      console.log(`⚠️ Error en llamada API, reintentando... (${MAX_RETRIES - retries + 1}/${MAX_RETRIES})`);
+      await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
+      return makeApiRequest(url, options, retries - 1);
+    }
+    
+    throw error;
+  }
+}
 
 export async function getHostawayToken(): Promise<string> {
   console.log('Obteniendo token de Hostaway...');
@@ -14,7 +47,7 @@ export async function getHostawayToken(): Promise<string> {
     throw new Error('Credenciales de Hostaway no configuradas');
   }
 
-  const response = await fetch(`${HOSTAWAY_API_BASE}/accessTokens`, {
+  const response = await makeApiRequest(`${HOSTAWAY_API_BASE}/accessTokens`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/x-www-form-urlencoded',
@@ -26,10 +59,6 @@ export async function getHostawayToken(): Promise<string> {
       scope: 'general',
     }),
   });
-
-  if (!response.ok) {
-    throw new Error(`Error obteniendo token: ${response.statusText}`);
-  }
 
   const data = await response.json();
   return data.access_token;
@@ -50,16 +79,12 @@ async function fetchHostawayReservationsByDeparture(token: string, startDate: st
 
   console.log(`📡 URL de consulta por salida: ${url.toString()}`);
 
-  const response = await fetch(url.toString(), {
+  const response = await makeApiRequest(url.toString(), {
     headers: {
       'Authorization': `Bearer ${token}`,
       'Content-Type': 'application/json',
     },
   });
-
-  if (!response.ok) {
-    throw new Error(`Error obteniendo reservas por salida: ${response.statusText}`);
-  }
 
   const data = await response.json();
   return data.result || [];
@@ -74,7 +99,7 @@ export async function fetchAllHostawayReservations(token: string, startDate: str
   let offset = 0;
   let hasMore = true;
 
-  console.log(`📤 Buscando reservas por fecha de SALIDA...`);
+  console.log(`📤 Buscando reservas por fecha de SALIDA con timeouts y retry logic...`);
   while (hasMore) {
     const reservations = await fetchHostawayReservationsByDeparture(token, startDate, endDate, offset);
     allReservations = allReservations.concat(reservations);
@@ -88,6 +113,8 @@ export async function fetchAllHostawayReservations(token: string, startDate: str
   console.log(`🎯 RESUMEN DE BÚSQUEDA OPTIMIZADA:`);
   console.log(`   - Solo búsqueda por fecha de salida: ${allReservations.length} reservas`);
   console.log(`   - Rango optimizado: ${startDate} a ${endDate}`);
+  console.log(`   - Timeouts configurados: ${REQUEST_TIMEOUT}ms`);
+  console.log(`   - Reintentos máximos: ${MAX_RETRIES}`);
 
   // Log detallado para debugging
   console.log(`📋 Muestra de reservas encontradas:`);
@@ -99,21 +126,17 @@ export async function fetchAllHostawayReservations(token: string, startDate: str
 }
 
 export async function fetchHostawayProperties(token: string): Promise<HostawayProperty[]> {
-  console.log('Obteniendo propiedades de Hostaway...');
+  console.log('Obteniendo propiedades de Hostaway con timeouts...');
   
   const url = new URL(`${HOSTAWAY_API_BASE}/listings`);
   url.searchParams.append('accountId', HOSTAWAY_ACCOUNT_ID.toString());
 
-  const response = await fetch(url.toString(), {
+  const response = await makeApiRequest(url.toString(), {
     headers: {
       'Authorization': `Bearer ${token}`,
       'Content-Type': 'application/json',
     },
   });
-
-  if (!response.ok) {
-    throw new Error(`Error obteniendo propiedades: ${response.statusText}`);
-  }
 
   const data = await response.json();
   return data.result || [];
