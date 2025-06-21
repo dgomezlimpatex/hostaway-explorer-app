@@ -120,12 +120,15 @@ export class SyncOrchestrator {
 
         const duplicates = Array.from(taskGroups.entries())
           .filter(([_, tasks]) => tasks.length > 1)
-          .map(([key, tasks]) => ({
-            date: key.split('-')[0],
-            propiedad_id: key.split('-')[1],
-            task_count: tasks.length,
-            property_name: tasks[0].property?.nombre || 'Desconocida'
-          }));
+          .map(([key, tasks]) => {
+            const [date, propiedadId] = key.split('-');
+            return {
+              date,
+              propiedad_id: propiedadId,
+              task_count: tasks.length,
+              property_name: tasks[0].property?.nombre || 'Desconocida'
+            };
+          });
 
         if (duplicates.length > 0) {
           console.log(`⚠️ TAREAS DUPLICADAS DETECTADAS: ${duplicates.length} grupos`);
