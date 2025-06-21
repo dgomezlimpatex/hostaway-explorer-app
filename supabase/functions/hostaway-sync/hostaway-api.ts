@@ -35,43 +35,13 @@ export async function getHostawayToken(): Promise<string> {
   return data.access_token;
 }
 
-async function fetchHostawayReservations(token: string, startDate: string, endDate: string, offset: number = 0): Promise<HostawayReservation[]> {
-  console.log(`📡 Obteniendo reservas de Hostaway desde ${startDate} hasta ${endDate}, offset: ${offset}`);
-  
-  const url = new URL(`${HOSTAWAY_API_BASE}/reservations`);
-  url.searchParams.append('accountId', HOSTAWAY_ACCOUNT_ID.toString());
-  
-  // MEJORAR: Usar tanto arrivalStartDate/arrivalEndDate como departureStartDate/departureEndDate
-  // para capturar todas las reservas que podrían afectar el período
-  url.searchParams.append('arrivalStartDate', startDate);
-  url.searchParams.append('arrivalEndDate', endDate);
-  url.searchParams.append('includeResolved', 'true');
-  url.searchParams.append('limit', '200');
-  url.searchParams.append('offset', offset.toString());
-
-  console.log(`📡 URL de consulta: ${url.toString()}`);
-
-  const response = await fetch(url.toString(), {
-    headers: {
-      'Authorization': `Bearer ${token}`,
-      'Content-Type': 'application/json',
-    },
-  });
-
-  if (!response.ok) {
-    throw new Error(`Error obteniendo reservas: ${response.statusText}`);
-  }
-
-  const data = await response.json();
-  return data.result || [];
-}
-
-// Nueva función para obtener reservas por fecha de salida también
 async function fetchHostawayReservationsByDeparture(token: string, startDate: string, endDate: string, offset: number = 0): Promise<HostawayReservation[]> {
   console.log(`📡 Obteniendo reservas por fecha de SALIDA desde ${startDate} hasta ${endDate}, offset: ${offset}`);
   
   const url = new URL(`${HOSTAWAY_API_BASE}/reservations`);
   url.searchParams.append('accountId', HOSTAWAY_ACCOUNT_ID.toString());
+  
+  // CORREGIDO: Solo buscar por departureDate ya que es cuando se necesita limpieza
   url.searchParams.append('departureStartDate', startDate);
   url.searchParams.append('departureEndDate', endDate);
   url.searchParams.append('includeResolved', 'true');
@@ -96,69 +66,32 @@ async function fetchHostawayReservationsByDeparture(token: string, startDate: st
 }
 
 export async function fetchAllHostawayReservations(token: string, startDate: string, endDate: string): Promise<HostawayReservation[]> {
-  console.log(`🔍 INICIANDO búsqueda completa de reservas para el período ${startDate} a ${endDate}`);
+  console.log(`🔍 INICIANDO búsqueda OPTIMIZADA de reservas para el período ${startDate} a ${endDate}`);
+  console.log(`✅ CORRECCIÓN APLICADA: Solo buscando por fecha de SALIDA (departureDate)`);
   
-  // Obtener reservas por fecha de llegada
-  let arrivalReservations: HostawayReservation[] = [];
+  // CORREGIDO: Solo obtener reservas por fecha de salida
+  let allReservations: HostawayReservation[] = [];
   let offset = 0;
   let hasMore = true;
-
-  console.log(`📥 Buscando reservas por fecha de LLEGADA...`);
-  while (hasMore) {
-    const reservations = await fetchHostawayReservations(token, startDate, endDate, offset);
-    arrivalReservations = arrivalReservations.concat(reservations);
-    
-    console.log(`📊 Obtenidas ${reservations.length} reservas por llegada en esta página (total: ${arrivalReservations.length})`);
-    
-    hasMore = reservations.length === 200;
-    offset += 200;
-  }
-
-  // Obtener reservas por fecha de salida
-  let departureReservations: HostawayReservation[] = [];
-  offset = 0;
-  hasMore = true;
 
   console.log(`📤 Buscando reservas por fecha de SALIDA...`);
   while (hasMore) {
     const reservations = await fetchHostawayReservationsByDeparture(token, startDate, endDate, offset);
-    departureReservations = departureReservations.concat(reservations);
+    allReservations = allReservations.concat(reservations);
     
-    console.log(`📊 Obtenidas ${reservations.length} reservas por salida en esta página (total: ${departureReservations.length})`);
+    console.log(`📊 Obtenidas ${reservations.length} reservas por salida en esta página (total: ${allReservations.length})`);
     
     hasMore = reservations.length === 200;
     offset += 200;
   }
 
-  // Combinar y deduplicar reservas
-  const allReservationsMap = new Map<number, HostawayReservation>();
-  
-  // Añadir reservas por llegada
-  arrivalReservations.forEach(reservation => {
-    allReservationsMap.set(reservation.id, reservation);
-  });
-  
-  // Añadir reservas por salida (puede sobrescribir si ya existe, pero eso está bien)
-  departureReservations.forEach(reservation => {
-    allReservationsMap.set(reservation.id, reservation);
-  });
+  console.log(`🎯 RESUMEN DE BÚSQUEDA OPTIMIZADA:`);
+  console.log(`   - Solo búsqueda por fecha de salida: ${allReservations.length} reservas`);
+  console.log(`   - Rango optimizado: ${startDate} a ${endDate}`);
 
-  const allReservations = Array.from(allReservationsMap.values());
-  
-  console.log(`🎯 RESUMEN DE BÚSQUEDA:`);
-  console.log(`   - Reservas por llegada: ${arrivalReservations.length}`);
-  console.log(`   - Reservas por salida: ${departureReservations.length}`);
-  console.log(`   - Total después de deduplicar: ${allReservations.length}`);
-
-  // Log detallado para el período específico que menciona el usuario
-  const targetDate = '2025-06-14'; // sábado 14
-  const targetReservations = allReservations.filter(r => 
-    r.departureDate === targetDate || r.arrivalDate === targetDate
-  );
-  
-  console.log(`🎯 RESERVAS ESPECÍFICAS PARA ${targetDate}:`);
-  console.log(`   - Total encontradas: ${targetReservations.length}`);
-  targetReservations.forEach(r => {
+  // Log detallado para debugging
+  console.log(`📋 Muestra de reservas encontradas:`);
+  allReservations.slice(0, 5).forEach(r => {
     console.log(`   - ID: ${r.id}, llegada: ${r.arrivalDate}, salida: ${r.departureDate}, status: ${r.status}, listing: ${r.listingMapId}, guest: ${r.guestName}`);
   });
 

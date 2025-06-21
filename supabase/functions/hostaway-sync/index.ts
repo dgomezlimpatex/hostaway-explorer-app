@@ -35,7 +35,7 @@ Deno.serve(async (req) => {
       throw logError;
     }
 
-    console.log(`🚀 Iniciando sincronización optimizada con Hostaway (Log ID: ${syncLog.id})`);
+    console.log(`🚀 Iniciando sincronización CORREGIDA con Hostaway (Log ID: ${syncLog.id})`);
 
     const stats: SyncStats = {
       reservations_processed: 0,
@@ -54,36 +54,30 @@ Deno.serve(async (req) => {
       const accessToken = await getHostawayToken();
       console.log('✅ Token obtenido exitosamente');
 
-      // OPTIMIZADO: Calcular rango de fechas más pequeño (solo próximas 3 semanas)
+      // CORREGIDO: Calcular rango optimizado - HOY + 14 días (no días pasados)
       const now = new Date();
-      const startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000); // 7 días atrás
-      const endDate = new Date(now.getTime() + 21 * 24 * 60 * 60 * 1000); // 21 días adelante (3 semanas)
+      const startDate = now; // HOY (sin días atrás)
+      const endDate = new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000); // 14 días adelante
       
       const startDateStr = startDate.toISOString().split('T')[0];
       const endDateStr = endDate.toISOString().split('T')[0];
 
+      console.log(`📅 RANGO OPTIMIZADO: ${startDateStr} hasta ${endDateStr} (solo HOY + 14 días)`);
+      console.log(`✅ ELIMINADOS: días pasados que no son útiles`);
+
       // Obtener reservas de Hostaway con rango optimizado
-      console.log(`📥 Obteniendo reservas de Hostaway desde ${startDateStr} hasta ${endDateStr} (rango optimizado)...`);
+      console.log(`📥 Obteniendo reservas de Hostaway con rango corregido...`);
       const reservations = await fetchAllHostawayReservations(accessToken, startDateStr, endDateStr);
       console.log(`📊 Obtenidas ${reservations.length} reservas de Hostaway (rango optimizado vs ~1200+ anteriormente)`);
 
-      // Filtrar reservas relevantes para reducir procesamiento
-      const relevantReservations = reservations.filter(reservation => {
-        const arrivalDate = new Date(reservation.arrivalDate);
-        const departureDate = new Date(reservation.departureDate);
-        const cutoffDate = new Date(now.getTime() + 21 * 24 * 60 * 60 * 1000); // 3 semanas
-        
-        // Solo procesar reservas que tienen salida en las próximas 3 semanas o llegada reciente
-        return departureDate <= cutoffDate || arrivalDate >= startDate;
-      });
+      // MEJORADO: No necesitamos filtrar más porque ya buscamos solo por departureDate en el rango correcto
+      console.log(`🎯 Todas las reservas son relevantes: ${reservations.length} (filtrado optimizado en API)`);
 
-      console.log(`🎯 Reservas relevantes a procesar: ${relevantReservations.length} de ${reservations.length} total`);
-
-      // Procesar cada reserva relevante
-      for (let i = 0; i < relevantReservations.length; i++) {
-        const reservation = relevantReservations[i];
+      // Procesar cada reserva
+      for (let i = 0; i < reservations.length; i++) {
+        const reservation = reservations[i];
         try {
-          await processReservation(reservation, stats, i, relevantReservations.length);
+          await processReservation(reservation, stats, i, reservations.length);
           stats.reservations_processed++;
         } catch (error) {
           console.error(`❌ Error procesando reserva ${reservation.id}:`, error);
@@ -91,8 +85,44 @@ Deno.serve(async (req) => {
         }
       }
 
-      // Ejecutar asignación automática para las nuevas tareas
+      // NUEVO: Detectar tareas duplicadas después de la sincronización
       if (stats.tasks_created > 0) {
+        console.log(`🔍 Verificando tareas duplicadas...`);
+        
+        try {
+          const { data: duplicateTasks, error: duplicateError } = await supabase
+            .from('tasks')
+            .select(`
+              date,
+              propiedad_id,
+              properties!inner(nombre),
+              count(*) as task_count
+            `)
+            .gte('date', startDateStr)
+            .lte('date', endDateStr)
+            .not('propiedad_id', 'is', null)
+            .group('date, propiedad_id, properties.nombre')
+            .having('count(*)', 'gt', 1);
+
+          if (duplicateError) {
+            console.error('❌ Error verificando duplicados:', duplicateError);
+            stats.errors.push(`Error verificando duplicados: ${duplicateError.message}`);
+          } else if (duplicateTasks && duplicateTasks.length > 0) {
+            console.log(`⚠️ TAREAS DUPLICADAS DETECTADAS: ${duplicateTasks.length}`);
+            duplicateTasks.forEach(dup => {
+              const warningMsg = `DUPLICADO: ${dup.task_count} tareas para ${dup.properties?.nombre} el ${dup.date}`;
+              console.log(`⚠️ ${warningMsg}`);
+              stats.errors.push(warningMsg);
+            });
+          } else {
+            console.log(`✅ No se encontraron tareas duplicadas`);
+          }
+        } catch (error) {
+          console.error('❌ Error en verificación de duplicados:', error);
+          stats.errors.push(`Error en verificación de duplicados: ${error.message}`);
+        }
+
+        // Ejecutar asignación automática para las nuevas tareas
         console.log(`🤖 Ejecutando asignación automática para ${stats.tasks_created} nuevas tareas...`);
         
         // Obtener las tareas creadas en esta sincronización
@@ -139,18 +169,21 @@ Deno.serve(async (req) => {
         })
         .eq('id', syncLog.id);
 
-      console.log('✅ Sincronización optimizada completada exitosamente');
+      console.log('✅ Sincronización CORREGIDA completada exitosamente');
       console.log(`📊 Estadísticas finales:`, stats);
 
       return new Response(JSON.stringify({
         success: true,
-        message: 'Sincronización optimizada completada exitosamente',
+        message: 'Sincronización corregida completada exitosamente',
         stats,
         optimization: {
           dateRange: `${startDateStr} a ${endDateStr}`,
           totalReservations: reservations.length,
-          relevantReservations: relevantReservations.length,
-          optimization: 'Reducido de ~90 días a 28 días (3 semanas + 1 semana atrás)'
+          corrections: [
+            'Solo búsqueda por departureDate (fecha de salida)',
+            'Rango optimizado: HOY + 14 días (sin días pasados)',
+            'Detección automática de tareas duplicadas'
+          ]
         }
       }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -188,7 +221,7 @@ Deno.serve(async (req) => {
       error: error.message
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    status: 500
+      status: 500
     });
   }
 });

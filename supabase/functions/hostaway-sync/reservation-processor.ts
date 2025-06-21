@@ -62,7 +62,7 @@ export async function processReservation(
     
     let taskId = null;
     
-    // MEJORAR: Determinar si debe crear tarea con lógica más robusta
+    // MEJORADO: Determinar si debe crear tarea con lógica más robusta
     const shouldCreateTask = shouldCreateTaskForReservation(reservation);
     
     console.log(`📋 ¿Crear tarea? Status: ${reservation.status}, válido: ${shouldCreateTask}`);
@@ -70,7 +70,7 @@ export async function processReservation(
     
     if (shouldCreateTask) {
       console.log(`📋 Creando tarea para reserva activa (status: ${reservation.status})...`);
-      console.log(`📋 Fecha de salida (para la tarea): ${reservation.departureDate}`);
+      console.log(`📋 Fecha de la tarea: ${reservation.departureDate} (departure date)`);
       
       try {
         const task = await createTaskForReservation(reservation, property);
@@ -262,9 +262,9 @@ export async function processReservation(
   }
 }
 
-// Nueva función para determinar si se debe crear una tarea
+// MEJORADO: Nueva función para determinar si se debe crear una tarea
 function shouldCreateTaskForReservation(reservation: HostawayReservation): boolean {
-  const validStatuses = ['confirmed', 'new', 'modified', 'awaiting_payment'];
+  const validStatuses = ['confirmed', 'new', 'modified'];
   const invalidStatuses = ['cancelled', 'inquiry', 'declined', 'expired'];
   
   // Verificar status
@@ -278,12 +278,18 @@ function shouldCreateTaskForReservation(reservation: HostawayReservation): boole
     return true;
   }
   
+  // NUEVO: Manejo especial para awaiting_payment
+  if (statusLower === 'awaiting_payment') {
+    console.log(`⚠️ Reserva en awaiting_payment: ${reservation.id} - crear tarea provisional`);
+    return true; // Crear tarea pero podría necesitar revisión manual
+  }
+  
   // Para otros statuses, asumir que sí se debe crear tarea (enfoque conservador)
   console.log(`⚠️ Status desconocido: ${reservation.status}, creando tarea por precaución`);
   return true;
 }
 
-// Nueva función para explicar por qué no se crea una tarea
+// MEJORADO: Nueva función para explicar por qué no se crea una tarea
 function getTaskCreationReason(reservation: HostawayReservation): string {
   const statusLower = reservation.status.toLowerCase();
   
@@ -298,6 +304,9 @@ function getTaskCreationReason(reservation: HostawayReservation): string {
   }
   if (statusLower === 'expired') {
     return 'Reserva expirada';
+  }
+  if (statusLower === 'awaiting_payment') {
+    return 'Reserva pendiente de pago - se crea tarea provisional';
   }
   
   return 'Status válido para crear tarea';
