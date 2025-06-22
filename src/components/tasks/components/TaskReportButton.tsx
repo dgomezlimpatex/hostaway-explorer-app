@@ -45,7 +45,7 @@ export const TaskReportButton: React.FC<TaskReportButtonProps> = ({
     if (!hasReport) {
       return {
         text: userRole === 'cleaner' ? "Crear Reporte" : "Sin Reporte",
-        variant: userRole === 'cleaner' ? "default" : "ghost" as const,
+        variant: userRole === 'cleaner' ? "default" : "ghost",
         icon: Camera,
         disabled: userRole !== 'cleaner'
       };
@@ -55,35 +55,35 @@ export const TaskReportButton: React.FC<TaskReportButtonProps> = ({
       case 'pending':
         return {
           text: "Pendiente",
-          variant: "secondary" as const,
+          variant: "secondary",
           icon: Clock,
           disabled: false
         };
       case 'in_progress':
         return {
           text: "En Progreso",
-          variant: "default" as const,
+          variant: "default",
           icon: FileText,
           disabled: false
         };
       case 'completed':
         return {
           text: "Completado",
-          variant: "outline" as const,
+          variant: "outline",
           icon: CheckCircle,
           disabled: false
         };
       case 'needs_review':
         return {
           text: "Revisar",
-          variant: "destructive" as const,
+          variant: "destructive",
           icon: AlertTriangle,
           disabled: false
         };
       default:
         return {
           text: "Ver Reporte",
-          variant: "outline" as const,
+          variant: "outline",
           icon: FileText,
           disabled: false
         };
@@ -95,7 +95,7 @@ export const TaskReportButton: React.FC<TaskReportButtonProps> = ({
 
   return (
     <Button
-      variant={config.variant}
+      variant={config.variant as "default" | "destructive" | "outline" | "secondary" | "ghost" | "link"}
       size="sm"
       onClick={() => onOpenReport(task)}
       disabled={config.disabled}

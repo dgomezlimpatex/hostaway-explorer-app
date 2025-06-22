@@ -21,6 +21,9 @@ interface TaskCardProps {
   onDelete?: (taskId: string) => void;
   onUnassign?: (taskId: string) => void;
   onView?: (task: Task) => void;
+  onShowHistory?: (task: Task) => void;
+  onCreateReport?: (task: Task) => void;
+  onEditTask?: (task: Task) => void;
   showActions?: boolean;
 }
 
@@ -30,6 +33,9 @@ export const TaskCard: React.FC<TaskCardProps> = ({
   onDelete,
   onUnassign,
   onView,
+  onShowHistory,
+  onCreateReport,
+  onEditTask,
   showActions = true,
 }) => {
   const [showReportModal, setShowReportModal] = useState(false);
@@ -64,6 +70,11 @@ export const TaskCard: React.FC<TaskCardProps> = ({
     setShowReportModal(true);
   };
 
+  const handleEdit = () => {
+    if (onEdit) onEdit(task);
+    if (onEditTask) onEditTask(task);
+  };
+
   return (
     <>
       <Card className="hover:shadow-md transition-shadow">
@@ -96,8 +107,8 @@ export const TaskCard: React.FC<TaskCardProps> = ({
                       Ver Detalles
                     </DropdownMenuItem>
                   )}
-                  {onEdit && (
-                    <DropdownMenuItem onClick={() => onEdit(task)}>
+                  {(onEdit || onEditTask) && (
+                    <DropdownMenuItem onClick={handleEdit}>
                       <Edit className="h-4 w-4 mr-2" />
                       Editar
                     </DropdownMenuItem>
@@ -157,7 +168,7 @@ export const TaskCard: React.FC<TaskCardProps> = ({
 
               <TaskReportButton
                 task={task}
-                onOpenReport={handleOpenReport}
+                onOpenReport={onCreateReport || handleOpenReport}
                 className="ml-2"
               />
             </div>
