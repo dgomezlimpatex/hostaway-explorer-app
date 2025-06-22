@@ -1,20 +1,13 @@
 
 import React, { useState, useEffect } from 'react';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
-import { CheckCircle, Clock, Save, FileText, AlertTriangle, Camera, CheckSquare } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader } from '@/components/ui/dialog';
 import { Task } from '@/types/calendar';
 import { TaskReport, TaskChecklistTemplate } from '@/types/taskReports';
 import { useTaskReports, useTaskReport, useChecklistTemplates } from '@/hooks/useTaskReports';
 import { useToast } from '@/hooks/use-toast';
-import { ChecklistSection } from './task-report/ChecklistSection';
-import { MediaCapture } from './task-report/MediaCapture';
-import { IssuesSection } from './task-report/IssuesSection';
-import { NotesSection } from './task-report/NotesSection';
-import { ReportSummary } from './task-report/ReportSummary';
+import { TaskReportHeader } from './task-report/TaskReportHeader';
+import { TaskReportTabs } from './task-report/TaskReportTabs';
+import { TaskReportFooter } from './task-report/TaskReportFooter';
 
 interface TaskReportModalProps {
   task: Task | null;
@@ -114,14 +107,7 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
   };
 
   const handleComplete = async () => {
-    if (!task || completionPercentage < 80) {
-      toast({
-        title: "Reporte incompleto",
-        description: "Completa al menos el 80% del checklist para finalizar el reporte.",
-        variant: "destructive",
-      });
-      return;
-    }
+    if (!task) return;
 
     const reportData = {
       task_id: task.id,
@@ -166,149 +152,39 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
         <DialogHeader>
-          <DialogTitle className="flex items-center space-x-2">
-            <FileText className="h-5 w-5" />
-            <span>Reporte de Limpieza - {task.property}</span>
-          </DialogTitle>
-          <DialogDescription>
-            {task.address} • {task.date} • {task.startTime} - {task.endTime}
-          </DialogDescription>
+          <TaskReportHeader
+            task={task}
+            reportStatus={reportStatus}
+            completionPercentage={completionPercentage}
+            isLoadingReport={isLoadingReport}
+          />
         </DialogHeader>
 
-        {/* Progress Header */}
-        <div className="border-b pb-4">
-          <div className="flex items-center justify-between mb-2">
-            <div className="flex items-center space-x-2">
-              <Badge variant={reportStatus === 'completed' ? 'default' : 'secondary'}>
-                {reportStatus === 'completed' ? 'Completado' : 
-                 reportStatus === 'in_progress' ? 'En Progreso' : 'Pendiente'}
-              </Badge>
-              <span className="text-sm text-gray-600">
-                {completionPercentage}% completado
-              </span>
-            </div>
-            <div className="flex items-center space-x-2">
-              {isLoadingReport && (
-                <span className="text-sm text-gray-500">Cargando...</span>
-              )}
-            </div>
-          </div>
-          <Progress value={completionPercentage} className="w-full" />
-        </div>
+        <TaskReportTabs
+          activeTab={activeTab}
+          onTabChange={setActiveTab}
+          issues={issues}
+          isLoadingTemplates={isLoadingTemplates}
+          currentTemplate={currentTemplate}
+          checklist={checklist}
+          onChecklistChange={setChecklist}
+          reportId={currentReport?.id}
+          onIssuesChange={setIssues}
+          notes={notes}
+          onNotesChange={setNotes}
+          task={task}
+          completionPercentage={completionPercentage}
+        />
 
-        {/* Tabs */}
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col overflow-hidden">
-          <TabsList className="grid w-full grid-cols-5">
-            <TabsTrigger value="checklist" className="flex items-center">
-              <CheckSquare className="h-4 w-4 mr-2" />
-              Checklist
-            </TabsTrigger>
-            <TabsTrigger value="issues" className="flex items-center">
-              <AlertTriangle className="h-4 w-4 mr-2" />
-              Incidencias
-              {issues.length > 0 && (
-                <Badge variant="destructive" className="ml-2 text-xs">
-                  {issues.length}
-                </Badge>
-              )}
-            </TabsTrigger>
-            <TabsTrigger value="notes" className="flex items-center">
-              <FileText className="h-4 w-4 mr-2" />
-              Notas
-            </TabsTrigger>
-            <TabsTrigger value="media" className="flex items-center">
-              <Camera className="h-4 w-4 mr-2" />
-              Fotos
-            </TabsTrigger>
-            <TabsTrigger value="summary" className="flex items-center">
-              <CheckCircle className="h-4 w-4 mr-2" />
-              Resumen
-            </TabsTrigger>
-          </TabsList>
-
-          <div className="flex-1 overflow-auto">
-            <TabsContent value="checklist" className="space-y-4 h-full">
-              {isLoadingTemplates ? (
-                <div className="flex items-center justify-center py-8">
-                  <Clock className="h-8 w-8 animate-spin text-gray-400" />
-                </div>
-              ) : (
-                <ChecklistSection
-                  template={currentTemplate}
-                  checklist={checklist}
-                  onChecklistChange={setChecklist}
-                  reportId={currentReport?.id}
-                />
-              )}
-            </TabsContent>
-
-            <TabsContent value="issues" className="space-y-4 h-full">
-              <IssuesSection
-                issues={issues}
-                onIssuesChange={setIssues}
-                reportId={currentReport?.id}
-              />
-            </TabsContent>
-
-            <TabsContent value="notes" className="space-y-4 h-full">
-              <NotesSection
-                notes={notes}
-                onNotesChange={setNotes}
-              />
-            </TabsContent>
-
-            <TabsContent value="media" className="space-y-4 h-full">
-              <div className="space-y-6">
-                <h3 className="text-lg font-semibold">Fotos y Videos</h3>
-                <MediaCapture
-                  onMediaCaptured={(mediaUrl) => {
-                    console.log('Media captured:', mediaUrl);
-                  }}
-                  reportId={currentReport?.id}
-                  existingMedia={[]}
-                />
-              </div>
-            </TabsContent>
-
-            <TabsContent value="summary" className="space-y-4 h-full">
-              <ReportSummary
-                task={task}
-                template={currentTemplate}
-                checklist={checklist}
-                issues={issues}
-                notes={notes}
-                completionPercentage={completionPercentage}
-              />
-            </TabsContent>
-          </div>
-        </Tabs>
-
-        {/* Footer Actions */}
-        <div className="border-t pt-4 flex items-center justify-between">
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Cancelar
-          </Button>
-          
-          <div className="flex items-center space-x-2">
-            <Button
-              variant="outline"
-              onClick={handleSave}
-              disabled={isCreatingReport || isUpdatingReport}
-            >
-              <Save className="h-4 w-4 mr-2" />
-              {isCreatingReport || isUpdatingReport ? 'Guardando...' : 'Guardar'}
-            </Button>
-            
-            <Button
-              onClick={handleComplete}
-              disabled={!canComplete || isCreatingReport || isUpdatingReport}
-              className={canComplete ? 'bg-green-600 hover:bg-green-700' : ''}
-            >
-              <CheckCircle className="h-4 w-4 mr-2" />
-              Completar Reporte
-            </Button>
-          </div>
-        </div>
+        <TaskReportFooter
+          onCancel={() => onOpenChange(false)}
+          onSave={handleSave}
+          onComplete={handleComplete}
+          canComplete={canComplete}
+          isCreatingReport={isCreatingReport}
+          isUpdatingReport={isUpdatingReport}
+          completionPercentage={completionPercentage}
+        />
       </DialogContent>
     </Dialog>
   );
