@@ -29,7 +29,8 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { UserPlus, Mail, Clock, CheckCircle, XCircle, AlertTriangle } from 'lucide-react';
+import { UserPlus, Mail, Clock, CheckCircle, XCircle, AlertTriangle, Copy } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 import type { Database } from '@/integrations/supabase/types';
 
 type AppRole = Database['public']['Enums']['app_role'];
@@ -67,6 +68,7 @@ export const UserManagement = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [email, setEmail] = useState('');
   const [role, setRole] = useState<AppRole>('cleaner');
+  const { toast } = useToast();
 
   const { data: invitations, isLoading } = useInvitations();
   const createInvitation = useCreateInvitation();
@@ -92,6 +94,18 @@ export const UserManagement = () => {
     if (confirm('¿Estás seguro de que quieres revocar esta invitación?')) {
       revokeInvitation.mutate(invitationId);
     }
+  };
+
+  const copyInvitationLink = (invitation: any) => {
+    const appUrl = window.location.origin;
+    const invitationUrl = `${appUrl}/accept-invitation?token=${invitation.invitation_token}&email=${encodeURIComponent(invitation.email)}`;
+    
+    navigator.clipboard.writeText(invitationUrl).then(() => {
+      toast({
+        title: 'Enlace copiado',
+        description: 'El enlace de invitación se ha copiado al portapapeles.',
+      });
+    });
   };
 
   if (isLoading) {
@@ -124,7 +138,7 @@ export const UserManagement = () => {
             <DialogHeader>
               <DialogTitle>Invitar Nuevo Usuario</DialogTitle>
               <DialogDescription>
-                Envía una invitación para que un nuevo usuario se una al sistema.
+                Envía una invitación por email para que un nuevo usuario se una al sistema.
               </DialogDescription>
             </DialogHeader>
             
@@ -221,16 +235,27 @@ export const UserManagement = () => {
                     </span>
                   </TableCell>
                   <TableCell>
-                    {canRevoke && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleRevokeInvitation(invitation.id)}
-                        disabled={revokeInvitation.isPending}
-                      >
-                        Revocar
-                      </Button>
-                    )}
+                    <div className="flex space-x-2">
+                      {invitation.status === 'pending' && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => copyInvitationLink(invitation)}
+                        >
+                          <Copy className="h-4 w-4" />
+                        </Button>
+                      )}
+                      {canRevoke && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleRevokeInvitation(invitation.id)}
+                          disabled={revokeInvitation.isPending}
+                        >
+                          Revocar
+                        </Button>
+                      )}
+                    </div>
                   </TableCell>
                 </TableRow>
               );

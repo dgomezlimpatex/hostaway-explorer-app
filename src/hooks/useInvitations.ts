@@ -2,6 +2,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/hooks/useAuth';
 import type { Database } from '@/integrations/supabase/types';
 
 type AppRole = Database['public']['Enums']['app_role'];
@@ -41,6 +42,7 @@ export const useInvitations = () => {
 
 export const useCreateInvitation = () => {
   const { toast } = useToast();
+  const { profile } = useAuth();
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -48,6 +50,7 @@ export const useCreateInvitation = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Usuario no autenticado');
 
+      // Crear la invitación en la base de datos
       const { data, error } = await supabase
         .from('user_invitations')
         .insert({
@@ -59,14 +62,43 @@ export const useCreateInvitation = () => {
         .single();
 
       if (error) throw error;
+
+      // Enviar email de invitación
+      const appUrl = window.location.origin;
+      const inviterName = profile?.full_name || profile?.email || 'Un administrador';
+
+      const { error: emailError } = await supabase.functions.invoke('send-invitation-email', {
+        body: {
+          email: invitationData.email,
+          inviterName,
+          role: invitationData.role,
+          token: data.invitation_token,
+          appUrl,
+        },
+      });
+
+      if (emailError) {
+        console.error('Error sending invitation email:', emailError);
+        // No lanzamos error aquí para que la invitación se cree aunque falle el email
+        toast({
+          title: 'Invitación creada',
+          description: 'La invitación se ha creado pero hubo un problema enviando el email. Puedes compartir el enlace manualmente.',
+          variant: 'destructive',
+        });
+      }
+
       return data;
     },
-    onSuccess: () => {
+    onSuccess: (data, variables, context) => {
       queryClient.invalidateQueries({ queryKey: ['invitations'] });
-      toast({
-        title: 'Invitación enviada',
-        description: 'La invitación ha sido creada exitosamente.',
-      });
+      
+      // Solo mostrar éxito si no hubo problemas con el email (el error del email se maneja arriba)
+      if (!context) {
+        toast({
+          title: 'Invitación enviada',
+          description: `Se ha enviado una invitación por email a ${variables.email}.`,
+        });
+      }
     },
     onError: (error: any) => {
       toast({
