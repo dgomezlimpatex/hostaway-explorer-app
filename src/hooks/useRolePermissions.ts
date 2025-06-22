@@ -18,6 +18,7 @@ export type RolePermissions = {
   reports: ModulePermission;
   hostaway: ModulePermission;
   propertyGroups: ModulePermission;
+  users: ModulePermission; // Nueva sección para gestión de usuarios
 };
 
 const createPermission = (canView: boolean, canCreate: boolean = false, canEdit: boolean = false, canDelete: boolean = false): ModulePermission => ({
@@ -38,6 +39,7 @@ const ROLE_PERMISSIONS: Record<string, RolePermissions> = {
     reports: createPermission(true, true, true, true),
     hostaway: createPermission(true, true, true, true),
     propertyGroups: createPermission(true, true, true, true),
+    users: createPermission(true, true, true, true), // Admin puede gestionar usuarios
   },
   manager: {
     dashboard: createPermission(true, true, true, true),
@@ -49,6 +51,7 @@ const ROLE_PERMISSIONS: Record<string, RolePermissions> = {
     reports: createPermission(true, true, true, true),
     hostaway: createPermission(true, true, true, true),
     propertyGroups: createPermission(true, true, true, true),
+    users: createPermission(true, true, true, true), // Manager puede gestionar usuarios
   },
   supervisor: {
     dashboard: createPermission(false),
@@ -60,6 +63,7 @@ const ROLE_PERMISSIONS: Record<string, RolePermissions> = {
     reports: createPermission(false),
     hostaway: createPermission(false),
     propertyGroups: createPermission(false),
+    users: createPermission(false), // No puede gestionar usuarios
   },
   cleaner: {
     dashboard: createPermission(false),
@@ -71,6 +75,7 @@ const ROLE_PERMISSIONS: Record<string, RolePermissions> = {
     reports: createPermission(false),
     hostaway: createPermission(false),
     propertyGroups: createPermission(false),
+    users: createPermission(false), // No puede gestionar usuarios
   },
 };
 

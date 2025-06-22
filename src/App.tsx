@@ -9,6 +9,8 @@ import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { RoleProtectedRoute } from "@/components/auth/RoleProtectedRoute";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
+import AcceptInvitation from "./pages/AcceptInvitation";
+import UserManagement from "./pages/UserManagement";
 import Calendar from "./pages/Calendar";
 import Tasks from "./pages/Tasks";
 import Clients from "./pages/Clients";
@@ -31,9 +33,17 @@ function App() {
           <BrowserRouter>
             <Routes>
               <Route path="/auth" element={<Auth />} />
+              <Route path="/accept-invitation" element={<AcceptInvitation />} />
               <Route path="/" element={
                 <ProtectedRoute>
                   <Index />
+                </ProtectedRoute>
+              } />
+              <Route path="/user-management" element={
+                <ProtectedRoute>
+                  <RoleProtectedRoute requiredModule="users">
+                    <UserManagement />
+                  </RoleProtectedRoute>
                 </ProtectedRoute>
               } />
               <Route path="/calendar" element={

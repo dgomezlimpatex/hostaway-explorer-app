@@ -1,37 +1,34 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Lock, Mail } from 'lucide-react';
 
 export const AuthPage = () => {
-  const { signIn, signUp, isLoading } = useAuth();
+  const { signIn, isLoading, user } = useAuth();
   const navigate = useNavigate();
   const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
 
   const [loginForm, setLoginForm] = useState({
     email: '',
     password: '',
   });
 
-  const [signupForm, setSignupForm] = useState({
-    email: '',
-    password: '',
-    confirmPassword: '',
-    fullName: '',
-  });
+  // Redirigir si ya está autenticado
+  useEffect(() => {
+    if (user) {
+      navigate('/');
+    }
+  }, [user, navigate]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
-    setSuccess(null);
 
     if (!loginForm.email || !loginForm.password) {
       setError('Por favor, completa todos los campos');
@@ -51,161 +48,65 @@ export const AuthPage = () => {
     }
   };
 
-  const handleSignup = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError(null);
-    setSuccess(null);
-
-    if (!signupForm.email || !signupForm.password || !signupForm.confirmPassword) {
-      setError('Por favor, completa todos los campos');
-      return;
-    }
-
-    if (signupForm.password !== signupForm.confirmPassword) {
-      setError('Las contraseñas no coinciden');
-      return;
-    }
-
-    if (signupForm.password.length < 6) {
-      setError('La contraseña debe tener al menos 6 caracteres');
-      return;
-    }
-
-    const { error } = await signUp(
-      signupForm.email,
-      signupForm.password,
-      signupForm.fullName
-    );
-
-    if (error) {
-      if (error.message.includes('User already registered')) {
-        setError('Ya existe una cuenta con este email');
-      } else {
-        setError('Error al registrarse: ' + error.message);
-      }
-    } else {
-      setSuccess('¡Cuenta creada exitosamente! Revisa tu email para confirmar tu cuenta.');
-    }
-  };
-
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
-      <Card className="w-full max-w-md">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-600 via-purple-600 to-indigo-800 px-4">
+      <div className="absolute inset-0 bg-black/20"></div>
+      
+      <Card className="w-full max-w-md relative z-10 shadow-2xl">
         <CardHeader className="text-center">
+          <div className="w-16 h-16 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center mx-auto mb-4">
+            <Lock className="h-8 w-8 text-white" />
+          </div>
           <CardTitle className="text-2xl font-bold">Sistema de Limpieza</CardTitle>
           <CardDescription>
-            Accede a tu cuenta o regístrate para comenzar
+            Inicia sesión para acceder al sistema
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <Tabs defaultValue="login" className="w-full">
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="login">Iniciar Sesión</TabsTrigger>
-              <TabsTrigger value="signup">Registrarse</TabsTrigger>
-            </TabsList>
+          <form onSubmit={handleLogin} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="login-email">Email</Label>
+              <div className="relative">
+                <Mail className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                <Input
+                  id="login-email"
+                  type="email"
+                  placeholder="tu@email.com"
+                  value={loginForm.email}
+                  onChange={(e) => setLoginForm(prev => ({ ...prev, email: e.target.value }))}
+                  disabled={isLoading}
+                  className="pl-10"
+                />
+              </div>
+            </div>
 
-            <TabsContent value="login">
-              <form onSubmit={handleLogin} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="login-email">Email</Label>
-                  <Input
-                    id="login-email"
-                    type="email"
-                    placeholder="tu@email.com"
-                    value={loginForm.email}
-                    onChange={(e) => setLoginForm(prev => ({ ...prev, email: e.target.value }))}
-                    disabled={isLoading}
-                  />
-                </div>
+            <div className="space-y-2">
+              <Label htmlFor="login-password">Contraseña</Label>
+              <div className="relative">
+                <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                <Input
+                  id="login-password"
+                  type="password"
+                  placeholder="Tu contraseña"
+                  value={loginForm.password}
+                  onChange={(e) => setLoginForm(prev => ({ ...prev, password: e.target.value }))}
+                  disabled={isLoading}
+                  className="pl-10"
+                />
+              </div>
+            </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="login-password">Contraseña</Label>
-                  <Input
-                    id="login-password"
-                    type="password"
-                    placeholder="Tu contraseña"
-                    value={loginForm.password}
-                    onChange={(e) => setLoginForm(prev => ({ ...prev, password: e.target.value }))}
-                    disabled={isLoading}
-                  />
-                </div>
-
-                <Button type="submit" className="w-full" disabled={isLoading}>
-                  {isLoading ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Iniciando sesión...
-                    </>
-                  ) : (
-                    'Iniciar Sesión'
-                  )}
-                </Button>
-              </form>
-            </TabsContent>
-
-            <TabsContent value="signup">
-              <form onSubmit={handleSignup} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="signup-name">Nombre completo</Label>
-                  <Input
-                    id="signup-name"
-                    type="text"
-                    placeholder="Tu nombre completo"
-                    value={signupForm.fullName}
-                    onChange={(e) => setSignupForm(prev => ({ ...prev, fullName: e.target.value }))}
-                    disabled={isLoading}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="signup-email">Email</Label>
-                  <Input
-                    id="signup-email"
-                    type="email"
-                    placeholder="tu@email.com"
-                    value={signupForm.email}
-                    onChange={(e) => setSignupForm(prev => ({ ...prev, email: e.target.value }))}
-                    disabled={isLoading}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="signup-password">Contraseña</Label>
-                  <Input
-                    id="signup-password"
-                    type="password"
-                    placeholder="Mínimo 6 caracteres"
-                    value={signupForm.password}
-                    onChange={(e) => setSignupForm(prev => ({ ...prev, password: e.target.value }))}
-                    disabled={isLoading}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="signup-confirm">Confirmar contraseña</Label>
-                  <Input
-                    id="signup-confirm"
-                    type="password"
-                    placeholder="Repite tu contraseña"
-                    value={signupForm.confirmPassword}
-                    onChange={(e) => setSignupForm(prev => ({ ...prev, confirmPassword: e.target.value }))}
-                    disabled={isLoading}
-                  />
-                </div>
-
-                <Button type="submit" className="w-full" disabled={isLoading}>
-                  {isLoading ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Registrando...
-                    </>
-                  ) : (
-                    'Crear Cuenta'
-                  )}
-                </Button>
-              </form>
-            </TabsContent>
-          </Tabs>
+            <Button type="submit" className="w-full" disabled={isLoading}>
+              {isLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Iniciando sesión...
+                </>
+              ) : (
+                'Iniciar Sesión'
+              )}
+            </Button>
+          </form>
 
           {error && (
             <Alert variant="destructive" className="mt-4">
@@ -213,11 +114,12 @@ export const AuthPage = () => {
             </Alert>
           )}
 
-          {success && (
-            <Alert className="mt-4">
-              <AlertDescription>{success}</AlertDescription>
-            </Alert>
-          )}
+          <div className="mt-6 p-4 bg-blue-50 rounded-lg">
+            <h4 className="font-medium text-blue-900 mb-2">¿No tienes acceso?</h4>
+            <p className="text-sm text-blue-700">
+              El registro está restringido por invitación. Contacta con tu administrador para obtener acceso al sistema.
+            </p>
+          </div>
         </CardContent>
       </Card>
     </div>

@@ -1021,6 +1021,42 @@ export type Database = {
           },
         ]
       }
+      user_invitations: {
+        Row: {
+          accepted_at: string | null
+          created_at: string | null
+          email: string
+          expires_at: string | null
+          id: string
+          invitation_token: string | null
+          invited_by: string
+          role: Database["public"]["Enums"]["app_role"]
+          status: Database["public"]["Enums"]["invitation_status"] | null
+        }
+        Insert: {
+          accepted_at?: string | null
+          created_at?: string | null
+          email: string
+          expires_at?: string | null
+          id?: string
+          invitation_token?: string | null
+          invited_by: string
+          role: Database["public"]["Enums"]["app_role"]
+          status?: Database["public"]["Enums"]["invitation_status"] | null
+        }
+        Update: {
+          accepted_at?: string | null
+          created_at?: string | null
+          email?: string
+          expires_at?: string | null
+          id?: string
+          invitation_token?: string | null
+          invited_by?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          status?: Database["public"]["Enums"]["invitation_status"] | null
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -1047,6 +1083,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      accept_invitation: {
+        Args: { token: string; user_id: string }
+        Returns: Database["public"]["Enums"]["app_role"]
+      }
+      cleanup_expired_invitations: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
       get_user_role: {
         Args: { _user_id: string }
         Returns: Database["public"]["Enums"]["app_role"]
@@ -1062,9 +1106,14 @@ export type Database = {
         Args: { cleaner_updates: Json[] }
         Returns: undefined
       }
+      verify_invitation: {
+        Args: { token: string; email: string }
+        Returns: boolean
+      }
     }
     Enums: {
       app_role: "admin" | "manager" | "supervisor" | "cleaner" | "client"
+      invitation_status: "pending" | "accepted" | "expired" | "revoked"
       media_type: "photo" | "video"
       report_status: "pending" | "in_progress" | "completed" | "needs_review"
     }
@@ -1183,6 +1232,7 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "manager", "supervisor", "cleaner", "client"],
+      invitation_status: ["pending", "accepted", "expired", "revoked"],
       media_type: ["photo", "video"],
       report_status: ["pending", "in_progress", "completed", "needs_review"],
     },
