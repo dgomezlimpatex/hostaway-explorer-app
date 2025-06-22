@@ -1,7 +1,7 @@
 
-// Re-export all services from the refactored files for backward compatibility
+// Re-export specific services from the refactored files for direct access
 export { checklistTemplatesStorageService } from './checklistTemplatesStorage';
-export { taskReportsStorageService } from './taskReportsStorageCore';
+export { taskReportsStorageService as taskReportsStorageCore } from './taskReportsStorageCore';
 export { taskMediaStorageService } from './taskMediaStorage';
 
 // Legacy class that combines all services for backward compatibility
@@ -44,5 +44,5 @@ export class TaskReportsStorageServiceLegacy extends ChecklistTemplatesStorageSe
   }
 }
 
-// Export the legacy service for backward compatibility
+// Export the legacy service for backward compatibility with a different name to avoid conflicts
 export const taskReportsStorageService = new TaskReportsStorageServiceLegacy();
