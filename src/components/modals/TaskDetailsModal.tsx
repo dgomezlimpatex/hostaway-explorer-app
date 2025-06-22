@@ -1,33 +1,18 @@
+
 import { useState, useEffect } from 'react';
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
-  DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
-import { Trash2, Edit3, Save, X, UserX, FileText, Camera } from "lucide-react";
-import { Task } from "@/hooks/useCalendarData";
+import { Task } from "@/types/calendar";
 import { useToast } from "@/hooks/use-toast";
-import { useAuth } from "@/hooks/useAuth";
 import { TaskReportModal } from "./TaskReportModal";
-import { useTaskReport } from "@/hooks/useTaskReports";
+import { TaskDetailsHeader } from "./task-details/TaskDetailsHeader";
+import { TaskDetailsForm } from "./task-details/TaskDetailsForm";
+import { TaskDetailsActions } from "./task-details/TaskDetailsActions";
+import { TaskDetailsConfirmDialogs } from "./task-details/TaskDetailsConfirmDialogs";
 
 interface TaskDetailsModalProps {
   task: Task | null;
@@ -52,8 +37,6 @@ export const TaskDetailsModal = ({
   const [showUnassignConfirm, setShowUnassignConfirm] = useState(false);
   const [showReportModal, setShowReportModal] = useState(false);
   const { toast } = useToast();
-  const { userRole } = useAuth();
-  const { data: existingReport } = useTaskReport(task?.id || '');
 
   useEffect(() => {
     if (task) {
@@ -104,60 +87,13 @@ export const TaskDetailsModal = ({
     }
   };
 
-  const handleChange = (field: string, value: string) => {
+  const handleFieldChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  const getStatusBadge = (status: string) => {
-    const variants = {
-      pending: 'destructive',
-      'in-progress': 'default',
-      completed: 'secondary'
-    } as const;
-    
-    const texts = {
-      pending: 'Pendiente',
-      'in-progress': 'En Progreso',
-      completed: 'Completado'
-    };
-
-    return (
-      <Badge variant={variants[status as keyof typeof variants] || 'default'}>
-        {texts[status as keyof typeof texts] || status}
-      </Badge>
-    );
-  };
-
-  const canCreateReport = userRole === 'cleaner' && task?.cleanerId;
-  const canViewReport = ['admin', 'manager', 'supervisor'].includes(userRole || '') || 
-                       (userRole === 'cleaner' && task?.cleanerId);
-
-  const getReportButtonText = () => {
-    if (!existingReport) return "Crear Reporte";
-    switch (existingReport.overall_status) {
-      case 'pending':
-        return "Continuar Reporte";
-      case 'in_progress':
-        return "Continuar Reporte";
-      case 'completed':
-        return "Ver Reporte";
-      case 'needs_review':
-        return "Revisar Reporte";
-      default:
-        return "Ver Reporte";
-    }
-  };
-
-  const getReportButtonVariant = () => {
-    if (!existingReport) return "default";
-    switch (existingReport.overall_status) {
-      case 'completed':
-        return "outline";
-      case 'needs_review':
-        return "destructive";
-      default:
-        return "default";
-    }
+  const handleCancel = () => {
+    setIsEditing(false);
+    setFormData(task);
   };
 
   return (
@@ -165,227 +101,27 @@ export const TaskDetailsModal = ({
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className="sm:max-w-[600px]">
           <DialogHeader>
-            <div className="flex items-center justify-between">
-              <div>
-                <DialogTitle>Detalles de la Tarea</DialogTitle>
-                <DialogDescription>
-                  {isEditing ? 'Edita los detalles de la tarea' : 'Información completa de la tarea'}
-                </DialogDescription>
-              </div>
-              <div className="flex items-center gap-2">
-                {!isEditing && getStatusBadge(task.status)}
-                {task.cleaner && (
-                  <Badge variant="outline">
-                    👤 {task.cleaner}
-                  </Badge>
-                )}
-                {existingReport && (
-                  <Badge variant={existingReport.overall_status === 'completed' ? 'default' : 'secondary'}>
-                    📋 {existingReport.overall_status === 'completed' ? 'Reporte Completo' : 'Reporte Pendiente'}
-                  </Badge>
-                )}
-              </div>
-            </div>
+            <TaskDetailsHeader task={task} isEditing={isEditing} />
           </DialogHeader>
           
-          <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="property">Propiedad</Label>
-                {isEditing ? (
-                  <Input
-                    id="property"
-                    value={formData.property || ''}
-                    onChange={(e) => handleChange('property', e.target.value)}
-                  />
-                ) : (
-                  <p className="text-sm p-2 bg-gray-50 rounded">{task.property}</p>
-                )}
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="address">Dirección</Label>
-                {isEditing ? (
-                  <Input
-                    id="address"
-                    value={formData.address || ''}
-                    onChange={(e) => handleChange('address', e.target.value)}
-                  />
-                ) : (
-                  <p className="text-sm p-2 bg-gray-50 rounded">{task.address}</p>
-                )}
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="startTime">Hora Inicio</Label>
-                {isEditing ? (
-                  <Input
-                    id="startTime"
-                    type="time"
-                    value={formData.startTime || ''}
-                    onChange={(e) => handleChange('startTime', e.target.value)}
-                  />
-                ) : (
-                  <p className="text-sm p-2 bg-gray-50 rounded">{task.startTime}</p>
-                )}
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="endTime">Hora Fin</Label>
-                {isEditing ? (
-                  <Input
-                    id="endTime"
-                    type="time"
-                    value={formData.endTime || ''}
-                    onChange={(e) => handleChange('endTime', e.target.value)}
-                  />
-                ) : (
-                  <p className="text-sm p-2 bg-gray-50 rounded">{task.endTime}</p>
-                )}
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="checkOut">Check-out</Label>
-                {isEditing ? (
-                  <Input
-                    id="checkOut"
-                    type="time"
-                    value={formData.checkOut || ''}
-                    onChange={(e) => handleChange('checkOut', e.target.value)}
-                  />
-                ) : (
-                  <p className="text-sm p-2 bg-gray-50 rounded">{task.checkOut}</p>
-                )}
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="checkIn">Check-in</Label>
-                {isEditing ? (
-                  <Input
-                    id="checkIn"
-                    type="time"
-                    value={formData.checkIn || ''}
-                    onChange={(e) => handleChange('checkIn', e.target.value)}
-                  />
-                ) : (
-                  <p className="text-sm p-2 bg-gray-50 rounded">{task.checkIn}</p>
-                )}
-              </div>
-            </div>
-
-            {isEditing && (
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="type">Tipo</Label>
-                  <Select value={formData.type} onValueChange={(value) => handleChange('type', value)}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Seleccionar tipo" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="checkout-checkin">Check-out/Check-in</SelectItem>
-                      <SelectItem value="maintenance">Mantenimiento</SelectItem>
-                      <SelectItem value="deep-cleaning">Limpieza Profunda</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="status">Estado</Label>
-                  <Select value={formData.status} onValueChange={(value) => handleChange('status', value)}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Seleccionar estado" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="pending">Pendiente</SelectItem>
-                      <SelectItem value="in-progress">En Progreso</SelectItem>
-                      <SelectItem value="completed">Completado</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-            )}
-          </div>
+          <TaskDetailsForm
+            task={task}
+            isEditing={isEditing}
+            formData={formData}
+            onFieldChange={handleFieldChange}
+          />
 
           <DialogFooter>
-            <div className="flex items-center justify-between w-full">
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="destructive"
-                  size="sm"
-                  onClick={() => setShowDeleteConfirm(true)}
-                  className="flex items-center gap-2"
-                >
-                  <Trash2 className="h-4 w-4" />
-                  Eliminar
-                </Button>
-                
-                {task.cleaner && onUnassignTask && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setShowUnassignConfirm(true)}
-                    className="flex items-center gap-2"
-                  >
-                    <UserX className="h-4 w-4" />
-                    Desasignar
-                  </Button>
-                )}
-
-                {/* Botón de Reporte */}
-                {(canCreateReport || canViewReport) && (
-                  <Button
-                    variant={getReportButtonVariant()}
-                    size="sm"
-                    onClick={() => setShowReportModal(true)}
-                    className="flex items-center gap-2"
-                  >
-                    {!existingReport ? (
-                      <Camera className="h-4 w-4" />
-                    ) : (
-                      <FileText className="h-4 w-4" />
-                    )}
-                    {getReportButtonText()}
-                  </Button>
-                )}
-              </div>
-              
-              <div className="flex items-center gap-2">
-                {isEditing ? (
-                  <>
-                    <Button
-                      variant="outline"
-                      onClick={() => {
-                        setIsEditing(false);
-                        setFormData(task);
-                      }}
-                      className="flex items-center gap-2"
-                    >
-                      <X className="h-4 w-4" />
-                      Cancelar
-                    </Button>
-                    <Button
-                      onClick={handleSave}
-                      className="flex items-center gap-2"
-                    >
-                      <Save className="h-4 w-4" />
-                      Guardar
-                    </Button>
-                  </>
-                ) : (
-                  <Button
-                    onClick={() => setIsEditing(true)}
-                    className="flex items-center gap-2"
-                  >
-                    <Edit3 className="h-4 w-4" />
-                    Editar
-                  </Button>
-                )}
-              </div>
-            </div>
+            <TaskDetailsActions
+              task={task}
+              isEditing={isEditing}
+              onEdit={() => setIsEditing(true)}
+              onSave={handleSave}
+              onCancel={handleCancel}
+              onDelete={() => setShowDeleteConfirm(true)}
+              onUnassign={onUnassignTask ? () => setShowUnassignConfirm(true) : undefined}
+              onOpenReport={() => setShowReportModal(true)}
+            />
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -397,41 +133,15 @@ export const TaskDetailsModal = ({
         onOpenChange={setShowReportModal}
       />
 
-      {/* Delete Confirmation Dialog */}
-      <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>¿Eliminar tarea?</AlertDialogTitle>
-            <AlertDialogDescription>
-              ¿Estás seguro de que quieres eliminar esta tarea? Esta acción no se puede deshacer.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete} className="bg-red-600 hover:bg-red-700">
-              Eliminar
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      {/* Unassign Confirmation Dialog */}
-      <AlertDialog open={showUnassignConfirm} onOpenChange={setShowUnassignConfirm}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>¿Desasignar tarea?</AlertDialogTitle>
-            <AlertDialogDescription>
-              ¿Estás seguro de que quieres desasignar esta tarea de {task.cleaner}? La tarea se enviará a la lista de tareas sin asignar.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={handleUnassign}>
-              Desasignar
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <TaskDetailsConfirmDialogs
+        task={task}
+        showDeleteConfirm={showDeleteConfirm}
+        onDeleteConfirmChange={setShowDeleteConfirm}
+        showUnassignConfirm={showUnassignConfirm}
+        onUnassignConfirmChange={setShowUnassignConfirm}
+        onConfirmDelete={handleDelete}
+        onConfirmUnassign={handleUnassign}
+      />
     </>
   );
 };
