@@ -22,9 +22,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Trash2, Edit3, Save, X, UserX } from "lucide-react";
+import { Trash2, Edit3, Save, X, UserX, FileText, Camera } from "lucide-react";
 import { Task } from "@/hooks/useCalendarData";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
+import { TaskReportModal } from "./TaskReportModal";
+import { useTaskReport } from "@/hooks/useTaskReports";
 
 interface TaskDetailsModalProps {
   task: Task | null;
@@ -47,7 +50,10 @@ export const TaskDetailsModal = ({
   const [formData, setFormData] = useState<Partial<Task>>({});
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showUnassignConfirm, setShowUnassignConfirm] = useState(false);
+  const [showReportModal, setShowReportModal] = useState(false);
   const { toast } = useToast();
+  const { userRole } = useAuth();
+  const { data: existingReport } = useTaskReport(task?.id || '');
 
   useEffect(() => {
     if (task) {
@@ -122,6 +128,38 @@ export const TaskDetailsModal = ({
     );
   };
 
+  const canCreateReport = userRole === 'cleaner' && task?.cleanerId;
+  const canViewReport = ['admin', 'manager', 'supervisor'].includes(userRole || '') || 
+                       (userRole === 'cleaner' && task?.cleanerId);
+
+  const getReportButtonText = () => {
+    if (!existingReport) return "Crear Reporte";
+    switch (existingReport.overall_status) {
+      case 'pending':
+        return "Continuar Reporte";
+      case 'in_progress':
+        return "Continuar Reporte";
+      case 'completed':
+        return "Ver Reporte";
+      case 'needs_review':
+        return "Revisar Reporte";
+      default:
+        return "Ver Reporte";
+    }
+  };
+
+  const getReportButtonVariant = () => {
+    if (!existingReport) return "default";
+    switch (existingReport.overall_status) {
+      case 'completed':
+        return "outline";
+      case 'needs_review':
+        return "destructive";
+      default:
+        return "default";
+    }
+  };
+
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
@@ -139,6 +177,11 @@ export const TaskDetailsModal = ({
                 {task.cleaner && (
                   <Badge variant="outline">
                     👤 {task.cleaner}
+                  </Badge>
+                )}
+                {existingReport && (
+                  <Badge variant={existingReport.overall_status === 'completed' ? 'default' : 'secondary'}>
+                    📋 {existingReport.overall_status === 'completed' ? 'Reporte Completo' : 'Reporte Pendiente'}
                   </Badge>
                 )}
               </div>
@@ -291,6 +334,23 @@ export const TaskDetailsModal = ({
                     Desasignar
                   </Button>
                 )}
+
+                {/* Botón de Reporte */}
+                {(canCreateReport || canViewReport) && (
+                  <Button
+                    variant={getReportButtonVariant()}
+                    size="sm"
+                    onClick={() => setShowReportModal(true)}
+                    className="flex items-center gap-2"
+                  >
+                    {!existingReport ? (
+                      <Camera className="h-4 w-4" />
+                    ) : (
+                      <FileText className="h-4 w-4" />
+                    )}
+                    {getReportButtonText()}
+                  </Button>
+                )}
               </div>
               
               <div className="flex items-center gap-2">
@@ -329,6 +389,13 @@ export const TaskDetailsModal = ({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Task Report Modal */}
+      <TaskReportModal
+        task={task}
+        open={showReportModal}
+        onOpenChange={setShowReportModal}
+      />
 
       {/* Delete Confirmation Dialog */}
       <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>

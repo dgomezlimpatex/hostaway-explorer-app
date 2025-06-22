@@ -1,176 +1,175 @@
 
-
-import React from 'react';
-import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Calendar, Clock, MapPin, User, DollarSign, Edit, FileText, MoreVertical } from 'lucide-react';
-import { Task } from '@/types/calendar';
-import { CreateReportButton } from './CreateReportButton';
-import { useProperties } from '@/hooks/useProperties';
+import React, { useState } from 'react';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Clock, MapPin, User, MoreVertical, Edit, Trash2, UserMinus, Eye } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+} from '@/components/ui/dropdown-menu';
+import { Task } from '@/types/calendar';
+import { TaskReportButton } from './TaskReportButton';
+import { TaskReportModal } from '@/components/modals/TaskReportModal';
 
 interface TaskCardProps {
   task: Task;
-  onShowHistory: (task: Task) => void;
-  onCreateReport: (task: Task) => void;
-  onEditTask?: (task: Task) => void;
+  onEdit?: (task: Task) => void;
+  onDelete?: (taskId: string) => void;
+  onUnassign?: (taskId: string) => void;
+  onView?: (task: Task) => void;
+  showActions?: boolean;
 }
 
-export const TaskCard: React.FC<TaskCardProps> = ({ 
-  task, 
-  onShowHistory,
-  onCreateReport,
-  onEditTask,
+export const TaskCard: React.FC<TaskCardProps> = ({
+  task,
+  onEdit,
+  onDelete,
+  onUnassign,
+  onView,
+  showActions = true,
 }) => {
-  const { data: properties } = useProperties();
-  
+  const [showReportModal, setShowReportModal] = useState(false);
+
   const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'completed': return 'bg-green-100 text-green-800 border-green-200';
-      case 'in_progress': return 'bg-blue-100 text-blue-800 border-blue-200';
-      case 'cancelled': return 'bg-red-100 text-red-800 border-red-200';
-      default: return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+    switch (status.toLowerCase()) {
+      case 'completed':
+        return 'bg-green-100 text-green-800 border-green-200';
+      case 'in-progress':
+        return 'bg-blue-100 text-blue-800 border-blue-200';
+      case 'pending':
+        return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+      default:
+        return 'bg-gray-100 text-gray-800 border-gray-200';
     }
   };
 
   const getStatusText = (status: string) => {
-    switch (status) {
-      case 'pending': return 'Pendiente';
-      case 'in_progress': return 'En Progreso';
-      case 'completed': return 'Completada';
-      case 'cancelled': return 'Cancelada';
-      default: return status;
+    switch (status.toLowerCase()) {
+      case 'completed':
+        return 'Completado';
+      case 'in-progress':
+        return 'En Progreso';
+      case 'pending':
+        return 'Pendiente';
+      default:
+        return status;
     }
   };
 
-  const getPropertyCode = () => {
-    if (task.propertyId && properties) {
-      const property = properties.find(p => p.id === task.propertyId);
-      return property?.codigo || '';
-    }
-    return '';
-  };
-
-  const displayPropertyName = () => {
-    const propertyCode = getPropertyCode();
-    if (propertyCode) {
-      return `${task.property} - ${propertyCode}`;
-    }
-    return task.property;
-  };
-
-  const handleEdit = () => {
-    if (onEditTask) {
-      onEditTask(task);
-    }
-  };
-
-  const handleHistory = () => {
-    onShowHistory(task);
+  const handleOpenReport = () => {
+    setShowReportModal(true);
   };
 
   return (
-    <Card className="group hover:shadow-md transition-all duration-200 border border-gray-200 bg-white relative">
-      <CardContent className="p-4">
-        {/* History button in top right corner */}
-        <Button 
-          variant="ghost" 
-          size="sm"
-          onClick={handleHistory}
-          className="absolute top-2 right-2 h-8 w-8 p-0 opacity-70 hover:opacity-100 transition-opacity"
-        >
-          <FileText className="h-4 w-4" />
-        </Button>
-
-        {/* Header section with property name (including code) and status */}
-        <div className="mb-3 pr-10">
-          <h3 className="font-semibold text-lg text-gray-900 leading-tight mb-2">
-            {displayPropertyName()}
-          </h3>
-          <div className="flex items-center gap-2 flex-wrap">
-            <Badge className={`${getStatusColor(task.status)} text-xs font-medium`}>
-              {getStatusText(task.status)}
-            </Badge>
-            <Badge variant="outline" className="text-xs bg-gray-50">
-              {task.type}
-            </Badge>
-            {task.duration && (
-              <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700">
-                {task.duration} min
-              </Badge>
+    <>
+      <Card className="hover:shadow-md transition-shadow">
+        <CardHeader className="pb-3">
+          <div className="flex items-start justify-between">
+            <div className="flex-1">
+              <div className="flex items-center gap-2 mb-1">
+                <h3 className="font-semibold text-lg">{task.property}</h3>
+                <Badge className={getStatusColor(task.status)}>
+                  {getStatusText(task.status)}
+                </Badge>
+              </div>
+              <div className="flex items-center gap-2 text-sm text-gray-600">
+                <MapPin className="h-4 w-4" />
+                <span>{task.address}</span>
+              </div>
+            </div>
+            
+            {showActions && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="sm">
+                    <MoreVertical className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  {onView && (
+                    <DropdownMenuItem onClick={() => onView(task)}>
+                      <Eye className="h-4 w-4 mr-2" />
+                      Ver Detalles
+                    </DropdownMenuItem>
+                  )}
+                  {onEdit && (
+                    <DropdownMenuItem onClick={() => onEdit(task)}>
+                      <Edit className="h-4 w-4 mr-2" />
+                      Editar
+                    </DropdownMenuItem>
+                  )}
+                  {onUnassign && task.cleaner && (
+                    <DropdownMenuItem onClick={() => onUnassign(task.id)}>
+                      <UserMinus className="h-4 w-4 mr-2" />
+                      Desasignar
+                    </DropdownMenuItem>
+                  )}
+                  <DropdownMenuSeparator />
+                  {onDelete && (
+                    <DropdownMenuItem 
+                      onClick={() => onDelete(task.id)}
+                      className="text-red-600 focus:text-red-600"
+                    >
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      Eliminar
+                    </DropdownMenuItem>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
             )}
           </div>
-        </div>
+        </CardHeader>
 
-        {/* Date section */}
-        <div className="mb-3">
-          <div className="flex items-center text-gray-600">
-            <Calendar className="h-4 w-4 mr-2 text-blue-500 flex-shrink-0" />
-            <span className="text-sm">{task.date}</span>
-          </div>
-        </div>
-
-        {/* Time and cost section - side by side */}
-        <div className="mb-3 flex items-center justify-between">
-          <div className="flex items-center text-gray-600">
-            <Clock className="h-4 w-4 mr-2 text-green-500 flex-shrink-0" />
-            <span className="text-sm">{task.startTime} - {task.endTime}</span>
-          </div>
-          {task.cost && (
-            <div className="flex items-center text-gray-600">
-              <DollarSign className="h-4 w-4 mr-1 text-emerald-500 flex-shrink-0" />
-              <span className="text-sm font-medium">{task.cost}€</span>
+        <CardContent className="pt-0">
+          <div className="space-y-3">
+            <div className="flex items-center gap-4 text-sm">
+              <div className="flex items-center gap-1">
+                <Clock className="h-4 w-4 text-gray-500" />
+                <span>{task.startTime} - {task.endTime}</span>
+              </div>
+              <div className="text-gray-600">
+                {task.date}
+              </div>
             </div>
-          )}
-        </div>
 
-        {/* Address section */}
-        <div className="mb-3">
-          <div className="flex items-start text-gray-600">
-            <MapPin className="h-4 w-4 mr-2 mt-0.5 text-orange-500 flex-shrink-0" />
-            <span className="text-sm leading-relaxed break-words">{task.address}</span>
-          </div>
-        </div>
-
-        {/* Cleaner section */}
-        {task.cleaner && (
-          <div className="mb-4">
-            <div className="flex items-center text-gray-600">
-              <User className="h-4 w-4 mr-2 text-purple-500 flex-shrink-0" />
-              <span className="text-sm">{task.cleaner}</span>
-            </div>
-          </div>
-        )}
-
-        {/* Actions footer */}
-        <div className="flex items-center justify-between pt-3 border-t border-gray-100">
-          <div className="flex items-center gap-2">
-            {onEditTask && (
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={handleEdit}
-                className="text-xs"
-              >
-                <Edit className="h-3 w-3 mr-1" />
-                Editar
-              </Button>
+            {task.cleaner && (
+              <div className="flex items-center gap-2">
+                <User className="h-4 w-4 text-gray-500" />
+                <span className="text-sm font-medium">{task.cleaner}</span>
+              </div>
             )}
-          </div>
 
-          <CreateReportButton 
-            task={task} 
-            onCreateReport={onCreateReport}
-          />
-        </div>
-      </CardContent>
-    </Card>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Badge variant="outline" className="text-xs">
+                  {task.type}
+                </Badge>
+                {task.supervisor && (
+                  <Badge variant="secondary" className="text-xs">
+                    Supervisor: {task.supervisor}
+                  </Badge>
+                )}
+              </div>
+
+              <TaskReportButton
+                task={task}
+                onOpenReport={handleOpenReport}
+                className="ml-2"
+              />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <TaskReportModal
+        task={task}
+        open={showReportModal}
+        onOpenChange={setShowReportModal}
+      />
+    </>
   );
 };
-
