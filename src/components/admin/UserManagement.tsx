@@ -29,8 +29,9 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { UserPlus, Mail, Clock, CheckCircle, XCircle, AlertTriangle, Copy } from 'lucide-react';
+import { UserPlus, Mail, Clock, CheckCircle, XCircle, AlertTriangle, Copy, ArrowLeft } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { Link } from 'react-router-dom';
 import type { Database } from '@/integrations/supabase/types';
 
 type AppRole = Database['public']['Enums']['app_role'];
@@ -122,9 +123,17 @@ export const UserManagement = () => {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold text-gray-900">Gestión de Usuarios</h2>
-          <p className="text-gray-600">Invita nuevos usuarios y gestiona el acceso al sistema</p>
+        <div className="flex items-center gap-4">
+          <Link to="/">
+            <Button variant="ghost" size="sm" className="hover:bg-gray-100">
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Volver al Menú
+            </Button>
+          </Link>
+          <div>
+            <h2 className="text-2xl font-bold text-gray-900">Gestión de Usuarios</h2>
+            <p className="text-gray-600">Invita nuevos usuarios y gestiona el acceso al sistema</p>
+          </div>
         </div>
         
         <Dialog open={isOpen} onOpenChange={setIsOpen}>
