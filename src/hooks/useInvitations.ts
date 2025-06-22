@@ -1,4 +1,3 @@
-
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -50,20 +49,7 @@ export const useCreateInvitation = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Usuario no autenticado');
 
-      // Primero verificar si existe una invitación pendiente para este email
-      const { data: existingInvitation } = await supabase
-        .from('user_invitations')
-        .select('*')
-        .eq('email', invitationData.email)
-        .eq('status', 'pending')
-        .gt('expires_at', new Date().toISOString())
-        .single();
-
-      if (existingInvitation) {
-        throw new Error('Ya existe una invitación pendiente para este email');
-      }
-
-      // Revocar cualquier invitación anterior pendiente o expirada para este email
+      // Revocar cualquier invitación anterior para este email (pendiente, expirada)
       await supabase
         .from('user_invitations')
         .update({ status: 'revoked' })
