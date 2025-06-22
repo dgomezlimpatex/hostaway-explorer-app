@@ -15,14 +15,8 @@ export const useCreateInvitation = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Usuario no autenticado');
 
-      // Revocar cualquier invitación anterior para este email (pendiente, expirada)
-      await supabase
-        .from('user_invitations')
-        .update({ status: 'revoked' })
-        .eq('email', invitationData.email)
-        .in('status', ['pending', 'expired']);
-
-      // Crear la nueva invitación
+      // Crear la nueva invitación directamente
+      // La constraint única parcial evitará duplicados automáticamente
       const { data, error } = await supabase
         .from('user_invitations')
         .insert({
