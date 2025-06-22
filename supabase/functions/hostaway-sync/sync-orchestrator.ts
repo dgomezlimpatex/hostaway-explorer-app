@@ -1,3 +1,4 @@
+
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.50.0';
 import { SyncStats } from './types.ts';
 import { getHostawayToken, fetchAllHostawayReservations } from './hostaway-api.ts';
@@ -80,9 +81,13 @@ export class SyncOrchestrator {
   }
 
   private async performPostSyncOperations(startDateStr: string, endDateStr: string): Promise<void> {
-    // Detectar y ELIMINAR tareas duplicadas
+    // PRIMERO: Limpiar duplicados REALES en toda la base de datos
+    await this.cleanupAllDuplicatedTasks();
+    
+    // DESPUÉS: Detectar y reportar duplicados solo en el rango actual (sin eliminar automáticamente)
+    await this.detectAndReportDuplicateTasks(startDateStr, endDateStr);
+    
     if (this.stats.tasks_created > 0) {
-      await this.detectAndRemoveDuplicateTasks(startDateStr, endDateStr);
       await this.executeAutoAssignment();
     } else {
       console.log('ℹ️ No se crearon nuevas tareas, saltando asignación automática');
@@ -92,43 +97,44 @@ export class SyncOrchestrator {
     await this.generateCancellationSummary();
   }
 
-  private async detectAndRemoveDuplicateTasks(startDateStr: string, endDateStr: string): Promise<void> {
-    console.log(`🔍 SISTEMA CORREGIDO: Detectando y eliminando tareas duplicadas...`);
+  private async cleanupAllDuplicatedTasks(): Promise<void> {
+    console.log(`🧹 SISTEMA CORREGIDO: Limpiando TODAS las tareas duplicadas REALES en la base de datos...`);
     
     try {
+      // Obtener TODAS las tareas, no solo del rango actual
       const { data: allTasks, error: tasksError } = await this.supabase
         .from('tasks')
         .select(`
           id,
           date,
           propiedad_id,
+          start_time,
+          end_time,
+          created_at,
           property:properties!inner(nombre)
         `)
-        .gte('date', startDateStr)
-        .lte('date', endDateStr)
         .not('propiedad_id', 'is', null)
-        .order('date, propiedad_id, created_at');
+        .order('date, propiedad_id, start_time, created_at');
 
       if (tasksError) {
-        console.error('❌ Error obteniendo tareas:', tasksError);
+        console.error('❌ Error obteniendo todas las tareas:', tasksError);
         this.stats.errors.push(`Error obteniendo tareas: ${tasksError.message}`);
         return;
       }
 
       if (!allTasks || allTasks.length === 0) {
-        console.log(`✅ No hay tareas en el rango de fechas especificado`);
+        console.log(`✅ No hay tareas en la base de datos`);
         return;
       }
 
-      console.log(`📊 Total de tareas encontradas: ${allTasks.length}`);
+      console.log(`📊 Total de tareas en la base de datos: ${allTasks.length}`);
       
-      // Agrupar tareas por fecha Y propiedad (CORREGIDO)
+      // Agrupar tareas por CLAVE ÚNICA: fecha + propiedad + hora de inicio + hora de fin
       const taskGroups = new Map<string, any[]>();
       
       allTasks.forEach(task => {
-        // CLAVE CORREGIDA: convertir date a string correctamente
-        const dateStr = task.date; // Ya viene como string desde la BD
-        const key = `${dateStr}-${task.propiedad_id}`;
+        // Crear clave única que incluye todos los campos relevantes
+        const key = `${task.date}-${task.propiedad_id}-${task.start_time}-${task.end_time}`;
         
         if (!taskGroups.has(key)) {
           taskGroups.set(key, []);
@@ -136,38 +142,46 @@ export class SyncOrchestrator {
         taskGroups.get(key)!.push(task);
       });
 
-      // Encontrar grupos con más de 1 tarea (duplicados)
+      // Encontrar grupos con más de 1 tarea (duplicados REALES)
       const duplicateGroups = Array.from(taskGroups.entries())
         .filter(([_, tasks]) => tasks.length > 1);
 
       if (duplicateGroups.length === 0) {
-        console.log(`✅ No se encontraron tareas duplicadas`);
+        console.log(`✅ No se encontraron tareas duplicadas REALES en toda la base de datos`);
         return;
       }
 
-      console.log(`⚠️ TAREAS DUPLICADAS DETECTADAS: ${duplicateGroups.length} grupos`);
+      console.log(`⚠️ TAREAS DUPLICADAS REALES DETECTADAS: ${duplicateGroups.length} grupos`);
       
       let totalTasksRemoved = 0;
 
-      // Procesar cada grupo de duplicados
+      // Procesar cada grupo de duplicados REALES
       for (const [key, tasks] of duplicateGroups) {
-        const [dateStr, propiedadId] = key.split('-');
+        const [dateStr, propiedadId, startTime, endTime] = key.split('-');
         const propertyName = tasks[0].property?.nombre || 'Desconocida';
         
-        console.log(`🔄 Procesando duplicados: ${propertyName} en ${dateStr}`);
+        console.log(`🔄 DUPLICADO REAL encontrado: ${propertyName} el ${dateStr} de ${startTime} a ${endTime}`);
         console.log(`   - Total tareas duplicadas: ${tasks.length}`);
         console.log(`   - IDs: ${tasks.map(t => t.id).join(', ')}`);
         
         // MANTENER SOLO LA PRIMERA TAREA (más antigua por created_at)
+        // Las tareas ya están ordenadas por created_at
         const taskToKeep = tasks[0];
         const tasksToRemove = tasks.slice(1);
         
-        console.log(`   - Manteniendo tarea: ${taskToKeep.id} (primera creada)`);
+        console.log(`   - Manteniendo tarea: ${taskToKeep.id} (primera creada: ${taskToKeep.created_at})`);
         console.log(`   - Eliminando ${tasksToRemove.length} tareas duplicadas`);
         
-        // ELIMINAR las tareas duplicadas
+        // ELIMINAR las tareas duplicadas REALES
         for (const taskToRemove of tasksToRemove) {
           try {
+            // Primero, limpiar referencias en hostaway_reservations
+            await this.supabase
+              .from('hostaway_reservations')
+              .update({ task_id: null })
+              .eq('task_id', taskToRemove.id);
+
+            // Luego eliminar la tarea
             const { error: deleteError } = await this.supabase
               .from('tasks')
               .delete()
@@ -186,20 +200,90 @@ export class SyncOrchestrator {
           }
         }
         
-        // Agregar al reporte (solo para información)
-        const warningMsg = `DUPLICADO ELIMINADO: ${tasks.length} tareas para ${propertyName} en ${dateStr} - mantenida: ${taskToKeep.id}`;
-        console.log(`✅ ${warningMsg}`);
-        this.stats.errors.push(warningMsg);
+        // Agregar al reporte
+        const cleanupMsg = `DUPLICADO REAL LIMPIADO: ${tasks.length} tareas para ${propertyName} el ${dateStr} (${startTime}-${endTime}) - mantenida: ${taskToKeep.id}`;
+        console.log(`✅ ${cleanupMsg}`);
+        this.stats.errors.push(cleanupMsg);
       }
       
-      console.log(`🎯 RESUMEN DE LIMPIEZA DE DUPLICADOS:`);
-      console.log(`   - Grupos con duplicados: ${duplicateGroups.length}`);
+      console.log(`🎯 RESUMEN DE LIMPIEZA GENERAL:`);
+      console.log(`   - Grupos con duplicados REALES: ${duplicateGroups.length}`);
       console.log(`   - Total tareas eliminadas: ${totalTasksRemoved}`);
       console.log(`   - Tareas mantenidas: ${duplicateGroups.length}`);
       
     } catch (error) {
-      console.error('❌ Error en detección y eliminación de duplicados:', error);
-      this.stats.errors.push(`Error en limpieza de duplicados: ${error.message}`);
+      console.error('❌ Error en limpieza general de duplicados:', error);
+      this.stats.errors.push(`Error en limpieza general de duplicados: ${error.message}`);
+    }
+  }
+
+  private async detectAndReportDuplicateTasks(startDateStr: string, endDateStr: string): Promise<void> {
+    console.log(`🔍 DETECCIÓN DE DUPLICADOS en rango de sincronización (${startDateStr} a ${endDateStr})...`);
+    
+    try {
+      const { data: rangeTasks, error: tasksError } = await this.supabase
+        .from('tasks')
+        .select(`
+          id,
+          date,
+          propiedad_id,
+          start_time,
+          end_time,
+          created_at,
+          property:properties!inner(nombre)
+        `)
+        .gte('date', startDateStr)
+        .lte('date', endDateStr)
+        .not('propiedad_id', 'is', null)
+        .order('date, propiedad_id, start_time, created_at');
+
+      if (tasksError) {
+        console.error('❌ Error obteniendo tareas del rango:', tasksError);
+        return;
+      }
+
+      if (!rangeTasks || rangeTasks.length === 0) {
+        console.log(`✅ No hay tareas en el rango de sincronización`);
+        return;
+      }
+
+      console.log(`📊 Tareas en rango de sincronización: ${rangeTasks.length}`);
+      
+      // Agrupar por clave única para detección
+      const taskGroups = new Map<string, any[]>();
+      
+      rangeTasks.forEach(task => {
+        const key = `${task.date}-${task.propiedad_id}-${task.start_time}-${task.end_time}`;
+        
+        if (!taskGroups.has(key)) {
+          taskGroups.set(key, []);
+        }
+        taskGroups.get(key)!.push(task);
+      });
+
+      // Solo reportar, NO eliminar automáticamente
+      const duplicateGroups = Array.from(taskGroups.entries())
+        .filter(([_, tasks]) => tasks.length > 1);
+
+      if (duplicateGroups.length === 0) {
+        console.log(`✅ No se detectaron duplicados en el rango de sincronización`);
+        return;
+      }
+
+      console.log(`⚠️ DUPLICADOS DETECTADOS EN RANGO: ${duplicateGroups.length} grupos (SOLO REPORTE)`);
+      
+      for (const [key, tasks] of duplicateGroups) {
+        const [dateStr, propiedadId, startTime, endTime] = key.split('-');
+        const propertyName = tasks[0].property?.nombre || 'Desconocida';
+        
+        const reportMsg = `DUPLICADO EN RANGO: ${tasks.length} tareas para ${propertyName} el ${dateStr} (${startTime}-${endTime}) - IDs: ${tasks.map(t => t.id.substring(0, 8)).join(', ')}`;
+        console.log(`📋 ${reportMsg}`);
+        this.stats.errors.push(reportMsg);
+      }
+      
+    } catch (error) {
+      console.error('❌ Error en detección de duplicados del rango:', error);
+      this.stats.errors.push(`Error en detección de duplicados del rango: ${error.message}`);
     }
   }
 
