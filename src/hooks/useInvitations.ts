@@ -50,7 +50,27 @@ export const useCreateInvitation = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Usuario no autenticado');
 
-      // Crear la invitación en la base de datos
+      // Primero verificar si existe una invitación pendiente para este email
+      const { data: existingInvitation } = await supabase
+        .from('user_invitations')
+        .select('*')
+        .eq('email', invitationData.email)
+        .eq('status', 'pending')
+        .gt('expires_at', new Date().toISOString())
+        .single();
+
+      if (existingInvitation) {
+        throw new Error('Ya existe una invitación pendiente para este email');
+      }
+
+      // Revocar cualquier invitación anterior pendiente o expirada para este email
+      await supabase
+        .from('user_invitations')
+        .update({ status: 'revoked' })
+        .eq('email', invitationData.email)
+        .in('status', ['pending', 'expired']);
+
+      // Crear la nueva invitación
       const { data, error } = await supabase
         .from('user_invitations')
         .insert({
