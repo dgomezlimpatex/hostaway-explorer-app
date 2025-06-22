@@ -6,6 +6,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthProvider";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
+import { RoleProtectedRoute } from "@/components/auth/RoleProtectedRoute";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import Calendar from "./pages/Calendar";
@@ -37,42 +38,58 @@ function App() {
               } />
               <Route path="/calendar" element={
                 <ProtectedRoute>
-                  <Calendar />
+                  <RoleProtectedRoute requiredModule="calendar">
+                    <Calendar />
+                  </RoleProtectedRoute>
                 </ProtectedRoute>
               } />
               <Route path="/tasks" element={
                 <ProtectedRoute>
-                  <Tasks />
+                  <RoleProtectedRoute requiredModule="tasks">
+                    <Tasks />
+                  </RoleProtectedRoute>
                 </ProtectedRoute>
               } />
               <Route path="/clients" element={
                 <ProtectedRoute>
-                  <Clients />
+                  <RoleProtectedRoute requiredModule="clients">
+                    <Clients />
+                  </RoleProtectedRoute>
                 </ProtectedRoute>
               } />
               <Route path="/properties" element={
                 <ProtectedRoute>
-                  <Properties />
+                  <RoleProtectedRoute requiredModule="properties">
+                    <Properties />
+                  </RoleProtectedRoute>
                 </ProtectedRoute>
               } />
               <Route path="/workers" element={
                 <ProtectedRoute>
-                  <Workers />
+                  <RoleProtectedRoute requiredModule="workers">
+                    <Workers />
+                  </RoleProtectedRoute>
                 </ProtectedRoute>
               } />
               <Route path="/property-groups" element={
                 <ProtectedRoute>
-                  <PropertyGroups />
+                  <RoleProtectedRoute requiredModule="propertyGroups">
+                    <PropertyGroups />
+                  </RoleProtectedRoute>
                 </ProtectedRoute>
               } />
               <Route path="/reports" element={
                 <ProtectedRoute>
-                  <Reports />
+                  <RoleProtectedRoute requiredModule="reports">
+                    <Reports />
+                  </RoleProtectedRoute>
                 </ProtectedRoute>
               } />
               <Route path="/hostaway-sync-logs" element={
                 <ProtectedRoute>
-                  <HostawaySyncLogs />
+                  <RoleProtectedRoute requiredModule="hostaway">
+                    <HostawaySyncLogs />
+                  </RoleProtectedRoute>
                 </ProtectedRoute>
               } />
               <Route path="*" element={<NotFound />} />

@@ -37,16 +37,27 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     return null; // Will redirect to auth page
   }
 
-  if (requireRole && userRole && !requireRole.includes(userRole)) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">Acceso denegado</h2>
-          <p className="text-gray-600">No tienes permisos para acceder a esta página.</p>
-          <p className="text-sm text-gray-500 mt-2">Tu rol: {userRole}</p>
+  // Updated role checking: admin and manager have same permissions
+  if (requireRole && userRole) {
+    const hasValidRole = requireRole.some(role => {
+      // Admin and manager are equivalent
+      if ((role === 'admin' || role === 'manager') && (userRole === 'admin' || userRole === 'manager')) {
+        return true;
+      }
+      return role === userRole;
+    });
+
+    if (!hasValidRole) {
+      return (
+        <div className="min-h-screen flex items-center justify-center">
+          <div className="text-center">
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">Acceso denegado</h2>
+            <p className="text-gray-600">No tienes permisos para acceder a esta página.</p>
+            <p className="text-sm text-gray-500 mt-2">Tu rol: {userRole}</p>
+          </div>
         </div>
-      </div>
-    );
+      );
+    }
   }
 
   return <>{children}</>;

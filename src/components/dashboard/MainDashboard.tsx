@@ -1,124 +1,21 @@
 
-import { NavigationCard } from './NavigationCard';
+import { RoleBasedNavigation } from '@/components/navigation/RoleBasedNavigation';
 import { HostawayIntegrationWidget } from '@/components/hostaway/HostawayIntegrationWidget';
-import { 
-  Calendar, 
-  CheckSquare, 
-  Users, 
-  Building2, 
-  FileText,
-  UserCheck,
-  Settings,
-  BarChart3
-} from 'lucide-react';
+import { useRolePermissions } from '@/hooks/useRolePermissions';
 
 export const MainDashboard = () => {
-  const navigationItems = [
-    {
-      title: 'Calendario',
-      description: 'Gestiona y visualiza todas las tareas de limpieza',
-      icon: Calendar,
-      to: '/calendar',
-      gradientFrom: 'from-blue-500',
-      gradientTo: 'to-blue-600',
-      iconColor: 'text-white',
-      hoverBorderColor: 'hover:border-blue-200'
-    },
-    {
-      title: 'Tareas',
-      description: 'Lista completa de tareas y gestión avanzada',
-      icon: CheckSquare,
-      to: '/tasks',
-      gradientFrom: 'from-green-500',
-      gradientTo: 'to-green-600',
-      iconColor: 'text-white',
-      hoverBorderColor: 'hover:border-green-200'
-    },
-    {
-      title: 'Clientes',
-      description: 'Gestión de clientes y su información',
-      icon: Users,
-      to: '/clients',
-      gradientFrom: 'from-purple-500',
-      gradientTo: 'to-purple-600',
-      iconColor: 'text-white',
-      hoverBorderColor: 'hover:border-purple-200'
-    },
-    {
-      title: 'Propiedades',
-      description: 'Administra propiedades y sus características',
-      icon: Building2,
-      to: '/properties',
-      gradientFrom: 'from-orange-500',
-      gradientTo: 'to-orange-600',
-      iconColor: 'text-white',
-      hoverBorderColor: 'hover:border-orange-200'
-    },
-    {
-      title: 'Personal',
-      description: 'Gestión del equipo de limpieza',
-      icon: UserCheck,
-      to: '/workers',
-      gradientFrom: 'from-teal-500',
-      gradientTo: 'to-teal-600',
-      iconColor: 'text-white',
-      hoverBorderColor: 'hover:border-teal-200'
-    },
-    {
-      title: 'Asignación Automática',
-      description: 'Sistema inteligente de asignación de tareas',
-      icon: Settings,
-      to: '/property-groups',
-      gradientFrom: 'from-indigo-500',
-      gradientTo: 'to-indigo-600',
-      iconColor: 'text-white',
-      hoverBorderColor: 'hover:border-indigo-200'
-    },
-    {
-      title: 'Reportes',
-      description: 'Análisis y reportes del negocio',
-      icon: BarChart3,
-      to: '/reports',
-      gradientFrom: 'from-pink-500',
-      gradientTo: 'to-pink-600',
-      iconColor: 'text-white',
-      hoverBorderColor: 'hover:border-pink-200'
-    },
-    {
-      title: 'Integración Hostaway',
-      description: 'Sincronización y logs de Hostaway',
-      icon: FileText,
-      to: '/hostaway-sync-logs',
-      gradientFrom: 'from-gray-500',
-      gradientTo: 'to-gray-600',
-      iconColor: 'text-white',
-      hoverBorderColor: 'hover:border-gray-200'
-    }
-  ];
+  const { canAccessModule } = useRolePermissions();
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900">
-      <div className="max-w-7xl mx-auto px-6 py-8">
-        <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-4">
-            Sistema de Gestión de Limpieza
-          </h1>
-          <p className="text-xl text-gray-600 dark:text-gray-300">
-            Gestiona eficientemente tus operaciones de limpieza
-          </p>
-        </div>
-
-        {/* Widget de Hostaway */}
-        <div className="mb-8">
+    <div>
+      {/* Solo mostrar widget de Hostaway si tiene permisos */}
+      {canAccessModule('hostaway') && (
+        <div className="mb-8 max-w-7xl mx-auto px-6">
           <HostawayIntegrationWidget />
         </div>
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {navigationItems.map((item) => (
-            <NavigationCard key={item.to} {...item} />
-          ))}
-        </div>
-      </div>
+      )}
+      
+      <RoleBasedNavigation />
     </div>
   );
 };
