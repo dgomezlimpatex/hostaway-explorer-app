@@ -18,14 +18,18 @@ export class TaskAssignmentService {
     // Update the task first
     const updatedTask = await taskStorageService.updateTask(taskId, updateData);
 
-    // If we have cleaner ID, try to send email notification
+    // If we have cleaner ID, send email notification
     if (cleanerId) {
       try {
         await this.sendTaskAssignmentEmail(updatedTask, cleanerId);
+        console.log('Task assignment email sent successfully');
       } catch (error) {
         console.error('Failed to send assignment email:', error);
-        // Don't fail the assignment if email fails
+        // Don't fail the assignment if email fails, but log the error
+        // In production, you might want to add this to a retry queue
       }
+    } else {
+      console.log('No cleanerId provided, skipping email notification');
     }
 
     return updatedTask;
@@ -49,7 +53,7 @@ export class TaskAssignmentService {
 
       if (cleanerError) {
         console.error('Error fetching cleaner details:', cleanerError);
-        return;
+        throw new Error(`Could not fetch cleaner details: ${cleanerError.message}`);
       }
 
       if (!cleaner?.email) {
@@ -59,30 +63,33 @@ export class TaskAssignmentService {
 
       console.log('Sending assignment email to cleaner:', cleaner.email);
 
+      // Prepare task data for email
+      const taskData = {
+        property: task.property,
+        address: task.address,
+        date: task.date,
+        startTime: task.startTime,
+        endTime: task.endTime,
+        type: task.type || 'Limpieza general',
+        notes: task.supervisor ? `Supervisor: ${task.supervisor}` : undefined
+      };
+
       // Call the edge function to send the email
-      const { error: emailError } = await supabase.functions.invoke('send-task-assignment-email', {
+      const { data, error: emailError } = await supabase.functions.invoke('send-task-assignment-email', {
         body: {
           taskId: task.id,
           cleanerEmail: cleaner.email,
           cleanerName: cleaner.name,
-          taskData: {
-            property: task.property,
-            address: task.address,
-            date: task.date,
-            startTime: task.startTime,
-            endTime: task.endTime,
-            type: task.type,
-            notes: task.supervisor ? `Supervisor: ${task.supervisor}` : undefined
-          }
+          taskData
         }
       });
 
       if (emailError) {
         console.error('Error calling email function:', emailError);
-        throw emailError;
+        throw new Error(`Email function error: ${emailError.message}`);
       }
 
-      console.log('Task assignment email sent successfully');
+      console.log('Task assignment email sent successfully:', data);
     } catch (error) {
       console.error('Error sending task assignment email:', error);
       throw error;

@@ -43,6 +43,15 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log('Sending task assignment email to:', cleanerEmail, 'for task:', taskId);
 
+    // Format the date nicely in Spanish
+    const taskDate = new Date(taskData.date);
+    const formattedDate = taskDate.toLocaleDateString('es-ES', { 
+      weekday: 'long', 
+      year: 'numeric', 
+      month: 'long', 
+      day: 'numeric' 
+    });
+
     const emailResponse = await resend.emails.send({
       from: "Sistema de Gestión <noreply@limpatex.com>",
       to: [cleanerEmail],
@@ -70,12 +79,7 @@ const handler = async (req: Request): Promise<Response> => {
                 </tr>
                 <tr>
                   <td style="padding: 8px 0; font-weight: bold; color: #4b5563;">📅 Fecha:</td>
-                  <td style="padding: 8px 0; color: #111827;">${new Date(taskData.date).toLocaleDateString('es-ES', { 
-                    weekday: 'long', 
-                    year: 'numeric', 
-                    month: 'long', 
-                    day: 'numeric' 
-                  })}</td>
+                  <td style="padding: 8px 0; color: #111827;">${formattedDate}</td>
                 </tr>
                 <tr>
                   <td style="padding: 8px 0; font-weight: bold; color: #4b5563;">⏰ Horario:</td>

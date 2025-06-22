@@ -2,10 +2,13 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Task, ViewType } from '@/types/calendar';
 import { taskStorageService } from '@/services/taskStorage';
+import { taskAssignmentService } from '@/services/storage/taskAssignmentService';
 import { useOptimizedTasks } from './useOptimizedTasks';
+import { useToast } from '@/hooks/use-toast';
 
 export const useTasks = (currentDate: Date, currentView: ViewType) => {
   const queryClient = useQueryClient();
+  const { toast } = useToast();
 
   // Usar el hook optimizado en lugar del query básico
   const { tasks, isLoading, error, queryKey } = useOptimizedTasks({
@@ -78,7 +81,9 @@ export const useTasks = (currentDate: Date, currentView: ViewType) => {
         throw new Error('Cleaner not found');
       }
       console.log('assignTaskMutation - assigning task:', { taskId, cleanerId, cleanerName: cleaner.name });
-      return taskStorageService.assignTask(taskId, cleaner.name, cleanerId);
+      
+      // Use the assignment service which handles email notifications
+      return await taskAssignmentService.assignTask(taskId, cleaner.name, cleanerId);
     },
     onSuccess: (data, variables) => {
       // Optimistic update
@@ -92,6 +97,20 @@ export const useTasks = (currentDate: Date, currentView: ViewType) => {
         );
       });
       queryClient.invalidateQueries({ queryKey: ['tasks', 'all'] });
+      
+      // Show success message
+      toast({
+        title: "Tarea asignada",
+        description: `Se ha asignado la tarea a ${cleaner?.name} y se le ha enviado una notificación por email.`,
+      });
+    },
+    onError: (error: any) => {
+      console.error('Error assigning task:', error);
+      toast({
+        title: "Error",
+        description: error.message || "No se pudo asignar la tarea.",
+        variant: "destructive",
+      });
     },
   });
 
