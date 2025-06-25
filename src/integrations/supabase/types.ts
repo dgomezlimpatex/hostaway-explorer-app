@@ -593,6 +593,51 @@ export type Database = {
           },
         ]
       }
+      property_checklist_assignments: {
+        Row: {
+          assigned_at: string
+          checklist_template_id: string
+          created_at: string
+          id: string
+          is_active: boolean
+          property_id: string
+          updated_at: string
+        }
+        Insert: {
+          assigned_at?: string
+          checklist_template_id: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          property_id: string
+          updated_at?: string
+        }
+        Update: {
+          assigned_at?: string
+          checklist_template_id?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          property_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "property_checklist_assignments_checklist_template_id_fkey"
+            columns: ["checklist_template_id"]
+            isOneToOne: false
+            referencedRelation: "task_checklists_templates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "property_checklist_assignments_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       property_group_assignments: {
         Row: {
           created_at: string | null

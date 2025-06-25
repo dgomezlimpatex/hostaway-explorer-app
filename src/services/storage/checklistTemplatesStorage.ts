@@ -45,9 +45,15 @@ export class ChecklistTemplatesStorageService {
   }
 
   async createChecklistTemplate(templateData: Omit<TaskChecklistTemplate, 'id' | 'created_at' | 'updated_at'>): Promise<TaskChecklistTemplate> {
+    // Convert checklist_items to JSON for database storage
+    const dbData = {
+      ...templateData,
+      checklist_items: templateData.checklist_items as any
+    };
+
     const { data, error } = await supabase
       .from('task_checklists_templates')
-      .insert(templateData)
+      .insert(dbData)
       .select()
       .single();
 
@@ -63,9 +69,15 @@ export class ChecklistTemplatesStorageService {
   }
 
   async updateChecklistTemplate(templateId: string, updates: Partial<TaskChecklistTemplate>): Promise<TaskChecklistTemplate> {
+    // Convert checklist_items to JSON for database storage if present
+    const dbUpdates = {
+      ...updates,
+      ...(updates.checklist_items && { checklist_items: updates.checklist_items as any })
+    };
+
     const { data, error } = await supabase
       .from('task_checklists_templates')
-      .update(updates)
+      .update(dbUpdates)
       .eq('id', templateId)
       .select()
       .single();
