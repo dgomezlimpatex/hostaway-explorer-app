@@ -1,193 +1,200 @@
 
 import { useState } from 'react';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { useProperties, useDeleteProperty } from '@/hooks/useProperties';
-import { useClients } from '@/hooks/useClients';
-import { Property } from '@/types/property';
-import { Edit, Trash2, Home, MapPin, Bed, Bath, Clock, Euro, User } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { EditPropertyModal } from './EditPropertyModal';
+import { AssignChecklistModal } from './AssignChecklistModal';
+import { Property } from '@/types/property';
+import { Skeleton } from '@/components/ui/skeleton';
+import { 
+  Edit, 
+  Trash2, 
+  MapPin, 
+  Bed, 
+  Bath, 
+  Clock, 
+  Euro,
+  FileText,
+  CheckSquare
+} from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
-const PropertyCard = ({ property }: { property: Property }) => {
-  const [editModalOpen, setEditModalOpen] = useState(false);
+export const PropertyList = () => {
+  const { data: properties = [], isLoading } = useProperties();
   const deleteProperty = useDeleteProperty();
+  const [editingProperty, setEditingProperty] = useState<Property | null>(null);
+  const [assigningProperty, setAssigningProperty] = useState<Property | null>(null);
+  const { toast } = useToast();
 
-  const handleDelete = () => {
-    if (window.confirm('¿Estás seguro de que quieres eliminar esta propiedad?')) {
-      deleteProperty.mutate(property.id);
+  const handleDelete = async (id: string) => {
+    try {
+      await deleteProperty.mutateAsync(id);
+    } catch (error) {
+      console.error('Error deleting property:', error);
     }
   };
 
-  return (
-    <>
-      <Card className="hover:shadow-lg transition-shadow">
-        <CardHeader className="pb-3">
-          <div className="flex justify-between items-start">
-            <div>
-              <CardTitle className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-                <Home className="h-5 w-5" />
-                {property.nombre}
-              </CardTitle>
-              <div className="flex items-center gap-2 mt-1">
-                <Badge variant="outline" className="text-sm">
-                  {property.codigo}
-                </Badge>
-              </div>
-            </div>
-          </div>
-        </CardHeader>
-        
-        <CardContent className="space-y-4">
-          {/* Dirección */}
-          <div className="flex items-center gap-2 text-sm text-gray-600">
-            <MapPin className="h-4 w-4" />
-            {property.direccion}
-          </div>
-
-          {/* Características */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="flex items-center gap-2 text-sm">
-              <Bed className="h-4 w-4 text-gray-500" />
-              <span>{property.numeroCamas} cama{property.numeroCamas !== 1 ? 's' : ''}</span>
-            </div>
-            <div className="flex items-center gap-2 text-sm">
-              <Bath className="h-4 w-4 text-gray-500" />
-              <span>{property.numeroBanos} baño{property.numeroBanos !== 1 ? 's' : ''}</span>
-            </div>
-          </div>
-
-          {/* Servicio */}
-          <div className="grid grid-cols-2 gap-4 pt-2 border-t">
-            <div className="flex items-center gap-2 text-sm">
-              <Clock className="h-4 w-4 text-gray-500" />
-              <span>{Math.floor(property.duracionServicio / 60)}h {property.duracionServicio % 60}min</span>
-            </div>
-            <div className="flex items-center gap-2 text-sm">
-              <Euro className="h-4 w-4 text-gray-500" />
-              <span>{property.costeServicio}€</span>
-            </div>
-          </div>
-
-          {/* Apartado téxtil */}
-          <div className="bg-gray-50 p-3 rounded-lg">
-            <h4 className="text-sm font-medium text-gray-700 mb-2">🧺 Textil</h4>
-            <div className="grid grid-cols-2 gap-2 text-xs text-gray-600">
-              <div>Sábanas: {property.numeroSabanas}</div>
-              <div>Toallas G: {property.numeroToallasGrandes}</div>
-              <div>Toallas P: {property.numeroTotallasPequenas}</div>
-              <div>Alfombrines: {property.numeroAlfombrines}</div>
-              <div>Fundas: {property.numeroFundasAlmohada}</div>
-            </div>
-          </div>
-
-          {/* Acciones */}
-          <div className="flex justify-end gap-2 pt-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setEditModalOpen(true)}
-              className="flex items-center gap-1"
-            >
-              <Edit className="h-3 w-3" />
-              Editar
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleDelete}
-              disabled={deleteProperty.isPending}
-              className="flex items-center gap-1 text-red-600 hover:text-red-700"
-            >
-              <Trash2 className="h-3 w-3" />
-              Eliminar
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Modal de edición */}
-      <EditPropertyModal
-        property={property}
-        open={editModalOpen}
-        onOpenChange={setEditModalOpen}
-      />
-    </>
-  );
-};
-
-export const PropertyList = () => {
-  const { data: properties, isLoading, error } = useProperties();
-  const { data: clients } = useClients();
-
   if (isLoading) {
     return (
-      <div className="flex justify-center items-center h-32">
-        <div className="text-gray-500">Cargando propiedades...</div>
+      <div className="space-y-4">
+        {Array.from({ length: 3 }).map((_, i) => (
+          <Card key={i}>
+            <CardHeader>
+              <Skeleton className="h-6 w-3/4" />
+              <Skeleton className="h-4 w-1/2" />
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-4 w-full" />
+              </div>
+            </CardContent>
+          </Card>
+        ))}
       </div>
     );
   }
 
-  if (error) {
+  if (properties.length === 0) {
     return (
-      <div className="text-center text-red-600 p-4">
-        Error al cargar las propiedades
+      <div className="text-center py-12">
+        <MapPin className="h-12 w-12 mx-auto text-gray-400 mb-4" />
+        <h3 className="text-lg font-medium text-gray-900 mb-2">
+          No hay propiedades registradas
+        </h3>
+        <p className="text-gray-500">
+          Comienza agregando tu primera propiedad
+        </p>
       </div>
     );
   }
-
-  if (!properties || properties.length === 0) {
-    return (
-      <div className="text-center text-gray-500 p-8">
-        <Home className="h-12 w-12 mx-auto mb-4 text-gray-300" />
-        <p>No hay propiedades registradas</p>
-        <p className="text-sm">Crea tu primera propiedad para comenzar</p>
-      </div>
-    );
-  }
-
-  // Agrupar propiedades por cliente
-  const propertiesByClient = properties.reduce((acc, property) => {
-    const clientId = property.clienteId;
-    if (!acc[clientId]) {
-      acc[clientId] = [];
-    }
-    acc[clientId].push(property);
-    return acc;
-  }, {} as Record<string, Property[]>);
 
   return (
-    <div className="space-y-4">
-      <Accordion type="multiple" className="space-y-4">
-        {Object.entries(propertiesByClient).map(([clientId, clientProperties]) => {
-          const client = clients?.find(c => c.id === clientId);
-          const clientName = client?.nombre || 'Cliente desconocido';
-          
-          return (
-            <AccordionItem key={clientId} value={clientId} className="border rounded-lg">
-              <AccordionTrigger className="px-4 py-3 hover:no-underline">
-                <div className="flex items-center gap-3 text-left">
-                  <User className="h-5 w-5 text-blue-600" />
-                  <div>
-                    <h3 className="font-semibold text-gray-900">{clientName}</h3>
-                    <p className="text-sm text-gray-500">
-                      {clientProperties.length} propiedad{clientProperties.length !== 1 ? 'es' : ''}
-                    </p>
+    <>
+      <div className="space-y-4">
+        {properties.map((property: Property) => (
+          <Card key={property.id} className="hover:shadow-md transition-shadow">
+            <CardHeader>
+              <div className="flex justify-between items-start">
+                <div>
+                  <CardTitle className="text-xl">
+                    {property.nombre}
+                  </CardTitle>
+                  <CardDescription className="flex items-center gap-1 mt-1">
+                    <Badge variant="secondary">{property.codigo}</Badge>
+                  </CardDescription>
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setAssigningProperty(property)}
+                    className="flex items-center gap-1"
+                  >
+                    <CheckSquare className="h-4 w-4" />
+                    Checklist
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setEditingProperty(property)}
+                  >
+                    <Edit className="h-4 w-4" />
+                  </Button>
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button variant="outline" size="sm">
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          Esta acción no se puede deshacer. Se eliminará permanentemente
+                          la propiedad "{property.nombre}".
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                        <AlertDialogAction 
+                          onClick={() => handleDelete(property.id)}
+                          className="bg-red-600 hover:bg-red-700"
+                        >
+                          Eliminar
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div className="flex items-center gap-2 text-sm text-gray-600">
+                  <MapPin className="h-4 w-4" />
+                  {property.direccion}
+                </div>
+                
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                  <div className="flex items-center gap-2">
+                    <Bed className="h-4 w-4 text-gray-500" />
+                    <span>{property.numeroCamas} camas</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Bath className="h-4 w-4 text-gray-500" />
+                    <span>{property.numeroBanos} baños</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Clock className="h-4 w-4 text-gray-500" />
+                    <span>{property.duracionServicio} min</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Euro className="h-4 w-4 text-gray-500" />
+                    <span>€{property.costeServicio}</span>
                   </div>
                 </div>
-              </AccordionTrigger>
-              <AccordionContent className="px-4 pb-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {clientProperties.map((property) => (
-                    <PropertyCard key={property.id} property={property} />
-                  ))}
-                </div>
-              </AccordionContent>
-            </AccordionItem>
-          );
-        })}
-      </Accordion>
-    </div>
+
+                {property.notas && (
+                  <div className="bg-gray-50 p-3 rounded-lg">
+                    <div className="flex items-start gap-2">
+                      <FileText className="h-4 w-4 text-gray-500 mt-0.5" />
+                      <p className="text-sm text-gray-700">{property.notas}</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      <EditPropertyModal
+        property={editingProperty}
+        open={!!editingProperty}
+        onOpenChange={(open) => !open && setEditingProperty(null)}
+      />
+
+      <AssignChecklistModal
+        property={assigningProperty}
+        open={!!assigningProperty}
+        onOpenChange={(open) => !open && setAssigningProperty(null)}
+      />
+    </>
   );
 };
