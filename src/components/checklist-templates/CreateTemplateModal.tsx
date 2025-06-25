@@ -16,13 +16,20 @@ export const CreateTemplateModal: React.FC<CreateTemplateModalProps> = ({
     onOpenChange(false);
   };
 
+  const handleCancel = () => {
+    onOpenChange(false);
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden">
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Crear Nueva Plantilla de Checklist</DialogTitle>
         </DialogHeader>
-        <ChecklistTemplateForm onSuccess={handleSuccess} />
+        <ChecklistTemplateForm 
+          onSuccess={handleSuccess}
+          onCancel={handleCancel}
+        />
       </DialogContent>
     </Dialog>
   );

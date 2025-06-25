@@ -43,6 +43,55 @@ export class ChecklistTemplatesStorageService {
       checklist_items: data.checklist_items as any
     };
   }
+
+  async createChecklistTemplate(templateData: Omit<TaskChecklistTemplate, 'id' | 'created_at' | 'updated_at'>): Promise<TaskChecklistTemplate> {
+    const { data, error } = await supabase
+      .from('task_checklists_templates')
+      .insert(templateData)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error creating checklist template:', error);
+      throw error;
+    }
+
+    return {
+      ...data,
+      checklist_items: data.checklist_items as any
+    };
+  }
+
+  async updateChecklistTemplate(templateId: string, updates: Partial<TaskChecklistTemplate>): Promise<TaskChecklistTemplate> {
+    const { data, error } = await supabase
+      .from('task_checklists_templates')
+      .update(updates)
+      .eq('id', templateId)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error updating checklist template:', error);
+      throw error;
+    }
+
+    return {
+      ...data,
+      checklist_items: data.checklist_items as any
+    };
+  }
+
+  async deleteChecklistTemplate(templateId: string): Promise<void> {
+    const { error } = await supabase
+      .from('task_checklists_templates')
+      .update({ is_active: false })
+      .eq('id', templateId);
+
+    if (error) {
+      console.error('Error deleting checklist template:', error);
+      throw error;
+    }
+  }
 }
 
 export const checklistTemplatesStorageService = new ChecklistTemplatesStorageService();

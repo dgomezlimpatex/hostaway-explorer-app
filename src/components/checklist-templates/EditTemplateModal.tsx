@@ -19,15 +19,23 @@ export const EditTemplateModal: React.FC<EditTemplateModalProps> = ({
     onOpenChange(false);
   };
 
+  const handleCancel = () => {
+    onOpenChange(false);
+  };
+
   if (!template) return null;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden">
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Editar Plantilla: {template.template_name}</DialogTitle>
         </DialogHeader>
-        <ChecklistTemplateForm template={template} onSuccess={handleSuccess} />
+        <ChecklistTemplateForm 
+          template={template}
+          onSuccess={handleSuccess}
+          onCancel={handleCancel}
+        />
       </DialogContent>
     </Dialog>
   );

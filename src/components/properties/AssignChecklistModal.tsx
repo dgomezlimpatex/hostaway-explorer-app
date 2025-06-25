@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { useChecklistTemplates } from '@/hooks/useChecklistTemplates';
+import { useAssignChecklistToProperty } from '@/hooks/usePropertyChecklists';
 import { Property } from '@/types/property';
 import { useToast } from '@/hooks/use-toast';
 
@@ -21,9 +22,10 @@ export const AssignChecklistModal: React.FC<AssignChecklistModalProps> = ({
 }) => {
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>('');
   const { data: templates = [] } = useChecklistTemplates();
+  const assignChecklistMutation = useAssignChecklistToProperty();
   const { toast } = useToast();
 
-  const handleAssign = () => {
+  const handleAssign = async () => {
     if (!selectedTemplateId) {
       toast({
         title: "Error",
@@ -33,16 +35,26 @@ export const AssignChecklistModal: React.FC<AssignChecklistModalProps> = ({
       return;
     }
 
-    // TODO: Implement the API call to assign the template to the property
-    console.log('Assigning template', selectedTemplateId, 'to property', property?.id);
-    
-    toast({
-      title: "Plantilla asignada",
-      description: `La plantilla se ha asignado correctamente a ${property?.nombre}.`,
-    });
-    
-    onOpenChange(false);
-    setSelectedTemplateId('');
+    if (!property) {
+      toast({
+        title: "Error",
+        description: "No se ha seleccionado una propiedad.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      await assignChecklistMutation.mutateAsync({
+        propertyId: property.id,
+        templateId: selectedTemplateId,
+      });
+      
+      onOpenChange(false);
+      setSelectedTemplateId('');
+    } catch (error) {
+      console.error('Error assigning checklist:', error);
+    }
   };
 
   const handleCancel = () => {
@@ -90,8 +102,11 @@ export const AssignChecklistModal: React.FC<AssignChecklistModalProps> = ({
           <Button variant="outline" onClick={handleCancel}>
             Cancelar
           </Button>
-          <Button onClick={handleAssign}>
-            Asignar Plantilla
+          <Button 
+            onClick={handleAssign}
+            disabled={assignChecklistMutation.isPending}
+          >
+            {assignChecklistMutation.isPending ? 'Asignando...' : 'Asignar Plantilla'}
           </Button>
         </DialogFooter>
       </DialogContent>
