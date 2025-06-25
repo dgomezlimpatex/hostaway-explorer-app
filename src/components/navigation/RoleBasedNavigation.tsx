@@ -9,7 +9,8 @@ import {
   BarChart3, 
   Settings,
   UserPlus,
-  Layers
+  Layers,
+  FileText
 } from 'lucide-react';
 
 export const RoleBasedNavigation = () => {
@@ -51,6 +52,19 @@ export const RoleBasedNavigation = () => {
               gradientTo="to-green-600"
               iconColor="text-white"
               hoverBorderColor="hover:border-green-300"
+            />
+          )}
+
+          {canAccessModule('tasks') && (
+            <NavigationCard
+              to="/checklist-templates"
+              title="Plantillas de Checklist"
+              description="Gestiona las plantillas de checklist para diferentes propiedades"
+              icon={FileText}
+              gradientFrom="bg-gradient-to-br from-cyan-500"
+              gradientTo="to-cyan-600"
+              iconColor="text-white"
+              hoverBorderColor="hover:border-cyan-300"
             />
           )}
 

@@ -19,6 +19,7 @@ import Workers from "./pages/Workers";
 import PropertyGroups from "./pages/PropertyGroups";
 import Reports from "./pages/Reports";
 import HostawaySyncLogs from "./pages/HostawaySyncLogs";
+import ChecklistTemplates from "./pages/ChecklistTemplates";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -85,6 +86,13 @@ function App() {
                 <ProtectedRoute>
                   <RoleProtectedRoute requiredModule="propertyGroups">
                     <PropertyGroups />
+                  </RoleProtectedRoute>
+                </ProtectedRoute>
+              } />
+              <Route path="/checklist-templates" element={
+                <ProtectedRoute>
+                  <RoleProtectedRoute requiredModule="tasks">
+                    <ChecklistTemplates />
                   </RoleProtectedRoute>
                 </ProtectedRoute>
               } />
