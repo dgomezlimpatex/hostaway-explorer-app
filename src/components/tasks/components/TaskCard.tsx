@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Clock, MapPin, User, Edit, Trash2, Calendar, FileText, MoreVertical } from 'lucide-react';
+import { Clock, MapPin, User, Edit, Trash2, Calendar, FileText } from 'lucide-react';
 import { Task } from '@/types/calendar';
 import { TaskReportButton } from './TaskReportButton';
 import { TaskReportModal } from '@/components/modals/TaskReportModal';
@@ -156,28 +156,24 @@ export const TaskCard: React.FC<TaskCardProps> = ({
           {showActions && (
             <div className="flex items-center justify-between pt-2 border-t border-gray-100">
               <div className="flex items-center gap-2">
-                {(onEdit || onEditTask) && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleEdit}
-                    className="flex items-center gap-2 px-4 py-2 h-9 bg-white hover:bg-blue-50 hover:text-blue-600 hover:border-blue-300 transition-all duration-200 rounded-lg font-medium"
-                  >
-                    <Edit className="h-4 w-4" />
-                    Editar
-                  </Button>
-                )}
-                {onDelete && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleDelete}
-                    className="flex items-center gap-2 px-4 py-2 h-9 bg-white hover:bg-red-50 hover:text-red-600 hover:border-red-300 transition-all duration-200 rounded-lg font-medium"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                    Eliminar
-                  </Button>
-                )}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleEdit}
+                  className="flex items-center gap-2 px-4 py-2 h-9 bg-white hover:bg-blue-50 hover:text-blue-600 hover:border-blue-300 transition-all duration-200 rounded-lg font-medium"
+                >
+                  <Edit className="h-4 w-4" />
+                  Editar
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleDelete}
+                  className="flex items-center gap-2 px-4 py-2 h-9 bg-white hover:bg-red-50 hover:text-red-600 hover:border-red-300 transition-all duration-200 rounded-lg font-medium"
+                >
+                  <Trash2 className="h-4 w-4" />
+                  Eliminar
+                </Button>
               </div>
 
               <TaskReportButton
