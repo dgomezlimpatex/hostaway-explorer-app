@@ -38,24 +38,24 @@ export const TaskCardActions: React.FC<TaskCardActionsProps> = ({
   if (!showActions) return null;
 
   return (
-    <div className="flex items-center justify-between pt-2 border-t border-gray-100">
+    <div className="flex items-center justify-between pt-4 mt-4 border-t border-gray-100">
       <div className="flex items-center gap-2">
         <Button
           variant="outline"
           size="sm"
           onClick={handleEdit}
-          className="flex items-center gap-2 px-4 py-2 h-9 bg-white hover:bg-blue-50 hover:text-blue-600 hover:border-blue-300 transition-all duration-200 rounded-lg font-medium"
+          className="flex items-center gap-2 px-3 py-1.5 h-8 bg-white hover:bg-blue-50 hover:text-blue-600 hover:border-blue-300 transition-all duration-200 rounded-md font-medium text-sm border-gray-300"
         >
-          <Edit className="h-4 w-4" />
+          <Edit className="h-3.5 w-3.5" />
           Editar
         </Button>
         <Button
           variant="outline"
           size="sm"
           onClick={handleDelete}
-          className="flex items-center gap-2 px-4 py-2 h-9 bg-white hover:bg-red-50 hover:text-red-600 hover:border-red-300 transition-all duration-200 rounded-lg font-medium"
+          className="flex items-center gap-2 px-3 py-1.5 h-8 bg-white hover:bg-red-50 hover:text-red-600 hover:border-red-300 transition-all duration-200 rounded-md font-medium text-sm border-gray-300"
         >
-          <Trash2 className="h-4 w-4" />
+          <Trash2 className="h-3.5 w-3.5" />
           Eliminar
         </Button>
       </div>
@@ -63,7 +63,7 @@ export const TaskCardActions: React.FC<TaskCardActionsProps> = ({
       <TaskReportButton
         task={task}
         onOpenReport={onCreateReport || onOpenReport}
-        className="flex items-center gap-2 px-4 py-2 h-9 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-lg transition-all duration-200 border border-gray-200 hover:border-gray-300"
+        className="flex items-center gap-2 px-3 py-1.5 h-8 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-md transition-all duration-200 border border-gray-200 hover:border-gray-300"
       />
     </div>
   );

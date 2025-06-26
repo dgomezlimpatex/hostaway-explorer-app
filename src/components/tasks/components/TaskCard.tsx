@@ -40,7 +40,7 @@ export const TaskCard: React.FC<TaskCardProps> = ({
 
   return (
     <>
-      <Card className="group relative overflow-hidden bg-white hover:shadow-xl transition-all duration-300 border-0 shadow-md hover:shadow-2xl hover:-translate-y-1">
+      <Card className="group relative overflow-hidden bg-white hover:shadow-xl transition-all duration-300 border border-gray-200 shadow-sm hover:shadow-2xl hover:-translate-y-1">
         {/* Status indicator line */}
         <div className={`absolute top-0 left-0 right-0 h-1 ${
           task.status === 'completed' ? 'bg-emerald-500' :
@@ -68,6 +68,7 @@ export const TaskCard: React.FC<TaskCardProps> = ({
             supervisor={task.supervisor}
           />
 
+          {/* Always show actions - this ensures edit and delete buttons are visible */}
           <TaskCardActions
             task={task}
             onEdit={onEdit}
@@ -75,12 +76,12 @@ export const TaskCard: React.FC<TaskCardProps> = ({
             onEditTask={onEditTask}
             onCreateReport={onCreateReport}
             onOpenReport={handleOpenReport}
-            showActions={showActions}
+            showActions={true}
           />
         </CardContent>
 
         {/* Hover effect overlay */}
-        <div className="absolute inset-0 bg-gradient-to-br from-white/0 to-gray-50/50 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
+        <div className="absolute inset-0 bg-gradient-to-br from-white/0 to-gray-50/30 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
       </Card>
 
       <TaskReportModal
