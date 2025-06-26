@@ -37,6 +37,38 @@ export const useCreateChecklistTemplate = () => {
   });
 };
 
+export const useDuplicateChecklistTemplate = () => {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: async (template: TaskChecklistTemplate) => {
+      const duplicatedTemplate = {
+        template_name: `${template.template_name} (Copia)`,
+        property_type: template.property_type,
+        checklist_items: template.checklist_items,
+        is_active: true,
+      };
+      return await checklistTemplatesStorageService.createChecklistTemplate(duplicatedTemplate);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['checklist-templates'] });
+      toast({
+        title: "Plantilla duplicada",
+        description: "La plantilla se ha duplicado exitosamente.",
+      });
+    },
+    onError: (error) => {
+      console.error('Error duplicating template:', error);
+      toast({
+        title: "Error",
+        description: "No se pudo duplicar la plantilla. Inténtalo de nuevo.",
+        variant: "destructive",
+      });
+    },
+  });
+};
+
 export const useUpdateChecklistTemplate = () => {
   const queryClient = useQueryClient();
   const { toast } = useToast();

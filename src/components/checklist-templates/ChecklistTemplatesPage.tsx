@@ -4,18 +4,17 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Plus, Edit, Trash2, Copy, ArrowLeft } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { useChecklistTemplates } from '@/hooks/useChecklistTemplates';
+import { useChecklistTemplates, useDuplicateChecklistTemplate } from '@/hooks/useChecklistTemplates';
 import { ChecklistTemplatesList } from './ChecklistTemplatesList';
 import { CreateTemplateModal } from './CreateTemplateModal';
 import { EditTemplateModal } from './EditTemplateModal';
 import { TaskChecklistTemplate } from '@/types/taskReports';
-import { useToast } from '@/hooks/use-toast';
 
 export default function ChecklistTemplatesPage() {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [editingTemplate, setEditingTemplate] = useState<TaskChecklistTemplate | null>(null);
   const { data: templates = [], isLoading } = useChecklistTemplates();
-  const { toast } = useToast();
+  const duplicateTemplate = useDuplicateChecklistTemplate();
 
   const handleCreateTemplate = () => {
     setIsCreateModalOpen(true);
@@ -25,12 +24,12 @@ export default function ChecklistTemplatesPage() {
     setEditingTemplate(template);
   };
 
-  const handleDuplicateTemplate = (template: TaskChecklistTemplate) => {
-    // Logic to duplicate template
-    toast({
-      title: "Función próximamente",
-      description: "La duplicación de plantillas estará disponible pronto.",
-    });
+  const handleDuplicateTemplate = async (template: TaskChecklistTemplate) => {
+    try {
+      await duplicateTemplate.mutateAsync(template);
+    } catch (error) {
+      console.error('Error duplicating template:', error);
+    }
   };
 
   return (
