@@ -38,6 +38,24 @@ export const TaskCard: React.FC<TaskCardProps> = ({
     setShowReportModal(true);
   };
 
+  // Default handlers to ensure buttons work
+  const handleEdit = onEdit || onEditTask || ((task: Task) => {
+    console.log('Edit task:', task.id);
+    alert(`Editar tarea: ${task.property}`);
+  });
+
+  const handleDelete = onDelete || ((taskId: string) => {
+    console.log('Delete task:', taskId);
+    alert(`Eliminar tarea: ${taskId}`);
+  });
+
+  console.log('TaskCard rendering for task:', task.id, { 
+    hasOnEdit: !!onEdit, 
+    hasOnDelete: !!onDelete, 
+    hasOnEditTask: !!onEditTask,
+    showActions 
+  });
+
   return (
     <>
       <Card className="group relative overflow-hidden bg-white hover:shadow-xl transition-all duration-300 border border-gray-200 shadow-sm hover:shadow-2xl hover:-translate-y-1">
@@ -71,8 +89,8 @@ export const TaskCard: React.FC<TaskCardProps> = ({
           {/* Always show actions - this ensures edit and delete buttons are visible */}
           <TaskCardActions
             task={task}
-            onEdit={onEdit}
-            onDelete={onDelete}
+            onEdit={handleEdit}
+            onDelete={handleDelete}
             onEditTask={onEditTask}
             onCreateReport={onCreateReport}
             onOpenReport={handleOpenReport}

@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Button } from '@/components/ui/button';
-import { Edit, Trash2 } from 'lucide-react';
+import { Edit, Trash } from 'lucide-react';
 import { Task } from '@/types/calendar';
 import { TaskReportButton } from './TaskReportButton';
 
@@ -25,17 +25,24 @@ export const TaskCardActions: React.FC<TaskCardActionsProps> = ({
   showActions = true,
 }) => {
   const handleEdit = () => {
+    console.log('Edit button clicked for task:', task.id);
     if (onEdit) onEdit(task);
     if (onEditTask) onEditTask(task);
   };
 
   const handleDelete = () => {
+    console.log('Delete button clicked for task:', task.id);
     if (window.confirm('¿Estás seguro de que quieres eliminar esta tarea?')) {
       if (onDelete) onDelete(task.id);
     }
   };
 
-  if (!showActions) return null;
+  if (!showActions) {
+    console.log('Actions hidden for task:', task.id);
+    return null;
+  }
+
+  console.log('Rendering actions for task:', task.id, { hasOnEdit: !!onEdit, hasOnDelete: !!onDelete });
 
   return (
     <div className="flex items-center justify-between pt-4 mt-4 border-t border-gray-100">
@@ -55,7 +62,7 @@ export const TaskCardActions: React.FC<TaskCardActionsProps> = ({
           onClick={handleDelete}
           className="flex items-center gap-2 px-3 py-1.5 h-8 bg-white hover:bg-red-50 hover:text-red-600 hover:border-red-300 transition-all duration-200 rounded-md font-medium text-sm border-gray-300"
         >
-          <Trash2 className="h-3.5 w-3.5" />
+          <Trash className="h-3.5 w-3.5" />
           Eliminar
         </Button>
       </div>
