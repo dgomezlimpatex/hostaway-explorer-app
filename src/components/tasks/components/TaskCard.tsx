@@ -1,16 +1,9 @@
 
 import React, { useState } from 'react';
-import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Clock, MapPin, User, MoreVertical, Edit, Trash2, UserMinus, Eye } from 'lucide-react';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+import { Clock, MapPin, User, Edit, Trash2, Calendar, FileText } from 'lucide-react';
 import { Task } from '@/types/calendar';
 import { TaskReportButton } from './TaskReportButton';
 import { TaskReportModal } from '@/components/modals/TaskReportModal';
@@ -43,13 +36,13 @@ export const TaskCard: React.FC<TaskCardProps> = ({
   const getStatusColor = (status: string) => {
     switch (status.toLowerCase()) {
       case 'completed':
-        return 'bg-green-100 text-green-800 border-green-200';
+        return 'bg-emerald-50 text-emerald-700 border-emerald-200';
       case 'in-progress':
-        return 'bg-blue-100 text-blue-800 border-blue-200';
+        return 'bg-blue-50 text-blue-700 border-blue-200';
       case 'pending':
-        return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+        return 'bg-amber-50 text-amber-700 border-amber-200';
       default:
-        return 'bg-gray-100 text-gray-800 border-gray-200';
+        return 'bg-gray-50 text-gray-700 border-gray-200';
     }
   };
 
@@ -75,103 +68,101 @@ export const TaskCard: React.FC<TaskCardProps> = ({
     if (onEditTask) onEditTask(task);
   };
 
+  const handleDelete = () => {
+    if (onDelete) onDelete(task.id);
+  };
+
   return (
     <>
-      <Card className="hover:shadow-md transition-shadow">
-        <CardHeader className="pb-3">
-          <div className="flex items-start justify-between">
-            <div className="flex-1">
-              <div className="flex items-center gap-2 mb-1">
-                <h3 className="font-semibold text-lg">{task.property}</h3>
-                <Badge className={getStatusColor(task.status)}>
+      <Card className="group hover:shadow-lg transition-all duration-300 border-0 bg-white rounded-xl overflow-hidden">
+        <CardContent className="p-6">
+          {/* Header Section */}
+          <div className="flex items-start justify-between mb-4">
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-3 mb-2">
+                <h3 className="font-semibold text-lg text-gray-900 truncate">
+                  {task.property}
+                </h3>
+                <Badge className={`${getStatusColor(task.status)} font-medium px-3 py-1 rounded-full text-xs`}>
                   {getStatusText(task.status)}
                 </Badge>
               </div>
-              <div className="flex items-center gap-2 text-sm text-gray-600">
-                <MapPin className="h-4 w-4" />
-                <span>{task.address}</span>
+              
+              <div className="flex items-center gap-2 text-sm text-gray-600 mb-1">
+                <MapPin className="h-4 w-4 text-gray-400" />
+                <span className="truncate">{task.address}</span>
               </div>
             </div>
-            
+
+            {/* Action Buttons - Always visible with modern styling */}
             {showActions && (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="sm">
-                    <MoreVertical className="h-4 w-4" />
+              <div className="flex items-center gap-2 ml-4">
+                {(onEdit || onEditTask) && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleEdit}
+                    className="h-8 w-8 p-0 rounded-lg hover:bg-blue-50 hover:text-blue-600 transition-colors"
+                  >
+                    <Edit className="h-4 w-4" />
                   </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  {onView && (
-                    <DropdownMenuItem onClick={() => onView(task)}>
-                      <Eye className="h-4 w-4 mr-2" />
-                      Ver Detalles
-                    </DropdownMenuItem>
-                  )}
-                  {(onEdit || onEditTask) && (
-                    <DropdownMenuItem onClick={handleEdit}>
-                      <Edit className="h-4 w-4 mr-2" />
-                      Editar
-                    </DropdownMenuItem>
-                  )}
-                  {onUnassign && task.cleaner && (
-                    <DropdownMenuItem onClick={() => onUnassign(task.id)}>
-                      <UserMinus className="h-4 w-4 mr-2" />
-                      Desasignar
-                    </DropdownMenuItem>
-                  )}
-                  <DropdownMenuSeparator />
-                  {onDelete && (
-                    <DropdownMenuItem 
-                      onClick={() => onDelete(task.id)}
-                      className="text-red-600 focus:text-red-600"
-                    >
-                      <Trash2 className="h-4 w-4 mr-2" />
-                      Eliminar
-                    </DropdownMenuItem>
-                  )}
-                </DropdownMenuContent>
-              </DropdownMenu>
-            )}
-          </div>
-        </CardHeader>
-
-        <CardContent className="pt-0">
-          <div className="space-y-3">
-            <div className="flex items-center gap-4 text-sm">
-              <div className="flex items-center gap-1">
-                <Clock className="h-4 w-4 text-gray-500" />
-                <span>{task.startTime} - {task.endTime}</span>
-              </div>
-              <div className="text-gray-600">
-                {task.date}
-              </div>
-            </div>
-
-            {task.cleaner && (
-              <div className="flex items-center gap-2">
-                <User className="h-4 w-4 text-gray-500" />
-                <span className="text-sm font-medium">{task.cleaner}</span>
-              </div>
-            )}
-
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Badge variant="outline" className="text-xs">
-                  {task.type}
-                </Badge>
-                {task.supervisor && (
-                  <Badge variant="secondary" className="text-xs">
-                    Supervisor: {task.supervisor}
-                  </Badge>
+                )}
+                {onDelete && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleDelete}
+                    className="h-8 w-8 p-0 rounded-lg hover:bg-red-50 hover:text-red-600 transition-colors"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
                 )}
               </div>
+            )}
+          </div>
 
-              <TaskReportButton
-                task={task}
-                onOpenReport={onCreateReport || handleOpenReport}
-                className="ml-2"
-              />
+          {/* Time and Date Section */}
+          <div className="flex items-center gap-4 mb-4 p-3 bg-gray-50 rounded-lg">
+            <div className="flex items-center gap-2">
+              <Clock className="h-4 w-4 text-gray-500" />
+              <span className="text-sm font-medium text-gray-700">
+                {task.startTime} - {task.endTime}
+              </span>
             </div>
+            <div className="flex items-center gap-2">
+              <Calendar className="h-4 w-4 text-gray-500" />
+              <span className="text-sm text-gray-600">
+                {task.date}
+              </span>
+            </div>
+          </div>
+
+          {/* Cleaner Section */}
+          {task.cleaner && (
+            <div className="flex items-center gap-2 mb-4 p-3 bg-blue-50 rounded-lg">
+              <User className="h-4 w-4 text-blue-500" />
+              <span className="text-sm font-medium text-blue-700">{task.cleaner}</span>
+            </div>
+          )}
+
+          {/* Footer Section */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Badge variant="outline" className="text-xs font-medium px-2 py-1 rounded-md">
+                {task.type}
+              </Badge>
+              {task.supervisor && (
+                <Badge variant="secondary" className="text-xs font-medium px-2 py-1 rounded-md bg-purple-50 text-purple-700">
+                  Supervisor: {task.supervisor}
+                </Badge>
+              )}
+            </div>
+
+            <TaskReportButton
+              task={task}
+              onOpenReport={onCreateReport || handleOpenReport}
+              className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
+            />
           </div>
         </CardContent>
       </Card>
