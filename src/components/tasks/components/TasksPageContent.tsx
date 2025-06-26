@@ -2,7 +2,7 @@
 import React from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { VirtualizedTasksList } from '../VirtualizedTasksList';
+import { TasksList } from '../TasksList';
 import { TaskFilters } from '../TaskFilters';
 import { TaskStatsCard } from './TaskStatsCard';
 import { CalendarIntegrationWidget } from './CalendarIntegrationWidget';
@@ -81,14 +81,13 @@ export const TasksPageContent = ({
               </div>
             </CardHeader>
             <CardContent>
-              {/* Use virtualized list for better performance */}
-              <VirtualizedTasksList 
+              {/* Use TasksList instead of VirtualizedTasksList to show edit/delete buttons */}
+              <TasksList 
                 tasks={paginatedTasks} 
                 filters={filters} 
                 isLoading={isLoading} 
                 onShowHistory={onShowHistory}
                 onCreateReport={onCreateReport}
-                height={600} 
               />
               
               <TasksPagination
