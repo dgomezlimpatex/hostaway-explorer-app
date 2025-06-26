@@ -32,6 +32,22 @@ export const generateLaundryReport = (tasks: any[], properties: any[], clients: 
 
       const totalItems = Object.values(textiles).reduce((sum, count) => sum + count, 0);
 
+      // Formatear el tipo de servicio
+      const formatServiceType = (type: string) => {
+        if (type === 'mantenimiento-airbnb') {
+          return 'Mantenimiento AIRBNB';
+        }
+        // Capitalizar primera letra de cada palabra
+        return type.split('-').map(word => 
+          word.charAt(0).toUpperCase() + word.slice(1)
+        ).join(' ');
+      };
+
+      // Crear el texto de incidencias con nombre y código de propiedad
+      const incidenciasText = property ? 
+        `${property.nombre} (${property.codigo})` : 
+        'Propiedad desconocida';
+
       return {
         // Campos base de TaskReport
         id: task.id,
@@ -50,13 +66,13 @@ export const generateLaundryReport = (tasks: any[], properties: any[], clients: 
         // Campos adicionales para exportación CSV
         serviceDate: task.date,
         supervisor: client?.supervisor || task.supervisor || 'Sin supervisor',
-        serviceType: task.type,
+        serviceType: formatServiceType(task.type),
         taskStatus: task.status === 'completed' ? 'Completada' :
                    task.status === 'in-progress' ? 'En Progreso' : 'Pendiente',
         totalCost: property?.costeServicio || task.coste || 0,
         workTeam: task.cleaner || 'Sin asignar',
         paymentMethod: client?.metodoPago || task.metodo_pago || 'No especificado',
-        incidents: task.incidents || 'Ninguna',
+        incidents: incidenciasText,
 
         // Campos específicos de LaundryReport
         textiles,
