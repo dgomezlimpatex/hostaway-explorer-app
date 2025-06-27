@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,6 +8,7 @@ import { CalendarIntegrationWidget } from './CalendarIntegrationWidget';
 import { RecurringTasksWidget } from './RecurringTasksWidget';
 import { TasksPagination } from './TasksPagination';
 import { Task } from '@/types/calendar';
+import { useDeviceType } from '@/hooks/use-mobile';
 
 interface TasksPageContentProps {
   showPastTasks: boolean;
@@ -46,9 +46,64 @@ export const TasksPageContent = ({
   onPageChange,
 }: TasksPageContentProps) => {
   const { userRole } = useAuth();
+  const { isMobile } = useDeviceType();
   const isCleaner = userRole === 'cleaner';
   const searchFilteredTasks = sortedTasks;
 
+  // Mobile-first layout: Task list comes first
+  if (isMobile) {
+    return (
+      <div className="container mx-auto p-3 space-y-4">
+        {/* Estadísticas - Solo mostrar para tareas actuales y no para limpiadoras */}
+        {!showPastTasks && !isCleaner && <TaskStatsCard tasks={searchFilteredTasks} />}
+
+        {/* Task List - FIRST on mobile */}
+        <Card>
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-lg">
+                {isCleaner 
+                  ? `Mis Tareas Asignadas (${sortedTasks.length})`
+                  : (showPastTasks ? 'Historial de Tareas' : 'Lista de Tareas')
+                } {!isCleaner && `(${sortedTasks.length})`}
+              </CardTitle>
+              {totalPages > 1 && (
+                <span className="text-xs text-gray-500">
+                  Página {currentPage} de {totalPages}
+                </span>
+              )}
+            </div>
+          </CardHeader>
+          <CardContent className="pt-0">
+            <TasksList 
+              tasks={paginatedTasks} 
+              filters={filters} 
+              isLoading={isLoading} 
+              onShowHistory={onShowHistory}
+              onCreateReport={onCreateReport}
+            />
+            
+            <TasksPagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={onPageChange}
+            />
+          </CardContent>
+        </Card>
+
+        {/* Sidebar widgets - AFTER task list on mobile */}
+        {!showPastTasks && !isCleaner && (
+          <div className="space-y-4">
+            <TaskFilters filters={filters} onFiltersChange={onFiltersChange} />
+            <CalendarIntegrationWidget tasks={tasks} />
+            <RecurringTasksWidget />
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // Desktop layout remains unchanged
   return (
     <div className="container mx-auto p-6 space-y-6">
       {/* Estadísticas - Solo mostrar para tareas actuales y no para limpiadoras */}
@@ -81,7 +136,6 @@ export const TasksPageContent = ({
               </div>
             </CardHeader>
             <CardContent>
-              {/* Use TasksList instead of VirtualizedTasksList to show edit/delete buttons */}
               <TasksList 
                 tasks={paginatedTasks} 
                 filters={filters} 
