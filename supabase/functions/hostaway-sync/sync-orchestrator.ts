@@ -1,4 +1,3 @@
-
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.50.0';
 import { SyncStats } from './types.ts';
 import { getHostawayToken, fetchAllHostawayReservations } from './hostaway-api.ts';
@@ -54,23 +53,23 @@ export class SyncOrchestrator {
     const accessToken = await getHostawayToken();
     console.log('✅ Token obtenido exitosamente');
 
-    // PASO 3: Calcular rango de fechas
+    // PASO 3: Calcular rango de fechas más amplio (3 semanas en lugar de 2)
     const now = new Date();
     const startDate = now;
-    const endDate = new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000);
+    const endDate = new Date(now.getTime() + 21 * 24 * 60 * 60 * 1000); // 3 semanas
     
     const startDateStr = startDate.toISOString().split('T')[0];
     const endDateStr = endDate.toISOString().split('T')[0];
 
-    console.log(`📅 PASO 3: Rango de fechas: ${startDateStr} hasta ${endDateStr}`);
+    console.log(`📅 PASO 3: Rango de fechas EXPANDIDO: ${startDateStr} hasta ${endDateStr} (3 semanas)`);
 
     // PASO 4: Obtener reservas de Hostaway
-    console.log(`📥 PASO 4: Obteniendo reservas de Hostaway`);
+    console.log(`📥 PASO 4: Obteniendo reservas de Hostaway con búsqueda expandida`);
     const reservations = await fetchAllHostawayReservations(accessToken, startDateStr, endDateStr);
-    console.log(`📊 Obtenidas ${reservations.length} reservas`);
+    console.log(`📊 TOTAL DE RESERVAS ENCONTRADAS: ${reservations.length}`);
 
     // PASO 5: Procesar cada reserva con verificación de duplicados
-    console.log(`🔄 PASO 5: Procesando reservas con verificación de duplicados`);
+    console.log(`🔄 PASO 5: Procesando ${reservations.length} reservas con verificación de duplicados`);
     for (let i = 0; i < reservations.length; i++) {
       const reservation = reservations[i];
       try {

@@ -70,14 +70,14 @@ async function fetchHostawayReservationsByDeparture(token: string, startDate: st
   const url = new URL(`${HOSTAWAY_API_BASE}/reservations`);
   url.searchParams.append('accountId', HOSTAWAY_ACCOUNT_ID.toString());
   
-  // CORREGIDO: Solo buscar por departureDate ya que es cuando se necesita limpieza
+  // Buscar por fecha de salida (checkout) que es cuando se necesita limpieza
   url.searchParams.append('departureStartDate', startDate);
   url.searchParams.append('departureEndDate', endDate);
   url.searchParams.append('includeResolved', 'true');
   url.searchParams.append('limit', '200');
   url.searchParams.append('offset', offset.toString());
 
-  console.log(`📡 URL de consulta por salida: ${url.toString()}`);
+  console.log(`📡 URL de consulta: ${url.toString()}`);
 
   const response = await makeApiRequest(url.toString(), {
     headers: {
@@ -87,21 +87,60 @@ async function fetchHostawayReservationsByDeparture(token: string, startDate: st
   });
 
   const data = await response.json();
+  console.log(`📊 Respuesta de API: ${data.result?.length || 0} reservas en esta página`);
+  return data.result || [];
+}
+
+async function fetchHostawayReservationsByArrival(token: string, startDate: string, endDate: string, offset: number = 0): Promise<HostawayReservation[]> {
+  console.log(`📡 Obteniendo reservas por fecha de LLEGADA desde ${startDate} hasta ${endDate}, offset: ${offset}`);
+  
+  const url = new URL(`${HOSTAWAY_API_BASE}/reservations`);
+  url.searchParams.append('accountId', HOSTAWAY_ACCOUNT_ID.toString());
+  
+  // También buscar por fecha de llegada para capturar reservas que empiezan en el período
+  url.searchParams.append('arrivalStartDate', startDate);
+  url.searchParams.append('arrivalEndDate', endDate);
+  url.searchParams.append('includeResolved', 'true');
+  url.searchParams.append('limit', '200');
+  url.searchParams.append('offset', offset.toString());
+
+  console.log(`📡 URL de consulta por llegada: ${url.toString()}`);
+
+  const response = await makeApiRequest(url.toString(), {
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+  });
+
+  const data = await response.json();
+  console.log(`📊 Respuesta de API (llegadas): ${data.result?.length || 0} reservas en esta página`);
   return data.result || [];
 }
 
 export async function fetchAllHostawayReservations(token: string, startDate: string, endDate: string): Promise<HostawayReservation[]> {
-  console.log(`🔍 INICIANDO búsqueda OPTIMIZADA de reservas para el período ${startDate} a ${endDate}`);
-  console.log(`✅ CORRECCIÓN APLICADA: Solo buscando por fecha de SALIDA (departureDate)`);
+  console.log(`🔍 INICIANDO búsqueda EXPANDIDA de reservas para el período ${startDate} a ${endDate}`);
+  console.log(`📅 Período de búsqueda: ${startDate} hasta ${endDate}`);
   
-  // CORREGIDO: Solo obtener reservas por fecha de salida
+  // Calcular el rango más amplio para asegurar que capturamos todas las reservas
+  const searchStartDate = new Date(startDate);
+  searchStartDate.setDate(searchStartDate.getDate() - 7); // 1 semana antes
+  const searchEndDate = new Date(endDate);
+  searchEndDate.setDate(searchEndDate.getDate() + 7); // 1 semana después
+  
+  const expandedStartDate = searchStartDate.toISOString().split('T')[0];
+  const expandedEndDate = searchEndDate.toISOString().split('T')[0];
+  
+  console.log(`🔍 Rango expandido de búsqueda: ${expandedStartDate} hasta ${expandedEndDate}`);
+  
   let allReservations: HostawayReservation[] = [];
   let offset = 0;
   let hasMore = true;
 
-  console.log(`📤 Buscando reservas por fecha de SALIDA con timeouts y retry logic...`);
+  // 1. Buscar por fecha de salida (checkout)
+  console.log(`📤 Buscando reservas por fecha de SALIDA...`);
   while (hasMore) {
-    const reservations = await fetchHostawayReservationsByDeparture(token, startDate, endDate, offset);
+    const reservations = await fetchHostawayReservationsByDeparture(token, expandedStartDate, expandedEndDate, offset);
     allReservations = allReservations.concat(reservations);
     
     console.log(`📊 Obtenidas ${reservations.length} reservas por salida en esta página (total: ${allReservations.length})`);
@@ -110,19 +149,61 @@ export async function fetchAllHostawayReservations(token: string, startDate: str
     offset += 200;
   }
 
-  console.log(`🎯 RESUMEN DE BÚSQUEDA OPTIMIZADA:`);
-  console.log(`   - Solo búsqueda por fecha de salida: ${allReservations.length} reservas`);
-  console.log(`   - Rango optimizado: ${startDate} a ${endDate}`);
-  console.log(`   - Timeouts configurados: ${REQUEST_TIMEOUT}ms`);
-  console.log(`   - Reintentos máximos: ${MAX_RETRIES}`);
+  // 2. Buscar por fecha de llegada (checkin) para capturar reservas adicionales
+  console.log(`📥 Buscando reservas por fecha de LLEGADA...`);
+  offset = 0;
+  hasMore = true;
+  while (hasMore) {
+    const reservations = await fetchHostawayReservationsByArrival(token, expandedStartDate, expandedEndDate, offset);
+    
+    // Evitar duplicados comparando por ID
+    const newReservations = reservations.filter(newRes => 
+      !allReservations.some(existingRes => existingRes.id === newRes.id)
+    );
+    
+    allReservations = allReservations.concat(newReservations);
+    
+    console.log(`📊 Obtenidas ${reservations.length} reservas por llegada (${newReservations.length} nuevas), total: ${allReservations.length}`);
+    
+    hasMore = reservations.length === 200;
+    offset += 200;
+  }
+
+  // 3. Filtrar reservas que realmente necesitan limpieza en el período solicitado
+  const relevantReservations = allReservations.filter(reservation => {
+    const departureDate = new Date(reservation.departureDate);
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    
+    // Incluir reservas que salen en el período (necesitan limpieza)
+    const needsCleaning = departureDate >= start && departureDate <= end;
+    
+    return needsCleaning;
+  });
+
+  console.log(`🎯 RESUMEN DE BÚSQUEDA EXPANDIDA:`);
+  console.log(`   - Total de reservas encontradas: ${allReservations.length}`);
+  console.log(`   - Reservas relevantes (necesitan limpieza): ${relevantReservations.length}`);
+  console.log(`   - Período de limpieza solicitado: ${startDate} a ${endDate}`);
+  console.log(`   - Rango de búsqueda usado: ${expandedStartDate} a ${expandedEndDate}`);
 
   // Log detallado para debugging
-  console.log(`📋 Muestra de reservas encontradas:`);
-  allReservations.slice(0, 5).forEach(r => {
+  console.log(`📋 Estados de reservas relevantes:`);
+  const statusCounts = relevantReservations.reduce((acc, r) => {
+    acc[r.status] = (acc[r.status] || 0) + 1;
+    return acc;
+  }, {} as Record<string, number>);
+  
+  Object.entries(statusCounts).forEach(([status, count]) => {
+    console.log(`   - ${status}: ${count} reservas`);
+  });
+
+  console.log(`📋 Muestra de reservas relevantes:`);
+  relevantReservations.slice(0, 5).forEach(r => {
     console.log(`   - ID: ${r.id}, llegada: ${r.arrivalDate}, salida: ${r.departureDate}, status: ${r.status}, listing: ${r.listingMapId}, guest: ${r.guestName}`);
   });
 
-  return allReservations;
+  return relevantReservations;
 }
 
 export async function fetchHostawayProperties(token: string): Promise<HostawayProperty[]> {
