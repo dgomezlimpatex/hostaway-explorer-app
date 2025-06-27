@@ -11,6 +11,7 @@ import { Plus, Calendar, Search, History, ArrowLeft, Home, Eye } from 'lucide-re
 import { Link } from 'react-router-dom';
 import { BulkAutoAssignButton } from './BulkAutoAssignButton';
 import { Task } from '@/types/calendar';
+import { useDeviceType } from '@/hooks/use-mobile';
 
 interface TasksPageHeaderProps {
   showPastTasks: boolean;
@@ -35,6 +36,7 @@ export const TasksPageHeader = ({
 }: TasksPageHeaderProps) => {
   const { userRole } = useAuth();
   const { hasPermission, isCleaner, isSupervisor, isAdminOrManager } = useRolePermissions();
+  const { isMobile, isTablet } = useDeviceType();
   
   const canCreateTasks = hasPermission('tasks', 'canCreate');
   const canEditTasks = hasPermission('tasks', 'canEdit');
@@ -65,89 +67,113 @@ export const TasksPageHeader = ({
 
   return (
     <div className="bg-white border-b shadow-sm">
-      <div className="container mx-auto p-6">
-        <div className="flex flex-col space-y-4">
-          {/* Header with title and buttons */}
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <Link to="/">
-                <Button variant="outline" size="sm">
-                  <Home className="h-4 w-4 mr-2" />
-                  Menú Principal
+      <div className="container mx-auto p-3 md:p-6">
+        <div className="flex flex-col space-y-3 md:space-y-4">
+          {/* Mobile-first header layout */}
+          <div className="flex flex-col space-y-3">
+            {/* Top row - Always show all buttons in mobile */}
+            <div className="flex items-center justify-between gap-2">
+              <Link to="/" className="shrink-0">
+                <Button variant="outline" size={isMobile ? "sm" : "default"} className="flex items-center gap-1 md:gap-2">
+                  <Home className="h-4 w-4" />
+                  <span className={isMobile ? "text-xs" : ""}>Menú Principal</span>
                 </Button>
               </Link>
-              <div>
-                <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-2">
-                  {getTitle()}
-                  {isSupervisor() && <Eye className="h-6 w-6 text-blue-600" />}
-                </h1>
-                <p className="text-gray-600 mt-1">
-                  {getDescription()}
-                </p>
-                <div className="flex items-center gap-2 mt-2">
-                  <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                    {userRole?.charAt(0).toUpperCase()}{userRole?.slice(1)}
-                  </span>
-                  {isSupervisor() && (
-                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
-                      Solo lectura
-                    </span>
-                  )}
+
+              {/* Create buttons container - Always visible for users with permissions */}
+              {canCreateTasks && !showPastTasks && onOpenCreateModal && onOpenBatchModal && (
+                <div className="flex gap-1 md:gap-3 shrink-0">
+                  <Button 
+                    onClick={onOpenCreateModal} 
+                    size={isMobile ? "sm" : "default"}
+                    className="flex items-center gap-1 md:gap-2"
+                  >
+                    <Plus className="h-4 w-4" />
+                    <span className={isMobile ? "text-xs" : ""}>Nueva Tarea</span>
+                  </Button>
+                  <Button 
+                    onClick={onOpenBatchModal} 
+                    variant="outline" 
+                    size={isMobile ? "sm" : "default"}
+                    className="flex items-center gap-1 md:gap-2"
+                  >
+                    <Calendar className="h-4 w-4" />
+                    <span className={isMobile ? "text-xs" : ""}>Múltiples</span>
+                  </Button>
                 </div>
-              </div>
+              )}
             </div>
 
-            {/* Create buttons - only for users with create permissions */}
-            {canCreateTasks && !showPastTasks && onOpenCreateModal && onOpenBatchModal && (
-              <div className="flex gap-3">
-                <Button onClick={onOpenCreateModal} className="flex items-center gap-2">
-                  <Plus className="h-4 w-4" />
-                  Nueva Tarea
-                </Button>
-                <Button onClick={onOpenBatchModal} variant="outline" className="flex items-center gap-2">
-                  <Calendar className="h-4 w-4" />
-                  Crear Múltiples
-                </Button>
+            {/* Title section */}
+            <div className="space-y-2 md:space-y-3">
+              <div className="flex items-center gap-2">
+                <h1 className={`font-bold text-gray-900 flex items-center gap-2 ${
+                  isMobile ? 'text-xl' : 'text-3xl'
+                }`}>
+                  {getTitle()}
+                  {isSupervisor() && <Eye className={`text-blue-600 ${isMobile ? 'h-5 w-5' : 'h-6 w-6'}`} />}
+                </h1>
               </div>
-            )}
+              
+              <p className={`text-gray-600 ${isMobile ? 'text-sm' : ''}`}>
+                {getDescription()}
+              </p>
+              
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className={`inline-flex items-center px-2 py-1 rounded-full font-medium bg-blue-100 text-blue-800 ${
+                  isMobile ? 'text-xs' : 'text-xs'
+                }`}>
+                  {userRole?.charAt(0).toUpperCase()}{userRole?.slice(1)}
+                </span>
+                {isSupervisor() && (
+                  <span className={`inline-flex items-center px-2 py-1 rounded-full font-medium bg-amber-100 text-amber-800 ${
+                    isMobile ? 'text-xs' : 'text-xs'
+                  }`}>
+                    Solo lectura
+                  </span>
+                )}
+              </div>
+            </div>
           </div>
 
-          {/* Search and Controls */}
+          {/* Search and Controls Card */}
           <Card>
-            <CardHeader>
-              <CardTitle className="text-lg flex items-center gap-2">
-                <Search className="h-5 w-5" />
+            <CardHeader className={isMobile ? 'pb-3' : ''}>
+              <CardTitle className={`flex items-center gap-2 ${isMobile ? 'text-base' : 'text-lg'}`}>
+                <Search className="h-4 w-4 md:h-5 md:w-5" />
                 Búsqueda y Filtros
               </CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
+            <CardContent className={isMobile ? 'pt-0' : ''}>
+              <div className="flex flex-col gap-3 md:gap-4">
                 {/* Search Input */}
-                <div className="flex-1">
+                <div className="w-full">
                   <div className="relative">
                     <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
                     <Input
                       placeholder={isCleaner() ? "Buscar en mis tareas..." : "Buscar tareas por propiedad, dirección o limpiador..."}
                       value={searchTerm}
                       onChange={(e) => onSearchChange(e.target.value)}
-                      className="pl-10"
+                      className={`pl-10 ${isMobile ? 'h-12 text-base' : ''}`}
                     />
                   </div>
                 </div>
 
-                {/* Controls */}
-                <div className="flex items-center gap-4">
-                  {/* Bulk Auto Assign Button - only for users with edit permissions */}
+                {/* Controls Row */}
+                <div className="flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
+                  {/* Bulk Auto Assign Button */}
                   {canEditTasks && !showPastTasks && onAssignmentComplete && (
-                    <BulkAutoAssignButton 
-                      unassignedTasks={unassignedTasks}
-                      onAssignmentComplete={onAssignmentComplete}
-                    />
+                    <div className="order-2 sm:order-1">
+                      <BulkAutoAssignButton 
+                        unassignedTasks={unassignedTasks}
+                        onAssignmentComplete={onAssignmentComplete}
+                      />
+                    </div>
                   )}
 
-                  {/* Past Tasks Toggle - only for non-cleaners */}
+                  {/* Past Tasks Toggle */}
                   {!isCleaner() && (
-                    <div className="flex items-center space-x-2">
+                    <div className="flex items-center space-x-2 order-1 sm:order-2">
                       <Switch
                         id="past-tasks"
                         checked={showPastTasks}
@@ -155,7 +181,7 @@ export const TasksPageHeader = ({
                       />
                       <Label htmlFor="past-tasks" className="flex items-center gap-2 cursor-pointer">
                         <History className="h-4 w-4" />
-                        Ver Historial
+                        <span className={isMobile ? 'text-sm' : ''}>Ver Historial</span>
                       </Label>
                     </div>
                   )}
