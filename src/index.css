@@ -92,6 +92,28 @@
   body {
     @apply bg-background text-foreground;
     transition: background-color 0.3s ease, color 0.3s ease;
+    /* Mejoras para móvil */
+    -webkit-text-size-adjust: 100%;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
+  /* Prevenir zoom en inputs en iOS */
+  input, select, textarea {
+    font-size: 16px !important;
+  }
+
+  /* Mejorar el comportamiento de touch en móvil */
+  button, [role="button"] {
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
+
+  /* Mejorar scrolling en móvil */
+  html {
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
   }
 }
 
@@ -117,17 +139,19 @@
     animation: slideDown 0.3s ease-out;
   }
 
-  /* Hover effects mejorados */
-  .hover-lift {
-    @apply transition-all duration-300 hover:shadow-lg hover:-translate-y-1;
-  }
-  
-  .hover-scale {
-    @apply transition-transform duration-200 hover:scale-105;
-  }
-  
-  .hover-glow {
-    @apply transition-all duration-300 hover:shadow-xl hover:shadow-primary/25;
+  /* Hover effects mejorados - No aplicar en touch devices */
+  @media (hover: hover) {
+    .hover-lift {
+      @apply transition-all duration-300 hover:shadow-lg hover:-translate-y-1;
+    }
+    
+    .hover-scale {
+      @apply transition-transform duration-200 hover:scale-105;
+    }
+    
+    .hover-glow {
+      @apply transition-all duration-300 hover:shadow-xl hover:shadow-primary/25;
+    }
   }
 
   /* Estados de carga */
@@ -141,17 +165,63 @@
     background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
   }
 
+  /* Utilities específicas para móvil */
+  .mobile-container {
+    @apply px-3 sm:px-4 md:px-6 lg:px-8 max-w-7xl mx-auto;
+  }
+  
+  .mobile-text {
+    @apply text-base sm:text-lg lg:text-xl;
+  }
+  
+  .mobile-grid {
+    @apply grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4 lg:gap-6;
+  }
+
+  /* Touch-friendly buttons */
+  .touch-button {
+    @apply min-h-[44px] min-w-[44px] touch-manipulation;
+  }
+
+  /* Safe areas para dispositivos con notch */
+  .safe-area-top {
+    padding-top: env(safe-area-inset-top);
+  }
+  
+  .safe-area-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  
+  .safe-area-left {
+    padding-left: env(safe-area-inset-left);
+  }
+  
+  .safe-area-right {
+    padding-right: env(safe-area-inset-right);
+  }
+
   /* Responsive utilities mejoradas */
   .container-responsive {
-    @apply px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto;
+    @apply mobile-container;
   }
   
   .text-responsive {
-    @apply text-sm sm:text-base lg:text-lg;
+    @apply mobile-text;
   }
   
   .grid-responsive {
-    @apply grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4;
+    @apply mobile-grid;
+  }
+
+  /* Mejoras específicas para formularios en móvil */
+  .mobile-form {
+    @apply space-y-4 sm:space-y-6;
+  }
+
+  .mobile-form input,
+  .mobile-form select,
+  .mobile-form textarea {
+    @apply min-h-[48px] text-base touch-manipulation;
   }
 }
 
@@ -219,28 +289,37 @@
   }
 }
 
-/* Mejoras específicas para el calendario */
+/* Mejoras específicas para el calendario en móvil */
 .calendar-grid {
   @apply transition-all duration-300;
 }
 
 .task-card {
-  @apply transition-all duration-300 hover:shadow-md hover:scale-[1.02];
+  @apply transition-all duration-300;
+}
+
+/* Solo aplicar hover effects en dispositivos con hover */
+@media (hover: hover) {
+  .task-card {
+    @apply hover:shadow-md hover:scale-[1.02];
+  }
 }
 
 .time-slot {
   @apply transition-colors duration-200;
 }
 
-/* Drag and drop effects mejorados */
-.dragging {
-  @apply shadow-2xl scale-105 rotate-2 z-50;
-  animation: dragPulse 1s infinite;
-}
+/* Drag and drop effects mejorados - Desactivar en touch */
+@media (hover: hover) {
+  .dragging {
+    @apply shadow-2xl scale-105 rotate-2 z-50;
+    animation: dragPulse 1s infinite;
+  }
 
-.drag-over {
-  @apply bg-primary/10 border-primary/30;
-  animation: dragGlow 0.5s ease-in-out infinite alternate;
+  .drag-over {
+    @apply bg-primary/10 border-primary/30;
+    animation: dragGlow 0.5s ease-in-out infinite alternate;
+  }
 }
 
 @keyframes dragPulse {
@@ -261,17 +340,44 @@
   }
 }
 
-/* Focus improvements para accesibilidad */
+/* Focus improvements para accesibilidad y móvil */
 .focus-visible\:ring-enhanced:focus-visible {
   @apply ring-2 ring-primary ring-offset-2 ring-offset-background;
 }
 
-/* Smooth scrolling */
-html {
-  scroll-behavior: smooth;
+/* Mejorar inputs en móvil */
+input:focus,
+select:focus,
+textarea:focus {
+  @apply outline-none ring-2 ring-primary ring-offset-1;
 }
 
-/* Custom scrollbar para dark mode */
+/* Custom scrollbar mejorado para móvil */
+.custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: hsl(var(--muted-foreground)) hsl(var(--muted));
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: hsl(var(--muted));
+  border-radius: 3px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: hsl(var(--muted-foreground));
+  border-radius: 3px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--accent-foreground));
+}
+
+/* Dark mode scrollbar */
 .dark ::-webkit-scrollbar {
   width: 8px;
 }
@@ -287,4 +393,26 @@ html {
 
 .dark ::-webkit-scrollbar-thumb:hover {
   background: hsl(var(--accent-foreground));
+}
+
+/* Responsive breakpoints personalizados */
+@media (max-width: 480px) {
+  .mobile-xs-hidden {
+    @apply hidden;
+  }
+  
+  .mobile-xs-full {
+    @apply w-full;
+  }
+}
+
+/* Mejoras para dispositivos muy pequeños */
+@media (max-width: 320px) {
+  .container {
+    @apply px-2;
+  }
+  
+  .text-sm {
+    @apply text-xs;
+  }
 }
