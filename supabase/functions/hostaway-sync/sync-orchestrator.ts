@@ -40,7 +40,7 @@ export class SyncOrchestrator {
     }
 
     this.syncLogId = syncLog.id;
-    console.log(`🚀 INICIANDO SINCRONIZACIÓN MEJORADA (Log ID: ${syncLog.id})`);
+    console.log(`🚀 INICIANDO SINCRONIZACIÓN SIMPLIFICADA (Log ID: ${syncLog.id})`);
   }
 
   async performSync(): Promise<void> {
@@ -53,20 +53,24 @@ export class SyncOrchestrator {
     const accessToken = await getHostawayToken();
     console.log('✅ Token obtenido exitosamente');
 
-    // PASO 3: Calcular rango de fechas más amplio (3 semanas en lugar de 2)
-    const now = new Date();
-    const startDate = now;
-    const endDate = new Date(now.getTime() + 21 * 24 * 60 * 60 * 1000); // 3 semanas
-    
-    const startDateStr = startDate.toISOString().split('T')[0];
-    const endDateStr = endDate.toISOString().split('T')[0];
+    // PASO 3: Calcular rango de fechas SIMPLIFICADO (HOY + 14 días)
+    const today = new Date();
+    const startDate = today.toISOString().split('T')[0]; // HOY
+    const endDate = new Date(today.getTime() + 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]; // HOY + 14 días
 
-    console.log(`📅 PASO 3: Rango de fechas EXPANDIDO: ${startDateStr} hasta ${endDateStr} (3 semanas)`);
+    console.log(`📅 PASO 3: Período SIMPLIFICADO - Desde HOY (${startDate}) hasta ${endDate} (14 días)`);
+    console.log(`📅 OBJETIVO: Buscar reservas que hacen CHECKOUT en este período`);
 
-    // PASO 4: Obtener reservas de Hostaway
-    console.log(`📥 PASO 4: Obteniendo reservas de Hostaway con búsqueda expandida`);
-    const reservations = await fetchAllHostawayReservations(accessToken, startDateStr, endDateStr);
+    // PASO 4: Obtener reservas de Hostaway (SOLO por checkout)
+    console.log(`📥 PASO 4: Obteniendo reservas con checkout desde HOY hasta +14 días`);
+    const reservations = await fetchAllHostawayReservations(accessToken, startDate, endDate);
     console.log(`📊 TOTAL DE RESERVAS ENCONTRADAS: ${reservations.length}`);
+
+    if (reservations.length < 100) {
+      console.log(`⚠️  ATENCIÓN: Solo se encontraron ${reservations.length} reservas. Se esperaban más de 150.`);
+      console.log(`   - Verificar que las fechas son correctas: ${startDate} a ${endDate}`);
+      console.log(`   - Verificar que Hostaway tiene reservas en este período`);
+    }
 
     // PASO 5: Procesar cada reserva con verificación de duplicados
     console.log(`🔄 PASO 5: Procesando ${reservations.length} reservas con verificación de duplicados`);
@@ -82,6 +86,10 @@ export class SyncOrchestrator {
 
     console.log(`✅ SINCRONIZACIÓN COMPLETADA`);
     console.log(`📊 Estadísticas finales:`, this.stats);
+
+    if (this.stats.reservations_processed < 100) {
+      console.log(`⚠️  RESULTADO: Solo se procesaron ${this.stats.reservations_processed} reservas de ${reservations.length} encontradas`);
+    }
   }
 
   async finalizeSyncLog(success: boolean, error?: Error): Promise<void> {
