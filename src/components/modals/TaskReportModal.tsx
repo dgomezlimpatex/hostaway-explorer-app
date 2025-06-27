@@ -5,6 +5,7 @@ import { Task } from '@/types/calendar';
 import { TaskReport, TaskChecklistTemplate } from '@/types/taskReports';
 import { useTaskReports, useTaskReport, useChecklistTemplates } from '@/hooks/useTaskReports';
 import { useToast } from '@/hooks/use-toast';
+import { useDeviceType } from '@/hooks/use-mobile';
 import { TaskReportHeader } from './task-report/TaskReportHeader';
 import { TaskReportTabs } from './task-report/TaskReportTabs';
 import { TaskReportFooter } from './task-report/TaskReportFooter';
@@ -21,6 +22,7 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
   onOpenChange,
 }) => {
   const { toast } = useToast();
+  const { isMobile, isTablet } = useDeviceType();
   const { createReport, updateReport, isCreatingReport, isUpdatingReport } = useTaskReports();
   const { data: existingReport, isLoading: isLoadingReport } = useTaskReport(task?.id || '');
   const { data: templates, isLoading: isLoadingTemplates } = useChecklistTemplates();
@@ -148,10 +150,21 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
   const canComplete = completionPercentage >= 80;
   const reportStatus = currentReport?.overall_status || 'pending';
 
+  // Responsive modal classes
+  const getModalClasses = () => {
+    if (isMobile) {
+      return "w-full max-w-full h-full max-h-full m-0 rounded-none overflow-hidden flex flex-col";
+    }
+    if (isTablet) {
+      return "w-[95vw] max-w-3xl max-h-[85vh] overflow-hidden flex flex-col";
+    }
+    return "max-w-4xl max-h-[90vh] overflow-hidden flex flex-col";
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
-        <DialogHeader>
+      <DialogContent className={getModalClasses()}>
+        <DialogHeader className="flex-shrink-0">
           <TaskReportHeader
             task={task}
             reportStatus={reportStatus}
@@ -160,31 +173,35 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
           />
         </DialogHeader>
 
-        <TaskReportTabs
-          activeTab={activeTab}
-          onTabChange={setActiveTab}
-          issues={issues}
-          isLoadingTemplates={isLoadingTemplates}
-          currentTemplate={currentTemplate}
-          checklist={checklist}
-          onChecklistChange={setChecklist}
-          reportId={currentReport?.id}
-          onIssuesChange={setIssues}
-          notes={notes}
-          onNotesChange={setNotes}
-          task={task}
-          completionPercentage={completionPercentage}
-        />
+        <div className="flex-1 overflow-hidden">
+          <TaskReportTabs
+            activeTab={activeTab}
+            onTabChange={setActiveTab}
+            issues={issues}
+            isLoadingTemplates={isLoadingTemplates}
+            currentTemplate={currentTemplate}
+            checklist={checklist}
+            onChecklistChange={setChecklist}
+            reportId={currentReport?.id}
+            onIssuesChange={setIssues}
+            notes={notes}
+            onNotesChange={setNotes}
+            task={task}
+            completionPercentage={completionPercentage}
+          />
+        </div>
 
-        <TaskReportFooter
-          onCancel={() => onOpenChange(false)}
-          onSave={handleSave}
-          onComplete={handleComplete}
-          canComplete={canComplete}
-          isCreatingReport={isCreatingReport}
-          isUpdatingReport={isUpdatingReport}
-          completionPercentage={completionPercentage}
-        />
+        <div className="flex-shrink-0">
+          <TaskReportFooter
+            onCancel={() => onOpenChange(false)}
+            onSave={handleSave}
+            onComplete={handleComplete}
+            canComplete={canComplete}
+            isCreatingReport={isCreatingReport}
+            isUpdatingReport={isUpdatingReport}
+            completionPercentage={completionPercentage}
+          />
+        </div>
       </DialogContent>
     </Dialog>
   );

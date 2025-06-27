@@ -8,6 +8,7 @@ import { TaskCardTimeInfo } from './TaskCardTimeInfo';
 import { TaskCardCleanerInfo } from './TaskCardCleanerInfo';
 import { TaskCardServiceInfo } from './TaskCardServiceInfo';
 import { TaskCardActions } from './TaskCardActions';
+import { useDeviceType } from '@/hooks/use-mobile';
 
 interface TaskCardProps {
   task: Task;
@@ -32,6 +33,7 @@ export const TaskCard: React.FC<TaskCardProps> = ({
   onEditTask,
   showActions = true,
 }) => {
+  const { isMobile, isTablet } = useDeviceType();
   const [showReportModal, setShowReportModal] = useState(false);
 
   const handleOpenReport = () => {
@@ -49,16 +51,30 @@ export const TaskCard: React.FC<TaskCardProps> = ({
     alert(`Eliminar tarea: ${taskId}`);
   });
 
+  // Responsive card padding and spacing
+  const getCardClasses = () => {
+    if (isMobile) {
+      return "group relative overflow-hidden bg-white hover:shadow-lg transition-all duration-300 border border-gray-200 shadow-sm";
+    }
+    return "group relative overflow-hidden bg-white hover:shadow-xl transition-all duration-300 border border-gray-200 shadow-sm hover:shadow-2xl hover:-translate-y-1";
+  };
+
+  const getCardPadding = () => {
+    return isMobile ? "p-4 space-y-3" : "p-6 space-y-4";
+  };
+
   console.log('TaskCard rendering for task:', task.id, { 
     hasOnEdit: !!onEdit, 
     hasOnDelete: !!onDelete, 
     hasOnEditTask: !!onEditTask,
-    showActions 
+    showActions,
+    isMobile,
+    isTablet
   });
 
   return (
     <>
-      <Card className="group relative overflow-hidden bg-white hover:shadow-xl transition-all duration-300 border border-gray-200 shadow-sm hover:shadow-2xl hover:-translate-y-1">
+      <Card className={getCardClasses()}>
         {/* Status indicator line */}
         <div className={`absolute top-0 left-0 right-0 h-1 ${
           task.status === 'completed' ? 'bg-emerald-500' :
@@ -66,7 +82,7 @@ export const TaskCard: React.FC<TaskCardProps> = ({
           'bg-amber-500'
         }`} />
 
-        <CardContent className="p-6 space-y-4">
+        <CardContent className={getCardPadding()}>
           <TaskCardHeader
             property={task.property}
             address={task.address}
@@ -98,8 +114,10 @@ export const TaskCard: React.FC<TaskCardProps> = ({
           />
         </CardContent>
 
-        {/* Hover effect overlay */}
-        <div className="absolute inset-0 bg-gradient-to-br from-white/0 to-gray-50/30 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
+        {/* Hover effect overlay - Only on non-mobile */}
+        {!isMobile && (
+          <div className="absolute inset-0 bg-gradient-to-br from-white/0 to-gray-50/30 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
+        )}
       </Card>
 
       <TaskReportModal

@@ -5,6 +5,7 @@ import { TimelineHeader } from "./TimelineHeader";
 import { CalendarGrid } from "./CalendarGrid";
 import { Task, Cleaner } from "@/types/calendar";
 import { CleanerAvailability } from "@/hooks/useCleanerAvailability";
+import { useDeviceType } from '@/hooks/use-mobile';
 
 interface CalendarLayoutProps {
   cleaners: Cleaner[];
@@ -45,16 +46,27 @@ export const CalendarLayout = ({
   getTaskPosition,
   isTimeSlotOccupied
 }: CalendarLayoutProps) => {
+  const { isMobile, isTablet } = useDeviceType();
+
+  // Responsive calendar height based on device
+  const getCalendarHeight = () => {
+    if (isMobile) return "h-[400px] md:h-[500px]";
+    if (isTablet) return "h-[500px] md:h-[600px]";
+    return "h-[600px]";
+  };
+
   return (
     <Card className="border-0 shadow-xl overflow-hidden bg-card animate-fade-in">
       <CardContent className="p-0">
-        <div className="flex h-[600px] overflow-hidden">
-          {/* Workers Column */}
-          <WorkersColumn 
-            cleaners={cleaners} 
-            onDragOver={onDragOver}
-            onDrop={onDrop}
-          />
+        <div className={`flex ${getCalendarHeight()} overflow-hidden`}>
+          {/* Workers Column - Responsive width */}
+          <div className={`${isMobile ? 'w-20' : isTablet ? 'w-24' : 'w-32'} flex-shrink-0`}>
+            <WorkersColumn 
+              cleaners={cleaners} 
+              onDragOver={onDragOver}
+              onDrop={onDrop}
+            />
+          </div>
 
           {/* Timeline Area */}
           <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
