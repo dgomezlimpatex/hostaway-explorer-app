@@ -3,6 +3,8 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useMemo } from 'react';
 import { Task, ViewType } from '@/types/calendar';
 import { taskStorageService } from '@/services/taskStorage';
+import { useAuth } from '@/hooks/useAuth';
+import { useCleaners } from '@/hooks/useCleaners';
 
 interface UseOptimizedTasksProps {
   currentDate: Date;
@@ -16,6 +18,15 @@ export const useOptimizedTasks = ({
   enabled = true 
 }: UseOptimizedTasksProps) => {
   const queryClient = useQueryClient();
+  const { userRole, user } = useAuth();
+  const { cleaners } = useCleaners();
+
+  // Get current user's cleaner ID if they are a cleaner
+  const currentCleanerId = useMemo(() => {
+    if (userRole !== 'cleaner' || !user?.id || !cleaners) return null;
+    const currentCleaner = cleaners.find(cleaner => cleaner.user_id === user.id);
+    return currentCleaner?.id || null;
+  }, [userRole, user?.id, cleaners]);
 
   // Cache key optimizado con dependencias mínimas
   const queryKey = useMemo(() => [
@@ -27,24 +38,26 @@ export const useOptimizedTasks = ({
   const { data: tasks = [], isLoading, error } = useQuery({
     queryKey,
     queryFn: async () => {
-      console.log('useOptimizedTasks - fetching with optimized query');
+      console.log('useOptimizedTasks - fetching with optimized query, userRole:', userRole, 'cleanerId:', currentCleanerId);
       
       // Usar cache de todas las tareas si está disponible
       const cachedAllTasks = queryClient.getQueryData(['tasks', 'all']);
       if (cachedAllTasks) {
         console.log('useOptimizedTasks - using cached data');
-        return filterTasksByView(cachedAllTasks as Task[], currentDate, currentView);
+        const filteredByView = filterTasksByView(cachedAllTasks as Task[], currentDate, currentView);
+        return filterTasksByUserRole(filteredByView, userRole, currentCleanerId);
       }
 
       // Si no hay cache, obtener todas las tareas y cachearlas
       const allTasks = await taskStorageService.getTasks();
       queryClient.setQueryData(['tasks', 'all'], allTasks);
       
-      return filterTasksByView(allTasks, currentDate, currentView);
+      const filteredByView = filterTasksByView(allTasks, currentDate, currentView);
+      return filterTasksByUserRole(filteredByView, userRole, currentCleanerId);
     },
     staleTime: 5 * 60 * 1000, // 5 minutos
     gcTime: 30 * 60 * 1000, // 30 minutos (previously cacheTime)
-    enabled,
+    enabled: enabled && (userRole !== 'cleaner' || currentCleanerId !== null),
   });
 
   // Función optimizada para filtrar tareas
@@ -85,6 +98,18 @@ export const useOptimizedTasks = ({
     queryKey
   };
 };
+
+// Function to filter tasks by user role
+function filterTasksByUserRole(tasks: Task[], userRole: string | null, currentCleanerId: string | null): Task[] {
+  // If user is a cleaner, only show their assigned tasks
+  if (userRole === 'cleaner' && currentCleanerId) {
+    console.log('Filtering tasks for cleaner:', currentCleanerId);
+    return tasks.filter(task => task.cleanerId === currentCleanerId);
+  }
+  
+  // Admins, managers, supervisors can see all tasks
+  return tasks;
+}
 
 // Función helper optimizada para filtrar tareas
 function filterTasksByView(tasks: Task[], currentDate: Date, currentView: ViewType): Task[] {
