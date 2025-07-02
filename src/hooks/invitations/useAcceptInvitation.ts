@@ -9,37 +9,50 @@ export const useAcceptInvitation = () => {
 
   return useMutation({
     mutationFn: async (token: string) => {
-      console.log('Starting simplified invitation acceptance process');
+      console.log('Starting invitation acceptance process for token:', token);
       
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Usuario no autenticado');
 
       console.log('User authenticated:', user.id);
 
-      // 1. Verificar y obtener datos de la invitación
-      const { data: invitation, error: invitationError } = await supabase
+      // 1. First, let's get the invitation without filters to see what we have
+      const { data: allInvitations, error: fetchError } = await supabase
         .from('user_invitations')
-        .select('role, email, id')
-        .eq('invitation_token', token)
-        .eq('status', 'pending')
-        .gt('expires_at', new Date().toISOString())
-        .single();
+        .select('*')
+        .eq('invitation_token', token);
 
-      if (invitationError || !invitation) {
-        console.error('Invitation error:', invitationError);
-        throw new Error('Invitación inválida o expirada');
+      if (fetchError) {
+        console.error('Error fetching invitation:', fetchError);
+        throw new Error('Error al buscar la invitación');
       }
 
-      console.log('Invitation found:', invitation);
+      console.log('All invitations found for token:', allInvitations);
 
-      // 2. Verificar que el email coincida
+      if (!allInvitations || allInvitations.length === 0) {
+        throw new Error('Token de invitación no encontrado');
+      }
+
+      const invitation = allInvitations[0];
+      console.log('Invitation data:', invitation);
+
+      // 2. Check if invitation is still valid
+      if (invitation.status !== 'pending') {
+        throw new Error(`La invitación ya fue ${invitation.status === 'accepted' ? 'aceptada' : 'procesada'}`);
+      }
+
+      if (new Date(invitation.expires_at) < new Date()) {
+        throw new Error('La invitación ha expirado');
+      }
+
+      // 3. Verify email matches
       if (user.email !== invitation.email) {
         throw new Error('El email no coincide con la invitación');
       }
 
       console.log('Email matches, proceeding with role assignment');
 
-      // 3. Marcar invitación como aceptada
+      // 4. Mark invitation as accepted
       const { error: updateError } = await supabase
         .from('user_invitations')
         .update({ 
@@ -55,7 +68,7 @@ export const useAcceptInvitation = () => {
 
       console.log('Invitation marked as accepted');
 
-      // 4. Asignar rol al usuario
+      // 5. Assign role to user
       const { error: roleError } = await supabase
         .from('user_roles')
         .upsert({ 
