@@ -16,6 +16,14 @@ interface TaskFilters {
 
 export const filterTasks = (tasks: Task[], filters: TaskFilters): Task[] => {
   return tasks.filter(task => {
+    console.log('filterTasks - processing task:', {
+      taskId: task.id,
+      taskDate: task.date,
+      taskCleaner: task.cleaner,
+      taskCleanerId: task.cleanerId,
+      status: task.status
+    });
+
     // Search term filter
     if (filters.searchTerm && filters.searchTerm.trim() !== '') {
       const searchLower = filters.searchTerm.toLowerCase();
@@ -28,6 +36,7 @@ export const filterTasks = (tasks: Task[], filters: TaskFilters): Task[] => {
       ].filter(Boolean).join(' ').toLowerCase();
       
       if (!searchableText.includes(searchLower)) {
+        console.log('filterTasks - filtered out by search:', task.id);
         return false;
       }
     }
@@ -36,7 +45,14 @@ export const filterTasks = (tasks: Task[], filters: TaskFilters): Task[] => {
     if (!filters.showPastTasks) {
       const today = new Date();
       const taskDate = new Date(task.date);
+      console.log('filterTasks - date comparison:', {
+        taskId: task.id,
+        taskDate: task.date,
+        today: today.toISOString().split('T')[0],
+        isPast: taskDate < today
+      });
       if (taskDate < today) {
+        console.log('filterTasks - filtered out as past task:', task.id);
         return false;
       }
     }
