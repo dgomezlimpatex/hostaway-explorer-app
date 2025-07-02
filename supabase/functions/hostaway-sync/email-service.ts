@@ -1,4 +1,3 @@
-
 import { Resend } from "npm:resend@2.0.0";
 import { HostawayReservation, SyncStats } from './types.ts';
 
@@ -7,7 +6,7 @@ const resend = new Resend(resendApiKey);
 
 export async function sendCancellationEmail(reservation: HostawayReservation, property: any) {
   const emailData = {
-    from: 'Sistema de Gestión <onboarding@resend.dev>',
+    from: 'Sistema de Gestión <noreply@send.limpatexgestion.com>',
     to: ['dgomezlimpatex@gmail.com'],
     subject: '🚨 Cancelación de Reserva - Hostaway',
     html: `
@@ -35,7 +34,7 @@ export async function sendSyncSummaryEmail(stats: SyncStats) {
   }
 
   const emailData = {
-    from: 'Sistema de Gestión <onboarding@resend.dev>',
+    from: 'Sistema de Gestión <noreply@send.limpatexgestion.com>',
     to: ['dgomezlimpatex@gmail.com'],
     subject: '📊 Resumen de Sincronización - Hostaway',
     html: `
