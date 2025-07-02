@@ -80,7 +80,7 @@ export const useInvitationFlow = () => {
 
   // Si el usuario ya está autenticado, ir directamente a aceptar invitación
   useEffect(() => {
-    if (user && step === 'signup') {
+    if (user && (step === 'signup' || step === 'signin')) {
       console.log('User already authenticated, proceeding to accept invitation');
       setStep('accept');
       handleAcceptInvitation();
@@ -141,6 +141,7 @@ export const useInvitationFlow = () => {
     }
 
     setIsLoading(true);
+    setStep('accept'); // Cambiar al paso de aceptar inmediatamente
 
     try {
       console.log('Attempting to sign up user with email:', email);
@@ -161,11 +162,14 @@ export const useInvitationFlow = () => {
             description: error.message,
             variant: 'destructive',
           });
+          setStep('signup'); // Volver al paso de registro
         }
       } else {
         console.log('Sign up successful, proceeding to accept invitation');
-        // Después del registro, el usuario se autenticará automáticamente
-        setStep('accept');
+        // Proceder directamente a aceptar la invitación sin esperar la autenticación
+        setTimeout(() => {
+          handleAcceptInvitation();
+        }, 1000); // Dar un poco de tiempo para que se complete el registro
       }
     } catch (error: any) {
       console.error('Unexpected sign up error:', error);
@@ -174,6 +178,7 @@ export const useInvitationFlow = () => {
         description: error.message || 'Error al crear la cuenta',
         variant: 'destructive',
       });
+      setStep('signup'); // Volver al paso de registro
     }
 
     setIsLoading(false);
@@ -182,6 +187,7 @@ export const useInvitationFlow = () => {
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
+    setStep('accept'); // Cambiar al paso de aceptar inmediatamente
 
     try {
       console.log('Attempting to sign in user with email:', email);
@@ -194,9 +200,13 @@ export const useInvitationFlow = () => {
           description: error.message,
           variant: 'destructive',
         });
+        setStep('signin'); // Volver al paso de inicio de sesión
       } else {
         console.log('Sign in successful, proceeding to accept invitation');
-        setStep('accept');
+        // Proceder directamente a aceptar la invitación
+        setTimeout(() => {
+          handleAcceptInvitation();
+        }, 1000); // Dar un poco de tiempo para que se complete el login
       }
     } catch (error: any) {
       console.error('Unexpected sign in error:', error);
@@ -205,6 +215,7 @@ export const useInvitationFlow = () => {
         description: error.message || 'Error al iniciar sesión',
         variant: 'destructive',
       });
+      setStep('signin'); // Volver al paso de inicio de sesión
     }
 
     setIsLoading(false);
