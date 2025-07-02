@@ -53,7 +53,7 @@ const handler = async (req: Request): Promise<Response> => {
     });
 
     const emailResponse = await resend.emails.send({
-      from: "Sistema de Gestión <onboarding@resend.dev>",
+      from: "Sistema de Gestión <noreply@limpatexgestion.com>",
       to: [cleanerEmail],
       subject: `Nueva Tarea Asignada - ${taskData.property}`,
       html: `

@@ -7,7 +7,7 @@ const resend = new Resend(resendApiKey);
 
 export async function sendCancellationEmail(reservation: HostawayReservation, property: any) {
   const emailData = {
-    from: 'Sistema de Gestión <noreply@limpatex.com>',
+    from: 'Sistema de Gestión <noreply@limpatexgestion.com>',
     to: ['dgomezlimpatex@gmail.com'],
     subject: '🚨 Cancelación de Reserva - Hostaway',
     html: `
@@ -35,7 +35,7 @@ export async function sendSyncSummaryEmail(stats: SyncStats) {
   }
 
   const emailData = {
-    from: 'Sistema de Gestión <noreply@limpatex.com>',
+    from: 'Sistema de Gestión <noreply@limpatexgestion.com>',
     to: ['dgomezlimpatex@gmail.com'],
     subject: '📊 Resumen de Sincronización - Hostaway',
     html: `
