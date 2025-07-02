@@ -1,11 +1,10 @@
 
-import { useQuery } from '@tanstack/react-query';
+import { useMutation } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 
-export const useVerifyInvitation = (token: string, email: string) => {
-  return useQuery({
-    queryKey: ['verify-invitation', token, email],
-    queryFn: async () => {
+export const useVerifyInvitation = () => {
+  return useMutation({
+    mutationFn: async ({ token, email }: { token: string; email: string }) => {
       const { data, error } = await supabase.rpc('verify_invitation', {
         token,
         email,
@@ -14,6 +13,5 @@ export const useVerifyInvitation = (token: string, email: string) => {
       if (error) throw error;
       return data as boolean;
     },
-    enabled: !!(token && email),
   });
 };

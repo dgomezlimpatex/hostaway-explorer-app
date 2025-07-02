@@ -66,7 +66,7 @@ const AcceptInvitation = () => {
         }
       }
     );
-  }, [token, email]);
+  }, [token, email, verifyInvitation, toast, navigate]);
 
   // Si el usuario ya está autenticado, ir directamente a aceptar invitación
   useEffect(() => {
