@@ -63,6 +63,7 @@ export const ChecklistSection: React.FC<ChecklistSectionProps> = ({
   };
 
   const handleMediaAdded = (categoryId: string, itemId: string, mediaUrl: string) => {
+    console.log('ChecklistSection - adding media:', { categoryId, itemId, mediaUrl });
     const key = `${categoryId}.${itemId}`;
     const newChecklist = { ...checklist };
     
@@ -71,6 +72,7 @@ export const ChecklistSection: React.FC<ChecklistSectionProps> = ({
     }
     
     newChecklist[key].media_urls = [...(newChecklist[key].media_urls || []), mediaUrl];
+    console.log('ChecklistSection - updated checklist item:', newChecklist[key]);
     onChecklistChange(newChecklist);
   };
 

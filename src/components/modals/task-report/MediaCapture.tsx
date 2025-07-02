@@ -55,23 +55,33 @@ export const MediaCapture: React.FC<MediaCaptureProps> = ({
     // Subir archivo usando async/await
     const uploadFile = async () => {
       try {
+        console.log('MediaCapture - attempting upload:', { file: file.name, reportId, checklistItemId });
         const data = await uploadMediaAsync({
           file,
           reportId,
           checklistItemId,
         });
-        console.log('Media uploaded successfully:', data);
+        console.log('MediaCapture - upload successful:', data);
         onMediaCaptured(data.file_url);
         setPreviewUrl(null);
         if (fileInputRef.current) {
           fileInputRef.current.value = '';
         }
+        toast({
+          title: "Archivo subido",
+          description: "El archivo se ha subido correctamente.",
+        });
       } catch (error) {
-        console.error('Error uploading media:', error);
+        console.error('MediaCapture - upload failed:', error);
         setPreviewUrl(null);
         if (fileInputRef.current) {
           fileInputRef.current.value = '';
         }
+        toast({
+          title: "Error al subir archivo",
+          description: "No se pudo subir el archivo. Inténtalo de nuevo.",
+          variant: "destructive",
+        });
       }
     };
     
