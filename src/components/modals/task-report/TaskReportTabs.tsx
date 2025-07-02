@@ -26,6 +26,8 @@ interface TaskReportTabsProps {
   onNotesChange: (notes: string) => void;
   task: Task;
   completionPercentage: number;
+  reportMedia: string[];
+  onReportMediaChange: (media: string[]) => void;
 }
 
 export const TaskReportTabs: React.FC<TaskReportTabsProps> = ({
@@ -41,7 +43,9 @@ export const TaskReportTabs: React.FC<TaskReportTabsProps> = ({
   notes,
   onNotesChange,
   task,
-  completionPercentage
+  completionPercentage,
+  reportMedia,
+  onReportMediaChange
 }) => {
   const { isMobile, isTablet } = useDeviceType();
 
@@ -143,10 +147,11 @@ export const TaskReportTabs: React.FC<TaskReportTabsProps> = ({
                 <h3 className="text-lg font-semibold">Fotos y Videos</h3>
                 <MediaCapture
                   onMediaCaptured={(mediaUrl) => {
-                    console.log('Media captured:', mediaUrl);
+                    console.log('Media captured (general):', mediaUrl);
+                    onReportMediaChange([...reportMedia, mediaUrl]);
                   }}
                   reportId={reportId}
-                  existingMedia={[]}
+                  existingMedia={reportMedia}
                 />
               </div>
             </TabsContent>

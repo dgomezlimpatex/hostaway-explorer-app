@@ -35,6 +35,7 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
   const [checklist, setChecklist] = useState<Record<string, any>>({});
   const [notes, setNotes] = useState('');
   const [issues, setIssues] = useState<any[]>([]);
+  const [reportMedia, setReportMedia] = useState<string[]>([]);
   const [activeTab, setActiveTab] = useState('checklist');
   const [currentTemplate, setCurrentTemplate] = useState<TaskChecklistTemplate | undefined>();
 
@@ -56,6 +57,7 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
         setChecklist(existingReport.checklist_completed || {});
         setNotes(existingReport.notes || '');
         setIssues(existingReport.issues_found || []);
+        // TODO: Load existing report media from task_media table
       } else {
         console.log('TaskReportModal - creating new report immediately');
         // Create report immediately to have reportId for media upload
@@ -73,6 +75,7 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
         setChecklist({});
         setNotes('');
         setIssues([]);
+        setReportMedia([]);
       }
 
       // Find appropriate template based on property type or default
@@ -220,6 +223,8 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
             onNotesChange={setNotes}
             task={task}
             completionPercentage={completionPercentage}
+            reportMedia={reportMedia}
+            onReportMediaChange={setReportMedia}
           />
         </div>
 
