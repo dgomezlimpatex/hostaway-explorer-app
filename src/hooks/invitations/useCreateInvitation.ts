@@ -67,9 +67,17 @@ export const useCreateInvitation = () => {
       }
     },
     onError: (error: any) => {
+      let errorMessage = 'Error al crear la invitación';
+      
+      if (error.message?.includes('user_invitations_email_pending_unique')) {
+        errorMessage = 'Ya existe una invitación pendiente para este email. Revoca la invitación anterior o espera a que sea aceptada.';
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
       toast({
         title: 'Error',
-        description: error.message || 'Error al crear la invitación',
+        description: errorMessage,
         variant: 'destructive',
       });
     },
