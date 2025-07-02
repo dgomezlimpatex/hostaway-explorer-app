@@ -44,6 +44,12 @@ export const filterTasks = (tasks: Task[], filters: TaskFilters): Task[] => {
     if (filters.userRole === 'cleaner') {
       // Cleaners only see their own tasks
       // Compare with the cleaner name from the current user
+      console.log('filterTasks - cleaner role debug:', {
+        taskCleaner: task.cleaner,
+        currentUserName: filters.currentUserName,
+        taskId: task.id,
+        match: task.cleaner === filters.currentUserName
+      });
       if (!task.cleaner || task.cleaner !== filters.currentUserName) {
         return false;
       }
