@@ -11,6 +11,7 @@ interface TaskFilters {
   showPastTasks?: boolean;
   userRole?: string;
   currentUserName?: string; // Añadir nombre del usuario actual
+  currentUserId?: string; // Añadir ID del usuario actual
 }
 
 export const filterTasks = (tasks: Task[], filters: TaskFilters): Task[] => {
@@ -43,14 +44,16 @@ export const filterTasks = (tasks: Task[], filters: TaskFilters): Task[] => {
     // Role-based filtering
     if (filters.userRole === 'cleaner') {
       // Cleaners only see their own tasks
-      // Compare with the cleaner name from the current user
+      // Use cleaner_id for more reliable comparison
       console.log('filterTasks - cleaner role debug:', {
+        taskCleanerId: task.cleanerId,
+        currentUserId: filters.currentUserId,
         taskCleaner: task.cleaner,
         currentUserName: filters.currentUserName,
         taskId: task.id,
-        match: task.cleaner === filters.currentUserName
+        match: task.cleanerId === filters.currentUserId
       });
-      if (!task.cleaner || task.cleaner !== filters.currentUserName) {
+      if (!task.cleanerId || task.cleanerId !== filters.currentUserId) {
         return false;
       }
     }

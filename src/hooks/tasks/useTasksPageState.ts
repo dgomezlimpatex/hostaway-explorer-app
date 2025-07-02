@@ -3,6 +3,7 @@ import { useState, useMemo } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useTasks } from '@/hooks/useTasks';
 import { useOptimizedPagination } from '@/hooks/useOptimizedPagination';
+import { useCleaners } from '@/hooks/useCleaners';
 import { Task } from '@/types/calendar';
 import { filterTasks, sortTasks } from '@/components/tasks/utils/taskFilters';
 
@@ -16,6 +17,7 @@ interface LocalTaskFilters {
 
 export const useTasksPageState = () => {
   const { userRole, user, profile } = useAuth();
+  const { cleaners } = useCleaners();
   const [searchTerm, setSearchTerm] = useState('');
   const [showPastTasks, setShowPastTasks] = useState(false);
   const [filters, setFilters] = useState<LocalTaskFilters>({
@@ -29,6 +31,13 @@ export const useTasksPageState = () => {
   // Use current date and week view for task fetching (fixing ViewType)
   const currentDate = new Date();
   const { tasks, isLoading, error } = useTasks(currentDate, 'week');
+
+  // Get current user's cleaner ID
+  const currentUserCleanerId = useMemo(() => {
+    if (userRole !== 'cleaner' || !user?.id) return null;
+    const currentCleaner = cleaners.find(cleaner => cleaner.user_id === user.id);
+    return currentCleaner?.id || null;
+  }, [cleaners, user?.id, userRole]);
 
   // Create a simple refetch function by invalidating the query
   const refetch = () => {
@@ -44,6 +53,7 @@ export const useTasksPageState = () => {
       showPastTasks,
       userRole,
       currentUserName: profile?.full_name,
+      currentUserCleanerId,
       searchTerm,
       filters
     });
@@ -53,12 +63,13 @@ export const useTasksPageState = () => {
       showPastTasks, 
       userRole,
       currentUserName: profile?.full_name || profile?.email, // Usar el nombre completo o email como fallback
+      currentUserId: currentUserCleanerId,
       ...filters 
     });
 
     console.log('useTasksPageState - after filtering:', filtered.length);
     return filtered;
-  }, [tasks, searchTerm, showPastTasks, userRole, filters, profile]);
+  }, [tasks, searchTerm, showPastTasks, userRole, filters, profile, currentUserCleanerId]);
 
   const sortedTasks = useMemo(() => {
     const sorted = sortTasks(filteredTasks, showPastTasks);
