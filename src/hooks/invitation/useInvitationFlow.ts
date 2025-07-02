@@ -81,12 +81,14 @@ export const useInvitationFlow = () => {
 
   // Si el usuario ya está autenticado y se solicitó aceptar la invitación, proceder
   useEffect(() => {
-    if (user && acceptanceRequested.current && step === 'accept') {
+    console.log('Auth effect - User:', !!user, 'Acceptance requested:', acceptanceRequested.current, 'Step:', step);
+    
+    if (user && acceptanceRequested.current) {
       console.log('User is authenticated, proceeding to accept invitation');
-      handleAcceptInvitation();
       acceptanceRequested.current = false; // Resetear para evitar llamadas múltiples
+      handleAcceptInvitation();
     }
-  }, [user, step]);
+  }, [user]);
 
   // Si el usuario ya está autenticado desde el inicio, ir directamente a aceptar invitación
   useEffect(() => {
@@ -104,6 +106,8 @@ export const useInvitationFlow = () => {
     }
 
     console.log('Accepting invitation with token:', token);
+    setStep('accept');
+    
     acceptInvitation.mutate(token, {
       onSuccess: () => {
         console.log('Invitation accepted successfully');
@@ -125,6 +129,10 @@ export const useInvitationFlow = () => {
           description: error.message || 'Error al aceptar la invitación',
           variant: 'destructive',
         });
+        // Volver al paso anterior si hay error
+        if (step === 'accept') {
+          setStep('signup');
+        }
       }
     });
   };
@@ -151,7 +159,6 @@ export const useInvitationFlow = () => {
     }
 
     setIsLoading(true);
-    setStep('accept'); // Cambiar al paso de aceptar inmediatamente
 
     try {
       console.log('Attempting to sign up user with email:', email);
@@ -172,12 +179,12 @@ export const useInvitationFlow = () => {
             description: error.message,
             variant: 'destructive',
           });
-          setStep('signup'); // Volver al paso de registro
         }
       } else {
         console.log('Sign up successful, waiting for authentication');
         // Marcar que se solicitó la aceptación de la invitación
         acceptanceRequested.current = true;
+        setStep('accept');
         // El useEffect se encargará de llamar handleAcceptInvitation cuando user esté disponible
       }
     } catch (error: any) {
@@ -187,7 +194,6 @@ export const useInvitationFlow = () => {
         description: error.message || 'Error al crear la cuenta',
         variant: 'destructive',
       });
-      setStep('signup'); // Volver al paso de registro
     }
 
     setIsLoading(false);
@@ -196,7 +202,6 @@ export const useInvitationFlow = () => {
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    setStep('accept'); // Cambiar al paso de aceptar inmediatamente
 
     try {
       console.log('Attempting to sign in user with email:', email);
@@ -209,11 +214,11 @@ export const useInvitationFlow = () => {
           description: error.message,
           variant: 'destructive',
         });
-        setStep('signin'); // Volver al paso de inicio de sesión
       } else {
         console.log('Sign in successful, waiting for authentication');
         // Marcar que se solicitó la aceptación de la invitación
         acceptanceRequested.current = true;
+        setStep('accept');
         // El useEffect se encargará de llamar handleAcceptInvitation cuando user esté disponible
       }
     } catch (error: any) {
@@ -223,7 +228,6 @@ export const useInvitationFlow = () => {
         description: error.message || 'Error al iniciar sesión',
         variant: 'destructive',
       });
-      setStep('signin'); // Volver al paso de inicio de sesión
     }
 
     setIsLoading(false);
