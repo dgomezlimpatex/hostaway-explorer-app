@@ -1136,6 +1136,10 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: undefined
       }
+      get_current_user_role: {
+        Args: Record<PropertyKey, never>
+        Returns: Database["public"]["Enums"]["app_role"]
+      }
       get_user_role: {
         Args: { _user_id: string }
         Returns: Database["public"]["Enums"]["app_role"]
@@ -1150,6 +1154,14 @@ export type Database = {
       update_cleaners_order: {
         Args: { cleaner_updates: Json[] }
         Returns: undefined
+      }
+      user_has_role: {
+        Args: { check_role: Database["public"]["Enums"]["app_role"] }
+        Returns: boolean
+      }
+      user_is_admin_or_manager: {
+        Args: Record<PropertyKey, never>
+        Returns: boolean
       }
       verify_invitation: {
         Args: { token: string; email: string }
