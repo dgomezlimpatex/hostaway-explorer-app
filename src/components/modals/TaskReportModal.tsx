@@ -57,8 +57,19 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
         setNotes(existingReport.notes || '');
         setIssues(existingReport.issues_found || []);
       } else {
-        console.log('TaskReportModal - creating new report');
-        setCurrentReport(null);
+        console.log('TaskReportModal - creating new report immediately');
+        // Create report immediately to have reportId for media upload
+        const reportData = {
+          task_id: task.id,
+          cleaner_id: currentCleanerId || task.cleanerId,
+          checklist_completed: {},
+          notes: '',
+          issues_found: [],
+          overall_status: 'pending' as const,
+          start_time: new Date().toISOString(),
+        };
+        
+        createReport(reportData);
         setChecklist({});
         setNotes('');
         setIssues([]);
@@ -75,7 +86,15 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
         setCurrentTemplate(template);
       }
     }
-  }, [open, task, existingReport, templates]);
+  }, [open, task, existingReport, templates, createReport, currentCleanerId]);
+
+  // Update currentReport when existingReport changes (after creation)
+  useEffect(() => {
+    if (existingReport && !currentReport) {
+      console.log('TaskReportModal - setting created report:', existingReport);
+      setCurrentReport(existingReport);
+    }
+  }, [existingReport, currentReport]);
 
   // Calculate completion percentage
   const completionPercentage = React.useMemo(() => {
