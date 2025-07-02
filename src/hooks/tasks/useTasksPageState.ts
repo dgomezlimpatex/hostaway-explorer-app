@@ -15,7 +15,7 @@ interface LocalTaskFilters {
 }
 
 export const useTasksPageState = () => {
-  const { userRole } = useAuth();
+  const { userRole, user, profile } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
   const [showPastTasks, setShowPastTasks] = useState(false);
   const [filters, setFilters] = useState<LocalTaskFilters>({
@@ -43,6 +43,7 @@ export const useTasksPageState = () => {
       totalTasks: tasks.length,
       showPastTasks,
       userRole,
+      currentUserName: profile?.full_name,
       searchTerm,
       filters
     });
@@ -51,12 +52,13 @@ export const useTasksPageState = () => {
       searchTerm, 
       showPastTasks, 
       userRole,
+      currentUserName: profile?.full_name || profile?.email, // Usar el nombre completo o email como fallback
       ...filters 
     });
 
     console.log('useTasksPageState - after filtering:', filtered.length);
     return filtered;
-  }, [tasks, searchTerm, showPastTasks, userRole, filters]);
+  }, [tasks, searchTerm, showPastTasks, userRole, filters, profile]);
 
   const sortedTasks = useMemo(() => {
     const sorted = sortTasks(filteredTasks, showPastTasks);

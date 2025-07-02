@@ -10,6 +10,7 @@ interface TaskFilters {
   searchTerm?: string;
   showPastTasks?: boolean;
   userRole?: string;
+  currentUserName?: string; // Añadir nombre del usuario actual
 }
 
 export const filterTasks = (tasks: Task[], filters: TaskFilters): Task[] => {
@@ -42,7 +43,8 @@ export const filterTasks = (tasks: Task[], filters: TaskFilters): Task[] => {
     // Role-based filtering
     if (filters.userRole === 'cleaner') {
       // Cleaners only see their own tasks
-      if (!task.cleaner || task.cleaner !== filters.userRole) {
+      // Compare with the cleaner name from the current user
+      if (!task.cleaner || task.cleaner !== filters.currentUserName) {
         return false;
       }
     }
