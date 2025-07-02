@@ -3,7 +3,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Dialog, DialogContent, DialogHeader } from '@/components/ui/dialog';
 import { Task } from '@/types/calendar';
 import { TaskReport, TaskChecklistTemplate } from '@/types/taskReports';
-import { useTaskReports, useTaskReport, useChecklistTemplates } from '@/hooks/useTaskReports';
+import { useTaskReports, useTaskReport, useChecklistTemplates, useTaskMedia } from '@/hooks/useTaskReports';
 import { useToast } from '@/hooks/use-toast';
 import { useDeviceType } from '@/hooks/use-mobile';
 import { useAuth } from '@/hooks/useAuth';
@@ -39,6 +39,9 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
   const [activeTab, setActiveTab] = useState('checklist');
   const [currentTemplate, setCurrentTemplate] = useState<TaskChecklistTemplate | undefined>();
 
+  // Get task media using the current report ID
+  const { data: taskMedia = [], isLoading: isLoadingMedia } = useTaskMedia(currentReport?.id || '');
+
   // Get current cleaner ID
   const currentCleanerId = useMemo(() => {
     if (!user?.id || !cleaners) return null;
@@ -57,7 +60,12 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
         setChecklist(existingReport.checklist_completed || {});
         setNotes(existingReport.notes || '');
         setIssues(existingReport.issues_found || []);
-        // TODO: Load existing report media from task_media table
+        
+        // Load existing general media (photos not tied to specific checklist items)
+        const generalMedia = taskMedia
+          .filter(media => !media.checklist_item_id)
+          .map(media => media.file_url);
+        setReportMedia(generalMedia);
       } else {
         console.log('TaskReportModal - creating new report immediately');
         // Create report immediately to have reportId for media upload
@@ -89,7 +97,7 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
         setCurrentTemplate(template);
       }
     }
-  }, [open, task, existingReport, templates, createReport, currentCleanerId]);
+  }, [open, task, existingReport, templates, createReport, currentCleanerId, taskMedia]);
 
   // Update currentReport when existingReport changes (after creation)
   useEffect(() => {
@@ -98,6 +106,17 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
       setCurrentReport(existingReport);
     }
   }, [existingReport, currentReport]);
+
+  // Update reportMedia when taskMedia changes
+  useEffect(() => {
+    if (taskMedia && currentReport) {
+      const generalMedia = taskMedia
+        .filter(media => !media.checklist_item_id)
+        .map(media => media.file_url);
+      setReportMedia(generalMedia);
+      console.log('TaskReportModal - loaded general media:', generalMedia);
+    }
+  }, [taskMedia, currentReport]);
 
   // Calculate completion percentage
   const completionPercentage = React.useMemo(() => {
