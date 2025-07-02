@@ -18,8 +18,8 @@ export const useAcceptInvitation = () => {
 
       // Usar la función accept_invitation que tiene SECURITY DEFINER
       const { data: role, error } = await supabase.rpc('accept_invitation', {
-        token: token,
-        user_id: user.id
+        invitation_token: token,
+        input_user_id: user.id
       });
 
       if (error) {

@@ -1129,7 +1129,7 @@ export type Database = {
     }
     Functions: {
       accept_invitation: {
-        Args: { token: string; user_id: string }
+        Args: { invitation_token: string; input_user_id: string }
         Returns: Database["public"]["Enums"]["app_role"]
       }
       cleanup_expired_invitations: {
