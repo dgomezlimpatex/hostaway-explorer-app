@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -31,23 +30,31 @@ const AcceptInvitation = () => {
 
   // Verificar la invitación al cargar
   useEffect(() => {
+    console.log('Starting invitation verification process');
+    console.log('Token:', token);
+    console.log('Email:', email);
+
     if (!token || !email) {
+      console.error('Missing token or email');
       toast({
         title: 'Error',
-        description: 'Enlace de invitación inválido',
+        description: 'Enlace de invitación inválido - falta token o email',
         variant: 'destructive',
       });
       navigate('/auth');
       return;
     }
 
+    console.log('Calling verifyInvitation.mutate');
     verifyInvitation.mutate(
       { token, email },
       {
         onSuccess: (isValid) => {
+          console.log('Verification success:', isValid);
           if (isValid) {
             setStep('signup');
           } else {
+            console.error('Invitation is not valid');
             toast({
               title: 'Error',
               description: 'La invitación ha expirado o no es válida',
@@ -56,10 +63,11 @@ const AcceptInvitation = () => {
             navigate('/auth');
           }
         },
-        onError: () => {
+        onError: (error: any) => {
+          console.error('Verification error:', error);
           toast({
             title: 'Error',
-            description: 'Error al verificar la invitación',
+            description: `Error al verificar la invitación: ${error.message || 'Error desconocido'}`,
             variant: 'destructive',
           });
           navigate('/auth');
@@ -71,10 +79,43 @@ const AcceptInvitation = () => {
   // Si el usuario ya está autenticado, ir directamente a aceptar invitación
   useEffect(() => {
     if (user && step === 'signup') {
+      console.log('User already authenticated, proceeding to accept invitation');
       setStep('accept');
       handleAcceptInvitation();
     }
   }, [user, step]);
+
+  const handleAcceptInvitation = () => {
+    if (!token) {
+      console.error('No token available for accepting invitation');
+      return;
+    }
+
+    console.log('Accepting invitation with token:', token);
+    acceptInvitation.mutate(token, {
+      onSuccess: () => {
+        console.log('Invitation accepted successfully');
+        setStep('success');
+        toast({
+          title: 'Invitación aceptada',
+          description: 'Tu cuenta ha sido activada exitosamente.',
+        });
+        
+        // Redirigir al dashboard después de 2 segundos
+        setTimeout(() => {
+          navigate('/');
+        }, 2000);
+      },
+      onError: (error: any) => {
+        console.error('Error accepting invitation:', error);
+        toast({
+          title: 'Error',
+          description: error.message || 'Error al aceptar la invitación',
+          variant: 'destructive',
+        });
+      }
+    });
+  };
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -100,9 +141,11 @@ const AcceptInvitation = () => {
     setIsLoading(true);
 
     try {
+      console.log('Attempting to sign up user with email:', email);
       const { error } = await signUp(email!, password, fullName);
       
       if (error) {
+        console.error('Sign up error:', error);
         // Si el usuario ya existe, intentar hacer login
         if (error.message.includes('already registered')) {
           setStep('signin');
@@ -118,10 +161,12 @@ const AcceptInvitation = () => {
           });
         }
       } else {
+        console.log('Sign up successful, proceeding to accept invitation');
         // Después del registro, el usuario se autenticará automáticamente
         setStep('accept');
       }
     } catch (error: any) {
+      console.error('Unexpected sign up error:', error);
       toast({
         title: 'Error',
         description: error.message || 'Error al crear la cuenta',
@@ -137,18 +182,22 @@ const AcceptInvitation = () => {
     setIsLoading(true);
 
     try {
+      console.log('Attempting to sign in user with email:', email);
       const { error } = await signIn(email!, password);
       
       if (error) {
+        console.error('Sign in error:', error);
         toast({
           title: 'Error',
           description: error.message,
           variant: 'destructive',
         });
       } else {
+        console.log('Sign in successful, proceeding to accept invitation');
         setStep('accept');
       }
     } catch (error: any) {
+      console.error('Unexpected sign in error:', error);
       toast({
         title: 'Error',
         description: error.message || 'Error al iniciar sesión',
@@ -159,32 +208,6 @@ const AcceptInvitation = () => {
     setIsLoading(false);
   };
 
-  const handleAcceptInvitation = () => {
-    if (!token) return;
-
-    acceptInvitation.mutate(token, {
-      onSuccess: () => {
-        setStep('success');
-        toast({
-          title: 'Invitación aceptada',
-          description: 'Tu cuenta ha sido activada exitosamente.',
-        });
-        
-        // Redirigir al dashboard después de 2 segundos
-        setTimeout(() => {
-          navigate('/');
-        }, 2000);
-      },
-      onError: (error: any) => {
-        toast({
-          title: 'Error',
-          description: error.message || 'Error al aceptar la invitación',
-          variant: 'destructive',
-        });
-      }
-    });
-  };
-
   if (verifyInvitation.isPending) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -193,6 +216,7 @@ const AcceptInvitation = () => {
             <div className="text-center">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
               <p>Verificando invitación...</p>
+              <p className="text-sm text-gray-500 mt-2">Token: {token?.substring(0, 8)}...</p>
             </div>
           </CardContent>
         </Card>
