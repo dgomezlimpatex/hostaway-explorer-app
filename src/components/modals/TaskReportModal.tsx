@@ -173,7 +173,7 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
           />
         </DialogHeader>
 
-        <div className="flex-1 overflow-hidden">
+        <div className="flex-1 overflow-auto">
           <TaskReportTabs
             activeTab={activeTab}
             onTabChange={setActiveTab}

@@ -106,7 +106,7 @@ export const TaskReportTabs: React.FC<TaskReportTabsProps> = ({
       </TabsList>
 
       <div className="flex-1 overflow-auto">
-        <TabsContent value="checklist" className={`${isMobile ? 'space-y-2 p-2' : 'space-y-4 p-4'} h-full`}>
+        <TabsContent value="checklist" className={`${isMobile ? 'space-y-2 p-2' : 'space-y-4 p-4'} overflow-auto max-h-full`}>
           {isLoadingTemplates ? (
             <div className="flex items-center justify-center py-6 md:py-8">
               <Clock className="h-6 w-6 md:h-8 md:w-8 animate-spin text-gray-400" />
@@ -121,7 +121,7 @@ export const TaskReportTabs: React.FC<TaskReportTabsProps> = ({
           )}
         </TabsContent>
 
-        <TabsContent value="issues" className={`${isMobile ? 'space-y-2 p-2' : 'space-y-4 p-4'} h-full`}>
+        <TabsContent value="issues" className={`${isMobile ? 'space-y-2 p-2' : 'space-y-4 p-4'} overflow-auto max-h-full`}>
           <IssuesSection
             issues={issues}
             onIssuesChange={onIssuesChange}
@@ -131,14 +131,14 @@ export const TaskReportTabs: React.FC<TaskReportTabsProps> = ({
 
         {!isMobile && (
           <>
-            <TabsContent value="notes" className="space-y-4 p-4 h-full">
+            <TabsContent value="notes" className="space-y-4 p-4 overflow-auto max-h-full">
               <NotesSection
                 notes={notes}
                 onNotesChange={onNotesChange}
               />
             </TabsContent>
 
-            <TabsContent value="media" className="space-y-4 p-4 h-full">
+            <TabsContent value="media" className="space-y-4 p-4 overflow-auto max-h-full">
               <div className="space-y-6">
                 <h3 className="text-lg font-semibold">Fotos y Videos</h3>
                 <MediaCapture
@@ -153,7 +153,7 @@ export const TaskReportTabs: React.FC<TaskReportTabsProps> = ({
           </>
         )}
 
-        <TabsContent value="summary" className={`${isMobile ? 'space-y-2 p-2' : 'space-y-4 p-4'} h-full`}>
+        <TabsContent value="summary" className={`${isMobile ? 'space-y-2 p-2' : 'space-y-4 p-4'} overflow-auto max-h-full`}>
           <ReportSummary
             task={task}
             template={currentTemplate}
