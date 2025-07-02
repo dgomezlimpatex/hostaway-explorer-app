@@ -34,6 +34,7 @@ function App() {
           <BrowserRouter>
             <Routes>
               <Route path="/auth" element={<Auth />} />
+              {/* Ruta pública para aceptar invitaciones */}
               <Route path="/accept-invitation" element={<AcceptInvitation />} />
               <Route path="/" element={
                 <ProtectedRoute>
