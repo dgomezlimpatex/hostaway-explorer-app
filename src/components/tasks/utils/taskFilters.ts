@@ -43,15 +43,14 @@ export const filterTasks = (tasks: Task[], filters: TaskFilters): Task[] => {
 
     // Past tasks filter
     if (!filters.showPastTasks) {
-      const today = new Date();
-      const taskDate = new Date(task.date);
+      const today = new Date().toISOString().split('T')[0];
       console.log('filterTasks - date comparison:', {
         taskId: task.id,
         taskDate: task.date,
-        today: today.toISOString().split('T')[0],
-        isPast: taskDate < today
+        today: today,
+        isPast: task.date < today
       });
-      if (taskDate < today) {
+      if (task.date < today) {
         console.log('filterTasks - filtered out as past task:', task.id);
         return false;
       }
