@@ -13,7 +13,6 @@ export const useInvitationFlow = () => {
   const { toast } = useToast();
   const { signUp, signIn, user } = useAuth();
   const verificationExecuted = useRef(false);
-  const acceptanceRequested = useRef(false);
   
   const token = searchParams.get('token');
   const email = searchParams.get('email');
@@ -79,22 +78,12 @@ export const useInvitationFlow = () => {
     );
   }, [token, email, toast, navigate]);
 
-  // Si el usuario ya está autenticado y se solicitó aceptar la invitación, proceder
+  // Si el usuario ya está autenticado, proceder directamente a aceptar la invitación
   useEffect(() => {
-    console.log('Auth effect - User:', !!user, 'Acceptance requested:', acceptanceRequested.current, 'Step:', step);
+    console.log('User effect - User:', !!user, 'Step:', step);
     
-    if (user && acceptanceRequested.current) {
-      console.log('User is authenticated, proceeding to accept invitation');
-      acceptanceRequested.current = false; // Resetear para evitar llamadas múltiples
-      handleAcceptInvitation();
-    }
-  }, [user]);
-
-  // Si el usuario ya está autenticado desde el inicio, ir directamente a aceptar invitación
-  useEffect(() => {
     if (user && (step === 'signup' || step === 'signin')) {
       console.log('User already authenticated, proceeding to accept invitation');
-      setStep('accept');
       handleAcceptInvitation();
     }
   }, [user, step]);
@@ -130,9 +119,7 @@ export const useInvitationFlow = () => {
           variant: 'destructive',
         });
         // Volver al paso anterior si hay error
-        if (step === 'accept') {
-          setStep('signup');
-        }
+        setStep('signup');
       }
     });
   };
@@ -162,12 +149,15 @@ export const useInvitationFlow = () => {
 
     try {
       console.log('Attempting to sign up user with email:', email);
+      
+      // Intentar registro sin confirmación de email
       const { error } = await signUp(email!, password, fullName);
       
       if (error) {
         console.error('Sign up error:', error);
-        // Si el usuario ya existe, intentar hacer login
-        if (error.message.includes('already registered')) {
+        
+        // Si el usuario ya existe, cambiar a modo de inicio de sesión
+        if (error.message.includes('already registered') || error.message.includes('already exists')) {
           setStep('signin');
           toast({
             title: 'Usuario existente',
@@ -181,11 +171,22 @@ export const useInvitationFlow = () => {
           });
         }
       } else {
-        console.log('Sign up successful, waiting for authentication');
-        // Marcar que se solicitó la aceptación de la invitación
-        acceptanceRequested.current = true;
-        setStep('accept');
-        // El useEffect se encargará de llamar handleAcceptInvitation cuando user esté disponible
+        console.log('Sign up successful - proceeding to sign in automatically');
+        
+        // Después del registro exitoso, intentar iniciar sesión automáticamente
+        const { error: signInError } = await signIn(email!, password);
+        
+        if (signInError) {
+          console.log('Auto sign-in failed, showing sign-in form');
+          setStep('signin');
+          toast({
+            title: 'Registro exitoso',
+            description: 'Cuenta creada. Por favor, inicia sesión.',
+          });
+        } else {
+          console.log('Auto sign-in successful');
+          // El useEffect se encargará de proceder con la aceptación de la invitación
+        }
       }
     } catch (error: any) {
       console.error('Unexpected sign up error:', error);
@@ -215,11 +216,8 @@ export const useInvitationFlow = () => {
           variant: 'destructive',
         });
       } else {
-        console.log('Sign in successful, waiting for authentication');
-        // Marcar que se solicitó la aceptación de la invitación
-        acceptanceRequested.current = true;
-        setStep('accept');
-        // El useEffect se encargará de llamar handleAcceptInvitation cuando user esté disponible
+        console.log('Sign in successful');
+        // El useEffect se encargará de proceder con la aceptación de la invitación
       }
     } catch (error: any) {
       console.error('Unexpected sign in error:', error);
