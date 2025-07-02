@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -15,6 +15,7 @@ const AcceptInvitation = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { signUp, signIn, user } = useAuth();
+  const verificationExecuted = useRef(false);
   
   const token = searchParams.get('token');
   const email = searchParams.get('email');
@@ -28,8 +29,10 @@ const AcceptInvitation = () => {
   const verifyInvitation = useVerifyInvitation();
   const acceptInvitation = useAcceptInvitation();
 
-  // Verificar la invitación al cargar
+  // Verificar la invitación al cargar (solo una vez)
   useEffect(() => {
+    if (verificationExecuted.current) return;
+
     console.log('Starting invitation verification process');
     console.log('Token:', token);
     console.log('Email:', email);
@@ -45,7 +48,9 @@ const AcceptInvitation = () => {
       return;
     }
 
+    verificationExecuted.current = true;
     console.log('Calling verifyInvitation.mutate');
+    
     verifyInvitation.mutate(
       { token, email },
       {
@@ -74,7 +79,7 @@ const AcceptInvitation = () => {
         }
       }
     );
-  }, [token, email, verifyInvitation, toast, navigate]);
+  }, [token, email, toast, navigate]); // Quitamos verifyInvitation de las dependencias
 
   // Si el usuario ya está autenticado, ir directamente a aceptar invitación
   useEffect(() => {
