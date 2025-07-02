@@ -20,9 +20,14 @@ export const useTaskReports = () => {
 
   // Mutation para crear reporte
   const createReportMutation = useMutation({
-    mutationFn: (data: CreateTaskReportData) => taskReportsStorageService.createTaskReport(data),
-    onSuccess: () => {
+    mutationFn: (data: CreateTaskReportData) => {
+      console.log('Creating task report with data:', data);
+      return taskReportsStorageService.createTaskReport(data);
+    },
+    onSuccess: (data, variables) => {
+      console.log('Task report created successfully:', data);
       queryClient.invalidateQueries({ queryKey: ['task-reports'] });
+      queryClient.invalidateQueries({ queryKey: ['task-report', variables.task_id] });
       toast({
         title: "Reporte creado",
         description: "El reporte de tarea se ha creado exitosamente.",
@@ -40,10 +45,14 @@ export const useTaskReports = () => {
 
   // Mutation para actualizar reporte
   const updateReportMutation = useMutation({
-    mutationFn: ({ reportId, updates }: { reportId: string; updates: Partial<TaskReport> }) =>
-      taskReportsStorageService.updateTaskReport(reportId, updates),
-    onSuccess: () => {
+    mutationFn: ({ reportId, updates }: { reportId: string; updates: Partial<TaskReport> }) => {
+      console.log('Updating task report:', reportId, updates);
+      return taskReportsStorageService.updateTaskReport(reportId, updates);
+    },
+    onSuccess: (data, variables) => {
+      console.log('Task report updated successfully:', data);
       queryClient.invalidateQueries({ queryKey: ['task-reports'] });
+      queryClient.invalidateQueries({ queryKey: ['task-report', data.task_id] });
       toast({
         title: "Reporte actualizado",
         description: "El reporte se ha actualizado exitosamente.",
@@ -66,7 +75,9 @@ export const useTaskReports = () => {
       reportId: string;
       checklistItemId?: string;
     }) => taskReportsStorageService.uploadMedia(file, reportId, checklistItemId),
-    onSuccess: () => {
+    onSuccess: (data, variables) => {
+      // Invalidar queries relacionadas
+      queryClient.invalidateQueries({ queryKey: ['task-media', variables.reportId] });
       toast({
         title: "Archivo subido",
         description: "El archivo se ha subido exitosamente.",
@@ -89,6 +100,7 @@ export const useTaskReports = () => {
     createReport: createReportMutation.mutate,
     updateReport: updateReportMutation.mutate,
     uploadMedia: uploadMediaMutation.mutate,
+    uploadMediaAsync: uploadMediaMutation.mutateAsync,
     isCreatingReport: createReportMutation.isPending,
     isUpdatingReport: updateReportMutation.isPending,
     isUploadingMedia: uploadMediaMutation.isPending,

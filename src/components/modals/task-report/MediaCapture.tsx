@@ -19,7 +19,7 @@ export const MediaCapture: React.FC<MediaCaptureProps> = ({
   checklistItemId,
   existingMedia = [],
 }) => {
-  const { uploadMedia, isUploadingMedia } = useTaskReports();
+  const { uploadMediaAsync, isUploadingMedia } = useTaskReports();
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -52,21 +52,30 @@ export const MediaCapture: React.FC<MediaCaptureProps> = ({
     const url = URL.createObjectURL(file);
     setPreviewUrl(url);
 
-    // Subir archivo
-    uploadMedia({
-      file,
-      reportId,
-      checklistItemId,
-    });
-
-    // Simular URL del archivo subido (en la práctica vendría del response)
-    setTimeout(() => {
-      onMediaCaptured(url);
-      setPreviewUrl(null);
-      if (fileInputRef.current) {
-        fileInputRef.current.value = '';
+    // Subir archivo usando async/await
+    const uploadFile = async () => {
+      try {
+        const data = await uploadMediaAsync({
+          file,
+          reportId,
+          checklistItemId,
+        });
+        console.log('Media uploaded successfully:', data);
+        onMediaCaptured(data.file_url);
+        setPreviewUrl(null);
+        if (fileInputRef.current) {
+          fileInputRef.current.value = '';
+        }
+      } catch (error) {
+        console.error('Error uploading media:', error);
+        setPreviewUrl(null);
+        if (fileInputRef.current) {
+          fileInputRef.current.value = '';
+        }
       }
-    }, 1000);
+    };
+    
+    uploadFile();
   };
 
   const removeMedia = (mediaUrl: string) => {

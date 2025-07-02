@@ -1,11 +1,13 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Dialog, DialogContent, DialogHeader } from '@/components/ui/dialog';
 import { Task } from '@/types/calendar';
 import { TaskReport, TaskChecklistTemplate } from '@/types/taskReports';
 import { useTaskReports, useTaskReport, useChecklistTemplates } from '@/hooks/useTaskReports';
 import { useToast } from '@/hooks/use-toast';
 import { useDeviceType } from '@/hooks/use-mobile';
+import { useAuth } from '@/hooks/useAuth';
+import { useCleaners } from '@/hooks/useCleaners';
 import { TaskReportHeader } from './task-report/TaskReportHeader';
 import { TaskReportTabs } from './task-report/TaskReportTabs';
 import { TaskReportFooter } from './task-report/TaskReportFooter';
@@ -26,6 +28,8 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
   const { createReport, updateReport, isCreatingReport, isUpdatingReport } = useTaskReports();
   const { data: existingReport, isLoading: isLoadingReport } = useTaskReport(task?.id || '');
   const { data: templates, isLoading: isLoadingTemplates } = useChecklistTemplates();
+  const { user, userRole } = useAuth();
+  const { cleaners } = useCleaners();
 
   const [currentReport, setCurrentReport] = useState<TaskReport | null>(null);
   const [checklist, setChecklist] = useState<Record<string, any>>({});
@@ -33,6 +37,13 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
   const [issues, setIssues] = useState<any[]>([]);
   const [activeTab, setActiveTab] = useState('checklist');
   const [currentTemplate, setCurrentTemplate] = useState<TaskChecklistTemplate | undefined>();
+
+  // Get current cleaner ID
+  const currentCleanerId = useMemo(() => {
+    if (!user?.id || !cleaners) return null;
+    const currentCleaner = cleaners.find(cleaner => cleaner.user_id === user.id);
+    return currentCleaner?.id || null;
+  }, [user?.id, cleaners]);
 
   // Initialize report data when modal opens
   useEffect(() => {
@@ -85,6 +96,7 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
 
     const reportData = {
       task_id: task.id,
+      cleaner_id: currentCleanerId || task.cleanerId,
       checklist_template_id: currentTemplate?.id,
       checklist_completed: checklist,
       notes,
@@ -113,6 +125,7 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
 
     const reportData = {
       task_id: task.id,
+      cleaner_id: currentCleanerId || task.cleanerId,
       checklist_template_id: currentTemplate?.id,
       checklist_completed: checklist,
       notes,
