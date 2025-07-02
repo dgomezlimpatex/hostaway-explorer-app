@@ -1,14 +1,32 @@
 
+import React from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Cleaner } from '@/types/calendar';
 import { cleanerStorage, CreateCleanerData } from '@/services/cleanerStorage';
 import { toast } from '@/hooks/use-toast';
+import { useAuth } from '@/hooks/useAuth';
 
 export const useCleaners = () => {
-  const { data: cleaners = [], isLoading } = useQuery({
+  const { userRole, user } = useAuth();
+  
+  const { data: allCleaners = [], isLoading } = useQuery({
     queryKey: ['cleaners'],
     queryFn: () => cleanerStorage.getAll(),
   });
+
+  // Filter cleaners based on user role
+  const cleaners = React.useMemo(() => {
+    if (userRole === 'cleaner' && user?.id) {
+      // Cleaners only see themselves
+      console.log('Filtering cleaners for cleaner role, user:', user.id);
+      const currentCleaner = allCleaners.filter(cleaner => cleaner.user_id === user.id);
+      console.log('Current cleaner found:', currentCleaner);
+      return currentCleaner;
+    }
+    
+    // Admins, managers, supervisors see all cleaners
+    return allCleaners;
+  }, [allCleaners, userRole, user?.id]);
 
   return {
     cleaners,
