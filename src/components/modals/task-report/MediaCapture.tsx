@@ -26,7 +26,16 @@ export const MediaCapture: React.FC<MediaCaptureProps> = ({
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (!file || !reportId) return;
+    if (!file) return;
+
+    if (!reportId) {
+      toast({
+        title: "Error",
+        description: "Primero guarda el reporte antes de subir archivos.",
+        variant: "destructive",
+      });
+      return;
+    }
 
     // Validar tipo de archivo
     if (!file.type.startsWith('image/') && !file.type.startsWith('video/')) {
