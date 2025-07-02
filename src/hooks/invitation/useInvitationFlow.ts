@@ -13,6 +13,7 @@ export const useInvitationFlow = () => {
   const { toast } = useToast();
   const { signUp, signIn, user } = useAuth();
   const verificationExecuted = useRef(false);
+  const acceptanceRequested = useRef(false);
   
   const token = searchParams.get('token');
   const email = searchParams.get('email');
@@ -78,7 +79,16 @@ export const useInvitationFlow = () => {
     );
   }, [token, email, toast, navigate]);
 
-  // Si el usuario ya está autenticado, ir directamente a aceptar invitación
+  // Si el usuario ya está autenticado y se solicitó aceptar la invitación, proceder
+  useEffect(() => {
+    if (user && acceptanceRequested.current && step === 'accept') {
+      console.log('User is authenticated, proceeding to accept invitation');
+      handleAcceptInvitation();
+      acceptanceRequested.current = false; // Resetear para evitar llamadas múltiples
+    }
+  }, [user, step]);
+
+  // Si el usuario ya está autenticado desde el inicio, ir directamente a aceptar invitación
   useEffect(() => {
     if (user && (step === 'signup' || step === 'signin')) {
       console.log('User already authenticated, proceeding to accept invitation');
@@ -165,11 +175,10 @@ export const useInvitationFlow = () => {
           setStep('signup'); // Volver al paso de registro
         }
       } else {
-        console.log('Sign up successful, proceeding to accept invitation');
-        // Proceder directamente a aceptar la invitación sin esperar la autenticación
-        setTimeout(() => {
-          handleAcceptInvitation();
-        }, 1000); // Dar un poco de tiempo para que se complete el registro
+        console.log('Sign up successful, waiting for authentication');
+        // Marcar que se solicitó la aceptación de la invitación
+        acceptanceRequested.current = true;
+        // El useEffect se encargará de llamar handleAcceptInvitation cuando user esté disponible
       }
     } catch (error: any) {
       console.error('Unexpected sign up error:', error);
@@ -202,11 +211,10 @@ export const useInvitationFlow = () => {
         });
         setStep('signin'); // Volver al paso de inicio de sesión
       } else {
-        console.log('Sign in successful, proceeding to accept invitation');
-        // Proceder directamente a aceptar la invitación
-        setTimeout(() => {
-          handleAcceptInvitation();
-        }, 1000); // Dar un poco de tiempo para que se complete el login
+        console.log('Sign in successful, waiting for authentication');
+        // Marcar que se solicitó la aceptación de la invitación
+        acceptanceRequested.current = true;
+        // El useEffect se encargará de llamar handleAcceptInvitation cuando user esté disponible
       }
     } catch (error: any) {
       console.error('Unexpected sign in error:', error);
