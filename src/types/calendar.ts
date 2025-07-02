@@ -8,6 +8,7 @@ export interface Cleaner extends BaseEntity {
   avatar?: string;
   isActive: boolean;
   sortOrder?: number;
+  user_id?: string;
 }
 
 export interface TimeSlot {

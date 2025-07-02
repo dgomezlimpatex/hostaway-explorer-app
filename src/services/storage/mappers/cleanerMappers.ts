@@ -11,7 +11,8 @@ export const mapCleanerFromDB = (row: any): Cleaner => ({
   telefono: row.telefono,
   avatar: row.avatar,
   isActive: row.is_active,
-  sortOrder: row.sort_order
+  sortOrder: row.sort_order,
+  user_id: row.user_id
 });
 
 export const mapCleanerToDB = (cleaner: Partial<CreateCleanerData>): any => {
