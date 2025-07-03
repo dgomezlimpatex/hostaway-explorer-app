@@ -7,9 +7,12 @@ import {
 import { CalendarLayout } from "./CalendarLayout";
 import { DragPreview } from "./DragPreview";
 import { StatusLegend } from "./StatusLegend";
+import { CleanerMobileCalendar } from "./CleanerMobileCalendar";
 import { Task, Cleaner } from "@/types/calendar";
 import { CleanerAvailability } from "@/hooks/useCleanerAvailability";
 import { getTaskPosition, isTimeSlotOccupied } from "@/utils/taskPositioning";
+import { useDeviceType } from "@/hooks/use-mobile";
+import { useAuth } from "@/hooks/useAuth";
 
 interface CalendarContainerProps {
   tasks: Task[];
@@ -64,7 +67,28 @@ export const CalendarContainer = ({
   handleDeleteTask,
   handleUnassignTask
 }: CalendarContainerProps) => {
-  // Memoized task filtering
+  const { isMobile } = useDeviceType();
+  const { userRole } = useAuth();
+
+  // Render mobile cleaner view if on mobile and user is a cleaner
+  if (isMobile && userRole === 'cleaner') {
+    return (
+      <CleanerMobileCalendar
+        tasks={tasks}
+        cleaners={cleaners}
+        currentDate={currentDate}
+        selectedTask={selectedTask}
+        isTaskModalOpen={isTaskModalOpen}
+        setIsTaskModalOpen={setIsTaskModalOpen}
+        handleTaskClick={handleTaskClick}
+        handleUpdateTask={handleUpdateTask}
+        handleDeleteTask={handleDeleteTask}
+        handleUnassignTask={handleUnassignTask}
+      />
+    );
+  }
+
+  // Memoized task filtering for desktop view
   const { assignedTasks, unassignedTasks } = useMemo(() => {
     const assigned = tasks.filter(task => task.cleaner);
     const unassigned = tasks.filter(task => !task.cleaner);
