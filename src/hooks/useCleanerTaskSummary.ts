@@ -1,24 +1,13 @@
 import { useMemo } from 'react';
 import { Task } from '@/types/calendar';
-import { useAuth } from '@/hooks/useAuth';
-import { useCleaners } from '@/hooks/useCleaners';
 
 interface UseCleanerTaskSummaryParams {
   tasks: Task[];
   currentDate: Date;
+  currentCleanerId: string | null;
 }
 
-export const useCleanerTaskSummary = ({ tasks, currentDate }: UseCleanerTaskSummaryParams) => {
-  const { user, userRole } = useAuth();
-  const { cleaners } = useCleaners();
-
-  // Get current user's cleaner ID
-  const currentCleanerId = useMemo(() => {
-    if (userRole !== 'cleaner' || !user?.id || !cleaners) return null;
-    const currentCleaner = cleaners.find(cleaner => cleaner.user_id === user.id);
-    return currentCleaner?.id || null;
-  }, [userRole, user?.id, cleaners]);
-
+export const useCleanerTaskSummary = ({ tasks, currentDate, currentCleanerId }: UseCleanerTaskSummaryParams) => {
   // Filter tasks for current cleaner
   const cleanerTasks = useMemo(() => {
     if (!currentCleanerId) return [];

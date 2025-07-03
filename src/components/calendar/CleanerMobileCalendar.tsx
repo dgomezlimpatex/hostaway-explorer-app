@@ -67,14 +67,24 @@ const CleanerMobileCalendarContent: React.FC<CleanerMobileCalendarProps> = ({
 }) => {
   console.log('CleanerMobileCalendarContent rendering with tasks:', tasks?.length || 0);
   
+  const { user, userRole } = useAuth();
   const { currentDate, navigateDate } = useCleanerMobileNavigation();
+  
+  // Get current user's cleaner ID
+  const currentCleanerId = React.useMemo(() => {
+    if (userRole !== 'cleaner' || !user?.id || !cleaners) return null;
+    const currentCleaner = cleaners.find(cleaner => cleaner.user_id === user.id);
+    return currentCleaner?.id || null;
+  }, [userRole, user?.id, cleaners]);
   
   // Use the task summary hook for better organization
   const { todayTasks, tomorrowTasks } = useCleanerTaskSummary({
     tasks,
-    currentDate
+    currentDate,
+    currentCleanerId
   });
 
+  console.log('Current cleaner ID:', currentCleanerId);
   console.log('Today tasks:', todayTasks?.length || 0, 'Tomorrow tasks:', tomorrowTasks?.length || 0);
 
   return (
