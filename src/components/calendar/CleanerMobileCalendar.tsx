@@ -34,6 +34,39 @@ export const CleanerMobileCalendar: React.FC<CleanerMobileCalendarProps> = ({
 }) => {
   const { isMobile } = useDeviceType();
   const { userRole } = useAuth();
+
+  // Only render for mobile cleaners - early return before hooks
+  if (!isMobile || userRole !== 'cleaner') {
+    return null;
+  }
+
+  return <CleanerMobileCalendarContent 
+    tasks={tasks}
+    cleaners={cleaners}
+    selectedTask={selectedTask}
+    isTaskModalOpen={isTaskModalOpen}
+    setIsTaskModalOpen={setIsTaskModalOpen}
+    handleTaskClick={handleTaskClick}
+    handleUpdateTask={handleUpdateTask}
+    handleDeleteTask={handleDeleteTask}
+    handleUnassignTask={handleUnassignTask}
+  />;
+};
+
+// Separate component to avoid hook rule violations
+const CleanerMobileCalendarContent: React.FC<CleanerMobileCalendarProps> = ({
+  tasks,
+  cleaners,
+  selectedTask,
+  isTaskModalOpen,
+  setIsTaskModalOpen,
+  handleTaskClick,
+  handleUpdateTask,
+  handleDeleteTask,
+  handleUnassignTask
+}) => {
+  console.log('CleanerMobileCalendarContent rendering with tasks:', tasks?.length || 0);
+  
   const { currentDate, navigateDate } = useCleanerMobileNavigation();
   
   // Use the task summary hook for better organization
@@ -42,10 +75,7 @@ export const CleanerMobileCalendar: React.FC<CleanerMobileCalendarProps> = ({
     currentDate
   });
 
-  // Only render for mobile cleaners
-  if (!isMobile || userRole !== 'cleaner') {
-    return null;
-  }
+  console.log('Today tasks:', todayTasks?.length || 0, 'Tomorrow tasks:', tomorrowTasks?.length || 0);
 
   return (
     <div className="flex flex-col h-full bg-background text-foreground">
