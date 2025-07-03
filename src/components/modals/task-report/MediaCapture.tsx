@@ -11,6 +11,7 @@ interface MediaCaptureProps {
   reportId?: string;
   checklistItemId?: string;
   existingMedia?: string[];
+  isReadOnly?: boolean;
 }
 
 export const MediaCapture: React.FC<MediaCaptureProps> = ({
@@ -18,6 +19,7 @@ export const MediaCapture: React.FC<MediaCaptureProps> = ({
   reportId,
   checklistItemId,
   existingMedia = [],
+  isReadOnly = false,
 }) => {
   const { uploadMediaAsync, isUploadingMedia } = useTaskReports();
   const { toast } = useToast();
@@ -96,38 +98,40 @@ export const MediaCapture: React.FC<MediaCaptureProps> = ({
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center space-x-2">
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          onClick={() => fileInputRef.current?.click()}
-          disabled={isUploadingMedia}
-        >
-          <Camera className="h-4 w-4 mr-2" />
-          {isUploadingMedia ? 'Subiendo...' : 'Tomar Foto'}
-        </Button>
+      {!isReadOnly && (
+        <div className="flex items-center space-x-2">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={isUploadingMedia}
+          >
+            <Camera className="h-4 w-4 mr-2" />
+            {isUploadingMedia ? 'Subiendo...' : 'Tomar Foto'}
+          </Button>
 
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          onClick={() => fileInputRef.current?.click()}
-          disabled={isUploadingMedia}
-        >
-          <Upload className="h-4 w-4 mr-2" />
-          Subir Archivo
-        </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={isUploadingMedia}
+          >
+            <Upload className="h-4 w-4 mr-2" />
+            Subir Archivo
+          </Button>
 
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="image/*,video/*"
-          capture="environment"
-          onChange={handleFileSelect}
-          className="hidden"
-        />
-      </div>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*,video/*"
+            capture="environment"
+            onChange={handleFileSelect}
+            className="hidden"
+          />
+        </div>
+      )}
 
       {/* Preview de archivo siendo subido */}
       {previewUrl && (
@@ -160,17 +164,19 @@ export const MediaCapture: React.FC<MediaCaptureProps> = ({
                   )}
                 </div>
                 
-                <div className="absolute -top-2 -right-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <Button
-                    type="button"
-                    variant="destructive"
-                    size="sm"
-                    className="h-6 w-6 p-0"
-                    onClick={() => removeMedia(mediaUrl)}
-                  >
-                    <X className="h-3 w-3" />
-                  </Button>
-                </div>
+                {!isReadOnly && (
+                  <div className="absolute -top-2 -right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      size="sm"
+                      className="h-6 w-6 p-0"
+                      onClick={() => removeMedia(mediaUrl)}
+                    >
+                      <X className="h-3 w-3" />
+                    </Button>
+                  </div>
+                )}
 
                 <div className="absolute bottom-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity">
                   <Button

@@ -282,6 +282,9 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
 
   const canComplete = isTaskFromToday && requiredValidation.isValid;
   const reportStatus = currentReport?.overall_status || 'pending';
+  
+  // Detectar si la tarea está completada
+  const isTaskCompleted = task.status === 'completed' || reportStatus === 'completed';
 
   // Responsive modal classes
   const getModalClasses = () => {
@@ -323,6 +326,7 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
             completionPercentage={completionPercentage}
             reportMedia={reportMedia}
             onReportMediaChange={setReportMedia}
+            isTaskCompleted={isTaskCompleted}
           />
         </div>
 
@@ -337,6 +341,7 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
             completionPercentage={completionPercentage}
             requiredValidation={requiredValidation}
             isTaskFromToday={isTaskFromToday}
+            isTaskCompleted={isTaskCompleted}
           />
         </div>
       </DialogContent>

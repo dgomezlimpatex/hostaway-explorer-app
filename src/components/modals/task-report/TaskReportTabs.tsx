@@ -28,6 +28,7 @@ interface TaskReportTabsProps {
   completionPercentage: number;
   reportMedia: string[];
   onReportMediaChange: (media: string[]) => void;
+  isTaskCompleted?: boolean;
 }
 
 export const TaskReportTabs: React.FC<TaskReportTabsProps> = ({
@@ -45,7 +46,8 @@ export const TaskReportTabs: React.FC<TaskReportTabsProps> = ({
   task,
   completionPercentage,
   reportMedia,
-  onReportMediaChange
+  onReportMediaChange,
+  isTaskCompleted = false
 }) => {
   const { isMobile, isTablet } = useDeviceType();
 
@@ -128,6 +130,7 @@ export const TaskReportTabs: React.FC<TaskReportTabsProps> = ({
               checklist={checklist}
               onChecklistChange={onChecklistChange}
               reportId={reportId}
+              isReadOnly={isTaskCompleted}
             />
           )}
         </TabsContent>

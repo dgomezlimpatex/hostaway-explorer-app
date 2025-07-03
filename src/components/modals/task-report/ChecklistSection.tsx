@@ -14,6 +14,7 @@ interface ChecklistSectionProps {
   checklist: Record<string, any>;
   onChecklistChange: (checklist: Record<string, any>) => void;
   reportId?: string;
+  isReadOnly?: boolean;
 }
 
 export const ChecklistSection: React.FC<ChecklistSectionProps> = ({
@@ -21,6 +22,7 @@ export const ChecklistSection: React.FC<ChecklistSectionProps> = ({
   checklist,
   onChecklistChange,
   reportId,
+  isReadOnly = false,
 }) => {
   const [selectedItem, setSelectedItem] = useState<string | null>(null);
 
@@ -34,6 +36,8 @@ export const ChecklistSection: React.FC<ChecklistSectionProps> = ({
   }
 
   const handleItemToggle = (categoryId: string, itemId: string, completed: boolean) => {
+    if (isReadOnly) return; // No permitir edición en modo solo lectura
+    
     const key = `${categoryId}.${itemId}`;
     const newChecklist = { ...checklist };
     
@@ -51,6 +55,8 @@ export const ChecklistSection: React.FC<ChecklistSectionProps> = ({
   };
 
   const handleNotesChange = (categoryId: string, itemId: string, notes: string) => {
+    if (isReadOnly) return; // No permitir edición en modo solo lectura
+    
     const key = `${categoryId}.${itemId}`;
     const newChecklist = { ...checklist };
     
@@ -63,6 +69,8 @@ export const ChecklistSection: React.FC<ChecklistSectionProps> = ({
   };
 
   const handleMediaAdded = (categoryId: string, itemId: string, mediaUrl: string) => {
+    if (isReadOnly) return; // No permitir edición en modo solo lectura
+    
     console.log('ChecklistSection - adding media:', { categoryId, itemId, mediaUrl });
     const key = `${categoryId}.${itemId}`;
     const newChecklist = { ...checklist };
@@ -79,7 +87,10 @@ export const ChecklistSection: React.FC<ChecklistSectionProps> = ({
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold">Checklist: {template.template_name}</h3>
+        <h3 className="text-lg font-semibold">
+          Checklist: {template.template_name}
+          {isReadOnly && <Badge variant="secondary" className="ml-2">Solo Lectura</Badge>}
+        </h3>
         <Badge variant="outline">
           {Object.keys(checklist).length} / {
             template.checklist_items.reduce((acc, cat) => acc + cat.items.length, 0)
@@ -107,6 +118,7 @@ export const ChecklistSection: React.FC<ChecklistSectionProps> = ({
                         handleItemToggle(category.id, item.id, checked as boolean)
                       }
                       className="mt-1"
+                      disabled={isReadOnly}
                     />
                     <div className="flex-1">
                       <div className="flex items-center justify-between">
@@ -138,10 +150,11 @@ export const ChecklistSection: React.FC<ChecklistSectionProps> = ({
                   {/* Notas */}
                   <div className="ml-6">
                     <Textarea
-                      placeholder="Notas adicionales (opcional)"
+                      placeholder={isReadOnly ? "Sin notas adicionales" : "Notas adicionales (opcional)"}
                       value={itemData?.notes || ''}
                       onChange={(e) => handleNotesChange(category.id, item.id, e.target.value)}
                       className="min-h-[60px]"
+                      disabled={isReadOnly}
                     />
                   </div>
 
@@ -153,6 +166,7 @@ export const ChecklistSection: React.FC<ChecklistSectionProps> = ({
                         reportId={reportId}
                         checklistItemId={key}
                         existingMedia={itemData?.media_urls || []}
+                        isReadOnly={isReadOnly}
                       />
                     </div>
                   )}

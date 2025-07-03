@@ -20,6 +20,7 @@ interface TaskReportFooterProps {
   completionPercentage: number;
   requiredValidation: RequiredValidation;
   isTaskFromToday: boolean;
+  isTaskCompleted?: boolean;
 }
 
 export const TaskReportFooter: React.FC<TaskReportFooterProps> = ({
@@ -31,7 +32,8 @@ export const TaskReportFooter: React.FC<TaskReportFooterProps> = ({
   isUpdatingReport,
   completionPercentage,
   requiredValidation,
-  isTaskFromToday
+  isTaskFromToday,
+  isTaskCompleted = false
 }) => {
   const { toast } = useToast();
 
@@ -68,34 +70,46 @@ export const TaskReportFooter: React.FC<TaskReportFooterProps> = ({
   return (
     <div className="border-t pt-4 flex items-center justify-between">
       <Button variant="outline" onClick={onCancel}>
-        Cancelar
+        {isTaskCompleted ? "Cerrar" : "Cancelar"}
       </Button>
       
       <div className="flex items-center space-x-2">
-        <Button
-          variant="outline"
-          onClick={onSave}
-          disabled={isCreatingReport || isUpdatingReport}
-        >
-          <Save className="h-4 w-4 mr-2" />
-          {isCreatingReport || isUpdatingReport ? 'Guardando...' : 'Guardar'}
-        </Button>
+        {!isTaskCompleted && (
+          <Button
+            variant="outline"
+            onClick={onSave}
+            disabled={isCreatingReport || isUpdatingReport}
+          >
+            <Save className="h-4 w-4 mr-2" />
+            {isCreatingReport || isUpdatingReport ? 'Guardando...' : 'Guardar'}
+          </Button>
+        )}
         
         <Button
-          onClick={handleComplete}
-          disabled={!canComplete || isCreatingReport || isUpdatingReport}
-          className={canComplete ? 'bg-green-600 hover:bg-green-700' : ''}
+          onClick={isTaskCompleted ? onSave : handleComplete}
+          disabled={!isTaskCompleted && (!canComplete || isCreatingReport || isUpdatingReport)}
+          className={!isTaskCompleted && canComplete ? 'bg-green-600 hover:bg-green-700' : ''}
           title={
+            isTaskCompleted ? "Guardar cambios en incidencias y notas" :
             !isTaskFromToday ? "Solo puedes completar tareas de hoy" :
             !requiredValidation.isValid ? "Faltan tareas o fotos obligatorias" :
             "Completar reporte"
           }
         >
-          <CheckCircle className="h-4 w-4 mr-2" />
-          Completar Reporte
+          {isTaskCompleted ? (
+            <>
+              <Save className="h-4 w-4 mr-2" />
+              Guardar Cambios
+            </>
+          ) : (
+            <>
+              <CheckCircle className="h-4 w-4 mr-2" />
+              Completar Reporte
+            </>
+          )}
         </Button>
         
-        {!canComplete && (
+        {!canComplete && !isTaskCompleted && (
           <div className="text-xs text-muted-foreground mt-1">
             {!isTaskFromToday && "⚠️ Solo tareas de hoy"}
             {isTaskFromToday && !requiredValidation.isValid && (
