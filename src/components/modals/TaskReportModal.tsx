@@ -38,6 +38,7 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
   const [reportMedia, setReportMedia] = useState<string[]>([]);
   const [activeTab, setActiveTab] = useState('checklist');
   const [currentTemplate, setCurrentTemplate] = useState<TaskChecklistTemplate | undefined>();
+  const [hasStartedTask, setHasStartedTask] = useState(false);
   
   // Ref to track if we've already tried to create a report for this task
   const reportCreationAttempted = useRef<string | null>(null);
@@ -63,27 +64,17 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
         setChecklist(existingReport.checklist_completed || {});
         setNotes(existingReport.notes || '');
         setIssues(existingReport.issues_found || []);
+        setHasStartedTask(true); // Task already started if report exists
         reportCreationAttempted.current = task.id; // Mark as handled
-      } else if (reportCreationAttempted.current !== task.id) {
-        console.log('TaskReportModal - creating new report immediately');
-        reportCreationAttempted.current = task.id; // Mark as attempting
-        
-        // Create report immediately to have reportId for media upload
-        const reportData = {
-          task_id: task.id,
-          cleaner_id: currentCleanerId || task.cleanerId,
-          checklist_completed: {},
-          notes: '',
-          issues_found: [],
-          overall_status: 'pending' as const,
-          start_time: new Date().toISOString(),
-        };
-        
-        createReport(reportData);
+      } else {
+        // Reset state for new task
+        setCurrentReport(null);
         setChecklist({});
         setNotes('');
         setIssues([]);
         setReportMedia([]);
+        setHasStartedTask(false);
+        reportCreationAttempted.current = null;
       }
 
       // Find appropriate template based on property type or default
@@ -97,12 +88,13 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
         setCurrentTemplate(template);
       }
     }
-  }, [open, task, existingReport, templates, currentCleanerId]);
+  }, [open, task, existingReport, templates]);
 
   // Reset creation tracking when modal closes
   useEffect(() => {
     if (!open) {
       reportCreationAttempted.current = null;
+      setHasStartedTask(false);
     }
   }, [open]);
 
@@ -175,6 +167,41 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
     
     return totalItems > 0 ? Math.round((completedItems / totalItems) * 100) : 0;
   }, [checklist, currentTemplate]);
+
+  const handleStartTask = async () => {
+    if (!task || !isTaskFromToday) {
+      toast({
+        title: "Error",
+        description: "Solo puedes iniciar tareas del día de hoy.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (reportCreationAttempted.current !== task.id) {
+      console.log('TaskReportModal - starting task and creating report');
+      reportCreationAttempted.current = task.id;
+      
+      // Create report with start time
+      const reportData = {
+        task_id: task.id,
+        cleaner_id: currentCleanerId || task.cleanerId,
+        checklist_completed: {},
+        notes: '',
+        issues_found: [],
+        overall_status: 'in_progress' as const,
+        start_time: new Date().toISOString(),
+      };
+      
+      createReport(reportData);
+      setHasStartedTask(true);
+      
+      toast({
+        title: "Tarea iniciada",
+        description: "El reporte se ha iniciado correctamente.",
+      });
+    }
+  };
 
   const handleSave = async () => {
     if (!task) return;
@@ -327,6 +354,7 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
             reportMedia={reportMedia}
             onReportMediaChange={setReportMedia}
             isTaskCompleted={isTaskCompleted}
+            hasStartedTask={hasStartedTask}
           />
         </div>
 
@@ -335,6 +363,7 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
             onCancel={() => onOpenChange(false)}
             onSave={handleSave}
             onComplete={handleComplete}
+            onStartTask={handleStartTask}
             canComplete={canComplete}
             isCreatingReport={isCreatingReport}
             isUpdatingReport={isUpdatingReport}
@@ -342,6 +371,7 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
             requiredValidation={requiredValidation}
             isTaskFromToday={isTaskFromToday}
             isTaskCompleted={isTaskCompleted}
+            hasStartedTask={hasStartedTask}
           />
         </div>
       </DialogContent>

@@ -29,6 +29,7 @@ interface TaskReportTabsProps {
   reportMedia: string[];
   onReportMediaChange: (media: string[]) => void;
   isTaskCompleted?: boolean;
+  hasStartedTask: boolean;
 }
 
 export const TaskReportTabs: React.FC<TaskReportTabsProps> = ({
@@ -47,7 +48,8 @@ export const TaskReportTabs: React.FC<TaskReportTabsProps> = ({
   completionPercentage,
   reportMedia,
   onReportMediaChange,
-  isTaskCompleted = false
+  isTaskCompleted = false,
+  hasStartedTask
 }) => {
   const { isMobile, isTablet } = useDeviceType();
 
@@ -120,7 +122,13 @@ export const TaskReportTabs: React.FC<TaskReportTabsProps> = ({
 
       <div className="flex-1 overflow-auto">
         <TabsContent value="checklist" className={`${isMobile ? 'space-y-2 p-2' : 'space-y-4 p-4'} overflow-auto max-h-full`}>
-          {isLoadingTemplates ? (
+          {!hasStartedTask && !isTaskCompleted ? (
+            <div className="flex flex-col items-center justify-center py-12 text-center">
+              <Clock className="h-16 w-16 text-gray-400 mb-4" />
+              <h3 className="text-lg font-semibold text-gray-600 mb-2">Tarea no iniciada</h3>
+              <p className="text-gray-500">Haz clic en "Iniciar Tarea" para comenzar el reporte</p>
+            </div>
+          ) : isLoadingTemplates ? (
             <div className="flex items-center justify-center py-6 md:py-8">
               <Clock className="h-6 w-6 md:h-8 md:w-8 animate-spin text-gray-400" />
             </div>
@@ -136,47 +144,79 @@ export const TaskReportTabs: React.FC<TaskReportTabsProps> = ({
         </TabsContent>
 
         <TabsContent value="issues" className={`${isMobile ? 'space-y-2 p-2' : 'space-y-4 p-4'} overflow-auto max-h-full`}>
-          <IssuesSection
-            issues={issues}
-            onIssuesChange={onIssuesChange}
-            reportId={reportId}
-          />
+          {!hasStartedTask && !isTaskCompleted ? (
+            <div className="flex flex-col items-center justify-center py-12 text-center">
+              <AlertTriangle className="h-16 w-16 text-gray-400 mb-4" />
+              <h3 className="text-lg font-semibold text-gray-600 mb-2">Tarea no iniciada</h3>
+              <p className="text-gray-500">Inicia la tarea para registrar incidencias</p>
+            </div>
+          ) : (
+            <IssuesSection
+              issues={issues}
+              onIssuesChange={onIssuesChange}
+              reportId={reportId}
+            />
+          )}
         </TabsContent>
 
         {/* Show notes only on desktop */}
         {!isMobile && (
           <TabsContent value="notes" className="space-y-4 p-4 overflow-auto max-h-full">
-            <NotesSection
-              notes={notes}
-              onNotesChange={onNotesChange}
-            />
+            {!hasStartedTask && !isTaskCompleted ? (
+              <div className="flex flex-col items-center justify-center py-12 text-center">
+                <FileText className="h-16 w-16 text-gray-400 mb-4" />
+                <h3 className="text-lg font-semibold text-gray-600 mb-2">Tarea no iniciada</h3>
+                <p className="text-gray-500">Inicia la tarea para agregar notas</p>
+              </div>
+            ) : (
+              <NotesSection
+                notes={notes}
+                onNotesChange={onNotesChange}
+              />
+            )}
           </TabsContent>
         )}
 
         {/* Show media tab on both mobile and desktop */}
         <TabsContent value="media" className={`${isMobile ? 'space-y-2 p-2' : 'space-y-4 p-4'} overflow-auto max-h-full`}>
-          <div className="space-y-6">
-            <h3 className={`${isMobile ? 'text-base' : 'text-lg'} font-semibold`}>Fotos y Videos</h3>
-            <MediaCapture
-              onMediaCaptured={(mediaUrl) => {
-                console.log('Media captured (general):', mediaUrl);
-                onReportMediaChange([...reportMedia, mediaUrl]);
-              }}
-              reportId={reportId}
-              existingMedia={reportMedia}
-            />
-          </div>
+          {!hasStartedTask && !isTaskCompleted ? (
+            <div className="flex flex-col items-center justify-center py-12 text-center">
+              <Camera className="h-16 w-16 text-gray-400 mb-4" />
+              <h3 className="text-lg font-semibold text-gray-600 mb-2">Tarea no iniciada</h3>
+              <p className="text-gray-500">Inicia la tarea para subir fotos y videos</p>
+            </div>
+          ) : (
+            <div className="space-y-6">
+              <h3 className={`${isMobile ? 'text-base' : 'text-lg'} font-semibold`}>Fotos y Videos</h3>
+              <MediaCapture
+                onMediaCaptured={(mediaUrl) => {
+                  console.log('Media captured (general):', mediaUrl);
+                  onReportMediaChange([...reportMedia, mediaUrl]);
+                }}
+                reportId={reportId}
+                existingMedia={reportMedia}
+              />
+            </div>
+          )}
         </TabsContent>
 
         <TabsContent value="summary" className={`${isMobile ? 'space-y-2 p-2' : 'space-y-4 p-4'} overflow-auto max-h-full`}>
-          <ReportSummary
-            task={task}
-            template={currentTemplate}
-            checklist={checklist}
-            issues={issues}
-            notes={notes}
-            completionPercentage={completionPercentage}
-          />
+          {!hasStartedTask && !isTaskCompleted ? (
+            <div className="flex flex-col items-center justify-center py-12 text-center">
+              <CheckCircle className="h-16 w-16 text-gray-400 mb-4" />
+              <h3 className="text-lg font-semibold text-gray-600 mb-2">Tarea no iniciada</h3>
+              <p className="text-gray-500">Inicia la tarea para ver el resumen del progreso</p>
+            </div>
+          ) : (
+            <ReportSummary
+              task={task}
+              template={currentTemplate}
+              checklist={checklist}
+              issues={issues}
+              notes={notes}
+              completionPercentage={completionPercentage}
+            />
+          )}
         </TabsContent>
       </div>
     </Tabs>
