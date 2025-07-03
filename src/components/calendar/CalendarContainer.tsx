@@ -75,6 +75,18 @@ export const CalendarContainer = ({
   // Render mobile cleaner view if on mobile and user is a cleaner
   if (isMobile && userRole === 'cleaner') {
     console.log('Rendering CleanerMobileCalendar for mobile cleaner');
+    
+    // Calculate today's and tomorrow's tasks here in the parent
+    const currentDateStr = currentDate.toISOString().split('T')[0];
+    const tomorrow = new Date(currentDate);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const tomorrowDateStr = tomorrow.toISOString().split('T')[0];
+    
+    const todayTasks = tasks.filter(task => task.date === currentDateStr);
+    const tomorrowTasks = tasks.filter(task => task.date === tomorrowDateStr);
+    
+    console.log('Parent - Today tasks:', todayTasks.length, 'Tomorrow tasks:', tomorrowTasks.length);
+    
     return (
       <CleanerMobileCalendar
         tasks={tasks}
@@ -88,6 +100,8 @@ export const CalendarContainer = ({
         handleUpdateTask={handleUpdateTask}
         handleDeleteTask={handleDeleteTask}
         handleUnassignTask={handleUnassignTask}
+        todayTasks={todayTasks}
+        tomorrowTasks={tomorrowTasks}
       />
     );
   }

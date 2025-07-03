@@ -1,12 +1,9 @@
 import React from 'react';
-import { useDeviceType } from '@/hooks/use-mobile';
-import { useAuth } from '@/hooks/useAuth';
 import { Task, Cleaner } from '@/types/calendar';
 import { CalendarModalsWithSuspense } from './LazyCalendarComponents';
 import { CleanerDateHeader } from './cleaner/CleanerDateHeader';
 import { CleanerTaskSummary } from './cleaner/CleanerTaskSummary';
 import { CleanerTaskCard } from './cleaner/CleanerTaskCard';
-import { useCleanerTaskSummary } from '@/hooks/useCleanerTaskSummary';
 
 interface CleanerMobileCalendarProps {
   tasks: Task[];
@@ -20,36 +17,31 @@ interface CleanerMobileCalendarProps {
   handleUpdateTask: (taskId: string, updates: Partial<Task>) => Promise<void>;
   handleDeleteTask: (taskId: string) => Promise<void>;
   handleUnassignTask: (taskId: string) => Promise<void>;
+  todayTasks: Task[];
+  tomorrowTasks: Task[];
 }
 
-export const CleanerMobileCalendar: React.FC<CleanerMobileCalendarProps> = (props) => {
-  console.log('CleanerMobileCalendar rendering with props:', props);
-  
-  const { user, userRole } = useAuth();
-  
-  // Get current user's cleaner ID
-  const currentCleanerId = React.useMemo(() => {
-    if (userRole !== 'cleaner' || !user?.id || !props.cleaners) return null;
-    const currentCleaner = props.cleaners.find(cleaner => cleaner.user_id === user.id);
-    return currentCleaner?.id || null;
-  }, [userRole, user?.id, props.cleaners]);
-  
-  // Use the task summary hook for better organization
-  const { todayTasks, tomorrowTasks } = useCleanerTaskSummary({
-    tasks: props.tasks,
-    currentDate: props.currentDate,
-    currentCleanerId
-  });
-
-  console.log('Current cleaner ID:', currentCleanerId);
-  console.log('Today tasks:', todayTasks?.length || 0, 'Tomorrow tasks:', tomorrowTasks?.length || 0);
+export const CleanerMobileCalendar: React.FC<CleanerMobileCalendarProps> = ({
+  currentDate,
+  onNavigateDate,
+  selectedTask,
+  isTaskModalOpen,
+  setIsTaskModalOpen,
+  handleTaskClick,
+  handleUpdateTask,
+  handleDeleteTask,
+  handleUnassignTask,
+  todayTasks,
+  tomorrowTasks
+}) => {
+  console.log('CleanerMobileCalendar rendering - Today tasks:', todayTasks?.length || 0);
 
   return (
     <div className="flex flex-col h-full bg-background text-foreground">
       {/* Date Header with Navigation */}
       <CleanerDateHeader 
-        currentDate={props.currentDate}
-        onNavigateDate={props.onNavigateDate}
+        currentDate={currentDate}
+        onNavigateDate={onNavigateDate}
       />
 
       {/* Task Summary */}
@@ -71,7 +63,7 @@ export const CleanerMobileCalendar: React.FC<CleanerMobileCalendarProps> = (prop
             <CleanerTaskCard
               key={task.id}
               task={task}
-              onClick={props.handleTaskClick}
+              onClick={handleTaskClick}
             />
           ))
         )}
@@ -81,14 +73,14 @@ export const CleanerMobileCalendar: React.FC<CleanerMobileCalendarProps> = (prop
       <CalendarModalsWithSuspense
         isCreateModalOpen={false}
         setIsCreateModalOpen={() => {}}
-        selectedTask={props.selectedTask}
-        isTaskModalOpen={props.isTaskModalOpen}
-        setIsTaskModalOpen={props.setIsTaskModalOpen}
-        currentDate={props.currentDate}
+        selectedTask={selectedTask}
+        isTaskModalOpen={isTaskModalOpen}
+        setIsTaskModalOpen={setIsTaskModalOpen}
+        currentDate={currentDate}
         onCreateTask={async () => {}}
-        onUpdateTask={props.handleUpdateTask}
-        onDeleteTask={props.handleDeleteTask}
-        onUnassignTask={props.handleUnassignTask}
+        onUpdateTask={handleUpdateTask}
+        onDeleteTask={handleDeleteTask}
+        onUnassignTask={handleUnassignTask}
       />
     </div>
   );
