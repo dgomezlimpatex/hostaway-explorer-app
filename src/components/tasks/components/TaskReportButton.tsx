@@ -41,13 +41,16 @@ export const TaskReportButton: React.FC<TaskReportButtonProps> = ({
   const hasReport = !!existingReport;
   const reportStatus = existingReport?.overall_status;
 
+  // Check if task is from today
+  const isTaskFromToday = task.date === new Date().toISOString().split('T')[0];
+
   const getButtonConfig = () => {
     if (!hasReport) {
       return {
-        text: userRole === 'cleaner' ? "Crear Reporte" : "Sin Reporte",
-        variant: userRole === 'cleaner' ? "default" : "ghost",
+        text: userRole === 'cleaner' ? (isTaskFromToday ? "Crear Reporte" : "Tarea Futura") : "Sin Reporte",
+        variant: userRole === 'cleaner' ? (isTaskFromToday ? "default" : "ghost") : "ghost",
         icon: Camera,
-        disabled: userRole !== 'cleaner'
+        disabled: userRole !== 'cleaner' || !isTaskFromToday
       };
     }
 

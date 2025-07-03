@@ -125,6 +125,42 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
     }
   }, [taskMedia, currentReport]);
 
+  // Validate if task is from today
+  const isTaskFromToday = useMemo(() => {
+    if (!task) return false;
+    const today = new Date().toISOString().split('T')[0];
+    return task.date === today;
+  }, [task]);
+
+  // Validate required items completion
+  const requiredValidation = useMemo(() => {
+    if (!currentTemplate) return { isValid: true, missingItems: [], missingPhotos: [] };
+    
+    const missingItems: string[] = [];
+    const missingPhotos: string[] = [];
+    
+    currentTemplate.checklist_items.forEach(category => {
+      category.items.forEach(item => {
+        const key = `${category.id}.${item.id}`;
+        const itemData = checklist[key];
+        
+        if (item.required && !itemData?.completed) {
+          missingItems.push(item.task);
+        }
+        
+        if (item.photo_required && (!itemData?.media_urls || itemData.media_urls.length === 0)) {
+          missingPhotos.push(item.task);
+        }
+      });
+    });
+    
+    return {
+      isValid: missingItems.length === 0 && missingPhotos.length === 0,
+      missingItems,
+      missingPhotos
+    };
+  }, [checklist, currentTemplate]);
+
   // Calculate completion percentage
   const completionPercentage = React.useMemo(() => {
     if (!currentTemplate) return 0;
@@ -171,6 +207,34 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
   const handleComplete = async () => {
     if (!task) return;
 
+    // Validar que la tarea sea de hoy
+    if (!isTaskFromToday) {
+      toast({
+        title: "Error",
+        description: "Solo puedes completar tareas del día de hoy.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Validar que todas las tareas obligatorias estén completadas
+    if (!requiredValidation.isValid) {
+      const messages = [];
+      if (requiredValidation.missingItems.length > 0) {
+        messages.push(`Tareas pendientes: ${requiredValidation.missingItems.join(', ')}`);
+      }
+      if (requiredValidation.missingPhotos.length > 0) {
+        messages.push(`Fotos requeridas: ${requiredValidation.missingPhotos.join(', ')}`);
+      }
+      
+      toast({
+        title: "Reporte incompleto",
+        description: messages.join('. '),
+        variant: "destructive",
+      });
+      return;
+    }
+
     const reportData = {
       task_id: task.id,
       cleaner_id: currentCleanerId || task.cleanerId,
@@ -215,7 +279,7 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
 
   if (!task) return null;
 
-  const canComplete = completionPercentage >= 80;
+  const canComplete = isTaskFromToday && requiredValidation.isValid;
   const reportStatus = currentReport?.overall_status || 'pending';
 
   // Responsive modal classes
@@ -270,6 +334,8 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
             isCreatingReport={isCreatingReport}
             isUpdatingReport={isUpdatingReport}
             completionPercentage={completionPercentage}
+            requiredValidation={requiredValidation}
+            isTaskFromToday={isTaskFromToday}
           />
         </div>
       </DialogContent>

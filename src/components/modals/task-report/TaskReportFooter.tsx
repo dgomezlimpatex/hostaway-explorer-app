@@ -4,6 +4,12 @@ import { Button } from '@/components/ui/button';
 import { Save, CheckCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
+interface RequiredValidation {
+  isValid: boolean;
+  missingItems: string[];
+  missingPhotos: string[];
+}
+
 interface TaskReportFooterProps {
   onCancel: () => void;
   onSave: () => void;
@@ -12,6 +18,8 @@ interface TaskReportFooterProps {
   isCreatingReport: boolean;
   isUpdatingReport: boolean;
   completionPercentage: number;
+  requiredValidation: RequiredValidation;
+  isTaskFromToday: boolean;
 }
 
 export const TaskReportFooter: React.FC<TaskReportFooterProps> = ({
@@ -21,19 +29,39 @@ export const TaskReportFooter: React.FC<TaskReportFooterProps> = ({
   canComplete,
   isCreatingReport,
   isUpdatingReport,
-  completionPercentage
+  completionPercentage,
+  requiredValidation,
+  isTaskFromToday
 }) => {
   const { toast } = useToast();
 
   const handleComplete = () => {
-    if (completionPercentage < 80) {
+    if (!isTaskFromToday) {
       toast({
-        title: "Reporte incompleto",
-        description: "Completa al menos el 80% del checklist para finalizar el reporte.",
+        title: "Error",
+        description: "Solo puedes completar tareas del día de hoy.",
         variant: "destructive",
       });
       return;
     }
+    
+    if (!requiredValidation.isValid) {
+      const messages = [];
+      if (requiredValidation.missingItems.length > 0) {
+        messages.push(`Tareas obligatorias pendientes: ${requiredValidation.missingItems.join(', ')}`);
+      }
+      if (requiredValidation.missingPhotos.length > 0) {
+        messages.push(`Fotos obligatorias: ${requiredValidation.missingPhotos.join(', ')}`);
+      }
+      
+      toast({
+        title: "Reporte incompleto",
+        description: messages.join('. '),
+        variant: "destructive",
+      });
+      return;
+    }
+    
     onComplete();
   };
 
@@ -57,10 +85,31 @@ export const TaskReportFooter: React.FC<TaskReportFooterProps> = ({
           onClick={handleComplete}
           disabled={!canComplete || isCreatingReport || isUpdatingReport}
           className={canComplete ? 'bg-green-600 hover:bg-green-700' : ''}
+          title={
+            !isTaskFromToday ? "Solo puedes completar tareas de hoy" :
+            !requiredValidation.isValid ? "Faltan tareas o fotos obligatorias" :
+            "Completar reporte"
+          }
         >
           <CheckCircle className="h-4 w-4 mr-2" />
           Completar Reporte
         </Button>
+        
+        {!canComplete && (
+          <div className="text-xs text-muted-foreground mt-1">
+            {!isTaskFromToday && "⚠️ Solo tareas de hoy"}
+            {isTaskFromToday && !requiredValidation.isValid && (
+              <div>
+                {requiredValidation.missingItems.length > 0 && (
+                  <div>• Faltan {requiredValidation.missingItems.length} tareas obligatorias</div>
+                )}
+                {requiredValidation.missingPhotos.length > 0 && (
+                  <div>• Faltan {requiredValidation.missingPhotos.length} fotos obligatorias</div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
