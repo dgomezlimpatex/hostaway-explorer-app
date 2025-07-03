@@ -46,10 +46,10 @@ export const CreateTaskModal = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!selectedClient || !selectedProperty || !formData.startTime) {
+    if (!selectedClient || !selectedProperty) {
       toast({
         title: "Error",
-        description: "Por favor selecciona cliente, propiedad y hora de inicio.",
+        description: "Por favor selecciona cliente y propiedad.",
         variant: "destructive",
       });
       return;

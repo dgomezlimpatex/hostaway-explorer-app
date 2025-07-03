@@ -77,6 +77,12 @@ export const useCreateTaskForm = (currentDate: Date) => {
         ...prev,
         endTime: `${endHours.toString().padStart(2, '0')}:${endMins.toString().padStart(2, '0')}`
       }));
+    } else if (!formData.startTime) {
+      // Si no hay hora de inicio, limpiar la hora de fin
+      setFormData(prev => ({
+        ...prev,
+        endTime: ''
+      }));
     }
   }, [formData.startTime, formData.duracion]);
 

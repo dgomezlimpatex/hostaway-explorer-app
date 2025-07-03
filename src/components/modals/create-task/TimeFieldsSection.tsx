@@ -32,13 +32,13 @@ export const TimeFieldsSection = ({
         </div>
         
         <div className="space-y-2">
-          <Label htmlFor="startTime">Hora Inicio *</Label>
+          <Label htmlFor="startTime">Hora Inicio (opcional)</Label>
           <Input
             id="startTime"
             type="time"
             value={formData.startTime}
             onChange={(e) => onFieldChange('startTime', e.target.value)}
-            required
+            placeholder="Sin asignar"
           />
         </div>
         
