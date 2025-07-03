@@ -94,10 +94,32 @@ export const CleanerDateHeader: React.FC<CleanerDateHeaderProps> = ({
         </button>
       </div>
 
-      {/* Botón de calendario para visual balance */}
-      <div className="h-10 w-10 flex items-center justify-center">
-        <CalendarIcon className="h-4 w-4 text-muted-foreground/50" />
-      </div>
+      {/* Botón de calendario funcional */}
+      <Popover open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
+        <PopoverTrigger asChild>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-10 w-10 rounded-full bg-background/50 backdrop-blur-sm border border-border/50 hover:bg-background/80 transition-all duration-200"
+          >
+            <CalendarIcon className="h-4 w-4 text-foreground" />
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-auto p-0" align="center">
+          <Calendar
+            mode="single"
+            selected={currentDate}
+            onSelect={(date) => {
+              if (date && onDateChange) {
+                onDateChange(date);
+                setIsCalendarOpen(false);
+              }
+            }}
+            initialFocus
+            className={cn("p-3 pointer-events-auto")}
+          />
+        </PopoverContent>
+      </Popover>
     </div>
   );
 };
