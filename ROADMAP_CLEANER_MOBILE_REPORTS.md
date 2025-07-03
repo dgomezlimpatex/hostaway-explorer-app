@@ -43,6 +43,29 @@ Mejorar la funcionalidad de reportes para cleaners desde dispositivos móviles, 
   - Solo permitir edición en sección "Notas Generales"
 - [ ] Actualizar UI para mostrar claramente qué está en modo solo-lectura
 
+### 5. Task Preview Modal ⭐ NUEVA FUNCIONALIDAD
+**Objetivo**: Modal informativo al pulsar en cualquier tarea
+**Descripción**: Ventana con información completa de la tarea antes de iniciar reporte
+- [ ] Crear componente `TaskPreviewModal.tsx`
+- [ ] Incluir información de la tarea:
+  - Nombre y dirección de la propiedad
+  - Foto del apartamento (si disponible)
+  - Número de camas y baños
+  - Duración estimada del servicio
+  - Horarios (check-in/check-out)
+  - Notas especiales de la propiedad
+  - Estado actual de la tarea
+- [ ] Integrar en todos los componentes de tarea:
+  - `TaskCard.tsx` (desktop)
+  - `CleanerTaskCard.tsx` (mobile)
+  - `TasksList.tsx`
+  - `VirtualizedTasksList.tsx`
+- [ ] Botones de acción según rol:
+  - **Cleaner**: "Comenzar Reporte", "Ver Reporte" (si existe)
+  - **Manager/Supervisor**: "Editar Tarea", "Asignar Cleaner", "Ver Reporte"
+- [ ] Diseño responsive (desktop y mobile)
+- [ ] Integración con datos de propiedades desde la base de datos
+
 ## Fase 1: Restricción Temporal ✅ COMPLETADO
 ### 1.1 Filtrado de Tareas por Fecha
 - [ ] Modificar `CleanerMobileCalendar.tsx` para filtrar `todayTasks` solo del día actual
@@ -146,10 +169,29 @@ const updateTaskStatus = async (taskId: string) => {
 ```
 
 ## Prioridad de Implementación
-1. **ALTA** - Restricción temporal (solo tareas de hoy)
-2. **ALTA** - Validación estricta de completado
-3. **MEDIA** - Sincronización de estado completo
-4. **MEDIA** - Modo solo-lectura post-completado
+1. **CRÍTICA** - Arreglar restricción temporal (sigue fallando) ⚠️
+2. **ALTA** - Task Preview Modal (nueva funcionalidad) ⭐
+3. **ALTA** - Validación estricta de completado
+4. **MEDIA** - Sincronización de estado completo
+5. **MEDIA** - Modo solo-lectura post-completado
+
+## Fase 5: Task Preview Modal ⭐ NUEVA FUNCIONALIDAD
+### 5.1 Crear Modal de Preview
+- [ ] Crear `TaskPreviewModal.tsx` con información completa
+- [ ] Diseño responsive para desktop y mobile
+- [ ] Integración con datos de propiedades
+
+### 5.2 Integración en Componentes
+- [ ] Modificar `TaskCard.tsx` para abrir preview al hacer clic
+- [ ] Modificar `CleanerTaskCard.tsx` para abrir preview
+- [ ] Actualizar `TasksList.tsx` y `VirtualizedTasksList.tsx`
+- [ ] Botones de acción según rol de usuario
+
+### 5.3 Datos a Mostrar
+- [ ] Información básica: nombre, dirección, horarios
+- [ ] Detalles de la propiedad: camas, baños, duración
+- [ ] Foto del apartamento (si disponible)
+- [ ] Notas especiales y estado de la tarea
 
 ## Testing Required
 - [ ] Probar restricción de fechas en móvil
