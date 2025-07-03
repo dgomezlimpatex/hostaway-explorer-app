@@ -316,15 +316,19 @@ export const TaskPreviewModal: React.FC<TaskPreviewModalProps> = ({
               <h3 className="font-semibold text-base">Información del Servicio</h3>
               
               <div className="grid grid-cols-1 gap-3 text-sm">
-                <div className="flex justify-between">
-                  <span className="font-medium">Tipo de servicio:</span>
-                  <span className="text-muted-foreground">{task.type}</span>
-                </div>
-                {task.cost && (
-                  <div className="flex justify-between">
-                    <span className="font-medium">Coste:</span>
-                    <span className="text-muted-foreground">€{task.cost}</span>
-                  </div>
+                {['admin', 'manager'].includes(userRole || '') && (
+                  <>
+                    <div className="flex justify-between">
+                      <span className="font-medium">Tipo de servicio:</span>
+                      <span className="text-muted-foreground">{task.type}</span>
+                    </div>
+                    {task.cost && (
+                      <div className="flex justify-between">
+                        <span className="font-medium">Coste:</span>
+                        <span className="text-muted-foreground">€{task.cost}</span>
+                      </div>
+                    )}
+                  </>
                 )}
                 {task.supervisor && (
                   <div className="flex justify-between">
