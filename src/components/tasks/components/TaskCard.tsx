@@ -8,7 +8,9 @@ import { TaskCardTimeInfo } from './TaskCardTimeInfo';
 import { TaskCardCleanerInfo } from './TaskCardCleanerInfo';
 import { TaskCardServiceInfo } from './TaskCardServiceInfo';
 import { TaskCardActions } from './TaskCardActions';
+import { CleanerTaskCard } from '@/components/calendar/cleaner/CleanerTaskCard';
 import { useDeviceType } from '@/hooks/use-mobile';
+import { useAuth } from '@/hooks/useAuth';
 
 interface TaskCardProps {
   task: Task;
@@ -34,7 +36,19 @@ export const TaskCard: React.FC<TaskCardProps> = ({
   showActions = true,
 }) => {
   const { isMobile, isTablet } = useDeviceType();
+  const { userRole } = useAuth();
   const [showReportModal, setShowReportModal] = useState(false);
+
+  // Use CleanerTaskCard for mobile cleaners
+  if (isMobile && userRole === 'cleaner') {
+    const handleTaskClick = () => {
+      if (onCreateReport) {
+        onCreateReport(task);
+      }
+    };
+
+    return <CleanerTaskCard task={task} onClick={handleTaskClick} />;
+  }
 
   const handleOpenReport = () => {
     setShowReportModal(true);
