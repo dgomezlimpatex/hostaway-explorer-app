@@ -74,6 +74,7 @@ export const CalendarContainer = ({
 
   // Render mobile cleaner view if on mobile and user is a cleaner
   if (isMobile && userRole === 'cleaner') {
+    console.log('Rendering CleanerMobileCalendar for mobile cleaner');
     return (
       <CleanerMobileCalendar
         tasks={tasks}
