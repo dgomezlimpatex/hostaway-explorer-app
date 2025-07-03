@@ -133,10 +133,26 @@ export const filterTasks = (tasks: Task[], filters: TaskFilters): Task[] => {
   });
 };
 
-export const sortTasks = (tasks: Task[], showPastTasks: boolean): Task[] => {
+export const sortTasks = (tasks: Task[], showPastTasks: boolean, userRole?: string): Task[] => {
   return [...tasks].sort((a, b) => {
     const dateA = new Date(a.date);
     const dateB = new Date(b.date);
+    const today = new Date().toISOString().split('T')[0];
+    
+    // Para limpiadoras en móvil: priorizar tareas de hoy
+    if (userRole === 'cleaner' && !showPastTasks) {
+      const isTaskAToday = a.date === today;
+      const isTaskBToday = b.date === today;
+      
+      // Tareas de hoy van primero
+      if (isTaskAToday && !isTaskBToday) return -1;
+      if (isTaskBToday && !isTaskAToday) return 1;
+      
+      // Si ambas son de hoy o ambas son futuras, ordenar por hora
+      if (isTaskAToday === isTaskBToday) {
+        return a.startTime.localeCompare(b.startTime);
+      }
+    }
     
     if (showPastTasks) {
       // For past tasks, show most recent first

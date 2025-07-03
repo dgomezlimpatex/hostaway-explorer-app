@@ -63,7 +63,7 @@ export const TasksPageContent = ({
             <div className="flex items-center justify-between">
               <CardTitle className="text-lg">
                 {isCleaner 
-                  ? `Mis Tareas Asignadas (${sortedTasks.length})`
+                  ? 'Mis Tareas'
                   : (showPastTasks ? 'Historial de Tareas' : 'Lista de Tareas')
                 } {!isCleaner && `(${sortedTasks.length})`}
               </CardTitle>

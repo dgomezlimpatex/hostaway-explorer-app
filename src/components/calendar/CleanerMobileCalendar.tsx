@@ -7,6 +7,7 @@ import { CleanerTaskCard } from './cleaner/CleanerTaskCard';
 interface CleanerMobileCalendarProps {
   currentDate: Date;
   onNavigateDate: (direction: 'prev' | 'next') => void;
+  onDateChange?: (date: Date) => void;
   handleTaskClick: (task: Task) => void;
   todayTasks: Task[];
   tomorrowTasks: Task[];
@@ -15,6 +16,7 @@ interface CleanerMobileCalendarProps {
 export const CleanerMobileCalendar: React.FC<CleanerMobileCalendarProps> = ({
   currentDate,
   onNavigateDate,
+  onDateChange,
   handleTaskClick,
   todayTasks,
   tomorrowTasks
@@ -27,6 +29,7 @@ export const CleanerMobileCalendar: React.FC<CleanerMobileCalendarProps> = ({
       <CleanerDateHeader 
         currentDate={currentDate}
         onNavigateDate={onNavigateDate}
+        onDateChange={onDateChange}
       />
 
       {/* Task Summary */}

@@ -72,10 +72,10 @@ export const useTasksPageState = () => {
   }, [tasks, searchTerm, showPastTasks, userRole, filters, profile, currentUserCleanerId]);
 
   const sortedTasks = useMemo(() => {
-    const sorted = sortTasks(filteredTasks, showPastTasks);
+    const sorted = sortTasks(filteredTasks, showPastTasks, userRole);
     console.log('useTasksPageState - after sorting:', sorted.length);
     return sorted;
-  }, [filteredTasks, showPastTasks]);
+  }, [filteredTasks, showPastTasks, userRole]);
 
   // Pagination
   const {

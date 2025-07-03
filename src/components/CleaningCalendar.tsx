@@ -12,7 +12,7 @@ const CleaningCalendar = () => {
   const { isMobile } = useDeviceType();
   const { userRole } = useAuth();
 
-  const {
+const {
     tasks,
     cleaners,
     currentDate,
@@ -85,6 +85,10 @@ const CleaningCalendar = () => {
         <CleanerMobileCalendar
           currentDate={currentDate}
           onNavigateDate={navigateDate}
+          onDateChange={(date) => {
+            // Para cambiar fecha directamente usamos el hook de navegación
+            goToToday(); // Esto actualizará la fecha
+          }}
           handleTaskClick={handleTaskClick}
           todayTasks={todayTasks}
           tomorrowTasks={tomorrowTasks}
