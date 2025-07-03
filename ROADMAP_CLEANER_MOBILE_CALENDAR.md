@@ -25,28 +25,28 @@ Crear una vista de calendario móvil personalizada para el rol de CLEANER, basad
 - [x] Implementar swipe gestures (opcional)
 - [x] Actualizar datos al cambiar fecha
 
-## Fase 3: Resumen de Tareas
-### 3.1 Calcular estadísticas
-- [ ] Crear hook `useCleanerTaskSummary`
-- [ ] Contar tareas de hoy y mañana
-- [ ] Filtrar solo tareas del cleaner actual
+## Fase 3: Resumen de Tareas ✅ COMPLETADA
+### 3.1 Calcular estadísticas ✅
+- [x] Crear hook `useCleanerTaskSummary`
+- [x] Contar tareas de hoy y mañana
+- [x] Filtrar solo tareas del cleaner actual
 
-### 3.2 Mostrar resumen
-- [ ] Componente para mostrar "Tareas hoy: X"
-- [ ] Componente para mostrar "Tareas mañana: X"
-- [ ] Styling responsivo móvil
+### 3.2 Mostrar resumen ✅
+- [x] Componente para mostrar "Tareas hoy: X"
+- [x] Componente para mostrar "Tareas mañana: X"
+- [x] Styling responsivo móvil
 
-## Fase 4: Tarjetas de Tareas
-### 4.1 Crear componente TaskCard móvil
-- [ ] Crear `CleanerTaskCard.tsx`
-- [ ] Mostrar: "Nombre del piso - Código del piso"
-- [ ] Mostrar: "Hora inicio - Hora finalización"
-- [ ] Styling similar al concepto (colores, bordes redondeados)
+## Fase 4: Tarjetas de Tareas ✅ COMPLETADA
+### 4.1 Crear componente TaskCard móvil ✅
+- [x] Crear `CleanerTaskCard.tsx`
+- [x] Mostrar: "Nombre del piso - Código del piso"
+- [x] Mostrar: "Hora inicio - Hora finalización"
+- [x] Styling similar al concepto (colores, bordes redondeados)
 
-### 4.2 Lista de tareas del día
-- [ ] Renderizar tarjetas en scroll vertical
-- [ ] Manejar estados vacíos (sin tareas)
-- [ ] Optimizar performance para listas largas
+### 4.2 Lista de tareas del día ✅
+- [x] Renderizar tarjetas en scroll vertical
+- [x] Manejar estados vacíos (sin tareas)
+- [x] Optimizar performance para listas largas
 
 ## Fase 5: Integración con Funcionalidad Existente
 ### 5.1 Navegación a detalles

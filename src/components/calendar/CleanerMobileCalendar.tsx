@@ -5,7 +5,9 @@ import { Task, Cleaner } from '@/types/calendar';
 import { CalendarModalsWithSuspense } from './LazyCalendarComponents';
 import { CleanerDateHeader } from './cleaner/CleanerDateHeader';
 import { CleanerTaskSummary } from './cleaner/CleanerTaskSummary';
+import { CleanerTaskCard } from './cleaner/CleanerTaskCard';
 import { useCleanerMobileNavigation } from '@/hooks/useCleanerMobileNavigation';
+import { useCleanerTaskSummary } from '@/hooks/useCleanerTaskSummary';
 
 interface CleanerMobileCalendarProps {
   tasks: Task[];
@@ -33,23 +35,17 @@ export const CleanerMobileCalendar: React.FC<CleanerMobileCalendarProps> = ({
   const { isMobile } = useDeviceType();
   const { userRole } = useAuth();
   const { currentDate, navigateDate } = useCleanerMobileNavigation();
+  
+  // Use the task summary hook for better organization
+  const { todayTasks, tomorrowTasks } = useCleanerTaskSummary({
+    tasks,
+    currentDate
+  });
 
   // Only render for mobile cleaners
   if (!isMobile || userRole !== 'cleaner') {
     return null;
   }
-
-  // Filter tasks for today
-  const todayTasks = tasks.filter(task => 
-    task.date === currentDate.toISOString().split('T')[0]
-  );
-
-  // Calculate tomorrow's tasks
-  const tomorrow = new Date(currentDate);
-  tomorrow.setDate(tomorrow.getDate() + 1);
-  const tomorrowTasks = tasks.filter(task => 
-    task.date === tomorrow.toISOString().split('T')[0]
-  );
 
   return (
     <div className="flex flex-col h-full bg-background text-foreground">
@@ -65,26 +61,21 @@ export const CleanerMobileCalendar: React.FC<CleanerMobileCalendarProps> = ({
         tomorrowTasks={tomorrowTasks}
       />
 
-      {/* Task Cards - Placeholder for now */}
+      {/* Task Cards List */}
       <div className="flex-1 p-4 space-y-3 overflow-y-auto">
         {todayTasks.length === 0 ? (
-          <div className="text-center text-muted-foreground py-8">
-            No tienes tareas asignadas para hoy
+          <div className="text-center text-muted-foreground py-12">
+            <div className="text-4xl mb-3">📅</div>
+            <p className="text-lg font-medium mb-2">No tienes tareas para hoy</p>
+            <p className="text-sm">Disfruta de tu día libre</p>
           </div>
         ) : (
           todayTasks.map((task) => (
-            <div 
+            <CleanerTaskCard
               key={task.id}
-              onClick={() => handleTaskClick(task)}
-              className="bg-card p-4 rounded-lg border border-border shadow-sm cursor-pointer hover:shadow-md transition-shadow"
-            >
-              <div className="font-medium text-foreground">
-                {task.property}
-              </div>
-              <div className="text-sm text-muted-foreground mt-1">
-                {task.startTime} - {task.endTime}
-              </div>
-            </div>
+              task={task}
+              onClick={handleTaskClick}
+            />
           ))
         )}
       </div>
