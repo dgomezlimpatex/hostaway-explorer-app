@@ -37,6 +37,7 @@ export const CreatePropertyModal = () => {
       numeroTotallasPequenas: 0,
       numeroAlfombrines: 0,
       numeroFundasAlmohada: 0,
+      kitAlimentario: 0,
       notas: '',
       clienteId: '',
     },
@@ -59,6 +60,7 @@ export const CreatePropertyModal = () => {
       numeroTotallasPequenas: data.numeroTotallasPequenas,
       numeroAlfombrines: data.numeroAlfombrines,
       numeroFundasAlmohada: data.numeroFundasAlmohada,
+      kitAlimentario: data.kitAlimentario,
       notas: data.notas || '',
       clienteId: data.clienteId,
     };

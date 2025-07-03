@@ -112,6 +112,11 @@ export const PropertyList = () => {
     return acc;
   }, {} as Record<string, Property[]>);
 
+  // Sort properties alphabetically within each client
+  Object.keys(propertiesByClient).forEach(clientId => {
+    propertiesByClient[clientId].sort((a, b) => a.nombre.localeCompare(b.nombre));
+  });
+
   return (
     <>
       <div className="space-y-6">

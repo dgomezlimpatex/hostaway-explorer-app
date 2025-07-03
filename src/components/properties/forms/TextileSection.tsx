@@ -115,6 +115,26 @@ export const TextileSection = ({ control }: TextileSectionProps) => {
             </FormItem>
           )}
         />
+        <FormField
+          control={control}
+          name="kitAlimentario"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel className="flex items-center gap-2">
+                🍽️ Kit Alimentario
+              </FormLabel>
+              <FormControl>
+                <Input 
+                  {...field} 
+                  type="number" 
+                  min="0"
+                  onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
       </div>
     </div>
   );

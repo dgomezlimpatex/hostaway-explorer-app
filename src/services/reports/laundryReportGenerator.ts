@@ -30,7 +30,7 @@ export const generateLaundryReport = (tasks: any[], properties: any[], clients: 
         fundasAlmohada: property?.numeroFundasAlmohada || 0
       };
 
-      const totalItems = Object.values(textiles).reduce((sum, count) => sum + count, 0);
+      const kitAlimentario = property?.kitAlimentario || 0;
 
       // Formatear el tipo de servicio
       const formatServiceType = (type: string) => {
@@ -78,7 +78,7 @@ export const generateLaundryReport = (tasks: any[], properties: any[], clients: 
         textiles,
         bedrooms: property?.numeroCamas || 0,
         bathrooms: property?.numeroBanos || 0,
-        totalItems
+        kitAlimentario
       };
     });
 };

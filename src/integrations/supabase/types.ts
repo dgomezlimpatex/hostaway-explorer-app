@@ -522,6 +522,7 @@ export type Database = {
           hostaway_internal_name: string | null
           hostaway_listing_id: number | null
           id: string
+          kit_alimentario: number
           nombre: string
           notas: string | null
           numero_alfombrines: number
@@ -547,6 +548,7 @@ export type Database = {
           hostaway_internal_name?: string | null
           hostaway_listing_id?: number | null
           id?: string
+          kit_alimentario?: number
           nombre: string
           notas?: string | null
           numero_alfombrines?: number
@@ -572,6 +574,7 @@ export type Database = {
           hostaway_internal_name?: string | null
           hostaway_listing_id?: number | null
           id?: string
+          kit_alimentario?: number
           nombre?: string
           notas?: string | null
           numero_alfombrines?: number

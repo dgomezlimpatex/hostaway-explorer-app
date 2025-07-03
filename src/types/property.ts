@@ -25,6 +25,7 @@ export interface Property extends BaseEntity {
   numeroTotallasPequenas: number;
   numeroAlfombrines: number;
   numeroFundasAlmohada: number;
+  kitAlimentario: number;
   
   // Notas
   notas: string;
@@ -56,6 +57,7 @@ export interface CreatePropertyData {
   numeroTotallasPequenas: number;
   numeroAlfombrines: number;
   numeroFundasAlmohada: number;
+  kitAlimentario: number;
   notas: string;
   clienteId: string;
 }

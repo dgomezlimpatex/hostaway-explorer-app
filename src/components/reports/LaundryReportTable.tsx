@@ -34,7 +34,7 @@ export const LaundryReportTable = ({ data }: LaundryReportTableProps) => {
     fundasAlmohada: 0
   });
 
-  const totalItemsCount = Object.values(totalTextiles).reduce((sum, count) => sum + count, 0);
+  const totalKitAlimentario = data.reduce((sum, item) => sum + item.kitAlimentario, 0);
 
   return (
     <div className="space-y-6">
@@ -67,9 +67,9 @@ export const LaundryReportTable = ({ data }: LaundryReportTableProps) => {
               <div className="text-2xl font-bold text-pink-600">{totalTextiles.fundasAlmohada}</div>
               <div className="text-sm text-pink-800">Fundas Almohada</div>
             </div>
-            <div className="text-center p-3 bg-gray-50 rounded-lg">
-              <div className="text-2xl font-bold text-gray-600">{totalItemsCount}</div>
-              <div className="text-sm text-gray-800">Total Items</div>
+            <div className="text-center p-3 bg-yellow-50 rounded-lg">
+              <div className="text-2xl font-bold text-yellow-600">{totalKitAlimentario}</div>
+              <div className="text-sm text-yellow-800">Kit Alimentario</div>
             </div>
           </div>
           <div className="text-center text-sm text-gray-600">
@@ -100,7 +100,7 @@ export const LaundryReportTable = ({ data }: LaundryReportTableProps) => {
                   <TableHead>Trabajador</TableHead>
                   <TableHead>Habitaciones</TableHead>
                   <TableHead>Textiles Requeridos</TableHead>
-                  <TableHead>Total Items</TableHead>
+                  <TableHead>Kit Alimentario</TableHead>
                   <TableHead>Estado</TableHead>
                 </TableRow>
               </TableHeader>
@@ -151,7 +151,7 @@ export const LaundryReportTable = ({ data }: LaundryReportTableProps) => {
                       </div>
                     </TableCell>
                     <TableCell>
-                      <div className="font-bold text-lg">{task.totalItems}</div>
+                      <div className="font-bold text-lg">{task.kitAlimentario}</div>
                     </TableCell>
                     <TableCell>
                       <Badge 

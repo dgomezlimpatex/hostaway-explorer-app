@@ -133,7 +133,7 @@ const generateLaundryCSV = (data: LaundryReport[]): string => {
     'Toallas Pequeñas',
     'Alfombrines',
     'Fundas Almohada',
-    'Total Items',
+    'Kit Alimentario',
     'Habitaciones',
     'Baños'
   ];
@@ -151,7 +151,7 @@ const generateLaundryCSV = (data: LaundryReport[]): string => {
     item.textiles.toallasPequenas.toString(),
     item.textiles.alfombrines.toString(),
     item.textiles.fundasAlmohada.toString(),
-    item.totalItems.toString(),
+    item.kitAlimentario.toString(),
     item.bedrooms.toString(),
     item.bathrooms.toString()
   ]);

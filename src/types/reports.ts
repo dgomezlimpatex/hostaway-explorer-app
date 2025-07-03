@@ -52,5 +52,5 @@ export interface LaundryReport extends TaskReport {
   textiles: LaundryTextiles;
   bedrooms: number;
   bathrooms: number;
-  totalItems: number;
+  kitAlimentario: number;
 }

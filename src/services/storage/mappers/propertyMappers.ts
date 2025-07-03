@@ -19,6 +19,7 @@ export const mapPropertyFromDB = (row: any): Property => ({
   numeroTotallasPequenas: row.numero_toallas_pequenas,
   numeroAlfombrines: row.numero_alfombrines,
   numeroFundasAlmohada: row.numero_fundas_almohada,
+  kitAlimentario: row.kit_alimentario || 0,
   notas: row.notas || '',
   clienteId: row.cliente_id,
   hostaway_listing_id: row.hostaway_listing_id,
@@ -44,6 +45,7 @@ export const mapPropertyToDB = (property: Partial<CreatePropertyData>): any => {
   if (property.numeroTotallasPequenas !== undefined) updateData.numero_toallas_pequenas = property.numeroTotallasPequenas;
   if (property.numeroAlfombrines !== undefined) updateData.numero_alfombrines = property.numeroAlfombrines;
   if (property.numeroFundasAlmohada !== undefined) updateData.numero_fundas_almohada = property.numeroFundasAlmohada;
+  if (property.kitAlimentario !== undefined) updateData.kit_alimentario = property.kitAlimentario;
   if (property.notas !== undefined) updateData.notas = property.notas;
   if (property.clienteId !== undefined) updateData.cliente_id = property.clienteId;
 

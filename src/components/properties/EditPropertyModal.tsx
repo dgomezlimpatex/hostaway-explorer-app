@@ -50,6 +50,7 @@ export const EditPropertyModal: React.FC<EditPropertyModalProps> = ({
       numeroTotallasPequenas: property.numeroTotallasPequenas,
       numeroAlfombrines: property.numeroAlfombrines,
       numeroFundasAlmohada: property.numeroFundasAlmohada,
+      kitAlimentario: property.kitAlimentario || 0,
       notas: property.notas || '',
       clienteId: property.clienteId,
     } : undefined,
@@ -73,6 +74,7 @@ export const EditPropertyModal: React.FC<EditPropertyModalProps> = ({
         numeroTotallasPequenas: property.numeroTotallasPequenas,
         numeroAlfombrines: property.numeroAlfombrines,
         numeroFundasAlmohada: property.numeroFundasAlmohada,
+        kitAlimentario: property.kitAlimentario || 0,
         notas: property.notas || '',
         clienteId: property.clienteId,
       });
