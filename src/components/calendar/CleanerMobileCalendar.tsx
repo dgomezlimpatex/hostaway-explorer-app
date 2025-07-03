@@ -92,3 +92,4 @@ export const CleanerMobileCalendar: React.FC<CleanerMobileCalendarProps> = (prop
       />
     </div>
   );
+};
