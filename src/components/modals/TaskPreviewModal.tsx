@@ -90,7 +90,12 @@ export const TaskPreviewModal: React.FC<TaskPreviewModalProps> = ({
     return `${durationMinutes}m`;
   };
 
-  const canCreateReport = userRole === 'cleaner' && task.cleanerId;
+  // Check if task is from today - stricter validation
+  const today = new Date();
+  const taskDate = new Date(task.date + 'T00:00:00');
+  const isTaskFromToday = taskDate.toDateString() === today.toDateString();
+  
+  const canCreateReport = userRole === 'cleaner' && task.cleanerId && isTaskFromToday;
   const canEditTask = ['admin', 'manager', 'supervisor'].includes(userRole || '');
   const canAssignCleaner = ['admin', 'manager', 'supervisor'].includes(userRole || '');
   const hasReport = !!existingReport;
@@ -99,7 +104,7 @@ export const TaskPreviewModal: React.FC<TaskPreviewModalProps> = ({
     const buttons = [];
 
     // Botón principal según el rol y estado
-    if (canCreateReport) {
+    if (userRole === 'cleaner' && task.cleanerId) {
       if (hasReport) {
         buttons.push(
           <Button
@@ -109,6 +114,8 @@ export const TaskPreviewModal: React.FC<TaskPreviewModalProps> = ({
               onOpenChange(false);
             }}
             className="flex-1"
+            disabled={!isTaskFromToday}
+            title={!isTaskFromToday ? "Solo puedes ver reportes de tareas de hoy" : ""}
           >
             <FileText className="h-4 w-4 mr-2" />
             Ver Reporte
@@ -123,9 +130,11 @@ export const TaskPreviewModal: React.FC<TaskPreviewModalProps> = ({
               onOpenChange(false);
             }}
             className="flex-1"
+            disabled={!isTaskFromToday}
+            title={!isTaskFromToday ? "Solo puedes crear reportes para tareas de hoy" : ""}
           >
             <Camera className="h-4 w-4 mr-2" />
-            Comenzar Reporte
+            {isTaskFromToday ? "Comenzar Reporte" : "Tarea Futura"}
           </Button>
         );
       }
