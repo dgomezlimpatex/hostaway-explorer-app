@@ -98,6 +98,7 @@ const CleaningCalendar = () => {
           handleUpdateTask={handleUpdateTask}
           handleDeleteTask={handleDeleteTask}
           handleUnassignTask={handleUnassignTask}
+          onNavigateDate={navigateDate}
         />
       </div>
     </div>

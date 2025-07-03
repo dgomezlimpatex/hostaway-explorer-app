@@ -39,6 +39,7 @@ interface CalendarContainerProps {
   handleUpdateTask: (taskId: string, updates: Partial<Task>) => Promise<void>;
   handleDeleteTask: (taskId: string) => Promise<void>;
   handleUnassignTask: (taskId: string) => Promise<void>;
+  onNavigateDate: (direction: 'prev' | 'next') => void;
 }
 
 export const CalendarContainer = ({
@@ -65,7 +66,8 @@ export const CalendarContainer = ({
   handleCreateTask,
   handleUpdateTask,
   handleDeleteTask,
-  handleUnassignTask
+  handleUnassignTask,
+  onNavigateDate
 }: CalendarContainerProps) => {
   const { isMobile } = useDeviceType();
   const { userRole } = useAuth();
@@ -76,6 +78,8 @@ export const CalendarContainer = ({
       <CleanerMobileCalendar
         tasks={tasks}
         cleaners={cleaners}
+        currentDate={currentDate}
+        onNavigateDate={onNavigateDate}
         selectedTask={selectedTask}
         isTaskModalOpen={isTaskModalOpen}
         setIsTaskModalOpen={setIsTaskModalOpen}

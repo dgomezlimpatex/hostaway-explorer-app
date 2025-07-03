@@ -6,12 +6,13 @@ import { CalendarModalsWithSuspense } from './LazyCalendarComponents';
 import { CleanerDateHeader } from './cleaner/CleanerDateHeader';
 import { CleanerTaskSummary } from './cleaner/CleanerTaskSummary';
 import { CleanerTaskCard } from './cleaner/CleanerTaskCard';
-import { useCleanerMobileNavigation } from '@/hooks/useCleanerMobileNavigation';
 import { useCleanerTaskSummary } from '@/hooks/useCleanerTaskSummary';
 
 interface CleanerMobileCalendarProps {
   tasks: Task[];
   cleaners: Cleaner[];
+  currentDate: Date;
+  onNavigateDate: (direction: 'prev' | 'next') => void;
   selectedTask: Task | null;
   isTaskModalOpen: boolean;
   setIsTaskModalOpen: (open: boolean) => void;
@@ -24,6 +25,8 @@ interface CleanerMobileCalendarProps {
 export const CleanerMobileCalendar: React.FC<CleanerMobileCalendarProps> = ({
   tasks,
   cleaners,
+  currentDate,
+  onNavigateDate,
   selectedTask,
   isTaskModalOpen,
   setIsTaskModalOpen,
@@ -43,6 +46,8 @@ export const CleanerMobileCalendar: React.FC<CleanerMobileCalendarProps> = ({
   return <CleanerMobileCalendarContent 
     tasks={tasks}
     cleaners={cleaners}
+    currentDate={currentDate}
+    onNavigateDate={onNavigateDate}
     selectedTask={selectedTask}
     isTaskModalOpen={isTaskModalOpen}
     setIsTaskModalOpen={setIsTaskModalOpen}
@@ -57,6 +62,8 @@ export const CleanerMobileCalendar: React.FC<CleanerMobileCalendarProps> = ({
 const CleanerMobileCalendarContent: React.FC<CleanerMobileCalendarProps> = ({
   tasks,
   cleaners,
+  currentDate,
+  onNavigateDate,
   selectedTask,
   isTaskModalOpen,
   setIsTaskModalOpen,
@@ -66,9 +73,9 @@ const CleanerMobileCalendarContent: React.FC<CleanerMobileCalendarProps> = ({
   handleUnassignTask
 }) => {
   console.log('CleanerMobileCalendarContent rendering with tasks:', tasks?.length || 0);
+  console.log('CleanerMobileCalendarContent currentDate:', currentDate);
   
   const { user, userRole } = useAuth();
-  const { currentDate, navigateDate } = useCleanerMobileNavigation();
   
   // Get current user's cleaner ID
   const currentCleanerId = React.useMemo(() => {
@@ -92,7 +99,7 @@ const CleanerMobileCalendarContent: React.FC<CleanerMobileCalendarProps> = ({
       {/* Date Header with Navigation */}
       <CleanerDateHeader 
         currentDate={currentDate}
-        onNavigateDate={navigateDate}
+        onNavigateDate={onNavigateDate}
       />
 
       {/* Task Summary */}
