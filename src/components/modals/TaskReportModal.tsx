@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Dialog, DialogContent, DialogHeader } from '@/components/ui/dialog';
 import { Task } from '@/types/calendar';
 import { TaskReport, TaskChecklistTemplate } from '@/types/taskReports';
@@ -38,6 +38,9 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
   const [reportMedia, setReportMedia] = useState<string[]>([]);
   const [activeTab, setActiveTab] = useState('checklist');
   const [currentTemplate, setCurrentTemplate] = useState<TaskChecklistTemplate | undefined>();
+  
+  // Ref to track if we've already tried to create a report for this task
+  const reportCreationAttempted = useRef<string | null>(null);
 
   // Get task media using the current report ID
   const { data: taskMedia = [], isLoading: isLoadingMedia } = useTaskMedia(currentReport?.id || '');
@@ -60,14 +63,11 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
         setChecklist(existingReport.checklist_completed || {});
         setNotes(existingReport.notes || '');
         setIssues(existingReport.issues_found || []);
-        
-        // Load existing general media (photos not tied to specific checklist items)
-        const generalMedia = taskMedia
-          .filter(media => !media.checklist_item_id)
-          .map(media => media.file_url);
-        setReportMedia(generalMedia);
-      } else {
+        reportCreationAttempted.current = task.id; // Mark as handled
+      } else if (reportCreationAttempted.current !== task.id) {
         console.log('TaskReportModal - creating new report immediately');
+        reportCreationAttempted.current = task.id; // Mark as attempting
+        
         // Create report immediately to have reportId for media upload
         const reportData = {
           task_id: task.id,
@@ -97,7 +97,14 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
         setCurrentTemplate(template);
       }
     }
-  }, [open, task, existingReport, templates, currentCleanerId, taskMedia]);
+  }, [open, task, existingReport, templates, currentCleanerId]);
+
+  // Reset creation tracking when modal closes
+  useEffect(() => {
+    if (!open) {
+      reportCreationAttempted.current = null;
+    }
+  }, [open]);
 
   // Update currentReport when existingReport changes (after creation)
   useEffect(() => {
