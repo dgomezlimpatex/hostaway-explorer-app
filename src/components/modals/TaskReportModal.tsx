@@ -97,7 +97,7 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
         setCurrentTemplate(template);
       }
     }
-  }, [open, task, existingReport, templates, createReport, currentCleanerId, taskMedia]);
+  }, [open, task, existingReport, templates, currentCleanerId, taskMedia]);
 
   // Update currentReport when existingReport changes (after creation)
   useEffect(() => {
