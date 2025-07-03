@@ -52,13 +52,14 @@ export const IssuesSection: React.FC<IssuesSectionProps> = ({
     if (!newIssue.description?.trim()) return;
 
     const issue: Issue = {
-      id: Date.now().toString(),
+      id: `issue-${Date.now()}`,
       type: newIssue.type as Issue['type'],
       description: newIssue.description,
       severity: newIssue.severity as Issue['severity'],
       media_urls: newIssue.media_urls || [],
     };
 
+    console.log('IssuesSection - adding new issue:', issue);
     onIssuesChange([...issues, issue]);
     setNewIssue({
       type: 'other',
@@ -73,6 +74,7 @@ export const IssuesSection: React.FC<IssuesSectionProps> = ({
   };
 
   const handleNewIssueMediaAdded = (mediaUrl: string) => {
+    console.log('IssuesSection - adding media to new issue:', mediaUrl);
     setNewIssue(prev => ({
       ...prev,
       media_urls: [...(prev.media_urls || []), mediaUrl],

@@ -62,7 +62,7 @@ export const TaskReportTabs: React.FC<TaskReportTabsProps> = ({
 
   return (
     <Tabs value={activeTab} onValueChange={onTabChange} className="flex-1 flex flex-col overflow-hidden">
-      <TabsList className={`grid w-full ${isMobile ? 'grid-cols-3' : 'grid-cols-5'} ${isMobile ? 'gap-1' : ''}`}>
+      <TabsList className={`grid w-full ${isMobile ? 'grid-cols-4' : 'grid-cols-5'} ${isMobile ? 'gap-1' : ''}`}>
         <TabsTrigger 
           value="checklist" 
           className={`${isMobile ? 'px-2 py-1.5' : 'px-3 py-2'} flex items-center justify-center`}
@@ -82,8 +82,15 @@ export const TaskReportTabs: React.FC<TaskReportTabsProps> = ({
           )}
         </TabsTrigger>
 
-        {/* Hide some tabs on mobile to fit better */}
-        {!isMobile && (
+        {/* Show media tab on mobile but hide notes */}
+        {isMobile ? (
+          <TabsTrigger 
+            value="media" 
+            className="px-2 py-1.5 flex items-center justify-center"
+          >
+            {getTabLabel('media', <Camera className="h-3 w-3" />, 'Fotos')}
+          </TabsTrigger>
+        ) : (
           <>
             <TabsTrigger 
               value="notes" 
@@ -133,30 +140,30 @@ export const TaskReportTabs: React.FC<TaskReportTabsProps> = ({
           />
         </TabsContent>
 
+        {/* Show notes only on desktop */}
         {!isMobile && (
-          <>
-            <TabsContent value="notes" className="space-y-4 p-4 overflow-auto max-h-full">
-              <NotesSection
-                notes={notes}
-                onNotesChange={onNotesChange}
-              />
-            </TabsContent>
-
-            <TabsContent value="media" className="space-y-4 p-4 overflow-auto max-h-full">
-              <div className="space-y-6">
-                <h3 className="text-lg font-semibold">Fotos y Videos</h3>
-                <MediaCapture
-                  onMediaCaptured={(mediaUrl) => {
-                    console.log('Media captured (general):', mediaUrl);
-                    onReportMediaChange([...reportMedia, mediaUrl]);
-                  }}
-                  reportId={reportId}
-                  existingMedia={reportMedia}
-                />
-              </div>
-            </TabsContent>
-          </>
+          <TabsContent value="notes" className="space-y-4 p-4 overflow-auto max-h-full">
+            <NotesSection
+              notes={notes}
+              onNotesChange={onNotesChange}
+            />
+          </TabsContent>
         )}
+
+        {/* Show media tab on both mobile and desktop */}
+        <TabsContent value="media" className={`${isMobile ? 'space-y-2 p-2' : 'space-y-4 p-4'} overflow-auto max-h-full`}>
+          <div className="space-y-6">
+            <h3 className={`${isMobile ? 'text-base' : 'text-lg'} font-semibold`}>Fotos y Videos</h3>
+            <MediaCapture
+              onMediaCaptured={(mediaUrl) => {
+                console.log('Media captured (general):', mediaUrl);
+                onReportMediaChange([...reportMedia, mediaUrl]);
+              }}
+              reportId={reportId}
+              existingMedia={reportMedia}
+            />
+          </div>
+        </TabsContent>
 
         <TabsContent value="summary" className={`${isMobile ? 'space-y-2 p-2' : 'space-y-4 p-4'} overflow-auto max-h-full`}>
           <ReportSummary
