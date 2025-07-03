@@ -3,27 +3,27 @@
 ## Objetivo
 Crear una vista de calendario móvil personalizada para el rol de CLEANER, basada en el concepto de diseño proporcionado. Esta vista debe ser exclusiva para móvil y solo visible para usuarios con rol de limpiador.
 
-## Fase 1: Estructura Base y Detección
-### 1.1 Crear componente principal
-- [ ] Crear `CleanerMobileCalendar.tsx` en `src/components/calendar/`
-- [ ] Implementar detección de rol y dispositivo móvil
-- [ ] Integrar con el calendario existente solo para cleaners en móvil
+## Fase 1: Estructura Base y Detección ✅ COMPLETADA
+### 1.1 Crear componente principal ✅
+- [x] Crear `CleanerMobileCalendar.tsx` en `src/components/calendar/`
+- [x] Implementar detección de rol y dispositivo móvil
+- [x] Integrar con el calendario existente solo para cleaners en móvil
 
-### 1.2 Configurar enrutamiento condicional
-- [ ] Modificar `CalendarContainer.tsx` para renderizar condicionalmente
-- [ ] Asegurar que desktop siga funcionando igual
-- [ ] Solo afectar vista móvil para cleaners
+### 1.2 Configurar enrutamiento condicional ✅
+- [x] Modificar `CalendarContainer.tsx` para renderizar condicionalmente
+- [x] Asegurar que desktop siga funcionando igual
+- [x] Solo afectar vista móvil para cleaners
 
-## Fase 2: Vista "HOY" y Navegación de Fechas
-### 2.1 Implementar vista inicial "Today"
-- [ ] Crear header con fecha actual grande (formato: "13.12 DEC")
-- [ ] Mostrar día de la semana
-- [ ] Implementar botones de navegación (anterior/siguiente día)
+## Fase 2: Vista "HOY" y Navegación de Fechas ✅ COMPLETADA
+### 2.1 Implementar vista inicial "Today" ✅
+- [x] Crear header con fecha actual grande (formato: "13.12 DEC")
+- [x] Mostrar día de la semana
+- [x] Implementar botones de navegación (anterior/siguiente día)
 
-### 2.2 Navegación entre días
-- [ ] Crear hooks para navegación de fechas
-- [ ] Implementar swipe gestures (opcional)
-- [ ] Actualizar datos al cambiar fecha
+### 2.2 Navegación entre días ✅
+- [x] Crear hooks para navegación de fechas
+- [x] Implementar swipe gestures (opcional)
+- [x] Actualizar datos al cambiar fecha
 
 ## Fase 3: Resumen de Tareas
 ### 3.1 Calcular estadísticas

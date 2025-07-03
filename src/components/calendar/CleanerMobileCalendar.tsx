@@ -3,11 +3,13 @@ import { useDeviceType } from '@/hooks/use-mobile';
 import { useAuth } from '@/hooks/useAuth';
 import { Task, Cleaner } from '@/types/calendar';
 import { CalendarModalsWithSuspense } from './LazyCalendarComponents';
+import { CleanerDateHeader } from './cleaner/CleanerDateHeader';
+import { CleanerTaskSummary } from './cleaner/CleanerTaskSummary';
+import { useCleanerMobileNavigation } from '@/hooks/useCleanerMobileNavigation';
 
 interface CleanerMobileCalendarProps {
   tasks: Task[];
   cleaners: Cleaner[];
-  currentDate: Date;
   selectedTask: Task | null;
   isTaskModalOpen: boolean;
   setIsTaskModalOpen: (open: boolean) => void;
@@ -20,7 +22,6 @@ interface CleanerMobileCalendarProps {
 export const CleanerMobileCalendar: React.FC<CleanerMobileCalendarProps> = ({
   tasks,
   cleaners,
-  currentDate,
   selectedTask,
   isTaskModalOpen,
   setIsTaskModalOpen,
@@ -31,6 +32,7 @@ export const CleanerMobileCalendar: React.FC<CleanerMobileCalendarProps> = ({
 }) => {
   const { isMobile } = useDeviceType();
   const { userRole } = useAuth();
+  const { currentDate, navigateDate } = useCleanerMobileNavigation();
 
   // Only render for mobile cleaners
   if (!isMobile || userRole !== 'cleaner') {
@@ -51,26 +53,17 @@ export const CleanerMobileCalendar: React.FC<CleanerMobileCalendarProps> = ({
 
   return (
     <div className="flex flex-col h-full bg-background text-foreground">
-      {/* Date Header - Placeholder for now */}
-      <div className="p-4 border-b border-border">
-        <h1 className="text-2xl font-bold">
-          {currentDate.toLocaleDateString('es-ES', { 
-            day: '2-digit',
-            month: '2-digit',
-            weekday: 'short' 
-          })}
-        </h1>
-      </div>
+      {/* Date Header with Navigation */}
+      <CleanerDateHeader 
+        currentDate={currentDate}
+        onNavigateDate={navigateDate}
+      />
 
-      {/* Task Summary - Placeholder for now */}
-      <div className="p-4 space-y-2">
-        <div className="text-sm text-muted-foreground">
-          Tareas hoy: {todayTasks.length}
-        </div>
-        <div className="text-sm text-muted-foreground">
-          Tareas mañana: {tomorrowTasks.length}
-        </div>
-      </div>
+      {/* Task Summary */}
+      <CleanerTaskSummary 
+        todayTasks={todayTasks}
+        tomorrowTasks={tomorrowTasks}
+      />
 
       {/* Task Cards - Placeholder for now */}
       <div className="flex-1 p-4 space-y-3 overflow-y-auto">

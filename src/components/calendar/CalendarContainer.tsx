@@ -76,7 +76,6 @@ export const CalendarContainer = ({
       <CleanerMobileCalendar
         tasks={tasks}
         cleaners={cleaners}
-        currentDate={currentDate}
         selectedTask={selectedTask}
         isTaskModalOpen={isTaskModalOpen}
         setIsTaskModalOpen={setIsTaskModalOpen}
