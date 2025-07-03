@@ -86,8 +86,21 @@ const {
           currentDate={currentDate}
           onNavigateDate={navigateDate}
           onDateChange={(date) => {
-            // Para cambiar fecha directamente usamos el hook de navegación
-            goToToday(); // Esto actualizará la fecha
+            // Navegar a la fecha seleccionada
+            const timeDiff = date.getTime() - currentDate.getTime();
+            const daysDiff = Math.round(timeDiff / (1000 * 3600 * 24));
+            
+            if (daysDiff > 0) {
+              // Fecha futura - navegar hacia adelante
+              for (let i = 0; i < daysDiff; i++) {
+                navigateDate('next');
+              }
+            } else if (daysDiff < 0) {
+              // Fecha pasada - navegar hacia atrás
+              for (let i = 0; i < Math.abs(daysDiff); i++) {
+                navigateDate('prev');
+              }
+            }
           }}
           handleTaskClick={handleTaskClick}
           todayTasks={todayTasks}

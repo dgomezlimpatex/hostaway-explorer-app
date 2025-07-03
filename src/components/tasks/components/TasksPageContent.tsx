@@ -57,39 +57,102 @@ export const TasksPageContent = ({
         {/* Estadísticas - Solo mostrar para tareas actuales y no para limpiadoras */}
         {!showPastTasks && !isCleaner && <TaskStatsCard tasks={searchFilteredTasks} />}
 
-        {/* Task List - FIRST on mobile */}
-        <Card>
-          <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-lg">
-                {isCleaner 
-                  ? 'Mis Tareas'
-                  : (showPastTasks ? 'Historial de Tareas' : 'Lista de Tareas')
-                } {!isCleaner && `(${sortedTasks.length})`}
-              </CardTitle>
-              {totalPages > 1 && (
-                <span className="text-xs text-gray-500">
-                  Página {currentPage} de {totalPages}
-                </span>
-              )}
-            </div>
-          </CardHeader>
-          <CardContent className="pt-0">
-            <TasksList 
-              tasks={paginatedTasks} 
-              filters={filters} 
-              isLoading={isLoading} 
-              onShowHistory={onShowHistory}
-              onCreateReport={onCreateReport}
-            />
+        {/* Para limpiadoras: mostrar tareas separadas por secciones */}
+        {isCleaner && !showPastTasks ? (
+          <div className="space-y-4">
+            {/* Tareas de hoy */}
+            {(() => {
+              const today = new Date().toISOString().split('T')[0];
+              const todayTasks = paginatedTasks.filter(task => task.date === today);
+              
+              return todayTasks.length > 0 ? (
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-lg text-primary font-semibold">
+                      📅 TAREAS PARA HOY ({todayTasks.length})
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="pt-0">
+                    <TasksList 
+                      tasks={todayTasks} 
+                      filters={filters} 
+                      isLoading={isLoading} 
+                      onShowHistory={onShowHistory}
+                      onCreateReport={onCreateReport}
+                    />
+                  </CardContent>
+                </Card>
+              ) : null;
+            })()}
+
+            {/* Próximas tareas */}
+            {(() => {
+              const today = new Date().toISOString().split('T')[0];
+              const upcomingTasks = paginatedTasks.filter(task => task.date > today);
+              
+              return upcomingTasks.length > 0 ? (
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-lg text-muted-foreground font-semibold">
+                      ⏰ PRÓXIMAS TAREAS ({upcomingTasks.length})
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="pt-0">
+                    <TasksList 
+                      tasks={upcomingTasks} 
+                      filters={filters} 
+                      isLoading={isLoading} 
+                      onShowHistory={onShowHistory}
+                      onCreateReport={onCreateReport}
+                    />
+                  </CardContent>
+                </Card>
+              ) : null;
+            })()}
             
-            <TasksPagination
-              currentPage={currentPage}
-              totalPages={totalPages}
-              onPageChange={onPageChange}
-            />
-          </CardContent>
-        </Card>
+            {totalPages > 1 && (
+              <TasksPagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                onPageChange={onPageChange}
+              />
+            )}
+          </div>
+        ) : (
+          // Vista normal para no-limpiadoras o historial
+          <Card>
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-lg">
+                  {isCleaner 
+                    ? 'Mis Tareas'
+                    : (showPastTasks ? 'Historial de Tareas' : 'Lista de Tareas')
+                  } {!isCleaner && `(${sortedTasks.length})`}
+                </CardTitle>
+                {totalPages > 1 && (
+                  <span className="text-xs text-gray-500">
+                    Página {currentPage} de {totalPages}
+                  </span>
+                )}
+              </div>
+            </CardHeader>
+            <CardContent className="pt-0">
+              <TasksList 
+                tasks={paginatedTasks} 
+                filters={filters} 
+                isLoading={isLoading} 
+                onShowHistory={onShowHistory}
+                onCreateReport={onCreateReport}
+              />
+              
+              <TasksPagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                onPageChange={onPageChange}
+              />
+            </CardContent>
+          </Card>
+        )}
 
         {/* Sidebar widgets - AFTER task list on mobile */}
         {!showPastTasks && !isCleaner && (
