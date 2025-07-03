@@ -194,6 +194,13 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
           start_time: new Date().toISOString(),
         });
       }
+
+      // También actualizar el estado de la tarea
+      const { supabase } = await import('@/integrations/supabase/client');
+      await supabase
+        .from('tasks')
+        .update({ status: 'completed' })
+        .eq('id', task.id);
       
       toast({
         title: "Reporte completado",
