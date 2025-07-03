@@ -45,7 +45,7 @@ export const TaskCardActions: React.FC<TaskCardActionsProps> = ({
   console.log('Rendering actions for task:', task.id, { hasOnEdit: !!onEdit, hasOnDelete: !!onDelete });
 
   return (
-    <div className="flex items-center justify-between pt-4 mt-4 border-t border-gray-100">
+    <div className="pt-4 mt-4 border-t border-gray-100 space-y-3">
       <div className="flex items-center gap-2">
         <Button
           variant="outline"
