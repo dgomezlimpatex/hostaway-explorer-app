@@ -14,27 +14,27 @@ export const CleanerTaskCard: React.FC<CleanerTaskCardProps> = ({
   return (
     <div 
       onClick={() => onClick(task)}
-      className="bg-card p-4 rounded-xl border border-border shadow-sm cursor-pointer hover:shadow-md transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]"
+      className="bg-gradient-to-br from-card to-card/80 p-5 rounded-2xl border border-border/50 shadow-lg cursor-pointer hover:shadow-xl transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] backdrop-blur-sm"
     >
-      <div className="space-y-3">
+      <div className="space-y-4">
         {/* Property Name and Code */}
         <div className="flex items-start justify-between">
           <div className="flex-1">
-            <h3 className="font-semibold text-foreground text-base leading-tight">
+            <h3 className="font-bold text-foreground text-lg leading-tight">
               {task.property}
             </h3>
             {task.propertyCode && (
-              <p className="text-sm text-muted-foreground mt-1">
+              <p className="text-sm text-muted-foreground mt-1 font-medium">
                 Código: {task.propertyCode}
               </p>
             )}
           </div>
           
           {/* Status Badge */}
-          <div className={`px-2 py-1 rounded-full text-xs font-medium ml-3 ${
-            task.status === 'completed' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300' :
-            task.status === 'in-progress' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300' :
-            'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300'
+          <div className={`px-3 py-1.5 rounded-full text-xs font-bold ml-3 shadow-sm ${
+            task.status === 'completed' ? 'bg-green-500/20 text-green-600 border border-green-500/30' :
+            task.status === 'in-progress' ? 'bg-blue-500/20 text-blue-600 border border-blue-500/30' :
+            'bg-amber-500/20 text-amber-600 border border-amber-500/30'
           }`}>
             {task.status === 'completed' ? 'Completada' :
              task.status === 'in-progress' ? 'En progreso' : 'Pendiente'}
