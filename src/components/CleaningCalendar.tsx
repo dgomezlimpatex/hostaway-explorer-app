@@ -2,10 +2,16 @@
 import { useCallback } from "react";
 import { ResponsiveCalendarHeader } from "./calendar/ResponsiveCalendarHeader";
 import { CalendarContainer } from "./calendar/CalendarContainer";
+import { CleanerMobileCalendar } from "./calendar/CleanerMobileCalendar";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { useCalendarLogic } from "@/hooks/useCalendarLogic";
+import { useDeviceType } from "@/hooks/use-mobile";
+import { useAuth } from "@/hooks/useAuth";
 
 const CleaningCalendar = () => {
+  const { isMobile } = useDeviceType();
+  const { userRole } = useAuth();
+
   const {
     tasks,
     cleaners,
@@ -55,6 +61,34 @@ const CleaningCalendar = () => {
     return (
       <div className="flex items-center justify-center h-screen bg-background">
         <LoadingSpinner size="lg" text="Cargando calendario..." />
+      </div>
+    );
+  }
+
+  // Mobile cleaner view - render specific mobile interface
+  if (isMobile && userRole === 'cleaner') {
+    console.log('Rendering mobile cleaner view');
+    
+    // Calculate today's and tomorrow's tasks for the cleaner
+    const currentDateStr = currentDate.toISOString().split('T')[0];
+    const tomorrow = new Date(currentDate);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const tomorrowDateStr = tomorrow.toISOString().split('T')[0];
+    
+    const todayTasks = tasks.filter(task => task.date === currentDateStr);
+    const tomorrowTasks = tasks.filter(task => task.date === tomorrowDateStr);
+    
+    console.log('Mobile cleaner - Today tasks:', todayTasks.length, 'Tomorrow tasks:', tomorrowTasks.length);
+    
+    return (
+      <div className="min-h-screen bg-background text-foreground transition-colors duration-300">
+        <CleanerMobileCalendar
+          currentDate={currentDate}
+          onNavigateDate={navigateDate}
+          handleTaskClick={handleTaskClick}
+          todayTasks={todayTasks}
+          tomorrowTasks={tomorrowTasks}
+        />
       </div>
     );
   }

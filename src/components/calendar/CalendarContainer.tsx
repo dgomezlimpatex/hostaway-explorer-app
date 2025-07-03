@@ -7,12 +7,9 @@ import {
 import { CalendarLayout } from "./CalendarLayout";
 import { DragPreview } from "./DragPreview";
 import { StatusLegend } from "./StatusLegend";
-import { CleanerMobileCalendar } from "./CleanerMobileCalendar";
 import { Task, Cleaner } from "@/types/calendar";
 import { CleanerAvailability } from "@/hooks/useCleanerAvailability";
 import { getTaskPosition, isTimeSlotOccupied } from "@/utils/taskPositioning";
-import { useDeviceType } from "@/hooks/use-mobile";
-import { useAuth } from "@/hooks/useAuth";
 
 interface CalendarContainerProps {
   tasks: Task[];
@@ -69,34 +66,8 @@ export const CalendarContainer = ({
   handleUnassignTask,
   onNavigateDate
 }: CalendarContainerProps) => {
-  const { isMobile } = useDeviceType();
-  const { userRole } = useAuth();
-
-  // Render mobile cleaner view if on mobile and user is a cleaner
-  if (isMobile && userRole === 'cleaner') {
-    console.log('Rendering CleanerMobileCalendar for mobile cleaner');
-    
-    // Calculate today's and tomorrow's tasks here in the parent
-    const currentDateStr = currentDate.toISOString().split('T')[0];
-    const tomorrow = new Date(currentDate);
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    const tomorrowDateStr = tomorrow.toISOString().split('T')[0];
-    
-    const todayTasks = tasks.filter(task => task.date === currentDateStr);
-    const tomorrowTasks = tasks.filter(task => task.date === tomorrowDateStr);
-    
-    console.log('Parent - Today tasks:', todayTasks.length, 'Tomorrow tasks:', tomorrowTasks.length);
-    
-    return (
-      <CleanerMobileCalendar
-        currentDate={currentDate}
-        onNavigateDate={onNavigateDate}
-        handleTaskClick={handleTaskClick}
-        todayTasks={todayTasks}
-        tomorrowTasks={tomorrowTasks}
-      />
-    );
-  }
+  // Note: Mobile cleaner view logic moved to CleaningCalendar component
+  // to avoid conditional hooks execution
 
   // Memoized task filtering for desktop view
   const { assignedTasks, unassignedTasks } = useMemo(() => {
