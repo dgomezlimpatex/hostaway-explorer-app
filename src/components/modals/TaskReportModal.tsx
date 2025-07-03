@@ -125,11 +125,12 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
     }
   }, [taskMedia, currentReport]);
 
-  // Validate if task is from today
+  // Validate if task is from today - stricter validation
   const isTaskFromToday = useMemo(() => {
     if (!task) return false;
-    const today = new Date().toISOString().split('T')[0];
-    return task.date === today;
+    const today = new Date();
+    const taskDate = new Date(task.date + 'T00:00:00');
+    return taskDate.toDateString() === today.toDateString();
   }, [task]);
 
   // Validate required items completion

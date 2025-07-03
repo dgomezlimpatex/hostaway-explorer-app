@@ -4,7 +4,7 @@ import { MapPin } from 'lucide-react';
 
 interface CleanerTaskCardProps {
   task: Task;
-  onClick: (task: Task) => void;
+  onClick: () => void;
 }
 
 export const CleanerTaskCard: React.FC<CleanerTaskCardProps> = ({
@@ -41,7 +41,7 @@ export const CleanerTaskCard: React.FC<CleanerTaskCardProps> = ({
 
   return (
     <div 
-      onClick={() => onClick(task)}
+      onClick={onClick}
       className={`${getGradient()} p-6 rounded-3xl shadow-lg cursor-pointer hover:shadow-xl transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] text-white relative overflow-hidden`}
     >
       {/* Background pattern */}

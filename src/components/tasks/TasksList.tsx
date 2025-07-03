@@ -3,6 +3,7 @@ import React from 'react';
 import { Task } from "@/types/calendar";
 import { TaskDetailsModal } from '@/components/modals/TaskDetailsModal';
 import { AssignCleanerModal } from '@/components/modals/AssignCleanerModal';
+import { TaskPreviewModal } from '@/components/modals/TaskPreviewModal';
 import { TaskCard } from './components/TaskCard';
 import { useTaskActions } from './hooks/useTaskActions';
 import { filterTasks } from './utils/taskFilters';
@@ -44,6 +45,9 @@ export const TasksList = React.memo(({
     handleAssignCleaner,
     handleAssignCleanerComplete,
   } = useTaskActions();
+
+  const [showPreviewModal, setShowPreviewModal] = React.useState(false);
+  const [previewTask, setPreviewTask] = React.useState<Task | null>(null);
 
   const filteredTasks = React.useMemo(() => 
     filterTasks(tasks, filters), 
@@ -143,6 +147,16 @@ export const TasksList = React.memo(({
         onOpenChange={setIsModalOpen}
         onUpdateTask={handleUpdateTask}
         onDeleteTask={handleDeleteTask}
+      />
+
+      {/* Task Preview Modal */}
+      <TaskPreviewModal
+        task={previewTask}
+        open={showPreviewModal}
+        onOpenChange={setShowPreviewModal}
+        onCreateReport={handleCreateReport}
+        onEditTask={handleEditTask}
+        onAssignCleaner={handleAssignCleaner}
       />
 
       {/* Assign Cleaner Modal */}

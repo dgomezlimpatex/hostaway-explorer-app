@@ -41,8 +41,10 @@ export const TaskReportButton: React.FC<TaskReportButtonProps> = ({
   const hasReport = !!existingReport;
   const reportStatus = existingReport?.overall_status;
 
-  // Check if task is from today
-  const isTaskFromToday = task.date === new Date().toISOString().split('T')[0];
+  // Check if task is from today - stricter validation
+  const today = new Date();
+  const taskDate = new Date(task.date + 'T00:00:00');
+  const isTaskFromToday = taskDate.toDateString() === today.toDateString();
 
   const getButtonConfig = () => {
     if (!hasReport) {

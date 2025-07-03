@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Task } from '@/types/calendar';
 import { TaskReportModal } from '@/components/modals/TaskReportModal';
+import { TaskPreviewModal } from '@/components/modals/TaskPreviewModal';
 import { TaskCardHeader } from './TaskCardHeader';
 import { TaskCardTimeInfo } from './TaskCardTimeInfo';
 import { TaskCardCleanerInfo } from './TaskCardCleanerInfo';
@@ -38,20 +39,39 @@ export const TaskCard: React.FC<TaskCardProps> = ({
   const { isMobile, isTablet } = useDeviceType();
   const { userRole } = useAuth();
   const [showReportModal, setShowReportModal] = useState(false);
+  const [showPreviewModal, setShowPreviewModal] = useState(false);
 
   // Use CleanerTaskCard for mobile cleaners
   if (isMobile && userRole === 'cleaner') {
     const handleTaskClick = () => {
-      if (onCreateReport) {
-        onCreateReport(task);
-      }
+      setShowPreviewModal(true);
     };
 
-    return <CleanerTaskCard task={task} onClick={handleTaskClick} />;
+    return (
+      <>
+        <CleanerTaskCard task={task} onClick={handleTaskClick} />
+        <TaskPreviewModal
+          task={task}
+          open={showPreviewModal}
+          onOpenChange={setShowPreviewModal}
+          onCreateReport={onCreateReport}
+          onViewReport={() => setShowReportModal(true)}
+        />
+        <TaskReportModal
+          task={task}
+          open={showReportModal}
+          onOpenChange={setShowReportModal}
+        />
+      </>
+    );
   }
 
   const handleOpenReport = () => {
     setShowReportModal(true);
+  };
+
+  const handleCardClick = () => {
+    setShowPreviewModal(true);
   };
 
   // Default handlers to ensure buttons work
@@ -68,9 +88,9 @@ export const TaskCard: React.FC<TaskCardProps> = ({
   // Responsive card padding and spacing
   const getCardClasses = () => {
     if (isMobile) {
-      return "group relative overflow-hidden bg-white hover:shadow-lg transition-all duration-300 border border-gray-200 shadow-sm";
+      return "group relative overflow-hidden bg-white hover:shadow-lg transition-all duration-300 border border-gray-200 shadow-sm cursor-pointer";
     }
-    return "group relative overflow-hidden bg-white hover:shadow-xl transition-all duration-300 border border-gray-200 shadow-sm hover:shadow-2xl hover:-translate-y-1";
+    return "group relative overflow-hidden bg-white hover:shadow-xl transition-all duration-300 border border-gray-200 shadow-sm hover:shadow-2xl hover:-translate-y-1 cursor-pointer";
   };
 
   const getCardPadding = () => {
@@ -88,7 +108,7 @@ export const TaskCard: React.FC<TaskCardProps> = ({
 
   return (
     <>
-      <Card className={getCardClasses()}>
+      <Card className={getCardClasses()} onClick={handleCardClick}>
         {/* Status indicator line */}
         <div className={`absolute top-0 left-0 right-0 h-1 ${
           task.status === 'completed' ? 'bg-emerald-500' :
@@ -133,6 +153,15 @@ export const TaskCard: React.FC<TaskCardProps> = ({
           <div className="absolute inset-0 bg-gradient-to-br from-white/0 to-gray-50/30 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
         )}
       </Card>
+
+      <TaskPreviewModal
+        task={task}
+        open={showPreviewModal}
+        onOpenChange={setShowPreviewModal}
+        onCreateReport={onCreateReport}
+        onEditTask={handleEdit}
+        onViewReport={() => setShowReportModal(true)}
+      />
 
       <TaskReportModal
         task={task}

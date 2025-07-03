@@ -51,7 +51,7 @@ export const CleanerMobileCalendar: React.FC<CleanerMobileCalendarProps> = ({
             <CleanerTaskCard
               key={task.id}
               task={task}
-              onClick={handleTaskClick}
+              onClick={() => handleTaskClick(task)}
             />
           ))
         )}

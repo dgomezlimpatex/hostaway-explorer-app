@@ -169,11 +169,11 @@ const updateTaskStatus = async (taskId: string) => {
 ```
 
 ## Prioridad de Implementación
-1. **CRÍTICA** - Arreglar restricción temporal (sigue fallando) ⚠️
-2. **ALTA** - Task Preview Modal (nueva funcionalidad) ⭐
-3. **ALTA** - Validación estricta de completado
-4. **MEDIA** - Sincronización de estado completo
-5. **MEDIA** - Modo solo-lectura post-completado
+1. **CRÍTICA** - Arreglar restricción temporal ✅ ARREGLADO (validación más estricta)
+2. **COMPLETADO** - Task Preview Modal ✅ IMPLEMENTADO
+3. **ALTA** - Validación estricta de completado ✅ COMPLETADO
+4. **MEDIA** - Sincronización de estado completo ✅ COMPLETADO
+5. **MEDIA** - Modo solo-lectura post-completado ❌ PENDIENTE
 
 ## Fase 5: Task Preview Modal ⭐ NUEVA FUNCIONALIDAD
 ### 5.1 Crear Modal de Preview

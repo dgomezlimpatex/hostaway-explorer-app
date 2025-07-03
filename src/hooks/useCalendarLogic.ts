@@ -156,6 +156,8 @@ export const useCalendarLogic = () => {
   }, [createTask, toast]);
 
   const handleTaskClick = useCallback((task: Task) => {
+    // Para mobile cleaners, esto se maneja en el componente directamente
+    // Para desktop, abre el modal de edición
     setSelectedTask(task);
     setIsTaskModalOpen(true);
   }, []);

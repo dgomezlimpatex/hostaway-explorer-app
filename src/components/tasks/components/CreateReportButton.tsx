@@ -18,8 +18,10 @@ export const CreateReportButton: React.FC<CreateReportButtonProps> = ({
   const { userRole } = useAuth();
   const { data: existingReport, isLoading } = useTaskReport(task.id);
 
-  // Check if task is from today
-  const isTaskFromToday = task.date === new Date().toISOString().split('T')[0];
+  // Check if task is from today - stricter validation
+  const today = new Date();
+  const taskDate = new Date(task.date + 'T00:00:00');
+  const isTaskFromToday = taskDate.toDateString() === today.toDateString();
 
   // Solo mostrar para limpiadoras y si la tarea está asignada
   if (userRole !== 'cleaner' || !task.cleanerId) {
