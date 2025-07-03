@@ -5,12 +5,14 @@ import { CalendarContainer } from "./calendar/CalendarContainer";
 import { CleanerMobileCalendar } from "./calendar/CleanerMobileCalendar";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { useCalendarLogic } from "@/hooks/useCalendarLogic";
+import { useCalendarNavigation } from "@/hooks/useCalendarNavigation";
 import { useDeviceType } from "@/hooks/use-mobile";
 import { useAuth } from "@/hooks/useAuth";
 
 const CleaningCalendar = () => {
   const { isMobile } = useDeviceType();
   const { userRole } = useAuth();
+  const { setCurrentDate } = useCalendarNavigation();
 
 const {
     tasks,
@@ -86,21 +88,9 @@ const {
           currentDate={currentDate}
           onNavigateDate={navigateDate}
           onDateChange={(date) => {
-            // Navegar a la fecha seleccionada
-            const timeDiff = date.getTime() - currentDate.getTime();
-            const daysDiff = Math.round(timeDiff / (1000 * 3600 * 24));
-            
-            if (daysDiff > 0) {
-              // Fecha futura - navegar hacia adelante
-              for (let i = 0; i < daysDiff; i++) {
-                navigateDate('next');
-              }
-            } else if (daysDiff < 0) {
-              // Fecha pasada - navegar hacia atrás
-              for (let i = 0; i < Math.abs(daysDiff); i++) {
-                navigateDate('prev');
-              }
-            }
+            // Navegar directamente a la fecha seleccionada
+            console.log('Calendar - navigating to selected date:', date.toISOString().split('T')[0]);
+            setCurrentDate(date);
           }}
           handleTaskClick={handleTaskClick}
           todayTasks={todayTasks}
