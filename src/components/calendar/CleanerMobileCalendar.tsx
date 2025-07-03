@@ -1,22 +1,13 @@
 import React from 'react';
 import { Task, Cleaner } from '@/types/calendar';
-import { CalendarModalsWithSuspense } from './LazyCalendarComponents';
 import { CleanerDateHeader } from './cleaner/CleanerDateHeader';
 import { CleanerTaskSummary } from './cleaner/CleanerTaskSummary';
 import { CleanerTaskCard } from './cleaner/CleanerTaskCard';
 
 interface CleanerMobileCalendarProps {
-  tasks: Task[];
-  cleaners: Cleaner[];
   currentDate: Date;
   onNavigateDate: (direction: 'prev' | 'next') => void;
-  selectedTask: Task | null;
-  isTaskModalOpen: boolean;
-  setIsTaskModalOpen: (open: boolean) => void;
   handleTaskClick: (task: Task) => void;
-  handleUpdateTask: (taskId: string, updates: Partial<Task>) => Promise<void>;
-  handleDeleteTask: (taskId: string) => Promise<void>;
-  handleUnassignTask: (taskId: string) => Promise<void>;
   todayTasks: Task[];
   tomorrowTasks: Task[];
 }
@@ -24,13 +15,7 @@ interface CleanerMobileCalendarProps {
 export const CleanerMobileCalendar: React.FC<CleanerMobileCalendarProps> = ({
   currentDate,
   onNavigateDate,
-  selectedTask,
-  isTaskModalOpen,
-  setIsTaskModalOpen,
   handleTaskClick,
-  handleUpdateTask,
-  handleDeleteTask,
-  handleUnassignTask,
   todayTasks,
   tomorrowTasks
 }) => {
@@ -69,19 +54,6 @@ export const CleanerMobileCalendar: React.FC<CleanerMobileCalendarProps> = ({
         )}
       </div>
 
-      {/* Modals */}
-      <CalendarModalsWithSuspense
-        isCreateModalOpen={false}
-        setIsCreateModalOpen={() => {}}
-        selectedTask={selectedTask}
-        isTaskModalOpen={isTaskModalOpen}
-        setIsTaskModalOpen={setIsTaskModalOpen}
-        currentDate={currentDate}
-        onCreateTask={async () => {}}
-        onUpdateTask={handleUpdateTask}
-        onDeleteTask={handleDeleteTask}
-        onUnassignTask={handleUnassignTask}
-      />
     </div>
   );
 };

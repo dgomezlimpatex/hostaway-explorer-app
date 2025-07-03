@@ -89,17 +89,9 @@ export const CalendarContainer = ({
     
     return (
       <CleanerMobileCalendar
-        tasks={tasks}
-        cleaners={cleaners}
         currentDate={currentDate}
         onNavigateDate={onNavigateDate}
-        selectedTask={selectedTask}
-        isTaskModalOpen={isTaskModalOpen}
-        setIsTaskModalOpen={setIsTaskModalOpen}
         handleTaskClick={handleTaskClick}
-        handleUpdateTask={handleUpdateTask}
-        handleDeleteTask={handleDeleteTask}
-        handleUnassignTask={handleUnassignTask}
         todayTasks={todayTasks}
         tomorrowTasks={tomorrowTasks}
       />
