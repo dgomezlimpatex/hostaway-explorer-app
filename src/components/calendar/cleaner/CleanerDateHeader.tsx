@@ -75,8 +75,11 @@ export const CleanerDateHeader: React.FC<CleanerDateHeaderProps> = ({
               mode="single"
               selected={currentDate}
               onSelect={(date) => {
-                if (date && onDateChange) {
-                  onDateChange(date);
+                if (date) {
+                  console.log('Calendar date selected:', date.toISOString().split('T')[0]);
+                  if (onDateChange) {
+                    onDateChange(date);
+                  }
                   setIsCalendarOpen(false);
                 }
               }}
