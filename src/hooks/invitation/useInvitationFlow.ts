@@ -161,13 +161,26 @@ export const useInvitationFlow = () => {
       if (error) {
         console.error('Sign up error:', error);
         
-        // Si el usuario ya existe, cambiar a modo de inicio de sesión
-        if (error.message.includes('already registered') || error.message.includes('already exists')) {
-          setStep('signin');
-          toast({
-            title: 'Usuario existente',
-            description: 'Este email ya tiene una cuenta. Por favor, inicia sesión.',
-          });
+        // Si el usuario ya existe, intentar iniciar sesión automáticamente
+        if (error.message.includes('already registered') || 
+            error.message.includes('already exists') || 
+            error.message.includes('User already registered')) {
+          console.log('User already exists, attempting automatic sign-in');
+          
+          // Intentar iniciar sesión automáticamente
+          const { error: signInError } = await signIn(email!, password);
+          
+          if (signInError) {
+            console.log('Auto sign-in failed, showing sign-in form');
+            setStep('signin');
+            toast({
+              title: 'Usuario existente',
+              description: 'Ya tienes una cuenta. Por favor, inicia sesión.',
+            });
+          } else {
+            console.log('Auto sign-in successful');
+            // El useEffect se encargará de proceder con la aceptación de la invitación
+          }
         } else {
           toast({
             title: 'Error',
