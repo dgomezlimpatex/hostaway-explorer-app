@@ -1,5 +1,5 @@
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import { useVerifyInvitation, useAcceptInvitation } from '@/hooks/useInvitations';
@@ -25,6 +25,43 @@ export const useInvitationFlow = () => {
 
   const verifyInvitation = useVerifyInvitation();
   const acceptInvitation = useAcceptInvitation();
+
+  // Función para aceptar la invitación (definida antes del useEffect)
+  const handleAcceptInvitation = useCallback(() => {
+    if (!token) {
+      console.error('No token available for accepting invitation');
+      return;
+    }
+
+    console.log('Accepting invitation with token:', token);
+    setStep('accept');
+    
+    acceptInvitation.mutate(token, {
+      onSuccess: () => {
+        console.log('Invitation accepted successfully');
+        setStep('success');
+        toast({
+          title: 'Invitación aceptada',
+          description: 'Tu cuenta ha sido activada exitosamente.',
+        });
+        
+        // Redirigir al dashboard después de 2 segundos
+        setTimeout(() => {
+          navigate('/');
+        }, 2000);
+      },
+      onError: (error: any) => {
+        console.error('Error accepting invitation:', error);
+        toast({
+          title: 'Error',
+          description: error.message || 'Error al aceptar la invitación',
+          variant: 'destructive',
+        });
+        // Volver al paso anterior si hay error
+        setStep('signup');
+      }
+    });
+  }, [token, acceptInvitation, toast, navigate, setStep]);
 
   // Verificar la invitación al cargar (solo una vez)
   useEffect(() => {
@@ -80,49 +117,17 @@ export const useInvitationFlow = () => {
 
   // Si el usuario ya está autenticado, proceder directamente a aceptar la invitación
   useEffect(() => {
-    console.log('User effect - User:', !!user, 'Step:', step);
+    console.log('User effect - User:', !!user, 'Step:', step, 'Token:', token);
     
-    if (user && (step === 'signup' || step === 'signin')) {
+    if (user && (step === 'signup' || step === 'signin') && token) {
       console.log('User already authenticated, proceeding to accept invitation');
-      handleAcceptInvitation();
+      
+      // Pequeño delay para asegurar que el estado está actualizado
+      setTimeout(() => {
+        handleAcceptInvitation();
+      }, 100);
     }
-  }, [user, step]);
-
-  const handleAcceptInvitation = () => {
-    if (!token) {
-      console.error('No token available for accepting invitation');
-      return;
-    }
-
-    console.log('Accepting invitation with token:', token);
-    setStep('accept');
-    
-    acceptInvitation.mutate(token, {
-      onSuccess: () => {
-        console.log('Invitation accepted successfully');
-        setStep('success');
-        toast({
-          title: 'Invitación aceptada',
-          description: 'Tu cuenta ha sido activada exitosamente.',
-        });
-        
-        // Redirigir al dashboard después de 2 segundos
-        setTimeout(() => {
-          navigate('/');
-        }, 2000);
-      },
-      onError: (error: any) => {
-        console.error('Error accepting invitation:', error);
-        toast({
-          title: 'Error',
-          description: error.message || 'Error al aceptar la invitación',
-          variant: 'destructive',
-        });
-        // Volver al paso anterior si hay error
-        setStep('signup');
-      }
-    });
-  };
+  }, [user, step, token, handleAcceptInvitation]);
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
