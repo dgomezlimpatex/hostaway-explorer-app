@@ -150,10 +150,10 @@ export const UserManagement = () => {
     }
   });
 
-  // Mutation para eliminar usuario
+  // Mutation para eliminar usuario completamente
   const deleteUserMutation = useMutation({
     mutationFn: async (userId: string) => {
-      // Primero eliminar el rol
+      // 1. Primero eliminar el rol
       const { error: roleError } = await supabase
         .from('user_roles')
         .delete()
@@ -161,7 +161,7 @@ export const UserManagement = () => {
       
       if (roleError) throw roleError;
 
-      // Eliminar de cleaners si existe
+      // 2. Eliminar de cleaners si existe
       const { error: cleanerError } = await supabase
         .from('cleaners')
         .delete()
@@ -169,19 +169,29 @@ export const UserManagement = () => {
       
       // No lanzar error si no existe en cleaners
       console.log('Cleaner deletion result:', cleanerError);
+
+      // 3. Eliminar completamente el usuario de auth.users
+      // Esto también eliminará automáticamente el profile por CASCADE
+      const { error: authError } = await supabase.auth.admin.deleteUser(userId);
+      
+      if (authError) {
+        console.error('Error deleting user from auth:', authError);
+        throw new Error('No se pudo eliminar el usuario de la autenticación');
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['active-users'] });
       queryClient.invalidateQueries({ queryKey: ['cleaners'] });
       toast({
-        title: 'Usuario eliminado',
-        description: 'El usuario ha sido eliminado del sistema.',
+        title: 'Usuario eliminado completamente',
+        description: 'El usuario ha sido eliminado del sistema y puede ser invitado nuevamente.',
       });
     },
     onError: (error) => {
+      console.error('Delete user error:', error);
       toast({
         title: 'Error',
-        description: 'No se pudo eliminar el usuario.',
+        description: 'No se pudo eliminar el usuario completamente.',
         variant: 'destructive',
       });
     }
