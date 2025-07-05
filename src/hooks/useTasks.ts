@@ -137,6 +137,39 @@ export const useTasks = (currentDate: Date, currentView: ViewType) => {
     },
   });
 
+  const unassignTaskMutation = useMutation({
+    mutationFn: async (taskId: string) => {
+      console.log('unassignTaskMutation - unassigning task:', taskId);
+      return await taskAssignmentService.unassignTask(taskId);
+    },
+    onSuccess: (data, taskId) => {
+      // Optimistic update
+      queryClient.setQueryData(queryKey, (oldData: Task[] | undefined) => {
+        if (!oldData) return oldData;
+        return oldData.map(task => 
+          task.id === taskId 
+            ? { ...task, cleaner: undefined, cleanerId: undefined }
+            : task
+        );
+      });
+      queryClient.invalidateQueries({ queryKey: ['tasks', 'all'] });
+      
+      // Show success message
+      toast({
+        title: "Tarea desasignada",
+        description: "Se ha desasignado la tarea y se ha enviado una notificación por email.",
+      });
+    },
+    onError: (error: any) => {
+      console.error('Error unassigning task:', error);
+      toast({
+        title: "Error",
+        description: error.message || "No se pudo desasignar la tarea.",
+        variant: "destructive",
+      });
+    },
+  });
+
   return {
     tasks,
     isLoading,
@@ -146,11 +179,12 @@ export const useTasks = (currentDate: Date, currentView: ViewType) => {
     deleteTask: deleteTaskMutation.mutate,
     deleteAllTasks: deleteAllTasksMutation.mutate,
     assignTask: assignTaskMutation.mutate,
-    unassignTask: (taskId: string) => taskStorageService.unassignTask(taskId),
+    unassignTask: unassignTaskMutation.mutate,
     isUpdatingTask: updateTaskMutation.isPending,
     isCreatingTask: createTaskMutation.isPending,
     isDeletingTask: deleteTaskMutation.isPending,
     isDeletingAllTasks: deleteAllTasksMutation.isPending,
     isAssigningTask: assignTaskMutation.isPending,
+    isUnassigningTask: unassignTaskMutation.isPending,
   };
 };
