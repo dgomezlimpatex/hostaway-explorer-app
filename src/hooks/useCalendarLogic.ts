@@ -19,6 +19,7 @@ export const useCalendarLogic = () => {
     goToToday,
     updateTask,
     assignTask,
+    unassignTask,
     createTask,
     deleteTask,
     deleteAllTasks
@@ -206,17 +207,7 @@ export const useCalendarLogic = () => {
 
   const handleUnassignTask = useCallback(async (taskId: string) => {
     try {
-      await updateTask({ 
-        taskId, 
-        updates: { 
-          cleaner: null, 
-          cleanerId: null 
-        } 
-      });
-      toast({
-        title: "Tarea desasignada",
-        description: "La tarea se ha enviado a la lista de tareas sin asignar.",
-      });
+      await unassignTask(taskId);
     } catch (error) {
       console.error('Error unassigning task:', error);
       toast({
@@ -225,7 +216,7 @@ export const useCalendarLogic = () => {
         variant: "destructive",
       });
     }
-  }, [updateTask, toast]);
+  }, [unassignTask, toast]);
 
   return {
     // Data

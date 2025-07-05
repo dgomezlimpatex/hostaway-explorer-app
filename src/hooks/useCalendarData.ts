@@ -23,11 +23,13 @@ export const useCalendarData = () => {
     deleteTask,
     deleteAllTasks,
     assignTask: assignTaskMutation,
+    unassignTask: unassignTaskMutation,
     isUpdatingTask,
     isCreatingTask,
     isDeletingTask,
     isDeletingAllTasks,
-    isAssigningTask
+    isAssigningTask,
+    isUnassigningTask
   } = useTasks(currentDate, currentView);
 
   // Wrapper for assign task to include cleaners data
@@ -52,6 +54,7 @@ export const useCalendarData = () => {
     goToToday,
     updateTask,
     assignTask,
+    unassignTask: unassignTaskMutation,
     createTask,
     deleteTask,
     deleteAllTasks,
@@ -59,6 +62,7 @@ export const useCalendarData = () => {
     // Mutation states
     isUpdatingTask,
     isAssigningTask,
+    isUnassigningTask,
     isCreatingTask,
     isDeletingTask,
     isDeletingAllTasks,
