@@ -31,9 +31,10 @@ interface WorkersListProps {
   workers: Cleaner[];
   isLoading: boolean;
   onEditWorker: (worker: Cleaner) => void;
+  onViewWorker: (worker: Cleaner) => void;
 }
 
-export const WorkersList = ({ workers, isLoading, onEditWorker }: WorkersListProps) => {
+export const WorkersList = ({ workers, isLoading, onEditWorker, onViewWorker }: WorkersListProps) => {
   const [availabilityWorker, setAvailabilityWorker] = useState<Cleaner | null>(null);
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   const [localWorkers, setLocalWorkers] = useState<Cleaner[]>(workers);
@@ -176,6 +177,15 @@ export const WorkersList = ({ workers, isLoading, onEditWorker }: WorkersListPro
                 </TableCell>
                 <TableCell className="text-right">
                   <div className="flex items-center justify-end gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => onViewWorker(worker)}
+                      className="flex items-center gap-1"
+                    >
+                      <User className="h-4 w-4" />
+                      Ver Detalles
+                    </Button>
                     <Button
                       variant="outline"
                       size="sm"
