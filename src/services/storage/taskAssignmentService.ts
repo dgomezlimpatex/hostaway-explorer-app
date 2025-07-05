@@ -83,10 +83,46 @@ export class TaskAssignmentService {
       }
     }
 
-    return taskStorageService.updateTask(taskId, { 
-      cleaner: undefined, 
-      cleanerId: undefined 
-    });
+    // Update task directly in database to unassign
+    const { data: updatedTask, error: updateError } = await supabase
+      .from('tasks')
+      .update({ 
+        cleaner: null, 
+        cleaner_id: null 
+      })
+      .eq('id', taskId)
+      .select()
+      .single();
+
+    if (updateError) {
+      console.error('Error updating task for unassignment:', updateError);
+      throw new Error(`Could not unassign task: ${updateError.message}`);
+    }
+
+    // Map the database result back to Task interface
+    return {
+      id: updatedTask.id,
+      created_at: updatedTask.created_at,
+      updated_at: updatedTask.updated_at,
+      property: updatedTask.property,
+      address: updatedTask.address,
+      startTime: updatedTask.start_time,
+      endTime: updatedTask.end_time,
+      type: updatedTask.type,
+      status: updatedTask.status as 'pending' | 'in-progress' | 'completed',
+      checkOut: updatedTask.check_out,
+      checkIn: updatedTask.check_in,
+      cleaner: updatedTask.cleaner,
+      backgroundColor: updatedTask.background_color,
+      date: updatedTask.date,
+      clienteId: updatedTask.cliente_id,
+      propertyId: updatedTask.propiedad_id,
+      duration: updatedTask.duracion,
+      cost: updatedTask.coste,
+      paymentMethod: updatedTask.metodo_pago,
+      supervisor: updatedTask.supervisor,
+      cleanerId: updatedTask.cleaner_id
+    };
   }
 
   async updateTaskSchedule(taskId: string, updates: Partial<Task>, originalTask?: Task): Promise<Task> {
