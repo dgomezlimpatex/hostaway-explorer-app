@@ -69,14 +69,17 @@ const handler = async (req: Request): Promise<Response> => {
 
     // Build changes description
     let changesHtml = '';
-    if (changes.oldDate && changes.oldDate !== taskData.date) {
+    
+    // Siempre mostrar la fecha anterior para contexto
+    if (changes.oldDate) {
       changesHtml += `
         <tr>
           <td style="padding: 8px 0; font-weight: bold; color: #dc2626;">📅 Fecha anterior:</td>
-          <td style="padding: 8px 0; color: #dc2626; text-decoration: line-through;">${formattedOldDate}</td>
+          <td style="padding: 8px 0; color: #dc2626; ${changes.oldDate !== taskData.date ? 'text-decoration: line-through;' : ''}">${formattedOldDate}</td>
         </tr>
       `;
     }
+    
     if (changes.oldStartTime && changes.oldStartTime !== taskData.startTime) {
       changesHtml += `
         <tr>

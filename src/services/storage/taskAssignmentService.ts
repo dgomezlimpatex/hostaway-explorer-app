@@ -267,7 +267,7 @@ export class TaskAssignmentService {
       };
 
       const changes = {
-        oldDate: originalTask.date !== task.date ? originalTask.date : undefined,
+        oldDate: originalTask.date, // Siempre mostrar la fecha original
         oldStartTime: originalTask.startTime !== task.startTime ? originalTask.startTime : undefined,
         oldEndTime: originalTask.endTime !== task.endTime ? originalTask.endTime : undefined,
       };
