@@ -8,9 +8,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
 import { Clock, Plus, CheckCircle, XCircle, Edit } from "lucide-react";
-import { format, startOfWeek, endOfWeek } from "date-fns";
+import { format, startOfMonth, endOfMonth } from "date-fns";
 import { es } from "date-fns/locale";
-import { useTimeLogs, useCreateTimeLog, useUpdateTimeLog, useApproveTimeLog, useRejectTimeLog, useWeeklyHours } from '@/hooks/useTimeLogs';
+import { useTimeLogs, useCreateTimeLog, useUpdateTimeLog, useApproveTimeLog, useRejectTimeLog } from '@/hooks/useTimeLogs';
 import { useAuth } from '@/hooks/useAuth';
 
 interface WorkerTimeTrackingProps {
@@ -26,7 +26,7 @@ interface TimeLogFormData {
 }
 
 export const WorkerTimeTracking = ({ workerId }: WorkerTimeTrackingProps) => {
-  const [selectedWeek, setSelectedWeek] = useState(new Date());
+  const [selectedMonth, setSelectedMonth] = useState(new Date());
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [editingLog, setEditingLog] = useState<any>(null);
   const [formData, setFormData] = useState<TimeLogFormData>({
@@ -40,17 +40,28 @@ export const WorkerTimeTracking = ({ workerId }: WorkerTimeTrackingProps) => {
   const { userRole } = useAuth();
   const canManageTimeLogs = ['admin', 'manager', 'supervisor'].includes(userRole || '');
 
-  // Obtener el rango de la semana
-  const weekStart = startOfWeek(selectedWeek, { weekStartsOn: 1 });
-  const weekEnd = endOfWeek(selectedWeek, { weekStartsOn: 1 });
+  // Obtener el rango del mes
+  const monthStart = startOfMonth(selectedMonth);
+  const monthEnd = endOfMonth(selectedMonth);
 
   const { data: timeLogs = [], isLoading } = useTimeLogs(
     workerId,
-    format(weekStart, 'yyyy-MM-dd'),
-    format(weekEnd, 'yyyy-MM-dd')
+    format(monthStart, 'yyyy-MM-dd'),
+    format(monthEnd, 'yyyy-MM-dd')
   );
 
-  const { data: weeklyHours } = useWeeklyHours(workerId, format(weekStart, 'yyyy-MM-dd'));
+  // Calcular horas mensuales manualmente desde los datos
+  const monthlyHours = React.useMemo(() => {
+    const totalHours = timeLogs.reduce((sum, log) => sum + (log.totalHours || 0), 0);
+    const overtimeHours = timeLogs.reduce((sum, log) => sum + (log.overtimeHours || 0), 0);
+    const regularHours = totalHours - overtimeHours;
+    
+    return {
+      total: totalHours,
+      regular: regularHours,
+      overtime: overtimeHours
+    };
+  }, [timeLogs]);
 
   const createTimeLog = useCreateTimeLog();
   const updateTimeLog = useUpdateTimeLog();
@@ -137,28 +148,28 @@ export const WorkerTimeTracking = ({ workerId }: WorkerTimeTrackingProps) => {
     }
   };
 
-  const navigateWeek = (direction: 'prev' | 'next') => {
-    const newWeek = new Date(selectedWeek);
-    newWeek.setDate(newWeek.getDate() + (direction === 'next' ? 7 : -7));
-    setSelectedWeek(newWeek);
+  const navigateMonth = (direction: 'prev' | 'next') => {
+    const newMonth = new Date(selectedMonth);
+    newMonth.setMonth(newMonth.getMonth() + (direction === 'next' ? 1 : -1));
+    setSelectedMonth(newMonth);
   };
 
   return (
     <div className="space-y-4">
-      {/* Resumen semanal */}
+      {/* Resumen mensual */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
           <CardContent className="p-4">
             <div className="text-2xl font-bold text-primary">
-              {weeklyHours?.total.toFixed(1) || '0.0'}h
+              {monthlyHours.total.toFixed(1)}h
             </div>
-            <div className="text-sm text-muted-foreground">Total Semana</div>
+            <div className="text-sm text-muted-foreground">Total Mes</div>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-4">
             <div className="text-2xl font-bold text-green-600">
-              {weeklyHours?.regular.toFixed(1) || '0.0'}h
+              {monthlyHours.regular.toFixed(1)}h
             </div>
             <div className="text-sm text-muted-foreground">Horas Regulares</div>
           </CardContent>
@@ -166,7 +177,7 @@ export const WorkerTimeTracking = ({ workerId }: WorkerTimeTrackingProps) => {
         <Card>
           <CardContent className="p-4">
             <div className="text-2xl font-bold text-orange-600">
-              {weeklyHours?.overtime.toFixed(1) || '0.0'}h
+              {monthlyHours.overtime.toFixed(1)}h
             </div>
             <div className="text-sm text-muted-foreground">Horas Extra</div>
           </CardContent>
@@ -193,17 +204,17 @@ export const WorkerTimeTracking = ({ workerId }: WorkerTimeTrackingProps) => {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => navigateWeek('prev')}
+                onClick={() => navigateMonth('prev')}
               >
                 ← Anterior
               </Button>
               <span className="text-sm font-medium">
-                {format(weekStart, 'dd MMM', { locale: es })} - {format(weekEnd, 'dd MMM yyyy', { locale: es })}
+                {format(selectedMonth, 'MMMM yyyy', { locale: es })}
               </span>
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => navigateWeek('next')}
+                onClick={() => navigateMonth('next')}
               >
                 Siguiente →
               </Button>
@@ -363,7 +374,7 @@ export const WorkerTimeTracking = ({ workerId }: WorkerTimeTrackingProps) => {
               {timeLogs.length === 0 && (
                 <TableRow>
                   <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
-                    No hay registros de tiempo para esta semana
+                    No hay registros de tiempo para este mes
                   </TableCell>
                 </TableRow>
               )}

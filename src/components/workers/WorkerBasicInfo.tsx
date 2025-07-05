@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -29,6 +29,18 @@ export const WorkerBasicInfo = ({ worker }: WorkerBasicInfoProps) => {
   });
 
   const updateCleaner = useUpdateCleaner();
+
+  // Sincronizar editData cuando cambie el worker
+  useEffect(() => {
+    setEditData({
+      contractHoursPerWeek: worker.contractHoursPerWeek || 40,
+      hourlyRate: worker.hourlyRate || 0,
+      contractType: worker.contractType || 'full-time',
+      startDate: worker.startDate ? new Date(worker.startDate) : undefined,
+      emergencyContactName: worker.emergencyContactName || '',
+      emergencyContactPhone: worker.emergencyContactPhone || ''
+    });
+  }, [worker]);
 
   const handleSave = () => {
     updateCleaner.mutate({
