@@ -257,39 +257,104 @@ export type Database = {
           },
         ]
       }
+      cleaner_work_schedule: {
+        Row: {
+          cleaner_id: string
+          created_at: string
+          date: string
+          id: string
+          is_working_day: boolean | null
+          notes: string | null
+          schedule_type: string | null
+          scheduled_end_time: string
+          scheduled_start_time: string
+          updated_at: string
+        }
+        Insert: {
+          cleaner_id: string
+          created_at?: string
+          date: string
+          id?: string
+          is_working_day?: boolean | null
+          notes?: string | null
+          schedule_type?: string | null
+          scheduled_end_time: string
+          scheduled_start_time: string
+          updated_at?: string
+        }
+        Update: {
+          cleaner_id?: string
+          created_at?: string
+          date?: string
+          id?: string
+          is_working_day?: boolean | null
+          notes?: string | null
+          schedule_type?: string | null
+          scheduled_end_time?: string
+          scheduled_start_time?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cleaner_work_schedule_cleaner_id_fkey"
+            columns: ["cleaner_id"]
+            isOneToOne: false
+            referencedRelation: "cleaners"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       cleaners: {
         Row: {
           avatar: string | null
+          contract_hours_per_week: number | null
+          contract_type: string | null
           created_at: string
           email: string | null
+          emergency_contact_name: string | null
+          emergency_contact_phone: string | null
+          hourly_rate: number | null
           id: string
           is_active: boolean
           name: string
           sort_order: number | null
+          start_date: string | null
           telefono: string | null
           updated_at: string
           user_id: string | null
         }
         Insert: {
           avatar?: string | null
+          contract_hours_per_week?: number | null
+          contract_type?: string | null
           created_at?: string
           email?: string | null
+          emergency_contact_name?: string | null
+          emergency_contact_phone?: string | null
+          hourly_rate?: number | null
           id?: string
           is_active?: boolean
           name: string
           sort_order?: number | null
+          start_date?: string | null
           telefono?: string | null
           updated_at?: string
           user_id?: string | null
         }
         Update: {
           avatar?: string | null
+          contract_hours_per_week?: number | null
+          contract_type?: string | null
           created_at?: string
           email?: string | null
+          emergency_contact_name?: string | null
+          emergency_contact_phone?: string | null
+          hourly_rate?: number | null
           id?: string
           is_active?: boolean
           name?: string
           sort_order?: number | null
+          start_date?: string | null
           telefono?: string | null
           updated_at?: string
           user_id?: string | null
@@ -1065,6 +1130,65 @@ export type Database = {
             columns: ["propiedad_id"]
             isOneToOne: false
             referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      time_logs: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          break_duration_minutes: number | null
+          cleaner_id: string
+          clock_in: string | null
+          clock_out: string | null
+          created_at: string
+          date: string
+          id: string
+          notes: string | null
+          overtime_hours: number | null
+          status: string | null
+          total_hours: number | null
+          updated_at: string
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          break_duration_minutes?: number | null
+          cleaner_id: string
+          clock_in?: string | null
+          clock_out?: string | null
+          created_at?: string
+          date: string
+          id?: string
+          notes?: string | null
+          overtime_hours?: number | null
+          status?: string | null
+          total_hours?: number | null
+          updated_at?: string
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          break_duration_minutes?: number | null
+          cleaner_id?: string
+          clock_in?: string | null
+          clock_out?: string | null
+          created_at?: string
+          date?: string
+          id?: string
+          notes?: string | null
+          overtime_hours?: number | null
+          status?: string | null
+          total_hours?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "time_logs_cleaner_id_fkey"
+            columns: ["cleaner_id"]
+            isOneToOne: false
+            referencedRelation: "cleaners"
             referencedColumns: ["id"]
           },
         ]

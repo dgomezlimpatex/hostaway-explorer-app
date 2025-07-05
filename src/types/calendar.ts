@@ -9,6 +9,12 @@ export interface Cleaner extends BaseEntity {
   isActive: boolean;
   sortOrder?: number;
   user_id?: string;
+  contractHoursPerWeek?: number;
+  hourlyRate?: number;
+  contractType?: string;
+  startDate?: string;
+  emergencyContactName?: string;
+  emergencyContactPhone?: string;
 }
 
 export interface TimeSlot {
@@ -55,4 +61,28 @@ export interface CleanerAvailability {
   isAvailable: boolean;
   startTime?: string; // formato HH:MM
   endTime?: string; // formato HH:MM
+}
+
+export interface TimeLog extends BaseEntity {
+  cleanerId: string;
+  date: string;
+  clockIn?: string;
+  clockOut?: string;
+  breakDurationMinutes: number;
+  totalHours: number;
+  overtimeHours: number;
+  notes?: string;
+  status: 'pending' | 'approved' | 'rejected';
+  approvedBy?: string;
+  approvedAt?: string;
+}
+
+export interface WorkSchedule extends BaseEntity {
+  cleanerId: string;
+  date: string;
+  scheduledStartTime: string;
+  scheduledEndTime: string;
+  isWorkingDay: boolean;
+  scheduleType: 'regular' | 'overtime' | 'holiday';
+  notes?: string;
 }

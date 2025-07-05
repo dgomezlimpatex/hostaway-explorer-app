@@ -11,6 +11,12 @@ export interface CreateCleanerData {
   avatar?: string;
   isActive?: boolean;
   sortOrder?: number;
+  contractHoursPerWeek?: number;
+  hourlyRate?: number;
+  contractType?: string;
+  startDate?: string;
+  emergencyContactName?: string;
+  emergencyContactPhone?: string;
 }
 
 class CleanerStorageService extends BaseStorageService<Cleaner, CreateCleanerData> {

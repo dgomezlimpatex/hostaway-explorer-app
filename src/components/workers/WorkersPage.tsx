@@ -8,12 +8,14 @@ import { Link } from "react-router-dom";
 import { WorkersList } from './WorkersList';
 import { CreateWorkerModal } from './CreateWorkerModal';
 import { EditWorkerModal } from './EditWorkerModal';
+import { WorkerDetailModal } from './WorkerDetailModal';
 import { useCleaners } from '@/hooks/useCleaners';
 import { Cleaner } from '@/types/calendar';
 
 export default function WorkersPage() {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [editingWorker, setEditingWorker] = useState<Cleaner | null>(null);
+  const [selectedWorker, setSelectedWorker] = useState<Cleaner | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   
   const { cleaners, isLoading } = useCleaners();
@@ -129,6 +131,12 @@ export default function WorkersPage() {
           worker={editingWorker}
           open={!!editingWorker}
           onOpenChange={(open) => !open && setEditingWorker(null)}
+        />
+
+        <WorkerDetailModal 
+          worker={selectedWorker}
+          open={!!selectedWorker}
+          onOpenChange={(open) => !open && setSelectedWorker(null)}
         />
       </div>
     </div>
