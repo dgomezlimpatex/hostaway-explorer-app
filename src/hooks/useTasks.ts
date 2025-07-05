@@ -34,7 +34,23 @@ export const useTasks = (currentDate: Date, currentView: ViewType) => {
   const updateTaskMutation = useMutation({
     mutationFn: async ({ taskId, updates }: { taskId: string; updates: Partial<Task> }) => {
       console.log('updateTaskMutation - updating task:', { taskId, updates });
-      return taskStorageService.updateTask(taskId, updates);
+      
+      // Get current task to check for schedule changes
+      const currentTask = tasks.find(t => t.id === taskId);
+      
+      // Check if it's a schedule change (date, startTime, or endTime changed)
+      const isScheduleChange = currentTask && (
+        (updates.date && updates.date !== currentTask.date) ||
+        (updates.startTime && updates.startTime !== currentTask.startTime) ||
+        (updates.endTime && updates.endTime !== currentTask.endTime)
+      );
+      
+      // Use appropriate service method
+      if (isScheduleChange && currentTask) {
+        return taskStorageService.updateTaskSchedule(taskId, updates, currentTask);
+      } else {
+        return taskStorageService.updateTask(taskId, updates);
+      }
     },
     onSuccess: (data, variables) => {
       // Optimistic update más eficiente
@@ -62,6 +78,13 @@ export const useTasks = (currentDate: Date, currentView: ViewType) => {
 
   const deleteTaskMutation = useMutation({
     mutationFn: async (taskId: string) => {
+      // Check if task has a cleaner assigned to send cancellation email
+      const currentTask = tasks.find(t => t.id === taskId);
+      if (currentTask?.cleanerId) {
+        // Use cancelTask instead of deleteTask to send email
+        await taskStorageService.cancelTask(taskId);
+      }
+      // Then delete the task
       return taskStorageService.deleteTask(taskId);
     },
     onSuccess: (data, taskId) => {
@@ -123,6 +146,7 @@ export const useTasks = (currentDate: Date, currentView: ViewType) => {
     deleteTask: deleteTaskMutation.mutate,
     deleteAllTasks: deleteAllTasksMutation.mutate,
     assignTask: assignTaskMutation.mutate,
+    unassignTask: (taskId: string) => taskStorageService.unassignTask(taskId),
     isUpdatingTask: updateTaskMutation.isPending,
     isCreatingTask: createTaskMutation.isPending,
     isDeletingTask: deleteTaskMutation.isPending,

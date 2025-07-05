@@ -18,4 +18,8 @@ export const taskStorageService = {
   // Assignment operations
   assignTask: (taskId: string, cleanerName: string, cleanerId?: string) => 
     taskAssignmentService.assignTask(taskId, cleanerName, cleanerId),
+  unassignTask: (taskId: string) => taskAssignmentService.unassignTask(taskId),
+  updateTaskSchedule: (taskId: string, updates: Partial<Task>, originalTask?: Task) => 
+    taskAssignmentService.updateTaskSchedule(taskId, updates, originalTask),
+  cancelTask: (taskId: string) => taskAssignmentService.cancelTask(taskId),
 };
