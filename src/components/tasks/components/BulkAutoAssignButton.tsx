@@ -71,5 +71,31 @@ export const BulkAutoAssignButton = ({
     }
   };
   const unassignedCount = unassignedTasks.length;
-  return;
+  
+  return (
+    <Button
+      onClick={handleBulkAutoAssign}
+      disabled={isAssigning || unassignedCount === 0}
+      variant="outline"
+      size="sm"
+      className="flex items-center gap-2"
+    >
+      {isAssigning ? (
+        <Loader2 className="h-4 w-4 animate-spin" />
+      ) : (
+        <Bot className="h-4 w-4" />
+      )}
+      <span className="hidden sm:inline">
+        Asignar Automáticamente
+      </span>
+      <span className="sm:hidden">
+        Auto
+      </span>
+      {unassignedCount > 0 && (
+        <span className="bg-primary text-primary-foreground rounded-full px-2 py-1 text-xs">
+          {unassignedCount}
+        </span>
+      )}
+    </Button>
+  );
 };
