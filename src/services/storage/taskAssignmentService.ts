@@ -36,15 +36,47 @@ export class TaskAssignmentService {
   }
 
   async unassignTask(taskId: string): Promise<Task> {
-    // Get the current task to send email before unassigning
-    const currentTask = await taskStorageService.getTasks().then(tasks => 
-      tasks.find(t => t.id === taskId)
-    );
+    // Get the current task from database directly to send email before unassigning
+    const { data: currentTask, error } = await supabase
+      .from('tasks')
+      .select('*')
+      .eq('id', taskId)
+      .single();
+    
+    if (error) {
+      console.error('Error fetching task for unassignment:', error);
+      throw new Error(`Could not fetch task: ${error.message}`);
+    }
     
     // Send unassignment email if cleaner was assigned
-    if (currentTask?.cleanerId) {
+    if (currentTask?.cleaner_id) {
       try {
-        await this.sendTaskUnassignmentEmail(currentTask, currentTask.cleanerId, 'unassigned');
+        // Map the database row to Task interface for email
+        const taskForEmail: Task = {
+          id: currentTask.id,
+          created_at: currentTask.created_at,
+          updated_at: currentTask.updated_at,
+          property: currentTask.property,
+          address: currentTask.address,
+          startTime: currentTask.start_time,
+          endTime: currentTask.end_time,
+          type: currentTask.type,
+          status: currentTask.status as 'pending' | 'in-progress' | 'completed',
+          checkOut: currentTask.check_out,
+          checkIn: currentTask.check_in,
+          cleaner: currentTask.cleaner,
+          backgroundColor: currentTask.background_color,
+          date: currentTask.date,
+          clienteId: currentTask.cliente_id,
+          propertyId: currentTask.propiedad_id,
+          duration: currentTask.duracion,
+          cost: currentTask.coste,
+          paymentMethod: currentTask.metodo_pago,
+          supervisor: currentTask.supervisor,
+          cleanerId: currentTask.cleaner_id
+        };
+        
+        await this.sendTaskUnassignmentEmail(taskForEmail, currentTask.cleaner_id, 'unassigned');
         console.log('Task unassignment email sent successfully');
       } catch (error) {
         console.error('Failed to send unassignment email:', error);
