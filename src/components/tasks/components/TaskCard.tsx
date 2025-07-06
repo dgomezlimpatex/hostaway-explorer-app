@@ -22,6 +22,7 @@ interface TaskCardProps {
   onShowHistory?: (task: Task) => void;
   onCreateReport?: (task: Task) => void;
   onEditTask?: (task: Task) => void;
+  onAssignCleaner?: (task: Task) => void;
   showActions?: boolean;
 }
 
@@ -34,6 +35,7 @@ export const TaskCard: React.FC<TaskCardProps> = ({
   onShowHistory,
   onCreateReport,
   onEditTask,
+  onAssignCleaner,
   showActions = true,
 }) => {
   const { isMobile, isTablet } = useDeviceType();
@@ -144,6 +146,7 @@ export const TaskCard: React.FC<TaskCardProps> = ({
             onEditTask={onEditTask}
             onCreateReport={onCreateReport}
             onOpenReport={handleOpenReport}
+            onAssignCleaner={onAssignCleaner}
             showActions={true}
           />
         </CardContent>

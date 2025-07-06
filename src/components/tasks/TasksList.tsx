@@ -135,6 +135,7 @@ export const TasksList = React.memo(({
               onCreateReport={handleCreateReport}
               onEditTask={handleEditTask}
               onDelete={handleDeleteTask}
+              onAssignCleaner={handleAssignCleaner}
             />
           ))}
         </div>
