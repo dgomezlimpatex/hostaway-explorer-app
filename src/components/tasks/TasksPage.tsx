@@ -91,6 +91,7 @@ export default function TasksPage() {
         onShowHistory={handleShowHistory}
         onCreateReport={handleCreateReport}
         onPageChange={handlePageChange}
+        onRefetch={refetch}
       />
 
       {!showPastTasks && (

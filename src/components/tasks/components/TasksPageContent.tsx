@@ -29,6 +29,7 @@ interface TasksPageContentProps {
   onShowHistory: (task: Task) => void;
   onCreateReport: (task: Task) => void;
   onPageChange: (page: number) => void;
+  onRefetch: () => void;
 }
 
 export const TasksPageContent = ({
@@ -44,6 +45,7 @@ export const TasksPageContent = ({
   onShowHistory,
   onCreateReport,
   onPageChange,
+  onRefetch,
 }: TasksPageContentProps) => {
   const { userRole } = useAuth();
   const { isMobile } = useDeviceType();
@@ -79,6 +81,7 @@ export const TasksPageContent = ({
                       isLoading={isLoading} 
                       onShowHistory={onShowHistory}
                       onCreateReport={onCreateReport}
+                      onRefetch={onRefetch}
                     />
                   </CardContent>
                 </Card>
@@ -104,6 +107,7 @@ export const TasksPageContent = ({
                       isLoading={isLoading} 
                       onShowHistory={onShowHistory}
                       onCreateReport={onCreateReport}
+                      onRefetch={onRefetch}
                     />
                   </CardContent>
                 </Card>
@@ -143,6 +147,7 @@ export const TasksPageContent = ({
                 isLoading={isLoading} 
                 onShowHistory={onShowHistory}
                 onCreateReport={onCreateReport}
+                onRefetch={onRefetch}
               />
               
               <TasksPagination
@@ -205,6 +210,7 @@ export const TasksPageContent = ({
                 isLoading={isLoading} 
                 onShowHistory={onShowHistory}
                 onCreateReport={onCreateReport}
+                onRefetch={onRefetch}
               />
               
               <TasksPagination

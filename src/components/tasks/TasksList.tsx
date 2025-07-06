@@ -21,6 +21,7 @@ interface TasksListProps {
   isLoading: boolean;
   onShowHistory?: (task: Task) => void;
   onCreateReport?: (task: Task) => void;
+  onRefetch?: () => void;
 }
 
 export const TasksList = React.memo(({ 
@@ -28,7 +29,8 @@ export const TasksList = React.memo(({
   filters, 
   isLoading, 
   onShowHistory,
-  onCreateReport 
+  onCreateReport,
+  onRefetch 
 }: TasksListProps) => {
   const { isMobile, isTablet } = useDeviceType();
   const {
@@ -53,6 +55,15 @@ export const TasksList = React.memo(({
     filterTasks(tasks, filters), 
     [tasks, filters]
   );
+
+  // Wrapper para handleAssignCleanerComplete que incluye refetch
+  const handleAssignCleanerCompleteWithRefetch = React.useCallback((taskId: string, cleanerId: string, cleaners: any[]) => {
+    handleAssignCleanerComplete(taskId, cleanerId, cleaners);
+    // Refrescar la lista después de asignar
+    if (onRefetch) {
+      setTimeout(() => onRefetch(), 500); // Pequeño delay para asegurar que la operación se complete
+    }
+  }, [handleAssignCleanerComplete, onRefetch]);
 
   if (isLoading) {
     return (
@@ -165,7 +176,7 @@ export const TasksList = React.memo(({
         task={taskToAssign}
         open={isAssignModalOpen}
         onOpenChange={setIsAssignModalOpen}
-        onAssignCleaner={handleAssignCleanerComplete}
+        onAssignCleaner={handleAssignCleanerCompleteWithRefetch}
       />
     </>
   );

@@ -1,5 +1,6 @@
 
 import { useState, useMemo } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/hooks/useAuth';
 import { useTasks } from '@/hooks/useTasks';
 import { useOptimizedPagination } from '@/hooks/useOptimizedPagination';
@@ -18,6 +19,7 @@ interface LocalTaskFilters {
 export const useTasksPageState = () => {
   const { userRole, user, profile } = useAuth();
   const { cleaners } = useCleaners();
+  const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState('');
   const [showPastTasks, setShowPastTasks] = useState(false);
   const [filters, setFilters] = useState<LocalTaskFilters>({
@@ -39,11 +41,11 @@ export const useTasksPageState = () => {
     return currentCleaner?.id || null;
   }, [cleaners, user?.id, userRole]);
 
-  // Create a simple refetch function by invalidating the query
+  // Create a proper refetch function using React Query
   const refetch = () => {
-    // For now, we'll trigger a page reload to refresh the data
-    // This is a temporary solution until we fix the useTasks hook
-    window.location.reload();
+    // Invalidate all task-related queries to force refetch
+    queryClient.invalidateQueries({ queryKey: ['tasks'] });
+    console.log('useTasksPageState - invalidated task queries');
   };
 
   // Filter and sort tasks
