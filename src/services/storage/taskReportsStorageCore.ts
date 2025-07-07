@@ -4,18 +4,20 @@ import { TaskReport, CreateTaskReportData } from '@/types/taskReports';
 
 export class TaskReportsStorageService {
   async getTaskReports(): Promise<TaskReport[]> {
-    console.log('Fetching task reports...');
+    console.log('📋 Fetching task reports from database...');
+    
     const { data, error } = await supabase
       .from('task_reports')
       .select('*')
       .order('created_at', { ascending: false });
 
     if (error) {
-      console.error('Error fetching task reports:', error);
+      console.error('❌ Error fetching task reports:', error);
       throw error;
     }
 
-    console.log('Raw task reports data:', data);
+    console.log('✅ Raw task reports data received:', data?.length || 0, 'reports');
+    console.log('📊 First report sample:', data?.[0]);
 
     // Transform JSON data to proper types
     const transformedData = (data || []).map(item => ({
@@ -24,7 +26,7 @@ export class TaskReportsStorageService {
       issues_found: item.issues_found as any[]
     }));
 
-    console.log('Transformed task reports:', transformedData);
+    console.log('🔄 Transformed task reports count:', transformedData.length);
     return transformedData;
   }
 
