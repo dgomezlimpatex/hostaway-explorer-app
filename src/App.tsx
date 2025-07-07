@@ -20,6 +20,7 @@ import PropertyGroups from "./pages/PropertyGroups";
 import Reports from "./pages/Reports";
 import HostawaySyncLogs from "./pages/HostawaySyncLogs";
 import ChecklistTemplates from "./pages/ChecklistTemplates";
+import CleaningReports from "./pages/CleaningReports";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -108,6 +109,13 @@ function App() {
                 <ProtectedRoute>
                   <RoleProtectedRoute requiredModule="hostaway">
                     <HostawaySyncLogs />
+                  </RoleProtectedRoute>
+                </ProtectedRoute>
+              } />
+              <Route path="/cleaning-reports" element={
+                <ProtectedRoute>
+                  <RoleProtectedRoute requiredModule="reports">
+                    <CleaningReports />
                   </RoleProtectedRoute>
                 </ProtectedRoute>
               } />

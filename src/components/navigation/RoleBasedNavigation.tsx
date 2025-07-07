@@ -133,6 +133,19 @@ export const RoleBasedNavigation = () => {
             />
           )}
 
+          {canAccessModule('reports') && (
+            <NavigationCard
+              to="/cleaning-reports"
+              title="Dashboard de Reportes"
+              description="Control completo de reportes y evidencias de limpieza"
+              icon={FileText}
+              gradientFrom="bg-gradient-to-br from-violet-500"
+              gradientTo="to-violet-600"
+              iconColor="text-white"
+              hoverBorderColor="hover:border-violet-300"
+            />
+          )}
+
           {canAccessModule('hostaway') && (
             <NavigationCard
               to="/hostaway-sync-logs"
