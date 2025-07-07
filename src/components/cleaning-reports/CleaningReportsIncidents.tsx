@@ -147,7 +147,7 @@ export const CleaningReportsIncidents: React.FC<CleaningReportsIncidentsProps> =
     setSelectedIncident(incident);
     setIncidentStatus(incident.status);
     setResolutionNotes(incident.resolutionNotes || '');
-    setAssignedTo(incident.assignedTo || '');
+    setAssignedTo(incident.assignedTo || 'unassigned');
     setShowIncidentModal(true);
   };
 
@@ -362,8 +362,8 @@ export const CleaningReportsIncidents: React.FC<CleaningReportsIncidentsProps> =
                        <SelectValue placeholder="Seleccionar responsable" />
                      </SelectTrigger>
                      <SelectContent>
-                       <SelectItem value="">Sin asignar</SelectItem>
-                       {cleaners.map((cleaner) => (
+                       <SelectItem value="unassigned">Sin asignar</SelectItem>
+                       {cleaners.filter(cleaner => cleaner.name && cleaner.name.trim()).map((cleaner) => (
                          <SelectItem key={cleaner.id} value={cleaner.id}>
                            {cleaner.name}
                          </SelectItem>
