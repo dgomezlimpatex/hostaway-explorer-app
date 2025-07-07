@@ -15,7 +15,10 @@ export class TaskReportsStorageServiceLegacy extends ChecklistTemplatesStorageSe
 
   // Delegate task reports methods
   async getTaskReports() {
-    return this.reportsService.getTaskReports();
+    console.log('📋 Legacy service getTaskReports called');
+    const result = await this.reportsService.getTaskReports();
+    console.log('📋 Legacy service got result:', result?.length || 0, 'reports');
+    return result;
   }
 
   async getTaskReportByTaskId(taskId: string) {
