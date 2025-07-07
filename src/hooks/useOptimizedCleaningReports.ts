@@ -14,26 +14,38 @@ export const useOptimizedCleaningReports = (filters: Filters) => {
   const { reports, isLoading: reportsLoading } = useTaskReports();
   const { cleaners, isLoading: cleanersLoading } = useCleaners();
 
+  console.log('🔍 useOptimizedCleaningReports - Raw reports:', reports?.length || 0);
+  console.log('🔍 useOptimizedCleaningReports - Filters:', filters);
+
   // Filtros aplicados solo cuando cambian los datos o filtros
   const filteredReports = useMemo(() => {
-    if (!reports) return [];
+    console.log('🎯 Filtering reports - Input count:', reports?.length || 0);
+    
+    if (!reports) {
+      console.log('❌ No reports available');
+      return [];
+    }
 
-    return reports.filter(report => {
+    const filtered = reports.filter(report => {
       // Filtro por limpiador
       if (filters.cleaner !== 'all' && report.cleaner_id !== filters.cleaner) {
+        console.log(`🚫 Report ${report.id} filtered out by cleaner`);
         return false;
       }
 
       // Filtro por estado
       if (filters.status !== 'all' && report.overall_status !== filters.status) {
+        console.log(`🚫 Report ${report.id} filtered out by status`);
         return false;
       }
 
       // Filtro por incidencias
       if (filters.hasIncidents === 'true' && (!report.issues_found || report.issues_found.length === 0)) {
+        console.log(`🚫 Report ${report.id} filtered out - no incidents when required`);
         return false;
       }
       if (filters.hasIncidents === 'false' && report.issues_found && report.issues_found.length > 0) {
+        console.log(`🚫 Report ${report.id} filtered out - has incidents when excluded`);
         return false;
       }
 
@@ -43,23 +55,36 @@ export const useOptimizedCleaningReports = (filters: Filters) => {
       
       switch (filters.dateRange) {
         case 'today':
-          return reportDate.toDateString() === today.toDateString();
+          const isToday = reportDate.toDateString() === today.toDateString();
+          if (!isToday) console.log(`🚫 Report ${report.id} filtered out - not today`);
+          return isToday;
         case 'yesterday':
           const yesterday = new Date(today);
           yesterday.setDate(yesterday.getDate() - 1);
-          return reportDate.toDateString() === yesterday.toDateString();
+          const isYesterday = reportDate.toDateString() === yesterday.toDateString();
+          if (!isYesterday) console.log(`🚫 Report ${report.id} filtered out - not yesterday`);
+          return isYesterday;
         case 'week':
           const weekAgo = new Date(today);
           weekAgo.setDate(weekAgo.getDate() - 7);
-          return reportDate >= weekAgo;
+          const isThisWeek = reportDate >= weekAgo;
+          if (!isThisWeek) console.log(`🚫 Report ${report.id} filtered out - not this week`);
+          return isThisWeek;
         case 'month':
           const monthAgo = new Date(today);
           monthAgo.setMonth(monthAgo.getMonth() - 1);
-          return reportDate >= monthAgo;
+          const isThisMonth = reportDate >= monthAgo;
+          if (!isThisMonth) console.log(`🚫 Report ${report.id} filtered out - not this month`);
+          return isThisMonth;
+        case 'all':
         default:
+          console.log(`✅ Report ${report.id} passes all filters`);
           return true;
       }
     });
+
+    console.log('✅ Filtered reports count:', filtered.length);
+    return filtered;
   }, [reports, filters]);
 
   // Memoizar estadísticas complejas
