@@ -15,10 +15,15 @@ export const useTaskReports = () => {
     error
   } = useQuery({
     queryKey: ['task-reports'],
-    queryFn: taskReportsStorageService.getTaskReports,
-    staleTime: 5 * 60 * 1000, // 5 minutos
-    gcTime: 30 * 60 * 1000, // 30 minutos (nueva propiedad en TanStack Query v5)
-    refetchOnWindowFocus: false,
+    queryFn: async () => {
+      console.log('🚀 useQuery queryFn executing...');
+      const result = await taskReportsStorageService.getTaskReports();
+      console.log('🚀 useQuery queryFn result:', result?.length || 0, 'reports');
+      return result;
+    },
+    staleTime: 0, // Deshabilitar cache temporalmente
+    gcTime: 0, // Deshabilitar cache temporalmente
+    refetchOnWindowFocus: true,
     refetchInterval: false,
   });
 
