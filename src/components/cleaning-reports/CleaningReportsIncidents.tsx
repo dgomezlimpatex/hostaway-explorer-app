@@ -3,6 +3,8 @@ import { useTaskReports } from '@/hooks/useTaskReports';
 import { useIncidentManagement } from '@/hooks/useIncidentManagement';
 import { useCleaners } from '@/hooks/useCleaners';
 import { useTaskMedia } from '@/hooks/useTaskMedia';
+import { useTasks } from '@/hooks/useTasks';
+import { useProperties } from '@/hooks/useProperties';
 import {
   IncidentStatsCards,
   IncidentsList,
@@ -25,6 +27,8 @@ export const CleaningReportsIncidents: React.FC<CleaningReportsIncidentsProps> =
 }) => {
   const { reports, isLoading } = useTaskReports();
   const { cleaners } = useCleaners();
+  const { data: properties = [] } = useProperties();
+  const { tasks } = useTasks(new Date(), 'week'); // Obtener tareas para el mapeo
   const { updateIncident, isUpdating } = useIncidentManagement();
   const [selectedIncident, setSelectedIncident] = useState<any>(null);
   const [showIncidentModal, setShowIncidentModal] = useState(false);
@@ -37,12 +41,17 @@ export const CleaningReportsIncidents: React.FC<CleaningReportsIncidentsProps> =
 
   // Procesar incidencias de los reportes
   const incidents = useMemo(() => {
-    if (!reports) return [];
+    if (!reports || !tasks || !properties) return [];
     
     const allIncidents: any[] = [];
     
     reports.forEach(report => {
       if (report.issues_found && Array.isArray(report.issues_found)) {
+        // Buscar la tarea asociada al reporte
+        const task = tasks.find(t => t.id === report.task_id);
+        // Buscar la propiedad asociada a la tarea
+        const property = task ? properties.find(p => p.id === task.propertyId) : null;
+        
         report.issues_found.forEach((issue: any, index: number) => {
           allIncidents.push({
             id: `${report.id}-${index}`,
@@ -63,6 +72,13 @@ export const CleaningReportsIncidents: React.FC<CleaningReportsIncidentsProps> =
             assignedTo: issue.assignedTo || '',
             updatedAt: issue.updatedAt || report.created_at,
             media_urls: issue.media_urls || [],
+            // Agregar información de la tarea y propiedad
+            task: task,
+            property: property,
+            propertyName: property?.nombre || 'Propiedad no encontrada',
+            propertyCode: property?.codigo || 'N/A',
+            taskDate: task?.date || '',
+            taskStartTime: task?.startTime || '',
           });
         });
       }
@@ -71,7 +87,7 @@ export const CleaningReportsIncidents: React.FC<CleaningReportsIncidentsProps> =
     return allIncidents.sort((a, b) => 
       new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
     );
-  }, [reports]);
+  }, [reports, tasks, properties]);
 
   // Estadísticas de incidencias
   const incidentStats = useMemo(() => {
