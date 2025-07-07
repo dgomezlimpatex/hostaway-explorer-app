@@ -19,7 +19,6 @@ export const useTaskReports = () => {
     staleTime: 5 * 60 * 1000, // 5 minutos
     gcTime: 30 * 60 * 1000, // 30 minutos (nueva propiedad en TanStack Query v5)
     refetchOnWindowFocus: false,
-    refetchOnMount: false,
     refetchInterval: false,
   });
 
