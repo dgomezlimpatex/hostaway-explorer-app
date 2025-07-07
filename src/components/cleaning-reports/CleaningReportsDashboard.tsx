@@ -1,8 +1,9 @@
-import React, { useMemo, memo } from 'react';
+import React, { useMemo, memo, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { 
   FileText, 
   CheckCircle, 
@@ -31,6 +32,18 @@ export const CleaningReportsDashboard: React.FC<CleaningReportsDashboardProps> =
   filters,
 }) => {
   const { dashboardMetrics, recentReports, isLoading } = useOptimizedCleaningReports(filters);
+  const [selectedReport, setSelectedReport] = useState<any>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
+  const openReportModal = (report: any) => {
+    setSelectedReport(report);
+    setIsModalOpen(true);
+  };
+
+  const closeReportModal = () => {
+    setSelectedReport(null);
+    setIsModalOpen(false);
+  };
 
   const getStatusBadge = (status: string) => {
     const statusConfig = {
@@ -174,7 +187,11 @@ export const CleaningReportsDashboard: React.FC<CleaningReportsDashboardProps> =
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Button variant="ghost" size="sm">
+                    <Button 
+                      variant="ghost" 
+                      size="sm"
+                      onClick={() => openReportModal(report)}
+                    >
                       <Eye className="h-4 w-4" />
                     </Button>
                     {report.notes && (
@@ -189,6 +206,92 @@ export const CleaningReportsDashboard: React.FC<CleaningReportsDashboardProps> =
           </div>
         </CardContent>
       </Card>
+
+      {/* Modal de detalles del reporte */}
+      <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>
+              Reporte #{selectedReport?.id?.slice(0, 8)}
+            </DialogTitle>
+          </DialogHeader>
+          {selectedReport && (
+            <div className="space-y-6">
+              {/* Información básica */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <h4 className="font-medium mb-2">Estado</h4>
+                  {getStatusBadge(selectedReport.overall_status)}
+                </div>
+                <div>
+                  <h4 className="font-medium mb-2">Fecha de creación</h4>
+                  <p className="text-sm text-muted-foreground">
+                    {format(new Date(selectedReport.created_at), 'dd/MM/yyyy HH:mm', { locale: es })}
+                  </p>
+                </div>
+                {selectedReport.start_time && (
+                  <div>
+                    <h4 className="font-medium mb-2">Hora de inicio</h4>
+                    <p className="text-sm text-muted-foreground">
+                      {format(new Date(selectedReport.start_time), 'HH:mm', { locale: es })}
+                    </p>
+                  </div>
+                )}
+                {selectedReport.end_time && (
+                  <div>
+                    <h4 className="font-medium mb-2">Hora de finalización</h4>
+                    <p className="text-sm text-muted-foreground">
+                      {format(new Date(selectedReport.end_time), 'HH:mm', { locale: es })}
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {/* Checklist completado */}
+              {selectedReport.checklist_completed && Object.keys(selectedReport.checklist_completed).length > 0 && (
+                <div>
+                  <h4 className="font-medium mb-3">Checklist Completado</h4>
+                  <div className="space-y-2">
+                    {Object.entries(selectedReport.checklist_completed).map(([key, value]) => (
+                      <div key={key} className="flex items-center justify-between p-2 bg-gray-50 rounded">
+                        <span className="text-sm">{key}</span>
+                        <Badge variant={value ? "default" : "secondary"}>
+                          {value ? "Completado" : "Pendiente"}
+                        </Badge>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Incidencias */}
+              {selectedReport.issues_found && selectedReport.issues_found.length > 0 && (
+                <div>
+                  <h4 className="font-medium mb-3">Incidencias Encontradas</h4>
+                  <div className="space-y-2">
+                    {selectedReport.issues_found.map((issue: any, index: number) => (
+                      <div key={index} className="p-3 border-l-4 border-orange-500 bg-orange-50">
+                        <p className="text-sm font-medium">{issue.title || `Incidencia ${index + 1}`}</p>
+                        <p className="text-sm text-muted-foreground">{issue.description || issue}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Notas */}
+              {selectedReport.notes && (
+                <div>
+                  <h4 className="font-medium mb-2">Notas</h4>
+                  <p className="text-sm text-muted-foreground bg-gray-50 p-3 rounded">
+                    {selectedReport.notes}
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 });

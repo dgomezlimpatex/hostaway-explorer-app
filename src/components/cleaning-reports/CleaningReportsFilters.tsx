@@ -104,7 +104,7 @@ export const CleaningReportsFilters: React.FC<CleaningReportsFiltersProps> = ({
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Todas las propiedades</SelectItem>
-                {properties.map((property) => (
+                {properties.filter(property => property.nombre && property.nombre.trim()).map((property) => (
                   <SelectItem key={property.id} value={property.id}>
                     {property.nombre}
                   </SelectItem>
