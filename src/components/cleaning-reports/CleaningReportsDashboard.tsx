@@ -209,87 +209,221 @@ export const CleaningReportsDashboard: React.FC<CleaningReportsDashboardProps> =
 
       {/* Modal de detalles del reporte */}
       <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>
-              Reporte #{selectedReport?.id?.slice(0, 8)}
-            </DialogTitle>
-          </DialogHeader>
-          {selectedReport && (
-            <div className="space-y-6">
-              {/* Información básica */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <h4 className="font-medium mb-2">Estado</h4>
-                  {getStatusBadge(selectedReport.overall_status)}
-                </div>
-                <div>
-                  <h4 className="font-medium mb-2">Fecha de creación</h4>
-                  <p className="text-sm text-muted-foreground">
-                    {format(new Date(selectedReport.created_at), 'dd/MM/yyyy HH:mm', { locale: es })}
-                  </p>
-                </div>
-                {selectedReport.start_time && (
-                  <div>
-                    <h4 className="font-medium mb-2">Hora de inicio</h4>
-                    <p className="text-sm text-muted-foreground">
-                      {format(new Date(selectedReport.start_time), 'HH:mm', { locale: es })}
-                    </p>
-                  </div>
-                )}
-                {selectedReport.end_time && (
-                  <div>
-                    <h4 className="font-medium mb-2">Hora de finalización</h4>
-                    <p className="text-sm text-muted-foreground">
-                      {format(new Date(selectedReport.end_time), 'HH:mm', { locale: es })}
-                    </p>
-                  </div>
-                )}
+        <DialogContent className="max-w-6xl max-h-[90vh] overflow-hidden flex flex-col">
+          <DialogHeader className="border-b pb-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <DialogTitle className="text-2xl font-bold">
+                  📋 Reporte de Limpieza #{selectedReport?.id?.slice(0, 8)}
+                </DialogTitle>
+                <p className="text-muted-foreground mt-1">
+                  Detalles completos del reporte de limpieza
+                </p>
               </div>
-
-              {/* Checklist completado */}
-              {selectedReport.checklist_completed && Object.keys(selectedReport.checklist_completed).length > 0 && (
-                <div>
-                  <h4 className="font-medium mb-3">Checklist Completado</h4>
-                  <div className="space-y-2">
-                    {Object.entries(selectedReport.checklist_completed).map(([key, value]) => (
-                      <div key={key} className="flex items-center justify-between p-2 bg-gray-50 rounded">
-                        <span className="text-sm">{key}</span>
-                        <Badge variant={value ? "default" : "secondary"}>
-                          {value ? "Completado" : "Pendiente"}
-                        </Badge>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Incidencias */}
-              {selectedReport.issues_found && selectedReport.issues_found.length > 0 && (
-                <div>
-                  <h4 className="font-medium mb-3">Incidencias Encontradas</h4>
-                  <div className="space-y-2">
-                    {selectedReport.issues_found.map((issue: any, index: number) => (
-                      <div key={index} className="p-3 border-l-4 border-orange-500 bg-orange-50">
-                        <p className="text-sm font-medium">{issue.title || `Incidencia ${index + 1}`}</p>
-                        <p className="text-sm text-muted-foreground">{issue.description || issue}</p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Notas */}
-              {selectedReport.notes && (
-                <div>
-                  <h4 className="font-medium mb-2">Notas</h4>
-                  <p className="text-sm text-muted-foreground bg-gray-50 p-3 rounded">
-                    {selectedReport.notes}
-                  </p>
+              {selectedReport && (
+                <div className="flex items-center gap-3">
+                  {getStatusBadge(selectedReport.overall_status)}
+                  {selectedReport.issues_found && selectedReport.issues_found.length > 0 && (
+                    <Badge variant="destructive" className="flex items-center gap-1">
+                      <AlertTriangle className="h-3 w-3" />
+                      {selectedReport.issues_found.length} incidencia(s)
+                    </Badge>
+                  )}
                 </div>
               )}
             </div>
-          )}
+          </DialogHeader>
+          
+          <div className="flex-1 overflow-y-auto p-6 space-y-6">
+            {selectedReport && (
+              <>
+                {/* Información general en cards */}
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                  <Card>
+                    <CardContent className="p-4">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Calendar className="h-4 w-4 text-blue-600" />
+                        <span className="text-sm font-medium">Fecha</span>
+                      </div>
+                      <p className="text-sm text-muted-foreground">
+                        {format(new Date(selectedReport.created_at), 'dd/MM/yyyy', { locale: es })}
+                      </p>
+                    </CardContent>
+                  </Card>
+
+                  {selectedReport.start_time && (
+                    <Card>
+                      <CardContent className="p-4">
+                        <div className="flex items-center gap-2 mb-2">
+                          <Clock className="h-4 w-4 text-green-600" />
+                          <span className="text-sm font-medium">Inicio</span>
+                        </div>
+                        <p className="text-sm text-muted-foreground">
+                          {format(new Date(selectedReport.start_time), 'HH:mm', { locale: es })}
+                        </p>
+                      </CardContent>
+                    </Card>
+                  )}
+
+                  {selectedReport.end_time && (
+                    <Card>
+                      <CardContent className="p-4">
+                        <div className="flex items-center gap-2 mb-2">
+                          <CheckCircle className="h-4 w-4 text-red-600" />
+                          <span className="text-sm font-medium">Finalización</span>
+                        </div>
+                        <p className="text-sm text-muted-foreground">
+                          {format(new Date(selectedReport.end_time), 'HH:mm', { locale: es })}
+                        </p>
+                      </CardContent>
+                    </Card>
+                  )}
+
+                  <Card>
+                    <CardContent className="p-4">
+                      <div className="flex items-center gap-2 mb-2">
+                        <TrendingUp className="h-4 w-4 text-purple-600" />
+                        <span className="text-sm font-medium">Duración</span>
+                      </div>
+                      <p className="text-sm text-muted-foreground">
+                        {selectedReport.start_time && selectedReport.end_time ? (
+                          `${Math.round((new Date(selectedReport.end_time).getTime() - new Date(selectedReport.start_time).getTime()) / (1000 * 60))} min`
+                        ) : (
+                          'N/A'
+                        )}
+                      </p>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                {/* Checklist completado */}
+                {selectedReport.checklist_completed && Object.keys(selectedReport.checklist_completed).length > 0 && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <CheckCircle className="h-5 w-5 text-green-600" />
+                        Lista de Verificación
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        {Object.entries(selectedReport.checklist_completed).map(([key, value]) => {
+                          // Convertir nombres técnicos a legibles
+                          const formatTaskName = (name: string) => {
+                            const parts = name.split('.');
+                            if (parts.length === 2) {
+                              const [room, task] = parts;
+                              const roomNames: Record<string, string> = {
+                                'bedroom': 'Dormitorio',
+                                'kitchen': 'Cocina',
+                                'bathroom': 'Baño',
+                                'living_room': 'Sala de Estar'
+                              };
+                              const taskNames: Record<string, string> = {
+                                'bedroom_bed': 'Cama',
+                                'kitchen_sink': 'Fregadero',
+                                'bedroom_vacuum': 'Aspirar',
+                                'bathroom_mirror': 'Espejo',
+                                'bathroom_shower': 'Ducha',
+                                'bathroom_toilet': 'Inodoro',
+                                'bathroom_towels': 'Toallas',
+                                'bedroom_surfaces': 'Superficies',
+                                'kitchen_surfaces': 'Superficies',
+                                'living_vacuum': 'Aspirar',
+                                'kitchen_appliances': 'Electrodomésticos',
+                                'living_windows': 'Ventanas'
+                              };
+                              return `${roomNames[room] || room} - ${taskNames[task] || task}`;
+                            }
+                            return name;
+                          };
+
+                          return (
+                            <div key={key} className={`flex items-center justify-between p-3 rounded-lg border ${
+                              value ? 'bg-green-50 border-green-200' : 'bg-gray-50 border-gray-200'
+                            }`}>
+                              <span className="text-sm font-medium">{formatTaskName(key)}</span>
+                              <Badge variant={value ? "default" : "secondary"} className={`${
+                                value ? 'bg-green-600' : ''
+                              }`}>
+                                {value ? "✓ Completado" : "○ Pendiente"}
+                              </Badge>
+                            </div>
+                          );
+                        })}
+                      </div>
+                      
+                      {/* Estadísticas del checklist */}
+                      <div className="mt-4 p-4 bg-blue-50 rounded-lg">
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm font-medium">Progreso del checklist</span>
+                          <span className="text-sm text-muted-foreground">
+                            {Object.values(selectedReport.checklist_completed).filter(Boolean).length} / {Object.keys(selectedReport.checklist_completed).length}
+                          </span>
+                        </div>
+                        <Progress 
+                          value={(Object.values(selectedReport.checklist_completed).filter(Boolean).length / Object.keys(selectedReport.checklist_completed).length) * 100} 
+                          className="mt-2"
+                        />
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Incidencias */}
+                {selectedReport.issues_found && selectedReport.issues_found.length > 0 && (
+                  <Card className="border-orange-200">
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2 text-orange-700">
+                        <AlertTriangle className="h-5 w-5" />
+                        Incidencias Encontradas
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-3">
+                        {selectedReport.issues_found.map((issue: any, index: number) => (
+                          <div key={index} className="p-4 border-l-4 border-orange-500 bg-orange-50 rounded-r-lg">
+                            <div className="flex items-start gap-3">
+                              <div className="flex-shrink-0 w-6 h-6 bg-orange-500 text-white rounded-full flex items-center justify-center text-xs font-bold">
+                                {index + 1}
+                              </div>
+                              <div className="flex-1">
+                                <p className="text-sm font-medium text-orange-900">
+                                  {issue.title || `Incidencia ${index + 1}`}
+                                </p>
+                                <p className="text-sm text-orange-700 mt-1">
+                                  {issue.description || issue}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Notas */}
+                {selectedReport.notes && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <MessageSquare className="h-5 w-5 text-blue-600" />
+                        Notas Adicionales
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="p-4 bg-blue-50 rounded-lg">
+                        <p className="text-sm text-blue-900">
+                          {selectedReport.notes}
+                        </p>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+              </>
+            )}
+          </div>
         </DialogContent>
       </Dialog>
     </div>
