@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { 
   TrendingUp, 
   TrendingDown,
@@ -11,10 +12,29 @@ import {
   Target,
   Award,
   Calendar,
-  Download
+  Download,
+  FileText,
+  FileSpreadsheet,
+  ChevronUp,
+  ChevronDown
 } from 'lucide-react';
+import { 
+  LineChart, 
+  Line, 
+  XAxis, 
+  YAxis, 
+  CartesianGrid, 
+  Tooltip, 
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  PieChart,
+  Pie,
+  Cell
+} from 'recharts';
 import { useTaskReports } from '@/hooks/useTaskReports';
 import { useCleaners } from '@/hooks/useCleaners';
+import AnalyticsExportService from '@/services/analyticsExport';
 import { format, subDays, startOfDay, endOfDay } from 'date-fns';
 import { es } from 'date-fns/locale';
 
@@ -33,6 +53,11 @@ export const CleaningReportsAnalytics: React.FC<CleaningReportsAnalyticsProps> =
 }) => {
   const { reports, isLoading } = useTaskReports();
   const { cleaners } = useCleaners();
+  
+  const [exportFormat, setExportFormat] = React.useState<'excel' | 'pdf'>('excel');
+  
+  // Colores para gráficos
+  const CHART_COLORS = ['#8884d8', '#82ca9d', '#ffc658', '#ff7c7c', '#8dd1e1'];
 
   // Análisis de rendimiento por limpiador
   const cleanerPerformance = useMemo(() => {
@@ -100,6 +125,63 @@ export const CleaningReportsAnalytics: React.FC<CleaningReportsAnalyticsProps> =
     return last7Days;
   }, [reports]);
 
+  // Datos para gráfico de barras de tendencias
+  const chartData = useMemo(() => {
+    return dailyTrends.map(day => ({
+      ...day,
+      completionRate: day.total > 0 ? Math.round((day.completed / day.total) * 100) : 0,
+    }));
+  }, [dailyTrends]);
+
+  // Distribución de estados
+  const statusDistribution = useMemo(() => {
+    if (!reports) return [];
+
+    const statusCounts = reports.reduce((acc: Record<string, number>, report) => {
+      acc[report.overall_status] = (acc[report.overall_status] || 0) + 1;
+      return acc;
+    }, {});
+
+    return Object.entries(statusCounts).map(([status, count]) => ({
+      name: status === 'completed' ? 'Completado' : 
+            status === 'pending' ? 'Pendiente' : 
+            status === 'in_progress' ? 'En Progreso' : 'Necesita Revisión',
+      value: count,
+      percentage: reports.length > 0 ? Math.round((count / reports.length) * 100) : 0,
+    }));
+  }, [reports]);
+
+  // Datos de incidencias para exportación
+  const incidentsData = useMemo(() => {
+    if (!reports) return [];
+
+    const incidents: any[] = [];
+    reports.forEach(report => {
+      if (report.issues_found && Array.isArray(report.issues_found)) {
+        report.issues_found.forEach((issue: any) => {
+          const cleaner = cleaners.find(c => c.id === report.cleaner_id);
+          incidents.push({
+            id: `${report.id}-${issue.title}`,
+            title: issue.title || 'Sin título',
+            description: issue.description || '',
+            severity: issue.severity || 'medium',
+            status: issue.status || 'open',
+            category: issue.category || 'general',
+            location: issue.location || '',
+            createdAt: report.created_at,
+            resolvedAt: issue.resolvedAt,
+            assignedTo: issue.assignedTo,
+            resolutionNotes: issue.resolutionNotes || '',
+            property: 'Propiedad', // TODO: Obtener de la tarea
+            cleanerName: cleaner?.name || 'Desconocido',
+          });
+        });
+      }
+    });
+
+    return incidents;
+  }, [reports, cleaners]);
+
   // Métricas generales
   const generalMetrics = useMemo(() => {
     if (!reports) return null;
@@ -134,8 +216,22 @@ export const CleaningReportsAnalytics: React.FC<CleaningReportsAnalyticsProps> =
   }, [reports]);
 
   const handleExportAnalytics = () => {
-    // TODO: Implementar exportación de analytics
-    console.log('Exporting analytics data');
+    const analyticsData = {
+      generalMetrics: generalMetrics!,
+      cleanerPerformance,
+      dailyTrends,
+      incidents: incidentsData,
+    };
+
+    if (exportFormat === 'excel') {
+      AnalyticsExportService.exportToExcel(analyticsData);
+    } else {
+      AnalyticsExportService.exportToPDF(analyticsData);
+    }
+  };
+
+  const handleExportIncidents = () => {
+    AnalyticsExportService.exportIncidentsToExcel(incidentsData);
   };
 
   if (isLoading) {
@@ -169,10 +265,29 @@ export const CleaningReportsAnalytics: React.FC<CleaningReportsAnalyticsProps> =
               <BarChart3 className="h-5 w-5" />
               Analytics y Tendencias
             </CardTitle>
-            <Button onClick={handleExportAnalytics} variant="outline">
-              <Download className="h-4 w-4 mr-2" />
-              Exportar Análisis
-            </Button>
+            <div className="flex items-center gap-3">
+              <Select value={exportFormat} onValueChange={(value: 'excel' | 'pdf') => setExportFormat(value)}>
+                <SelectTrigger className="w-32">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="excel">Excel</SelectItem>
+                  <SelectItem value="pdf">PDF</SelectItem>
+                </SelectContent>
+              </Select>
+              
+              <Button onClick={handleExportAnalytics} variant="outline">
+                {exportFormat === 'excel' ? <FileSpreadsheet className="h-4 w-4 mr-2" /> : <FileText className="h-4 w-4 mr-2" />}
+                Exportar {exportFormat.toUpperCase()}
+              </Button>
+              
+              {incidentsData.length > 0 && (
+                <Button onClick={handleExportIncidents} variant="outline">
+                  <FileSpreadsheet className="h-4 w-4 mr-2" />
+                  Exportar Incidencias
+                </Button>
+              )}
+            </div>
           </div>
         </CardHeader>
       </Card>
@@ -236,43 +351,163 @@ export const CleaningReportsAnalytics: React.FC<CleaningReportsAnalyticsProps> =
         </Card>
       </div>
 
-      {/* Tendencias diarias */}
+      {/* Gráficos de tendencias */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Gráfico de líneas - Tendencias */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <TrendingUp className="h-5 w-5" />
+              Tendencias de Completado
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={300}>
+              <LineChart data={chartData}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="date" />
+                <YAxis />
+                <Tooltip 
+                  formatter={(value, name) => [
+                    name === 'completionRate' ? `${value}%` : value,
+                    name === 'completionRate' ? 'Tasa de Finalización' : 
+                    name === 'total' ? 'Total Reportes' : 'Completados'
+                  ]}
+                />
+                <Line 
+                  type="monotone" 
+                  dataKey="completionRate" 
+                  stroke="#8884d8" 
+                  strokeWidth={2}
+                  name="completionRate"
+                />
+                <Line 
+                  type="monotone" 
+                  dataKey="total" 
+                  stroke="#82ca9d" 
+                  strokeWidth={2}
+                  name="total"
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+
+        {/* Gráfico circular - Estados */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Target className="h-5 w-5" />
+              Distribución por Estados
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={300}>
+              <PieChart>
+                <Pie
+                  data={statusDistribution}
+                  cx="50%"
+                  cy="50%"
+                  labelLine={false}
+                  label={({ name, percentage }) => `${name}: ${percentage}%`}
+                  outerRadius={80}
+                  fill="#8884d8"
+                  dataKey="value"
+                >
+                  {statusDistribution.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
+                  ))}
+                </Pie>
+                <Tooltip />
+              </PieChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Gráfico de barras - Rendimiento semanal */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <BarChart3 className="h-5 w-5" />
+            Rendimiento Semanal
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <ResponsiveContainer width="100%" height={400}>
+            <BarChart data={chartData}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="date" />
+              <YAxis />
+              <Tooltip 
+                formatter={(value, name) => [
+                  value,
+                  name === 'total' ? 'Total Reportes' : 
+                  name === 'completed' ? 'Completados' : 'Con Incidencias'
+                ]}
+              />
+              <Bar dataKey="total" fill="#8884d8" name="total" />
+              <Bar dataKey="completed" fill="#82ca9d" name="completed" />
+              <Bar dataKey="withIncidents" fill="#ff7c7c" name="withIncidents" />
+            </BarChart>
+          </ResponsiveContainer>
+        </CardContent>
+      </Card>
+
+      {/* Tendencias diarias simplificadas */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Calendar className="h-5 w-5" />
-            Tendencias Últimos 7 Días
+            Resumen Últimos 7 Días
           </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            {dailyTrends.map((day, index) => (
-              <div key={day.date} className="flex items-center gap-4">
-                <div className="w-16 text-sm font-medium">{day.date}</div>
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="text-sm">{day.total} reportes</span>
-                    {day.completed > 0 && (
-                      <Badge variant="secondary" className="text-xs">
-                        {day.completed} completados
-                      </Badge>
-                    )}
-                    {day.withIncidents > 0 && (
-                      <Badge variant="destructive" className="text-xs">
-                        {day.withIncidents} con incidencias
-                      </Badge>
-                    )}
+            {dailyTrends.map((day, index) => {
+              const prevDay = index > 0 ? dailyTrends[index - 1] : null;
+              const trend = prevDay ? day.total - prevDay.total : 0;
+              
+              return (
+                <div key={day.date} className="flex items-center gap-4">
+                  <div className="w-16 text-sm font-medium">{day.date}</div>
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-sm">{day.total} reportes</span>
+                      {trend !== 0 && (
+                        <div className="flex items-center gap-1">
+                          {trend > 0 ? (
+                            <ChevronUp className="h-3 w-3 text-green-600" />
+                          ) : (
+                            <ChevronDown className="h-3 w-3 text-red-600" />
+                          )}
+                          <span className={`text-xs ${trend > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                            {Math.abs(trend)}
+                          </span>
+                        </div>
+                      )}
+                      {day.completed > 0 && (
+                        <Badge variant="secondary" className="text-xs">
+                          {day.completed} completados
+                        </Badge>
+                      )}
+                      {day.withIncidents > 0 && (
+                        <Badge variant="destructive" className="text-xs">
+                          {day.withIncidents} con incidencias
+                        </Badge>
+                      )}
+                    </div>
+                    <Progress 
+                      value={day.total > 0 ? (day.completed / day.total) * 100 : 0} 
+                      className="h-2"
+                    />
                   </div>
-                  <Progress 
-                    value={day.total > 0 ? (day.completed / day.total) * 100 : 0} 
-                    className="h-2"
-                  />
+                  <div className="text-sm text-muted-foreground">
+                    {day.total > 0 ? Math.round((day.completed / day.total) * 100) : 0}%
+                  </div>
                 </div>
-                <div className="text-sm text-muted-foreground">
-                  {day.total > 0 ? Math.round((day.completed / day.total) * 100) : 0}%
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </CardContent>
       </Card>
