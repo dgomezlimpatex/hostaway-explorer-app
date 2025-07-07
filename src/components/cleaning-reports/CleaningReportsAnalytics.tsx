@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, memo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -48,7 +48,7 @@ interface CleaningReportsAnalyticsProps {
   };
 }
 
-export const CleaningReportsAnalytics: React.FC<CleaningReportsAnalyticsProps> = ({
+export const CleaningReportsAnalytics: React.FC<CleaningReportsAnalyticsProps> = memo(({
   filters,
 }) => {
   const { reports, isLoading } = useTaskReports();
@@ -582,4 +582,4 @@ export const CleaningReportsAnalytics: React.FC<CleaningReportsAnalyticsProps> =
       </Card>
     </div>
   );
-};
+});

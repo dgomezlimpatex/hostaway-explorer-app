@@ -1,15 +1,16 @@
-import React, { useState } from 'react';
+import React, { useState, Suspense, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Link } from 'react-router-dom';
 import { ArrowLeft, Download, Filter, RefreshCw } from 'lucide-react';
-import { CleaningReportsDashboard } from '@/components/cleaning-reports/CleaningReportsDashboard';
-import { CleaningReportsGallery } from '@/components/cleaning-reports/CleaningReportsGallery';
-import { CleaningReportsIncidents } from '@/components/cleaning-reports/CleaningReportsIncidents';
-import { CleaningReportsAnalytics } from '@/components/cleaning-reports/CleaningReportsAnalytics';
 import { CleaningReportsFilters } from '@/components/cleaning-reports/CleaningReportsFilters';
-import { useTaskReports } from '@/hooks/useTaskReports';
+import { 
+  LazyCleaningReportsDashboard,
+  LazyCleaningReportsIncidents,
+  LazyCleaningReportsGallery,
+  LazyCleaningReportsAnalytics
+} from '@/components/cleaning-reports/LazyCleaningReportsComponents';
+import { Skeleton } from '@/components/ui/skeleton';
 
 export default function CleaningReports() {
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -22,12 +23,43 @@ export default function CleaningReports() {
     hasIncidents: 'all'
   });
 
-  const { reports, isLoading } = useTaskReports();
-
-  const handleExportReports = () => {
+  const handleExportReports = useCallback(() => {
     // TODO: Implementar exportación
     console.log('Exporting reports with filters:', filters);
-  };
+  }, [filters]);
+
+  // Componente de loading optimizado
+  const LoadingComponent = useCallback(() => (
+    <div className="space-y-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        {[...Array(4)].map((_, i) => (
+          <div key={i} className="bg-white rounded-lg border border-gray-200 p-6">
+            <div className="flex items-center justify-between mb-4">
+              <Skeleton className="h-4 w-24" />
+              <Skeleton className="h-4 w-4 rounded-full" />
+            </div>
+            <Skeleton className="h-8 w-16 mb-2" />
+            <Skeleton className="h-3 w-full" />
+          </div>
+        ))}
+      </div>
+      <div className="bg-white rounded-lg border border-gray-200 p-6">
+        <Skeleton className="h-6 w-48 mb-4" />
+        <div className="space-y-4">
+          {[...Array(3)].map((_, i) => (
+            <div key={i} className="flex items-center gap-4 p-4 border rounded-lg">
+              <Skeleton className="h-4 w-4 rounded-full" />
+              <div className="flex-1">
+                <Skeleton className="h-4 w-32 mb-2" />
+                <Skeleton className="h-3 w-full" />
+              </div>
+              <Skeleton className="h-8 w-8 rounded" />
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  ), []);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
@@ -101,19 +133,27 @@ export default function CleaningReports() {
           </TabsList>
 
           <TabsContent value="dashboard" className="space-y-6">
-            <CleaningReportsDashboard filters={filters} />
+            <Suspense fallback={<LoadingComponent />}>
+              <LazyCleaningReportsDashboard filters={filters} />
+            </Suspense>
           </TabsContent>
 
           <TabsContent value="incidents" className="space-y-6">
-            <CleaningReportsIncidents filters={filters} />
+            <Suspense fallback={<LoadingComponent />}>
+              <LazyCleaningReportsIncidents filters={filters} />
+            </Suspense>
           </TabsContent>
 
           <TabsContent value="gallery" className="space-y-6">
-            <CleaningReportsGallery filters={filters} />
+            <Suspense fallback={<LoadingComponent />}>
+              <LazyCleaningReportsGallery filters={filters} />
+            </Suspense>
           </TabsContent>
 
           <TabsContent value="analytics" className="space-y-6">
-            <CleaningReportsAnalytics filters={filters} />
+            <Suspense fallback={<LoadingComponent />}>
+              <LazyCleaningReportsAnalytics filters={filters} />
+            </Suspense>
           </TabsContent>
         </Tabs>
       </div>

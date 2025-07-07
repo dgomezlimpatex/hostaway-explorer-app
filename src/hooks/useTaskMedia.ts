@@ -8,6 +8,8 @@ export const useTaskMedia = (reportId?: string) => {
     queryFn: () => reportId ? taskMediaStorageService.getTaskMedia(reportId) : Promise.resolve([]),
     enabled: !!reportId,
     staleTime: 5 * 60 * 1000, // 5 minutes
+    gcTime: 30 * 60 * 1000, // 30 minutes
+    refetchOnWindowFocus: false,
   });
 };
 
@@ -41,7 +43,9 @@ export const useAllTaskMedia = () => {
 
       return data || [];
     },
-    staleTime: 3 * 60 * 1000, // 3 minutes
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    gcTime: 30 * 60 * 1000, // 30 minutes
+    refetchOnWindowFocus: false,
   });
 };
 

@@ -8,7 +8,7 @@ export const useTaskReports = () => {
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
-  // Query para obtener todos los reportes
+  // Query para obtener todos los reportes con cache agresivo
   const {
     data: reports = [],
     isLoading,
@@ -16,6 +16,11 @@ export const useTaskReports = () => {
   } = useQuery({
     queryKey: ['task-reports'],
     queryFn: taskReportsStorageService.getTaskReports,
+    staleTime: 5 * 60 * 1000, // 5 minutos
+    gcTime: 30 * 60 * 1000, // 30 minutos (nueva propiedad en TanStack Query v5)
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
+    refetchInterval: false,
   });
 
   // Mutation para crear reporte

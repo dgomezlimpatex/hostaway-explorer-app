@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, memo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -13,7 +13,7 @@ import {
   Eye,
   MessageSquare
 } from 'lucide-react';
-import { useTaskReports } from '@/hooks/useTaskReports';
+import { useOptimizedCleaningReports } from '@/hooks/useOptimizedCleaningReports';
 import { formatDistanceToNow, format } from 'date-fns';
 import { es } from 'date-fns/locale';
 
@@ -27,42 +27,10 @@ interface CleaningReportsDashboardProps {
   };
 }
 
-export const CleaningReportsDashboard: React.FC<CleaningReportsDashboardProps> = ({
+export const CleaningReportsDashboard: React.FC<CleaningReportsDashboardProps> = memo(({
   filters,
 }) => {
-  const { reports, isLoading } = useTaskReports();
-
-  // Calcular métricas
-  const metrics = useMemo(() => {
-    if (!reports) return null;
-
-    const totalReports = reports.length;
-    const completedReports = reports.filter(r => r.overall_status === 'completed').length;
-    const pendingReports = reports.filter(r => r.overall_status === 'pending').length;
-    const inProgressReports = reports.filter(r => r.overall_status === 'in_progress').length;
-    const needsReviewReports = reports.filter(r => r.overall_status === 'needs_review').length;
-    const reportsWithIncidents = reports.filter(r => r.issues_found && r.issues_found.length > 0).length;
-
-    const completionRate = totalReports > 0 ? (completedReports / totalReports) * 100 : 0;
-
-    return {
-      totalReports,
-      completedReports,
-      pendingReports,
-      inProgressReports,
-      needsReviewReports,
-      reportsWithIncidents,
-      completionRate,
-    };
-  }, [reports]);
-
-  // Reportes recientes
-  const recentReports = useMemo(() => {
-    if (!reports) return [];
-    return reports
-      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-      .slice(0, 5);
-  }, [reports]);
+  const { dashboardMetrics, recentReports, isLoading } = useOptimizedCleaningReports(filters);
 
   const getStatusBadge = (status: string) => {
     const statusConfig = {
@@ -101,7 +69,7 @@ export const CleaningReportsDashboard: React.FC<CleaningReportsDashboardProps> =
     );
   }
 
-  if (!metrics) return null;
+  if (!dashboardMetrics) return null;
 
   return (
     <div className="space-y-6">
@@ -113,7 +81,7 @@ export const CleaningReportsDashboard: React.FC<CleaningReportsDashboardProps> =
             <FileText className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{metrics.totalReports}</div>
+            <div className="text-2xl font-bold">{dashboardMetrics.totalReports}</div>
             <p className="text-xs text-muted-foreground">
               Reportes registrados
             </p>
@@ -126,10 +94,10 @@ export const CleaningReportsDashboard: React.FC<CleaningReportsDashboardProps> =
             <CheckCircle className="h-4 w-4 text-green-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-600">{metrics.completedReports}</div>
+            <div className="text-2xl font-bold text-green-600">{dashboardMetrics.completedReports}</div>
             <div className="flex items-center space-x-2 text-xs text-muted-foreground">
-              <Progress value={metrics.completionRate} className="w-full h-2" />
-              <span>{metrics.completionRate.toFixed(1)}%</span>
+              <Progress value={dashboardMetrics.completionRate} className="w-full h-2" />
+              <span>{dashboardMetrics.completionRate.toFixed(1)}%</span>
             </div>
           </CardContent>
         </Card>
@@ -140,7 +108,7 @@ export const CleaningReportsDashboard: React.FC<CleaningReportsDashboardProps> =
             <AlertTriangle className="h-4 w-4 text-orange-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-orange-600">{metrics.reportsWithIncidents}</div>
+            <div className="text-2xl font-bold text-orange-600">{dashboardMetrics.reportsWithIncidents}</div>
             <p className="text-xs text-muted-foreground">
               Requieren atención
             </p>
@@ -154,7 +122,7 @@ export const CleaningReportsDashboard: React.FC<CleaningReportsDashboardProps> =
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-blue-600">
-              {metrics.pendingReports + metrics.inProgressReports}
+              {dashboardMetrics.pendingReports + dashboardMetrics.inProgressReports}
             </div>
             <p className="text-xs text-muted-foreground">
               En proceso
@@ -223,4 +191,4 @@ export const CleaningReportsDashboard: React.FC<CleaningReportsDashboardProps> =
       </Card>
     </div>
   );
-};
+});
