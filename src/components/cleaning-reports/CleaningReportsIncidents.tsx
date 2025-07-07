@@ -62,6 +62,7 @@ export const CleaningReportsIncidents: React.FC<CleaningReportsIncidentsProps> =
             resolvedBy: issue.resolvedBy || null,
             assignedTo: issue.assignedTo || '',
             updatedAt: issue.updatedAt || report.created_at,
+            media_urls: issue.media_urls || [],
           });
         });
       }
