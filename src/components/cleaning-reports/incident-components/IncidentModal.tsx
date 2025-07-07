@@ -74,31 +74,44 @@ export const IncidentModal: React.FC<IncidentModalProps> = ({
             </div>
 
             {/* Imágenes asociadas a la incidencia */}
-            {reportMedia && reportMedia.length > 0 && (
-              <div className="space-y-3 border-t pt-4">
-                <h4 className="text-sm font-medium flex items-center gap-2">
-                  <MessageSquare className="h-4 w-4" />
-                  Evidencias fotográficas ({reportMedia.length})
-                </h4>
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                  {reportMedia.map((media: any) => (
-                    <div key={media.id} className="relative group">
-                      <img
-                        src={media.file_url}
-                        alt={media.description || 'Evidencia de incidencia'}
-                        className="w-full h-24 object-cover rounded-lg border border-gray-200 cursor-pointer hover:opacity-80 transition-opacity"
-                        onClick={() => window.open(media.file_url, '_blank')}
-                      />
-                      {media.description && (
-                        <div className="absolute bottom-0 left-0 right-0 bg-black bg-opacity-75 text-white text-xs p-1 rounded-b-lg opacity-0 group-hover:opacity-100 transition-opacity">
-                          {media.description}
-                        </div>
-                      )}
-                    </div>
-                  ))}
+            {(() => {
+              // Filtrar imágenes por incidencia usando el checklist_item_id o media_urls de la incidencia
+              const incidentMedia = reportMedia?.filter((media: any) => {
+                // Si la incidencia tiene media_urls directas, usarlas
+                if (selectedIncident.media_urls && selectedIncident.media_urls.includes(media.file_url)) {
+                  return true;
+                }
+                // Si no, filtrar por checklist_item_id que coincida con el id de la incidencia
+                return media.checklist_item_id === selectedIncident.id || 
+                       media.checklist_item_id === `issue-${selectedIncident.incidentIndex}`;
+              }) || [];
+              
+              return incidentMedia.length > 0 ? (
+                <div className="space-y-3 border-t pt-4">
+                  <h4 className="text-sm font-medium flex items-center gap-2">
+                    <MessageSquare className="h-4 w-4" />
+                    Evidencias fotográficas ({incidentMedia.length})
+                  </h4>
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                    {incidentMedia.map((media: any) => (
+                      <div key={media.id} className="relative group">
+                        <img
+                          src={media.file_url}
+                          alt={media.description || 'Evidencia de incidencia'}
+                          className="w-full h-24 object-cover rounded-lg border border-gray-200 cursor-pointer hover:opacity-80 transition-opacity"
+                          onClick={() => window.open(media.file_url, '_blank')}
+                        />
+                        {media.description && (
+                          <div className="absolute bottom-0 left-0 right-0 bg-black bg-opacity-75 text-white text-xs p-1 rounded-b-lg opacity-0 group-hover:opacity-100 transition-opacity">
+                            {media.description}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              </div>
-            )}
+              ) : null;
+            })()}
             
             <div className="space-y-3 border-t pt-4">
               <div className="space-y-2">
