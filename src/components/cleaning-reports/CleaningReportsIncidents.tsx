@@ -21,6 +21,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { useTaskReports } from '@/hooks/useTaskReports';
 import { useIncidentManagement } from '@/hooks/useIncidentManagement';
 import { useCleaners } from '@/hooks/useCleaners';
+import { useTaskMedia } from '@/hooks/useTaskMedia';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 
@@ -45,6 +46,9 @@ export const CleaningReportsIncidents: React.FC<CleaningReportsIncidentsProps> =
   const [incidentStatus, setIncidentStatus] = useState('');
   const [resolutionNotes, setResolutionNotes] = useState('');
   const [assignedTo, setAssignedTo] = useState('');
+
+  // Obtener imágenes del reporte seleccionado
+  const { data: reportMedia = [] } = useTaskMedia(selectedIncident?.reportId);
 
   // Procesar incidencias de los reportes
   const incidents = useMemo(() => {
@@ -262,7 +266,7 @@ export const CleaningReportsIncidents: React.FC<CleaningReportsIncidentsProps> =
               </p>
             </div>
           ) : (
-            <div className="space-y-4">
+                 <div className="space-y-4">
               {incidents.map((incident) => (
                 <div
                   key={incident.id}
@@ -285,21 +289,29 @@ export const CleaningReportsIncidents: React.FC<CleaningReportsIncidentsProps> =
                          <Calendar className="h-3 w-3" />
                          {format(new Date(incident.createdAt), 'dd/MM/yyyy HH:mm', { locale: es })}
                        </div>
+                       <div className="flex items-center gap-1">
+                         <User className="h-3 w-3" />
+                         <span className="font-medium">
+                           {cleaners.find(c => c.id === incident.cleanerId)?.name || 'Limpiador no encontrado'}
+                         </span>
+                       </div>
+                       <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700">
+                         {incident.category}
+                       </Badge>
                        {incident.location && (
                          <div className="flex items-center gap-1">
                            <MapPin className="h-3 w-3" />
                            {incident.location}
                          </div>
                        )}
-                       {incident.assignedTo && (
+                       {incident.assignedTo && incident.assignedTo !== 'unassigned' && (
                          <div className="flex items-center gap-1">
-                           <User className="h-3 w-3" />
-                           {cleaners.find(c => c.id === incident.assignedTo)?.name || incident.assignedTo}
+                           <UserPlus className="h-3 w-3" />
+                           <span className="text-green-600">
+                             Asignado a: {cleaners.find(c => c.id === incident.assignedTo)?.name || incident.assignedTo}
+                           </span>
                          </div>
                        )}
-                       <Badge variant="outline" className="text-xs">
-                         {incident.category}
-                       </Badge>
                   </div>
                 </div>
               ))}
@@ -337,10 +349,37 @@ export const CleaningReportsIncidents: React.FC<CleaningReportsIncidentsProps> =
                       <span className="font-medium">Ubicación:</span> {selectedIncident.location}
                     </div>
                   )}
-                </div>
-              </div>
-              
-              <div className="space-y-3 border-t pt-4">
+                 </div>
+               </div>
+
+               {/* Imágenes asociadas a la incidencia */}
+               {reportMedia && reportMedia.length > 0 && (
+                 <div className="space-y-3 border-t pt-4">
+                   <h4 className="text-sm font-medium flex items-center gap-2">
+                     <MessageSquare className="h-4 w-4" />
+                     Evidencias fotográficas ({reportMedia.length})
+                   </h4>
+                   <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                     {reportMedia.map((media: any) => (
+                       <div key={media.id} className="relative group">
+                         <img
+                           src={media.file_url}
+                           alt={media.description || 'Evidencia de incidencia'}
+                           className="w-full h-24 object-cover rounded-lg border border-gray-200 cursor-pointer hover:opacity-80 transition-opacity"
+                           onClick={() => window.open(media.file_url, '_blank')}
+                         />
+                         {media.description && (
+                           <div className="absolute bottom-0 left-0 right-0 bg-black bg-opacity-75 text-white text-xs p-1 rounded-b-lg opacity-0 group-hover:opacity-100 transition-opacity">
+                             {media.description}
+                           </div>
+                         )}
+                       </div>
+                     ))}
+                   </div>
+                 </div>
+               )}
+               
+               <div className="space-y-3 border-t pt-4">
                  <div className="space-y-2">
                    <Label htmlFor="incidentStatus">Estado de la incidencia</Label>
                    <Select value={incidentStatus} onValueChange={setIncidentStatus}>
