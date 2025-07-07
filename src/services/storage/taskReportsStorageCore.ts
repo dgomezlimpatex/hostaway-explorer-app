@@ -5,6 +5,7 @@ import { TaskReport, CreateTaskReportData } from '@/types/taskReports';
 export class TaskReportsStorageService {
   async getTaskReports(): Promise<TaskReport[]> {
     console.log('📋 Fetching task reports from database...');
+    console.log('📋 Current user ID:', (await supabase.auth.getUser()).data.user?.id);
     
     const { data, error } = await supabase
       .from('task_reports')
@@ -13,6 +14,7 @@ export class TaskReportsStorageService {
 
     if (error) {
       console.error('❌ Error fetching task reports:', error);
+      console.error('❌ Error details:', error.message, error.details, error.hint);
       throw error;
     }
 
