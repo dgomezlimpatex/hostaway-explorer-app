@@ -4,6 +4,7 @@ import { TaskReport, CreateTaskReportData } from '@/types/taskReports';
 
 export class TaskReportsStorageService {
   async getTaskReports(): Promise<TaskReport[]> {
+    console.log('Fetching task reports...');
     const { data, error } = await supabase
       .from('task_reports')
       .select('*')
@@ -14,12 +15,17 @@ export class TaskReportsStorageService {
       throw error;
     }
 
+    console.log('Raw task reports data:', data);
+
     // Transform JSON data to proper types
-    return (data || []).map(item => ({
+    const transformedData = (data || []).map(item => ({
       ...item,
       checklist_completed: item.checklist_completed as Record<string, any>,
       issues_found: item.issues_found as any[]
     }));
+
+    console.log('Transformed task reports:', transformedData);
+    return transformedData;
   }
 
   async getTaskReportByTaskId(taskId: string): Promise<TaskReport | null> {
