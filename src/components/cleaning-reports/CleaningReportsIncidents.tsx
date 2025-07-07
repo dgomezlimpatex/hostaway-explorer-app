@@ -4,6 +4,8 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { 
   AlertTriangle, 
   MessageSquare, 
@@ -11,10 +13,14 @@ import {
   Clock,
   User,
   Calendar,
-  MapPin
+  MapPin,
+  UserPlus,
+  Save
 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useTaskReports } from '@/hooks/useTaskReports';
+import { useIncidentManagement } from '@/hooks/useIncidentManagement';
+import { useCleaners } from '@/hooks/useCleaners';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 
@@ -32,10 +38,13 @@ export const CleaningReportsIncidents: React.FC<CleaningReportsIncidentsProps> =
   filters,
 }) => {
   const { reports, isLoading } = useTaskReports();
+  const { cleaners } = useCleaners();
+  const { updateIncident, isUpdating } = useIncidentManagement();
   const [selectedIncident, setSelectedIncident] = useState<any>(null);
   const [showIncidentModal, setShowIncidentModal] = useState(false);
   const [incidentStatus, setIncidentStatus] = useState('');
   const [resolutionNotes, setResolutionNotes] = useState('');
+  const [assignedTo, setAssignedTo] = useState('');
 
   // Procesar incidencias de los reportes
   const incidents = useMemo(() => {
@@ -51,6 +60,7 @@ export const CleaningReportsIncidents: React.FC<CleaningReportsIncidentsProps> =
             reportId: report.id,
             taskId: report.task_id,
             cleanerId: report.cleaner_id,
+            incidentIndex: index,
             title: issue.title || 'Incidencia sin título',
             description: issue.description || '',
             severity: issue.severity || 'medium',
@@ -61,6 +71,8 @@ export const CleaningReportsIncidents: React.FC<CleaningReportsIncidentsProps> =
             resolutionNotes: issue.resolutionNotes || '',
             resolvedAt: issue.resolvedAt || null,
             resolvedBy: issue.resolvedBy || null,
+            assignedTo: issue.assignedTo || '',
+            updatedAt: issue.updatedAt || report.created_at,
           });
         });
       }
@@ -135,15 +147,24 @@ export const CleaningReportsIncidents: React.FC<CleaningReportsIncidentsProps> =
     setSelectedIncident(incident);
     setIncidentStatus(incident.status);
     setResolutionNotes(incident.resolutionNotes || '');
+    setAssignedTo(incident.assignedTo || '');
     setShowIncidentModal(true);
   };
 
   const handleUpdateIncident = () => {
-    // TODO: Implementar actualización de incidencia
-    console.log('Updating incident:', selectedIncident.id, {
-      status: incidentStatus,
-      resolutionNotes,
+    if (!selectedIncident) return;
+
+    updateIncident({
+      reportId: selectedIncident.reportId,
+      incidentIndex: selectedIncident.incidentIndex,
+      updates: {
+        status: incidentStatus as 'open' | 'in_progress' | 'resolved',
+        resolutionNotes,
+        assignedTo,
+        resolvedBy: incidentStatus === 'resolved' ? 'current_user' : undefined,
+      }
     });
+    
     setShowIncidentModal(false);
   };
 
@@ -260,19 +281,25 @@ export const CleaningReportsIncidents: React.FC<CleaningReportsIncidentsProps> =
                   </div>
                   
                   <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                    <div className="flex items-center gap-1">
-                      <Calendar className="h-3 w-3" />
-                      {format(new Date(incident.createdAt), 'dd/MM/yyyy HH:mm', { locale: es })}
-                    </div>
-                    {incident.location && (
-                      <div className="flex items-center gap-1">
-                        <MapPin className="h-3 w-3" />
-                        {incident.location}
-                      </div>
-                    )}
-                    <Badge variant="outline" className="text-xs">
-                      {incident.category}
-                    </Badge>
+                       <div className="flex items-center gap-1">
+                         <Calendar className="h-3 w-3" />
+                         {format(new Date(incident.createdAt), 'dd/MM/yyyy HH:mm', { locale: es })}
+                       </div>
+                       {incident.location && (
+                         <div className="flex items-center gap-1">
+                           <MapPin className="h-3 w-3" />
+                           {incident.location}
+                         </div>
+                       )}
+                       {incident.assignedTo && (
+                         <div className="flex items-center gap-1">
+                           <User className="h-3 w-3" />
+                           {cleaners.find(c => c.id === incident.assignedTo)?.name || incident.assignedTo}
+                         </div>
+                       )}
+                       <Badge variant="outline" className="text-xs">
+                         {incident.category}
+                       </Badge>
                   </div>
                 </div>
               ))}
@@ -314,39 +341,61 @@ export const CleaningReportsIncidents: React.FC<CleaningReportsIncidentsProps> =
               </div>
               
               <div className="space-y-3 border-t pt-4">
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Estado de la incidencia</label>
-                  <Select value={incidentStatus} onValueChange={setIncidentStatus}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="open">Abierta</SelectItem>
-                      <SelectItem value="in_progress">En progreso</SelectItem>
-                      <SelectItem value="resolved">Resuelta</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Notas de resolución</label>
-                  <Textarea
-                    value={resolutionNotes}
-                    onChange={(e) => setResolutionNotes(e.target.value)}
-                    placeholder="Describe las acciones tomadas para resolver la incidencia..."
-                    rows={4}
-                  />
-                </div>
+                 <div className="space-y-2">
+                   <Label htmlFor="incidentStatus">Estado de la incidencia</Label>
+                   <Select value={incidentStatus} onValueChange={setIncidentStatus}>
+                     <SelectTrigger>
+                       <SelectValue />
+                     </SelectTrigger>
+                     <SelectContent>
+                       <SelectItem value="open">Abierta</SelectItem>
+                       <SelectItem value="in_progress">En progreso</SelectItem>
+                       <SelectItem value="resolved">Resuelta</SelectItem>
+                     </SelectContent>
+                   </Select>
+                 </div>
+
+                 <div className="space-y-2">
+                   <Label htmlFor="assignedTo">Asignar a</Label>
+                   <Select value={assignedTo} onValueChange={setAssignedTo}>
+                     <SelectTrigger>
+                       <SelectValue placeholder="Seleccionar responsable" />
+                     </SelectTrigger>
+                     <SelectContent>
+                       <SelectItem value="">Sin asignar</SelectItem>
+                       {cleaners.map((cleaner) => (
+                         <SelectItem key={cleaner.id} value={cleaner.id}>
+                           {cleaner.name}
+                         </SelectItem>
+                       ))}
+                     </SelectContent>
+                   </Select>
+                 </div>
+                 
+                 <div className="space-y-2">
+                   <Label htmlFor="resolutionNotes">Notas de resolución</Label>
+                   <Textarea
+                     id="resolutionNotes"
+                     value={resolutionNotes}
+                     onChange={(e) => setResolutionNotes(e.target.value)}
+                     placeholder="Describe las acciones tomadas para resolver la incidencia..."
+                     rows={4}
+                   />
+                 </div>
               </div>
               
-              <div className="flex gap-2 pt-4">
-                <Button onClick={handleUpdateIncident}>
-                  Actualizar Incidencia
-                </Button>
-                <Button variant="outline" onClick={() => setShowIncidentModal(false)}>
-                  Cancelar
-                </Button>
-              </div>
+               <div className="flex gap-2 pt-4">
+                 <Button 
+                   onClick={handleUpdateIncident}
+                   disabled={isUpdating}
+                 >
+                   <Save className="h-4 w-4 mr-2" />
+                   {isUpdating ? 'Guardando...' : 'Actualizar Incidencia'}
+                 </Button>
+                 <Button variant="outline" onClick={() => setShowIncidentModal(false)}>
+                   Cancelar
+                 </Button>
+               </div>
             </div>
           )}
         </DialogContent>
