@@ -16,7 +16,7 @@ export default function CleaningReports() {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [showFilters, setShowFilters] = useState(false);
   const [filters, setFilters] = useState({
-    dateRange: 'today',
+    dateRange: 'all',
     cleaner: 'all',
     status: 'all',
     property: 'all',
