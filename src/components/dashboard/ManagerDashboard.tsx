@@ -16,7 +16,9 @@ import {
   Users,
   Clock,
   CheckCircle2,
-  PlusSquare
+  PlusSquare,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
 import { useOptimizedTasks } from '@/hooks/useOptimizedTasks';
 import { useOptimizedCleaningReports } from '@/hooks/useOptimizedCleaningReports';
@@ -28,6 +30,7 @@ import { es } from 'date-fns/locale';
 
 export const ManagerDashboard = () => {
   const [selectedDate] = useState(new Date());
+  const [currentTaskPage, setCurrentTaskPage] = useState(0);
   const { canAccessModule } = useRolePermissions();
   
   // Hook para manejar las acciones de tareas
@@ -100,6 +103,30 @@ export const ManagerDashboard = () => {
     const today = format(new Date(), 'yyyy-MM-dd');
     return tasks.filter(task => task.date === today);
   }, [tasks]);
+
+  // Paginación de tareas del día
+  const TASKS_PER_PAGE = 6;
+  const totalTaskPages = Math.ceil(todayTasks.length / TASKS_PER_PAGE);
+  const paginatedTodayTasks = useMemo(() => {
+    const startIndex = currentTaskPage * TASKS_PER_PAGE;
+    return todayTasks.slice(startIndex, startIndex + TASKS_PER_PAGE);
+  }, [todayTasks, currentTaskPage]);
+
+  // Funciones de navegación
+  const goToPreviousPage = () => {
+    setCurrentTaskPage(prev => Math.max(0, prev - 1));
+  };
+
+  const goToNextPage = () => {
+    setCurrentTaskPage(prev => Math.min(totalTaskPages - 1, prev + 1));
+  };
+
+  // Reset page when tasks change
+  useMemo(() => {
+    if (currentTaskPage >= totalTaskPages && totalTaskPages > 0) {
+      setCurrentTaskPage(0);
+    }
+  }, [totalTaskPages, currentTaskPage]);
 
   // Tareas sin asignar
   const unassignedTasks = useMemo(() => {
@@ -196,10 +223,41 @@ export const ManagerDashboard = () => {
               {/* Central Section - Today's Tasks */}
               <Card className="bg-white shadow-lg border-0">
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-xl font-semibold text-gray-800">
-                    <Calendar className="h-6 w-6 text-blue-600" />
-                    Tareas de Hoy
-                  </CardTitle>
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="flex items-center gap-2 text-xl font-semibold text-gray-800">
+                      <Calendar className="h-6 w-6 text-blue-600" />
+                      Tareas de Hoy
+                    </CardTitle>
+                    
+                    {/* Navegación y paginación - Solo mostrar si hay más de 6 tareas */}
+                    {todayTasks.length > TASKS_PER_PAGE && (
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm text-gray-500">
+                          Página {currentTaskPage + 1} de {totalTaskPages}
+                        </span>
+                        <div className="flex gap-1">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={goToPreviousPage}
+                            disabled={currentTaskPage === 0}
+                            className="h-8 w-8 p-0"
+                          >
+                            <ChevronLeft className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={goToNextPage}
+                            disabled={currentTaskPage >= totalTaskPages - 1}
+                            className="h-8 w-8 p-0"
+                          >
+                            <ChevronRight className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </CardHeader>
                 <CardContent>
                   {todayTasks.length === 0 ? (
@@ -209,7 +267,7 @@ export const ManagerDashboard = () => {
                     </div>
                   ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                      {todayTasks.slice(0, 6).map((task) => (
+                      {paginatedTodayTasks.map((task) => (
                         <div key={task.id} className="p-4 bg-gradient-to-br from-gray-50 to-gray-100 rounded-lg border">
                           <div className="flex justify-between items-start mb-2">
                             <h4 className="font-medium text-gray-900 truncate">{task.property}</h4>
@@ -235,10 +293,15 @@ export const ManagerDashboard = () => {
                       ))}
                     </div>
                   )}
-                  {todayTasks.length > 6 && (
+                  
+                  {/* Indicador de total de tareas si hay paginación */}
+                  {todayTasks.length > TASKS_PER_PAGE && (
                     <div className="text-center mt-4">
-                      <Button variant="outline" onClick={() => window.location.href = '/calendar'}>
-                        Ver todas las tareas del día
+                      <p className="text-sm text-gray-500">
+                        Mostrando {paginatedTodayTasks.length} de {todayTasks.length} tareas del día
+                      </p>
+                      <Button variant="outline" size="sm" className="mt-2" onClick={() => window.location.href = '/calendar'}>
+                        Ver todas en el calendario
                       </Button>
                     </div>
                   )}
