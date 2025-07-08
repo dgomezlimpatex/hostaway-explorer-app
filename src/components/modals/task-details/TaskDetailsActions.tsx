@@ -1,10 +1,8 @@
-
 import { Button } from "@/components/ui/button";
 import { Trash2, Edit3, Save, X, UserX, FileText, Camera } from "lucide-react";
 import { Task } from "@/types/calendar";
 import { useAuth } from "@/hooks/useAuth";
 import { useTaskReport } from "@/hooks/useTaskReports";
-
 interface TaskDetailsActionsProps {
   task: Task;
   isEditing: boolean;
@@ -15,7 +13,6 @@ interface TaskDetailsActionsProps {
   onUnassign?: () => void;
   onOpenReport: () => void;
 }
-
 export const TaskDetailsActions = ({
   task,
   isEditing,
@@ -26,13 +23,14 @@ export const TaskDetailsActions = ({
   onUnassign,
   onOpenReport
 }: TaskDetailsActionsProps) => {
-  const { userRole } = useAuth();
-  const { data: existingReport } = useTaskReport(task.id);
-
+  const {
+    userRole
+  } = useAuth();
+  const {
+    data: existingReport
+  } = useTaskReport(task.id);
   const canCreateReport = userRole === 'cleaner' && task?.cleanerId;
-  const canViewReport = ['admin', 'manager', 'supervisor'].includes(userRole || '') || 
-                       (userRole === 'cleaner' && task?.cleanerId);
-
+  const canViewReport = ['admin', 'manager', 'supervisor'].includes(userRole || '') || userRole === 'cleaner' && task?.cleanerId;
   const getReportButtonText = () => {
     if (!existingReport) return "Crear Reporte";
     switch (existingReport.overall_status) {
@@ -48,7 +46,6 @@ export const TaskDetailsActions = ({
         return "Ver Reporte";
     }
   };
-
   const getReportButtonVariant = () => {
     if (!existingReport) return "default";
     switch (existingReport.overall_status) {
@@ -60,79 +57,39 @@ export const TaskDetailsActions = ({
         return "default";
     }
   };
-
-  return (
-    <div className="flex items-center justify-between w-full">
+  return <div className="flex items-center justify-between w-full">
       <div className="flex items-center gap-2">
-        <Button
-          variant="destructive"
-          size="sm"
-          onClick={onDelete}
-          className="flex items-center gap-2"
-        >
+        <Button variant="destructive" size="sm" onClick={onDelete} className="flex items-center gap-2">
           <Trash2 className="h-4 w-4" />
           Eliminar
         </Button>
         
-        {task.cleaner && onUnassign && (
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={onUnassign}
-            className="flex items-center gap-2"
-          >
+        {task.cleaner && onUnassign && <Button variant="outline" size="sm" onClick={onUnassign} className="flex items-center gap-2">
             <UserX className="h-4 w-4" />
             Desasignar
-          </Button>
-        )}
+          </Button>}
 
         {/* Botón de Reporte */}
-        {(canCreateReport || canViewReport) && (
-          <Button
-            variant={getReportButtonVariant() as "default" | "destructive" | "outline" | "secondary" | "ghost" | "link"}
-            size="sm"
-            onClick={onOpenReport}
-            className="flex items-center gap-2"
-          >
-            {!existingReport ? (
-              <Camera className="h-4 w-4" />
-            ) : (
-              <FileText className="h-4 w-4" />
-            )}
+        {(canCreateReport || canViewReport) && <Button variant={getReportButtonVariant() as "default" | "destructive" | "outline" | "secondary" | "ghost" | "link"} size="sm" onClick={onOpenReport} className="flex items-center gap-2 text-xs font-normal mx-0 px-[10px]">
+            {!existingReport ? <Camera className="h-4 w-4" /> : <FileText className="h-4 w-4" />}
             {getReportButtonText()}
-          </Button>
-        )}
+          </Button>}
       </div>
       
       <div className="flex items-center gap-2">
-        {isEditing ? (
-          <>
-            <Button
-              variant="outline"
-              onClick={onCancel}
-              className="flex items-center gap-2"
-            >
+        {isEditing ? <>
+            <Button variant="outline" onClick={onCancel} className="flex items-center gap-2">
               <X className="h-4 w-4" />
               Cancelar
             </Button>
-            <Button
-              onClick={onSave}
-              className="flex items-center gap-2"
-            >
+            <Button onClick={onSave} className="flex items-center gap-2">
               <Save className="h-4 w-4" />
               Guardar
             </Button>
-          </>
-        ) : (
-          <Button
-            onClick={onEdit}
-            className="flex items-center gap-2"
-          >
+          </> : <Button onClick={onEdit} className="flex items-center gap-2 px-[8px] py-0 my-0 mx-0">
             <Edit3 className="h-4 w-4" />
             Editar
-          </Button>
-        )}
+          </Button>}
       </div>
-    </div>
-  );
+    </div>;
 };
