@@ -204,14 +204,17 @@ export const TaskPreviewModal: React.FC<TaskPreviewModalProps> = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className={getModalClasses()}>
-        <DialogHeader>
+      <DialogContent 
+        className={`${getModalClasses()} ${isMobile ? 'flex flex-col' : ''}`}
+        aria-describedby="task-preview-description"
+      >
+        <DialogHeader className="flex-shrink-0">
           <div className="flex items-start justify-between">
             <div className="flex-1">
               <DialogTitle className="text-xl font-bold text-left">
                 {task.property}
               </DialogTitle>
-              <p className="text-sm text-muted-foreground mt-1">
+              <p className="text-sm text-muted-foreground mt-1" id="task-preview-description">
                 Código: {task.propertyCode || 'N/A'}
               </p>
             </div>
@@ -221,7 +224,7 @@ export const TaskPreviewModal: React.FC<TaskPreviewModalProps> = ({
           </div>
         </DialogHeader>
 
-        <div className="space-y-6">
+        <div className={`${isMobile ? 'flex-1 overflow-y-auto' : ''} space-y-6`}>
           {/* Información básica */}
           <Card>
             <CardContent className="p-4 space-y-4">
@@ -351,7 +354,7 @@ export const TaskPreviewModal: React.FC<TaskPreviewModalProps> = ({
         </div>
 
         {/* Botones de acción */}
-        <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t">
+        <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t flex-shrink-0">
           {renderActionButtons()}
         </div>
       </DialogContent>
