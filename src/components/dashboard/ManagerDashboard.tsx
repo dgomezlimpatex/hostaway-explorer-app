@@ -18,11 +18,14 @@ import {
 } from 'lucide-react';
 import { useOptimizedTasks } from '@/hooks/useOptimizedTasks';
 import { useOptimizedCleaningReports } from '@/hooks/useOptimizedCleaningReports';
+import { useRolePermissions } from '@/hooks/useRolePermissions';
+import { HostawayIntegrationWidget } from '@/components/hostaway/HostawayIntegrationWidget';
 import { format, startOfMonth, endOfMonth, isAfter, isBefore, subMonths } from 'date-fns';
 import { es } from 'date-fns/locale';
 
 export const ManagerDashboard = () => {
   const [selectedDate] = useState(new Date());
+  const { canAccessModule } = useRolePermissions();
   
   // Obtener tareas del mes actual
   const { tasks } = useOptimizedTasks({
@@ -113,6 +116,13 @@ export const ManagerDashboard = () => {
         <main className="flex-1 overflow-auto">
           <div className="p-6">
             <div className="max-w-6xl mx-auto space-y-6">
+              {/* Hostaway Integration Widget - Solo si tiene permisos */}
+              {canAccessModule('hostaway') && (
+                <div className="mb-6">
+                  <HostawayIntegrationWidget />
+                </div>
+              )}
+
               {/* Header */}
               <div className="mb-8">
                 <h1 className="text-3xl font-bold text-gray-900 mb-2">
