@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,21 +8,23 @@ import {
   Image as ImageIcon, 
   Search, 
   Download, 
-  ZoomIn,
   Calendar,
-  MapPin,
   User,
   Grid3X3,
   List,
   Filter,
-  Trash2,
-  Eye
+  Eye,
+  ChevronLeft,
+  ChevronRight,
+  Building2,
+  Play
 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { useAllTaskMedia } from '@/hooks/useTaskMedia';
-import { useMediaManagement } from '@/hooks/useMediaManagement';
+import { useTaskReports } from '@/hooks/useTaskReports';
+import { useTaskMedia } from '@/hooks/useTaskMedia';
 import { useCleaners } from '@/hooks/useCleaners';
 import { useProperties } from '@/hooks/useProperties';
+import { taskStorageService } from '@/services/taskStorage';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 
@@ -39,88 +41,150 @@ interface CleaningReportsGalleryProps {
 export const CleaningReportsGallery: React.FC<CleaningReportsGalleryProps> = ({
   filters,
 }) => {
-  const { data: mediaData = [], isLoading } = useAllTaskMedia();
-  const { downloadMedia, deleteMedia, isDeleting } = useMediaManagement();
+  const { reports, isLoading } = useTaskReports();
   const { cleaners } = useCleaners();
   const { data: properties = [] } = useProperties();
   
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedImage, setSelectedImage] = useState<any>(null);
-  const [showImageModal, setShowImageModal] = useState(false);
+  const [selectedReport, setSelectedReport] = useState<any>(null);
+  const [showReportModal, setShowReportModal] = useState(false);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
-  const [mediaTypeFilter, setMediaTypeFilter] = useState('all');
+  const [statusFilter, setStatusFilter] = useState('all');
   const [showFilters, setShowFilters] = useState(false);
+  const [allTasks, setAllTasks] = useState<any[]>([]);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  
+  // Obtener imágenes del reporte seleccionado
+  const { data: reportMedia = [] } = useTaskMedia(selectedReport?.id);
 
-  // Procesar datos de media
-  const processedMedia = useMemo(() => {
-    return mediaData.map((media: any) => {
-      const report = media.task_reports;
-      const task = report?.tasks;
-      const cleaner = cleaners.find(c => c.id === report?.cleaner_id);
+  // Cargar todas las tareas al montar el componente
+  useEffect(() => {
+    const loadAllTasks = async () => {
+      try {
+        const tasks = await taskStorageService.getTasks();
+        setAllTasks(tasks);
+      } catch (error) {
+        console.error('Error loading all tasks:', error);
+      }
+    };
+    loadAllTasks();
+  }, []);
+
+  // Procesar reportes con información de tareas y propiedades
+  const processedReports = useMemo(() => {
+    if (!reports || !allTasks || !properties) return [];
+    
+    return reports.map((report: any) => {
+      // Buscar la tarea asociada al reporte
+      const task = allTasks.find(t => t.id === report.task_id);
+      // Buscar la propiedad asociada a la tarea
+      const propertyId = task?.propertyId || (task as any)?.propiedad_id;
+      const property = propertyId ? properties.find(p => p.id === propertyId) : null;
+      // Buscar el limpiador
+      const cleaner = cleaners.find(c => c.id === report.cleaner_id);
+      
+      // Obtener todas las imágenes del checklist completado
+      const checklistImages: string[] = [];
+      if (report.checklist_completed && typeof report.checklist_completed === 'object') {
+        Object.values(report.checklist_completed).forEach((item: any) => {
+          if (item?.media_urls && Array.isArray(item.media_urls)) {
+            checklistImages.push(...item.media_urls);
+          }
+        });
+      }
+
+      // Obtener imágenes de incidencias
+      const incidentImages: string[] = [];
+      if (Array.isArray(report.issues_found)) {
+        report.issues_found.forEach((issue: any) => {
+          if (issue?.media_urls && Array.isArray(issue.media_urls)) {
+            incidentImages.push(...issue.media_urls);
+          }
+        });
+      }
+
+      // Combinar todas las imágenes
+      const allImages: string[] = [...checklistImages, ...incidentImages];
       
       return {
-        ...media,
-        reportId: report?.id,
-        taskId: report?.task_id,
-        property: task?.property || 'Propiedad desconocida',
-        address: task?.address || '',
-        cleanerName: cleaner?.name || task?.cleaner || 'No asignado',
-        reportStatus: report?.overall_status || 'unknown',
-        description: media.description || `Evidencia - ${media.media_type}`,
+        ...report,
+        task: task,
+        property: property,
+        propertyName: property?.nombre || 'Propiedad no encontrada',
+        propertyCode: property?.codigo || 'N/A',
+        cleanerName: cleaner?.name || 'No asignado',
+        taskDate: task?.date || '',
+        taskStartTime: task?.startTime || '',
+        totalImages: allImages.length,
+        previewImage: allImages[0] || null, // Primera imagen como preview
+        allImages: allImages
       };
-    });
-  }, [mediaData, cleaners]);
+    }).filter(report => report.totalImages > 0); // Solo mostrar reportes con imágenes
+  }, [reports, allTasks, properties, cleaners]);
 
-  // Filtrar media
-  const filteredMedia = useMemo(() => {
-    let filtered = processedMedia;
+  // Filtrar reportes
+  const filteredReports = useMemo(() => {
+    let filtered = processedReports;
 
     // Filtro por término de búsqueda
     if (searchTerm) {
-      filtered = filtered.filter(media => 
-        media.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        media.property.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        media.cleanerName.toLowerCase().includes(searchTerm.toLowerCase())
+      filtered = filtered.filter(report => 
+        report.propertyName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        report.propertyCode.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        report.cleanerName.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
 
-    // Filtro por tipo de media
-    if (mediaTypeFilter !== 'all') {
-      filtered = filtered.filter(media => media.media_type === mediaTypeFilter);
+    // Filtro por estado
+    if (statusFilter !== 'all') {
+      filtered = filtered.filter(report => report.overall_status === statusFilter);
     }
 
     // Aplicar filtros del dashboard principal
     if (filters.cleaner !== 'all') {
-      filtered = filtered.filter(media => {
-        const cleaner = cleaners.find(c => c.name === media.cleanerName);
-        return cleaner?.id === filters.cleaner;
-      });
+      filtered = filtered.filter(report => report.cleaner_id === filters.cleaner);
     }
 
     if (filters.property !== 'all') {
-      filtered = filtered.filter(media => {
-        const property = properties.find(p => p.nombre === media.property);
-        return property?.id === filters.property;
+      filtered = filtered.filter(report => {
+        const propertyId = report.task?.propertyId || (report.task as any)?.propiedad_id;
+        return propertyId === filters.property;
       });
     }
 
-    return filtered;
-  }, [processedMedia, searchTerm, mediaTypeFilter, filters, cleaners, properties]);
+    // Ordenar por fecha más reciente
+    return filtered.sort((a, b) => 
+      new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    );
+  }, [processedReports, searchTerm, statusFilter, filters]);
 
-  const handleImageClick = (media: any) => {
-    setSelectedImage(media);
-    setShowImageModal(true);
+  const handleReportClick = (report: any) => {
+    setSelectedReport(report);
+    setCurrentImageIndex(0);
+    setShowReportModal(true);
   };
 
-  const handleDownloadMedia = (media: any) => {
-    const fileName = `evidencia-${media.id}-${format(new Date(media.timestamp), 'ddMMyyyy')}.${media.file_url.split('.').pop()}`;
-    downloadMedia(media.file_url, fileName);
-  };
-
-  const handleDeleteMedia = (mediaId: string) => {
-    if (confirm('¿Estás seguro de que deseas eliminar esta evidencia?')) {
-      deleteMedia(mediaId);
+  const nextImage = () => {
+    if (selectedReport && currentImageIndex < selectedReport.allImages.length - 1) {
+      setCurrentImageIndex(currentImageIndex + 1);
     }
+  };
+
+  const prevImage = () => {
+    if (currentImageIndex > 0) {
+      setCurrentImageIndex(currentImageIndex - 1);
+    }
+  };
+
+  const downloadImage = (imageUrl: string) => {
+    const fileName = `evidencia-${selectedReport?.id}-${currentImageIndex + 1}.${imageUrl.split('.').pop()}`;
+    const link = document.createElement('a');
+    link.href = imageUrl;
+    link.download = fileName;
+    link.target = '_blank';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   if (isLoading) {
@@ -147,7 +211,7 @@ export const CleaningReportsGallery: React.FC<CleaningReportsGalleryProps> = ({
           <div className="flex items-center justify-between">
             <CardTitle className="flex items-center gap-2">
               <ImageIcon className="h-5 w-5" />
-              Galería de Evidencias ({filteredMedia.length})
+              Galería de Reportes ({filteredReports.length})
             </CardTitle>
             <div className="flex items-center gap-3">
               <Button
@@ -181,7 +245,7 @@ export const CleaningReportsGallery: React.FC<CleaningReportsGalleryProps> = ({
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
                 <Input
-                  placeholder="Buscar evidencias..."
+                  placeholder="Buscar reportes..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="pl-10 w-64"
@@ -195,15 +259,16 @@ export const CleaningReportsGallery: React.FC<CleaningReportsGalleryProps> = ({
             <div className="border-t pt-4 mt-4">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">Tipo de media</label>
-                  <Select value={mediaTypeFilter} onValueChange={setMediaTypeFilter}>
+                  <label className="text-sm font-medium">Estado del reporte</label>
+                  <Select value={statusFilter} onValueChange={setStatusFilter}>
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">Todos los tipos</SelectItem>
-                      <SelectItem value="photo">Solo fotos</SelectItem>
-                      <SelectItem value="video">Solo videos</SelectItem>
+                      <SelectItem value="all">Todos los estados</SelectItem>
+                      <SelectItem value="completed">Completado</SelectItem>
+                      <SelectItem value="pending">Pendiente</SelectItem>
+                      <SelectItem value="in_progress">En progreso</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -214,187 +279,160 @@ export const CleaningReportsGallery: React.FC<CleaningReportsGalleryProps> = ({
       </Card>
 
       {/* Contenido de la galería */}
-      {filteredMedia.length === 0 ? (
+      {filteredReports.length === 0 ? (
         <Card>
           <CardContent className="text-center py-12">
             <ImageIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
             <h3 className="text-lg font-medium text-gray-900 mb-2">
-              No hay evidencias disponibles
+              No hay reportes con evidencias disponibles
             </h3>
             <p className="text-gray-600">
-              Las evidencias fotográficas aparecerán aquí una vez que los limpiadores completen sus reportes.
+              Los reportes con evidencias fotográficas aparecerán aquí una vez que los limpiadores los completen.
             </p>
           </CardContent>
         </Card>
       ) : viewMode === 'grid' ? (
-        /* Vista en grid */
+        /* Vista en grid - cada cuadrado es un reporte */
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-          {filteredMedia.map((media) => (
-            <Card key={media.id} className="overflow-hidden hover:shadow-lg transition-shadow">
+          {filteredReports.map((report) => (
+            <Card key={report.id} className="overflow-hidden hover:shadow-lg transition-shadow cursor-pointer" onClick={() => handleReportClick(report)}>
               <div className="relative group">
                 <div className="aspect-square bg-gray-100 flex items-center justify-center">
-                  {media.media_type === 'video' ? (
-                    <video
-                      src={media.file_url}
-                      className="w-full h-full object-cover"
-                      muted
-                      poster={media.file_url} // En un caso real, tendrías un thumbnail
-                    />
-                  ) : (
+                  {report.previewImage ? (
                     <img
-                      src={media.file_url}
-                      alt={media.description}
+                      src={report.previewImage}
+                      alt={`Reporte ${report.propertyName}`}
                       className="w-full h-full object-cover"
                       onError={(e) => {
                         e.currentTarget.src = '/placeholder.svg';
                       }}
                     />
+                  ) : (
+                    <ImageIcon className="h-8 w-8 text-gray-400" />
                   )}
                   
-                  {/* Indicador de tipo de media */}
-                  {media.media_type === 'video' && (
-                    <div className="absolute top-2 right-2">
-                      <Badge variant="secondary" className="bg-black/50 text-white">
-                        Video
+                  {/* Indicador de número de imágenes */}
+                  <div className="absolute top-2 right-2">
+                    <Badge variant="secondary" className="bg-black/50 text-white">
+                      {report.totalImages} fotos
+                    </Badge>
+                  </div>
+                  
+                  {/* Overlay con botón ver */}
+                  <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-50 transition-all duration-200 flex items-center justify-center opacity-0 group-hover:opacity-100">
+                    <Button size="sm" variant="secondary">
+                      <Eye className="h-4 w-4 mr-2" />
+                      Ver todas
+                    </Button>
+                  </div>
+                </div>
+                
+                <CardContent className="p-4">
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <Building2 className="h-4 w-4 text-blue-600" />
+                      <h4 className="font-medium text-sm line-clamp-1">
+                        {report.propertyName}
+                      </h4>
+                    </div>
+                    
+                    {report.propertyCode && report.propertyCode !== 'N/A' && (
+                      <div className="text-xs text-gray-500">
+                        Código: {report.propertyCode}
+                      </div>
+                    )}
+                    
+                    <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                      <div className="flex items-center gap-1">
+                        <Calendar className="h-3 w-3" />
+                        {report.taskDate ? format(new Date(report.taskDate), 'dd/MM/yy', { locale: es }) : 'Sin fecha'}
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <User className="h-3 w-3" />
+                        {report.cleanerName}
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-center gap-2">
+                      <Badge variant={
+                        report.overall_status === 'completed' ? 'default' : 
+                        report.overall_status === 'pending' ? 'secondary' : 'outline'
+                      } className="text-xs">
+                        {report.overall_status === 'completed' ? 'Completado' : 
+                         report.overall_status === 'pending' ? 'Pendiente' : 'En progreso'}
                       </Badge>
                     </div>
-                  )}
-                </div>
-                
-                {/* Overlay con acciones */}
-                <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-50 transition-all duration-200 flex items-center justify-center opacity-0 group-hover:opacity-100">
-                  <div className="flex gap-2">
-                    <Button
-                      size="sm"
-                      variant="secondary"
-                      onClick={() => handleImageClick(media)}
-                    >
-                      <Eye className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="secondary"
-                      onClick={() => handleDownloadMedia(media)}
-                    >
-                      <Download className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="destructive"
-                      onClick={() => handleDeleteMedia(media.id)}
-                      disabled={isDeleting}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
                   </div>
-                </div>
+                </CardContent>
               </div>
-              
-              <CardContent className="p-4">
-                <h4 className="font-medium text-sm mb-2 line-clamp-2">
-                  {media.description}
-                </h4>
-                
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2">
-                    <Badge variant="outline" className="text-xs">
-                      {media.property}
-                    </Badge>
-                    <Badge variant="secondary" className="text-xs">
-                      {media.media_type}
-                    </Badge>
-                  </div>
-                  
-                  <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                    <div className="flex items-center gap-1">
-                      <Calendar className="h-3 w-3" />
-                      {format(new Date(media.timestamp), 'dd/MM/yy', { locale: es })}
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <User className="h-3 w-3" />
-                      {media.cleanerName}
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
             </Card>
           ))}
         </div>
       ) : (
         /* Vista en lista */
         <div className="space-y-4">
-          {filteredMedia.map((media) => (
-            <Card key={media.id} className="hover:shadow-md transition-shadow">
+          {filteredReports.map((report) => (
+            <Card key={report.id} className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => handleReportClick(report)}>
               <CardContent className="p-4">
                 <div className="flex items-start gap-4">
                   <div className="w-24 h-24 bg-gray-100 rounded-lg flex-shrink-0 flex items-center justify-center">
-                    {media.media_type === 'video' ? (
-                      <video
-                        src={media.file_url}
-                        className="w-full h-full object-cover rounded-lg"
-                        muted
-                      />
-                    ) : (
+                    {report.previewImage ? (
                       <img
-                        src={media.file_url}
-                        alt={media.description}
+                        src={report.previewImage}
+                        alt={`Reporte ${report.propertyName}`}
                         className="w-full h-full object-cover rounded-lg"
                         onError={(e) => {
                           e.currentTarget.src = '/placeholder.svg';
                         }}
                       />
+                    ) : (
+                      <ImageIcon className="h-6 w-6 text-gray-400" />
                     )}
                   </div>
                   
                   <div className="flex-1 min-w-0">
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
-                        <h4 className="font-medium text-base mb-2">
-                          {media.description}
-                        </h4>
+                        <div className="flex items-center gap-2 mb-2">
+                          <Building2 className="h-4 w-4 text-blue-600" />
+                          <h4 className="font-medium text-base">
+                            {report.propertyName}
+                          </h4>
+                          {report.propertyCode && report.propertyCode !== 'N/A' && (
+                            <span className="text-gray-500 text-sm">({report.propertyCode})</span>
+                          )}
+                        </div>
                         
                         <div className="flex flex-wrap gap-2 mb-3">
-                          <Badge variant="outline">{media.property}</Badge>
-                          <Badge variant="secondary">{media.media_type}</Badge>
-                          <Badge variant="outline">{media.cleanerName}</Badge>
+                          <Badge variant="outline">{report.totalImages} fotos</Badge>
+                          <Badge variant={
+                            report.overall_status === 'completed' ? 'default' : 
+                            report.overall_status === 'pending' ? 'secondary' : 'outline'
+                          }>
+                            {report.overall_status === 'completed' ? 'Completado' : 
+                             report.overall_status === 'pending' ? 'Pendiente' : 'En progreso'}
+                          </Badge>
+                          <Badge variant="outline">{report.cleanerName}</Badge>
                         </div>
                         
                         <div className="flex items-center gap-4 text-sm text-muted-foreground">
                           <div className="flex items-center gap-1">
                             <Calendar className="h-4 w-4" />
-                            {format(new Date(media.timestamp), 'dd/MM/yyyy HH:mm', { locale: es })}
+                            {report.taskDate ? format(new Date(report.taskDate), 'dd/MM/yyyy', { locale: es }) : 'Sin fecha'}
                           </div>
-                          {media.address && (
+                          {report.task?.address && (
                             <div className="flex items-center gap-1">
-                              <MapPin className="h-4 w-4" />
-                              {media.address}
+                              <Building2 className="h-4 w-4" />
+                              {report.task.address}
                             </div>
                           )}
                         </div>
                       </div>
                       
                       <div className="flex items-center gap-2 ml-4">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handleImageClick(media)}
-                        >
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handleDownloadMedia(media)}
-                        >
-                          <Download className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="destructive"
-                          onClick={() => handleDeleteMedia(media.id)}
-                          disabled={isDeleting}
-                        >
-                          <Trash2 className="h-4 w-4" />
+                        <Button size="sm" variant="outline">
+                          <Eye className="h-4 w-4 mr-2" />
+                          Ver evidencias
                         </Button>
                       </div>
                     </div>
@@ -406,78 +444,118 @@ export const CleaningReportsGallery: React.FC<CleaningReportsGalleryProps> = ({
         </div>
       )}
 
-      {/* Modal de media ampliado */}
-      <Dialog open={showImageModal} onOpenChange={setShowImageModal}>
+      {/* Modal de reporte con todas las imágenes */}
+      <Dialog open={showReportModal} onOpenChange={setShowReportModal}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-auto">
           <DialogHeader>
-            <DialogTitle>Evidencia - {selectedImage?.media_type === 'video' ? 'Video' : 'Fotografía'}</DialogTitle>
+            <DialogTitle className="flex items-center gap-2">
+              <Building2 className="h-5 w-5" />
+              {selectedReport?.propertyName} - Evidencias del Reporte
+            </DialogTitle>
           </DialogHeader>
           
-          {selectedImage && (
-            <div className="space-y-4">
-              <div className="relative">
-                {selectedImage.media_type === 'video' ? (
-                  <video
-                    src={selectedImage.file_url}
-                    controls
-                    className="w-full max-h-[60vh] object-contain rounded-lg"
-                  />
-                ) : (
-                  <img
-                    src={selectedImage.file_url}
-                    alt={selectedImage.description}
-                    className="w-full max-h-[60vh] object-contain rounded-lg"
-                  />
-                )}
-              </div>
-              
-              <div className="space-y-3">
-                <h3 className="text-lg font-medium">{selectedImage.description}</h3>
-                
-                <div className="grid grid-cols-2 gap-4 text-sm">
+          {selectedReport && (
+            <div className="space-y-6">
+              {/* Información del reporte */}
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                   <div>
-                    <span className="font-medium">Propiedad:</span> {selectedImage.property}
+                    <span className="font-medium">Propiedad:</span><br />
+                    {selectedReport.propertyName}
+                    {selectedReport.propertyCode && selectedReport.propertyCode !== 'N/A' && (
+                      <span className="text-gray-600"> ({selectedReport.propertyCode})</span>
+                    )}
                   </div>
                   <div>
-                    <span className="font-medium">Limpiador:</span> {selectedImage.cleanerName}
+                    <span className="font-medium">Limpiador:</span><br />
+                    {selectedReport.cleanerName}
                   </div>
                   <div>
-                    <span className="font-medium">Fecha:</span>{' '}
-                    {format(new Date(selectedImage.timestamp), 'dd/MM/yyyy HH:mm', { locale: es })}
+                    <span className="font-medium">Fecha:</span><br />
+                    {selectedReport.taskDate ? format(new Date(selectedReport.taskDate), 'dd/MM/yyyy', { locale: es }) : 'Sin fecha'}
                   </div>
                   <div>
-                    <span className="font-medium">Tipo:</span> {selectedImage.media_type}
+                    <span className="font-medium">Total evidencias:</span><br />
+                    {selectedReport.totalImages} fotos
                   </div>
                 </div>
-                
-                <div className="flex flex-wrap gap-2">
-                  <Badge variant="outline">{selectedImage.property}</Badge>
-                  <Badge variant="secondary">{selectedImage.media_type}</Badge>
-                  {selectedImage.checklist_item_id && (
-                    <Badge variant="outline">Checklist: {selectedImage.checklist_item_id}</Badge>
+              </div>
+
+              {/* Visualizador de imágenes */}
+              {selectedReport.allImages.length > 0 && (
+                <div className="space-y-4">
+                  <div className="relative">
+                    <img
+                      src={selectedReport.allImages[currentImageIndex]}
+                      alt={`Evidencia ${currentImageIndex + 1}`}
+                      className="w-full max-h-[60vh] object-contain rounded-lg"
+                      onError={(e) => {
+                        e.currentTarget.src = '/placeholder.svg';
+                      }}
+                    />
+                    
+                    {/* Controles de navegación */}
+                    {selectedReport.allImages.length > 1 && (
+                      <>
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          className="absolute left-2 top-1/2 transform -translate-y-1/2"
+                          onClick={prevImage}
+                          disabled={currentImageIndex === 0}
+                        >
+                          <ChevronLeft className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          className="absolute right-2 top-1/2 transform -translate-y-1/2"
+                          onClick={nextImage}
+                          disabled={currentImageIndex === selectedReport.allImages.length - 1}
+                        >
+                          <ChevronRight className="h-4 w-4" />
+                        </Button>
+                        
+                        {/* Indicador de posición */}
+                        <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2">
+                          <Badge variant="secondary" className="bg-black/50 text-white">
+                            {currentImageIndex + 1} / {selectedReport.allImages.length}
+                          </Badge>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                  
+                  {/* Thumbnails */}
+                  {selectedReport.allImages.length > 1 && (
+                    <div className="flex gap-2 overflow-x-auto pb-2">
+                      {selectedReport.allImages.map((image: string, index: number) => (
+                        <img
+                          key={index}
+                          src={image}
+                          alt={`Thumbnail ${index + 1}`}
+                          className={`w-16 h-16 object-cover rounded cursor-pointer border-2 flex-shrink-0 ${
+                            index === currentImageIndex ? 'border-blue-500' : 'border-gray-200'
+                          }`}
+                          onClick={() => setCurrentImageIndex(index)}
+                          onError={(e) => {
+                            e.currentTarget.src = '/placeholder.svg';
+                          }}
+                        />
+                      ))}
+                    </div>
                   )}
                 </div>
-                
-                <div className="flex gap-2 pt-4">
-                  <Button onClick={() => handleDownloadMedia(selectedImage)}>
-                    <Download className="h-4 w-4 mr-2" />
-                    Descargar
-                  </Button>
-                  <Button 
-                    variant="destructive" 
-                    onClick={() => {
-                      handleDeleteMedia(selectedImage.id);
-                      setShowImageModal(false);
-                    }}
-                    disabled={isDeleting}
-                  >
-                    <Trash2 className="h-4 w-4 mr-2" />
-                    Eliminar
-                  </Button>
-                  <Button variant="outline" onClick={() => setShowImageModal(false)}>
-                    Cerrar
-                  </Button>
-                </div>
+              )}
+              
+              <div className="flex gap-2 pt-4">
+                <Button onClick={() => downloadImage(selectedReport.allImages[currentImageIndex])}>
+                  <Download className="h-4 w-4 mr-2" />
+                  Descargar imagen actual
+                </Button>
+                <Button variant="outline" onClick={() => setShowReportModal(false)}>
+                  Cerrar
+                </Button>
               </div>
             </div>
           )}
