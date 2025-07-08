@@ -4,6 +4,7 @@ import { ResponsiveCalendarHeader } from "./calendar/ResponsiveCalendarHeader";
 import { CalendarContainer } from "./calendar/CalendarContainer";
 import { CleanerMobileCalendar } from "./calendar/CleanerMobileCalendar";
 import { ManagerMobileCalendar } from "./calendar/ManagerMobileCalendar";
+import { CalendarModalsWithSuspense } from "./calendar/LazyCalendarComponents";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { useCalendarLogic } from "@/hooks/useCalendarLogic";
 import { useCalendarNavigation } from "@/hooks/useCalendarNavigation";
@@ -112,16 +113,32 @@ const {
       console.log('Rendering mobile manager view');
       
       return (
-        <div className="min-h-screen bg-background text-foreground transition-colors duration-300">
-          <ManagerMobileCalendar
+        <>
+          <div className="min-h-screen bg-background text-foreground transition-colors duration-300">
+            <ManagerMobileCalendar
+              currentDate={currentDate}
+              tasks={tasks}
+              cleaners={cleaners}
+              onNavigateDate={navigateDate}
+              onTaskClick={handleTaskClick}
+              onNewTask={handleNewTask}
+            />
+          </div>
+          
+          {/* Modals for mobile manager view */}
+          <CalendarModalsWithSuspense
+            isCreateModalOpen={isCreateModalOpen}
+            setIsCreateModalOpen={setIsCreateModalOpen}
+            selectedTask={selectedTask}
+            isTaskModalOpen={isTaskModalOpen}
+            setIsTaskModalOpen={setIsTaskModalOpen}
             currentDate={currentDate}
-            tasks={tasks}
-            cleaners={cleaners}
-            onNavigateDate={navigateDate}
-            onTaskClick={handleTaskClick}
-            onNewTask={handleNewTask}
+            onCreateTask={handleCreateTask}
+            onUpdateTask={handleUpdateTask}
+            onDeleteTask={handleDeleteTask}
+            onUnassignTask={handleUnassignTask}
           />
-        </div>
+        </>
       );
     }
   }
