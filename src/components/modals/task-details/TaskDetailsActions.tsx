@@ -60,13 +60,16 @@ export const TaskDetailsActions = ({
   };
   return <div className="flex items-center justify-between w-full">
       <div className="flex items-center gap-2">
-        <Button variant="destructive" size="sm" onClick={onDelete} className="flex items-center gap-1 py-1 text-xs px-[9px] mx-[5px]">
-          <Trash2 className="h-3 w-3" />
-          Eliminar
-        </Button>
+        {/* Botón de Eliminar - Solo para managers/supervisors/admin */}
+        {userRole !== 'cleaner' && (
+          <Button variant="destructive" size="sm" onClick={onDelete} className="flex items-center gap-1 py-1 text-xs px-[9px] mx-[5px]">
+            <Trash2 className="h-3 w-3" />
+            Eliminar
+          </Button>
+        )}
         
-        {/* Botón de Asignar */}
-        {onAssign && (
+        {/* Botón de Asignar - Solo para managers/supervisors/admin */}
+        {onAssign && userRole !== 'cleaner' && (
           <Select onValueChange={(value) => {
             const [cleanerId, cleanerName] = value.split('|');
             onAssign(cleanerId, cleanerName);
@@ -85,7 +88,8 @@ export const TaskDetailsActions = ({
           </Select>
         )}
         
-        {task.cleaner && onUnassign && (
+        {/* Botón de Desasignar - Solo para managers/supervisors/admin */}
+        {task.cleaner && onUnassign && userRole !== 'cleaner' && (
           <Button variant="outline" size="sm" onClick={onUnassign} className="flex items-center gap-2">
             <UserX className="h-4 w-4" />
             Desasignar
@@ -105,20 +109,23 @@ export const TaskDetailsActions = ({
         )}
       </div>
       
-      <div className="flex items-center gap-2">
-        {isEditing ? <>
-            <Button variant="outline" onClick={onCancel} className="flex items-center gap-2 mx-[5px] px-0">
-              <X className="h-4 w-4" />
-              Cancelar
-            </Button>
-            <Button onClick={onSave} className="flex items-center gap-2 px-[12px]">
-              <Save className="h-4 w-4" />
-              Guardar
-            </Button>
-          </> : <Button onClick={onEdit} className="flex items-center gap-2 px-[8px] py-0 my-0 mx-0">
-            <Edit3 className="h-4 w-4" />
-            Editar
-          </Button>}
-      </div>
+      {/* Botones de Editar - Solo para managers/supervisors/admin */}
+      {userRole !== 'cleaner' && (
+        <div className="flex items-center gap-2">
+          {isEditing ? <>
+              <Button variant="outline" onClick={onCancel} className="flex items-center gap-2 mx-[5px] px-0">
+                <X className="h-4 w-4" />
+                Cancelar
+              </Button>
+              <Button onClick={onSave} className="flex items-center gap-2 px-[12px]">
+                <Save className="h-4 w-4" />
+                Guardar
+              </Button>
+            </> : <Button onClick={onEdit} className="flex items-center gap-2 px-[8px] py-0 my-0 mx-0">
+              <Edit3 className="h-4 w-4" />
+              Editar
+            </Button>}
+        </div>
+      )}
     </div>;
 };
