@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Task, Cleaner } from '@/types/calendar';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ChevronLeft, ChevronRight, Calendar, Plus, Filter } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Calendar, Plus, Filter, Home } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 
@@ -24,6 +25,7 @@ export const ManagerMobileCalendar: React.FC<ManagerMobileCalendarProps> = ({
   onTaskClick,
   onNewTask
 }) => {
+  const navigate = useNavigate();
   const [selectedCleaner, setSelectedCleaner] = useState<string>('all');
   
   const currentDateStr = currentDate.toISOString().split('T')[0];
@@ -56,6 +58,22 @@ export const ManagerMobileCalendar: React.FC<ManagerMobileCalendarProps> = ({
     <div className="min-h-screen bg-background">
       {/* Header with date navigation */}
       <div className="sticky top-0 z-10 bg-background border-b p-4">
+        {/* Home button */}
+        <div className="flex items-center justify-between mb-4">
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={() => navigate('/')}
+            className="flex items-center gap-1"
+          >
+            <Home className="h-4 w-4" />
+          </Button>
+          
+          <h1 className="text-lg font-bold">Calendario</h1>
+          
+          <div className="w-10"></div> {/* Spacer for symmetry */}
+        </div>
+
         <div className="flex items-center justify-between mb-4">
           <Button
             variant="outline"
