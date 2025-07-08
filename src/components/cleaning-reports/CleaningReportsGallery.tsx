@@ -176,15 +176,34 @@ export const CleaningReportsGallery: React.FC<CleaningReportsGalleryProps> = ({
     }
   };
 
-  const downloadImage = (imageUrl: string) => {
-    const fileName = `evidencia-${selectedReport?.id}-${currentImageIndex + 1}.${imageUrl.split('.').pop()}`;
-    const link = document.createElement('a');
-    link.href = imageUrl;
-    link.download = fileName;
-    link.target = '_blank';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+  const downloadImage = async (imageUrl: string, fileName?: string) => {
+    try {
+      const response = await fetch(imageUrl);
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = fileName || `evidencia-${selectedReport?.id}-${currentImageIndex + 1}.${imageUrl.split('.').pop()}`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Error downloading image:', error);
+    }
+  };
+
+  const downloadAllImages = async () => {
+    if (!selectedReport || !selectedReport.allImages.length) return;
+    
+    for (let i = 0; i < selectedReport.allImages.length; i++) {
+      const imageUrl = selectedReport.allImages[i];
+      const fileName = `evidencia-${selectedReport.propertyCode}-${selectedReport.taskDate}-${i + 1}.${imageUrl.split('.').pop()}`;
+      await downloadImage(imageUrl, fileName);
+      // Pequeño delay para no sobrecargar el navegador
+      await new Promise(resolve => setTimeout(resolve, 200));
+    }
   };
 
   if (isLoading) {
@@ -552,6 +571,10 @@ export const CleaningReportsGallery: React.FC<CleaningReportsGalleryProps> = ({
                 <Button onClick={() => downloadImage(selectedReport.allImages[currentImageIndex])}>
                   <Download className="h-4 w-4 mr-2" />
                   Descargar imagen actual
+                </Button>
+                <Button onClick={downloadAllImages} variant="outline">
+                  <Download className="h-4 w-4 mr-2" />
+                  Descargar todas ({selectedReport.totalImages})
                 </Button>
                 <Button variant="outline" onClick={() => setShowReportModal(false)}>
                   Cerrar
