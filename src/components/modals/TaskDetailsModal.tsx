@@ -105,14 +105,16 @@ export const TaskDetailsModal = ({
   };
   return <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="w-[95vw] max-w-[95vw] sm:max-w-[600px] max-h-[90vh] overflow-y-auto sm:mx-auto mx-0 px-[25px] my-0 py-[6px] flex flex-col">
-          <DialogHeader>
+        <DialogContent className="w-[95vw] max-w-[95vw] sm:max-w-[600px] h-[90vh] sm:mx-auto mx-0 px-[25px] my-0 py-[6px] flex flex-col">
+          <DialogHeader className="flex-shrink-0">
             <TaskDetailsHeader task={task} isEditing={isEditing} />
           </DialogHeader>
           
-          <TaskDetailsForm task={task} isEditing={isEditing} formData={formData} onFieldChange={handleFieldChange} />
+          <div className="flex-1 overflow-y-auto py-4">
+            <TaskDetailsForm task={task} isEditing={isEditing} formData={formData} onFieldChange={handleFieldChange} />
+          </div>
 
-          <DialogFooter>
+          <DialogFooter className="flex-shrink-0 border-t pt-4">
             <TaskDetailsActions 
               task={task} 
               isEditing={isEditing} 
