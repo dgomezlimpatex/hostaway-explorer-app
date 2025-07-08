@@ -38,12 +38,9 @@ export const useOptimizedTasks = ({
   const { data: tasks = [], isLoading, error } = useQuery({
     queryKey,
     queryFn: async () => {
-      console.log('useOptimizedTasks - fetching with optimized query, userRole:', userRole, 'cleanerId:', currentCleanerId);
-      
       // Usar cache de todas las tareas si está disponible
       const cachedAllTasks = queryClient.getQueryData(['tasks', 'all']);
       if (cachedAllTasks) {
-        console.log('useOptimizedTasks - using cached data');
         const filteredByView = filterTasksByView(cachedAllTasks as Task[], currentDate, currentView);
         return filterTasksByUserRole(filteredByView, userRole, currentCleanerId);
       }
@@ -103,7 +100,6 @@ export const useOptimizedTasks = ({
 function filterTasksByUserRole(tasks: Task[], userRole: string | null, currentCleanerId: string | null): Task[] {
   // If user is a cleaner, only show their assigned tasks
   if (userRole === 'cleaner' && currentCleanerId) {
-    console.log('Filtering tasks for cleaner:', currentCleanerId);
     return tasks.filter(task => task.cleanerId === currentCleanerId);
   }
   

@@ -18,10 +18,7 @@ export const useCleaners = () => {
   const cleaners = React.useMemo(() => {
     if (userRole === 'cleaner' && user?.id) {
       // Cleaners only see themselves
-      console.log('Filtering cleaners for cleaner role, user:', user.id);
-      const currentCleaner = allCleaners.filter(cleaner => cleaner.user_id === user.id);
-      console.log('Current cleaner found:', currentCleaner);
-      return currentCleaner;
+      return allCleaners.filter(cleaner => cleaner.user_id === user.id);
     }
     
     // Admins, managers, supervisors see all cleaners

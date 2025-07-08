@@ -99,14 +99,6 @@ export const TaskCard: React.FC<TaskCardProps> = ({
     return isMobile ? "p-4 space-y-3" : "p-6 space-y-4";
   };
 
-  console.log('TaskCard rendering for task:', task.id, { 
-    hasOnEdit: !!onEdit, 
-    hasOnDelete: !!onDelete, 
-    hasOnEditTask: !!onEditTask,
-    showActions,
-    isMobile,
-    isTablet
-  });
 
   return (
     <>

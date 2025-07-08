@@ -50,33 +50,18 @@ export const useTasksPageState = () => {
 
   // Filter and sort tasks
   const filteredTasks = useMemo(() => {
-    console.log('useTasksPageState - filtering tasks:', {
-      totalTasks: tasks.length,
-      showPastTasks,
-      userRole,
-      currentUserName: profile?.full_name,
-      currentUserCleanerId,
-      searchTerm,
-      filters
-    });
-
-    let filtered = filterTasks(tasks, { 
+    return filterTasks(tasks, { 
       searchTerm, 
       showPastTasks, 
       userRole,
-      currentUserName: profile?.full_name || profile?.email, // Usar el nombre completo o email como fallback
+      currentUserName: profile?.full_name || profile?.email,
       currentUserId: currentUserCleanerId,
       ...filters 
     });
-
-    console.log('useTasksPageState - after filtering:', filtered.length);
-    return filtered;
   }, [tasks, searchTerm, showPastTasks, userRole, filters, profile, currentUserCleanerId]);
 
   const sortedTasks = useMemo(() => {
-    const sorted = sortTasks(filteredTasks, showPastTasks, userRole);
-    console.log('useTasksPageState - after sorting:', sorted.length);
-    return sorted;
+    return sortTasks(filteredTasks, showPastTasks, userRole);
   }, [filteredTasks, showPastTasks, userRole]);
 
   // Pagination
@@ -91,7 +76,6 @@ export const useTasksPageState = () => {
   });
 
   const handleTogglePastTasks = () => {
-    console.log('useTasksPageState - toggling past tasks:', !showPastTasks);
     setShowPastTasks(!showPastTasks);
   };
 

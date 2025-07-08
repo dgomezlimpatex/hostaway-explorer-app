@@ -27,29 +27,23 @@ export const TaskCardActions: React.FC<TaskCardActionsProps> = ({
   showActions = true,
 }) => {
   const handleEdit = () => {
-    console.log('Edit button clicked for task:', task.id);
     if (onEdit) onEdit(task);
     if (onEditTask) onEditTask(task);
   };
 
   const handleDelete = () => {
-    console.log('Delete button clicked for task:', task.id);
     if (window.confirm('¿Estás seguro de que quieres eliminar esta tarea?')) {
       if (onDelete) onDelete(task.id);
     }
   };
 
   const handleAssignCleaner = () => {
-    console.log('Assign cleaner button clicked for task:', task.id);
     if (onAssignCleaner) onAssignCleaner(task);
   };
 
   if (!showActions) {
-    console.log('Actions hidden for task:', task.id);
     return null;
   }
-
-  console.log('Rendering actions for task:', task.id, { hasOnEdit: !!onEdit, hasOnDelete: !!onDelete });
 
   return (
     <div className="pt-4 mt-4 border-t border-gray-100 space-y-3">

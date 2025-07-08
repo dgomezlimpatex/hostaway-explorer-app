@@ -16,14 +16,6 @@ interface TaskFilters {
 
 export const filterTasks = (tasks: Task[], filters: TaskFilters): Task[] => {
   return tasks.filter(task => {
-    console.log('filterTasks - processing task:', {
-      taskId: task.id,
-      taskDate: task.date,
-      taskCleaner: task.cleaner,
-      taskCleanerId: task.cleanerId,
-      status: task.status
-    });
-
     // Search term filter
     if (filters.searchTerm && filters.searchTerm.trim() !== '') {
       const searchLower = filters.searchTerm.toLowerCase();
@@ -36,7 +28,6 @@ export const filterTasks = (tasks: Task[], filters: TaskFilters): Task[] => {
       ].filter(Boolean).join(' ').toLowerCase();
       
       if (!searchableText.includes(searchLower)) {
-        console.log('filterTasks - filtered out by search:', task.id);
         return false;
       }
     }
@@ -44,14 +35,7 @@ export const filterTasks = (tasks: Task[], filters: TaskFilters): Task[] => {
     // Past tasks filter
     if (!filters.showPastTasks) {
       const today = new Date().toISOString().split('T')[0];
-      console.log('filterTasks - date comparison:', {
-        taskId: task.id,
-        taskDate: task.date,
-        today: today,
-        isPast: task.date < today
-      });
       if (task.date < today) {
-        console.log('filterTasks - filtered out as past task:', task.id);
         return false;
       }
     }
@@ -59,15 +43,6 @@ export const filterTasks = (tasks: Task[], filters: TaskFilters): Task[] => {
     // Role-based filtering
     if (filters.userRole === 'cleaner') {
       // Cleaners only see their own tasks
-      // Use cleaner_id for more reliable comparison
-      console.log('filterTasks - cleaner role debug:', {
-        taskCleanerId: task.cleanerId,
-        currentUserId: filters.currentUserId,
-        taskCleaner: task.cleaner,
-        currentUserName: filters.currentUserName,
-        taskId: task.id,
-        match: task.cleanerId === filters.currentUserId
-      });
       if (!task.cleanerId || task.cleanerId !== filters.currentUserId) {
         return false;
       }
