@@ -59,7 +59,7 @@ export const TaskDetailsActions = ({
   };
   return <div className="flex items-center justify-between w-full">
       <div className="flex items-center gap-2">
-        <Button variant="destructive" size="sm" onClick={onDelete} className="flex items-center gap-1 px-2 py-1 text-xs">
+        <Button variant="destructive" size="sm" onClick={onDelete} className="flex items-center gap-1 py-1 text-xs px-[9px] mx-[5px]">
           <Trash2 className="h-3 w-3" />
           Eliminar
         </Button>
@@ -75,11 +75,11 @@ export const TaskDetailsActions = ({
       
       <div className="flex items-center gap-2">
         {isEditing ? <>
-            <Button variant="outline" onClick={onCancel} className="flex items-center gap-2">
+            <Button variant="outline" onClick={onCancel} className="flex items-center gap-2 mx-[5px] px-0">
               <X className="h-4 w-4" />
               Cancelar
             </Button>
-            <Button onClick={onSave} className="flex items-center gap-2">
+            <Button onClick={onSave} className="flex items-center gap-2 px-[12px]">
               <Save className="h-4 w-4" />
               Guardar
             </Button>
