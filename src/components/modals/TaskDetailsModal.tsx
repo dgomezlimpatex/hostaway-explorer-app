@@ -37,8 +37,10 @@ export const TaskDetailsModal = ({
   
   useEffect(() => {
     if (task) {
+      console.log('🔍 TaskDetailsModal useEffect - task:', task.id, 'openInEditMode:', openInEditMode);
       setFormData(task);
       setIsEditing(openInEditMode);
+      console.log('🔍 TaskDetailsModal - isEditing set to:', openInEditMode);
     }
   }, [task, openInEditMode]);
   if (!task) return null;

@@ -27,11 +27,19 @@ export const TaskCardActions: React.FC<TaskCardActionsProps> = ({
   showActions = true,
 }) => {
   const handleEdit = () => {
+    console.log('🔍 TaskCardActions handleEdit clicked');
+    console.log('🔍 onEdit available:', !!onEdit);
+    console.log('🔍 onEditTask available:', !!onEditTask);
+    
     // Use onEdit first (from useTaskActions), then fall back to onEditTask
     if (onEdit) {
+      console.log('🔍 Calling onEdit');
       onEdit(task);
     } else if (onEditTask) {
+      console.log('🔍 Calling onEditTask');
       onEditTask(task);
+    } else {
+      console.log('🔍 No edit handlers available');
     }
   };
 
