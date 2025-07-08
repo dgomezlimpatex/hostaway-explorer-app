@@ -7,6 +7,7 @@ import { SidebarProvider } from '@/components/ui/sidebar';
 import { DashboardSidebar } from './DashboardSidebar';
 import { CreateTaskModal } from '@/components/modals/CreateTaskModal';
 import { BatchCreateTaskModal } from '@/components/modals/BatchCreateTaskModal';
+import { TaskDetailsModal } from '@/components/modals/TaskDetailsModal';
 import { 
   Plus, 
   Calendar, 
@@ -31,6 +32,8 @@ import { es } from 'date-fns/locale';
 export const ManagerDashboard = () => {
   const [selectedDate] = useState(new Date());
   const [currentTaskPage, setCurrentTaskPage] = useState(0);
+  const [selectedTask, setSelectedTask] = useState(null);
+  const [isTaskDetailsOpen, setIsTaskDetailsOpen] = useState(false);
   const { canAccessModule } = useRolePermissions();
   
   // Hook para manejar las acciones de tareas
@@ -141,6 +144,28 @@ export const ManagerDashboard = () => {
       report.overall_status !== 'completed'
     ).length;
   }, [recentReports]);
+
+  // Función para manejar el clic en una tarea
+  const handleTaskClick = (task) => {
+    setSelectedTask(task);
+    setIsTaskDetailsOpen(true);
+  };
+
+  // Función para actualizar una tarea
+  const handleUpdateTask = async (taskId, updates) => {
+    // Esta función será implementada por el hook de tareas
+    console.log('Updating task:', taskId, updates);
+    // Por ahora, simplemente cerramos el modal
+    setIsTaskDetailsOpen(false);
+  };
+
+  // Función para eliminar una tarea
+  const handleDeleteTask = async (taskId) => {
+    // Esta función será implementada por el hook de tareas
+    console.log('Deleting task:', taskId);
+    // Por ahora, simplemente cerramos el modal
+    setIsTaskDetailsOpen(false);
+  };
 
 
   return (
@@ -268,7 +293,11 @@ export const ManagerDashboard = () => {
                   ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                       {paginatedTodayTasks.map((task) => (
-                        <div key={task.id} className="p-4 bg-gradient-to-br from-gray-50 to-gray-100 rounded-lg border">
+                        <div 
+                          key={task.id} 
+                          className="p-4 bg-gradient-to-br from-gray-50 to-gray-100 rounded-lg border cursor-pointer transition-all hover:shadow-md hover:scale-105 hover:bg-gradient-to-br hover:from-blue-50 hover:to-blue-100"
+                          onClick={() => handleTaskClick(task)}
+                        >
                           <div className="flex justify-between items-start mb-2">
                             <h4 className="font-medium text-gray-900 truncate">{task.property}</h4>
                             <Badge 
@@ -409,6 +438,17 @@ export const ManagerDashboard = () => {
         onOpenChange={setIsBatchCreateModalOpen}
         onCreateTasks={handleBatchCreateTasks}
       />
+      
+      {/* Modal de detalles de tarea */}
+      {selectedTask && (
+        <TaskDetailsModal
+          task={selectedTask}
+          open={isTaskDetailsOpen}
+          onOpenChange={setIsTaskDetailsOpen}
+          onUpdateTask={handleUpdateTask}
+          onDeleteTask={handleDeleteTask}
+        />
+      )}
     </SidebarProvider>
   );
 };
