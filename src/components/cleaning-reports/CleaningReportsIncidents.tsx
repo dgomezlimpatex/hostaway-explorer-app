@@ -49,8 +49,9 @@ export const CleaningReportsIncidents: React.FC<CleaningReportsIncidentsProps> =
       if (report.issues_found && Array.isArray(report.issues_found)) {
         // Buscar la tarea asociada al reporte
         const task = tasks.find(t => t.id === report.task_id);
-        // Buscar la propiedad asociada a la tarea
-        const property = task ? properties.find(p => p.id === task.propertyId) : null;
+        // Buscar la propiedad asociada a la tarea (la BD usa propiedad_id)
+        const propertyId = task?.propertyId || (task as any)?.propiedad_id;
+        const property = propertyId ? properties.find(p => p.id === propertyId) : null;
         
         report.issues_found.forEach((issue: any, index: number) => {
           allIncidents.push({
