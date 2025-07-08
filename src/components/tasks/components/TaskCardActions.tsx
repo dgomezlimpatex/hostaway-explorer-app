@@ -27,8 +27,12 @@ export const TaskCardActions: React.FC<TaskCardActionsProps> = ({
   showActions = true,
 }) => {
   const handleEdit = () => {
-    if (onEdit) onEdit(task);
-    if (onEditTask) onEditTask(task);
+    // Use onEdit first (from useTaskActions), then fall back to onEditTask
+    if (onEdit) {
+      onEdit(task);
+    } else if (onEditTask) {
+      onEditTask(task);
+    }
   };
 
   const handleDelete = () => {
