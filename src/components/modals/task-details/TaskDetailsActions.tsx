@@ -59,8 +59,8 @@ export const TaskDetailsActions = ({
   };
   return <div className="flex items-center justify-between w-full">
       <div className="flex items-center gap-2">
-        <Button variant="destructive" size="sm" onClick={onDelete} className="flex items-center gap-2">
-          <Trash2 className="h-4 w-4" />
+        <Button variant="destructive" size="sm" onClick={onDelete} className="flex items-center gap-1 px-2 py-1 text-xs">
+          <Trash2 className="h-3 w-3" />
           Eliminar
         </Button>
         
