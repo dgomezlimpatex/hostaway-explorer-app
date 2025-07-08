@@ -14,20 +14,28 @@
     --popover: 0 0% 100%;
     --popover-foreground: 222.2 84% 4.9%;
 
-    --primary: 222.2 47.4% 11.2%;
+    --primary: 216 83% 56%;
     --primary-foreground: 210 40% 98%;
 
-    --secondary: 210 40% 96.1%;
+    --secondary: 188 65% 75%;
     --secondary-foreground: 222.2 47.4% 11.2%;
 
     --muted: 210 40% 96.1%;
     --muted-foreground: 215.4 16.3% 46.9%;
 
-    --accent: 210 40% 96.1%;
+    --accent: 260 73% 71%;
     --accent-foreground: 222.2 47.4% 11.2%;
 
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
+
+    /* Dashboard colors from palette */
+    --dashboard-blue: 216 83% 56%;
+    --dashboard-purple: 260 73% 71%;
+    --dashboard-magenta: 301 65% 55%;
+    --dashboard-turquoise: 188 65% 75%;
+    --dashboard-light-purple: 263 42% 66%;
+    --dashboard-violet: 257 64% 68%;
 
     --border: 214.3 31.8% 91.4%;
     --input: 214.3 31.8% 91.4%;
