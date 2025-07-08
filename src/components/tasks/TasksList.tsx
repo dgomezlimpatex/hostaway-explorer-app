@@ -146,7 +146,7 @@ export const TasksList = React.memo(({
               task={task}
               onShowHistory={handleShowHistory}
               onCreateReport={handleCreateReport}
-              onEditTask={handleEditTask}
+              onEdit={handleEditTask}
               onDelete={handleDeleteTask}
               onAssignCleaner={handleAssignCleaner}
             />
