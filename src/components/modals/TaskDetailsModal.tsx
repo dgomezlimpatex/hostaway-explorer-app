@@ -16,6 +16,7 @@ interface TaskDetailsModalProps {
   onUpdateTask: (taskId: string, updates: Partial<Task>) => void;
   onDeleteTask: (taskId: string) => void;
   onUnassignTask?: (taskId: string) => void;
+  openInEditMode?: boolean;
 }
 export const TaskDetailsModal = ({
   task,
@@ -23,7 +24,8 @@ export const TaskDetailsModal = ({
   onOpenChange,
   onUpdateTask,
   onDeleteTask,
-  onUnassignTask
+  onUnassignTask,
+  openInEditMode = false
 }: TaskDetailsModalProps) => {
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState<Partial<Task>>({});
@@ -36,9 +38,9 @@ export const TaskDetailsModal = ({
   useEffect(() => {
     if (task) {
       setFormData(task);
-      setIsEditing(false);
+      setIsEditing(openInEditMode);
     }
-  }, [task]);
+  }, [task, openInEditMode]);
   if (!task) return null;
   const handleSave = () => {
     if (!formData.property || !formData.startTime || !formData.endTime) {

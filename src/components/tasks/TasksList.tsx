@@ -37,6 +37,8 @@ export const TasksList = React.memo(({
     selectedTask,
     isModalOpen,
     setIsModalOpen,
+    openInEditMode,
+    handleModalClose,
     isAssignModalOpen,
     setIsAssignModalOpen,
     taskToAssign,
@@ -156,9 +158,10 @@ export const TasksList = React.memo(({
       <TaskDetailsModal
         task={selectedTask}
         open={isModalOpen}
-        onOpenChange={setIsModalOpen}
+        onOpenChange={handleModalClose}
         onUpdateTask={handleUpdateTask}
         onDeleteTask={handleDeleteTask}
+        openInEditMode={openInEditMode}
       />
 
       {/* Task Preview Modal */}

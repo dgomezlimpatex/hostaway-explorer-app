@@ -7,6 +7,7 @@ import { useToast } from '@/hooks/use-toast';
 export const useTaskActions = () => {
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [openInEditMode, setOpenInEditMode] = useState(false);
   const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
   const [taskToAssign, setTaskToAssign] = useState<Task | null>(null);
   const { updateTask, deleteTask, assignTask } = useTasks(new Date(), 'day');
@@ -40,6 +41,7 @@ export const useTaskActions = () => {
 
   const handleEditTask = (task: Task) => {
     setSelectedTask(task);
+    setOpenInEditMode(true);
     setIsModalOpen(true);
   };
 
@@ -81,10 +83,19 @@ export const useTaskActions = () => {
     assignTask({ taskId, cleanerId, cleaners });
   };
 
+  const handleModalClose = (open: boolean) => {
+    setIsModalOpen(open);
+    if (!open) {
+      setOpenInEditMode(false);
+    }
+  };
+
   return {
     selectedTask,
     isModalOpen,
     setIsModalOpen,
+    openInEditMode,
+    handleModalClose,
     isAssignModalOpen,
     setIsAssignModalOpen,
     taskToAssign,
