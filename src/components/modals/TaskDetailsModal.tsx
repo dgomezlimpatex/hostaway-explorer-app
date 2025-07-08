@@ -99,7 +99,7 @@ export const TaskDetailsModal = ({
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="sm:max-w-[600px]">
+        <DialogContent className="w-[95vw] max-w-[95vw] sm:max-w-[600px] max-h-[90vh] overflow-y-auto mx-2 sm:mx-auto">
           <DialogHeader>
             <TaskDetailsHeader task={task} isEditing={isEditing} />
           </DialogHeader>
