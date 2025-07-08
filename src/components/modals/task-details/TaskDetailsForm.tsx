@@ -14,7 +14,7 @@ interface TaskDetailsFormProps {
 export const TaskDetailsForm = ({ task, isEditing, formData, onFieldChange }: TaskDetailsFormProps) => {
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="space-y-2">
           <Label htmlFor="property">Propiedad</Label>
           {isEditing ? (
@@ -42,7 +42,7 @@ export const TaskDetailsForm = ({ task, isEditing, formData, onFieldChange }: Ta
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="space-y-2">
           <Label htmlFor="startTime">Hora Inicio</Label>
           {isEditing ? (
@@ -72,7 +72,7 @@ export const TaskDetailsForm = ({ task, isEditing, formData, onFieldChange }: Ta
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="space-y-2">
           <Label htmlFor="checkOut">Check-out</Label>
           {isEditing ? (
@@ -103,7 +103,7 @@ export const TaskDetailsForm = ({ task, isEditing, formData, onFieldChange }: Ta
       </div>
 
       {isEditing && (
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="space-y-2">
             <Label htmlFor="type">Tipo</Label>
             <Select value={formData.type} onValueChange={(value) => onFieldChange('type', value)}>
