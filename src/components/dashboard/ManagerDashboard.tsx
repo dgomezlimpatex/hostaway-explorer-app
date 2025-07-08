@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { SidebarProvider } from '@/components/ui/sidebar';
 import { DashboardSidebar } from './DashboardSidebar';
+import { MobileDashboardHeader } from './MobileDashboardHeader';
 import { CreateTaskModal } from '@/components/modals/CreateTaskModal';
 import { BatchCreateTaskModal } from '@/components/modals/BatchCreateTaskModal';
 import { TaskDetailsModal } from '@/components/modals/TaskDetailsModal';
@@ -28,6 +29,7 @@ import { useTasksPageActions } from '@/hooks/tasks/useTasksPageActions';
 import { HostawayIntegrationWidget } from '@/components/hostaway/HostawayIntegrationWidget';
 import { format, startOfMonth, endOfMonth, isAfter, isBefore, subMonths } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 export const ManagerDashboard = () => {
   const [selectedDate] = useState(new Date());
@@ -35,6 +37,7 @@ export const ManagerDashboard = () => {
   const [selectedTask, setSelectedTask] = useState(null);
   const [isTaskDetailsOpen, setIsTaskDetailsOpen] = useState(false);
   const { canAccessModule } = useRolePermissions();
+  const isMobile = useIsMobile();
   
   // Hook para manejar las acciones de tareas
   const {
@@ -170,10 +173,17 @@ export const ManagerDashboard = () => {
 
   return (
     <SidebarProvider>
-      <div className="flex min-h-screen w-full bg-gray-50">
-        <DashboardSidebar />
+      <div className="min-h-screen w-full bg-gray-50">
+        {/* Header móvil */}
+        <MobileDashboardHeader />
         
-        <main className="flex-1 overflow-auto">
+        <div className="flex min-h-screen w-full">
+          {/* Sidebar desktop - oculto en móvil */}
+          {!isMobile && (
+            <DashboardSidebar />
+          )}
+          
+          <main className="flex-1 overflow-auto lg:pt-0 pt-0">
           <div className="p-6">
             <div className="max-w-6xl mx-auto space-y-6">
               {/* Hostaway Integration Widget - Solo si tiene permisos */}
@@ -423,7 +433,8 @@ export const ManagerDashboard = () => {
               </div>
             </div>
           </div>
-        </main>
+          </main>
+        </div>
       </div>
       
       {/* Modales */}
