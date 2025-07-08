@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogFooter, DialogHeader } from "@/components/ui/dialog";
 import { Task } from "@/types/calendar";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
 import { TaskReportModal } from "./TaskReportModal";
 import { TaskDetailsHeader } from "./task-details/TaskDetailsHeader";
 import { TaskDetailsForm } from "./task-details/TaskDetailsForm";
@@ -29,9 +30,9 @@ export const TaskDetailsModal = ({
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showUnassignConfirm, setShowUnassignConfirm] = useState(false);
   const [showReportModal, setShowReportModal] = useState(false);
-  const {
-    toast
-  } = useToast();
+  const { userRole } = useAuth();
+  const { toast } = useToast();
+  
   useEffect(() => {
     if (task) {
       setFormData(task);
@@ -118,12 +119,12 @@ export const TaskDetailsModal = ({
             <TaskDetailsActions 
               task={task} 
               isEditing={isEditing} 
-              onEdit={() => setIsEditing(true)} 
+              onEdit={userRole !== 'cleaner' ? () => setIsEditing(true) : undefined} 
               onSave={handleSave} 
               onCancel={handleCancel} 
-              onDelete={() => setShowDeleteConfirm(true)} 
-              onUnassign={onUnassignTask ? () => setShowUnassignConfirm(true) : undefined}
-              onAssign={handleAssign}
+              onDelete={userRole !== 'cleaner' ? () => setShowDeleteConfirm(true) : undefined} 
+              onUnassign={userRole !== 'cleaner' && onUnassignTask ? () => setShowUnassignConfirm(true) : undefined}
+              onAssign={userRole !== 'cleaner' ? handleAssign : undefined}
               onOpenReport={() => setShowReportModal(true)} 
             />
           </DialogFooter>
