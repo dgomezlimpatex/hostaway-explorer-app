@@ -86,27 +86,43 @@ const {
       console.log('Mobile cleaner - Today tasks:', todayTasks.length, 'Tomorrow tasks:', tomorrowTasks.length);
       
       return (
-        <div className="min-h-screen bg-background text-foreground transition-colors duration-300">
-          <CleanerMobileCalendar
+        <>
+          <div className="min-h-screen bg-background text-foreground transition-colors duration-300">
+            <CleanerMobileCalendar
+              currentDate={currentDate}
+              onNavigateDate={navigateDate}
+              onDateChange={(date) => {
+                // Usar navigateDate para ir directamente a la fecha seleccionada
+                console.log('Calendar - navigating to selected date:', date.toISOString().split('T')[0]);
+                const today = new Date();
+                const diffTime = date.getTime() - currentDate.getTime();
+                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                
+                // Navegar el número exacto de días necesarios
+                for (let i = 0; i < Math.abs(diffDays); i++) {
+                  navigateDate(diffDays > 0 ? 'next' : 'prev');
+                }
+              }}
+              handleTaskClick={handleTaskClick}
+              todayTasks={todayTasks}
+              tomorrowTasks={tomorrowTasks}
+            />
+          </div>
+          
+          {/* Modals for mobile cleaner view */}
+          <CalendarModalsWithSuspense
+            isCreateModalOpen={false} // Cleaners can't create tasks
+            setIsCreateModalOpen={() => {}} // No-op for cleaners
+            selectedTask={selectedTask}
+            isTaskModalOpen={isTaskModalOpen}
+            setIsTaskModalOpen={setIsTaskModalOpen}
             currentDate={currentDate}
-            onNavigateDate={navigateDate}
-            onDateChange={(date) => {
-              // Usar navigateDate para ir directamente a la fecha seleccionada
-              console.log('Calendar - navigating to selected date:', date.toISOString().split('T')[0]);
-              const today = new Date();
-              const diffTime = date.getTime() - currentDate.getTime();
-              const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-              
-              // Navegar el número exacto de días necesarios
-              for (let i = 0; i < Math.abs(diffDays); i++) {
-                navigateDate(diffDays > 0 ? 'next' : 'prev');
-              }
-            }}
-            handleTaskClick={handleTaskClick}
-            todayTasks={todayTasks}
-            tomorrowTasks={tomorrowTasks}
+            onCreateTask={() => {}} // No-op for cleaners
+            onUpdateTask={handleUpdateTask}
+            onDeleteTask={() => {}} // Cleaners can't delete tasks
+            onUnassignTask={() => {}} // Cleaners can't unassign tasks
           />
-        </div>
+        </>
       );
     } else {
       // Mobile manager/admin view
