@@ -29,16 +29,19 @@ export const ManagerMobileCalendar: React.FC<ManagerMobileCalendarProps> = ({
   const currentDateStr = currentDate.toISOString().split('T')[0];
   const dayTasks = tasks.filter(task => task.date === currentDateStr);
   
-  // Filter tasks by selected cleaner
-  const filteredTasks = selectedCleaner === 'all' 
-    ? dayTasks 
-    : dayTasks.filter(task => task.cleanerId === selectedCleaner);
-    
-  // Group tasks by cleaner
-  const tasksByTime = filteredTasks.sort((a, b) => a.startTime.localeCompare(b.startTime));
-  
   // Get unassigned tasks
   const unassignedTasks = dayTasks.filter(task => !task.cleaner && !task.cleanerId);
+  
+  // Get assigned tasks (exclude unassigned ones)
+  const assignedTasks = dayTasks.filter(task => task.cleaner || task.cleanerId);
+  
+  // Filter assigned tasks by selected cleaner
+  const filteredTasks = selectedCleaner === 'all' 
+    ? assignedTasks 
+    : assignedTasks.filter(task => task.cleanerId === selectedCleaner);
+    
+  // Group tasks by time
+  const tasksByTime = filteredTasks.sort((a, b) => a.startTime.localeCompare(b.startTime));
   
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -95,10 +98,10 @@ export const ManagerMobileCalendar: React.FC<ManagerMobileCalendarProps> = ({
             size="sm"
             onClick={() => setSelectedCleaner('all')}
           >
-            Todos ({dayTasks.length})
+            Todos ({assignedTasks.length})
           </Button>
           {cleaners.map(cleaner => {
-            const cleanerTasks = dayTasks.filter(task => task.cleanerId === cleaner.id);
+            const cleanerTasks = assignedTasks.filter(task => task.cleanerId === cleaner.id);
             return (
               <Button
                 key={cleaner.id}
