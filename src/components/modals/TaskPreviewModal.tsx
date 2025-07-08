@@ -140,8 +140,8 @@ export const TaskPreviewModal: React.FC<TaskPreviewModalProps> = ({
       }
     }
 
-    // Botones para managers/supervisors
-    if (canEditTask) {
+    // Botones para managers/supervisors (NO para cleaners)
+    if (canEditTask && userRole !== 'cleaner') {
       buttons.push(
         <Button
           key="edit-task"
@@ -175,7 +175,8 @@ export const TaskPreviewModal: React.FC<TaskPreviewModalProps> = ({
       }
     }
 
-    if (canAssignCleaner && !task.cleanerId) {
+    // Asignar cleaner solo para managers/supervisors (NO para cleaners)
+    if (canAssignCleaner && !task.cleanerId && userRole !== 'cleaner') {
       buttons.push(
         <Button
           key="assign-cleaner"
