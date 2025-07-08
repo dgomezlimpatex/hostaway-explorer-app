@@ -1,9 +1,9 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { useTaskReports } from '@/hooks/useTaskReports';
 import { useIncidentManagement } from '@/hooks/useIncidentManagement';
 import { useCleaners } from '@/hooks/useCleaners';
 import { useTaskMedia } from '@/hooks/useTaskMedia';
-import { useTasks } from '@/hooks/useTasks';
+import { taskStorageService } from '@/services/taskStorage';
 import { useProperties } from '@/hooks/useProperties';
 import {
   IncidentStatsCards,
@@ -28,7 +28,21 @@ export const CleaningReportsIncidents: React.FC<CleaningReportsIncidentsProps> =
   const { reports, isLoading } = useTaskReports();
   const { cleaners } = useCleaners();
   const { data: properties = [] } = useProperties();
-  const { tasks } = useTasks(new Date(), 'week'); // Obtener tareas para el mapeo
+  // Obtener todas las tareas, no solo las de la semana actual
+  const [allTasks, setAllTasks] = useState<any[]>([]);
+  
+  // Cargar todas las tareas al montar el componente
+  useEffect(() => {
+    const loadAllTasks = async () => {
+      try {
+        const tasks = await taskStorageService.getTasks();
+        setAllTasks(tasks);
+      } catch (error) {
+        console.error('Error loading all tasks:', error);
+      }
+    };
+    loadAllTasks();
+  }, []);
   const { updateIncident, isUpdating } = useIncidentManagement();
   const [selectedIncident, setSelectedIncident] = useState<any>(null);
   const [showIncidentModal, setShowIncidentModal] = useState(false);
@@ -41,14 +55,14 @@ export const CleaningReportsIncidents: React.FC<CleaningReportsIncidentsProps> =
 
   // Procesar incidencias de los reportes
   const incidents = useMemo(() => {
-    if (!reports || !tasks || !properties) return [];
+    if (!reports || !allTasks || !properties) return [];
     
     const allIncidents: any[] = [];
     
     reports.forEach(report => {
       if (report.issues_found && Array.isArray(report.issues_found)) {
         // Buscar la tarea asociada al reporte
-        const task = tasks.find(t => t.id === report.task_id);
+        const task = allTasks.find(t => t.id === report.task_id);
         // Buscar la propiedad asociada a la tarea (la BD usa propiedad_id)
         const propertyId = task?.propertyId || (task as any)?.propiedad_id;
         const property = propertyId ? properties.find(p => p.id === propertyId) : null;
@@ -88,7 +102,7 @@ export const CleaningReportsIncidents: React.FC<CleaningReportsIncidentsProps> =
     return allIncidents.sort((a, b) => 
       new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
     );
-  }, [reports, tasks, properties]);
+  }, [reports, allTasks, properties]);
 
   // Estadísticas de incidencias
   const incidentStats = useMemo(() => {
