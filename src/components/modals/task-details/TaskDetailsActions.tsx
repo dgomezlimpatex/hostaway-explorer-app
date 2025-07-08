@@ -70,10 +70,7 @@ export const TaskDetailsActions = ({
           </Button>}
 
         {/* Botón de Reporte */}
-        {(canCreateReport || canViewReport) && <Button variant={getReportButtonVariant() as "default" | "destructive" | "outline" | "secondary" | "ghost" | "link"} size="sm" onClick={onOpenReport} className="flex items-center gap-2 text-xs font-normal mx-0 px-[10px]">
-            {!existingReport ? <Camera className="h-4 w-4" /> : <FileText className="h-4 w-4" />}
-            {getReportButtonText()}
-          </Button>}
+        {canCreateReport || canViewReport}
       </div>
       
       <div className="flex items-center gap-2">
