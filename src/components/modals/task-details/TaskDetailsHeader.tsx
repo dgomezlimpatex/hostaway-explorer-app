@@ -3,6 +3,7 @@ import { Badge } from "@/components/ui/badge";
 import { DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { Task } from "@/types/calendar";
 import { useTaskReport } from "@/hooks/useTaskReports";
+import { Edit3, Eye } from "lucide-react";
 
 interface TaskDetailsHeaderProps {
   task: Task;
@@ -35,9 +36,26 @@ export const TaskDetailsHeader = ({ task, isEditing }: TaskDetailsHeaderProps) =
   return (
     <div className="flex items-center justify-between">
       <div>
-        <DialogTitle>Detalles de la Tarea</DialogTitle>
-        <DialogDescription>
+        <DialogTitle className="flex items-center gap-2">
+          {isEditing ? (
+            <>
+              <Edit3 className="h-5 w-5 text-blue-600" />
+              Editando Tarea
+            </>
+          ) : (
+            <>
+              <Eye className="h-5 w-5 text-gray-600" />
+              Detalles de la Tarea
+            </>
+          )}
+        </DialogTitle>
+        <DialogDescription className="flex items-center gap-2">
           {isEditing ? 'Edita los detalles de la tarea' : 'Información completa de la tarea'}
+          {isEditing && (
+            <Badge variant="secondary" className="bg-blue-100 text-blue-700 border-blue-200 text-xs">
+              Modo Edición
+            </Badge>
+          )}
         </DialogDescription>
       </div>
       <div className="flex items-center gap-2">
