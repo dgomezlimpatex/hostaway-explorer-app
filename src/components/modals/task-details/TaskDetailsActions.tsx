@@ -1,8 +1,10 @@
 import { Button } from "@/components/ui/button";
-import { Trash2, Edit3, Save, X, UserX, FileText, Camera } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Trash2, Edit3, Save, X, UserX, UserPlus } from "lucide-react";
 import { Task } from "@/types/calendar";
 import { useAuth } from "@/hooks/useAuth";
 import { useTaskReport } from "@/hooks/useTaskReports";
+import { useCleaners } from "@/hooks/useCleaners";
 interface TaskDetailsActionsProps {
   task: Task;
   isEditing: boolean;
@@ -11,6 +13,7 @@ interface TaskDetailsActionsProps {
   onCancel: () => void;
   onDelete: () => void;
   onUnassign?: () => void;
+  onAssign?: (cleanerId: string, cleanerName: string) => void;
   onOpenReport: () => void;
 }
 export const TaskDetailsActions = ({
@@ -21,14 +24,12 @@ export const TaskDetailsActions = ({
   onCancel,
   onDelete,
   onUnassign,
+  onAssign,
   onOpenReport
 }: TaskDetailsActionsProps) => {
-  const {
-    userRole
-  } = useAuth();
-  const {
-    data: existingReport
-  } = useTaskReport(task.id);
+  const { userRole } = useAuth();
+  const { data: existingReport } = useTaskReport(task.id);
+  const { cleaners } = useCleaners();
   const canCreateReport = userRole === 'cleaner' && task?.cleanerId;
   const canViewReport = ['admin', 'manager', 'supervisor'].includes(userRole || '') || userRole === 'cleaner' && task?.cleanerId;
   const getReportButtonText = () => {
@@ -64,10 +65,34 @@ export const TaskDetailsActions = ({
           Eliminar
         </Button>
         
-        {task.cleaner && onUnassign && <Button variant="outline" size="sm" onClick={onUnassign} className="flex items-center gap-2">
+        {/* Botón de Asignar */}
+        {onAssign && (
+          <Select onValueChange={(value) => {
+            const [cleanerId, cleanerName] = value.split('|');
+            onAssign(cleanerId, cleanerName);
+          }}>
+            <SelectTrigger asChild>
+              <Button variant="outline" size="sm" className="flex items-center gap-2">
+                <UserPlus className="h-4 w-4" />
+                Asignar
+              </Button>
+            </SelectTrigger>
+            <SelectContent>
+              {cleaners.map((cleaner) => (
+                <SelectItem key={cleaner.id} value={`${cleaner.id}|${cleaner.name}`}>
+                  {cleaner.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
+        
+        {task.cleaner && onUnassign && (
+          <Button variant="outline" size="sm" onClick={onUnassign} className="flex items-center gap-2">
             <UserX className="h-4 w-4" />
             Desasignar
-          </Button>}
+          </Button>
+        )}
 
         {/* Botón de Reporte */}
         {canCreateReport || canViewReport}

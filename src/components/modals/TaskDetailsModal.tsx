@@ -7,6 +7,7 @@ import { TaskDetailsHeader } from "./task-details/TaskDetailsHeader";
 import { TaskDetailsForm } from "./task-details/TaskDetailsForm";
 import { TaskDetailsActions } from "./task-details/TaskDetailsActions";
 import { TaskDetailsConfirmDialogs } from "./task-details/TaskDetailsConfirmDialogs";
+import { taskAssignmentService } from "@/services/storage/taskAssignmentService";
 interface TaskDetailsModalProps {
   task: Task | null;
   open: boolean;
@@ -84,6 +85,24 @@ export const TaskDetailsModal = ({
     setIsEditing(false);
     setFormData(task);
   };
+
+  const handleAssign = async (cleanerId: string, cleanerName: string) => {
+    try {
+      await taskAssignmentService.assignTask(task.id, cleanerName, cleanerId);
+      onUpdateTask(task.id, { cleaner: cleanerName, cleanerId });
+      toast({
+        title: "Tarea asignada",
+        description: `La tarea ha sido asignada a ${cleanerName}.`
+      });
+    } catch (error) {
+      console.error('Error assigning task:', error);
+      toast({
+        title: "Error",
+        description: "Ha ocurrido un error al asignar la tarea.",
+        variant: "destructive"
+      });
+    }
+  };
   return <>
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className="w-[95vw] max-w-[95vw] sm:max-w-[600px] max-h-[90vh] overflow-y-auto sm:mx-auto mx-0 px-[25px] my-0 py-[6px]">
@@ -94,7 +113,17 @@ export const TaskDetailsModal = ({
           <TaskDetailsForm task={task} isEditing={isEditing} formData={formData} onFieldChange={handleFieldChange} />
 
           <DialogFooter>
-            <TaskDetailsActions task={task} isEditing={isEditing} onEdit={() => setIsEditing(true)} onSave={handleSave} onCancel={handleCancel} onDelete={() => setShowDeleteConfirm(true)} onUnassign={onUnassignTask ? () => setShowUnassignConfirm(true) : undefined} onOpenReport={() => setShowReportModal(true)} />
+            <TaskDetailsActions 
+              task={task} 
+              isEditing={isEditing} 
+              onEdit={() => setIsEditing(true)} 
+              onSave={handleSave} 
+              onCancel={handleCancel} 
+              onDelete={() => setShowDeleteConfirm(true)} 
+              onUnassign={onUnassignTask ? () => setShowUnassignConfirm(true) : undefined}
+              onAssign={handleAssign}
+              onOpenReport={() => setShowReportModal(true)} 
+            />
           </DialogFooter>
         </DialogContent>
       </Dialog>
