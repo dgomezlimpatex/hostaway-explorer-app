@@ -5,6 +5,8 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { SidebarProvider } from '@/components/ui/sidebar';
 import { DashboardSidebar } from './DashboardSidebar';
+import { CreateTaskModal } from '@/components/modals/CreateTaskModal';
+import { BatchCreateTaskModal } from '@/components/modals/BatchCreateTaskModal';
 import { 
   Plus, 
   Calendar, 
@@ -19,6 +21,7 @@ import {
 import { useOptimizedTasks } from '@/hooks/useOptimizedTasks';
 import { useOptimizedCleaningReports } from '@/hooks/useOptimizedCleaningReports';
 import { useRolePermissions } from '@/hooks/useRolePermissions';
+import { useTasksPageActions } from '@/hooks/tasks/useTasksPageActions';
 import { HostawayIntegrationWidget } from '@/components/hostaway/HostawayIntegrationWidget';
 import { format, startOfMonth, endOfMonth, isAfter, isBefore, subMonths } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -26,6 +29,18 @@ import { es } from 'date-fns/locale';
 export const ManagerDashboard = () => {
   const [selectedDate] = useState(new Date());
   const { canAccessModule } = useRolePermissions();
+  
+  // Hook para manejar las acciones de tareas
+  const {
+    isCreateModalOpen,
+    setIsCreateModalOpen,
+    isBatchCreateModalOpen,
+    setIsBatchCreateModalOpen,
+    handleCreateTask,
+    handleBatchCreateTasks,
+    handleOpenCreateModal,
+    handleOpenBatchModal
+  } = useTasksPageActions();
   
   // Obtener tareas del mes actual
   const { tasks } = useOptimizedTasks({
@@ -100,13 +115,6 @@ export const ManagerDashboard = () => {
     ).length;
   }, [recentReports]);
 
-  const handleCreateTask = () => {
-    window.location.href = '/tasks';
-  };
-
-  const handleBatchCreateTasks = () => {
-    window.location.href = '/tasks';
-  };
 
   return (
     <SidebarProvider>
@@ -169,14 +177,14 @@ export const ManagerDashboard = () => {
                 {/* Action Buttons */}
                 <div className="lg:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <Button 
-                    onClick={handleCreateTask}
+                    onClick={handleOpenCreateModal}
                     className="h-full bg-gradient-to-br from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white border-0 shadow-lg flex flex-col items-center justify-center py-8"
                   >
                     <Plus className="h-8 w-8 mb-2" />
                     <span className="text-lg font-semibold">Añadir Tarea</span>
                   </Button>
                   <Button 
-                    onClick={handleBatchCreateTasks}
+                    onClick={handleOpenBatchModal}
                     className="h-full bg-gradient-to-br from-indigo-500 to-indigo-600 hover:from-indigo-600 hover:to-indigo-700 text-white border-0 shadow-lg flex flex-col items-center justify-center py-8"
                   >
                     <PlusSquare className="h-8 w-8 mb-2" />
@@ -325,6 +333,19 @@ export const ManagerDashboard = () => {
           </div>
         </main>
       </div>
+      
+      {/* Modales */}
+      <CreateTaskModal
+        open={isCreateModalOpen}
+        onOpenChange={setIsCreateModalOpen}
+        onCreateTask={handleCreateTask}
+      />
+      
+      <BatchCreateTaskModal
+        open={isBatchCreateModalOpen}
+        onOpenChange={setIsBatchCreateModalOpen}
+        onCreateTasks={handleBatchCreateTasks}
+      />
     </SidebarProvider>
   );
 };
