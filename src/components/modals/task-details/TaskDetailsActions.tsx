@@ -93,7 +93,16 @@ export const TaskDetailsActions = ({
         )}
 
         {/* Botón de Reporte */}
-        {canCreateReport || canViewReport}
+        {(canCreateReport || canViewReport) && (
+          <Button 
+            onClick={onOpenReport} 
+            variant={getReportButtonVariant() as "default" | "destructive" | "outline" | "secondary" | "ghost" | "link"}
+            size="sm"
+            className="flex items-center gap-2"
+          >
+            {getReportButtonText()}
+          </Button>
+        )}
       </div>
       
       <div className="flex items-center gap-2">
