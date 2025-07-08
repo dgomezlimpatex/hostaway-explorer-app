@@ -131,8 +131,11 @@ export const ManagerMobileCalendar: React.FC<ManagerMobileCalendarProps> = ({
               {unassignedTasks.map(task => (
                 <div
                   key={task.id}
-                  onClick={() => onTaskClick(task)}
-                  className="p-3 bg-white rounded-lg border border-orange-200 shadow-sm active:scale-95 transition-transform"
+                  onClick={() => {
+                    console.log('Clicked unassigned task:', task.id);
+                    onTaskClick(task);
+                  }}
+                  className="p-3 bg-white rounded-lg border border-orange-200 shadow-sm active:scale-95 transition-transform cursor-pointer"
                 >
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
@@ -159,7 +162,10 @@ export const ManagerMobileCalendar: React.FC<ManagerMobileCalendarProps> = ({
             {tasksByTime.map(task => (
               <Card
                 key={task.id}
-                onClick={() => onTaskClick(task)}
+                onClick={() => {
+                  console.log('Clicked assigned task:', task.id);
+                  onTaskClick(task);
+                }}
                 className="active:scale-95 transition-transform cursor-pointer"
               >
                 <CardContent className="p-4">
