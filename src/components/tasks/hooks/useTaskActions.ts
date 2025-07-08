@@ -40,10 +40,8 @@ export const useTaskActions = () => {
   };
 
   const handleEditTask = (task: Task) => {
-    console.log('handleEditTask called with task:', task.id);
     setSelectedTask(task);
     setOpenInEditMode(true);
-    console.log('openInEditMode set to true');
     setIsModalOpen(true);
   };
 

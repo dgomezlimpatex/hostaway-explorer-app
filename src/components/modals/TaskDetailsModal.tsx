@@ -27,7 +27,7 @@ export const TaskDetailsModal = ({
   onUnassignTask,
   openInEditMode = false
 }: TaskDetailsModalProps) => {
-  const [isEditing, setIsEditing] = useState(false);
+  const [isEditing, setIsEditing] = useState(openInEditMode);
   const [formData, setFormData] = useState<Partial<Task>>({});
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showUnassignConfirm, setShowUnassignConfirm] = useState(false);
@@ -37,10 +37,8 @@ export const TaskDetailsModal = ({
   
   useEffect(() => {
     if (task) {
-      console.log('TaskDetailsModal useEffect - task:', task.id, 'openInEditMode:', openInEditMode);
       setFormData(task);
       setIsEditing(openInEditMode);
-      console.log('TaskDetailsModal - isEditing set to:', openInEditMode);
     }
   }, [task, openInEditMode]);
   if (!task) return null;
