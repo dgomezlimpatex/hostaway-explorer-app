@@ -71,11 +71,9 @@ export const TaskDetailsActions = ({
             const [cleanerId, cleanerName] = value.split('|');
             onAssign(cleanerId, cleanerName);
           }}>
-            <SelectTrigger asChild>
-              <Button variant="outline" size="sm" className="flex items-center gap-2">
-                <UserPlus className="h-4 w-4" />
-                Asignar
-              </Button>
+            <SelectTrigger className="flex items-center gap-2 h-9 px-3">
+              <UserPlus className="h-4 w-4" />
+              <span>Asignar</span>
             </SelectTrigger>
             <SelectContent>
               {cleaners.map((cleaner) => (
