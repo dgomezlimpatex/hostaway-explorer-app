@@ -291,16 +291,14 @@ export const MediaCapture: React.FC<MediaCaptureProps> = ({
                         variant="destructive"
                         size="sm"
                         className="h-6 w-6 p-0"
-                        onClick={() => {
-                          if (isTaskMediaObject) {
-                            removeMedia(media as TaskMedia);
-                          } else {
-                            // For string URLs, just call onMediaCaptured to update the parent
-                            // This is a fallback for legacy usage
-                            const updatedUrls = (existingMedia as string[]).filter(url => url !== media);
-                            onMediaCaptured(updatedUrls[updatedUrls.length - 1] || '');
-                          }
-                        }}
+                         onClick={() => {
+                           if (isTaskMediaObject) {
+                             removeMedia(media as TaskMedia);
+                           } else if (onMediaDeleted) {
+                             // For string URLs, call onMediaDeleted to properly remove the item
+                             onMediaDeleted(typeof media === 'string' ? media : media.id);
+                           }
+                         }}
                         disabled={isDeleting}
                       >
                         <X className="h-3 w-3" />
