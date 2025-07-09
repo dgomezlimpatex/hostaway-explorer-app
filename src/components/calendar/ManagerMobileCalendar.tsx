@@ -31,10 +31,10 @@ export const ManagerMobileCalendar: React.FC<ManagerMobileCalendarProps> = ({
   const currentDateStr = currentDate.toISOString().split('T')[0];
   const dayTasks = tasks.filter(task => task.date === currentDateStr);
   
-  // Get unassigned tasks
+  // Get unassigned tasks - tasks without cleaner name AND cleaner_id
   const unassignedTasks = dayTasks.filter(task => !task.cleaner && !task.cleanerId);
   
-  // Get assigned tasks (exclude unassigned ones)
+  // Get assigned tasks - tasks with cleaner name OR cleaner_id
   const assignedTasks = dayTasks.filter(task => task.cleaner || task.cleanerId);
   
   // Filter assigned tasks by selected cleaner

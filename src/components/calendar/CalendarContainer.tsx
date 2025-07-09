@@ -71,8 +71,10 @@ export const CalendarContainer = ({
 
   // Memoized task filtering for desktop view
   const { assignedTasks, unassignedTasks } = useMemo(() => {
-    const assigned = tasks.filter(task => task.cleaner);
-    const unassigned = tasks.filter(task => !task.cleaner);
+    // A task is considered assigned if it has either cleaner name OR cleaner_id
+    const assigned = tasks.filter(task => task.cleaner || task.cleanerId);
+    // A task is unassigned if it has neither cleaner name NOR cleaner_id
+    const unassigned = tasks.filter(task => !task.cleaner && !task.cleanerId);
     return { assignedTasks: assigned, unassignedTasks: unassigned };
   }, [tasks]);
 

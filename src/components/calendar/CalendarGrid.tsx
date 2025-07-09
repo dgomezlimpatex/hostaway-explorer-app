@@ -185,7 +185,10 @@ export const CalendarGrid = memo(forwardRef<HTMLDivElement, CalendarGridProps>(
     // Memoize cleaner rows with tasks
     const cleanerRows = useMemo(() => {
       return cleaners.map((cleaner, index) => {
-        const cleanerTasks = assignedTasks.filter(task => task.cleaner === cleaner.name);
+        // Filter tasks by cleaner_id (preferred) or cleaner name (fallback)
+        const cleanerTasks = assignedTasks.filter(task => 
+          task.cleanerId === cleaner.id || task.cleaner === cleaner.name
+        );
         
         return (
           <CleanerRow
