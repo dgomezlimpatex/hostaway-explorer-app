@@ -41,20 +41,36 @@ export class DuplicatePreventionService {
         }
       }
 
-      // 2. Buscar por nombre de propiedad y fecha de checkout
+      // 2. Buscar por nombre de propiedad y fecha de checkout - CON VERIFICACIÓN DE STATUS
       const { data: existingTasks } = await this.supabase
         .from('tasks')
-        .select('id, property, date, cleaner, cleaner_id')
+        .select(`
+          id, property, date, cleaner, cleaner_id,
+          hostaway_reservations!inner(hostaway_reservation_id, status)
+        `)
         .eq('property', propertyName)
         .eq('date', checkoutDate);
 
       if (existingTasks && existingTasks.length > 0) {
-        console.log(`✅ DUPLICADO DETECTADO por propiedad y fecha: ${existingTasks.length} tarea(s) encontrada(s)`);
-        existingTasks.forEach(task => {
-          const assignmentStatus = task.cleaner_id ? `ASIGNADA a ${task.cleaner}` : 'SIN ASIGNAR';
-          console.log(`   - Tarea ${task.id}: ${assignmentStatus}`);
+        console.log(`🔍 ENCONTRADAS ${existingTasks.length} tarea(s) existente(s) para ${propertyName} - ${checkoutDate}`);
+        
+        // Verificar si alguna tarea es de una reserva VÁLIDA (no cancelada)
+        const validTasks = existingTasks.filter(task => {
+          const reservation = task.hostaway_reservations;
+          const status = reservation?.status?.toLowerCase() || '';
+          const isValid = !['cancelled', 'inquiry', 'declined', 'expired'].includes(status);
+          
+          console.log(`   - Tarea ${task.id}: Reserva ${reservation?.hostaway_reservation_id}, Status: ${reservation?.status}, Válida: ${isValid}`);
+          return isValid;
         });
-        return true;
+
+        if (validTasks.length > 0) {
+          console.log(`✅ DUPLICADO DETECTADO: Ya existe ${validTasks.length} tarea(s) VÁLIDA(s)`);
+          return true;
+        } else {
+          console.log(`⚠️ Solo hay tareas de reservas CANCELADAS - Se permite crear nueva tarea`);
+          return false;
+        }
       }
 
       console.log(`✅ NO hay duplicados - Tarea nueva válida`);
@@ -74,10 +90,13 @@ export class DuplicatePreventionService {
     console.log(`🧹 LIMPIANDO DUPLICADOS EXISTENTES...`);
     
     try {
-      // Buscar tareas duplicadas por propiedad y fecha
+      // Buscar tareas duplicadas por propiedad y fecha CON STATUS DE RESERVA
       const { data: allTasks } = await this.supabase
         .from('tasks')
-        .select('id, property, date, cleaner, cleaner_id, created_at')
+        .select(`
+          id, property, date, cleaner, cleaner_id, created_at,
+          hostaway_reservations(hostaway_reservation_id, status)
+        `)
         .order('property, date, created_at');
 
       if (!allTasks || allTasks.length === 0) {
@@ -113,13 +132,25 @@ export class DuplicatePreventionService {
         const [propertyName, date] = key.split('-');
         console.log(`🔄 Procesando duplicados: ${propertyName} - ${date}`);
         
-        // Ordenar tareas: primero las asignadas, luego por fecha de creación
+        // Ordenar tareas: NUEVA LÓGICA con prioridad por status de reserva
         const sortedTasks = tasks.sort((a, b) => {
-          // Prioridad 1: Tareas asignadas
+          // Obtener status de las reservas
+          const statusA = a.hostaway_reservations?.status?.toLowerCase() || '';
+          const statusB = b.hostaway_reservations?.status?.toLowerCase() || '';
+          
+          const invalidStatuses = ['cancelled', 'inquiry', 'declined', 'expired'];
+          const isValidA = !invalidStatuses.includes(statusA);
+          const isValidB = !invalidStatuses.includes(statusB);
+          
+          // Prioridad 1: Tareas de reservas VÁLIDAS sobre canceladas
+          if (isValidA && !isValidB) return -1;
+          if (!isValidA && isValidB) return 1;
+          
+          // Prioridad 2: Tareas asignadas sobre no asignadas
           if (a.cleaner_id && !b.cleaner_id) return -1;
           if (!a.cleaner_id && b.cleaner_id) return 1;
           
-          // Prioridad 2: Fecha de creación (más antigua primero)
+          // Prioridad 3: Fecha de creación (más antigua primero)
           return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
         });
 
