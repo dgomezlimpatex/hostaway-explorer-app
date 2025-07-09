@@ -1,6 +1,6 @@
 
 import { HostawayReservation, SyncStats, ReservationDetail } from './types.ts';
-import { updateReservation } from './database-operations.ts';
+import { updateReservation, updateTaskDate } from './database-operations.ts';
 import { sendCancellationEmail } from './email-service.ts';
 import { handleCancelledReservationTask, createMissingTask } from './task-service.ts';
 
@@ -104,7 +104,15 @@ async function handleOtherStatusChanges(
       (reservation.departureDate !== existingReservation.departure_date || 
        reservation.arrivalDate !== existingReservation.arrival_date)) {
     console.log(`📅 Fechas cambiaron, actualizando tarea: ${existingReservation.task_id}`);
-    // Aquí podrías implementar lógica para actualizar la fecha de la tarea si es necesario
+    console.log(`📅 Fecha anterior: ${existingReservation.departure_date} -> Nueva fecha: ${reservation.departureDate}`);
+    
+    try {
+      await updateTaskDate(existingReservation.task_id, reservation.departureDate);
+      console.log(`✅ Tarea ${existingReservation.task_id} actualizada con nueva fecha: ${reservation.departureDate}`);
+    } catch (error) {
+      console.error(`❌ Error actualizando fecha de tarea ${existingReservation.task_id}:`, error);
+      stats.errors.push(`Error actualizando fecha de tarea ${existingReservation.task_id}: ${error.message}`);
+    }
   }
 
   return null;

@@ -223,3 +223,25 @@ export async function deleteTask(taskId: string) {
     .delete()
     .eq('id', taskId);
 }
+
+export async function updateTaskDate(taskId: string, newDate: string) {
+  console.log(`📅 Actualizando fecha de tarea ${taskId} a ${newDate}`);
+  
+  const { data: task, error } = await supabase
+    .from('tasks')
+    .update({ 
+      date: newDate,
+      updated_at: new Date().toISOString()
+    })
+    .eq('id', taskId)
+    .select()
+    .single();
+
+  if (error) {
+    console.error('❌ Error actualizando fecha de tarea:', error);
+    throw error;
+  }
+
+  console.log(`✅ Fecha de tarea actualizada exitosamente: ${task.id} -> ${task.date}`);
+  return task;
+}
