@@ -15,6 +15,28 @@ export function shouldCreateTaskForReservation(reservation: HostawayReservation)
     return false;
   }
   
+  // NUEVA VALIDACIÓN: Detectar casos sospechosos de "modified" 
+  if (statusLower === 'modified') {
+    // Si tiene cancellation_date pero status es "modified", es sospechoso
+    if (reservation.cancellationDate) {
+      console.log(`⚠️ CASO SOSPECHOSO: Reserva ${reservation.id} con status "modified" pero tiene cancellation_date: ${reservation.cancellationDate}`);
+      console.log(`⚠️ Posible inconsistencia en Hostaway - tratando como cancelada`);
+      return false;
+    }
+    
+    // Si la reservation_date es muy antigua comparada con arrival_date, podría ser sospechoso
+    if (reservation.reservationDate && reservation.arrivalDate) {
+      const reservationDate = new Date(reservation.reservationDate);
+      const arrivalDate = new Date(reservation.arrivalDate);
+      const daysDiff = Math.abs(arrivalDate.getTime() - reservationDate.getTime()) / (1000 * 60 * 60 * 24);
+      
+      if (daysDiff > 90) {
+        console.log(`⚠️ CASO SOSPECHOSO: Reserva ${reservation.id} muy antigua (${Math.round(daysDiff)} días) con status "modified"`);
+        console.log(`⚠️ Puede ser una reserva cancelada que Hostaway no actualizó correctamente`);
+      }
+    }
+  }
+  
   if (validStatuses.includes(statusLower)) {
     return true;
   }
