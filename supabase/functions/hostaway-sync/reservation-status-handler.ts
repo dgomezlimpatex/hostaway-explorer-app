@@ -3,6 +3,11 @@ import { HostawayReservation, SyncStats, ReservationDetail } from './types.ts';
 import { updateReservation, updateTaskDate } from './database-operations.ts';
 import { sendCancellationEmail } from './email-service.ts';
 import { handleCancelledReservationTask, createMissingTask } from './task-service.ts';
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.50.0";
+
+const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
 /**
  * Handles status changes for existing reservations
@@ -93,9 +98,21 @@ async function handleOtherStatusChanges(
     return await createMissingTask(reservation, property, stats);
   }
   
-  // Reserva que debería tener tarea pero no la tiene
+  // Verificar si la reserva tiene una tarea válida
   if (!existingReservation.task_id) {
-    console.log(`🔄 Creando tarea faltante para reserva: ${reservation.id}`);
+    console.log(`🔄 Creando tarea faltante para reserva (sin task_id): ${reservation.id}`);
+    return await createMissingTask(reservation, property, stats);
+  }
+
+  // Verificar que la tarea realmente existe en la base de datos
+  const { data: existingTask } = await supabase
+    .from('tasks')
+    .select('id')
+    .eq('id', existingReservation.task_id)
+    .single();
+
+  if (!existingTask) {
+    console.log(`🔄 Tarea ${existingReservation.task_id} no existe, creando nueva tarea para reserva: ${reservation.id}`);
     return await createMissingTask(reservation, property, stats);
   }
   
@@ -130,16 +147,37 @@ export async function handleUnchangedReservation(
 ): Promise<void> {
   console.log(`✅ No hay cambios en reserva: ${reservation.id}`);
   
-  // Verificar si debería tener tarea pero no la tiene
-  const taskId = await createMissingTask(reservation, property, stats);
-  if (taskId) {
-    const updateData = { ...reservationData, task_id: taskId };
-    try {
-      await updateReservation(existingReservation.id, updateData);
-      console.log(`✅ Tarea faltante creada y reserva actualizada: ${taskId}`);
-    } catch (error) {
-      console.error(`Error creando tarea faltante para reserva existente:`, error);
-      stats.errors.push(`Error creando tarea faltante para ${reservation.id}: ${error.message}`);
+  // Verificar si la reserva necesita una tarea
+  let needsNewTask = false;
+  
+  if (!existingReservation.task_id) {
+    console.log(`🔄 Reserva sin task_id, necesita tarea: ${reservation.id}`);
+    needsNewTask = true;
+  } else {
+    // Verificar que la tarea realmente existe
+    const { data: existingTask } = await supabase
+      .from('tasks')
+      .select('id')
+      .eq('id', existingReservation.task_id)
+      .single();
+
+    if (!existingTask) {
+      console.log(`🔄 Tarea ${existingReservation.task_id} no existe, necesita nueva tarea: ${reservation.id}`);
+      needsNewTask = true;
+    }
+  }
+  
+  if (needsNewTask) {
+    const taskId = await createMissingTask(reservation, property, stats);
+    if (taskId) {
+      const updateData = { ...reservationData, task_id: taskId };
+      try {
+        await updateReservation(existingReservation.id, updateData);
+        console.log(`✅ Tarea faltante creada y reserva actualizada: ${taskId}`);
+      } catch (error) {
+        console.error(`Error creando tarea faltante para reserva existente:`, error);
+        stats.errors.push(`Error creando tarea faltante para ${reservation.id}: ${error.message}`);
+      }
     }
   }
 }
