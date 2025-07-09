@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Dialog, DialogContent, DialogHeader } from '@/components/ui/dialog';
 import { Task } from '@/types/calendar';
-import { TaskReport, TaskChecklistTemplate } from '@/types/taskReports';
+import { TaskReport, TaskChecklistTemplate, TaskMedia } from '@/types/taskReports';
 import { useTaskReports, useTaskReport, useChecklistTemplates, useTaskMedia } from '@/hooks/useTaskReports';
 import { useToast } from '@/hooks/use-toast';
 import { useDeviceType } from '@/hooks/use-mobile';
@@ -35,7 +35,7 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
   const [checklist, setChecklist] = useState<Record<string, any>>({});
   const [notes, setNotes] = useState('');
   const [issues, setIssues] = useState<any[]>([]);
-  const [reportMedia, setReportMedia] = useState<string[]>([]);
+  const [reportMedia, setReportMedia] = useState<TaskMedia[]>([]);
   const [activeTab, setActiveTab] = useState('checklist');
   const [currentTemplate, setCurrentTemplate] = useState<TaskChecklistTemplate | undefined>();
   const [hasStartedTask, setHasStartedTask] = useState(false);
@@ -109,9 +109,7 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
   // Update reportMedia when taskMedia changes
   useEffect(() => {
     if (taskMedia && currentReport) {
-      const generalMedia = taskMedia
-        .filter(media => !media.checklist_item_id)
-        .map(media => media.file_url);
+      const generalMedia = taskMedia.filter(media => !media.checklist_item_id);
       setReportMedia(generalMedia);
       console.log('TaskReportModal - loaded general media:', generalMedia);
     }

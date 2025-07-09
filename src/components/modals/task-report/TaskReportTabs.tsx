@@ -4,7 +4,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { CheckSquare, AlertTriangle, FileText, Camera, CheckCircle, Clock } from 'lucide-react';
 import { Task } from '@/types/calendar';
-import { TaskChecklistTemplate } from '@/types/taskReports';
+import { TaskChecklistTemplate, TaskMedia } from '@/types/taskReports';
 import { ChecklistSection } from './ChecklistSection';
 import { MediaCapture } from './MediaCapture';
 import { IssuesSection } from './IssuesSection';
@@ -26,8 +26,8 @@ interface TaskReportTabsProps {
   onNotesChange: (notes: string) => void;
   task: Task;
   completionPercentage: number;
-  reportMedia: string[];
-  onReportMediaChange: (media: string[]) => void;
+  reportMedia: TaskMedia[];
+  onReportMediaChange: (media: TaskMedia[]) => void;
   isTaskCompleted?: boolean;
   hasStartedTask: boolean;
 }
@@ -191,7 +191,13 @@ export const TaskReportTabs: React.FC<TaskReportTabsProps> = ({
               <MediaCapture
                 onMediaCaptured={(mediaUrl) => {
                   console.log('Media captured (general):', mediaUrl);
-                  onReportMediaChange([...reportMedia, mediaUrl]);
+                  // No need to update reportMedia here, it will be refreshed by the query
+                }}
+                onMediaDeleted={(mediaId) => {
+                  console.log('Media deleted (general):', mediaId);
+                  // Remove the media from the local state
+                  const updatedMedia = reportMedia.filter(media => media.id !== mediaId);
+                  onReportMediaChange(updatedMedia);
                 }}
                 reportId={reportId}
                 existingMedia={reportMedia}
