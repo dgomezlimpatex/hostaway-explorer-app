@@ -158,4 +158,53 @@ export class ImprovedReservationProcessor {
     console.log(`🧹 EJECUTANDO LIMPIEZA PREVIA A LA SINCRONIZACIÓN...`);
     await this.duplicateChecker.cleanupExistingDuplicates();
   }
+
+  async createMissingTaskForExistingReservation(
+    reservation: HostawayReservation,
+    property: any,
+    stats: SyncStats
+  ): Promise<string | null> {
+    console.log(`📋 Creando tarea faltante para reserva existente: ${reservation.id}`);
+    console.log(`📋 Propiedad: ${property.nombre}, Status: ${reservation.status}`);
+    
+    // Verificar si debe crear tarea
+    const validStatuses = ['confirmed', 'new', 'modified', 'awaiting_payment'];
+    const invalidStatuses = ['cancelled', 'inquiry', 'declined', 'expired'];
+    
+    const statusLower = reservation.status.toLowerCase();
+    
+    if (invalidStatuses.includes(statusLower)) {
+      console.log(`⏭️ No se crea tarea para status: ${reservation.status}`);
+      return null;
+    }
+    
+    if (!validStatuses.includes(statusLower)) {
+      console.log(`⚠️ Status desconocido: ${reservation.status}, creando tarea por precaución`);
+    }
+
+    try {
+      const task = await createTaskForReservation(reservation, property);
+      stats.tasks_created++;
+      
+      // Agregar detalles de la tarea creada
+      if (!stats.tasks_details) stats.tasks_details = [];
+      stats.tasks_details.push({
+        reservation_id: reservation.id,
+        property_name: property.nombre,
+        task_id: task.id,
+        task_date: reservation.departureDate,
+        guest_name: reservation.guestName,
+        listing_id: reservation.listingMapId,
+        status: reservation.status
+      });
+      
+      console.log(`✅ Tarea faltante creada: ${task.id} para fecha: ${reservation.departureDate}`);
+      return task.id;
+    } catch (error) {
+      const errorMsg = `Error creando tarea faltante para reserva ${reservation.id}: ${error.message}`;
+      console.error(`❌ ${errorMsg}`);
+      stats.errors.push(errorMsg);
+      return null;
+    }
+  }
 }

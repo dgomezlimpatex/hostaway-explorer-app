@@ -84,6 +84,10 @@ export class SyncOrchestrator {
       }
     }
 
+    // PASO 6: Procesar reservas existentes sin tareas
+    console.log(`🔄 PASO 6: Procesando reservas existentes sin tareas`);
+    await this.processExistingReservationsWithoutTasks();
+
     console.log(`✅ SINCRONIZACIÓN COMPLETADA`);
     console.log(`📊 Estadísticas finales:`, this.stats);
 
@@ -108,6 +112,75 @@ export class SyncOrchestrator {
       .from('hostaway_sync_logs')
       .update(updateData)
       .eq('id', this.syncLogId);
+  }
+
+  async processExistingReservationsWithoutTasks(): Promise<void> {
+    // Obtener reservas existentes sin tareas que deberían tenerlas
+    const { data: reservationsWithoutTasks, error } = await this.supabase
+      .from('hostaway_reservations')
+      .select(`
+        *,
+        properties:property_id(*)
+      `)
+      .is('task_id', null)
+      .gte('departure_date', new Date().toISOString().split('T')[0])
+      .neq('status', 'cancelled');
+
+    if (error) {
+      console.error('Error obteniendo reservas sin tareas:', error);
+      this.stats.errors.push(`Error obteniendo reservas sin tareas: ${error.message}`);
+      return;
+    }
+
+    if (!reservationsWithoutTasks || reservationsWithoutTasks.length === 0) {
+      console.log('✅ No hay reservas existentes sin tareas');
+      return;
+    }
+
+    console.log(`📋 Encontradas ${reservationsWithoutTasks.length} reservas existentes sin tareas`);
+
+    // Procesar cada reserva sin tarea
+    for (let i = 0; i < reservationsWithoutTasks.length; i++) {
+      const dbReservation = reservationsWithoutTasks[i];
+      
+      // Convertir formato de BD a formato Hostaway para reutilizar lógica
+      const hostawayReservation = {
+        id: dbReservation.hostaway_reservation_id,
+        listingMapId: dbReservation.properties?.hostaway_listing_id || 0,
+        listingName: dbReservation.properties?.nombre || '',
+        status: dbReservation.status,
+        departureDate: dbReservation.departure_date,
+        arrivalDate: dbReservation.arrival_date,
+        reservationDate: dbReservation.reservation_date,
+        cancellationDate: dbReservation.cancellation_date,
+        nights: dbReservation.nights || 1,
+        adults: dbReservation.adults || 1,
+        guestName: 'Cliente sin nombre' // No tenemos guest name en BD
+      };
+
+      try {
+        console.log(`🔄 Creando tarea faltante para reserva ${dbReservation.hostaway_reservation_id} (${i + 1}/${reservationsWithoutTasks.length})`);
+        
+        const taskId = await this.reservationProcessor.createMissingTaskForExistingReservation(
+          hostawayReservation, 
+          dbReservation.properties, 
+          this.stats
+        );
+
+        if (taskId) {
+          // Actualizar la reserva con el task_id
+          await this.supabase
+            .from('hostaway_reservations')
+            .update({ task_id: taskId })
+            .eq('id', dbReservation.id);
+          
+          console.log(`✅ Tarea creada y reserva actualizada: ${taskId}`);
+        }
+      } catch (error) {
+        console.error(`❌ Error procesando reserva existente ${dbReservation.hostaway_reservation_id}:`, error);
+        this.stats.errors.push(`Error en reserva existente ${dbReservation.hostaway_reservation_id}: ${error.message}`);
+      }
+    }
   }
 
   getStats(): SyncStats {
