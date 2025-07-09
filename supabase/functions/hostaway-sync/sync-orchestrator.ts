@@ -116,6 +116,7 @@ export class SyncOrchestrator {
 
   async processExistingReservationsWithoutTasks(): Promise<void> {
     // Obtener reservas existentes sin tareas que deberían tenerlas
+    // CORREGIDO: Filtrar correctamente los status inválidos
     const { data: reservationsWithoutTasks, error } = await this.supabase
       .from('hostaway_reservations')
       .select(`
@@ -124,7 +125,7 @@ export class SyncOrchestrator {
       `)
       .is('task_id', null)
       .gte('departure_date', new Date().toISOString().split('T')[0])
-      .neq('status', 'cancelled');
+      .not('status', 'in', '("cancelled","inquiry","declined","expired")'); // Filtrar múltiples status inválidos
 
     if (error) {
       console.error('Error obteniendo reservas sin tareas:', error);
