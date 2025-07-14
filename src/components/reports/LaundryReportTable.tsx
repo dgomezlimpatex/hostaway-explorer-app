@@ -36,6 +36,98 @@ export const LaundryReportTable = ({ data }: LaundryReportTableProps) => {
 
   const totalKitAlimentario = data.reduce((sum, item) => sum + item.kitAlimentario, 0);
 
+  // Componente para vista móvil
+  const MobileTaskCard = ({ task }: { task: LaundryReport }) => (
+    <Card className="mb-4">
+      <CardContent className="p-4">
+        <div className="space-y-3">
+          {/* Header con propiedad y estado */}
+          <div className="flex justify-between items-start">
+            <div className="flex-1">
+              <h3 className="font-semibold text-lg leading-tight">{task.property}</h3>
+              <p className="text-sm text-muted-foreground mt-1">{task.address}</p>
+            </div>
+            <Badge 
+              variant={task.status === 'pending' ? 'secondary' : 'outline'}
+              className={
+                task.status === 'pending' ? 'bg-yellow-100 text-yellow-800' : 
+                'bg-blue-100 text-blue-800'
+              }
+            >
+              {task.status === 'pending' ? 'Pendiente' : 'En Progreso'}
+            </Badge>
+          </div>
+
+          {/* Horario y trabajador */}
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <p className="text-xs text-muted-foreground font-medium">HORARIO</p>
+              <p className="font-mono text-sm">{task.startTime} - {task.endTime}</p>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground font-medium">TRABAJADOR</p>
+              <p className="text-sm">{task.cleaner}</p>
+            </div>
+          </div>
+
+          {/* Habitaciones */}
+          <div>
+            <p className="text-xs text-muted-foreground font-medium mb-1">HABITACIONES</p>
+            <div className="flex gap-4 text-sm">
+              <span>🛏️ {task.bedrooms} camas</span>
+              <span>🚿 {task.bathrooms} baños</span>
+            </div>
+          </div>
+
+          {/* Textiles requeridos */}
+          <div>
+            <p className="text-xs text-muted-foreground font-medium mb-2">TEXTILES REQUERIDOS</p>
+            <div className="grid grid-cols-2 gap-2">
+              {task.textiles.sabanas > 0 && (
+                <div className="bg-blue-50 p-2 rounded text-center">
+                  <div className="font-bold text-blue-600">{task.textiles.sabanas}</div>
+                  <div className="text-xs text-blue-800">Sábanas</div>
+                </div>
+              )}
+              {task.textiles.toallasGrandes > 0 && (
+                <div className="bg-green-50 p-2 rounded text-center">
+                  <div className="font-bold text-green-600">{task.textiles.toallasGrandes}</div>
+                  <div className="text-xs text-green-800">Toallas G</div>
+                </div>
+              )}
+              {task.textiles.toallasPequenas > 0 && (
+                <div className="bg-purple-50 p-2 rounded text-center">
+                  <div className="font-bold text-purple-600">{task.textiles.toallasPequenas}</div>
+                  <div className="text-xs text-purple-800">Toallas P</div>
+                </div>
+              )}
+              {task.textiles.alfombrines > 0 && (
+                <div className="bg-orange-50 p-2 rounded text-center">
+                  <div className="font-bold text-orange-600">{task.textiles.alfombrines}</div>
+                  <div className="text-xs text-orange-800">Alfombrines</div>
+                </div>
+              )}
+              {task.textiles.fundasAlmohada > 0 && (
+                <div className="bg-pink-50 p-2 rounded text-center">
+                  <div className="font-bold text-pink-600">{task.textiles.fundasAlmohada}</div>
+                  <div className="text-xs text-pink-800">Fundas</div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Kit Alimentario */}
+          {task.kitAlimentario > 0 && (
+            <div className="bg-yellow-50 p-3 rounded">
+              <p className="text-xs text-muted-foreground font-medium">KIT ALIMENTARIO</p>
+              <div className="font-bold text-xl text-yellow-600">{task.kitAlimentario}</div>
+            </div>
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  );
+
   return (
     <div className="space-y-6">
       {/* Resumen general */}
@@ -92,82 +184,92 @@ export const LaundryReportTable = ({ data }: LaundryReportTableProps) => {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Propiedad</TableHead>
-                  <TableHead>Horario</TableHead>
-                  <TableHead>Trabajador</TableHead>
-                  <TableHead>Habitaciones</TableHead>
-                  <TableHead>Textiles Requeridos</TableHead>
-                  <TableHead>Kit Alimentario</TableHead>
-                  <TableHead>Estado</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {tasks.map((task) => (
-                  <TableRow key={task.id}>
-                    <TableCell>
-                      <div className="font-medium">{task.property}</div>
-                      <div className="text-sm text-gray-500">{task.address}</div>
-                    </TableCell>
-                    <TableCell className="font-mono">
-                      {task.startTime} - {task.endTime}
-                    </TableCell>
-                    <TableCell>{task.cleaner}</TableCell>
-                    <TableCell>
-                      <div className="text-sm">
-                        <div>🛏️ {task.bedrooms} camas</div>
-                        <div>🚿 {task.bathrooms} baños</div>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex flex-wrap gap-1">
-                        {task.textiles.sabanas > 0 && (
-                          <Badge variant="outline" className="text-xs">
-                            {task.textiles.sabanas} sábanas
-                          </Badge>
-                        )}
-                        {task.textiles.toallasGrandes > 0 && (
-                          <Badge variant="outline" className="text-xs">
-                            {task.textiles.toallasGrandes} toallas G
-                          </Badge>
-                        )}
-                        {task.textiles.toallasPequenas > 0 && (
-                          <Badge variant="outline" className="text-xs">
-                            {task.textiles.toallasPequenas} toallas P
-                          </Badge>
-                        )}
-                        {task.textiles.alfombrines > 0 && (
-                          <Badge variant="outline" className="text-xs">
-                            {task.textiles.alfombrines} alfombr.
-                          </Badge>
-                        )}
-                        {task.textiles.fundasAlmohada > 0 && (
-                          <Badge variant="outline" className="text-xs">
-                            {task.textiles.fundasAlmohada} fundas
-                          </Badge>
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="font-bold text-lg">{task.kitAlimentario}</div>
-                    </TableCell>
-                    <TableCell>
-                      <Badge 
-                        variant={task.status === 'pending' ? 'secondary' : 'outline'}
-                        className={
-                          task.status === 'pending' ? 'bg-yellow-100 text-yellow-800' : 
-                          'bg-blue-100 text-blue-800'
-                        }
-                      >
-                        {task.status === 'pending' ? 'Pendiente' : 'En Progreso'}
-                      </Badge>
-                    </TableCell>
+            {/* Vista desktop - tabla */}
+            <div className="hidden md:block">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Propiedad</TableHead>
+                    <TableHead>Horario</TableHead>
+                    <TableHead>Trabajador</TableHead>
+                    <TableHead>Habitaciones</TableHead>
+                    <TableHead>Textiles Requeridos</TableHead>
+                    <TableHead>Kit Alimentario</TableHead>
+                    <TableHead>Estado</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {tasks.map((task) => (
+                    <TableRow key={task.id}>
+                      <TableCell>
+                        <div className="font-medium">{task.property}</div>
+                        <div className="text-sm text-gray-500">{task.address}</div>
+                      </TableCell>
+                      <TableCell className="font-mono">
+                        {task.startTime} - {task.endTime}
+                      </TableCell>
+                      <TableCell>{task.cleaner}</TableCell>
+                      <TableCell>
+                        <div className="text-sm">
+                          <div>🛏️ {task.bedrooms} camas</div>
+                          <div>🚿 {task.bathrooms} baños</div>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex flex-wrap gap-1">
+                          {task.textiles.sabanas > 0 && (
+                            <Badge variant="outline" className="text-xs">
+                              {task.textiles.sabanas} sábanas
+                            </Badge>
+                          )}
+                          {task.textiles.toallasGrandes > 0 && (
+                            <Badge variant="outline" className="text-xs">
+                              {task.textiles.toallasGrandes} toallas G
+                            </Badge>
+                          )}
+                          {task.textiles.toallasPequenas > 0 && (
+                            <Badge variant="outline" className="text-xs">
+                              {task.textiles.toallasPequenas} toallas P
+                            </Badge>
+                          )}
+                          {task.textiles.alfombrines > 0 && (
+                            <Badge variant="outline" className="text-xs">
+                              {task.textiles.alfombrines} alfombr.
+                            </Badge>
+                          )}
+                          {task.textiles.fundasAlmohada > 0 && (
+                            <Badge variant="outline" className="text-xs">
+                              {task.textiles.fundasAlmohada} fundas
+                            </Badge>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="font-bold text-lg">{task.kitAlimentario}</div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge 
+                          variant={task.status === 'pending' ? 'secondary' : 'outline'}
+                          className={
+                            task.status === 'pending' ? 'bg-yellow-100 text-yellow-800' : 
+                            'bg-blue-100 text-blue-800'
+                          }
+                        >
+                          {task.status === 'pending' ? 'Pendiente' : 'En Progreso'}
+                        </Badge>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+
+            {/* Vista móvil - cards */}
+            <div className="md:hidden">
+              {tasks.map((task) => (
+                <MobileTaskCard key={task.id} task={task} />
+              ))}
+            </div>
           </CardContent>
         </Card>
       ))}
