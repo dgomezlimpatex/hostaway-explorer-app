@@ -276,26 +276,35 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
 
     try {
       if (currentReport) {
-        updateReport({ 
+        await updateReport({ 
           reportId: currentReport.id, 
           updates: reportData 
         });
       } else {
-        createReport({
+        await createReport({
           ...reportData,
           start_time: new Date().toISOString(),
         });
       }
 
       // También actualizar el estado de la tarea
+      console.log('🔄 Actualizando estado de la tarea a completed:', task.id);
       const { supabase } = await import('@/integrations/supabase/client');
-      await supabase
+      const { data, error } = await supabase
         .from('tasks')
         .update({ status: 'completed' })
         .eq('id', task.id);
       
+      if (error) {
+        console.error('❌ Error actualizando estado de tarea:', error);
+        throw error;
+      } else {
+        console.log('✅ Estado de tarea actualizado correctamente:', data);
+      }
+      
       // Invalidar cache de tareas para que se recargue en el dashboard
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      console.log('🔄 Cache de tareas invalidado');
       
       toast({
         title: "Reporte completado",

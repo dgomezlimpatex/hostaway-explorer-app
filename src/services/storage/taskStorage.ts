@@ -1,6 +1,7 @@
 
 import { Task } from '@/types/calendar';
 import { BaseStorageService } from './baseStorage';
+import { supabase } from '@/integrations/supabase/client';
 
 interface TaskCreateData extends Omit<Task, 'id' | 'created_at' | 'updated_at'> {}
 
@@ -61,7 +62,41 @@ export class TaskStorageService extends BaseStorageService<Task, TaskCreateData>
   }
 
   async getTasks(): Promise<Task[]> {
-    return this.getAll({ column: 'date', ascending: false });
+    console.log('📋 taskStorage - getTasks called, checking for completed reports');
+    
+    // Get all tasks with a LEFT JOIN to task_reports
+    const { data, error } = await supabase
+      .from('tasks')
+      .select(`
+        *,
+        task_reports(overall_status)
+      `)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('❌ Error fetching tasks with reports:', error);
+      throw error;
+    }
+
+    // Map and sync task status with report status
+    const mappedTasks = (data || []).map(task => {
+      const hasCompletedReport = task.task_reports?.some(report => report.overall_status === 'completed');
+      
+      // Sync task status: if has completed report but task status is not 'completed', prioritize report status
+      const finalStatus = hasCompletedReport ? 'completed' : task.status;
+      
+      if (hasCompletedReport && task.status !== 'completed') {
+        console.log(`🔄 Task ${task.property} (${task.id}) has completed report but status is ${task.status}, updating to completed`);
+      }
+
+      return taskStorageConfig.mapFromDB({
+        ...task,
+        status: finalStatus
+      });
+    });
+
+    console.log(`📋 taskStorage - returning ${mappedTasks.length} tasks, ${mappedTasks.filter(t => t.status === 'completed').length} completed`);
+    return mappedTasks;
   }
 
   async createTask(task: TaskCreateData): Promise<Task> {
