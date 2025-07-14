@@ -1309,9 +1309,7 @@ export type Database = {
     }
     Functions: {
       accept_invitation: {
-        Args:
-          | { invitation_token: string; input_user_id: string }
-          | { invitation_token: string; input_user_id: string }
+        Args: { invitation_token: string; input_user_id: string }
         Returns: Database["public"]["Enums"]["app_role"]
       }
       cleanup_expired_invitations: {
@@ -1346,9 +1344,7 @@ export type Database = {
         Returns: boolean
       }
       verify_invitation: {
-        Args:
-          | { token: string; email: string }
-          | { token: string; email: string }
+        Args: { token: string; email: string }
         Returns: boolean
       }
     }
