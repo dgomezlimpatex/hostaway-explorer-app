@@ -1,4 +1,5 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -31,6 +32,11 @@ export const TodayTasksSection = ({
   onPreviousPage,
   onNextPage
 }: TodayTasksSectionProps) => {
+  const navigate = useNavigate();
+
+  const handleViewAllInCalendar = () => {
+    navigate('/calendar');
+  };
   return (
     <Card className="bg-white shadow-lg border-0">
       <CardHeader>
@@ -115,7 +121,7 @@ export const TodayTasksSection = ({
             <p className="text-sm text-gray-500">
               Mostrando {paginatedTodayTasks.length} de {todayTasks.length} tareas del día
             </p>
-            <Button variant="outline" size="sm" className="mt-2" onClick={() => window.location.href = '/calendar'}>
+            <Button variant="outline" size="sm" className="mt-2" onClick={handleViewAllInCalendar}>
               Ver todas en el calendario
             </Button>
           </div>
