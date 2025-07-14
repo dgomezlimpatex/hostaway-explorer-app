@@ -45,15 +45,16 @@ export const useAuthProvider = (): AuthContextType => {
   const [userRole, setUserRole] = useState<AppRole | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  const fetchProfile = async (userId: string) => {
+  const processUser = async (userId: string) => {
     try {
-      console.log('🔍 Fetching profile for user:', userId);
+      console.log('🔍 Processing user authentication:', userId);
       
+      // Obtener perfil del usuario
       const { data: profileData, error: profileError } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', userId)
-        .maybeSingle(); // Cambio de .single() a .maybeSingle() para evitar errores
+        .maybeSingle();
 
       if (profileError) {
         console.error('❌ Error fetching profile:', profileError);
@@ -62,6 +63,45 @@ export const useAuthProvider = (): AuthContextType => {
 
       console.log('👤 Profile data found:', !!profileData, profileData?.email);
 
+      // Verificar si hay invitaciones pendientes para este email
+      if (profileData?.email) {
+        console.log('🔍 Checking for pending invitations for:', profileData.email);
+        
+        const { data: pendingInvitations, error: invitationError } = await supabase
+          .from('user_invitations')
+          .select('*')
+          .eq('email', profileData.email)
+          .eq('status', 'pending')
+          .gt('expires_at', new Date().toISOString());
+
+        if (invitationError) {
+          console.error('❌ Error checking invitations:', invitationError);
+        } else if (pendingInvitations && pendingInvitations.length > 0) {
+          console.log('📧 Found pending invitations:', pendingInvitations.length);
+          
+          // Procesar la invitación más reciente
+          const latestInvitation = pendingInvitations[0];
+          console.log('🎯 Processing invitation:', latestInvitation.invitation_token);
+          
+          try {
+            const { data: assignedRole, error: acceptError } = await supabase
+              .rpc('accept_invitation', {
+                invitation_token: latestInvitation.invitation_token,
+                input_user_id: userId
+              });
+
+            if (acceptError) {
+              console.error('❌ Error auto-accepting invitation:', acceptError);
+            } else {
+              console.log('✅ Auto-accepted invitation, assigned role:', assignedRole);
+            }
+          } catch (acceptError) {
+            console.error('❌ Error in auto-accept process:', acceptError);
+          }
+        }
+      }
+
+      // Obtener rol del usuario (después de procesar invitaciones)
       const { data: roleData, error: roleError } = await supabase
         .rpc('get_user_role', { _user_id: userId });
 
@@ -74,7 +114,7 @@ export const useAuthProvider = (): AuthContextType => {
       setProfile(profileData);
       setUserRole(roleData || null);
     } catch (error) {
-      console.error('❌ Error in fetchProfile:', error);
+      console.error('❌ Error in processUser:', error);
       setProfile(null);
       setUserRole(null);
     }
@@ -89,9 +129,9 @@ export const useAuthProvider = (): AuthContextType => {
         setUser(session?.user ?? null);
 
         if (session?.user) {
-          // Defer profile fetch to avoid blocking auth state change
+          // Defer user processing to avoid blocking auth state change
           setTimeout(() => {
-            fetchProfile(session.user.id);
+            processUser(session.user.id);
           }, 0);
         } else {
           setProfile(null);
@@ -108,7 +148,7 @@ export const useAuthProvider = (): AuthContextType => {
       setUser(session?.user ?? null);
       
       if (session?.user) {
-        fetchProfile(session.user.id);
+        processUser(session.user.id);
       }
       
       setIsLoading(false);
