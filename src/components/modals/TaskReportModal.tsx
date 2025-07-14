@@ -5,6 +5,7 @@ import { Task } from '@/types/calendar';
 import { TaskReport, TaskChecklistTemplate, TaskMedia } from '@/types/taskReports';
 import { useTaskReports, useTaskReport, useChecklistTemplates, useTaskMedia } from '@/hooks/useTaskReports';
 import { useToast } from '@/hooks/use-toast';
+import { useQueryClient } from '@tanstack/react-query';
 import { useDeviceType } from '@/hooks/use-mobile';
 import { useAuth } from '@/hooks/useAuth';
 import { useCleaners } from '@/hooks/useCleaners';
@@ -24,6 +25,7 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
   onOpenChange,
 }) => {
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const { isMobile, isTablet } = useDeviceType();
   const { createReport, updateReport, isCreatingReport, isUpdatingReport } = useTaskReports();
   const { data: existingReport, isLoading: isLoadingReport } = useTaskReport(task?.id || '');
@@ -291,6 +293,9 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
         .from('tasks')
         .update({ status: 'completed' })
         .eq('id', task.id);
+      
+      // Invalidar cache de tareas para que se recargue en el dashboard
+      queryClient.invalidateQueries({ queryKey: ['tasks'] });
       
       toast({
         title: "Reporte completado",
