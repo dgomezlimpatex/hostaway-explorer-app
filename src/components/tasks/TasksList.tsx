@@ -2,7 +2,6 @@
 import React from 'react';
 import { Task } from "@/types/calendar";
 import { TaskDetailsModal } from '@/components/modals/TaskDetailsModal';
-import { AssignCleanerModal } from '@/components/modals/AssignCleanerModal';
 import { TaskPreviewModal } from '@/components/modals/TaskPreviewModal';
 import { TaskCard } from './components/TaskCard';
 import { useTaskActions } from './hooks/useTaskActions';
@@ -41,15 +40,9 @@ export const TasksList = React.memo(({
     setIsModalOpen,
     openInEditMode,
     handleModalClose,
-    isAssignModalOpen,
-    setIsAssignModalOpen,
-    taskToAssign,
     handleEditTask,
     handleDeleteTask,
     handleUpdateTask,
-    handleQuickStatusChange,
-    handleAssignCleaner,
-    handleAssignCleanerComplete,
   } = useTaskActions();
 
   const [showPreviewModal, setShowPreviewModal] = React.useState(false);
@@ -60,14 +53,6 @@ export const TasksList = React.memo(({
     [tasks, filters]
   );
 
-  // Wrapper para handleAssignCleanerComplete que incluye refetch
-  const handleAssignCleanerCompleteWithRefetch = React.useCallback((taskId: string, cleanerId: string, cleaners: any[]) => {
-    handleAssignCleanerComplete(taskId, cleanerId, cleaners);
-    // Refrescar la lista después de asignar
-    if (onRefetch) {
-      setTimeout(() => onRefetch(), 500); // Pequeño delay para asegurar que la operación se complete
-    }
-  }, [handleAssignCleanerComplete, onRefetch]);
 
   if (isLoading) {
     return (
@@ -150,7 +135,6 @@ export const TasksList = React.memo(({
               onCreateReport={handleCreateReport}
               onEdit={handleEditTask}
               onDelete={handleDeleteTask}
-              onAssignCleaner={handleAssignCleaner}
               onAssignMultipleCleaners={onAssignMultipleCleaners}
             />
           ))}
@@ -174,15 +158,6 @@ export const TasksList = React.memo(({
         onOpenChange={setShowPreviewModal}
         onCreateReport={handleCreateReport}
         onEditTask={handleEditTask}
-        onAssignCleaner={handleAssignCleaner}
-      />
-
-      {/* Assign Cleaner Modal */}
-      <AssignCleanerModal
-        task={taskToAssign}
-        open={isAssignModalOpen}
-        onOpenChange={setIsAssignModalOpen}
-        onAssignCleaner={handleAssignCleanerCompleteWithRefetch}
       />
     </>
   );
