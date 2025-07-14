@@ -1,4 +1,5 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
@@ -20,8 +21,17 @@ export const DashboardMetricsCards = ({
   unassignedTasksCount,
   todayTasks
 }: DashboardMetricsCardsProps) => {
+  const navigate = useNavigate();
   const completedTasks = todayTasks.filter(t => t.status === 'completed').length;
   const progressPercentage = todayTasks.length > 0 ? (completedTasks / todayTasks.length) * 100 : 0;
+
+  const handleViewReports = () => {
+    navigate('/cleaning-reports');
+  };
+
+  const handleAssignTasks = () => {
+    navigate('/tasks');
+  };
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -42,7 +52,7 @@ export const DashboardMetricsCards = ({
                 variant="outline" 
                 size="sm" 
                 className="mt-3 border-orange-300 text-orange-700 hover:bg-orange-50"
-                onClick={() => window.location.href = '/cleaning-reports'}
+                onClick={handleViewReports}
               >
                 Ver Reportes
               </Button>
@@ -68,7 +78,7 @@ export const DashboardMetricsCards = ({
                 variant="outline" 
                 size="sm" 
                 className="mt-3 border-yellow-300 text-yellow-700 hover:bg-yellow-50"
-                onClick={() => window.location.href = '/tasks'}
+                onClick={handleAssignTasks}
               >
                 Asignar Tareas
               </Button>
