@@ -6,6 +6,7 @@ import { TaskHistoryModal } from './components/TaskHistoryModal';
 import { TaskReportModal } from '@/components/modals/TaskReportModal';
 import { CreateTaskModal } from '@/components/modals/CreateTaskModal';
 import { BatchCreateTaskModal } from '@/components/modals/BatchCreateTaskModal';
+import { AssignMultipleCleanersModal } from '@/components/modals/AssignMultipleCleanersModal';
 import { useTasksPageState } from '@/hooks/tasks/useTasksPageState';
 import { useTasksPageActions } from '@/hooks/tasks/useTasksPageActions';
 import { Task } from '@/types/calendar';
@@ -13,6 +14,8 @@ import { Task } from '@/types/calendar';
 export default function TasksPage() {
   const [selectedTaskForReport, setSelectedTaskForReport] = useState<Task | null>(null);
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
+  const [selectedTaskForMultipleAssignment, setSelectedTaskForMultipleAssignment] = useState<Task | null>(null);
+  const [isMultipleAssignmentModalOpen, setIsMultipleAssignmentModalOpen] = useState(false);
 
   const {
     searchTerm,
@@ -63,6 +66,19 @@ export default function TasksPage() {
     refetch();
   };
 
+  const handleAssignMultipleCleaners = (task: Task) => {
+    console.log('Opening multiple assignment modal for task:', task.id);
+    setSelectedTaskForMultipleAssignment(task);
+    setIsMultipleAssignmentModalOpen(true);
+  };
+
+  const handleMultipleAssignmentComplete = () => {
+    console.log('Multiple assignment completed, refreshing tasks...');
+    setIsMultipleAssignmentModalOpen(false);
+    setSelectedTaskForMultipleAssignment(null);
+    refetch();
+  };
+
   console.log('TasksPage - rendering with tasks:', tasks.length, 'filtered:', sortedTasks.length, 'paginated:', paginatedTasks.length, 'isLoading:', isLoading, 'unassigned:', unassignedTasks.length);
 
   return (
@@ -90,6 +106,7 @@ export default function TasksPage() {
         onFiltersChange={setFilters}
         onShowHistory={handleShowHistory}
         onCreateReport={handleCreateReport}
+        onAssignMultipleCleaners={handleAssignMultipleCleaners}
         onPageChange={handlePageChange}
         onRefetch={refetch}
       />
@@ -120,6 +137,13 @@ export default function TasksPage() {
         task={selectedTaskForReport}
         open={isReportModalOpen}
         onOpenChange={setIsReportModalOpen}
+      />
+
+      <AssignMultipleCleanersModal
+        task={selectedTaskForMultipleAssignment}
+        open={isMultipleAssignmentModalOpen}
+        onOpenChange={setIsMultipleAssignmentModalOpen}
+        onAssignComplete={handleMultipleAssignmentComplete}
       />
     </div>
   );

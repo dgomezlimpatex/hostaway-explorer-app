@@ -23,6 +23,7 @@ interface TaskCardProps {
   onCreateReport?: (task: Task) => void;
   onEditTask?: (task: Task) => void;
   onAssignCleaner?: (task: Task) => void;
+  onAssignMultipleCleaners?: (task: Task) => void;
   showActions?: boolean;
 }
 
@@ -36,6 +37,7 @@ export const TaskCard: React.FC<TaskCardProps> = ({
   onCreateReport,
   onEditTask,
   onAssignCleaner,
+  onAssignMultipleCleaners,
   showActions = true,
 }) => {
   const { isMobile, isTablet } = useDeviceType();
@@ -123,7 +125,7 @@ export const TaskCard: React.FC<TaskCardProps> = ({
             date={task.date}
           />
 
-          <TaskCardCleanerInfo cleaner={task.cleaner} />
+          <TaskCardCleanerInfo cleaner={task.cleaner} taskId={task.id} />
 
           <TaskCardServiceInfo
             type={task.type}
@@ -139,6 +141,7 @@ export const TaskCard: React.FC<TaskCardProps> = ({
             onCreateReport={onCreateReport}
             onOpenReport={handleOpenReport}
             onAssignCleaner={onAssignCleaner}
+            onAssignMultipleCleaners={onAssignMultipleCleaners}
             showActions={true}
           />
         </CardContent>

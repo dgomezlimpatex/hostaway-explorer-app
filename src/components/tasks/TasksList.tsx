@@ -21,6 +21,7 @@ interface TasksListProps {
   isLoading: boolean;
   onShowHistory?: (task: Task) => void;
   onCreateReport?: (task: Task) => void;
+  onAssignMultipleCleaners?: (task: Task) => void;
   onRefetch?: () => void;
 }
 
@@ -30,6 +31,7 @@ export const TasksList = React.memo(({
   isLoading, 
   onShowHistory,
   onCreateReport,
+  onAssignMultipleCleaners,
   onRefetch 
 }: TasksListProps) => {
   const { isMobile, isTablet } = useDeviceType();
@@ -149,6 +151,7 @@ export const TasksList = React.memo(({
               onEdit={handleEditTask}
               onDelete={handleDeleteTask}
               onAssignCleaner={handleAssignCleaner}
+              onAssignMultipleCleaners={onAssignMultipleCleaners}
             />
           ))}
         </div>

@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Button } from '@/components/ui/button';
-import { Edit, Trash, UserPlus } from 'lucide-react';
+import { Edit, Trash, UserPlus, Users } from 'lucide-react';
 import { Task } from '@/types/calendar';
 import { TaskReportButton } from './TaskReportButton';
 
@@ -13,6 +13,7 @@ interface TaskCardActionsProps {
   onCreateReport?: (task: Task) => void;
   onOpenReport: () => void;
   onAssignCleaner?: (task: Task) => void;
+  onAssignMultipleCleaners?: (task: Task) => void;
   showActions?: boolean;
 }
 
@@ -24,6 +25,7 @@ export const TaskCardActions: React.FC<TaskCardActionsProps> = ({
   onCreateReport,
   onOpenReport,
   onAssignCleaner,
+  onAssignMultipleCleaners,
   showActions = true,
 }) => {
   const handleEdit = () => {
@@ -51,6 +53,10 @@ export const TaskCardActions: React.FC<TaskCardActionsProps> = ({
 
   const handleAssignCleaner = () => {
     if (onAssignCleaner) onAssignCleaner(task);
+  };
+
+  const handleAssignMultipleCleaners = () => {
+    if (onAssignMultipleCleaners) onAssignMultipleCleaners(task);
   };
 
   if (!showActions) {
@@ -87,6 +93,17 @@ export const TaskCardActions: React.FC<TaskCardActionsProps> = ({
           >
             <UserPlus className="h-3.5 w-3.5" />
             Asignar
+          </Button>
+        )}
+        {onAssignMultipleCleaners && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleAssignMultipleCleaners}
+            className="flex items-center gap-2 px-3 py-1.5 h-8 bg-white hover:bg-purple-50 hover:text-purple-600 hover:border-purple-300 transition-all duration-200 rounded-md font-medium text-sm border-gray-300"
+          >
+            <Users className="h-3.5 w-3.5" />
+            Múltiples
           </Button>
         )}
       </div>

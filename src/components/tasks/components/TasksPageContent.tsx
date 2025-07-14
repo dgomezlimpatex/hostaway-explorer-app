@@ -28,6 +28,7 @@ interface TasksPageContentProps {
   onFiltersChange: (filters: any) => void;
   onShowHistory: (task: Task) => void;
   onCreateReport: (task: Task) => void;
+  onAssignMultipleCleaners?: (task: Task) => void;
   onPageChange: (page: number) => void;
   onRefetch: () => void;
 }
@@ -44,6 +45,7 @@ export const TasksPageContent = ({
   onFiltersChange,
   onShowHistory,
   onCreateReport,
+  onAssignMultipleCleaners,
   onPageChange,
   onRefetch,
 }: TasksPageContentProps) => {
@@ -81,6 +83,7 @@ export const TasksPageContent = ({
                       isLoading={isLoading} 
                       onShowHistory={onShowHistory}
                       onCreateReport={onCreateReport}
+                      onAssignMultipleCleaners={onAssignMultipleCleaners}
                       onRefetch={onRefetch}
                     />
                   </CardContent>
@@ -107,6 +110,7 @@ export const TasksPageContent = ({
                       isLoading={isLoading} 
                       onShowHistory={onShowHistory}
                       onCreateReport={onCreateReport}
+                      onAssignMultipleCleaners={onAssignMultipleCleaners}
                       onRefetch={onRefetch}
                     />
                   </CardContent>
@@ -147,6 +151,7 @@ export const TasksPageContent = ({
                 isLoading={isLoading} 
                 onShowHistory={onShowHistory}
                 onCreateReport={onCreateReport}
+                onAssignMultipleCleaners={onAssignMultipleCleaners}
                 onRefetch={onRefetch}
               />
               
@@ -210,6 +215,7 @@ export const TasksPageContent = ({
                 isLoading={isLoading} 
                 onShowHistory={onShowHistory}
                 onCreateReport={onCreateReport}
+                onAssignMultipleCleaners={onAssignMultipleCleaners}
                 onRefetch={onRefetch}
               />
               
