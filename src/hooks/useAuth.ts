@@ -47,23 +47,34 @@ export const useAuthProvider = (): AuthContextType => {
 
   const fetchProfile = async (userId: string) => {
     try {
+      console.log('🔍 Fetching profile for user:', userId);
+      
       const { data: profileData, error: profileError } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', userId)
-        .single();
+        .maybeSingle(); // Cambio de .single() a .maybeSingle() para evitar errores
 
-      if (profileError) throw profileError;
+      if (profileError) {
+        console.error('❌ Error fetching profile:', profileError);
+        throw profileError;
+      }
+
+      console.log('👤 Profile data found:', !!profileData, profileData?.email);
 
       const { data: roleData, error: roleError } = await supabase
         .rpc('get_user_role', { _user_id: userId });
 
-      if (roleError) console.error('Error fetching role:', roleError);
+      if (roleError) {
+        console.error('❌ Error fetching role:', roleError);
+      } else {
+        console.log('🎭 Role data found:', roleData);
+      }
 
       setProfile(profileData);
       setUserRole(roleData || null);
     } catch (error) {
-      console.error('Error fetching profile:', error);
+      console.error('❌ Error in fetchProfile:', error);
       setProfile(null);
       setUserRole(null);
     }

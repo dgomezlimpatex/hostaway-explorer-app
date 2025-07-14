@@ -4,6 +4,7 @@ import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import { useVerifyInvitation, useAcceptInvitation } from '@/hooks/useInvitations';
 import { useAuth } from '@/hooks/useAuth';
+import { debugInvitationFlow, testInvitationProcess } from '@/utils/invitationDebug';
 
 type InvitationStep = 'verify' | 'signup' | 'signin' | 'accept' | 'success';
 
@@ -33,12 +34,17 @@ export const useInvitationFlow = () => {
       return;
     }
 
-    console.log('Accepting invitation with token:', token);
+    console.log('🎯 Accepting invitation with token:', token);
     setStep('accept');
+    
+    // Debug: probar el proceso de aceptación
+    if (email) {
+      testInvitationProcess(token, email);
+    }
     
     acceptInvitation.mutate(token, {
       onSuccess: () => {
-        console.log('Invitation accepted successfully');
+        console.log('✅ Invitation accepted successfully');
         setStep('success');
         toast({
           title: 'Invitación aceptada',
@@ -203,6 +209,10 @@ export const useInvitationFlow = () => {
           });
         } else {
           console.log('Auto sign-in successful');
+          // Debug: verificar estado después del auto sign-in
+          setTimeout(() => {
+            debugInvitationFlow(email!);
+          }, 1000);
           // El useEffect se encargará de proceder con la aceptación de la invitación
         }
       }
