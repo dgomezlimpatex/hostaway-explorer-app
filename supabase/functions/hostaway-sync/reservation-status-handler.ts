@@ -26,8 +26,11 @@ export async function handleReservationStatusChange(
 
   let action: 'updated' | 'cancelled' = 'updated';
 
-  // Verificar si fue cancelada
-  if (reservation.status === 'cancelled' && existingReservation.status !== 'cancelled') {
+  // Verificar si fue cancelada (por status O por cancellation_date)
+  const isCurrentlyCancelled = reservation.status === 'cancelled' || reservation.cancellationDate;
+  const wasPreviouslyCancelled = existingReservation.status === 'cancelled' || existingReservation.cancellation_date;
+  
+  if (isCurrentlyCancelled && !wasPreviouslyCancelled) {
     console.log(`❌ Reserva cancelada: ${reservation.id}`);
     stats.cancelled_reservations++;
     action = 'cancelled';
