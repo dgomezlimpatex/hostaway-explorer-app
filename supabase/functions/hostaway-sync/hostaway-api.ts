@@ -88,7 +88,38 @@ async function fetchHostawayReservationsByCheckout(token: string, startDate: str
 
   const data = await response.json();
   console.log(`📊 Respuesta de API: ${data.result?.length || 0} reservas encontradas`);
-  return data.result || [];
+  
+  // Mapear correctamente los datos de la API de Hostaway
+  const mappedReservations: HostawayReservation[] = (data.result || []).map((apiReservation: any) => {
+    const mapped: HostawayReservation = {
+      id: apiReservation.id,
+      listingMapId: apiReservation.listingMapId,
+      listingName: apiReservation.listingName,
+      status: apiReservation.status,
+      arrivalDate: apiReservation.arrivalDate,
+      departureDate: apiReservation.departureDate,
+      reservationDate: apiReservation.reservationDate,
+      cancellationDate: apiReservation.cancellationDate || null, // MAPEO CRÍTICO FALTANTE
+      nights: apiReservation.nights,
+      adults: apiReservation.adults,
+      guestName: apiReservation.guestName
+    };
+    
+    // Log detallado para debugging
+    if (mapped.status === 'cancelled' || mapped.cancellationDate) {
+      console.log(`🔍 RESERVA CANCELADA DETECTADA:`);
+      console.log(`   - ID: ${mapped.id}`);
+      console.log(`   - Status: ${mapped.status}`);
+      console.log(`   - Cancellation Date: ${mapped.cancellationDate}`);
+      console.log(`   - Property: ${mapped.listingName} (${mapped.listingMapId})`);
+      console.log(`   - Guest: ${mapped.guestName}`);
+    }
+    
+    return mapped;
+  });
+  
+  console.log(`📊 Reservas mapeadas: ${mappedReservations.length}`);
+  return mappedReservations;
 }
 
 export async function fetchAllHostawayReservations(token: string, startDate: string, endDate: string): Promise<HostawayReservation[]> {

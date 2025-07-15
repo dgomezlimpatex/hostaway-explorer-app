@@ -5,52 +5,44 @@ import { HostawayReservation } from './types.ts';
  * Determines if a task should be created for a reservation based on its status
  */
 export function shouldCreateTaskForReservation(reservation: HostawayReservation): boolean {
-  const validStatuses = ['confirmed', 'new', 'modified'];
-  const invalidStatuses = ['cancelled', 'inquiry', 'declined', 'expired'];
+  console.log(`🔍 Evaluando si crear tarea para reserva ${reservation.id}: status="${reservation.status}", cancellationDate="${reservation.cancellationDate || 'NULL'}"`);
   
-  // PRIMERA VALIDACIÓN: Si tiene fecha de cancelación, NO crear tarea (independientemente del status)
-  if (reservation.cancellationDate) {
-    console.log(`❌ RESERVA CANCELADA: ${reservation.id} tiene cancellation_date: ${reservation.cancellationDate}`);
-    console.log(`❌ Status actual: ${reservation.status} - NO SE CREARÁ TAREA`);
-    return false;
-  }
-  
-  // SEGUNDA VALIDACIÓN: Verificar status
+  // REGLA CRÍTICA HOSTAWAY: Solo 3 estados posibles: new, modified, cancelled
+  const validHostawayStatuses = ['new', 'modified', 'cancelled'];
   const statusLower = reservation.status.toLowerCase();
   
-  if (invalidStatuses.includes(statusLower)) {
+  if (!validHostawayStatuses.includes(statusLower)) {
+    console.log(`❌ ESTADO INVÁLIDO: ${reservation.id} tiene status desconocido: ${reservation.status}`);
     return false;
   }
   
-  // TERCERA VALIDACIÓN: Detectar casos sospechosos de "modified" 
+  // REGLA 1: Si status es 'cancelled', NO crear tarea NUNCA
+  if (statusLower === 'cancelled') {
+    console.log(`❌ NO CREAR TAREA: Reserva ${reservation.id} status=cancelled`);
+    return false;
+  }
+  
+  // REGLA 2: Si tiene fecha de cancelación, NO crear tarea NUNCA (independientemente del status)
+  if (reservation.cancellationDate) {
+    console.log(`❌ NO CREAR TAREA: Reserva ${reservation.id} tiene cancellation_date: ${reservation.cancellationDate}`);
+    console.log(`❌ Status actual: ${reservation.status} - IGNORADO, cancellation_date prevalece`);
+    return false;
+  }
+  
+  // REGLA 3: Solo 'new' y 'modified' CREAN tareas
+  if (statusLower === 'new') {
+    console.log(`✅ CREAR TAREA: Reserva ${reservation.id} status=new`);
+    return true;
+  }
+  
   if (statusLower === 'modified') {
-    
-    // Si la reservation_date es muy antigua comparada con arrival_date, podría ser sospechoso
-    if (reservation.reservationDate && reservation.arrivalDate) {
-      const reservationDate = new Date(reservation.reservationDate);
-      const arrivalDate = new Date(reservation.arrivalDate);
-      const daysDiff = Math.abs(arrivalDate.getTime() - reservationDate.getTime()) / (1000 * 60 * 60 * 24);
-      
-      if (daysDiff > 90) {
-        console.log(`⚠️ CASO SOSPECHOSO: Reserva ${reservation.id} muy antigua (${Math.round(daysDiff)} días) con status "modified"`);
-        console.log(`⚠️ Puede ser una reserva cancelada que Hostaway no actualizó correctamente`);
-      }
-    }
-  }
-  
-  if (validStatuses.includes(statusLower)) {
+    console.log(`✅ CREAR TAREA: Reserva ${reservation.id} status=modified`);
     return true;
   }
   
-  // IMPLEMENTADO: Política para awaiting_payment - crear tarea inmediatamente
-  if (statusLower === 'awaiting_payment') {
-    console.log(`✅ Reserva en awaiting_payment: ${reservation.id} - creando tarea inmediatamente (política definida)`);
-    return true;
-  }
-  
-  // Para otros statuses, asumir que sí se debe crear tarea (enfoque conservador)
-  console.log(`⚠️ Status desconocido: ${reservation.status}, creando tarea por precaución`);
-  return true;
+  // Solo debería llegar aquí si hay un error en la lógica anterior
+  console.log(`❌ ERROR LÓGICO: Llegó al final con status inesperado: ${reservation.status}`);
+  return false;
 }
 
 /**
@@ -64,21 +56,25 @@ export function getTaskCreationReason(reservation: HostawayReservation): string 
   
   const statusLower = reservation.status.toLowerCase();
   
+  // Verificar cancelación por status
   if (statusLower === 'cancelled') {
-    return 'Reserva cancelada';
-  }
-  if (statusLower === 'inquiry') {
-    return 'Solo es una consulta, no una reserva confirmada';
-  }
-  if (statusLower === 'declined') {
-    return 'Reserva rechazada';
-  }
-  if (statusLower === 'expired') {
-    return 'Reserva expirada';
-  }
-  if (statusLower === 'awaiting_payment') {
-    return 'Reserva pendiente de pago - se crea tarea inmediatamente (política aplicada)';
+    return 'Reserva cancelada (status: cancelled)';
   }
   
-  return 'Status válido para crear tarea';
+  // Estados válidos que crean tareas
+  if (statusLower === 'new') {
+    return 'Reserva nueva - se crea tarea';
+  }
+  
+  if (statusLower === 'modified') {
+    return 'Reserva modificada - se crea tarea';
+  }
+  
+  // Estados inválidos de Hostaway
+  const validHostawayStatuses = ['new', 'modified', 'cancelled'];
+  if (!validHostawayStatuses.includes(statusLower)) {
+    return `Estado desconocido de Hostaway: ${reservation.status}`;
+  }
+  
+  return 'Status procesado correctamente';
 }
