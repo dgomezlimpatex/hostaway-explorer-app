@@ -8,21 +8,22 @@ export function shouldCreateTaskForReservation(reservation: HostawayReservation)
   const validStatuses = ['confirmed', 'new', 'modified'];
   const invalidStatuses = ['cancelled', 'inquiry', 'declined', 'expired'];
   
-  // Verificar status
+  // PRIMERA VALIDACIÓN: Si tiene fecha de cancelación, NO crear tarea (independientemente del status)
+  if (reservation.cancellationDate) {
+    console.log(`❌ RESERVA CANCELADA: ${reservation.id} tiene cancellation_date: ${reservation.cancellationDate}`);
+    console.log(`❌ Status actual: ${reservation.status} - NO SE CREARÁ TAREA`);
+    return false;
+  }
+  
+  // SEGUNDA VALIDACIÓN: Verificar status
   const statusLower = reservation.status.toLowerCase();
   
   if (invalidStatuses.includes(statusLower)) {
     return false;
   }
   
-  // NUEVA VALIDACIÓN: Detectar casos sospechosos de "modified" 
+  // TERCERA VALIDACIÓN: Detectar casos sospechosos de "modified" 
   if (statusLower === 'modified') {
-    // Si tiene cancellation_date pero status es "modified", es sospechoso
-    if (reservation.cancellationDate) {
-      console.log(`⚠️ CASO SOSPECHOSO: Reserva ${reservation.id} con status "modified" pero tiene cancellation_date: ${reservation.cancellationDate}`);
-      console.log(`⚠️ Posible inconsistencia en Hostaway - tratando como cancelada`);
-      return false;
-    }
     
     // Si la reservation_date es muy antigua comparada con arrival_date, podría ser sospechoso
     if (reservation.reservationDate && reservation.arrivalDate) {
@@ -56,6 +57,11 @@ export function shouldCreateTaskForReservation(reservation: HostawayReservation)
  * Explains why a task creation decision was made
  */
 export function getTaskCreationReason(reservation: HostawayReservation): string {
+  // PRIMERA PRIORIDAD: Verificar fecha de cancelación
+  if (reservation.cancellationDate) {
+    return `Reserva cancelada (fecha de cancelación: ${reservation.cancellationDate})`;
+  }
+  
   const statusLower = reservation.status.toLowerCase();
   
   if (statusLower === 'cancelled') {
