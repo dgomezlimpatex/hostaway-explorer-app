@@ -42,21 +42,47 @@ export class DuplicatePreventionService {
       }
 
       // 2. Buscar por nombre de propiedad y fecha de checkout - CON VERIFICACIÓN DE STATUS
+      // CORREGIDO: Usar LEFT JOIN para incluir todas las tareas, incluso sin reserva asociada
       const { data: existingTasks } = await this.supabase
         .from('tasks')
         .select(`
-          id, property, date, cleaner, cleaner_id,
-          hostaway_reservations!inner(hostaway_reservation_id, status)
+          id, property, date, cleaner, cleaner_id, created_at,
+          hostaway_reservations(hostaway_reservation_id, status)
         `)
         .eq('property', propertyName)
-        .eq('date', checkoutDate);
+        .eq('date', checkoutDate)
+        .order('created_at', { ascending: true });
 
       if (existingTasks && existingTasks.length > 0) {
         console.log(`🔍 ENCONTRADAS ${existingTasks.length} tarea(s) existente(s) para ${propertyName} - ${checkoutDate}`);
         
-        // Verificar si alguna tarea es de una reserva VÁLIDA (no cancelada)
+        // CORREGIDO: Verificar duplicados por ID de reserva específica PRIMERO
+        const sameReservationTasks = existingTasks.filter(task => {
+          const reservation = task.hostaway_reservations;
+          const isSameReservation = reservation?.hostaway_reservation_id === hostawayReservationId;
+          
+          if (isSameReservation) {
+            console.log(`   - 🎯 TAREA DE LA MISMA RESERVA: ${task.id} - Reserva ${reservation?.hostaway_reservation_id}`);
+          }
+          
+          return isSameReservation;
+        });
+
+        // Si ya hay una tarea para esta reserva específica, es un duplicado
+        if (sameReservationTasks.length > 0) {
+          console.log(`✅ DUPLICADO DETECTADO: Ya existe tarea para la reserva ${hostawayReservationId}`);
+          return true;
+        }
+
+        // Verificar si alguna OTRA tarea es de una reserva VÁLIDA (no cancelada)
         const validTasks = existingTasks.filter(task => {
           const reservation = task.hostaway_reservations;
+          
+          // Skip tareas sin reserva asociada o de la misma reserva (ya verificadas arriba)
+          if (!reservation || reservation.hostaway_reservation_id === hostawayReservationId) {
+            return false;
+          }
+          
           const status = reservation?.status?.toLowerCase() || '';
           const isValid = !['cancelled', 'inquiry', 'declined', 'expired'].includes(status);
           
