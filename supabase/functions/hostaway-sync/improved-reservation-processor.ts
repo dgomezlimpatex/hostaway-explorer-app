@@ -48,7 +48,106 @@ export class ImprovedReservationProcessor {
 
     console.log(`✅ Propiedad encontrada: ${property.nombre}`);
 
-    // VERIFICACIÓN CRÍTICA: Comprobar duplicados ANTES de crear cualquier cosa
+    // VERIFICACIÓN CRÍTICA: Si la reserva está cancelada, limpiar task_id ANTES de verificar duplicados
+    const isCurrentlyCancelled = reservation.status === 'cancelled' || reservation.cancellationDate;
+    
+    if (isCurrentlyCancelled) {
+      console.log(`🚫 RESERVA CANCELADA DETECTADA: ${reservation.id} - Verificando si tiene tarea asignada`);
+      
+      const existingReservation = await getExistingReservation(reservation.id);
+      
+      if (existingReservation && existingReservation.task_id) {
+        console.log(`🗑️ ELIMINANDO TAREA DE RESERVA CANCELADA: ${existingReservation.task_id}`);
+        
+        try {
+          // Eliminar la tarea
+          const { error: deleteError } = await this.supabase
+            .from('tasks')
+            .delete()
+            .eq('id', existingReservation.task_id);
+            
+          if (deleteError) {
+            console.error(`❌ Error eliminando tarea ${existingReservation.task_id}:`, deleteError);
+            stats.errors.push(`Error eliminando tarea cancelada ${existingReservation.task_id}: ${deleteError.message}`);
+          } else {
+            console.log(`✅ Tarea cancelada eliminada: ${existingReservation.task_id}`);
+            
+            // Limpiar task_id de la reserva
+            await this.supabase
+              .from('hostaway_reservations')
+              .update({ 
+                task_id: null,
+                status: reservation.status,
+                cancellation_date: reservation.cancellationDate || null,
+                last_sync_at: new Date().toISOString()
+              })
+              .eq('id', existingReservation.id);
+              
+            stats.cancelled_reservations++;
+            
+            // Agregar detalles de cancelación
+            if (!stats.reservations_details) stats.reservations_details = [];
+            stats.reservations_details.push({
+              reservation_id: reservation.id,
+              property_name: property.nombre,
+              guest_name: reservation.guestName,
+              listing_id: reservation.listingMapId,
+              status: reservation.status,
+              arrival_date: reservation.arrivalDate,
+              departure_date: reservation.departureDate,
+              action: 'cancelled'
+            });
+            
+            console.log(`✅ Reserva cancelada procesada correctamente: ${reservation.id}`);
+          }
+        } catch (error) {
+          console.error(`❌ Error procesando reserva cancelada ${reservation.id}:`, error);
+          stats.errors.push(`Error procesando cancelación ${reservation.id}: ${error.message}`);
+        }
+      }
+      
+      // Para reservas canceladas, no crear nuevas tareas ni continuar procesando
+      if (!existingReservation) {
+        // Si es una nueva reserva cancelada, crearla sin tarea
+        console.log(`📝 Creando nueva reserva cancelada sin tarea: ${reservation.id}`);
+        
+        const reservationData = {
+          hostaway_reservation_id: reservation.id,
+          property_id: property.id,
+          cliente_id: property.cliente_id,
+          arrival_date: reservation.arrivalDate,
+          departure_date: reservation.departureDate,
+          reservation_date: reservation.reservationDate,
+          cancellation_date: reservation.cancellationDate || null,
+          nights: reservation.nights,
+          status: reservation.status,
+          adults: reservation.adults,
+          task_id: null,
+          last_sync_at: new Date().toISOString()
+        };
+
+        await insertReservation(reservationData);
+        stats.cancelled_reservations++;
+        
+        // Agregar detalles de reserva cancelada
+        if (!stats.reservations_details) stats.reservations_details = [];
+        stats.reservations_details.push({
+          reservation_id: reservation.id,
+          property_name: property.nombre,
+          guest_name: reservation.guestName,
+          listing_id: reservation.listingMapId,
+          status: reservation.status,
+          arrival_date: reservation.arrivalDate,
+          departure_date: reservation.departureDate,
+          action: 'created'
+        });
+      }
+      
+      stats.reservations_processed++;
+      return; // Salir temprano para reservas canceladas
+    }
+
+    // VERIFICACIÓN CRÍTICA: Comprobar duplicados SOLO para reservas NO canceladas
     const isDuplicate = await this.duplicateChecker.checkForExistingTask(
       reservation.id,
       property.nombre,
