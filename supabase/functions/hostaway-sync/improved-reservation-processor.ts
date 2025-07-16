@@ -99,24 +99,23 @@ export class ImprovedReservationProcessor {
           } else {
             console.log(`⚠️ Tarea ${taskId} no eliminada - está siendo usada por ${otherReservations?.length || 0} otras reservas`);
           }
-              
-            stats.cancelled_reservations++;
-            
-            // Agregar detalles de cancelación
-            if (!stats.reservations_details) stats.reservations_details = [];
-            stats.reservations_details.push({
-              reservation_id: reservation.id,
-              property_name: property.nombre,
-              guest_name: reservation.guestName,
-              listing_id: reservation.listingMapId,
-              status: reservation.status,
-              arrival_date: reservation.arrivalDate,
-              departure_date: reservation.departureDate,
-              action: 'cancelled'
-            });
-            
-            console.log(`✅ Reserva cancelada procesada correctamente: ${reservation.id}`);
-          }
+          
+          stats.cancelled_reservations++;
+          
+          // Agregar detalles de cancelación
+          if (!stats.reservations_details) stats.reservations_details = [];
+          stats.reservations_details.push({
+            reservation_id: reservation.id,
+            property_name: property.nombre,
+            guest_name: reservation.guestName,
+            listing_id: reservation.listingMapId,
+            status: reservation.status,
+            arrival_date: reservation.arrivalDate,
+            departure_date: reservation.departureDate,
+            action: 'cancelled'
+          });
+          
+          console.log(`✅ Reserva cancelada procesada correctamente: ${reservation.id}`);
         } catch (error) {
           console.error(`❌ Error procesando reserva cancelada ${reservation.id}:`, error);
           stats.errors.push(`Error procesando cancelación ${reservation.id}: ${error.message}`);
