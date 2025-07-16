@@ -60,28 +60,45 @@ export class ImprovedReservationProcessor {
         console.log(`🗑️ ELIMINANDO TAREA DE RESERVA CANCELADA: ${existingReservation.task_id}`);
         
         try {
-          // Eliminar la tarea
-          const { error: deleteError } = await this.supabase
-            .from('tasks')
-            .delete()
-            .eq('id', existingReservation.task_id);
+          const taskId = existingReservation.task_id;
+          
+          // PASO 1: Limpiar task_id de la reserva PRIMERO
+          await this.supabase
+            .from('hostaway_reservations')
+            .update({ 
+              task_id: null,
+              status: reservation.status,
+              cancellation_date: reservation.cancellationDate || null,
+              last_sync_at: new Date().toISOString()
+            })
+            .eq('id', existingReservation.id);
             
-          if (deleteError) {
-            console.error(`❌ Error eliminando tarea ${existingReservation.task_id}:`, deleteError);
-            stats.errors.push(`Error eliminando tarea cancelada ${existingReservation.task_id}: ${deleteError.message}`);
+          console.log(`✅ task_id limpiado de la reserva: ${reservation.id}`);
+          
+          // PASO 2: Verificar si otras reservas usan la misma tarea
+          const { data: otherReservations, error: checkError } = await this.supabase
+            .from('hostaway_reservations')
+            .select('id')
+            .eq('task_id', taskId);
+            
+          if (checkError) {
+            console.error(`❌ Error verificando otras reservas:`, checkError);
+          } else if (otherReservations && otherReservations.length === 0) {
+            // PASO 3: Solo eliminar la tarea si no hay otras reservas usándola
+            const { error: deleteError } = await this.supabase
+              .from('tasks')
+              .delete()
+              .eq('id', taskId);
+              
+            if (deleteError) {
+              console.error(`❌ Error eliminando tarea ${taskId}:`, deleteError);
+              stats.errors.push(`Error eliminando tarea cancelada ${taskId}: ${deleteError.message}`);
+            } else {
+              console.log(`✅ Tarea eliminada: ${taskId}`);
+            }
           } else {
-            console.log(`✅ Tarea cancelada eliminada: ${existingReservation.task_id}`);
-            
-            // Limpiar task_id de la reserva
-            await this.supabase
-              .from('hostaway_reservations')
-              .update({ 
-                task_id: null,
-                status: reservation.status,
-                cancellation_date: reservation.cancellationDate || null,
-                last_sync_at: new Date().toISOString()
-              })
-              .eq('id', existingReservation.id);
+            console.log(`⚠️ Tarea ${taskId} no eliminada - está siendo usada por ${otherReservations?.length || 0} otras reservas`);
+          }
               
             stats.cancelled_reservations++;
             
