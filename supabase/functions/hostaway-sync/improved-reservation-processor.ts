@@ -7,6 +7,7 @@ import {
   createTaskForReservation
 } from './database-operations.ts';
 import { shouldCreateTaskForReservation, getTaskCreationReason } from './reservation-validator.ts';
+import { handleReservationStatusChange, handleUnchangedReservation } from './reservation-status-handler.ts';
 import { DuplicatePreventionService } from './duplicate-prevention.ts';
 
 export class ImprovedReservationProcessor {
@@ -157,18 +158,46 @@ export class ImprovedReservationProcessor {
     property: any,
     stats: SyncStats
   ): Promise<void> {
+    // Crear datos de reserva actualizados
+    const reservationData = {
+      hostaway_reservation_id: reservation.id,
+      property_id: property.id,
+      cliente_id: property.cliente_id,
+      arrival_date: reservation.arrivalDate,
+      departure_date: reservation.departureDate,
+      reservation_date: reservation.reservationDate,
+      cancellation_date: reservation.cancellationDate || null,
+      nights: reservation.nights,
+      status: reservation.status,
+      adults: reservation.adults,
+      last_sync_at: new Date().toISOString()
+    };
+
     // Verificar si hay cambios significativos
     const hasChanges = 
       existingReservation.status !== reservation.status ||
       existingReservation.departure_date !== reservation.departureDate ||
-      existingReservation.arrival_date !== reservation.arrivalDate;
+      existingReservation.arrival_date !== reservation.arrivalDate ||
+      existingReservation.cancellation_date !== (reservation.cancellationDate || null);
 
     if (hasChanges) {
-      console.log(`📝 Actualizando reserva existente`);
-      // Aquí podrías implementar la lógica de actualización
-      stats.updated_reservations++;
+      console.log(`📝 Cambios detectados - usando handleReservationStatusChange`);
+      await handleReservationStatusChange(
+        reservation, 
+        existingReservation, 
+        property, 
+        reservationData, 
+        stats
+      );
     } else {
-      console.log(`✅ Reserva sin cambios`);
+      console.log(`✅ Sin cambios - usando handleUnchangedReservation`);
+      await handleUnchangedReservation(
+        reservation, 
+        existingReservation, 
+        property, 
+        reservationData, 
+        stats
+      );
     }
   }
 
