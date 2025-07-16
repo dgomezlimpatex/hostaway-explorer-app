@@ -6,6 +6,7 @@ import {
   insertReservation,
   createTaskForReservation
 } from './database-operations.ts';
+import { shouldCreateTaskForReservation, getTaskCreationReason } from './reservation-validator.ts';
 import { DuplicatePreventionService } from './duplicate-prevention.ts';
 
 export class ImprovedReservationProcessor {
@@ -74,11 +75,36 @@ export class ImprovedReservationProcessor {
     stats: SyncStats
   ): Promise<void> {
     try {
-      // Crear la tarea primero
-      const task = await createTaskForReservation(reservation, property);
-      console.log(`✅ Tarea creada: ${task.id}`);
+      // VALIDACIÓN CRÍTICA: Verificar si debe crear tarea
+      const shouldCreateTask = shouldCreateTaskForReservation(reservation);
+      console.log(`🔍 ¿Crear tarea para reserva ${reservation.id}? ${shouldCreateTask}`);
+      console.log(`📋 Motivo: ${getTaskCreationReason(reservation)}`);
+      
+      let taskId = null;
+      
+      if (shouldCreateTask) {
+        // Crear la tarea solo si pasa la validación
+        const task = await createTaskForReservation(reservation, property);
+        taskId = task.id;
+        stats.tasks_created++;
+        console.log(`✅ Tarea creada: ${task.id}`);
+        
+        // Agregar detalles de la tarea creada
+        if (!stats.tasks_details) stats.tasks_details = [];
+        stats.tasks_details.push({
+          reservation_id: reservation.id,
+          property_name: property.nombre,
+          task_id: task.id,
+          task_date: reservation.departureDate,
+          guest_name: reservation.guestName,
+          listing_id: reservation.listingMapId,
+          status: reservation.status
+        });
+      } else {
+        console.log(`⏭️ NO se crea tarea: ${getTaskCreationReason(reservation)}`);
+      }
 
-      // Crear la reserva con referencia a la tarea
+      // Crear la reserva con referencia a la tarea (o sin tarea si es cancelada)
       const reservationData = {
         hostaway_reservation_id: reservation.id,
         property_id: property.id,
@@ -90,28 +116,16 @@ export class ImprovedReservationProcessor {
         nights: reservation.nights,
         status: reservation.status,
         adults: reservation.adults,
-        task_id: task.id,
+        task_id: taskId, // Puede ser null para reservas canceladas
         last_sync_at: new Date().toISOString()
       };
 
       await insertReservation(reservationData);
       
       stats.new_reservations++;
-      stats.tasks_created++;
       
-      // Agregar detalles
-      if (!stats.tasks_details) stats.tasks_details = [];
+      // Agregar detalles de reserva
       if (!stats.reservations_details) stats.reservations_details = [];
-      
-      stats.tasks_details.push({
-        reservation_id: reservation.id,
-        property_name: property.nombre,
-        task_id: task.id,
-        task_date: reservation.departureDate,
-        guest_name: reservation.guestName,
-        listing_id: reservation.listingMapId,
-        status: reservation.status
-      });
 
       stats.reservations_details.push({
         reservation_id: reservation.id,
@@ -124,7 +138,11 @@ export class ImprovedReservationProcessor {
         action: 'created'
       });
 
-      console.log(`✅ Nueva reserva y tarea creadas exitosamente`);
+      if (taskId) {
+        console.log(`✅ Nueva reserva y tarea creadas exitosamente`);
+      } else {
+        console.log(`✅ Nueva reserva creada (sin tarea por estado: ${reservation.status})`);
+      }
 
     } catch (error) {
       const errorMsg = `Error creando nueva reserva ${reservation.id}: ${error.message}`;
@@ -164,22 +182,17 @@ export class ImprovedReservationProcessor {
     property: any,
     stats: SyncStats
   ): Promise<string | null> {
-    console.log(`📋 Creando tarea faltante para reserva existente: ${reservation.id}`);
+    console.log(`📋 Evaluando tarea faltante para reserva existente: ${reservation.id}`);
     console.log(`📋 Propiedad: ${property.nombre}, Status: ${reservation.status}`);
     
-    // Verificar si debe crear tarea
-    const validStatuses = ['confirmed', 'new', 'modified', 'awaiting_payment'];
-    const invalidStatuses = ['cancelled', 'inquiry', 'declined', 'expired'];
+    // USAR LA VALIDACIÓN CORRECTA Y COMPLETA
+    const shouldCreateTask = shouldCreateTaskForReservation(reservation);
+    console.log(`🔍 ¿Crear tarea faltante? ${shouldCreateTask}`);
+    console.log(`📋 Motivo: ${getTaskCreationReason(reservation)}`);
     
-    const statusLower = reservation.status.toLowerCase();
-    
-    if (invalidStatuses.includes(statusLower)) {
-      console.log(`⏭️ No se crea tarea para status: ${reservation.status}`);
+    if (!shouldCreateTask) {
+      console.log(`⏭️ No se crea tarea: ${getTaskCreationReason(reservation)}`);
       return null;
-    }
-    
-    if (!validStatuses.includes(statusLower)) {
-      console.log(`⚠️ Status desconocido: ${reservation.status}, creando tarea por precaución`);
     }
 
     try {
