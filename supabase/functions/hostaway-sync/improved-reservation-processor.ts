@@ -12,9 +12,13 @@ import { DuplicatePreventionService } from './duplicate-prevention.ts';
 
 export class ImprovedReservationProcessor {
   private duplicateChecker: DuplicatePreventionService;
+  private supabase;
 
   constructor(supabaseUrl: string, supabaseServiceKey: string) {
     this.duplicateChecker = new DuplicatePreventionService(supabaseUrl, supabaseServiceKey);
+    // Crear cliente Supabase para operaciones directas
+    const { createClient } = await import("https://esm.sh/@supabase/supabase-js@2.50.0");
+    this.supabase = createClient(supabaseUrl, supabaseServiceKey);
   }
 
   async processReservation(
@@ -158,7 +162,65 @@ export class ImprovedReservationProcessor {
     property: any,
     stats: SyncStats
   ): Promise<void> {
-    // Crear datos de reserva actualizados
+    // VERIFICACIÓN CRÍTICA: Si la reserva está cancelada pero tiene tarea, eliminarla
+    const isCurrentlyCancelled = reservation.status === 'cancelled' || reservation.cancellationDate;
+    
+    if (isCurrentlyCancelled && existingReservation.task_id) {
+      console.log(`🚫 DETECTADA RESERVA CANCELADA CON TAREA: ${reservation.id}`);
+      console.log(`   - Status: ${reservation.status}`);
+      console.log(`   - Cancellation Date: ${reservation.cancellationDate || 'NULL'}`);
+      console.log(`   - Task ID a eliminar: ${existingReservation.task_id}`);
+      
+      // Eliminar la tarea incorrecta
+      try {
+        const { error: deleteError } = await this.supabase
+          .from('tasks')
+          .delete()
+          .eq('id', existingReservation.task_id);
+          
+        if (deleteError) {
+          console.error(`❌ Error eliminando tarea ${existingReservation.task_id}:`, deleteError);
+          stats.errors.push(`Error eliminando tarea cancelada ${existingReservation.task_id}: ${deleteError.message}`);
+        } else {
+          console.log(`✅ Tarea cancelada eliminada: ${existingReservation.task_id}`);
+          
+          // Limpiar task_id de la reserva
+          await this.supabase
+            .from('hostaway_reservations')
+            .update({ 
+              task_id: null,
+              status: reservation.status,
+              cancellation_date: reservation.cancellationDate || null,
+              last_sync_at: new Date().toISOString()
+            })
+            .eq('id', existingReservation.id);
+            
+          stats.cancelled_reservations++;
+          
+          // Agregar detalles de cancelación
+          if (!stats.reservations_details) stats.reservations_details = [];
+          stats.reservations_details.push({
+            reservation_id: reservation.id,
+            property_name: property.nombre,
+            guest_name: reservation.guestName,
+            listing_id: reservation.listingMapId,
+            status: reservation.status,
+            arrival_date: reservation.arrivalDate,
+            departure_date: reservation.departureDate,
+            action: 'cancelled'
+          });
+          
+          console.log(`✅ Reserva cancelada procesada correctamente: ${reservation.id}`);
+        }
+      } catch (error) {
+        console.error(`❌ Error procesando reserva cancelada ${reservation.id}:`, error);
+        stats.errors.push(`Error procesando cancelación ${reservation.id}: ${error.message}`);
+      }
+      
+      return; // Salir temprano, no procesar más cambios
+    }
+
+    // Crear datos de reserva actualizados para reservas NO canceladas
     const reservationData = {
       hostaway_reservation_id: reservation.id,
       property_id: property.id,
