@@ -9,6 +9,7 @@ import {
 import { shouldCreateTaskForReservation, getTaskCreationReason } from './reservation-validator.ts';
 import { handleReservationStatusChange, handleUnchangedReservation } from './reservation-status-handler.ts';
 import { DuplicatePreventionService } from './duplicate-prevention.ts';
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.50.0";
 
 export class ImprovedReservationProcessor {
   private duplicateChecker: DuplicatePreventionService;
@@ -17,7 +18,6 @@ export class ImprovedReservationProcessor {
   constructor(supabaseUrl: string, supabaseServiceKey: string) {
     this.duplicateChecker = new DuplicatePreventionService(supabaseUrl, supabaseServiceKey);
     // Crear cliente Supabase para operaciones directas
-    const { createClient } = await import("https://esm.sh/@supabase/supabase-js@2.50.0");
     this.supabase = createClient(supabaseUrl, supabaseServiceKey);
   }
 
