@@ -137,6 +137,7 @@ export const useCalendarLogic = () => {
 
   // Memoized handlers with useCallback
   const handleNewTask = useCallback(() => {
+    console.log('🔵 useCalendarLogic - handleNewTask called, opening modal');
     setIsCreateModalOpen(true);
   }, []);
 
