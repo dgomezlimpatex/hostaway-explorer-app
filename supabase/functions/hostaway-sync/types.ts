@@ -25,12 +25,8 @@ export interface SyncStats {
   updated_reservations: number;
   cancelled_reservations: number;
   tasks_created: number;
-  tasks_deleted: number;
-  tasks_modified: number;
   errors: string[];
   tasks_details?: TaskDetail[];
-  tasks_deleted_details?: TaskDetail[];
-  tasks_modified_details?: TaskDetail[];
   reservations_details?: ReservationDetail[];
 }
 
@@ -42,7 +38,6 @@ export interface TaskDetail {
   guest_name: string;
   listing_id: number;
   status: string;
-  action?: 'created' | 'deleted' | 'modified';
 }
 
 export interface ReservationDetail {

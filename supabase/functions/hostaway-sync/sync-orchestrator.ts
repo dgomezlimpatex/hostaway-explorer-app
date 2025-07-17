@@ -18,12 +18,8 @@ export class SyncOrchestrator {
       updated_reservations: 0,
       cancelled_reservations: 0,
       tasks_created: 0,
-      tasks_deleted: 0,
-      tasks_modified: 0,
       errors: [],
       tasks_details: [],
-      tasks_deleted_details: [],
-      tasks_modified_details: [],
       reservations_details: []
     };
   }

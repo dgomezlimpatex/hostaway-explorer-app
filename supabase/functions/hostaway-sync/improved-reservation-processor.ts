@@ -299,20 +299,6 @@ export class ImprovedReservationProcessor {
         } else {
           console.log(`✅ Tarea cancelada eliminada: ${existingReservation.task_id}`);
           
-          // Registrar la tarea eliminada en las estadísticas
-          stats.tasks_deleted++;
-          if (!stats.tasks_deleted_details) stats.tasks_deleted_details = [];
-          stats.tasks_deleted_details.push({
-            reservation_id: reservation.id,
-            property_name: property.nombre,
-            task_id: existingReservation.task_id,
-            task_date: reservation.departureDate,
-            guest_name: reservation.guestName,
-            listing_id: reservation.listingMapId,
-            status: reservation.status,
-            action: 'deleted'
-          });
-          
           // Limpiar task_id de la reserva
           await this.supabase
             .from('hostaway_reservations')
