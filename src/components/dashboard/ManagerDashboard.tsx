@@ -25,7 +25,7 @@ export const ManagerDashboard = () => {
   const { canAccessModule } = useRolePermissions();
   const isMobile = useIsMobile();
   
-  // Hook para manejar las acciones de tareas
+  // Hook para manejar las acciones de tareas con la fecha correcta
   const {
     isCreateModalOpen,
     setIsCreateModalOpen,
@@ -35,7 +35,7 @@ export const ManagerDashboard = () => {
     handleBatchCreateTasks,
     handleOpenCreateModal,
     handleOpenBatchModal
-  } = useTasksPageActions();
+  } = useTasksPageActions(selectedDate);
   
   // Obtener tareas del mes actual
   const { tasks } = useOptimizedTasks({
