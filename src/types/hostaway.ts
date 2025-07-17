@@ -7,6 +7,7 @@ export interface TaskDetail {
   guest_name: string;
   listing_id: number;
   status: string;
+  action?: 'created' | 'deleted' | 'modified';
 }
 
 export interface ReservationDetail {
@@ -30,8 +31,12 @@ export interface HostawaySyncLog {
   updated_reservations: number | null;
   cancelled_reservations: number | null;
   tasks_created: number | null;
+  tasks_deleted?: number | null;
+  tasks_modified?: number | null;
   errors: string[] | null;
   tasks_details: TaskDetail[] | null;
+  tasks_deleted_details?: TaskDetail[] | null;
+  tasks_modified_details?: TaskDetail[] | null;
   reservations_details: ReservationDetail[] | null;
   created_at: string;
 }
