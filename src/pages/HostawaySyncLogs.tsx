@@ -191,7 +191,7 @@ const HostawaySyncLogs = () => {
                         {log.updated_reservations || 0}
                       </div>
                       <div className="text-sm text-yellow-700 dark:text-yellow-300">
-                        Reservas actualizadas
+                        Reservas modificadas
                       </div>
                     </div>
                     <div className="bg-red-50 dark:bg-red-900/20 p-4 rounded-lg">
@@ -199,7 +199,7 @@ const HostawaySyncLogs = () => {
                         {log.cancelled_reservations || 0}
                       </div>
                       <div className="text-sm text-red-700 dark:text-red-300">
-                        Reservas canceladas
+                        Reservas anuladas
                       </div>
                     </div>
                   </div>
@@ -218,7 +218,7 @@ const HostawaySyncLogs = () => {
                         {log.tasks_cancelled || 0}
                       </div>
                       <div className="text-sm text-orange-700 dark:text-orange-300">
-                        Tareas canceladas
+                        Tareas eliminadas
                       </div>
                     </div>
                     <div className="bg-cyan-50 dark:bg-cyan-900/20 p-4 rounded-lg">
@@ -226,7 +226,7 @@ const HostawaySyncLogs = () => {
                         {log.tasks_modified || 0}
                       </div>
                       <div className="text-sm text-cyan-700 dark:text-cyan-300">
-                        Tareas modificadas
+                        Tareas actualizadas
                       </div>
                     </div>
                     <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg">
@@ -285,7 +285,7 @@ const HostawaySyncLogs = () => {
                         <Button variant="outline" className="w-full justify-between">
                           <div className="flex items-center gap-2">
                             <XCircle className="h-4 w-4" />
-                            Detalles de Tareas Canceladas ({log.tasks_cancelled_details.length})
+                            Tareas Eliminadas ({log.tasks_cancelled_details.length})
                           </div>
                           <ChevronDown className="h-4 w-4" />
                         </Button>
@@ -324,7 +324,7 @@ const HostawaySyncLogs = () => {
                         <Button variant="outline" className="w-full justify-between">
                           <div className="flex items-center gap-2">
                             <FileText className="h-4 w-4" />
-                            Detalles de Tareas Modificadas ({log.tasks_modified_details.length})
+                            Tareas Actualizadas ({log.tasks_modified_details.length})
                           </div>
                           <ChevronDown className="h-4 w-4" />
                         </Button>
@@ -363,7 +363,7 @@ const HostawaySyncLogs = () => {
                         <Button variant="outline" className="w-full justify-between">
                           <div className="flex items-center gap-2">
                             <Users className="h-4 w-4" />
-                            Detalles de Reservas Procesadas ({log.reservations_details.length})
+                            Detalles de Reservas ({log.reservations_details.length})
                           </div>
                           <ChevronDown className="h-4 w-4" />
                         </Button>
@@ -386,7 +386,7 @@ const HostawaySyncLogs = () => {
                                     className="ml-2"
                                   >
                                     {reservation.action === 'created' ? 'Nueva' :
-                                     reservation.action === 'cancelled' ? 'Cancelada' : 'Actualizada'}
+                                     reservation.action === 'cancelled' ? 'Anulada' : 'Modificada'}
                                   </Badge>
                                 </div>
                                 <div className="text-right">
