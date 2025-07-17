@@ -204,13 +204,29 @@ const HostawaySyncLogs = () => {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
                     <div className="bg-purple-50 dark:bg-purple-900/20 p-4 rounded-lg">
                       <div className="text-2xl font-bold text-purple-600 dark:text-purple-400">
                         {log.tasks_created || 0}
                       </div>
                       <div className="text-sm text-purple-700 dark:text-purple-300">
                         Tareas creadas
+                      </div>
+                    </div>
+                    <div className="bg-orange-50 dark:bg-orange-900/20 p-4 rounded-lg">
+                      <div className="text-2xl font-bold text-orange-600 dark:text-orange-400">
+                        {log.tasks_cancelled || 0}
+                      </div>
+                      <div className="text-sm text-orange-700 dark:text-orange-300">
+                        Tareas canceladas
+                      </div>
+                    </div>
+                    <div className="bg-cyan-50 dark:bg-cyan-900/20 p-4 rounded-lg">
+                      <div className="text-2xl font-bold text-cyan-600 dark:text-cyan-400">
+                        {log.tasks_modified || 0}
+                      </div>
+                      <div className="text-sm text-cyan-700 dark:text-cyan-300">
+                        Tareas modificadas
                       </div>
                     </div>
                     <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg">
@@ -248,6 +264,84 @@ const HostawaySyncLogs = () => {
                                 </div>
                                 <div className="text-right">
                                   <div className="text-purple-600 dark:text-purple-400 font-medium">
+                                    {task.task_date}
+                                  </div>
+                                  <div className="text-xs text-gray-500">
+                                    Reserva: {task.reservation_id}
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </CollapsibleContent>
+                    </Collapsible>
+                  )}
+
+                  {/* Tareas Canceladas - Detalles */}
+                  {log.tasks_cancelled_details && log.tasks_cancelled_details.length > 0 && (
+                    <Collapsible className="mb-4">
+                      <CollapsibleTrigger asChild>
+                        <Button variant="outline" className="w-full justify-between">
+                          <div className="flex items-center gap-2">
+                            <XCircle className="h-4 w-4" />
+                            Detalles de Tareas Canceladas ({log.tasks_cancelled_details.length})
+                          </div>
+                          <ChevronDown className="h-4 w-4" />
+                        </Button>
+                      </CollapsibleTrigger>
+                      <CollapsibleContent className="mt-2">
+                        <div className="bg-orange-50 dark:bg-orange-900/20 p-4 rounded-lg">
+                          <div className="space-y-2 text-sm">
+                            {log.tasks_cancelled_details.map((task, index) => (
+                              <div key={index} className="flex justify-between items-center p-2 bg-white dark:bg-gray-800 rounded">
+                                <div>
+                                  <span className="font-medium">{task.property_name}</span>
+                                  <span className="text-gray-600 dark:text-gray-300 ml-2">
+                                    ({task.guest_name})
+                                  </span>
+                                </div>
+                                <div className="text-right">
+                                  <div className="text-orange-600 dark:text-orange-400 font-medium">
+                                    {task.task_date}
+                                  </div>
+                                  <div className="text-xs text-gray-500">
+                                    Reserva: {task.reservation_id}
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </CollapsibleContent>
+                    </Collapsible>
+                  )}
+
+                  {/* Tareas Modificadas - Detalles */}
+                  {log.tasks_modified_details && log.tasks_modified_details.length > 0 && (
+                    <Collapsible className="mb-4">
+                      <CollapsibleTrigger asChild>
+                        <Button variant="outline" className="w-full justify-between">
+                          <div className="flex items-center gap-2">
+                            <FileText className="h-4 w-4" />
+                            Detalles de Tareas Modificadas ({log.tasks_modified_details.length})
+                          </div>
+                          <ChevronDown className="h-4 w-4" />
+                        </Button>
+                      </CollapsibleTrigger>
+                      <CollapsibleContent className="mt-2">
+                        <div className="bg-cyan-50 dark:bg-cyan-900/20 p-4 rounded-lg">
+                          <div className="space-y-2 text-sm">
+                            {log.tasks_modified_details.map((task, index) => (
+                              <div key={index} className="flex justify-between items-center p-2 bg-white dark:bg-gray-800 rounded">
+                                <div>
+                                  <span className="font-medium">{task.property_name}</span>
+                                  <span className="text-gray-600 dark:text-gray-300 ml-2">
+                                    ({task.guest_name})
+                                  </span>
+                                </div>
+                                <div className="text-right">
+                                  <div className="text-cyan-600 dark:text-cyan-400 font-medium">
                                     {task.task_date}
                                   </div>
                                   <div className="text-xs text-gray-500">

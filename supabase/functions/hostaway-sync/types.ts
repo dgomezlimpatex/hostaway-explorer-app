@@ -25,8 +25,12 @@ export interface SyncStats {
   updated_reservations: number;
   cancelled_reservations: number;
   tasks_created: number;
+  tasks_cancelled: number;
+  tasks_modified: number;
   errors: string[];
   tasks_details?: TaskDetail[];
+  tasks_cancelled_details?: TaskDetail[];
+  tasks_modified_details?: TaskDetail[];
   reservations_details?: ReservationDetail[];
 }
 

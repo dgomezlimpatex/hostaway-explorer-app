@@ -30,8 +30,12 @@ export interface HostawaySyncLog {
   updated_reservations: number | null;
   cancelled_reservations: number | null;
   tasks_created: number | null;
+  tasks_cancelled: number | null;
+  tasks_modified: number | null;
   errors: string[] | null;
   tasks_details: TaskDetail[] | null;
+  tasks_cancelled_details: TaskDetail[] | null;
+  tasks_modified_details: TaskDetail[] | null;
   reservations_details: ReservationDetail[] | null;
   created_at: string;
 }
