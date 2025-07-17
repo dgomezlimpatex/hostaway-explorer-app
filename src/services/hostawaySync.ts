@@ -77,16 +77,19 @@ export const hostawaySync = {
     }
     
     // Transform the data to match our interface
-    const transformedData: HostawaySyncLog[] = (data || []).map(log => ({
-      ...log,
-      tasks_details: Array.isArray(log.tasks_details) ? log.tasks_details as unknown as TaskDetail[] : null,
-      tasks_cancelled_details: Array.isArray(log.tasks_cancelled_details) ? log.tasks_cancelled_details as unknown as TaskDetail[] : null,
-      tasks_modified_details: Array.isArray(log.tasks_modified_details) ? log.tasks_modified_details as unknown as TaskDetail[] : null,
-      reservations_details: Array.isArray(log.reservations_details) ? log.reservations_details as unknown as ReservationDetail[] : null,
-      // Ensure these fields are at least 0 if null
-      tasks_cancelled: log.tasks_cancelled || 0,
-      tasks_modified: log.tasks_modified || 0,
-    }));
+    const transformedData: HostawaySyncLog[] = (data || []).map(log => {
+      const logAny = log as any; // Cast to handle potential missing fields
+      return {
+        ...log,
+        tasks_details: Array.isArray(log.tasks_details) ? log.tasks_details as unknown as TaskDetail[] : null,
+        tasks_cancelled_details: Array.isArray(logAny.tasks_cancelled_details) ? logAny.tasks_cancelled_details as unknown as TaskDetail[] : null,
+        tasks_modified_details: Array.isArray(logAny.tasks_modified_details) ? logAny.tasks_modified_details as unknown as TaskDetail[] : null,
+        reservations_details: Array.isArray(log.reservations_details) ? log.reservations_details as unknown as ReservationDetail[] : null,
+        // Ensure these fields are at least 0 if null or missing
+        tasks_cancelled: logAny.tasks_cancelled || 0,
+        tasks_modified: logAny.tasks_modified || 0,
+      };
+    });
     
     return transformedData;
   },

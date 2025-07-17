@@ -511,8 +511,12 @@ export type Database = {
           status: string
           sync_completed_at: string | null
           sync_started_at: string
+          tasks_cancelled: number | null
+          tasks_cancelled_details: Json | null
           tasks_created: number | null
           tasks_details: Json | null
+          tasks_modified: number | null
+          tasks_modified_details: Json | null
           updated_reservations: number | null
         }
         Insert: {
@@ -526,8 +530,12 @@ export type Database = {
           status?: string
           sync_completed_at?: string | null
           sync_started_at: string
+          tasks_cancelled?: number | null
+          tasks_cancelled_details?: Json | null
           tasks_created?: number | null
           tasks_details?: Json | null
+          tasks_modified?: number | null
+          tasks_modified_details?: Json | null
           updated_reservations?: number | null
         }
         Update: {
@@ -541,8 +549,12 @@ export type Database = {
           status?: string
           sync_completed_at?: string | null
           sync_started_at?: string
+          tasks_cancelled?: number | null
+          tasks_cancelled_details?: Json | null
           tasks_created?: number | null
           tasks_details?: Json | null
+          tasks_modified?: number | null
+          tasks_modified_details?: Json | null
           updated_reservations?: number | null
         }
         Relationships: []
