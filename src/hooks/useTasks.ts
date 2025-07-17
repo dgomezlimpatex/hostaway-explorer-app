@@ -77,6 +77,7 @@ export const useTasks = (currentDate: Date, currentView: ViewType) => {
     onSuccess: (data) => {
       console.log('✅ useTasks - createTaskMutation onSuccess:', data);
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      queryClient.invalidateQueries({ queryKey: ['all-tasks'] });
     },
     onError: (error) => {
       console.error('❌ useTasks - createTaskMutation onError:', error);
