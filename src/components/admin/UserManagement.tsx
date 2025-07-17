@@ -447,7 +447,7 @@ export const UserManagement = () => {
               <TableBody>
                 {activeUsers?.map((user) => {
                   const isInCleaners = isUserInCleaners(user.user_id);
-                  const canAddToCleaner = user.role === 'cleaner' && !isInCleaners;
+                  const canAddToCleaner = (user.role === 'cleaner' || user.role === 'admin') && !isInCleaners;
                   
                   return (
                     <TableRow key={user.user_id}>
@@ -472,7 +472,7 @@ export const UserManagement = () => {
                         {new Date(user.created_at).toLocaleDateString('es-ES')}
                       </TableCell>
                       <TableCell>
-                        {user.role === 'cleaner' && (
+                        {(user.role === 'cleaner' || user.role === 'admin') && (
                           <div className="flex items-center">
                             <UserCheck className={`h-4 w-4 mr-2 ${isInCleaners ? 'text-green-600' : 'text-gray-400'}`} />
                             <span className={isInCleaners ? 'text-green-600' : 'text-gray-600'}>
@@ -480,7 +480,7 @@ export const UserManagement = () => {
                             </span>
                           </div>
                         )}
-                        {user.role !== 'cleaner' && (
+                        {(user.role !== 'cleaner' && user.role !== 'admin') && (
                           <span className="text-gray-400">No aplicable</span>
                         )}
                       </TableCell>
