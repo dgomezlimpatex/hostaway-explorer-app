@@ -20,7 +20,7 @@ import { useCreateTaskForm } from "./create-task/useCreateTaskForm";
 interface CreateTaskModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onCreateTask: (taskData: Omit<Task, 'id'>) => void;
+  onCreateTask: (taskData: Omit<Task, 'id'>) => Promise<void>;
   currentDate?: Date;
 }
 
@@ -43,7 +43,7 @@ export const CreateTaskModal = ({
     resetForm
   } = useCreateTaskForm(currentDate);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!selectedClient || !selectedProperty) {
@@ -63,14 +63,22 @@ export const CreateTaskModal = ({
       updated_at: new Date().toISOString()
     };
 
-    onCreateTask(taskData);
-    onOpenChange(false);
-    resetForm();
+    console.log('🔵 CreateTaskModal - handleSubmit called with:', taskData);
     
-    toast({
-      title: "Tarea creada",
-      description: "La nueva tarea se ha creado correctamente.",
-    });
+    try {
+      await onCreateTask(taskData);
+      console.log('✅ CreateTaskModal - onCreateTask completed successfully');
+      onOpenChange(false);
+      resetForm();
+      // Don't show toast here - it's handled in useCalendarLogic
+    } catch (error) {
+      console.error('❌ CreateTaskModal - onCreateTask error:', error);
+      toast({
+        title: "Error",
+        description: "No se pudo crear la tarea.",
+        variant: "destructive",
+      });
+    }
   };
 
   return (
