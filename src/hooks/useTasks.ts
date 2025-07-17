@@ -76,10 +76,11 @@ export const useTasks = (currentDate: Date, currentView: ViewType) => {
     },
     onSuccess: (data) => {
       console.log('✅ useTasks - createTaskMutation onSuccess:', data);
-      // Invalidar todas las claves de caché relacionadas con tareas
-      queryClient.invalidateQueries({ queryKey: ['tasks'] });
-      queryClient.invalidateQueries({ queryKey: ['all-tasks'] });
-      // Esta es la clave que usa useOptimizedTasks para el cache general
+      // Invalidar TODAS las claves de caché relacionadas con tareas
+      queryClient.invalidateQueries({ 
+        predicate: (query) => query.queryKey[0] === 'tasks'
+      });
+      // Forzar refetch inmediato del cache general que usa useOptimizedTasks
       queryClient.removeQueries({ queryKey: ['tasks', 'all'] });
     },
     onError: (error) => {
