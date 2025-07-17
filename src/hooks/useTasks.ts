@@ -76,8 +76,11 @@ export const useTasks = (currentDate: Date, currentView: ViewType) => {
     },
     onSuccess: (data) => {
       console.log('✅ useTasks - createTaskMutation onSuccess:', data);
+      // Invalidar todas las claves de caché relacionadas con tareas
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
       queryClient.invalidateQueries({ queryKey: ['all-tasks'] });
+      // Esta es la clave que usa useOptimizedTasks para el cache general
+      queryClient.removeQueries({ queryKey: ['tasks', 'all'] });
     },
     onError: (error) => {
       console.error('❌ useTasks - createTaskMutation onError:', error);
