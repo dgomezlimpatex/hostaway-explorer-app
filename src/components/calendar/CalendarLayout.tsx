@@ -59,8 +59,8 @@ export const CalendarLayout = ({
     <Card className="border-0 shadow-xl overflow-hidden bg-card animate-fade-in">
       <CardContent className="p-0">
         <div className={`flex ${getCalendarHeight()} overflow-hidden`}>
-          {/* Workers Column - Responsive width */}
-          <div className={`${isMobile ? 'w-20' : isTablet ? 'w-24' : 'w-32'} flex-shrink-0`}>
+          {/* Workers Column - Fixed width to match WorkersColumn component */}
+          <div className="w-48 flex-shrink-0">
             <WorkersColumn 
               cleaners={cleaners} 
               onDragOver={onDragOver}
