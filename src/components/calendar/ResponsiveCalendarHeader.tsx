@@ -82,7 +82,10 @@ export const ResponsiveCalendarHeader = ({
             {/* Controles de la derecha */}
             <div className="flex items-center gap-1 md:gap-2 shrink-0">
               <Button
-                onClick={onNewTask}
+                onClick={() => {
+                  console.log('🔴 ResponsiveCalendarHeader - Nueva Tarea button clicked!');
+                  onNewTask();
+                }}
                 size={isMobile ? "sm" : "default"}
                 className="gap-1 md:gap-2"
               >
