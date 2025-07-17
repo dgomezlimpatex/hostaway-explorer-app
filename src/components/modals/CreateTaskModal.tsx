@@ -55,8 +55,22 @@ export const CreateTaskModal = ({
       return;
     }
 
+    // Si no hay hora de inicio, usar check-out como predeterminada
+    const finalStartTime = formData.startTime || formData.checkOut;
+    const finalEndTime = formData.endTime || (finalStartTime && formData.duracion > 0 ? 
+      (() => {
+        const [hours, minutes] = finalStartTime.split(':').map(Number);
+        const startMinutes = hours * 60 + minutes;
+        const endMinutes = startMinutes + formData.duracion;
+        const endHours = Math.floor(endMinutes / 60);
+        const endMins = endMinutes % 60;
+        return `${endHours.toString().padStart(2, '0')}:${endMins.toString().padStart(2, '0')}`;
+      })() : '');
+
     const taskData: Omit<Task, 'id'> = {
       ...formData,
+      startTime: finalStartTime,
+      endTime: finalEndTime,
       clienteId: selectedClient.id,
       propertyId: selectedProperty.id,
       created_at: new Date().toISOString(),
