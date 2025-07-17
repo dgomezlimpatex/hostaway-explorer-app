@@ -141,13 +141,17 @@ export const useCalendarLogic = () => {
   }, []);
 
   const handleCreateTask = useCallback(async (taskData: Omit<Task, 'id'>) => {
+    console.log('🔵 useCalendarLogic - handleCreateTask called with:', taskData);
     try {
-      await createTask(taskData);
+      const result = await createTask(taskData);
+      console.log('✅ useCalendarLogic - createTask successful:', result);
       toast({
         title: "Tarea creada",
         description: "La nueva tarea se ha creado correctamente.",
       });
+      setIsCreateModalOpen(false); // Close modal after successful creation
     } catch (error) {
+      console.error('❌ useCalendarLogic - createTask error:', error);
       toast({
         title: "Error",
         description: "No se pudo crear la tarea.",

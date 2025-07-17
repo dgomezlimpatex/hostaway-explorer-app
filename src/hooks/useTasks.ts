@@ -69,10 +69,17 @@ export const useTasks = (currentDate: Date, currentView: ViewType) => {
 
   const createTaskMutation = useMutation({
     mutationFn: async (taskData: Omit<Task, 'id'>) => {
-      return taskStorageService.createTask(taskData);
+      console.log('🔵 useTasks - createTaskMutation called with:', taskData);
+      const result = await taskStorageService.createTask(taskData);
+      console.log('✅ useTasks - taskStorageService.createTask result:', result);
+      return result;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      console.log('✅ useTasks - createTaskMutation onSuccess:', data);
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
+    },
+    onError: (error) => {
+      console.error('❌ useTasks - createTaskMutation onError:', error);
     },
   });
 
