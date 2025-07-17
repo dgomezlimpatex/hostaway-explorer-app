@@ -82,6 +82,12 @@ export const useTasks = (currentDate: Date, currentView: ViewType) => {
       });
       // Forzar refetch inmediato del cache general que usa useOptimizedTasks
       queryClient.removeQueries({ queryKey: ['tasks', 'all'] });
+      // También invalidar específicamente las queries del calendario
+      queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      // Forzar una actualización inmediata sin esperar a la invalidación
+      queryClient.refetchQueries({ 
+        predicate: (query) => query.queryKey[0] === 'tasks'
+      });
     },
     onError: (error) => {
       console.error('❌ useTasks - createTaskMutation onError:', error);
