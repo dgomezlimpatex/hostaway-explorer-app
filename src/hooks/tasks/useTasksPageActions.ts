@@ -1,7 +1,7 @@
 
 import { useState, useCallback } from 'react';
 import { Task } from '@/types/calendar';
-import { taskStorageService } from '@/services/taskStorage';
+import { useTasks } from '@/hooks/useTasks';
 
 export const useTasksPageActions = () => {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -9,20 +9,17 @@ export const useTasksPageActions = () => {
   const [selectedTaskForHistory, setSelectedTaskForHistory] = useState<Task | null>(null);
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
 
-  // Create task mutation
-  const createTask = useCallback(async (taskData: Omit<Task, 'id'>) => {
-    console.log('🔵 useTasksPageActions - createTask called with:', taskData);
-    const result = await taskStorageService.createTask(taskData);
-    console.log('✅ useTasksPageActions - createTask result:', result);
-    return result;
-  }, []);
+  // Usar el hook useTasks para tener la invalidación del cache
+  const { createTask } = useTasks(new Date(), 'day');
 
   // Memoize handlers to prevent unnecessary re-renders
   const handleCreateTask = useCallback(async (taskData: any) => {
-    await createTask(taskData);
+    console.log('🔵 useTasksPageActions - handleCreateTask called with:', taskData);
+    createTask(taskData);
   }, [createTask]);
 
   const handleBatchCreateTasks = useCallback((tasksData: any[]) => {
+    console.log('🔵 useTasksPageActions - handleBatchCreateTasks called with:', tasksData.length, 'tasks');
     tasksData.forEach(taskData => {
       createTask(taskData);
     });
