@@ -21,6 +21,11 @@ import Reports from "./pages/Reports";
 import HostawaySyncLogs from "./pages/HostawaySyncLogs";
 import ChecklistTemplates from "./pages/ChecklistTemplates";
 import CleaningReports from "./pages/CleaningReports";
+import InventoryDashboard from "./pages/InventoryDashboard";
+import InventoryStock from "./pages/InventoryStock";
+import InventoryMovements from "./pages/InventoryMovements";
+import InventoryConfig from "./pages/InventoryConfig";
+import InventoryReports from "./pages/InventoryReports";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -116,6 +121,41 @@ function App() {
                 <ProtectedRoute>
                   <RoleProtectedRoute requiredModule="reports">
                     <CleaningReports />
+                  </RoleProtectedRoute>
+                </ProtectedRoute>
+              } />
+              <Route path="/inventory" element={
+                <ProtectedRoute>
+                  <RoleProtectedRoute requiredModule="inventory">
+                    <InventoryDashboard />
+                  </RoleProtectedRoute>
+                </ProtectedRoute>
+              } />
+              <Route path="/inventory/stock" element={
+                <ProtectedRoute>
+                  <RoleProtectedRoute requiredModule="inventory">
+                    <InventoryStock />
+                  </RoleProtectedRoute>
+                </ProtectedRoute>
+              } />
+              <Route path="/inventory/movements" element={
+                <ProtectedRoute>
+                  <RoleProtectedRoute requiredModule="inventory">
+                    <InventoryMovements />
+                  </RoleProtectedRoute>
+                </ProtectedRoute>
+              } />
+              <Route path="/inventory/config" element={
+                <ProtectedRoute>
+                  <RoleProtectedRoute requiredModule="inventory">
+                    <InventoryConfig />
+                  </RoleProtectedRoute>
+                </ProtectedRoute>
+              } />
+              <Route path="/inventory/reports" element={
+                <ProtectedRoute>
+                  <RoleProtectedRoute requiredModule="inventory">
+                    <InventoryReports />
                   </RoleProtectedRoute>
                 </ProtectedRoute>
               } />
