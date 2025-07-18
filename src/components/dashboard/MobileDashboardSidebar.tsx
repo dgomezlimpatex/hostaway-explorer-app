@@ -12,7 +12,8 @@ import {
   Building2,
   Home,
   AlertTriangle,
-  CheckCircle2
+  CheckCircle2,
+  Package
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useRolePermissions } from '@/hooks/useRolePermissions';
@@ -68,6 +69,12 @@ const managementItems: NavigationItem[] = [
     href: '/property-groups',
     icon: Layers,
     permission: 'propertyGroups'
+  },
+  {
+    title: 'Inventario',
+    href: '/inventory',
+    icon: Package,
+    permission: 'inventory'
   },
 ];
 
@@ -132,6 +139,7 @@ export const MobileDashboardSidebar = ({ onNavigate }: MobileDashboardSidebarPro
       case 'propertyGroups': return canAccessModule('propertyGroups');
       case 'reports': return canAccessModule('reports');
       case 'hostaway': return canAccessModule('hostaway');
+      case 'inventory': return canAccessModule('inventory');
       default: return true;
     }
   };
