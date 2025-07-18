@@ -13,7 +13,12 @@ import {
   Settings,
   Home,
   AlertTriangle,
-  CheckCircle2
+  CheckCircle2,
+  Package,
+  PackageOpen,
+  ArchiveRestore,
+  TrendingUp,
+  Settings2
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useRolePermissions } from '@/hooks/useRolePermissions';
@@ -103,6 +108,39 @@ const reportsItems: NavigationItem[] = [
   },
 ];
 
+const inventoryItems: NavigationItem[] = [
+  {
+    title: 'Dashboard de Inventario',
+    href: '/inventory',
+    icon: Package,
+    permission: 'inventory'
+  },
+  {
+    title: 'Stock Actual',
+    href: '/inventory/stock',
+    icon: PackageOpen,
+    permission: 'inventory'
+  },
+  {
+    title: 'Movimientos',
+    href: '/inventory/movements',
+    icon: ArchiveRestore,
+    permission: 'inventory'
+  },
+  {
+    title: 'Configuración',
+    href: '/inventory/config',
+    icon: Settings2,
+    permission: 'inventory'
+  },
+  {
+    title: 'Reportes de Inventario',
+    href: '/inventory/reports',
+    icon: TrendingUp,
+    permission: 'inventory'
+  },
+];
+
 const adminItems: NavigationItem[] = [
   {
     title: 'Gestión de Usuarios',
@@ -140,6 +178,7 @@ export const DashboardSidebar = () => {
       case 'propertyGroups': return canAccessModule('propertyGroups');
       case 'reports': return canAccessModule('reports');
       case 'hostaway': return canAccessModule('hostaway');
+      case 'inventory': return canAccessModule('inventory');
       default: return true;
     }
   };
@@ -251,6 +290,40 @@ export const DashboardSidebar = () => {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
+
+        {/* Inventario */}
+        {canAccessModule('inventory') && (
+          <SidebarGroup>
+            <SidebarGroupLabel className="px-6 py-2 text-xs font-medium text-gray-500 uppercase tracking-wider">
+              Inventario
+            </SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu className="px-3">
+                {filterItemsByPermission(inventoryItems).map((item) => (
+                  <SidebarMenuItem key={item.href}>
+                    <SidebarMenuButton asChild>
+                      <NavLink
+                        to={item.href}
+                        className={cn(
+                          'flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-lg transition-all duration-200',
+                          isActive(item.href)
+                            ? 'bg-blue-50 text-blue-600 border-r-2 border-blue-600'
+                            : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                        )}
+                      >
+                        <item.icon className={cn(
+                          'h-5 w-5',
+                          isActive(item.href) ? 'text-blue-600' : 'text-gray-400'
+                        )} />
+                        {item.title}
+                      </NavLink>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
 
         {/* Administración - Solo para admin/manager */}
         {isAdminOrManager() && (
