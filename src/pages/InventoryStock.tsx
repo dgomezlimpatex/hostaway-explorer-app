@@ -1,28 +1,57 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Package } from "lucide-react";
-import { RoleBasedNavigation } from '@/components/navigation/RoleBasedNavigation';
+import { useState } from 'react';
+import { Package } from 'lucide-react';
+import { useInventoryStock } from '@/hooks/useInventory';
+import { InventoryStockTable } from '@/components/inventory/InventoryStockTable';
+import { CreateProductDialog } from '@/components/inventory/CreateProductDialog';
+import { StockAdjustmentDialog } from '@/components/inventory/StockAdjustmentDialog';
+import type { InventoryStockWithProduct } from '@/types/inventory';
 
 export default function InventoryStock() {
-  return (
-    <div>
-      <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold">Stock de Inventario</h1>
-          <p className="text-muted-foreground">
-            Gestión y control de stock de productos
-          </p>
-        </div>
+  const [showCreateProduct, setShowCreateProduct] = useState(false);
+  const [showStockAdjustment, setShowStockAdjustment] = useState(false);
+  const [selectedStockItem, setSelectedStockItem] = useState<InventoryStockWithProduct | null>(null);
 
-        <div className="text-center p-8 border-2 border-dashed border-border rounded-lg">
-          <Package className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-          <h3 className="text-lg font-semibold mb-2">Control de Stock</h3>
-          <p className="text-muted-foreground">
-            El módulo de control de stock se implementará en la siguiente fase.
-          </p>
-        </div>
+  const { data: stock = [], isLoading } = useInventoryStock();
+
+  const handleEditStock = (stockItem: InventoryStockWithProduct) => {
+    setSelectedStockItem(stockItem);
+    setShowStockAdjustment(true);
+  };
+
+  const handleAdjustStock = (stockItem: InventoryStockWithProduct) => {
+    setSelectedStockItem(stockItem);
+    setShowStockAdjustment(true);
+  };
+
+  const handleCreateProduct = () => {
+    setShowCreateProduct(true);
+  };
+
+  return (
+    <div className="container mx-auto p-6 space-y-6">
+      <div className="flex items-center gap-2">
+        <Package className="h-6 w-6" />
+        <h1 className="text-2xl font-bold">Stock de Inventario</h1>
       </div>
       
-      <RoleBasedNavigation />
+      <InventoryStockTable
+        stock={stock}
+        isLoading={isLoading}
+        onEditStock={handleEditStock}
+        onCreateProduct={handleCreateProduct}
+        onAdjustStock={handleAdjustStock}
+      />
+
+      <CreateProductDialog
+        open={showCreateProduct}
+        onOpenChange={setShowCreateProduct}
+      />
+
+      <StockAdjustmentDialog
+        open={showStockAdjustment}
+        onOpenChange={setShowStockAdjustment}
+        stockItem={selectedStockItem}
+      />
     </div>
   );
 }
