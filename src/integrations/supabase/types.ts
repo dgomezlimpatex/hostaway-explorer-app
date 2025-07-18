@@ -559,6 +559,223 @@ export type Database = {
         }
         Relationships: []
       }
+      inventory_alerts: {
+        Row: {
+          alert_type: Database["public"]["Enums"]["inventory_alert_type"]
+          id: string
+          is_active: boolean
+          notified_users: Json
+          product_id: string
+          resolved_at: string | null
+          triggered_at: string
+        }
+        Insert: {
+          alert_type: Database["public"]["Enums"]["inventory_alert_type"]
+          id?: string
+          is_active?: boolean
+          notified_users?: Json
+          product_id: string
+          resolved_at?: string | null
+          triggered_at?: string
+        }
+        Update: {
+          alert_type?: Database["public"]["Enums"]["inventory_alert_type"]
+          id?: string
+          is_active?: boolean
+          notified_users?: Json
+          product_id?: string
+          resolved_at?: string | null
+          triggered_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventory_alerts_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      inventory_categories: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean
+          name: string
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      inventory_movements: {
+        Row: {
+          created_at: string
+          created_by: string
+          id: string
+          movement_type: Database["public"]["Enums"]["inventory_movement_type"]
+          new_quantity: number
+          previous_quantity: number
+          product_id: string
+          property_id: string | null
+          quantity: number
+          reason: string
+          task_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          id?: string
+          movement_type: Database["public"]["Enums"]["inventory_movement_type"]
+          new_quantity: number
+          previous_quantity: number
+          product_id: string
+          property_id?: string | null
+          quantity: number
+          reason: string
+          task_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          id?: string
+          movement_type?: Database["public"]["Enums"]["inventory_movement_type"]
+          new_quantity?: number
+          previous_quantity?: number
+          product_id?: string
+          property_id?: string | null
+          quantity?: number
+          reason?: string
+          task_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventory_movements_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_movements_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_movements_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      inventory_products: {
+        Row: {
+          category_id: string
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean
+          name: string
+          sort_order: number
+          unit_of_measure: string
+          updated_at: string
+        }
+        Insert: {
+          category_id: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          sort_order?: number
+          unit_of_measure?: string
+          updated_at?: string
+        }
+        Update: {
+          category_id?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          sort_order?: number
+          unit_of_measure?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventory_products_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      inventory_stock: {
+        Row: {
+          cost_per_unit: number | null
+          current_quantity: number
+          id: string
+          last_updated: string
+          maximum_stock: number
+          minimum_stock: number
+          product_id: string
+          updated_by: string
+        }
+        Insert: {
+          cost_per_unit?: number | null
+          current_quantity?: number
+          id?: string
+          last_updated?: string
+          maximum_stock?: number
+          minimum_stock?: number
+          product_id: string
+          updated_by: string
+        }
+        Update: {
+          cost_per_unit?: number | null
+          current_quantity?: number
+          id?: string
+          last_updated?: string
+          maximum_stock?: number
+          minimum_stock?: number
+          product_id?: string
+          updated_by?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventory_stock_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: true
+            referencedRelation: "inventory_products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -716,6 +933,51 @@ export type Database = {
           },
           {
             foreignKeyName: "property_checklist_assignments_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      property_consumption_config: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          product_id: string
+          property_id: string
+          quantity_per_cleaning: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          product_id: string
+          property_id: string
+          quantity_per_cleaning?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          product_id?: string
+          property_id?: string
+          quantity_per_cleaning?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "property_consumption_config_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "property_consumption_config_property_id_fkey"
             columns: ["property_id"]
             isOneToOne: false
             referencedRelation: "properties"
@@ -1362,6 +1624,12 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "manager" | "supervisor" | "cleaner" | "client"
+      inventory_alert_type: "stock_bajo" | "stock_critico"
+      inventory_movement_type:
+        | "entrada"
+        | "salida"
+        | "ajuste"
+        | "consumo_automatico"
       invitation_status: "pending" | "accepted" | "expired" | "revoked"
       media_type: "photo" | "video"
       report_status: "pending" | "in_progress" | "completed" | "needs_review"
@@ -1493,6 +1761,13 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "manager", "supervisor", "cleaner", "client"],
+      inventory_alert_type: ["stock_bajo", "stock_critico"],
+      inventory_movement_type: [
+        "entrada",
+        "salida",
+        "ajuste",
+        "consumo_automatico",
+      ],
       invitation_status: ["pending", "accepted", "expired", "revoked"],
       media_type: ["photo", "video"],
       report_status: ["pending", "in_progress", "completed", "needs_review"],
