@@ -895,6 +895,41 @@ export type Database = {
           },
         ]
       }
+      property_amenity_inventory_mapping: {
+        Row: {
+          amenity_field: string
+          created_at: string
+          id: string
+          is_active: boolean
+          product_id: string
+          updated_at: string
+        }
+        Insert: {
+          amenity_field: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          product_id: string
+          updated_at?: string
+        }
+        Update: {
+          amenity_field?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          product_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "property_amenity_inventory_mapping_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       property_checklist_assignments: {
         Row: {
           assigned_at: string
@@ -1604,6 +1639,14 @@ export type Database = {
           _role: Database["public"]["Enums"]["app_role"]
         }
         Returns: boolean
+      }
+      process_automatic_inventory_consumption: {
+        Args: {
+          task_id_param: string
+          property_id_param: string
+          user_id_param: string
+        }
+        Returns: undefined
       }
       update_cleaners_order: {
         Args: { cleaner_updates: Json[] }

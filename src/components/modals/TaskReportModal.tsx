@@ -9,6 +9,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useDeviceType } from '@/hooks/use-mobile';
 import { useAuth } from '@/hooks/useAuth';
 import { useCleaners } from '@/hooks/useCleaners';
+import { useProcessAutomaticConsumption } from '@/hooks/useAmenityMappings';
 import { TaskReportHeader } from './task-report/TaskReportHeader';
 import { TaskReportTabs } from './task-report/TaskReportTabs';
 import { TaskReportFooter } from './task-report/TaskReportFooter';
@@ -28,6 +29,7 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
   const queryClient = useQueryClient();
   const { isMobile, isTablet } = useDeviceType();
   const { createReport, updateReport, isCreatingReport, isUpdatingReport } = useTaskReports();
+  const processAutomaticConsumption = useProcessAutomaticConsumption();
   const { data: existingReport, isLoading: isLoadingReport } = useTaskReport(task?.id || '');
   const { data: templates, isLoading: isLoadingTemplates } = useChecklistTemplates();
   const { user, userRole } = useAuth();
@@ -300,6 +302,26 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
         throw error;
       } else {
         console.log('✅ Estado de tarea actualizado correctamente:', data);
+      }
+
+      // Procesar consumo automático de inventario si hay propiedad asociada
+      if (task.propertyId) {
+        console.log('🔄 Procesando consumo automático de inventario para tarea:', task.id);
+        try {
+          await processAutomaticConsumption.mutateAsync({
+            taskId: task.id,
+            propertyId: task.propertyId
+          });
+          console.log('✅ Consumo automático procesado correctamente');
+        } catch (inventoryError) {
+          console.error('⚠️ Error procesando consumo automático (no crítico):', inventoryError);
+          // No lanzamos el error para que no bloquee la finalización del reporte
+          toast({
+            title: "Advertencia",
+            description: "El reporte se completó pero hubo un problema procesando el inventario automáticamente.",
+            variant: "destructive",
+          });
+        }
       }
       
       // Invalidar cache de tareas para que se recargue en el dashboard
