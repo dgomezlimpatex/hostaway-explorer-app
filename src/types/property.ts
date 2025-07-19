@@ -27,27 +27,6 @@ export interface Property extends BaseEntity {
   numeroFundasAlmohada: number;
   kitAlimentario: number;
   
-  // Amenities de baño
-  jabonLiquido: number;
-  gelDucha: number;
-  champu: number;
-  acondicionador: number;
-  papelHigienico: number;
-  ambientadorBano: number;
-  desinfectanteBano: number;
-  
-  // Amenities de cocina
-  aceite: number;
-  sal: number;
-  azucar: number;
-  vinagre: number;
-  detergenteLavavajillas: number;
-  limpiacristales: number;
-  bayetasCocina: number;
-  estropajos: number;
-  bolsasBasura: number;
-  papelCocina: number;
-  
   // Notas
   notas: string;
   
@@ -79,27 +58,6 @@ export interface CreatePropertyData {
   numeroAlfombrines: number;
   numeroFundasAlmohada: number;
   kitAlimentario: number;
-  
-  // Amenities de baño
-  jabonLiquido: number;
-  gelDucha: number;
-  champu: number;
-  acondicionador: number;
-  papelHigienico: number;
-  ambientadorBano: number;
-  desinfectanteBano: number;
-  
-  // Amenities de cocina
-  aceite: number;
-  sal: number;
-  azucar: number;
-  vinagre: number;
-  detergenteLavavajillas: number;
-  limpiacristales: number;
-  bayetasCocina: number;
-  estropajos: number;
-  bolsasBasura: number;
-  papelCocina: number;
   notas: string;
   clienteId: string;
 }

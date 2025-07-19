@@ -12,8 +12,6 @@ import { BasicInfoSection } from './forms/BasicInfoSection';
 import { CharacteristicsSection } from './forms/CharacteristicsSection';
 import { ServiceSection } from './forms/ServiceSection';
 import { TextileSection } from './forms/TextileSection';
-import { BathroomAmenitiesSection } from './forms/BathroomAmenitiesSection';
-import { KitchenAmenitiesSection } from './forms/KitchenAmenitiesSection';
 import { NotesSection } from './forms/NotesSection';
 import { ClientSelectionSection } from './forms/ClientSelectionSection';
 import { 
@@ -53,28 +51,6 @@ export const EditPropertyModal: React.FC<EditPropertyModalProps> = ({
       numeroAlfombrines: property.numeroAlfombrines,
       numeroFundasAlmohada: property.numeroFundasAlmohada,
       kitAlimentario: property.kitAlimentario || 0,
-      
-      // Amenities de baño
-      jabonLiquido: property.jabonLiquido || 0,
-      gelDucha: property.gelDucha || 0,
-      champu: property.champu || 0,
-      acondicionador: property.acondicionador || 0,
-      papelHigienico: property.papelHigienico || 0,
-      ambientadorBano: property.ambientadorBano || 0,
-      desinfectanteBano: property.desinfectanteBano || 0,
-      
-      // Amenities de cocina
-      aceite: property.aceite || 0,
-      sal: property.sal || 0,
-      azucar: property.azucar || 0,
-      vinagre: property.vinagre || 0,
-      detergenteLavavajillas: property.detergenteLavavajillas || 0,
-      limpiacristales: property.limpiacristales || 0,
-      bayetasCocina: property.bayetasCocina || 0,
-      estropajos: property.estropajos || 0,
-      bolsasBasura: property.bolsasBasura || 0,
-      papelCocina: property.papelCocina || 0,
-      
       notas: property.notas || '',
       clienteId: property.clienteId,
     } : undefined,
@@ -99,28 +75,6 @@ export const EditPropertyModal: React.FC<EditPropertyModalProps> = ({
         numeroAlfombrines: property.numeroAlfombrines,
         numeroFundasAlmohada: property.numeroFundasAlmohada,
         kitAlimentario: property.kitAlimentario || 0,
-        
-        // Amenities de baño
-        jabonLiquido: property.jabonLiquido || 0,
-        gelDucha: property.gelDucha || 0,
-        champu: property.champu || 0,
-        acondicionador: property.acondicionador || 0,
-        papelHigienico: property.papelHigienico || 0,
-        ambientadorBano: property.ambientadorBano || 0,
-        desinfectanteBano: property.desinfectanteBano || 0,
-        
-        // Amenities de cocina
-        aceite: property.aceite || 0,
-        sal: property.sal || 0,
-        azucar: property.azucar || 0,
-        vinagre: property.vinagre || 0,
-        detergenteLavavajillas: property.detergenteLavavajillas || 0,
-        limpiacristales: property.limpiacristales || 0,
-        bayetasCocina: property.bayetasCocina || 0,
-        estropajos: property.estropajos || 0,
-        bolsasBasura: property.bolsasBasura || 0,
-        papelCocina: property.papelCocina || 0,
-        
         notas: property.notas || '',
         clienteId: property.clienteId,
       });
@@ -168,10 +122,6 @@ export const EditPropertyModal: React.FC<EditPropertyModalProps> = ({
             <ServiceSection control={form.control} />
             
             <TextileSection control={form.control} />
-            
-            <BathroomAmenitiesSection control={form.control} />
-            
-            <KitchenAmenitiesSection control={form.control} />
             
             <NotesSection control={form.control} />
             

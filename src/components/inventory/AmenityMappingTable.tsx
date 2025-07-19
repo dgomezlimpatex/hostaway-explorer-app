@@ -23,34 +23,12 @@ import { useAmenityMappings, useCreateAmenityMapping, useDeleteAmenityMapping } 
 import { useInventoryProducts } from '@/hooks/useInventory';
 
 const AMENITY_FIELDS = {
-  // Textiles
   numero_sabanas: 'Sábanas',
   numero_toallas_grandes: 'Toallas Grandes',
   numero_toallas_pequenas: 'Toallas Pequeñas',
   numero_alfombrines: 'Alfombrines',
   numero_fundas_almohada: 'Fundas de Almohada',
-  kit_alimentario: 'Kit Alimentario',
-  
-  // Amenities de baño
-  jabon_liquido: 'Jabón Líquido',
-  gel_ducha: 'Gel de Ducha',
-  champu: 'Champú',
-  acondicionador: 'Acondicionador',
-  papel_higienico: 'Papel Higiénico',
-  ambientador_bano: 'Ambientador de Baño',
-  desinfectante_bano: 'Desinfectante de Baño',
-  
-  // Amenities de cocina
-  aceite: 'Aceite',
-  sal: 'Sal',
-  azucar: 'Azúcar',
-  vinagre: 'Vinagre',
-  detergente_lavavajillas: 'Detergente Lavavajillas',
-  limpiacristales: 'Limpiacristales',
-  bayetas_cocina: 'Bayetas de Cocina',
-  estropajos: 'Estropajos',
-  bolsas_basura: 'Bolsas de Basura',
-  papel_cocina: 'Papel de Cocina'
+  kit_alimentario: 'Kit Alimentario'
 };
 
 export function AmenityMappingTable() {
