@@ -78,7 +78,9 @@ export const generateLaundryReport = (tasks: any[], properties: any[], clients: 
         textiles,
         bedrooms: property?.numeroCamas || 0,
         bathrooms: property?.numeroBanos || 0,
-        kitAlimentario
+        kitAlimentario,
+        amenitiesBano: property?.amenitiesBano || 0,
+        amenitiesCocina: property?.amenitiesCocina || 0
       };
     });
 };

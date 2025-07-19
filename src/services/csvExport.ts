@@ -135,7 +135,9 @@ const generateLaundryCSV = (data: LaundryReport[]): string => {
     'Fundas Almohada',
     'Kit Alimentario',
     'Habitaciones',
-    'Baños'
+    'Baños',
+    'Amenities Baño',
+    'Amenities Cocina'
   ];
 
   const rows = data.map(item => [
@@ -153,7 +155,9 @@ const generateLaundryCSV = (data: LaundryReport[]): string => {
     item.textiles.fundasAlmohada.toString(),
     item.kitAlimentario.toString(),
     item.bedrooms.toString(),
-    item.bathrooms.toString()
+    item.bathrooms.toString(),
+    item.amenitiesBano.toString(),
+    item.amenitiesCocina.toString()
   ]);
 
   return [headers, ...rows].map(row => 

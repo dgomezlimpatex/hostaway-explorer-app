@@ -35,6 +35,8 @@ export const LaundryReportTable = ({ data }: LaundryReportTableProps) => {
   });
 
   const totalKitAlimentario = data.reduce((sum, item) => sum + item.kitAlimentario, 0);
+  const totalAmenitiesBano = data.reduce((sum, item) => sum + item.amenitiesBano, 0);
+  const totalAmenitiesCocina = data.reduce((sum, item) => sum + item.amenitiesCocina, 0);
 
   // Componente para vista móvil
   const MobileTaskCard = ({ task }: { task: LaundryReport }) => (
@@ -123,6 +125,22 @@ export const LaundryReportTable = ({ data }: LaundryReportTableProps) => {
               <div className="font-bold text-xl text-yellow-600">{task.kitAlimentario}</div>
             </div>
           )}
+
+          {/* Amenities */}
+          <div className="grid grid-cols-2 gap-3">
+            {task.amenitiesBano > 0 && (
+              <div className="bg-cyan-50 p-3 rounded">
+                <p className="text-xs text-muted-foreground font-medium">AMENITIES BAÑO</p>
+                <div className="font-bold text-xl text-cyan-600">{task.amenitiesBano}</div>
+              </div>
+            )}
+            {task.amenitiesCocina > 0 && (
+              <div className="bg-emerald-50 p-3 rounded">
+                <p className="text-xs text-muted-foreground font-medium">AMENITIES COCINA</p>
+                <div className="font-bold text-xl text-emerald-600">{task.amenitiesCocina}</div>
+              </div>
+            )}
+          </div>
         </div>
       </CardContent>
     </Card>
@@ -138,7 +156,7 @@ export const LaundryReportTable = ({ data }: LaundryReportTableProps) => {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-4 mb-4">
             <div className="text-center p-3 bg-blue-50 rounded-lg">
               <div className="text-2xl font-bold text-blue-600">{totalTextiles.sabanas}</div>
               <div className="text-sm text-blue-800">Sábanas</div>
@@ -162,6 +180,14 @@ export const LaundryReportTable = ({ data }: LaundryReportTableProps) => {
             <div className="text-center p-3 bg-yellow-50 rounded-lg">
               <div className="text-2xl font-bold text-yellow-600">{totalKitAlimentario}</div>
               <div className="text-sm text-yellow-800">Kit Alimentario</div>
+            </div>
+            <div className="text-center p-3 bg-cyan-50 rounded-lg">
+              <div className="text-2xl font-bold text-cyan-600">{totalAmenitiesBano}</div>
+              <div className="text-sm text-cyan-800">Amenities Baño</div>
+            </div>
+            <div className="text-center p-3 bg-emerald-50 rounded-lg">
+              <div className="text-2xl font-bold text-emerald-600">{totalAmenitiesCocina}</div>
+              <div className="text-sm text-emerald-800">Amenities Cocina</div>
             </div>
           </div>
           <div className="text-center text-sm text-gray-600">
@@ -195,6 +221,7 @@ export const LaundryReportTable = ({ data }: LaundryReportTableProps) => {
                     <TableHead>Habitaciones</TableHead>
                     <TableHead>Textiles Requeridos</TableHead>
                     <TableHead>Kit Alimentario</TableHead>
+                    <TableHead>Amenities</TableHead>
                     <TableHead>Estado</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -246,6 +273,20 @@ export const LaundryReportTable = ({ data }: LaundryReportTableProps) => {
                       </TableCell>
                       <TableCell>
                         <div className="font-bold text-lg">{task.kitAlimentario}</div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex flex-col gap-1">
+                          {task.amenitiesBano > 0 && (
+                            <Badge variant="outline" className="text-xs bg-cyan-50">
+                              🛁 {task.amenitiesBano} baño
+                            </Badge>
+                          )}
+                          {task.amenitiesCocina > 0 && (
+                            <Badge variant="outline" className="text-xs bg-emerald-50">
+                              🍽️ {task.amenitiesCocina} cocina
+                            </Badge>
+                          )}
+                        </div>
                       </TableCell>
                       <TableCell>
                         <Badge 
