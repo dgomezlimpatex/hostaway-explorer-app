@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -30,6 +31,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Loader2, Package, TrendingDown, TrendingUp, RotateCcw } from 'lucide-react';
 import { useStockAdjustment } from '@/hooks/useInventory';
 import { useAuth } from '@/hooks/useAuth';
+import { StockValidationDialog } from './StockValidationDialog';
 import type { InventoryStockWithProduct, StockAdjustmentForm } from '@/types/inventory';
 
 const adjustmentSchema = z.object({
@@ -57,6 +59,8 @@ export const StockAdjustmentDialog = ({
 }: StockAdjustmentDialogProps) => {
   const { user } = useAuth();
   const stockAdjustment = useStockAdjustment();
+  const [showValidation, setShowValidation] = useState(false);
+  const [pendingAdjustment, setPendingAdjustment] = useState<AdjustmentFormData | null>(null);
 
   const form = useForm<AdjustmentFormData>({
     resolver: zodResolver(adjustmentSchema),
@@ -73,22 +77,42 @@ export const StockAdjustmentDialog = ({
   const quantity = form.watch('quantity');
 
   // Calculate new quantity based on adjustment type
-  const getNewQuantity = () => {
-    if (!stockItem || !quantity) return stockItem?.current_quantity || 0;
+  const getNewQuantity = (adjustmentData?: AdjustmentFormData) => {
+    if (!stockItem) return 0;
+    const qty = adjustmentData?.quantity || quantity;
+    const type = adjustmentData?.adjustment_type || adjustmentType;
     
-    switch (adjustmentType) {
+    switch (type) {
       case 'entrada':
-        return stockItem.current_quantity + quantity;
+        return stockItem.current_quantity + qty;
       case 'salida':
-        return Math.max(0, stockItem.current_quantity - quantity);
+        return Math.max(0, stockItem.current_quantity - qty);
       case 'ajuste':
-        return quantity;
+        return qty;
       default:
         return stockItem.current_quantity;
     }
   };
 
   const handleSubmit = async (data: AdjustmentFormData) => {
+    if (!user?.id || !stockItem) return;
+
+    const newQuantity = getNewQuantity(data);
+    const isLargeAdjustment = Math.abs(data.quantity) > 50;
+    const isNegativeStock = newQuantity < 0;
+
+    // Verificar si necesita validación adicional
+    if (isLargeAdjustment || isNegativeStock) {
+      setPendingAdjustment(data);
+      setShowValidation(true);
+      return;
+    }
+
+    // Proceder directamente si no necesita validación
+    await executeAdjustment(data);
+  };
+
+  const executeAdjustment = async (data: AdjustmentFormData) => {
     if (!user?.id || !stockItem) return;
 
     try {
@@ -111,8 +135,18 @@ export const StockAdjustmentDialog = ({
     }
   };
 
+  const handleValidationConfirm = async () => {
+    if (pendingAdjustment) {
+      await executeAdjustment(pendingAdjustment);
+      setPendingAdjustment(null);
+      setShowValidation(false);
+    }
+  };
+
   const handleClose = () => {
     form.reset();
+    setPendingAdjustment(null);
+    setShowValidation(false);
     onOpenChange(false);
   };
 
@@ -316,6 +350,24 @@ export const StockAdjustmentDialog = ({
             </div>
           </form>
         </Form>
+
+        {/* Validation Dialog */}
+        {pendingAdjustment && (
+          <StockValidationDialog
+            open={showValidation}
+            onOpenChange={setShowValidation}
+            onConfirm={handleValidationConfirm}
+            adjustmentData={{
+              productName: stockItem.product.name,
+              currentQuantity: stockItem.current_quantity,
+              adjustmentQuantity: pendingAdjustment.adjustment_type === 'salida' 
+                ? -pendingAdjustment.quantity 
+                : pendingAdjustment.quantity,
+              newQuantity: getNewQuantity(pendingAdjustment),
+              adjustmentType: pendingAdjustment.adjustment_type
+            }}
+          />
+        )}
       </DialogContent>
     </Dialog>
   );

@@ -8,6 +8,7 @@ import { AmenitiesSection } from "./components/AmenitiesSection";
 import { ClientInfoSection } from "./components/ClientInfoSection";
 import { TaskStatusSection } from "./components/TaskStatusSection";
 import { PropertyNotesSection } from "./components/PropertyNotesSection";
+import { InventoryTaskIntegration } from "@/components/inventory/InventoryTaskIntegration";
 interface TaskDetailsFormProps {
   task: Task;
   isEditing: boolean;
@@ -70,6 +71,13 @@ export const TaskDetailsForm = ({
 
   return (
     <div className="space-y-6">
+      {task && task.propertyId && (
+        <InventoryTaskIntegration 
+          taskId={task.id} 
+          propertyId={task.propertyId}
+        />
+      )}
+      
       <TaskDetailsHeader 
         task={task}
         isEditing={isEditing}
@@ -78,7 +86,7 @@ export const TaskDetailsForm = ({
         onFieldChange={onFieldChange}
       />
 
-      <TaskScheduleSection 
+      <TaskScheduleSection
         task={task}
         isEditing={isEditing}
         formData={formData}
