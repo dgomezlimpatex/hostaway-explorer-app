@@ -42,6 +42,28 @@ export const useTaskPreview = (task: Task | null) => {
         numeroAlfombrines: data.numero_alfombrines,
         numeroFundasAlmohada: data.numero_fundas_almohada,
         kitAlimentario: data.kit_alimentario,
+        
+        // Amenities de baño
+        jabonLiquido: data.jabon_liquido || 0,
+        gelDucha: data.gel_ducha || 0,
+        champu: data.champu || 0,
+        acondicionador: data.acondicionador || 0,
+        papelHigienico: data.papel_higienico || 0,
+        ambientadorBano: data.ambientador_bano || 0,
+        desinfectanteBano: data.desinfectante_bano || 0,
+        
+        // Amenities de cocina
+        aceite: data.aceite || 0,
+        sal: data.sal || 0,
+        azucar: data.azucar || 0,
+        vinagre: data.vinagre || 0,
+        detergenteLavavajillas: data.detergente_lavavajillas || 0,
+        limpiacristales: data.limpiacristales || 0,
+        bayetasCocina: data.bayetas_cocina || 0,
+        estropajos: data.estropajos || 0,
+        bolsasBasura: data.bolsas_basura || 0,
+        papelCocina: data.papel_cocina || 0,
+        
         notas: data.notas || '',
         clienteId: data.cliente_id,
         hostaway_listing_id: data.hostaway_listing_id,

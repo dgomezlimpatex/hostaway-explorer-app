@@ -20,6 +20,28 @@ export const mapPropertyFromDB = (row: any): Property => ({
   numeroAlfombrines: row.numero_alfombrines,
   numeroFundasAlmohada: row.numero_fundas_almohada,
   kitAlimentario: row.kit_alimentario || 0,
+  
+  // Amenities de baño
+  jabonLiquido: row.jabon_liquido || 0,
+  gelDucha: row.gel_ducha || 0,
+  champu: row.champu || 0,
+  acondicionador: row.acondicionador || 0,
+  papelHigienico: row.papel_higienico || 0,
+  ambientadorBano: row.ambientador_bano || 0,
+  desinfectanteBano: row.desinfectante_bano || 0,
+  
+  // Amenities de cocina
+  aceite: row.aceite || 0,
+  sal: row.sal || 0,
+  azucar: row.azucar || 0,
+  vinagre: row.vinagre || 0,
+  detergenteLavavajillas: row.detergente_lavavajillas || 0,
+  limpiacristales: row.limpiacristales || 0,
+  bayetasCocina: row.bayetas_cocina || 0,
+  estropajos: row.estropajos || 0,
+  bolsasBasura: row.bolsas_basura || 0,
+  papelCocina: row.papel_cocina || 0,
+  
   notas: row.notas || '',
   clienteId: row.cliente_id,
   hostaway_listing_id: row.hostaway_listing_id,
@@ -46,6 +68,28 @@ export const mapPropertyToDB = (property: Partial<CreatePropertyData>): any => {
   if (property.numeroAlfombrines !== undefined) updateData.numero_alfombrines = property.numeroAlfombrines;
   if (property.numeroFundasAlmohada !== undefined) updateData.numero_fundas_almohada = property.numeroFundasAlmohada;
   if (property.kitAlimentario !== undefined) updateData.kit_alimentario = property.kitAlimentario;
+  
+  // Amenities de baño
+  if (property.jabonLiquido !== undefined) updateData.jabon_liquido = property.jabonLiquido;
+  if (property.gelDucha !== undefined) updateData.gel_ducha = property.gelDucha;
+  if (property.champu !== undefined) updateData.champu = property.champu;
+  if (property.acondicionador !== undefined) updateData.acondicionador = property.acondicionador;
+  if (property.papelHigienico !== undefined) updateData.papel_higienico = property.papelHigienico;
+  if (property.ambientadorBano !== undefined) updateData.ambientador_bano = property.ambientadorBano;
+  if (property.desinfectanteBano !== undefined) updateData.desinfectante_bano = property.desinfectanteBano;
+  
+  // Amenities de cocina
+  if (property.aceite !== undefined) updateData.aceite = property.aceite;
+  if (property.sal !== undefined) updateData.sal = property.sal;
+  if (property.azucar !== undefined) updateData.azucar = property.azucar;
+  if (property.vinagre !== undefined) updateData.vinagre = property.vinagre;
+  if (property.detergenteLavavajillas !== undefined) updateData.detergente_lavavajillas = property.detergenteLavavajillas;
+  if (property.limpiacristales !== undefined) updateData.limpiacristales = property.limpiacristales;
+  if (property.bayetasCocina !== undefined) updateData.bayetas_cocina = property.bayetasCocina;
+  if (property.estropajos !== undefined) updateData.estropajos = property.estropajos;
+  if (property.bolsasBasura !== undefined) updateData.bolsas_basura = property.bolsasBasura;
+  if (property.papelCocina !== undefined) updateData.papel_cocina = property.papelCocina;
+  
   if (property.notas !== undefined) updateData.notas = property.notas;
   if (property.clienteId !== undefined) updateData.cliente_id = property.clienteId;
 
