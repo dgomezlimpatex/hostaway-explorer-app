@@ -12,6 +12,7 @@ import { BasicInfoSection } from './forms/BasicInfoSection';
 import { CharacteristicsSection } from './forms/CharacteristicsSection';
 import { ServiceSection } from './forms/ServiceSection';
 import { TextileSection } from './forms/TextileSection';
+import { AmenitiesSection } from './forms/AmenitiesSection';
 import { NotesSection } from './forms/NotesSection';
 import { ClientSelectionSection } from './forms/ClientSelectionSection';
 import { 
@@ -49,10 +50,12 @@ export const EditPropertyModal: React.FC<EditPropertyModalProps> = ({
       numeroToallasGrandes: property.numeroToallasGrandes,
       numeroTotallasPequenas: property.numeroTotallasPequenas,
       numeroAlfombrines: property.numeroAlfombrines,
-      numeroFundasAlmohada: property.numeroFundasAlmohada,
-      kitAlimentario: property.kitAlimentario || 0,
-      notas: property.notas || '',
-      clienteId: property.clienteId,
+        numeroFundasAlmohada: property.numeroFundasAlmohada,
+        kitAlimentario: property.kitAlimentario || 0,
+        amenitiesBano: property.amenitiesBano || 0,
+        amenitiesCocina: property.amenitiesCocina || 0,
+        notas: property.notas || '',
+        clienteId: property.clienteId,
     } : undefined,
   });
 
@@ -75,6 +78,8 @@ export const EditPropertyModal: React.FC<EditPropertyModalProps> = ({
         numeroAlfombrines: property.numeroAlfombrines,
         numeroFundasAlmohada: property.numeroFundasAlmohada,
         kitAlimentario: property.kitAlimentario || 0,
+        amenitiesBano: property.amenitiesBano || 0,
+        amenitiesCocina: property.amenitiesCocina || 0,
         notas: property.notas || '',
         clienteId: property.clienteId,
       });
@@ -122,6 +127,8 @@ export const EditPropertyModal: React.FC<EditPropertyModalProps> = ({
             <ServiceSection control={form.control} />
             
             <TextileSection control={form.control} />
+            
+            <AmenitiesSection control={form.control} />
             
             <NotesSection control={form.control} />
             

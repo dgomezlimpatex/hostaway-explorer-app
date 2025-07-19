@@ -12,6 +12,7 @@ import { BasicInfoSection } from './forms/BasicInfoSection';
 import { CharacteristicsSection } from './forms/CharacteristicsSection';
 import { ServiceSection } from './forms/ServiceSection';
 import { TextileSection } from './forms/TextileSection';
+import { AmenitiesSection } from './forms/AmenitiesSection';
 import { NotesSection } from './forms/NotesSection';
 import { ClientSelectionSection } from './forms/ClientSelectionSection';
 import { CreatePropertyData } from '@/types/property';
@@ -38,6 +39,8 @@ export const CreatePropertyModal = () => {
       numeroAlfombrines: 0,
       numeroFundasAlmohada: 0,
       kitAlimentario: 0,
+      amenitiesBano: 0,
+      amenitiesCocina: 0,
       notas: '',
       clienteId: '',
     },
@@ -61,6 +64,8 @@ export const CreatePropertyModal = () => {
       numeroAlfombrines: data.numeroAlfombrines,
       numeroFundasAlmohada: data.numeroFundasAlmohada,
       kitAlimentario: data.kitAlimentario,
+      amenitiesBano: data.amenitiesBano,
+      amenitiesCocina: data.amenitiesCocina,
       notas: data.notas || '',
       clienteId: data.clienteId,
     };
@@ -95,6 +100,7 @@ export const CreatePropertyModal = () => {
             <CharacteristicsSection control={form.control} />
             <ServiceSection control={form.control} />
             <TextileSection control={form.control} />
+            <AmenitiesSection control={form.control} />
             <NotesSection control={form.control} />
             
             <div className="flex justify-end gap-3 pt-6 border-t">

@@ -42,6 +42,8 @@ export const useTaskPreview = (task: Task | null) => {
         numeroAlfombrines: data.numero_alfombrines,
         numeroFundasAlmohada: data.numero_fundas_almohada,
         kitAlimentario: data.kit_alimentario,
+        amenitiesBano: data.amenities_bano || 0,
+        amenitiesCocina: data.amenities_cocina || 0,
         notas: data.notas || '',
         clienteId: data.cliente_id,
         hostaway_listing_id: data.hostaway_listing_id,

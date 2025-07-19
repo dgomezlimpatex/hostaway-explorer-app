@@ -808,20 +808,35 @@ export type Database = {
       }
       properties: {
         Row: {
+          aceite: number
+          acondicionador: number
+          ambientador_bano: number
+          amenities_bano: number
+          amenities_cocina: number
+          azucar: number
+          bayetas_cocina: number
+          bolsas_basura: number
+          champu: number
           check_in_predeterminado: string
           check_out_predeterminado: string
           cliente_id: string
           codigo: string
           coste_servicio: number
           created_at: string
+          desinfectante_bano: number
+          detergente_lavavajillas: number
           direccion: string
           duracion_servicio: number
+          estropajos: number
           fecha_actualizacion: string
           fecha_creacion: string
+          gel_ducha: number
           hostaway_internal_name: string | null
           hostaway_listing_id: number | null
           id: string
+          jabon_liquido: number
           kit_alimentario: number
+          limpiacristales: number
           nombre: string
           notas: string | null
           numero_alfombrines: number
@@ -831,23 +846,42 @@ export type Database = {
           numero_sabanas: number
           numero_toallas_grandes: number
           numero_toallas_pequenas: number
+          papel_cocina: number
+          papel_higienico: number
+          sal: number
           updated_at: string
+          vinagre: number
         }
         Insert: {
+          aceite?: number
+          acondicionador?: number
+          ambientador_bano?: number
+          amenities_bano?: number
+          amenities_cocina?: number
+          azucar?: number
+          bayetas_cocina?: number
+          bolsas_basura?: number
+          champu?: number
           check_in_predeterminado?: string
           check_out_predeterminado?: string
           cliente_id: string
           codigo: string
           coste_servicio?: number
           created_at?: string
+          desinfectante_bano?: number
+          detergente_lavavajillas?: number
           direccion: string
           duracion_servicio?: number
+          estropajos?: number
           fecha_actualizacion?: string
           fecha_creacion?: string
+          gel_ducha?: number
           hostaway_internal_name?: string | null
           hostaway_listing_id?: number | null
           id?: string
+          jabon_liquido?: number
           kit_alimentario?: number
+          limpiacristales?: number
           nombre: string
           notas?: string | null
           numero_alfombrines?: number
@@ -857,23 +891,42 @@ export type Database = {
           numero_sabanas?: number
           numero_toallas_grandes?: number
           numero_toallas_pequenas?: number
+          papel_cocina?: number
+          papel_higienico?: number
+          sal?: number
           updated_at?: string
+          vinagre?: number
         }
         Update: {
+          aceite?: number
+          acondicionador?: number
+          ambientador_bano?: number
+          amenities_bano?: number
+          amenities_cocina?: number
+          azucar?: number
+          bayetas_cocina?: number
+          bolsas_basura?: number
+          champu?: number
           check_in_predeterminado?: string
           check_out_predeterminado?: string
           cliente_id?: string
           codigo?: string
           coste_servicio?: number
           created_at?: string
+          desinfectante_bano?: number
+          detergente_lavavajillas?: number
           direccion?: string
           duracion_servicio?: number
+          estropajos?: number
           fecha_actualizacion?: string
           fecha_creacion?: string
+          gel_ducha?: number
           hostaway_internal_name?: string | null
           hostaway_listing_id?: number | null
           id?: string
+          jabon_liquido?: number
           kit_alimentario?: number
+          limpiacristales?: number
           nombre?: string
           notas?: string | null
           numero_alfombrines?: number
@@ -883,7 +936,11 @@ export type Database = {
           numero_sabanas?: number
           numero_toallas_grandes?: number
           numero_toallas_pequenas?: number
+          papel_cocina?: number
+          papel_higienico?: number
+          sal?: number
           updated_at?: string
+          vinagre?: number
         }
         Relationships: [
           {
