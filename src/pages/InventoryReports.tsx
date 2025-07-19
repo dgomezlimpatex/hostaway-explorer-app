@@ -1,6 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { BarChart3, TrendingUp, Package, AlertTriangle, Calendar } from "lucide-react";
-import { RoleBasedNavigation } from '@/components/navigation/RoleBasedNavigation';
+import { InventoryLayout } from '@/components/inventory/InventoryLayout';
 import { useInventoryStock } from '@/hooks/useInventory';
 import { useMovements } from '@/hooks/useMovements';
 import { useQuery } from '@tanstack/react-query';
@@ -29,7 +29,7 @@ export default function InventoryReports() {
   ) || [];
 
   return (
-    <div>
+    <InventoryLayout>
       <div className="space-y-6">
         <div>
           <h1 className="text-3xl font-bold">Reportes de Inventario</h1>
@@ -168,8 +168,6 @@ export default function InventoryReports() {
           </Card>
         )}
       </div>
-      
-      <RoleBasedNavigation />
-    </div>
+    </InventoryLayout>
   );
 }

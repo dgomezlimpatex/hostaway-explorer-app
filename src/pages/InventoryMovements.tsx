@@ -1,6 +1,6 @@
 import { useMovements } from '@/hooks/useMovements';
 import { MovementsTable } from '@/components/inventory/MovementsTable';
-import { RoleBasedNavigation } from '@/components/navigation/RoleBasedNavigation';
+import { InventoryLayout } from '@/components/inventory/InventoryLayout';
 
 export default function InventoryMovements() {
   const { movements, isLoading } = useMovements();
@@ -11,17 +11,19 @@ export default function InventoryMovements() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-96">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Cargando movimientos...</p>
+      <InventoryLayout>
+        <div className="flex items-center justify-center h-96">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+            <p className="text-muted-foreground">Cargando movimientos...</p>
+          </div>
         </div>
-      </div>
+      </InventoryLayout>
     );
   }
 
   return (
-    <div>
+    <InventoryLayout>
       <div className="space-y-6">
         <div>
           <h1 className="text-3xl font-bold">Movimientos de Inventario</h1>
@@ -35,8 +37,6 @@ export default function InventoryMovements() {
           onCreateMovement={handleMovementCreated}
         />
       </div>
-      
-      <RoleBasedNavigation />
-    </div>
+    </InventoryLayout>
   );
 }

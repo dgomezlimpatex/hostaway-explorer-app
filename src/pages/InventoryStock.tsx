@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Package } from 'lucide-react';
 import { useInventoryStock } from '@/hooks/useInventory';
+import { InventoryLayout } from '@/components/inventory/InventoryLayout';
 import { InventoryStockTable } from '@/components/inventory/InventoryStockTable';
 import { CreateProductDialog } from '@/components/inventory/CreateProductDialog';
 import { StockAdjustmentDialog } from '@/components/inventory/StockAdjustmentDialog';
@@ -28,30 +29,32 @@ export default function InventoryStock() {
   };
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
-      <div className="flex items-center gap-2">
-        <Package className="h-6 w-6" />
-        <h1 className="text-2xl font-bold">Stock de Inventario</h1>
+    <InventoryLayout>
+      <div className="space-y-6">
+        <div className="flex items-center gap-2">
+          <Package className="h-6 w-6" />
+          <h1 className="text-2xl font-bold">Stock de Inventario</h1>
+        </div>
+        
+        <InventoryStockTable
+          stock={stock}
+          isLoading={isLoading}
+          onEditStock={handleEditStock}
+          onCreateProduct={handleCreateProduct}
+          onAdjustStock={handleAdjustStock}
+        />
+
+        <CreateProductDialog
+          open={showCreateProduct}
+          onOpenChange={setShowCreateProduct}
+        />
+
+        <StockAdjustmentDialog
+          open={showStockAdjustment}
+          onOpenChange={setShowStockAdjustment}
+          stockItem={selectedStockItem}
+        />
       </div>
-      
-      <InventoryStockTable
-        stock={stock}
-        isLoading={isLoading}
-        onEditStock={handleEditStock}
-        onCreateProduct={handleCreateProduct}
-        onAdjustStock={handleAdjustStock}
-      />
-
-      <CreateProductDialog
-        open={showCreateProduct}
-        onOpenChange={setShowCreateProduct}
-      />
-
-      <StockAdjustmentDialog
-        open={showStockAdjustment}
-        onOpenChange={setShowStockAdjustment}
-        stockItem={selectedStockItem}
-      />
-    </div>
+    </InventoryLayout>
   );
 }
