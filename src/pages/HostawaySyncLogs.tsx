@@ -447,13 +447,13 @@ const HostawaySyncLogs = () => {
                   )}
 
                   {/* Reservas Canceladas */}
-                  {log.reservations_details && log.reservations_details.filter(r => r.action === 'cancelled').length > 0 && (
+                  {log.reservations_details && log.reservations_details.filter(r => r.status === 'cancelled').length > 0 && (
                     <Collapsible className="mb-4">
                       <CollapsibleTrigger asChild>
                         <Button variant="outline" className="w-full justify-between">
                           <div className="flex items-center gap-2">
                             <XCircle className="h-4 w-4 text-red-600" />
-                            Reservas Canceladas ({log.reservations_details.filter(r => r.action === 'cancelled').length})
+                            Reservas Canceladas ({log.reservations_details.filter(r => r.status === 'cancelled').length})
                           </div>
                           <ChevronDown className="h-4 w-4" />
                         </Button>
@@ -462,7 +462,7 @@ const HostawaySyncLogs = () => {
                         <div className="bg-red-50 dark:bg-red-900/20 p-4 rounded-lg">
                           <div className="space-y-2 text-sm">
                             {log.reservations_details
-                              .filter(r => r.action === 'cancelled')
+                              .filter(r => r.status === 'cancelled')
                               .sort((a, b) => new Date(a.arrival_date).getTime() - new Date(b.arrival_date).getTime())
                               .map((reservation, index) => (
                               <div key={index} className="flex justify-between items-center p-2 bg-white dark:bg-gray-800 rounded">
@@ -480,7 +480,7 @@ const HostawaySyncLogs = () => {
                                     {reservation.arrival_date} → {reservation.departure_date}
                                   </div>
                                   <div className="text-xs text-gray-500">
-                                    {reservation.status} | Reserva: {reservation.reservation_id}
+                                    {reservation.action} | {reservation.status} | Reserva: {reservation.reservation_id}
                                   </div>
                                 </div>
                               </div>
