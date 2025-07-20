@@ -357,13 +357,13 @@ const HostawaySyncLogs = () => {
                   )}
 
                   {/* Nuevas Reservas */}
-                  {log.reservations_details && log.reservations_details.filter(r => r.action === 'created').length > 0 && (
+                  {log.reservations_details && log.reservations_details.filter(r => r.action === 'created' && r.status !== 'cancelled').length > 0 && (
                     <Collapsible className="mb-4">
                       <CollapsibleTrigger asChild>
                         <Button variant="outline" className="w-full justify-between">
                           <div className="flex items-center gap-2">
                             <CheckCircle className="h-4 w-4 text-green-600" />
-                            Nuevas Reservas ({log.reservations_details.filter(r => r.action === 'created').length})
+                            Nuevas Reservas ({log.reservations_details.filter(r => r.action === 'created' && r.status !== 'cancelled').length})
                           </div>
                           <ChevronDown className="h-4 w-4" />
                         </Button>
@@ -372,7 +372,7 @@ const HostawaySyncLogs = () => {
                         <div className="bg-green-50 dark:bg-green-900/20 p-4 rounded-lg">
                           <div className="space-y-2 text-sm">
                             {log.reservations_details
-                              .filter(r => r.action === 'created')
+                              .filter(r => r.action === 'created' && r.status !== 'cancelled')
                               .sort((a, b) => new Date(a.arrival_date).getTime() - new Date(b.arrival_date).getTime())
                               .map((reservation, index) => (
                               <div key={index} className="flex justify-between items-center p-2 bg-white dark:bg-gray-800 rounded">
