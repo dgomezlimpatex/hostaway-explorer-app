@@ -356,41 +356,127 @@ const HostawaySyncLogs = () => {
                     </Collapsible>
                   )}
 
-                  {/* Reservas Procesadas - Detalles */}
-                  {log.reservations_details && log.reservations_details.length > 0 && (
+                  {/* Nuevas Reservas */}
+                  {log.reservations_details && log.reservations_details.filter(r => r.action === 'created').length > 0 && (
                     <Collapsible className="mb-4">
                       <CollapsibleTrigger asChild>
                         <Button variant="outline" className="w-full justify-between">
                           <div className="flex items-center gap-2">
-                            <Users className="h-4 w-4" />
-                            Detalles de Reservas ({log.reservations_details.length})
+                            <CheckCircle className="h-4 w-4 text-green-600" />
+                            Nuevas Reservas ({log.reservations_details.filter(r => r.action === 'created').length})
                           </div>
                           <ChevronDown className="h-4 w-4" />
                         </Button>
                       </CollapsibleTrigger>
                       <CollapsibleContent className="mt-2">
-                        <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg">
+                        <div className="bg-green-50 dark:bg-green-900/20 p-4 rounded-lg">
                           <div className="space-y-2 text-sm">
-                            {log.reservations_details.map((reservation, index) => (
+                            {log.reservations_details
+                              .filter(r => r.action === 'created')
+                              .sort((a, b) => new Date(a.arrival_date).getTime() - new Date(b.arrival_date).getTime())
+                              .map((reservation, index) => (
                               <div key={index} className="flex justify-between items-center p-2 bg-white dark:bg-gray-800 rounded">
                                 <div>
                                   <span className="font-medium">{reservation.property_name}</span>
                                   <span className="text-gray-600 dark:text-gray-300 ml-2">
                                     ({reservation.guest_name})
                                   </span>
-                                  <Badge 
-                                    variant={
-                                      reservation.action === 'created' ? 'default' :
-                                      reservation.action === 'cancelled' ? 'destructive' : 'secondary'
-                                    }
-                                    className="ml-2"
-                                  >
-                                    {reservation.action === 'created' ? 'Nueva' :
-                                     reservation.action === 'cancelled' ? 'Anulada' : 'Modificada'}
+                                  <Badge variant="default" className="ml-2 bg-green-100 text-green-800">
+                                    Nueva
                                   </Badge>
                                 </div>
                                 <div className="text-right">
-                                  <div className="text-blue-600 dark:text-blue-400 font-medium">
+                                  <div className="text-green-600 dark:text-green-400 font-medium">
+                                    {reservation.arrival_date} → {reservation.departure_date}
+                                  </div>
+                                  <div className="text-xs text-gray-500">
+                                    {reservation.status} | Reserva: {reservation.reservation_id}
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </CollapsibleContent>
+                    </Collapsible>
+                  )}
+
+                  {/* Reservas Modificadas */}
+                  {log.reservations_details && log.reservations_details.filter(r => r.action === 'updated').length > 0 && (
+                    <Collapsible className="mb-4">
+                      <CollapsibleTrigger asChild>
+                        <Button variant="outline" className="w-full justify-between">
+                          <div className="flex items-center gap-2">
+                            <FileText className="h-4 w-4 text-yellow-600" />
+                            Reservas Modificadas ({log.reservations_details.filter(r => r.action === 'updated').length})
+                          </div>
+                          <ChevronDown className="h-4 w-4" />
+                        </Button>
+                      </CollapsibleTrigger>
+                      <CollapsibleContent className="mt-2">
+                        <div className="bg-yellow-50 dark:bg-yellow-900/20 p-4 rounded-lg">
+                          <div className="space-y-2 text-sm">
+                            {log.reservations_details
+                              .filter(r => r.action === 'updated')
+                              .sort((a, b) => new Date(a.arrival_date).getTime() - new Date(b.arrival_date).getTime())
+                              .map((reservation, index) => (
+                              <div key={index} className="flex justify-between items-center p-2 bg-white dark:bg-gray-800 rounded">
+                                <div>
+                                  <span className="font-medium">{reservation.property_name}</span>
+                                  <span className="text-gray-600 dark:text-gray-300 ml-2">
+                                    ({reservation.guest_name})
+                                  </span>
+                                  <Badge variant="secondary" className="ml-2 bg-yellow-100 text-yellow-800">
+                                    Modificada
+                                  </Badge>
+                                </div>
+                                <div className="text-right">
+                                  <div className="text-yellow-600 dark:text-yellow-400 font-medium">
+                                    {reservation.arrival_date} → {reservation.departure_date}
+                                  </div>
+                                  <div className="text-xs text-gray-500">
+                                    {reservation.status} | Reserva: {reservation.reservation_id}
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </CollapsibleContent>
+                    </Collapsible>
+                  )}
+
+                  {/* Reservas Canceladas */}
+                  {log.reservations_details && log.reservations_details.filter(r => r.action === 'cancelled').length > 0 && (
+                    <Collapsible className="mb-4">
+                      <CollapsibleTrigger asChild>
+                        <Button variant="outline" className="w-full justify-between">
+                          <div className="flex items-center gap-2">
+                            <XCircle className="h-4 w-4 text-red-600" />
+                            Reservas Canceladas ({log.reservations_details.filter(r => r.action === 'cancelled').length})
+                          </div>
+                          <ChevronDown className="h-4 w-4" />
+                        </Button>
+                      </CollapsibleTrigger>
+                      <CollapsibleContent className="mt-2">
+                        <div className="bg-red-50 dark:bg-red-900/20 p-4 rounded-lg">
+                          <div className="space-y-2 text-sm">
+                            {log.reservations_details
+                              .filter(r => r.action === 'cancelled')
+                              .sort((a, b) => new Date(a.arrival_date).getTime() - new Date(b.arrival_date).getTime())
+                              .map((reservation, index) => (
+                              <div key={index} className="flex justify-between items-center p-2 bg-white dark:bg-gray-800 rounded">
+                                <div>
+                                  <span className="font-medium">{reservation.property_name}</span>
+                                  <span className="text-gray-600 dark:text-gray-300 ml-2">
+                                    ({reservation.guest_name})
+                                  </span>
+                                  <Badge variant="destructive" className="ml-2">
+                                    Cancelada
+                                  </Badge>
+                                </div>
+                                <div className="text-right">
+                                  <div className="text-red-600 dark:text-red-400 font-medium">
                                     {reservation.arrival_date} → {reservation.departure_date}
                                   </div>
                                   <div className="text-xs text-gray-500">
