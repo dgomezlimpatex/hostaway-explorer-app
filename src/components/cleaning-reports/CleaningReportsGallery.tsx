@@ -21,7 +21,7 @@ import {
 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useTaskReports } from '@/hooks/useTaskReports';
-import { useTaskMedia } from '@/hooks/useTaskMedia';
+import { useTaskMedia, useAllTaskMedia } from '@/hooks/useTaskMedia';
 import { useCleaners } from '@/hooks/useCleaners';
 import { useProperties } from '@/hooks/useProperties';
 import { taskStorageService } from '@/services/taskStorage';
@@ -56,6 +56,9 @@ export const CleaningReportsGallery: React.FC<CleaningReportsGalleryProps> = ({
   
   // Obtener imágenes del reporte seleccionado
   const { data: reportMedia = [] } = useTaskMedia(selectedReport?.id);
+  
+  // Hook para obtener todas las imágenes de todos los reportes
+  const { data: allTaskMedia = [] } = useAllTaskMedia();
 
   // Cargar todas las tareas al montar el componente
   useEffect(() => {
@@ -72,7 +75,7 @@ export const CleaningReportsGallery: React.FC<CleaningReportsGalleryProps> = ({
 
   // Procesar reportes con información de tareas y propiedades
   const processedReports = useMemo(() => {
-    if (!reports || !allTasks || !properties) return [];
+    if (!reports || !allTasks || !properties || !allTaskMedia) return [];
     
     return reports.map((report: any) => {
       // Buscar la tarea asociada al reporte
@@ -83,17 +86,16 @@ export const CleaningReportsGallery: React.FC<CleaningReportsGalleryProps> = ({
       // Buscar el limpiador
       const cleaner = cleaners.find(c => c.id === report.cleaner_id);
       
-      // Obtener todas las imágenes del checklist completado
-      const checklistImages: string[] = [];
-      if (report.checklist_completed && typeof report.checklist_completed === 'object') {
-        Object.values(report.checklist_completed).forEach((item: any) => {
-          if (item?.media_urls && Array.isArray(item.media_urls)) {
-            checklistImages.push(...item.media_urls);
-          }
-        });
-      }
+      // Obtener solo las fotos de la sección "fotos" (sin checklist_item_id)
+      const photosFromMediaSection = allTaskMedia
+        .filter(media => 
+          media.task_report_id === report.id && 
+          !media.checklist_item_id && // Solo fotos de la sección "fotos", no del checklist
+          media.media_type === 'photo'
+        )
+        .map(media => media.file_url);
 
-      // Obtener imágenes de incidencias
+      // Obtener imágenes de incidencias (mantener estas)
       const incidentImages: string[] = [];
       if (Array.isArray(report.issues_found)) {
         report.issues_found.forEach((issue: any) => {
@@ -103,8 +105,8 @@ export const CleaningReportsGallery: React.FC<CleaningReportsGalleryProps> = ({
         });
       }
 
-      // Combinar todas las imágenes
-      const allImages: string[] = [...checklistImages, ...incidentImages];
+      // Combinar solo fotos de la sección "fotos" e incidencias
+      const allImages: string[] = [...photosFromMediaSection, ...incidentImages];
       
       return {
         ...report,
@@ -120,7 +122,7 @@ export const CleaningReportsGallery: React.FC<CleaningReportsGalleryProps> = ({
         allImages: allImages
       };
     }).filter(report => report.totalImages > 0); // Solo mostrar reportes con imágenes
-  }, [reports, allTasks, properties, cleaners]);
+  }, [reports, allTasks, properties, cleaners, allTaskMedia]);
 
   // Filtrar reportes
   const filteredReports = useMemo(() => {
