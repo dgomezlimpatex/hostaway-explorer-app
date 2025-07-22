@@ -42,8 +42,17 @@ export const useBatchCreateTask = () => {
       const property = properties.find(p => p.id === propertyId);
       if (!property) return null;
 
+      // Calcular endTime basándose en startTime + duración de la propiedad
+      const [startHour, startMinute] = batchData.startTime.split(':').map(Number);
+      const startDate = new Date();
+      startDate.setHours(startHour, startMinute, 0, 0);
+      
+      const endDate = new Date(startDate.getTime() + property.duracionServicio * 60000);
+      const endTime = `${endDate.getHours().toString().padStart(2, '0')}:${endDate.getMinutes().toString().padStart(2, '0')}`;
+
       return {
         ...batchData,
+        endTime, // Usar la endTime calculada específicamente para esta propiedad
         property: `${property.codigo} - ${property.nombre}`,
         address: property.direccion,
         clienteId: property.clienteId,
