@@ -43,13 +43,13 @@ export const useBatchCreateTask = () => {
       if (!property) return null;
 
       return {
+        ...batchData,
         property: `${property.codigo} - ${property.nombre}`,
         address: property.direccion,
         clienteId: property.clienteId,
         propertyId: property.id,
         duration: property.duracionServicio,
         cost: property.costeServicio,
-        ...batchData,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       };
