@@ -22,7 +22,7 @@ export const MainDashboard = () => {
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
 
   const currentDate = new Date();
-  const { tasks } = useTasks(currentDate, 'month');
+  const { tasks } = useTasks(currentDate, 'week');
   const { reports } = useTaskReports();
   const { cleaners } = useCleaners();
 
@@ -32,9 +32,9 @@ export const MainDashboard = () => {
     const currentMonthStart = startOfMonth(now);
     const currentMonthEnd = endOfMonth(now);
     
-    const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-    const lastMonthStart = startOfMonth(lastMonth);
-    const lastMonthEnd = endOfMonth(lastMonth);
+    const lastMonthDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const lastMonthStart = startOfMonth(lastMonthDate);
+    const lastMonthEnd = endOfMonth(lastMonthDate);
 
     // Filter completed tasks for current month
     const currentMonthTasks = tasks.filter(task => {
@@ -51,15 +51,15 @@ export const MainDashboard = () => {
     });
 
     const currentMonth = currentMonthTasks.length;
-    const lastMonth = lastMonthTasks.length;
+    const lastMonthCount = lastMonthTasks.length;
     
-    const percentageChange = lastMonth > 0 
-      ? ((currentMonth - lastMonth) / lastMonth) * 100 
+    const percentageChange = lastMonthCount > 0 
+      ? ((currentMonth - lastMonthCount) / lastMonthCount) * 100 
       : currentMonth > 0 ? 100 : 0;
 
     return {
       currentMonth,
-      lastMonth,
+      lastMonth: lastMonthCount,
       percentageChange: Math.round(percentageChange),
       isPositive: percentageChange >= 0,
     };
@@ -83,7 +83,7 @@ export const MainDashboard = () => {
     return reports.filter(report => 
       report.issues_found && 
       report.issues_found.length > 0 && 
-      report.overall_status !== 'resolved'
+      report.overall_status !== 'completed'
     ).length;
   }, [reports]);
 
@@ -94,7 +94,7 @@ export const MainDashboard = () => {
 
   return (
     <div className="flex h-screen bg-gray-50">
-      <DashboardSidebar className="hidden lg:block" />
+      <DashboardSidebar />
       
       <MobileDashboardSidebar
         isOpen={isMobileSidebarOpen}
@@ -139,13 +139,13 @@ export const MainDashboard = () => {
       </div>
 
       <CreateTaskModal
-        isOpen={isCreateModalOpen}
-        onClose={() => setIsCreateModalOpen(false)}
+        open={isCreateModalOpen}
+        onOpenChange={setIsCreateModalOpen}
       />
 
       <BatchCreateTaskModal
-        isOpen={isBatchModalOpen}
-        onClose={() => setIsBatchModalOpen(false)}
+        open={isBatchModalOpen}
+        onOpenChange={setIsBatchModalOpen}
       />
     </div>
   );
