@@ -78,9 +78,10 @@ const {
       // Calculate today's and tomorrow's tasks for the cleaner
       const currentDateStr = currentDate.toISOString().split('T')[0];
       
-      // Use a more robust method to calculate tomorrow that maintains timezone consistency
-      const tomorrow = new Date(currentDateStr);
-      tomorrow.setDate(tomorrow.getDate() + 1);
+      // Calculate tomorrow by adding one day to the current date string
+      const currentDateObj = new Date(currentDateStr + 'T00:00:00');
+      const tomorrow = new Date(currentDateObj);
+      tomorrow.setDate(currentDateObj.getDate() + 1);
       const tomorrowDateStr = tomorrow.toISOString().split('T')[0];
       
       // Filter tasks for the current cleaner (assuming tasks already filtered by role in hook)
@@ -90,6 +91,7 @@ const {
       console.log('Mobile cleaner - Today tasks:', todayTasks.length, 'Tomorrow tasks:', tomorrowTasks.length);
       console.log('All tasks:', tasks.length, 'Current date:', currentDateStr, 'Tomorrow date:', tomorrowDateStr);
       console.log('Tasks dates:', tasks.map(task => ({ id: task.id, date: task.date, property: task.property })));
+      console.log('Tomorrow tasks found:', tomorrowTasks.map(task => ({ id: task.id, date: task.date, property: task.property })));
       
       return (
         <>
@@ -172,9 +174,10 @@ const {
     // Calculate today's and tomorrow's tasks for the cleaner
     const currentDateStr = currentDate.toISOString().split('T')[0];
     
-    // Use a more robust method to calculate tomorrow that maintains timezone consistency
-    const tomorrow = new Date(currentDateStr);
-    tomorrow.setDate(tomorrow.getDate() + 1);
+    // Calculate tomorrow by adding one day to the current date string
+    const currentDateObj = new Date(currentDateStr + 'T00:00:00');
+    const tomorrow = new Date(currentDateObj);
+    tomorrow.setDate(currentDateObj.getDate() + 1);
     const tomorrowDateStr = tomorrow.toISOString().split('T')[0];
     
     const todayTasks = tasks.filter(task => task.date === currentDateStr);
