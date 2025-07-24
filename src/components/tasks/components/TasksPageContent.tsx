@@ -192,40 +192,108 @@ export const TasksPageContent = ({
         )}
         
         <div className={isCleaner ? "lg:col-span-1" : (showPastTasks ? "lg:col-span-4" : "lg:col-span-3")}>
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <CardTitle>
-                  {isCleaner 
-                    ? `Mis Tareas Asignadas (${sortedTasks.length})`
-                    : (showPastTasks ? 'Historial de Tareas' : 'Lista de Tareas')
-                  } {!isCleaner && `(${sortedTasks.length})`}
-                </CardTitle>
-                {totalPages > 1 && (
-                  <span className="text-sm text-gray-500">
-                    Página {currentPage} de {totalPages}
-                  </span>
-                )}
-              </div>
-            </CardHeader>
-            <CardContent>
-              <TasksList 
-                tasks={paginatedTasks} 
-                filters={filters} 
-                isLoading={isLoading} 
-                onShowHistory={onShowHistory}
-                onCreateReport={onCreateReport}
-                onAssignMultipleCleaners={onAssignMultipleCleaners}
-                onRefetch={onRefetch}
-              />
+          {/* Para limpiadoras: mostrar tareas separadas por secciones también en desktop */}
+          {isCleaner && !showPastTasks ? (
+            <div className="space-y-6">
+              {/* Tareas de hoy */}
+              {(() => {
+                const today = new Date().toISOString().split('T')[0];
+                const todayTasks = paginatedTasks.filter(task => task.date === today);
+                
+                return todayTasks.length > 0 ? (
+                  <Card>
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-lg text-primary font-semibold">
+                        📅 TAREAS PARA HOY ({todayTasks.length})
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="pt-0">
+                      <TasksList 
+                        tasks={todayTasks} 
+                        filters={filters} 
+                        isLoading={isLoading} 
+                        onShowHistory={onShowHistory}
+                        onCreateReport={onCreateReport}
+                        onAssignMultipleCleaners={onAssignMultipleCleaners}
+                        onRefetch={onRefetch}
+                      />
+                    </CardContent>
+                  </Card>
+                ) : null;
+              })()}
+
+              {/* Próximas tareas */}
+              {(() => {
+                const today = new Date().toISOString().split('T')[0];
+                const upcomingTasks = paginatedTasks.filter(task => task.date > today);
+                
+                return upcomingTasks.length > 0 ? (
+                  <Card>
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-lg text-muted-foreground font-semibold">
+                        ⏰ PRÓXIMAS TAREAS ({upcomingTasks.length})
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="pt-0">
+                      <TasksList 
+                        tasks={upcomingTasks} 
+                        filters={filters} 
+                        isLoading={isLoading} 
+                        onShowHistory={onShowHistory}
+                        onCreateReport={onCreateReport}
+                        onAssignMultipleCleaners={onAssignMultipleCleaners}
+                        onRefetch={onRefetch}
+                      />
+                    </CardContent>
+                  </Card>
+                ) : null;
+              })()}
               
-              <TasksPagination
-                currentPage={currentPage}
-                totalPages={totalPages}
-                onPageChange={onPageChange}
-              />
-            </CardContent>
-          </Card>
+              {totalPages > 1 && (
+                <TasksPagination
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  onPageChange={onPageChange}
+                />
+              )}
+            </div>
+          ) : (
+            // Vista normal para no-limpiadoras o historial
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle>
+                    {isCleaner 
+                      ? 'Mis Tareas'
+                      : (showPastTasks ? 'Historial de Tareas' : 'Lista de Tareas')
+                    } {!isCleaner && `(${sortedTasks.length})`}
+                  </CardTitle>
+                  {totalPages > 1 && (
+                    <span className="text-sm text-gray-500">
+                      Página {currentPage} de {totalPages}
+                    </span>
+                  )}
+                </div>
+              </CardHeader>
+              <CardContent>
+                <TasksList 
+                  tasks={paginatedTasks} 
+                  filters={filters} 
+                  isLoading={isLoading} 
+                  onShowHistory={onShowHistory}
+                  onCreateReport={onCreateReport}
+                  onAssignMultipleCleaners={onAssignMultipleCleaners}
+                  onRefetch={onRefetch}
+                />
+                
+                <TasksPagination
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  onPageChange={onPageChange}
+                />
+              </CardContent>
+            </Card>
+          )}
         </div>
       </div>
     </div>
