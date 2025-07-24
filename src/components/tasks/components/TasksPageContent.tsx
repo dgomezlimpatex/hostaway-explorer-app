@@ -94,7 +94,16 @@ export const TasksPageContent = ({
             {/* Próximas tareas */}
             {(() => {
               const today = new Date().toISOString().split('T')[0];
-              const upcomingTasks = paginatedTasks.filter(task => task.date > today);
+              const upcomingTasks = paginatedTasks
+                .filter(task => task.date > today)
+                .sort((a, b) => {
+                  // Primero por fecha
+                  const dateComparison = a.date.localeCompare(b.date);
+                  if (dateComparison !== 0) return dateComparison;
+                  
+                  // Si la fecha es la misma, por hora de inicio
+                  return a.startTime.localeCompare(b.startTime);
+                });
               
               return upcomingTasks.length > 0 ? (
                 <Card>
@@ -225,7 +234,16 @@ export const TasksPageContent = ({
               {/* Próximas tareas */}
               {(() => {
                 const today = new Date().toISOString().split('T')[0];
-                const upcomingTasks = paginatedTasks.filter(task => task.date > today);
+                const upcomingTasks = paginatedTasks
+                  .filter(task => task.date > today)
+                  .sort((a, b) => {
+                    // Primero por fecha
+                    const dateComparison = a.date.localeCompare(b.date);
+                    if (dateComparison !== 0) return dateComparison;
+                    
+                    // Si la fecha es la misma, por hora de inicio
+                    return a.startTime.localeCompare(b.startTime);
+                  });
                 
                 return upcomingTasks.length > 0 ? (
                   <Card>
