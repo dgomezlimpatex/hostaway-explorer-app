@@ -41,8 +41,10 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
   const [issues, setIssues] = useState<any[]>([]);
   const [reportMedia, setReportMedia] = useState<TaskMedia[]>([]);
   const [activeTab, setActiveTab] = useState('checklist');
+  const [currentStep, setCurrentStep] = useState<'checklist' | 'issues' | 'media' | 'summary'>('checklist');
   const [currentTemplate, setCurrentTemplate] = useState<TaskChecklistTemplate | undefined>();
   const [hasStartedTask, setHasStartedTask] = useState(false);
+  const [isChecklistCompleted, setIsChecklistCompleted] = useState(false);
   
   // Ref to track if we've already tried to create a report for this task
   const reportCreationAttempted = useRef<string | null>(null);
@@ -165,10 +167,37 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
       0
     ) || 0;
     
-    const completedItems = Object.keys(checklist).length;
+    const completedItems = Object.values(checklist).filter(item => item?.completed).length;
     
     return totalItems > 0 ? Math.round((completedItems / totalItems) * 100) : 0;
   }, [checklist, currentTemplate]);
+
+  // Check if checklist is completed and advance to next step
+  useEffect(() => {
+    const wasCompleted = isChecklistCompleted;
+    const nowCompleted = completionPercentage === 100;
+    setIsChecklistCompleted(nowCompleted);
+    
+    // Auto-advance when checklist is completed
+    if (!wasCompleted && nowCompleted && currentStep === 'checklist') {
+      setTimeout(() => setCurrentStep('issues'), 500);
+    }
+  }, [completionPercentage, currentStep, isChecklistCompleted]);
+
+  // Auto-advance from issues to media after 2 seconds if no issues
+  useEffect(() => {
+    if (currentStep === 'issues' && issues.length === 0) {
+      const timer = setTimeout(() => setCurrentStep('media'), 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [currentStep, issues.length]);
+
+  // Auto-advance to summary when media is uploaded
+  useEffect(() => {
+    if (currentStep === 'media' && reportMedia.length > 0) {
+      setTimeout(() => setCurrentStep('summary'), 500);
+    }
+  }, [currentStep, reportMedia.length]);
 
   const handleStartTask = async () => {
     if (!task || !isTaskFromToday) {
@@ -374,6 +403,8 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
           <TaskReportTabs
             activeTab={activeTab}
             onTabChange={setActiveTab}
+            currentStep={currentStep}
+            onStepChange={setCurrentStep}
             issues={issues}
             isLoadingTemplates={isLoadingTemplates}
             currentTemplate={currentTemplate}
@@ -389,6 +420,7 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
             onReportMediaChange={setReportMedia}
             isTaskCompleted={isTaskCompleted}
             hasStartedTask={hasStartedTask}
+            onComplete={handleComplete}
           />
         </div>
 
