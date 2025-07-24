@@ -2,12 +2,14 @@ import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { User } from 'lucide-react';
+import { useAuth } from '@/hooks/useAuth';
 
 interface ClientInfoSectionProps {
   clientData: any;
 }
 
 export const ClientInfoSection = ({ clientData }: ClientInfoSectionProps) => {
+  const { userRole } = useAuth();
   if (!clientData) return null;
 
   return (
@@ -27,10 +29,13 @@ export const ClientInfoSection = ({ clientData }: ClientInfoSectionProps) => {
             </Badge>
           </div>
           
-          <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border">
-            <span className="text-sm font-medium text-gray-700">Método de Pago</span>
-            <span className="text-sm text-gray-600 capitalize">{clientData.metodo_pago}</span>
-          </div>
+          {/* Ocultar método de pago para cleaners */}
+          {userRole !== 'cleaner' && (
+            <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border">
+              <span className="text-sm font-medium text-gray-700">Método de Pago</span>
+              <span className="text-sm text-gray-600 capitalize">{clientData.metodo_pago}</span>
+            </div>
+          )}
           
           <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border">
             <span className="text-sm font-medium text-gray-700">Supervisor</span>

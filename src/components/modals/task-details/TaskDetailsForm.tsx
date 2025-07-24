@@ -9,6 +9,7 @@ import { ClientInfoSection } from "./components/ClientInfoSection";
 import { TaskStatusSection } from "./components/TaskStatusSection";
 import { PropertyNotesSection } from "./components/PropertyNotesSection";
 import { InventoryTaskIntegration } from "@/components/inventory/InventoryTaskIntegration";
+import { useAuth } from "@/hooks/useAuth";
 interface TaskDetailsFormProps {
   task: Task;
   isEditing: boolean;
@@ -21,6 +22,7 @@ export const TaskDetailsForm = ({
   formData,
   onFieldChange
 }: TaskDetailsFormProps) => {
+  const { userRole } = useAuth();
   const [propertyData, setPropertyData] = useState<any>(null);
   const [clientData, setClientData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -71,7 +73,8 @@ export const TaskDetailsForm = ({
 
   return (
     <div className="space-y-6">
-      {task && task.propertyId && (
+      {/* Ocultar inventario para cleaners */}
+      {userRole !== 'cleaner' && task && task.propertyId && (
         <InventoryTaskIntegration 
           taskId={task.id} 
           propertyId={task.propertyId}
@@ -98,7 +101,8 @@ export const TaskDetailsForm = ({
 
       <AmenitiesSection propertyData={propertyData} />
 
-      <ClientInfoSection clientData={clientData} />
+      {/* Ocultar información del cliente para cleaners */}
+      {userRole !== 'cleaner' && <ClientInfoSection clientData={clientData} />}
 
       {isEditing && (
         <TaskStatusSection 
