@@ -151,6 +151,35 @@ export const TaskReportTabs: React.FC<TaskReportTabsProps> = ({
           <MediaCapture
             onMediaCaptured={(mediaUrl) => {
               console.log('Media captured:', mediaUrl);
+              // Actualizar el checklist para reflejar las fotos subidas
+              if (currentTemplate) {
+                const updatedChecklist = { ...checklist };
+                let updated = false;
+                
+                // Buscar items que requieren fotos y no tienen fotos aún
+                currentTemplate.checklist_items.forEach(category => {
+                  category.items.forEach(item => {
+                    if (item.photo_required) {
+                      const key = `${category.id}.${item.id}`;
+                      const itemData = updatedChecklist[key] || {};
+                      
+                      // Si el item no tiene fotos, agregar esta foto
+                      if (!itemData.media_urls || itemData.media_urls.length === 0) {
+                        updatedChecklist[key] = {
+                          ...itemData,
+                          media_urls: [mediaUrl]
+                        };
+                        updated = true;
+                        return; // Solo asignar a un item por foto
+                      }
+                    }
+                  });
+                });
+                
+                if (updated) {
+                  onChecklistChange(updatedChecklist);
+                }
+              }
             }}
             onMediaDeleted={(mediaId) => {
               const updatedMedia = reportMedia.filter(media => media.id !== mediaId);
