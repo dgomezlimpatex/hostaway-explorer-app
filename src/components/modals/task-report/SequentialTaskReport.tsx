@@ -65,6 +65,9 @@ export const SequentialTaskReport: React.FC<SequentialTaskReportProps> = ({
   const progressPercentage = ((currentStepIndex + 1) / steps.length) * 100;
 
   const canProceedToNext = () => {
+    // Si la tarea está completada, permitir navegación libre
+    if (isTaskCompleted) return true;
+    
     switch (currentStep) {
       case 'checklist':
         return completionPercentage === 100;
@@ -183,6 +186,7 @@ export const SequentialTaskReport: React.FC<SequentialTaskReportProps> = ({
               issues={issues}
               onIssuesChange={onIssuesChange}
               reportId={reportId}
+              isReadOnly={isTaskCompleted}
             />
             
           </div>
@@ -207,6 +211,7 @@ export const SequentialTaskReport: React.FC<SequentialTaskReportProps> = ({
               }}
               reportId={reportId}
               existingMedia={reportMedia}
+              isReadOnly={isTaskCompleted}
             />
           </div>
         )}
@@ -229,23 +234,25 @@ export const SequentialTaskReport: React.FC<SequentialTaskReportProps> = ({
               completionPercentage={completionPercentage}
             />
             
-            <div className="pt-6 border-t">
-              <Button 
-                onClick={handleFinishReport}
-                className="w-full"
-                size="lg"
-                disabled={completionPercentage < 100}
-              >
-                <CheckCircle className="mr-2 h-5 w-5" />
-                Finalizar Reporte
-              </Button>
-              
-              {completionPercentage < 100 && (
-                <p className="text-sm text-muted-foreground text-center mt-2">
-                  Completa todas las tareas obligatorias para finalizar
-                </p>
-              )}
-            </div>
+            {!isTaskCompleted && (
+              <div className="pt-6 border-t">
+                <Button 
+                  onClick={handleFinishReport}
+                  className="w-full"
+                  size="lg"
+                  disabled={completionPercentage < 100}
+                >
+                  <CheckCircle className="mr-2 h-5 w-5" />
+                  Finalizar Reporte
+                </Button>
+                
+                {completionPercentage < 100 && (
+                  <p className="text-sm text-muted-foreground text-center mt-2">
+                    Completa todas las tareas obligatorias para finalizar
+                  </p>
+                )}
+              </div>
+            )}
           </div>
         )}
       </div>
