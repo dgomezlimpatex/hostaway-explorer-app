@@ -1,6 +1,6 @@
 import React from 'react';
 import { Task } from '@/types/calendar';
-import { MapPin } from 'lucide-react';
+import { MapPin, Calendar } from 'lucide-react';
 
 interface CleanerTaskCardProps {
   task: Task;
@@ -25,6 +25,31 @@ export const CleanerTaskCard: React.FC<CleanerTaskCardProps> = ({
       return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`;
     }
     return `${durationMinutes}m`;
+  };
+
+  // Format date for display
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    const today = new Date();
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    
+    // Compare dates (ignoring time)
+    const taskDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+    const todayDate = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    const tomorrowDate = new Date(tomorrow.getFullYear(), tomorrow.getMonth(), tomorrow.getDate());
+    
+    if (taskDate.getTime() === todayDate.getTime()) {
+      return 'Hoy';
+    } else if (taskDate.getTime() === tomorrowDate.getTime()) {
+      return 'Mañana';
+    } else {
+      return date.toLocaleDateString('es-ES', { 
+        weekday: 'short', 
+        day: 'numeric', 
+        month: 'short' 
+      });
+    }
   };
 
   // Get gradient based on status
@@ -54,10 +79,20 @@ export const CleanerTaskCard: React.FC<CleanerTaskCardProps> = ({
         
         {/* Main content */}
         <div className="space-y-4">
-          {/* Property name */}
-          <h3 className="text-2xl font-bold leading-tight">
-            {task.property}
-          </h3>
+          {/* Property name and date */}
+          <div className="space-y-2">
+            <h3 className="text-2xl font-bold leading-tight">
+              {task.property}
+            </h3>
+            
+            {/* Date badge */}
+            <div className="flex items-center">
+              <div className="bg-white/20 backdrop-blur-sm px-3 py-1 rounded-full flex items-center">
+                <Calendar className="h-3 w-3 mr-2 opacity-80" />
+                <span className="text-white font-medium text-sm">{formatDate(task.date)}</span>
+              </div>
+            </div>
+          </div>
           
           {/* Property code if available */}
           {task.propertyCode && (
