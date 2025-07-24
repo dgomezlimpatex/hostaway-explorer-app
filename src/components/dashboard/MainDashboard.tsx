@@ -29,7 +29,7 @@ export const MainDashboard = () => {
   const TASKS_PER_PAGE = 6;
 
   const currentDate = new Date();
-  const { tasks, createTask } = useTasks(currentDate, 'week');
+  const { tasks, createTask, updateTask, deleteTask } = useTasks(currentDate, 'week');
   const { reports } = useTaskReports();
   const { cleaners } = useCleaners();
 
@@ -131,6 +131,15 @@ export const MainDashboard = () => {
     setCurrentTaskPage((prev) => Math.min(totalTaskPages - 1, prev + 1));
   };
 
+  const handleUpdateTask = async (taskId: string, updates: Partial<Task>) => {
+    await updateTask({ taskId, updates });
+  };
+
+  const handleDeleteTask = async (taskId: string) => {
+    await deleteTask(taskId);
+    setSelectedTask(null);
+  };
+
   return (
     <SidebarProvider>
       <div className="flex h-screen bg-gray-50 w-full">
@@ -200,6 +209,8 @@ export const MainDashboard = () => {
             open={!!selectedTask}
             onOpenChange={(open) => !open && setSelectedTask(null)}
             task={selectedTask}
+            onUpdateTask={handleUpdateTask}
+            onDeleteTask={handleDeleteTask}
           />
         )}
       </div>
