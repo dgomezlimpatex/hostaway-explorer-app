@@ -13,6 +13,7 @@ import { MobileDashboardSidebar } from './MobileDashboardSidebar';
 import { MobileDashboardHeader } from './MobileDashboardHeader';
 import { DashboardSidebar } from './DashboardSidebar';
 import { RoleBasedNavigation } from '@/components/navigation/RoleBasedNavigation';
+import { SidebarProvider } from '@/components/ui/sidebar';
 import { startOfMonth, endOfMonth, startOfDay, endOfDay } from 'date-fns';
 
 export const MainDashboard = () => {
@@ -104,58 +105,60 @@ export const MainDashboard = () => {
   };
 
   return (
-    <div className="flex h-screen bg-gray-50">
-      <DashboardSidebar />
-      
-      <MobileDashboardSidebar
-        onNavigate={() => setIsMobileSidebarOpen(false)}
-      />
+    <SidebarProvider>
+      <div className="flex h-screen bg-gray-50 w-full">
+        <DashboardSidebar />
+        
+        <MobileDashboardSidebar
+          onNavigate={() => setIsMobileSidebarOpen(false)}
+        />
 
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <MobileDashboardHeader />
+        <div className="flex-1 flex flex-col overflow-hidden">
+          <MobileDashboardHeader />
 
-        <main className="flex-1 overflow-y-auto p-4 lg:p-8">
-          <div className="max-w-7xl mx-auto space-y-8">
-            <div className="flex items-center justify-between">
-              <div>
-                <h1 className="text-3xl font-bold text-gray-900">
-                  Panel de Control
-                </h1>
-                <p className="text-gray-600 mt-1">
-                  Bienvenido, {profile?.full_name || 'Usuario'}
-                </p>
+          <main className="flex-1 overflow-y-auto p-4 lg:p-8">
+            <div className="max-w-7xl mx-auto space-y-8">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h1 className="text-3xl font-bold text-gray-900">
+                    Panel de Control
+                  </h1>
+                  <p className="text-gray-600 mt-1">
+                    Bienvenido, {profile?.full_name || 'Usuario'}
+                  </p>
+                </div>
+                <RoleBasedNavigation />
               </div>
-              <RoleBasedNavigation />
+
+              <DashboardStatsCards
+                monthlyMetrics={monthlyMetrics}
+                onOpenCreateModal={() => setIsCreateModalOpen(true)}
+                onOpenBatchModal={() => setIsBatchModalOpen(true)}
+              />
+
+              <DashboardMetricsCards
+                pendingIncidents={pendingIncidents}
+                unassignedTasksCount={unassignedTasksCount}
+                todayTasks={todayTasks}
+              />
+
+              <TodayTasksSection tasks={todayTasks} />
             </div>
+          </main>
+        </div>
 
-            <DashboardStatsCards
-              monthlyMetrics={monthlyMetrics}
-              onOpenCreateModal={() => setIsCreateModalOpen(true)}
-              onOpenBatchModal={() => setIsBatchModalOpen(true)}
-            />
+        <CreateTaskModal
+          open={isCreateModalOpen}
+          onOpenChange={setIsCreateModalOpen}
+          onCreateTask={handleCreateTask}
+        />
 
-            <DashboardMetricsCards
-              pendingIncidents={pendingIncidents}
-              unassignedTasksCount={unassignedTasksCount}
-              todayTasks={todayTasks}
-            />
-
-            <TodayTasksSection tasks={todayTasks} />
-          </div>
-        </main>
+        <BatchCreateTaskModal
+          open={isBatchModalOpen}
+          onOpenChange={setIsBatchModalOpen}
+          onCreateTasks={handleCreateTasks}
+        />
       </div>
-
-      <CreateTaskModal
-        open={isCreateModalOpen}
-        onOpenChange={setIsCreateModalOpen}
-        onCreateTask={handleCreateTask}
-      />
-
-      <BatchCreateTaskModal
-        open={isBatchModalOpen}
-        onOpenChange={setIsBatchModalOpen}
-        onCreateTasks={handleCreateTasks}
-      />
-    </div>
+    </SidebarProvider>
   );
 };
