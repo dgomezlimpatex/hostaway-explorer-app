@@ -9,18 +9,24 @@ import { DashboardMetricsCards } from './components/DashboardMetricsCards';
 import { TodayTasksSection } from './components/TodayTasksSection';
 import { CreateTaskModal } from '@/components/modals/CreateTaskModal';
 import { BatchCreateTaskModal } from '@/components/modals/BatchCreateTaskModal';
+import { TaskDetailsModal } from '@/components/modals/TaskDetailsModal';
 import { MobileDashboardSidebar } from './MobileDashboardSidebar';
 import { MobileDashboardHeader } from './MobileDashboardHeader';
 import { DashboardSidebar } from './DashboardSidebar';
 import { RoleBasedNavigation } from '@/components/navigation/RoleBasedNavigation';
 import { SidebarProvider } from '@/components/ui/sidebar';
 import { startOfMonth, endOfMonth, startOfDay, endOfDay } from 'date-fns';
+import { Task } from '@/types/calendar';
 
 export const MainDashboard = () => {
   const { profile } = useAuth();
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isBatchModalOpen, setIsBatchModalOpen] = useState(false);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+  const [currentTaskPage, setCurrentTaskPage] = useState(0);
+
+  const TASKS_PER_PAGE = 6;
 
   const currentDate = new Date();
   const { tasks, createTask } = useTasks(currentDate, 'week');
@@ -78,6 +84,15 @@ export const MainDashboard = () => {
     });
   }, [tasks]);
 
+  // Calculate paginated today's tasks
+  const paginatedTodayTasks = useMemo(() => {
+    const startIndex = currentTaskPage * TASKS_PER_PAGE;
+    const endIndex = startIndex + TASKS_PER_PAGE;
+    return todayTasks.slice(startIndex, endIndex);
+  }, [todayTasks, currentTaskPage, TASKS_PER_PAGE]);
+
+  const totalTaskPages = Math.ceil(todayTasks.length / TASKS_PER_PAGE);
+
   // Calculate pending incidents from reports
   const pendingIncidents = useMemo(() => {
     if (!reports) return 0;
@@ -102,6 +117,18 @@ export const MainDashboard = () => {
     for (const taskData of tasksData) {
       await createTask(taskData);
     }
+  };
+
+  const handleTaskClick = (task: Task) => {
+    setSelectedTask(task);
+  };
+
+  const handlePreviousPage = () => {
+    setCurrentTaskPage((prev) => Math.max(0, prev - 1));
+  };
+
+  const handleNextPage = () => {
+    setCurrentTaskPage((prev) => Math.min(totalTaskPages - 1, prev + 1));
   };
 
   return (
@@ -142,7 +169,16 @@ export const MainDashboard = () => {
                 todayTasks={todayTasks}
               />
 
-              <TodayTasksSection tasks={todayTasks} />
+              <TodayTasksSection
+                todayTasks={todayTasks}
+                paginatedTodayTasks={paginatedTodayTasks}
+                currentTaskPage={currentTaskPage}
+                totalTaskPages={totalTaskPages}
+                TASKS_PER_PAGE={TASKS_PER_PAGE}
+                onTaskClick={handleTaskClick}
+                onPreviousPage={handlePreviousPage}
+                onNextPage={handleNextPage}
+              />
             </div>
           </main>
         </div>
@@ -158,6 +194,14 @@ export const MainDashboard = () => {
           onOpenChange={setIsBatchModalOpen}
           onCreateTasks={handleCreateTasks}
         />
+
+        {selectedTask && (
+          <TaskDetailsModal
+            open={!!selectedTask}
+            onOpenChange={(open) => !open && setSelectedTask(null)}
+            task={selectedTask}
+          />
+        )}
       </div>
     </SidebarProvider>
   );
