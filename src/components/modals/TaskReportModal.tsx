@@ -184,13 +184,6 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
     }
   }, [completionPercentage, currentStep, isChecklistCompleted]);
 
-  // Auto-advance from issues to media after 2 seconds if no issues
-  useEffect(() => {
-    if (currentStep === 'issues' && issues.length === 0) {
-      const timer = setTimeout(() => setCurrentStep('media'), 2000);
-      return () => clearTimeout(timer);
-    }
-  }, [currentStep, issues.length]);
 
   // Auto-advance to summary when media is uploaded
   useEffect(() => {
