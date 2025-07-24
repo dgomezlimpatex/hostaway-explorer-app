@@ -39,16 +39,17 @@ export const MediaUploadButtons: React.FC<MediaUploadButtonsProps> = ({
   };
 
   return (
-    <div className="flex items-center space-x-2">
+    <div className="flex items-center gap-2 flex-wrap">
       <Button
         type="button"
         variant="outline"
         size="sm"
         onClick={() => fileInputRef.current?.click()}
         disabled={isUploading || uploadingCount > 0}
+        className="text-xs px-2 py-1 h-7"
       >
-        <Camera className="h-4 w-4 mr-2" />
-        {isUploading ? 'Subiendo...' : 'Tomar Foto'}
+        <Camera className="h-3 w-3 mr-1" />
+        {isUploading ? 'Subiendo...' : 'Foto'}
       </Button>
 
       <Button
@@ -57,8 +58,9 @@ export const MediaUploadButtons: React.FC<MediaUploadButtonsProps> = ({
         size="sm"
         onClick={() => galleryInputRef.current?.click()}
         disabled={isUploading || uploadingCount > 0}
+        className="text-xs px-2 py-1 h-7"
       >
-        <Upload className="h-4 w-4 mr-2" />
+        <Upload className="h-3 w-3 mr-1" />
         {uploadingCount > 0 ? `Subiendo ${uploadingCount}...` : 'Galería'}
       </Button>
 
