@@ -17,11 +17,13 @@ interface IssuesSectionProps {
   issues: Issue[];
   onIssuesChange: (issues: Issue[]) => void;
   reportId?: string;
+  isReadOnly?: boolean;
 }
 export const IssuesSection: React.FC<IssuesSectionProps> = ({
   issues,
   onIssuesChange,
-  reportId
+  reportId,
+  isReadOnly = false
 }) => {
   const [newIssue, setNewIssue] = useState<Partial<Issue>>({
     type: 'other',
@@ -110,9 +112,11 @@ export const IssuesSection: React.FC<IssuesSectionProps> = ({
                       <Badge className={severityConfig?.color}>
                         {severityConfig?.label}
                       </Badge>
-                      <Button variant="destructive" size="sm" onClick={() => removeIssue(issue.id)}>
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                      {!isReadOnly && (
+                        <Button variant="destructive" size="sm" onClick={() => removeIssue(issue.id)}>
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      )}
                     </div>
                   </div>
                 </CardHeader>
@@ -130,66 +134,68 @@ export const IssuesSection: React.FC<IssuesSectionProps> = ({
         </div>}
 
       {/* Formulario para nueva incidencia */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-md">Reportar Nueva Incidencia</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="text-sm font-medium mb-2 block">Tipo de Incidencia</label>
-              <Select value={newIssue.type} onValueChange={value => setNewIssue(prev => ({
-              ...prev,
-              type: value as Issue['type']
-            }))}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {issueTypes.map(type => <SelectItem key={type.value} value={type.value}>
-                      {type.label}
-                    </SelectItem>)}
-                </SelectContent>
-              </Select>
+      {!isReadOnly && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-md">Reportar Nueva Incidencia</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="text-sm font-medium mb-2 block">Tipo de Incidencia</label>
+                <Select value={newIssue.type} onValueChange={value => setNewIssue(prev => ({
+                ...prev,
+                type: value as Issue['type']
+              }))}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {issueTypes.map(type => <SelectItem key={type.value} value={type.value}>
+                        {type.label}
+                      </SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <label className="text-sm font-medium mb-2 block">Gravedad</label>
+                <Select value={newIssue.severity} onValueChange={value => setNewIssue(prev => ({
+                ...prev,
+                severity: value as Issue['severity']
+              }))}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {severityLevels.map(severity => <SelectItem key={severity.value} value={severity.value}>
+                        {severity.label}
+                      </SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
 
             <div>
-              <label className="text-sm font-medium mb-2 block">Gravedad</label>
-              <Select value={newIssue.severity} onValueChange={value => setNewIssue(prev => ({
+              <label className="text-sm font-medium mb-2 block">Descripción</label>
+              <Textarea placeholder="Describe el problema encontrado..." value={newIssue.description} onChange={e => setNewIssue(prev => ({
               ...prev,
-              severity: value as Issue['severity']
-            }))}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {severityLevels.map(severity => <SelectItem key={severity.value} value={severity.value}>
-                      {severity.label}
-                    </SelectItem>)}
-                </SelectContent>
-              </Select>
+              description: e.target.value
+            }))} className="min-h-[100px]" />
             </div>
-          </div>
 
-          <div>
-            <label className="text-sm font-medium mb-2 block">Descripción</label>
-            <Textarea placeholder="Describe el problema encontrado..." value={newIssue.description} onChange={e => setNewIssue(prev => ({
-            ...prev,
-            description: e.target.value
-          }))} className="min-h-[100px]" />
-          </div>
+            <div>
+              <label className="text-sm font-medium mb-2 block">Evidencia Fotográfica</label>
+              <MediaCapture onMediaCaptured={handleNewIssueMediaAdded} reportId={reportId} checklistItemId={`issue-${Date.now()}`} existingMedia={newIssue.media_urls} />
+            </div>
 
-          <div>
-            <label className="text-sm font-medium mb-2 block">Evidencia Fotográfica</label>
-            <MediaCapture onMediaCaptured={handleNewIssueMediaAdded} reportId={reportId} checklistItemId={`issue-${Date.now()}`} existingMedia={newIssue.media_urls} />
-          </div>
-
-          <Button onClick={addIssue} disabled={!newIssue.description?.trim()} className="w-full">
-            <Plus className="h-4 w-4 mr-2" />
-            Agregar Incidencia
-          </Button>
-        </CardContent>
-      </Card>
+            <Button onClick={addIssue} disabled={!newIssue.description?.trim()} className="w-full">
+              <Plus className="h-4 w-4 mr-2" />
+              Agregar Incidencia
+            </Button>
+          </CardContent>
+        </Card>
+      )}
 
       {issues.length === 0 && <div className="text-center py-8 text-gray-500">
           <AlertTriangle className="h-12 w-12 mx-auto mb-4 opacity-50" />
