@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { 
@@ -131,8 +132,10 @@ const adminItems: NavigationItem[] = [
 export const DashboardSidebar = () => {
   const location = useLocation();
   const { canAccessModule, isAdminOrManager } = useRolePermissions();
-  const { collapsed } = useSidebar();
+  const { state } = useSidebar();
   const { signOut, profile } = useAuth();
+
+  const isCollapsed = state === 'collapsed';
 
   const isActive = (href: string) => {
     if (href === '/') {
@@ -188,7 +191,7 @@ export const DashboardSidebar = () => {
                       'h-5 w-5',
                       isActive(item.href) ? 'text-blue-600' : 'text-gray-400'
                     )} />
-                    {!collapsed && <span>{item.title}</span>}
+                    {!isCollapsed && <span>{item.title}</span>}
                   </NavLink>
                 </SidebarMenuButton>
               </SidebarMenuItem>
@@ -200,10 +203,10 @@ export const DashboardSidebar = () => {
   };
 
   return (
-    <Sidebar className={collapsed ? "w-14" : "w-64"} collapsible>
+    <Sidebar className={isCollapsed ? "w-14" : "w-64"} collapsible="icon">
       <SidebarContent className="flex flex-col h-full">
         {/* Header */}
-        {!collapsed && (
+        {!isCollapsed && (
           <div className="p-4 border-b border-gray-100">
             <div className="flex items-center gap-3">
               <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
@@ -230,7 +233,7 @@ export const DashboardSidebar = () => {
 
       {/* Footer with Logout Button */}
       <SidebarFooter className="border-t border-gray-100 p-4">
-        {!collapsed && profile && (
+        {!isCollapsed && profile && (
           <div className="mb-3">
             <p className="text-xs text-gray-500 truncate">{profile.full_name || 'Usuario'}</p>
             <p className="text-xs text-gray-400 truncate">{profile.email}</p>
@@ -238,12 +241,12 @@ export const DashboardSidebar = () => {
         )}
         <Button
           variant="ghost"
-          size={collapsed ? "icon" : "sm"}
+          size={isCollapsed ? "icon" : "sm"}
           onClick={signOut}
           className="w-full justify-start text-red-600 hover:text-red-700 hover:bg-red-50"
         >
           <LogOut className="h-4 w-4" />
-          {!collapsed && <span className="ml-2">Cerrar sesión</span>}
+          {!isCollapsed && <span className="ml-2">Cerrar sesión</span>}
         </Button>
       </SidebarFooter>
     </Sidebar>
