@@ -43,8 +43,8 @@ export const TaskCard: React.FC<TaskCardProps> = ({
   const [showReportModal, setShowReportModal] = useState(false);
   const [showPreviewModal, setShowPreviewModal] = useState(false);
 
-  // Use CleanerTaskCard for mobile cleaners
-  if (isMobile && userRole === 'cleaner') {
+  // Use CleanerTaskCard for all cleaner users (mobile and desktop)
+  if (userRole === 'cleaner') {
     const handleTaskClick = () => {
       setShowPreviewModal(true);
     };
