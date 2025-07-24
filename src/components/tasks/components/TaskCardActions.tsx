@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Edit, Trash, Users } from 'lucide-react';
 import { Task } from '@/types/calendar';
 import { TaskReportButton } from './TaskReportButton';
+import { useAuth } from '@/hooks/useAuth';
 
 interface TaskCardActionsProps {
   task: Task;
@@ -26,6 +27,8 @@ export const TaskCardActions: React.FC<TaskCardActionsProps> = ({
   onAssignMultipleCleaners,
   showActions = true,
 }) => {
+  const { userRole } = useAuth();
+
   const handleEdit = () => {
     console.log('🔍 TaskCardActions handleEdit clicked');
     console.log('🔍 onEdit available:', !!onEdit);
@@ -59,38 +62,42 @@ export const TaskCardActions: React.FC<TaskCardActionsProps> = ({
 
   return (
     <div className="pt-4 mt-4 border-t border-gray-100 space-y-3">
-      <div className="flex items-center gap-2 flex-wrap">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={handleEdit}
-          className="flex items-center gap-2 px-3 py-1.5 h-8 bg-white hover:bg-blue-50 hover:text-blue-600 hover:border-blue-300 transition-all duration-200 rounded-md font-medium text-sm border-gray-300"
-        >
-          <Edit className="h-3.5 w-3.5" />
-          Editar
-        </Button>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={handleDelete}
-          className="flex items-center gap-2 px-3 py-1.5 h-8 bg-white hover:bg-red-50 hover:text-red-600 hover:border-red-300 transition-all duration-200 rounded-md font-medium text-sm border-gray-300"
-        >
-          <Trash className="h-3.5 w-3.5" />
-          Eliminar
-        </Button>
-        {onAssignMultipleCleaners && (
+      {/* Show edit, delete, and assign buttons only for non-cleaner roles */}
+      {userRole !== 'cleaner' && (
+        <div className="flex items-center gap-2 flex-wrap">
           <Button
             variant="outline"
             size="sm"
-            onClick={handleAssignMultipleCleaners}
-            className="flex items-center gap-2 px-3 py-1.5 h-8 bg-white hover:bg-purple-50 hover:text-purple-600 hover:border-purple-300 transition-all duration-200 rounded-md font-medium text-sm border-gray-300"
+            onClick={handleEdit}
+            className="flex items-center gap-2 px-3 py-1.5 h-8 bg-white hover:bg-blue-50 hover:text-blue-600 hover:border-blue-300 transition-all duration-200 rounded-md font-medium text-sm border-gray-300"
           >
-            <Users className="h-3.5 w-3.5" />
-            Asignar
+            <Edit className="h-3.5 w-3.5" />
+            Editar
           </Button>
-        )}
-      </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleDelete}
+            className="flex items-center gap-2 px-3 py-1.5 h-8 bg-white hover:bg-red-50 hover:text-red-600 hover:border-red-300 transition-all duration-200 rounded-md font-medium text-sm border-gray-300"
+          >
+            <Trash className="h-3.5 w-3.5" />
+            Eliminar
+          </Button>
+          {onAssignMultipleCleaners && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleAssignMultipleCleaners}
+              className="flex items-center gap-2 px-3 py-1.5 h-8 bg-white hover:bg-purple-50 hover:text-purple-600 hover:border-purple-300 transition-all duration-200 rounded-md font-medium text-sm border-gray-300"
+            >
+              <Users className="h-3.5 w-3.5" />
+              Asignar
+            </Button>
+          )}
+        </div>
+      )}
 
+      {/* Report button - always show for appropriate users */}
       <TaskReportButton
         task={task}
         onOpenReport={onCreateReport || onOpenReport}
