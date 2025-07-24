@@ -158,7 +158,7 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
     };
   }, [checklist, currentTemplate]);
 
-  // Calculate completion percentage
+  // Calculate completion percentage - must include photo validation
   const completionPercentage = React.useMemo(() => {
     if (!currentTemplate) return 0;
     
@@ -167,9 +167,29 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
       0
     ) || 0;
     
-    const completedItems = Object.values(checklist).filter(item => item?.completed).length;
+    if (totalItems === 0) return 0;
     
-    return totalItems > 0 ? Math.round((completedItems / totalItems) * 100) : 0;
+    // Count items that are fully completed (including required photos)
+    let fullyCompletedItems = 0;
+    
+    currentTemplate.checklist_items.forEach(category => {
+      category.items.forEach(item => {
+        const key = `${category.id}.${item.id}`;
+        const itemData = checklist[key];
+        
+        // Item is fully completed if:
+        // 1. It's marked as completed
+        // 2. If photo is required, it has photos
+        const isCompleted = itemData?.completed;
+        const hasRequiredPhoto = !item.photo_required || (itemData?.media_urls && itemData.media_urls.length > 0);
+        
+        if (isCompleted && hasRequiredPhoto) {
+          fullyCompletedItems++;
+        }
+      });
+    });
+    
+    return Math.round((fullyCompletedItems / totalItems) * 100);
   }, [checklist, currentTemplate]);
 
   // Check if checklist is completed and advance to next step
