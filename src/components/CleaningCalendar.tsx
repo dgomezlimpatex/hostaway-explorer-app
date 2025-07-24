@@ -3,6 +3,7 @@ import { useCallback } from "react";
 import { ResponsiveCalendarHeader } from "./calendar/ResponsiveCalendarHeader";
 import { CalendarContainer } from "./calendar/CalendarContainer";
 import { CleanerMobileCalendar } from "./calendar/CleanerMobileCalendar";
+import { CleanerDesktopCalendar } from "./calendar/CleanerDesktopCalendar";
 import { ManagerMobileCalendar } from "./calendar/ManagerMobileCalendar";
 import { CalendarModalsWithSuspense } from "./calendar/LazyCalendarComponents";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
@@ -159,6 +160,60 @@ const {
     }
   }
 
+  // Desktop views
+  if (userRole === 'cleaner') {
+    console.log('Rendering desktop cleaner view');
+    
+    // Calculate today's and tomorrow's tasks for the cleaner
+    const currentDateStr = currentDate.toISOString().split('T')[0];
+    const tomorrow = new Date(currentDate);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const tomorrowDateStr = tomorrow.toISOString().split('T')[0];
+    
+    const todayTasks = tasks.filter(task => task.date === currentDateStr);
+    const tomorrowTasks = tasks.filter(task => task.date === tomorrowDateStr);
+    
+    console.log('Desktop cleaner - Today tasks:', todayTasks.length, 'Tomorrow tasks:', tomorrowTasks.length);
+    
+    return (
+      <>
+        <CleanerDesktopCalendar
+          currentDate={currentDate}
+          onNavigateDate={navigateDate}
+          onDateChange={(date) => {
+            // Usar navigateDate para ir directamente a la fecha seleccionada
+            console.log('Calendar - navigating to selected date:', date.toISOString().split('T')[0]);
+            const diffTime = date.getTime() - currentDate.getTime();
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+            
+            // Navegar el número exacto de días necesarios
+            for (let i = 0; i < Math.abs(diffDays); i++) {
+              navigateDate(diffDays > 0 ? 'next' : 'prev');
+            }
+          }}
+          handleTaskClick={handleTaskClick}
+          todayTasks={todayTasks}
+          tomorrowTasks={tomorrowTasks}
+        />
+        
+        {/* Modals for desktop cleaner view */}
+        <CalendarModalsWithSuspense
+          isCreateModalOpen={false} // Cleaners can't create tasks
+          setIsCreateModalOpen={() => {}} // No-op for cleaners
+          selectedTask={selectedTask}
+          isTaskModalOpen={isTaskModalOpen}
+          setIsTaskModalOpen={setIsTaskModalOpen}
+          currentDate={currentDate}
+          onCreateTask={() => {}} // No-op for cleaners
+          onUpdateTask={handleUpdateTask}
+          onDeleteTask={() => {}} // Cleaners can't delete tasks
+          onUnassignTask={() => {}} // Cleaners can't unassign tasks
+        />
+      </>
+    );
+  }
+
+  // Desktop manager/admin view
   return (
     <div className="min-h-screen bg-background text-foreground transition-colors duration-300">
       <div className="space-y-4 px-2 py-4 max-w-full">
