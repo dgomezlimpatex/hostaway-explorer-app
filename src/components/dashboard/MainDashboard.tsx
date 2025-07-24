@@ -1,28 +1,152 @@
 
+import React, { useState, useMemo } from 'react';
+import { useAuth } from '@/hooks/useAuth';
+import { useTasks } from '@/hooks/useTasks';
+import { useTaskReports } from '@/hooks/useTaskReports';
+import { useCleaners } from '@/hooks/useCleaners';
+import { DashboardStatsCards } from './components/DashboardStatsCards';
+import { DashboardMetricsCards } from './components/DashboardMetricsCards';
+import { TodayTasksSection } from './components/TodayTasksSection';
+import { CreateTaskModal } from '@/components/modals/CreateTaskModal';
+import { BatchCreateTaskModal } from '@/components/modals/BatchCreateTaskModal';
+import { MobileDashboardSidebar } from './MobileDashboardSidebar';
+import { MobileDashboardHeader } from './MobileDashboardHeader';
+import { DashboardSidebar } from './DashboardSidebar';
 import { RoleBasedNavigation } from '@/components/navigation/RoleBasedNavigation';
-import { HostawayIntegrationWidget } from '@/components/hostaway/HostawayIntegrationWidget';
-import { ManagerDashboard } from './ManagerDashboard';
-import { useRolePermissions } from '@/hooks/useRolePermissions';
+import { startOfMonth, endOfMonth, startOfDay, endOfDay } from 'date-fns';
 
 export const MainDashboard = () => {
-  const { canAccessModule, isAdminOrManager } = useRolePermissions();
+  const { profile } = useAuth();
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isBatchModalOpen, setIsBatchModalOpen] = useState(false);
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
 
-  // Si es admin o manager, mostrar el nuevo dashboard
-  if (isAdminOrManager()) {
-    return <ManagerDashboard />;
-  }
+  const currentDate = new Date();
+  const { tasks } = useTasks(currentDate, 'month');
+  const { reports } = useTaskReports();
+  const { cleaners } = useCleaners();
 
-  // Para otros roles, mostrar la navegación tradicional
+  // Calculate monthly metrics properly
+  const monthlyMetrics = useMemo(() => {
+    const now = new Date();
+    const currentMonthStart = startOfMonth(now);
+    const currentMonthEnd = endOfMonth(now);
+    
+    const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const lastMonthStart = startOfMonth(lastMonth);
+    const lastMonthEnd = endOfMonth(lastMonth);
+
+    // Filter completed tasks for current month
+    const currentMonthTasks = tasks.filter(task => {
+      if (task.status !== 'completed') return false;
+      const taskDate = new Date(task.date);
+      return taskDate >= currentMonthStart && taskDate <= currentMonthEnd;
+    });
+
+    // Filter completed tasks for last month
+    const lastMonthTasks = tasks.filter(task => {
+      if (task.status !== 'completed') return false;
+      const taskDate = new Date(task.date);
+      return taskDate >= lastMonthStart && taskDate <= lastMonthEnd;
+    });
+
+    const currentMonth = currentMonthTasks.length;
+    const lastMonth = lastMonthTasks.length;
+    
+    const percentageChange = lastMonth > 0 
+      ? ((currentMonth - lastMonth) / lastMonth) * 100 
+      : currentMonth > 0 ? 100 : 0;
+
+    return {
+      currentMonth,
+      lastMonth,
+      percentageChange: Math.round(percentageChange),
+      isPositive: percentageChange >= 0,
+    };
+  }, [tasks]);
+
+  // Calculate today's tasks and other metrics
+  const todayTasks = useMemo(() => {
+    const today = new Date();
+    const todayStart = startOfDay(today);
+    const todayEnd = endOfDay(today);
+    
+    return tasks.filter(task => {
+      const taskDate = new Date(task.date);
+      return taskDate >= todayStart && taskDate <= todayEnd;
+    });
+  }, [tasks]);
+
+  // Calculate pending incidents from reports
+  const pendingIncidents = useMemo(() => {
+    if (!reports) return 0;
+    return reports.filter(report => 
+      report.issues_found && 
+      report.issues_found.length > 0 && 
+      report.overall_status !== 'resolved'
+    ).length;
+  }, [reports]);
+
+  // Calculate unassigned tasks
+  const unassignedTasksCount = useMemo(() => {
+    return tasks.filter(task => !task.cleaner || task.cleaner === 'Sin asignar').length;
+  }, [tasks]);
+
   return (
-    <div>
-      {/* Solo mostrar widget de Hostaway si tiene permisos */}
-      {canAccessModule('hostaway') && (
-        <div className="mb-8 max-w-7xl mx-auto px-6">
-          <HostawayIntegrationWidget />
-        </div>
-      )}
+    <div className="flex h-screen bg-gray-50">
+      <DashboardSidebar className="hidden lg:block" />
       
-      <RoleBasedNavigation />
+      <MobileDashboardSidebar
+        isOpen={isMobileSidebarOpen}
+        onClose={() => setIsMobileSidebarOpen(false)}
+      />
+
+      <div className="flex-1 flex flex-col overflow-hidden">
+        <MobileDashboardHeader
+          onMenuClick={() => setIsMobileSidebarOpen(true)}
+          userName={profile?.full_name || 'Usuario'}
+        />
+
+        <main className="flex-1 overflow-y-auto p-4 lg:p-8">
+          <div className="max-w-7xl mx-auto space-y-8">
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-3xl font-bold text-gray-900">
+                  Panel de Control
+                </h1>
+                <p className="text-gray-600 mt-1">
+                  Bienvenido, {profile?.full_name || 'Usuario'}
+                </p>
+              </div>
+              <RoleBasedNavigation />
+            </div>
+
+            <DashboardStatsCards
+              monthlyMetrics={monthlyMetrics}
+              onOpenCreateModal={() => setIsCreateModalOpen(true)}
+              onOpenBatchModal={() => setIsBatchModalOpen(true)}
+            />
+
+            <DashboardMetricsCards
+              pendingIncidents={pendingIncidents}
+              unassignedTasksCount={unassignedTasksCount}
+              todayTasks={todayTasks}
+            />
+
+            <TodayTasksSection tasks={todayTasks} />
+          </div>
+        </main>
+      </div>
+
+      <CreateTaskModal
+        isOpen={isCreateModalOpen}
+        onClose={() => setIsCreateModalOpen(false)}
+      />
+
+      <BatchCreateTaskModal
+        isOpen={isBatchModalOpen}
+        onClose={() => setIsBatchModalOpen(false)}
+      />
     </div>
   );
 };
