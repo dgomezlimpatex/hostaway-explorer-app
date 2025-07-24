@@ -117,29 +117,30 @@ export const ChecklistSection: React.FC<ChecklistSectionProps> = ({
                       onCheckedChange={(checked) => 
                         handleItemToggle(category.id, item.id, checked as boolean)
                       }
-                      className="mt-1"
+                      className="mt-1 flex-shrink-0"
                       disabled={isReadOnly}
                     />
-                    <div className="flex-1">
-                      <div className="flex items-center justify-between">
-                        <p className={`font-medium ${isCompleted ? 'line-through text-gray-500' : ''}`}>
-                          {item.task}
-                        </p>
-                        <div className="flex items-center space-x-2">
-                          {item.required && (
-                            <Badge variant="destructive" className="text-xs">Requerido</Badge>
-                          )}
-                          {item.photo_required && (
-                            <Badge variant="secondary" className="text-xs">
-                              <Camera className="h-3 w-3 mr-1" />
-                              Foto
-                            </Badge>
-                          )}
-                        </div>
+                    <div className="flex-1 min-w-0">
+                      {/* Badges primero */}
+                      <div className="flex items-center space-x-2 mb-2">
+                        {item.required && (
+                          <Badge variant="destructive" className="text-xs">Requerido</Badge>
+                        )}
+                        {item.photo_required && (
+                          <Badge variant="secondary" className="text-xs">
+                            <Camera className="h-3 w-3 mr-1" />
+                            Foto
+                          </Badge>
+                        )}
                       </div>
                       
+                      {/* Texto de la tarea con más espacio */}
+                      <p className={`font-medium leading-relaxed ${isCompleted ? 'line-through text-gray-500' : ''}`}>
+                        {item.task}
+                      </p>
+                      
                       {isCompleted && (
-                        <div className="flex items-center text-green-600 text-sm mt-1">
+                        <div className="flex items-center text-green-600 text-sm mt-2">
                           <CheckCircle className="h-4 w-4 mr-1" />
                           Completado
                         </div>
@@ -148,7 +149,7 @@ export const ChecklistSection: React.FC<ChecklistSectionProps> = ({
                   </div>
 
                   {/* Notas */}
-                  <div className="ml-6">
+                  <div className="pl-8">
                     <Textarea
                       placeholder={isReadOnly ? "Sin notas adicionales" : "Notas adicionales (opcional)"}
                       value={itemData?.notes || ''}
@@ -160,7 +161,7 @@ export const ChecklistSection: React.FC<ChecklistSectionProps> = ({
 
                   {/* Captura de media */}
                   {item.photo_required && (
-                    <div className="ml-6">
+                    <div className="pl-8">
                       <MediaCapture
                         onMediaCaptured={(mediaUrl) => handleMediaAdded(category.id, item.id, mediaUrl)}
                         reportId={reportId}
