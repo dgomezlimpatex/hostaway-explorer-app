@@ -22,7 +22,7 @@ export const MainDashboard = () => {
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
 
   const currentDate = new Date();
-  const { tasks } = useTasks(currentDate, 'week');
+  const { tasks, createTask } = useTasks(currentDate, 'week');
   const { reports } = useTaskReports();
   const { cleaners } = useCleaners();
 
@@ -92,20 +92,27 @@ export const MainDashboard = () => {
     return tasks.filter(task => !task.cleaner || task.cleaner === 'Sin asignar').length;
   }, [tasks]);
 
+  const handleCreateTask = async (taskData: any) => {
+    await createTask(taskData);
+  };
+
+  const handleCreateTasks = async (tasksData: any[]) => {
+    // Create tasks sequentially
+    for (const taskData of tasksData) {
+      await createTask(taskData);
+    }
+  };
+
   return (
     <div className="flex h-screen bg-gray-50">
       <DashboardSidebar />
       
       <MobileDashboardSidebar
-        isOpen={isMobileSidebarOpen}
-        onClose={() => setIsMobileSidebarOpen(false)}
+        onNavigate={() => setIsMobileSidebarOpen(false)}
       />
 
       <div className="flex-1 flex flex-col overflow-hidden">
-        <MobileDashboardHeader
-          onMenuClick={() => setIsMobileSidebarOpen(true)}
-          userName={profile?.full_name || 'Usuario'}
-        />
+        <MobileDashboardHeader />
 
         <main className="flex-1 overflow-y-auto p-4 lg:p-8">
           <div className="max-w-7xl mx-auto space-y-8">
@@ -141,11 +148,13 @@ export const MainDashboard = () => {
       <CreateTaskModal
         open={isCreateModalOpen}
         onOpenChange={setIsCreateModalOpen}
+        onCreateTask={handleCreateTask}
       />
 
       <BatchCreateTaskModal
         open={isBatchModalOpen}
         onOpenChange={setIsBatchModalOpen}
+        onCreateTasks={handleCreateTasks}
       />
     </div>
   );
