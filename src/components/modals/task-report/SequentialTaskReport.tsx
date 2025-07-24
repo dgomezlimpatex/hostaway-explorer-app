@@ -154,7 +154,7 @@ export const SequentialTaskReport: React.FC<SequentialTaskReportProps> = ({
       </div>
 
       {/* Step Content */}
-      <div className="flex-1 overflow-auto">
+      <div className="flex-1 overflow-auto min-h-0">
         {currentStep === 'checklist' && (
           <div className="space-y-4">
             {isLoadingTemplates ? (
@@ -259,7 +259,7 @@ export const SequentialTaskReport: React.FC<SequentialTaskReportProps> = ({
 
       {/* Navigation Footer */}
       {currentStep !== 'summary' && (
-        <div className="border-t pt-4 mt-4">
+        <div className="border-t pt-4 mt-4 flex-shrink-0">
           <div className="flex justify-between items-center">
             <Button
               variant="outline"
