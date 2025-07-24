@@ -185,13 +185,6 @@ export const SequentialTaskReport: React.FC<SequentialTaskReportProps> = ({
               reportId={reportId}
             />
             
-            {issues.length === 0 && (
-              <div className="text-center py-4">
-                <p className="text-sm text-muted-foreground">
-                  No se reportaron incidencias. Avanzando automáticamente en 2 segundos...
-                </p>
-              </div>
-            )}
           </div>
         )}
 
