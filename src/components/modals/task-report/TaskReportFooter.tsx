@@ -72,22 +72,23 @@ export const TaskReportFooter: React.FC<TaskReportFooterProps> = ({
   };
 
   return (
-    <div className="border-t pt-4 flex items-center justify-between">
-      <Button variant="outline" onClick={onCancel}>
+    <div className="border-t pt-4 flex items-center justify-between gap-2">
+      <Button variant="outline" onClick={onCancel} size="sm" className="text-xs px-3 py-1 h-8">
         {isTaskCompleted ? "Cerrar" : "Cancelar"}
       </Button>
       
-      <div className="flex items-center space-x-2">
+      <div className="flex items-center gap-2 flex-wrap">
         {/* Botón de Iniciar Tarea - solo visible si no ha empezado */}
         {!hasStartedTask && !isTaskCompleted && (
           <Button
             onClick={onStartTask}
             disabled={!isTaskFromToday || isCreatingReport}
-            className="bg-blue-600 hover:bg-blue-700"
+            className="bg-blue-600 hover:bg-blue-700 text-xs px-3 py-1 h-8"
+            size="sm"
             title={!isTaskFromToday ? "Solo puedes iniciar tareas de hoy" : "Iniciar tarea"}
           >
-            <CheckCircle className="h-4 w-4 mr-2" />
-            {isCreatingReport ? 'Iniciando...' : 'Iniciar Tarea'}
+            <CheckCircle className="h-3 w-3 mr-1" />
+            {isCreatingReport ? 'Iniciando...' : 'Iniciar'}
           </Button>
         )}
 
@@ -98,23 +99,26 @@ export const TaskReportFooter: React.FC<TaskReportFooterProps> = ({
               variant="outline"
               onClick={onSave}
               disabled={isCreatingReport || isUpdatingReport}
+              size="sm"
+              className="text-xs px-3 py-1 h-8"
             >
-              <Save className="h-4 w-4 mr-2" />
+              <Save className="h-3 w-3 mr-1" />
               {isCreatingReport || isUpdatingReport ? 'Guardando...' : 'Guardar'}
             </Button>
             
             <Button
               onClick={handleComplete}
               disabled={!canComplete || isCreatingReport || isUpdatingReport}
-              className={canComplete ? 'bg-green-600 hover:bg-green-700' : ''}
+              className={`text-xs px-3 py-1 h-8 ${canComplete ? 'bg-green-600 hover:bg-green-700' : ''}`}
+              size="sm"
               title={
                 !isTaskFromToday ? "Solo puedes completar tareas de hoy" :
                 !requiredValidation.isValid ? "Faltan tareas o fotos obligatorias" :
                 "Completar reporte"
               }
             >
-              <CheckCircle className="h-4 w-4 mr-2" />
-              Completar Reporte
+              <CheckCircle className="h-3 w-3 mr-1" />
+              Completar
             </Button>
           </>
         )}
@@ -124,9 +128,11 @@ export const TaskReportFooter: React.FC<TaskReportFooterProps> = ({
           <Button
             onClick={onSave}
             disabled={isCreatingReport || isUpdatingReport}
+            size="sm"
+            className="text-xs px-3 py-1 h-8"
           >
-            <Save className="h-4 w-4 mr-2" />
-            {isCreatingReport || isUpdatingReport ? 'Guardando...' : 'Guardar Cambios'}
+            <Save className="h-3 w-3 mr-1" />
+            {isCreatingReport || isUpdatingReport ? 'Guardando...' : 'Guardar'}
           </Button>
         )}
         
