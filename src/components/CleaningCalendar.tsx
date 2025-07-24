@@ -77,14 +77,19 @@ const {
       
       // Calculate today's and tomorrow's tasks for the cleaner
       const currentDateStr = currentDate.toISOString().split('T')[0];
-      const tomorrow = new Date(currentDate);
+      
+      // Use a more robust method to calculate tomorrow that maintains timezone consistency
+      const tomorrow = new Date(currentDateStr);
       tomorrow.setDate(tomorrow.getDate() + 1);
       const tomorrowDateStr = tomorrow.toISOString().split('T')[0];
       
+      // Filter tasks for the current cleaner (assuming tasks already filtered by role in hook)
       const todayTasks = tasks.filter(task => task.date === currentDateStr);
       const tomorrowTasks = tasks.filter(task => task.date === tomorrowDateStr);
       
       console.log('Mobile cleaner - Today tasks:', todayTasks.length, 'Tomorrow tasks:', tomorrowTasks.length);
+      console.log('All tasks:', tasks.length, 'Current date:', currentDateStr, 'Tomorrow date:', tomorrowDateStr);
+      console.log('Tasks dates:', tasks.map(task => ({ id: task.id, date: task.date, property: task.property })));
       
       return (
         <>
@@ -166,7 +171,9 @@ const {
     
     // Calculate today's and tomorrow's tasks for the cleaner
     const currentDateStr = currentDate.toISOString().split('T')[0];
-    const tomorrow = new Date(currentDate);
+    
+    // Use a more robust method to calculate tomorrow that maintains timezone consistency
+    const tomorrow = new Date(currentDateStr);
     tomorrow.setDate(tomorrow.getDate() + 1);
     const tomorrowDateStr = tomorrow.toISOString().split('T')[0];
     
@@ -174,6 +181,7 @@ const {
     const tomorrowTasks = tasks.filter(task => task.date === tomorrowDateStr);
     
     console.log('Desktop cleaner - Today tasks:', todayTasks.length, 'Tomorrow tasks:', tomorrowTasks.length);
+    console.log('All tasks:', tasks.length, 'Current date:', currentDateStr, 'Tomorrow date:', tomorrowDateStr);
     
     return (
       <>
