@@ -209,12 +209,7 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
   }, [completionPercentage, currentStep, isChecklistCompleted]);
 
 
-  // Auto-advance to summary when media is uploaded (only in active editing mode)
-  useEffect(() => {
-    if (currentStep === 'media' && reportMedia.length > 0 && !isTaskCompleted && hasStartedTask) {
-      setTimeout(() => setCurrentStep('summary'), 500);
-    }
-  }, [currentStep, reportMedia.length, isTaskCompleted, hasStartedTask]);
+  // Auto-advance removed - navigation is now completely manual
 
   const handleStartTask = async () => {
     if (!task || !isTaskFromToday) {
