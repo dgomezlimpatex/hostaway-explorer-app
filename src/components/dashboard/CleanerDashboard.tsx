@@ -25,7 +25,7 @@ export const CleanerDashboard = ({ userFullName, userEmail }: CleanerDashboardPr
               </p>
               <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 mt-2">
                 <User className="h-3 w-3 mr-1" />
-                Limpiadora
+                Limpiador/a
               </span>
             </div>
             <UserMenu />
