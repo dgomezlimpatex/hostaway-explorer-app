@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -36,7 +37,7 @@ export const DashboardStatsCards = ({
         <CardHeader className="pb-3">
           <CardTitle className="text-xl font-semibold flex items-center gap-2">
             <CheckCircle2 className="h-6 w-6" />
-            Limpiezas de {format(new Date(), 'MMMM', { locale: es })}
+            Limpiezas completadas en {format(new Date(), 'MMMM', { locale: es })}
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -55,7 +56,7 @@ export const DashboardStatsCards = ({
               </div>
             </div>
             <div className="text-right">
-              <div className="text-sm text-blue-100 mb-1">Mes anterior (misma fecha)</div>
+              <div className="text-sm text-blue-100 mb-1">Mes anterior</div>
               <div className="text-2xl font-semibold">{monthlyMetrics.lastMonth}</div>
             </div>
           </div>
