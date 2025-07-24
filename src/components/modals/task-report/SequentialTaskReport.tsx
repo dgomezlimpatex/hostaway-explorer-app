@@ -110,7 +110,7 @@ export const SequentialTaskReport: React.FC<SequentialTaskReportProps> = ({
   return (
     <div className="flex flex-col h-full">
       {/* Progress Header */}
-      <div className="border-b pb-4 mb-4 space-y-3">
+      <div className="border-b pb-2 mb-2 space-y-2">
         <div className="flex items-center justify-between">
           <h3 className="text-lg font-semibold">
             Paso {currentStepIndex + 1} de {steps.length}: {steps[currentStepIndex].title}
