@@ -129,6 +129,10 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
     return taskDate.toDateString() === today.toDateString();
   }, [task]);
 
+  // Detectar si la tarea está completada
+  const reportStatus = currentReport?.overall_status || 'pending';
+  const isTaskCompleted = task?.status === 'completed' || reportStatus === 'completed';
+
   // Validate required items completion
   const requiredValidation = useMemo(() => {
     if (!currentTemplate) return { isValid: true, missingItems: [], missingPhotos: [] };
@@ -205,12 +209,12 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
   }, [completionPercentage, currentStep, isChecklistCompleted]);
 
 
-  // Auto-advance to summary when media is uploaded
+  // Auto-advance to summary when media is uploaded (only in active editing mode)
   useEffect(() => {
-    if (currentStep === 'media' && reportMedia.length > 0) {
+    if (currentStep === 'media' && reportMedia.length > 0 && !isTaskCompleted && hasStartedTask) {
       setTimeout(() => setCurrentStep('summary'), 500);
     }
-  }, [currentStep, reportMedia.length]);
+  }, [currentStep, reportMedia.length, isTaskCompleted, hasStartedTask]);
 
   const handleStartTask = async () => {
     if (!task || !isTaskFromToday) {
@@ -384,10 +388,6 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
   if (!task) return null;
 
   const canComplete = isTaskFromToday && requiredValidation.isValid;
-  const reportStatus = currentReport?.overall_status || 'pending';
-  
-  // Detectar si la tarea está completada
-  const isTaskCompleted = task.status === 'completed' || reportStatus === 'completed';
 
   // Responsive modal classes
   const getModalClasses = () => {
