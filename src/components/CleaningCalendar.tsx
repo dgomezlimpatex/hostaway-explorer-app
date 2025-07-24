@@ -78,11 +78,10 @@ const {
       // Calculate today's and tomorrow's tasks for the cleaner
       const currentDateStr = currentDate.toISOString().split('T')[0];
       
-      // Calculate tomorrow by adding one day to the current date string
-      const currentDateObj = new Date(currentDateStr + 'T00:00:00');
-      const tomorrow = new Date(currentDateObj);
-      tomorrow.setDate(currentDateObj.getDate() + 1);
-      const tomorrowDateStr = tomorrow.toISOString().split('T')[0];
+      // Calculate tomorrow's date more simply
+      const tomorrowDate = new Date(currentDate);
+      tomorrowDate.setDate(currentDate.getDate() + 1);
+      const tomorrowDateStr = tomorrowDate.toISOString().split('T')[0];
       
       // Filter tasks for the current cleaner (assuming tasks already filtered by role in hook)
       const todayTasks = tasks.filter(task => task.date === currentDateStr);
@@ -174,11 +173,10 @@ const {
     // Calculate today's and tomorrow's tasks for the cleaner
     const currentDateStr = currentDate.toISOString().split('T')[0];
     
-    // Calculate tomorrow by adding one day to the current date string
-    const currentDateObj = new Date(currentDateStr + 'T00:00:00');
-    const tomorrow = new Date(currentDateObj);
-    tomorrow.setDate(currentDateObj.getDate() + 1);
-    const tomorrowDateStr = tomorrow.toISOString().split('T')[0];
+    // Calculate tomorrow's date more simply
+    const tomorrowDate = new Date(currentDate);
+    tomorrowDate.setDate(currentDate.getDate() + 1);
+    const tomorrowDateStr = tomorrowDate.toISOString().split('T')[0];
     
     const todayTasks = tasks.filter(task => task.date === currentDateStr);
     const tomorrowTasks = tasks.filter(task => task.date === tomorrowDateStr);
