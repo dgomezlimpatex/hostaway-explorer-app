@@ -278,6 +278,55 @@ export const TaskPreviewModal: React.FC<TaskPreviewModalProps> = ({
                     <span className="font-medium">Supervisor:</span>
                     <span className="text-muted-foreground">{task.supervisor}</span>
                   </div>}
+                
+                {/* Información textil y amenities */}
+                {property && (
+                  <>
+                    <div className="border-t pt-3 mt-3">
+                      <h4 className="font-medium mb-2">Información Textil</h4>
+                      <div className="grid grid-cols-2 gap-2 text-xs">
+                        <div className="flex justify-between">
+                          <span>Sábanas:</span>
+                          <span className="text-muted-foreground">{property.numeroSabanas}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>Toallas grandes:</span>
+                          <span className="text-muted-foreground">{property.numeroToallasGrandes}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>Toallas pequeñas:</span>
+                          <span className="text-muted-foreground">{property.numeroTotallasPequenas}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>Alfombrines:</span>
+                          <span className="text-muted-foreground">{property.numeroAlfombrines}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>Fundas almohada:</span>
+                          <span className="text-muted-foreground">{property.numeroFundasAlmohada}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>Kit alimentario:</span>
+                          <span className="text-muted-foreground">{property.kitAlimentario}</span>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div className="border-t pt-3">
+                      <h4 className="font-medium mb-2">Amenities</h4>
+                      <div className="grid grid-cols-2 gap-2 text-xs">
+                        <div className="flex justify-between">
+                          <span>Amenities baño:</span>
+                          <span className="text-muted-foreground">{property.amenitiesBano}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>Amenities cocina:</span>
+                          <span className="text-muted-foreground">{property.amenitiesCocina}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </>
+                )}
               </div>
             </CardContent>
           </Card>
