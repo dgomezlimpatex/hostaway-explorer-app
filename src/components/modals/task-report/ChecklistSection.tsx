@@ -85,7 +85,7 @@ export const ChecklistSection: React.FC<ChecklistSectionProps> = ({
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 max-h-[60vh] overflow-y-auto">
       <div className="flex items-center justify-between">
         <h3 className="text-lg font-semibold">
           Checklist: {template.template_name}
