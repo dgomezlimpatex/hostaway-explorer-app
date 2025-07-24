@@ -13,6 +13,7 @@ const taskStorageConfig = {
     created_at: row.created_at,
     updated_at: row.updated_at,
     property: row.property,
+    propertyCode: row.properties?.codigo || null,
     address: row.address,
     startTime: row.start_time,
     endTime: row.end_time,
@@ -65,12 +66,13 @@ export class TaskStorageService extends BaseStorageService<Task, TaskCreateData>
   async getTasks(): Promise<Task[]> {
     console.log('📋 taskStorage - getTasks called, checking for completed reports');
     
-    // Get all tasks with a LEFT JOIN to task_reports
+    // Get all tasks with a LEFT JOIN to task_reports and properties
     const { data, error } = await supabase
       .from('tasks')
       .select(`
         *,
-        task_reports(overall_status)
+        task_reports(overall_status),
+        properties!tasks_propiedad_id_fkey(codigo)
       `)
       .order('created_at', { ascending: false });
 
