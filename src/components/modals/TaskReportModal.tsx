@@ -4,6 +4,7 @@ import { Dialog, DialogContent, DialogHeader } from '@/components/ui/dialog';
 import { Task } from '@/types/calendar';
 import { TaskReport, TaskChecklistTemplate, TaskMedia } from '@/types/taskReports';
 import { useTaskReports, useTaskReport, useChecklistTemplates, useTaskMedia } from '@/hooks/useTaskReports';
+import { usePropertyChecklistAssignment } from '@/hooks/usePropertyChecklists';
 import { useToast } from '@/hooks/use-toast';
 import { useQueryClient } from '@tanstack/react-query';
 import { useDeviceType } from '@/hooks/use-mobile';
@@ -32,6 +33,7 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
   const processAutomaticConsumption = useProcessAutomaticConsumption();
   const { data: existingReport, isLoading: isLoadingReport } = useTaskReport(task?.id || '');
   const { data: templates, isLoading: isLoadingTemplates } = useChecklistTemplates();
+  const { data: propertyChecklistAssignment } = usePropertyChecklistAssignment(task?.propertyId || '');
   const { user, userRole } = useAuth();
   const { cleaners } = useCleaners();
 
@@ -83,18 +85,38 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
         reportCreationAttempted.current = null;
       }
 
-      // Find appropriate template based on property type or default
+      // Find appropriate template - first check if property has assigned checklist
       if (templates && templates.length > 0) {
-        // Try to match by property type first, fallback to first template
-        const template = templates.find(t => 
-          task.type?.toLowerCase().includes(t.property_type?.toLowerCase())
-        ) || templates[0];
+        let selectedTemplate: TaskChecklistTemplate | undefined;
         
-        console.log('TaskReportModal - selected template:', template);
-        setCurrentTemplate(template);
+        // Priority 1: Use checklist assigned to the property
+        if (propertyChecklistAssignment?.checklist_template_id) {
+          selectedTemplate = templates.find(t => t.id === propertyChecklistAssignment.checklist_template_id);
+          if (selectedTemplate) {
+            console.log('TaskReportModal - using property assigned template:', selectedTemplate);
+          }
+        }
+        
+        // Priority 2: Fallback to property type matching
+        if (!selectedTemplate) {
+          selectedTemplate = templates.find(t => 
+            task.type?.toLowerCase().includes(t.property_type?.toLowerCase())
+          );
+          if (selectedTemplate) {
+            console.log('TaskReportModal - using property type matched template:', selectedTemplate);
+          }
+        }
+        
+        // Priority 3: Use first available template
+        if (!selectedTemplate) {
+          selectedTemplate = templates[0];
+          console.log('TaskReportModal - using default first template:', selectedTemplate);
+        }
+        
+        setCurrentTemplate(selectedTemplate);
       }
     }
-  }, [open, task, existingReport, templates]);
+  }, [open, task, existingReport, templates, propertyChecklistAssignment]);
 
   // Reset creation tracking when modal closes
   useEffect(() => {
