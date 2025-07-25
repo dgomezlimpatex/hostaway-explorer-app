@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { EditPropertyModal } from './EditPropertyModal';
 import { AssignChecklistModal } from './AssignChecklistModal';
+import { PropertyChecklistInfo } from './PropertyChecklistInfo';
 import { Property } from '@/types/property';
 import { Skeleton } from '@/components/ui/skeleton';
 import { 
@@ -238,6 +239,10 @@ export const PropertyList = () => {
                                   <Euro className="h-4 w-4 text-gray-500" />
                                   <span>€{property.costeServicio}</span>
                                 </div>
+                              </div>
+
+                              <div className="pt-2 border-t border-gray-100">
+                                <PropertyChecklistInfo propertyId={property.id} />
                               </div>
 
                               {property.notas && (
