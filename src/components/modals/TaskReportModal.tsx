@@ -274,6 +274,16 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
   const handleSave = async () => {
     if (!task) return;
 
+    // Verificar que el usuario esté autenticado
+    if (!user?.id) {
+      toast({
+        title: "Error de autenticación",
+        description: "Debes estar autenticado para guardar reportes. Por favor, inicia sesión de nuevo.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     const reportData = {
       task_id: task.id,
       cleaner_id: currentCleanerId || task.cleanerId,
@@ -285,6 +295,8 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
     };
 
     console.log('TaskReportModal - handleSave called with:', {
+      currentUser: user?.id,
+      currentCleanerId,
       currentReport: currentReport?.id,
       existingReport: existingReport?.id,
       hasStartedTask,
@@ -318,7 +330,7 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
       console.error('Error saving report:', error);
       toast({
         title: "Error",
-        description: "No se pudo guardar el reporte. Inténtalo de nuevo.",
+        description: "No se pudo guardar el reporte. Verifica que estés autenticado e inténtalo de nuevo.",
         variant: "destructive",
       });
     }
