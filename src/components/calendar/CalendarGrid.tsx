@@ -201,8 +201,8 @@ export const CalendarGrid = memo(forwardRef<HTMLDivElement, CalendarGridProps>(
     }, [cleaners, timeSlots, assignedTasks, availability, currentDate, dragState, onDragOver, onDrop, onDragStart, onDragEnd, onTaskClick, getTaskPosition, isTimeSlotOccupied]);
 
      return (
-       <div className="flex-1 relative">
-         {/* Content sin scroll propio */}
+       <div className="flex-1 overflow-x-auto overflow-y-auto relative">
+         {/* Content con scroll */}
          <div 
            ref={ref}
            className="relative z-10"

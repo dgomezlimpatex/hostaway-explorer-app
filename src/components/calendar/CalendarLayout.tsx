@@ -66,8 +66,8 @@ export const CalendarLayout = ({
             <div className="w-48 bg-white border-b border-r border-gray-200 flex items-center px-4">
               <span className="font-semibold text-gray-700">Trabajadores</span>
             </div>
-            {/* Time Header */}
-            <div className="flex-1">
+            {/* Time Header - Sincronizado con el calendario */}
+            <div className="flex-1 overflow-hidden">
               <TimelineHeader
                 ref={headerScrollRef}
                 timeSlots={timeSlots}
@@ -115,8 +115,8 @@ export const CalendarLayout = ({
               ))}
             </div>
 
-            {/* Calendar Area - Completamente separada */}
-            <div className="flex-1 overflow-x-auto overflow-y-auto">
+            {/* Calendar Area - Con scroll sincronizado */}
+            <div className="flex-1 overflow-hidden">
               <CalendarGrid
                 ref={bodyScrollRef}
                 cleaners={cleaners}
