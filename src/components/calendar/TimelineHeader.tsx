@@ -11,7 +11,7 @@ export const TimelineHeader = forwardRef<HTMLDivElement, TimelineHeaderProps>(
     return (
       <div 
         ref={ref}
-        className="h-16 bg-white border-b border-gray-200 overflow-x-auto"
+        className="h-16 bg-white border-b border-gray-200 overflow-hidden"
         onScroll={onScroll}
       >
         <div className="flex h-full" style={{ minWidth: '1200px' }}>
