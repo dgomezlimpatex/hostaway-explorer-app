@@ -60,13 +60,29 @@ export const CalendarLayout = ({
     <Card className="border-0 shadow-xl overflow-hidden bg-card animate-fade-in">
       <CardContent className="p-0">
         <div className={`flex flex-col ${getCalendarHeight()} overflow-hidden`}>
-          {/* Workers Header - Solo el título */}
+          {/* Headers Row */}
           <div className="flex flex-shrink-0">
             <div className="w-48 h-16 bg-white border-b border-gray-200 flex items-center px-4 border-r border-gray-200">
               <span className="font-semibold text-gray-700">Trabajadores</span>
             </div>
-            {/* Espacio para el header de tiempo que está sincronizado abajo */}
-            <div className="flex-1 h-16 bg-white border-b border-gray-200"></div>
+            {/* Time Header - Sincronizado con el scroll */}
+            <div 
+              ref={headerScrollRef}
+              className="flex-1 h-16 bg-white border-b border-gray-200 overflow-hidden"
+            >
+              <div className="flex h-full" style={{ minWidth: '1200px' }}>
+                {timeSlots.map((time) => (
+                  <div 
+                    key={time} 
+                    className={`min-w-[60px] h-16 flex items-center justify-center text-xs font-medium text-gray-600 border-r border-gray-100 ${
+                      time.endsWith(':00') ? 'bg-gray-50' : 'bg-white'
+                    }`}
+                  >
+                    {time.endsWith(':00') ? time : ''}
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
 
           {/* Content Row - Con scroll horizontal sincronizado */}
@@ -110,44 +126,25 @@ export const CalendarLayout = ({
               </div>
             </div>
 
-            {/* Timeline Area - Con scroll horizontal sincronizado */}
+            {/* Timeline Area - Solo el calendario sin header duplicado */}
             <div className="flex-1 min-w-0 overflow-x-auto" onScroll={onBodyScroll}>
-              <div className="flex flex-col">
-                {/* Time Header - Sin scroll propio, se mueve con el contenedor */}
-                <div className="h-16 bg-white border-b border-gray-200 flex-shrink-0">
-                  <div className="flex h-full" style={{ minWidth: '1200px' }}>
-                    {timeSlots.map((time) => (
-                      <div 
-                        key={time} 
-                        className={`min-w-[60px] h-16 flex items-center justify-center text-xs font-medium text-gray-600 border-r border-gray-100 ${
-                          time.endsWith(':00') ? 'bg-gray-50' : 'bg-white'
-                        }`}
-                      >
-                        {time.endsWith(':00') ? time : ''}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-                
-                {/* Calendar Grid - Sin scroll propio */}
-                <CalendarGrid
-                  ref={bodyScrollRef}
-                  cleaners={cleaners}
-                  timeSlots={timeSlots}
-                  assignedTasks={assignedTasks}
-                  availability={availability}
-                  currentDate={currentDate}
-                  dragState={dragState}
-                  onScroll={() => {}}
-                  onDragOver={onDragOver}
-                  onDrop={onDrop}
-                  onDragStart={onDragStart}
-                  onDragEnd={onDragEnd}
-                  onTaskClick={onTaskClick}
-                  getTaskPosition={getTaskPosition}
-                  isTimeSlotOccupied={isTimeSlotOccupied}
-                />
-              </div>
+              <CalendarGrid
+                ref={bodyScrollRef}
+                cleaners={cleaners}
+                timeSlots={timeSlots}
+                assignedTasks={assignedTasks}
+                availability={availability}
+                currentDate={currentDate}
+                dragState={dragState}
+                onScroll={() => {}}
+                onDragOver={onDragOver}
+                onDrop={onDrop}
+                onDragStart={onDragStart}
+                onDragEnd={onDragEnd}
+                onTaskClick={onTaskClick}
+                getTaskPosition={getTaskPosition}
+                isTimeSlotOccupied={isTimeSlotOccupied}
+              />
             </div>
           </div>
         </div>
