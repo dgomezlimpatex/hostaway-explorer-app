@@ -128,11 +128,14 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
 
   // Update currentReport when existingReport changes (after creation)
   useEffect(() => {
-    if (existingReport && !currentReport) {
-      console.log('TaskReportModal - setting created report:', existingReport);
+    if (existingReport) {
+      console.log('TaskReportModal - syncing current report with existing:', existingReport.id);
       setCurrentReport(existingReport);
+    } else {
+      console.log('TaskReportModal - no existing report, clearing current report');
+      setCurrentReport(null);
     }
-  }, [existingReport, currentReport]);
+  }, [existingReport]);
 
   // Update reportMedia when taskMedia changes
   useEffect(() => {
@@ -281,21 +284,35 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
       overall_status: completionPercentage >= 80 ? 'completed' as const : 'in_progress' as const,
     };
 
+    console.log('TaskReportModal - handleSave called with:', {
+      currentReport: currentReport?.id,
+      existingReport: existingReport?.id,
+      hasStartedTask,
+      reportData
+    });
+
     try {
-      if (currentReport) {
+      // Si tenemos un currentReport y existingReport coinciden, actualizar
+      if (currentReport && existingReport && currentReport.id === existingReport.id) {
         console.log('TaskReportModal - updating existing report:', currentReport.id, reportData);
         updateReport({ 
           reportId: currentReport.id, 
           updates: reportData 
         });
       } else {
-        console.log('TaskReportModal - creating new report:', reportData);
-        // Crear el reporte con start_time si no existe
+        console.log('TaskReportModal - creating new report because:', {
+          noCurrentReport: !currentReport,
+          noExistingReport: !existingReport,
+          mismatch: currentReport?.id !== existingReport?.id
+        });
+        // Crear el reporte con start_time
         const createData = {
           ...reportData,
           start_time: new Date().toISOString(),
         };
         createReport(createData);
+        // Marcar que hemos comenzado la tarea
+        setHasStartedTask(true);
       }
     } catch (error) {
       console.error('Error saving report:', error);
