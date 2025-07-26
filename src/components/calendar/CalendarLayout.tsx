@@ -77,7 +77,7 @@ export const CalendarLayout = ({
           {/* Content Row - Estructura separada */}
           <div className="flex flex-1 overflow-hidden">
             {/* Workers Column - Fija a la izquierda */}
-            <div className="w-48 bg-gray-50 border-r border-gray-200 flex-shrink-0 overflow-y-auto" onScroll={onBodyScroll}>
+            <div className="w-48 bg-gray-50 border-r border-gray-200 flex-shrink-0">{/* Sin scroll propio */}
               <div>
                 {cleaners.map((cleaner, index) => (
                   <div 
