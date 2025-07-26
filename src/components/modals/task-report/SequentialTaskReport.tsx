@@ -154,7 +154,7 @@ export const SequentialTaskReport: React.FC<SequentialTaskReportProps> = ({
       </div>
 
       {/* Step Content */}
-      <div className="flex-1 overflow-auto min-h-0">
+      <div className={`flex-1 min-h-0 ${currentStep === 'checklist' ? '' : 'overflow-auto'}`}>
         {currentStep === 'checklist' && (
           <div className="space-y-4 h-[60vh] overflow-y-auto">
             {isLoadingTemplates ? (
