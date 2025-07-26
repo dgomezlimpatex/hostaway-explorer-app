@@ -214,21 +214,19 @@ export const CalendarGrid = memo(forwardRef<HTMLDivElement, CalendarGridProps>(
     }, [cleaners, timeSlots, assignedTasks, availability, currentDate, dragState, onDragOver, onDrop, onDragStart, onDragEnd, onTaskClick, getTaskPosition, isTimeSlotOccupied]);
 
     return (
-      <div className="flex-1 overflow-hidden relative">
+      <div className="flex-1 relative">
         {/* Fixed horizontal divider lines */}
         <div className="absolute left-0 right-0 top-0 bottom-0 pointer-events-none z-20">
           {dividerLines}
         </div>
 
-        {/* Scrollable content */}
+        {/* Content sin scroll propio */}
         <div 
           ref={ref}
-          className="flex-1 overflow-x-auto overflow-y-auto relative z-10"
-          onScroll={onScroll}
+          className="relative z-10"
+          style={{ minWidth: '1200px' }}
         >
-          <div style={{ minWidth: '1200px' }}>
-            {cleanerRows}
-          </div>
+          {cleanerRows}
         </div>
       </div>
     );
