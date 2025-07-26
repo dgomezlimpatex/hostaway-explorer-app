@@ -47,14 +47,14 @@ export const WorkersColumn = ({ cleaners, onDragOver, onDrop }: WorkersColumnPro
   };
 
   return (
-    <div className="w-48 bg-gray-50 border-r border-gray-200 flex-shrink-0">
+    <div className="w-48 bg-gray-50 border-r border-gray-200 flex-shrink-0 flex flex-col">
       {/* Header */}
-      <div className="h-16 bg-white border-b border-gray-200 flex items-center px-4">
+      <div className="h-16 bg-white border-b border-gray-200 flex items-center px-4 flex-shrink-0">
         <span className="font-semibold text-gray-700">Trabajadores</span>
       </div>
       
-      {/* Workers List */}
-      <ScrollArea className="h-[544px]">
+      {/* Workers List - Sin ScrollArea para permitir scroll sincronizado */}
+      <div className="flex-1">
         {cleaners.map((cleaner, index) => (
           <div 
             key={cleaner.id} 
@@ -82,7 +82,7 @@ export const WorkersColumn = ({ cleaners, onDragOver, onDrop }: WorkersColumnPro
             </div>
           </div>
         ))}
-      </ScrollArea>
+      </div>
     </div>
   );
 };
