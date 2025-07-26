@@ -202,16 +202,25 @@ export const CalendarGrid = memo(forwardRef<HTMLDivElement, CalendarGridProps>(
 
      return (
        <div 
-         className="flex-1 overflow-x-auto overflow-y-auto relative"
-         onScroll={onScroll}
+         className="flex-1 relative"
+         style={{ height: '100%' }}
        >
-         {/* Content con scroll */}
+         {/* Contenedor con scroll horizontal visible */}
          <div 
            ref={ref}
-           className="relative z-10"
-           style={{ minWidth: '1200px' }}
+           className="w-full h-full overflow-x-auto overflow-y-hidden"
+           onScroll={onScroll}
+           style={{ 
+             scrollbarWidth: 'auto',
+             msOverflowStyle: 'auto'
+           }}
          >
-           {cleanerRows}
+           <div 
+             className="relative z-10"
+             style={{ minWidth: '1200px', height: `${cleaners.length * 80}px` }}
+           >
+             {cleanerRows}
+           </div>
          </div>
        </div>
      );
