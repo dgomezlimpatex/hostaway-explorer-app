@@ -86,50 +86,49 @@ export const CalendarLayout = ({
           </div>
 
           {/* Content Row - Con scroll sincronizado vertical y horizontal */}
-          <div className="flex flex-1 overflow-hidden">
-            {/* Contenedor con scroll vertical sincronizado */}
-            <div className="flex flex-1 overflow-y-auto" ref={bodyScrollRef}>
-              {/* Workers Column - Fija a la izquierda pero con scroll vertical */}
-              <div className="w-48 bg-gray-50 border-r border-gray-200 flex-shrink-0">
-                <div>
-                  {cleaners.map((cleaner, index) => (
-                    <div 
-                      key={cleaner.id} 
-                      className={cn(
-                        "h-20 border-b-2 border-gray-300 p-3 flex items-center hover:bg-gray-100 transition-colors cursor-pointer",
-                        index % 2 === 0 ? "bg-white" : "bg-gray-50"
-                      )}
-                      onDragOver={onDragOver}
-                      onDrop={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        const taskId = e.dataTransfer.getData('text/plain');
-                        if (taskId) {
-                          onDrop(e, cleaner.id, cleaners);
-                        }
-                      }}
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center text-white font-medium">
-                          {cleaner.name.split(' ').map(n => n[0]).join('').toUpperCase()}
-                        </div>
-                        <div>
-                          <div className="font-medium text-gray-900 text-sm">{cleaner.name}</div>
-                          <div className="flex items-center gap-1">
-                            <div className={`w-2 h-2 rounded-full ${cleaner.isActive ? 'bg-green-400' : 'bg-gray-400'}`} />
-                            <span className="text-xs text-gray-500">
-                              {cleaner.isActive ? 'Activo' : 'Inactivo'}
-                            </span>
-                          </div>
+          <div className="flex flex-1 overflow-y-auto" ref={bodyScrollRef} onScroll={onBodyScroll}>
+            {/* Workers Column - Se mueve con el scroll vertical */}
+            <div className="w-48 bg-gray-50 border-r border-gray-200 flex-shrink-0">
+              <div>
+                {cleaners.map((cleaner, index) => (
+                  <div 
+                    key={cleaner.id} 
+                    className={cn(
+                      "h-20 border-b-2 border-gray-300 p-3 flex items-center hover:bg-gray-100 transition-colors cursor-pointer",
+                      index % 2 === 0 ? "bg-white" : "bg-gray-50"
+                    )}
+                    onDragOver={onDragOver}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      const taskId = e.dataTransfer.getData('text/plain');
+                      if (taskId) {
+                        onDrop(e, cleaner.id, cleaners);
+                      }
+                    }}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center text-white font-medium">
+                        {cleaner.name.split(' ').map(n => n[0]).join('').toUpperCase()}
+                      </div>
+                      <div>
+                        <div className="font-medium text-gray-900 text-sm">{cleaner.name}</div>
+                        <div className="flex items-center gap-1">
+                          <div className={`w-2 h-2 rounded-full ${cleaner.isActive ? 'bg-green-400' : 'bg-gray-400'}`} />
+                          <span className="text-xs text-gray-500">
+                            {cleaner.isActive ? 'Activo' : 'Inactivo'}
+                          </span>
                         </div>
                       </div>
                     </div>
-                  ))}
-                </div>
+                  </div>
+                ))}
               </div>
+            </div>
 
-              {/* Timeline Area - Con scroll horizontal */}
-              <div className="flex-1 min-w-0 overflow-x-auto" onScroll={onBodyScroll}>
+            {/* Timeline Area - Con scroll horizontal independiente del vertical */}
+            <div className="flex-1 min-w-0">
+              <div className="overflow-x-auto" onScroll={onHeaderScroll}>
                 <CalendarGrid
                   cleaners={cleaners}
                   timeSlots={timeSlots}
