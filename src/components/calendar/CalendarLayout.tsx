@@ -60,18 +60,13 @@ export const CalendarLayout = ({
     <Card className="border-0 shadow-xl overflow-hidden bg-card animate-fade-in">
       <CardContent className="p-0">
         <div className={`flex flex-col ${getCalendarHeight()} overflow-hidden`}>
-          {/* Headers Row */}
+          {/* Workers Header - Solo el título */}
           <div className="flex flex-shrink-0">
-            {/* Workers Header */}
             <div className="w-48 h-16 bg-white border-b border-gray-200 flex items-center px-4 border-r border-gray-200">
               <span className="font-semibold text-gray-700">Trabajadores</span>
             </div>
-            {/* Time Header - Scrollable */}
-            <TimelineHeader
-              ref={headerScrollRef}
-              timeSlots={timeSlots}
-              onScroll={onHeaderScroll}
-            />
+            {/* Espacio para el header de tiempo que está sincronizado abajo */}
+            <div className="flex-1 h-16 bg-white border-b border-gray-200"></div>
           </div>
 
           {/* Content Row - Con scroll horizontal sincronizado */}
