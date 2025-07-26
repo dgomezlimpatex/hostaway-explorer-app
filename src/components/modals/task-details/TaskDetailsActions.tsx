@@ -121,9 +121,9 @@ export const TaskDetailsActions = ({
                 <Save className="h-3 w-3" />
                 <span className="hidden xs:inline">Guardar</span>
               </Button>
-            </> : <Button onClick={onEdit} className="flex items-center gap-1 text-xs px-2 h-8">
-              <Edit3 className="h-3 w-3" />
-              <span className="hidden xs:inline">Editar</span>
+            </> : <Button onClick={onEdit} className="flex items-center justify-center gap-2 text-sm px-4 h-10 min-w-[100px]">
+              <Edit3 className="h-4 w-4" />
+              <span>Editar</span>
             </Button>}
         </div>
       )}
