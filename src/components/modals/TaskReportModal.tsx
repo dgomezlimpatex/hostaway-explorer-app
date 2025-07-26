@@ -468,6 +468,7 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
             isTaskFromToday={isTaskFromToday}
             isTaskCompleted={isTaskCompleted}
             hasStartedTask={hasStartedTask}
+            currentStep={currentStep}
           />
         </div>
       </DialogContent>

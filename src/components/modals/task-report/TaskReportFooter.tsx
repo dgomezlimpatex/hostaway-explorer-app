@@ -23,6 +23,7 @@ interface TaskReportFooterProps {
   isTaskFromToday: boolean;
   isTaskCompleted?: boolean;
   hasStartedTask: boolean;
+  currentStep?: 'checklist' | 'issues' | 'media' | 'summary';
 }
 
 export const TaskReportFooter: React.FC<TaskReportFooterProps> = ({
@@ -37,7 +38,8 @@ export const TaskReportFooter: React.FC<TaskReportFooterProps> = ({
   requiredValidation,
   isTaskFromToday,
   isTaskCompleted = false,
-  hasStartedTask
+  hasStartedTask,
+  currentStep
 }) => {
   const { toast } = useToast();
 
@@ -106,20 +108,23 @@ export const TaskReportFooter: React.FC<TaskReportFooterProps> = ({
               {isCreatingReport || isUpdatingReport ? 'Guardando...' : 'Guardar'}
             </Button>
             
-            <Button
-              onClick={handleComplete}
-              disabled={!canComplete || isCreatingReport || isUpdatingReport}
-              className={`text-xs px-3 py-1 h-8 ${canComplete ? 'bg-green-600 hover:bg-green-700' : ''}`}
-              size="sm"
-              title={
-                !isTaskFromToday ? "Solo puedes completar tareas de hoy" :
-                !requiredValidation.isValid ? "Faltan tareas o fotos obligatorias" :
-                "Completar reporte"
-              }
-            >
-              <CheckCircle className="h-3 w-3 mr-1" />
-              Completar
-            </Button>
+            {/* Botón de completar - solo visible en la pantalla summary */}
+            {currentStep === 'summary' && (
+              <Button
+                onClick={handleComplete}
+                disabled={!canComplete || isCreatingReport || isUpdatingReport}
+                className={`text-xs px-3 py-1 h-8 ${canComplete ? 'bg-green-600 hover:bg-green-700' : ''}`}
+                size="sm"
+                title={
+                  !isTaskFromToday ? "Solo puedes completar tareas de hoy" :
+                  !requiredValidation.isValid ? "Faltan tareas o fotos obligatorias" :
+                  "Completar reporte"
+                }
+              >
+                <CheckCircle className="h-3 w-3 mr-1" />
+                Completar
+              </Button>
+            )}
           </>
         )}
 
