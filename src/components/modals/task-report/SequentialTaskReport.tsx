@@ -218,38 +218,43 @@ export const SequentialTaskReport: React.FC<SequentialTaskReportProps> = ({
 
       {/* Navigation Footer */}
       {currentStep !== 'summary' && (
-        <div className="border-t pt-4 mt-4 flex-shrink-0">
-          <div className="flex justify-between items-center">
+        <div className="border-t pt-2 mt-2 flex-shrink-0">
+          <div className="flex justify-between items-center mb-2">
             <Button
               variant="outline"
               onClick={handlePrevious}
               disabled={currentStepIndex === 0}
-              className="flex items-center"
+              className="flex items-center text-xs h-8 px-3"
+              size="sm"
             >
-              <ArrowLeft className="mr-2 h-4 w-4" />
+              <ArrowLeft className="mr-1 h-3 w-3" />
               Anterior
             </Button>
 
             <Button
               onClick={handleNext}
               disabled={!canProceedToNext() || currentStepIndex === steps.length - 1}
-              className="flex items-center"
+              className="flex items-center text-xs h-8 px-3"
+              size="sm"
             >
               Siguiente
-              <ArrowRight className="ml-2 h-4 w-4" />
+              <ArrowRight className="ml-1 h-3 w-3" />
             </Button>
           </div>
           
-          {!canProceedToNext() && currentStep === 'checklist' && (
-            <p className="text-xs text-muted-foreground text-center mt-2">
-              Completa todas las tareas para continuar
-            </p>
-          )}
-          
-          {!canProceedToNext() && currentStep === 'media' && (
-            <p className="text-xs text-muted-foreground text-center mt-2">
-              Sube al menos una foto para continuar
-            </p>
+          {!canProceedToNext() && (
+            <div className="text-center">
+              {currentStep === 'checklist' && (
+                <p className="text-xs text-muted-foreground">
+                  Completa todas las tareas para continuar
+                </p>
+              )}
+              {currentStep === 'media' && (
+                <p className="text-xs text-muted-foreground">
+                  Sube al menos una foto para continuar
+                </p>
+              )}
+            </div>
           )}
         </div>
       )}

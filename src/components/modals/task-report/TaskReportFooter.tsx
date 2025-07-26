@@ -74,89 +74,105 @@ export const TaskReportFooter: React.FC<TaskReportFooterProps> = ({
   };
 
   return (
-    <div className="border-t pt-4 flex items-center justify-between gap-2">
-      <Button variant="outline" onClick={onCancel} size="sm" className="text-xs px-3 py-1 h-8">
-        {isTaskCompleted ? "Cerrar" : "Cancelar"}
-      </Button>
-      
-      <div className="flex items-center gap-2 flex-wrap">
-        {/* Botón de Iniciar Tarea - solo visible si no ha empezado */}
-        {!hasStartedTask && !isTaskCompleted && (
-          <Button
-            onClick={onStartTask}
-            disabled={!isTaskFromToday || isCreatingReport}
-            className="bg-blue-600 hover:bg-blue-700 text-xs px-3 py-1 h-8"
-            size="sm"
-            title={!isTaskFromToday ? "Solo puedes iniciar tareas de hoy" : "Iniciar tarea"}
-          >
-            <CheckCircle className="h-3 w-3 mr-1" />
-            {isCreatingReport ? 'Iniciando...' : 'Iniciar'}
-          </Button>
-        )}
-
-        {/* Botones de guardar y completar - solo visible si ha empezado */}
-        {hasStartedTask && !isTaskCompleted && (
-          <>
-            <Button
-              variant="outline"
-              onClick={onSave}
-              disabled={isCreatingReport || isUpdatingReport}
-              size="sm"
-              className="text-xs px-3 py-1 h-8"
-            >
-              <Save className="h-3 w-3 mr-1" />
-              {isCreatingReport || isUpdatingReport ? 'Guardando...' : 'Guardar'}
-            </Button>
-            
-            {/* Botón de completar - solo visible en la pantalla summary */}
-            {currentStep === 'summary' && (
-              <Button
-                onClick={handleComplete}
-                disabled={!canComplete || isCreatingReport || isUpdatingReport}
-                className={`text-xs px-3 py-1 h-8 ${canComplete ? 'bg-green-600 hover:bg-green-700' : ''}`}
-                size="sm"
-                title={
-                  !isTaskFromToday ? "Solo puedes completar tareas de hoy" :
-                  !requiredValidation.isValid ? "Faltan tareas o fotos obligatorias" :
-                  "Completar reporte"
-                }
-              >
-                <CheckCircle className="h-3 w-3 mr-1" />
-                Completar
-              </Button>
+    <div className="border-t pt-2 space-y-2">
+      {/* Validation Messages - solo mostrar si hay errores */}
+      {hasStartedTask && !canComplete && !isTaskCompleted && (
+        <div className="bg-orange-50 border border-orange-200 rounded-lg p-2">
+          <div className="flex items-center space-x-2">
+            {!isTaskFromToday && (
+              <div className="text-xs text-orange-600 flex items-center">
+                <span className="mr-1">⚠️</span>
+                Solo tareas de hoy
+              </div>
             )}
-          </>
-        )}
-
-        {/* Botón de guardar cambios para tareas completadas */}
-        {isTaskCompleted && (
-          <Button
-            onClick={onSave}
-            disabled={isCreatingReport || isUpdatingReport}
-            size="sm"
-            className="text-xs px-3 py-1 h-8"
-          >
-            <Save className="h-3 w-3 mr-1" />
-            {isCreatingReport || isUpdatingReport ? 'Guardando...' : 'Guardar'}
-          </Button>
-        )}
-        
-        {/* Mensajes de validación */}
-        {hasStartedTask && !canComplete && !isTaskCompleted && (
-          <div className="text-xs text-muted-foreground mt-1">
-            {!isTaskFromToday && "⚠️ Solo tareas de hoy"}
             {isTaskFromToday && !requiredValidation.isValid && (
-              <div>
+              <div className="text-xs text-orange-600 space-y-1">
                 {requiredValidation.missingItems.length > 0 && (
-                  <div>• Faltan {requiredValidation.missingItems.length} tareas obligatorias</div>
+                  <div className="flex items-center">
+                    <span className="mr-1">•</span>
+                    Faltan {requiredValidation.missingItems.length} tareas obligatorias
+                  </div>
                 )}
                 {requiredValidation.missingPhotos.length > 0 && (
-                  <div>• Faltan {requiredValidation.missingPhotos.length} fotos obligatorias</div>
+                  <div className="flex items-center">
+                    <span className="mr-1">•</span>
+                    Faltan {requiredValidation.missingPhotos.length} fotos obligatorias
+                  </div>
                 )}
               </div>
             )}
           </div>
-        )}
+        </div>
+      )}
+
+      {/* Action Buttons */}
+      <div className="flex items-center justify-between">
+        <Button variant="outline" onClick={onCancel} size="sm" className="text-xs px-3 h-8">
+          {isTaskCompleted ? "Cerrar" : "Cancelar"}
+        </Button>
+        
+        <div className="flex items-center gap-2">
+          {/* Botón de Iniciar Tarea - solo visible si no ha empezado */}
+          {!hasStartedTask && !isTaskCompleted && (
+            <Button
+              onClick={onStartTask}
+              disabled={!isTaskFromToday || isCreatingReport}
+              className="bg-blue-600 hover:bg-blue-700 text-xs px-3 h-8"
+              size="sm"
+              title={!isTaskFromToday ? "Solo puedes iniciar tareas de hoy" : "Iniciar tarea"}
+            >
+              <CheckCircle className="h-3 w-3 mr-1" />
+              {isCreatingReport ? 'Iniciando...' : 'Iniciar'}
+            </Button>
+          )}
+
+          {/* Botones de guardar y completar - solo visible si ha empezado */}
+          {hasStartedTask && !isTaskCompleted && (
+            <>
+              <Button
+                variant="outline"
+                onClick={onSave}
+                disabled={isCreatingReport || isUpdatingReport}
+                size="sm"
+                className="text-xs px-3 h-8"
+              >
+                <Save className="h-3 w-3 mr-1" />
+                {isCreatingReport || isUpdatingReport ? 'Guardando...' : 'Guardar'}
+              </Button>
+              
+              {/* Botón de completar - solo visible en la pantalla summary */}
+              {currentStep === 'summary' && (
+                <Button
+                  onClick={handleComplete}
+                  disabled={!canComplete || isCreatingReport || isUpdatingReport}
+                  className={`text-xs px-3 h-8 ${canComplete ? 'bg-green-600 hover:bg-green-700' : ''}`}
+                  size="sm"
+                  title={
+                    !isTaskFromToday ? "Solo puedes completar tareas de hoy" :
+                    !requiredValidation.isValid ? "Faltan tareas o fotos obligatorias" :
+                    "Completar reporte"
+                  }
+                >
+                  <CheckCircle className="h-3 w-3 mr-1" />
+                  Completar
+                </Button>
+              )}
+            </>
+          )}
+
+          {/* Botón de guardar cambios para tareas completadas */}
+          {isTaskCompleted && (
+            <Button
+              onClick={onSave}
+              disabled={isCreatingReport || isUpdatingReport}
+              size="sm"
+              className="text-xs px-3 h-8"
+            >
+              <Save className="h-3 w-3 mr-1" />
+              {isCreatingReport || isUpdatingReport ? 'Guardando...' : 'Guardar'}
+            </Button>
+          )}
+        </div>
       </div>
     </div>
   );
