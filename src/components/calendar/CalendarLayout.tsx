@@ -74,13 +74,10 @@ export const CalendarLayout = ({
             />
           </div>
 
-          {/* Content Row - Un solo scroll vertical, workers sticky */}
-          <div 
-            className="flex flex-1 overflow-y-auto overflow-x-hidden"
-            onScroll={onBodyScroll}
-          >
-            {/* Workers Column - Sticky durante scroll horizontal */}
-            <div className="w-48 bg-gray-50 border-r border-gray-200 flex-shrink-0 sticky left-0 z-30">
+          {/* Content Row - Estructura separada */}
+          <div className="flex flex-1 overflow-hidden">
+            {/* Workers Column - Fija a la izquierda */}
+            <div className="w-48 bg-gray-50 border-r border-gray-200 flex-shrink-0 overflow-y-auto" onScroll={onBodyScroll}>
               <div>
                 {cleaners.map((cleaner, index) => (
                   <div 
@@ -118,7 +115,7 @@ export const CalendarLayout = ({
               </div>
             </div>
 
-            {/* Timeline Body - Con scroll horizontal */}
+            {/* Timeline Area - Separada con scroll horizontal independiente */}
             <div className="flex-1 min-w-0 overflow-x-auto">
               <CalendarGrid
                 ref={bodyScrollRef}
