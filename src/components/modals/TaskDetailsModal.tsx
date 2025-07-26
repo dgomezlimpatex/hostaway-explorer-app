@@ -119,7 +119,7 @@ export const TaskDetailsModal = ({
             <TaskDetailsForm task={task} isEditing={isEditing} formData={formData} onFieldChange={handleFieldChange} />
           </div>
 
-          <DialogFooter className="flex-shrink-0 border-t pt-4">
+          <DialogFooter className="flex-shrink-0 border-t pt-2">
             <TaskDetailsActions 
               task={task} 
               isEditing={isEditing} 
