@@ -80,11 +80,15 @@ export class TaskReportsStorageService {
       .update(updates)
       .eq('id', reportId)
       .select()
-      .single();
+      .maybeSingle();
 
     if (error) {
       console.error('Error updating task report:', error);
       throw error;
+    }
+
+    if (!data) {
+      throw new Error(`Task report with ID ${reportId} not found`);
     }
 
     return {

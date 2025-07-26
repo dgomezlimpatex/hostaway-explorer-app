@@ -283,17 +283,27 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
 
     try {
       if (currentReport) {
-        console.log('TaskReportModal - updating report:', currentReport.id, reportData);
+        console.log('TaskReportModal - updating existing report:', currentReport.id, reportData);
         updateReport({ 
           reportId: currentReport.id, 
           updates: reportData 
         });
       } else {
         console.log('TaskReportModal - creating new report:', reportData);
-        createReport(reportData);
+        // Crear el reporte con start_time si no existe
+        const createData = {
+          ...reportData,
+          start_time: new Date().toISOString(),
+        };
+        createReport(createData);
       }
     } catch (error) {
       console.error('Error saving report:', error);
+      toast({
+        title: "Error",
+        description: "No se pudo guardar el reporte. Inténtalo de nuevo.",
+        variant: "destructive",
+      });
     }
   };
 
