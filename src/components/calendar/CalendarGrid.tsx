@@ -136,17 +136,17 @@ const CleanerRow = memo(({
     });
   }, [cleanerTasks, getTaskPosition, dragState.draggedTask?.id, onTaskClick, onDragStart, onDragEnd]);
 
-  return (
-    <div 
-      className={cn(
-        "h-20 relative hover:bg-accent/50 dark:hover:bg-accent/30 transition-colors flex",
-        index % 2 === 0 ? "bg-background" : "bg-muted/30"
-      )}
-    >
-      {timeSlotElements}
-      {taskElements}
-    </div>
-  );
+   return (
+     <div 
+       className={cn(
+         "h-20 relative hover:bg-accent/50 dark:hover:bg-accent/30 transition-colors flex border-b-2 border-border",
+         index % 2 === 0 ? "bg-background" : "bg-muted/30"
+       )}
+     >
+       {timeSlotElements}
+       {taskElements}
+     </div>
+   );
 });
 
 CleanerRow.displayName = "CleanerRow";
@@ -167,20 +167,7 @@ export const CalendarGrid = memo(forwardRef<HTMLDivElement, CalendarGridProps>(
     onTaskClick,
     getTaskPosition,
     isTimeSlotOccupied
-  }, ref) => {
-    // Memoize fixed divider lines
-    const dividerLines = useMemo(() => {
-      return cleaners.map((_, index) => (
-        <div 
-          key={`fixed-divider-${index}`}
-          className="absolute left-0 right-0 border-b-2 border-border dark:border-border"
-          style={{ 
-            top: `${(index + 1) * 80}px`,
-            height: '2px'
-          }}
-        />
-      ));
-    }, [cleaners.length]);
+   }, ref) => {
 
     // Memoize cleaner rows with tasks
     const cleanerRows = useMemo(() => {
@@ -213,23 +200,18 @@ export const CalendarGrid = memo(forwardRef<HTMLDivElement, CalendarGridProps>(
       });
     }, [cleaners, timeSlots, assignedTasks, availability, currentDate, dragState, onDragOver, onDrop, onDragStart, onDragEnd, onTaskClick, getTaskPosition, isTimeSlotOccupied]);
 
-    return (
-      <div className="flex-1 relative">
-        {/* Fixed horizontal divider lines */}
-        <div className="absolute left-0 right-0 top-0 bottom-0 pointer-events-none z-20">
-          {dividerLines}
-        </div>
-
-        {/* Content sin scroll propio */}
-        <div 
-          ref={ref}
-          className="relative z-10"
-          style={{ minWidth: '1200px' }}
-        >
-          {cleanerRows}
-        </div>
-      </div>
-    );
+     return (
+       <div className="flex-1 relative">
+         {/* Content sin scroll propio */}
+         <div 
+           ref={ref}
+           className="relative z-10"
+           style={{ minWidth: '1200px' }}
+         >
+           {cleanerRows}
+         </div>
+       </div>
+     );
   }
 ));
 
