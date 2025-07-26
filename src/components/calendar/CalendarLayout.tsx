@@ -74,10 +74,10 @@ export const CalendarLayout = ({
             />
           </div>
 
-          {/* Content Row - Estructura separada */}
+          {/* Content Row - Con scroll horizontal sincronizado */}
           <div className="flex flex-1 overflow-hidden">
             {/* Workers Column - Fija a la izquierda */}
-            <div className="w-48 bg-gray-50 border-r border-gray-200 flex-shrink-0">{/* Sin scroll propio */}
+            <div className="w-48 bg-gray-50 border-r border-gray-200 flex-shrink-0">
               <div>
                 {cleaners.map((cleaner, index) => (
                   <div 
@@ -115,25 +115,44 @@ export const CalendarLayout = ({
               </div>
             </div>
 
-            {/* Timeline Area - Separada con scroll horizontal independiente */}
-            <div className="flex-1 min-w-0 overflow-x-auto">
-              <CalendarGrid
-                ref={bodyScrollRef}
-                cleaners={cleaners}
-                timeSlots={timeSlots}
-                assignedTasks={assignedTasks}
-                availability={availability}
-                currentDate={currentDate}
-                dragState={dragState}
-                onScroll={() => {}} // No scroll propio
-                onDragOver={onDragOver}
-                onDrop={onDrop}
-                onDragStart={onDragStart}
-                onDragEnd={onDragEnd}
-                onTaskClick={onTaskClick}
-                getTaskPosition={getTaskPosition}
-                isTimeSlotOccupied={isTimeSlotOccupied}
-              />
+            {/* Timeline Area - Con scroll horizontal sincronizado */}
+            <div className="flex-1 min-w-0 overflow-x-auto" onScroll={onBodyScroll}>
+              <div className="flex flex-col">
+                {/* Time Header - Sin scroll propio, se mueve con el contenedor */}
+                <div className="h-16 bg-white border-b border-gray-200 flex-shrink-0">
+                  <div className="flex h-full" style={{ minWidth: '1200px' }}>
+                    {timeSlots.map((time) => (
+                      <div 
+                        key={time} 
+                        className={`min-w-[60px] h-16 flex items-center justify-center text-xs font-medium text-gray-600 border-r border-gray-100 ${
+                          time.endsWith(':00') ? 'bg-gray-50' : 'bg-white'
+                        }`}
+                      >
+                        {time.endsWith(':00') ? time : ''}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                
+                {/* Calendar Grid - Sin scroll propio */}
+                <CalendarGrid
+                  ref={bodyScrollRef}
+                  cleaners={cleaners}
+                  timeSlots={timeSlots}
+                  assignedTasks={assignedTasks}
+                  availability={availability}
+                  currentDate={currentDate}
+                  dragState={dragState}
+                  onScroll={() => {}}
+                  onDragOver={onDragOver}
+                  onDrop={onDrop}
+                  onDragStart={onDragStart}
+                  onDragEnd={onDragEnd}
+                  onTaskClick={onTaskClick}
+                  getTaskPosition={getTaskPosition}
+                  isTimeSlotOccupied={isTimeSlotOccupied}
+                />
+              </div>
             </div>
           </div>
         </div>
