@@ -51,9 +51,9 @@ export const CalendarLayout = ({
 
   // Responsive calendar height based on device
   const getCalendarHeight = () => {
-    if (isMobile) return "h-[400px] md:h-[500px]";
-    if (isTablet) return "h-[500px] md:h-[600px]";
-    return "h-[600px]";
+    if (isMobile) return "h-[500px] md:h-[600px]";
+    if (isTablet) return "h-[600px] md:h-[700px]";
+    return "h-[700px]";
   };
 
   return (
