@@ -156,7 +156,7 @@ export const SequentialTaskReport: React.FC<SequentialTaskReportProps> = ({
       {/* Step Content */}
       <div className="flex-1 overflow-auto min-h-0">
         {currentStep === 'checklist' && (
-          <div className="space-y-4">
+          <div className="space-y-4 h-[60vh] overflow-y-auto">
             {isLoadingTemplates ? (
               <div className="flex items-center justify-center py-8">
                 <Clock className="h-8 w-8 animate-spin text-gray-400" />
