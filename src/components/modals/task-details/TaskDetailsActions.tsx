@@ -58,13 +58,13 @@ export const TaskDetailsActions = ({
         return "default";
     }
   };
-  return <div className="flex items-center justify-between w-full">
-      <div className="flex items-center gap-2">
+  return <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between w-full gap-3">
+      <div className="flex flex-wrap items-center gap-2">
         {/* Botón de Eliminar - Solo para managers/supervisors/admin */}
         {userRole !== 'cleaner' && (
-          <Button variant="destructive" size="sm" onClick={onDelete} className="flex items-center gap-1 py-1 text-xs px-[9px] mx-[5px]">
+          <Button variant="destructive" size="sm" onClick={onDelete} className="flex items-center gap-1 text-xs px-2 h-8">
             <Trash2 className="h-3 w-3" />
-            Eliminar
+            <span className="hidden xs:inline">Eliminar</span>
           </Button>
         )}
         
@@ -74,9 +74,9 @@ export const TaskDetailsActions = ({
             const [cleanerId, cleanerName] = value.split('|');
             onAssign(cleanerId, cleanerName);
           }}>
-            <SelectTrigger className="flex items-center gap-2 h-9 px-3">
-              <UserPlus className="h-4 w-4" />
-              <span>Asignar</span>
+            <SelectTrigger className="flex items-center gap-1 h-8 px-2 w-auto min-w-20">
+              <UserPlus className="h-3 w-3" />
+              <span className="hidden xs:inline">Asignar</span>
             </SelectTrigger>
             <SelectContent>
               {cleaners.map((cleaner) => (
@@ -90,9 +90,9 @@ export const TaskDetailsActions = ({
         
         {/* Botón de Desasignar - Solo para managers/supervisors/admin */}
         {task.cleaner && onUnassign && userRole !== 'cleaner' && (
-          <Button variant="outline" size="sm" onClick={onUnassign} className="flex items-center gap-2">
-            <UserX className="h-4 w-4" />
-            Desasignar
+          <Button variant="outline" size="sm" onClick={onUnassign} className="flex items-center gap-1 text-xs px-2 h-8">
+            <UserX className="h-3 w-3" />
+            <span className="hidden xs:inline">Desasignar</span>
           </Button>
         )}
 
@@ -102,28 +102,28 @@ export const TaskDetailsActions = ({
             onClick={onOpenReport} 
             variant={getReportButtonVariant() as "default" | "destructive" | "outline" | "secondary" | "ghost" | "link"}
             size="sm"
-            className="flex items-center gap-2"
+            className="flex items-center gap-1 text-xs px-2 h-8"
           >
-            {getReportButtonText()}
+            <span className="truncate">{getReportButtonText()}</span>
           </Button>
         )}
       </div>
       
       {/* Botones de Editar - Solo para managers/supervisors/admin */}
       {userRole !== 'cleaner' && (
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 justify-end">
           {isEditing ? <>
-              <Button variant="outline" onClick={onCancel} className="flex items-center gap-2 mx-[5px] px-0">
-                <X className="h-4 w-4" />
-                Cancelar
+              <Button variant="outline" onClick={onCancel} className="flex items-center gap-1 text-xs px-2 h-8">
+                <X className="h-3 w-3" />
+                <span className="hidden xs:inline">Cancelar</span>
               </Button>
-              <Button onClick={onSave} className="flex items-center gap-2 px-[12px]">
-                <Save className="h-4 w-4" />
-                Guardar
+              <Button onClick={onSave} className="flex items-center gap-1 text-xs px-2 h-8">
+                <Save className="h-3 w-3" />
+                <span className="hidden xs:inline">Guardar</span>
               </Button>
-            </> : <Button onClick={onEdit} className="flex items-center gap-2 px-[8px] py-0 my-0 mx-0">
-              <Edit3 className="h-4 w-4" />
-              Editar
+            </> : <Button onClick={onEdit} className="flex items-center gap-1 text-xs px-2 h-8">
+              <Edit3 className="h-3 w-3" />
+              <span className="hidden xs:inline">Editar</span>
             </Button>}
         </div>
       )}
