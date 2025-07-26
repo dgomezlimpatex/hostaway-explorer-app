@@ -112,47 +112,6 @@ export const SequentialTaskReport: React.FC<SequentialTaskReportProps> = ({
 
   return (
     <div className="flex flex-col h-full">
-      {/* Progress Header */}
-      <div className="border-b pb-2 mb-2 space-y-2">
-        <div className="flex items-center justify-between">
-          <h3 className="text-lg font-semibold">
-            Paso {currentStepIndex + 1} de {steps.length}: {steps[currentStepIndex].title}
-          </h3>
-          <Badge variant="outline" className="text-xs">
-            {Math.round(progressPercentage)}% completado
-          </Badge>
-        </div>
-        
-        <Progress value={progressPercentage} className="w-full" />
-        
-        <p className="text-sm text-muted-foreground">
-          {steps[currentStepIndex].description}
-        </p>
-
-        {/* Step Indicators */}
-        <div className="flex items-center justify-between">
-          {steps.map((step, index) => {
-            const StepIcon = step.icon;
-            const isActive = index === currentStepIndex;
-            const isCompleted = index < currentStepIndex;
-            
-            return (
-              <div
-                key={step.key}
-                className={`flex items-center space-x-2 ${isActive ? 'text-primary' : isCompleted ? 'text-green-600' : 'text-muted-foreground'}`}
-              >
-                <div className={`p-2 rounded-full ${isActive ? 'bg-primary/10' : isCompleted ? 'bg-green-100' : 'bg-muted'}`}>
-                  <StepIcon className="h-4 w-4" />
-                </div>
-                {!isMobile && (
-                  <span className="text-xs font-medium">{step.title}</span>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
       {/* Step Content */}
       <div className={`flex-1 min-h-0 ${currentStep === 'checklist' ? '' : 'overflow-auto'}`}>
         {currentStep === 'checklist' && (
