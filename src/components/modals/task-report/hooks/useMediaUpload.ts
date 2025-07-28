@@ -21,8 +21,19 @@ export const useMediaUpload = ({
   const [uploadingCount, setUploadingCount] = useState(0);
 
   const validateFile = (file: File): boolean => {
-    // Validar tipo de archivo
-    if (!file.type.startsWith('image/') && !file.type.startsWith('video/')) {
+    // Obtener la extensión del archivo
+    const fileName = file.name.toLowerCase();
+    const validImageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.heic', '.heif'];
+    const validVideoExtensions = ['.mp4', '.mov', '.avi', '.mkv', '.webm'];
+    
+    const hasValidExtension = [...validImageExtensions, ...validVideoExtensions].some(ext => 
+      fileName.endsWith(ext)
+    );
+
+    // Validar por tipo MIME o extensión
+    const hasValidMimeType = file.type.startsWith('image/') || file.type.startsWith('video/');
+    
+    if (!hasValidMimeType && !hasValidExtension) {
       toast({
         title: "Error",
         description: "Solo se permiten archivos de imagen o video.",
