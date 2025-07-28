@@ -262,7 +262,7 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
       checklist_completed: checklist,
       notes,
       issues_found: issues,
-      overall_status: completionPercentage >= 80 ? 'completed' as const : 'in_progress' as const,
+      overall_status: completionPercentage === 100 ? 'completed' as const : 'in_progress' as const,
     };
     
     updateReport({ 
@@ -356,7 +356,7 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
       checklist_completed: checklist,
       notes,
       issues_found: issues,
-      overall_status: completionPercentage >= 80 ? 'completed' as const : 'in_progress' as const,
+      overall_status: completionPercentage === 100 ? 'completed' as const : 'in_progress' as const,
     };
 
     console.log('TaskReportModal - handleSave called with:', {
