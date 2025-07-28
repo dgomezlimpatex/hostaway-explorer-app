@@ -20,6 +20,7 @@ interface TasksListProps {
   isLoading: boolean;
   onShowHistory?: (task: Task) => void;
   onCreateReport?: (task: Task) => void;
+  onOpenGroupedReport?: (task: Task) => void;
   onAssignMultipleCleaners?: (task: Task) => void;
   onRefetch?: () => void;
 }
@@ -30,6 +31,7 @@ export const TasksList = React.memo(({
   isLoading, 
   onShowHistory,
   onCreateReport,
+  onOpenGroupedReport,
   onAssignMultipleCleaners,
   onRefetch 
 }: TasksListProps) => {

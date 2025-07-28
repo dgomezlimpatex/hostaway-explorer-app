@@ -1701,7 +1701,28 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      task_reports_grouped: {
+        Row: {
+          completed_reports: number | null
+          earliest_start_time: string | null
+          in_progress_reports: number | null
+          individual_reports: Json[] | null
+          latest_end_time: string | null
+          needs_review_reports: number | null
+          pending_reports: number | null
+          task_id: string | null
+          total_reports: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_reports_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       accept_invitation: {

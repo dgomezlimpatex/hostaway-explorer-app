@@ -21,6 +21,7 @@ interface TaskCardProps {
   onView?: (task: Task) => void;
   onShowHistory?: (task: Task) => void;
   onCreateReport?: (task: Task) => void;
+  onOpenGroupedReport?: (task: Task) => void;
   onEditTask?: (task: Task) => void;
   onAssignMultipleCleaners?: (task: Task) => void;
   showActions?: boolean;
@@ -34,6 +35,7 @@ export const TaskCard: React.FC<TaskCardProps> = ({
   onView,
   onShowHistory,
   onCreateReport,
+  onOpenGroupedReport,
   onEditTask,
   onAssignMultipleCleaners,
   showActions = true,

@@ -4,6 +4,7 @@ import { TasksPageHeader } from './components/TasksPageHeader';
 import { TasksPageContent } from './components/TasksPageContent';
 import { TaskHistoryModal } from './components/TaskHistoryModal';
 import { TaskReportModal } from '@/components/modals/TaskReportModal';
+import { GroupedTaskReportModal } from '@/components/modals/GroupedTaskReportModal';
 import { CreateTaskModal } from '@/components/modals/CreateTaskModal';
 import { BatchCreateTaskModal } from '@/components/modals/BatchCreateTaskModal';
 import { AssignMultipleCleanersModal } from '@/components/modals/AssignMultipleCleanersModal';
@@ -14,6 +15,8 @@ import { Task } from '@/types/calendar';
 export default function TasksPage() {
   const [selectedTaskForReport, setSelectedTaskForReport] = useState<Task | null>(null);
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
+  const [selectedTaskForGroupedReport, setSelectedTaskForGroupedReport] = useState<Task | null>(null);
+  const [isGroupedReportModalOpen, setIsGroupedReportModalOpen] = useState(false);
   const [selectedTaskForMultipleAssignment, setSelectedTaskForMultipleAssignment] = useState<Task | null>(null);
   const [isMultipleAssignmentModalOpen, setIsMultipleAssignmentModalOpen] = useState(false);
 
@@ -61,6 +64,12 @@ export default function TasksPage() {
     setIsReportModalOpen(true);
   };
 
+  const handleOpenGroupedReport = (task: Task) => {
+    console.log('Opening grouped report modal for task:', task.id);
+    setSelectedTaskForGroupedReport(task);
+    setIsGroupedReportModalOpen(true);
+  };
+
   const handleAssignmentComplete = () => {
     console.log('Assignment completed, refreshing tasks...');
     refetch();
@@ -106,6 +115,7 @@ export default function TasksPage() {
         onFiltersChange={setFilters}
         onShowHistory={handleShowHistory}
         onCreateReport={handleCreateReport}
+        onOpenGroupedReport={handleOpenGroupedReport}
         onAssignMultipleCleaners={handleAssignMultipleCleaners}
         onPageChange={handlePageChange}
         onRefetch={refetch}
@@ -137,6 +147,12 @@ export default function TasksPage() {
         task={selectedTaskForReport}
         open={isReportModalOpen}
         onOpenChange={setIsReportModalOpen}
+      />
+
+      <GroupedTaskReportModal
+        task={selectedTaskForGroupedReport}
+        open={isGroupedReportModalOpen}
+        onOpenChange={setIsGroupedReportModalOpen}
       />
 
       <AssignMultipleCleanersModal

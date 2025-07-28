@@ -12,6 +12,7 @@ interface TaskCardActionsProps {
   onDelete?: (taskId: string) => void;
   onEditTask?: (task: Task) => void;
   onCreateReport?: (task: Task) => void;
+  onOpenGroupedReport?: (task: Task) => void;
   onOpenReport: () => void;
   onAssignMultipleCleaners?: (task: Task) => void;
   showActions?: boolean;
@@ -23,6 +24,7 @@ export const TaskCardActions: React.FC<TaskCardActionsProps> = ({
   onDelete,
   onEditTask,
   onCreateReport,
+  onOpenGroupedReport,
   onOpenReport,
   onAssignMultipleCleaners,
   showActions = true,
@@ -101,6 +103,7 @@ export const TaskCardActions: React.FC<TaskCardActionsProps> = ({
       <TaskReportButton
         task={task}
         onOpenReport={onCreateReport || onOpenReport}
+        onOpenGroupedReport={onOpenGroupedReport}
         className="flex items-center gap-2 px-3 py-1.5 h-8 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-md transition-all duration-200 border border-gray-200 hover:border-gray-300"
       />
     </div>

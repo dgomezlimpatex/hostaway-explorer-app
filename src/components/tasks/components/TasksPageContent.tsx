@@ -28,6 +28,7 @@ interface TasksPageContentProps {
   onFiltersChange: (filters: any) => void;
   onShowHistory: (task: Task) => void;
   onCreateReport: (task: Task) => void;
+  onOpenGroupedReport?: (task: Task) => void;
   onAssignMultipleCleaners?: (task: Task) => void;
   onPageChange: (page: number) => void;
   onRefetch: () => void;
@@ -45,6 +46,7 @@ export const TasksPageContent = ({
   onFiltersChange,
   onShowHistory,
   onCreateReport,
+  onOpenGroupedReport,
   onAssignMultipleCleaners,
   onPageChange,
   onRefetch,
@@ -83,6 +85,7 @@ export const TasksPageContent = ({
                       isLoading={isLoading} 
                       onShowHistory={onShowHistory}
                       onCreateReport={onCreateReport}
+                      onOpenGroupedReport={onOpenGroupedReport}
                       onAssignMultipleCleaners={onAssignMultipleCleaners}
                       onRefetch={onRefetch}
                     />
@@ -119,6 +122,7 @@ export const TasksPageContent = ({
                       isLoading={isLoading} 
                       onShowHistory={onShowHistory}
                       onCreateReport={onCreateReport}
+                      onOpenGroupedReport={onOpenGroupedReport}
                       onAssignMultipleCleaners={onAssignMultipleCleaners}
                       onRefetch={onRefetch}
                     />
@@ -160,6 +164,7 @@ export const TasksPageContent = ({
                 isLoading={isLoading} 
                 onShowHistory={onShowHistory}
                 onCreateReport={onCreateReport}
+                onOpenGroupedReport={onOpenGroupedReport}
                 onAssignMultipleCleaners={onAssignMultipleCleaners}
                 onRefetch={onRefetch}
               />
@@ -223,6 +228,7 @@ export const TasksPageContent = ({
                         isLoading={isLoading} 
                         onShowHistory={onShowHistory}
                         onCreateReport={onCreateReport}
+                        onOpenGroupedReport={onOpenGroupedReport}
                         onAssignMultipleCleaners={onAssignMultipleCleaners}
                         onRefetch={onRefetch}
                       />
@@ -259,6 +265,7 @@ export const TasksPageContent = ({
                         isLoading={isLoading} 
                         onShowHistory={onShowHistory}
                         onCreateReport={onCreateReport}
+                        onOpenGroupedReport={onOpenGroupedReport}
                         onAssignMultipleCleaners={onAssignMultipleCleaners}
                         onRefetch={onRefetch}
                       />
@@ -300,6 +307,7 @@ export const TasksPageContent = ({
                   isLoading={isLoading} 
                   onShowHistory={onShowHistory}
                   onCreateReport={onCreateReport}
+                  onOpenGroupedReport={onOpenGroupedReport}
                   onAssignMultipleCleaners={onAssignMultipleCleaners}
                   onRefetch={onRefetch}
                 />
