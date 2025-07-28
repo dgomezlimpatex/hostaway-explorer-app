@@ -143,7 +143,7 @@ export const TaskReportTabs: React.FC<TaskReportTabsProps> = ({
             issues={issues}
             onIssuesChange={onIssuesChange}
             reportId={reportId}
-            isReadOnly={isTaskCompleted}
+            isReadOnly={false}
           />
         </TabsContent>
 

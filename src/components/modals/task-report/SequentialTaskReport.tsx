@@ -145,7 +145,7 @@ export const SequentialTaskReport: React.FC<SequentialTaskReportProps> = ({
               issues={issues}
               onIssuesChange={onIssuesChange}
               reportId={reportId}
-              isReadOnly={isTaskCompleted}
+              isReadOnly={false}
             />
             
           </div>
