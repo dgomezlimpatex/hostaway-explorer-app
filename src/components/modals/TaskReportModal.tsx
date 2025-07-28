@@ -50,6 +50,10 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
   
   // Ref to track if we've already tried to create a report for this task
   const reportCreationAttempted = useRef<string | null>(null);
+  
+  // Auto-save refs
+  const autoSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const lastSavedDataRef = useRef<string>('');
 
   // Get task media using the current report ID
   const { data: taskMedia = [], isLoading: isLoadingMedia } = useTaskMedia(currentReport?.id || '');
@@ -234,7 +238,68 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
   }, [completionPercentage, currentStep, isChecklistCompleted]);
 
 
-  // Auto-advance removed - navigation is now completely manual
+  // Auto-save functionality
+  const triggerAutoSave = React.useCallback(() => {
+    if (!task || !user?.id || !currentReport) return;
+    
+    const currentData = JSON.stringify({
+      checklist,
+      notes,
+      issues,
+      completionPercentage
+    });
+    
+    // Only save if data has changed
+    if (currentData === lastSavedDataRef.current) return;
+    
+    console.log('🔄 Auto-saving report progress...');
+    lastSavedDataRef.current = currentData;
+    
+    const reportData = {
+      task_id: task.id,
+      cleaner_id: currentCleanerId || task.cleanerId,
+      checklist_template_id: currentTemplate?.id,
+      checklist_completed: checklist,
+      notes,
+      issues_found: issues,
+      overall_status: completionPercentage >= 80 ? 'completed' as const : 'in_progress' as const,
+    };
+    
+    updateReport({ 
+      reportId: currentReport.id, 
+      updates: reportData 
+    });
+  }, [task, user?.id, currentReport, checklist, notes, issues, completionPercentage, currentCleanerId, currentTemplate?.id, updateReport]);
+
+  // Auto-save when checklist, notes, or issues change
+  useEffect(() => {
+    if (!hasStartedTask || !currentReport) return;
+    
+    // Clear previous timeout
+    if (autoSaveTimeoutRef.current) {
+      clearTimeout(autoSaveTimeoutRef.current);
+    }
+    
+    // Set new timeout for auto-save (2 seconds after last change)
+    autoSaveTimeoutRef.current = setTimeout(() => {
+      triggerAutoSave();
+    }, 2000);
+    
+    return () => {
+      if (autoSaveTimeoutRef.current) {
+        clearTimeout(autoSaveTimeoutRef.current);
+      }
+    };
+  }, [checklist, notes, issues, hasStartedTask, currentReport, triggerAutoSave]);
+
+  // Clean up timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (autoSaveTimeoutRef.current) {
+        clearTimeout(autoSaveTimeoutRef.current);
+      }
+    };
+  }, []);
 
   const handleStartTask = async () => {
     if (!task || !isTaskFromToday) {
