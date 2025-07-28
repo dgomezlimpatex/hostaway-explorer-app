@@ -13,7 +13,7 @@ import {
   Camera 
 } from 'lucide-react';
 import { Task } from '@/types/calendar';
-import { TaskChecklistTemplate } from '@/types/taskReports';
+import { TaskChecklistTemplate, TaskReport } from '@/types/taskReports';
 
 interface ReportSummaryProps {
   task: Task;
@@ -22,6 +22,7 @@ interface ReportSummaryProps {
   issues: any[];
   notes: string;
   completionPercentage: number;
+  currentReport?: TaskReport;
 }
 
 export const ReportSummary: React.FC<ReportSummaryProps> = ({
@@ -31,6 +32,7 @@ export const ReportSummary: React.FC<ReportSummaryProps> = ({
   issues,
   notes,
   completionPercentage,
+  currentReport,
 }) => {
   const totalItems = template?.checklist_items?.reduce(
     (acc, category) => acc + category.items.length, 
@@ -51,6 +53,34 @@ export const ReportSummary: React.FC<ReportSummaryProps> = ({
   };
 
   const status = getCompletionStatus();
+
+  // Función para formatear tiempo
+  const formatTime = (dateString?: string) => {
+    if (!dateString) return 'No registrado';
+    const date = new Date(dateString);
+    return date.toLocaleTimeString('es-ES', { 
+      hour: '2-digit', 
+      minute: '2-digit'
+    });
+  };
+
+  // Calcular duración del servicio
+  const calculateServiceDuration = () => {
+    if (!currentReport?.start_time) return 'No iniciado';
+    
+    const startTime = new Date(currentReport.start_time);
+    const endTime = currentReport.end_time ? new Date(currentReport.end_time) : new Date();
+    
+    const diffInMinutes = Math.floor((endTime.getTime() - startTime.getTime()) / (1000 * 60));
+    
+    if (diffInMinutes < 60) {
+      return `${diffInMinutes} minutos`;
+    } else {
+      const hours = Math.floor(diffInMinutes / 60);
+      const minutes = diffInMinutes % 60;
+      return `${hours}h ${minutes}m`;
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -91,6 +121,44 @@ export const ReportSummary: React.FC<ReportSummaryProps> = ({
           )}
         </CardContent>
       </Card>
+
+      {/* Tiempo real del servicio */}
+      {currentReport && (
+        <Card className="border-blue-200 bg-blue-50">
+          <CardHeader>
+            <CardTitle className="text-md flex items-center">
+              <Clock className="h-4 w-4 mr-2 text-blue-500" />
+              Tiempo Real del Servicio
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="text-center">
+                <p className="text-sm text-gray-600 mb-1">Hora de Inicio</p>
+                <p className="text-lg font-semibold text-green-700">
+                  {formatTime(currentReport.start_time)}
+                </p>
+              </div>
+              
+              <div className="text-center">
+                <p className="text-sm text-gray-600 mb-1">
+                  {currentReport.end_time ? 'Hora de Finalización' : 'Tiempo Transcurrido'}
+                </p>
+                <p className="text-lg font-semibold text-red-700">
+                  {currentReport.end_time ? formatTime(currentReport.end_time) : 'En curso'}
+                </p>
+              </div>
+            </div>
+            
+            <div className="text-center pt-2 border-t border-blue-200">
+              <p className="text-sm text-gray-600 mb-1">Duración del Servicio</p>
+              <p className="text-xl font-bold text-blue-700">
+                {calculateServiceDuration()}
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Progreso del checklist */}
       <Card>

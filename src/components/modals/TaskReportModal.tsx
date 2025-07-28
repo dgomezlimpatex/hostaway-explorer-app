@@ -556,6 +556,7 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
             isTaskCompleted={isTaskCompleted}
             hasStartedTask={hasStartedTask}
             onComplete={handleComplete}
+            currentReport={currentReport}
           />
         </div>
 

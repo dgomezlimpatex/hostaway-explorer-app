@@ -2,7 +2,7 @@ import React from 'react';
 import { Clock, CheckSquare, AlertTriangle, Camera, BarChart3 } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Task } from '@/types/calendar';
-import { TaskChecklistTemplate, TaskMedia } from '@/types/taskReports';
+import { TaskChecklistTemplate, TaskMedia, TaskReport } from '@/types/taskReports';
 import { ChecklistSection } from './ChecklistSection';
 import { IssuesSection } from './IssuesSection';
 import { NotesSection } from './NotesSection';
@@ -32,6 +32,7 @@ interface TaskReportTabsProps {
   isTaskCompleted?: boolean;
   hasStartedTask: boolean;
   onComplete: () => Promise<void>;
+  currentReport?: TaskReport;
 }
 
 export const TaskReportTabs: React.FC<TaskReportTabsProps> = ({
@@ -55,6 +56,7 @@ export const TaskReportTabs: React.FC<TaskReportTabsProps> = ({
   isTaskCompleted = false,
   hasStartedTask,
   onComplete,
+  currentReport,
 }) => {
   const { isMobile } = useDeviceType();
 
@@ -80,6 +82,7 @@ export const TaskReportTabs: React.FC<TaskReportTabsProps> = ({
         isTaskCompleted={isTaskCompleted}
         hasStartedTask={hasStartedTask}
         onComplete={onComplete}
+        currentReport={currentReport}
       />
     );
   }
@@ -199,6 +202,7 @@ export const TaskReportTabs: React.FC<TaskReportTabsProps> = ({
             issues={issues}
             notes={notes}
             completionPercentage={completionPercentage}
+            currentReport={currentReport}
           />
         </TabsContent>
       </div>

@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { CheckSquare, AlertTriangle, Camera, CheckCircle, Clock, ArrowLeft, ArrowRight } from 'lucide-react';
 import { Task } from '@/types/calendar';
-import { TaskChecklistTemplate, TaskMedia } from '@/types/taskReports';
+import { TaskChecklistTemplate, TaskMedia, TaskReport } from '@/types/taskReports';
 import { ChecklistSection } from './ChecklistSection';
 import { MediaCapture } from './MediaCapture';
 import { IssuesSection } from './IssuesSection';
@@ -30,6 +30,7 @@ interface SequentialTaskReportProps {
   isTaskCompleted?: boolean;
   hasStartedTask: boolean;
   onComplete: () => Promise<void>;
+  currentReport?: TaskReport;
 }
 
 export const SequentialTaskReport: React.FC<SequentialTaskReportProps> = ({
@@ -51,6 +52,7 @@ export const SequentialTaskReport: React.FC<SequentialTaskReportProps> = ({
   isTaskCompleted = false,
   hasStartedTask,
   onComplete,
+  currentReport,
 }) => {
   const { isMobile } = useDeviceType();
 
@@ -191,6 +193,7 @@ export const SequentialTaskReport: React.FC<SequentialTaskReportProps> = ({
               issues={issues}
               notes={notes}
               completionPercentage={completionPercentage}
+              currentReport={currentReport}
             />
             
             {!isTaskCompleted && (
