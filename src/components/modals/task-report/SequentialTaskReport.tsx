@@ -70,11 +70,11 @@ export const SequentialTaskReport: React.FC<SequentialTaskReportProps> = ({
     
     switch (currentStep) {
       case 'checklist':
-        return completionPercentage === 100;
+        return true; // Permitir proceder sin requerir 100% de completitud
       case 'issues':
         return true; // Siempre se puede proceder (aunque no haya incidencias)
       case 'media':
-        return reportMedia.length > 0;
+        return true; // Permitir proceder sin requerir fotos
       case 'summary':
         return true;
       default:
