@@ -187,7 +187,7 @@ export const TaskReportTabs: React.FC<TaskReportTabsProps> = ({
             }}
             reportId={reportId}
             existingMedia={reportMedia}
-            isReadOnly={isTaskCompleted}
+            isReadOnly={false}
           />
         </TabsContent>
 

@@ -170,7 +170,7 @@ export const SequentialTaskReport: React.FC<SequentialTaskReportProps> = ({
               }}
               reportId={reportId}
               existingMedia={reportMedia}
-              isReadOnly={isTaskCompleted}
+              isReadOnly={false}
             />
           </div>
         )}
