@@ -77,7 +77,17 @@ export const useMediaUpload = ({
   };
 
   const uploadMultipleFiles = async (files: FileList) => {
-    if (!files || files.length === 0 || !reportId) return;
+    if (!files || files.length === 0 || !reportId) {
+      console.log('MediaUpload - uploadMultipleFiles early return:', { files: files?.length, reportId });
+      return;
+    }
+
+    console.log('MediaUpload - starting multiple upload:', { 
+      fileCount: files.length, 
+      reportId, 
+      checklistItemId,
+      existingMediaCount 
+    });
 
     // Verificar límite de archivos (15 máximo + archivos existentes)
     const totalFiles = existingMediaCount + files.length;
@@ -94,11 +104,17 @@ export const useMediaUpload = ({
     let successCount = 0;
     let errorCount = 0;
 
+    // Convertir FileList a Array para mejor manejo
+    const filesArray = Array.from(files);
+    console.log('MediaUpload - files array created:', filesArray.map(f => ({ name: f.name, size: f.size, type: f.type })));
+
     // Subir archivos uno por uno
-    for (let i = 0; i < files.length; i++) {
-      const file = files[i];
+    for (let i = 0; i < filesArray.length; i++) {
+      const file = filesArray[i];
+      console.log(`MediaUpload - processing file ${i + 1}/${filesArray.length}:`, { name: file.name, size: file.size, type: file.type });
       
       if (!validateFile(file)) {
+        console.log('MediaUpload - file validation failed:', file.name);
         errorCount++;
         continue;
       }
@@ -114,11 +130,12 @@ export const useMediaUpload = ({
         onMediaCaptured(data.file_url);
         successCount++;
       } catch (error) {
-        console.error('MediaUpload - multiple upload failed:', error);
+        console.error('MediaUpload - multiple upload failed for file:', file.name, error);
         errorCount++;
       }
     }
 
+    console.log('MediaUpload - upload process completed:', { successCount, errorCount, total: filesArray.length });
     setUploadingCount(0);
     
     // Mostrar resultado
