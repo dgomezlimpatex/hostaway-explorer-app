@@ -54,7 +54,7 @@ export const useTaskReports = () => {
 
   // Mutation para actualizar reporte
   const updateReportMutation = useMutation({
-    mutationFn: ({ reportId, updates }: { reportId: string; updates: Partial<TaskReport> }) => {
+    mutationFn: ({ reportId, updates, silent = false }: { reportId: string; updates: Partial<TaskReport>; silent?: boolean }) => {
       console.log('Updating task report:', reportId, updates);
       return taskReportsStorageService.updateTaskReport(reportId, updates);
     },
@@ -62,10 +62,14 @@ export const useTaskReports = () => {
       console.log('Task report updated successfully:', data);
       queryClient.invalidateQueries({ queryKey: ['task-reports'] });
       queryClient.invalidateQueries({ queryKey: ['task-report', data.task_id] });
-      toast({
-        title: "Reporte actualizado",
-        description: "El reporte se ha actualizado exitosamente.",
-      });
+      
+      // Solo mostrar toast si no es silent (autoguardado)
+      if (!variables.silent) {
+        toast({
+          title: "Reporte actualizado",
+          description: "El reporte se ha actualizado exitosamente.",
+        });
+      }
     },
     onError: (error) => {
       console.error('Error updating report:', error);

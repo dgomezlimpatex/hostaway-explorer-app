@@ -267,7 +267,8 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
     
     updateReport({ 
       reportId: currentReport.id, 
-      updates: reportData 
+      updates: reportData,
+      silent: true // Autoguardado silencioso
     });
   }, [task, user?.id, currentReport, checklist, notes, issues, completionPercentage, currentCleanerId, currentTemplate?.id, updateReport]);
 
