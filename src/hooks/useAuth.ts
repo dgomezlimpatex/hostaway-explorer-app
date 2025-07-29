@@ -4,6 +4,58 @@ import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import type { Database } from '@/integrations/supabase/types';
 
+// Password validation utility
+const validatePassword = (password: string): string[] => {
+  const errors: string[] = [];
+  if (password.length < 8) errors.push('at least 8 characters');
+  if (!/[A-Z]/.test(password)) errors.push('one uppercase letter');
+  if (!/[a-z]/.test(password)) errors.push('one lowercase letter');
+  if (!/\d/.test(password)) errors.push('one number');
+  if (!/[!@#$%^&*(),.?":{}|<>]/.test(password)) errors.push('one special character');
+  return errors;
+};
+
+// Login attempt tracking
+const LOGIN_ATTEMPTS_KEY = 'login_attempts';
+const MAX_ATTEMPTS = 5;
+const LOCKOUT_DURATION = 15 * 60 * 1000; // 15 minutes
+
+const checkLoginAttempts = async (email: string): Promise<boolean> => {
+  const attempts = JSON.parse(localStorage.getItem(LOGIN_ATTEMPTS_KEY) || '{}');
+  const userAttempts = attempts[email];
+  
+  if (!userAttempts) return true;
+  
+  const now = Date.now();
+  if (userAttempts.count >= MAX_ATTEMPTS) {
+    if (now - userAttempts.lastAttempt < LOCKOUT_DURATION) {
+      return false;
+    }
+    // Reset after lockout period
+    delete attempts[email];
+    localStorage.setItem(LOGIN_ATTEMPTS_KEY, JSON.stringify(attempts));
+  }
+  
+  return true;
+};
+
+const logLoginAttempt = async (email: string, success: boolean): Promise<void> => {
+  const attempts = JSON.parse(localStorage.getItem(LOGIN_ATTEMPTS_KEY) || '{}');
+  
+  if (success) {
+    // Reset attempts on successful login
+    delete attempts[email];
+  } else {
+    // Increment failed attempts
+    attempts[email] = {
+      count: (attempts[email]?.count || 0) + 1,
+      lastAttempt: Date.now()
+    };
+  }
+  
+  localStorage.setItem(LOGIN_ATTEMPTS_KEY, JSON.stringify(attempts));
+};
+
 type AppRole = Database['public']['Enums']['app_role'];
 
 interface Profile {
@@ -159,16 +211,36 @@ export const useAuthProvider = (): AuthContextType => {
 
   const signIn = async (email: string, password: string) => {
     setIsLoading(true);
+    
+    // Rate limiting check
+    const canAttempt = await checkLoginAttempts(email);
+    if (!canAttempt) {
+      setIsLoading(false);
+      return { error: { message: 'Too many login attempts. Please try again later.' } };
+    }
+    
     const { error } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
+    
+    // Log login attempt
+    await logLoginAttempt(email, !error);
+    
     setIsLoading(false);
     return { error };
   };
 
   const signUp = async (email: string, password: string, fullName?: string) => {
     setIsLoading(true);
+    
+    // Enhanced password validation
+    const passwordErrors = validatePassword(password);
+    if (passwordErrors.length > 0) {
+      setIsLoading(false);
+      return { error: { message: `Password requirements: ${passwordErrors.join(', ')}` } };
+    }
+    
     const redirectUrl = `${window.location.origin}/`;
     
     const { error } = await supabase.auth.signUp({
