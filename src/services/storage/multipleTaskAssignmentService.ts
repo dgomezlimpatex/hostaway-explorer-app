@@ -4,10 +4,15 @@ import { Task } from '@/types/calendar';
 
 export class MultipleTaskAssignmentService {
   async getTaskAssignments(taskId: string): Promise<TaskAssignment[]> {
+    // Para tareas virtuales (con _assignment_), usar el originalTaskId
+    const actualTaskId = taskId?.includes('_assignment_') 
+      ? taskId.split('_assignment_')[0] 
+      : taskId;
+
     const { data, error } = await supabase
       .from('task_assignments')
       .select('*')
-      .eq('task_id', taskId);
+      .eq('task_id', actualTaskId);
 
     if (error) {
       throw new Error(`Error fetching task assignments: ${error.message}`);
@@ -17,6 +22,11 @@ export class MultipleTaskAssignmentService {
   }
 
   async assignMultipleCleaners(taskId: string, cleanerIds: string[]): Promise<TaskAssignment[]> {
+    // Para tareas virtuales (con _assignment_), usar el originalTaskId
+    const actualTaskId = taskId?.includes('_assignment_') 
+      ? taskId.split('_assignment_')[0] 
+      : taskId;
+
     // First, get cleaner details including email
     const { data: cleaners, error: cleanersError } = await supabase
       .from('cleaners')
@@ -31,7 +41,7 @@ export class MultipleTaskAssignmentService {
     const { data: task, error: taskError } = await supabase
       .from('tasks')
       .select('*')
-      .eq('id', taskId)
+      .eq('id', actualTaskId)
       .single();
 
     if (taskError) {
@@ -39,11 +49,11 @@ export class MultipleTaskAssignmentService {
     }
 
     // Clear existing assignments for this task
-    await this.clearTaskAssignments(taskId);
+    await this.clearTaskAssignments(actualTaskId);
 
     // Create new assignments
     const assignments = cleaners.map(cleaner => ({
-      task_id: taskId,
+      task_id: actualTaskId,
       cleaner_id: cleaner.id,
       cleaner_name: cleaner.name,
       assigned_by: null // Will be set by RLS/triggers if needed
@@ -66,7 +76,7 @@ export class MultipleTaskAssignmentService {
           cleaner: cleaners[0].name,
           cleaner_id: cleaners[0].id
         })
-        .eq('id', taskId);
+        .eq('id', actualTaskId);
     }
 
     // Send assignment emails to all cleaners
@@ -116,6 +126,11 @@ export class MultipleTaskAssignmentService {
   }
 
   async clearTaskAssignments(taskId: string): Promise<void> {
+    // Para tareas virtuales (con _assignment_), usar el originalTaskId
+    const actualTaskId = taskId?.includes('_assignment_') 
+      ? taskId.split('_assignment_')[0] 
+      : taskId;
+
     // Get current assignments for email notifications
     const { data: currentAssignments, error: assignmentsError } = await supabase
       .from('task_assignments')
@@ -124,20 +139,20 @@ export class MultipleTaskAssignmentService {
         cleaner_name,
         cleaners!inner(email, name)
       `)
-      .eq('task_id', taskId);
+      .eq('task_id', actualTaskId);
 
     // Get task details for email
     const { data: task, error: taskError } = await supabase
       .from('tasks')
       .select('*')
-      .eq('id', taskId)
+      .eq('id', actualTaskId)
       .single();
 
     // Delete assignments
     const { error } = await supabase
       .from('task_assignments')
       .delete()
-      .eq('task_id', taskId);
+      .eq('task_id', actualTaskId);
 
     if (error) {
       throw new Error(`Error clearing assignments: ${error.message}`);
@@ -195,10 +210,15 @@ export class MultipleTaskAssignmentService {
         cleaner: null,
         cleaner_id: null
       })
-      .eq('id', taskId);
+      .eq('id', actualTaskId);
   }
 
   async removeCleanerFromTask(taskId: string, cleanerId: string): Promise<void> {
+    // Para tareas virtuales (con _assignment_), usar el originalTaskId
+    const actualTaskId = taskId?.includes('_assignment_') 
+      ? taskId.split('_assignment_')[0] 
+      : taskId;
+
     // Get cleaner and task details for email before removing
     const { data: cleaner, error: cleanerError } = await supabase
       .from('cleaners')
@@ -209,14 +229,14 @@ export class MultipleTaskAssignmentService {
     const { data: task, error: taskError } = await supabase
       .from('tasks')
       .select('*')
-      .eq('id', taskId)
+      .eq('id', actualTaskId)
       .single();
 
     // Remove the assignment
     const { error } = await supabase
       .from('task_assignments')
       .delete()
-      .eq('task_id', taskId)
+      .eq('task_id', actualTaskId)
       .eq('cleaner_id', cleanerId);
 
     if (error) {
@@ -264,7 +284,7 @@ export class MultipleTaskAssignmentService {
     const { data: remainingAssignments } = await supabase
       .from('task_assignments')
       .select('cleaner_id, cleaner_name')
-      .eq('task_id', taskId)
+      .eq('task_id', actualTaskId)
       .limit(1);
 
     if (remainingAssignments && remainingAssignments.length > 0) {
@@ -275,7 +295,7 @@ export class MultipleTaskAssignmentService {
           cleaner: remainingAssignments[0].cleaner_name,
           cleaner_id: remainingAssignments[0].cleaner_id
         })
-        .eq('id', taskId);
+        .eq('id', actualTaskId);
     } else {
       // No cleaners left, clear main task
       await supabase
@@ -284,7 +304,7 @@ export class MultipleTaskAssignmentService {
           cleaner: null,
           cleaner_id: null
         })
-        .eq('id', taskId);
+        .eq('id', actualTaskId);
     }
   }
 

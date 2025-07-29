@@ -122,10 +122,15 @@ export const useTaskReports = () => {
 
 // Hook específico para obtener reporte por tarea
 export const useTaskReport = (taskId: string) => {
+  // Para tareas virtuales (con _assignment_), usar el originalTaskId
+  const actualTaskId = taskId?.includes('_assignment_') 
+    ? taskId.split('_assignment_')[0] 
+    : taskId;
+
   return useQuery({
-    queryKey: ['task-report', taskId],
-    queryFn: () => taskReportsStorageService.getTaskReportByTaskId(taskId),
-    enabled: !!taskId,
+    queryKey: ['task-report', actualTaskId],
+    queryFn: () => taskReportsStorageService.getTaskReportByTaskId(actualTaskId),
+    enabled: !!actualTaskId && actualTaskId !== 'undefined',
   });
 };
 

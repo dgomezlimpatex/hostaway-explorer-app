@@ -23,13 +23,18 @@ export const useGroupedTaskReports = () => {
 };
 
 export const useGroupedTaskReport = (taskId: string) => {
+  // Para tareas virtuales (con _assignment_), usar el originalTaskId
+  const actualTaskId = taskId?.includes('_assignment_') 
+    ? taskId.split('_assignment_')[0] 
+    : taskId;
+
   return useQuery({
-    queryKey: ['groupedTaskReport', taskId],
+    queryKey: ['groupedTaskReport', actualTaskId],
     queryFn: async (): Promise<GroupedTaskReport | null> => {
       const { data, error } = await supabase
         .from('task_reports_grouped')
         .select('*')
-        .eq('task_id', taskId)
+        .eq('task_id', actualTaskId)
         .maybeSingle();
 
       if (error) {
@@ -41,6 +46,6 @@ export const useGroupedTaskReport = (taskId: string) => {
         individual_reports: data.individual_reports as any
       } as GroupedTaskReport : null;
     },
-    enabled: !!taskId,
+    enabled: !!actualTaskId && actualTaskId !== 'undefined',
   });
 };
