@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Trash2, Edit3, Save, X, UserX, UserPlus } from "lucide-react";
+import { Trash2, Edit3, Save, X, UserX, UserPlus, Users } from "lucide-react";
 import { Task } from "@/types/calendar";
 import { useAuth } from "@/hooks/useAuth";
 import { useTaskReport } from "@/hooks/useTaskReports";
@@ -14,6 +14,7 @@ interface TaskDetailsActionsProps {
   onDelete: () => void;
   onUnassign?: () => void;
   onAssign?: (cleanerId: string, cleanerName: string) => void;
+  onAssignMultiple?: () => void;
   onOpenReport: () => void;
 }
 export const TaskDetailsActions = ({
@@ -25,6 +26,7 @@ export const TaskDetailsActions = ({
   onDelete,
   onUnassign,
   onAssign,
+  onAssignMultiple,
   onOpenReport
 }: TaskDetailsActionsProps) => {
   const { userRole } = useAuth();
@@ -68,7 +70,7 @@ export const TaskDetailsActions = ({
           </Button>
         )}
         
-        {/* Botón de Asignar - Solo para managers/supervisors/admin */}
+        {/* Botón de Asignar Individual - Solo para managers/supervisors/admin */}
         {onAssign && userRole !== 'cleaner' && (
           <Select onValueChange={(value) => {
             const [cleanerId, cleanerName] = value.split('|');
@@ -78,7 +80,7 @@ export const TaskDetailsActions = ({
               <UserPlus className="h-3 w-3" />
               <span className="hidden xs:inline">Asignar</span>
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent className="bg-white dark:bg-gray-800 z-50">
               {cleaners.map((cleaner) => (
                 <SelectItem key={cleaner.id} value={`${cleaner.id}|${cleaner.name}`}>
                   {cleaner.name}
@@ -86,6 +88,19 @@ export const TaskDetailsActions = ({
               ))}
             </SelectContent>
           </Select>
+        )}
+
+        {/* Botón de Asignar Múltiples - Solo para managers/supervisors/admin */}
+        {onAssignMultiple && userRole !== 'cleaner' && (
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={onAssignMultiple} 
+            className="flex items-center gap-1 text-xs px-2 h-8"
+          >
+            <Users className="h-3 w-3" />
+            <span className="hidden xs:inline">Múltiples</span>
+          </Button>
         )}
         
         {/* Botón de Desasignar - Solo para managers/supervisors/admin */}

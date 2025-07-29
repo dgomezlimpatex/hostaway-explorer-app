@@ -4,6 +4,7 @@ import { Task } from "@/types/calendar";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { TaskReportModal } from "./TaskReportModal";
+import { AssignMultipleCleanersModal } from "./AssignMultipleCleanersModal";
 import { TaskDetailsHeader } from "./task-details/TaskDetailsHeader";
 import { TaskDetailsForm } from "./task-details/TaskDetailsForm";
 import { TaskDetailsActions } from "./task-details/TaskDetailsActions";
@@ -32,6 +33,7 @@ export const TaskDetailsModal = ({
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showUnassignConfirm, setShowUnassignConfirm] = useState(false);
   const [showReportModal, setShowReportModal] = useState(false);
+  const [showAssignMultipleModal, setShowAssignMultipleModal] = useState(false);
   const { userRole } = useAuth();
   const { toast } = useToast();
   
@@ -129,7 +131,8 @@ export const TaskDetailsModal = ({
               onDelete={userRole !== 'cleaner' ? () => setShowDeleteConfirm(true) : undefined} 
               onUnassign={userRole !== 'cleaner' && onUnassignTask ? () => setShowUnassignConfirm(true) : undefined}
               onAssign={userRole !== 'cleaner' ? handleAssign : undefined}
-              onOpenReport={() => setShowReportModal(true)} 
+              onAssignMultiple={userRole !== 'cleaner' ? () => setShowAssignMultipleModal(true) : undefined}
+              onOpenReport={() => setShowReportModal(true)}
             />
           </DialogFooter>
         </DialogContent>
@@ -137,6 +140,17 @@ export const TaskDetailsModal = ({
 
       {/* Task Report Modal */}
       <TaskReportModal task={task} open={showReportModal} onOpenChange={setShowReportModal} />
+
+      {/* Assign Multiple Cleaners Modal */}
+      <AssignMultipleCleanersModal 
+        task={task} 
+        open={showAssignMultipleModal} 
+        onOpenChange={setShowAssignMultipleModal}
+        onAssignComplete={() => {
+          // Refresh the task data if needed
+          console.log('Multiple cleaners assigned');
+        }}
+      />
 
       <TaskDetailsConfirmDialogs task={task} showDeleteConfirm={showDeleteConfirm} onDeleteConfirmChange={setShowDeleteConfirm} showUnassignConfirm={showUnassignConfirm} onUnassignConfirmChange={setShowUnassignConfirm} onConfirmDelete={handleDelete} onConfirmUnassign={handleUnassign} />
     </>;
