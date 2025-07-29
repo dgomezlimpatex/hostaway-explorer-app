@@ -55,7 +55,7 @@ export const TaskDetailsModal = ({
       });
       return;
     }
-    onUpdateTask(task.id, formData);
+    onUpdateTask(task.originalTaskId || task.id, formData);
     setIsEditing(false);
     toast({
       title: "Tarea actualizada",
@@ -63,7 +63,7 @@ export const TaskDetailsModal = ({
     });
   };
   const handleDelete = () => {
-    onDeleteTask(task.id);
+    onDeleteTask(task.originalTaskId || task.id);
     onOpenChange(false);
     setShowDeleteConfirm(false);
     toast({
@@ -73,7 +73,7 @@ export const TaskDetailsModal = ({
   };
   const handleUnassign = () => {
     if (onUnassignTask && task.cleaner) {
-      onUnassignTask(task.id);
+      onUnassignTask(task.originalTaskId || task.id);
       onOpenChange(false);
       setShowUnassignConfirm(false);
       toast({
@@ -95,8 +95,8 @@ export const TaskDetailsModal = ({
 
   const handleAssign = async (cleanerId: string, cleanerName: string) => {
     try {
-      await taskAssignmentService.assignTask(task.id, cleanerName, cleanerId);
-      onUpdateTask(task.id, { cleaner: cleanerName, cleanerId });
+      await taskAssignmentService.assignTask(task.originalTaskId || task.id, cleanerName, cleanerId);
+      onUpdateTask(task.originalTaskId || task.id, { cleaner: cleanerName, cleanerId });
       toast({
         title: "Tarea asignada",
         description: `La tarea ha sido asignada a ${cleanerName}.`

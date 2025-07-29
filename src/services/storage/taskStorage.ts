@@ -30,7 +30,8 @@ const taskStorageConfig = {
     cost: row.coste,
     paymentMethod: row.metodo_pago,
     supervisor: row.supervisor,
-    cleanerId: row.cleaner_id
+    cleanerId: row.cleaner_id,
+    originalTaskId: row.originalTaskId || row.id // Para asignaciones múltiples
   }),
   mapToDB: (task: Partial<TaskCreateData>): any => {
     const data: any = {};
@@ -82,8 +83,10 @@ export class TaskStorageService extends BaseStorageService<Task, TaskCreateData>
       throw error;
     }
 
-    // Map and sync task status with report status
-    const mappedTasks = (data || []).map(task => {
+    // Map and sync task status with report status, handle multiple assignments
+    const mappedTasks: Task[] = [];
+    
+    (data || []).forEach(task => {
       const hasCompletedReport = task.task_reports?.some(report => report.overall_status === 'completed');
       
       // Sync task status: if has completed report but task status is not 'completed', prioritize report status
@@ -93,25 +96,34 @@ export class TaskStorageService extends BaseStorageService<Task, TaskCreateData>
         console.log(`🔄 Task ${task.property} (${task.id}) has completed report but status is ${task.status}, updating to completed`);
       }
 
-      // Handle multiple assignments - update cleaner display with all assigned cleaners
-      let displayCleaner = task.cleaner;
-      if (task.task_assignments && task.task_assignments.length > 0) {
-        const assignmentNames = task.task_assignments.map(a => a.cleaner_name).filter(Boolean);
-        if (assignmentNames.length > 1) {
-          displayCleaner = assignmentNames.join(', ');
-        } else if (assignmentNames.length === 1) {
-          displayCleaner = assignmentNames[0];
-        }
-      }
-
-      return taskStorageConfig.mapFromDB({
+      // Base task data
+      const baseTaskData = {
         ...task,
-        status: finalStatus,
-        cleaner: displayCleaner
-      });
+        status: finalStatus
+      };
+
+      // Handle multiple assignments - create separate task instances for each assigned cleaner
+      if (task.task_assignments && task.task_assignments.length > 0) {
+        // Create a task instance for each assignment
+        task.task_assignments.forEach((assignment, index) => {
+          const taskForCleaner = taskStorageConfig.mapFromDB({
+            ...baseTaskData,
+            cleaner: assignment.cleaner_name,
+            cleaner_id: assignment.cleaner_id,
+            // Add a suffix to the ID to make it unique for each assignment while keeping original reference
+            id: index === 0 ? task.id : `${task.id}_assignment_${assignment.cleaner_id}`,
+            originalTaskId: task.id // Always store the original task ID
+          });
+          mappedTasks.push(taskForCleaner);
+        });
+      } else {
+        // No specific assignments, use original task data
+        const mappedTask = taskStorageConfig.mapFromDB(baseTaskData);
+        mappedTasks.push(mappedTask);
+      }
     });
 
-    console.log(`📋 taskStorage - returning ${mappedTasks.length} tasks, ${mappedTasks.filter(t => t.status === 'completed').length} completed`);
+    console.log(`📋 taskStorage - returning ${mappedTasks.length} task instances (including multiple assignments), ${mappedTasks.filter(t => t.status === 'completed').length} completed`);
     return mappedTasks;
   }
 

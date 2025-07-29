@@ -45,6 +45,7 @@ export interface Task extends BaseEntity {
   paymentMethod?: string;
   supervisor?: string;
   backgroundColor?: string;
+  originalTaskId?: string; // Para tareas con asignaciones múltiples, guarda el ID original
 }
 
 export interface Assignment {

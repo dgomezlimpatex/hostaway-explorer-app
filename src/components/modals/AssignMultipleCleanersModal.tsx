@@ -47,7 +47,7 @@ export const AssignMultipleCleanersModal = ({
     if (!task) return;
     
     try {
-      const assignments = await multipleTaskAssignmentService.getTaskAssignments(task.id);
+      const assignments = await multipleTaskAssignmentService.getTaskAssignments(task.originalTaskId || task.id);
       setCurrentAssignments(assignments);
       setSelectedCleaners(assignments.map(a => a.cleaner_id));
     } catch (error) {
@@ -79,7 +79,7 @@ export const AssignMultipleCleanersModal = ({
 
     setIsLoading(true);
     try {
-      await multipleTaskAssignmentService.assignMultipleCleaners(task.id, selectedCleaners);
+      await multipleTaskAssignmentService.assignMultipleCleaners(task.originalTaskId || task.id, selectedCleaners);
       
       toast({
         title: "Limpiadoras asignadas",
@@ -105,7 +105,7 @@ export const AssignMultipleCleanersModal = ({
 
     setIsLoading(true);
     try {
-      await multipleTaskAssignmentService.clearTaskAssignments(task.id);
+      await multipleTaskAssignmentService.clearTaskAssignments(task.originalTaskId || task.id);
       setSelectedCleaners([]);
       setCurrentAssignments([]);
       
