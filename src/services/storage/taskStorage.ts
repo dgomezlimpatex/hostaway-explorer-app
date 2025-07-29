@@ -64,20 +64,21 @@ export class TaskStorageService extends BaseStorageService<Task, TaskCreateData>
   }
 
   async getTasks(): Promise<Task[]> {
-    console.log('📋 taskStorage - getTasks called, checking for completed reports');
+    console.log('📋 taskStorage - getTasks called, checking for completed reports and assignments');
     
-    // Get all tasks with a LEFT JOIN to task_reports and properties
+    // Get all tasks with a LEFT JOIN to task_reports, properties, and task_assignments
     const { data, error } = await supabase
       .from('tasks')
       .select(`
         *,
         task_reports(overall_status),
-        properties!tasks_propiedad_id_fkey(codigo)
+        properties!tasks_propiedad_id_fkey(codigo),
+        task_assignments(id, cleaner_id, cleaner_name)
       `)
       .order('created_at', { ascending: false });
 
     if (error) {
-      console.error('❌ Error fetching tasks with reports:', error);
+      console.error('❌ Error fetching tasks with reports and assignments:', error);
       throw error;
     }
 
@@ -92,9 +93,21 @@ export class TaskStorageService extends BaseStorageService<Task, TaskCreateData>
         console.log(`🔄 Task ${task.property} (${task.id}) has completed report but status is ${task.status}, updating to completed`);
       }
 
+      // Handle multiple assignments - update cleaner display with all assigned cleaners
+      let displayCleaner = task.cleaner;
+      if (task.task_assignments && task.task_assignments.length > 0) {
+        const assignmentNames = task.task_assignments.map(a => a.cleaner_name).filter(Boolean);
+        if (assignmentNames.length > 1) {
+          displayCleaner = assignmentNames.join(', ');
+        } else if (assignmentNames.length === 1) {
+          displayCleaner = assignmentNames[0];
+        }
+      }
+
       return taskStorageConfig.mapFromDB({
         ...task,
-        status: finalStatus
+        status: finalStatus,
+        cleaner: displayCleaner
       });
     });
 
