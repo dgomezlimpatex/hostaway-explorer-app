@@ -8,7 +8,8 @@ import {
   CheckCircle2,
   Clock,
   AlertCircle,
-  Info
+  Info,
+  Calendar
 } from 'lucide-react';
 import { Task } from '@/types/calendar';
 
@@ -66,17 +67,34 @@ export const TaskDetailsHeader = ({
         )}
       </CardHeader>
       <CardContent>
-        <div className="flex items-center gap-2 text-gray-600">
-          <MapPin className="h-4 w-4" />
-          {isEditing ? (
-            <Input 
-              value={formData.address || ''} 
-              onChange={e => onFieldChange('address', e.target.value)}
-              placeholder="Dirección"
-            />
-          ) : (
-            <span>{task.address}</span>
-          )}
+        <div className="space-y-3">
+          <div className="flex items-center gap-2 text-gray-600">
+            <Calendar className="h-4 w-4" />
+            <span className="font-medium text-sm">Fecha:</span>
+            {isEditing ? (
+              <Input 
+                type="date"
+                value={formData.date || ''} 
+                onChange={e => onFieldChange('date', e.target.value)}
+                className="w-auto"
+              />
+            ) : (
+              <span>{task.date}</span>
+            )}
+          </div>
+          
+          <div className="flex items-center gap-2 text-gray-600">
+            <MapPin className="h-4 w-4" />
+            {isEditing ? (
+              <Input 
+                value={formData.address || ''} 
+                onChange={e => onFieldChange('address', e.target.value)}
+                placeholder="Dirección"
+              />
+            ) : (
+              <span>{task.address}</span>
+            )}
+          </div>
         </div>
       </CardContent>
     </Card>
