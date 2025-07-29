@@ -7,6 +7,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthProvider";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { RoleProtectedRoute } from "@/components/auth/RoleProtectedRoute";
+import { useSessionTimeout } from "@/hooks/useSessionTimeout";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import AcceptInvitation from "./pages/AcceptInvitation";
@@ -30,13 +31,20 @@ import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
 
+// Security wrapper component
+function SecurityWrapper({ children }: { children: React.ReactNode }) {
+  useSessionTimeout();
+  return <>{children}</>;
+}
+
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <AuthProvider>
-          <Toaster />
-          <Sonner />
+          <SecurityWrapper>
+            <Toaster />
+            <Sonner />
           <BrowserRouter>
             <Routes>
               <Route path="/auth" element={<Auth />} />
@@ -162,6 +170,7 @@ function App() {
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>
+          </SecurityWrapper>
         </AuthProvider>
       </TooltipProvider>
     </QueryClientProvider>

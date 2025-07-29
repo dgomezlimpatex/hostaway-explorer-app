@@ -1291,6 +1291,42 @@ export type Database = {
         }
         Relationships: []
       }
+      security_rate_limits: {
+        Row: {
+          action_type: string
+          attempt_count: number
+          blocked_until: string | null
+          created_at: string
+          first_attempt_at: string
+          id: string
+          identifier: string
+          last_attempt_at: string
+          updated_at: string
+        }
+        Insert: {
+          action_type: string
+          attempt_count?: number
+          blocked_until?: string | null
+          created_at?: string
+          first_attempt_at?: string
+          id?: string
+          identifier: string
+          last_attempt_at?: string
+          updated_at?: string
+        }
+        Update: {
+          action_type?: string
+          attempt_count?: number
+          blocked_until?: string | null
+          created_at?: string
+          first_attempt_at?: string
+          id?: string
+          identifier?: string
+          last_attempt_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       task_assignments: {
         Row: {
           assigned_at: string
@@ -1729,9 +1765,27 @@ export type Database = {
         Args: { invitation_token: string; input_user_id: string }
         Returns: Database["public"]["Enums"]["app_role"]
       }
+      check_rate_limit: {
+        Args: {
+          check_identifier: string
+          check_action_type: string
+          max_attempts?: number
+          window_minutes?: number
+          block_minutes?: number
+        }
+        Returns: boolean
+      }
       cleanup_expired_invitations: {
         Args: Record<PropertyKey, never>
         Returns: undefined
+      }
+      create_user_invitation_secure: {
+        Args: {
+          invite_email: string
+          invite_role: string
+          expires_hours?: number
+        }
+        Returns: string
       }
       get_current_user_role: {
         Args: Record<PropertyKey, never>
@@ -1758,6 +1812,10 @@ export type Database = {
           property_id_param: string
           user_id_param: string
         }
+        Returns: undefined
+      }
+      reset_rate_limit: {
+        Args: { reset_identifier: string; reset_action_type: string }
         Returns: undefined
       }
       update_cleaners_order: {

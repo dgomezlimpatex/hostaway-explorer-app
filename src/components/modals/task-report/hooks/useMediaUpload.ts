@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useTaskReports } from '@/hooks/useTaskReports';
 import { useToast } from '@/hooks/use-toast';
+import { useFileUploadSecurity } from '@/hooks/useFileUploadSecurity';
 
 interface UseMediaUploadProps {
   reportId?: string;
@@ -17,11 +18,25 @@ export const useMediaUpload = ({
 }: UseMediaUploadProps) => {
   const { uploadMediaAsync, isUploadingMedia } = useTaskReports();
   const { toast } = useToast();
+  const { validateFile: secureValidateFile } = useFileUploadSecurity();
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [uploadingCount, setUploadingCount] = useState(0);
 
   const validateFile = (file: File): boolean => {
-    // Obtener la extensión del archivo
+    // Use secure validation first
+    const mediaType = file.type.startsWith('image/') ? 'image' : 'video';
+    const secureValidation = secureValidateFile(file, mediaType);
+    
+    if (!secureValidation.isValid) {
+      toast({
+        title: "Error",
+        description: secureValidation.error,
+        variant: "destructive",
+      });
+      return false;
+    }
+
+    // Additional legacy validation for compatibility
     const fileName = file.name.toLowerCase();
     const validImageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.heic', '.heif'];
     const validVideoExtensions = ['.mp4', '.mov', '.avi', '.mkv', '.webm'];
@@ -30,23 +45,10 @@ export const useMediaUpload = ({
       fileName.endsWith(ext)
     );
 
-    // Validar por tipo MIME o extensión
-    const hasValidMimeType = file.type.startsWith('image/') || file.type.startsWith('video/');
-    
-    if (!hasValidMimeType && !hasValidExtension) {
+    if (!hasValidExtension) {
       toast({
         title: "Error",
-        description: "Solo se permiten archivos de imagen o video.",
-        variant: "destructive",
-      });
-      return false;
-    }
-
-    // Validar tamaño (max 50MB)
-    if (file.size > 50 * 1024 * 1024) {
-      toast({
-        title: "Error", 
-        description: "El archivo es demasiado grande. Máximo 50MB.",
+        description: "Formato de archivo no soportado.",
         variant: "destructive",
       });
       return false;
