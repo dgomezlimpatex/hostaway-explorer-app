@@ -14,7 +14,7 @@ interface FormData {
   checkOut: string;
   checkIn: string;
   cleaner: string;
-  cleanerId: string;
+  cleanerId: string | undefined;
   date: string;
   duracion: number;
   coste: number;
@@ -37,7 +37,7 @@ export const useCreateTaskForm = (currentDate: Date) => {
     checkOut: '',
     checkIn: '',
     cleaner: 'unassigned',
-    cleanerId: '',
+    cleanerId: undefined,
     date: currentDate.toISOString().split('T')[0],
     duracion: 0,
     coste: 0,
@@ -97,7 +97,7 @@ export const useCreateTaskForm = (currentDate: Date) => {
         setFormData(prev => ({ 
           ...prev, 
           cleaner: value,
-          cleanerId: ''
+          cleanerId: undefined
         }));
       } else {
         const selectedCleaner = cleaners.find(c => c.name === value);
@@ -125,7 +125,7 @@ export const useCreateTaskForm = (currentDate: Date) => {
       checkOut: '',
       checkIn: '',
       cleaner: 'unassigned',
-      cleanerId: '',
+      cleanerId: undefined,
       date: currentDate.toISOString().split('T')[0],
       duracion: 0,
       coste: 0,
