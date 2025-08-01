@@ -72,6 +72,13 @@ export const useTasks = (currentDate: Date, currentView: ViewType) => {
       console.log('🔵 useTasks - createTaskMutation called with:', taskData);
       const result = await taskStorageService.createTask(taskData);
       console.log('✅ useTasks - taskStorageService.createTask result:', result);
+      
+      // If a cleaner is assigned during creation, send assignment email
+      if (result.cleanerId && result.cleaner) {
+        console.log('📧 Sending assignment email for newly created task with cleaner:', result.cleaner);
+        await taskStorageService.assignTask(result.id, result.cleaner, result.cleanerId);
+      }
+      
       return result;
     },
     onSuccess: (data) => {
