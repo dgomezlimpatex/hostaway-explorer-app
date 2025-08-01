@@ -72,6 +72,8 @@ export const CreateTaskModal = ({
       ...formData,
       startTime: finalStartTime,
       endTime: finalEndTime,
+      cleaner: formData.cleaner === 'unassigned' ? '' : formData.cleaner,
+      cleanerId: formData.cleaner === 'unassigned' ? '' : formData.cleanerId,
       clienteId: selectedClient.id,
       propertyId: selectedProperty.id,
       created_at: new Date().toISOString(),

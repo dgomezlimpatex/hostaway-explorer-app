@@ -36,7 +36,7 @@ export const useCreateTaskForm = (currentDate: Date) => {
     status: 'pending' as const,
     checkOut: '',
     checkIn: '',
-    cleaner: '',
+    cleaner: 'unassigned',
     cleanerId: '',
     date: currentDate.toISOString().split('T')[0],
     duracion: 0,
@@ -93,12 +93,20 @@ export const useCreateTaskForm = (currentDate: Date) => {
   const handleChange = (field: string, value: string | number) => {
     // Si se cambia la limpiadora, también actualizar el cleanerId
     if (field === 'cleaner' && typeof value === 'string') {
-      const selectedCleaner = cleaners.find(c => c.name === value);
-      setFormData(prev => ({ 
-        ...prev, 
-        cleaner: value,
-        cleanerId: selectedCleaner?.id || ''
-      }));
+      if (value === 'unassigned') {
+        setFormData(prev => ({ 
+          ...prev, 
+          cleaner: value,
+          cleanerId: ''
+        }));
+      } else {
+        const selectedCleaner = cleaners.find(c => c.name === value);
+        setFormData(prev => ({ 
+          ...prev, 
+          cleaner: value,
+          cleanerId: selectedCleaner?.id || ''
+        }));
+      }
     } else {
       setFormData(prev => ({ ...prev, [field]: value }));
     }
@@ -116,7 +124,7 @@ export const useCreateTaskForm = (currentDate: Date) => {
       status: 'pending',
       checkOut: '',
       checkIn: '',
-      cleaner: '',
+      cleaner: 'unassigned',
       cleanerId: '',
       date: currentDate.toISOString().split('T')[0],
       duracion: 0,

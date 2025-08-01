@@ -27,7 +27,7 @@ export const CleanerSection = ({ formData, onFieldChange }: CleanerSectionProps)
           <SelectValue placeholder={isLoading ? "Cargando..." : "Seleccionar limpiadora"} />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="">Sin asignar</SelectItem>
+          <SelectItem value="unassigned">Sin asignar</SelectItem>
           {sortedCleaners
             .filter(cleaner => cleaner.isActive)
             .map((cleaner) => (
