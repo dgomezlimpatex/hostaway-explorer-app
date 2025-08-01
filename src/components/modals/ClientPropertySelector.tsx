@@ -23,12 +23,16 @@ export const ClientPropertySelector = ({
   const [internalSelectedClientId, setInternalSelectedClientId] = useState<string>('');
   const [internalSelectedPropertyId, setInternalSelectedPropertyId] = useState<string>('');
   
-  const { data: clients = [] } = useClients();
-  const { data: properties = [] } = useProperties();
+  const { data: clients = [], isLoading: clientsLoading } = useClients();
+  const { data: properties = [], isLoading: propertiesLoading } = useProperties();
 
   // Use external props if provided, otherwise use internal state
   const selectedClientId = externalSelectedClientId !== undefined ? externalSelectedClientId : internalSelectedClientId;
   const selectedPropertyId = externalSelectedPropertyId !== undefined ? externalSelectedPropertyId : internalSelectedPropertyId;
+
+  // Convert empty strings to undefined for Select component
+  const clientSelectValue = selectedClientId || undefined;
+  const propertySelectValue = selectedPropertyId || undefined;
 
   // Filter properties by selected client
   const availableProperties = selectedClientId 
@@ -36,6 +40,8 @@ export const ClientPropertySelector = ({
     : [];
 
   const handleClientSelect = (clientId: string) => {
+    if (!clientId) return;
+    
     if (externalSelectedClientId === undefined) {
       setInternalSelectedClientId(clientId);
     }
@@ -44,28 +50,34 @@ export const ClientPropertySelector = ({
     }
     
     const client = clients.find(c => c.id === clientId);
-    onClientChange(client || null);
-    
-    if (showPropertySelector) {
-      onPropertyChange(null); // Reset property in parent
+    if (client) {
+      onClientChange(client);
+      
+      if (showPropertySelector) {
+        onPropertyChange(null); // Reset property in parent
+      }
     }
   };
 
   const handlePropertySelect = (propertyId: string) => {
+    if (!propertyId) return;
+    
     if (externalSelectedPropertyId === undefined) {
       setInternalSelectedPropertyId(propertyId);
     }
     const property = properties.find(p => p.id === propertyId);
-    onPropertyChange(property || null);
+    if (property) {
+      onPropertyChange(property);
+    }
   };
 
   return (
     <div className="space-y-4">
       <div className="space-y-2">
         <Label htmlFor="client">Cliente</Label>
-        <Select value={selectedClientId} onValueChange={handleClientSelect}>
+        <Select value={clientSelectValue} onValueChange={handleClientSelect}>
           <SelectTrigger>
-            <SelectValue placeholder="Selecciona un cliente" />
+            <SelectValue placeholder={clientsLoading ? "Cargando..." : "Selecciona un cliente"} />
           </SelectTrigger>
           <SelectContent>
             {clients.map((client) => (
@@ -81,12 +93,13 @@ export const ClientPropertySelector = ({
         <div className="space-y-2">
           <Label htmlFor="property">Propiedad</Label>
           <Select 
-            value={selectedPropertyId} 
+            value={propertySelectValue} 
             onValueChange={handlePropertySelect}
-            disabled={!selectedClientId}
+            disabled={!selectedClientId || propertiesLoading}
           >
             <SelectTrigger>
               <SelectValue placeholder={
+                propertiesLoading ? "Cargando..." :
                 selectedClientId ? "Selecciona una propiedad" : "Primero selecciona un cliente"
               } />
             </SelectTrigger>
