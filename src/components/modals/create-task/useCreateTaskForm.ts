@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { Client } from "@/types/client";
 import { Property } from "@/types/property";
+import { useCleaners } from "@/hooks/useCleaners";
 
 interface FormData {
   property: string;
@@ -13,6 +14,7 @@ interface FormData {
   checkOut: string;
   checkIn: string;
   cleaner: string;
+  cleanerId: string;
   date: string;
   duracion: number;
   coste: number;
@@ -23,6 +25,7 @@ interface FormData {
 export const useCreateTaskForm = (currentDate: Date) => {
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const [selectedProperty, setSelectedProperty] = useState<Property | null>(null);
+  const { cleaners } = useCleaners();
   
   const [formData, setFormData] = useState<FormData>({
     property: '',
@@ -34,6 +37,7 @@ export const useCreateTaskForm = (currentDate: Date) => {
     checkOut: '',
     checkIn: '',
     cleaner: '',
+    cleanerId: '',
     date: currentDate.toISOString().split('T')[0],
     duracion: 0,
     coste: 0,
@@ -87,7 +91,17 @@ export const useCreateTaskForm = (currentDate: Date) => {
   }, [formData.startTime, formData.duracion]);
 
   const handleChange = (field: string, value: string | number) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+    // Si se cambia la limpiadora, también actualizar el cleanerId
+    if (field === 'cleaner' && typeof value === 'string') {
+      const selectedCleaner = cleaners.find(c => c.name === value);
+      setFormData(prev => ({ 
+        ...prev, 
+        cleaner: value,
+        cleanerId: selectedCleaner?.id || ''
+      }));
+    } else {
+      setFormData(prev => ({ ...prev, [field]: value }));
+    }
   };
 
   const resetForm = () => {
@@ -103,6 +117,7 @@ export const useCreateTaskForm = (currentDate: Date) => {
       checkOut: '',
       checkIn: '',
       cleaner: '',
+      cleanerId: '',
       date: currentDate.toISOString().split('T')[0],
       duracion: 0,
       coste: 0,
