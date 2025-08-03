@@ -8,6 +8,7 @@ import { AmenitiesSection } from "./components/AmenitiesSection";
 import { ClientInfoSection } from "./components/ClientInfoSection";
 import { TaskStatusSection } from "./components/TaskStatusSection";
 import { PropertyNotesSection } from "./components/PropertyNotesSection";
+import { TaskNotesSection } from "./components/TaskNotesSection";
 import { InventoryTaskIntegration } from "@/components/inventory/InventoryTaskIntegration";
 import { useAuth } from "@/hooks/useAuth";
 interface TaskDetailsFormProps {
@@ -110,6 +111,13 @@ export const TaskDetailsForm = ({
           onFieldChange={onFieldChange}
         />
       )}
+
+      <TaskNotesSection
+        task={task}
+        isEditing={isEditing}
+        formData={formData}
+        onFieldChange={onFieldChange}
+      />
 
       <PropertyNotesSection propertyData={propertyData} />
     </div>
