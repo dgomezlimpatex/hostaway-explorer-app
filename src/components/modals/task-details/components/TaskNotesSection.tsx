@@ -18,6 +18,10 @@ export const TaskNotesSection = ({
   onFieldChange
 }: TaskNotesProps) => {
   const notes = isEditing ? (formData.notes || '') : (task.notes || '');
+  
+  console.log('🔍 TaskNotesSection - task.notes:', task.notes);
+  console.log('🔍 TaskNotesSection - formData.notes:', formData.notes);
+  console.log('🔍 TaskNotesSection - final notes:', notes);
 
   // Temporalmente mostrar siempre para debugging
   // if (!notes && !isEditing) {
