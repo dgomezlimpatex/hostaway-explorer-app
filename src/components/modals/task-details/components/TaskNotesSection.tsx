@@ -19,10 +19,10 @@ export const TaskNotesSection = ({
 }: TaskNotesProps) => {
   const notes = isEditing ? (formData.notes || '') : (task.notes || '');
 
-  // Si no hay notas y no está editando, no mostrar la sección
-  if (!notes && !isEditing) {
-    return null;
-  }
+  // Temporalmente mostrar siempre para debugging
+  // if (!notes && !isEditing) {
+  //   return null;
+  // }
 
   return (
     <Card>
