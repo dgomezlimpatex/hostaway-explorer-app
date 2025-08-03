@@ -21,6 +21,7 @@ interface ResponsiveCalendarHeaderProps {
   onGoToToday: () => void;
   onViewChange: (view: ViewType) => void;
   onNewTask: () => void;
+  onNewExtraordinaryService?: () => void;
 }
 
 export const ResponsiveCalendarHeader = ({
@@ -29,7 +30,8 @@ export const ResponsiveCalendarHeader = ({
   onNavigateDate,
   onGoToToday,
   onViewChange,
-  onNewTask
+  onNewTask,
+  onNewExtraordinaryService
 }: ResponsiveCalendarHeaderProps) => {
   const { isMobile, isTablet } = useDeviceType();
 
@@ -92,6 +94,20 @@ export const ResponsiveCalendarHeader = ({
                 <Plus className="h-4 w-4" />
                 {!isMobile && <span>Nueva Tarea</span>}
               </Button>
+              {onNewExtraordinaryService && (
+                <Button
+                  onClick={() => {
+                    console.log('🔴 ResponsiveCalendarHeader - Servicio Extraordinario button clicked!');
+                    onNewExtraordinaryService();
+                  }}
+                  size={isMobile ? "sm" : "default"}
+                  variant="secondary"
+                  className="gap-1 md:gap-2"
+                >
+                  <Plus className="h-4 w-4" />
+                  {!isMobile && <span>Servicio Extra</span>}
+                </Button>
+              )}
               <ThemeToggle />
             </div>
           </div>

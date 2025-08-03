@@ -28,6 +28,7 @@ export const useCalendarLogic = () => {
   const { data: availability = [], isLoading: isLoadingAvailability } = useAllCleanersAvailability();
   const { toast } = useToast();
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isExtraordinaryServiceModalOpen, setIsExtraordinaryServiceModalOpen] = useState(false);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
   
@@ -141,6 +142,11 @@ export const useCalendarLogic = () => {
     setIsCreateModalOpen(true);
   }, []);
 
+  const handleNewExtraordinaryService = useCallback(() => {
+    console.log('🔵 useCalendarLogic - handleNewExtraordinaryService called, opening modal');
+    setIsExtraordinaryServiceModalOpen(true);
+  }, []);
+
   const handleCreateTask = useCallback(async (taskData: Omit<Task, 'id'>) => {
     console.log('🔵 useCalendarLogic - handleCreateTask called with:', taskData);
     try {
@@ -160,6 +166,57 @@ export const useCalendarLogic = () => {
       });
     }
   }, [createTask, toast]);
+
+  const handleCreateExtraordinaryService = useCallback(async (serviceData: any) => {
+    console.log('🔵 useCalendarLogic - handleCreateExtraordinaryService called with:', serviceData);
+    
+    // Convert extraordinary service data to task format
+    const taskData: Omit<Task, 'id'> = {
+      date: currentDate.toISOString().split('T')[0],
+      startTime: '09:00', // Default start time
+      endTime: (() => {
+        const startMinutes = 9 * 60; // 09:00 in minutes
+        const endMinutes = startMinutes + serviceData.serviceDuration;
+        const endHours = Math.floor(endMinutes / 60);
+        const endMins = endMinutes % 60;
+        return `${endHours.toString().padStart(2, '0')}:${endMins.toString().padStart(2, '0')}`;
+      })(),
+      checkIn: '09:00',
+      checkOut: '09:00',
+      property: serviceData.serviceAddress,
+      address: serviceData.serviceAddress,
+      type: 'trabajo-extraordinario',
+      status: 'pending',
+      cleaner: '',
+      cleanerId: undefined,
+      duration: serviceData.serviceDuration,
+      cost: serviceData.serviceCost,
+      paymentMethod: 'transferencia',
+      supervisor: '',
+      backgroundColor: '#8B5CF6',
+      clienteId: '', // Will need to create a temporary client or handle differently
+      propertyId: '', // Will need to create a temporary property or handle differently
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    };
+
+    try {
+      const result = await createTask(taskData);
+      console.log('✅ useCalendarLogic - createExtraordinaryService successful:', result);
+      toast({
+        title: "Servicio Extraordinario creado",
+        description: `El servicio para ${serviceData.clientName} se ha creado correctamente.`,
+      });
+      setIsExtraordinaryServiceModalOpen(false);
+    } catch (error) {
+      console.error('❌ useCalendarLogic - createExtraordinaryService error:', error);
+      toast({
+        title: "Error",
+        description: "No se pudo crear el servicio extraordinario.",
+        variant: "destructive",
+      });
+    }
+  }, [createTask, toast, currentDate]);
 
   const handleTaskClick = useCallback((task: Task) => {
     // Para mobile cleaners, esto se maneja en el componente directamente
@@ -240,6 +297,8 @@ export const useCalendarLogic = () => {
     // Modal states
     isCreateModalOpen,
     setIsCreateModalOpen,
+    isExtraordinaryServiceModalOpen,
+    setIsExtraordinaryServiceModalOpen,
     selectedTask,
     isTaskModalOpen,
     setIsTaskModalOpen,
@@ -256,7 +315,9 @@ export const useCalendarLogic = () => {
     navigateDate,
     goToToday,
     handleNewTask,
+    handleNewExtraordinaryService,
     handleCreateTask,
+    handleCreateExtraordinaryService,
     handleTaskClick,
     handleUpdateTask,
     handleDeleteTask,

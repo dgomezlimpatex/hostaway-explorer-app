@@ -21,6 +21,8 @@ interface CalendarContainerProps {
   bodyScrollRef: React.RefObject<HTMLDivElement>;
   isCreateModalOpen: boolean;
   setIsCreateModalOpen: (open: boolean) => void;
+  isExtraordinaryServiceModalOpen: boolean;
+  setIsExtraordinaryServiceModalOpen: (open: boolean) => void;
   selectedTask: Task | null;
   isTaskModalOpen: boolean;
   setIsTaskModalOpen: (open: boolean) => void;
@@ -33,6 +35,7 @@ interface CalendarContainerProps {
   handleBodyScroll: (e: React.UIEvent<HTMLDivElement>) => void;
   handleTaskClick: (task: Task) => void;
   handleCreateTask: (taskData: Omit<Task, 'id'>) => Promise<void>;
+  handleCreateExtraordinaryService: (serviceData: any) => Promise<void>;
   handleUpdateTask: (taskId: string, updates: Partial<Task>) => Promise<void>;
   handleDeleteTask: (taskId: string) => Promise<void>;
   handleUnassignTask: (taskId: string) => Promise<void>;
@@ -49,6 +52,8 @@ export const CalendarContainer = ({
   bodyScrollRef,
   isCreateModalOpen,
   setIsCreateModalOpen,
+  isExtraordinaryServiceModalOpen,
+  setIsExtraordinaryServiceModalOpen,
   selectedTask,
   isTaskModalOpen,
   setIsTaskModalOpen,
@@ -61,6 +66,7 @@ export const CalendarContainer = ({
   handleBodyScroll,
   handleTaskClick,
   handleCreateTask,
+  handleCreateExtraordinaryService,
   handleUpdateTask,
   handleDeleteTask,
   handleUnassignTask,
@@ -146,11 +152,14 @@ export const CalendarContainer = ({
       <CalendarModalsWithSuspense
         isCreateModalOpen={isCreateModalOpen}
         setIsCreateModalOpen={setIsCreateModalOpen}
+        isExtraordinaryServiceModalOpen={isExtraordinaryServiceModalOpen}
+        setIsExtraordinaryServiceModalOpen={setIsExtraordinaryServiceModalOpen}
         selectedTask={selectedTask}
         isTaskModalOpen={isTaskModalOpen}
         setIsTaskModalOpen={setIsTaskModalOpen}
         currentDate={currentDate}
         onCreateTask={handleCreateTask}
+        onCreateExtraordinaryService={handleCreateExtraordinaryService}
         onUpdateTask={handleUpdateTask}
         onDeleteTask={handleDeleteTask}
         onUnassignTask={handleUnassignTask}

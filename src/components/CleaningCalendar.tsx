@@ -29,6 +29,8 @@ const {
     bodyScrollRef,
     isCreateModalOpen,
     setIsCreateModalOpen,
+    isExtraordinaryServiceModalOpen,
+    setIsExtraordinaryServiceModalOpen,
     selectedTask,
     isTaskModalOpen,
     setIsTaskModalOpen,
@@ -41,7 +43,9 @@ const {
     navigateDate,
     goToToday,
     handleNewTask,
+    handleNewExtraordinaryService,
     handleCreateTask,
+    handleCreateExtraordinaryService,
     handleTaskClick,
     handleUpdateTask,
     handleDeleteTask,
@@ -120,11 +124,14 @@ const {
           <CalendarModalsWithSuspense
             isCreateModalOpen={false} // Cleaners can't create tasks
             setIsCreateModalOpen={() => {}} // No-op for cleaners
+            isExtraordinaryServiceModalOpen={false} // Cleaners can't create extraordinary services
+            setIsExtraordinaryServiceModalOpen={() => {}} // No-op for cleaners
             selectedTask={selectedTask}
             isTaskModalOpen={isTaskModalOpen}
             setIsTaskModalOpen={setIsTaskModalOpen}
             currentDate={currentDate}
             onCreateTask={() => {}} // No-op for cleaners
+            onCreateExtraordinaryService={() => {}} // No-op for cleaners
             onUpdateTask={handleUpdateTask}
             onDeleteTask={() => {}} // Cleaners can't delete tasks
             onUnassignTask={() => {}} // Cleaners can't unassign tasks
@@ -152,11 +159,14 @@ const {
           <CalendarModalsWithSuspense
             isCreateModalOpen={isCreateModalOpen}
             setIsCreateModalOpen={setIsCreateModalOpen}
+            isExtraordinaryServiceModalOpen={isExtraordinaryServiceModalOpen}
+            setIsExtraordinaryServiceModalOpen={setIsExtraordinaryServiceModalOpen}
             selectedTask={selectedTask}
             isTaskModalOpen={isTaskModalOpen}
             setIsTaskModalOpen={setIsTaskModalOpen}
             currentDate={currentDate}
             onCreateTask={handleCreateTask}
+            onCreateExtraordinaryService={handleCreateExtraordinaryService}
             onUpdateTask={handleUpdateTask}
             onDeleteTask={handleDeleteTask}
             onUnassignTask={handleUnassignTask}
@@ -209,11 +219,14 @@ const {
         <CalendarModalsWithSuspense
           isCreateModalOpen={false} // Cleaners can't create tasks
           setIsCreateModalOpen={() => {}} // No-op for cleaners
+          isExtraordinaryServiceModalOpen={false} // Cleaners can't create extraordinary services
+          setIsExtraordinaryServiceModalOpen={() => {}} // No-op for cleaners
           selectedTask={selectedTask}
           isTaskModalOpen={isTaskModalOpen}
           setIsTaskModalOpen={setIsTaskModalOpen}
           currentDate={currentDate}
           onCreateTask={() => {}} // No-op for cleaners
+          onCreateExtraordinaryService={() => {}} // No-op for cleaners
           onUpdateTask={handleUpdateTask}
           onDeleteTask={() => {}} // Cleaners can't delete tasks
           onUnassignTask={() => {}} // Cleaners can't unassign tasks
@@ -234,6 +247,7 @@ const {
           onGoToToday={goToToday}
           onViewChange={setCurrentView}
           onNewTask={handleNewTask}
+          onNewExtraordinaryService={handleNewExtraordinaryService}
         />
 
         {/* Calendar Container */}
@@ -247,6 +261,8 @@ const {
           bodyScrollRef={bodyScrollRef}
           isCreateModalOpen={isCreateModalOpen}
           setIsCreateModalOpen={setIsCreateModalOpen}
+          isExtraordinaryServiceModalOpen={isExtraordinaryServiceModalOpen}
+          setIsExtraordinaryServiceModalOpen={setIsExtraordinaryServiceModalOpen}
           selectedTask={selectedTask}
           isTaskModalOpen={isTaskModalOpen}
           setIsTaskModalOpen={setIsTaskModalOpen}
@@ -259,6 +275,7 @@ const {
           handleBodyScroll={handleBodyScroll}
           handleTaskClick={handleTaskClick}
           handleCreateTask={handleCreateTask}
+          handleCreateExtraordinaryService={handleCreateExtraordinaryService}
           handleUpdateTask={handleUpdateTask}
           handleDeleteTask={handleDeleteTask}
           handleUnassignTask={handleUnassignTask}
