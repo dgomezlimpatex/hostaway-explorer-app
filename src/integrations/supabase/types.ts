@@ -1537,6 +1537,7 @@ export type Database = {
           end_time: string
           id: string
           metodo_pago: string | null
+          notes: string | null
           property: string
           propiedad_id: string | null
           start_time: string
@@ -1562,6 +1563,7 @@ export type Database = {
           end_time: string
           id?: string
           metodo_pago?: string | null
+          notes?: string | null
           property: string
           propiedad_id?: string | null
           start_time: string
@@ -1587,6 +1589,7 @@ export type Database = {
           end_time?: string
           id?: string
           metodo_pago?: string | null
+          notes?: string | null
           property?: string
           propiedad_id?: string | null
           start_time?: string
