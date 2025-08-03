@@ -1,35 +1,18 @@
 
-import { lazy, Suspense } from 'react';
-import { LoadingSpinner } from '@/components/ui/loading-spinner';
+// Direct imports instead of lazy loading to fix module loading issues
+import { CalendarGrid } from './CalendarGrid';
+import { UnassignedTasks } from './UnassignedTasks';
+import { CalendarModals } from './CalendarModals';
 
-// Lazy loading de componentes pesados del calendario
-export const LazyCalendarGrid = lazy(() => 
-  import('./CalendarGrid').then(module => ({ default: module.CalendarGrid }))
-);
-
-export const LazyUnassignedTasks = lazy(() => 
-  import('./UnassignedTasks').then(module => ({ default: module.UnassignedTasks }))
-);
-
-export const LazyCalendarModals = lazy(() => 
-  import('./CalendarModals').then(module => ({ default: module.CalendarModals }))
-);
-
-// Wrapper components con fallback
+// Direct export components (no lazy loading)
 export const CalendarGridWithSuspense = (props: any) => (
-  <Suspense fallback={<LoadingSpinner size="lg" text="Cargando calendario..." />}>
-    <LazyCalendarGrid {...props} />
-  </Suspense>
+  <CalendarGrid {...props} />
 );
 
 export const UnassignedTasksWithSuspense = (props: any) => (
-  <Suspense fallback={<LoadingSpinner size="sm" text="Cargando tareas..." />}>
-    <LazyUnassignedTasks {...props} />
-  </Suspense>
+  <UnassignedTasks {...props} />
 );
 
 export const CalendarModalsWithSuspense = (props: any) => (
-  <Suspense fallback={<div />}>
-    <LazyCalendarModals {...props} />
-  </Suspense>
+  <CalendarModals {...props} />
 );
