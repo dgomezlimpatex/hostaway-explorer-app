@@ -34,10 +34,15 @@ export const ClientPropertySelector = ({
   const clientSelectValue = selectedClientId || undefined;
   const propertySelectValue = selectedPropertyId || undefined;
 
-  // Filter properties by selected client
+  // Filter and sort properties by selected client
   const availableProperties = selectedClientId 
-    ? properties.filter(property => property.clienteId === selectedClientId)
+    ? properties
+        .filter(property => property.clienteId === selectedClientId)
+        .sort((a, b) => a.nombre.localeCompare(b.nombre))
     : [];
+
+  // Sort clients alphabetically
+  const sortedClients = clients.sort((a, b) => a.nombre.localeCompare(b.nombre));
 
   const handleClientSelect = (clientId: string) => {
     if (!clientId) return;
@@ -80,7 +85,7 @@ export const ClientPropertySelector = ({
             <SelectValue placeholder={clientsLoading ? "Cargando..." : "Selecciona un cliente"} />
           </SelectTrigger>
           <SelectContent>
-            {clients.map((client) => (
+            {sortedClients.map((client) => (
               <SelectItem key={client.id} value={client.id}>
                 {client.nombre}
               </SelectItem>
