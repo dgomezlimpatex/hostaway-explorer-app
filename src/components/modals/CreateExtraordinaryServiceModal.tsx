@@ -77,6 +77,8 @@ export const CreateExtraordinaryServiceModal = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    console.log('🟢🟢🟢 FORM SUBMIT - Starting with notes:', formData.notes);
+    
     // Validaciones básicas
     if (!formData.clientName.trim()) {
       toast({
