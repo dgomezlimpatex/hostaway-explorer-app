@@ -168,8 +168,8 @@ export const useCalendarLogic = () => {
   }, [createTask, toast]);
 
   const handleCreateExtraordinaryService = useCallback(async (serviceData: any) => {
-    console.log('🔵 useCalendarLogic - handleCreateExtraordinaryService called with:', serviceData);
-    console.log('🔵 serviceData.notes:', serviceData.notes);
+    console.log('🟢🟢🟢 EXTRAORDINARY SERVICE - NOTES INPUT:', serviceData.notes);
+    console.log('🟢🟢🟢 EXTRAORDINARY SERVICE - FULL DATA:', serviceData);
     
     // Convert extraordinary service data to task format
     const taskData: Omit<Task, 'id'> = {
@@ -202,7 +202,8 @@ export const useCalendarLogic = () => {
       updated_at: new Date().toISOString()
     };
 
-    console.log('🔵 taskData with notes:', taskData.notes);
+    console.log('🟢🟢🟢 EXTRAORDINARY SERVICE - TASK NOTES BEFORE SAVE:', taskData.notes);
+    console.log('🟢🟢🟢 EXTRAORDINARY SERVICE - FULL TASK DATA:', taskData);
 
     try {
       const result = await createTask(taskData);
