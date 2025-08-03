@@ -173,7 +173,7 @@ export const useCalendarLogic = () => {
     
     // Convert extraordinary service data to task format
     const taskData: Omit<Task, 'id'> = {
-      date: currentDate.toISOString().split('T')[0],
+      date: serviceData.serviceDate.toISOString().split('T')[0],
       startTime: '09:00', // Default start time
       endTime: (() => {
         const startMinutes = 9 * 60; // 09:00 in minutes

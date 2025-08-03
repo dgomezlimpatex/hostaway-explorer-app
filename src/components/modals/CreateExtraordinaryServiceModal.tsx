@@ -11,6 +11,11 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { CalendarIcon } from "lucide-react";
+import { format } from "date-fns";
+import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { useState } from "react";
 
@@ -24,6 +29,7 @@ interface ExtraordinaryServiceData {
   serviceCost: number;
   needsInvoice: boolean;
   notes: string;
+  serviceDate: Date;
 }
 
 interface CreateExtraordinaryServiceModalProps {
@@ -50,10 +56,11 @@ export const CreateExtraordinaryServiceModal = ({
     serviceDuration: 60,
     serviceCost: 0,
     needsInvoice: false,
-    notes: ''
+    notes: '',
+    serviceDate: currentDate
   });
 
-  const handleChange = (field: keyof ExtraordinaryServiceData, value: string | number | boolean) => {
+  const handleChange = (field: keyof ExtraordinaryServiceData, value: string | number | boolean | Date) => {
     setFormData(prev => ({
       ...prev,
       [field]: value
@@ -70,7 +77,8 @@ export const CreateExtraordinaryServiceModal = ({
       serviceDuration: 60,
       serviceCost: 0,
       needsInvoice: false,
-      notes: ''
+      notes: '',
+      serviceDate: currentDate
     });
   };
 
@@ -203,6 +211,33 @@ export const CreateExtraordinaryServiceModal = ({
               placeholder="Dirección donde se realizará el servicio"
               required
             />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="serviceDate">Fecha del Servicio *</Label>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  className={cn(
+                    "w-full justify-start text-left font-normal",
+                    !formData.serviceDate && "text-muted-foreground"
+                  )}
+                >
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {formData.serviceDate ? format(formData.serviceDate, "PPP") : <span>Selecciona una fecha</span>}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  mode="single"
+                  selected={formData.serviceDate}
+                  onSelect={(date) => date && handleChange('serviceDate', date)}
+                  initialFocus
+                  className={cn("p-3 pointer-events-auto")}
+                />
+              </PopoverContent>
+            </Popover>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
