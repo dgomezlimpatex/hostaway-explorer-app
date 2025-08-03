@@ -31,6 +31,7 @@ const taskStorageConfig = {
     paymentMethod: row.metodo_pago,
     supervisor: row.supervisor,
     cleanerId: row.cleaner_id,
+    notes: row.notes,
     originalTaskId: row.originalTaskId || row.id // Para asignaciones múltiples
   }),
   mapToDB: (task: Partial<TaskCreateData>): any => {
@@ -54,6 +55,7 @@ const taskStorageConfig = {
     if (task.paymentMethod !== undefined) data.metodo_pago = task.paymentMethod;
     if (task.supervisor !== undefined) data.supervisor = task.supervisor;
     if (task.cleanerId !== undefined) data.cleaner_id = task.cleanerId;
+    if (task.notes !== undefined) data.notes = task.notes;
 
     return data;
   }
