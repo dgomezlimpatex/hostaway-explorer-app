@@ -194,6 +194,7 @@ export const useCalendarLogic = () => {
       paymentMethod: 'transferencia',
       supervisor: '',
       backgroundColor: '#8B5CF6',
+      notes: serviceData.notes || '',
       clienteId: null, // Use null instead of empty string
       propertyId: null, // Use null instead of empty string
       created_at: new Date().toISOString(),

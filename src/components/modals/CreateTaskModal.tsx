@@ -16,6 +16,7 @@ import { CostPaymentSection } from "./create-task/CostPaymentSection";
 import { CheckInOutSection } from "./create-task/CheckInOutSection";
 import { TypeStatusSection } from "./create-task/TypeStatusSection";
 import { CleanerSection } from "./create-task/CleanerSection";
+import { NotesTextArea } from "./create-task/NotesSection";
 import { useCreateTaskForm } from "./create-task/useCreateTaskForm";
 
 interface CreateTaskModalProps {
@@ -132,6 +133,11 @@ export const CreateTaskModal = ({
           <CleanerSection
             formData={formData}
             onFieldChange={handleChange}
+          />
+
+          <NotesTextArea
+            notes={formData.notes || ''}
+            onNotesChange={(notes) => handleChange('notes', notes)}
           />
 
           <DialogFooter>

@@ -20,6 +20,7 @@ interface FormData {
   coste: number;
   metodoPago: string;
   supervisor: string;
+  notes: string;
 }
 
 export const useCreateTaskForm = (currentDate: Date) => {
@@ -42,7 +43,8 @@ export const useCreateTaskForm = (currentDate: Date) => {
     duracion: 0,
     coste: 0,
     metodoPago: '',
-    supervisor: ''
+    supervisor: '',
+    notes: ''
   });
 
   // Función para convertir minutos a formato HH:MM
@@ -130,7 +132,8 @@ export const useCreateTaskForm = (currentDate: Date) => {
       duracion: 0,
       coste: 0,
       metodoPago: '',
-      supervisor: ''
+      supervisor: '',
+      notes: ''
     });
   };
 

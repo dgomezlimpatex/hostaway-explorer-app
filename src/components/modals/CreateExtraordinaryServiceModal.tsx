@@ -9,6 +9,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { useState } from "react";
@@ -22,6 +23,7 @@ interface ExtraordinaryServiceData {
   serviceDuration: number;
   serviceCost: number;
   needsInvoice: boolean;
+  notes: string;
 }
 
 interface CreateExtraordinaryServiceModalProps {
@@ -47,7 +49,8 @@ export const CreateExtraordinaryServiceModal = ({
     serviceAddress: '',
     serviceDuration: 60,
     serviceCost: 0,
-    needsInvoice: false
+    needsInvoice: false,
+    notes: ''
   });
 
   const handleChange = (field: keyof ExtraordinaryServiceData, value: string | number | boolean) => {
@@ -66,7 +69,8 @@ export const CreateExtraordinaryServiceModal = ({
       serviceAddress: '',
       serviceDuration: 60,
       serviceCost: 0,
-      needsInvoice: false
+      needsInvoice: false,
+      notes: ''
     });
   };
 
@@ -234,6 +238,17 @@ export const CreateExtraordinaryServiceModal = ({
               onCheckedChange={(checked) => handleChange('needsInvoice', !!checked)}
             />
             <Label htmlFor="needsInvoice">¿Necesita factura?</Label>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="notes">Notas adicionales</Label>
+            <Textarea
+              id="notes"
+              value={formData.notes}
+              onChange={(e) => handleChange('notes', e.target.value)}
+              placeholder="Añade cualquier información adicional sobre el servicio..."
+              rows={3}
+            />
           </div>
 
           <DialogFooter>
