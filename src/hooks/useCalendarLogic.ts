@@ -194,8 +194,8 @@ export const useCalendarLogic = () => {
       paymentMethod: 'transferencia',
       supervisor: '',
       backgroundColor: '#8B5CF6',
-      clienteId: '', // Will need to create a temporary client or handle differently
-      propertyId: '', // Will need to create a temporary property or handle differently
+      clienteId: null, // Use null instead of empty string
+      propertyId: null, // Use null instead of empty string
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
     };
