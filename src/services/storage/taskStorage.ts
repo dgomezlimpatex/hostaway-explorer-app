@@ -32,6 +32,10 @@ const taskStorageConfig = {
     supervisor: row.supervisor,
     cleanerId: row.cleaner_id,
     notes: row.notes,
+    extraordinaryClientName: row.extraordinary_client_name,
+    extraordinaryClientEmail: row.extraordinary_client_email,
+    extraordinaryClientPhone: row.extraordinary_client_phone,
+    extraordinaryBillingAddress: row.extraordinary_billing_address,
     originalTaskId: row.originalTaskId || row.id // Para asignaciones múltiples
   }),
   mapToDB: (task: Partial<TaskCreateData>): any => {
@@ -56,6 +60,10 @@ const taskStorageConfig = {
     if (task.supervisor !== undefined) data.supervisor = task.supervisor;
     if (task.cleanerId !== undefined) data.cleaner_id = task.cleanerId;
     if (task.notes !== undefined) data.notes = task.notes;
+    if (task.extraordinaryClientName !== undefined) data.extraordinary_client_name = task.extraordinaryClientName;
+    if (task.extraordinaryClientEmail !== undefined) data.extraordinary_client_email = task.extraordinaryClientEmail;
+    if (task.extraordinaryClientPhone !== undefined) data.extraordinary_client_phone = task.extraordinaryClientPhone;
+    if (task.extraordinaryBillingAddress !== undefined) data.extraordinary_billing_address = task.extraordinaryBillingAddress;
 
     return data;
   }

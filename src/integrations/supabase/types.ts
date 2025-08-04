@@ -1535,6 +1535,10 @@ export type Database = {
           date: string
           duracion: number | null
           end_time: string
+          extraordinary_billing_address: string | null
+          extraordinary_client_email: string | null
+          extraordinary_client_name: string | null
+          extraordinary_client_phone: string | null
           id: string
           metodo_pago: string | null
           notes: string | null
@@ -1561,6 +1565,10 @@ export type Database = {
           date: string
           duracion?: number | null
           end_time: string
+          extraordinary_billing_address?: string | null
+          extraordinary_client_email?: string | null
+          extraordinary_client_name?: string | null
+          extraordinary_client_phone?: string | null
           id?: string
           metodo_pago?: string | null
           notes?: string | null
@@ -1587,6 +1595,10 @@ export type Database = {
           date?: string
           duracion?: number | null
           end_time?: string
+          extraordinary_billing_address?: string | null
+          extraordinary_client_email?: string | null
+          extraordinary_client_name?: string | null
+          extraordinary_client_phone?: string | null
           id?: string
           metodo_pago?: string | null
           notes?: string | null

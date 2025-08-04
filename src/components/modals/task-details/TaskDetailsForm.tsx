@@ -9,6 +9,7 @@ import { ClientInfoSection } from "./components/ClientInfoSection";
 import { TaskStatusSection } from "./components/TaskStatusSection";
 import { PropertyNotesSection } from "./components/PropertyNotesSection";
 import { TaskNotesSection } from "./components/TaskNotesSection";
+import { ExtraordinaryServiceBillingSection } from "./components/ExtraordinaryServiceBillingSection";
 import { InventoryTaskIntegration } from "@/components/inventory/InventoryTaskIntegration";
 import { useAuth } from "@/hooks/useAuth";
 interface TaskDetailsFormProps {
@@ -104,6 +105,9 @@ export const TaskDetailsForm = ({
 
       {/* Ocultar información del cliente para cleaners */}
       {userRole !== 'cleaner' && <ClientInfoSection clientData={clientData} />}
+
+      {/* Mostrar información de facturación solo para servicios extraordinarios y admin/managers */}
+      <ExtraordinaryServiceBillingSection task={task} />
 
       {isEditing && (
         <TaskStatusSection 

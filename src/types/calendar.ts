@@ -47,6 +47,11 @@ export interface Task extends BaseEntity {
   backgroundColor?: string;
   notes?: string;
   originalTaskId?: string; // Para tareas con asignaciones múltiples, guarda el ID original
+  // Extraordinary service billing fields
+  extraordinaryClientName?: string;
+  extraordinaryClientEmail?: string;
+  extraordinaryClientPhone?: string;
+  extraordinaryBillingAddress?: string;
 }
 
 export interface Assignment {

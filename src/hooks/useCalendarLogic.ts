@@ -198,6 +198,11 @@ export const useCalendarLogic = () => {
       notes: serviceData.notes || '',
       clienteId: null, // Use null instead of empty string
       propertyId: null, // Use null instead of empty string
+      // Extraordinary service billing fields
+      extraordinaryClientName: serviceData.clientName,
+      extraordinaryClientEmail: serviceData.email,
+      extraordinaryClientPhone: serviceData.phoneNumber,
+      extraordinaryBillingAddress: serviceData.billingAddress,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
     };
