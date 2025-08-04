@@ -32,31 +32,31 @@ export const ExtraordinaryServiceBillingSection = ({ task }: ExtraordinaryServic
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Client Name */}
+          {/* Client Name */}
+          <div className="flex items-center justify-between p-3 bg-white rounded-lg border border-purple-200">
+            <div className="flex items-center gap-2">
+              <User className="h-4 w-4 text-purple-600" />
+              <span className="text-sm font-medium text-gray-700">Cliente</span>
+            </div>
+            <span className="text-sm font-semibold text-gray-900">
+              {task.extraordinaryClientName}
+            </span>
+          </div>
+
+          {/* Email - Full width */}
+          {task.extraordinaryClientEmail && (
             <div className="flex items-center justify-between p-3 bg-white rounded-lg border border-purple-200">
               <div className="flex items-center gap-2">
-                <User className="h-4 w-4 text-purple-600" />
-                <span className="text-sm font-medium text-gray-700">Cliente</span>
+                <Mail className="h-4 w-4 text-purple-600" />
+                <span className="text-sm font-medium text-gray-700">Email</span>
               </div>
-              <span className="text-sm font-semibold text-gray-900">
-                {task.extraordinaryClientName}
+              <span className="text-sm text-gray-900 break-all">
+                {task.extraordinaryClientEmail}
               </span>
             </div>
+          )}
 
-            {/* Email */}
-            {task.extraordinaryClientEmail && (
-              <div className="flex items-center justify-between p-3 bg-white rounded-lg border border-purple-200">
-                <div className="flex items-center gap-2">
-                  <Mail className="h-4 w-4 text-purple-600" />
-                  <span className="text-sm font-medium text-gray-700">Email</span>
-                </div>
-                <span className="text-sm text-gray-900">
-                  {task.extraordinaryClientEmail}
-                </span>
-              </div>
-            )}
-
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Phone */}
             {task.extraordinaryClientPhone && (
               <div className="flex items-center justify-between p-3 bg-white rounded-lg border border-purple-200">
