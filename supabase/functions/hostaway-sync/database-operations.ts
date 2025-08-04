@@ -227,6 +227,19 @@ export async function deleteTask(taskId: string) {
 export async function updateTaskDate(taskId: string, newDate: string) {
   console.log(`📅 Actualizando fecha de tarea ${taskId} a ${newDate}`);
   
+  // Primero obtener la tarea original para comparar
+  const { data: originalTask, error: originalError } = await supabase
+    .from('tasks')
+    .select('*')
+    .eq('id', taskId)
+    .single();
+
+  if (originalError) {
+    console.error('❌ Error obteniendo tarea original:', originalError);
+    throw originalError;
+  }
+
+  // Actualizar solo la fecha sin disparar notificaciones automáticas
   const { data: task, error } = await supabase
     .from('tasks')
     .update({ 
@@ -240,6 +253,43 @@ export async function updateTaskDate(taskId: string, newDate: string) {
   if (error) {
     console.error('❌ Error actualizando fecha de tarea:', error);
     throw error;
+  }
+
+  // Solo enviar email de cambio de horario si la tarea tiene limpiador asignado
+  // y es una actualización de Hostaway (no una cancelación)
+  if (originalTask.cleaner_id && originalTask.date !== newDate) {
+    console.log(`📧 Enviando email de cambio de horario por sincronización Hostaway`);
+    try {
+      // Obtener información del limpiador
+      const { data: cleaner, error: cleanerError } = await supabase
+        .from('cleaners')
+        .select('email, name')
+        .eq('id', originalTask.cleaner_id)
+        .single();
+
+      if (!cleanerError && cleaner) {
+        await supabase.functions.invoke('send-task-schedule-change-email', {
+          body: {
+            taskId: task.id,
+            taskDate: task.date,
+            taskStartTime: task.start_time,
+            taskEndTime: task.end_time,
+            propertyName: task.property,
+            propertyAddress: task.address,
+            cleanerName: cleaner.name,
+            cleanerEmail: cleaner.email,
+            originalDate: originalTask.date,
+            originalStartTime: originalTask.start_time,
+            originalEndTime: originalTask.end_time,
+            reason: 'Actualización automática por cambio en reserva Hostaway'
+          }
+        });
+        console.log(`✅ Email de cambio de horario enviado a ${cleaner.name}`);
+      }
+    } catch (emailError) {
+      console.error(`❌ Error enviando email de cambio de horario:`, emailError);
+      // No falla la operación si el email no se puede enviar
+    }
   }
 
   console.log(`✅ Fecha de tarea actualizada exitosamente: ${task.id} -> ${task.date}`);
