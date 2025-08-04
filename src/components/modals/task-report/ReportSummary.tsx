@@ -69,8 +69,37 @@ export const ReportSummary: React.FC<ReportSummaryProps> = ({
     if (!currentReport?.start_time) return 'No iniciado';
     
     const startTime = new Date(currentReport.start_time);
-    const endTime = currentReport.end_time ? new Date(currentReport.end_time) : new Date();
     
+    // Si el reporte está completado y tiene end_time, usar solo ese tiempo
+    if (currentReport.overall_status === 'completed' && currentReport.end_time) {
+      const endTime = new Date(currentReport.end_time);
+      const diffInMinutes = Math.floor((endTime.getTime() - startTime.getTime()) / (1000 * 60));
+      
+      if (diffInMinutes < 60) {
+        return `${diffInMinutes} minutos`;
+      } else {
+        const hours = Math.floor(diffInMinutes / 60);
+        const minutes = diffInMinutes % 60;
+        return `${hours}h ${minutes}m`;
+      }
+    }
+    
+    // Si no está completado, calcular tiempo en curso
+    if (!currentReport.end_time) {
+      const currentTime = new Date();
+      const diffInMinutes = Math.floor((currentTime.getTime() - startTime.getTime()) / (1000 * 60));
+      
+      if (diffInMinutes < 60) {
+        return `${diffInMinutes} minutos`;
+      } else {
+        const hours = Math.floor(diffInMinutes / 60);
+        const minutes = diffInMinutes % 60;
+        return `${hours}h ${minutes}m`;
+      }
+    }
+    
+    // Fallback: usar end_time si existe
+    const endTime = new Date(currentReport.end_time);
     const diffInMinutes = Math.floor((endTime.getTime() - startTime.getTime()) / (1000 * 60));
     
     if (diffInMinutes < 60) {
