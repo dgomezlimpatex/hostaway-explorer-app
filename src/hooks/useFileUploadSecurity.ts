@@ -5,8 +5,8 @@ import { useToast } from './use-toast';
 // Secure file upload configuration
 const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif', 'image/heic', 'image/heif'];
 const ALLOWED_VIDEO_TYPES = ['video/mp4', 'video/webm', 'video/mov', 'video/avi', 'video/mkv'];
-const MAX_IMAGE_SIZE = 5 * 1024 * 1024; // 5MB for images
-const MAX_VIDEO_SIZE = 20 * 1024 * 1024; // 20MB for videos
+const MAX_IMAGE_SIZE = 100 * 1024 * 1024; // 100MB for images
+const MAX_VIDEO_SIZE = 100 * 1024 * 1024; // 100MB for videos
 const DANGEROUS_EXTENSIONS = ['.exe', '.bat', '.cmd', '.scr', '.pif', '.com', '.js', '.html', '.htm', '.php', '.asp'];
 
 interface FileValidationResult {

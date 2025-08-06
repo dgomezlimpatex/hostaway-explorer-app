@@ -13,7 +13,7 @@ export const MediaInfo: React.FC<MediaInfoProps> = ({
 
   return (
     <div className="text-xs text-muted-foreground">
-      {existingMediaCount}/15 archivos • Máximo 50MB por archivo
+      {existingMediaCount}/15 archivos • Máximo 100MB por archivo
     </div>
   );
 };
