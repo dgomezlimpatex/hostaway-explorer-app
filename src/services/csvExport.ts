@@ -130,15 +130,20 @@ const generateLaundryCSV = (data: LaundryReport[]): string => {
     'Cliente',
     'Trabajador',
     'Sábanas',
+    'Sábanas Pequeñas',
     'Toallas Grandes',
     'Toallas Pequeñas',
     'Alfombrines',
     'Fundas Almohada',
     'Kit Alimentario',
     'Habitaciones',
+    'Habitaciones Pequeñas',
+    'Sofás Cama',
     'Baños',
     'Amenities Baño',
-    'Amenities Cocina'
+    'Amenities Cocina',
+    'Rollos Papel Higiénico',
+    'Rollos Papel Cocina'
   ];
 
   // Verificar que hay datos
@@ -155,15 +160,20 @@ const generateLaundryCSV = (data: LaundryReport[]): string => {
     item.client || '',
     item.cleaner || '',
     (item.textiles?.sabanas || 0).toString(),
+    (item.textiles?.sabanasRequenas || 0).toString(),
     (item.textiles?.toallasGrandes || 0).toString(),
     (item.textiles?.toallasPequenas || 0).toString(),
     (item.textiles?.alfombrines || 0).toString(),
     (item.textiles?.fundasAlmohada || 0).toString(),
     (item.kitAlimentario || 0).toString(),
     (item.bedrooms || 0).toString(),
+    (item.bedroomsSmall || 0).toString(),
+    (item.sofaBeds || 0).toString(),
     (item.bathrooms || 0).toString(),
     (item.amenitiesBano || 0).toString(),
-    (item.amenitiesCocina || 0).toString()
+    (item.amenitiesCocina || 0).toString(),
+    (item.rollosPapelHigienico || 0).toString(),
+    (item.rollosPapelCocina || 0).toString()
   ]);
 
   // Asegurar que los headers están incluidos

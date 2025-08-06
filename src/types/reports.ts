@@ -42,6 +42,7 @@ export interface SummaryReport {
 
 export interface LaundryTextiles {
   sabanas: number;
+  sabanasRequenas: number;
   toallasGrandes: number;
   toallasPequenas: number;
   alfombrines: number;
@@ -51,8 +52,12 @@ export interface LaundryTextiles {
 export interface LaundryReport extends TaskReport {
   textiles: LaundryTextiles;
   bedrooms: number;
+  bedroomsSmall: number;
+  sofaBeds: number;
   bathrooms: number;
   kitAlimentario: number;
   amenitiesBano: number;
   amenitiesCocina: number;
+  rollosPapelHigienico: number;
+  rollosPapelCocina: number;
 }

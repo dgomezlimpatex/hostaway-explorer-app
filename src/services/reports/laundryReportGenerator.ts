@@ -24,6 +24,7 @@ export const generateLaundryReport = (tasks: any[], properties: any[], clients: 
       // Calcular totales de textiles
       const textiles = {
         sabanas: property?.numeroSabanas || 0,
+        sabanasRequenas: property?.numeroSabanasRequenas || 0,
         toallasGrandes: property?.numeroToallasGrandes || 0,
         toallasPequenas: property?.numeroTotallasPequenas || 0,
         alfombrines: property?.numeroAlfombrines || 0,
@@ -77,10 +78,14 @@ export const generateLaundryReport = (tasks: any[], properties: any[], clients: 
         // Campos específicos de LaundryReport
         textiles,
         bedrooms: property?.numeroCamas || 0,
+        bedroomsSmall: property?.numeroCamasPequenas || 0,
+        sofaBeds: property?.numeroSofasCama || 0,
         bathrooms: property?.numeroBanos || 0,
         kitAlimentario,
         amenitiesBano: property?.amenitiesBano || 0,
-        amenitiesCocina: property?.amenitiesCocina || 0
+        amenitiesCocina: property?.amenitiesCocina || 0,
+        rollosPapelHigienico: property?.cantidadRollosPapelHigienico || 0,
+        rollosPapelCocina: property?.cantidadRollosPapelCocina || 0
       };
     });
 };

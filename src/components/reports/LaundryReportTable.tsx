@@ -21,6 +21,7 @@ export const LaundryReportTable = ({ data }: LaundryReportTableProps) => {
   // Calcular totales generales
   const totalTextiles = data.reduce((acc, item) => {
     acc.sabanas += item.textiles.sabanas;
+    acc.sabanasRequenas += item.textiles.sabanasRequenas;
     acc.toallasGrandes += item.textiles.toallasGrandes;
     acc.toallasPequenas += item.textiles.toallasPequenas;
     acc.alfombrines += item.textiles.alfombrines;
@@ -28,6 +29,7 @@ export const LaundryReportTable = ({ data }: LaundryReportTableProps) => {
     return acc;
   }, {
     sabanas: 0,
+    sabanasRequenas: 0,
     toallasGrandes: 0,
     toallasPequenas: 0,
     alfombrines: 0,
@@ -37,6 +39,8 @@ export const LaundryReportTable = ({ data }: LaundryReportTableProps) => {
   const totalKitAlimentario = data.reduce((sum, item) => sum + item.kitAlimentario, 0);
   const totalAmenitiesBano = data.reduce((sum, item) => sum + item.amenitiesBano, 0);
   const totalAmenitiesCocina = data.reduce((sum, item) => sum + item.amenitiesCocina, 0);
+  const totalRollosPapelHigienico = data.reduce((sum, item) => sum + item.rollosPapelHigienico, 0);
+  const totalRollosPapelCocina = data.reduce((sum, item) => sum + item.rollosPapelCocina, 0);
 
   // Componente para vista móvil
   const MobileTaskCard = ({ task }: { task: LaundryReport }) => (
@@ -75,8 +79,10 @@ export const LaundryReportTable = ({ data }: LaundryReportTableProps) => {
           {/* Habitaciones */}
           <div>
             <p className="text-xs text-muted-foreground font-medium mb-1">HABITACIONES</p>
-            <div className="flex gap-4 text-sm">
+            <div className="grid grid-cols-2 gap-2 text-sm">
               <span>🛏️ {task.bedrooms} camas</span>
+              <span>🛏️ {task.bedroomsSmall} pequeñas</span>
+              <span>🛋️ {task.sofaBeds} sofás cama</span>
               <span>🚿 {task.bathrooms} baños</span>
             </div>
           </div>
@@ -89,6 +95,12 @@ export const LaundryReportTable = ({ data }: LaundryReportTableProps) => {
                 <div className="bg-blue-50 p-2 rounded text-center">
                   <div className="font-bold text-blue-600">{task.textiles.sabanas}</div>
                   <div className="text-xs text-blue-800">Sábanas</div>
+                </div>
+              )}
+              {task.textiles.sabanasRequenas > 0 && (
+                <div className="bg-indigo-50 p-2 rounded text-center">
+                  <div className="font-bold text-indigo-600">{task.textiles.sabanasRequenas}</div>
+                  <div className="text-xs text-indigo-800">Sábanas P</div>
                 </div>
               )}
               {task.textiles.toallasGrandes > 0 && (
@@ -138,6 +150,18 @@ export const LaundryReportTable = ({ data }: LaundryReportTableProps) => {
                 <div className="text-xs text-emerald-800">Cocina</div>
               </div>
             )}
+            {task.rollosPapelHigienico > 0 && (
+              <div className="bg-gray-50 p-2 rounded text-center">
+                <div className="font-bold text-gray-600">{task.rollosPapelHigienico}</div>
+                <div className="text-xs text-gray-800">Papel WC</div>
+              </div>
+            )}
+            {task.rollosPapelCocina > 0 && (
+              <div className="bg-amber-50 p-2 rounded text-center">
+                <div className="font-bold text-amber-600">{task.rollosPapelCocina}</div>
+                <div className="text-xs text-amber-800">Papel Coc</div>
+              </div>
+            )}
           </div>
         </div>
       </CardContent>
@@ -154,18 +178,22 @@ export const LaundryReportTable = ({ data }: LaundryReportTableProps) => {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-9 gap-4 mb-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-11 gap-4 mb-4">
             <div className="text-center p-3 bg-blue-50 rounded-lg">
               <div className="text-2xl font-bold text-blue-600">{totalTextiles.sabanas}</div>
               <div className="text-sm text-blue-800">Sábanas</div>
             </div>
+            <div className="text-center p-3 bg-indigo-50 rounded-lg">
+              <div className="text-2xl font-bold text-indigo-600">{totalTextiles.sabanasRequenas}</div>
+              <div className="text-sm text-indigo-800">Sábanas P</div>
+            </div>
             <div className="text-center p-3 bg-green-50 rounded-lg">
               <div className="text-2xl font-bold text-green-600">{totalTextiles.toallasGrandes}</div>
-              <div className="text-sm text-green-800">Toallas Grandes</div>
+              <div className="text-sm text-green-800">Toallas G</div>
             </div>
             <div className="text-center p-3 bg-purple-50 rounded-lg">
               <div className="text-2xl font-bold text-purple-600">{totalTextiles.toallasPequenas}</div>
-              <div className="text-sm text-purple-800">Toallas Pequeñas</div>
+              <div className="text-sm text-purple-800">Toallas P</div>
             </div>
             <div className="text-center p-3 bg-orange-50 rounded-lg">
               <div className="text-2xl font-bold text-orange-600">{totalTextiles.alfombrines}</div>
@@ -173,11 +201,11 @@ export const LaundryReportTable = ({ data }: LaundryReportTableProps) => {
             </div>
             <div className="text-center p-3 bg-pink-50 rounded-lg">
               <div className="text-2xl font-bold text-pink-600">{totalTextiles.fundasAlmohada}</div>
-              <div className="text-sm text-pink-800">Fundas Almohada</div>
+              <div className="text-sm text-pink-800">Fundas</div>
             </div>
             <div className="text-center p-3 bg-yellow-50 rounded-lg">
               <div className="text-2xl font-bold text-yellow-600">{totalKitAlimentario}</div>
-              <div className="text-sm text-yellow-800">Amenities Alimentario</div>
+              <div className="text-sm text-yellow-800">Alimentario</div>
             </div>
             <div className="text-center p-3 bg-cyan-50 rounded-lg">
               <div className="text-2xl font-bold text-cyan-600">{totalAmenitiesBano}</div>
@@ -186,6 +214,14 @@ export const LaundryReportTable = ({ data }: LaundryReportTableProps) => {
             <div className="text-center p-3 bg-emerald-50 rounded-lg">
               <div className="text-2xl font-bold text-emerald-600">{totalAmenitiesCocina}</div>
               <div className="text-sm text-emerald-800">Amenities Cocina</div>
+            </div>
+            <div className="text-center p-3 bg-gray-50 rounded-lg">
+              <div className="text-2xl font-bold text-gray-600">{totalRollosPapelHigienico}</div>
+              <div className="text-sm text-gray-800">Papel WC</div>
+            </div>
+            <div className="text-center p-3 bg-amber-50 rounded-lg">
+              <div className="text-2xl font-bold text-amber-600">{totalRollosPapelCocina}</div>
+              <div className="text-sm text-amber-800">Papel Cocina</div>
             </div>
           </div>
           <div className="text-center text-sm text-gray-600">
@@ -233,17 +269,24 @@ export const LaundryReportTable = ({ data }: LaundryReportTableProps) => {
                         {task.startTime} - {task.endTime}
                       </TableCell>
                       <TableCell>{task.cleaner}</TableCell>
-                      <TableCell>
+                       <TableCell>
                         <div className="text-sm">
                           <div>🛏️ {task.bedrooms} camas</div>
+                          <div>🛏️ {task.bedroomsSmall} pequeñas</div>
+                          <div>🛋️ {task.sofaBeds} sofás cama</div>
                           <div>🚿 {task.bathrooms} baños</div>
                         </div>
-                      </TableCell>
+                       </TableCell>
                       <TableCell>
                         <div className="flex flex-wrap gap-1">
                           {task.textiles.sabanas > 0 && (
                             <Badge variant="outline" className="text-xs">
                               {task.textiles.sabanas} sábanas
+                            </Badge>
+                          )}
+                          {task.textiles.sabanasRequenas > 0 && (
+                            <Badge variant="outline" className="text-xs">
+                              {task.textiles.sabanasRequenas} sábanas P
                             </Badge>
                           )}
                           {task.textiles.toallasGrandes > 0 && (
@@ -283,6 +326,16 @@ export const LaundryReportTable = ({ data }: LaundryReportTableProps) => {
                           {task.amenitiesCocina > 0 && (
                             <Badge variant="outline" className="text-xs bg-emerald-50">
                               👨‍🍳 {task.amenitiesCocina} cocina
+                            </Badge>
+                          )}
+                          {task.rollosPapelHigienico > 0 && (
+                            <Badge variant="outline" className="text-xs bg-gray-50">
+                              🧻 {task.rollosPapelHigienico} papel WC
+                            </Badge>
+                          )}
+                          {task.rollosPapelCocina > 0 && (
+                            <Badge variant="outline" className="text-xs bg-amber-50">
+                              🍽️ {task.rollosPapelCocina} papel cocina
                             </Badge>
                           )}
                         </div>
