@@ -17,25 +17,15 @@ export const TaskNotesSection = ({
   formData,
   onFieldChange
 }: TaskNotesProps) => {
-  console.log('🔍🔍🔍 TaskNotesSection - COMPONENT IS BEING CALLED!!!', {
-    task: task?.id,
-    hasNotes: !!task?.notes,
-    notes: task?.notes,
-    isEditing
-  });
-
   const notes = isEditing ? (formData.notes || '') : (task.notes || '');
   
-  console.log('🔍 TaskNotesSection - STARTING RENDER:', { 
-    taskId: task.id, 
-    taskNotes: task.notes, 
-    formDataNotes: formData.notes, 
-    finalNotes: notes, 
+  console.log('📝 NOTAS TAREA - TaskNotesSection SE ESTÁ RENDERIZANDO!!!', { 
+    taskId: task?.id,
+    taskNotes: task?.notes,
+    finalNotes: notes,
     isEditing,
-    hasNotes: !!notes
+    notesLength: notes?.length || 0
   });
-  
-  console.log('🔍 TaskNotesSection - ABOUT TO RENDER CARD');
 
   return (
     <Card>
