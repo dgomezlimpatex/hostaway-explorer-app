@@ -30,11 +30,12 @@ export const useMediaUpload = ({
   const [uploadQueue, setUploadQueue] = useState<File[]>([]);
 
   const validateFile = (file: File): boolean => {
-    console.log('🔍 Validando archivo:', {
+    console.log('🔍 VALIDANDO ARCHIVO:', {
       name: file.name,
       size: file.size,
       type: file.type,
-      lastModified: file.lastModified
+      lastModified: file.lastModified,
+      sizeMB: Math.round(file.size / (1024 * 1024) * 100) / 100
     });
 
     // Validación básica más permisiva

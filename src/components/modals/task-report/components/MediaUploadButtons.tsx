@@ -21,13 +21,18 @@ export const MediaUploadButtons: React.FC<MediaUploadButtonsProps> = ({
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      console.log('📁 Archivo seleccionado desde cámara:', {
+      console.log('📁 ARCHIVO SELECCIONADO DESDE CÁMARA:', {
         name: file.name,
         size: file.size,
+        sizeMB: Math.round(file.size / (1024 * 1024) * 100) / 100,
         type: file.type || 'desconocido',
-        lastModified: file.lastModified
+        lastModified: file.lastModified,
+        lastModifiedDate: new Date(file.lastModified).toISOString()
       });
+      console.log('📁 Llamando a onSingleFileSelect...');
       onSingleFileSelect(file);
+    } else {
+      console.log('📁 No se seleccionó ningún archivo desde cámara');
     }
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
