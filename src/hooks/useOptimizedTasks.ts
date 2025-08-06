@@ -101,11 +101,15 @@ export const useOptimizedTasks = ({
 async function filterTasksByUserRole(tasks: Task[], userRole: string | null, currentCleanerId: string | null): Promise<Task[]> {
   // If user is a cleaner, only show their assigned tasks
   if (userRole === 'cleaner' && currentCleanerId) {
+    console.log('🔍 Filtering tasks for cleaner:', currentCleanerId);
     const tasksForCleaner: Task[] = [];
     
     for (const task of tasks) {
+      console.log('📝 Checking task:', task.id, 'direct cleanerId:', task.cleanerId);
+      
       // Check if task is directly assigned to this cleaner
       if (task.cleanerId === currentCleanerId) {
+        console.log('✅ Task directly assigned to cleaner');
         tasksForCleaner.push(task);
         continue;
       }
@@ -113,12 +117,15 @@ async function filterTasksByUserRole(tasks: Task[], userRole: string | null, cur
       // Check if task has multiple assignments including this cleaner
       try {
         const assignments = await multipleTaskAssignmentService.getTaskAssignments(task.id);
+        console.log('📋 Multiple assignments for task', task.id, ':', assignments);
         const isAssigned = assignments.some(assignment => assignment.cleaner_id === currentCleanerId);
+        console.log('🎯 Is assigned in multiple assignments:', isAssigned);
         if (isAssigned) {
+          console.log('✅ Task assigned via multiple assignments');
           tasksForCleaner.push(task);
         }
       } catch (error) {
-        console.error('Error checking task assignments for task', task.id, ':', error);
+        console.error('❌ Error checking task assignments for task', task.id, ':', error);
         // If there's an error, fall back to direct assignment check
         if (task.cleanerId === currentCleanerId) {
           tasksForCleaner.push(task);
@@ -126,6 +133,7 @@ async function filterTasksByUserRole(tasks: Task[], userRole: string | null, cur
       }
     }
     
+    console.log('🎯 Final filtered tasks for cleaner:', tasksForCleaner.length);
     return tasksForCleaner;
   }
   
