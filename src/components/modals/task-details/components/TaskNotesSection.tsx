@@ -17,6 +17,13 @@ export const TaskNotesSection = ({
   formData,
   onFieldChange
 }: TaskNotesProps) => {
+  console.log('🔍🔍🔍 TaskNotesSection - COMPONENT IS BEING CALLED!!!', {
+    task: task?.id,
+    hasNotes: !!task?.notes,
+    notes: task?.notes,
+    isEditing
+  });
+
   const notes = isEditing ? (formData.notes || '') : (task.notes || '');
   
   console.log('🔍 TaskNotesSection - STARTING RENDER:', { 
@@ -30,17 +37,12 @@ export const TaskNotesSection = ({
   
   console.log('🔍 TaskNotesSection - ABOUT TO RENDER CARD');
 
-  // SIEMPRE mostrar la sección de notas, independientemente del rol
-  // if (!notes && isEditing) {
-  //   return null;
-  // }
-
   return (
     <Card>
       <CardHeader className="pb-3">
         <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
           <StickyNote className="h-4 w-4" />
-          Notas
+          Notas de la tarea
         </CardTitle>
       </CardHeader>
       <CardContent className="pt-0">
