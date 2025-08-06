@@ -150,39 +150,44 @@ export const TaskPreviewModal: React.FC<TaskPreviewModalProps> = ({
   };
   return <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className={`${getModalClasses()} ${isMobile ? 'flex flex-col' : ''}`} aria-describedby="task-preview-description">
-        <DialogHeader className="flex-shrink-0">
+        <DialogHeader className="flex-shrink-0 relative">
           <div className="flex items-start justify-between">
             <div className="flex-1">
-              <DialogTitle className="text-xl font-bold text-left">
+              <DialogTitle className="text-2xl font-bold text-left bg-gradient-to-r from-primary to-primary/80 bg-clip-text text-transparent">
                 {task.property}
               </DialogTitle>
-              <p className="text-sm text-muted-foreground mt-1" id="task-preview-description">
+              <p className="text-sm text-muted-foreground mt-2 font-medium" id="task-preview-description">
                 Código: {task.propertyCode || 'N/A'}
               </p>
             </div>
-            <Badge className={getStatusColor(task.status)}>
+            <Badge className={`${getStatusColor(task.status)} shadow-sm font-semibold px-3 py-1`}>
               {getStatusText(task.status)}
             </Badge>
           </div>
+          <div className="absolute -bottom-4 left-0 right-0 h-px bg-gradient-to-r from-transparent via-border to-transparent"></div>
         </DialogHeader>
 
-        <div className={`${isMobile ? 'flex-1 overflow-y-auto' : ''} space-y-6`}>
+        <div className={`${isMobile ? 'flex-1 overflow-y-auto' : ''} space-y-4 pt-2`}>
           {/* Información básica */}
-          <Card>
-            <CardContent className="p-4 space-y-4">
-              <div className="flex items-start space-x-3">
-                <MapPin className="h-5 w-5 text-muted-foreground mt-0.5 flex-shrink-0" />
-                <div>
-                  <p className="font-medium">Dirección</p>
-                  <p className="text-sm text-muted-foreground">{task.address}</p>
+          <Card className="bg-gradient-to-br from-card to-card/50 border-0 shadow-lg">
+            <CardContent className="p-5 space-y-5">
+              <div className="flex items-start space-x-4 p-3 rounded-xl bg-muted/30 border border-border/50">
+                <div className="p-2 rounded-lg bg-primary/10 text-primary">
+                  <MapPin className="h-5 w-5" />
+                </div>
+                <div className="flex-1">
+                  <p className="font-semibold text-foreground">Dirección</p>
+                  <p className="text-sm text-muted-foreground mt-1">{task.address}</p>
                 </div>
               </div>
 
-              <div className="flex items-center space-x-3">
-                <Calendar className="h-5 w-5 text-muted-foreground" />
-                <div>
-                  <p className="font-medium">Fecha</p>
-                  <p className="text-sm text-muted-foreground">
+              <div className="flex items-center space-x-4 p-3 rounded-xl bg-muted/30 border border-border/50">
+                <div className="p-2 rounded-lg bg-secondary/80 text-secondary-foreground">
+                  <Calendar className="h-5 w-5" />
+                </div>
+                <div className="flex-1">
+                  <p className="font-semibold text-foreground">Fecha</p>
+                  <p className="text-sm text-muted-foreground mt-1">
                     {new Date(task.date).toLocaleDateString('es-ES', {
                     weekday: 'long',
                     year: 'numeric',
@@ -193,32 +198,46 @@ export const TaskPreviewModal: React.FC<TaskPreviewModalProps> = ({
                 </div>
               </div>
 
-              <div className="flex items-center space-x-3">
-                <Clock className="h-5 w-5 text-muted-foreground" />
-                <div>
-                  <p className="font-medium">Horario</p>
-                  <p className="text-sm text-muted-foreground">
-                    {formatTime(task.startTime)} - {formatTime(task.endTime)} ({calculateDuration()})
+              <div className="flex items-center space-x-4 p-3 rounded-xl bg-accent/20 border border-accent/30">
+                <div className="p-2 rounded-lg bg-accent text-accent-foreground">
+                  <Clock className="h-5 w-5" />
+                </div>
+                <div className="flex-1">
+                  <p className="font-semibold text-foreground">Horario</p>
+                  <p className="text-sm text-muted-foreground mt-1 font-medium">
+                    {formatTime(task.startTime)} - {formatTime(task.endTime)} 
+                    <span className="ml-2 px-2 py-1 bg-primary/10 text-primary rounded-full text-xs font-semibold">
+                      {calculateDuration()}
+                    </span>
                   </p>
                 </div>
               </div>
 
-              {task.cleaner && <div className="flex items-center space-x-3">
-                  <User className="h-5 w-5 text-muted-foreground" />
-                  <div>
-                    <p className="font-medium">Asignado a</p>
-                    <p className="text-sm text-muted-foreground">{task.cleaner}</p>
+              {task.cleaner && (
+                <div className="flex items-center space-x-4 p-3 rounded-xl bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800/50">
+                  <div className="p-2 rounded-lg bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-400">
+                    <User className="h-5 w-5" />
                   </div>
-                </div>}
+                  <div className="flex-1">
+                    <p className="font-semibold text-foreground">Asignado a</p>
+                    <p className="text-sm text-green-700 dark:text-green-400 mt-1 font-medium">{task.cleaner}</p>
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
 
           {/* Notas de la tarea */}
           {task.notes && (
-            <Card>
-              <CardContent className="p-4 space-y-3">
-                <h3 className="font-semibold text-base">Notas de la Tarea</h3>
-                <div className="text-sm text-foreground whitespace-pre-wrap bg-muted/50 p-3 rounded-md">
+            <Card className="bg-gradient-to-br from-orange-50 to-orange-100/50 dark:from-orange-950/30 dark:to-orange-900/20 border-orange-200 dark:border-orange-800/50 shadow-lg">
+              <CardContent className="p-5">
+                <div className="flex items-center space-x-3 mb-4">
+                  <div className="p-2 rounded-lg bg-orange-100 dark:bg-orange-900/50 text-orange-700 dark:text-orange-400">
+                    <FileText className="h-5 w-5" />
+                  </div>
+                  <h3 className="font-bold text-lg text-orange-800 dark:text-orange-300">Notas de la Tarea</h3>
+                </div>
+                <div className="text-sm text-foreground whitespace-pre-wrap bg-background/80 p-4 rounded-xl border border-orange-200/50 dark:border-orange-800/30 shadow-sm">
                   {task.notes}
                 </div>
               </CardContent>
