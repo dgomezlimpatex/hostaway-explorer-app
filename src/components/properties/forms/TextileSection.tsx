@@ -77,6 +77,26 @@ export const TextileSection = ({ control }: TextileSectionProps) => {
         />
         <FormField
           control={control}
+          name="numeroSabanasSuite"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel className="flex items-center gap-2">
+                🏨 Sábanas Suite
+              </FormLabel>
+              <FormControl>
+                <Input 
+                  {...field} 
+                  type="number" 
+                  min="0"
+                  onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={control}
           name="numeroToallasGrandes"
           render={({ field }) => (
             <FormItem>

@@ -22,6 +22,7 @@ export const LaundryReportTable = ({ data }: LaundryReportTableProps) => {
   const totalTextiles = data.reduce((acc, item) => {
     acc.sabanas += item.textiles.sabanas;
     acc.sabanasRequenas += item.textiles.sabanasRequenas;
+    acc.sabanasSuite += item.textiles.sabanasSuite;
     acc.toallasGrandes += item.textiles.toallasGrandes;
     acc.toallasPequenas += item.textiles.toallasPequenas;
     acc.alfombrines += item.textiles.alfombrines;
@@ -30,6 +31,7 @@ export const LaundryReportTable = ({ data }: LaundryReportTableProps) => {
   }, {
     sabanas: 0,
     sabanasRequenas: 0,
+    sabanasSuite: 0,
     toallasGrandes: 0,
     toallasPequenas: 0,
     alfombrines: 0,
@@ -82,6 +84,7 @@ export const LaundryReportTable = ({ data }: LaundryReportTableProps) => {
             <div className="grid grid-cols-2 gap-2 text-sm">
               <span>🛏️ {task.bedrooms} camas</span>
               <span>🛏️ {task.bedroomsSmall} pequeñas</span>
+              <span>🏨 {task.bedroomsSuite} suite</span>
               <span>🛋️ {task.sofaBeds} sofás cama</span>
               <span>🚿 {task.bathrooms} baños</span>
             </div>
@@ -101,6 +104,12 @@ export const LaundryReportTable = ({ data }: LaundryReportTableProps) => {
                 <div className="bg-indigo-50 p-2 rounded text-center">
                   <div className="font-bold text-indigo-600">{task.textiles.sabanasRequenas}</div>
                   <div className="text-xs text-indigo-800">Sábanas P</div>
+                </div>
+              )}
+              {task.textiles.sabanasSuite > 0 && (
+                <div className="bg-violet-50 p-2 rounded text-center">
+                  <div className="font-bold text-violet-600">{task.textiles.sabanasSuite}</div>
+                  <div className="text-xs text-violet-800">Sábanas S</div>
                 </div>
               )}
               {task.textiles.toallasGrandes > 0 && (
@@ -178,7 +187,7 @@ export const LaundryReportTable = ({ data }: LaundryReportTableProps) => {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-11 gap-4 mb-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-12 gap-4 mb-4">
             <div className="text-center p-3 bg-blue-50 rounded-lg">
               <div className="text-2xl font-bold text-blue-600">{totalTextiles.sabanas}</div>
               <div className="text-sm text-blue-800">Sábanas</div>
@@ -186,6 +195,10 @@ export const LaundryReportTable = ({ data }: LaundryReportTableProps) => {
             <div className="text-center p-3 bg-indigo-50 rounded-lg">
               <div className="text-2xl font-bold text-indigo-600">{totalTextiles.sabanasRequenas}</div>
               <div className="text-sm text-indigo-800">Sábanas P</div>
+            </div>
+            <div className="text-center p-3 bg-violet-50 rounded-lg">
+              <div className="text-2xl font-bold text-violet-600">{totalTextiles.sabanasSuite}</div>
+              <div className="text-sm text-violet-800">Sábanas Suite</div>
             </div>
             <div className="text-center p-3 bg-green-50 rounded-lg">
               <div className="text-2xl font-bold text-green-600">{totalTextiles.toallasGrandes}</div>
@@ -273,6 +286,7 @@ export const LaundryReportTable = ({ data }: LaundryReportTableProps) => {
                         <div className="text-sm">
                           <div>🛏️ {task.bedrooms} camas</div>
                           <div>🛏️ {task.bedroomsSmall} pequeñas</div>
+                          <div>🏨 {task.bedroomsSuite} suite</div>
                           <div>🛋️ {task.sofaBeds} sofás cama</div>
                           <div>🚿 {task.bathrooms} baños</div>
                         </div>
@@ -287,6 +301,11 @@ export const LaundryReportTable = ({ data }: LaundryReportTableProps) => {
                           {task.textiles.sabanasRequenas > 0 && (
                             <Badge variant="outline" className="text-xs">
                               {task.textiles.sabanasRequenas} sábanas P
+                            </Badge>
+                          )}
+                          {task.textiles.sabanasSuite > 0 && (
+                            <Badge variant="outline" className="text-xs">
+                              {task.textiles.sabanasSuite} sábanas S
                             </Badge>
                           )}
                           {task.textiles.toallasGrandes > 0 && (

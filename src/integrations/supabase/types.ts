@@ -845,9 +845,11 @@ export type Database = {
           numero_banos: number
           numero_camas: number
           numero_camas_pequenas: number
+          numero_camas_suite: number
           numero_fundas_almohada: number
           numero_sabanas: number
           numero_sabanas_pequenas: number
+          numero_sabanas_suite: number
           numero_sofas_cama: number
           numero_toallas_grandes: number
           numero_toallas_pequenas: number
@@ -895,9 +897,11 @@ export type Database = {
           numero_banos?: number
           numero_camas?: number
           numero_camas_pequenas?: number
+          numero_camas_suite?: number
           numero_fundas_almohada?: number
           numero_sabanas?: number
           numero_sabanas_pequenas?: number
+          numero_sabanas_suite?: number
           numero_sofas_cama?: number
           numero_toallas_grandes?: number
           numero_toallas_pequenas?: number
@@ -945,9 +949,11 @@ export type Database = {
           numero_banos?: number
           numero_camas?: number
           numero_camas_pequenas?: number
+          numero_camas_suite?: number
           numero_fundas_almohada?: number
           numero_sabanas?: number
           numero_sabanas_pequenas?: number
+          numero_sabanas_suite?: number
           numero_sofas_cama?: number
           numero_toallas_grandes?: number
           numero_toallas_pequenas?: number

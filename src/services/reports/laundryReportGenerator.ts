@@ -25,6 +25,7 @@ export const generateLaundryReport = (tasks: any[], properties: any[], clients: 
       const textiles = {
         sabanas: property?.numeroSabanas || 0,
         sabanasRequenas: property?.numeroSabanasRequenas || 0,
+        sabanasSuite: property?.numeroSabanasSuite || 0,
         toallasGrandes: property?.numeroToallasGrandes || 0,
         toallasPequenas: property?.numeroTotallasPequenas || 0,
         alfombrines: property?.numeroAlfombrines || 0,
@@ -79,6 +80,7 @@ export const generateLaundryReport = (tasks: any[], properties: any[], clients: 
         textiles,
         bedrooms: property?.numeroCamas || 0,
         bedroomsSmall: property?.numeroCamasPequenas || 0,
+        bedroomsSuite: property?.numeroCamasSuite || 0,
         sofaBeds: property?.numeroSofasCama || 0,
         bathrooms: property?.numeroBanos || 0,
         kitAlimentario,

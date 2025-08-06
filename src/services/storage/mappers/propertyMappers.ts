@@ -10,6 +10,7 @@ export const mapPropertyFromDB = (row: any): Property => ({
   direccion: row.direccion,
   numeroCamas: row.numero_camas,
   numeroCamasPequenas: row.numero_camas_pequenas || 0,
+  numeroCamasSuite: row.numero_camas_suite || 0,
   numeroSofasCama: row.numero_sofas_cama || 0,
   numeroBanos: row.numero_banos,
   duracionServicio: row.duracion_servicio,
@@ -18,6 +19,7 @@ export const mapPropertyFromDB = (row: any): Property => ({
   checkOutPredeterminado: row.check_out_predeterminado,
   numeroSabanas: row.numero_sabanas,
   numeroSabanasRequenas: row.numero_sabanas_pequenas || 0,
+  numeroSabanasSuite: row.numero_sabanas_suite || 0,
   numeroToallasGrandes: row.numero_toallas_grandes,
   numeroTotallasPequenas: row.numero_toallas_pequenas,
   numeroAlfombrines: row.numero_alfombrines,
@@ -43,6 +45,7 @@ export const mapPropertyToDB = (property: Partial<CreatePropertyData>): any => {
   if (property.direccion !== undefined) updateData.direccion = property.direccion;
   if (property.numeroCamas !== undefined) updateData.numero_camas = property.numeroCamas;
   if (property.numeroCamasPequenas !== undefined) updateData.numero_camas_pequenas = property.numeroCamasPequenas;
+  if (property.numeroCamasSuite !== undefined) updateData.numero_camas_suite = property.numeroCamasSuite;
   if (property.numeroSofasCama !== undefined) updateData.numero_sofas_cama = property.numeroSofasCama;
   if (property.numeroBanos !== undefined) updateData.numero_banos = property.numeroBanos;
   if (property.duracionServicio !== undefined) updateData.duracion_servicio = property.duracionServicio;
@@ -51,6 +54,7 @@ export const mapPropertyToDB = (property: Partial<CreatePropertyData>): any => {
   if (property.checkOutPredeterminado !== undefined) updateData.check_out_predeterminado = property.checkOutPredeterminado;
   if (property.numeroSabanas !== undefined) updateData.numero_sabanas = property.numeroSabanas;
   if (property.numeroSabanasRequenas !== undefined) updateData.numero_sabanas_pequenas = property.numeroSabanasRequenas;
+  if (property.numeroSabanasSuite !== undefined) updateData.numero_sabanas_suite = property.numeroSabanasSuite;
   if (property.numeroToallasGrandes !== undefined) updateData.numero_toallas_grandes = property.numeroToallasGrandes;
   if (property.numeroTotallasPequenas !== undefined) updateData.numero_toallas_pequenas = property.numeroTotallasPequenas;
   if (property.numeroAlfombrines !== undefined) updateData.numero_alfombrines = property.numeroAlfombrines;
