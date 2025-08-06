@@ -2,16 +2,37 @@
 import { TaskReport } from '@/types/reports';
 
 export const generateTaskReport = (tasks: any[], properties: any[], clients: any[]): TaskReport[] => {
+  console.log('🔍 TaskReportGenerator - Processing:', {
+    totalTasks: tasks.length,
+    totalProperties: properties.length,
+    totalClients: clients.length
+  });
+
   return tasks.map(task => {
     // Para tareas extraordinarias, usar la información específica de facturación extraordinaria
     const isExtraordinaryTask = task.type === 'trabajo-extraordinario';
     
+    console.log(`🔍 TaskReportGenerator - Processing task: ${task.property} (ID: ${task.id})`, {
+      taskPropertyId: task.propiedad_id || task.propertyId,
+      taskProperty: task.property,
+      isExtraordinary: isExtraordinaryTask,
+      clienteId: task.clienteId
+    });
+    
     // Buscar la propiedad asociada a la tarea
     const property = properties.find(p => 
       p.id === task.propiedad_id || 
+      p.id === task.propertyId ||
       p.nombre === task.property ||
       p.codigo === task.property
     );
+    
+    console.log(`🔍 Property found for task ${task.property}:`, property ? {
+      id: property.id,
+      nombre: property.nombre,
+      codigo: property.codigo,
+      clienteId: property.clienteId
+    } : 'NOT FOUND');
     
     // Buscar el cliente asociado a la propiedad (para tareas normales)
     const client = property && property.clienteId ? 
