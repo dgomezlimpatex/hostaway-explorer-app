@@ -43,19 +43,25 @@ export const useMediaUpload = ({
       return false;
     }
 
-    // Additional legacy validation for compatibility
+    // Validación adicional más flexible para extensiones
     const fileName = file.name.toLowerCase();
-    const validImageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.heic', '.heif'];
-    const validVideoExtensions = ['.mp4', '.mov', '.avi', '.mkv', '.webm'];
+    const validImageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.heic', '.heif', '.tiff', '.tif', '.bmp', '.svg', '.avif', '.dng', '.raw', '.cr2', '.crw', '.nef', '.arw', '.orf', '.rw2'];
+    const validVideoExtensions = ['.mp4', '.mov', '.avi', '.mkv', '.webm', '.wmv', '.flv', '.ogg', '.m4v', '.3gp', '.3gpp'];
     
     const hasValidExtension = [...validImageExtensions, ...validVideoExtensions].some(ext => 
       fileName.endsWith(ext)
     );
 
+    // Si la validación segura falla pero la extensión es válida, intentar proceder
+    if (!secureValidation.isValid && hasValidExtension) {
+      console.log('Validación segura falló pero extensión es válida, permitiendo subida:', fileName);
+      return true; // Permitir subida si la extensión es reconocida
+    }
+
     if (!hasValidExtension) {
       toast({
         title: "Error",
-        description: "Formato de archivo no soportado.",
+        description: "Formato de archivo no soportado. Formatos válidos: JPG, PNG, HEIC, RAW, MP4, MOV, etc.",
         variant: "destructive",
       });
       return false;

@@ -3,8 +3,22 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from './use-toast';
 
 // Secure file upload configuration
-const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif', 'image/heic', 'image/heif'];
-const ALLOWED_VIDEO_TYPES = ['video/mp4', 'video/webm', 'video/mov', 'video/avi', 'video/mkv'];
+const ALLOWED_IMAGE_TYPES = [
+  'image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif', 
+  'image/heic', 'image/heif', 'image/tiff', 'image/tif', 'image/bmp', 
+  'image/svg+xml', 'image/avif', 'image/jfif', 'image/pjpeg', 
+  'image/x-icon', 'image/vnd.microsoft.icon', 'image/dng',
+  // Formatos RAW de cámaras
+  'image/x-canon-cr2', 'image/x-canon-crw', 'image/x-nikon-nef', 
+  'image/x-sony-arw', 'image/x-adobe-dng', 'image/x-panasonic-raw',
+  // Formatos adicionales de móviles
+  'image/x-ms-bmp', 'image/x-portable-pixmap', 'image/x-portable-graymap'
+];
+const ALLOWED_VIDEO_TYPES = [
+  'video/mp4', 'video/webm', 'video/mov', 'video/avi', 'video/mkv', 
+  'video/quicktime', 'video/x-msvideo', 'video/3gpp', 'video/3gpp2',
+  'video/x-ms-wmv', 'video/x-flv', 'video/ogg', 'video/m4v'
+];
 const MAX_IMAGE_SIZE = 100 * 1024 * 1024; // 100MB for images
 const MAX_VIDEO_SIZE = 100 * 1024 * 1024; // 100MB for videos
 const DANGEROUS_EXTENSIONS = ['.exe', '.bat', '.cmd', '.scr', '.pif', '.com', '.js', '.html', '.htm', '.php', '.asp'];
@@ -18,37 +32,61 @@ export const useFileUploadSecurity = () => {
   const [isUploading, setIsUploading] = useState(false);
   const { toast } = useToast();
 
-  const validateFile = (file: File, type: 'image' | 'video'): FileValidationResult => {
-    // Check file extension for dangerous types
+  const validateFile = (file: File, type: 'image' | 'video' = 'image'): FileValidationResult => {
+    // Validación básica
+    if (!file || !file.name) {
+      return { isValid: false, error: 'Archivo no válido' };
+    }
+
+    // Verificar extensiones peligrosas
     const fileName = file.name.toLowerCase();
     const hasDangerousExtension = DANGEROUS_EXTENSIONS.some(ext => fileName.endsWith(ext));
     
     if (hasDangerousExtension) {
-      return { isValid: false, error: 'File type not allowed for security reasons' };
+      return { isValid: false, error: 'Tipo de archivo no permitido por seguridad' };
     }
 
-    // Validate MIME type
+    // Validar tipo MIME - pero también aceptar archivos si la extensión es válida
     const allowedTypes = type === 'image' ? ALLOWED_IMAGE_TYPES : ALLOWED_VIDEO_TYPES;
-    if (!allowedTypes.includes(file.type)) {
+    const fileExtension = file.name.toLowerCase().split('.').pop();
+    
+    // Lista de extensiones válidas para imágenes (incluye formatos RAW)
+    const validImageExtensions = [
+      'jpg', 'jpeg', 'png', 'gif', 'webp', 'heic', 'heif', 'tiff', 'tif', 
+      'bmp', 'svg', 'avif', 'dng', 'raw', 'cr2', 'crw', 'nef', 'arw', 'orf', 'rw2'
+    ];
+    
+    // Lista de extensiones válidas para videos
+    const validVideoExtensions = [
+      'mp4', 'webm', 'mov', 'avi', 'mkv', 'wmv', 'flv', 'ogg', 'm4v', '3gp', '3gpp'
+    ];
+    
+    const validExtensions = type === 'image' ? validImageExtensions : validVideoExtensions;
+    
+    // Aceptar si el tipo MIME es válido O si la extensión es válida
+    const hasValidMimeType = allowedTypes.includes(file.type);
+    const hasValidExtension = fileExtension && validExtensions.includes(fileExtension);
+    
+    if (!hasValidMimeType && !hasValidExtension) {
       return { 
         isValid: false, 
-        error: `Invalid file type. Allowed: ${allowedTypes.join(', ')}` 
+        error: `Formato no soportado. Extensiones válidas: ${validExtensions.slice(0, 10).join(', ')}...` 
       };
     }
 
-    // Validate file size
+    // Validar tamaño de archivo
     const maxSize = type === 'image' ? MAX_IMAGE_SIZE : MAX_VIDEO_SIZE;
     if (file.size > maxSize) {
       const maxSizeMB = Math.round(maxSize / (1024 * 1024));
       return { 
         isValid: false, 
-        error: `File too large. Maximum size: ${maxSizeMB}MB` 
+        error: `Archivo muy grande. Tamaño máximo: ${maxSizeMB}MB` 
       };
     }
 
-    // Additional security checks
+    // Verificaciones adicionales de seguridad
     if (file.size === 0) {
-      return { isValid: false, error: 'Empty file not allowed' };
+      return { isValid: false, error: 'Archivo vacío no permitido' };
     }
 
     return { isValid: true };
