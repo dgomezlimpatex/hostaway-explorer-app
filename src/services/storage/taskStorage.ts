@@ -116,14 +116,17 @@ export class TaskStorageService extends BaseStorageService<Task, TaskCreateData>
       if (task.task_assignments && task.task_assignments.length > 0) {
         // Create a task instance for each assignment
         task.task_assignments.forEach((assignment, index) => {
-          const taskForCleaner = taskStorageConfig.mapFromDB({
+          // Create a complete task object preserving all original data
+          const taskDataForCleaner = {
             ...baseTaskData,
             cleaner: assignment.cleaner_name,
             cleaner_id: assignment.cleaner_id,
             // Add a suffix to the ID to make it unique for each assignment while keeping original reference
             id: index === 0 ? task.id : `${task.id}_assignment_${assignment.cleaner_id}`,
             originalTaskId: task.id // Always store the original task ID
-          });
+          };
+          
+          const taskForCleaner = taskStorageConfig.mapFromDB(taskDataForCleaner);
           mappedTasks.push(taskForCleaner);
         });
       } else {
