@@ -11,9 +11,11 @@ import { useDeviceType } from '@/hooks/use-mobile';
 import { useAuth } from '@/hooks/useAuth';
 import { useCleaners } from '@/hooks/useCleaners';
 import { useProcessAutomaticConsumption } from '@/hooks/useAmenityMappings';
+import { useOptimizedAutoSave } from '@/hooks/useOptimizedAutoSave';
 import { TaskReportHeader } from './task-report/TaskReportHeader';
 import { TaskReportTabs } from './task-report/TaskReportTabs';
 import { TaskReportFooter } from './task-report/TaskReportFooter';
+import { NetworkStatusIndicator } from '@/components/ui/network-status-indicator';
 
 interface TaskReportModalProps {
   task: Task | null;
@@ -51,9 +53,6 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
   // Ref to track if we've already tried to create a report for this task
   const reportCreationAttempted = useRef<string | null>(null);
   
-  // Auto-save refs
-  const autoSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const lastSavedDataRef = useRef<string>('');
 
   // Get task media using the current report ID
   const { data: taskMedia = [], isLoading: isLoadingMedia } = useTaskMedia(currentReport?.id || '');
@@ -225,6 +224,29 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
     return Math.round((fullyCompletedItems / totalItems) * 100);
   }, [checklist, currentTemplate]);
 
+  // Optimized auto-save hook (after completionPercentage is defined)
+  const autoSaveData = useMemo(() => ({
+    checklist_completed: checklist,
+    notes,
+    issues_found: issues,
+    overall_status: completionPercentage === 100 ? 'completed' as const : 'in_progress' as const,
+  }), [checklist, notes, issues, completionPercentage]);
+
+  const { forceSave, isOnline } = useOptimizedAutoSave({
+    data: autoSaveData,
+    onSave: (data, silent = true) => {
+      if (currentReport) {
+        updateReport({ 
+          reportId: currentReport.id, 
+          updates: data,
+          silent 
+        });
+      }
+    },
+    reportId: currentReport?.id,
+    enabled: hasStartedTask && !!currentReport
+  });
+
   // Check if checklist is completed and advance to next step
   useEffect(() => {
     const wasCompleted = isChecklistCompleted;
@@ -238,69 +260,7 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
   }, [completionPercentage, currentStep, isChecklistCompleted]);
 
 
-  // Auto-save functionality
-  const triggerAutoSave = React.useCallback(() => {
-    if (!task || !user?.id || !currentReport) return;
-    
-    const currentData = JSON.stringify({
-      checklist,
-      notes,
-      issues,
-      completionPercentage
-    });
-    
-    // Only save if data has changed
-    if (currentData === lastSavedDataRef.current) return;
-    
-    console.log('🔄 Auto-saving report progress...');
-    lastSavedDataRef.current = currentData;
-    
-    const reportData = {
-      task_id: task.id,
-      cleaner_id: currentCleanerId || task.cleanerId,
-      checklist_template_id: currentTemplate?.id,
-      checklist_completed: checklist,
-      notes,
-      issues_found: issues,
-      overall_status: completionPercentage === 100 ? 'completed' as const : 'in_progress' as const,
-    };
-    
-    updateReport({ 
-      reportId: currentReport.id, 
-      updates: reportData,
-      silent: true // Autoguardado silencioso
-    });
-  }, [task, user?.id, currentReport, checklist, notes, issues, completionPercentage, currentCleanerId, currentTemplate?.id, updateReport]);
-
-  // Auto-save when checklist, notes, or issues change
-  useEffect(() => {
-    if (!hasStartedTask || !currentReport) return;
-    
-    // Clear previous timeout
-    if (autoSaveTimeoutRef.current) {
-      clearTimeout(autoSaveTimeoutRef.current);
-    }
-    
-    // Set new timeout for auto-save (2 seconds after last change)
-    autoSaveTimeoutRef.current = setTimeout(() => {
-      triggerAutoSave();
-    }, 2000);
-    
-    return () => {
-      if (autoSaveTimeoutRef.current) {
-        clearTimeout(autoSaveTimeoutRef.current);
-      }
-    };
-  }, [checklist, notes, issues, hasStartedTask, currentReport, triggerAutoSave]);
-
-  // Clean up timeout on unmount
-  useEffect(() => {
-    return () => {
-      if (autoSaveTimeoutRef.current) {
-        clearTimeout(autoSaveTimeoutRef.current);
-      }
-    };
-  }, []);
+  // Removed old auto-save logic - now handled by useOptimizedAutoSave hook
 
   const handleStartTask = async () => {
     if (!task || !isTaskFromToday) {
@@ -526,12 +486,22 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className={getModalClasses()}>
         <DialogHeader className="flex-shrink-0">
-          <TaskReportHeader
-            task={task}
-            reportStatus={reportStatus}
-            completionPercentage={completionPercentage}
-            isLoadingReport={isLoadingReport}
-          />
+          <div className="flex items-center justify-between">
+            <div className="flex-1">
+              <TaskReportHeader
+                task={task}
+                reportStatus={reportStatus}
+                completionPercentage={completionPercentage}
+                isLoadingReport={isLoadingReport}
+              />
+            </div>
+            {isMobile && (
+              <NetworkStatusIndicator 
+                className="ml-2" 
+                showText={false}
+              />
+            )}
+          </div>
         </DialogHeader>
 
         <div className="flex-1 overflow-auto">

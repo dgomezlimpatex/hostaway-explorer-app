@@ -15,6 +15,7 @@ interface TaskReportFooterProps {
   onSave: () => void;
   onComplete: () => void;
   onStartTask: () => void;
+  onForceSave?: () => void;
   canComplete: boolean;
   isCreatingReport: boolean;
   isUpdatingReport: boolean;

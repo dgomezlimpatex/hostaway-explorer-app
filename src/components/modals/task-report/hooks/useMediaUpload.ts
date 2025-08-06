@@ -1,7 +1,11 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { useTaskReports } from '@/hooks/useTaskReports';
 import { useToast } from '@/hooks/use-toast';
 import { useFileUploadSecurity } from '@/hooks/useFileUploadSecurity';
+import { useNetworkStatus } from '@/hooks/useNetworkStatus';
+import { useDeviceType } from '@/hooks/use-mobile';
+import { compressImage, shouldCompressImage } from '@/utils/imageCompression';
+import { offlineStorage } from '@/utils/offlineStorage';
 
 interface UseMediaUploadProps {
   reportId?: string;
@@ -19,8 +23,11 @@ export const useMediaUpload = ({
   const { uploadMediaAsync, isUploadingMedia } = useTaskReports();
   const { toast } = useToast();
   const { validateFile: secureValidateFile } = useFileUploadSecurity();
+  const { isOnline, isSlowConnection } = useNetworkStatus();
+  const { isMobile } = useDeviceType();
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [uploadingCount, setUploadingCount] = useState(0);
+  const [uploadQueue, setUploadQueue] = useState<File[]>([]);
 
   const validateFile = (file: File): boolean => {
     // Use secure validation first
@@ -57,6 +64,38 @@ export const useMediaUpload = ({
     return true;
   };
 
+  // Función para comprimir archivo antes de subir
+  const prepareFileForUpload = useCallback(async (file: File): Promise<File> => {
+    if (!shouldCompressImage(file)) {
+      return file;
+    }
+
+    try {
+      const compressionOptions = isMobile ? {
+        maxWidth: 1280,
+        maxHeight: 720,
+        quality: isSlowConnection ? 0.6 : 0.8,
+        maxSizeKB: isSlowConnection ? 512 : 1024
+      } : {
+        maxWidth: 1920,
+        maxHeight: 1080,
+        quality: 0.8,
+        maxSizeKB: 1024
+      };
+
+      const compressedFile = await compressImage(file, compressionOptions);
+      console.log('File compressed:', { 
+        original: file.size, 
+        compressed: compressedFile.size, 
+        reduction: Math.round((1 - compressedFile.size / file.size) * 100) + '%' 
+      });
+      return compressedFile;
+    } catch (error) {
+      console.error('Error compressing file:', error);
+      return file; // Fallback al archivo original
+    }
+  }, [isMobile, isSlowConnection]);
+
   const uploadSingleFile = async (file: File) => {
     if (!file || !reportId || !validateFile(file)) return;
 
@@ -65,15 +104,46 @@ export const useMediaUpload = ({
     setPreviewUrl(url);
 
     try {
-      console.log('MediaUpload - attempting upload:', { file: file.name, reportId, checklistItemId });
+      // Preparar archivo (comprimir si es necesario)
+      const preparedFile = await prepareFileForUpload(file);
+      
+      // Verificar conectividad
+      if (!isOnline) {
+        // Guardar para upload posterior
+        offlineStorage.addOperation('uploadMedia', {
+          file: preparedFile,
+          reportId,
+          checklistItemId,
+        });
+        
+        // Crear URL local temporal para preview
+        onMediaCaptured(url);
+        setPreviewUrl(null);
+        
+        toast({
+          title: "Archivo guardado offline",
+          description: "Se subirá cuando haya conexión.",
+        });
+        return;
+      }
+
+      console.log('MediaUpload - attempting upload:', { 
+        file: preparedFile.name, 
+        size: preparedFile.size,
+        reportId, 
+        checklistItemId 
+      });
+      
       const data = await uploadMediaAsync({
-        file,
+        file: preparedFile,
         reportId,
         checklistItemId,
       });
+      
       console.log('MediaUpload - upload successful:', data);
       onMediaCaptured(data.file_url);
       setPreviewUrl(null);
+      
       toast({
         title: "Archivo subido",
         description: "El archivo se ha subido correctamente.",
@@ -89,17 +159,20 @@ export const useMediaUpload = ({
     }
   };
 
+  // Upload en batch optimizado para móvil
   const uploadMultipleFiles = async (files: FileList) => {
     if (!files || files.length === 0 || !reportId) {
       console.log('MediaUpload - uploadMultipleFiles early return:', { files: files?.length, reportId });
       return;
     }
 
-    console.log('MediaUpload - starting multiple upload:', { 
+    console.log('MediaUpload - starting optimized multiple upload:', { 
       fileCount: files.length, 
       reportId, 
       checklistItemId,
-      existingMediaCount 
+      existingMediaCount,
+      isOnline,
+      isMobile 
     });
 
     // Verificar límite de archivos (15 máximo + archivos existentes)
@@ -113,49 +186,99 @@ export const useMediaUpload = ({
       return;
     }
 
-    setUploadingCount(files.length);
+    const filesArray = Array.from(files);
+    setUploadingCount(filesArray.length);
+    
     let successCount = 0;
     let errorCount = 0;
+    let offlineCount = 0;
 
-    // Convertir FileList a Array para mejor manejo
-    const filesArray = Array.from(files);
-    console.log('MediaUpload - files array created:', filesArray.map(f => ({ name: f.name, size: f.size, type: f.type })));
+    // Preparar archivos en paralelo (comprimir)
+    const preparedFiles = await Promise.allSettled(
+      filesArray.map(async (file) => {
+        if (!validateFile(file)) {
+          throw new Error(`Archivo ${file.name} no válido`);
+        }
+        return prepareFileForUpload(file);
+      })
+    );
 
-    // Subir archivos uno por uno
-    for (let i = 0; i < filesArray.length; i++) {
-      const file = filesArray[i];
-      console.log(`MediaUpload - processing file ${i + 1}/${filesArray.length}:`, { name: file.name, size: file.size, type: file.type });
+    console.log('MediaUpload - files prepared:', preparedFiles.length);
+
+    // Configurar concurrencia basada en dispositivo y conexión
+    const concurrencyLimit = isMobile && isSlowConnection ? 1 : (isMobile ? 2 : 3);
+    
+    // Procesar uploads en lotes
+    for (let i = 0; i < preparedFiles.length; i += concurrencyLimit) {
+      const batch = preparedFiles.slice(i, i + concurrencyLimit);
       
-      if (!validateFile(file)) {
-        console.log('MediaUpload - file validation failed:', file.name);
-        errorCount++;
-        continue;
-      }
+      await Promise.allSettled(
+        batch.map(async (result, batchIndex) => {
+          if (result.status === 'rejected') {
+            console.error('File preparation failed:', result.reason);
+            errorCount++;
+            return;
+          }
 
-      try {
-        console.log('MediaUpload - uploading multiple file:', { file: file.name, reportId, checklistItemId });
-        const data = await uploadMediaAsync({
-          file,
-          reportId,
-          checklistItemId,
-        });
-        console.log('MediaUpload - multiple upload successful:', data);
-        onMediaCaptured(data.file_url);
-        successCount++;
-      } catch (error) {
-        console.error('MediaUpload - multiple upload failed for file:', file.name, error);
-        errorCount++;
+          const file = result.value;
+          const originalIndex = i + batchIndex;
+          
+          try {
+            if (!isOnline) {
+              // Guardar offline
+              offlineStorage.addOperation('uploadMedia', {
+                file,
+                reportId,
+                checklistItemId,
+              });
+              
+              // Crear preview temporal
+              const url = URL.createObjectURL(file);
+              onMediaCaptured(url);
+              offlineCount++;
+            } else {
+              const data = await uploadMediaAsync({
+                file,
+                reportId,
+                checklistItemId,
+              });
+              
+              console.log(`MediaUpload - batch upload ${originalIndex + 1} successful:`, data);
+              onMediaCaptured(data.file_url);
+              successCount++;
+            }
+          } catch (error) {
+            console.error(`MediaUpload - batch upload ${originalIndex + 1} failed:`, error);
+            errorCount++;
+          }
+        })
+      );
+
+      // Pequeña pausa entre lotes para no saturar en móvil
+      if (isMobile && i + concurrencyLimit < preparedFiles.length) {
+        await new Promise(resolve => setTimeout(resolve, 200));
       }
     }
 
-    console.log('MediaUpload - upload process completed:', { successCount, errorCount, total: filesArray.length });
+    console.log('MediaUpload - batch upload process completed:', { 
+      successCount, 
+      errorCount, 
+      offlineCount, 
+      total: filesArray.length 
+    });
+    
     setUploadingCount(0);
     
     // Mostrar resultado
-    if (successCount > 0) {
+    if (offlineCount > 0) {
+      toast({
+        title: "Archivos guardados offline",
+        description: `${offlineCount} archivo(s) se subirán cuando haya conexión.`,
+      });
+    } else if (successCount > 0) {
       toast({
         title: "Archivos subidos",
-        description: `${successCount} archivo(s) subido(s) correctamente.${errorCount > 0 ? ` ${errorCount} archivo(s) fallaron.` : ''}`,
+        description: `${successCount} archivo(s) subido(s) correctamente.${errorCount > 0 ? ` ${errorCount} fallaron.` : ''}`,
       });
     } else if (errorCount > 0) {
       toast({
@@ -169,8 +292,10 @@ export const useMediaUpload = ({
   return {
     uploadSingleFile,
     uploadMultipleFiles,
-    isUploadingMedia,
+    isUploadingMedia: isUploadingMedia || uploadingCount > 0,
     uploadingCount,
     previewUrl,
+    isOnline,
+    isSlowConnection,
   };
 };
