@@ -12,7 +12,10 @@ const ALLOWED_IMAGE_TYPES = [
   'image/x-canon-cr2', 'image/x-canon-crw', 'image/x-nikon-nef', 
   'image/x-sony-arw', 'image/x-adobe-dng', 'image/x-panasonic-raw',
   // Formatos adicionales de móviles
-  'image/x-ms-bmp', 'image/x-portable-pixmap', 'image/x-portable-graymap'
+  'image/x-ms-bmp', 'image/x-portable-pixmap', 'image/x-portable-graymap',
+  // Formatos RAW adicionales de iPhone y otros dispositivos
+  'image/x-adobe-dng', 'application/octet-stream', // iPhone .dng files
+  'image/x-raw', 'image/x-dng'
 ];
 const ALLOWED_VIDEO_TYPES = [
   'video/mp4', 'video/webm', 'video/mov', 'video/avi', 'video/mkv', 
