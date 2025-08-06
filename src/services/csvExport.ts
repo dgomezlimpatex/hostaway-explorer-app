@@ -120,6 +120,7 @@ const generateSummaryCSV = (data: SummaryReport): string => {
 };
 
 const generateLaundryCSV = (data: LaundryReport[]): string => {
+  // Headers para el reporte de lavandería
   const headers = [
     'Propiedad',
     'Dirección',
@@ -140,27 +141,35 @@ const generateLaundryCSV = (data: LaundryReport[]): string => {
     'Amenities Cocina'
   ];
 
+  // Verificar que hay datos
+  if (!data || data.length === 0) {
+    return headers.map(header => `"${header}"`).join(',');
+  }
+
   const rows = data.map(item => [
-    item.property,
-    item.address,
-    item.date,
-    item.startTime,
-    item.endTime,
-    item.client,
-    item.cleaner,
-    item.textiles.sabanas.toString(),
-    item.textiles.toallasGrandes.toString(),
-    item.textiles.toallasPequenas.toString(),
-    item.textiles.alfombrines.toString(),
-    item.textiles.fundasAlmohada.toString(),
-    item.kitAlimentario.toString(),
-    item.bedrooms.toString(),
-    item.bathrooms.toString(),
-    item.amenitiesBano.toString(),
-    item.amenitiesCocina.toString()
+    item.property || '',
+    item.address || '',
+    item.date || '',
+    item.startTime || '',
+    item.endTime || '',
+    item.client || '',
+    item.cleaner || '',
+    (item.textiles?.sabanas || 0).toString(),
+    (item.textiles?.toallasGrandes || 0).toString(),
+    (item.textiles?.toallasPequenas || 0).toString(),
+    (item.textiles?.alfombrines || 0).toString(),
+    (item.textiles?.fundasAlmohada || 0).toString(),
+    (item.kitAlimentario || 0).toString(),
+    (item.bedrooms || 0).toString(),
+    (item.bathrooms || 0).toString(),
+    (item.amenitiesBano || 0).toString(),
+    (item.amenitiesCocina || 0).toString()
   ]);
 
-  return [headers, ...rows].map(row => 
+  // Asegurar que los headers están incluidos
+  const csvContent = [headers, ...rows].map(row => 
     row.map(cell => `"${cell}"`).join(',')
   ).join('\n');
+
+  return csvContent;
 };
