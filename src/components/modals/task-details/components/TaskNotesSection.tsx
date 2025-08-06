@@ -19,7 +19,17 @@ export const TaskNotesSection = ({
 }: TaskNotesProps) => {
   const notes = isEditing ? (formData.notes || '') : (task.notes || '');
   
-  if (!notes && !isEditing) {
+  console.log('🔍 TaskNotesSection - Debug:', { 
+    taskId: task.id, 
+    taskNotes: task.notes, 
+    formDataNotes: formData.notes, 
+    finalNotes: notes, 
+    isEditing 
+  });
+
+  // Para cleaners, siempre mostrar la sección aunque no haya notas
+  // Solo ocultar si no hay notas Y estamos en modo edición (admin/manager)
+  if (!notes && isEditing) {
     return null;
   }
 
