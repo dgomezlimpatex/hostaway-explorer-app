@@ -80,7 +80,7 @@ export const LaundryReportTable = ({ data }: LaundryReportTableProps) => {
 
           {/* Habitaciones */}
           <div>
-            <p className="text-xs text-muted-foreground font-medium mb-1">HABITACIONES</p>
+            <p className="text-xs text-muted-foreground font-medium mb-1">CAMAS</p>
             <div className="grid grid-cols-2 gap-2 text-sm">
               <span>🛏️ {task.bedrooms} camas</span>
               <span>🛏️ {task.bedroomsSmall} pequeñas</span>
