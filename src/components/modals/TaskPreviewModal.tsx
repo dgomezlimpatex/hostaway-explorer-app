@@ -229,15 +229,15 @@ export const TaskPreviewModal: React.FC<TaskPreviewModalProps> = ({
 
           {/* Notas de la tarea */}
           {task.notes && (
-            <Card className="bg-gradient-to-br from-orange-50 to-orange-100/50 dark:from-orange-950/30 dark:to-orange-900/20 border-orange-200 dark:border-orange-800/50 shadow-lg">
+            <Card className="bg-gradient-to-br from-card to-card/50 border-0 shadow-lg">
               <CardContent className="p-5">
                 <div className="flex items-center space-x-3 mb-4">
-                  <div className="p-2 rounded-lg bg-orange-100 dark:bg-orange-900/50 text-orange-700 dark:text-orange-400">
+                  <div className="p-2 rounded-lg bg-primary/10 text-primary">
                     <FileText className="h-5 w-5" />
                   </div>
-                  <h3 className="font-bold text-lg text-orange-800 dark:text-orange-300">Notas de la Tarea</h3>
+                  <h3 className="font-bold text-lg text-foreground">Notas de la Tarea</h3>
                 </div>
-                <div className="text-sm text-foreground whitespace-pre-wrap bg-background/80 p-4 rounded-xl border border-orange-200/50 dark:border-orange-800/30 shadow-sm">
+                <div className="text-sm text-foreground whitespace-pre-wrap bg-muted/30 p-4 rounded-xl border border-border/50 shadow-sm">
                   {task.notes}
                 </div>
               </CardContent>
