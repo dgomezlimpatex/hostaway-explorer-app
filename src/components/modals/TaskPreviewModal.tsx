@@ -330,6 +330,18 @@ export const TaskPreviewModal: React.FC<TaskPreviewModalProps> = ({
               </div>
             </CardContent>
           </Card>
+
+          {/* Notas de la tarea */}
+          {task.notes && (
+            <Card>
+              <CardContent className="p-4 space-y-3">
+                <h3 className="font-semibold text-base">Notas de la Tarea</h3>
+                <div className="text-sm text-foreground whitespace-pre-wrap bg-muted/50 p-3 rounded-md">
+                  {task.notes}
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </div>
 
         {/* Botones de acción */}
