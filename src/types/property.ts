@@ -9,6 +9,8 @@ export interface Property extends BaseEntity {
   
   // Características
   numeroCamas: number;
+  numeroCamasPequenas: number;
+  numeroSofasCama: number;
   numeroBanos: number;
   
   // Servicio
@@ -21,6 +23,7 @@ export interface Property extends BaseEntity {
   
   // Apartado téxtil
   numeroSabanas: number;
+  numeroSabanasRequenas: number;
   numeroToallasGrandes: number;
   numeroTotallasPequenas: number;
   numeroAlfombrines: number;
@@ -30,6 +33,10 @@ export interface Property extends BaseEntity {
   // Amenities
   amenitiesBano: number;
   amenitiesCocina: number;
+  
+  // Consumibles
+  cantidadRollosPapelHigienico: number;
+  cantidadRollosPapelCocina: number;
   
   // Notas
   notas: string;
@@ -51,12 +58,15 @@ export interface CreatePropertyData {
   nombre: string;
   direccion: string;
   numeroCamas: number;
+  numeroCamasPequenas: number;
+  numeroSofasCama: number;
   numeroBanos: number;
   duracionServicio: number;
   costeServicio: number;
   checkInPredeterminado: string;
   checkOutPredeterminado: string;
   numeroSabanas: number;
+  numeroSabanasRequenas: number;
   numeroToallasGrandes: number;
   numeroTotallasPequenas: number;
   numeroAlfombrines: number;
@@ -64,6 +74,8 @@ export interface CreatePropertyData {
   kitAlimentario: number;
   amenitiesBano: number;
   amenitiesCocina: number;
+  cantidadRollosPapelHigienico: number;
+  cantidadRollosPapelCocina: number;
   notas: string;
   clienteId: string;
 }

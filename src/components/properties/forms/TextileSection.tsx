@@ -57,6 +57,26 @@ export const TextileSection = ({ control }: TextileSectionProps) => {
         />
         <FormField
           control={control}
+          name="numeroSabanasRequenas"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel className="flex items-center gap-2">
+                🛏️ Sábanas Pequeñas
+              </FormLabel>
+              <FormControl>
+                <Input 
+                  {...field} 
+                  type="number" 
+                  min="0"
+                  onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={control}
           name="numeroToallasGrandes"
           render={({ field }) => (
             <FormItem>
@@ -122,6 +142,46 @@ export const TextileSection = ({ control }: TextileSectionProps) => {
             <FormItem>
               <FormLabel className="flex items-center gap-2">
                 🍽️ Kit Alimentario
+              </FormLabel>
+              <FormControl>
+                <Input 
+                  {...field} 
+                  type="number" 
+                  min="0"
+                  onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={control}
+          name="cantidadRollosPapelHigienico"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel className="flex items-center gap-2">
+                🧻 Rollos de Papel Higiénico
+              </FormLabel>
+              <FormControl>
+                <Input 
+                  {...field} 
+                  type="number" 
+                  min="0"
+                  onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={control}
+          name="cantidadRollosPapelCocina"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel className="flex items-center gap-2">
+                🍽️ Rollos de Papel de Cocina
               </FormLabel>
               <FormControl>
                 <Input 

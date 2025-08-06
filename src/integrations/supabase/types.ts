@@ -816,6 +816,8 @@ export type Database = {
           azucar: number
           bayetas_cocina: number
           bolsas_basura: number
+          cantidad_rollos_papel_cocina: number
+          cantidad_rollos_papel_higienico: number
           champu: number
           check_in_predeterminado: string
           check_out_predeterminado: string
@@ -842,8 +844,11 @@ export type Database = {
           numero_alfombrines: number
           numero_banos: number
           numero_camas: number
+          numero_camas_pequenas: number
           numero_fundas_almohada: number
           numero_sabanas: number
+          numero_sabanas_pequenas: number
+          numero_sofas_cama: number
           numero_toallas_grandes: number
           numero_toallas_pequenas: number
           papel_cocina: number
@@ -861,6 +866,8 @@ export type Database = {
           azucar?: number
           bayetas_cocina?: number
           bolsas_basura?: number
+          cantidad_rollos_papel_cocina?: number
+          cantidad_rollos_papel_higienico?: number
           champu?: number
           check_in_predeterminado?: string
           check_out_predeterminado?: string
@@ -887,8 +894,11 @@ export type Database = {
           numero_alfombrines?: number
           numero_banos?: number
           numero_camas?: number
+          numero_camas_pequenas?: number
           numero_fundas_almohada?: number
           numero_sabanas?: number
+          numero_sabanas_pequenas?: number
+          numero_sofas_cama?: number
           numero_toallas_grandes?: number
           numero_toallas_pequenas?: number
           papel_cocina?: number
@@ -906,6 +916,8 @@ export type Database = {
           azucar?: number
           bayetas_cocina?: number
           bolsas_basura?: number
+          cantidad_rollos_papel_cocina?: number
+          cantidad_rollos_papel_higienico?: number
           champu?: number
           check_in_predeterminado?: string
           check_out_predeterminado?: string
@@ -932,8 +944,11 @@ export type Database = {
           numero_alfombrines?: number
           numero_banos?: number
           numero_camas?: number
+          numero_camas_pequenas?: number
           numero_fundas_almohada?: number
           numero_sabanas?: number
+          numero_sabanas_pequenas?: number
+          numero_sofas_cama?: number
           numero_toallas_grandes?: number
           numero_toallas_pequenas?: number
           papel_cocina?: number
