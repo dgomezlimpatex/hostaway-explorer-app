@@ -19,7 +19,7 @@ export const TaskNotesSection = ({
 }: TaskNotesProps) => {
   const notes = isEditing ? (formData.notes || '') : (task.notes || '');
   
-  console.log('🔍 TaskNotesSection - DEBUGGING:', { 
+  console.log('🔍 TaskNotesSection - STARTING RENDER:', { 
     taskId: task.id, 
     taskNotes: task.notes, 
     formDataNotes: formData.notes, 
@@ -27,6 +27,8 @@ export const TaskNotesSection = ({
     isEditing,
     hasNotes: !!notes
   });
+  
+  console.log('🔍 TaskNotesSection - ABOUT TO RENDER CARD');
 
   // SIEMPRE mostrar la sección de notas, independientemente del rol
   // if (!notes && isEditing) {
