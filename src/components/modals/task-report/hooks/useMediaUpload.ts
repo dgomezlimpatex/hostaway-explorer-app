@@ -30,43 +30,75 @@ export const useMediaUpload = ({
   const [uploadQueue, setUploadQueue] = useState<File[]>([]);
 
   const validateFile = (file: File): boolean => {
-    // Use secure validation first
-    const mediaType = file.type.startsWith('image/') ? 'image' : 'video';
-    const secureValidation = secureValidateFile(file, mediaType);
-    
-    if (!secureValidation.isValid) {
+    console.log('🔍 Validando archivo:', {
+      name: file.name,
+      size: file.size,
+      type: file.type,
+      lastModified: file.lastModified
+    });
+
+    // Validación básica más permisiva
+    if (!file || !file.name) {
+      console.error('❌ Archivo inválido o sin nombre');
       toast({
         title: "Error",
-        description: secureValidation.error,
+        description: "Archivo no válido",
         variant: "destructive",
       });
       return false;
     }
 
-    // Validación adicional más flexible para extensiones
+    // Verificar tamaño primero (100MB máximo)
+    const maxSize = 100 * 1024 * 1024; // 100MB
+    if (file.size > maxSize) {
+      console.error('❌ Archivo muy grande:', file.size, 'bytes');
+      toast({
+        title: "Error",
+        description: `Archivo muy grande. Máximo 100MB (tu archivo: ${Math.round(file.size / (1024 * 1024))}MB)`,
+        variant: "destructive",
+      });
+      return false;
+    }
+
+    if (file.size === 0) {
+      console.error('❌ Archivo vacío');
+      toast({
+        title: "Error",
+        description: "El archivo está vacío",
+        variant: "destructive",
+      });
+      return false;
+    }
+
+    // Lista muy amplia de extensiones válidas
     const fileName = file.name.toLowerCase();
-    const validImageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.heic', '.heif', '.tiff', '.tif', '.bmp', '.svg', '.avif', '.dng', '.raw', '.cr2', '.crw', '.nef', '.arw', '.orf', '.rw2'];
-    const validVideoExtensions = ['.mp4', '.mov', '.avi', '.mkv', '.webm', '.wmv', '.flv', '.ogg', '.m4v', '.3gp', '.3gpp'];
+    const validExtensions = [
+      // Imágenes básicas
+      '.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp', '.svg',
+      // Formatos Apple/iOS
+      '.heic', '.heif', 
+      // Formatos RAW
+      '.dng', '.raw', '.cr2', '.crw', '.nef', '.arw', '.orf', '.rw2', '.pef', '.srw',
+      // Otros formatos
+      '.tiff', '.tif', '.avif', '.jfif',
+      // Videos
+      '.mp4', '.mov', '.avi', '.mkv', '.webm', '.wmv', '.m4v', '.3gp'
+    ];
     
-    const hasValidExtension = [...validImageExtensions, ...validVideoExtensions].some(ext => 
-      fileName.endsWith(ext)
-    );
-
-    // Si la validación segura falla pero la extensión es válida, intentar proceder
-    if (!secureValidation.isValid && hasValidExtension) {
-      console.log('Validación segura falló pero extensión es válida, permitiendo subida:', fileName);
-      return true; // Permitir subida si la extensión es reconocida
-    }
-
+    const hasValidExtension = validExtensions.some(ext => fileName.endsWith(ext));
+    
     if (!hasValidExtension) {
+      console.error('❌ Extensión no válida:', fileName);
       toast({
         title: "Error",
-        description: "Formato de archivo no soportado. Formatos válidos: JPG, PNG, HEIC, RAW, MP4, MOV, etc.",
+        description: `Formato no soportado. Tu archivo: ${fileName}. Formatos válidos: JPG, PNG, HEIC, etc.`,
         variant: "destructive",
       });
       return false;
     }
 
+    // Si llegamos aquí, el archivo es válido
+    console.log('✅ Archivo válido para subida');
     return true;
   };
 
@@ -133,11 +165,13 @@ export const useMediaUpload = ({
         return;
       }
 
-      console.log('MediaUpload - attempting upload:', { 
+      console.log('📱 MediaUpload - attempting upload:', { 
         file: preparedFile.name, 
         size: preparedFile.size,
+        type: preparedFile.type,
         reportId, 
-        checklistItemId 
+        checklistItemId,
+        isOnline 
       });
       
       const data = await uploadMediaAsync({
@@ -146,7 +180,7 @@ export const useMediaUpload = ({
         checklistItemId,
       });
       
-      console.log('MediaUpload - upload successful:', data);
+      console.log('✅ MediaUpload - upload successful:', data);
       onMediaCaptured(data.file_url);
       setPreviewUrl(null);
       
@@ -155,11 +189,26 @@ export const useMediaUpload = ({
         description: "El archivo se ha subido correctamente.",
       });
     } catch (error) {
-      console.error('MediaUpload - upload failed:', error);
+      console.error('❌ MediaUpload - upload failed:', error);
       setPreviewUrl(null);
+      
+      // Error más descriptivo
+      let errorMessage = "No se pudo subir el archivo.";
+      if (error instanceof Error) {
+        if (error.message.includes('413') || error.message.includes('too large')) {
+          errorMessage = "El archivo es muy grande. Máximo 100MB.";
+        } else if (error.message.includes('401') || error.message.includes('unauthorized')) {
+          errorMessage = "No tienes permisos para subir archivos.";
+        } else if (error.message.includes('network') || error.message.includes('fetch')) {
+          errorMessage = "Error de conexión. Verifica tu internet.";
+        } else if (error.message.includes('quota') || error.message.includes('storage')) {
+          errorMessage = "Espacio de almacenamiento lleno.";
+        }
+      }
+      
       toast({
         title: "Error al subir archivo",
-        description: "No se pudo subir el archivo. Inténtalo de nuevo.",
+        description: errorMessage + " Inténtalo de nuevo.",
         variant: "destructive",
       });
     }

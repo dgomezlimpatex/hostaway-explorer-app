@@ -21,6 +21,12 @@ export const MediaUploadButtons: React.FC<MediaUploadButtonsProps> = ({
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
+      console.log('📁 Archivo seleccionado desde cámara:', {
+        name: file.name,
+        size: file.size,
+        type: file.type || 'desconocido',
+        lastModified: file.lastModified
+      });
       onSingleFileSelect(file);
     }
     if (fileInputRef.current) {
@@ -31,6 +37,10 @@ export const MediaUploadButtons: React.FC<MediaUploadButtonsProps> = ({
   const handleMultipleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
     if (files && files.length > 0) {
+      console.log('📁 Archivos seleccionados desde galería:', files.length, 'archivos');
+      Array.from(files).forEach((file, index) => {
+        console.log(`  ${index + 1}.`, file.name, `(${Math.round(file.size / 1024)}KB)`, file.type || 'tipo desconocido');
+      });
       onMultipleFileSelect(files);
     }
     if (galleryInputRef.current) {
