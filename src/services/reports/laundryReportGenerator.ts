@@ -72,7 +72,7 @@ export const generateLaundryReport = (tasks: any[], properties: any[], clients: 
         taskStatus: task.status === 'completed' ? 'Completada' :
                    task.status === 'in-progress' ? 'En Progreso' : 'Pendiente',
         totalCost: property?.costeServicio || task.coste || 0,
-        serviceHours: (task.duration || 0) / 60, // Convertir minutos a horas
+        serviceHours: (property?.duracionServicio || task.duration || task.duracion || 120) / 60, // Convertir minutos a horas
         workTeam: task.cleaner || 'Sin asignar',
         paymentMethod: client?.metodoPago || task.metodo_pago || 'No especificado',
         incidents: incidenciasText,

@@ -72,19 +72,21 @@ export const generateTaskReport = (tasks: any[], properties: any[], clients: any
       ).join(' ');
     };
 
-    // Determinar información de la propiedad y costo
-    let propertyName, propertyAddress, taskCost;
+    // Determinar información de la propiedad, costo y duración
+    let propertyName, propertyAddress, taskCost, taskDuration;
     
     if (isExtraordinaryTask) {
       // Para tareas extraordinarias, usar información directa de la tarea
       propertyName = task.property || 'Servicio Extraordinario';
       propertyAddress = task.address || task.extraordinaryBillingAddress || 'Dirección no disponible';
       taskCost = task.coste || 0;
+      taskDuration = task.duration || task.duracion || 120; // Default 2 horas
     } else {
       // Para tareas normales, usar información de la propiedad
       propertyName = task.property || property?.nombre || 'Propiedad desconocida';
       propertyAddress = task.address || property?.direccion || 'Dirección no disponible';
       taskCost = property?.costeServicio || task.coste || 0;
+      taskDuration = property?.duracionServicio || task.duration || task.duracion || 120; // Default 2 horas
     }
     
     // Crear el texto de incidencias con nombre y código de propiedad
@@ -113,7 +115,7 @@ export const generateTaskReport = (tasks: any[], properties: any[], clients: any
       taskStatus: task.status === 'completed' ? 'Completada' :
                  task.status === 'in-progress' ? 'En Progreso' : 'Pendiente',
       totalCost: taskCost,
-      serviceHours: (task.duration || 0) / 60, // Convertir minutos a horas
+      serviceHours: taskDuration / 60, // Convertir minutos a horas
       workTeam: task.cleaner || 'Sin asignar', // Ya contiene los nombres separados por comas
       paymentMethod: paymentMethodSpanish,
       incidents: incidenciasText
