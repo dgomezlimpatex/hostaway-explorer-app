@@ -114,7 +114,14 @@ async function filterTasksByUserRole(tasks: Task[], userRole: string | null, cur
         continue;
       }
       
-      // Check if task has multiple assignments including this cleaner
+      // Check if cleaner name appears in the combined cleaner field (for multiple assignments)
+      if (task.cleaner && task.cleaner.includes(currentCleanerId)) {
+        console.log('✅ Task assigned via multiple assignments (name check)');
+        tasksForCleaner.push(task);
+        continue;
+      }
+      
+      // Check if task has multiple assignments including this cleaner (fallback)
       try {
         const assignments = await multipleTaskAssignmentService.getTaskAssignments(task.id);
         console.log('📋 Multiple assignments for task', task.id, ':', assignments);

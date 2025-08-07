@@ -112,23 +112,25 @@ export class TaskStorageService extends BaseStorageService<Task, TaskCreateData>
         status: finalStatus
       };
 
-      // Handle multiple assignments - create separate task instances for each assigned cleaner
+      // Handle multiple assignments - combine all cleaners into one task
       if (task.task_assignments && task.task_assignments.length > 0) {
-        // Create a task instance for each assignment
-        task.task_assignments.forEach((assignment, index) => {
-          // Create a complete task object preserving all original data
-          const taskDataForCleaner = {
-            ...baseTaskData,
-            cleaner: assignment.cleaner_name,
-            cleaner_id: assignment.cleaner_id,
-            // Add a suffix to the ID to make it unique for each assignment while keeping original reference
-            id: index === 0 ? task.id : `${task.id}_assignment_${assignment.cleaner_id}`,
-            originalTaskId: task.id // Always store the original task ID
-          };
-          
-          const taskForCleaner = taskStorageConfig.mapFromDB(taskDataForCleaner);
-          mappedTasks.push(taskForCleaner);
-        });
+        // Combine all cleaner names separated by commas
+        const allCleanerNames = task.task_assignments.map(a => a.cleaner_name).join(', ');
+        
+        // Use the first cleaner's ID as primary, but store all cleaner names
+        const primaryAssignment = task.task_assignments[0];
+        
+        const taskData = {
+          ...baseTaskData,
+          cleaner: allCleanerNames, // Combine all names
+          cleaner_id: primaryAssignment.cleaner_id, // Primary cleaner ID
+          originalTaskId: task.id,
+          // Store all assignments for reference
+          assignments: task.task_assignments
+        };
+        
+        const mappedTask = taskStorageConfig.mapFromDB(taskData);
+        mappedTasks.push(mappedTask);
       } else {
         // No specific assignments, use original task data
         const mappedTask = taskStorageConfig.mapFromDB(baseTaskData);
