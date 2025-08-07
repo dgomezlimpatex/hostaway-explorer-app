@@ -8,14 +8,28 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { UserX, Clock } from 'lucide-react';
 
 const Index = () => {
-  const { user, profile, userRole } = useAuth();
+  const { user, profile, userRole, isLoading } = useAuth();
   const { isCleaner } = useRolePermissions();
 
-  console.log('Index - auth state:', { user: !!user, profile: !!profile, userRole });
+  console.log('Index - auth state:', { user: !!user, profile: !!profile, userRole, isLoading });
 
   // Si no hay usuario autenticado, mostrar página de bienvenida
   if (!user) {
     return <WelcomePage />;
+  }
+
+  // Si está cargando, mostrar spinner de carga
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <Card className="w-full max-w-md">
+          <CardContent className="p-6 text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+            <p>Cargando...</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
   }
 
   // Si el usuario no tiene rol asignado, mostrar mensaje de espera
