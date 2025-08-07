@@ -43,7 +43,7 @@ export const useOptimizedTasks = ({
       const cachedAllTasks = queryClient.getQueryData(['tasks', 'all']);
       if (cachedAllTasks) {
         const filteredByView = filterTasksByView(cachedAllTasks as Task[], currentDate, currentView);
-        return await filterTasksByUserRole(filteredByView, userRole, currentCleanerId);
+        return await filterTasksByUserRole(filteredByView, userRole, currentCleanerId, cleaners);
       }
 
       // Si no hay cache, obtener todas las tareas y cachearlas
@@ -51,7 +51,7 @@ export const useOptimizedTasks = ({
       queryClient.setQueryData(['tasks', 'all'], allTasks);
       
       const filteredByView = filterTasksByView(allTasks, currentDate, currentView);
-      return await filterTasksByUserRole(filteredByView, userRole, currentCleanerId);
+      return await filterTasksByUserRole(filteredByView, userRole, currentCleanerId, cleaners);
     },
     staleTime: 5 * 60 * 1000, // 5 minutos
     gcTime: 30 * 60 * 1000, // 30 minutos (previously cacheTime)
@@ -82,7 +82,8 @@ export const useOptimizedTasks = ({
         queryFn: async () => {
           const allTasks = queryClient.getQueryData(['tasks', 'all']) as Task[] || 
                           await taskStorageService.getTasks();
-          return filterTasksByView(allTasks, date, currentView);
+          const filteredByView = filterTasksByView(allTasks, date, currentView);
+          return await filterTasksByUserRole(filteredByView, userRole, currentCleanerId, cleaners);
         },
         staleTime: 5 * 60 * 1000,
       });
@@ -98,7 +99,7 @@ export const useOptimizedTasks = ({
 };
 
 // Function to filter tasks by user role
-async function filterTasksByUserRole(tasks: Task[], userRole: string | null, currentCleanerId: string | null): Promise<Task[]> {
+async function filterTasksByUserRole(tasks: Task[], userRole: string | null, currentCleanerId: string | null, cleaners?: any[]): Promise<Task[]> {
   // If user is a cleaner, only show their assigned tasks
   if (userRole === 'cleaner' && currentCleanerId) {
     console.log('🔍 Filtering tasks for cleaner:', currentCleanerId);
@@ -114,8 +115,10 @@ async function filterTasksByUserRole(tasks: Task[], userRole: string | null, cur
         continue;
       }
       
-      // Check if cleaner name appears in the combined cleaner field (for multiple assignments)
-      if (task.cleaner && task.cleaner.includes(currentCleanerId)) {
+      // Check if cleaner appears in the combined cleaner field (for multiple assignments)
+      // We need to get the cleaner name from the cleaners array to compare
+      const currentCleanerName = cleaners?.find(c => c.id === currentCleanerId)?.name;
+      if (task.cleaner && currentCleanerName && task.cleaner.includes(currentCleanerName)) {
         console.log('✅ Task assigned via multiple assignments (name check)');
         tasksForCleaner.push(task);
         continue;

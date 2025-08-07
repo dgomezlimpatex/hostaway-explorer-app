@@ -272,6 +272,16 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
       return;
     }
 
+    // Verificar que tenemos el ID del limpiador actual
+    if (!currentCleanerId) {
+      toast({
+        title: "Error",
+        description: "No se pudo identificar tu perfil de limpiador. Contacta al administrador.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     if (reportCreationAttempted.current !== task.id) {
       console.log('TaskReportModal - starting task and creating report');
       reportCreationAttempted.current = task.id;
@@ -279,7 +289,7 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
       // Create report with start time
       const reportData = {
         task_id: task.id,
-        cleaner_id: currentCleanerId || task.cleanerId,
+        cleaner_id: currentCleanerId, // Usar SIEMPRE el ID del limpiador actual para tareas múltiples
         checklist_completed: {},
         notes: '',
         issues_found: [],
@@ -310,9 +320,19 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
       return;
     }
 
+    // Verificar que tenemos el ID del limpiador actual
+    if (!currentCleanerId) {
+      toast({
+        title: "Error",
+        description: "No se pudo identificar tu perfil de limpiador. Contacta al administrador.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     const reportData = {
       task_id: task.id,
-      cleaner_id: currentCleanerId || task.cleanerId,
+      cleaner_id: currentCleanerId, // Usar SIEMPRE el ID del limpiador actual para tareas múltiples
       checklist_template_id: currentTemplate?.id,
       checklist_completed: checklist,
       notes,
@@ -395,7 +415,7 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
 
     const reportData = {
       task_id: task.id,
-      cleaner_id: currentCleanerId || task.cleanerId,
+      cleaner_id: currentCleanerId, // Usar SIEMPRE el ID del limpiador actual para tareas múltiples
       checklist_template_id: currentTemplate?.id,
       checklist_completed: checklist,
       notes,
