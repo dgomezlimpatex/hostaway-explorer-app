@@ -60,7 +60,7 @@ const generateTasksCSV = (data: TaskReport[]): string => {
     task.client,
     task.serviceType,
     task.taskStatus,
-    `€${task.totalCost.toFixed(2)}`,
+    task.totalCost.toFixed(2).replace('.', ','),
     task.workTeam,
     task.paymentMethod,
     task.incidents
