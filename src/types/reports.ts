@@ -17,6 +17,7 @@ export interface TaskReport extends BaseEntity, TimeRange {
   serviceType: string;
   taskStatus: string;
   totalCost: number;
+  serviceHours: number;
   workTeam: string;
   paymentMethod: string;
   incidents: string;

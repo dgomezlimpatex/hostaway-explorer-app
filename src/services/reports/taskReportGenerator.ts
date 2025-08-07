@@ -113,6 +113,7 @@ export const generateTaskReport = (tasks: any[], properties: any[], clients: any
       taskStatus: task.status === 'completed' ? 'Completada' :
                  task.status === 'in-progress' ? 'En Progreso' : 'Pendiente',
       totalCost: taskCost,
+      serviceHours: (task.duracion || task.duration || 0) / 60, // Convertir minutos a horas
       workTeam: task.cleaner || 'Sin asignar', // Ya contiene los nombres separados por comas
       paymentMethod: paymentMethodSpanish,
       incidents: incidenciasText
