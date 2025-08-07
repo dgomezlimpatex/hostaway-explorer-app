@@ -2,6 +2,22 @@ import { TaskReport, BillingReport, SummaryReport, LaundryReport } from '@/types
 
 type ReportData = TaskReport[] | BillingReport[] | SummaryReport | LaundryReport[];
 
+// Helper function to format dates from YYYY-MM-DD to DD/MM/YYYY
+const formatDateForCSV = (dateString: string): string => {
+  if (!dateString || dateString === 'N/A') return dateString;
+  
+  // Check if it's already in DD/MM/YYYY format
+  if (dateString.includes('/')) return dateString;
+  
+  // Convert from YYYY-MM-DD to DD/MM/YYYY
+  const parts = dateString.split('-');
+  if (parts.length === 3) {
+    return `${parts[2]}/${parts[1]}/${parts[0]}`;
+  }
+  
+  return dateString;
+};
+
 export const exportToCSV = (
   data: ReportData,
   filename: string,
@@ -56,7 +72,7 @@ const generateTasksCSV = (data: TaskReport[]): string => {
   ];
 
   const rows = data.map(task => [
-    task.serviceDate,
+    formatDateForCSV(task.serviceDate),
     task.supervisor,
     task.client,
     task.serviceType,
@@ -87,7 +103,7 @@ const generateBillingCSV = (data: BillingReport[]): string => {
   const rows = data.map(item => [
     item.property,
     item.client,
-    item.date,
+    formatDateForCSV(item.date),
     item.serviceType,
     item.duration.toString(),
     item.cost.toFixed(2),
@@ -158,7 +174,7 @@ const generateLaundryCSV = (data: LaundryReport[]): string => {
   const rows = data.map(item => [
     item.property || '',
     item.address || '',
-    item.date || '',
+    formatDateForCSV(item.date || ''),
     item.startTime || '',
     item.endTime || '',
     item.client || '',
