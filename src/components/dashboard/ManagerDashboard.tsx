@@ -206,6 +206,9 @@ export const ManagerDashboard = () => {
                   monthlyMetrics={monthlyMetrics}
                   onOpenCreateModal={handleOpenCreateModal}
                   onOpenBatchModal={handleOpenBatchModal}
+                  todayCount={todayTasks.length}
+                  unassignedCount={unassignedTasks.length}
+                  pendingIncidents={pendingIncidents}
                 />
 
                 {/* Tareas de hoy */}
