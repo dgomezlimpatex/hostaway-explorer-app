@@ -5,6 +5,7 @@ import { MobileDashboardHeader } from './MobileDashboardHeader';
 import { DashboardStatsCards } from './components/DashboardStatsCards';
 import { TodayTasksSection } from './components/TodayTasksSection';
 import { DashboardMetricsCards } from './components/DashboardMetricsCards';
+import { Button } from '@/components/ui/button';
 import { CreateTaskModal } from '@/components/modals/CreateTaskModal';
 import { BatchCreateTaskModal } from '@/components/modals/BatchCreateTaskModal';
 import { TaskDetailsModal } from '@/components/modals/TaskDetailsModal';
@@ -159,7 +160,7 @@ export const ManagerDashboard = () => {
 
   return (
     <SidebarProvider>
-      <div className="min-h-screen w-full bg-gray-50">
+      <div className="min-h-screen w-full bg-gradient-to-br from-gray-50 to-white">
         {/* Header móvil */}
         <MobileDashboardHeader />
         
@@ -170,52 +171,102 @@ export const ManagerDashboard = () => {
           )}
           
           <main className="flex-1 overflow-auto lg:pt-0 pt-0">
-          <div className="p-6">
-            <div className="max-w-6xl mx-auto space-y-6">
-              {/* Hostaway Integration Widget - Solo si tiene permisos */}
-              {canAccessModule('hostaway') && (
-                <div className="mb-6">
-                  <HostawayIntegrationWidget />
+            <div className="p-6">
+              <div className="max-w-7xl mx-auto space-y-8">
+                {/* Hero */}
+                <div className="rounded-2xl p-6 bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg">
+                  <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                    <div>
+                      <h1 className="text-3xl font-bold mb-1">Panel de Gestión</h1>
+                      <p className="text-white/80">{format(new Date(), "EEEE, d 'de' MMMM 'de' yyyy", { locale: es })}</p>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      <Button onClick={handleOpenCreateModal} className="bg-white text-blue-700 hover:bg-white/90">
+                        + Nueva tarea
+                      </Button>
+                      <Button onClick={handleOpenBatchModal} variant="secondary" className="bg-white/10 hover:bg-white/20 text-white border-white/20">
+                        Carga múltiple
+                      </Button>
+                      <Button onClick={() => window.location.assign('/calendar')} variant="outline" className="bg-white/10 hover:bg-white/20 text-white border-white/20">
+                        Ver calendario
+                      </Button>
+                    </div>
+                  </div>
                 </div>
-              )}
 
-              {/* Header */}
-              <div className="mb-8">
-                <h1 className="text-3xl font-bold text-gray-900 mb-2">
-                  Dashboard de Gestión
-                </h1>
-                <p className="text-gray-600">
-                  {format(new Date(), "EEEE, d 'de' MMMM 'de' yyyy", { locale: es })}
-                </p>
+                {/* Hostaway Integration Widget - Solo si tiene permisos */}
+                {canAccessModule('hostaway') && (
+                  <div className="mb-2">
+                    <HostawayIntegrationWidget />
+                  </div>
+                )}
+
+                {/* KPIs y acciones */}
+                <DashboardStatsCards 
+                  monthlyMetrics={monthlyMetrics}
+                  onOpenCreateModal={handleOpenCreateModal}
+                  onOpenBatchModal={handleOpenBatchModal}
+                />
+
+                {/* Tareas de hoy */}
+                <TodayTasksSection 
+                  todayTasks={todayTasks}
+                  paginatedTodayTasks={paginatedTodayTasks}
+                  currentTaskPage={currentTaskPage}
+                  totalTaskPages={totalTaskPages}
+                  TASKS_PER_PAGE={TASKS_PER_PAGE}
+                  onTaskClick={handleTaskClick}
+                  onPreviousPage={goToPreviousPage}
+                  onNextPage={goToNextPage}
+                />
+
+                {/* Inferior: métricas + accesos rápidos + actividad */}
+                <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+                  <div className="xl:col-span-2">
+                    <DashboardMetricsCards 
+                      pendingIncidents={pendingIncidents}
+                      unassignedTasksCount={unassignedTasks.length}
+                      todayTasks={todayTasks}
+                    />
+                  </div>
+
+                  {/* Accesos rápidos y actividad reciente */}
+                  <div className="space-y-6">
+                    {/* Accesos rápidos */}
+                    <div className="bg-white rounded-xl shadow-lg p-4">
+                      <h3 className="text-sm font-semibold text-gray-800 mb-3">Accesos rápidos</h3>
+                      <div className="grid grid-cols-2 gap-3">
+                        <Button variant="outline" className="justify-start" onClick={() => window.location.assign('/tasks')}>Tareas</Button>
+                        <Button variant="outline" className="justify-start" onClick={() => window.location.assign('/workers')}>Trabajadores</Button>
+                        <Button variant="outline" className="justify-start" onClick={() => window.location.assign('/properties')}>Propiedades</Button>
+                        <Button variant="outline" className="justify-start" onClick={() => window.location.assign('/cleaning-reports')}>Reportes</Button>
+                      </div>
+                    </div>
+
+                    {/* Actividad reciente (reportes con incidencias) */}
+                    <div className="bg-white rounded-xl shadow-lg p-4">
+                      <h3 className="text-sm font-semibold text-gray-800 mb-3">Actividad reciente</h3>
+                      <ul className="divide-y divide-gray-100">
+                        {recentReports.slice(0,5).map((r, idx) => (
+                          <li key={idx} className="py-3 flex items-center justify-between">
+                            <div className="min-w-0">
+                              <p className="text-sm font-medium text-gray-900 truncate">Reporte #{r.id.slice(0,8)}</p>
+                              <p className="text-xs text-gray-500 truncate">{r.notes || 'Sin notas'}</p>
+                            </div>
+                            <span className="text-xs px-2 py-1 rounded-full bg-yellow-50 text-yellow-700 border border-yellow-200">
+                              {r.overall_status}
+                            </span>
+                          </li>
+                        ))}
+                        {recentReports.length === 0 && (
+                          <li className="py-3 text-sm text-gray-500">Sin actividad reciente</li>
+                        )}
+                      </ul>
+                    </div>
+                  </div>
+                </div>
               </div>
-
-              {/* Main Metrics Row */}
-              <DashboardStatsCards 
-                monthlyMetrics={monthlyMetrics}
-                onOpenCreateModal={handleOpenCreateModal}
-                onOpenBatchModal={handleOpenBatchModal}
-              />
-
-              {/* Central Section - Today's Tasks */}
-              <TodayTasksSection 
-                todayTasks={todayTasks}
-                paginatedTodayTasks={paginatedTodayTasks}
-                currentTaskPage={currentTaskPage}
-                totalTaskPages={totalTaskPages}
-                TASKS_PER_PAGE={TASKS_PER_PAGE}
-                onTaskClick={handleTaskClick}
-                onPreviousPage={goToPreviousPage}
-                onNextPage={goToNextPage}
-              />
-
-              {/* Bottom Row */}
-              <DashboardMetricsCards 
-                pendingIncidents={pendingIncidents}
-                unassignedTasksCount={unassignedTasks.length}
-                todayTasks={todayTasks}
-              />
             </div>
-          </div>
           </main>
         </div>
       </div>
