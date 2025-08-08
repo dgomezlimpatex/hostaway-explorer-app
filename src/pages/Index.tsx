@@ -13,28 +13,6 @@ const Index = () => {
 
   console.log('Index - auth state:', { user: !!user, profile: !!profile, userRole, isLoading });
 
-  // SEO basics for dashboard
-  if (typeof document !== 'undefined') {
-    document.title = user ? 'Dashboard Admin | Gestión de Limpiezas' : 'Bienvenido | Gestión de Limpiezas';
-    const desc = 'Panel de control para admin/manager con KPIs, tareas del día, incidencias y accesos rápidos.';
-    let meta = document.querySelector('meta[name="description"]');
-    if (!meta) {
-      meta = document.createElement('meta');
-      meta.setAttribute('name', 'description');
-      document.head.appendChild(meta);
-    }
-    meta.setAttribute('content', desc);
-
-    let canonical = document.querySelector('link[rel="canonical"]');
-    if (!canonical) {
-      canonical = document.createElement('link');
-      canonical.setAttribute('rel', 'canonical');
-      document.head.appendChild(canonical);
-    }
-    canonical.setAttribute('href', window.location.origin + '/');
-  }
-
-
   // Si no hay usuario autenticado, mostrar página de bienvenida
   if (!user) {
     return <WelcomePage />;
