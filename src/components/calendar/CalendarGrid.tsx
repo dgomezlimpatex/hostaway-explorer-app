@@ -21,6 +21,8 @@ interface CalendarGridProps {
   onTaskClick: (task: Task) => void;
   getTaskPosition: (startTime: string, endTime: string) => { left: string; width: string };
   isTimeSlotOccupied: (cleanerId: string, hour: number, minute: number) => boolean;
+  // Map of task_id -> array of cleaner_ids assigned via task_assignments
+  assignmentsMap?: Record<string, string[]>;
 }
 
 // Memoized cleaner row component for better performance
@@ -166,16 +168,20 @@ export const CalendarGrid = memo(forwardRef<HTMLDivElement, CalendarGridProps>(
     onDragEnd,
     onTaskClick,
     getTaskPosition,
-    isTimeSlotOccupied
+    isTimeSlotOccupied,
+    assignmentsMap
    }, ref) => {
 
     // Memoize cleaner rows with tasks
     const cleanerRows = useMemo(() => {
       return cleaners.map((cleaner, index) => {
-        // Filter tasks by cleaner_id (preferred) or cleaner name (fallback)
-        const cleanerTasks = assignedTasks.filter(task => 
-          task.cleanerId === cleaner.id || task.cleaner === cleaner.name
-        );
+        // Filter tasks by cleaner_id (preferred), cleaner name (fallback),
+        // or via assignmentsMap (multiple assignees)
+        const cleanerTasks = assignedTasks.filter(task => {
+          if (task.cleanerId === cleaner.id || task.cleaner === cleaner.name) return true;
+          // Check multiple assignments map
+          return Array.isArray((assignmentsMap as any)?.[task.id]) && (assignmentsMap as any)[task.id].includes(cleaner.id);
+        });
         
         return (
           <CleanerRow
@@ -198,7 +204,7 @@ export const CalendarGrid = memo(forwardRef<HTMLDivElement, CalendarGridProps>(
           />
         );
       });
-    }, [cleaners, timeSlots, assignedTasks, availability, currentDate, dragState, onDragOver, onDrop, onDragStart, onDragEnd, onTaskClick, getTaskPosition, isTimeSlotOccupied]);
+    }, [cleaners, timeSlots, assignedTasks, availability, currentDate, dragState, onDragOver, onDrop, onDragStart, onDragEnd, onTaskClick, getTaskPosition, isTimeSlotOccupied, assignmentsMap]);
 
      return (
        <div className="flex-1 relative">

@@ -26,6 +26,7 @@ interface CalendarLayoutProps {
   onTaskClick: (task: Task) => void;
   getTaskPosition: (startTime: string, endTime: string) => { left: string; width: string };
   isTimeSlotOccupied: (cleanerId: string, hour: number, minute: number) => boolean;
+  assignmentsMap?: Record<string, string[]>;
 }
 
 export const CalendarLayout = ({
@@ -45,7 +46,8 @@ export const CalendarLayout = ({
   onDragEnd,
   onTaskClick,
   getTaskPosition,
-  isTimeSlotOccupied
+  isTimeSlotOccupied,
+  assignmentsMap
 }: CalendarLayoutProps) => {
   const { isMobile, isTablet } = useDeviceType();
 
@@ -144,6 +146,7 @@ export const CalendarLayout = ({
                   onTaskClick={onTaskClick}
                   getTaskPosition={getTaskPosition}
                   isTimeSlotOccupied={isTimeSlotOccupied}
+                  assignmentsMap={assignmentsMap}
                 />
               </div>
             </div>

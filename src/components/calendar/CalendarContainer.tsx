@@ -10,6 +10,8 @@ import { StatusLegend } from "./StatusLegend";
 import { Task, Cleaner } from "@/types/calendar";
 import { CleanerAvailability } from "@/hooks/useCleanerAvailability";
 import { getTaskPosition, isTimeSlotOccupied } from "@/utils/taskPositioning";
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 
 interface CalendarContainerProps {
   tasks: Task[];
@@ -84,6 +86,32 @@ export const CalendarContainer = ({
     return { assignedTasks: assigned, unassignedTasks: unassigned };
   }, [tasks]);
 
+  // Build assignments map for visible assigned tasks (task_id -> [cleaner_id])
+  const taskIds = useMemo(() => assignedTasks.map(t => t.id), [assignedTasks]);
+
+  const { data: assignmentRows = [] } = useQuery<{ task_id: string; cleaner_id: string }[]>({
+    queryKey: ['taskAssignmentsForCalendar', taskIds],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('task_assignments')
+        .select('task_id, cleaner_id')
+        .in('task_id', taskIds);
+      if (error) throw error;
+      return data as { task_id: string; cleaner_id: string }[];
+    },
+    enabled: taskIds.length > 0,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const assignmentsMap = useMemo(() => {
+    const map: Record<string, string[]> = {};
+    (assignmentRows || []).forEach(row => {
+      if (!map[row.task_id]) map[row.task_id] = [];
+      map[row.task_id].push(row.cleaner_id);
+    });
+    return map;
+  }, [assignmentRows]);
+
   // Memoized time slot occupation check wrapper que excluye la tarea que se está arrastrando
   const checkTimeSlotOccupied = (cleanerId: string, hour: number, minute: number) => {
     return isTimeSlotOccupied(
@@ -132,6 +160,7 @@ export const CalendarContainer = ({
             onTaskClick={handleTaskClick}
             getTaskPosition={getTaskPosition}
             isTimeSlotOccupied={checkTimeSlotOccupied}
+            assignmentsMap={assignmentsMap}
           />
         </div>
       </div>
