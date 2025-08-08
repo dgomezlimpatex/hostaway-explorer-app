@@ -12,6 +12,7 @@ interface ChecklistTemplatesListProps {
   isLoading: boolean;
   onEdit: (template: TaskChecklistTemplate) => void;
   onDuplicate: (template: TaskChecklistTemplate) => void;
+  onDelete: (template: TaskChecklistTemplate) => void;
 }
 
 export const ChecklistTemplatesList: React.FC<ChecklistTemplatesListProps> = ({
@@ -19,6 +20,7 @@ export const ChecklistTemplatesList: React.FC<ChecklistTemplatesListProps> = ({
   isLoading,
   onEdit,
   onDuplicate,
+  onDelete,
 }) => {
   if (isLoading) {
     return (
@@ -97,6 +99,13 @@ export const ChecklistTemplatesList: React.FC<ChecklistTemplatesListProps> = ({
                   onClick={() => onDuplicate(template)}
                 >
                   <Copy className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={() => onDelete(template)}
+                >
+                  <Trash2 className="h-4 w-4" />
                 </Button>
               </div>
             </TableCell>

@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Plus, Edit, Trash2, Copy, ArrowLeft } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { useChecklistTemplates, useDuplicateChecklistTemplate } from '@/hooks/useChecklistTemplates';
+import { useChecklistTemplates, useDuplicateChecklistTemplate, useDeleteChecklistTemplate } from '@/hooks/useChecklistTemplates';
 import { ChecklistTemplatesList } from './ChecklistTemplatesList';
 import { CreateTemplateModal } from './CreateTemplateModal';
 import { EditTemplateModal } from './EditTemplateModal';
@@ -15,6 +15,7 @@ export default function ChecklistTemplatesPage() {
   const [editingTemplate, setEditingTemplate] = useState<TaskChecklistTemplate | null>(null);
   const { data: templates = [], isLoading } = useChecklistTemplates();
   const duplicateTemplate = useDuplicateChecklistTemplate();
+  const deleteTemplate = useDeleteChecklistTemplate();
 
   const handleCreateTemplate = () => {
     setIsCreateModalOpen(true);
@@ -31,7 +32,16 @@ export default function ChecklistTemplatesPage() {
       console.error('Error duplicating template:', error);
     }
   };
-
+ 
+  const handleDeleteTemplate = async (template: TaskChecklistTemplate) => {
+    const confirmed = window.confirm(`¿Seguro que quieres eliminar la plantilla "${template.template_name}"?`);
+    if (!confirmed) return;
+    try {
+      await deleteTemplate.mutateAsync(template.id);
+    } catch (error) {
+      console.error('Error deleting template:', error);
+    }
+  };
   return (
     <div className="min-h-screen bg-gradient-to-br from-cyan-50 to-blue-100">
       <div className="container mx-auto p-6 space-y-6">
@@ -66,6 +76,7 @@ export default function ChecklistTemplatesPage() {
               isLoading={isLoading}
               onEdit={handleEditTemplate}
               onDuplicate={handleDuplicateTemplate}
+              onDelete={handleDeleteTemplate}
             />
           </CardContent>
         </Card>
