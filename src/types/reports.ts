@@ -63,4 +63,5 @@ export interface LaundryReport extends TaskReport {
   amenitiesCocina: number;
   rollosPapelHigienico: number;
   rollosPapelCocina: number;
+  propertyCode: string;
 }

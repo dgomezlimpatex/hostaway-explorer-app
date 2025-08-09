@@ -141,6 +141,7 @@ const generateLaundryCSV = (data: LaundryReport[]): string => {
   // Headers para el reporte de lavandería
   const headers = [
     'Propiedad',
+    'Código Propiedad',
     'Dirección',
     'Fecha',
     'Hora Inicio',
@@ -173,6 +174,7 @@ const generateLaundryCSV = (data: LaundryReport[]): string => {
 
   const rows = data.map(item => [
     item.property || '',
+    item.propertyCode || '',
     item.address || '',
     formatDateForCSV(item.date || ''),
     item.startTime || '',

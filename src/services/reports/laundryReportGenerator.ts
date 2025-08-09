@@ -88,7 +88,8 @@ export const generateLaundryReport = (tasks: any[], properties: any[], clients: 
         amenitiesBano: property?.amenitiesBano || 0,
         amenitiesCocina: property?.amenitiesCocina || 0,
         rollosPapelHigienico: property?.cantidadRollosPapelHigienico || 0,
-        rollosPapelCocina: property?.cantidadRollosPapelCocina || 0
+        rollosPapelCocina: property?.cantidadRollosPapelCocina || 0,
+        propertyCode: property?.codigo || 'N/A'
       };
     });
 };

@@ -50,11 +50,12 @@ export const LaundryReportTable = ({ data }: LaundryReportTableProps) => {
       <CardContent className="p-4">
         <div className="space-y-3">
           {/* Header con propiedad y estado */}
-          <div className="flex justify-between items-start">
-            <div className="flex-1">
-              <h3 className="font-semibold text-lg leading-tight">{task.property}</h3>
-              <p className="text-sm text-muted-foreground mt-1">{task.address}</p>
-            </div>
+            <div className="flex justify-between items-start">
+              <div className="flex-1">
+                <h3 className="font-semibold text-lg leading-tight">{task.property}</h3>
+                <p className="text-sm text-muted-foreground mt-1">{task.address}</p>
+                <p className="text-xs font-mono font-semibold text-primary mt-1">Código: {task.propertyCode}</p>
+              </div>
             <Badge 
               variant={task.status === 'pending' ? 'secondary' : 'outline'}
               className={
@@ -263,6 +264,7 @@ export const LaundryReportTable = ({ data }: LaundryReportTableProps) => {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Propiedad</TableHead>
+                    <TableHead>Código</TableHead>
                     <TableHead>Horario</TableHead>
                     <TableHead>Trabajador</TableHead>
                     <TableHead>Habitaciones</TableHead>
@@ -277,6 +279,9 @@ export const LaundryReportTable = ({ data }: LaundryReportTableProps) => {
                       <TableCell>
                         <div className="font-medium">{task.property}</div>
                         <div className="text-sm text-gray-500">{task.address}</div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="font-mono text-sm font-semibold">{task.propertyCode}</div>
                       </TableCell>
                       <TableCell className="font-mono">
                         {task.startTime} - {task.endTime}
