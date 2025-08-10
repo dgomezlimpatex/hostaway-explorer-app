@@ -36,6 +36,7 @@ const handler = async (req: Request): Promise<Response> => {
       supervisor: 'Supervisor',
       cleaner: 'Limpiador/a',
       client: 'Cliente',
+      logistics: 'Logística',
     };
 
     const emailResponse = await resend.emails.send({

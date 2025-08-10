@@ -28,6 +28,21 @@ Deno.serve(async (req) => {
 
     if (!action) throw new Error('action is required')
 
+    // Authorization: only admin/manager/logistics
+    const { data: userRes, error: userErr } = await supabaseUser.auth.getUser()
+    if (userErr || !userRes?.user) {
+      return new Response(JSON.stringify({ ok: false, error: 'Unauthorized' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+    }
+    const { data: isAdminMgr } = await supabaseUser.rpc('user_is_admin_or_manager')
+    let allowed = Boolean(isAdminMgr)
+    if (!allowed) {
+      const { data: isLogistics } = await supabaseUser.rpc('user_has_role', { check_role: 'logistics' })
+      allowed = Boolean(isLogistics)
+    }
+    if (!allowed) {
+      return new Response(JSON.stringify({ ok: false, error: 'Forbidden' }), { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+    }
+
     switch (action) {
       case 'generate_from_properties': {
         const { picklistId, propertyIds } = payload || {}
