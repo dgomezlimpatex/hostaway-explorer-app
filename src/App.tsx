@@ -28,6 +28,9 @@ import InventoryMovements from "./pages/InventoryMovements";
 import InventoryConfig from "./pages/InventoryConfig";
 import InventoryReports from "./pages/InventoryReports";
 import NotFound from "./pages/NotFound";
+import LogisticsPicklists from "./pages/LogisticsPicklists";
+import LogisticsPicklistDetails from "./pages/LogisticsPicklistDetails";
+import LogisticsDeliveries from "./pages/LogisticsDeliveries";
 
 const queryClient = new QueryClient();
 
@@ -164,6 +167,27 @@ function App() {
                 <ProtectedRoute>
                   <RoleProtectedRoute requiredModule="inventory">
                     <InventoryReports />
+                  </RoleProtectedRoute>
+                </ProtectedRoute>
+              } />
+              <Route path="/logistics/picklists" element={
+                <ProtectedRoute>
+                  <RoleProtectedRoute requiredModule="logistics">
+                    <LogisticsPicklists />
+                  </RoleProtectedRoute>
+                </ProtectedRoute>
+              } />
+              <Route path="/logistics/picklists/:id" element={
+                <ProtectedRoute>
+                  <RoleProtectedRoute requiredModule="logistics">
+                    <LogisticsPicklistDetails />
+                  </RoleProtectedRoute>
+                </ProtectedRoute>
+              } />
+              <Route path="/logistics/deliveries" element={
+                <ProtectedRoute>
+                  <RoleProtectedRoute requiredModule="logistics">
+                    <LogisticsDeliveries />
                   </RoleProtectedRoute>
                 </ProtectedRoute>
               } />

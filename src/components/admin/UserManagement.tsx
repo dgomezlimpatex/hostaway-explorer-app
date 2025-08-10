@@ -56,6 +56,7 @@ const roleLabels: Record<AppRole, string> = {
   supervisor: 'Supervisor',
   cleaner: 'Limpiador',
   client: 'Cliente',
+  logistics: 'Logística',
 };
 
 const statusLabels = {
@@ -313,6 +314,7 @@ export const UserManagement = () => {
                     <SelectItem value="manager">Manager</SelectItem>
                     <SelectItem value="supervisor">Supervisor</SelectItem>
                     <SelectItem value="cleaner">Limpiador</SelectItem>
+                    <SelectItem value="logistics">Logística</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

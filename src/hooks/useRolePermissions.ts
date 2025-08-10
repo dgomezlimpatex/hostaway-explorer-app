@@ -20,6 +20,7 @@ export type RolePermissions = {
   propertyGroups: ModulePermission;
   users: ModulePermission; // Nueva sección para gestión de usuarios
   inventory: ModulePermission; // Nueva sección para inventario
+  logistics: ModulePermission; // Nueva sección para logística
 };
 
 const createPermission = (canView: boolean, canCreate: boolean = false, canEdit: boolean = false, canDelete: boolean = false): ModulePermission => ({
@@ -40,8 +41,9 @@ const ROLE_PERMISSIONS: Record<string, RolePermissions> = {
     reports: createPermission(true, true, true, true),
     hostaway: createPermission(true, true, true, true),
     propertyGroups: createPermission(true, true, true, true),
-    users: createPermission(true, true, true, true), // Admin puede gestionar usuarios
-    inventory: createPermission(true, true, true, true), // Admin puede gestionar inventario
+    users: createPermission(true, true, true, true),
+    inventory: createPermission(true, true, true, true),
+    logistics: createPermission(true, true, true, true),
   },
   manager: {
     dashboard: createPermission(true, true, true, true),
@@ -53,34 +55,51 @@ const ROLE_PERMISSIONS: Record<string, RolePermissions> = {
     reports: createPermission(true, true, true, true),
     hostaway: createPermission(true, true, true, true),
     propertyGroups: createPermission(true, true, true, true),
-    users: createPermission(true, true, true, true), // Manager puede gestionar usuarios
-    inventory: createPermission(true, true, true, true), // Manager puede gestionar inventario
+    users: createPermission(true, true, true, true),
+    inventory: createPermission(true, true, true, true),
+    logistics: createPermission(true, true, true, true),
   },
   supervisor: {
     dashboard: createPermission(false),
-    calendar: createPermission(true), // Solo lectura
-    tasks: createPermission(true), // Solo lectura
-    workers: createPermission(true), // Solo lectura
+    calendar: createPermission(true),
+    tasks: createPermission(true),
+    workers: createPermission(true),
     clients: createPermission(false),
     properties: createPermission(false),
     reports: createPermission(false),
     hostaway: createPermission(false),
     propertyGroups: createPermission(false),
-    users: createPermission(false), // No puede gestionar usuarios
-    inventory: createPermission(true), // Supervisor puede ver inventario
+    users: createPermission(false),
+    inventory: createPermission(true),
+    logistics: createPermission(true),
   },
   cleaner: {
     dashboard: createPermission(false),
-    calendar: createPermission(true), // Solo su calendario personal
-    tasks: createPermission(true), // Solo sus tareas
+    calendar: createPermission(true),
+    tasks: createPermission(true),
     workers: createPermission(false),
     clients: createPermission(false),
     properties: createPermission(false),
     reports: createPermission(false),
     hostaway: createPermission(false),
     propertyGroups: createPermission(false),
-    users: createPermission(false), // No puede gestionar usuarios
-    inventory: createPermission(false), // Limpiadoras no pueden ver inventario
+    users: createPermission(false),
+    inventory: createPermission(false),
+    logistics: createPermission(false),
+  },
+  logistics: {
+    dashboard: createPermission(false),
+    calendar: createPermission(false),
+    tasks: createPermission(false),
+    workers: createPermission(false),
+    clients: createPermission(false),
+    properties: createPermission(false),
+    reports: createPermission(false),
+    hostaway: createPermission(false),
+    propertyGroups: createPermission(false),
+    users: createPermission(false),
+    inventory: createPermission(false),
+    logistics: createPermission(true, true, true, true),
   },
 };
 
