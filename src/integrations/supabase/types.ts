@@ -776,6 +776,243 @@ export type Database = {
           },
         ]
       }
+      logistics_deliveries: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          notes: string | null
+          picklist_id: string | null
+          started_at: string | null
+          status: Database["public"]["Enums"]["logistics_delivery_status"]
+          updated_at: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          notes?: string | null
+          picklist_id?: string | null
+          started_at?: string | null
+          status?: Database["public"]["Enums"]["logistics_delivery_status"]
+          updated_at?: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          notes?: string | null
+          picklist_id?: string | null
+          started_at?: string | null
+          status?: Database["public"]["Enums"]["logistics_delivery_status"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "logistics_deliveries_picklist_id_fkey"
+            columns: ["picklist_id"]
+            isOneToOne: false
+            referencedRelation: "logistics_picklists"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      logistics_delivery_items: {
+        Row: {
+          created_at: string
+          id: string
+          product_id: string
+          quantity: number
+          stop_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          product_id: string
+          quantity?: number
+          stop_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          product_id?: string
+          quantity?: number
+          stop_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "logistics_delivery_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "logistics_delivery_items_stop_id_fkey"
+            columns: ["stop_id"]
+            isOneToOne: false
+            referencedRelation: "logistics_delivery_stops"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      logistics_delivery_stops: {
+        Row: {
+          actual_time: string | null
+          created_at: string
+          delivery_id: string
+          id: string
+          notes: string | null
+          planned_time: string | null
+          property_id: string
+          signature_url: string | null
+          status: Database["public"]["Enums"]["logistics_stop_status"]
+          updated_at: string
+        }
+        Insert: {
+          actual_time?: string | null
+          created_at?: string
+          delivery_id: string
+          id?: string
+          notes?: string | null
+          planned_time?: string | null
+          property_id: string
+          signature_url?: string | null
+          status?: Database["public"]["Enums"]["logistics_stop_status"]
+          updated_at?: string
+        }
+        Update: {
+          actual_time?: string | null
+          created_at?: string
+          delivery_id?: string
+          id?: string
+          notes?: string | null
+          planned_time?: string | null
+          property_id?: string
+          signature_url?: string | null
+          status?: Database["public"]["Enums"]["logistics_stop_status"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "logistics_delivery_stops_delivery_id_fkey"
+            columns: ["delivery_id"]
+            isOneToOne: false
+            referencedRelation: "logistics_deliveries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "logistics_delivery_stops_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      logistics_picklist_items: {
+        Row: {
+          created_at: string
+          id: string
+          picklist_id: string
+          product_id: string
+          property_id: string | null
+          quantity: number
+          reserved: boolean
+          reserved_at: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          picklist_id: string
+          product_id: string
+          property_id?: string | null
+          quantity?: number
+          reserved?: boolean
+          reserved_at?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          picklist_id?: string
+          product_id?: string
+          property_id?: string | null
+          quantity?: number
+          reserved?: boolean
+          reserved_at?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "logistics_picklist_items_picklist_id_fkey"
+            columns: ["picklist_id"]
+            isOneToOne: false
+            referencedRelation: "logistics_picklists"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "logistics_picklist_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "logistics_picklist_items_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      logistics_picklists: {
+        Row: {
+          code: string
+          committed_at: string | null
+          committed_by: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          notes: string | null
+          scheduled_date: string | null
+          status: Database["public"]["Enums"]["logistics_picklist_status"]
+          updated_at: string
+        }
+        Insert: {
+          code: string
+          committed_at?: string | null
+          committed_by?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          notes?: string | null
+          scheduled_date?: string | null
+          status?: Database["public"]["Enums"]["logistics_picklist_status"]
+          updated_at?: string
+        }
+        Update: {
+          code?: string
+          committed_at?: string | null
+          committed_by?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          notes?: string | null
+          scheduled_date?: string | null
+          status?: Database["public"]["Enums"]["logistics_picklist_status"]
+          updated_at?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -1886,6 +2123,18 @@ export type Database = {
         | "ajuste"
         | "consumo_automatico"
       invitation_status: "pending" | "accepted" | "expired" | "revoked"
+      logistics_delivery_status:
+        | "planned"
+        | "in_transit"
+        | "completed"
+        | "cancelled"
+      logistics_picklist_status:
+        | "draft"
+        | "preparing"
+        | "packed"
+        | "committed"
+        | "cancelled"
+      logistics_stop_status: "pending" | "delivered" | "failed" | "skipped"
       media_type: "photo" | "video"
       report_status: "pending" | "in_progress" | "completed" | "needs_review"
     }
@@ -2031,6 +2280,20 @@ export const Constants = {
         "consumo_automatico",
       ],
       invitation_status: ["pending", "accepted", "expired", "revoked"],
+      logistics_delivery_status: [
+        "planned",
+        "in_transit",
+        "completed",
+        "cancelled",
+      ],
+      logistics_picklist_status: [
+        "draft",
+        "preparing",
+        "packed",
+        "committed",
+        "cancelled",
+      ],
+      logistics_stop_status: ["pending", "delivered", "failed", "skipped"],
       media_type: ["photo", "video"],
       report_status: ["pending", "in_progress", "completed", "needs_review"],
     },
