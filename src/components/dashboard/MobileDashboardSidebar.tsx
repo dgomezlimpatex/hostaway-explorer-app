@@ -13,7 +13,8 @@ import {
   Home,
   AlertTriangle,
   CheckCircle2,
-  Package
+  Package,
+  Truck
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useRolePermissions } from '@/hooks/useRolePermissions';
@@ -75,6 +76,12 @@ const managementItems: NavigationItem[] = [
     href: '/inventory',
     icon: Package,
     permission: 'inventory'
+  },
+  {
+    title: 'Logística',
+    href: '/logistics/picklists',
+    icon: Truck,
+    permission: 'logistics'
   },
 ];
 
@@ -140,6 +147,7 @@ export const MobileDashboardSidebar = ({ onNavigate }: MobileDashboardSidebarPro
       case 'reports': return canAccessModule('reports');
       case 'hostaway': return canAccessModule('hostaway');
       case 'inventory': return canAccessModule('inventory');
+      case 'logistics': return canAccessModule('logistics');
       default: return true;
     }
   };

@@ -15,6 +15,7 @@ import {
   AlertTriangle,
   CheckCircle2,
   Package,
+  Truck,
   LogOut
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -92,6 +93,12 @@ const managementItems: NavigationItem[] = [
     icon: Package,
     permission: 'inventory'
   },
+  {
+    title: 'Logística',
+    href: '/logistics/picklists',
+    icon: Truck,
+    permission: 'logistics'
+  },
 ];
 
 const reportsItems: NavigationItem[] = [
@@ -156,6 +163,7 @@ export const DashboardSidebar = () => {
       case 'reports': return canAccessModule('reports');
       case 'hostaway': return canAccessModule('hostaway');
       case 'inventory': return canAccessModule('inventory');
+      case 'logistics': return canAccessModule('logistics');
       default: return true;
     }
   };
