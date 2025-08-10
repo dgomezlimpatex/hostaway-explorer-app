@@ -20,6 +20,8 @@ export default function LogisticsPicklistDetails() {
   const [properties, setProperties] = useState<Property[]>([]);
   const [filter, setFilter] = useState("");
   const [selected, setSelected] = useState<Record<string, boolean>>({});
+  const [startDate, setStartDate] = useState(() => new Date().toISOString().slice(0,10));
+  const [endDate, setEndDate] = useState(() => new Date().toISOString().slice(0,10));
 
   useEffect(() => {
     document.title = "Detalle de Picklist | Logística";
@@ -82,6 +84,22 @@ export default function LogisticsPicklistDetails() {
     load();
   }
 
+  async function generateFromTasks() {
+    if (!startDate || !endDate) {
+      toast({ title: "Selecciona un rango de fechas" });
+      return;
+    }
+    const { data, error } = await supabase.functions.invoke("logistics-operations", {
+      body: { action: "generate_from_tasks", payload: { picklistId: id, startDate, endDate } }
+    });
+    if (error) {
+      toast({ title: "Error generando desde tareas", description: (error as any).message, variant: "destructive" });
+      return;
+    }
+    toast({ title: "Items añadidos desde tareas", description: `Props: ${data?.properties || 0}, Tareas: ${data?.tasks || 0}` });
+    load();
+  }
+
   async function markPacked() {
     const { error } = await supabase.functions.invoke("logistics-operations", {
       body: { action: "mark_packed", payload: { picklistId: id } }
@@ -135,6 +153,11 @@ export default function LogisticsPicklistDetails() {
               <Button size="sm" variant="outline" onClick={createDelivery}>
                 <Truck className="h-4 w-4 mr-1"/> Crear entrega
               </Button>
+            </div>
+            <div className="flex items-center gap-2 pt-2">
+              <Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+              <Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
+              <Button size="sm" variant="secondary" onClick={generateFromTasks}>Desde tareas</Button>
             </div>
           </CardContent>
         </Card>

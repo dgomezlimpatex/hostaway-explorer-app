@@ -86,6 +86,72 @@ Deno.serve(async (req) => {
         })
       }
 
+      case 'generate_from_tasks': {
+        const { picklistId, startDate, endDate } = payload || {}
+        if (!picklistId || !startDate || !endDate) {
+          throw new Error('picklistId, startDate, endDate are required')
+        }
+
+        // Obtener tareas en rango y contar por propiedad
+        const { data: tasks, error: tErr } = await supabaseService
+          .from('tasks')
+          .select('propiedad_id, status, date')
+          .gte('date', startDate)
+          .lte('date', endDate)
+          .in('status', ['pending', 'in-progress'])
+
+        if (tErr) throw tErr
+
+        const counts = new Map<string, number>()
+        for (const t of tasks || []) {
+          if (!t.propiedad_id) continue
+          counts.set(t.propiedad_id, (counts.get(t.propiedad_id) || 0) + 1)
+        }
+
+        let created = 0, updated = 0
+
+        for (const [propertyId, taskCount] of counts.entries()) {
+          const { data: configs, error: cfgErr } = await supabaseService
+            .from('property_consumption_config')
+            .select('product_id, quantity_per_cleaning')
+            .eq('property_id', propertyId)
+            .eq('is_active', true)
+          if (cfgErr) throw cfgErr
+
+          for (const cfg of (configs || [])) {
+            const addQty = (cfg.quantity_per_cleaning || 0) * taskCount
+
+            const { data: existing, error: exErr } = await supabaseService
+              .from('logistics_picklist_items')
+              .select('id, quantity')
+              .eq('picklist_id', picklistId)
+              .eq('product_id', cfg.product_id)
+              .eq('property_id', propertyId)
+              .maybeSingle()
+            if (exErr) throw exErr
+
+            if (existing) {
+              const { error: upErr } = await supabaseService
+                .from('logistics_picklist_items')
+                .update({ quantity: (existing.quantity || 0) + addQty })
+                .eq('id', existing.id)
+              if (upErr) throw upErr
+              updated++
+            } else {
+              const { error: insErr } = await supabaseService
+                .from('logistics_picklist_items')
+                .insert({ picklist_id: picklistId, product_id: cfg.product_id, quantity: addQty, property_id: propertyId })
+              if (insErr) throw insErr
+              created++
+            }
+          }
+        }
+
+        return new Response(JSON.stringify({ ok: true, created, updated, properties: counts.size, tasks: (tasks || []).length }), {
+          headers: { 'Content-Type': 'application/json', ...corsHeaders },
+        })
+      }
+
       case 'mark_packed': {
         const { picklistId } = payload || {}
         if (!picklistId) throw new Error('picklistId is required')
