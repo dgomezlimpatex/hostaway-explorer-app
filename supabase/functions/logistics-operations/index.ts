@@ -52,23 +52,57 @@ Deno.serve(async (req) => {
 
         let created = 0, updated = 0
 
-        // Obtener configuraciones de consumo por propiedad
+        // Obtener propiedades con todas sus características
         for (const propertyId of propertyIds) {
-          const { data: configs, error: cfgErr } = await supabaseService
-            .from('property_consumption_config')
-            .select('product_id, quantity_per_cleaning')
-            .eq('property_id', propertyId)
+          const { data: property, error: propErr } = await supabaseService
+            .from('properties')
+            .select('*')
+            .eq('id', propertyId)
+            .single()
+
+          if (propErr) throw propErr
+
+          // Obtener productos de inventario para mapear con las características
+          const { data: products, error: prodErr } = await supabaseService
+            .from('inventory_products')
+            .select('id, name')
             .eq('is_active', true)
 
-          if (cfgErr) throw cfgErr
+          if (prodErr) throw prodErr
 
-          for (const cfg of (configs || [])) {
+          // Mapeo de características de propiedad a productos de inventario
+          const propertyItems = [
+            { name: 'sabanas', quantity: property.numero_sabanas },
+            { name: 'sabanas pequeñas', quantity: property.numero_sabanas_pequenas },
+            { name: 'sabanas suite', quantity: property.numero_sabanas_suite },
+            { name: 'toallas grandes', quantity: property.numero_toallas_grandes },
+            { name: 'toallas pequeñas', quantity: property.numero_toallas_pequenas },
+            { name: 'alfombrines', quantity: property.numero_alfombrines },
+            { name: 'fundas almohada', quantity: property.numero_fundas_almohada },
+            { name: 'papel higienico', quantity: property.cantidad_rollos_papel_higienico },
+            { name: 'papel cocina', quantity: property.cantidad_rollos_papel_cocina },
+            { name: 'kit alimentario', quantity: property.kit_alimentario },
+            { name: 'amenities baño', quantity: property.amenities_bano },
+            { name: 'amenities cocina', quantity: property.amenities_cocina },
+          ]
+
+          for (const item of propertyItems) {
+            if (item.quantity <= 0) continue
+
+            // Buscar producto correspondiente en inventario
+            const product = products?.find(p => 
+              p.name.toLowerCase().includes(item.name.toLowerCase()) ||
+              item.name.toLowerCase().includes(p.name.toLowerCase())
+            )
+
+            if (!product) continue
+
             // Ver si ya existe item para (picklist, product, property)
             const { data: existing, error: exErr } = await supabaseService
               .from('logistics_picklist_items')
               .select('id, quantity')
               .eq('picklist_id', picklistId)
-              .eq('product_id', cfg.product_id)
+              .eq('product_id', product.id)
               .eq('property_id', propertyId)
               .maybeSingle()
 
@@ -77,7 +111,7 @@ Deno.serve(async (req) => {
             if (existing) {
               const { error: upErr } = await supabaseService
                 .from('logistics_picklist_items')
-                .update({ quantity: (existing.quantity || 0) + (cfg.quantity_per_cleaning || 0) })
+                .update({ quantity: (existing.quantity || 0) + item.quantity })
                 .eq('id', existing.id)
               if (upErr) throw upErr
               updated++
@@ -86,8 +120,8 @@ Deno.serve(async (req) => {
                 .from('logistics_picklist_items')
                 .insert({
                   picklist_id: picklistId,
-                  product_id: cfg.product_id,
-                  quantity: cfg.quantity_per_cleaning || 0,
+                  product_id: product.id,
+                  quantity: item.quantity,
                   property_id: propertyId,
                 })
               if (insErr) throw insErr
@@ -125,22 +159,58 @@ Deno.serve(async (req) => {
 
         let created = 0, updated = 0
 
-        for (const [propertyId, taskCount] of counts.entries()) {
-          const { data: configs, error: cfgErr } = await supabaseService
-            .from('property_consumption_config')
-            .select('product_id, quantity_per_cleaning')
-            .eq('property_id', propertyId)
-            .eq('is_active', true)
-          if (cfgErr) throw cfgErr
+        // Obtener productos de inventario para mapear
+        const { data: products, error: prodErr } = await supabaseService
+          .from('inventory_products')
+          .select('id, name')
+          .eq('is_active', true)
 
-          for (const cfg of (configs || [])) {
-            const addQty = (cfg.quantity_per_cleaning || 0) * taskCount
+        if (prodErr) throw prodErr
+
+        for (const [propertyId, taskCount] of counts.entries()) {
+          // Obtener características de la propiedad
+          const { data: property, error: propErr } = await supabaseService
+            .from('properties')
+            .select('*')
+            .eq('id', propertyId)
+            .single()
+
+          if (propErr) throw propErr
+
+          // Mapeo de características de propiedad a productos de inventario
+          const propertyItems = [
+            { name: 'sabanas', quantity: property.numero_sabanas },
+            { name: 'sabanas pequeñas', quantity: property.numero_sabanas_pequenas },
+            { name: 'sabanas suite', quantity: property.numero_sabanas_suite },
+            { name: 'toallas grandes', quantity: property.numero_toallas_grandes },
+            { name: 'toallas pequeñas', quantity: property.numero_toallas_pequenas },
+            { name: 'alfombrines', quantity: property.numero_alfombrines },
+            { name: 'fundas almohada', quantity: property.numero_fundas_almohada },
+            { name: 'papel higienico', quantity: property.cantidad_rollos_papel_higienico },
+            { name: 'papel cocina', quantity: property.cantidad_rollos_papel_cocina },
+            { name: 'kit alimentario', quantity: property.kit_alimentario },
+            { name: 'amenities baño', quantity: property.amenities_bano },
+            { name: 'amenities cocina', quantity: property.amenities_cocina },
+          ]
+
+          for (const item of propertyItems) {
+            if (item.quantity <= 0) continue
+
+            // Buscar producto correspondiente en inventario
+            const product = products?.find(p => 
+              p.name.toLowerCase().includes(item.name.toLowerCase()) ||
+              item.name.toLowerCase().includes(p.name.toLowerCase())
+            )
+
+            if (!product) continue
+
+            const addQty = item.quantity * taskCount
 
             const { data: existing, error: exErr } = await supabaseService
               .from('logistics_picklist_items')
               .select('id, quantity')
               .eq('picklist_id', picklistId)
-              .eq('product_id', cfg.product_id)
+              .eq('product_id', product.id)
               .eq('property_id', propertyId)
               .maybeSingle()
             if (exErr) throw exErr
@@ -155,7 +225,12 @@ Deno.serve(async (req) => {
             } else {
               const { error: insErr } = await supabaseService
                 .from('logistics_picklist_items')
-                .insert({ picklist_id: picklistId, product_id: cfg.product_id, quantity: addQty, property_id: propertyId })
+                .insert({ 
+                  picklist_id: picklistId, 
+                  product_id: product.id, 
+                  quantity: addQty, 
+                  property_id: propertyId 
+                })
               if (insErr) throw insErr
               created++
             }
