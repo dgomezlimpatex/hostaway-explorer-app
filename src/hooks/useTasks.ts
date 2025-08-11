@@ -83,18 +83,21 @@ export const useTasks = (currentDate: Date, currentView: ViewType) => {
     },
     onSuccess: (data) => {
       console.log('✅ useTasks - createTaskMutation onSuccess:', data);
-      // Invalidar TODAS las claves de caché relacionadas con tareas
-      queryClient.invalidateQueries({ 
-        predicate: (query) => query.queryKey[0] === 'tasks'
+      
+      // Actualización optimista inmediata del caché actual
+      queryClient.setQueryData(queryKey, (oldData: Task[] | undefined) => {
+        if (!oldData) return [data];
+        return [...oldData, data];
       });
-      // Forzar refetch inmediato del cache general que usa useOptimizedTasks
-      queryClient.removeQueries({ queryKey: ['tasks', 'all'] });
-      // También invalidar específicamente las queries del calendario
+      
+      // Actualizar el caché global de todas las tareas
+      queryClient.setQueryData(['tasks', 'all'], (oldData: Task[] | undefined) => {
+        if (!oldData) return [data];
+        return [...oldData, data];
+      });
+      
+      // Invalidar queries para asegurar sincronización
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
-      // Forzar una actualización inmediata sin esperar a la invalidación
-      queryClient.refetchQueries({ 
-        predicate: (query) => query.queryKey[0] === 'tasks'
-      });
     },
     onError: (error) => {
       console.error('❌ useTasks - createTaskMutation onError:', error);
