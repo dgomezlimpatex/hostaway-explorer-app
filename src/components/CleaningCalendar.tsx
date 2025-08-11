@@ -11,7 +11,7 @@ import { useCalendarLogic } from "@/hooks/useCalendarLogic";
 import { useCalendarNavigation } from "@/hooks/useCalendarNavigation";
 import { useDeviceType } from "@/hooks/use-mobile";
 import { useAuth } from "@/hooks/useAuth";
-import { PerformanceNotice, OptimizationTips } from "./optimizations/PerformanceEnhancements";
+import { PerformanceNotice } from "./optimizations/PerformanceEnhancements";
 
 const CleaningCalendar = () => {
   const { isMobile } = useDeviceType();
@@ -286,9 +286,6 @@ const {
           handleUnassignTask={handleUnassignTask}
           onNavigateDate={navigateDate}
         />
-        
-        {/* Show optimization tips in development */}
-        {process.env.NODE_ENV === 'development' && <OptimizationTips />}
       </div>
     </div>
   );
