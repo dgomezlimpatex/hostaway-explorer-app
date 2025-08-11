@@ -49,14 +49,16 @@ export const TaskDetailsHeader = ({ task, isEditing }: TaskDetailsHeaderProps) =
             </>
           )}
         </DialogTitle>
-        <DialogDescription className="flex items-center gap-2">
-          {isEditing ? 'Edita los detalles de la tarea' : 'Información completa de la tarea'}
+        <div className="flex items-center gap-2 mt-1">
+          <DialogDescription className="m-0">
+            {isEditing ? 'Edita los detalles de la tarea' : 'Información completa de la tarea'}
+          </DialogDescription>
           {isEditing && (
             <Badge variant="secondary" className="bg-blue-100 text-blue-700 border-blue-200 text-xs">
               Modo Edición
             </Badge>
           )}
-        </DialogDescription>
+        </div>
       </div>
       <div className="flex items-center gap-2">
         {!isEditing && getStatusBadge(task.status)}
