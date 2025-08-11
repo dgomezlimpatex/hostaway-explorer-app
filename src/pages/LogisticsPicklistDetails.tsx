@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { ArrowLeft, PackagePlus, CheckCheck, Truck, Calendar, FileText, Package, Search, Users, Plus, Clock } from "lucide-react";
+import { PropertyPackageCard } from "@/components/logistics/PropertyPackageCard";
 
 interface PicklistItem { 
   id: string; 
@@ -18,6 +19,12 @@ interface PicklistItem {
   property_id: string | null;
   inventory_products?: { name: string };
   properties?: { nombre: string; codigo: string };
+  is_property_package?: boolean;
+  products_summary?: Array<{
+    product_id: string;
+    product_name: string;
+    quantity: number;
+  }>;
 }
 interface Property { id: string; nombre: string; codigo: string; }
 
@@ -48,6 +55,8 @@ export default function LogisticsPicklistDetails() {
         product_id, 
         quantity, 
         property_id,
+        is_property_package,
+        products_summary,
         inventory_products:product_id(name),
         properties:property_id(nombre, codigo)
       `).eq("picklist_id", id!),
@@ -398,44 +407,46 @@ export default function LogisticsPicklistDetails() {
                   <Badge variant="secondary">{items.length} items</Badge>
                 </CardTitle>
               </CardHeader>
-              <CardContent>
+               <CardContent>
                 {items.length > 0 ? (
                   <div className="space-y-3">
-                    <div className="max-h-96 overflow-y-auto">
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead className="text-xs">Producto</TableHead>
-                            <TableHead className="text-xs w-20">Cantidad</TableHead>
-                            <TableHead className="text-xs">Propiedad</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {items.map(i => (
-                            <TableRow key={i.id} className="hover:bg-muted/50">
-                               <TableCell className="font-medium text-sm">
-                                 {i.inventory_products?.name || 'Producto no encontrado'}
-                               </TableCell>
-                              <TableCell>
-                                <Badge variant="outline" className="text-xs">
-                                  {i.quantity}
-                                </Badge>
-                              </TableCell>
-                               <TableCell className="text-sm text-muted-foreground">
-                                 {i.properties?.codigo || (i.property_id ? 'Propiedad no encontrada' : '-')}
-                               </TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
+                    <div className="max-h-96 overflow-y-auto space-y-3">
+                      {items
+                        .filter(item => item.is_property_package)
+                        .map(item => (
+                          <PropertyPackageCard
+                            key={item.id}
+                            propertyCode={item.properties?.codigo || 'Sin código'}
+                            propertyName={item.properties?.nombre || 'Propiedad sin nombre'}
+                            totalItems={item.quantity}
+                            products={item.products_summary || []}
+                          />
+                        ))}
+                      
+                      {/* Fallback para items antiguos que no son paquetes */}
+                      {items.filter(item => !item.is_property_package).length > 0 && (
+                        <div className="border-t pt-3 mt-3">
+                          <h4 className="text-sm font-medium mb-2 text-muted-foreground">Items individuales (formato anterior)</h4>
+                          <div className="space-y-1">
+                            {items
+                              .filter(item => !item.is_property_package)
+                              .map(item => (
+                                <div key={item.id} className="flex justify-between items-center p-2 bg-muted/30 rounded text-xs">
+                                  <span>{item.inventory_products?.name || 'Producto no encontrado'}</span>
+                                  <Badge variant="outline" className="text-xs">{item.quantity}</Badge>
+                                </div>
+                              ))}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
                 ) : (
                   <div className="text-center py-12">
                     <Package className="h-12 w-12 mx-auto mb-4 text-muted-foreground opacity-50" />
-                    <h3 className="font-medium text-lg mb-2">Sin items aún</h3>
+                    <h3 className="font-medium text-lg mb-2">Sin paquetes aún</h3>
                     <p className="text-sm text-muted-foreground mb-4">
-                      Selecciona propiedades y haz clic en "Añadir desde propiedades" para comenzar
+                      Selecciona propiedades y haz clic en "Añadir desde propiedades" para crear paquetes por propiedad
                     </p>
                   </div>
                 )}

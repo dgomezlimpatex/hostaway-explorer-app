@@ -52,7 +52,15 @@ Deno.serve(async (req) => {
 
         let created = 0, updated = 0
 
-        // Obtener propiedades con todas sus características
+        // Obtener productos de inventario para mapear con las características
+        const { data: products, error: prodErr } = await supabaseService
+          .from('inventory_products')
+          .select('id, name')
+          .eq('is_active', true)
+
+        if (prodErr) throw prodErr
+
+        // Procesar cada propiedad
         for (const propertyId of propertyIds) {
           const { data: property, error: propErr } = await supabaseService
             .from('properties')
@@ -62,14 +70,9 @@ Deno.serve(async (req) => {
 
           if (propErr) throw propErr
 
-          // Obtener productos de inventario para mapear con las características
-          const { data: products, error: prodErr } = await supabaseService
-            .from('inventory_products')
-            .select('id, name')
-            .eq('is_active', true)
-
-          if (prodErr) throw prodErr
-
+          // Crear array de productos para esta propiedad
+          const propertyProducts = []
+          
           // Mapeo de características de propiedad a productos de inventario
           const propertyItems = [
             { name: 'sabanas', quantity: property.numero_sabanas },
@@ -86,6 +89,8 @@ Deno.serve(async (req) => {
             { name: 'amenities cocina', quantity: property.amenities_cocina },
           ]
 
+          let totalItems = 0
+
           for (const item of propertyItems) {
             if (item.quantity <= 0) continue
 
@@ -95,38 +100,54 @@ Deno.serve(async (req) => {
               item.name.toLowerCase().includes(p.name.toLowerCase())
             )
 
-            if (!product) continue
-
-            // Ver si ya existe item para (picklist, product, property)
-            const { data: existing, error: exErr } = await supabaseService
-              .from('logistics_picklist_items')
-              .select('id, quantity')
-              .eq('picklist_id', picklistId)
-              .eq('product_id', product.id)
-              .eq('property_id', propertyId)
-              .maybeSingle()
-
-            if (exErr) throw exErr
-
-            if (existing) {
-              const { error: upErr } = await supabaseService
-                .from('logistics_picklist_items')
-                .update({ quantity: (existing.quantity || 0) + item.quantity })
-                .eq('id', existing.id)
-              if (upErr) throw upErr
-              updated++
-            } else {
-              const { error: insErr } = await supabaseService
-                .from('logistics_picklist_items')
-                .insert({
-                  picklist_id: picklistId,
-                  product_id: product.id,
-                  quantity: item.quantity,
-                  property_id: propertyId,
-                })
-              if (insErr) throw insErr
-              created++
+            if (product) {
+              propertyProducts.push({
+                product_id: product.id,
+                product_name: product.name,
+                quantity: item.quantity
+              })
+              totalItems += item.quantity
             }
+          }
+
+          if (propertyProducts.length === 0) continue
+
+          // Ver si ya existe un paquete para esta propiedad
+          const { data: existing, error: exErr } = await supabaseService
+            .from('logistics_picklist_items')
+            .select('id, quantity, products_summary')
+            .eq('picklist_id', picklistId)
+            .eq('property_id', propertyId)
+            .eq('is_property_package', true)
+            .maybeSingle()
+
+          if (exErr) throw exErr
+
+          if (existing) {
+            // Actualizar paquete existente
+            const { error: upErr } = await supabaseService
+              .from('logistics_picklist_items')
+              .update({ 
+                quantity: (existing.quantity || 0) + totalItems,
+                products_summary: propertyProducts
+              })
+              .eq('id', existing.id)
+            if (upErr) throw upErr
+            updated++
+          } else {
+            // Crear nuevo paquete para la propiedad
+            const { error: insErr } = await supabaseService
+              .from('logistics_picklist_items')
+              .insert({
+                picklist_id: picklistId,
+                product_id: propertyProducts[0].product_id, // Usar el primer producto como referencia
+                quantity: totalItems,
+                property_id: propertyId,
+                is_property_package: true,
+                products_summary: propertyProducts
+              })
+            if (insErr) throw insErr
+            created++
           }
         }
 
@@ -177,6 +198,9 @@ Deno.serve(async (req) => {
 
           if (propErr) throw propErr
 
+          // Crear array de productos para esta propiedad
+          const propertyProducts = []
+          
           // Mapeo de características de propiedad a productos de inventario
           const propertyItems = [
             { name: 'sabanas', quantity: property.numero_sabanas },
@@ -193,6 +217,8 @@ Deno.serve(async (req) => {
             { name: 'amenities cocina', quantity: property.amenities_cocina },
           ]
 
+          let totalItems = 0
+
           for (const item of propertyItems) {
             if (item.quantity <= 0) continue
 
@@ -202,38 +228,55 @@ Deno.serve(async (req) => {
               item.name.toLowerCase().includes(p.name.toLowerCase())
             )
 
-            if (!product) continue
-
-            const addQty = item.quantity * taskCount
-
-            const { data: existing, error: exErr } = await supabaseService
-              .from('logistics_picklist_items')
-              .select('id, quantity')
-              .eq('picklist_id', picklistId)
-              .eq('product_id', product.id)
-              .eq('property_id', propertyId)
-              .maybeSingle()
-            if (exErr) throw exErr
-
-            if (existing) {
-              const { error: upErr } = await supabaseService
-                .from('logistics_picklist_items')
-                .update({ quantity: (existing.quantity || 0) + addQty })
-                .eq('id', existing.id)
-              if (upErr) throw upErr
-              updated++
-            } else {
-              const { error: insErr } = await supabaseService
-                .from('logistics_picklist_items')
-                .insert({ 
-                  picklist_id: picklistId, 
-                  product_id: product.id, 
-                  quantity: addQty, 
-                  property_id: propertyId 
-                })
-              if (insErr) throw insErr
-              created++
+            if (product) {
+              const itemQuantity = item.quantity * taskCount
+              propertyProducts.push({
+                product_id: product.id,
+                product_name: product.name,
+                quantity: itemQuantity
+              })
+              totalItems += itemQuantity
             }
+          }
+
+          if (propertyProducts.length === 0) continue
+
+          // Ver si ya existe un paquete para esta propiedad
+          const { data: existing, error: exErr } = await supabaseService
+            .from('logistics_picklist_items')
+            .select('id, quantity, products_summary')
+            .eq('picklist_id', picklistId)
+            .eq('property_id', propertyId)
+            .eq('is_property_package', true)
+            .maybeSingle()
+
+          if (exErr) throw exErr
+
+          if (existing) {
+            // Actualizar paquete existente
+            const { error: upErr } = await supabaseService
+              .from('logistics_picklist_items')
+              .update({ 
+                quantity: (existing.quantity || 0) + totalItems,
+                products_summary: propertyProducts
+              })
+              .eq('id', existing.id)
+            if (upErr) throw upErr
+            updated++
+          } else {
+            // Crear nuevo paquete para la propiedad
+            const { error: insErr } = await supabaseService
+              .from('logistics_picklist_items')
+              .insert({
+                picklist_id: picklistId,
+                product_id: propertyProducts[0].product_id, // Usar el primer producto como referencia
+                quantity: totalItems,
+                property_id: propertyId,
+                is_property_package: true,
+                products_summary: propertyProducts
+              })
+            if (insErr) throw insErr
+            created++
           }
         }
 
