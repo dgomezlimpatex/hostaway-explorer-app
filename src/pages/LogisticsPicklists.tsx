@@ -16,8 +16,28 @@ import {
   FileText, 
   Package,
   Eye,
-  ListOrdered
+  ListOrdered,
+  Edit,
+  Trash2,
+  MoreVertical
 } from "lucide-react";
+import { 
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 interface Picklist {
   id: string;
@@ -75,6 +95,29 @@ export default function LogisticsPicklists() {
       setList(data as any);
     }
     setLoading(false);
+  }
+
+  async function deletePicklist(id: string, code: string) {
+    setLoading(true);
+    const { error } = await supabase
+      .from("logistics_picklists")
+      .delete()
+      .eq("id", id);
+    
+    setLoading(false);
+    if (error) {
+      toast({ 
+        title: "Error al eliminar", 
+        description: error.message, 
+        variant: "destructive" 
+      });
+    } else {
+      toast({ 
+        title: "Picklist eliminada", 
+        description: `${code} ha sido eliminada correctamente` 
+      });
+      refresh();
+    }
   }
 
   async function createPicklist() {
@@ -244,13 +287,47 @@ export default function LogisticsPicklists() {
                       <div className="text-sm text-muted-foreground truncate max-w-[200px]">
                         {picklist.notes || "-"}
                       </div>
-                      <div>
+                      <div className="flex items-center gap-2">
                         <Button asChild size="sm" variant="outline">
-                          <Link to={`/logistics/picklists/${picklist.id}`} className="flex items-center gap-2">
+                          <Link to={`/logistics/picklists/${picklist.id}`} className="flex items-center gap-1">
                             <Eye className="h-4 w-4" />
                             Ver
                           </Link>
                         </Button>
+                        
+                        <Button asChild size="sm" variant="outline">
+                          <Link to={`/logistics/picklists/${picklist.id}/edit`} className="flex items-center gap-1">
+                            <Edit className="h-4 w-4" />
+                            Editar
+                          </Link>
+                        </Button>
+
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button size="sm" variant="outline" className="text-destructive hover:text-destructive">
+                              <Trash2 className="h-4 w-4" />
+                              Eliminar
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>¿Eliminar picklist?</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                Esta acción no se puede deshacer. Se eliminará permanentemente la picklist 
+                                <span className="font-semibold"> {picklist.code}</span> y todos sus datos asociados.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                              <AlertDialogAction 
+                                onClick={() => deletePicklist(picklist.id, picklist.code)}
+                                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                              >
+                                Eliminar
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
                       </div>
                     </div>
                   ))}
@@ -283,12 +360,59 @@ export default function LogisticsPicklists() {
                           )}
                         </div>
                         
-                        <Button asChild size="sm" className="w-full">
-                          <Link to={`/logistics/picklists/${picklist.id}`} className="flex items-center justify-center gap-2">
-                            <Eye className="h-4 w-4" />
-                            Ver Detalles
-                          </Link>
-                        </Button>
+                        <div className="flex items-center justify-between">
+                          <Button asChild size="sm" variant="outline" className="flex-1 mr-2">
+                            <Link to={`/logistics/picklists/${picklist.id}`} className="flex items-center justify-center gap-2">
+                              <Eye className="h-4 w-4" />
+                              Ver
+                            </Link>
+                          </Button>
+
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="outline" size="sm" className="px-2">
+                                <MoreVertical className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem asChild>
+                                <Link to={`/logistics/picklists/${picklist.id}/edit`} className="flex items-center gap-2">
+                                  <Edit className="h-4 w-4" />
+                                  Editar
+                                </Link>
+                              </DropdownMenuItem>
+                              <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                  <DropdownMenuItem 
+                                    onSelect={(e) => e.preventDefault()}
+                                    className="text-destructive focus:text-destructive cursor-pointer"
+                                  >
+                                    <Trash2 className="h-4 w-4 mr-2" />
+                                    Eliminar
+                                  </DropdownMenuItem>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                  <AlertDialogHeader>
+                                    <AlertDialogTitle>¿Eliminar picklist?</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                      Esta acción no se puede deshacer. Se eliminará permanentemente la picklist 
+                                      <span className="font-semibold"> {picklist.code}</span> y todos sus datos asociados.
+                                    </AlertDialogDescription>
+                                  </AlertDialogHeader>
+                                  <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                    <AlertDialogAction 
+                                      onClick={() => deletePicklist(picklist.id, picklist.code)}
+                                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                    >
+                                      Eliminar
+                                    </AlertDialogAction>
+                                  </AlertDialogFooter>
+                                </AlertDialogContent>
+                              </AlertDialog>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
                       </CardContent>
                     </Card>
                   ))}
