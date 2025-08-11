@@ -128,13 +128,14 @@ export const useTasks = (currentDate: Date, currentView: ViewType) => {
     },
     onSuccess: (data, taskId) => {
       console.log('✅ useTasks - deleteTask successful for taskId:', taskId);
-      // Optimistic update - remove all tasks with the same originalTaskId or id
+      
+      // Get the task that was deleted to find the real task ID
+      const currentTask = tasks.find(t => t.id === taskId || t.originalTaskId === taskId);
+      const realTaskId = currentTask?.originalTaskId || taskId;
+      
+      // Optimistic update - remove from current view cache
       queryClient.setQueryData(queryKey, (oldData: Task[] | undefined) => {
         if (!oldData) return oldData;
-        const currentTask = oldData.find(t => t.id === taskId || t.originalTaskId === taskId);
-        const realTaskId = currentTask?.originalTaskId || taskId;
-        
-        // Filter out tasks with matching id or originalTaskId
         return oldData.filter(task => 
           task.id !== taskId && 
           task.id !== realTaskId && 
@@ -142,7 +143,20 @@ export const useTasks = (currentDate: Date, currentView: ViewType) => {
           task.originalTaskId !== realTaskId
         );
       });
-      queryClient.invalidateQueries({ queryKey: ['tasks', 'all'] });
+      
+      // Also update the global tasks cache
+      queryClient.setQueryData(['tasks', 'all'], (oldData: Task[] | undefined) => {
+        if (!oldData) return oldData;
+        return oldData.filter(task => 
+          task.id !== taskId && 
+          task.id !== realTaskId && 
+          task.originalTaskId !== taskId && 
+          task.originalTaskId !== realTaskId
+        );
+      });
+      
+      // Invalidate all task queries to ensure consistency
+      queryClient.invalidateQueries({ queryKey: ['tasks'] });
     },
   });
 
