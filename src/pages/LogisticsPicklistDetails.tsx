@@ -11,7 +11,14 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { ArrowLeft, PackagePlus, CheckCheck, Truck, Calendar, FileText, Package, Search, Users, Plus, Clock } from "lucide-react";
 
-interface PicklistItem { id: string; product_id: string; quantity: number; property_id: string | null; }
+interface PicklistItem { 
+  id: string; 
+  product_id: string; 
+  quantity: number; 
+  property_id: string | null;
+  inventory_products?: { name: string };
+  properties?: { nombre: string; codigo: string };
+}
 interface Property { id: string; nombre: string; codigo: string; }
 
 export default function LogisticsPicklistDetails() {
@@ -36,7 +43,14 @@ export default function LogisticsPicklistDetails() {
   async function load() {
     const [{ data: pick }, { data: lines, error: e2 }] = await Promise.all([
       supabase.from("logistics_picklists").select("id, code, status, scheduled_date, notes, created_at").eq("id", id!).maybeSingle(),
-      supabase.from("logistics_picklist_items").select("id, product_id, quantity, property_id").eq("picklist_id", id!),
+      supabase.from("logistics_picklist_items").select(`
+        id, 
+        product_id, 
+        quantity, 
+        property_id,
+        inventory_products:product_id(name),
+        properties:property_id(nombre, codigo)
+      `).eq("picklist_id", id!),
     ]);
     if (!pick) {
       toast({ title: "Picklist no encontrada", variant: "destructive" });
@@ -399,15 +413,17 @@ export default function LogisticsPicklistDetails() {
                         <TableBody>
                           {items.map(i => (
                             <TableRow key={i.id} className="hover:bg-muted/50">
-                              <TableCell className="font-medium text-sm">{i.product_id}</TableCell>
+                               <TableCell className="font-medium text-sm">
+                                 {i.inventory_products?.name || 'Producto no encontrado'}
+                               </TableCell>
                               <TableCell>
                                 <Badge variant="outline" className="text-xs">
                                   {i.quantity}
                                 </Badge>
                               </TableCell>
-                              <TableCell className="text-sm text-muted-foreground">
-                                {i.property_id ? properties.find(p => p.id === i.property_id)?.codigo || i.property_id : '-'}
-                              </TableCell>
+                               <TableCell className="text-sm text-muted-foreground">
+                                 {i.properties?.codigo || (i.property_id ? 'Propiedad no encontrada' : '-')}
+                               </TableCell>
                             </TableRow>
                           ))}
                         </TableBody>
