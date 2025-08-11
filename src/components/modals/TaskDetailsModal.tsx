@@ -83,10 +83,35 @@ export const TaskDetailsModal = ({
     }
   };
   const handleFieldChange = (field: string, value: string) => {
-    setFormData(prev => ({
-      ...prev,
-      [field]: value
-    }));
+    setFormData(prev => {
+      const newData = {
+        ...prev,
+        [field]: value
+      };
+
+      // Si se cambia la hora de inicio, calcular automáticamente la hora de fin manteniendo la duración
+      if (field === 'startTime' && value && task.startTime && task.endTime) {
+        try {
+          // Calcular la duración original de la tarea
+          const originalStart = new Date(`2000-01-01T${task.startTime}:00`);
+          const originalEnd = new Date(`2000-01-01T${task.endTime}:00`);
+          const durationMs = originalEnd.getTime() - originalStart.getTime();
+          
+          // Calcular la nueva hora de fin
+          const newStart = new Date(`2000-01-01T${value}:00`);
+          const newEnd = new Date(newStart.getTime() + durationMs);
+          
+          // Formatear la nueva hora de fin (HH:MM)
+          const newEndTime = newEnd.toTimeString().slice(0, 5);
+          
+          newData.endTime = newEndTime;
+        } catch (error) {
+          console.error('Error calculating end time:', error);
+        }
+      }
+
+      return newData;
+    });
   };
   const handleCancel = () => {
     setIsEditing(false);
