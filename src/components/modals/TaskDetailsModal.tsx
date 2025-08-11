@@ -191,16 +191,35 @@ export const TaskDetailsModal = ({
           console.log('🕐 Original times:', { currentStartTime, currentEndTime });
           
           if (currentStartTime && currentEndTime) {
-            // Validar formato de tiempo (HH:MM)
+            // Normalizar tiempos (remover segundos si existen)
+            const normalizeTime = (time: string) => {
+              return time.includes(':') ? time.substring(0, 5) : time;
+            };
+            
+            const normalizedStart = normalizeTime(currentStartTime);
+            const normalizedEnd = normalizeTime(currentEndTime);
+            const normalizedNewStart = normalizeTime(value);
+            
+            console.log('🕐 Normalized times:', { 
+              normalizedStart, 
+              normalizedEnd, 
+              normalizedNewStart 
+            });
+            
+            // Validar formato de tiempo (HH:MM después de normalizar)
             const timeRegex = /^([01]?[0-9]|2[0-3]):[0-5][0-9]$/;
-            if (!timeRegex.test(currentStartTime) || !timeRegex.test(currentEndTime) || !timeRegex.test(value)) {
-              console.error('❌ Invalid time format detected');
+            if (!timeRegex.test(normalizedStart) || !timeRegex.test(normalizedEnd) || !timeRegex.test(normalizedNewStart)) {
+              console.error('❌ Invalid time format detected after normalization:', {
+                normalizedStart: timeRegex.test(normalizedStart),
+                normalizedEnd: timeRegex.test(normalizedEnd),
+                normalizedNewStart: timeRegex.test(normalizedNewStart)
+              });
               return newData;
             }
             
             // Calcular la duración original en minutos
-            const [startHour, startMin] = currentStartTime.split(':').map(Number);
-            const [endHour, endMin] = currentEndTime.split(':').map(Number);
+            const [startHour, startMin] = normalizedStart.split(':').map(Number);
+            const [endHour, endMin] = normalizedEnd.split(':').map(Number);
             const startTotalMin = startHour * 60 + startMin;
             const endTotalMin = endHour * 60 + endMin;
             let durationMin = endTotalMin - startTotalMin;
@@ -208,10 +227,11 @@ export const TaskDetailsModal = ({
             // Si la duración es negativa, la tarea cruza medianoche
             if (durationMin < 0) {
               durationMin += 24 * 60; // Agregar 24 horas en minutos
+              console.log('⏰ Task crosses midnight, adjusted duration:', durationMin);
             }
             
             // Calcular nueva hora de fin
-            const [newStartHour, newStartMin] = value.split(':').map(Number);
+            const [newStartHour, newStartMin] = normalizedNewStart.split(':').map(Number);
             const newStartTotalMin = newStartHour * 60 + newStartMin;
             const newEndTotalMin = newStartTotalMin + durationMin;
             
@@ -221,9 +241,9 @@ export const TaskDetailsModal = ({
             const newEndTime = `${newEndHour.toString().padStart(2, '0')}:${newEndMin.toString().padStart(2, '0')}`;
             
             console.log('✅ New times calculated:', {
-              newStart: value,
-              newEnd: newEndTime,
-              durationMin
+              originalDuration: durationMin + ' minutes',
+              newStart: normalizedNewStart,
+              newEnd: newEndTime
             });
             
             newData.endTime = newEndTime;
