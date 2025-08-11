@@ -22,7 +22,8 @@ import {
   Plus,
   CheckCircle,
   Truck,
-  PackagePlus
+  PackagePlus,
+  Trash2
 } from "lucide-react";
 
 interface Picklist {
@@ -318,6 +319,35 @@ export default function LogisticsPicklistEdit() {
     toast({ 
       title: "Delivery creada", 
       description: `Delivery creada con ${data.stops} paradas y ${data.items} items` 
+    });
+    loadPicklist();
+  }
+
+  async function deleteProperty(propertyId: string) {
+    if (!id) return;
+    
+    setGenerateLoading(true);
+    const { error } = await supabase
+      .from("logistics_picklist_items")
+      .delete()
+      .eq("picklist_id", id)
+      .eq("property_id", propertyId)
+      .eq("is_property_package", true);
+    
+    setGenerateLoading(false);
+    
+    if (error) {
+      toast({ 
+        title: "Error eliminando propiedad", 
+        description: error.message, 
+        variant: "destructive" 
+      });
+      return;
+    }
+    
+    toast({ 
+      title: "Propiedad eliminada", 
+      description: "La propiedad y todos sus productos han sido eliminados de la picklist" 
     });
     loadPicklist();
   }
@@ -644,7 +674,20 @@ export default function LogisticsPicklistEdit() {
                               {item.properties?.codigo} - {item.properties?.nombre}
                             </span>
                           </div>
-                          <Badge variant="outline">Paquete Propiedad</Badge>
+                          <div className="flex items-center gap-2">
+                            <Badge variant="outline">Paquete Propiedad</Badge>
+                            {picklist.status === 'draft' && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => item.property_id && deleteProperty(item.property_id)}
+                                disabled={generateLoading}
+                                className="h-6 w-6 p-0 hover:bg-destructive/10 hover:text-destructive"
+                              >
+                                <Trash2 className="h-3 w-3" />
+                              </Button>
+                            )}
+                          </div>
                         </div>
                         {item.products_summary && (
                           <div className="ml-6 space-y-1">
