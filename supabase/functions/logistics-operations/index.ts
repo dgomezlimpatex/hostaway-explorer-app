@@ -76,12 +76,18 @@ Deno.serve(async (req) => {
           
           // Mapeo de características de propiedad a productos de inventario
           const propertyItems = [
-            { productName: 'Sábanas', quantity: property.numero_sabanas + property.numero_sabanas_pequenas + property.numero_sabanas_suite },
+            { productName: 'Sábanas', quantity: property.numero_sabanas },
+            { productName: 'Sábanas Pequeñas', quantity: property.numero_sabanas_pequenas },
+            { productName: 'Sábanas Suite', quantity: property.numero_sabanas_suite },
             { productName: 'Toallas Grandes', quantity: property.numero_toallas_grandes },
             { productName: 'Toallas Pequeñas', quantity: property.numero_toallas_pequenas },
             { productName: 'Alfombrines de Ducha', quantity: property.numero_alfombrines },
             { productName: 'Fundas de Almohada', quantity: property.numero_fundas_almohada },
+            { productName: 'Papel Higiénico', quantity: property.cantidad_rollos_papel_higienico },
+            { productName: 'Papel Cocina', quantity: property.cantidad_rollos_papel_cocina },
+            { productName: 'Kit Alimentario', quantity: property.kit_alimentario },
             { productName: 'Amenities Baño', quantity: property.amenities_bano },
+            { productName: 'Amenities Cocina', quantity: property.amenities_cocina },
           ]
 
           let totalItems = 0
@@ -204,12 +210,18 @@ Deno.serve(async (req) => {
           
           // Mapeo de características de propiedad a productos de inventario
           const propertyItems = [
-            { productName: 'Sábanas', quantity: property.numero_sabanas + property.numero_sabanas_pequenas + property.numero_sabanas_suite },
+            { productName: 'Sábanas', quantity: property.numero_sabanas },
+            { productName: 'Sábanas Pequeñas', quantity: property.numero_sabanas_pequenas },
+            { productName: 'Sábanas Suite', quantity: property.numero_sabanas_suite },
             { productName: 'Toallas Grandes', quantity: property.numero_toallas_grandes },
             { productName: 'Toallas Pequeñas', quantity: property.numero_toallas_pequenas },
             { productName: 'Alfombrines de Ducha', quantity: property.numero_alfombrines },
             { productName: 'Fundas de Almohada', quantity: property.numero_fundas_almohada },
+            { productName: 'Papel Higiénico', quantity: property.cantidad_rollos_papel_higienico },
+            { productName: 'Papel Cocina', quantity: property.cantidad_rollos_papel_cocina },
+            { productName: 'Kit Alimentario', quantity: property.kit_alimentario },
             { productName: 'Amenities Baño', quantity: property.amenities_bano },
+            { productName: 'Amenities Cocina', quantity: property.amenities_cocina },
           ]
 
           let totalItems = 0
