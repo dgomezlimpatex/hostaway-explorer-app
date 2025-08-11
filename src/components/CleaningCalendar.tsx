@@ -11,6 +11,7 @@ import { useCalendarLogic } from "@/hooks/useCalendarLogic";
 import { useCalendarNavigation } from "@/hooks/useCalendarNavigation";
 import { useDeviceType } from "@/hooks/use-mobile";
 import { useAuth } from "@/hooks/useAuth";
+import { PerformanceNotice, OptimizationTips } from "./optimizations/PerformanceEnhancements";
 
 const CleaningCalendar = () => {
   const { isMobile } = useDeviceType();
@@ -239,6 +240,10 @@ const {
   return (
     <div className="min-h-screen bg-background text-foreground transition-colors duration-300">
       <div className="space-y-4 px-2 py-4 max-w-full">
+        {/* Performance notices */}
+        <PerformanceNotice itemCount={cleaners.length} type="trabajadores" />
+        <PerformanceNotice itemCount={tasks.length} type="tareas" />
+        
         {/* Enhanced Responsive Header */}
         <ResponsiveCalendarHeader
           currentDate={currentDate}
@@ -281,6 +286,9 @@ const {
           handleUnassignTask={handleUnassignTask}
           onNavigateDate={navigateDate}
         />
+        
+        {/* Show optimization tips in development */}
+        {process.env.NODE_ENV === 'development' && <OptimizationTips />}
       </div>
     </div>
   );
