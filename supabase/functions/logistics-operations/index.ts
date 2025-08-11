@@ -76,18 +76,12 @@ Deno.serve(async (req) => {
           
           // Mapeo de características de propiedad a productos de inventario
           const propertyItems = [
-            { name: 'sabanas', quantity: property.numero_sabanas },
-            { name: 'sabanas pequeñas', quantity: property.numero_sabanas_pequenas },
-            { name: 'sabanas suite', quantity: property.numero_sabanas_suite },
-            { name: 'toallas grandes', quantity: property.numero_toallas_grandes },
-            { name: 'toallas pequeñas', quantity: property.numero_toallas_pequenas },
-            { name: 'alfombrines', quantity: property.numero_alfombrines },
-            { name: 'fundas almohada', quantity: property.numero_fundas_almohada },
-            { name: 'papel higienico', quantity: property.cantidad_rollos_papel_higienico },
-            { name: 'papel cocina', quantity: property.cantidad_rollos_papel_cocina },
-            { name: 'kit alimentario', quantity: property.kit_alimentario },
-            { name: 'amenities baño', quantity: property.amenities_bano },
-            { name: 'amenities cocina', quantity: property.amenities_cocina },
+            { productName: 'Sábanas', quantity: property.numero_sabanas + property.numero_sabanas_pequenas + property.numero_sabanas_suite },
+            { productName: 'Toallas Grandes', quantity: property.numero_toallas_grandes },
+            { productName: 'Toallas Pequeñas', quantity: property.numero_toallas_pequenas },
+            { productName: 'Alfombrines de Ducha', quantity: property.numero_alfombrines },
+            { productName: 'Fundas de Almohada', quantity: property.numero_fundas_almohada },
+            { productName: 'Amenities Baño', quantity: property.amenities_bano },
           ]
 
           let totalItems = 0
@@ -95,11 +89,8 @@ Deno.serve(async (req) => {
           for (const item of propertyItems) {
             if (item.quantity <= 0) continue
 
-            // Buscar producto correspondiente en inventario
-            const product = products?.find(p => 
-              p.name.toLowerCase().includes(item.name.toLowerCase()) ||
-              item.name.toLowerCase().includes(p.name.toLowerCase())
-            )
+            // Buscar producto correspondiente en inventario por nombre exacto
+            const product = products?.find(p => p.name === item.productName)
 
             if (product) {
               propertyProducts.push({
@@ -108,6 +99,8 @@ Deno.serve(async (req) => {
                 quantity: item.quantity
               })
               totalItems += item.quantity
+            } else {
+              console.log('⚠️ Product not found in inventory:', item.productName)
             }
           }
 
@@ -211,18 +204,12 @@ Deno.serve(async (req) => {
           
           // Mapeo de características de propiedad a productos de inventario
           const propertyItems = [
-            { name: 'sabanas', quantity: property.numero_sabanas },
-            { name: 'sabanas pequeñas', quantity: property.numero_sabanas_pequenas },
-            { name: 'sabanas suite', quantity: property.numero_sabanas_suite },
-            { name: 'toallas grandes', quantity: property.numero_toallas_grandes },
-            { name: 'toallas pequeñas', quantity: property.numero_toallas_pequenas },
-            { name: 'alfombrines', quantity: property.numero_alfombrines },
-            { name: 'fundas almohada', quantity: property.numero_fundas_almohada },
-            { name: 'papel higienico', quantity: property.cantidad_rollos_papel_higienico },
-            { name: 'papel cocina', quantity: property.cantidad_rollos_papel_cocina },
-            { name: 'kit alimentario', quantity: property.kit_alimentario },
-            { name: 'amenities baño', quantity: property.amenities_bano },
-            { name: 'amenities cocina', quantity: property.amenities_cocina },
+            { productName: 'Sábanas', quantity: property.numero_sabanas + property.numero_sabanas_pequenas + property.numero_sabanas_suite },
+            { productName: 'Toallas Grandes', quantity: property.numero_toallas_grandes },
+            { productName: 'Toallas Pequeñas', quantity: property.numero_toallas_pequenas },
+            { productName: 'Alfombrines de Ducha', quantity: property.numero_alfombrines },
+            { productName: 'Fundas de Almohada', quantity: property.numero_fundas_almohada },
+            { productName: 'Amenities Baño', quantity: property.amenities_bano },
           ]
 
           let totalItems = 0
@@ -230,11 +217,8 @@ Deno.serve(async (req) => {
           for (const item of propertyItems) {
             if (item.quantity <= 0) continue
 
-            // Buscar producto correspondiente en inventario
-            const product = products?.find(p => 
-              p.name.toLowerCase().includes(item.name.toLowerCase()) ||
-              item.name.toLowerCase().includes(p.name.toLowerCase())
-            )
+            // Buscar producto correspondiente en inventario por nombre exacto
+            const product = products?.find(p => p.name === item.productName)
 
             if (product) {
               const itemQuantity = item.quantity * taskCount
@@ -244,6 +228,8 @@ Deno.serve(async (req) => {
                 quantity: itemQuantity
               })
               totalItems += itemQuantity
+            } else {
+              console.log('⚠️ Product not found in inventory:', item.productName)
             }
           }
 
