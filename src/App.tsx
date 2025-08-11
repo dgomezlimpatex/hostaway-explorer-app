@@ -30,6 +30,7 @@ import InventoryReports from "./pages/InventoryReports";
 import NotFound from "./pages/NotFound";
 import LogisticsPicklists from "./pages/LogisticsPicklists";
 import LogisticsPicklistDetails from "./pages/LogisticsPicklistDetails";
+import LogisticsPicklistEdit from "./pages/LogisticsPicklistEdit";
 import LogisticsDeliveries from "./pages/LogisticsDeliveries";
 
 const queryClient = new QueryClient();
@@ -181,6 +182,13 @@ function App() {
                 <ProtectedRoute>
                   <RoleProtectedRoute requiredModule="logistics">
                     <LogisticsPicklistDetails />
+                  </RoleProtectedRoute>
+                </ProtectedRoute>
+              } />
+              <Route path="/logistics/picklists/:id/edit" element={
+                <ProtectedRoute>
+                  <RoleProtectedRoute requiredModule="logistics">
+                    <LogisticsPicklistEdit />
                   </RoleProtectedRoute>
                 </ProtectedRoute>
               } />
