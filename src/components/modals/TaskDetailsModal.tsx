@@ -48,6 +48,8 @@ export const TaskDetailsModal = ({
   }, [task, openInEditMode]);
   if (!task) return null;
   const handleSave = async () => {
+    console.log('💾 handleSave called with formData:', formData);
+    
     if (!formData.property || !formData.startTime || !formData.endTime) {
       toast({
         title: "Error",
@@ -63,18 +65,27 @@ export const TaskDetailsModal = ({
       task.startTime !== formData.startTime ||
       task.endTime !== formData.endTime;
 
+    console.log('📧 Schedule changes detected:', hasScheduleChanges, {
+      originalDate: task.date,
+      newDate: formData.date,
+      originalStart: task.startTime,
+      newStart: formData.startTime,
+      originalEnd: task.endTime,
+      newEnd: formData.endTime
+    });
+
     // Si hay cambios de horario y la tarea está asignada, enviar email de notificación
     if (hasScheduleChanges && task.cleanerId && task.cleaner) {
       try {
         console.log('🔄 Schedule changed, sending notification email to cleaner');
-        // Enviar email de cambio de horario
         await sendScheduleChangeEmail(task, formData);
       } catch (error) {
-        console.error('Error sending schedule change email:', error);
+        console.error('❌ Error sending schedule change email:', error);
         // No bloquear el guardado si falla el email
       }
     }
 
+    console.log('🔄 Calling onUpdateTask with:', task.originalTaskId || task.id, formData);
     onUpdateTask(task.originalTaskId || task.id, formData);
     setIsEditing(false);
     toast({
@@ -85,6 +96,8 @@ export const TaskDetailsModal = ({
 
   const sendScheduleChangeEmail = async (originalTask: Task, updatedData: Partial<Task>) => {
     try {
+      console.log('📧 sendScheduleChangeEmail called');
+      
       const { data: cleaner } = await supabase
         .from('cleaners')
         .select('email')
@@ -92,7 +105,7 @@ export const TaskDetailsModal = ({
         .single();
 
       if (!cleaner?.email) {
-        console.log('No email found for cleaner');
+        console.log('❌ No email found for cleaner');
         return;
       }
 
@@ -102,20 +115,25 @@ export const TaskDetailsModal = ({
         .eq('id', originalTask.propertyId)
         .single();
 
-      await supabase.functions.invoke('send-task-schedule-change-email', {
+      // Asegurar que las horas estén en formato correcto antes de enviar
+      const taskData = {
+        property: property?.nombre || originalTask.property,
+        address: property?.direccion || '',
+        date: updatedData.date || originalTask.date,
+        startTime: updatedData.startTime || originalTask.startTime,
+        endTime: updatedData.endTime || originalTask.endTime,
+        type: originalTask.type,
+        notes: originalTask.notes
+      };
+
+      console.log('📧 Sending email with data:', taskData);
+
+      const response = await supabase.functions.invoke('send-task-schedule-change-email', {
         body: {
           taskId: originalTask.id,
           cleanerEmail: cleaner.email,
           cleanerName: originalTask.cleaner,
-          taskData: {
-            property: property?.nombre || originalTask.property,
-            address: property?.direccion || '',
-            date: updatedData.date || originalTask.date,
-            startTime: updatedData.startTime || originalTask.startTime,
-            endTime: updatedData.endTime || originalTask.endTime,
-            type: originalTask.type,
-            notes: originalTask.notes
-          },
+          taskData,
           changes: {
             oldDate: originalTask.date,
             oldStartTime: originalTask.startTime,
@@ -123,6 +141,10 @@ export const TaskDetailsModal = ({
           }
         }
       });
+
+      if (response.error) {
+        throw response.error;
+      }
 
       console.log('✅ Schedule change email sent successfully');
     } catch (error) {
@@ -151,6 +173,8 @@ export const TaskDetailsModal = ({
     }
   };
   const handleFieldChange = (field: string, value: string) => {
+    console.log('🔍 handleFieldChange called:', { field, value });
+    
     setFormData(prev => {
       const newData = {
         ...prev,
@@ -164,34 +188,52 @@ export const TaskDetailsModal = ({
           const currentStartTime = task.startTime;
           const currentEndTime = task.endTime;
           
+          console.log('🕐 Original times:', { currentStartTime, currentEndTime });
+          
           if (currentStartTime && currentEndTime) {
-            // Calcular la duración original de la tarea
-            const originalStart = new Date(`2000-01-01T${currentStartTime}:00`);
-            const originalEnd = new Date(`2000-01-01T${currentEndTime}:00`);
-            const durationMs = originalEnd.getTime() - originalStart.getTime();
+            // Validar formato de tiempo (HH:MM)
+            const timeRegex = /^([01]?[0-9]|2[0-3]):[0-5][0-9]$/;
+            if (!timeRegex.test(currentStartTime) || !timeRegex.test(currentEndTime) || !timeRegex.test(value)) {
+              console.error('❌ Invalid time format detected');
+              return newData;
+            }
             
-            // Calcular la nueva hora de fin
-            const newStart = new Date(`2000-01-01T${value}:00`);
-            const newEnd = new Date(newStart.getTime() + durationMs);
+            // Calcular la duración original en minutos
+            const [startHour, startMin] = currentStartTime.split(':').map(Number);
+            const [endHour, endMin] = currentEndTime.split(':').map(Number);
+            const startTotalMin = startHour * 60 + startMin;
+            const endTotalMin = endHour * 60 + endMin;
+            let durationMin = endTotalMin - startTotalMin;
             
-            // Formatear la nueva hora de fin (HH:MM)
-            const newEndTime = newEnd.toTimeString().slice(0, 5);
+            // Si la duración es negativa, la tarea cruza medianoche
+            if (durationMin < 0) {
+              durationMin += 24 * 60; // Agregar 24 horas en minutos
+            }
             
-            console.log('🕐 Calculating new end time:', {
-              originalStart: currentStartTime,
-              originalEnd: currentEndTime,
+            // Calcular nueva hora de fin
+            const [newStartHour, newStartMin] = value.split(':').map(Number);
+            const newStartTotalMin = newStartHour * 60 + newStartMin;
+            const newEndTotalMin = newStartTotalMin + durationMin;
+            
+            const newEndHour = Math.floor(newEndTotalMin / 60) % 24;
+            const newEndMin = newEndTotalMin % 60;
+            
+            const newEndTime = `${newEndHour.toString().padStart(2, '0')}:${newEndMin.toString().padStart(2, '0')}`;
+            
+            console.log('✅ New times calculated:', {
               newStart: value,
               newEnd: newEndTime,
-              durationMs: durationMs / (1000 * 60) // en minutos
+              durationMin
             });
             
             newData.endTime = newEndTime;
           }
         } catch (error) {
-          console.error('Error calculating end time:', error);
+          console.error('❌ Error calculating end time:', error);
         }
       }
 
+      console.log('📝 New form data:', newData);
       return newData;
     });
   };
