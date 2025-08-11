@@ -663,7 +663,20 @@ export default function LogisticsPicklistEdit() {
               </div>
             ) : (
               <div className="space-y-3">
-                {items.map((item) => (
+                {items
+                  .sort((a, b) => {
+                    // Sort property packages by property name
+                    if (a.is_property_package && b.is_property_package && a.properties && b.properties) {
+                      return a.properties.nombre.localeCompare(b.properties.nombre, 'es', { sensitivity: 'base' });
+                    }
+                    // Sort individual products by product name
+                    if (!a.is_property_package && !b.is_property_package) {
+                      return a.inventory_products.name.localeCompare(b.inventory_products.name, 'es', { sensitivity: 'base' });
+                    }
+                    // Property packages first, then individual products
+                    return a.is_property_package ? -1 : 1;
+                  })
+                  .map((item) => (
                   <div key={item.id} className="p-4 border rounded-lg bg-muted/20">
                     {item.is_property_package ? (
                       <div>
