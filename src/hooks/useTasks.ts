@@ -115,12 +115,7 @@ export const useTasks = (currentDate: Date, currentView: ViewType) => {
       console.log('🗑️ useTasks - currentTask found:', currentTask);
       console.log('🗑️ useTasks - realTaskId to delete:', realTaskId);
       
-      if (currentTask?.cleanerId) {
-        // Use cancelTask instead of deleteTask to send email
-        console.log('📧 useTasks - sending cancellation email for task with cleaner');
-        await taskStorageService.cancelTask(realTaskId);
-      }
-      // Then delete the task
+      // Delete the task directly - the taskCleanupService.deleteTask already handles sending cancellation emails
       console.log('🗑️ useTasks - calling taskStorageService.deleteTask with realTaskId:', realTaskId);
       const result = await taskStorageService.deleteTask(realTaskId);
       console.log('🗑️ useTasks - deleteTask result:', result);
