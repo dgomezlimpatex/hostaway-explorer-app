@@ -208,7 +208,7 @@ export default function LogisticsPicklistEdit() {
   const filteredProps = properties.filter(prop => 
     prop.nombre.toLowerCase().includes(propFilter.toLowerCase()) || 
     prop.codigo.toLowerCase().includes(propFilter.toLowerCase())
-  );
+  ).sort((a, b) => a.nombre.localeCompare(b.nombre, 'es', { sensitivity: 'base' }));
 
   const toggleSelect = (propId: string) => {
     const newSelected = new Set(selectedProps);
