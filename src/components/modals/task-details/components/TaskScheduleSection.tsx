@@ -75,7 +75,10 @@ export const TaskScheduleSection = ({
               <Input 
                 type="time" 
                 value={formData.startTime || ''} 
-                onChange={e => onFieldChange('startTime', e.target.value)}
+                onChange={e => {
+                  console.log('🕐 TaskScheduleSection - startTime onChange called:', e.target.value);
+                  onFieldChange('startTime', e.target.value);
+                }}
               />
             ) : (
               <div className="p-3 bg-purple-50 rounded-lg border border-purple-200">

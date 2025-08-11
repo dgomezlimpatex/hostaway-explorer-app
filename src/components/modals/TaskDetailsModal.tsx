@@ -173,8 +173,8 @@ export const TaskDetailsModal = ({
     }
   };
   const handleFieldChange = (field: string, value: string) => {
-    console.log('🔍 handleFieldChange called:', { field, value });
-    
+    console.log('🔍 TaskDetailsModal - handleFieldChange called:', { field, value, taskId: task.id });
+    console.log('🔍 Current task times:', { startTime: task.startTime, endTime: task.endTime });
     setFormData(prev => {
       const newData = {
         ...prev,
