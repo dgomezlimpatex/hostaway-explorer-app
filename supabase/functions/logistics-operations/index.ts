@@ -46,6 +46,7 @@ Deno.serve(async (req) => {
     switch (action) {
       case 'generate_from_properties': {
         const { picklistId, propertyIds } = payload || {}
+        console.log('🎯 generate_from_properties called with:', { picklistId, propertyIds })
         if (!picklistId || !Array.isArray(propertyIds) || propertyIds.length === 0) {
           throw new Error('picklistId and propertyIds[] are required')
         }
@@ -110,7 +111,12 @@ Deno.serve(async (req) => {
             }
           }
 
-          if (propertyProducts.length === 0) continue
+          if (propertyProducts.length === 0) {
+            console.log('⚠️ No products found for property:', propertyId)
+            continue
+          }
+
+          console.log('📦 Creating package for property:', propertyId, 'with products:', propertyProducts)
 
           // Ver si ya existe un paquete para esta propiedad
           const { data: existing, error: exErr } = await supabaseService
@@ -124,6 +130,7 @@ Deno.serve(async (req) => {
           if (exErr) throw exErr
 
           if (existing) {
+            console.log('📝 Updating existing package:', existing.id)
             // Actualizar paquete existente
             const { error: upErr } = await supabaseService
               .from('logistics_picklist_items')
@@ -135,6 +142,7 @@ Deno.serve(async (req) => {
             if (upErr) throw upErr
             updated++
           } else {
+            console.log('✨ Creating new package for property:', propertyId)
             // Crear nuevo paquete para la propiedad
             const { error: insErr } = await supabaseService
               .from('logistics_picklist_items')
