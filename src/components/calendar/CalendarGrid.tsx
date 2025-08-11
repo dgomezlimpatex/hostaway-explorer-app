@@ -5,6 +5,7 @@ import { EnhancedTaskCard } from "./EnhancedTaskCard";
 import { Task, Cleaner } from "@/types/calendar";
 import { CleanerAvailability } from "@/hooks/useCleanerAvailability";
 import { getCleanerAvailabilityForDay, timeToMinutes, isCleanerAvailableAtTime } from "@/utils/availabilityUtils";
+import { getTaskPositionWithOverlap } from "@/utils/taskPositioning";
 
 interface CalendarGridProps {
   cleaners: Cleaner[];
@@ -107,23 +108,39 @@ const CleanerRow = memo(({
     });
   }, [timeSlots, cleaner.id, cleaner.name, isTimeSlotOccupied, isTimeSlotAvailable, dragState.draggedTask?.id, onDragOver, onDrop, cleaners]);
 
-  // Memoize task elements for this cleaner
+  // Memoize task elements for this cleaner with overlap detection
   const taskElements = useMemo(() => {
     return cleanerTasks.map((task) => {
-      const position = getTaskPosition(task.startTime, task.endTime);
+      // Use enhanced positioning that detects overlaps
+      const position = getTaskPositionWithOverlap(
+        task.startTime, 
+        task.endTime,
+        task,
+        cleanerTasks, // All tasks for this cleaner
+        cleaner.id,
+        [cleaner] // Single cleaner for this row
+      );
       const isBeingDragged = dragState.draggedTask?.id === task.id;
       
       return (
         <div
           key={task.id}
           className={cn(
-            "absolute top-1 bottom-1 z-10",
-            isBeingDragged && "opacity-30"
+            "absolute z-10 transition-all duration-200",
+            isBeingDragged && "opacity-30",
+            position.hasOverlap && "border-2 border-red-400 border-dashed shadow-lg"
           )}
           style={{
             left: position.left,
-            width: position.width
+            width: position.width,
+            top: position.top,
+            height: position.height,
+            zIndex: position.zIndex
           }}
+          title={position.hasOverlap ? 
+            `⚠️ Conflicto de horario - Se superpone con ${position.overlapCount} tarea(s)` : 
+            undefined
+          }
         >
           <EnhancedTaskCard
             task={task}
@@ -131,12 +148,16 @@ const CleanerRow = memo(({
             isDragging={isBeingDragged}
             onDragStart={onDragStart}
             onDragEnd={onDragEnd}
-            style={{ height: '100%' }}
+            style={{ 
+              height: '100%',
+              backgroundColor: position.hasOverlap ? 'rgba(239, 68, 68, 0.1)' : undefined,
+              border: position.hasOverlap ? '1px solid rgba(239, 68, 68, 0.3)' : undefined
+            }}
           />
         </div>
       );
     });
-  }, [cleanerTasks, getTaskPosition, dragState.draggedTask?.id, onTaskClick, onDragStart, onDragEnd]);
+  }, [cleanerTasks, cleaner.id, dragState.draggedTask?.id, onTaskClick, onDragStart, onDragEnd]);
 
    return (
      <div 

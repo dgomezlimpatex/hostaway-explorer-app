@@ -7,9 +7,10 @@ import {
 import { CalendarLayout } from "./CalendarLayout";
 import { DragPreview } from "./DragPreview";
 import { StatusLegend } from "./StatusLegend";
+import { OverlapAlert } from "./OverlapAlert";
 import { Task, Cleaner } from "@/types/calendar";
 import { CleanerAvailability } from "@/hooks/useCleanerAvailability";
-import { getTaskPosition, isTimeSlotOccupied } from "@/utils/taskPositioning";
+import { getTaskPosition, isTimeSlotOccupied, detectTaskOverlaps } from "@/utils/taskPositioning";
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -112,6 +113,41 @@ export const CalendarContainer = ({
     return map;
   }, [assignmentRows]);
 
+  // Detect overlapping tasks by cleaner
+  const overlapsByCleanerMap = useMemo(() => {
+    const map: Record<string, any[]> = {};
+    
+    cleaners.forEach(cleaner => {
+      const cleanerTasks = assignedTasks.filter(task => 
+        task.cleaner === cleaner.name || task.cleanerId === cleaner.id
+      );
+      
+      const overlaps: any[] = [];
+      cleanerTasks.forEach(task => {
+        const taskOverlaps = detectTaskOverlaps(
+          cleaner.id,
+          task.startTime,
+          task.endTime,
+          cleanerTasks,
+          cleaners,
+          task.id
+        );
+        
+        if (taskOverlaps.length > 0) {
+          overlaps.push(...taskOverlaps.filter(overlap => 
+            !overlaps.some(existing => existing.id === overlap.id)
+          ));
+        }
+      });
+      
+      if (overlaps.length > 0) {
+        map[cleaner.id] = overlaps;
+      }
+    });
+    
+    return map;
+  }, [assignedTasks, cleaners]);
+
   // Memoized time slot occupation check wrapper que excluye la tarea que se está arrastrando
   const checkTimeSlotOccupied = (cleanerId: string, hour: number, minute: number) => {
     return isTimeSlotOccupied(
@@ -126,6 +162,22 @@ export const CalendarContainer = ({
 
   return (
     <>
+      {/* Overlap Alerts - Show at the top */}
+      {Object.keys(overlapsByCleanerMap).length > 0 && (
+        <div className="mb-4 space-y-2">
+          {Object.entries(overlapsByCleanerMap).map(([cleanerId, overlaps]) => {
+            const cleaner = cleaners.find(c => c.id === cleanerId);
+            return cleaner ? (
+              <OverlapAlert
+                key={cleanerId}
+                overlappingTasks={overlaps}
+                cleanerName={cleaner.name}
+              />
+            ) : null;
+          })}
+        </div>
+      )}
+
       {/* Main Layout with Unassigned Tasks on Left and Calendar on Right */}
       <div className="flex gap-2 h-[600px] w-full">
         {/* Unassigned Tasks Column - Only show when there are unassigned tasks */}

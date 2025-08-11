@@ -6,6 +6,7 @@ import { useAllCleanersAvailability } from "@/hooks/useAllCleanersAvailability";
 import { useToast } from "@/hooks/use-toast";
 import { Task } from "@/types/calendar";
 import { isCleanerAvailableAtTime } from "@/utils/availabilityUtils";
+import { detectTaskOverlaps } from "@/utils/taskPositioning";
 
 export const useCalendarLogic = () => {
   const {
@@ -48,7 +49,7 @@ export const useCalendarLogic = () => {
     return slots;
   }, []);
 
-  // Enhanced task assignment handler with availability check
+  // Enhanced task assignment handler with availability and overlap check
   const handleTaskAssign = useCallback(async (taskId: string, cleanerId: string, cleaners: any[], timeSlot?: string) => {
     console.log('useCalendarLogic - handleTaskAssign called with:', { taskId, cleanerId, cleaners, timeSlot });
     
@@ -65,7 +66,52 @@ export const useCalendarLogic = () => {
     // Create a date object for the task
     const taskDate = new Date(task.date);
     const startTime = timeSlot || task.startTime;
-    const endTime = task.endTime;
+    
+    // Calculate end time based on original duration if timeSlot is provided
+    let endTime = task.endTime;
+    if (timeSlot) {
+      const [startHour, startMinute] = task.startTime.split(':').map(Number);
+      const [endHour, endMinute] = task.endTime.split(':').map(Number);
+      const originalDurationMinutes = (endHour * 60 + endMinute) - (startHour * 60 + startMinute);
+      
+      const [newStartHour, newStartMinute] = timeSlot.split(':').map(Number);
+      const newEndTotalMinutes = (newStartHour * 60 + newStartMinute) + originalDurationMinutes;
+      const newEndHour = Math.floor(newEndTotalMinutes / 60);
+      const newEndMinute = newEndTotalMinutes % 60;
+      
+      endTime = `${newEndHour.toString().padStart(2, '0')}:${newEndMinute.toString().padStart(2, '0')}`;
+    }
+
+    // Check for overlapping tasks
+    const overlappingTasks = detectTaskOverlaps(
+      cleanerId,
+      startTime,
+      endTime,
+      tasks.filter(t => t.date === task.date), // Only check tasks on the same date
+      cleaners,
+      taskId // Exclude the current task being moved
+    );
+
+    if (overlappingTasks.length > 0) {
+      const overlapInfo = overlappingTasks.map(t => `${t.property} (${t.startTime}-${t.endTime})`).join(', ');
+      
+      // Show warning but allow user to proceed
+      const confirmed = window.confirm(
+        `⚠️ CONFLICTO DE HORARIO DETECTADO\n\n` +
+        `La tarea se superpone con:\n${overlapInfo}\n\n` +
+        `¿Deseas continuar de todas formas? Las tareas se mostrarán apiladas.`
+      );
+      
+      if (!confirmed) {
+        return;
+      }
+      
+      toast({
+        title: "⚠️ Conflicto de horario",
+        description: `La tarea se superpone con ${overlappingTasks.length} tarea(s). Se mostrarán apiladas.`,
+        variant: "destructive",
+      });
+    }
 
     // Check availability
     const availabilityCheck = isCleanerAvailableAtTime(
