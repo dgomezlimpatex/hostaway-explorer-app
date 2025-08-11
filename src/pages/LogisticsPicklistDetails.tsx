@@ -7,7 +7,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
-import { ArrowLeft, PackagePlus, CheckCheck, Truck } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
+import { ArrowLeft, PackagePlus, CheckCheck, Truck, Calendar, FileText, Package, Search, Users, Plus, Clock } from "lucide-react";
 
 interface PicklistItem { id: string; product_id: string; quantity: number; property_id: string | null; }
 interface Property { id: string; nombre: string; codigo: string; }
@@ -123,103 +125,309 @@ export default function LogisticsPicklistDetails() {
     toast({ title: "Entrega creada", description: `ID: ${data?.deliveryId}` });
   }
 
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case 'draft': return <Badge variant="secondary"><FileText className="h-3 w-3 mr-1" />Borrador</Badge>;
+      case 'packed': return <Badge variant="default"><Package className="h-3 w-3 mr-1" />Empaquetado</Badge>;
+      case 'committed': return <Badge variant="outline"><CheckCheck className="h-3 w-3 mr-1" />Entregado</Badge>;
+      default: return <Badge variant="secondary">{status}</Badge>;
+    }
+  };
+
   return (
-    <main className="container mx-auto px-4 py-8">
-      <header className="mb-6 flex items-center gap-3">
-        <Button asChild variant="outline" size="sm">
-          <Link to="/logistics/picklists"><ArrowLeft className="h-4 w-4 mr-1"/> Volver</Link>
-        </Button>
-        <h1 className="text-2xl font-bold">Picklist {header?.code ?? ""}</h1>
-        <link rel="canonical" href={window.location.href} />
-      </header>
+    <div className="min-h-screen bg-gradient-to-br from-background to-muted/20">
+      <div className="container mx-auto px-4 py-6 max-w-7xl">
+        {/* Header optimizado */}
+        <div className="mb-8">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
+            <div className="flex items-center gap-3">
+              <Button asChild variant="outline" size="sm" className="shrink-0">
+                <Link to="/logistics/picklists">
+                  <ArrowLeft className="h-4 w-4 mr-2" />
+                  <span className="hidden sm:inline">Volver a Picklists</span>
+                  <span className="sm:hidden">Volver</span>
+                </Link>
+              </Button>
+              <div>
+                <h1 className="text-2xl sm:text-3xl font-bold text-foreground">
+                  {header?.code ?? "Cargando..."}
+                </h1>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Gestión de productos y entregas
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              {header?.status && getStatusBadge(header.status)}
+            </div>
+          </div>
+          <link rel="canonical" href={window.location.href} />
+        </div>
 
-      <section className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <Card className="lg:col-span-1">
-          <CardHeader>
-            <CardTitle>Resumen</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3 text-sm">
-            <p><span className="font-medium">Estado:</span> <span className="capitalize">{header?.status}</span></p>
-            <p><span className="font-medium">Programado:</span> {header?.scheduled_date ?? '-'}</p>
-            <p><span className="font-medium">Notas:</span> {header?.notes ?? '-'}</p>
-            <p><span className="font-medium">Creado:</span> {header?.created_at?.slice(0,10)}</p>
-            <div className="flex gap-2 pt-2">
-              <Button size="sm" variant="secondary" onClick={generateFromSelected}>
-                <PackagePlus className="h-4 w-4 mr-1"/> Añadir items
-              </Button>
-              <Button size="sm" onClick={markPacked}>
-                <CheckCheck className="h-4 w-4 mr-1"/> Marcar empaquetado
-              </Button>
-              <Button size="sm" variant="outline" onClick={createDelivery}>
-                <Truck className="h-4 w-4 mr-1"/> Crear entrega
-              </Button>
-            </div>
-            <div className="flex items-center gap-2 pt-2">
-              <Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
-              <Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
-              <Button size="sm" variant="secondary" onClick={generateFromTasks}>Desde tareas</Button>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Propiedades</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center gap-2 mb-3">
-              <Input placeholder="Buscar por nombre o código" value={filter} onChange={(e) => setFilter(e.target.value)} />
-              <Button variant="ghost" size="sm" onClick={() => setSelected(Object.fromEntries(properties.map(p => [p.id, true])))}>Todas</Button>
-              <Button variant="ghost" size="sm" onClick={() => setSelected({})}>Ninguna</Button>
-            </div>
-            <div className="max-h-80 overflow-auto divide-y">
-              {filteredProps.map((p) => (
-                <label key={p.id} className="flex items-center gap-3 py-2 cursor-pointer">
-                  <Checkbox checked={!!selected[p.id]} onCheckedChange={(v) => toggleSelect(p.id, Boolean(v))} />
-                  <div>
-                    <div className="font-medium">{p.nombre}</div>
-                    <div className="text-xs text-muted-foreground">Código: {p.codigo}</div>
+        {/* Layout responsivo mejorado */}
+        <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
+          {/* Panel de información y acciones */}
+          <div className="xl:col-span-4 space-y-6">
+            {/* Información de la picklist */}
+            <Card className="border-2">
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center gap-2">
+                  <FileText className="h-5 w-5 text-primary" />
+                  Información General
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Estado</div>
+                    <div>{header?.status && getStatusBadge(header.status)}</div>
                   </div>
-                </label>
-              ))}
-              {filteredProps.length === 0 && (
-                <div className="text-sm text-muted-foreground">No hay propiedades</div>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="lg:col-span-1">
-          <CardHeader>
-            <CardTitle>Items ({items.length})</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Producto</TableHead>
-                  <TableHead>Cantidad</TableHead>
-                  <TableHead>Propiedad</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {items.map(i => (
-                  <TableRow key={i.id}>
-                    <TableCell>{i.product_id}</TableCell>
-                    <TableCell>{i.quantity}</TableCell>
-                    <TableCell>{i.property_id ?? '-'}</TableCell>
-                  </TableRow>
-                ))}
-                {items.length === 0 && (
-                  <TableRow>
-                    <TableCell colSpan={3} className="text-center text-sm text-muted-foreground">Sin items aún</TableCell>
-                  </TableRow>
+                  <div className="space-y-1">
+                    <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Items</div>
+                    <div className="flex items-center gap-1">
+                      <Package className="h-4 w-4 text-muted-foreground" />
+                      <span className="font-semibold">{items.length}</span>
+                    </div>
+                  </div>
+                  <div className="space-y-1">
+                    <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Fecha programada</div>
+                    <div className="flex items-center gap-1">
+                      <Calendar className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-sm">{header?.scheduled_date ?? 'No programado'}</span>
+                    </div>
+                  </div>
+                  <div className="space-y-1">
+                    <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Creado</div>
+                    <div className="flex items-center gap-1">
+                      <Clock className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-sm">{header?.created_at?.slice(0,10)}</span>
+                    </div>
+                  </div>
+                </div>
+                
+                {header?.notes && (
+                  <>
+                    <Separator />
+                    <div className="space-y-1">
+                      <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Notas</div>
+                      <p className="text-sm bg-muted/50 p-3 rounded-lg">{header.notes}</p>
+                    </div>
+                  </>
                 )}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
-      </section>
-    </main>
+              </CardContent>
+            </Card>
+
+            {/* Acciones principales */}
+            <Card className="border-2">
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center gap-2">
+                  <CheckCheck className="h-5 w-5 text-primary" />
+                  Acciones
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-1 gap-3">
+                  <Button 
+                    onClick={generateFromSelected} 
+                    className="w-full justify-start"
+                    variant="default"
+                    disabled={Object.keys(selected).filter(k => selected[k]).length === 0}
+                  >
+                    <PackagePlus className="h-4 w-4 mr-2" />
+                    Añadir desde propiedades
+                  </Button>
+                  
+                  <Button 
+                    onClick={markPacked} 
+                    variant="secondary" 
+                    className="w-full justify-start"
+                    disabled={header?.status !== 'draft'}
+                  >
+                    <CheckCheck className="h-4 w-4 mr-2" />
+                    Marcar empaquetado
+                  </Button>
+                  
+                  <Button 
+                    onClick={createDelivery} 
+                    variant="outline" 
+                    className="w-full justify-start"
+                    disabled={header?.status !== 'packed'}
+                  >
+                    <Truck className="h-4 w-4 mr-2" />
+                    Crear entrega
+                  </Button>
+                </div>
+
+                <Separator />
+                
+                {/* Generar desde tareas */}
+                <div className="space-y-3">
+                  <div className="text-sm font-medium">Generar desde tareas</div>
+                  <div className="flex flex-col sm:flex-row gap-2">
+                    <Input 
+                      type="date" 
+                      value={startDate} 
+                      onChange={(e) => setStartDate(e.target.value)}
+                      className="flex-1"
+                    />
+                    <Input 
+                      type="date" 
+                      value={endDate} 
+                      onChange={(e) => setEndDate(e.target.value)}
+                      className="flex-1"
+                    />
+                  </div>
+                  <Button 
+                    onClick={generateFromTasks} 
+                    variant="secondary" 
+                    className="w-full justify-start"
+                    disabled={!startDate || !endDate}
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Generar desde tareas
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Panel de propiedades */}
+          <div className="xl:col-span-4">
+            <Card className="border-2 h-fit">
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center gap-2">
+                  <Users className="h-5 w-5 text-primary" />
+                  Seleccionar Propiedades
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {/* Barra de búsqueda mejorada */}
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input 
+                    placeholder="Buscar por nombre o código" 
+                    value={filter} 
+                    onChange={(e) => setFilter(e.target.value)}
+                    className="pl-10"
+                  />
+                </div>
+                
+                {/* Botones de selección */}
+                <div className="flex gap-2">
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={() => setSelected(Object.fromEntries(filteredProps.map(p => [p.id, true])))}
+                    className="flex-1"
+                  >
+                    Todas ({filteredProps.length})
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={() => setSelected({})}
+                    className="flex-1"
+                  >
+                    Ninguna
+                  </Button>
+                </div>
+
+                <Separator />
+
+                {/* Lista de propiedades mejorada */}
+                <div className="max-h-96 overflow-y-auto">
+                  <div className="space-y-2">
+                    {filteredProps.map((p) => (
+                      <label 
+                        key={p.id} 
+                        className="flex items-center gap-3 p-3 rounded-lg border hover:bg-muted/50 cursor-pointer transition-colors"
+                      >
+                        <Checkbox 
+                          checked={!!selected[p.id]} 
+                          onCheckedChange={(v) => toggleSelect(p.id, Boolean(v))} 
+                        />
+                        <div className="flex-1 min-w-0">
+                          <div className="font-medium text-sm truncate">{p.nombre}</div>
+                          <div className="text-xs text-muted-foreground">Código: {p.codigo}</div>
+                        </div>
+                      </label>
+                    ))}
+                    {filteredProps.length === 0 && (
+                      <div className="text-center py-8 text-muted-foreground">
+                        <Users className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                        <p className="text-sm">No hay propiedades disponibles</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {Object.keys(selected).filter(k => selected[k]).length > 0 && (
+                  <div className="bg-primary/10 p-3 rounded-lg">
+                    <div className="text-sm font-medium text-primary">
+                      {Object.keys(selected).filter(k => selected[k]).length} propiedades seleccionadas
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Panel de items */}
+          <div className="xl:col-span-4">
+            <Card className="border-2">
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Package className="h-5 w-5 text-primary" />
+                    Items de la Picklist
+                  </div>
+                  <Badge variant="secondary">{items.length} items</Badge>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {items.length > 0 ? (
+                  <div className="space-y-3">
+                    <div className="max-h-96 overflow-y-auto">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead className="text-xs">Producto</TableHead>
+                            <TableHead className="text-xs w-20">Cantidad</TableHead>
+                            <TableHead className="text-xs">Propiedad</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {items.map(i => (
+                            <TableRow key={i.id} className="hover:bg-muted/50">
+                              <TableCell className="font-medium text-sm">{i.product_id}</TableCell>
+                              <TableCell>
+                                <Badge variant="outline" className="text-xs">
+                                  {i.quantity}
+                                </Badge>
+                              </TableCell>
+                              <TableCell className="text-sm text-muted-foreground">
+                                {i.property_id ? properties.find(p => p.id === i.property_id)?.codigo || i.property_id : '-'}
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-center py-12">
+                    <Package className="h-12 w-12 mx-auto mb-4 text-muted-foreground opacity-50" />
+                    <h3 className="font-medium text-lg mb-2">Sin items aún</h3>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      Selecciona propiedades y haz clic en "Añadir desde propiedades" para comenzar
+                    </p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }
