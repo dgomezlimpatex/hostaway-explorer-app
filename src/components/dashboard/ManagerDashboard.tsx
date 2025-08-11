@@ -1,21 +1,31 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback, Suspense, lazy } from 'react';
 import { SidebarProvider } from '@/components/ui/sidebar';
 import { DashboardSidebar } from './DashboardSidebar';
 import { MobileDashboardHeader } from './MobileDashboardHeader';
-import { DashboardStatsCards } from './components/DashboardStatsCards';
-import { TodayTasksSection } from './components/TodayTasksSection';
-import { DashboardMetricsCards } from './components/DashboardMetricsCards';
-import { CreateTaskModal } from '@/components/modals/CreateTaskModal';
-import { BatchCreateTaskModal } from '@/components/modals/BatchCreateTaskModal';
-import { TaskDetailsModal } from '@/components/modals/TaskDetailsModal';
 import { useOptimizedTasks } from '@/hooks/useOptimizedTasks';
 import { useOptimizedCleaningReports } from '@/hooks/useOptimizedCleaningReports';
 import { useRolePermissions } from '@/hooks/useRolePermissions';
 import { useTasksPageActions } from '@/hooks/tasks/useTasksPageActions';
-import { HostawayIntegrationWidget } from '@/components/hostaway/HostawayIntegrationWidget';
 import { format, startOfMonth, endOfMonth, isAfter, isBefore, subMonths } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { LoadingSpinner } from '@/components/ui/loading-spinner';
+
+// Lazy load components for better performance
+const DashboardStatsCards = lazy(() => import('./components/DashboardStatsCards').then(module => ({ default: module.DashboardStatsCards })));
+const TodayTasksSection = lazy(() => import('./components/TodayTasksSection').then(module => ({ default: module.TodayTasksSection })));
+const DashboardMetricsCards = lazy(() => import('./components/DashboardMetricsCards').then(module => ({ default: module.DashboardMetricsCards })));
+const HostawayIntegrationWidget = lazy(() => import('@/components/hostaway/HostawayIntegrationWidget').then(module => ({ default: module.HostawayIntegrationWidget })));
+const CreateTaskModal = lazy(() => import('@/components/modals/CreateTaskModal').then(module => ({ default: module.CreateTaskModal })));
+const BatchCreateTaskModal = lazy(() => import('@/components/modals/BatchCreateTaskModal').then(module => ({ default: module.BatchCreateTaskModal })));
+const TaskDetailsModal = lazy(() => import('@/components/modals/TaskDetailsModal').then(module => ({ default: module.TaskDetailsModal })));
+
+// Loading component for Suspense
+const ComponentLoader = () => (
+  <div className="flex items-center justify-center p-8">
+    <LoadingSpinner size="sm" />
+  </div>
+);
 
 export const ManagerDashboard = () => {
   const [selectedDate] = useState(new Date());
@@ -104,14 +114,14 @@ export const ManagerDashboard = () => {
     return todayTasks.slice(startIndex, startIndex + TASKS_PER_PAGE);
   }, [todayTasks, currentTaskPage]);
 
-  // Funciones de navegación
-  const goToPreviousPage = () => {
+  // Optimized navigation functions with useCallback
+  const goToPreviousPage = useCallback(() => {
     setCurrentTaskPage(prev => Math.max(0, prev - 1));
-  };
+  }, []);
 
-  const goToNextPage = () => {
+  const goToNextPage = useCallback(() => {
     setCurrentTaskPage(prev => Math.min(totalTaskPages - 1, prev + 1));
-  };
+  }, [totalTaskPages]);
 
   // Reset page when tasks change
   useMemo(() => {
@@ -134,27 +144,25 @@ export const ManagerDashboard = () => {
     ).length;
   }, [recentReports]);
 
-  // Función para manejar el clic en una tarea
-  const handleTaskClick = (task) => {
+  // Optimized event handlers with useCallback
+  const handleTaskClick = useCallback((task) => {
     setSelectedTask(task);
     setIsTaskDetailsOpen(true);
-  };
+  }, []);
 
-  // Función para actualizar una tarea
-  const handleUpdateTask = async (taskId, updates) => {
+  const handleUpdateTask = useCallback(async (taskId, updates) => {
     // Esta función será implementada por el hook de tareas
     console.log('Updating task:', taskId, updates);
     // Por ahora, simplemente cerramos el modal
     setIsTaskDetailsOpen(false);
-  };
+  }, []);
 
-  // Función para eliminar una tarea
-  const handleDeleteTask = async (taskId) => {
+  const handleDeleteTask = useCallback(async (taskId) => {
     // Esta función será implementada por el hook de tareas
     console.log('Deleting task:', taskId);
     // Por ahora, simplemente cerramos el modal
     setIsTaskDetailsOpen(false);
-  };
+  }, []);
 
 
   return (
@@ -172,10 +180,24 @@ export const ManagerDashboard = () => {
           <main className="flex-1 overflow-auto lg:pt-0 pt-0">
           <div className="p-6">
             <div className="max-w-6xl mx-auto space-y-6">
-              {/* Hostaway Integration Widget - Solo si tiene permisos */}
+              {/* Performance notice for large datasets */}
+              {(todayTasks.length > 20 || tasks.length > 100) && (
+                <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2 h-2 bg-blue-500 rounded-full"></span>
+                    <span className="text-sm text-blue-700">
+                      ⚡ Optimizaciones de rendimiento activas - {todayTasks.length} tareas hoy, {tasks.length} tareas totales
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              {/* Hostaway Integration Widget - Lazy loaded */}
               {canAccessModule('hostaway') && (
                 <div className="mb-6">
-                  <HostawayIntegrationWidget />
+                  <Suspense fallback={<ComponentLoader />}>
+                    <HostawayIntegrationWidget />
+                  </Suspense>
                 </div>
               )}
 
@@ -189,60 +211,68 @@ export const ManagerDashboard = () => {
                 </p>
               </div>
 
-              {/* Main Metrics Row */}
-              <DashboardStatsCards 
-                monthlyMetrics={monthlyMetrics}
-                onOpenCreateModal={handleOpenCreateModal}
-                onOpenBatchModal={handleOpenBatchModal}
-              />
+              {/* Main Metrics Row - Lazy loaded */}
+              <Suspense fallback={<ComponentLoader />}>
+                <DashboardStatsCards 
+                  monthlyMetrics={monthlyMetrics}
+                  onOpenCreateModal={handleOpenCreateModal}
+                  onOpenBatchModal={handleOpenBatchModal}
+                />
+              </Suspense>
 
-              {/* Central Section - Today's Tasks */}
-              <TodayTasksSection 
-                todayTasks={todayTasks}
-                paginatedTodayTasks={paginatedTodayTasks}
-                currentTaskPage={currentTaskPage}
-                totalTaskPages={totalTaskPages}
-                TASKS_PER_PAGE={TASKS_PER_PAGE}
-                onTaskClick={handleTaskClick}
-                onPreviousPage={goToPreviousPage}
-                onNextPage={goToNextPage}
-              />
+              {/* Central Section - Today's Tasks - Lazy loaded */}
+              <Suspense fallback={<ComponentLoader />}>
+                <TodayTasksSection 
+                  todayTasks={todayTasks}
+                  paginatedTodayTasks={paginatedTodayTasks}
+                  currentTaskPage={currentTaskPage}
+                  totalTaskPages={totalTaskPages}
+                  TASKS_PER_PAGE={TASKS_PER_PAGE}
+                  onTaskClick={handleTaskClick}
+                  onPreviousPage={goToPreviousPage}
+                  onNextPage={goToNextPage}
+                />
+              </Suspense>
 
-              {/* Bottom Row */}
-              <DashboardMetricsCards 
-                pendingIncidents={pendingIncidents}
-                unassignedTasksCount={unassignedTasks.length}
-                todayTasks={todayTasks}
-              />
+              {/* Bottom Row - Lazy loaded */}
+              <Suspense fallback={<ComponentLoader />}>
+                <DashboardMetricsCards 
+                  pendingIncidents={pendingIncidents}
+                  unassignedTasksCount={unassignedTasks.length}
+                  todayTasks={todayTasks}
+                />
+              </Suspense>
             </div>
           </div>
           </main>
         </div>
       </div>
       
-      {/* Modales */}
-      <CreateTaskModal
-        open={isCreateModalOpen}
-        onOpenChange={setIsCreateModalOpen}
-        onCreateTask={handleCreateTask}
-      />
-      
-      <BatchCreateTaskModal
-        open={isBatchCreateModalOpen}
-        onOpenChange={setIsBatchCreateModalOpen}
-        onCreateTasks={handleBatchCreateTasks}
-      />
-      
-      {/* Modal de detalles de tarea */}
-      {selectedTask && (
-        <TaskDetailsModal
-          task={selectedTask}
-          open={isTaskDetailsOpen}
-          onOpenChange={setIsTaskDetailsOpen}
-          onUpdateTask={handleUpdateTask}
-          onDeleteTask={handleDeleteTask}
+      {/* Modales - Lazy loaded */}
+      <Suspense fallback={null}>
+        <CreateTaskModal
+          open={isCreateModalOpen}
+          onOpenChange={setIsCreateModalOpen}
+          onCreateTask={handleCreateTask}
         />
-      )}
+        
+        <BatchCreateTaskModal
+          open={isBatchCreateModalOpen}
+          onOpenChange={setIsBatchCreateModalOpen}
+          onCreateTasks={handleBatchCreateTasks}
+        />
+        
+        {/* Modal de detalles de tarea */}
+        {selectedTask && (
+          <TaskDetailsModal
+            task={selectedTask}
+            open={isTaskDetailsOpen}
+            onOpenChange={setIsTaskDetailsOpen}
+            onUpdateTask={handleUpdateTask}
+            onDeleteTask={handleDeleteTask}
+          />
+        )}
+      </Suspense>
     </SidebarProvider>
   );
 };
