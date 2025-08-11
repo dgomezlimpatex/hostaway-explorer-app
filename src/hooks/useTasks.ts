@@ -103,20 +103,41 @@ export const useTasks = (currentDate: Date, currentView: ViewType) => {
 
   const deleteTaskMutation = useMutation({
     mutationFn: async (taskId: string) => {
-      // Check if task has a cleaner assigned to send cancellation email
-      const currentTask = tasks.find(t => t.id === taskId);
+      console.log('🗑️ useTasks - deleteTask called with taskId:', taskId);
+      
+      // Find the task by either id or originalTaskId to get the real task id
+      const currentTask = tasks.find(t => t.id === taskId || t.originalTaskId === taskId);
+      const realTaskId = currentTask?.originalTaskId || taskId;
+      
+      console.log('🗑️ useTasks - currentTask found:', currentTask);
+      console.log('🗑️ useTasks - realTaskId to delete:', realTaskId);
+      
       if (currentTask?.cleanerId) {
         // Use cancelTask instead of deleteTask to send email
-        await taskStorageService.cancelTask(taskId);
+        console.log('📧 useTasks - sending cancellation email for task with cleaner');
+        await taskStorageService.cancelTask(realTaskId);
       }
       // Then delete the task
-      return taskStorageService.deleteTask(taskId);
+      console.log('🗑️ useTasks - calling taskStorageService.deleteTask with realTaskId:', realTaskId);
+      const result = await taskStorageService.deleteTask(realTaskId);
+      console.log('🗑️ useTasks - deleteTask result:', result);
+      return result;
     },
     onSuccess: (data, taskId) => {
-      // Optimistic update
+      console.log('✅ useTasks - deleteTask successful for taskId:', taskId);
+      // Optimistic update - remove all tasks with the same originalTaskId or id
       queryClient.setQueryData(queryKey, (oldData: Task[] | undefined) => {
         if (!oldData) return oldData;
-        return oldData.filter(task => task.id !== taskId);
+        const currentTask = oldData.find(t => t.id === taskId || t.originalTaskId === taskId);
+        const realTaskId = currentTask?.originalTaskId || taskId;
+        
+        // Filter out tasks with matching id or originalTaskId
+        return oldData.filter(task => 
+          task.id !== taskId && 
+          task.id !== realTaskId && 
+          task.originalTaskId !== taskId && 
+          task.originalTaskId !== realTaskId
+        );
       });
       queryClient.invalidateQueries({ queryKey: ['tasks', 'all'] });
     },

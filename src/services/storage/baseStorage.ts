@@ -83,16 +83,19 @@ export class BaseStorageService<T extends BaseEntity, CreateData = Omit<T, keyof
   }
 
   async delete(id: string): Promise<boolean> {
-    const { error } = await supabase
+    console.log(`🗑️ BaseStorage - Attempting to delete from ${this.config.tableName} with id:`, id);
+    
+    const { error, count } = await supabase
       .from(this.config.tableName as any)
       .delete()
       .eq('id', id);
 
     if (error) {
-      console.error(`Error deleting ${this.config.tableName}:`, error);
+      console.error(`❌ Error deleting from ${this.config.tableName}:`, error);
       throw error;
     }
 
+    console.log(`✅ BaseStorage - Delete successful from ${this.config.tableName}, count:`, count);
     return true;
   }
 }
