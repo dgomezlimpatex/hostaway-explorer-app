@@ -27,14 +27,22 @@ export class MultipleTaskAssignmentService {
       ? taskId.split('_assignment_')[0] 
       : taskId;
 
-    // First, get cleaner details including email
-    const { data: cleaners, error: cleanersError } = await supabase
+    // Get current assignments to compare
+    const currentAssignments = await this.getTaskAssignments(actualTaskId);
+    const currentCleanerIds = currentAssignments.map(a => a.cleaner_id);
+
+    // Determine which cleaners to add and remove
+    const cleanersToAdd = cleanerIds.filter(id => !currentCleanerIds.includes(id));
+    const cleanersToRemove = currentCleanerIds.filter(id => !cleanerIds.includes(id));
+
+    // Get cleaner details for the new cleaners and task details
+    const { data: newCleaners, error: cleanersError } = await supabase
       .from('cleaners')
       .select('id, name, email')
-      .in('id', cleanerIds);
+      .in('id', cleanersToAdd);
 
-    if (cleanersError) {
-      throw new Error(`Error fetching cleaners: ${cleanersError.message}`);
+    if (cleanersError && cleanersToAdd.length > 0) {
+      throw new Error(`Error fetching new cleaners: ${cleanersError.message}`);
     }
 
     // Get task details for email
@@ -48,81 +56,100 @@ export class MultipleTaskAssignmentService {
       throw new Error(`Error fetching task: ${taskError.message}`);
     }
 
-    // Clear existing assignments for this task
-    await this.clearTaskAssignments(actualTaskId);
-
-    // Create new assignments
-    const assignments = cleaners.map(cleaner => ({
-      task_id: actualTaskId,
-      cleaner_id: cleaner.id,
-      cleaner_name: cleaner.name,
-      assigned_by: null // Will be set by RLS/triggers if needed
-    }));
-
-    const { data, error } = await supabase
-      .from('task_assignments')
-      .insert(assignments)
-      .select();
-
-    if (error) {
-      throw new Error(`Error creating assignments: ${error.message}`);
+    // Remove cleaners that are no longer selected
+    for (const cleanerId of cleanersToRemove) {
+      await this.removeCleanerFromTask(actualTaskId, cleanerId);
     }
 
-    // Update the main task with primary cleaner info (first one)
-    if (cleaners.length > 0) {
+    // Add new cleaners
+    if (cleanersToAdd.length > 0) {
+      const newAssignments = (newCleaners || []).map(cleaner => ({
+        task_id: actualTaskId,
+        cleaner_id: cleaner.id,
+        cleaner_name: cleaner.name,
+        assigned_by: null // Will be set by RLS/triggers if needed
+      }));
+
+      const { error: insertError } = await supabase
+        .from('task_assignments')
+        .insert(newAssignments);
+
+      if (insertError) {
+        throw new Error(`Error creating new assignments: ${insertError.message}`);
+      }
+
+      // Send assignment emails only to newly added cleaners
+      const emailPromises = (newCleaners || []).map(async (cleaner) => {
+        if (cleaner.email) {
+          try {
+            console.log('Sending assignment email to new cleaner:', cleaner.email, 'for task:', taskId);
+            
+            // Prepare task data for email
+            const taskData = {
+              property: task.property,
+              address: task.address,
+              date: task.date,
+              startTime: task.start_time,
+              endTime: task.end_time,
+              type: task.type || 'Limpieza general',
+              notes: task.supervisor ? `Supervisor: ${task.supervisor}` : undefined
+            };
+
+            // Call the edge function to send the email
+            const { data: emailData, error: emailError } = await supabase.functions.invoke('send-task-assignment-email', {
+              body: {
+                taskId: task.id,
+                cleanerEmail: cleaner.email,
+                cleanerName: cleaner.name,
+                taskData
+              }
+            });
+
+            if (emailError) {
+              console.error('Error sending assignment email to', cleaner.email, ':', emailError);
+            } else {
+              console.log('Assignment email sent successfully to', cleaner.email, ':', emailData);
+            }
+          } catch (error) {
+            console.error('Failed to send assignment email to', cleaner.email, ':', error);
+          }
+        } else {
+          console.log('Cleaner', cleaner.name, 'has no email address, skipping email notification');
+        }
+      });
+
+      // Wait for all emails to be sent (but don't fail the assignment if emails fail)
+      await Promise.allSettled(emailPromises);
+    }
+
+    // Update the main task with primary cleaner info (first one from remaining assignments)
+    if (cleanerIds.length > 0) {
+      const { data: primaryCleaner } = await supabase
+        .from('cleaners')
+        .select('name')
+        .eq('id', cleanerIds[0])
+        .single();
+
       await supabase
         .from('tasks')
         .update({
-          cleaner: cleaners[0].name,
-          cleaner_id: cleaners[0].id
+          cleaner: primaryCleaner?.name || null,
+          cleaner_id: cleanerIds[0]
+        })
+        .eq('id', actualTaskId);
+    } else {
+      // No cleaners left, clear main task
+      await supabase
+        .from('tasks')
+        .update({
+          cleaner: null,
+          cleaner_id: null
         })
         .eq('id', actualTaskId);
     }
 
-    // Send assignment emails to all cleaners
-    const emailPromises = cleaners.map(async (cleaner) => {
-      if (cleaner.email) {
-        try {
-          console.log('Sending assignment email to:', cleaner.email, 'for task:', taskId);
-          
-          // Prepare task data for email
-          const taskData = {
-            property: task.property,
-            address: task.address,
-            date: task.date,
-            startTime: task.start_time,
-            endTime: task.end_time,
-            type: task.type || 'Limpieza general',
-            notes: task.supervisor ? `Supervisor: ${task.supervisor}` : undefined
-          };
-
-          // Call the edge function to send the email
-          const { data: emailData, error: emailError } = await supabase.functions.invoke('send-task-assignment-email', {
-            body: {
-              taskId: task.id,
-              cleanerEmail: cleaner.email,
-              cleanerName: cleaner.name,
-              taskData
-            }
-          });
-
-          if (emailError) {
-            console.error('Error sending assignment email to', cleaner.email, ':', emailError);
-          } else {
-            console.log('Assignment email sent successfully to', cleaner.email, ':', emailData);
-          }
-        } catch (error) {
-          console.error('Failed to send assignment email to', cleaner.email, ':', error);
-        }
-      } else {
-        console.log('Cleaner', cleaner.name, 'has no email address, skipping email notification');
-      }
-    });
-
-    // Wait for all emails to be sent (but don't fail the assignment if emails fail)
-    await Promise.allSettled(emailPromises);
-
-    return data || [];
+    // Return updated assignments
+    return await this.getTaskAssignments(actualTaskId);
   }
 
   async clearTaskAssignments(taskId: string): Promise<void> {
