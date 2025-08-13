@@ -161,13 +161,15 @@ async function sendTaskCancellationEmail(taskId: string): Promise<void> {
     const { error: emailError } = await supabase.functions.invoke('send-task-unassignment-email', {
       body: {
         taskId: task.id,
-        taskDate: task.date,
-        taskStartTime: task.start_time,
-        taskEndTime: task.end_time,
-        propertyName: task.properties?.nombre || task.property,
-        propertyAddress: task.properties?.direccion || task.address,
-        cleanerName: task.cleaners.name,
         cleanerEmail: task.cleaners.email,
+        cleanerName: task.cleaners.name,
+        taskData: {
+          date: task.date,
+          start_time: task.start_time,
+          end_time: task.end_time,
+          property: task.properties?.nombre || task.property,
+          address: task.properties?.direccion || task.address
+        },
         reason: 'cancelled'
       }
     });
