@@ -5,7 +5,7 @@ export const propertySchema = z.object({
   codigo: z.string().min(1, 'El código es obligatorio'),
   nombre: z.string().min(1, 'El nombre es obligatorio'),
   direccion: z.string().min(1, 'La dirección es obligatoria'),
-  numeroCamas: z.number().min(1, 'Debe tener al menos 1 cama'),
+  numeroCamas: z.number().min(0, 'El número de camas debe ser positivo'),
   numeroCamasPequenas: z.number().min(0, 'El número de camas pequeñas debe ser positivo'),
   numeroCamasSuite: z.number().min(0, 'El número de camas suite debe ser positivo'),
   numeroSofasCama: z.number().min(0, 'El número de sofás cama debe ser positivo'),

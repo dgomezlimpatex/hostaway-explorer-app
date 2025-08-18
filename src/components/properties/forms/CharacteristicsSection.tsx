@@ -27,7 +27,7 @@ export const CharacteristicsSection = ({ control }: CharacteristicsSectionProps)
                 <Input 
                   {...field} 
                   type="number" 
-                  min="1"
+                  min="0"
                   onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
                 />
               </FormControl>
