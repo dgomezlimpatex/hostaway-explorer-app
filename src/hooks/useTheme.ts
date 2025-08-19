@@ -1,27 +1,17 @@
 
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 
 export const useTheme = () => {
-  const [theme, setTheme] = useState<'light' | 'dark'>(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('theme');
-      if (saved) return saved as 'light' | 'dark';
-      // Siempre usar tema claro por defecto, independientemente de la preferencia del sistema
-      return 'light';
-    }
-    return 'light';
-  });
+  // Siempre usar tema claro fijo
+  const theme = 'light';
 
   useEffect(() => {
     const root = window.document.documentElement;
     root.classList.remove('light', 'dark');
-    root.classList.add(theme);
-    localStorage.setItem('theme', theme);
-  }, [theme]);
+    root.classList.add('light');
+    // Limpiar cualquier preferencia guardada para forzar modo claro
+    localStorage.removeItem('theme');
+  }, []);
 
-  const toggleTheme = () => {
-    setTheme(prev => prev === 'light' ? 'dark' : 'light');
-  };
-
-  return { theme, toggleTheme };
+  return { theme };
 };

@@ -1,6 +1,5 @@
 
 import { Button } from "@/components/ui/button";
-import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { ChevronLeft, ChevronRight, Calendar, Plus, ArrowLeft } from "lucide-react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
@@ -108,7 +107,6 @@ export const ResponsiveCalendarHeader = ({
                   {!isMobile && <span>Servicio Extra</span>}
                 </Button>
               )}
-              <ThemeToggle />
             </div>
           </div>
 
