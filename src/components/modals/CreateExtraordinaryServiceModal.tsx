@@ -20,6 +20,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useState } from "react";
 
 interface ExtraordinaryServiceData {
+  serviceName: string;
   clientName: string;
   billingAddress: string;
   email: string;
@@ -48,6 +49,7 @@ export const CreateExtraordinaryServiceModal = ({
   const { toast } = useToast();
   
   const [formData, setFormData] = useState<ExtraordinaryServiceData>({
+    serviceName: '',
     clientName: '',
     billingAddress: '',
     email: '',
@@ -69,6 +71,7 @@ export const CreateExtraordinaryServiceModal = ({
 
   const resetForm = () => {
     setFormData({
+      serviceName: '',
       clientName: '',
       billingAddress: '',
       email: '',
@@ -88,19 +91,10 @@ export const CreateExtraordinaryServiceModal = ({
     console.log('🟢🟢🟢 FORM SUBMIT - Starting with notes:', formData.notes);
     
     // Validaciones básicas
-    if (!formData.clientName.trim()) {
+    if (!formData.serviceName.trim()) {
       toast({
         title: "Error",
-        description: "El nombre del cliente es obligatorio.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (!formData.email.trim() || !formData.email.includes('@')) {
-      toast({
-        title: "Error",
-        description: "Ingresa un email válido.",
+        description: "El nombre del servicio es obligatorio.",
         variant: "destructive",
       });
       return;
@@ -124,10 +118,20 @@ export const CreateExtraordinaryServiceModal = ({
       return;
     }
 
-    if (formData.serviceCost <= 0) {
+    if (formData.serviceCost < 0) {
       toast({
         title: "Error",
-        description: "El coste del servicio debe ser mayor a 0.",
+        description: "El coste del servicio no puede ser negativo.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Validar email solo si se proporciona
+    if (formData.email.trim() && !formData.email.includes('@')) {
+      toast({
+        title: "Error",
+        description: "Ingresa un email válido.",
         variant: "destructive",
       });
       return;
@@ -159,25 +163,34 @@ export const CreateExtraordinaryServiceModal = ({
         
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="clientName">Nombre del Cliente *</Label>
+            <Label htmlFor="serviceName">Nombre del Servicio *</Label>
             <Input
-              id="clientName"
-              value={formData.clientName}
-              onChange={(e) => handleChange('clientName', e.target.value)}
-              placeholder="Nombre completo del cliente"
+              id="serviceName"
+              value={formData.serviceName}
+              onChange={(e) => handleChange('serviceName', e.target.value)}
+              placeholder="Ej: Limpieza profunda, Mantenimiento, etc."
               required
             />
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="email">Email *</Label>
+            <Label htmlFor="clientName">Nombre del Cliente</Label>
+            <Input
+              id="clientName"
+              value={formData.clientName}
+              onChange={(e) => handleChange('clientName', e.target.value)}
+              placeholder="Nombre completo del cliente (opcional)"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="email">Email</Label>
             <Input
               id="email"
               type="email"
               value={formData.email}
               onChange={(e) => handleChange('email', e.target.value)}
-              placeholder="email@ejemplo.com"
-              required
+              placeholder="email@ejemplo.com (opcional)"
             />
           </div>
 
@@ -188,7 +201,7 @@ export const CreateExtraordinaryServiceModal = ({
               type="tel"
               value={formData.phoneNumber}
               onChange={(e) => handleChange('phoneNumber', e.target.value)}
-              placeholder="+34 600 000 000"
+              placeholder="+34 600 000 000 (opcional)"
             />
           </div>
 
@@ -198,7 +211,7 @@ export const CreateExtraordinaryServiceModal = ({
               id="billingAddress"
               value={formData.billingAddress}
               onChange={(e) => handleChange('billingAddress', e.target.value)}
-              placeholder="Dirección completa para facturación"
+              placeholder="Dirección completa para facturación (opcional)"
             />
           </div>
 
@@ -255,7 +268,7 @@ export const CreateExtraordinaryServiceModal = ({
             </div>
             
             <div className="space-y-2">
-              <Label htmlFor="serviceCost">Coste del Servicio (€) *</Label>
+              <Label htmlFor="serviceCost">Coste del Servicio (€)</Label>
               <Input
                 id="serviceCost"
                 type="number"
@@ -263,7 +276,6 @@ export const CreateExtraordinaryServiceModal = ({
                 step="0.01"
                 value={formData.serviceCost}
                 onChange={(e) => handleChange('serviceCost', parseFloat(e.target.value) || 0)}
-                required
               />
             </div>
           </div>
