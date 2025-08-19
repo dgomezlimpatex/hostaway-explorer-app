@@ -6,7 +6,8 @@ export const useTheme = () => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('theme');
       if (saved) return saved as 'light' | 'dark';
-      return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+      // Siempre usar tema claro por defecto, independientemente de la preferencia del sistema
+      return 'light';
     }
     return 'light';
   });
