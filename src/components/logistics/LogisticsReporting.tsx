@@ -30,6 +30,7 @@ import {
   Area,
   AreaChart
 } from "recharts";
+import { Link } from "react-router-dom";
 import {
   Download,
   FileText,
@@ -41,7 +42,8 @@ import {
   Target,
   Clock,
   Package,
-  Truck
+  Truck,
+  ArrowLeft
 } from "lucide-react";
 
 export const LogisticsReporting: React.FC = () => {
@@ -164,15 +166,32 @@ export const LogisticsReporting: React.FC = () => {
       <div className="container mx-auto px-4 py-6 space-y-6">
         {/* Header */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-bold flex items-center gap-2">
-              <BarChart3 className="h-6 w-6 text-primary" />
-              Reportes Logísticos
-            </h1>
-            <p className="text-sm text-muted-foreground">
-              Análisis y reportes del sistema logístico
-            </p>
+          <div className="flex items-center gap-3">
+            <Button variant="ghost" size="sm" asChild>
+              <Link to="/" className="flex items-center gap-2">
+                <ArrowLeft className="h-4 w-4" />
+                <span className="hidden sm:inline">Dashboard</span>
+              </Link>
+            </Button>
+            <Separator orientation="vertical" className="h-6" />
+            <div>
+              <h1 className="text-2xl font-bold flex items-center gap-2">
+                <BarChart3 className="h-6 w-6 text-primary" />
+                Reportes Logística
+              </h1>
+              <p className="text-sm text-muted-foreground">
+                Análisis y reportes de operaciones logísticas
+              </p>
+            </div>
           </div>
+          <Button 
+            onClick={handleGenerateReport} 
+            disabled={loading || isGenerating}
+            size="sm"
+          >
+            <RefreshCw className={`mr-2 h-4 w-4 ${loading || isGenerating ? 'animate-spin' : ''}`} />
+            Generar Reporte
+          </Button>
         </div>
 
         {/* Filters */}

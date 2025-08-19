@@ -7,6 +7,7 @@ import { useNetworkStatus } from "@/hooks/useNetworkStatus";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { supabase } from "@/integrations/supabase/client";
 import { Link } from "react-router-dom";
+import { Separator } from "@/components/ui/separator";
 import {
   Package,
   Truck,
@@ -20,7 +21,8 @@ import {
   Activity,
   BarChart3,
   PackagePlus,
-  PackageCheck
+  PackageCheck,
+  ArrowLeft
 } from "lucide-react";
 
 interface DashboardStats {
