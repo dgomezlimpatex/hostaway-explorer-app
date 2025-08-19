@@ -230,7 +230,7 @@ export const useCalendarLogic = () => {
       })(),
       checkIn: '09:00',
       checkOut: '09:00',
-      property: serviceData.serviceAddress,
+      property: serviceData.serviceName,
       address: serviceData.serviceAddress,
       type: 'trabajo-extraordinario',
       status: 'pending',
