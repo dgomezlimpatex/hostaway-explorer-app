@@ -32,6 +32,8 @@ import LogisticsPicklists from "./pages/LogisticsPicklists";
 import LogisticsPicklistDetails from "./pages/LogisticsPicklistDetails";
 import LogisticsPicklistEdit from "./pages/LogisticsPicklistEdit";
 import LogisticsDeliveries from "./pages/LogisticsDeliveries";
+import LogisticsDashboard from "./pages/LogisticsDashboard";
+import LogisticsReports from "./pages/LogisticsReports";
 
 const queryClient = new QueryClient();
 
@@ -168,6 +170,20 @@ function App() {
                 <ProtectedRoute>
                   <RoleProtectedRoute requiredModule="inventory">
                     <InventoryReports />
+                  </RoleProtectedRoute>
+                </ProtectedRoute>
+              } />
+              <Route path="/logistics/dashboard" element={
+                <ProtectedRoute>
+                  <RoleProtectedRoute requiredModule="logistics">
+                    <LogisticsDashboard />
+                  </RoleProtectedRoute>
+                </ProtectedRoute>
+              } />
+              <Route path="/logistics/reports" element={
+                <ProtectedRoute>
+                  <RoleProtectedRoute requiredModule="logistics">
+                    <LogisticsReports />
                   </RoleProtectedRoute>
                 </ProtectedRoute>
               } />
