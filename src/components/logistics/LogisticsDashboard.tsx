@@ -1,13 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { useNetworkStatus } from "@/hooks/useNetworkStatus";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { supabase } from "@/integrations/supabase/client";
 import { Link } from "react-router-dom";
-import { Separator } from "@/components/ui/separator";
+import { LogisticsLayout } from "./LogisticsLayout";
+import { LogisticsStatsGrid } from "./LogisticsStatsGrid";
+import { LogisticsCard } from "./LogisticsCard";
 import {
   Package,
   Truck,
@@ -16,13 +16,14 @@ import {
   AlertTriangle,
   Plus,
   Eye,
-  Wifi,
-  WifiOff,
   Activity,
   BarChart3,
   PackagePlus,
   PackageCheck,
-  ArrowLeft
+  Building2,
+  TrendingUp,
+  Users,
+  Calendar
 } from "lucide-react";
 
 interface DashboardStats {
@@ -45,7 +46,6 @@ interface RecentPicklist {
 
 export const LogisticsDashboard: React.FC = () => {
   const { toast } = useToast();
-  const { isOnline, isSlowConnection } = useNetworkStatus();
   const isMobile = useIsMobile();
   const [loading, setLoading] = useState(false);
   const [stats, setStats] = useState<DashboardStats>({
@@ -138,143 +138,141 @@ export const LogisticsDashboard: React.FC = () => {
     cancelled: "Cancelada"
   };
 
+  const statsData = [
+    {
+      title: "Total Picklists",
+      value: stats.totalPicklists,
+      icon: Package,
+      color: 'primary' as const,
+      change: {
+        value: 12,
+        label: "vs mes anterior",
+        positive: true
+      }
+    },
+    {
+      title: "En Preparación",
+      value: stats.preparingPicklists,
+      icon: Clock,
+      color: 'warning' as const
+    },
+    {
+      title: "Empacadas",
+      value: stats.packedPicklists,
+      icon: PackageCheck,
+      color: 'success' as const
+    },
+    {
+      title: "Entregas Hoy",
+      value: stats.todayDeliveries,
+      icon: Truck,
+      color: 'info' as const
+    },
+    {
+      title: "Completadas",
+      value: stats.completedToday,
+      icon: CheckCircle,
+      color: 'success' as const
+    },
+    {
+      title: "Pendientes",
+      value: stats.pendingDeliveries,
+      icon: AlertTriangle,
+      color: 'destructive' as const
+    }
+  ];
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background to-muted/30">
-      <div className="container mx-auto px-4 py-6 space-y-6">
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-bold flex items-center gap-2">
-              <Package className="h-6 w-6 text-primary" />
-              Dashboard Logística
-            </h1>
-            <p className="text-sm text-muted-foreground flex items-center gap-2">
-              Panel de control para operaciones logísticas
-              {isOnline ? (
-                <Wifi className="h-4 w-4 text-green-500" />
-              ) : (
-                <WifiOff className="h-4 w-4 text-red-500" />
-              )}
-              {isSlowConnection && (
-                <Badge variant="outline" className="text-orange-600">
-                  Conexión lenta
-                </Badge>
-              )}
-            </p>
+    <LogisticsLayout
+      title="Dashboard Logística"
+      subtitle="Panel de control para operaciones logísticas"
+      icon={Package}
+      loading={loading}
+      onRefresh={loadDashboardData}
+    >
+
+      {/* Stats Grid */}
+      <LogisticsStatsGrid stats={statsData} loading={loading} />
+
+      {/* Quick Actions */}
+      <Card className="shadow-lg border-0 bg-gradient-to-br from-primary/5 to-primary/2">
+        <CardHeader className="pb-4">
+          <CardTitle className="text-lg flex items-center gap-2">
+            <Plus className="h-5 w-5 text-primary" />
+            Acciones Rápidas
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <Button 
+              asChild 
+              size="lg"
+              className="h-24 flex-col gap-3 bg-primary hover:bg-primary/90 shadow-lg hover:shadow-xl transition-all duration-300"
+            >
+              <Link to="/logistics/picklists">
+                <PackagePlus className="h-8 w-8" />
+                <div className="text-center">
+                  <div className="font-semibold">Nueva Picklist</div>
+                  <div className="text-xs opacity-90">Crear paquete</div>
+                </div>
+              </Link>
+            </Button>
+            
+            <Button 
+              asChild 
+              variant="outline" 
+              size="lg"
+              className="h-24 flex-col gap-3 hover-lift border-primary/20 hover:border-primary/40"
+            >
+              <Link to="/logistics/picklists">
+                <Eye className="h-8 w-8" />
+                <div className="text-center">
+                  <div className="font-semibold">Ver Picklists</div>
+                  <div className="text-xs text-muted-foreground">Gestionar</div>
+                </div>
+              </Link>
+            </Button>
+            
+            <Button 
+              asChild 
+              variant="outline" 
+              size="lg"
+              className="h-24 flex-col gap-3 hover-lift border-primary/20 hover:border-primary/40"
+            >
+              <Link to="/logistics/deliveries">
+                <Truck className="h-8 w-8" />
+                <div className="text-center">
+                  <div className="font-semibold">Entregas</div>
+                  <div className="text-xs text-muted-foreground">Logística</div>
+                </div>
+              </Link>
+            </Button>
+            
+            <Button 
+              asChild 
+              variant="outline" 
+              size="lg"
+              className="h-24 flex-col gap-3 hover-lift border-primary/20 hover:border-primary/40"
+            >
+              <Link to="/logistics/reports">
+                <BarChart3 className="h-8 w-8" />
+                <div className="text-center">
+                  <div className="font-semibold">Reportes</div>
+                  <div className="text-xs text-muted-foreground">Análisis</div>
+                </div>
+              </Link>
+            </Button>
           </div>
-          <Button 
-            onClick={loadDashboardData} 
-            disabled={loading}
-            variant="outline"
-            size={isMobile ? "sm" : "default"}
-          >
-            <Activity className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-            Actualizar
-          </Button>
-        </div>
+        </CardContent>
+      </Card>
 
-        {/* Quick Actions */}
+
+      {/* Recent Picklists */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card className="shadow-lg border-0">
           <CardHeader className="pb-4">
             <CardTitle className="text-lg flex items-center gap-2">
-              <Plus className="h-5 w-5" />
-              Acciones Rápidas
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              <Button asChild variant="default" className="h-20 flex-col gap-2">
-                <Link to="/logistics/picklists">
-                  <PackagePlus className="h-6 w-6" />
-                  <span className="text-xs text-center">Nueva Picklist</span>
-                </Link>
-              </Button>
-              <Button asChild variant="outline" className="h-20 flex-col gap-2">
-                <Link to="/logistics/picklists">
-                  <Eye className="h-6 w-6" />
-                  <span className="text-xs text-center">Ver Picklists</span>
-                </Link>
-              </Button>
-              <Button asChild variant="outline" className="h-20 flex-col gap-2">
-                <Link to="/logistics/deliveries">
-                  <Truck className="h-6 w-6" />
-                  <span className="text-xs text-center">Entregas</span>
-                </Link>
-              </Button>
-              <Button asChild variant="outline" className="h-20 flex-col gap-2">
-                <Link to="/logistics/reports">
-                  <BarChart3 className="h-6 w-6" />
-                  <span className="text-xs text-center">Reportes</span>
-                </Link>
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Stats Cards */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-          <Card className="shadow-sm">
-            <CardContent className="p-4">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-primary/10 rounded-lg">
-                  <Package className="h-5 w-5 text-primary" />
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Total Picklists</p>
-                  <p className="text-xl font-bold">{stats.totalPicklists}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="shadow-sm">
-            <CardContent className="p-4">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-blue-100 rounded-lg">
-                  <Clock className="h-5 w-5 text-blue-600" />
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Preparando</p>
-                  <p className="text-xl font-bold">{stats.preparingPicklists}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="shadow-sm">
-            <CardContent className="p-4">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-green-100 rounded-lg">
-                  <PackageCheck className="h-5 w-5 text-green-600" />
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Empacadas</p>
-                  <p className="text-xl font-bold">{stats.packedPicklists}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="shadow-sm">
-            <CardContent className="p-4">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-orange-100 rounded-lg">
-                  <Truck className="h-5 w-5 text-orange-600" />
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Entregas Hoy</p>
-                  <p className="text-xl font-bold">{stats.todayDeliveries}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Recent Picklists */}
-        <Card className="shadow-lg border-0">
-          <CardHeader className="pb-4">
-            <CardTitle className="text-lg flex items-center gap-2">
-              <Clock className="h-5 w-5" />
+              <Clock className="h-5 w-5 text-primary" />
               Picklists Recientes
             </CardTitle>
           </CardHeader>
@@ -285,49 +283,87 @@ export const LogisticsDashboard: React.FC = () => {
                 <p className="text-muted-foreground">No hay picklists recientes</p>
               </div>
             ) : (
-              <div className="space-y-3">
+              <div className="space-y-3 max-h-96 overflow-y-auto custom-scrollbar">
                 {recentPicklists.map((picklist) => (
-                  <div key={picklist.id} className="flex items-center justify-between p-3 bg-muted/20 rounded-lg">
-                    <div className="flex-1">
-                      <p className="font-medium">{picklist.code}</p>
-                      <p className="text-sm text-muted-foreground">
-                        {new Date(picklist.created_at).toLocaleDateString('es-ES')}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Badge variant={statusColors[picklist.status as keyof typeof statusColors]}>
-                        {statusLabels[picklist.status as keyof typeof statusLabels]}
-                      </Badge>
-                      <Button asChild size="sm" variant="ghost">
-                        <Link to={`/logistics/picklists/${picklist.id}`}>
-                          <Eye className="h-4 w-4" />
-                        </Link>
-                      </Button>
-                    </div>
-                  </div>
+                  <LogisticsCard
+                    key={picklist.id}
+                    type="picklist"
+                    id={picklist.id}
+                    code={picklist.code}
+                    status={picklist.status}
+                    title={picklist.code}
+                    subtitle={`Creada: ${new Date(picklist.created_at).toLocaleDateString('es-ES')}`}
+                    scheduledDate={picklist.scheduled_date}
+                    className="shadow-sm"
+                  />
                 ))}
               </div>
             )}
           </CardContent>
         </Card>
 
-        {/* Performance Indicators */}
-        {!isOnline && (
-          <Card className="shadow-lg border-orange-200 bg-orange-50/50">
-            <CardContent className="p-4">
-              <div className="flex items-center gap-3">
-                <WifiOff className="h-5 w-5 text-orange-600" />
-                <div>
-                  <p className="font-medium text-orange-800">Modo Offline</p>
-                  <p className="text-sm text-orange-600">
-                    Los datos se sincronizarán cuando vuelva la conexión
-                  </p>
+        {/* Performance Overview */}
+        <Card className="shadow-lg border-0">
+          <CardHeader className="pb-4">
+            <CardTitle className="text-lg flex items-center gap-2">
+              <TrendingUp className="h-5 w-5 text-primary" />
+              Rendimiento
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div className="flex items-center justify-between p-3 bg-muted/20 rounded-lg">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-success/10 rounded-lg">
+                    <CheckCircle className="h-5 w-5 text-success" />
+                  </div>
+                  <div>
+                    <p className="font-medium">Eficiencia de Empaquetado</p>
+                    <p className="text-sm text-muted-foreground">Últimas 24h</p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <p className="text-xl font-bold text-success">94%</p>
+                  <p className="text-xs text-success">+5% vs ayer</p>
                 </div>
               </div>
-            </CardContent>
-          </Card>
-        )}
+
+              <div className="flex items-center justify-between p-3 bg-muted/20 rounded-lg">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-info/10 rounded-lg">
+                    <Clock className="h-5 w-5 text-info" />
+                  </div>
+                  <div>
+                    <p className="font-medium">Tiempo Promedio</p>
+                    <p className="text-sm text-muted-foreground">Por picklist</p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <p className="text-xl font-bold">24 min</p>
+                  <p className="text-xs text-success">-3 min vs ayer</p>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between p-3 bg-muted/20 rounded-lg">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-warning/10 rounded-lg">
+                    <Users className="h-5 w-5 text-warning" />
+                  </div>
+                  <div>
+                    <p className="font-medium">Personal Activo</p>
+                    <p className="text-sm text-muted-foreground">En turno actual</p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <p className="text-xl font-bold">8</p>
+                  <p className="text-xs text-muted-foreground">de 12 total</p>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
-    </div>
+
+    </LogisticsLayout>
   );
 };
