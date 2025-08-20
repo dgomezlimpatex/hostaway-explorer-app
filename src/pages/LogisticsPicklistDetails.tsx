@@ -12,8 +12,12 @@ import {
   Calendar, 
   FileText, 
   Building2,
-  Edit
+  Edit,
+  Download,
+  FileSpreadsheet
 } from "lucide-react";
+import { usePicklistExport } from "@/hooks/usePicklistExport";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
 interface PicklistItem {
   id: string;
@@ -38,6 +42,7 @@ interface PicklistItem {
 export default function LogisticsPicklistDetails() {
   const { id } = useParams<{ id: string }>();
   const { toast } = useToast();
+  const { exportToExcel, exportToPDF } = usePicklistExport();
   
   const [loading, setLoading] = useState(false);
   const [picklist, setPicklist] = useState<any>(null);
@@ -170,6 +175,24 @@ export default function LogisticsPicklistDetails() {
             </div>
           </div>
           <div className="flex items-center gap-2">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm">
+                  <Download className="h-4 w-4 mr-2" />
+                  Exportar
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent>
+                <DropdownMenuItem onClick={() => exportToExcel(id!, picklist.code)}>
+                  <FileSpreadsheet className="h-4 w-4 mr-2" />
+                  Exportar a Excel
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => exportToPDF(id!, picklist.code)}>
+                  <FileText className="h-4 w-4 mr-2" />
+                  Exportar a PDF
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
             <Button asChild variant="outline">
               <Link to={`/logistics/picklists/${id}/edit`} className="flex items-center gap-2">
                 <Edit className="h-4 w-4" />
