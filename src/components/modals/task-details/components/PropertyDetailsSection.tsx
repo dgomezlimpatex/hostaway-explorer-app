@@ -20,12 +20,36 @@ export const PropertyDetailsSection = ({ propertyData }: PropertyDetailsSectionP
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
           <div className="flex flex-col items-center p-3 bg-green-50 rounded-lg border border-green-200">
             <Bed className="h-6 w-6 text-green-600 mb-1" />
-            <span className="text-sm text-gray-600">Camas</span>
-            <span className="text-lg font-semibold text-green-800">{propertyData.numero_camas}</span>
+            <span className="text-sm text-gray-600">Camas Grandes</span>
+            <span className="text-lg font-semibold text-green-800">{propertyData.numero_camas || 0}</span>
           </div>
+
+          {propertyData.numero_camas_pequenas > 0 && (
+            <div className="flex flex-col items-center p-3 bg-emerald-50 rounded-lg border border-emerald-200">
+              <Bed className="h-5 w-5 text-emerald-600 mb-1" />
+              <span className="text-sm text-gray-600">Camas Pequeñas</span>
+              <span className="text-lg font-semibold text-emerald-800">{propertyData.numero_camas_pequenas}</span>
+            </div>
+          )}
+
+          {propertyData.numero_camas_suite > 0 && (
+            <div className="flex flex-col items-center p-3 bg-purple-50 rounded-lg border border-purple-200">
+              <Bed className="h-5 w-5 text-purple-600 mb-1" />
+              <span className="text-sm text-gray-600">Camas Suite</span>
+              <span className="text-lg font-semibold text-purple-800">{propertyData.numero_camas_suite}</span>
+            </div>
+          )}
+
+          {propertyData.numero_sofas_cama > 0 && (
+            <div className="flex flex-col items-center p-3 bg-pink-50 rounded-lg border border-pink-200">
+              <span className="text-xl mb-1">🛋️</span>
+              <span className="text-sm text-gray-600">Sofás Cama</span>
+              <span className="text-lg font-semibold text-pink-800">{propertyData.numero_sofas_cama}</span>
+            </div>
+          )}
           
           <div className="flex flex-col items-center p-3 bg-blue-50 rounded-lg border border-blue-200">
             <Bath className="h-6 w-6 text-blue-600 mb-1" />
