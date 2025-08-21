@@ -13,6 +13,7 @@ import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import AcceptInvitation from "./pages/AcceptInvitation";
 import UserManagement from "./pages/UserManagement";
+import SedeManagement from "./pages/SedeManagement";
 import Calendar from "./pages/Calendar";
 import Tasks from "./pages/Tasks";
 import Clients from "./pages/Clients";
@@ -67,6 +68,13 @@ function App() {
                 <ProtectedRoute>
                   <RoleProtectedRoute requiredModule="users">
                     <UserManagement />
+                  </RoleProtectedRoute>
+                </ProtectedRoute>
+              } />
+              <Route path="/sede-management" element={
+                <ProtectedRoute>
+                  <RoleProtectedRoute requiredModule="admin">
+                    <SedeManagement />
                   </RoleProtectedRoute>
                 </ProtectedRoute>
               } />

@@ -2,16 +2,19 @@
 import React from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Cleaner } from '@/types/calendar';
-import { cleanerStorage, CreateCleanerData } from '@/services/cleanerStorage';
+import { cleanerStorage, CreateCleanerData } from '@/services/storage/cleanerStorage';
 import { toast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
+import { useSede } from '@/contexts/SedeContext';
 
 export const useCleaners = () => {
   const { userRole, user } = useAuth();
+  const { activeSede } = useSede();
   
   const { data: allCleaners = [], isLoading } = useQuery({
-    queryKey: ['cleaners'],
+    queryKey: ['cleaners', activeSede?.id],
     queryFn: () => cleanerStorage.getAll(),
+    enabled: !!activeSede?.id,
   });
 
   // Filter cleaners based on user role
@@ -32,21 +35,25 @@ export const useCleaners = () => {
 };
 
 export const useCleaner = (id: string) => {
+  const { activeSede } = useSede();
+  
   return useQuery({
-    queryKey: ['cleaner', id],
+    queryKey: ['cleaner', id, activeSede?.id],
     queryFn: () => cleanerStorage.getById(id),
-    enabled: !!id,
+    enabled: !!id && !!activeSede?.id,
   });
 };
 
 export const useCreateCleaner = () => {
   const queryClient = useQueryClient();
+  const { activeSede } = useSede();
 
   return useMutation({
     mutationFn: async (cleanerData: CreateCleanerData) => {
       return await cleanerStorage.create(cleanerData);
     },
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['cleaners', activeSede?.id] });
       queryClient.invalidateQueries({ queryKey: ['cleaners'] });
       toast({
         title: "Trabajador creado",

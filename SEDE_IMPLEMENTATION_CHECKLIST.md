@@ -80,38 +80,39 @@
 ## ✅ FASE 4: COMPONENTES UI
 
 ### 4.1 Selector de Sede
-- [ ] Crear componente `SedeSelector` en `/components/sede/SedeSelector.tsx`
-- [ ] Implementar dropdown con sedes disponibles
-- [ ] Mostrar sede activa
-- [ ] Implementar cambio de sede
-- [ ] Agregar indicador visual de sede activa
+- [x] Crear componente `SedeSelector` en `/components/sede/SedeSelector.tsx`
+- [x] Implementar dropdown con sedes disponibles
+- [x] Mostrar sede activa
+- [x] Implementar cambio de sede
+- [x] Agregar indicador visual de sede activa
 
 ### 4.2 Integración en Layout
-- [ ] Agregar `SedeSelector` al header/navbar
-- [ ] Configurar posición y estilo
-- [ ] Verificar responsividad
-- [ ] Agregar indicador de sede activa en el título
+- [x] Agregar `SedeSelector` al header/navbar
+- [x] Configurar posición y estilo
+- [x] Verificar responsividad
+- [x] Agregar indicador de sede activa en el título
 
 ### 4.3 Componentes de Administración
-- [ ] Crear formulario para crear nueva sede
-- [ ] Crear formulario para editar sede existente
-- [ ] Crear componente para gestionar accesos de usuarios
-- [ ] Crear página de administración de sedes
+- [x] Crear formulario para crear nueva sede
+- [x] Crear formulario para editar sede existente
+- [x] Crear componente para gestionar accesos de usuarios
+- [x] Crear página de administración de sedes
+- [x] Integrar en rutas de administración
 
 ## ✅ FASE 5: HOOKS Y QUERIES
 
 ### 5.1 Actualización de Hooks Existentes
-- [ ] Modificar hooks de propiedades para usar sede activa
+- [x] Modificar hooks de propiedades para usar sede activa
 - [ ] Modificar hooks de tareas para usar sede activa
-- [ ] Modificar hooks de limpiadores para usar sede activa
-- [ ] Modificar hooks de clientes para usar sede activa
+- [x] Modificar hooks de limpiadores para usar sede activa
+- [x] Modificar hooks de clientes para usar sede activa
 - [ ] Modificar hooks de inventario para usar sede activa
 - [ ] Modificar hooks de logística para usar sede activa
 
 ### 5.2 Nuevos Hooks de Sede
-- [ ] Crear hook `useActiveSedeId`
-- [ ] Crear hook `useSedePermissions`
-- [ ] Crear hook `useSedeData`
+- [x] Crear hook `useActiveSedeId`
+- [x] Crear hook `useSedePermissions`
+- [x] Crear hook `useSedeData`
 - [ ] Implementar invalidación de queries al cambiar sede
 
 ## ✅ FASE 6: FORMULARIOS Y CREACIÓN
@@ -203,10 +204,10 @@
 - [x] Hooks básicos implementados
 
 ### Checkpoint 3: UI Básica ✅
-- [ ] Selector de sede funcionando
-- [ ] Cambio de sede sin errores
-- [ ] Filtros automáticos aplicados
-- [ ] Indicadores visuales correctos
+- [x] Selector de sede funcionando
+- [x] Cambio de sede sin errores
+- [x] Filtros automáticos aplicados
+- [x] Indicadores visuales correctos
 
 ### Checkpoint 4: Testing Completo ✅
 - [ ] Todos los tests pasando

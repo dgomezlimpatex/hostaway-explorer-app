@@ -1,32 +1,39 @@
-
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { clientStorage } from '@/services/clientStorage';
+import { clientStorage } from '@/services/storage/clientStorage';
 import { CreateClientData } from '@/types/client';
 import { toast } from '@/hooks/use-toast';
+import { useSede } from '@/contexts/SedeContext';
 
 export const useClients = () => {
+  const { activeSede } = useSede();
+  
   return useQuery({
-    queryKey: ['clients'],
+    queryKey: ['clients', activeSede?.id],
     queryFn: () => clientStorage.getAll(),
+    enabled: !!activeSede?.id,
   });
 };
 
 export const useClient = (id: string) => {
+  const { activeSede } = useSede();
+  
   return useQuery({
-    queryKey: ['client', id],
+    queryKey: ['client', id, activeSede?.id],
     queryFn: () => clientStorage.getById(id),
-    enabled: !!id,
+    enabled: !!id && !!activeSede?.id,
   });
 };
 
 export const useCreateClient = () => {
   const queryClient = useQueryClient();
+  const { activeSede } = useSede();
 
   return useMutation({
     mutationFn: async (clientData: CreateClientData) => {
       return await clientStorage.create(clientData);
     },
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['clients', activeSede?.id] });
       queryClient.invalidateQueries({ queryKey: ['clients'] });
       toast({
         title: "Cliente creado",
@@ -46,6 +53,7 @@ export const useCreateClient = () => {
 
 export const useUpdateClient = () => {
   const queryClient = useQueryClient();
+  const { activeSede } = useSede();
 
   return useMutation({
     mutationFn: async ({ id, updates }: { id: string; updates: Partial<CreateClientData> }) => {
@@ -54,7 +62,7 @@ export const useUpdateClient = () => {
       return result;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['clients'] });
+      queryClient.invalidateQueries({ queryKey: ['clients', activeSede?.id] });
       queryClient.invalidateQueries({ queryKey: ['client'] });
       toast({
         title: "Cliente actualizado",
@@ -74,6 +82,7 @@ export const useUpdateClient = () => {
 
 export const useDeleteClient = () => {
   const queryClient = useQueryClient();
+  const { activeSede } = useSede();
 
   return useMutation({
     mutationFn: async (id: string) => {
@@ -82,7 +91,7 @@ export const useDeleteClient = () => {
       return success;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['clients'] });
+      queryClient.invalidateQueries({ queryKey: ['clients', activeSede?.id] });
       toast({
         title: "Cliente eliminado",
         description: "El cliente ha sido eliminado exitosamente.",

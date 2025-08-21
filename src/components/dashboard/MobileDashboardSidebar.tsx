@@ -113,6 +113,11 @@ const adminItems: NavigationItem[] = [
     icon: UserPlus,
   },
   {
+    title: 'Gestión de Sedes',
+    href: '/sede-management',
+    icon: Building2,
+  },
+  {
     title: 'Hostaway Sync',
     href: '/hostaway-sync-logs',
     icon: AlertTriangle,

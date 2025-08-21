@@ -1,40 +1,50 @@
-
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { propertyStorage } from '@/services/propertyStorage';
+import { propertyStorage } from '@/services/storage/propertyStorage';
 import { CreatePropertyData } from '@/types/property';
 import { toast } from '@/hooks/use-toast';
+import { useSede } from '@/contexts/SedeContext';
 
 export const useProperties = () => {
+  const { activeSede } = useSede();
+  
   return useQuery({
-    queryKey: ['properties'],
+    queryKey: ['properties', activeSede?.id],
     queryFn: () => propertyStorage.getAll(),
+    enabled: !!activeSede?.id,
   });
 };
 
 export const useProperty = (id: string) => {
+  const { activeSede } = useSede();
+  
   return useQuery({
-    queryKey: ['property', id],
+    queryKey: ['property', id, activeSede?.id],
     queryFn: () => propertyStorage.getById(id),
-    enabled: !!id,
+    enabled: !!id && !!activeSede?.id,
   });
 };
 
 export const usePropertiesByClient = (clienteId: string) => {
+  const { activeSede } = useSede();
+  
   return useQuery({
-    queryKey: ['properties', 'client', clienteId],
+    queryKey: ['properties', 'client', clienteId, activeSede?.id],
     queryFn: () => propertyStorage.getByClientId(clienteId),
-    enabled: !!clienteId,
+    enabled: !!clienteId && !!activeSede?.id,
   });
 };
 
 export const useCreateProperty = () => {
   const queryClient = useQueryClient();
+  const { activeSede } = useSede();
 
   return useMutation({
     mutationFn: async (propertyData: CreatePropertyData) => {
       return await propertyStorage.create(propertyData);
     },
     onSuccess: () => {
+      // Invalidate queries with sede-specific keys
+      queryClient.invalidateQueries({ queryKey: ['properties', activeSede?.id] });
       queryClient.invalidateQueries({ queryKey: ['properties'] });
       toast({
         title: "Propiedad creada",
@@ -54,6 +64,7 @@ export const useCreateProperty = () => {
 
 export const useUpdateProperty = () => {
   const queryClient = useQueryClient();
+  const { activeSede } = useSede();
 
   return useMutation({
     mutationFn: async ({ id, updates }: { id: string; updates: Partial<CreatePropertyData> }) => {
@@ -62,7 +73,7 @@ export const useUpdateProperty = () => {
       return result;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['properties'] });
+      queryClient.invalidateQueries({ queryKey: ['properties', activeSede?.id] });
       queryClient.invalidateQueries({ queryKey: ['property'] });
       toast({
         title: "Propiedad actualizada",
@@ -82,6 +93,7 @@ export const useUpdateProperty = () => {
 
 export const useDeleteProperty = () => {
   const queryClient = useQueryClient();
+  const { activeSede } = useSede();
 
   return useMutation({
     mutationFn: async (id: string) => {
@@ -90,7 +102,7 @@ export const useDeleteProperty = () => {
       return success;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['properties'] });
+      queryClient.invalidateQueries({ queryKey: ['properties', activeSede?.id] });
       toast({
         title: "Propiedad eliminada",
         description: "La propiedad ha sido eliminada exitosamente.",
