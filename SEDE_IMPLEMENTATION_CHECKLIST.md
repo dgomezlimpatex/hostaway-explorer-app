@@ -161,27 +161,27 @@
 - [x] Probar responsividad
 - [x] Probar flujos de usuario
 
-## ✅ FASE 9: OPTIMIZACIÓN Y PERFORMANCE
+## 🚧 FASE 9: OPTIMIZACIÓN Y PERFORMANCE
 
 ### 9.1 Caché y Performance
-- [ ] Implementar caché de sedes disponibles
+- [x] Implementar caché de sedes disponibles (React Query)
 - [ ] Optimizar queries con índices en sede_id
 - [ ] Implementar lazy loading donde sea necesario
-- [ ] Monitorear performance de queries
+- [x] Monitorear performance de queries (via React Query DevTools)
 
 ### 9.2 Experiencia de Usuario
-- [ ] Implementar loading states al cambiar sede
-- [ ] Agregar transiciones suaves
-- [ ] Implementar manejo de errores elegante
+- [x] Implementar loading states al cambiar sede
+- [x] Agregar transiciones suaves (via CSS)
+- [x] Implementar manejo de errores elegante (toast notifications)
 - [ ] Agregar tooltips y ayudas
 
-## ✅ FASE 10: SEGURIDAD
+## 🚧 FASE 10: SEGURIDAD
 
 ### 10.1 Validación de Permisos
-- [ ] Verificar que usuarios no puedan acceder a datos de otras sedes
+- [x] Verificar que usuarios no puedan acceder a datos de otras sedes (RLS policies)
 - [ ] Implementar auditoría de accesos
 - [ ] Probar intentos de acceso no autorizado
-- [ ] Verificar que las políticas RLS funcionen correctamente
+- [x] Verificar que las políticas RLS funcionen correctamente
 
 ### 10.2 Logs y Monitoreo
 - [ ] Implementar logs de cambios de sede
