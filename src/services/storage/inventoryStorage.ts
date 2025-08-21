@@ -20,6 +20,21 @@ import {
 } from '@/types/inventory';
 
 class InventoryStorageService {
+  // Función helper para obtener la sede activa
+  private getActiveSedeId(): string | null {
+    try {
+      const activeSede = localStorage.getItem('activeSede');
+      if (activeSede) {
+        const sede = JSON.parse(activeSede);
+        return sede.id;
+      }
+      return null;
+    } catch (error) {
+      console.warn('Error getting active sede:', error);
+      return null;
+    }
+  }
+
   // === CATEGORÍAS ===
   async getCategories(): Promise<InventoryCategory[]> {
     const { data, error } = await supabase
@@ -66,17 +81,24 @@ class InventoryStorageService {
 
     return data;
   }
-
+  
   // === PRODUCTOS ===
   async getProducts(): Promise<InventoryProduct[]> {
-    const { data, error } = await supabase
+    let query = supabase
       .from('inventory_products')
       .select(`
         *,
         category:inventory_categories(*)
       `)
-      .eq('is_active', true)
-      .order('sort_order');
+      .eq('is_active', true);
+
+    // Aplicar filtro por sede
+    const activeSedeId = this.getActiveSedeId();
+    if (activeSedeId) {
+      query = query.eq('sede_id', activeSedeId);
+    }
+
+    const { data, error } = await query.order('sort_order');
 
     if (error) {
       console.error('Error fetching inventory products:', error);
@@ -87,15 +109,22 @@ class InventoryStorageService {
   }
 
   async getProductsByCategory(categoryId: string): Promise<InventoryProduct[]> {
-    const { data, error } = await supabase
+    let query = supabase
       .from('inventory_products')
       .select(`
         *,
         category:inventory_categories(*)
       `)
       .eq('category_id', categoryId)
-      .eq('is_active', true)
-      .order('sort_order');
+      .eq('is_active', true);
+
+    // Aplicar filtro por sede
+    const activeSedeId = this.getActiveSedeId();
+    if (activeSedeId) {
+      query = query.eq('sede_id', activeSedeId);
+    }
+
+    const { data, error } = await query.order('sort_order');
 
     if (error) {
       console.error('Error fetching products by category:', error);
@@ -106,9 +135,20 @@ class InventoryStorageService {
   }
 
   async createProduct(productData: CreateInventoryProductData): Promise<InventoryProduct> {
+    // Agregar sede_id automáticamente
+    const activeSedeId = this.getActiveSedeId();
+    if (!activeSedeId) {
+      throw new Error('No se puede crear el producto: no hay una sede activa seleccionada');
+    }
+
+    const dataToInsert = {
+      ...productData,
+      sede_id: activeSedeId
+    };
+
     const { data, error } = await supabase
       .from('inventory_products')
-      .insert(productData)
+      .insert(dataToInsert)
       .select(`
         *,
         category:inventory_categories(*)
@@ -144,7 +184,7 @@ class InventoryStorageService {
 
   // === STOCK ===
   async getStockWithProducts(): Promise<InventoryStockWithProduct[]> {
-    const { data, error } = await supabase
+    let query = supabase
       .from('inventory_stock')
       .select(`
         *,
@@ -152,8 +192,15 @@ class InventoryStorageService {
           *,
           category:inventory_categories(*)
         )
-      `)
-      .order('last_updated', { ascending: false });
+      `);
+
+    // Aplicar filtro por sede
+    const activeSedeId = this.getActiveSedeId();
+    if (activeSedeId) {
+      query = query.eq('sede_id', activeSedeId);
+    }
+
+    const { data, error } = await query.order('last_updated', { ascending: false });
 
     if (error) {
       console.error('Error fetching inventory stock:', error);
@@ -179,9 +226,20 @@ class InventoryStorageService {
   }
 
   async createStock(stockData: CreateInventoryStockData & { updated_by: string }): Promise<InventoryStock> {
+    // Agregar sede_id automáticamente
+    const activeSedeId = this.getActiveSedeId();
+    if (!activeSedeId) {
+      throw new Error('No se puede crear el stock: no hay una sede activa seleccionada');
+    }
+
+    const dataToInsert = {
+      ...stockData,
+      sede_id: activeSedeId
+    };
+
     const { data, error } = await supabase
       .from('inventory_stock')
-      .insert(stockData)
+      .insert(dataToInsert)
       .select()
       .single();
 

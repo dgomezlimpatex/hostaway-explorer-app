@@ -9,7 +9,8 @@ class PropertyStorageService extends BaseStorageService<Property, CreateProperty
     super({
       tableName: 'properties',
       mapFromDB: mapPropertyFromDB,
-      mapToDB: mapPropertyToDB
+      mapToDB: mapPropertyToDB,
+      enforceSedeFilter: true // Habilitar filtro automático por sede
     });
   }
 
@@ -18,11 +19,33 @@ class PropertyStorageService extends BaseStorageService<Property, CreateProperty
   }
 
   async getByClientId(clienteId: string): Promise<Property[]> {
-    const { data, error } = await supabase
+    // Obtener sede activa para filtro manual
+    const getActiveSedeId = (): string | null => {
+      try {
+        const activeSede = localStorage.getItem('activeSede');
+        if (activeSede) {
+          const sede = JSON.parse(activeSede);
+          return sede.id;
+        }
+        return null;
+      } catch (error) {
+        console.warn('Error getting active sede:', error);
+        return null;
+      }
+    };
+
+    let query = supabase
       .from('properties')
       .select('*')
-      .eq('cliente_id', clienteId)
-      .order('created_at', { ascending: false });
+      .eq('cliente_id', clienteId);
+
+    // Aplicar filtro por sede
+    const activeSedeId = getActiveSedeId();
+    if (activeSedeId) {
+      query = query.eq('sede_id', activeSedeId);
+    }
+
+    const { data, error } = await query.order('created_at', { ascending: false });
 
     if (error) {
       console.error('Error fetching properties by client:', error);

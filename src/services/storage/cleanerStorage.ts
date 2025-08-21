@@ -24,14 +24,38 @@ class CleanerStorageService extends BaseStorageService<Cleaner, CreateCleanerDat
     super({
       tableName: 'cleaners',
       mapFromDB: mapCleanerFromDB,
-      mapToDB: mapCleanerToDB
+      mapToDB: mapCleanerToDB,
+      enforceSedeFilter: true // Habilitar filtro automático por sede
     });
   }
 
   async getAll(): Promise<Cleaner[]> {
-    const { data, error } = await supabase
+    // Para cleaners, necesitamos usar query personalizado por el ordenamiento especial
+    const getActiveSedeId = (): string | null => {
+      try {
+        const activeSede = localStorage.getItem('activeSede');
+        if (activeSede) {
+          const sede = JSON.parse(activeSede);
+          return sede.id;
+        }
+        return null;
+      } catch (error) {
+        console.warn('Error getting active sede:', error);
+        return null;
+      }
+    };
+
+    let query = supabase
       .from('cleaners')
-      .select('*')
+      .select('*');
+
+    // Aplicar filtro por sede
+    const activeSedeId = getActiveSedeId();
+    if (activeSedeId) {
+      query = query.eq('sede_id', activeSedeId);
+    }
+
+    const { data, error } = await query
       .order('sort_order', { nullsFirst: false })
       .order('name');
 

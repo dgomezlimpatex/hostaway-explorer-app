@@ -66,7 +66,8 @@ const taskStorageConfig = {
     if (task.extraordinaryBillingAddress !== undefined) data.extraordinary_billing_address = task.extraordinaryBillingAddress;
 
     return data;
-  }
+  },
+  enforceSedeFilter: true // Habilitar filtro automático por sede
 };
 
 export class TaskStorageService extends BaseStorageService<Task, TaskCreateData> {
@@ -77,16 +78,38 @@ export class TaskStorageService extends BaseStorageService<Task, TaskCreateData>
   async getTasks(): Promise<Task[]> {
     console.log('📋 taskStorage - getTasks called, checking for completed reports and assignments');
     
+    // Función helper para obtener la sede activa
+    const getActiveSedeId = (): string | null => {
+      try {
+        const activeSede = localStorage.getItem('activeSede');
+        if (activeSede) {
+          const sede = JSON.parse(activeSede);
+          return sede.id;
+        }
+        return null;
+      } catch (error) {
+        console.warn('Error getting active sede:', error);
+        return null;
+      }
+    };
+    
     // Get all tasks with a LEFT JOIN to task_reports, properties, and task_assignments
-    const { data, error } = await supabase
+    let query = supabase
       .from('tasks')
       .select(`
         *,
         task_reports(overall_status),
         properties!tasks_propiedad_id_fkey(codigo),
         task_assignments(id, cleaner_id, cleaner_name)
-      `)
-      .order('created_at', { ascending: false });
+      `);
+
+    // Aplicar filtro por sede
+    const activeSedeId = getActiveSedeId();
+    if (activeSedeId) {
+      query = query.eq('sede_id', activeSedeId);
+    }
+
+    const { data, error } = await query.order('created_at', { ascending: false });
 
     if (error) {
       console.error('❌ Error fetching tasks with reports and assignments:', error);

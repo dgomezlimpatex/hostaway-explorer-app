@@ -8,7 +8,8 @@ class ClientStorageService extends BaseStorageService<Client, CreateClientData> 
     super({
       tableName: 'clients',
       mapFromDB: mapClientFromDB,
-      mapToDB: mapClientToDB
+      mapToDB: mapClientToDB,
+      enforceSedeFilter: true // Habilitar filtro automático por sede
     });
   }
 

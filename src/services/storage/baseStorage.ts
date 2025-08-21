@@ -6,13 +6,37 @@ export interface StorageConfig<T, CreateData> {
   tableName: string;
   mapFromDB: (row: any) => T;
   mapToDB: (entity: Partial<CreateData>) => any;
+  enforceSedeFilter?: boolean; // Nueva opción para controlar el filtro por sede
 }
 
 export class BaseStorageService<T extends BaseEntity, CreateData = Omit<T, keyof BaseEntity>> {
   constructor(private config: StorageConfig<T, CreateData>) {}
 
+  private async getActiveSedeId(): Promise<string | null> {
+    // Función helper para obtener la sede activa del localStorage
+    try {
+      const activeSede = localStorage.getItem('activeSede');
+      if (activeSede) {
+        const sede = JSON.parse(activeSede);
+        return sede.id;
+      }
+      return null;
+    } catch (error) {
+      console.warn('Error getting active sede:', error);
+      return null;
+    }
+  }
+
   async getAll(orderBy?: { column: string; ascending?: boolean }): Promise<T[]> {
     let query = supabase.from(this.config.tableName as any).select('*');
+    
+    // Aplicar filtro automático por sede si está habilitado
+    if (this.config.enforceSedeFilter !== false) {
+      const activeSedeId = await this.getActiveSedeId();
+      if (activeSedeId) {
+        query = query.eq('sede_id', activeSedeId);
+      }
+    }
     
     if (orderBy) {
       query = query.order(orderBy.column, { ascending: orderBy.ascending ?? true });
@@ -29,11 +53,20 @@ export class BaseStorageService<T extends BaseEntity, CreateData = Omit<T, keyof
   }
 
   async getById(id: string): Promise<T | undefined> {
-    const { data, error } = await supabase
+    let query = supabase
       .from(this.config.tableName as any)
       .select('*')
-      .eq('id', id)
-      .single();
+      .eq('id', id);
+
+    // Aplicar filtro automático por sede si está habilitado
+    if (this.config.enforceSedeFilter !== false) {
+      const activeSedeId = await this.getActiveSedeId();
+      if (activeSedeId) {
+        query = query.eq('sede_id', activeSedeId);
+      }
+    }
+
+    const { data, error } = await query.single();
 
     if (error) {
       if (error.code === 'PGRST116') {
@@ -48,9 +81,21 @@ export class BaseStorageService<T extends BaseEntity, CreateData = Omit<T, keyof
   }
 
   async create(entityData: CreateData): Promise<T> {
+    let dataToInsert = this.config.mapToDB(entityData);
+    
+    // Agregar sede_id automáticamente si está habilitado el filtro por sede
+    if (this.config.enforceSedeFilter !== false && !dataToInsert.sede_id) {
+      const activeSedeId = await this.getActiveSedeId();
+      if (activeSedeId) {
+        dataToInsert = { ...dataToInsert, sede_id: activeSedeId };
+      } else {
+        throw new Error('No se puede crear el registro: no hay una sede activa seleccionada');
+      }
+    }
+
     const { data, error } = await supabase
       .from(this.config.tableName as any)
-      .insert(this.config.mapToDB(entityData))
+      .insert(dataToInsert)
       .select()
       .single();
 
@@ -63,12 +108,28 @@ export class BaseStorageService<T extends BaseEntity, CreateData = Omit<T, keyof
   }
 
   async update(id: string, updates: Partial<CreateData>): Promise<T | null> {
-    const { data, error } = await supabase
+    let dataToUpdate = this.config.mapToDB(updates);
+    
+    // No permitir cambio de sede_id a menos que se especifique explícitamente
+    if (this.config.enforceSedeFilter !== false && dataToUpdate.sede_id === undefined) {
+      // Mantener la sede actual - no cambiarla
+      delete dataToUpdate.sede_id;
+    }
+
+    let query = supabase
       .from(this.config.tableName as any)
-      .update(this.config.mapToDB(updates))
-      .eq('id', id)
-      .select()
-      .single();
+      .update(dataToUpdate)
+      .eq('id', id);
+
+    // Aplicar filtro automático por sede si está habilitado
+    if (this.config.enforceSedeFilter !== false) {
+      const activeSedeId = await this.getActiveSedeId();
+      if (activeSedeId) {
+        query = query.eq('sede_id', activeSedeId);
+      }
+    }
+
+    const { data, error } = await query.select().single();
 
     if (error) {
       if (error.code === 'PGRST116') {
@@ -85,10 +146,20 @@ export class BaseStorageService<T extends BaseEntity, CreateData = Omit<T, keyof
   async delete(id: string): Promise<boolean> {
     console.log(`🗑️ BaseStorage - Attempting to delete from ${this.config.tableName} with id:`, id);
     
-    const { error, count } = await supabase
+    let query = supabase
       .from(this.config.tableName as any)
       .delete()
       .eq('id', id);
+
+    // Aplicar filtro automático por sede si está habilitado
+    if (this.config.enforceSedeFilter !== false) {
+      const activeSedeId = await this.getActiveSedeId();
+      if (activeSedeId) {
+        query = query.eq('sede_id', activeSedeId);
+      }
+    }
+
+    const { error, count } = await query;
 
     if (error) {
       console.error(`❌ Error deleting from ${this.config.tableName}:`, error);
