@@ -12,6 +12,7 @@ import {
   WifiOff
 } from "lucide-react";
 import { useNetworkStatus } from "@/hooks/useNetworkStatus";
+import { SedeSelector } from "@/components/sede/SedeSelector";
 
 interface LogisticsLayoutProps {
   children: React.ReactNode;
@@ -88,6 +89,7 @@ export const LogisticsLayout: React.FC<LogisticsLayoutProps> = ({
           
           {/* Actions */}
           <div className="flex items-center gap-2 flex-shrink-0">
+            <SedeSelector />
             {onRefresh && (
               <Button 
                 onClick={onRefresh} 

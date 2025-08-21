@@ -25,6 +25,7 @@ import {
   SidebarTrigger,
 } from '@/components/ui/sidebar';
 import { Button } from '@/components/ui/button';
+import { AppHeader } from '@/components/layout/AppHeader';
 
 interface NavigationItem {
   title: string;
@@ -145,16 +146,14 @@ interface InventoryLayoutProps {
 export function InventoryLayout({ children }: InventoryLayoutProps) {
   return (
     <SidebarProvider>
-      <div className="flex min-h-screen w-full">
-        <InventorySidebar />
-        <main className="flex-1">
-          <div className="p-6">
-            <div className="mb-6">
-              <SidebarTrigger />
-            </div>
+      <div className="flex min-h-screen w-full flex-col">
+        <AppHeader title="Inventario" showSidebarTrigger={true} />
+        <div className="flex flex-1">
+          <InventorySidebar />
+          <main className="flex-1 p-6">
             {children}
-          </div>
-        </main>
+          </main>
+        </div>
       </div>
     </SidebarProvider>
   );

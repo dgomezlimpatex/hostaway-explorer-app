@@ -74,7 +74,7 @@
 - [x] Actualizar `PropertyStorageService`
 - [x] Actualizar `TaskStorageService` 
 - [x] Actualizar servicios de inventario
-- [ ] Actualizar servicios de logística
+- [x] Actualizar servicios de logística
 - [x] Verificar que todos los servicios usen filtro de sede
 
 ## ✅ FASE 4: COMPONENTES UI
@@ -197,10 +197,10 @@
 - [x] Backup realizado
 
 ### Checkpoint 2: Servicios Core ✅
-- [ ] BaseStorage actualizado
-- [ ] Todos los servicios filtran por sede
-- [ ] SedeContext funcionando
-- [ ] Hooks básicos implementados
+- [x] BaseStorage actualizado
+- [x] Todos los servicios filtran por sede
+- [x] SedeContext funcionando
+- [x] Hooks básicos implementados
 
 ### Checkpoint 3: UI Básica ✅
 - [ ] Selector de sede funcionando

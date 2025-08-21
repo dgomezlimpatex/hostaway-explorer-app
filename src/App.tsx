@@ -5,6 +5,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthProvider";
+import { SedeProvider } from "@/contexts/SedeContext";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { RoleProtectedRoute } from "@/components/auth/RoleProtectedRoute";
 import { useSessionTimeout } from "@/hooks/useSessionTimeout";
@@ -48,10 +49,11 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <AuthProvider>
-          <SecurityWrapper>
-            <Toaster />
-            <Sonner />
-          <BrowserRouter>
+          <SedeProvider>
+            <SecurityWrapper>
+              <Toaster />
+              <Sonner />
+            <BrowserRouter>
             <Routes>
               <Route path="/auth" element={<Auth />} />
               {/* Ruta pública para aceptar invitaciones */}
@@ -218,7 +220,8 @@ function App() {
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>
-          </SecurityWrapper>
+            </SecurityWrapper>
+          </SedeProvider>
         </AuthProvider>
       </TooltipProvider>
     </QueryClientProvider>
