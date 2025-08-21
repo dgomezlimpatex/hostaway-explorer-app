@@ -21,6 +21,7 @@ export type RolePermissions = {
   users: ModulePermission; // Nueva sección para gestión de usuarios
   inventory: ModulePermission; // Nueva sección para inventario
   logistics: ModulePermission; // Nueva sección para logística
+  admin: ModulePermission; // Nueva sección para administración general (sedes, etc.)
 };
 
 const createPermission = (canView: boolean, canCreate: boolean = false, canEdit: boolean = false, canDelete: boolean = false): ModulePermission => ({
@@ -44,6 +45,7 @@ const ROLE_PERMISSIONS: Record<string, RolePermissions> = {
     users: createPermission(true, true, true, true),
     inventory: createPermission(true, true, true, true),
     logistics: createPermission(true, true, true, true),
+    admin: createPermission(true, true, true, true), // Permisos completos de administración
   },
   manager: {
     dashboard: createPermission(true, true, true, true),
@@ -58,6 +60,7 @@ const ROLE_PERMISSIONS: Record<string, RolePermissions> = {
     users: createPermission(true, true, true, true),
     inventory: createPermission(true, true, true, true),
     logistics: createPermission(true, true, true, true),
+    admin: createPermission(false), // Los managers no tienen acceso a administración general
   },
   supervisor: {
     dashboard: createPermission(false),
@@ -72,6 +75,7 @@ const ROLE_PERMISSIONS: Record<string, RolePermissions> = {
     users: createPermission(false),
     inventory: createPermission(true),
     logistics: createPermission(true),
+    admin: createPermission(false),
   },
   cleaner: {
     dashboard: createPermission(false),
@@ -86,6 +90,7 @@ const ROLE_PERMISSIONS: Record<string, RolePermissions> = {
     users: createPermission(false),
     inventory: createPermission(false),
     logistics: createPermission(false),
+    admin: createPermission(false),
   },
   logistics: {
     dashboard: createPermission(false),
@@ -100,6 +105,7 @@ const ROLE_PERMISSIONS: Record<string, RolePermissions> = {
     users: createPermission(false),
     inventory: createPermission(false),
     logistics: createPermission(true, true, true, true),
+    admin: createPermission(false),
   },
 };
 
