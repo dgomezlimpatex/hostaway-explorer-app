@@ -116,6 +116,7 @@ export default function LogisticsPicklists() {
       code: finalCode,
       scheduled_date: date || null,
       notes: notes || null,
+      sede_id: "00000000-0000-0000-0000-000000000000", // TODO: Get from sede context
     });
     setLoading(false);
     if (error) {

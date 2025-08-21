@@ -123,14 +123,15 @@ export const UserManagement = () => {
 
   // Mutation para añadir cleaner
   const addCleanerMutation = useMutation({
-    mutationFn: async ({ userId, email, name }: { userId: string; email: string; name: string }) => {
+    mutationFn: async ({ userId, email, name, sedeId }: { userId: string; email: string; name: string; sedeId: string }) => {
       const { error } = await supabase
         .from('cleaners')
         .insert({
           user_id: userId,
           name: name || email,
           email,
-          is_active: true
+          is_active: true,
+          sede_id: sedeId
         });
       
       if (error) throw error;
@@ -224,7 +225,8 @@ export const UserManagement = () => {
     addCleanerMutation.mutate({
       userId: user.user_id,
       email: user.profiles.email,
-      name: user.profiles.full_name || user.profiles.email
+      name: user.profiles.full_name || user.profiles.email,
+      sedeId: "00000000-0000-0000-0000-000000000000" // TODO: Get from sede context
     });
   };
 

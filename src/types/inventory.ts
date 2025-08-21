@@ -91,6 +91,7 @@ export interface CreateInventoryProductData {
   description?: string;
   unit_of_measure?: string;
   sort_order?: number;
+  sede_id: string;
 }
 
 export interface CreateInventoryStockData {
@@ -99,6 +100,7 @@ export interface CreateInventoryStockData {
   minimum_stock: number;
   maximum_stock: number;
   cost_per_unit?: number;
+  sede_id: string;
 }
 
 export interface UpdateInventoryStockData {

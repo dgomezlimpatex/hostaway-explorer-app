@@ -2237,6 +2237,10 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: Database["public"]["Enums"]["app_role"]
       }
+      get_user_accessible_sedes: {
+        Args: Record<PropertyKey, never>
+        Returns: string[]
+      }
       get_user_role: {
         Args: { _user_id: string }
         Returns: Database["public"]["Enums"]["app_role"]
@@ -2270,6 +2274,10 @@ export type Database = {
       }
       user_has_role: {
         Args: { check_role: Database["public"]["Enums"]["app_role"] }
+        Returns: boolean
+      }
+      user_has_sede_access: {
+        Args: { _sede_id: string; _user_id: string }
         Returns: boolean
       }
       user_is_admin_or_manager: {

@@ -119,7 +119,8 @@ export const recurringTaskStorage = {
         end_date: taskData.endDate,
         is_active: taskData.isActive,
         next_execution: nextExecution,
-        last_execution: taskData.lastExecution
+        last_execution: taskData.lastExecution,
+        sede_id: "00000000-0000-0000-0000-000000000000" // TODO: Get from sede context
       })
       .select()
       .single();
@@ -304,7 +305,8 @@ export const recurringTaskStorage = {
           duracion: newTask.duration,
           coste: newTask.cost,
           metodo_pago: newTask.paymentMethod,
-          supervisor: newTask.supervisor
+          supervisor: newTask.supervisor,
+          sede_id: "00000000-0000-0000-0000-000000000000" // TODO: Get from sede context
         })
         .select()
         .single();
