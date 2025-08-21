@@ -96,6 +96,7 @@ export const CreateProductDialog = ({ open, onOpenChange }: CreateProductDialogP
         description: data.description,
         category_id: data.category_id,
         unit_of_measure: data.unit_of_measure,
+        sede_id: "00000000-0000-0000-0000-000000000000" // TODO: Get from sede context
       });
 
       // Create initial stock for the product
@@ -106,6 +107,7 @@ export const CreateProductDialog = ({ open, onOpenChange }: CreateProductDialogP
         maximum_stock: data.maximum_stock,
         cost_per_unit: data.cost_per_unit || undefined,
         updated_by: user.id,
+        sede_id: "00000000-0000-0000-0000-000000000000" // TODO: Get from sede context
       });
 
       productForm.reset();
