@@ -322,6 +322,7 @@ export type Database = {
           id: string
           is_active: boolean
           name: string
+          sede_id: string
           sort_order: number | null
           start_date: string | null
           telefono: string | null
@@ -340,6 +341,7 @@ export type Database = {
           id?: string
           is_active?: boolean
           name: string
+          sede_id: string
           sort_order?: number | null
           start_date?: string | null
           telefono?: string | null
@@ -358,13 +360,22 @@ export type Database = {
           id?: string
           is_active?: boolean
           name?: string
+          sede_id?: string
           sort_order?: number | null
           start_date?: string | null
           telefono?: string | null
           updated_at?: string
           user_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "cleaners_sede_id_fkey"
+            columns: ["sede_id"]
+            isOneToOne: false
+            referencedRelation: "sedes"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       clients: {
         Row: {
@@ -380,6 +391,7 @@ export type Database = {
           id: string
           metodo_pago: string
           nombre: string
+          sede_id: string
           supervisor: string
           telefono: string
           tipo_servicio: string
@@ -398,6 +410,7 @@ export type Database = {
           id?: string
           metodo_pago: string
           nombre: string
+          sede_id: string
           supervisor: string
           telefono: string
           tipo_servicio: string
@@ -416,12 +429,21 @@ export type Database = {
           id?: string
           metodo_pago?: string
           nombre?: string
+          sede_id?: string
           supervisor?: string
           telefono?: string
           tipo_servicio?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "clients_sede_id_fkey"
+            columns: ["sede_id"]
+            isOneToOne: false
+            referencedRelation: "sedes"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       hostaway_reservations: {
         Row: {
@@ -699,6 +721,7 @@ export type Database = {
           id: string
           is_active: boolean
           name: string
+          sede_id: string
           sort_order: number
           unit_of_measure: string
           updated_at: string
@@ -710,6 +733,7 @@ export type Database = {
           id?: string
           is_active?: boolean
           name: string
+          sede_id: string
           sort_order?: number
           unit_of_measure?: string
           updated_at?: string
@@ -721,6 +745,7 @@ export type Database = {
           id?: string
           is_active?: boolean
           name?: string
+          sede_id?: string
           sort_order?: number
           unit_of_measure?: string
           updated_at?: string
@@ -731,6 +756,13 @@ export type Database = {
             columns: ["category_id"]
             isOneToOne: false
             referencedRelation: "inventory_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_products_sede_id_fkey"
+            columns: ["sede_id"]
+            isOneToOne: false
+            referencedRelation: "sedes"
             referencedColumns: ["id"]
           },
         ]
@@ -744,6 +776,7 @@ export type Database = {
           maximum_stock: number
           minimum_stock: number
           product_id: string
+          sede_id: string
           updated_by: string
         }
         Insert: {
@@ -754,6 +787,7 @@ export type Database = {
           maximum_stock?: number
           minimum_stock?: number
           product_id: string
+          sede_id: string
           updated_by: string
         }
         Update: {
@@ -764,6 +798,7 @@ export type Database = {
           maximum_stock?: number
           minimum_stock?: number
           product_id?: string
+          sede_id?: string
           updated_by?: string
         }
         Relationships: [
@@ -772,6 +807,13 @@ export type Database = {
             columns: ["product_id"]
             isOneToOne: true
             referencedRelation: "inventory_products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_stock_sede_id_fkey"
+            columns: ["sede_id"]
+            isOneToOne: false
+            referencedRelation: "sedes"
             referencedColumns: ["id"]
           },
         ]
@@ -784,6 +826,7 @@ export type Database = {
           id: string
           notes: string | null
           picklist_id: string | null
+          sede_id: string
           started_at: string | null
           status: Database["public"]["Enums"]["logistics_delivery_status"]
           updated_at: string
@@ -795,6 +838,7 @@ export type Database = {
           id?: string
           notes?: string | null
           picklist_id?: string | null
+          sede_id: string
           started_at?: string | null
           status?: Database["public"]["Enums"]["logistics_delivery_status"]
           updated_at?: string
@@ -806,6 +850,7 @@ export type Database = {
           id?: string
           notes?: string | null
           picklist_id?: string | null
+          sede_id?: string
           started_at?: string | null
           status?: Database["public"]["Enums"]["logistics_delivery_status"]
           updated_at?: string
@@ -816,6 +861,13 @@ export type Database = {
             columns: ["picklist_id"]
             isOneToOne: false
             referencedRelation: "logistics_picklists"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "logistics_deliveries_sede_id_fkey"
+            columns: ["sede_id"]
+            isOneToOne: false
+            referencedRelation: "sedes"
             referencedColumns: ["id"]
           },
         ]
@@ -990,6 +1042,7 @@ export type Database = {
           id: string
           notes: string | null
           scheduled_date: string | null
+          sede_id: string
           status: Database["public"]["Enums"]["logistics_picklist_status"]
           updated_at: string
         }
@@ -1002,6 +1055,7 @@ export type Database = {
           id?: string
           notes?: string | null
           scheduled_date?: string | null
+          sede_id: string
           status?: Database["public"]["Enums"]["logistics_picklist_status"]
           updated_at?: string
         }
@@ -1014,10 +1068,19 @@ export type Database = {
           id?: string
           notes?: string | null
           scheduled_date?: string | null
+          sede_id?: string
           status?: Database["public"]["Enums"]["logistics_picklist_status"]
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "logistics_picklists_sede_id_fkey"
+            columns: ["sede_id"]
+            isOneToOne: false
+            referencedRelation: "sedes"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       profiles: {
         Row: {
@@ -1099,6 +1162,7 @@ export type Database = {
           papel_cocina: number
           papel_higienico: number
           sal: number
+          sede_id: string
           updated_at: string
           vinagre: number
         }
@@ -1151,6 +1215,7 @@ export type Database = {
           papel_cocina?: number
           papel_higienico?: number
           sal?: number
+          sede_id: string
           updated_at?: string
           vinagre?: number
         }
@@ -1203,6 +1268,7 @@ export type Database = {
           papel_cocina?: number
           papel_higienico?: number
           sal?: number
+          sede_id?: string
           updated_at?: string
           vinagre?: number
         }
@@ -1212,6 +1278,13 @@ export type Database = {
             columns: ["cliente_id"]
             isOneToOne: false
             referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "properties_sede_id_fkey"
+            columns: ["sede_id"]
+            isOneToOne: false
+            referencedRelation: "sedes"
             referencedColumns: ["id"]
           },
         ]
@@ -1437,6 +1510,7 @@ export type Database = {
           name: string
           next_execution: string
           propiedad_id: string | null
+          sede_id: string
           start_date: string
           start_time: string
           supervisor: string | null
@@ -1466,6 +1540,7 @@ export type Database = {
           name: string
           next_execution: string
           propiedad_id?: string | null
+          sede_id: string
           start_date: string
           start_time: string
           supervisor?: string | null
@@ -1495,6 +1570,7 @@ export type Database = {
           name?: string
           next_execution?: string
           propiedad_id?: string | null
+          sede_id?: string
           start_date?: string
           start_time?: string
           supervisor?: string | null
@@ -1521,6 +1597,13 @@ export type Database = {
             columns: ["propiedad_id"]
             isOneToOne: false
             referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recurring_tasks_sede_id_fkey"
+            columns: ["sede_id"]
+            isOneToOne: false
+            referencedRelation: "sedes"
             referencedColumns: ["id"]
           },
         ]
@@ -1847,6 +1930,7 @@ export type Database = {
           notes: string | null
           property: string
           propiedad_id: string | null
+          sede_id: string
           start_time: string
           status: string
           supervisor: string | null
@@ -1877,6 +1961,7 @@ export type Database = {
           notes?: string | null
           property: string
           propiedad_id?: string | null
+          sede_id: string
           start_time: string
           status?: string
           supervisor?: string | null
@@ -1907,6 +1992,7 @@ export type Database = {
           notes?: string | null
           property?: string
           propiedad_id?: string | null
+          sede_id?: string
           start_time?: string
           status?: string
           supervisor?: string | null
@@ -1933,6 +2019,13 @@ export type Database = {
             columns: ["propiedad_id"]
             isOneToOne: false
             referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tasks_sede_id_fkey"
+            columns: ["sede_id"]
+            isOneToOne: false
+            referencedRelation: "sedes"
             referencedColumns: ["id"]
           },
         ]
