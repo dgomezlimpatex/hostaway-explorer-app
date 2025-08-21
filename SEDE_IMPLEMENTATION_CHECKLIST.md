@@ -103,17 +103,17 @@
 
 ### 5.1 Actualización de Hooks Existentes
 - [x] Modificar hooks de propiedades para usar sede activa
-- [ ] Modificar hooks de tareas para usar sede activa
+- [x] Modificar hooks de tareas para usar sede activa
 - [x] Modificar hooks de limpiadores para usar sede activa
 - [x] Modificar hooks de clientes para usar sede activa
-- [ ] Modificar hooks de inventario para usar sede activa
-- [ ] Modificar hooks de logística para usar sede activa
+- [x] Modificar hooks de inventario para usar sede activa
+- [x] Modificar hooks de logística para usar sede activa
 
 ### 5.2 Nuevos Hooks de Sede
 - [x] Crear hook `useActiveSedeId`
 - [x] Crear hook `useSedePermissions`
 - [x] Crear hook `useSedeData`
-- [ ] Implementar invalidación de queries al cambiar sede
+- [x] Implementar invalidación de queries al cambiar sede
 
 ## ✅ FASE 6: FORMULARIOS Y CREACIÓN
 

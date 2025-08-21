@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { useSede } from '@/contexts/SedeContext';
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 
@@ -32,6 +33,7 @@ interface KPIData {
 
 export const useLogisticsReporting = () => {
   const { toast } = useToast();
+  const { activeSede } = useSede();
   const [isGenerating, setIsGenerating] = useState(false);
 
   const generatePicklistReport = useCallback(async (filters: ReportFilters) => {
@@ -51,7 +53,8 @@ export const useLogisticsReporting = () => {
             product_id,
             property_id
           )
-        `);
+        `)
+        .eq('sede_id', activeSede?.id);
 
       if (filters.startDate) {
         query = query.gte('created_at', filters.startDate);
@@ -94,8 +97,12 @@ export const useLogisticsReporting = () => {
   const calculateKPIs = useCallback(async (filters: ReportFilters): Promise<KPIData> => {
     try {
       const [picklistsRes, deliveriesRes] = await Promise.all([
-        supabase.from('logistics_picklists').select('status, created_at, scheduled_date'),
-        supabase.from('logistics_deliveries').select('status, created_at')
+        supabase.from('logistics_picklists')
+          .select('status, created_at, scheduled_date')
+          .eq('sede_id', activeSede?.id),
+        supabase.from('logistics_deliveries')
+          .select('status, created_at')
+          .eq('sede_id', activeSede?.id)
       ]);
 
       if (picklistsRes.error || deliveriesRes.error) {

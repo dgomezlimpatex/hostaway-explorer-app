@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { Sede, SedeContextType } from '@/types/sede';
 import { sedeStorageService } from '@/services/storage/sedeStorage';
 
@@ -11,6 +12,7 @@ interface SedeProviderProps {
 }
 
 export const SedeProvider = ({ children }: SedeProviderProps) => {
+  const queryClient = useQueryClient();
   const [activeSede, setActiveSedeState] = useState<Sede | null>(null);
   const [availableSedes, setAvailableSedes] = useState<Sede[]>([]);
   const [loading, setLoading] = useState(true);
@@ -66,8 +68,14 @@ export const SedeProvider = ({ children }: SedeProviderProps) => {
   }, []);
 
   const setActiveSede = (sede: Sede) => {
+    const previousSedeId = activeSede?.id;
     setActiveSedeState(sede);
     localStorage.setItem(ACTIVE_SEDE_KEY, JSON.stringify(sede));
+    
+    // Invalidate all queries when sede changes
+    if (previousSedeId !== sede.id) {
+      queryClient.invalidateQueries();
+    }
   };
 
   const isActiveSedeSet = (): boolean => {
