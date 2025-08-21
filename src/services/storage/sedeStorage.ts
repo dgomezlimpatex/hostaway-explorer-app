@@ -46,6 +46,7 @@ const baseSedeService = new BaseStorageService<Sede, CreateSedeData>({
   tableName: 'sedes',
   mapFromDB: mapSedeFromDB,
   mapToDB: mapSedeToDB,
+  enforceSedeFilter: false, // Las sedes no deben filtrarse por sede_id
 });
 
 // Servicio base para UserSedeAccess
