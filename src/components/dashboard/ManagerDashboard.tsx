@@ -2,6 +2,7 @@ import React, { useState, useMemo, useCallback, Suspense, lazy } from 'react';
 import { SidebarProvider } from '@/components/ui/sidebar';
 import { DashboardSidebar } from './DashboardSidebar';
 import { MobileDashboardHeader } from './MobileDashboardHeader';
+import { SedeSelector } from '@/components/sede/SedeSelector';
 import { useOptimizedTasks } from '@/hooks/useOptimizedTasks';
 import { useOptimizedCleaningReports } from '@/hooks/useOptimizedCleaningReports';
 import { useRolePermissions } from '@/hooks/useRolePermissions';
@@ -202,13 +203,19 @@ export const ManagerDashboard = () => {
               )}
 
               {/* Header */}
-              <div className="mb-8">
-                <h1 className="text-3xl font-bold text-gray-900 mb-2">
-                  Dashboard de Gestión
-                </h1>
-                <p className="text-gray-600">
-                  {format(new Date(), "EEEE, d 'de' MMMM 'de' yyyy", { locale: es })}
-                </p>
+              <div className="mb-8 flex items-center justify-between">
+                <div>
+                  <h1 className="text-3xl font-bold text-gray-900 mb-2">
+                    Dashboard de Gestión
+                  </h1>
+                  <p className="text-gray-600">
+                    {format(new Date(), "EEEE, d 'de' MMMM 'de' yyyy", { locale: es })}
+                  </p>
+                </div>
+                {/* Selector de sede en el dashboard */}
+                <div className="flex items-center gap-4">
+                  <SedeSelector />
+                </div>
               </div>
 
               {/* Main Metrics Row - Lazy loaded */}

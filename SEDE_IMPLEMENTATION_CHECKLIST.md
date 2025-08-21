@@ -161,7 +161,7 @@
 - [x] Probar responsividad
 - [x] Probar flujos de usuario
 
-## 🚧 FASE 9: OPTIMIZACIÓN Y PERFORMANCE
+## ✅ FASE 9: OPTIMIZACIÓN Y PERFORMANCE
 
 ### 9.1 Caché y Performance
 - [x] Implementar caché de sedes disponibles (React Query)
@@ -174,6 +174,9 @@
 - [x] Agregar transiciones suaves (via CSS)
 - [x] Implementar manejo de errores elegante (toast notifications)
 - [x] Agregar tooltips y ayudas
+- [x] Mejorar invalidación automática de queries al cambiar sede
+- [x] Selector de sede visible solo para admin/manager
+- [x] Botón "volver al menú" en páginas de gestión
 
 ## ✅ FASE 10: SEGURIDAD
 

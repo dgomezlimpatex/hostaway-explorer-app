@@ -68,33 +68,40 @@ export const SedeProvider = ({ children }: SedeProviderProps) => {
     refreshSedes();
   }, []);
 
-  const setActiveSede = async (sede: Sede) => {
+  const setActiveSede = (sede: Sede) => {
     const previousSede = activeSede;
     const previousSedeId = activeSede?.id;
     
+    // Actualizar estado inmediatamente
     setActiveSedeState(sede);
     localStorage.setItem(ACTIVE_SEDE_KEY, JSON.stringify(sede));
     
-    // Log del cambio de sede para auditoría (solo si realmente cambió)
+    // Invalidate queries inmediatamente para forzar refetch
     if (previousSedeId !== sede.id) {
-      try {
-        await supabase.rpc('log_sede_event', {
-          event_type_param: 'sede_changed',
-          from_sede_id_param: previousSedeId || null,
-          to_sede_id_param: sede.id,
-          event_data_param: {
-            previous_sede_name: previousSede?.nombre || null,
-            new_sede_name: sede.nombre,
-            timestamp: new Date().toISOString()
-          }
-        });
-      } catch (error) {
-        console.error('Error logging sede change:', error);
-        // No bloqueamos la operación por falla en el log
-      }
-
-      // Invalidate all queries when sede changes
       queryClient.invalidateQueries();
+      queryClient.refetchQueries();
+    }
+
+    // Log del cambio de sede para auditoría (sin bloquear la UI)
+    if (previousSedeId !== sede.id) {
+      // Usar un async IIFE para manejar la promesa
+      (async () => {
+        try {
+          await supabase.rpc('log_sede_event', {
+            event_type_param: 'sede_changed',
+            from_sede_id_param: previousSedeId || null,
+            to_sede_id_param: sede.id,
+            event_data_param: {
+              previous_sede_name: previousSede?.nombre || null,
+              new_sede_name: sede.nombre,
+              timestamp: new Date().toISOString()
+            }
+          });
+        } catch (error) {
+          console.error('Error logging sede change:', error);
+          // No bloqueamos la operación por falla en el log
+        }
+      })();
     }
   };
 

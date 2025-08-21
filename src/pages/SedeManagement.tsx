@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Link } from 'react-router-dom';
 import { 
   Dialog, 
   DialogContent, 
@@ -28,7 +29,8 @@ import {
   Users, 
   MapPin,
   Phone,
-  Mail
+  Mail,
+  ArrowLeft
 } from 'lucide-react';
 import { useSedes } from '@/hooks/useSedes';
 import { useToast } from '@/hooks/use-toast';
@@ -126,14 +128,22 @@ const SedeManagement = () => {
       <div className="container mx-auto p-6">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
-          <div>
-            <h1 className="text-3xl font-bold flex items-center gap-2">
-              <Building2 className="h-8 w-8 text-primary" />
-              Gestión de Sedes
-            </h1>
-            <p className="text-muted-foreground mt-1">
-              Administra las diferentes sedes y sucursales del sistema
-            </p>
+          <div className="flex items-center gap-4">
+            <Link to="/">
+              <Button variant="outline" size="sm" className="flex items-center gap-2">
+                <ArrowLeft className="h-4 w-4" />
+                Volver al menú principal
+              </Button>
+            </Link>
+            <div>
+              <h1 className="text-3xl font-bold flex items-center gap-2">
+                <Building2 className="h-8 w-8 text-primary" />
+                Gestión de Sedes
+              </h1>
+              <p className="text-muted-foreground mt-1">
+                Administra las diferentes sedes y sucursales del sistema
+              </p>
+            </div>
           </div>
           
           <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>

@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import { SedeSelector } from '@/components/sede/SedeSelector';
 import { useAuth } from '@/hooks/useAuth';
+import { useRolePermissions } from '@/hooks/useRolePermissions';
 
 interface AppHeaderProps {
   title?: string;
@@ -12,6 +13,7 @@ interface AppHeaderProps {
 
 export const AppHeader = ({ title, showSidebarTrigger = false }: AppHeaderProps) => {
   const { user } = useAuth();
+  const { isAdminOrManager } = useRolePermissions();
 
   return (
     <header className="sticky top-0 z-40 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -37,7 +39,8 @@ export const AppHeader = ({ title, showSidebarTrigger = false }: AppHeaderProps)
 
         {/* Selector de sede y usuario */}
         <div className="flex items-center gap-4">
-          <SedeSelector />
+          {/* Solo mostrar selector de sede para admin/manager */}
+          {isAdminOrManager() && <SedeSelector />}
           
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <span>Hola, {user?.email}</span>
