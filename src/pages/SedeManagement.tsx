@@ -37,7 +37,14 @@ import { AppHeader } from '@/components/layout/AppHeader';
 const SedeManagement = () => {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [editingSede, setEditingSede] = useState<any>(null);
-  const { allSedes, createSede, updateSede, isLoading } = useSedes();
+  const { 
+    allSedes, 
+    createSede, 
+    updateSede, 
+    loading,
+    isCreating,
+    isUpdating 
+  } = useSedes();
   const { toast } = useToast();
 
   const [formData, setFormData] = useState({
@@ -64,7 +71,7 @@ const SedeManagement = () => {
 
   const handleCreate = async () => {
     try {
-      await createSede.mutateAsync(formData);
+      createSede(formData);
       toast({
         title: "Sede creada",
         description: "La sede se ha creado exitosamente.",
@@ -84,7 +91,7 @@ const SedeManagement = () => {
     if (!editingSede) return;
     
     try {
-      await updateSede.mutateAsync({
+      updateSede({
         sedeId: editingSede.id,
         updates: formData
       });
@@ -216,7 +223,7 @@ const SedeManagement = () => {
                   <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
                     Cancelar
                   </Button>
-                  <Button onClick={handleCreate} disabled={createSede.isPending}>
+                  <Button onClick={handleCreate} disabled={isCreating}>
                     Crear Sede
                   </Button>
                 </div>
@@ -231,7 +238,7 @@ const SedeManagement = () => {
             <CardTitle>Sedes Registradas</CardTitle>
           </CardHeader>
           <CardContent>
-            {isLoading ? (
+            {loading ? (
               <div>Cargando sedes...</div>
             ) : (
               <Table>
@@ -368,7 +375,7 @@ const SedeManagement = () => {
                 <Button variant="outline" onClick={() => setEditingSede(null)}>
                   Cancelar
                 </Button>
-                <Button onClick={handleUpdate} disabled={updateSede.isPending}>
+                <Button onClick={handleUpdate} disabled={isUpdating}>
                   Actualizar
                 </Button>
               </div>
