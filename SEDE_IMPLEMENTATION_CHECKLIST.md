@@ -118,16 +118,16 @@
 ## ✅ FASE 6: FORMULARIOS Y CREACIÓN
 
 ### 6.1 Actualización de Formularios
-- [ ] Modificar formularios de propiedades para incluir sede_id automáticamente
-- [ ] Modificar formularios de tareas para incluir sede_id automáticamente
-- [ ] Modificar formularios de limpiadores para incluir sede_id automáticamente
-- [ ] Modificar formularios de clientes para incluir sede_id automáticamente
-- [ ] Modificar formularios de inventario para incluir sede_id automáticamente
+- [x] Modificar formularios de propiedades para incluir sede_id automáticamente
+- [x] Modificar formularios de tareas para incluir sede_id automáticamente
+- [x] Modificar formularios de limpiadores para incluir sede_id automáticamente
+- [x] Modificar formularios de clientes para incluir sede_id automáticamente
+- [x] Modificar formularios de inventario para incluir sede_id automáticamente
 
 ### 6.2 Validación de Datos
-- [ ] Implementar validación de sede_id en formularios
-- [ ] Verificar que usuarios solo puedan crear datos en sus sedes permitidas
-- [ ] Implementar mensajes de error apropiados
+- [x] Implementar validación de sede_id en formularios
+- [x] Verificar que usuarios solo puedan crear datos en sus sedes permitidas
+- [x] Implementar mensajes de error apropiados
 
 ## ✅ FASE 7: REPORTES Y EXPORTACIONES
 

@@ -11,9 +11,11 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Form } from '@/components/ui/form';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useCreateClient } from '@/hooks/useClients';
+import { useSede } from '@/contexts/SedeContext';
 import { CreateClientData } from '@/types/client';
-import { Plus } from 'lucide-react';
+import { Plus, AlertTriangle } from 'lucide-react';
 import { clientSchema, ClientFormData } from './forms/ClientFormSchema';
 import { PersonalInfoSection } from './forms/PersonalInfoSection';
 import { ContactInfoSection } from './forms/ContactInfoSection';
@@ -22,6 +24,7 @@ import { ServiceInfoSection } from './forms/ServiceInfoSection';
 
 export const CreateClientModal = () => {
   const [open, setOpen] = useState(false);
+  const { activeSede, isActiveSedeSet } = useSede();
   const createClient = useCreateClient();
 
   const form = useForm<ClientFormData>({
@@ -42,6 +45,10 @@ export const CreateClientModal = () => {
   });
 
   const onSubmit = (data: CreateClientData) => {
+    if (!isActiveSedeSet()) {
+      return;
+    }
+
     createClient.mutate(data, {
       onSuccess: () => {
         setOpen(false);
@@ -66,30 +73,45 @@ export const CreateClientModal = () => {
           </DialogTitle>
         </DialogHeader>
 
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-            <PersonalInfoSection control={form.control} />
-            <ContactInfoSection control={form.control} />
-            <AddressSection control={form.control} />
-            <ServiceInfoSection control={form.control} />
+        {!isActiveSedeSet() ? (
+          <Alert className="mb-4">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertDescription>
+              Debes seleccionar una sede antes de crear un cliente.
+            </AlertDescription>
+          </Alert>
+        ) : (
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+              <div className="mb-4 p-3 bg-blue-50 rounded-lg">
+                <p className="text-sm text-blue-700">
+                  📍 Creando cliente en: <strong>{activeSede?.nombre}</strong>
+                </p>
+              </div>
 
-            <div className="flex justify-end gap-2 pt-4">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setOpen(false)}
-              >
-                Cancelar
-              </Button>
-              <Button
-                type="submit"
-                disabled={createClient.isPending}
-              >
-                {createClient.isPending ? 'Creando...' : 'Crear Cliente'}
-              </Button>
-            </div>
-          </form>
-        </Form>
+              <PersonalInfoSection control={form.control} />
+              <ContactInfoSection control={form.control} />
+              <AddressSection control={form.control} />
+              <ServiceInfoSection control={form.control} />
+
+              <div className="flex justify-end gap-2 pt-4">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setOpen(false)}
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={createClient.isPending || !isActiveSedeSet()}
+                >
+                  {createClient.isPending ? 'Creando...' : 'Crear Cliente'}
+                </Button>
+              </div>
+            </form>
+          </Form>
+        )}
       </DialogContent>
     </Dialog>
   );

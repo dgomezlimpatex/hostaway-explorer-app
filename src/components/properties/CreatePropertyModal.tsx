@@ -5,8 +5,10 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Form } from '@/components/ui/form';
-import { Plus } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Plus, AlertTriangle } from 'lucide-react';
 import { useCreateProperty } from '@/hooks/useProperties';
+import { useSede } from '@/contexts/SedeContext';
 import { propertySchema, PropertyFormData } from './forms/PropertyFormSchema';
 import { BasicInfoSection } from './forms/BasicInfoSection';
 import { CharacteristicsSection } from './forms/CharacteristicsSection';
@@ -19,6 +21,7 @@ import { CreatePropertyData } from '@/types/property';
 
 export const CreatePropertyModal = () => {
   const [open, setOpen] = useState(false);
+  const { activeSede, isActiveSedeSet } = useSede();
   const createProperty = useCreateProperty();
 
   const form = useForm<PropertyFormData>({
@@ -54,6 +57,10 @@ export const CreatePropertyModal = () => {
   });
 
   const onSubmit = (data: PropertyFormData) => {
+    if (!isActiveSedeSet()) {
+      return;
+    }
+
     // Explicitly cast to CreatePropertyData to ensure type safety
     const propertyData: CreatePropertyData = {
       codigo: data.codigo,
@@ -107,34 +114,49 @@ export const CreatePropertyModal = () => {
           </DialogTitle>
         </DialogHeader>
         
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-            <ClientSelectionSection control={form.control} />
-            <BasicInfoSection control={form.control} />
-            <CharacteristicsSection control={form.control} />
-            <ServiceSection control={form.control} />
-            <TextileSection control={form.control} />
-            <AmenitiesSection control={form.control} />
-            <NotesSection control={form.control} />
-            
-            <div className="flex justify-end gap-3 pt-6 border-t">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setOpen(false)}
-              >
-                Cancelar
-              </Button>
-              <Button
-                type="submit"
-                disabled={createProperty.isPending}
-                className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700"
-              >
-                {createProperty.isPending ? 'Creando...' : 'Crear Propiedad'}
-              </Button>
-            </div>
-          </form>
-        </Form>
+        {!isActiveSedeSet() ? (
+          <Alert className="mb-4">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertDescription>
+              Debes seleccionar una sede antes de crear una propiedad.
+            </AlertDescription>
+          </Alert>
+        ) : (
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+              <div className="mb-4 p-3 bg-blue-50 rounded-lg">
+                <p className="text-sm text-blue-700">
+                  📍 Creando propiedad en: <strong>{activeSede?.nombre}</strong>
+                </p>
+              </div>
+
+              <ClientSelectionSection control={form.control} />
+              <BasicInfoSection control={form.control} />
+              <CharacteristicsSection control={form.control} />
+              <ServiceSection control={form.control} />
+              <TextileSection control={form.control} />
+              <AmenitiesSection control={form.control} />
+              <NotesSection control={form.control} />
+              
+              <div className="flex justify-end gap-3 pt-6 border-t">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setOpen(false)}
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={createProperty.isPending || !isActiveSedeSet()}
+                  className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700"
+                >
+                  {createProperty.isPending ? 'Creando...' : 'Crear Propiedad'}
+                </Button>
+              </div>
+            </form>
+          </Form>
+        )}
       </DialogContent>
     </Dialog>
   );

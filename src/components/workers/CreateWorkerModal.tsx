@@ -12,8 +12,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { AlertTriangle } from 'lucide-react';
 import { useCreateCleaner } from "@/hooks/useCleaners";
+import { useSede } from '@/contexts/SedeContext';
 import { CreateCleanerData } from "@/services/cleanerStorage";
 
 interface CreateWorkerModalProps {
@@ -22,6 +25,7 @@ interface CreateWorkerModalProps {
 }
 
 export const CreateWorkerModal = ({ open, onOpenChange }: CreateWorkerModalProps) => {
+  const { activeSede, isActiveSedeSet } = useSede();
   const [formData, setFormData] = useState<CreateCleanerData>({
     name: '',
     email: '',
@@ -41,7 +45,7 @@ export const CreateWorkerModal = ({ open, onOpenChange }: CreateWorkerModalProps
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.name.trim()) {
+    if (!formData.name.trim() || !isActiveSedeSet()) {
       return;
     }
 
@@ -82,17 +86,31 @@ export const CreateWorkerModal = ({ open, onOpenChange }: CreateWorkerModalProps
           </DialogDescription>
         </DialogHeader>
         
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="name">Nombre completo *</Label>
-            <Input
-              id="name"
-              value={formData.name}
-              onChange={(e) => handleChange('name', e.target.value)}
-              placeholder="Nombre del trabajador"
-              required
-            />
-          </div>
+        {!isActiveSedeSet() ? (
+          <Alert className="mb-4">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertDescription>
+              Debes seleccionar una sede antes de crear un trabajador.
+            </AlertDescription>
+          </Alert>
+        ) : (
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="mb-4 p-3 bg-blue-50 rounded-lg">
+              <p className="text-sm text-blue-700">
+                📍 Creando trabajador en: <strong>{activeSede?.nombre}</strong>
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="name">Nombre completo *</Label>
+              <Input
+                id="name"
+                value={formData.name}
+                onChange={(e) => handleChange('name', e.target.value)}
+                placeholder="Nombre del trabajador"
+                required
+              />
+            </div>
 
           <div className="space-y-2">
             <Label htmlFor="email">Email</Label>
@@ -213,11 +231,12 @@ export const CreateWorkerModal = ({ open, onOpenChange }: CreateWorkerModalProps
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancelar
             </Button>
-            <Button type="submit" disabled={createCleaner.isPending}>
+            <Button type="submit" disabled={createCleaner.isPending || !isActiveSedeSet()}>
               {createCleaner.isPending ? 'Creando...' : 'Crear Trabajador'}
             </Button>
           </DialogFooter>
-        </form>
+          </form>
+        )}
       </DialogContent>
     </Dialog>
   );

@@ -19,6 +19,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
   Select,
   SelectContent,
@@ -26,9 +27,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Loader2, Plus } from 'lucide-react';
+import { Loader2, Plus, AlertTriangle } from 'lucide-react';
 import { useInventoryCategories, useCreateProduct, useCreateCategory, useCreateStock } from '@/hooks/useInventory';
 import { useAuth } from '@/hooks/useAuth';
+import { useSede } from '@/contexts/SedeContext';
 import type { CreateInventoryProductData, CreateInventoryCategoryData, CreateInventoryStockData } from '@/types/inventory';
 
 const productSchema = z.object({
@@ -58,6 +60,7 @@ interface CreateProductDialogProps {
 export const CreateProductDialog = ({ open, onOpenChange }: CreateProductDialogProps) => {
   const [showCategoryForm, setShowCategoryForm] = useState(false);
   const { user } = useAuth();
+  const { activeSede, isActiveSedeSet } = useSede();
   
   const { data: categories, isLoading: categoriesLoading } = useInventoryCategories();
   const createProduct = useCreateProduct();
@@ -87,7 +90,7 @@ export const CreateProductDialog = ({ open, onOpenChange }: CreateProductDialogP
   });
 
   const handleCreateProduct = async (data: ProductFormData) => {
-    if (!user?.id) return;
+    if (!user?.id || !isActiveSedeSet()) return;
 
     try {
       // Create product
@@ -96,7 +99,7 @@ export const CreateProductDialog = ({ open, onOpenChange }: CreateProductDialogP
         description: data.description,
         category_id: data.category_id,
         unit_of_measure: data.unit_of_measure,
-        sede_id: "00000000-0000-0000-0000-000000000000" // TODO: Get from sede context
+        sede_id: activeSede!.id
       });
 
       // Create initial stock for the product
@@ -107,7 +110,7 @@ export const CreateProductDialog = ({ open, onOpenChange }: CreateProductDialogP
         maximum_stock: data.maximum_stock,
         cost_per_unit: data.cost_per_unit || undefined,
         updated_by: user.id,
-        sede_id: "00000000-0000-0000-0000-000000000000" // TODO: Get from sede context
+        sede_id: activeSede!.id
       });
 
       productForm.reset();
@@ -151,7 +154,14 @@ export const CreateProductDialog = ({ open, onOpenChange }: CreateProductDialogP
           </DialogTitle>
         </DialogHeader>
 
-        {showCategoryForm ? (
+        {!isActiveSedeSet() ? (
+          <Alert className="mb-4">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertDescription>
+              Debes seleccionar una sede antes de crear productos.
+            </AlertDescription>
+          </Alert>
+        ) : showCategoryForm ? (
           <Form {...categoryForm}>
             <form onSubmit={categoryForm.handleSubmit(handleCreateCategory)} className="space-y-4">
               <FormField
@@ -204,6 +214,12 @@ export const CreateProductDialog = ({ open, onOpenChange }: CreateProductDialogP
         ) : (
           <Form {...productForm}>
             <form onSubmit={productForm.handleSubmit(handleCreateProduct)} className="space-y-4">
+              <div className="mb-4 p-3 bg-blue-50 rounded-lg">
+                <p className="text-sm text-blue-700">
+                  📍 Creando producto en: <strong>{activeSede?.nombre}</strong>
+                </p>
+              </div>
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <FormField
                   control={productForm.control}
@@ -388,7 +404,7 @@ export const CreateProductDialog = ({ open, onOpenChange }: CreateProductDialogP
                 >
                   Cancelar
                 </Button>
-                <Button type="submit" disabled={isLoading}>
+                <Button type="submit" disabled={isLoading || !isActiveSedeSet()}>
                   {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                   Crear Producto
                 </Button>
