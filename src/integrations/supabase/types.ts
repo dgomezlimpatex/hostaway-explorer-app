@@ -1674,6 +1674,57 @@ export type Database = {
         }
         Relationships: []
       }
+      sede_audit_log: {
+        Row: {
+          created_at: string
+          event_data: Json | null
+          event_type: string
+          from_sede_id: string | null
+          id: string
+          ip_address: unknown | null
+          to_sede_id: string | null
+          user_agent: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          event_data?: Json | null
+          event_type: string
+          from_sede_id?: string | null
+          id?: string
+          ip_address?: unknown | null
+          to_sede_id?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          event_data?: Json | null
+          event_type?: string
+          from_sede_id?: string | null
+          id?: string
+          ip_address?: unknown | null
+          to_sede_id?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sede_audit_log_from_sede_id_fkey"
+            columns: ["from_sede_id"]
+            isOneToOne: false
+            referencedRelation: "sedes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sede_audit_log_to_sede_id_fkey"
+            columns: ["to_sede_id"]
+            isOneToOne: false
+            referencedRelation: "sedes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       sedes: {
         Row: {
           ciudad: string
@@ -2254,6 +2305,15 @@ export type Database = {
       }
       log_security_event: {
         Args: { event_data?: Json; event_type: string; target_user_id?: string }
+        Returns: undefined
+      }
+      log_sede_event: {
+        Args: {
+          event_data_param?: Json
+          event_type_param: string
+          from_sede_id_param?: string
+          to_sede_id_param?: string
+        }
         Returns: undefined
       }
       process_automatic_inventory_consumption: {

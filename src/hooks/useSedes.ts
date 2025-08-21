@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 import { sedeStorageService } from '@/services/storage/sedeStorage';
 import { useSede } from '@/contexts/SedeContext';
 import { CreateSedeData } from '@/types/sede';
@@ -38,9 +39,26 @@ export const useSedes = () => {
   // Mutation para crear nueva sede
   const createSedeMutation = useMutation({
     mutationFn: (sedeData: CreateSedeData) => sedeStorageService.createSede(sedeData),
-    onSuccess: () => {
+    onSuccess: async (newSede) => {
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.sedes });
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.userSedes });
+      
+      // Log de auditoría para creación de sede
+      try {
+        await supabase.rpc('log_sede_event', {
+          event_type_param: 'sede_created',
+          to_sede_id_param: newSede.id,
+          event_data_param: {
+            sede_name: newSede.nombre,
+            sede_code: newSede.codigo,
+            ciudad: newSede.ciudad,
+            timestamp: new Date().toISOString()
+          }
+        });
+      } catch (error) {
+        console.error('Error logging sede creation:', error);
+      }
+      
       toast({
         title: "Sede creada",
         description: "La sede ha sido creada exitosamente.",
@@ -60,9 +78,25 @@ export const useSedes = () => {
   const updateSedeMutation = useMutation({
     mutationFn: ({ sedeId, updates }: { sedeId: string; updates: Partial<CreateSedeData> }) =>
       sedeStorageService.updateSede(sedeId, updates),
-    onSuccess: () => {
+    onSuccess: async (updatedSede, { sedeId, updates }) => {
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.sedes });
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.userSedes });
+      
+      // Log de auditoría para actualización de sede
+      try {
+        await supabase.rpc('log_sede_event', {
+          event_type_param: 'sede_updated',
+          to_sede_id_param: sedeId,
+          event_data_param: {
+            updates: updates,
+            sede_name: updatedSede?.nombre,
+            timestamp: new Date().toISOString()
+          }
+        });
+      } catch (error) {
+        console.error('Error logging sede update:', error);
+      }
+      
       toast({
         title: "Sede actualizada",
         description: "Los cambios han sido guardados exitosamente.",
@@ -81,9 +115,23 @@ export const useSedes = () => {
   // Mutation para desactivar sede
   const deactivateSedeMutation = useMutation({
     mutationFn: (sedeId: string) => sedeStorageService.deactivateSede(sedeId),
-    onSuccess: () => {
+    onSuccess: async (_, sedeId) => {
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.sedes });
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.userSedes });
+      
+      // Log de auditoría para desactivación de sede
+      try {
+        await supabase.rpc('log_sede_event', {
+          event_type_param: 'sede_deactivated',
+          to_sede_id_param: sedeId,
+          event_data_param: {
+            timestamp: new Date().toISOString()
+          }
+        });
+      } catch (error) {
+        console.error('Error logging sede deactivation:', error);
+      }
+      
       toast({
         title: "Sede desactivada",
         description: "La sede ha sido desactivada exitosamente.",
@@ -103,8 +151,23 @@ export const useSedes = () => {
   const grantSedeAccessMutation = useMutation({
     mutationFn: ({ userId, sedeId }: { userId: string; sedeId: string }) =>
       sedeStorageService.grantUserSedeAccess(userId, sedeId),
-    onSuccess: () => {
+    onSuccess: async (_, { userId, sedeId }) => {
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.userSedes });
+      
+      // Log de auditoría para otorgar acceso
+      try {
+        await supabase.rpc('log_sede_event', {
+          event_type_param: 'sede_access_granted',
+          to_sede_id_param: sedeId,
+          event_data_param: {
+            target_user_id: userId,
+            timestamp: new Date().toISOString()
+          }
+        });
+      } catch (error) {
+        console.error('Error logging sede access grant:', error);
+      }
+      
       toast({
         title: "Acceso otorgado",
         description: "El usuario ahora tiene acceso a la sede.",
@@ -124,8 +187,23 @@ export const useSedes = () => {
   const revokeSedeAccessMutation = useMutation({
     mutationFn: ({ userId, sedeId }: { userId: string; sedeId: string }) =>
       sedeStorageService.revokeUserSedeAccess(userId, sedeId),
-    onSuccess: () => {
+    onSuccess: async (_, { userId, sedeId }) => {
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.userSedes });
+      
+      // Log de auditoría para revocar acceso
+      try {
+        await supabase.rpc('log_sede_event', {
+          event_type_param: 'sede_access_revoked',
+          to_sede_id_param: sedeId,
+          event_data_param: {
+            target_user_id: userId,
+            timestamp: new Date().toISOString()
+          }
+        });
+      } catch (error) {
+        console.error('Error logging sede access revoke:', error);
+      }
+      
       toast({
         title: "Acceso revocado",
         description: "El acceso del usuario a la sede ha sido revocado.",

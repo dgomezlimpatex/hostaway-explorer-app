@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 import { Sede, SedeContextType } from '@/types/sede';
 import { sedeStorageService } from '@/services/storage/sedeStorage';
 
@@ -67,13 +68,32 @@ export const SedeProvider = ({ children }: SedeProviderProps) => {
     refreshSedes();
   }, []);
 
-  const setActiveSede = (sede: Sede) => {
+  const setActiveSede = async (sede: Sede) => {
+    const previousSede = activeSede;
     const previousSedeId = activeSede?.id;
+    
     setActiveSedeState(sede);
     localStorage.setItem(ACTIVE_SEDE_KEY, JSON.stringify(sede));
     
-    // Invalidate all queries when sede changes
+    // Log del cambio de sede para auditoría (solo si realmente cambió)
     if (previousSedeId !== sede.id) {
+      try {
+        await supabase.rpc('log_sede_event', {
+          event_type_param: 'sede_changed',
+          from_sede_id_param: previousSedeId || null,
+          to_sede_id_param: sede.id,
+          event_data_param: {
+            previous_sede_name: previousSede?.nombre || null,
+            new_sede_name: sede.nombre,
+            timestamp: new Date().toISOString()
+          }
+        });
+      } catch (error) {
+        console.error('Error logging sede change:', error);
+        // No bloqueamos la operación por falla en el log
+      }
+
+      // Invalidate all queries when sede changes
       queryClient.invalidateQueries();
     }
   };
