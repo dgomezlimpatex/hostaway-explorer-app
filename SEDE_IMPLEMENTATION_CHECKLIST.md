@@ -115,7 +115,7 @@
 - [x] Crear hook `useSedeData`
 - [x] Implementar invalidación de queries al cambiar sede
 
-## ✅ FASE 6: FORMULARIOS Y CREACIÓN
+## ✅ FASE 6: FORMULARIOS Y CREACIÓN ✅
 
 ### 6.1 Actualización de Formularios
 - [x] Modificar formularios de propiedades para incluir sede_id automáticamente
@@ -129,17 +129,17 @@
 - [x] Verificar que usuarios solo puedan crear datos en sus sedes permitidas
 - [x] Implementar mensajes de error apropiados
 
-## ✅ FASE 7: REPORTES Y EXPORTACIONES
+## 🔄 FASE 7: REPORTES Y EXPORTACIONES ✅
 
 ### 7.1 Filtros en Reportes
-- [ ] Actualizar reportes para incluir filtro por sede
-- [ ] Mostrar nombre de sede en reportes generados
-- [ ] Implementar reportes multi-sede para administradores
+- [x] Actualizar reportes para incluir filtro por sede
+- [x] Mostrar nombre de sede en reportes generados
+- [x] Implementar reportes multi-sede para administradores
 
 ### 7.2 Exportaciones
-- [ ] Actualizar exportaciones para incluir información de sede
-- [ ] Verificar que las exportaciones respeten permisos de sede
-- [ ] Agregar filtros de sede en exportaciones
+- [x] Actualizar exportaciones para incluir información de sede
+- [x] Verificar que las exportaciones respeten permisos de sede
+- [x] Agregar filtros de sede en exportaciones
 
 ## ✅ FASE 8: TESTING
 

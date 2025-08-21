@@ -9,6 +9,7 @@ export interface BaseFilters {
   endDate?: Date;
   clientId?: string;
   cleanerId?: string;
+  sedeId?: string; // Nuevo filtro por sede
 }
 
 export interface ReportFilters extends BaseFilters {

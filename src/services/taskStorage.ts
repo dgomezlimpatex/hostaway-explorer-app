@@ -4,7 +4,6 @@ import { taskStorageService as baseTaskStorage } from './storage/taskStorage';
 import { taskAssignmentService } from './storage/taskAssignmentService';
 import { taskCleanupService } from './storage/taskCleanupService';
 
-// Main facade service that combines all task-related operations
 export const taskStorageService = {
   // Basic CRUD operations
   getTasks: () => baseTaskStorage.getTasks(),

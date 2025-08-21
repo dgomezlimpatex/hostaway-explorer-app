@@ -95,6 +95,7 @@ export const generateTaskReport = (tasks: any[], properties: any[], clients: any
       propertyName;
 
     return {
+      // Propiedades existentes
       id: task.id,
       created_at: task.created_at || new Date().toISOString(),
       updated_at: task.updated_at || new Date().toISOString(),
@@ -109,6 +110,7 @@ export const generateTaskReport = (tasks: any[], properties: any[], clients: any
       client: clientName,
       
       // Campos adicionales para exportación CSV
+      sede: property?.sede_id || 'N/A', // Nueva información de sede
       serviceDate: task.date,
       supervisor: clientSupervisor,
       serviceType: formatServiceType(task.type),

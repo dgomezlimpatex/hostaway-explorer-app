@@ -37,7 +37,8 @@ export const generateBillingReport = (tasks: any[], properties: any[], clients: 
       duration: duration,
       cost: property?.costeServicio || task.coste || 0,
       status: task.status,
-      supervisor: client?.supervisor || task.supervisor || 'Sin supervisor'
+      supervisor: client?.supervisor || task.supervisor || 'Sin supervisor',
+      sede: property?.sede_id || 'N/A' // Nueva información de sede
     };
   });
 };

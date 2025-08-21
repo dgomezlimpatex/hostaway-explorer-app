@@ -57,8 +57,9 @@ export const exportToCSV = (
 };
 
 const generateTasksCSV = (data: TaskReport[]): string => {
-  // Headers actualizados con "Cliente" entre "Supervisor" y "Tipo de servicio"
+  // Headers actualizados con "Sede" como primera columna
   const headers = [
+    'Sede',
     'Fecha del servicio',
     'Supervisor',
     'Cliente',
@@ -72,6 +73,7 @@ const generateTasksCSV = (data: TaskReport[]): string => {
   ];
 
   const rows = data.map(task => [
+    task.sede || 'N/A', // Incluir información de sede
     formatDateForCSV(task.serviceDate),
     task.supervisor,
     task.client,
@@ -91,6 +93,7 @@ const generateTasksCSV = (data: TaskReport[]): string => {
 
 const generateBillingCSV = (data: BillingReport[]): string => {
   const headers = [
+    'Sede',
     'Propiedad',
     'Cliente',
     'Fecha',
@@ -101,6 +104,7 @@ const generateBillingCSV = (data: BillingReport[]): string => {
   ];
 
   const rows = data.map(item => [
+    item.sede || 'N/A', // Incluir información de sede
     item.property,
     item.client,
     formatDateForCSV(item.date),
@@ -138,8 +142,9 @@ const generateSummaryCSV = (data: SummaryReport): string => {
 };
 
 const generateLaundryCSV = (data: LaundryReport[]): string => {
-  // Headers para el reporte de lavandería
+  // Headers para el reporte de lavandería con Sede incluida
   const headers = [
+    'Sede',
     'Propiedad',
     'Código Propiedad',
     'Dirección',
@@ -173,6 +178,7 @@ const generateLaundryCSV = (data: LaundryReport[]): string => {
   }
 
   const rows = data.map(item => [
+    item.sede || 'N/A', // Incluir información de sede
     item.property || '',
     item.propertyCode || '',
     item.address || '',

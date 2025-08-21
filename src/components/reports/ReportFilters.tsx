@@ -10,6 +10,9 @@ import { es } from 'date-fns/locale';
 import { ReportFilters } from '@/types/filters';
 import { useClients } from '@/hooks/useClients';
 import { useCleaners } from '@/hooks/useCleaners';
+import { useSedes } from '@/hooks/useSedes';
+import { useSede } from '@/contexts/SedeContext';
+import { useAuth } from '@/hooks/useAuth';
 
 interface ReportFiltersComponentProps {
   filters: ReportFilters;
@@ -19,11 +22,44 @@ interface ReportFiltersComponentProps {
 export const ReportFiltersComponent = ({ filters, onFiltersChange }: ReportFiltersComponentProps) => {
   const { data: clients = [] } = useClients();
   const { cleaners = [] } = useCleaners();
+  const { allSedes } = useSedes();
+  const { activeSede } = useSede();
+  const { user } = useAuth();
+
+  // Verificar si es admin para mostrar selector multi-sede
+  const isAdmin = user?.app_metadata?.role === 'admin';
 
   return (
     <Card>
       <CardContent className="p-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+          {/* Selector de Sede (solo para admins) */}
+          {isAdmin && (
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Sede</label>
+              <Select 
+                value={filters.sedeId || 'current'} 
+                onValueChange={(value) => onFiltersChange({ 
+                  ...filters, 
+                  sedeId: value === 'current' ? undefined : value === 'all' ? 'all' : value 
+                })}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="current">📍 Sede Actual ({activeSede?.nombre})</SelectItem>
+                  <SelectItem value="all">🏢 Todas las Sedes</SelectItem>
+                  {allSedes.map(sede => (
+                    <SelectItem key={sede.id} value={sede.id}>
+                      🏢 {sede.nombre}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
           {/* Tipo de Reporte */}
           <div className="space-y-2">
             <label className="text-sm font-medium">Tipo de Reporte</label>

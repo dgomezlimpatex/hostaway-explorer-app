@@ -66,6 +66,7 @@ export const generateLaundryReport = (tasks: any[], properties: any[], clients: 
         client: client?.nombre || task.client || 'Cliente desconocido',
         
         // Campos adicionales para exportación CSV
+        sede: property?.sede_id || 'N/A', // Nueva información de sede
         serviceDate: task.date,
         supervisor: client?.supervisor || task.supervisor || 'Sin supervisor',
         serviceType: formatServiceType(task.type),

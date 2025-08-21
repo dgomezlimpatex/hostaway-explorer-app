@@ -4,6 +4,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Label } from '@/components/ui/label';
 import { useCleaners } from '@/hooks/useCleaners';
 import { useProperties } from '@/hooks/useProperties';
+import { useSedes } from '@/hooks/useSedes';
+import { useSede } from '@/contexts/SedeContext';
+import { useAuth } from '@/hooks/useAuth';
 
 interface CleaningReportsFiltersProps {
   filters: {
@@ -12,6 +15,7 @@ interface CleaningReportsFiltersProps {
     status: string;
     property: string;
     hasIncidents: string;
+    sedeId?: string; // Nuevo filtro por sede
   };
   onFiltersChange: (filters: any) => void;
 }
@@ -22,6 +26,12 @@ export const CleaningReportsFilters: React.FC<CleaningReportsFiltersProps> = ({
 }) => {
   const { cleaners } = useCleaners();
   const { data: properties = [] } = useProperties();
+  const { allSedes } = useSedes();
+  const { activeSede } = useSede();
+  const { user } = useAuth();
+
+  // Verificar si es admin para mostrar selector multi-sede
+  const isAdmin = user?.app_metadata?.role === 'admin';
 
   const handleFilterChange = (key: string, value: string) => {
     onFiltersChange({
@@ -33,7 +43,31 @@ export const CleaningReportsFilters: React.FC<CleaningReportsFiltersProps> = ({
   return (
     <Card>
       <CardContent className="pt-6">
-        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">
+          {/* Selector de Sede (solo para admins) */}
+          {isAdmin && (
+            <div className="space-y-2">
+              <Label htmlFor="sedeId">Sede</Label>
+              <Select
+                value={filters.sedeId || 'current'}
+                onValueChange={(value) => handleFilterChange('sedeId', value)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Seleccionar sede" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="current">📍 Sede Actual ({activeSede?.nombre})</SelectItem>
+                  <SelectItem value="all">🏢 Todas las Sedes</SelectItem>
+                  {allSedes.map((sede) => (
+                    <SelectItem key={sede.id} value={sede.id}>
+                      🏢 {sede.nombre}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
           <div className="space-y-2">
             <Label htmlFor="dateRange">Período</Label>
             <Select
