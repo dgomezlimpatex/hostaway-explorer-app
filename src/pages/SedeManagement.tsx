@@ -70,44 +70,40 @@ const SedeManagement = () => {
   };
 
   const handleCreate = async () => {
-    try {
-      createSede(formData);
-      toast({
-        title: "Sede creada",
-        description: "La sede se ha creado exitosamente.",
-      });
-      setIsCreateDialogOpen(false);
-      resetForm();
-    } catch (error) {
+    if (!formData.nombre || !formData.codigo || !formData.ciudad) {
       toast({
         title: "Error",
-        description: "No se pudo crear la sede.",
+        description: "Por favor completa todos los campos requeridos.",
         variant: "destructive",
       });
+      return;
     }
+
+    createSede(formData);
+    // Los toasts y la invalidación se manejan automáticamente en el hook
+    setIsCreateDialogOpen(false);
+    resetForm();
   };
 
   const handleUpdate = async () => {
     if (!editingSede) return;
     
-    try {
-      updateSede({
-        sedeId: editingSede.id,
-        updates: formData
-      });
+    if (!formData.nombre || !formData.codigo || !formData.ciudad) {
       toast({
-        title: "Sede actualizada",
-        description: "La sede se ha actualizado exitosamente.",
-      });
-      setEditingSede(null);
-      resetForm();
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "No se pudo actualizar la sede.",
+        title: "Error", 
+        description: "Por favor completa todos los campos requeridos.",
         variant: "destructive",
       });
+      return;
     }
+
+    updateSede({
+      sedeId: editingSede.id,
+      updates: formData
+    });
+    // Los toasts y la invalidación se manejan automáticamente en el hook
+    setEditingSede(null);
+    resetForm();
   };
 
   const openEditDialog = (sede: any) => {
