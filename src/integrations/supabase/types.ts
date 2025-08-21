@@ -7,7 +7,7 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instanciate createClient with right options
+  // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
     PostgrestVersion: "12.2.3 (519615d)"
@@ -1591,6 +1591,45 @@ export type Database = {
         }
         Relationships: []
       }
+      sedes: {
+        Row: {
+          ciudad: string
+          codigo: string
+          created_at: string
+          direccion: string | null
+          email: string | null
+          id: string
+          is_active: boolean
+          nombre: string
+          telefono: string | null
+          updated_at: string
+        }
+        Insert: {
+          ciudad: string
+          codigo: string
+          created_at?: string
+          direccion?: string | null
+          email?: string | null
+          id?: string
+          is_active?: boolean
+          nombre: string
+          telefono?: string | null
+          updated_at?: string
+        }
+        Update: {
+          ciudad?: string
+          codigo?: string
+          created_at?: string
+          direccion?: string | null
+          email?: string | null
+          id?: string
+          is_active?: boolean
+          nombre?: string
+          telefono?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       task_assignments: {
         Row: {
           assigned_at: string
@@ -2014,6 +2053,41 @@ export type Database = {
         }
         Relationships: []
       }
+      user_sede_access: {
+        Row: {
+          can_access: boolean
+          created_at: string
+          id: string
+          sede_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          can_access?: boolean
+          created_at?: string
+          id?: string
+          sede_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          can_access?: boolean
+          created_at?: string
+          id?: string
+          sede_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_sede_access_sede_id_fkey"
+            columns: ["sede_id"]
+            isOneToOne: false
+            referencedRelation: "sedes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       task_reports_grouped: {
@@ -2041,16 +2115,16 @@ export type Database = {
     }
     Functions: {
       accept_invitation: {
-        Args: { invitation_token: string; input_user_id: string }
+        Args: { input_user_id: string; invitation_token: string }
         Returns: Database["public"]["Enums"]["app_role"]
       }
       check_rate_limit: {
         Args: {
-          check_identifier: string
+          block_minutes?: number
           check_action_type: string
+          check_identifier: string
           max_attempts?: number
           window_minutes?: number
-          block_minutes?: number
         }
         Returns: boolean
       }
@@ -2060,9 +2134,9 @@ export type Database = {
       }
       create_user_invitation_secure: {
         Args: {
+          expires_hours?: number
           invite_email: string
           invite_role: string
-          expires_hours?: number
         }
         Returns: string
       }
@@ -2076,25 +2150,25 @@ export type Database = {
       }
       has_role: {
         Args: {
-          _user_id: string
           _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
         }
         Returns: boolean
       }
       log_security_event: {
-        Args: { event_type: string; event_data?: Json; target_user_id?: string }
+        Args: { event_data?: Json; event_type: string; target_user_id?: string }
         Returns: undefined
       }
       process_automatic_inventory_consumption: {
         Args: {
-          task_id_param: string
           property_id_param: string
+          task_id_param: string
           user_id_param: string
         }
         Returns: undefined
       }
       reset_rate_limit: {
-        Args: { reset_identifier: string; reset_action_type: string }
+        Args: { reset_action_type: string; reset_identifier: string }
         Returns: undefined
       }
       update_cleaners_order: {
@@ -2110,7 +2184,7 @@ export type Database = {
         Returns: boolean
       }
       verify_invitation: {
-        Args: { token: string; email: string }
+        Args: { email: string; token: string }
         Returns: boolean
       }
     }
