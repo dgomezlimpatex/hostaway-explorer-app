@@ -113,7 +113,7 @@ export class TaskStorageService extends BaseStorageService<Task, TaskCreateData>
       query = query.eq('sede_id', activeSedeId);
     }
 
-    // Optimización para limpiadores: filtrar en BD por fecha y cleaner
+    // Optimización para limpiadores: filtrar en BD por fecha
     if (options?.cleanerId && options?.userRole === 'cleaner') {
       console.log('📋 Applying cleaner-specific optimizations');
       
@@ -124,9 +124,7 @@ export class TaskStorageService extends BaseStorageService<Task, TaskCreateData>
         console.log('📋 Filtering tasks from date:', today);
       }
       
-      // Filtrar por cleaner_id O por task_assignments
-      query = query.or(`cleaner_id.eq.${options.cleanerId},task_assignments.cleaner_id.eq.${options.cleanerId}`);
-      console.log('📋 Filtering tasks for cleaner:', options.cleanerId);
+      console.log('📋 Will filter by cleaner after fetching results:', options.cleanerId);
     }
 
     const { data, error } = await query.order('date', { ascending: true }).order('start_time', { ascending: true });

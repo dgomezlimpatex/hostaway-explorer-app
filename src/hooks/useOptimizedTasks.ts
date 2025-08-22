@@ -42,7 +42,7 @@ export const useOptimizedTasks = ({
   const { data: tasks = [], isLoading, error } = useQuery({
     queryKey,
     queryFn: async () => {
-      // For cleaners, use optimized query that filters in the database
+      // For cleaners, use optimized query that filters in the database by date only
       if (userRole === 'cleaner' && currentCleanerId) {
         console.log('🔍 Using optimized cleaner query');
         const optimizedTasks = await taskStorageService.getTasks({
@@ -51,8 +51,9 @@ export const useOptimizedTasks = ({
           userRole: userRole
         });
         
-        // Filter by current view (day, week, etc.)
-        return filterTasksByView(optimizedTasks, currentDate, currentView);
+        // Filter by current view (day, week, etc.) and cleaner assignment
+        const viewFiltered = filterTasksByView(optimizedTasks, currentDate, currentView);
+        return await filterTasksByUserRole(viewFiltered, userRole, currentCleanerId, cleaners);
       }
       
       // For non-cleaners, use cached approach
