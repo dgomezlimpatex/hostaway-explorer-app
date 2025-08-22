@@ -11,21 +11,27 @@ const CACHE_DURATION = 1000; // 1 second cache to prevent rapid repeated calls
 
 export const taskStorageService = {
   // Basic CRUD operations with optimization
-  getTasks: async (): Promise<Task[]> => {
+  getTasks: async (options?: {
+    cleanerId?: string;
+    includePastTasks?: boolean;
+    userRole?: string;
+  }): Promise<Task[]> => {
     const now = Date.now();
+    const cacheKey = JSON.stringify(options || {});
     
-    // If there's an ongoing request, return it
+    // Use different cache for different options
     if (lastFetchPromise && now - lastFetchTime < CACHE_DURATION) {
       console.log('📋 taskStorage - reusing existing request');
       return lastFetchPromise;
     }
     
-    // Create new request
+    // Create new request with options
     lastFetchTime = now;
-    lastFetchPromise = baseTaskStorage.getTasks();
+    lastFetchPromise = baseTaskStorage.getTasks(options);
     
     try {
       const result = await lastFetchPromise;
+      console.log(`📋 taskStorage - loaded ${result.length} tasks with options:`, options);
       return result;
     } finally {
       // Clear the promise after a short delay to allow reuse

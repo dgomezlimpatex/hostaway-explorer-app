@@ -75,8 +75,12 @@ export class TaskStorageService extends BaseStorageService<Task, TaskCreateData>
     super(taskStorageConfig);
   }
 
-  async getTasks(): Promise<Task[]> {
-    console.log('📋 taskStorage - getTasks called, checking for completed reports and assignments');
+  async getTasks(options?: {
+    cleanerId?: string;
+    includePastTasks?: boolean;
+    userRole?: string;
+  }): Promise<Task[]> {
+    console.log('📋 taskStorage - getTasks called with options:', options);
     
     // Función helper para obtener la sede activa
     const getActiveSedeId = (): string | null => {
@@ -93,7 +97,7 @@ export class TaskStorageService extends BaseStorageService<Task, TaskCreateData>
       }
     };
     
-    // Get all tasks with a LEFT JOIN to task_reports, properties, and task_assignments
+    // Get tasks with a LEFT JOIN to task_reports, properties, and task_assignments
     let query = supabase
       .from('tasks')
       .select(`
@@ -109,7 +113,23 @@ export class TaskStorageService extends BaseStorageService<Task, TaskCreateData>
       query = query.eq('sede_id', activeSedeId);
     }
 
-    const { data, error } = await query.order('created_at', { ascending: false });
+    // Optimización para limpiadores: filtrar en BD por fecha y cleaner
+    if (options?.cleanerId && options?.userRole === 'cleaner') {
+      console.log('📋 Applying cleaner-specific optimizations');
+      
+      // Filtrar por fecha si no se incluyen tareas pasadas
+      if (!options.includePastTasks) {
+        const today = new Date().toISOString().split('T')[0];
+        query = query.gte('date', today);
+        console.log('📋 Filtering tasks from date:', today);
+      }
+      
+      // Filtrar por cleaner_id O por task_assignments
+      query = query.or(`cleaner_id.eq.${options.cleanerId},task_assignments.cleaner_id.eq.${options.cleanerId}`);
+      console.log('📋 Filtering tasks for cleaner:', options.cleanerId);
+    }
+
+    const { data, error } = await query.order('date', { ascending: true }).order('start_time', { ascending: true });
 
     if (error) {
       console.error('❌ Error fetching tasks with reports and assignments:', error);

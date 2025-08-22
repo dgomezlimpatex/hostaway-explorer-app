@@ -42,7 +42,20 @@ export const useOptimizedTasks = ({
   const { data: tasks = [], isLoading, error } = useQuery({
     queryKey,
     queryFn: async () => {
-      // Cache específico por sede
+      // For cleaners, use optimized query that filters in the database
+      if (userRole === 'cleaner' && currentCleanerId) {
+        console.log('🔍 Using optimized cleaner query');
+        const optimizedTasks = await taskStorageService.getTasks({
+          cleanerId: currentCleanerId,
+          includePastTasks: false,
+          userRole: userRole
+        });
+        
+        // Filter by current view (day, week, etc.)
+        return filterTasksByView(optimizedTasks, currentDate, currentView);
+      }
+      
+      // For non-cleaners, use cached approach
       const sedeId = activeSede?.id || 'no-sede';
       const cachedAllTasks = queryClient.getQueryData(['tasks', 'all', sedeId]);
       if (cachedAllTasks) {
@@ -57,7 +70,7 @@ export const useOptimizedTasks = ({
       const filteredByView = filterTasksByView(allTasks, currentDate, currentView);
       return await filterTasksByUserRole(filteredByView, userRole, currentCleanerId, cleaners);
     },
-    staleTime: 0, // Reducir cache para ver cambios inmediatamente
+    staleTime: userRole === 'cleaner' ? 30000 : 0, // 30s cache for cleaners, 0 for others
     gcTime: 5 * 60 * 1000, // 5 minutos
     enabled: enabled && (userRole !== 'cleaner' || currentCleanerId !== null) && !!activeSede,
     refetchOnWindowFocus: true,
@@ -71,9 +84,9 @@ export const useOptimizedTasks = ({
     return tasks.filter(task => task && task.date);
   }, [tasks]);
 
-  // Prefetch para las próximas fechas
+  // Prefetch para las próximas fechas (solo para no-cleaners)
   const prefetchNextDates = useMemo(() => {
-    if (!enabled || !activeSede?.id) return;
+    if (!enabled || !activeSede?.id || userRole === 'cleaner') return;
 
     const tomorrow = new Date(currentDate);
     tomorrow.setDate(tomorrow.getDate() + 1);
