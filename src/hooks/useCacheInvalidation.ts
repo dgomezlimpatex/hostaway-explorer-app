@@ -39,19 +39,36 @@ export const useCacheInvalidation = () => {
   };
 
   const invalidateTasks = () => {
-    console.log('🔄 Invalidating task caches');
+    console.log('🔄 Invalidating task caches for sede:', activeSede?.nombre);
     const sedeId = activeSede?.id;
     
-    // Invalidar todas las queries de tasks
-    queryClient.invalidateQueries({ queryKey: ['tasks'] });
+    // Invalidar todas las queries que empiecen con ['tasks']
+    queryClient.invalidateQueries({ 
+      queryKey: ['tasks'],
+      predicate: (query) => {
+        const key = query.queryKey;
+        return key[0] === 'tasks';
+      }
+    });
     
-    // Invalidar caché específico por sede si existe
+    // Si hay sedeId específico, invalidar también queries con ese sede
     if (sedeId) {
-      queryClient.invalidateQueries({ queryKey: ['tasks', 'all', sedeId] });
+      queryClient.invalidateQueries({
+        predicate: (query) => {
+          const key = query.queryKey;
+          return key[0] === 'tasks' && key.includes(sedeId);
+        }
+      });
     }
     
-    // Refetch todas las queries de tasks para asegurar actualización inmediata
-    queryClient.refetchQueries({ queryKey: ['tasks'] });
+    // Refetch todas las queries de tasks
+    queryClient.refetchQueries({ 
+      queryKey: ['tasks'],
+      predicate: (query) => {
+        const key = query.queryKey;
+        return key[0] === 'tasks';
+      }
+    });
   };
 
   const invalidateCleaners = () => {
