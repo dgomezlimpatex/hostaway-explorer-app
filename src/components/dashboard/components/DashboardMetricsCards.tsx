@@ -12,7 +12,7 @@ interface DashboardMetricsCardsProps {
   todayTasks: Task[];
 }
 
-export const DashboardMetricsCards = ({
+const DashboardMetricsCards = ({
   pendingIncidents,
   unassignedTasksCount,
   todayTasks
@@ -56,3 +56,5 @@ export const DashboardMetricsCards = ({
     </div>
   );
 };
+
+export default DashboardMetricsCards;

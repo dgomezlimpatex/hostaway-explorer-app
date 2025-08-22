@@ -18,7 +18,7 @@ import { TaskDetailsModal } from '@/components/modals/TaskDetailsModal';
 // Lazy load components for better performance
 const DashboardStatsCards = lazy(() => import('./components/DashboardStatsCards').then(module => ({ default: module.DashboardStatsCards })));
 const TodayTasksSection = lazy(() => import('./components/TodayTasksSection').then(module => ({ default: module.TodayTasksSection })));
-const DashboardMetricsCards = lazy(() => import('./components/DashboardMetricsCards').then(module => ({ default: module.DashboardMetricsCards })));
+const DashboardMetricsCards = lazy(() => import('./components/DashboardMetricsCards'));
 const HostawayIntegrationWidget = lazy(() => import('@/components/hostaway/HostawayIntegrationWidget').then(module => ({ default: module.HostawayIntegrationWidget })));
 
 // Loading component for Suspense
