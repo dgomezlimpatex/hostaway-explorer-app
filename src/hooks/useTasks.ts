@@ -85,7 +85,18 @@ export const useTasks = (currentDate: Date, currentView: ViewType) => {
     },
     onSuccess: (data) => {
       console.log('✅ useTasks - createTaskMutation onSuccess:', data);
+      
+      // Immediate optimistic update to current query cache
+      queryClient.setQueryData(queryKey, (oldData: Task[] | undefined) => {
+        if (!oldData) return [data];
+        return [...oldData, data];
+      });
+      
+      // Invalidate and refetch all task queries for consistency
       invalidateTasks();
+      
+      // Force immediate refetch of current query
+      queryClient.refetchQueries({ queryKey });
     },
     onError: (error) => {
       console.error('❌ useTasks - createTaskMutation onError:', error);
@@ -148,7 +159,20 @@ export const useTasks = (currentDate: Date, currentView: ViewType) => {
     },
     onSuccess: (data, variables) => {
       console.log('Task assigned successfully:', data);
+      
+      // Immediate optimistic update
+      queryClient.setQueryData(queryKey, (oldData: Task[] | undefined) => {
+        if (!oldData) return oldData;
+        return oldData.map(task => 
+          task.id === variables.taskId 
+            ? { ...task, cleanerId: variables.cleanerId, cleaner: variables.cleaners.find(c => c.id === variables.cleanerId)?.name || task.cleaner }
+            : task
+        );
+      });
+      
+      // Invalidate and refetch for consistency
       invalidateTasks();
+      queryClient.refetchQueries({ queryKey });
       
       // Show success message
       const cleaner = variables.cleaners.find(c => c.id === variables.cleanerId);
@@ -174,7 +198,20 @@ export const useTasks = (currentDate: Date, currentView: ViewType) => {
     },
     onSuccess: (data, taskId) => {
       console.log('Task unassigned successfully:', data);
+      
+      // Immediate optimistic update
+      queryClient.setQueryData(queryKey, (oldData: Task[] | undefined) => {
+        if (!oldData) return oldData;
+        return oldData.map(task => 
+          task.id === taskId 
+            ? { ...task, cleanerId: undefined, cleaner: '' }
+            : task
+        );
+      });
+      
+      // Invalidate and refetch for consistency
       invalidateTasks();
+      queryClient.refetchQueries({ queryKey });
       
       // Show success message
       toast({
