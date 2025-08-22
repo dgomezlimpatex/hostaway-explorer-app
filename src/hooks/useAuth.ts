@@ -97,8 +97,18 @@ export const useAuthProvider = (): AuthContextType => {
   const [userRole, setUserRole] = useState<AppRole | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
+  // Add state to prevent multiple processing calls
+  const [processingUser, setProcessingUser] = useState<string | null>(null);
+
   const processUser = async (userId: string) => {
+    // Prevent multiple calls for the same user
+    if (processingUser === userId) {
+      console.log('🔍 Already processing user:', userId);
+      return;
+    }
+
     try {
+      setProcessingUser(userId);
       console.log('🔍 Processing user authentication:', userId);
       
       // Obtener perfil del usuario
@@ -169,6 +179,8 @@ export const useAuthProvider = (): AuthContextType => {
       console.error('❌ Error in processUser:', error);
       setProfile(null);
       setUserRole(null);
+    } finally {
+      setProcessingUser(null);
     }
   };
 
@@ -181,13 +193,17 @@ export const useAuthProvider = (): AuthContextType => {
         setUser(session?.user ?? null);
 
         if (session?.user) {
-          // Defer user processing to avoid blocking auth state change
-          setTimeout(() => {
-            processUser(session.user.id);
-          }, 0);
+          // Only process if not already processing this user
+          if (processingUser !== session.user.id) {
+            // Defer user processing to avoid blocking auth state change
+            setTimeout(() => {
+              processUser(session.user.id);
+            }, 100); // Slight delay to prevent race conditions
+          }
         } else {
           setProfile(null);
           setUserRole(null);
+          setProcessingUser(null);
         }
         
         setIsLoading(false);
@@ -199,7 +215,7 @@ export const useAuthProvider = (): AuthContextType => {
       setSession(session);
       setUser(session?.user ?? null);
       
-      if (session?.user) {
+      if (session?.user && processingUser !== session.user.id) {
         processUser(session.user.id);
       }
       

@@ -1,5 +1,5 @@
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback, useRef } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/hooks/useAuth';
 import { useTasks } from '@/hooks/useTasks';
@@ -32,6 +32,9 @@ export const useTasksPageState = () => {
     propiedad: 'all',
   });
 
+  // Use ref to track last refetch to prevent excessive calls
+  const lastRefetchRef = useRef<number>(0);
+
   // Use current date and week view for task fetching (fixing ViewType)
   const currentDate = new Date();
   const { tasks, isLoading, error } = useTasks(currentDate, 'week');
@@ -43,12 +46,20 @@ export const useTasksPageState = () => {
     return currentCleaner?.id || null;
   }, [cleaners, user?.id, userRole]);
 
-  // Create a proper refetch function using React Query
-  const refetch = () => {
+  // Create a proper refetch function using React Query with debouncing
+  const refetch = useCallback(() => {
+    const now = Date.now();
+    // Prevent excessive refetch calls (debounce by 1 second)
+    if (now - lastRefetchRef.current < 1000) {
+      console.log('useTasksPageState - refetch debounced');
+      return;
+    }
+    
+    lastRefetchRef.current = now;
     // Invalidar todas las queries de tareas con sistema centralizado
     invalidateTasks();
     console.log('useTasksPageState - invalidated task queries with centralized system');
-  };
+  }, [invalidateTasks]);
 
   // Filter and sort tasks
   const filteredTasks = useMemo(() => {
@@ -77,9 +88,9 @@ export const useTasksPageState = () => {
     pageSize: 20,
   });
 
-  const handleTogglePastTasks = () => {
+  const handleTogglePastTasks = useCallback(() => {
     setShowPastTasks(!showPastTasks);
-  };
+  }, [showPastTasks]);
 
   return {
     searchTerm,

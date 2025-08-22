@@ -4,9 +4,38 @@ import { taskStorageService as baseTaskStorage } from './storage/taskStorage';
 import { taskAssignmentService } from './storage/taskAssignmentService';
 import { taskCleanupService } from './storage/taskCleanupService';
 
+// Add caching and request deduplication
+let lastFetchPromise: Promise<Task[]> | null = null;
+let lastFetchTime: number = 0;
+const CACHE_DURATION = 1000; // 1 second cache to prevent rapid repeated calls
+
 export const taskStorageService = {
-  // Basic CRUD operations
-  getTasks: () => baseTaskStorage.getTasks(),
+  // Basic CRUD operations with optimization
+  getTasks: async (): Promise<Task[]> => {
+    const now = Date.now();
+    
+    // If there's an ongoing request, return it
+    if (lastFetchPromise && now - lastFetchTime < CACHE_DURATION) {
+      console.log('📋 taskStorage - reusing existing request');
+      return lastFetchPromise;
+    }
+    
+    // Create new request
+    lastFetchTime = now;
+    lastFetchPromise = baseTaskStorage.getTasks();
+    
+    try {
+      const result = await lastFetchPromise;
+      return result;
+    } finally {
+      // Clear the promise after a short delay to allow reuse
+      setTimeout(() => {
+        if (lastFetchPromise && Date.now() - lastFetchTime >= CACHE_DURATION) {
+          lastFetchPromise = null;
+        }
+      }, CACHE_DURATION);
+    }
+  },
   createTask: (task: Omit<Task, 'id' | 'created_at' | 'updated_at'>) => baseTaskStorage.createTask(task),
   updateTask: (taskId: string, updates: Partial<Task>) => baseTaskStorage.updateTask(taskId, updates),
   deleteTask: (taskId: string) => taskCleanupService.deleteTask(taskId),

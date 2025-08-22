@@ -1,7 +1,6 @@
 
-import React, { useState, useMemo } from 'react';
-import { TasksPageHeader } from './components/TasksPageHeader';
-import { TasksPageContent } from './components/TasksPageContent';
+import React, { useState, useMemo, useCallback, memo } from 'react';
+import { MemoizedTasksPageHeader, MemoizedTasksPageContent } from './components/MemoizedTaskComponents';
 import { TaskHistoryModal } from './components/TaskHistoryModal';
 import { TaskReportModal } from '@/components/modals/TaskReportModal';
 import { GroupedTaskReportModal } from '@/components/modals/GroupedTaskReportModal';
@@ -12,7 +11,7 @@ import { useTasksPageState } from '@/hooks/tasks/useTasksPageState';
 import { useTasksPageActions } from '@/hooks/tasks/useTasksPageActions';
 import { Task } from '@/types/calendar';
 
-export default function TasksPage() {
+const TasksPage = memo(() => {
   const [selectedTaskForReport, setSelectedTaskForReport] = useState<Task | null>(null);
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
   const [selectedTaskForGroupedReport, setSelectedTaskForGroupedReport] = useState<Task | null>(null);
@@ -58,41 +57,44 @@ export default function TasksPage() {
     return tasks.filter(task => !task.cleanerId && !task.cleaner);
   }, [tasks, showPastTasks]);
 
-  const handleCreateReport = (task: Task) => {
+  const handleCreateReport = useCallback((task: Task) => {
     console.log('Opening report modal for task:', task.id);
     setSelectedTaskForReport(task);
     setIsReportModalOpen(true);
-  };
+  }, []);
 
-  const handleOpenGroupedReport = (task: Task) => {
+  const handleOpenGroupedReport = useCallback((task: Task) => {
     console.log('Opening grouped report modal for task:', task.id);
     setSelectedTaskForGroupedReport(task);
     setIsGroupedReportModalOpen(true);
-  };
+  }, []);
 
-  const handleAssignmentComplete = () => {
+  const handleAssignmentComplete = useCallback(() => {
     console.log('Assignment completed, refreshing tasks...');
     refetch();
-  };
+  }, [refetch]);
 
-  const handleAssignMultipleCleaners = (task: Task) => {
+  const handleAssignMultipleCleaners = useCallback((task: Task) => {
     console.log('Opening multiple assignment modal for task:', task.id);
     setSelectedTaskForMultipleAssignment(task);
     setIsMultipleAssignmentModalOpen(true);
-  };
+  }, []);
 
-  const handleMultipleAssignmentComplete = () => {
+  const handleMultipleAssignmentComplete = useCallback(() => {
     console.log('Multiple assignment completed, refreshing tasks...');
     setIsMultipleAssignmentModalOpen(false);
     setSelectedTaskForMultipleAssignment(null);
     refetch();
-  };
+  }, [refetch]);
 
-  console.log('TasksPage - rendering with tasks:', tasks.length, 'filtered:', sortedTasks.length, 'paginated:', paginatedTasks.length, 'isLoading:', isLoading, 'unassigned:', unassignedTasks.length);
+  // Only log on actual data changes, not on every render
+  const debugLog = useMemo(() => {
+    console.log('TasksPage - rendering with tasks:', tasks.length, 'filtered:', sortedTasks.length, 'paginated:', paginatedTasks.length, 'isLoading:', isLoading, 'unassigned:', unassignedTasks.length);
+  }, [tasks.length, sortedTasks.length, paginatedTasks.length, isLoading, unassignedTasks.length]);
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <TasksPageHeader
+      <MemoizedTasksPageHeader
         showPastTasks={showPastTasks}
         searchTerm={searchTerm}
         unassignedTasks={unassignedTasks}
@@ -103,7 +105,7 @@ export default function TasksPage() {
         onAssignmentComplete={handleAssignmentComplete}
       />
 
-      <TasksPageContent
+      <MemoizedTasksPageContent
         showPastTasks={showPastTasks}
         tasks={tasks}
         sortedTasks={sortedTasks}
@@ -163,4 +165,8 @@ export default function TasksPage() {
       />
     </div>
   );
-}
+});
+
+TasksPage.displayName = 'TasksPage';
+
+export default TasksPage;
