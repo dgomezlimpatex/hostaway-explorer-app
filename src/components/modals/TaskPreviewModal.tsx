@@ -254,7 +254,7 @@ export const TaskPreviewModal: React.FC<TaskPreviewModalProps> = ({
                     <Bed className="h-5 w-5 text-muted-foreground" />
                     <div>
                       <p className="font-medium">{property.numeroCamas}</p>
-                      <p className="text-xs text-muted-foreground">Camas</p>
+                      <p className="text-xs text-muted-foreground">Camas Grandes</p>
                     </div>
                   </div>
 
@@ -265,6 +265,36 @@ export const TaskPreviewModal: React.FC<TaskPreviewModalProps> = ({
                       <p className="text-xs text-muted-foreground">Baños</p>
                     </div>
                   </div>
+                  
+                  {(property.numeroCamasPequenas > 0) && (
+                    <div className="flex items-center space-x-3">
+                      <Bed className="h-4 w-4 text-muted-foreground" />
+                      <div>
+                        <p className="font-medium">{property.numeroCamasPequenas || 0}</p>
+                        <p className="text-xs text-muted-foreground">Camas Pequeñas</p>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {(property.numeroCamasSuite > 0) && (
+                    <div className="flex items-center space-x-3">
+                      <Bed className="h-4 w-4 text-muted-foreground" />
+                      <div>
+                        <p className="font-medium">{property.numeroCamasSuite || 0}</p>
+                        <p className="text-xs text-muted-foreground">Camas Suite</p>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {(property.numeroSofasCama > 0) && (
+                    <div className="flex items-center space-x-3">
+                      <span className="text-lg">🛋️</span>
+                      <div>
+                        <p className="font-medium">{property.numeroSofasCama || 0}</p>
+                        <p className="text-xs text-muted-foreground">Sofás Cama</p>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 <div className="grid grid-cols-2 gap-4 text-sm">
@@ -320,6 +350,18 @@ export const TaskPreviewModal: React.FC<TaskPreviewModalProps> = ({
                           <span>Sábanas:</span>
                           <span className="text-muted-foreground">{property.numeroSabanas}</span>
                         </div>
+                        {(property.numeroSabanasRequenas > 0) && (
+                          <div className="flex justify-between">
+                            <span>Sábanas pequeñas:</span>
+                            <span className="text-muted-foreground">{property.numeroSabanasRequenas}</span>
+                          </div>
+                        )}
+                        {(property.numeroSabanasSuite > 0) && (
+                          <div className="flex justify-between">
+                            <span>Sábanas suite:</span>
+                            <span className="text-muted-foreground">{property.numeroSabanasSuite}</span>
+                          </div>
+                        )}
                         <div className="flex justify-between">
                           <span>Toallas grandes:</span>
                           <span className="text-muted-foreground">{property.numeroToallasGrandes}</span>
@@ -339,6 +381,14 @@ export const TaskPreviewModal: React.FC<TaskPreviewModalProps> = ({
                         <div className="flex justify-between">
                           <span>Kit alimentario:</span>
                           <span className="text-muted-foreground">{property.kitAlimentario}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>🧻 Papel higiénico:</span>
+                          <span className="text-muted-foreground">{property.cantidadRollosPapelHigienico || 0}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>🧾 Papel cocina:</span>
+                          <span className="text-muted-foreground">{property.cantidadRollosPapelCocina || 0}</span>
                         </div>
                       </div>
                     </div>
