@@ -57,9 +57,10 @@ export const useOptimizedTasks = ({
       const filteredByView = filterTasksByView(allTasks, currentDate, currentView);
       return await filterTasksByUserRole(filteredByView, userRole, currentCleanerId, cleaners);
     },
-    staleTime: 5 * 60 * 1000, // 5 minutos
-    gcTime: 30 * 60 * 1000, // 30 minutos (previously cacheTime)
-    enabled: enabled && (userRole !== 'cleaner' || currentCleanerId !== null),
+    staleTime: 0, // Reducir cache para ver cambios inmediatamente
+    gcTime: 5 * 60 * 1000, // 5 minutos
+    enabled: enabled && (userRole !== 'cleaner' || currentCleanerId !== null) && !!activeSede,
+    refetchOnWindowFocus: true,
   });
 
   // Función optimizada para filtrar tareas
@@ -72,7 +73,7 @@ export const useOptimizedTasks = ({
 
   // Prefetch para las próximas fechas
   const prefetchNextDates = useMemo(() => {
-    if (!enabled) return;
+    if (!enabled || !activeSede?.id) return;
 
     const tomorrow = new Date(currentDate);
     tomorrow.setDate(tomorrow.getDate() + 1);
@@ -93,7 +94,7 @@ export const useOptimizedTasks = ({
         staleTime: 5 * 60 * 1000,
       });
     });
-  }, [currentDate, currentView, queryClient, enabled]);
+  }, [currentDate, currentView, queryClient, enabled, activeSede?.id]);
 
   return {
     tasks: filteredTasks,

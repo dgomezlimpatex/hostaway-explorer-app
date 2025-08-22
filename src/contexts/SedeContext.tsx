@@ -78,8 +78,16 @@ export const SedeProvider = ({ children }: SedeProviderProps) => {
     
     // Invalidate queries inmediatamente para forzar refetch
     if (previousSedeId !== sede.id) {
-      queryClient.invalidateQueries();
-      queryClient.refetchQueries();
+      // Invalidar todos los caches relacionados con tareas y reportes
+      queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      queryClient.invalidateQueries({ queryKey: ['task-reports'] });
+      queryClient.invalidateQueries({ queryKey: ['cleaners'] });
+      queryClient.invalidateQueries({ queryKey: ['properties'] });
+      queryClient.invalidateQueries({ queryKey: ['clients'] });
+      
+      // Forzar refetch inmediato
+      queryClient.refetchQueries({ queryKey: ['tasks'] });
+      queryClient.refetchQueries({ queryKey: ['task-reports'] });
     }
 
     // Log del cambio de sede para auditoría (sin bloquear la UI)

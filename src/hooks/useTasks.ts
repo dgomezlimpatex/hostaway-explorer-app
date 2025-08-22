@@ -62,8 +62,18 @@ export const useTasks = (currentDate: Date, currentView: ViewType) => {
             : task
         );
       });
-      // También invalidar el cache general por sede
-      queryClient.invalidateQueries({ queryKey: ['tasks', 'all'] });
+      
+      // Invalidar todas las queries de tareas
+      queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      
+      // También invalidar el cache específico de la sede actual
+      const activeSede = JSON.parse(localStorage.getItem('activeSede') || '{}');
+      if (activeSede.id) {
+        queryClient.invalidateQueries({ queryKey: ['tasks', 'all', activeSede.id] });
+      }
+      
+      // Forzar refetch inmediato
+      queryClient.refetchQueries({ queryKey: queryKey });
     },
   });
 
@@ -84,17 +94,17 @@ export const useTasks = (currentDate: Date, currentView: ViewType) => {
     onSuccess: (data) => {
       console.log('✅ useTasks - createTaskMutation onSuccess:', data);
       
-      // Actualización optimista inmediata del caché actual
-      queryClient.setQueryData(queryKey, (oldData: Task[] | undefined) => {
-        if (!oldData) return [data];
-        return [...oldData, data];
-      });
-      
-      // Actualizar el caché global de todas las tareas
-      queryClient.invalidateQueries({ queryKey: ['tasks', 'all'] });
-      
-      // Invalidar queries para asegurar sincronización
+      // Invalidar todas las queries de tareas para forzar refetch
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      
+      // También invalidar el cache específico de la sede actual
+      const activeSede = JSON.parse(localStorage.getItem('activeSede') || '{}');
+      if (activeSede.id) {
+        queryClient.invalidateQueries({ queryKey: ['tasks', 'all', activeSede.id] });
+      }
+      
+      // Forzar refetch inmediato de la vista actual
+      queryClient.refetchQueries({ queryKey: queryKey });
     },
     onError: (error) => {
       console.error('❌ useTasks - createTaskMutation onError:', error);
@@ -156,19 +166,22 @@ export const useTasks = (currentDate: Date, currentView: ViewType) => {
       return await taskAssignmentService.assignTask(taskId, cleaner.name, cleanerId);
     },
     onSuccess: (data, variables) => {
-      // Optimistic update
-      const cleaner = variables.cleaners.find(c => c.id === variables.cleanerId);
-      queryClient.setQueryData(queryKey, (oldData: Task[] | undefined) => {
-        if (!oldData) return oldData;
-        return oldData.map(task => 
-          task.id === variables.taskId 
-            ? { ...task, cleaner: cleaner?.name, cleanerId: variables.cleanerId }
-            : task
-        );
-      });
+      console.log('Task assigned successfully:', data);
+      
+      // Invalidar todas las queries de tareas
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
       
+      // También invalidar el cache específico de la sede actual
+      const activeSede = JSON.parse(localStorage.getItem('activeSede') || '{}');
+      if (activeSede.id) {
+        queryClient.invalidateQueries({ queryKey: ['tasks', 'all', activeSede.id] });
+      }
+      
+      // Forzar refetch inmediato
+      queryClient.refetchQueries({ queryKey: queryKey });
+      
       // Show success message
+      const cleaner = variables.cleaners.find(c => c.id === variables.cleanerId);
       toast({
         title: "Tarea asignada",
         description: `Se ha asignado la tarea a ${cleaner?.name} y se le ha enviado una notificación por email.`,
@@ -190,16 +203,19 @@ export const useTasks = (currentDate: Date, currentView: ViewType) => {
       return await taskAssignmentService.unassignTask(taskId);
     },
     onSuccess: (data, taskId) => {
-      // Optimistic update
-      queryClient.setQueryData(queryKey, (oldData: Task[] | undefined) => {
-        if (!oldData) return oldData;
-        return oldData.map(task => 
-          task.id === taskId 
-            ? { ...task, cleaner: undefined, cleanerId: undefined }
-            : task
-        );
-      });
+      console.log('Task unassigned successfully:', data);
+      
+      // Invalidar todas las queries de tareas
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      
+      // También invalidar el cache específico de la sede actual
+      const activeSede = JSON.parse(localStorage.getItem('activeSede') || '{}');
+      if (activeSede.id) {
+        queryClient.invalidateQueries({ queryKey: ['tasks', 'all', activeSede.id] });
+      }
+      
+      // Forzar refetch inmediato
+      queryClient.refetchQueries({ queryKey: queryKey });
       
       // Show success message
       toast({

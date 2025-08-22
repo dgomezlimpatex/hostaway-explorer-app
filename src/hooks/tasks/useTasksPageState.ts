@@ -43,8 +43,21 @@ export const useTasksPageState = () => {
 
   // Create a proper refetch function using React Query
   const refetch = () => {
-    // Invalidate all task-related queries to force refetch
+    // Invalidar todas las queries de tareas
     queryClient.invalidateQueries({ queryKey: ['tasks'] });
+    
+    // También invalidar el cache específico de la sede actual
+    try {
+      const activeSede = JSON.parse(localStorage.getItem('activeSede') || '{}');
+      if (activeSede.id) {
+        queryClient.invalidateQueries({ queryKey: ['tasks', 'all', activeSede.id] });
+      }
+    } catch (error) {
+      console.warn('Error getting active sede for cache invalidation:', error);
+    }
+    
+    // Forzar refetch inmediato
+    queryClient.refetchQueries({ queryKey: ['tasks'] });
     console.log('useTasksPageState - invalidated task queries');
   };
 
