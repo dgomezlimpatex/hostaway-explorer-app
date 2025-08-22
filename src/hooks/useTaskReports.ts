@@ -1,20 +1,21 @@
-
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { taskReportsStorageService } from '@/services/storage/taskReportsStorage';
 import { TaskReport, CreateTaskReportData, TaskMedia } from '@/types/taskReports';
 import { useToast } from '@/hooks/use-toast';
+import { useSede } from '@/contexts/SedeContext';
 
 export const useTaskReports = () => {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { activeSede } = useSede();
 
-  // Query para obtener todos los reportes con cache agresivo
+  // Query para obtener todos los reportes con cache por sede
   const {
     data: reports = [],
     isLoading,
     error
   } = useQuery({
-    queryKey: ['task-reports'],
+    queryKey: ['task-reports', activeSede?.id || 'no-sede'],
     queryFn: async () => {
       console.log('🚀 useQuery queryFn executing...');
       const result = await taskReportsStorageService.getTaskReports();

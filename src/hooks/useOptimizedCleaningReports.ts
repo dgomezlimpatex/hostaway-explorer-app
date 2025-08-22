@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { useTaskReports } from './useTaskReports';
 import { useCleaners } from './useCleaners';
+import { useSede } from '@/contexts/SedeContext';
 
 interface Filters {
   dateRange: string;
@@ -13,8 +14,10 @@ interface Filters {
 export const useOptimizedCleaningReports = (filters: Filters) => {
   const { reports, isLoading: reportsLoading } = useTaskReports();
   const { cleaners, isLoading: cleanersLoading } = useCleaners();
+  const { activeSede } = useSede();
 
   console.log('🔍 useOptimizedCleaningReports - Raw reports:', reports?.length || 0);
+  console.log('🔍 useOptimizedCleaningReports - Active sede:', activeSede?.nombre);
   console.log('🔍 useOptimizedCleaningReports - Filters:', filters);
 
   // Filtros aplicados solo cuando cambian los datos o filtros

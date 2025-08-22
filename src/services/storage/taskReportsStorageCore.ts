@@ -3,14 +3,39 @@ import { supabase } from '@/integrations/supabase/client';
 import { TaskReport, CreateTaskReportData } from '@/types/taskReports';
 
 export class TaskReportsStorageService {
+  private async getActiveSedeId(): Promise<string | null> {
+    try {
+      const activeSede = localStorage.getItem('activeSede');
+      if (activeSede) {
+        const sede = JSON.parse(activeSede);
+        return sede.id;
+      }
+      return null;
+    } catch (error) {
+      console.warn('Error getting active sede:', error);
+      return null;
+    }
+  }
+
   async getTaskReports(): Promise<TaskReport[]> {
     console.log('📋 Fetching task reports from database...');
     console.log('📋 Current user ID:', (await supabase.auth.getUser()).data.user?.id);
     
-    const { data, error } = await supabase
+    // Filtrar por sede a través de la relación con tasks
+    const activeSedeId = await this.getActiveSedeId();
+    let query = supabase
       .from('task_reports')
-      .select('*')
-      .order('created_at', { ascending: false });
+      .select(`
+        *,
+        tasks!inner(sede_id)
+      `);
+
+    if (activeSedeId) {
+      console.log('📋 Filtering task reports by sede through tasks:', activeSedeId);
+      query = query.eq('tasks.sede_id', activeSedeId);
+    }
+
+    const { data, error } = await query.order('created_at', { ascending: false });
 
     if (error) {
       console.error('❌ Error fetching task reports:', error);

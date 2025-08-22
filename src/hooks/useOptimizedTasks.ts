@@ -5,6 +5,7 @@ import { Task, ViewType } from '@/types/calendar';
 import { taskStorageService } from '@/services/taskStorage';
 import { useAuth } from '@/hooks/useAuth';
 import { useCleaners } from '@/hooks/useCleaners';
+import { useSede } from '@/contexts/SedeContext';
 import { multipleTaskAssignmentService } from '@/services/storage/multipleTaskAssignmentService';
 
 interface UseOptimizedTasksProps {
@@ -21,6 +22,7 @@ export const useOptimizedTasks = ({
   const queryClient = useQueryClient();
   const { userRole, user } = useAuth();
   const { cleaners } = useCleaners();
+  const { activeSede } = useSede();
 
   // Get current user's cleaner ID if they are a cleaner
   const currentCleanerId = useMemo(() => {
@@ -29,26 +31,28 @@ export const useOptimizedTasks = ({
     return currentCleaner?.id || null;
   }, [userRole, user?.id, cleaners]);
 
-  // Cache key optimizado con dependencias mínimas
+  // Cache key optimizado con dependencias mínimas incluyendo sede
   const queryKey = useMemo(() => [
     'tasks',
     currentDate.toISOString().split('T')[0],
-    currentView
-  ], [currentDate, currentView]);
+    currentView,
+    activeSede?.id || 'no-sede'
+  ], [currentDate, currentView, activeSede?.id]);
 
   const { data: tasks = [], isLoading, error } = useQuery({
     queryKey,
     queryFn: async () => {
-      // Usar cache de todas las tareas si está disponible
-      const cachedAllTasks = queryClient.getQueryData(['tasks', 'all']);
+      // Cache específico por sede
+      const sedeId = activeSede?.id || 'no-sede';
+      const cachedAllTasks = queryClient.getQueryData(['tasks', 'all', sedeId]);
       if (cachedAllTasks) {
         const filteredByView = filterTasksByView(cachedAllTasks as Task[], currentDate, currentView);
         return await filterTasksByUserRole(filteredByView, userRole, currentCleanerId, cleaners);
       }
 
-      // Si no hay cache, obtener todas las tareas y cachearlas
+      // Si no hay cache, obtener todas las tareas y cachearlas por sede
       const allTasks = await taskStorageService.getTasks();
-      queryClient.setQueryData(['tasks', 'all'], allTasks);
+      queryClient.setQueryData(['tasks', 'all', sedeId], allTasks);
       
       const filteredByView = filterTasksByView(allTasks, currentDate, currentView);
       return await filterTasksByUserRole(filteredByView, userRole, currentCleanerId, cleaners);
@@ -77,10 +81,11 @@ export const useOptimizedTasks = ({
     nextWeek.setDate(nextWeek.getDate() + 7);
 
     [tomorrow, nextWeek].forEach(date => {
+      const sedeId = activeSede?.id || 'no-sede';
       queryClient.prefetchQuery({
-        queryKey: ['tasks', date.toISOString().split('T')[0], currentView],
+        queryKey: ['tasks', date.toISOString().split('T')[0], currentView, sedeId],
         queryFn: async () => {
-          const allTasks = queryClient.getQueryData(['tasks', 'all']) as Task[] || 
+          const allTasks = queryClient.getQueryData(['tasks', 'all', sedeId]) as Task[] || 
                           await taskStorageService.getTasks();
           const filteredByView = filterTasksByView(allTasks, date, currentView);
           return await filterTasksByUserRole(filteredByView, userRole, currentCleanerId, cleaners);

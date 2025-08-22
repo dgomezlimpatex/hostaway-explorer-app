@@ -62,7 +62,7 @@ export const useTasks = (currentDate: Date, currentView: ViewType) => {
             : task
         );
       });
-      // También invalidar el cache general
+      // También invalidar el cache general por sede
       queryClient.invalidateQueries({ queryKey: ['tasks', 'all'] });
     },
   });
@@ -91,10 +91,7 @@ export const useTasks = (currentDate: Date, currentView: ViewType) => {
       });
       
       // Actualizar el caché global de todas las tareas
-      queryClient.setQueryData(['tasks', 'all'], (oldData: Task[] | undefined) => {
-        if (!oldData) return [data];
-        return [...oldData, data];
-      });
+      queryClient.invalidateQueries({ queryKey: ['tasks', 'all'] });
       
       // Invalidar queries para asegurar sincronización
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
@@ -140,15 +137,7 @@ export const useTasks = (currentDate: Date, currentView: ViewType) => {
       });
       
       // Also update the global tasks cache
-      queryClient.setQueryData(['tasks', 'all'], (oldData: Task[] | undefined) => {
-        if (!oldData) return oldData;
-        return oldData.filter(task => 
-          task.id !== taskId && 
-          task.id !== realTaskId && 
-          task.originalTaskId !== taskId && 
-          task.originalTaskId !== realTaskId
-        );
-      });
+      queryClient.invalidateQueries({ queryKey: ['tasks', 'all'] });
       
       // Invalidate all task queries to ensure consistency
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
@@ -177,7 +166,7 @@ export const useTasks = (currentDate: Date, currentView: ViewType) => {
             : task
         );
       });
-      queryClient.invalidateQueries({ queryKey: ['tasks', 'all'] });
+      queryClient.invalidateQueries({ queryKey: ['tasks'] });
       
       // Show success message
       toast({
@@ -210,7 +199,7 @@ export const useTasks = (currentDate: Date, currentView: ViewType) => {
             : task
         );
       });
-      queryClient.invalidateQueries({ queryKey: ['tasks', 'all'] });
+      queryClient.invalidateQueries({ queryKey: ['tasks'] });
       
       // Show success message
       toast({
