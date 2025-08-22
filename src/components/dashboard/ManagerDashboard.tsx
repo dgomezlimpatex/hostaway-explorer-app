@@ -11,15 +11,15 @@ import { format, startOfMonth, endOfMonth, isAfter, isBefore, subMonths } from '
 import { es } from 'date-fns/locale';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
+import { CreateTaskModal } from '@/components/modals/CreateTaskModal';
+import { BatchCreateTaskModal } from '@/components/modals/BatchCreateTaskModal';
+import { TaskDetailsModal } from '@/components/modals/TaskDetailsModal';
 
 // Lazy load components for better performance
 const DashboardStatsCards = lazy(() => import('./components/DashboardStatsCards').then(module => ({ default: module.DashboardStatsCards })));
 const TodayTasksSection = lazy(() => import('./components/TodayTasksSection').then(module => ({ default: module.TodayTasksSection })));
 const DashboardMetricsCards = lazy(() => import('./components/DashboardMetricsCards').then(module => ({ default: module.DashboardMetricsCards })));
 const HostawayIntegrationWidget = lazy(() => import('@/components/hostaway/HostawayIntegrationWidget').then(module => ({ default: module.HostawayIntegrationWidget })));
-const CreateTaskModal = lazy(() => import('@/components/modals/CreateTaskModal').then(module => ({ default: module.CreateTaskModal })));
-const BatchCreateTaskModal = lazy(() => import('@/components/modals/BatchCreateTaskModal').then(module => ({ default: module.BatchCreateTaskModal })));
-const TaskDetailsModal = lazy(() => import('@/components/modals/TaskDetailsModal').then(module => ({ default: module.TaskDetailsModal })));
 
 // Loading component for Suspense
 const ComponentLoader = () => (
@@ -255,31 +255,29 @@ export const ManagerDashboard = () => {
         </div>
       </div>
       
-      {/* Modales - Lazy loaded */}
-      <Suspense fallback={null}>
-        <CreateTaskModal
-          open={isCreateModalOpen}
-          onOpenChange={setIsCreateModalOpen}
-          onCreateTask={handleCreateTask}
+      {/* Modales - Direct imports */}
+      <CreateTaskModal
+        open={isCreateModalOpen}
+        onOpenChange={setIsCreateModalOpen}
+        onCreateTask={handleCreateTask}
+      />
+      
+      <BatchCreateTaskModal
+        open={isBatchCreateModalOpen}
+        onOpenChange={setIsBatchCreateModalOpen}
+        onCreateTasks={handleBatchCreateTasks}
+      />
+      
+      {/* Modal de detalles de tarea */}
+      {selectedTask && (
+        <TaskDetailsModal
+          task={selectedTask}
+          open={isTaskDetailsOpen}
+          onOpenChange={setIsTaskDetailsOpen}
+          onUpdateTask={handleUpdateTask}
+          onDeleteTask={handleDeleteTask}
         />
-        
-        <BatchCreateTaskModal
-          open={isBatchCreateModalOpen}
-          onOpenChange={setIsBatchCreateModalOpen}
-          onCreateTasks={handleBatchCreateTasks}
-        />
-        
-        {/* Modal de detalles de tarea */}
-        {selectedTask && (
-          <TaskDetailsModal
-            task={selectedTask}
-            open={isTaskDetailsOpen}
-            onOpenChange={setIsTaskDetailsOpen}
-            onUpdateTask={handleUpdateTask}
-            onDeleteTask={handleDeleteTask}
-          />
-        )}
-      </Suspense>
+      )}
     </SidebarProvider>
   );
 };
