@@ -94,14 +94,14 @@ export const useTasks = (currentDate: Date, currentView: ViewType) => {
         return [...oldData, data];
       });
       
-      // Force immediate refetch first to ensure data appears
-      queryClient.refetchQueries({ queryKey });
+      // Invalidate the exact queryKey first
+      queryClient.invalidateQueries({ queryKey, exact: true });
+      
+      // Force immediate refetch of the exact queryKey
+      queryClient.refetchQueries({ queryKey, exact: true });
       
       // Then invalidate all related caches for consistency
       invalidateTasks();
-      
-      // Additional invalidation for safety
-      queryClient.invalidateQueries({ queryKey });
     },
     onError: (error) => {
       console.error('❌ useTasks - createTaskMutation onError:', error);
@@ -143,13 +143,14 @@ export const useTasks = (currentDate: Date, currentView: ViewType) => {
         );
       });
       
-      // Force immediate refetch to ensure removal appears
-      queryClient.refetchQueries({ queryKey });
+      // Invalidate the exact queryKey first
+      queryClient.invalidateQueries({ queryKey, exact: true });
+      
+      // Force immediate refetch of the exact queryKey
+      queryClient.refetchQueries({ queryKey, exact: true });
       
       // Then invalidate all related caches
       invalidateTasks();
-      queryClient.invalidateQueries({ queryKey: ['tasks', 'all'] });
-      queryClient.invalidateQueries({ queryKey });
     },
   });
 
@@ -177,12 +178,14 @@ export const useTasks = (currentDate: Date, currentView: ViewType) => {
         );
       });
       
-      // Invalidar caché específico del queryKey actual primero
-      queryClient.invalidateQueries({ queryKey });
+      // Invalidate the exact queryKey first
+      queryClient.invalidateQueries({ queryKey, exact: true });
       
-      // Invalidate and refetch for consistency
+      // Force immediate refetch of the exact queryKey
+      queryClient.refetchQueries({ queryKey, exact: true });
+      
+      // Then invalidate all related caches
       invalidateTasks();
-      queryClient.refetchQueries({ queryKey });
       
       // Show success message
       const cleaner = variables.cleaners.find(c => c.id === variables.cleanerId);
@@ -219,12 +222,14 @@ export const useTasks = (currentDate: Date, currentView: ViewType) => {
         );
       });
       
-      // Invalidar caché específico del queryKey actual primero
-      queryClient.invalidateQueries({ queryKey });
+      // Invalidate the exact queryKey first
+      queryClient.invalidateQueries({ queryKey, exact: true });
       
-      // Invalidate and refetch for consistency
+      // Force immediate refetch of the exact queryKey
+      queryClient.refetchQueries({ queryKey, exact: true });
+      
+      // Then invalidate all related caches
       invalidateTasks();
-      queryClient.refetchQueries({ queryKey });
       
       // Show success message
       toast({
