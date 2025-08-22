@@ -65,6 +65,8 @@ export const useTasks = (currentDate: Date, currentView: ViewType) => {
         );
       });
       
+      // Invalidar caché específico del queryKey actual
+      queryClient.invalidateQueries({ queryKey });
       invalidateTasks();
     },
   });
@@ -91,6 +93,9 @@ export const useTasks = (currentDate: Date, currentView: ViewType) => {
         if (!oldData) return [data];
         return [...oldData, data];
       });
+      
+      // Invalidar caché específico del queryKey actual primero
+      queryClient.invalidateQueries({ queryKey });
       
       // Invalidate and refetch all task queries for consistency
       invalidateTasks();
@@ -138,11 +143,13 @@ export const useTasks = (currentDate: Date, currentView: ViewType) => {
         );
       });
       
-      // Also update the global tasks cache
-      queryClient.invalidateQueries({ queryKey: ['tasks', 'all'] });
+      // Invalidar caché específico del queryKey actual primero
+      queryClient.invalidateQueries({ queryKey });
       
-      // Invalidate all task queries to ensure consistency
+      // Also update the global tasks cache and all task queries
+      queryClient.invalidateQueries({ queryKey: ['tasks', 'all'] });
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      invalidateTasks();
     },
   });
 
@@ -169,6 +176,9 @@ export const useTasks = (currentDate: Date, currentView: ViewType) => {
             : task
         );
       });
+      
+      // Invalidar caché específico del queryKey actual primero
+      queryClient.invalidateQueries({ queryKey });
       
       // Invalidate and refetch for consistency
       invalidateTasks();
@@ -208,6 +218,9 @@ export const useTasks = (currentDate: Date, currentView: ViewType) => {
             : task
         );
       });
+      
+      // Invalidar caché específico del queryKey actual primero
+      queryClient.invalidateQueries({ queryKey });
       
       // Invalidate and refetch for consistency
       invalidateTasks();
