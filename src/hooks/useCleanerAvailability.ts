@@ -2,6 +2,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
+import { useCacheInvalidation } from './useCacheInvalidation';
 
 export interface CleanerAvailability {
   id: string;
@@ -41,6 +42,7 @@ export const useCleanerAvailability = (cleanerId: string) => {
 
 export const useCreateOrUpdateAvailability = () => {
   const queryClient = useQueryClient();
+  const { invalidateCleaners } = useCacheInvalidation();
 
   return useMutation({
     mutationFn: async (data: CreateAvailabilityData) => {
@@ -57,7 +59,9 @@ export const useCreateOrUpdateAvailability = () => {
       return result;
     },
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['cleaner-availability', variables.cleaner_id] });
+      queryClient.invalidateQueries({ queryKey: ['cleaner-availability'] });
+      queryClient.invalidateQueries({ queryKey: ['all-cleaners-availability'] });
+      invalidateCleaners();
       toast({
         title: "Disponibilidad actualizada",
         description: "Los horarios del trabajador han sido actualizados.",
@@ -76,6 +80,7 @@ export const useCreateOrUpdateAvailability = () => {
 
 export const useDeleteAvailability = () => {
   const queryClient = useQueryClient();
+  const { invalidateCleaners } = useCacheInvalidation();
 
   return useMutation({
     mutationFn: async ({ id, cleanerId }: { id: string; cleanerId: string }) => {
@@ -88,7 +93,9 @@ export const useDeleteAvailability = () => {
       return { id, cleanerId };
     },
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ['cleaner-availability', data.cleanerId] });
+      queryClient.invalidateQueries({ queryKey: ['cleaner-availability'] });
+      queryClient.invalidateQueries({ queryKey: ['all-cleaners-availability'] });
+      invalidateCleaners();
       toast({
         title: "Disponibilidad eliminada",
         description: "El horario ha sido eliminado.",

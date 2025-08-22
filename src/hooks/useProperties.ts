@@ -3,6 +3,7 @@ import { propertyStorage } from '@/services/storage/propertyStorage';
 import { CreatePropertyData } from '@/types/property';
 import { toast } from '@/hooks/use-toast';
 import { useSede } from '@/contexts/SedeContext';
+import { useCacheInvalidation } from './useCacheInvalidation';
 
 export const useProperties = () => {
   const { activeSede } = useSede();
@@ -37,15 +38,14 @@ export const usePropertiesByClient = (clienteId: string) => {
 export const useCreateProperty = () => {
   const queryClient = useQueryClient();
   const { activeSede } = useSede();
+  const { invalidateProperties } = useCacheInvalidation();
 
   return useMutation({
     mutationFn: async (propertyData: CreatePropertyData) => {
       return await propertyStorage.create(propertyData);
     },
     onSuccess: () => {
-      // Invalidate queries with sede-specific keys
-      queryClient.invalidateQueries({ queryKey: ['properties', activeSede?.id] });
-      queryClient.invalidateQueries({ queryKey: ['properties'] });
+      invalidateProperties();
       toast({
         title: "Propiedad creada",
         description: "La propiedad ha sido creada exitosamente.",
@@ -65,6 +65,7 @@ export const useCreateProperty = () => {
 export const useUpdateProperty = () => {
   const queryClient = useQueryClient();
   const { activeSede } = useSede();
+  const { invalidateProperties } = useCacheInvalidation();
 
   return useMutation({
     mutationFn: async ({ id, updates }: { id: string; updates: Partial<CreatePropertyData> }) => {
@@ -73,8 +74,7 @@ export const useUpdateProperty = () => {
       return result;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['properties', activeSede?.id] });
-      queryClient.invalidateQueries({ queryKey: ['property'] });
+      invalidateProperties();
       toast({
         title: "Propiedad actualizada",
         description: "Los datos de la propiedad han sido actualizados.",
@@ -94,6 +94,7 @@ export const useUpdateProperty = () => {
 export const useDeleteProperty = () => {
   const queryClient = useQueryClient();
   const { activeSede } = useSede();
+  const { invalidateProperties } = useCacheInvalidation();
 
   return useMutation({
     mutationFn: async (id: string) => {
@@ -102,7 +103,7 @@ export const useDeleteProperty = () => {
       return success;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['properties', activeSede?.id] });
+      invalidateProperties();
       toast({
         title: "Propiedad eliminada",
         description: "La propiedad ha sido eliminada exitosamente.",

@@ -5,6 +5,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useTasks } from '@/hooks/useTasks';
 import { useOptimizedPagination } from '@/hooks/useOptimizedPagination';
 import { useCleaners } from '@/hooks/useCleaners';
+import { useCacheInvalidation } from '@/hooks/useCacheInvalidation';
 import { Task } from '@/types/calendar';
 import { filterTasks, sortTasks } from '@/components/tasks/utils/taskFilters';
 
@@ -20,6 +21,7 @@ export const useTasksPageState = () => {
   const { userRole, user, profile } = useAuth();
   const { cleaners } = useCleaners();
   const queryClient = useQueryClient();
+  const { invalidateTasks } = useCacheInvalidation();
   const [searchTerm, setSearchTerm] = useState('');
   const [showPastTasks, setShowPastTasks] = useState(false);
   const [filters, setFilters] = useState<LocalTaskFilters>({
@@ -43,22 +45,9 @@ export const useTasksPageState = () => {
 
   // Create a proper refetch function using React Query
   const refetch = () => {
-    // Invalidar todas las queries de tareas
-    queryClient.invalidateQueries({ queryKey: ['tasks'] });
-    
-    // También invalidar el cache específico de la sede actual
-    try {
-      const activeSede = JSON.parse(localStorage.getItem('activeSede') || '{}');
-      if (activeSede.id) {
-        queryClient.invalidateQueries({ queryKey: ['tasks', 'all', activeSede.id] });
-      }
-    } catch (error) {
-      console.warn('Error getting active sede for cache invalidation:', error);
-    }
-    
-    // Forzar refetch inmediato
-    queryClient.refetchQueries({ queryKey: ['tasks'] });
-    console.log('useTasksPageState - invalidated task queries');
+    // Invalidar todas las queries de tareas con sistema centralizado
+    invalidateTasks();
+    console.log('useTasksPageState - invalidated task queries with centralized system');
   };
 
   // Filter and sort tasks

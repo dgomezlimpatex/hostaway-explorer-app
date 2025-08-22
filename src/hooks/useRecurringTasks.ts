@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { recurringTaskStorage } from '@/services/recurringTaskStorage';
 import { RecurringTask } from '@/types/recurring';
 import { toast } from '@/hooks/use-toast';
+import { useCacheInvalidation } from './useCacheInvalidation';
 
 export const useRecurringTasks = () => {
   return useQuery({
@@ -21,6 +22,7 @@ export const useRecurringTask = (id: string) => {
 
 export const useCreateRecurringTask = () => {
   const queryClient = useQueryClient();
+  const { invalidateTasks } = useCacheInvalidation();
 
   return useMutation({
     mutationFn: async (taskData: Omit<RecurringTask, 'id' | 'createdAt' | 'nextExecution'>) => {
@@ -28,6 +30,7 @@ export const useCreateRecurringTask = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['recurring-tasks'] });
+      invalidateTasks();
       toast({
         title: "Tarea recurrente creada",
         description: "La tarea recurrente ha sido configurada exitosamente.",
@@ -46,6 +49,7 @@ export const useCreateRecurringTask = () => {
 
 export const useUpdateRecurringTask = () => {
   const queryClient = useQueryClient();
+  const { invalidateTasks } = useCacheInvalidation();
 
   return useMutation({
     mutationFn: async ({ id, updates }: { id: string; updates: Partial<RecurringTask> }) => {
@@ -56,6 +60,7 @@ export const useUpdateRecurringTask = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['recurring-tasks'] });
       queryClient.invalidateQueries({ queryKey: ['recurring-task'] });
+      invalidateTasks();
       toast({
         title: "Tarea recurrente actualizada",
         description: "Los cambios han sido guardados exitosamente.",
@@ -74,6 +79,7 @@ export const useUpdateRecurringTask = () => {
 
 export const useDeleteRecurringTask = () => {
   const queryClient = useQueryClient();
+  const { invalidateTasks } = useCacheInvalidation();
 
   return useMutation({
     mutationFn: async (id: string) => {
@@ -83,6 +89,7 @@ export const useDeleteRecurringTask = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['recurring-tasks'] });
+      invalidateTasks();
       toast({
         title: "Tarea recurrente eliminada",
         description: "La tarea recurrente ha sido eliminada exitosamente.",
@@ -101,14 +108,15 @@ export const useDeleteRecurringTask = () => {
 
 export const useProcessRecurringTasks = () => {
   const queryClient = useQueryClient();
+  const { invalidateTasks } = useCacheInvalidation();
 
   return useMutation({
     mutationFn: async () => {
       return await recurringTaskStorage.processRecurringTasks();
     },
     onSuccess: (generatedTasks) => {
-      queryClient.invalidateQueries({ queryKey: ['tasks'] });
       queryClient.invalidateQueries({ queryKey: ['recurring-tasks'] });
+      invalidateTasks();
       
       if (generatedTasks.length > 0) {
         toast({

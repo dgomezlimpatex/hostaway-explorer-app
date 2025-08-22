@@ -6,6 +6,7 @@ import { cleanerStorage, CreateCleanerData } from '@/services/storage/cleanerSto
 import { toast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { useSede } from '@/contexts/SedeContext';
+import { useCacheInvalidation } from './useCacheInvalidation';
 
 export const useCleaners = () => {
   const { userRole, user } = useAuth();
@@ -47,14 +48,14 @@ export const useCleaner = (id: string) => {
 export const useCreateCleaner = () => {
   const queryClient = useQueryClient();
   const { activeSede } = useSede();
+  const { invalidateCleaners } = useCacheInvalidation();
 
   return useMutation({
     mutationFn: async (cleanerData: CreateCleanerData) => {
       return await cleanerStorage.create(cleanerData);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['cleaners', activeSede?.id] });
-      queryClient.invalidateQueries({ queryKey: ['cleaners'] });
+      invalidateCleaners();
       toast({
         title: "Trabajador creado",
         description: "El trabajador ha sido creado exitosamente.",
@@ -73,6 +74,7 @@ export const useCreateCleaner = () => {
 
 export const useUpdateCleaner = () => {
   const queryClient = useQueryClient();
+  const { invalidateCleaners } = useCacheInvalidation();
 
   return useMutation({
     mutationFn: async ({ id, updates }: { id: string; updates: Partial<CreateCleanerData> }) => {
@@ -81,8 +83,7 @@ export const useUpdateCleaner = () => {
       return result;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['cleaners'] });
-      queryClient.invalidateQueries({ queryKey: ['cleaner'] });
+      invalidateCleaners();
       toast({
         title: "Trabajador actualizado",
         description: "Los datos del trabajador han sido actualizados.",
@@ -101,13 +102,14 @@ export const useUpdateCleaner = () => {
 
 export const useUpdateCleanersOrder = () => {
   const queryClient = useQueryClient();
+  const { invalidateCleaners } = useCacheInvalidation();
 
   return useMutation({
     mutationFn: async (cleaners: { id: string; sortOrder: number }[]) => {
       return await cleanerStorage.updateOrder(cleaners);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['cleaners'] });
+      invalidateCleaners();
       toast({
         title: "Orden actualizado",
         description: "El orden de los trabajadores ha sido actualizado.",
@@ -126,6 +128,7 @@ export const useUpdateCleanersOrder = () => {
 
 export const useDeleteCleaner = () => {
   const queryClient = useQueryClient();
+  const { invalidateCleaners } = useCacheInvalidation();
 
   return useMutation({
     mutationFn: async (id: string) => {
@@ -134,7 +137,7 @@ export const useDeleteCleaner = () => {
       return success;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['cleaners'] });
+      invalidateCleaners();
       toast({
         title: "Trabajador eliminado",
         description: "El trabajador ha sido eliminado exitosamente.",

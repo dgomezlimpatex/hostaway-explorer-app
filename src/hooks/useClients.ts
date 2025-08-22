@@ -3,6 +3,7 @@ import { clientStorage } from '@/services/storage/clientStorage';
 import { CreateClientData } from '@/types/client';
 import { toast } from '@/hooks/use-toast';
 import { useSede } from '@/contexts/SedeContext';
+import { useCacheInvalidation } from './useCacheInvalidation';
 
 export const useClients = () => {
   const { activeSede } = useSede();
@@ -27,14 +28,14 @@ export const useClient = (id: string) => {
 export const useCreateClient = () => {
   const queryClient = useQueryClient();
   const { activeSede } = useSede();
+  const { invalidateClients } = useCacheInvalidation();
 
   return useMutation({
     mutationFn: async (clientData: CreateClientData) => {
       return await clientStorage.create(clientData);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['clients', activeSede?.id] });
-      queryClient.invalidateQueries({ queryKey: ['clients'] });
+      invalidateClients();
       toast({
         title: "Cliente creado",
         description: "El cliente ha sido creado exitosamente.",
@@ -54,6 +55,7 @@ export const useCreateClient = () => {
 export const useUpdateClient = () => {
   const queryClient = useQueryClient();
   const { activeSede } = useSede();
+  const { invalidateClients } = useCacheInvalidation();
 
   return useMutation({
     mutationFn: async ({ id, updates }: { id: string; updates: Partial<CreateClientData> }) => {
@@ -62,8 +64,7 @@ export const useUpdateClient = () => {
       return result;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['clients', activeSede?.id] });
-      queryClient.invalidateQueries({ queryKey: ['client'] });
+      invalidateClients();
       toast({
         title: "Cliente actualizado",
         description: "Los datos del cliente han sido actualizados.",
@@ -83,6 +84,7 @@ export const useUpdateClient = () => {
 export const useDeleteClient = () => {
   const queryClient = useQueryClient();
   const { activeSede } = useSede();
+  const { invalidateClients } = useCacheInvalidation();
 
   return useMutation({
     mutationFn: async (id: string) => {
@@ -91,7 +93,7 @@ export const useDeleteClient = () => {
       return success;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['clients', activeSede?.id] });
+      invalidateClients();
       toast({
         title: "Cliente eliminado",
         description: "El cliente ha sido eliminado exitosamente.",

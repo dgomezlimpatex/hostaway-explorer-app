@@ -94,7 +94,7 @@ export const useOptimizedTasks = ({
         staleTime: 5 * 60 * 1000,
       });
     });
-  }, [currentDate, currentView, queryClient, enabled, activeSede?.id]);
+  }, [currentDate, currentView, queryClient, enabled, activeSede?.id, userRole, currentCleanerId, cleaners]);
 
   return {
     tasks: filteredTasks,

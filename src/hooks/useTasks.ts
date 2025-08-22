@@ -5,10 +5,12 @@ import { taskStorageService } from '@/services/taskStorage';
 import { taskAssignmentService } from '@/services/storage/taskAssignmentService';
 import { useOptimizedTasks } from './useOptimizedTasks';
 import { useToast } from '@/hooks/use-toast';
+import { useCacheInvalidation } from './useCacheInvalidation';
 
 export const useTasks = (currentDate: Date, currentView: ViewType) => {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { invalidateTasks } = useCacheInvalidation();
 
   // Usar el hook optimizado en lugar del query básico
   const { tasks, isLoading, error, queryKey } = useOptimizedTasks({
@@ -63,17 +65,7 @@ export const useTasks = (currentDate: Date, currentView: ViewType) => {
         );
       });
       
-      // Invalidar todas las queries de tareas
-      queryClient.invalidateQueries({ queryKey: ['tasks'] });
-      
-      // También invalidar el cache específico de la sede actual
-      const activeSede = JSON.parse(localStorage.getItem('activeSede') || '{}');
-      if (activeSede.id) {
-        queryClient.invalidateQueries({ queryKey: ['tasks', 'all', activeSede.id] });
-      }
-      
-      // Forzar refetch inmediato
-      queryClient.refetchQueries({ queryKey: queryKey });
+      invalidateTasks();
     },
   });
 
@@ -93,18 +85,7 @@ export const useTasks = (currentDate: Date, currentView: ViewType) => {
     },
     onSuccess: (data) => {
       console.log('✅ useTasks - createTaskMutation onSuccess:', data);
-      
-      // Invalidar todas las queries de tareas para forzar refetch
-      queryClient.invalidateQueries({ queryKey: ['tasks'] });
-      
-      // También invalidar el cache específico de la sede actual
-      const activeSede = JSON.parse(localStorage.getItem('activeSede') || '{}');
-      if (activeSede.id) {
-        queryClient.invalidateQueries({ queryKey: ['tasks', 'all', activeSede.id] });
-      }
-      
-      // Forzar refetch inmediato de la vista actual
-      queryClient.refetchQueries({ queryKey: queryKey });
+      invalidateTasks();
     },
     onError: (error) => {
       console.error('❌ useTasks - createTaskMutation onError:', error);
@@ -167,18 +148,7 @@ export const useTasks = (currentDate: Date, currentView: ViewType) => {
     },
     onSuccess: (data, variables) => {
       console.log('Task assigned successfully:', data);
-      
-      // Invalidar todas las queries de tareas
-      queryClient.invalidateQueries({ queryKey: ['tasks'] });
-      
-      // También invalidar el cache específico de la sede actual
-      const activeSede = JSON.parse(localStorage.getItem('activeSede') || '{}');
-      if (activeSede.id) {
-        queryClient.invalidateQueries({ queryKey: ['tasks', 'all', activeSede.id] });
-      }
-      
-      // Forzar refetch inmediato
-      queryClient.refetchQueries({ queryKey: queryKey });
+      invalidateTasks();
       
       // Show success message
       const cleaner = variables.cleaners.find(c => c.id === variables.cleanerId);
@@ -204,18 +174,7 @@ export const useTasks = (currentDate: Date, currentView: ViewType) => {
     },
     onSuccess: (data, taskId) => {
       console.log('Task unassigned successfully:', data);
-      
-      // Invalidar todas las queries de tareas
-      queryClient.invalidateQueries({ queryKey: ['tasks'] });
-      
-      // También invalidar el cache específico de la sede actual
-      const activeSede = JSON.parse(localStorage.getItem('activeSede') || '{}');
-      if (activeSede.id) {
-        queryClient.invalidateQueries({ queryKey: ['tasks', 'all', activeSede.id] });
-      }
-      
-      // Forzar refetch inmediato
-      queryClient.refetchQueries({ queryKey: queryKey });
+      invalidateTasks();
       
       // Show success message
       toast({

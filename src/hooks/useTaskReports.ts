@@ -3,11 +3,13 @@ import { taskReportsStorageService } from '@/services/storage/taskReportsStorage
 import { TaskReport, CreateTaskReportData, TaskMedia } from '@/types/taskReports';
 import { useToast } from '@/hooks/use-toast';
 import { useSede } from '@/contexts/SedeContext';
+import { useCacheInvalidation } from './useCacheInvalidation';
 
 export const useTaskReports = () => {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const { activeSede } = useSede();
+  const { invalidateReports } = useCacheInvalidation();
 
   // Query para obtener todos los reportes con cache por sede
   const {
@@ -36,8 +38,7 @@ export const useTaskReports = () => {
     },
     onSuccess: (data, variables) => {
       console.log('Task report created successfully:', data);
-      queryClient.invalidateQueries({ queryKey: ['task-reports'] });
-      queryClient.invalidateQueries({ queryKey: ['task-report', variables.task_id] });
+      invalidateReports();
       toast({
         title: "Reporte creado",
         description: "El reporte de tarea se ha creado exitosamente.",
@@ -61,8 +62,7 @@ export const useTaskReports = () => {
     },
     onSuccess: (data, variables) => {
       console.log('Task report updated successfully:', data);
-      queryClient.invalidateQueries({ queryKey: ['task-reports'] });
-      queryClient.invalidateQueries({ queryKey: ['task-report', data.task_id] });
+      invalidateReports();
       
       // Solo mostrar toast si no es silent (autoguardado)
       if (!variables.silent) {
