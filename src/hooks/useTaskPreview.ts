@@ -4,15 +4,18 @@ import { Property } from '@/types/property';
 import { supabase } from '@/integrations/supabase/client';
 
 export const useTaskPreview = (task: Task | null) => {
+  // Handle both propertyId and propiedad_id fields for compatibility
+  const taskPropertyId = task?.propertyId || (task as any)?.propiedad_id;
+  
   const { data: property, isLoading } = useQuery({
-    queryKey: ['property', task?.propertyId],
+    queryKey: ['property', taskPropertyId],
     queryFn: async () => {
-      if (!task?.propertyId) return null;
+      if (!taskPropertyId) return null;
       
       const { data, error } = await supabase
         .from('properties')
         .select('*')
-        .eq('id', task.propertyId)
+        .eq('id', taskPropertyId)
         .maybeSingle();
       
       if (error) {
@@ -61,7 +64,7 @@ export const useTaskPreview = (task: Task | null) => {
       
       return property;
     },
-    enabled: !!task?.propertyId,
+    enabled: !!taskPropertyId,
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
 
