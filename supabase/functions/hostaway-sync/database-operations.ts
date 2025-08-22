@@ -113,6 +113,7 @@ export async function createTaskForReservation(reservation: HostawayReservation,
     coste: property.coste_servicio,
     propiedad_id: property.id,
     cliente_id: property.cliente_id,
+    sede_id: property.sede_id, // CRITICAL: Include sede_id to satisfy not-null constraint
     cleaner: null,
     cleaner_id: null,
     background_color: '#3B82F6'
