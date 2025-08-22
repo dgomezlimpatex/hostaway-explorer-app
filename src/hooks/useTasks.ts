@@ -94,14 +94,14 @@ export const useTasks = (currentDate: Date, currentView: ViewType) => {
         return [...oldData, data];
       });
       
-      // Invalidar caché específico del queryKey actual primero
-      queryClient.invalidateQueries({ queryKey });
+      // Force immediate refetch first to ensure data appears
+      queryClient.refetchQueries({ queryKey });
       
-      // Invalidate and refetch all task queries for consistency
+      // Then invalidate all related caches for consistency
       invalidateTasks();
       
-      // Force immediate refetch of current query
-      queryClient.refetchQueries({ queryKey });
+      // Additional invalidation for safety
+      queryClient.invalidateQueries({ queryKey });
     },
     onError: (error) => {
       console.error('❌ useTasks - createTaskMutation onError:', error);
@@ -143,13 +143,13 @@ export const useTasks = (currentDate: Date, currentView: ViewType) => {
         );
       });
       
-      // Invalidar caché específico del queryKey actual primero
-      queryClient.invalidateQueries({ queryKey });
+      // Force immediate refetch to ensure removal appears
+      queryClient.refetchQueries({ queryKey });
       
-      // Also update the global tasks cache and all task queries
-      queryClient.invalidateQueries({ queryKey: ['tasks', 'all'] });
-      queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      // Then invalidate all related caches
       invalidateTasks();
+      queryClient.invalidateQueries({ queryKey: ['tasks', 'all'] });
+      queryClient.invalidateQueries({ queryKey });
     },
   });
 

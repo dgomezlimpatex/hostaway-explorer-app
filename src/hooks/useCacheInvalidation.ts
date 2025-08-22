@@ -42,10 +42,15 @@ export const useCacheInvalidation = () => {
     console.log('🔄 Invalidating task caches');
     const sedeId = activeSede?.id;
     
+    // Invalidar todas las queries de tasks
     queryClient.invalidateQueries({ queryKey: ['tasks'] });
+    
+    // Invalidar caché específico por sede si existe
     if (sedeId) {
       queryClient.invalidateQueries({ queryKey: ['tasks', 'all', sedeId] });
     }
+    
+    // Refetch todas las queries de tasks para asegurar actualización inmediata
     queryClient.refetchQueries({ queryKey: ['tasks'] });
   };
 
