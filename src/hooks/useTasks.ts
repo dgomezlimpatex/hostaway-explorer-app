@@ -87,21 +87,33 @@ export const useTasks = (currentDate: Date, currentView: ViewType) => {
     },
     onSuccess: (data) => {
       console.log('✅ useTasks - createTaskMutation onSuccess:', data);
+      console.log('🔍 Current queryKey:', queryKey);
       
       // Immediate optimistic update to current query cache
-      queryClient.setQueryData(queryKey, (oldData: Task[] | undefined) => {
-        if (!oldData) return [data];
-        return [...oldData, data];
+      const updatedData = queryClient.setQueryData(queryKey, (oldData: Task[] | undefined) => {
+        if (!oldData) {
+          console.log('📝 No oldData, creating new array with task');
+          return [data];
+        }
+        console.log('📝 Before creation - tasks count:', oldData.length);
+        const newData = [...oldData, data];
+        console.log('📝 After creation - tasks count:', newData.length);
+        return newData;
       });
+      
+      console.log('🔄 Starting cache invalidation process...');
       
       // Invalidate the exact queryKey first
       queryClient.invalidateQueries({ queryKey, exact: true });
+      console.log('✅ Invalidated exact queryKey');
       
       // Force immediate refetch of the exact queryKey
       queryClient.refetchQueries({ queryKey, exact: true });
+      console.log('✅ Triggered refetch of exact queryKey');
       
       // Then invalidate all related caches for consistency
       invalidateTasks();
+      console.log('✅ Called invalidateTasks()');
     },
     onError: (error) => {
       console.error('❌ useTasks - createTaskMutation onError:', error);
@@ -127,30 +139,42 @@ export const useTasks = (currentDate: Date, currentView: ViewType) => {
     },
     onSuccess: (data, taskId) => {
       console.log('✅ useTasks - deleteTask successful for taskId:', taskId);
+      console.log('🔍 Current queryKey:', queryKey);
       
       // Get the task that was deleted to find the real task ID
       const currentTask = tasks.find(t => t.id === taskId || t.originalTaskId === taskId);
       const realTaskId = currentTask?.originalTaskId || taskId;
       
       // Optimistic update - remove from current view cache
-      queryClient.setQueryData(queryKey, (oldData: Task[] | undefined) => {
-        if (!oldData) return oldData;
-        return oldData.filter(task => 
+      const updatedData = queryClient.setQueryData(queryKey, (oldData: Task[] | undefined) => {
+        if (!oldData) {
+          console.log('🚨 No oldData found in cache for queryKey:', queryKey);
+          return oldData;
+        }
+        console.log('📝 Before deletion - tasks count:', oldData.length);
+        const filtered = oldData.filter(task => 
           task.id !== taskId && 
           task.id !== realTaskId && 
           task.originalTaskId !== taskId && 
           task.originalTaskId !== realTaskId
         );
+        console.log('📝 After deletion - tasks count:', filtered.length);
+        return filtered;
       });
+      
+      console.log('🔄 Starting cache invalidation process...');
       
       // Invalidate the exact queryKey first
       queryClient.invalidateQueries({ queryKey, exact: true });
+      console.log('✅ Invalidated exact queryKey');
       
       // Force immediate refetch of the exact queryKey
       queryClient.refetchQueries({ queryKey, exact: true });
+      console.log('✅ Triggered refetch of exact queryKey');
       
       // Then invalidate all related caches
       invalidateTasks();
+      console.log('✅ Called invalidateTasks()');
     },
   });
 
