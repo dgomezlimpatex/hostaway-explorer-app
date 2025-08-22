@@ -25,19 +25,15 @@ export const AmenitiesSection = ({ propertyData }: AmenitiesSectionProps) => {
             <Badge variant="outline" className="bg-white">{propertyData.numero_sabanas || 0}</Badge>
           </div>
 
-          {propertyData.numero_sabanas_pequenas > 0 && (
-            <div className="flex items-center justify-between p-2 bg-red-50 rounded border border-red-200">
-              <span className="text-sm text-gray-700">Sábanas Pequeñas</span>
-              <Badge variant="outline" className="bg-white">{propertyData.numero_sabanas_pequenas}</Badge>
-            </div>
-          )}
+          <div className="flex items-center justify-between p-2 bg-red-50 rounded border border-red-200">
+            <span className="text-sm text-gray-700">Sábanas Pequeñas</span>
+            <Badge variant="outline" className="bg-white">{propertyData.numero_sabanas_pequenas || propertyData.numeroSabanasRequenas || 0}</Badge>
+          </div>
 
-          {propertyData.numero_sabanas_suite > 0 && (
-            <div className="flex items-center justify-between p-2 bg-indigo-50 rounded border border-indigo-200">
-              <span className="text-sm text-gray-700">Sábanas Suite</span>
-              <Badge variant="outline" className="bg-white">{propertyData.numero_sabanas_suite}</Badge>
-            </div>
-          )}
+          <div className="flex items-center justify-between p-2 bg-indigo-50 rounded border border-indigo-200">
+            <span className="text-sm text-gray-700">Sábanas Suite</span>
+            <Badge variant="outline" className="bg-white">{propertyData.numero_sabanas_suite || propertyData.numeroSabanasSuite || 0}</Badge>
+          </div>
           
           <div className="flex items-center justify-between p-2 bg-cyan-50 rounded border border-cyan-200">
             <span className="text-sm text-gray-700">Toallas Grandes</span>
@@ -64,7 +60,17 @@ export const AmenitiesSection = ({ propertyData }: AmenitiesSectionProps) => {
               <Coffee className="h-3 w-3" />
               Kit Alimentario
             </span>
-            <Badge variant="outline" className="bg-white">{propertyData.kit_alimentario || 0}</Badge>
+            <Badge variant="outline" className="bg-white">{propertyData.kit_alimentario || propertyData.kitAlimentario || 0}</Badge>
+          </div>
+          
+          <div className="flex items-center justify-between p-2 bg-yellow-50 rounded border border-yellow-200">
+            <span className="text-sm text-gray-700">🧻 Papel Higiénico</span>
+            <Badge variant="outline" className="bg-white">{propertyData.cantidad_rollos_papel_higienico || propertyData.cantidadRollosPapelHigienico || 0}</Badge>
+          </div>
+          
+          <div className="flex items-center justify-between p-2 bg-orange-50 rounded border border-orange-200">
+            <span className="text-sm text-gray-700">🧾 Papel Cocina</span>
+            <Badge variant="outline" className="bg-white">{propertyData.cantidad_rollos_papel_cocina || propertyData.cantidadRollosPapelCocina || 0}</Badge>
           </div>
         </div>
       </CardContent>
