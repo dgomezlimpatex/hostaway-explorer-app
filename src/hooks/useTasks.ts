@@ -55,21 +55,20 @@ export const useTasks = (currentDate: Date, currentView: ViewType) => {
       }
     },
     onSuccess: (data, variables) => {
-      // Optimistic update
-      queryClient.setQueryData(queryKey, (oldData: Task[] | undefined) => {
-        if (!oldData) return oldData;
-        return oldData.map(task => 
-          task.id === variables.taskId 
-            ? { ...task, ...variables.updates }
-            : task
-        );
+      // Invalidate ALL task-related queries with broader pattern
+      queryClient.invalidateQueries({ 
+        predicate: (query) => {
+          return Array.isArray(query.queryKey) && 
+                 query.queryKey[0] === 'tasks';
+        }
       });
       
-      // Immediate targeted invalidation
-      queryClient.invalidateQueries({ 
-        queryKey: ['tasks'],
-        exact: false,
-        refetchType: 'active'
+      // Immediate cache removal to force refetch
+      queryClient.removeQueries({ 
+        predicate: (query) => {
+          return Array.isArray(query.queryKey) && 
+                 query.queryKey[0] === 'tasks';
+        }
       });
     },
   });
@@ -91,18 +90,20 @@ export const useTasks = (currentDate: Date, currentView: ViewType) => {
     onSuccess: (data) => {
       console.log('✅ useTasks - createTaskMutation onSuccess:', data);
       
-      // Optimistic update to show immediate change
-      queryClient.setQueryData(queryKey, (oldData: Task[] | undefined) => {
-        const newData = oldData ? [...oldData, data] : [data];
-        console.log('📝 Updated tasks count:', newData.length);
-        return newData;
+      // Invalidate ALL task-related queries with broader pattern
+      queryClient.invalidateQueries({ 
+        predicate: (query) => {
+          return Array.isArray(query.queryKey) && 
+                 query.queryKey[0] === 'tasks';
+        }
       });
       
-      // Immediate targeted invalidation 
-      queryClient.invalidateQueries({ 
-        queryKey: ['tasks'],
-        exact: false,
-        refetchType: 'active'
+      // Immediate cache removal to force refetch
+      queryClient.removeQueries({ 
+        predicate: (query) => {
+          return Array.isArray(query.queryKey) && 
+                 query.queryKey[0] === 'tasks';
+        }
       });
     },
     onError: (error) => {
@@ -130,27 +131,20 @@ export const useTasks = (currentDate: Date, currentView: ViewType) => {
     onSuccess: (data, taskId) => {
       console.log('✅ useTasks - deleteTask successful for taskId:', taskId);
       
-      const currentTask = tasks.find(t => t.id === taskId || t.originalTaskId === taskId);
-      const realTaskId = currentTask?.originalTaskId || taskId;
-      
-      // Optimistic update - remove from cache immediately
-      queryClient.setQueryData(queryKey, (oldData: Task[] | undefined) => {
-        if (!oldData) return oldData;
-        const filtered = oldData.filter(task => 
-          task.id !== taskId && 
-          task.id !== realTaskId && 
-          task.originalTaskId !== taskId && 
-          task.originalTaskId !== realTaskId
-        );
-        console.log('📝 Tasks after deletion:', filtered.length);
-        return filtered;
+      // Invalidate ALL task-related queries with broader pattern
+      queryClient.invalidateQueries({ 
+        predicate: (query) => {
+          return Array.isArray(query.queryKey) && 
+                 query.queryKey[0] === 'tasks';
+        }
       });
       
-      // Immediate targeted invalidation
-      queryClient.invalidateQueries({ 
-        queryKey: ['tasks'],
-        exact: false,
-        refetchType: 'active'
+      // Immediate cache removal to force refetch
+      queryClient.removeQueries({ 
+        predicate: (query) => {
+          return Array.isArray(query.queryKey) && 
+                 query.queryKey[0] === 'tasks';
+        }
       });
     },
   });
@@ -169,21 +163,20 @@ export const useTasks = (currentDate: Date, currentView: ViewType) => {
     onSuccess: (data, variables) => {
       console.log('Task assigned successfully:', data);
       
-      // Optimistic update
-      queryClient.setQueryData(queryKey, (oldData: Task[] | undefined) => {
-        if (!oldData) return oldData;
-        return oldData.map(task => 
-          task.id === variables.taskId 
-            ? { ...task, cleanerId: variables.cleanerId, cleaner: variables.cleaners.find(c => c.id === variables.cleanerId)?.name || task.cleaner }
-            : task
-        );
+      // Invalidate ALL task-related queries with broader pattern
+      queryClient.invalidateQueries({ 
+        predicate: (query) => {
+          return Array.isArray(query.queryKey) && 
+                 query.queryKey[0] === 'tasks';
+        }
       });
       
-      // Immediate targeted invalidation
-      queryClient.invalidateQueries({ 
-        queryKey: ['tasks'],
-        exact: false,
-        refetchType: 'active'
+      // Immediate cache removal to force refetch
+      queryClient.removeQueries({ 
+        predicate: (query) => {
+          return Array.isArray(query.queryKey) && 
+                 query.queryKey[0] === 'tasks';
+        }
       });
       
       const cleaner = variables.cleaners.find(c => c.id === variables.cleanerId);
@@ -210,21 +203,20 @@ export const useTasks = (currentDate: Date, currentView: ViewType) => {
     onSuccess: (data, taskId) => {
       console.log('Task unassigned successfully:', data);
       
-      // Optimistic update
-      queryClient.setQueryData(queryKey, (oldData: Task[] | undefined) => {
-        if (!oldData) return oldData;
-        return oldData.map(task => 
-          task.id === taskId 
-            ? { ...task, cleanerId: undefined, cleaner: '' }
-            : task
-        );
+      // Invalidate ALL task-related queries with broader pattern
+      queryClient.invalidateQueries({ 
+        predicate: (query) => {
+          return Array.isArray(query.queryKey) && 
+                 query.queryKey[0] === 'tasks';
+        }
       });
       
-      // Immediate targeted invalidation
-      queryClient.invalidateQueries({ 
-        queryKey: ['tasks'],
-        exact: false,
-        refetchType: 'active'
+      // Immediate cache removal to force refetch
+      queryClient.removeQueries({ 
+        predicate: (query) => {
+          return Array.isArray(query.queryKey) && 
+                 query.queryKey[0] === 'tasks';
+        }
       });
       
       toast({
