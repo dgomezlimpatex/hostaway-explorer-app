@@ -67,7 +67,7 @@ const {
     }
   }, [headerScrollRef]);
 
-  if (isLoading) {
+  if (isLoading && (!tasks || tasks.length === 0)) {
     return (
       <div className="flex items-center justify-center h-screen bg-background">
         <LoadingSpinner size="lg" text="Cargando calendario..." />
