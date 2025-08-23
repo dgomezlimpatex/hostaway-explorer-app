@@ -65,11 +65,12 @@ export const useTasks = (currentDate: Date, currentView: ViewType) => {
         );
       });
       
-      // Delayed invalidation
-      setTimeout(() => {
-        queryClient.invalidateQueries({ queryKey: ['tasks'] });
-        invalidateTasks();
-      }, 100);
+      // Immediate targeted invalidation
+      queryClient.invalidateQueries({ 
+        queryKey: ['tasks'],
+        exact: false,
+        refetchType: 'active'
+      });
     },
   });
 
@@ -97,11 +98,12 @@ export const useTasks = (currentDate: Date, currentView: ViewType) => {
         return newData;
       });
       
-      // Delayed invalidation to avoid conflicts with optimistic update
-      setTimeout(() => {
-        queryClient.invalidateQueries({ queryKey: ['tasks'] });
-        invalidateTasks();
-      }, 100);
+      // Immediate targeted invalidation 
+      queryClient.invalidateQueries({ 
+        queryKey: ['tasks'],
+        exact: false,
+        refetchType: 'active'
+      });
     },
     onError: (error) => {
       console.error('❌ useTasks - createTaskMutation onError:', error);
@@ -144,11 +146,12 @@ export const useTasks = (currentDate: Date, currentView: ViewType) => {
         return filtered;
       });
       
-      // Delayed invalidation to avoid conflicts
-      setTimeout(() => {
-        queryClient.invalidateQueries({ queryKey: ['tasks'] });
-        invalidateTasks();
-      }, 100);
+      // Immediate targeted invalidation
+      queryClient.invalidateQueries({ 
+        queryKey: ['tasks'],
+        exact: false,
+        refetchType: 'active'
+      });
     },
   });
 
@@ -176,11 +179,12 @@ export const useTasks = (currentDate: Date, currentView: ViewType) => {
         );
       });
       
-      // Delayed invalidation
-      setTimeout(() => {
-        queryClient.invalidateQueries({ queryKey: ['tasks'] });
-        invalidateTasks();
-      }, 100);
+      // Immediate targeted invalidation
+      queryClient.invalidateQueries({ 
+        queryKey: ['tasks'],
+        exact: false,
+        refetchType: 'active'
+      });
       
       const cleaner = variables.cleaners.find(c => c.id === variables.cleanerId);
       toast({
@@ -216,11 +220,12 @@ export const useTasks = (currentDate: Date, currentView: ViewType) => {
         );
       });
       
-      // Delayed invalidation
-      setTimeout(() => {
-        queryClient.invalidateQueries({ queryKey: ['tasks'] });
-        invalidateTasks();
-      }, 100);
+      // Immediate targeted invalidation
+      queryClient.invalidateQueries({ 
+        queryKey: ['tasks'],
+        exact: false,
+        refetchType: 'active'
+      });
       
       toast({
         title: "Tarea desasignada",
