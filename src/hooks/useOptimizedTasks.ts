@@ -39,7 +39,7 @@ export const useOptimizedTasks = ({
     activeSede?.id || 'no-sede'
   ], [currentDate, currentView, activeSede?.id]);
 
-  const { data: tasks = [], isLoading, error } = useQuery({
+  const query = useQuery({
     queryKey,
     queryFn: async () => {
       // For cleaners, use optimized query that filters in the database by date only
@@ -76,6 +76,8 @@ export const useOptimizedTasks = ({
     enabled: enabled && (userRole !== 'cleaner' || currentCleanerId !== null) && !!activeSede,
     refetchOnWindowFocus: true,
   });
+  
+  const { data: tasks = [], isLoading, error } = query;
 
   // Función optimizada para filtrar tareas
   const filteredTasks = useMemo(() => {
@@ -113,6 +115,7 @@ export const useOptimizedTasks = ({
   return {
     tasks: filteredTasks,
     isLoading,
+    isInitialLoading: isLoading && query.fetchStatus !== 'idle',
     error,
     queryKey
   };

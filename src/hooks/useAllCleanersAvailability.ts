@@ -4,7 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { CleanerAvailability } from './useCleanerAvailability';
 
 export const useAllCleanersAvailability = () => {
-  return useQuery({
+  const query = useQuery({
     queryKey: ['all-cleaners-availability'],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -16,4 +16,9 @@ export const useAllCleanersAvailability = () => {
       return data as CleanerAvailability[];
     },
   });
+
+  return {
+    ...query,
+    isInitialLoading: query.isLoading && query.fetchStatus !== 'idle'
+  };
 };

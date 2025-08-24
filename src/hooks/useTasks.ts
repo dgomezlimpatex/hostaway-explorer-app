@@ -13,7 +13,7 @@ export const useTasks = (currentDate: Date, currentView: ViewType) => {
   const { invalidateTasks } = useCacheInvalidation();
 
   // Usar el hook optimizado en lugar del query básico
-  const { tasks, isLoading, error, queryKey } = useOptimizedTasks({
+  const { tasks, isLoading, isInitialLoading: isInitialLoadingTasks, error, queryKey } = useOptimizedTasks({
     currentDate,
     currentView
   });
@@ -237,6 +237,7 @@ export const useTasks = (currentDate: Date, currentView: ViewType) => {
   return {
     tasks,
     isLoading,
+    isInitialLoading: isInitialLoadingTasks,
     error,
     updateTask: updateTaskMutation.mutate,
     createTask: createTaskMutation.mutate,

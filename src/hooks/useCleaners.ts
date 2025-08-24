@@ -12,11 +12,13 @@ export const useCleaners = () => {
   const { userRole, user } = useAuth();
   const { activeSede } = useSede();
   
-  const { data: allCleaners = [], isLoading } = useQuery({
+  const query = useQuery({
     queryKey: ['cleaners', activeSede?.id],
     queryFn: () => cleanerStorage.getAll(),
     enabled: !!activeSede?.id,
   });
+
+  const { data: allCleaners = [], isLoading } = query;
 
   // Filter cleaners based on user role
   const cleaners = React.useMemo(() => {
@@ -31,7 +33,8 @@ export const useCleaners = () => {
 
   return {
     cleaners,
-    isLoading
+    isLoading,
+    isInitialLoading: isLoading && query.fetchStatus !== 'idle'
   };
 };
 

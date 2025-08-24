@@ -26,7 +26,7 @@ export const useCalendarLogic = () => {
     deleteAllTasks
   } = useCalendarData();
 
-  const { data: availability = [], isLoading: isLoadingAvailability } = useAllCleanersAvailability();
+  const { data: availability = [], isInitialLoading: isInitialLoadingAvailability } = useAllCleanersAvailability();
   const { toast } = useToast();
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isExtraordinaryServiceModalOpen, setIsExtraordinaryServiceModalOpen] = useState(false);
@@ -342,7 +342,7 @@ export const useCalendarLogic = () => {
     cleaners,
     currentDate,
     currentView,
-    isLoading: isLoading || isLoadingAvailability,
+    isLoading: isLoading || isInitialLoadingAvailability,
     timeSlots,
     availability,
     

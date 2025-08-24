@@ -13,11 +13,12 @@ export const useCalendarData = () => {
     goToToday
   } = useCalendarNavigation();
 
-  const { cleaners, isLoading: isLoadingCleaners } = useCleaners();
+  const { cleaners, isInitialLoading: isInitialLoadingCleaners } = useCleaners();
   
   const {
     tasks,
     isLoading: isLoadingTasks,
+    isInitialLoading: isInitialLoadingTasks,
     updateTask,
     createTask,
     deleteTask,
@@ -44,8 +45,8 @@ export const useCalendarData = () => {
     currentDate,
     currentView,
     
-    // Loading states
-    isLoading: isLoadingTasks || isLoadingCleaners,
+    // Loading states - only show full loading for initial load, not refetching
+    isLoading: isInitialLoadingTasks || isInitialLoadingCleaners,
     
     // Actions
     setCurrentDate,
