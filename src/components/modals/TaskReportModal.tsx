@@ -16,6 +16,7 @@ import { TaskReportHeader } from './task-report/TaskReportHeader';
 import { TaskReportTabs } from './task-report/TaskReportTabs';
 import { TaskReportFooter } from './task-report/TaskReportFooter';
 import { NetworkStatusIndicator } from '@/components/ui/network-status-indicator';
+import { OfflineSyncIndicator } from '@/components/ui/offline-sync-indicator';
 
 interface TaskReportModalProps {
   task: Task | null;
@@ -190,7 +191,7 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
     };
   }, [checklist, currentTemplate]);
 
-  // Calculate completion percentage - must include photo validation
+  // Calculate completion percentage - más conservador para evitar completar prematuramente
   const completionPercentage = React.useMemo(() => {
     if (!currentTemplate) return 0;
     
@@ -201,27 +202,57 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
     
     if (totalItems === 0) return 0;
     
-    // Count items that are fully completed (including required photos)
+    // Contar elementos completados de forma más estricta
     let fullyCompletedItems = 0;
+    let totalRequiredItems = 0;
     
     currentTemplate.checklist_items.forEach(category => {
       category.items.forEach(item => {
         const key = `${category.id}.${item.id}`;
         const itemData = checklist[key];
         
-        // Item is fully completed if:
-        // 1. It's marked as completed
-        // 2. If photo is required, it has photos
-        const isCompleted = itemData?.completed;
-        const hasRequiredPhoto = !item.photo_required || (itemData?.media_urls && itemData.media_urls.length > 0);
+        // Contar elementos requeridos
+        if (item.required) {
+          totalRequiredItems++;
+        }
         
-        if (isCompleted && hasRequiredPhoto) {
+        // Elemento completado solo si:
+        // 1. Está marcado como completado explícitamente
+        // 2. Si la foto es requerida, debe tener al menos una foto válida
+        // 3. Si tiene notas requeridas, deben estar presentes
+        const isExplicitlyCompleted = itemData?.completed === true;
+        const hasRequiredPhoto = !item.photo_required || 
+          (itemData?.media_urls && Array.isArray(itemData.media_urls) && itemData.media_urls.length > 0);
+        
+        // Solo contar como completado si cumple TODOS los requisitos
+        if (isExplicitlyCompleted && hasRequiredPhoto) {
           fullyCompletedItems++;
         }
       });
     });
     
-    return Math.round((fullyCompletedItems / totalItems) * 100);
+    // Usar elementos requeridos como base mínima si existen
+    const baseItems = totalRequiredItems > 0 ? totalRequiredItems : totalItems;
+    const percentage = Math.round((fullyCompletedItems / totalItems) * 100);
+    
+    // No permitir 100% a menos que TODOS los elementos requeridos estén completados
+    if (percentage >= 100 && totalRequiredItems > 0) {
+      const requiredCompleted = currentTemplate.checklist_items.reduce((count, category) => {
+        return count + category.items.filter(item => {
+          if (!item.required) return false;
+          const key = `${category.id}.${item.id}`;
+          const itemData = checklist[key];
+          const isCompleted = itemData?.completed === true;
+          const hasRequiredPhoto = !item.photo_required || 
+            (itemData?.media_urls && itemData.media_urls.length > 0);
+          return isCompleted && hasRequiredPhoto;
+        }).length;
+      }, 0);
+      
+      return requiredCompleted === totalRequiredItems ? 100 : Math.min(95, percentage);
+    }
+    
+    return Math.min(percentage, 99); // Never auto-complete at 100% sin validación explícita
   }, [checklist, currentTemplate]);
 
   // Optimized auto-save hook (after completionPercentage is defined)
@@ -247,17 +278,22 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
     enabled: hasStartedTask && !!currentReport
   });
 
-  // Check if checklist is completed and advance to next step
+  // Lógica mejorada para transición de pasos - más conservadora
   useEffect(() => {
     const wasCompleted = isChecklistCompleted;
-    const nowCompleted = completionPercentage === 100;
+    const nowCompleted = completionPercentage === 100 && requiredValidation.isValid;
     setIsChecklistCompleted(nowCompleted);
     
-    // Auto-advance when checklist is completed
-    if (!wasCompleted && nowCompleted && currentStep === 'checklist') {
-      setTimeout(() => setCurrentStep('issues'), 500);
+    // Solo avanzar automáticamente si:
+    // 1. El checklist está realmente 100% completado
+    // 2. Todas las validaciones pasan
+    // 3. El usuario está en el paso de checklist
+    // 4. No es la carga inicial
+    if (!wasCompleted && nowCompleted && currentStep === 'checklist' && hasStartedTask) {
+      console.log('✅ Checklist completado, avanzando automáticamente');
+      setTimeout(() => setCurrentStep('issues'), 800); // Más tiempo para evitar clicks accidentales
     }
-  }, [completionPercentage, currentStep, isChecklistCompleted]);
+  }, [completionPercentage, currentStep, isChecklistCompleted, requiredValidation.isValid, hasStartedTask]);
 
 
   // Removed old auto-save logic - now handled by useOptimizedAutoSave hook
@@ -551,21 +587,28 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
         </div>
 
         <div className="flex-shrink-0">
-          <TaskReportFooter
-            onCancel={() => onOpenChange(false)}
-            onSave={handleSave}
-            onComplete={handleComplete}
-            onStartTask={handleStartTask}
-            canComplete={canComplete}
-            isCreatingReport={isCreatingReport}
-            isUpdatingReport={isUpdatingReport}
-            completionPercentage={completionPercentage}
-            requiredValidation={requiredValidation}
-            isTaskFromToday={isTaskFromToday}
-            isTaskCompleted={isTaskCompleted}
-            hasStartedTask={hasStartedTask}
-            currentStep={currentStep}
-          />
+          <div className="space-y-2">
+            {/* Indicador de sincronización offline para móvil */}
+            {isMobile && (
+              <OfflineSyncIndicator className="mx-4" />
+            )}
+            
+            <TaskReportFooter
+              onCancel={() => onOpenChange(false)}
+              onSave={handleSave}
+              onComplete={handleComplete}
+              onStartTask={handleStartTask}
+              canComplete={canComplete}
+              isCreatingReport={isCreatingReport}
+              isUpdatingReport={isUpdatingReport}
+              completionPercentage={completionPercentage}
+              requiredValidation={requiredValidation}
+              isTaskFromToday={isTaskFromToday}
+              isTaskCompleted={isTaskCompleted}
+              hasStartedTask={hasStartedTask}
+              currentStep={currentStep}
+            />
+          </div>
         </div>
       </DialogContent>
     </Dialog>

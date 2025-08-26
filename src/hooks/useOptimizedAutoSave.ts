@@ -21,45 +21,69 @@ export const useOptimizedAutoSave = ({
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   const lastDataRef = useRef<any>(null);
   const lastSaveRef = useRef<number>(0);
+  const isInitialLoadRef = useRef<boolean>(true);
 
   // Configuración dinámica del intervalo de autoguardado
   const getAutoSaveInterval = useCallback(() => {
     if (!isOnline) return 0; // No autoguardar offline
     if (isMobile) {
-      return isSlowConnection ? 15000 : 10000; // 15s conexión lenta, 10s móvil normal
+      return isSlowConnection ? 20000 : 15000; // Más tiempo en móvil
     }
-    return 5000; // 5s escritorio
+    return 8000; // Más conservador en escritorio
   }, [isOnline, isMobile, isSlowConnection]);
 
   const saveData = useCallback(() => {
     const now = Date.now();
     const interval = getAutoSaveInterval();
     
+    // No autoguardar si es la carga inicial
+    if (isInitialLoadRef.current) {
+      isInitialLoadRef.current = false;
+      lastDataRef.current = data;
+      return;
+    }
+    
     // Verificar si han pasado suficientes tiempo desde el último guardado
     if (now - lastSaveRef.current < interval) {
       return;
     }
 
-    // Verificar si los datos han cambiado
-    if (JSON.stringify(data) === JSON.stringify(lastDataRef.current)) {
+    // Verificar si los datos han cambiado significativamente
+    const currentDataStr = JSON.stringify(data);
+    const lastDataStr = JSON.stringify(lastDataRef.current);
+    
+    if (currentDataStr === lastDataStr) {
+      return;
+    }
+
+    // Verificar que los datos tienen contenido válido
+    if (!data || Object.keys(data).length === 0) {
       return;
     }
 
     if (!isOnline && reportId) {
-      // Guardar offline
+      // Guardar offline con throttling
       offlineStorage.saveReportOffline(reportId, data);
-      console.log('Auto-saved offline:', reportId);
+      console.log('🔄 Auto-saved offline:', reportId);
     } else if (isOnline) {
-      // Guardar online silenciosamente
-      onSave(data, true);
-      console.log('Auto-saved online');
+      // Guardar online silenciosamente con debounce
+      try {
+        onSave(data, true);
+        console.log('🔄 Auto-saved online');
+      } catch (error) {
+        console.error('❌ Auto-save error:', error);
+        // Fallback a offline si falla
+        if (reportId) {
+          offlineStorage.saveReportOffline(reportId, data);
+        }
+      }
     }
 
     lastDataRef.current = data;
     lastSaveRef.current = now;
   }, [data, onSave, reportId, isOnline, getAutoSaveInterval]);
 
-  // Configurar autoguardado
+  // Configurar autoguardado con debounce mejorado
   useEffect(() => {
     if (!enabled) return;
 
@@ -79,7 +103,7 @@ export const useOptimizedAutoSave = ({
       clearTimeout(timeoutRef.current);
     }
 
-    // Configurar nuevo timeout
+    // Configurar nuevo timeout con debounce
     timeoutRef.current = setTimeout(() => {
       saveData();
     }, interval);
@@ -91,27 +115,55 @@ export const useOptimizedAutoSave = ({
     };
   }, [data, enabled, saveData, getAutoSaveInterval]);
 
-  // Guardar inmediatamente cuando se recupera conexión
+  // Sincronizar datos offline cuando se recupera conexión
   useEffect(() => {
-    if (isOnline && reportId) {
+    if (isOnline && reportId && !isInitialLoadRef.current) {
       const offlineData = offlineStorage.getReportOffline(reportId);
-      if (offlineData) {
-        console.log('Syncing offline data for report:', reportId);
-        onSave(offlineData, true);
-        offlineStorage.removeReportOffline(reportId);
+      if (offlineData && Object.keys(offlineData).length > 0) {
+        console.log('🔄 Syncing offline data for report:', reportId);
+        try {
+          onSave(offlineData, true);
+          offlineStorage.removeReportOffline(reportId);
+          console.log('✅ Offline data synced successfully');
+        } catch (error) {
+          console.error('❌ Failed to sync offline data:', error);
+        }
       }
     }
   }, [isOnline, reportId, onSave]);
 
-  // Función para forzar guardado manual
+  // Función para forzar guardado manual con protección contra race conditions
   const forceSave = useCallback(() => {
+    if (!data || Object.keys(data).length === 0) {
+      console.warn('⚠️ Attempted to save empty data');
+      return;
+    }
+
+    // Prevenir múltiples guardados simultáneos
+    const now = Date.now();
+    if (now - lastSaveRef.current < 2000) { // 2 segundos mínimo entre guardados forzados
+      console.log('⏱️ Force save throttled, too frequent');
+      return;
+    }
+
     if (isOnline) {
-      onSave(data, false); // No silencioso para mostrar feedback
+      try {
+        onSave(data, false); // No silencioso para mostrar feedback
+        console.log('💾 Force saved online');
+      } catch (error) {
+        console.error('❌ Force save error:', error);
+        if (reportId) {
+          offlineStorage.saveReportOffline(reportId, data);
+          console.log('💾 Force saved offline as fallback');
+        }
+      }
     } else if (reportId) {
       offlineStorage.saveReportOffline(reportId, data);
+      console.log('💾 Force saved offline');
     }
+    
     lastDataRef.current = data;
-    lastSaveRef.current = Date.now();
+    lastSaveRef.current = now;
   }, [data, onSave, reportId, isOnline]);
 
   return {
@@ -119,5 +171,6 @@ export const useOptimizedAutoSave = ({
     isOnline,
     autoSaveEnabled: enabled && getAutoSaveInterval() > 0,
     autoSaveInterval: getAutoSaveInterval(),
+    lastSaved: lastSaveRef.current,
   };
 };

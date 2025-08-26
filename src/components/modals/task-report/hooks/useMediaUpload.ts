@@ -27,9 +27,9 @@ export const useMediaUpload = ({
   const { isMobile } = useDeviceType();
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [uploadingCount, setUploadingCount] = useState(0);
-  const [uploadQueue, setUploadQueue] = useState<File[]>([]);
+  const [uploadAttempts, setUploadAttempts] = useState<Map<string, number>>(new Map());
 
-  const validateFile = (file: File): boolean => {
+  const validateFile = (file: File): { isValid: boolean; error?: string } => {
     console.log('🔍 VALIDANDO ARCHIVO:', {
       name: file.name,
       size: file.size,
@@ -38,83 +38,72 @@ export const useMediaUpload = ({
       sizeMB: Math.round(file.size / (1024 * 1024) * 100) / 100
     });
 
-    // Validación básica más permisiva
+    // Validación básica robusta
     if (!file || !file.name) {
-      console.error('❌ Archivo inválido o sin nombre');
-      toast({
-        title: "Error",
-        description: "Archivo no válido",
-        variant: "destructive",
-      });
-      return false;
+      return { isValid: false, error: "Archivo no válido" };
     }
 
-    // Verificar tamaño primero (100MB máximo)
-    const maxSize = 100 * 1024 * 1024; // 100MB
-    if (file.size > maxSize) {
-      console.error('❌ Archivo muy grande:', file.size, 'bytes');
-      toast({
-        title: "Error",
-        description: `Archivo muy grande. Máximo 100MB (tu archivo: ${Math.round(file.size / (1024 * 1024))}MB)`,
-        variant: "destructive",
-      });
-      return false;
-    }
-
+    // Verificar que no está corrupto
     if (file.size === 0) {
-      console.error('❌ Archivo vacío');
-      toast({
-        title: "Error",
-        description: "El archivo está vacío",
-        variant: "destructive",
-      });
-      return false;
+      return { isValid: false, error: "El archivo está vacío" };
     }
 
-    // Lista muy amplia de extensiones válidas
+    // Tamaño máximo más generoso (200MB)
+    const maxSize = 200 * 1024 * 1024;
+    if (file.size > maxSize) {
+      return { 
+        isValid: false, 
+        error: `Archivo muy grande. Máximo 200MB (tu archivo: ${Math.round(file.size / (1024 * 1024))}MB)` 
+      };
+    }
+
+    // Lista ampliada de extensiones válidas para móvil
     const fileName = file.name.toLowerCase();
     const validExtensions = [
-      // Imágenes básicas
-      '.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp', '.svg',
-      // Formatos Apple/iOS
-      '.heic', '.heif', 
-      // Formatos RAW
+      // Imágenes estándar
+      '.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp', '.svg', '.avif',
+      // Formatos Apple/iOS (críticos para móvil)
+      '.heic', '.heif', '.heics',
+      // Formatos RAW (para cámaras profesionales)
       '.dng', '.raw', '.cr2', '.crw', '.nef', '.arw', '.orf', '.rw2', '.pef', '.srw',
-      // Otros formatos
-      '.tiff', '.tif', '.avif', '.jfif',
-      // Videos
-      '.mp4', '.mov', '.avi', '.mkv', '.webm', '.wmv', '.m4v', '.3gp'
+      // Otros formatos de imagen
+      '.tiff', '.tif', '.jfif', '.jpe', '.jfi',
+      // Videos (ampliado para móvil)
+      '.mp4', '.mov', '.avi', '.mkv', '.webm', '.wmv', '.m4v', '.3gp', '.3g2', '.f4v', '.flv'
     ];
     
     const hasValidExtension = validExtensions.some(ext => fileName.endsWith(ext));
     
     if (!hasValidExtension) {
-      console.error('❌ Extensión no válida:', fileName);
-      toast({
-        title: "Error",
-        description: `Formato no soportado. Tu archivo: ${fileName}. Formatos válidos: JPG, PNG, HEIC, etc.`,
-        variant: "destructive",
-      });
-      return false;
+      return { 
+        isValid: false, 
+        error: `Formato no soportado. Archivo: ${fileName}. Formatos válidos: JPG, PNG, HEIC, MP4, MOV, etc.` 
+      };
     }
 
-    // Si llegamos aquí, el archivo es válido
+    // Validación adicional de tipo MIME más flexible
+    if (file.type && !file.type.match(/^(image|video)\//)) {
+      // Solo advertir, no bloquear (algunos dispositivos no reportan MIME correctamente)
+      console.warn('⚠️ MIME type unusual but proceeding:', file.type);
+    }
+
     console.log('✅ Archivo válido para subida');
-    return true;
+    return { isValid: true };
   };
 
-  // Función para comprimir archivo antes de subir
+  // Función mejorada para comprimir archivo antes de subir
   const prepareFileForUpload = useCallback(async (file: File): Promise<File> => {
     if (!shouldCompressImage(file)) {
       return file;
     }
 
     try {
+      // Configuración de compresión adaptativa
       const compressionOptions = isMobile ? {
-        maxWidth: 1280,
-        maxHeight: 720,
-        quality: isSlowConnection ? 0.6 : 0.8,
-        maxSizeKB: isSlowConnection ? 512 : 1024
+        maxWidth: isSlowConnection ? 1024 : 1280,
+        maxHeight: isSlowConnection ? 768 : 720,
+        quality: isSlowConnection ? 0.5 : 0.7,
+        maxSizeKB: isSlowConnection ? 400 : 800
       } : {
         maxWidth: 1920,
         maxHeight: 1080,
@@ -123,24 +112,54 @@ export const useMediaUpload = ({
       };
 
       const compressedFile = await compressImage(file, compressionOptions);
-      console.log('File compressed:', { 
-        original: file.size, 
-        compressed: compressedFile.size, 
-        reduction: Math.round((1 - compressedFile.size / file.size) * 100) + '%' 
+      const reduction = Math.round((1 - compressedFile.size / file.size) * 100);
+      
+      console.log('📷 File compressed:', { 
+        original: `${Math.round(file.size / 1024)}KB`,
+        compressed: `${Math.round(compressedFile.size / 1024)}KB`,
+        reduction: `${reduction}%`
       });
+      
       return compressedFile;
     } catch (error) {
-      console.error('Error compressing file:', error);
+      console.error('❌ Error compressing file:', error);
       return file; // Fallback al archivo original
     }
   }, [isMobile, isSlowConnection]);
 
   const uploadSingleFile = async (file: File) => {
-    if (!file || !reportId || !validateFile(file)) return;
+    if (!file || !reportId) {
+      console.warn('⚠️ No file or reportId provided');
+      return;
+    }
 
-    // Crear preview
+    const validation = validateFile(file);
+    if (!validation.isValid) {
+      toast({
+        title: "Error de validación",
+        description: validation.error,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Crear preview inmediato
     const url = URL.createObjectURL(file);
     setPreviewUrl(url);
+
+    // Verificar intentos previos para este archivo
+    const fileKey = `${file.name}_${file.size}_${file.lastModified}`;
+    const attempts = uploadAttempts.get(fileKey) || 0;
+    
+    if (attempts >= 3) {
+      toast({
+        title: "Máximo de intentos alcanzado",
+        description: "Este archivo ha fallado 3 veces. Por favor, intenta con otro archivo.",
+        variant: "destructive",
+      });
+      setPreviewUrl(null);
+      return;
+    }
 
     try {
       // Preparar archivo (comprimir si es necesario)
@@ -161,7 +180,7 @@ export const useMediaUpload = ({
         
         toast({
           title: "Archivo guardado offline",
-          description: "Se subirá cuando haya conexión.",
+          description: "Se subirá automáticamente cuando tengas conexión.",
         });
         return;
       }
@@ -172,7 +191,8 @@ export const useMediaUpload = ({
         type: preparedFile.type,
         reportId, 
         checklistItemId,
-        isOnline 
+        isOnline,
+        attempt: attempts + 1
       });
       
       const data = await uploadMediaAsync({
@@ -185,44 +205,73 @@ export const useMediaUpload = ({
       onMediaCaptured(data.file_url);
       setPreviewUrl(null);
       
+      // Reset attempts counter on success
+      setUploadAttempts(prev => {
+        const newMap = new Map(prev);
+        newMap.delete(fileKey);
+        return newMap;
+      });
+      
       toast({
-        title: "Archivo subido",
-        description: "El archivo se ha subido correctamente.",
+        title: "Archivo subido exitosamente",
+        description: "La evidencia se ha guardado correctamente.",
       });
     } catch (error) {
       console.error('❌ MediaUpload - upload failed:', error);
       setPreviewUrl(null);
       
-      // Error más descriptivo
+      // Incrementar contador de intentos
+      setUploadAttempts(prev => {
+        const newMap = new Map(prev);
+        newMap.set(fileKey, attempts + 1);
+        return newMap;
+      });
+      
+      // Error más descriptivo y específico
       let errorMessage = "No se pudo subir el archivo.";
+      let shouldRetry = true;
+      
       if (error instanceof Error) {
-        if (error.message.includes('413') || error.message.includes('too large')) {
-          errorMessage = "El archivo es muy grande. Máximo 100MB.";
-        } else if (error.message.includes('401') || error.message.includes('unauthorized')) {
-          errorMessage = "No tienes permisos para subir archivos.";
-        } else if (error.message.includes('network') || error.message.includes('fetch')) {
-          errorMessage = "Error de conexión. Verifica tu internet.";
-        } else if (error.message.includes('quota') || error.message.includes('storage')) {
-          errorMessage = "Espacio de almacenamiento lleno.";
+        const errorMsg = error.message.toLowerCase();
+        
+        if (errorMsg.includes('413') || errorMsg.includes('too large') || errorMsg.includes('payload')) {
+          errorMessage = "Archivo demasiado grande. Intenta con un archivo más pequeño.";
+          shouldRetry = false;
+        } else if (errorMsg.includes('401') || errorMsg.includes('unauthorized') || errorMsg.includes('forbidden')) {
+          errorMessage = "Sin permisos. Verifica tu sesión e inténtalo de nuevo.";
+          shouldRetry = false;
+        } else if (errorMsg.includes('network') || errorMsg.includes('fetch') || errorMsg.includes('timeout')) {
+          errorMessage = "Problema de conexión. Verifica tu internet.";
+        } else if (errorMsg.includes('quota') || errorMsg.includes('storage') || errorMsg.includes('space')) {
+          errorMessage = "Espacio de almacenamiento insuficiente.";
+          shouldRetry = false;
+        } else if (errorMsg.includes('format') || errorMsg.includes('type') || errorMsg.includes('invalid')) {
+          errorMessage = "Formato de archivo no compatible.";
+          shouldRetry = false;
         }
       }
       
+      const remainingAttempts = shouldRetry ? (3 - attempts - 1) : 0;
+      const description = shouldRetry && remainingAttempts > 0 
+        ? `${errorMessage} (${remainingAttempts} intentos restantes)`
+        : errorMessage;
+      
       toast({
         title: "Error al subir archivo",
-        description: errorMessage + " Inténtalo de nuevo.",
+        description: description,
         variant: "destructive",
       });
     }
   };
 
-  // Upload en batch optimizado para móvil
+  // Upload en lotes optimizado y robusto
   const uploadMultipleFiles = async (files: FileList) => {
     if (!files || files.length === 0 || !reportId) {
       console.log('MediaUpload - uploadMultipleFiles early return:', { files: files?.length, reportId });
       return;
     }
 
-    console.log('MediaUpload - starting optimized multiple upload:', { 
+    console.log('MediaUpload - starting robust multiple upload:', { 
       fileCount: files.length, 
       reportId, 
       checklistItemId,
@@ -231,88 +280,137 @@ export const useMediaUpload = ({
       isMobile 
     });
 
-    // Verificar límite de archivos (15 máximo + archivos existentes)
+    // Verificar límite de archivos (20 máximo + archivos existentes)
     const totalFiles = existingMediaCount + files.length;
-    if (totalFiles > 15) {
+    if (totalFiles > 20) {
       toast({
-        title: "Error",
-        description: `Puedes subir máximo 15 archivos. Ya tienes ${existingMediaCount} archivo(s).`,
+        title: "Límite de archivos excedido",
+        description: `Puedes tener máximo 20 archivos. Ya tienes ${existingMediaCount} archivo(s).`,
         variant: "destructive",
       });
       return;
     }
 
     const filesArray = Array.from(files);
-    setUploadingCount(filesArray.length);
+    
+    // Validar todos los archivos primero
+    const validFiles: File[] = [];
+    for (const file of filesArray) {
+      const validation = validateFile(file);
+      if (validation.isValid) {
+        validFiles.push(file);
+      } else {
+        console.warn(`⚠️ Archivo inválido omitido: ${file.name} - ${validation.error}`);
+        toast({
+          title: "Archivo omitido",
+          description: `${file.name}: ${validation.error}`,
+          variant: "destructive",
+        });
+      }
+    }
+
+    if (validFiles.length === 0) {
+      toast({
+        title: "Sin archivos válidos",
+        description: "Todos los archivos seleccionados tienen problemas.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setUploadingCount(validFiles.length);
     
     let successCount = 0;
     let errorCount = 0;
     let offlineCount = 0;
 
     // Preparar archivos en paralelo (comprimir)
-    const preparedFiles = await Promise.allSettled(
-      filesArray.map(async (file) => {
-        if (!validateFile(file)) {
-          throw new Error(`Archivo ${file.name} no válido`);
-        }
-        return prepareFileForUpload(file);
-      })
-    );
+    const preparePromises = validFiles.map(async (file, index) => {
+      try {
+        const preparedFile = await prepareFileForUpload(file);
+        return { file: preparedFile, originalIndex: index, success: true };
+      } catch (error) {
+        console.error(`❌ Error preparing file ${file.name}:`, error);
+        return { file, originalIndex: index, success: false, error };
+      }
+    });
 
-    console.log('MediaUpload - files prepared:', preparedFiles.length);
+    const preparedResults = await Promise.allSettled(preparePromises);
+    const successfullyPrepared = preparedResults
+      .filter((result): result is PromiseFulfilledResult<{file: File, originalIndex: number, success: true}> => 
+        result.status === 'fulfilled' && result.value.success)
+      .map(result => result.value);
 
-    // Configurar concurrencia basada en dispositivo y conexión
+    console.log('MediaUpload - files prepared:', successfullyPrepared.length, 'of', validFiles.length);
+
+    // Configurar concurrencia inteligente
     const concurrencyLimit = isMobile && isSlowConnection ? 1 : (isMobile ? 2 : 3);
     
-    // Procesar uploads en lotes
-    for (let i = 0; i < preparedFiles.length; i += concurrencyLimit) {
-      const batch = preparedFiles.slice(i, i + concurrencyLimit);
+    // Procesar uploads en lotes con reintentos
+    for (let i = 0; i < successfullyPrepared.length; i += concurrencyLimit) {
+      const batch = successfullyPrepared.slice(i, i + concurrencyLimit);
       
-      await Promise.allSettled(
-        batch.map(async (result, batchIndex) => {
-          if (result.status === 'rejected') {
-            console.error('File preparation failed:', result.reason);
-            errorCount++;
-            return;
-          }
-
-          const file = result.value;
-          const originalIndex = i + batchIndex;
+      const batchResults = await Promise.allSettled(
+        batch.map(async ({ file, originalIndex }) => {
+          const maxRetries = 2;
+          let retryCount = 0;
           
-          try {
-            if (!isOnline) {
-              // Guardar offline
-              offlineStorage.addOperation('uploadMedia', {
-                file,
-                reportId,
-                checklistItemId,
-              });
+          while (retryCount <= maxRetries) {
+            try {
+              if (!isOnline) {
+                // Guardar offline
+                offlineStorage.addOperation('uploadMedia', {
+                  file,
+                  reportId,
+                  checklistItemId,
+                });
+                
+                // Crear preview temporal
+                const url = URL.createObjectURL(file);
+                onMediaCaptured(url);
+                return { success: true, type: 'offline' };
+              } else {
+                const data = await uploadMediaAsync({
+                  file,
+                  reportId,
+                  checklistItemId,
+                });
+                
+                console.log(`✅ MediaUpload - batch upload ${originalIndex + 1} successful:`, data);
+                onMediaCaptured(data.file_url);
+                return { success: true, type: 'online', data };
+              }
+            } catch (error) {
+              retryCount++;
+              console.error(`❌ MediaUpload - batch upload ${originalIndex + 1} failed (attempt ${retryCount}):`, error);
               
-              // Crear preview temporal
-              const url = URL.createObjectURL(file);
-              onMediaCaptured(url);
-              offlineCount++;
-            } else {
-              const data = await uploadMediaAsync({
-                file,
-                reportId,
-                checklistItemId,
-              });
+              if (retryCount > maxRetries) {
+                return { success: false, error, file: file.name };
+              }
               
-              console.log(`MediaUpload - batch upload ${originalIndex + 1} successful:`, data);
-              onMediaCaptured(data.file_url);
-              successCount++;
+              // Esperar antes del reintento
+              await new Promise(resolve => setTimeout(resolve, 1000 * retryCount));
             }
-          } catch (error) {
-            console.error(`MediaUpload - batch upload ${originalIndex + 1} failed:`, error);
-            errorCount++;
           }
         })
       );
 
-      // Pequeña pausa entre lotes para no saturar en móvil
-      if (isMobile && i + concurrencyLimit < preparedFiles.length) {
-        await new Promise(resolve => setTimeout(resolve, 200));
+      // Contar resultados del lote
+      batchResults.forEach(result => {
+        if (result.status === 'fulfilled' && result.value.success) {
+          if (result.value.type === 'offline') {
+            offlineCount++;
+          } else {
+            successCount++;
+          }
+        } else {
+          errorCount++;
+        }
+      });
+
+      // Pausa entre lotes para no saturar en móvil
+      if (isMobile && i + concurrencyLimit < successfullyPrepared.length) {
+        await new Promise(resolve => setTimeout(resolve, 300));
       }
     }
 
@@ -320,26 +418,26 @@ export const useMediaUpload = ({
       successCount, 
       errorCount, 
       offlineCount, 
-      total: filesArray.length 
+      total: validFiles.length 
     });
     
     setUploadingCount(0);
     
-    // Mostrar resultado
-    if (offlineCount > 0) {
+    // Mostrar resultado final
+    if (offlineCount > 0 && successCount === 0) {
       toast({
         title: "Archivos guardados offline",
-        description: `${offlineCount} archivo(s) se subirán cuando haya conexión.`,
+        description: `${offlineCount} archivo(s) se subirán automáticamente cuando tengas conexión.`,
       });
     } else if (successCount > 0) {
       toast({
-        title: "Archivos subidos",
-        description: `${successCount} archivo(s) subido(s) correctamente.${errorCount > 0 ? ` ${errorCount} fallaron.` : ''}`,
+        title: "Subida completada",
+        description: `${successCount} archivo(s) subido(s) correctamente.${offlineCount > 0 ? ` ${offlineCount} guardado(s) offline.` : ''}${errorCount > 0 ? ` ${errorCount} fallaron.` : ''}`,
       });
     } else if (errorCount > 0) {
       toast({
-        title: "Error al subir archivos",
-        description: "No se pudo subir ningún archivo. Verifica el formato y tamaño.",
+        title: "Error en la subida",
+        description: "No se pudo subir ningún archivo. Verifica el formato, tamaño y conexión.",
         variant: "destructive",
       });
     }
@@ -353,5 +451,6 @@ export const useMediaUpload = ({
     previewUrl,
     isOnline,
     isSlowConnection,
+    validateFile,
   };
 };
