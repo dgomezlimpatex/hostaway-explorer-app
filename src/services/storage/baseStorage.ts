@@ -89,7 +89,8 @@ export class BaseStorageService<T extends BaseEntity, CreateData = Omit<T, keyof
       if (activeSedeId) {
         dataToInsert = { ...dataToInsert, sede_id: activeSedeId };
       } else {
-        throw new Error('No se puede crear el registro: no hay una sede activa seleccionada');
+        console.error('❌ No hay sede activa seleccionada para crear el registro');
+        throw new Error('No se puede crear la tarea: no hay una sede activa seleccionada. Por favor, selecciona una sede en el selector de la parte superior.');
       }
     }
 
