@@ -1,6 +1,7 @@
 
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import { format, addYears } from "date-fns";
 
 interface TimeFieldsSectionProps {
   formData: {
@@ -28,7 +29,13 @@ export const TimeFieldsSection = ({
             type="date"
             value={formData.date}
             onChange={(e) => onFieldChange('date', e.target.value)}
+            min={format(new Date(), 'yyyy-MM-dd')}
+            max={format(addYears(new Date(), 2), 'yyyy-MM-dd')}
+            className="w-full"
           />
+          <p className="text-xs text-muted-foreground">
+            Puedes seleccionar fechas hasta 2 años en el futuro
+          </p>
         </div>
         
         <div className="space-y-2">
