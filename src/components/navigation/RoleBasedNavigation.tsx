@@ -177,7 +177,7 @@ export const RoleBasedNavigation = () => {
 
           {canAccessModule('logistics') && (
             <NavigationCard
-              to="/logistics/picklists"
+              to="/logistics/dashboard"
               title="Logística"
               description="Prepara picklists y gestiona entregas internas"
               icon={Truck}
