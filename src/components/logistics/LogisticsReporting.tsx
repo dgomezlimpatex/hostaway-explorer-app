@@ -226,12 +226,12 @@ export const LogisticsReporting: React.FC = () => {
               
               <div className="space-y-2">
                 <Label htmlFor="status">Estado</Label>
-                <Select onValueChange={(value) => setFilters(prev => ({ ...prev, status: value ? [value] : [] }))}>
+                <Select onValueChange={(value) => setFilters(prev => ({ ...prev, status: value === "all" ? [] : [value] }))}>
                   <SelectTrigger>
                     <SelectValue placeholder="Todos los estados" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Todos</SelectItem>
+                    <SelectItem value="all">Todos</SelectItem>
                     <SelectItem value="draft">Borrador</SelectItem>
                     <SelectItem value="preparing">Preparando</SelectItem>
                     <SelectItem value="packed">Empacada</SelectItem>
