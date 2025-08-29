@@ -14,6 +14,7 @@ import Auth from "./pages/Auth";
 import AcceptInvitation from "./pages/AcceptInvitation";
 import UserManagement from "./pages/UserManagement";
 import SedeManagement from "./pages/SedeManagement";
+import SecurityManagement from "./pages/SecurityManagement";
 import Calendar from "./pages/Calendar";
 import Tasks from "./pages/Tasks";
 import Clients from "./pages/Clients";
@@ -75,6 +76,13 @@ function App() {
                 <ProtectedRoute>
                   <RoleProtectedRoute requiredModule="admin">
                     <SedeManagement />
+                  </RoleProtectedRoute>
+                </ProtectedRoute>
+              } />
+              <Route path="/admin/security" element={
+                <ProtectedRoute>
+                  <RoleProtectedRoute requiredModule="admin">
+                    <SecurityManagement />
                   </RoleProtectedRoute>
                 </ProtectedRoute>
               } />
