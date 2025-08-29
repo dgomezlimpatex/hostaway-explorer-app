@@ -6,14 +6,32 @@ export interface StorageConfig<T, CreateData> {
   tableName: string;
   mapFromDB: (row: any) => T;
   mapToDB: (entity: Partial<CreateData>) => any;
-  enforceSedeFilter?: boolean; // Nueva opción para controlar el filtro por sede
+  enforceSedeFilter?: boolean;
 }
+
+// Contexto global para la sede activa (usado por BaseStorage)
+let globalSedeContext: {
+  getActiveSedeId: () => string | null;
+  waitForActiveSede: () => Promise<string>;
+} | null = null;
+
+export const setGlobalSedeContext = (context: {
+  getActiveSedeId: () => string | null;
+  waitForActiveSede: () => Promise<string>;
+}) => {
+  globalSedeContext = context;
+};
 
 export class BaseStorageService<T extends BaseEntity, CreateData = Omit<T, keyof BaseEntity>> {
   constructor(private config: StorageConfig<T, CreateData>) {}
 
   private async getActiveSedeId(): Promise<string | null> {
-    // Función helper para obtener la sede activa del localStorage
+    // Usar contexto global si está disponible
+    if (globalSedeContext) {
+      return globalSedeContext.getActiveSedeId();
+    }
+    
+    // Fallback a localStorage (mantener compatibilidad)
     try {
       const activeSede = localStorage.getItem('activeSede');
       if (activeSede) {
@@ -25,6 +43,24 @@ export class BaseStorageService<T extends BaseEntity, CreateData = Omit<T, keyof
       console.warn('Error getting active sede:', error);
       return null;
     }
+  }
+  
+  private async ensureActiveSedeId(): Promise<string> {
+    const sedeId = await this.getActiveSedeId();
+    if (sedeId) {
+      return sedeId;
+    }
+    
+    // Intentar esperar por una sede activa si el contexto global está disponible
+    if (globalSedeContext) {
+      try {
+        return await globalSedeContext.waitForActiveSede();
+      } catch (error) {
+        throw new Error('No se puede realizar la operación: no hay una sede activa seleccionada. Por favor, selecciona una sede en el selector de la parte superior.');
+      }
+    }
+    
+    throw new Error('No se puede realizar la operación: no hay una sede activa seleccionada. Por favor, selecciona una sede en el selector de la parte superior.');
   }
 
   async getAll(orderBy?: { column: string; ascending?: boolean }): Promise<T[]> {
@@ -85,13 +121,8 @@ export class BaseStorageService<T extends BaseEntity, CreateData = Omit<T, keyof
     
     // Agregar sede_id automáticamente si está habilitado el filtro por sede
     if (this.config.enforceSedeFilter !== false && !dataToInsert.sede_id) {
-      const activeSedeId = await this.getActiveSedeId();
-      if (activeSedeId) {
-        dataToInsert = { ...dataToInsert, sede_id: activeSedeId };
-      } else {
-        console.error('❌ No hay sede activa seleccionada para crear el registro');
-        throw new Error('No se puede crear la tarea: no hay una sede activa seleccionada. Por favor, selecciona una sede en el selector de la parte superior.');
-      }
+      const activeSedeId = await this.ensureActiveSedeId();
+      dataToInsert = { ...dataToInsert, sede_id: activeSedeId };
     }
 
     const { data, error } = await supabase

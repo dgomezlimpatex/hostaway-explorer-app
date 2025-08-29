@@ -5,7 +5,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthProvider";
-import { SedeProvider } from "@/contexts/SedeContext";
+import { SedeContextProvider } from "@/contexts/SedeContextProvider";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { RoleProtectedRoute } from "@/components/auth/RoleProtectedRoute";
 import { useSessionTimeout } from "@/hooks/useSessionTimeout";
@@ -50,7 +50,7 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <AuthProvider>
-          <SedeProvider>
+          <SedeContextProvider>
             <SecurityWrapper>
               <Toaster />
               <Sonner />
@@ -229,7 +229,7 @@ function App() {
             </Routes>
           </BrowserRouter>
             </SecurityWrapper>
-          </SedeProvider>
+          </SedeContextProvider>
         </AuthProvider>
       </TooltipProvider>
     </QueryClientProvider>

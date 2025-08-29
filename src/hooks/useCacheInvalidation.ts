@@ -32,10 +32,7 @@ export const useCacheInvalidation = () => {
       queryClient.invalidateQueries({ queryKey: ['clients', sedeId] });
     }
     
-    // Forzar refetch inmediato de las queries más importantes
-    queryClient.refetchQueries({ queryKey: ['tasks'] });
-    queryClient.refetchQueries({ queryKey: ['task-reports'] });
-    queryClient.refetchQueries({ queryKey: ['cleaners'] });
+    // Note: No hacer refetch inmediato - dejar que las queries se refresquen cuando se necesiten
   };
 
   const invalidateTasks = () => {
@@ -61,14 +58,7 @@ export const useCacheInvalidation = () => {
       });
     }
     
-    // Refetch todas las queries de tasks
-    queryClient.refetchQueries({ 
-      queryKey: ['tasks'],
-      predicate: (query) => {
-        const key = query.queryKey;
-        return key[0] === 'tasks';
-      }
-    });
+    // Note: No hacer refetch inmediato - dejar que las queries se refresquen cuando se necesiten
   };
 
   const invalidateCleaners = () => {
@@ -80,7 +70,7 @@ export const useCacheInvalidation = () => {
     if (sedeId) {
       queryClient.invalidateQueries({ queryKey: ['cleaners', sedeId] });
     }
-    queryClient.refetchQueries({ queryKey: ['cleaners'] });
+    // Note: Invalidación sin refetch inmediato
   };
 
   const invalidateProperties = () => {
@@ -91,7 +81,7 @@ export const useCacheInvalidation = () => {
     if (sedeId) {
       queryClient.invalidateQueries({ queryKey: ['properties', sedeId] });
     }
-    queryClient.refetchQueries({ queryKey: ['properties'] });
+    // Note: Invalidación sin refetch inmediato
   };
 
   const invalidateClients = () => {
@@ -102,7 +92,7 @@ export const useCacheInvalidation = () => {
     if (sedeId) {
       queryClient.invalidateQueries({ queryKey: ['clients', sedeId] });
     }
-    queryClient.refetchQueries({ queryKey: ['clients'] });
+    // Note: Invalidación sin refetch inmediato
   };
 
   const invalidateReports = () => {
@@ -113,7 +103,7 @@ export const useCacheInvalidation = () => {
     if (sedeId) {
       queryClient.invalidateQueries({ queryKey: ['task-reports', sedeId] });
     }
-    queryClient.refetchQueries({ queryKey: ['task-reports'] });
+    // Note: Invalidación sin refetch inmediato
   };
 
   return {
