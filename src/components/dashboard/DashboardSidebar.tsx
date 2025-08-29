@@ -95,7 +95,7 @@ const managementItems: NavigationItem[] = [
   },
   {
     title: 'Logística',
-    href: '/logistics/picklists',
+    href: '/logistics/dashboard',
     icon: Truck,
     permission: 'logistics'
   },
