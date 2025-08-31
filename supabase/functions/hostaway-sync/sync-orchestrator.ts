@@ -53,16 +53,16 @@ export class SyncOrchestrator {
     const accessToken = await getHostawayToken();
     console.log('✅ Token obtenido exitosamente');
 
-    // PASO 3: Calcular rango de fechas SIMPLIFICADO (HOY + 14 días)
+    // PASO 3: Calcular rango de fechas AMPLIADO (HOY + 30 días para capturar más reservas futuras)
     const today = new Date();
     const startDate = today.toISOString().split('T')[0]; // HOY
-    const endDate = new Date(today.getTime() + 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]; // HOY + 14 días
+    const endDate = new Date(today.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]; // HOY + 30 días
 
-    console.log(`📅 PASO 3: Período SIMPLIFICADO - Desde HOY (${startDate}) hasta ${endDate} (14 días)`);
-    console.log(`📅 OBJETIVO: Buscar reservas que hacen CHECKOUT en este período`);
+    console.log(`📅 PASO 3: Período AMPLIADO - Desde HOY (${startDate}) hasta ${endDate} (30 días)`);
+    console.log(`📅 OBJETIVO: Buscar reservas que hacen CHECKOUT en este período (ampliado para capturar más reservas futuras)`);
 
     // PASO 4: Obtener reservas de Hostaway (SOLO por checkout)
-    console.log(`📥 PASO 4: Obteniendo reservas con checkout desde HOY hasta +14 días`);
+    console.log(`📥 PASO 4: Obteniendo reservas con checkout desde HOY hasta +30 días`);
     const reservations = await fetchAllHostawayReservations(accessToken, startDate, endDate);
     console.log(`📊 TOTAL DE RESERVAS ENCONTRADAS: ${reservations.length}`);
 

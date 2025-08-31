@@ -34,10 +34,10 @@ Deno.serve(async (req) => {
       const stats = orchestrator.getStats();
       const cancellationSummary = orchestrator.getCancellationSummary();
       
-      // Calcular fechas para la respuesta
+      // Calcular fechas para la respuesta (ampliado a 30 días)
       const now = new Date();
       const startDate = now.toISOString().split('T')[0];
-      const endDate = new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+      const endDate = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
 
       const response = ResponseBuilder.buildSuccessResponse(
         stats,

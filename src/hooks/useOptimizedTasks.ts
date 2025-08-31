@@ -191,12 +191,19 @@ function filterTasksByView(tasks: Task[], currentDate: Date, currentView: ViewTy
       return tasks.filter(task => threeDayDates.includes(task.date));
     
     case 'week':
+      // Calculate the full week containing the current date (Monday to Sunday)
       const startOfWeek = new Date(currentDate);
-      const endOfWeek = new Date(currentDate);
-      endOfWeek.setDate(endOfWeek.getDate() + 6);
+      const dayOfWeek = startOfWeek.getDay(); // 0 = Sunday, 1 = Monday, etc.
+      const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek; // If Sunday, go back 6 days; otherwise, go to Monday
+      startOfWeek.setDate(startOfWeek.getDate() + mondayOffset);
+      
+      const endOfWeek = new Date(startOfWeek);
+      endOfWeek.setDate(endOfWeek.getDate() + 6); // Sunday is 6 days after Monday
       
       const startDateStr = startOfWeek.toISOString().split('T')[0];
       const endDateStr = endOfWeek.toISOString().split('T')[0];
+      
+      console.log(`📅 Week view filter: ${startDateStr} to ${endDateStr} (current date: ${currentDate.toISOString().split('T')[0]})`);
       
       return tasks.filter(task => task.date >= startDateStr && task.date <= endDateStr);
     
