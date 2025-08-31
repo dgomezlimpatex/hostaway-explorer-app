@@ -10,21 +10,14 @@ export const isCleanerAvailableAtTime = (
 ): { available: boolean; reason?: string } => {
   const dayOfWeek = date.getDay(); // 0=Domingo, 1=Lunes, ..., 6=Sábado
   
-  console.log('🔍 isCleanerAvailableAtTime called with:', {
-    cleanerId,
-    date: date.toISOString(),
-    dayOfWeek,
-    startTime,
-    endTime,
-    availabilityRecords: availability.length
-  });
+  // Removed excessive availability check logging
   
   // Buscar la disponibilidad para este trabajador en este día
   const dayAvailability = availability.find(
     avail => avail.cleaner_id === cleanerId && avail.day_of_week === dayOfWeek
   );
 
-  console.log('📅 Found availability record:', dayAvailability);
+  // Removed excessive availability record logging
 
   // Si no hay configuración para este día, asumimos que NO está disponible por defecto
   if (!dayAvailability) {
@@ -37,7 +30,6 @@ export const isCleanerAvailableAtTime = (
 
   // Si está marcado como no disponible
   if (!dayAvailability.is_available) {
-    console.log('❌ Marked as not available');
     return { 
       available: false, 
       reason: 'No disponible este día' 
@@ -49,7 +41,6 @@ export const isCleanerAvailableAtTime = (
   const availableEnd = dayAvailability.end_time;
 
   if (!availableStart || !availableEnd) {
-    console.log('❌ No start/end time configured');
     return { 
       available: false, 
       reason: 'Horarios no configurados' 
@@ -61,24 +52,15 @@ export const isCleanerAvailableAtTime = (
   const availStart = timeToMinutes(availableStart);
   const availEnd = timeToMinutes(availableEnd);
 
-  console.log('⏰ Time comparison:', {
-    taskStart,
-    taskEnd,
-    availStart,
-    availEnd,
-    taskStartOk: taskStart >= availStart,
-    taskEndOk: taskEnd <= availEnd
-  });
+  // Removed excessive time comparison logging
 
   if (taskStart < availStart || taskEnd > availEnd) {
-    console.log('❌ Outside available hours');
     return { 
       available: false, 
       reason: `Disponible solo de ${availableStart} a ${availableEnd}` 
     };
   }
 
-  console.log('✅ Available');
   return { available: true };
 };
 

@@ -60,8 +60,7 @@ const CleanerRow = memo(({
   isTimeSlotOccupied: (cleanerId: string, hour: number, minute: number) => boolean;
   cleaners: Cleaner[];
 }) => {
-  console.log('🔍 CleanerRow - checking availability for:', cleaner.name, 'on date:', currentDate);
-  console.log('📊 CleanerRow - available data:', availability);
+  // Removed excessive availability logging
 
   // Function to check if a time slot is within available hours
   const isTimeSlotAvailable = useMemo(() => {
@@ -77,7 +76,7 @@ const CleanerRow = memo(({
         availability
       );
       
-      console.log(`⏰ TimeSlot check for ${cleaner.name} at ${timeString}:`, availabilityCheck);
+      // Removed excessive timeslot logging
       
       return availabilityCheck.available;
     };
@@ -90,7 +89,7 @@ const CleanerRow = memo(({
       const isOccupied = isTimeSlotOccupied(cleaner.id, hour, minute);
       const isAvailable = isTimeSlotAvailable(hour, minute);
       
-      console.log(`🎯 TimeSlot ${time} for ${cleaner.name}: occupied=${isOccupied}, available=${isAvailable}`);
+      // Removed excessive timeslot status logging
       
       return (
         <TimeSlot
