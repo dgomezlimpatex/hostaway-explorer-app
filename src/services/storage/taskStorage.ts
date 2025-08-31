@@ -123,7 +123,7 @@ export class TaskStorageService extends BaseStorageService<Task, TaskCreateData>
     // Check for recurring tasks that might be causing the issue
     const recurringTasks = await checkRecurringTasks();
     
-    // FIXED: Query without any limit to get all tasks
+    // FIXED: Query with explicit limit of 15000 tasks to override Supabase default
     const { data, error } = await supabase
       .from('tasks')
       .select(`
@@ -134,7 +134,8 @@ export class TaskStorageService extends BaseStorageService<Task, TaskCreateData>
       `)
       .eq('sede_id', sedeId)
       .order('date', { ascending: true })
-      .order('start_time', { ascending: true });
+      .order('start_time', { ascending: true })
+      .limit(15000);
 
     if (error) {
       console.error('❌ Error fetching tasks:', error);
