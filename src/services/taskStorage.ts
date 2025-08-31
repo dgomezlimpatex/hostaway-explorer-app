@@ -17,31 +17,12 @@ export const taskStorageService = {
     userRole?: string;
     sedeId?: string;
   }): Promise<Task[]> => {
-    const now = Date.now();
-    const cacheKey = JSON.stringify(options || {});
+    console.log('🚀 FORCING FRESH QUERY - bypassing cache');
     
-    // Use different cache for different options
-    if (lastFetchPromise && now - lastFetchTime < CACHE_DURATION) {
-      console.log('📋 taskStorage - reusing existing request');
-      return lastFetchPromise;
-    }
-    
-    // Create new request with options
-    lastFetchTime = now;
-    lastFetchPromise = baseTaskStorage.getTasks(options);
-    
-    try {
-      const result = await lastFetchPromise;
-      console.log(`📋 taskStorage - loaded ${result.length} tasks with options:`, options);
-      return result;
-    } finally {
-      // Clear the promise after a short delay to allow reuse
-      setTimeout(() => {
-        if (lastFetchPromise && Date.now() - lastFetchTime >= CACHE_DURATION) {
-          lastFetchPromise = null;
-        }
-      }, CACHE_DURATION);
-    }
+    // Force fresh query without cache for debugging
+    const result = await baseTaskStorage.getTasks(options);
+    console.log(`📋 taskStorage - FRESH QUERY loaded ${result.length} tasks with options:`, options);
+    return result;
   },
   createTask: (task: Omit<Task, 'id' | 'created_at' | 'updated_at'>) => baseTaskStorage.createTask(task),
   updateTask: (taskId: string, updates: Partial<Task>) => baseTaskStorage.updateTask(taskId, updates),

@@ -132,7 +132,7 @@ export class TaskStorageService extends BaseStorageService<Task, TaskCreateData>
     const { data, error } = await query
       .order('date', { ascending: true })
       .order('start_time', { ascending: true })
-      .limit(5000); // Aumentar límite para incluir todas las tareas
+      .limit(10000); // Límite muy alto para asegurar que obtengamos todas las tareas
 
     if (error) {
       console.error('❌ Error fetching tasks with reports and assignments:', error);
