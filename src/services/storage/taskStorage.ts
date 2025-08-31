@@ -202,6 +202,13 @@ export class TaskStorageService extends BaseStorageService<Task, TaskCreateData>
         status: finalStatus
       };
 
+      // FIXED: Check if we already added this task to prevent duplicates
+      const existingTaskIndex = mappedTasks.findIndex(t => t.id === task.id);
+      if (existingTaskIndex !== -1) {
+        console.log(`⚠️ DUPLICATE DETECTED: Task ${task.property} (${task.id}) already exists, skipping`);
+        return; // Skip this duplicate
+      }
+
       // Handle multiple assignments - FIXED: Don't create duplicate task instances
       if (task.task_assignments && task.task_assignments.length > 0) {
         // Combine all cleaner names separated by commas
