@@ -215,7 +215,19 @@ function filterTasksByView(tasks: Task[], currentDate: Date, currentView: ViewTy
   
   switch (currentView) {
     case 'day':
-      const dayTasks = tasks.filter(task => task.date === currentDateStr);
+      const dayTasks = tasks.filter(task => {
+        const matches = task.date === currentDateStr;
+        if (currentDateStr === '2025-09-08') {
+          console.log('🔍 DEBUG TASK DATE COMPARISON:', {
+            taskId: task.id?.substring(0, 8),
+            taskDate: task.date,
+            currentDateStr,
+            matches,
+            taskDateType: typeof task.date
+          });
+        }
+        return matches;
+      });
       console.log('📅 Day view filter result:', dayTasks.length, 'tasks for', currentDateStr);
       return dayTasks;
     
