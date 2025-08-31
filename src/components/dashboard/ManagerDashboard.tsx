@@ -18,7 +18,7 @@ import { TaskDetailsModal } from '@/components/modals/TaskDetailsModal';
 // Lazy load components for better performance
 const DashboardStatsCards = lazy(() => import('./components/DashboardStatsCards').then(module => ({ default: module.DashboardStatsCards })));
 const TodayTasksSection = lazy(() => import('./components/TodayTasksSection').then(module => ({ default: module.TodayTasksSection })));
-const DashboardMetricsCards = lazy(() => import('./components/DashboardMetricsCards'));
+import DashboardMetricsCards from './components/DashboardMetricsCards';
 const SecurityStatusWidget = lazy(() => import('@/components/admin/security/SecurityStatusWidget').then(module => ({ default: module.SecurityStatusWidget })));
 const HostawayIntegrationWidget = lazy(() => import('@/components/hostaway/HostawayIntegrationWidget').then(module => ({ default: module.HostawayIntegrationWidget })));
 
@@ -249,14 +249,12 @@ export const ManagerDashboard = () => {
                 />
               </Suspense>
 
-              {/* Bottom Row - Lazy loaded */}
-              <Suspense fallback={<ComponentLoader />}>
-                <DashboardMetricsCards 
-                  pendingIncidents={pendingIncidents}
-                  unassignedTasksCount={unassignedTasks.length}
-                  todayTasks={todayTasks}
-                />
-              </Suspense>
+              {/* Bottom Row - Direct import */}
+              <DashboardMetricsCards 
+                pendingIncidents={pendingIncidents}
+                unassignedTasksCount={unassignedTasks.length}
+                todayTasks={todayTasks}
+              />
             </div>
           </div>
           </main>
