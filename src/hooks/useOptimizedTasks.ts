@@ -209,6 +209,19 @@ async function filterTasksByUserRole(tasks: Task[], userRole: string | null, cur
 // Función helper optimizada para filtrar tareas
 function filterTasksByView(tasks: Task[], currentDate: Date, currentView: ViewType): Task[] {
   const currentDateStr = currentDate.toISOString().split('T')[0];
+  
+  // DEBUG: Log specific task that is causing issues
+  const problematicTask = tasks.find(t => t.property === 'Main Street Deluxe Penthouse A' && t.cleaner === 'Lilia Cañal');
+  if (problematicTask) {
+    console.log('🚨 DEBUGGING Main Street Deluxe Penthouse A task:', {
+      taskId: problematicTask.id,
+      taskDate: problematicTask.date,
+      currentDate: currentDateStr,
+      matches: problematicTask.date === currentDateStr,
+      status: problematicTask.status
+    });
+  }
+  
   console.log('🔍 filterTasksByView called:', {
     currentDateStr,
     currentView,
@@ -218,7 +231,14 @@ function filterTasksByView(tasks: Task[], currentDate: Date, currentView: ViewTy
   
   switch (currentView) {
     case 'day':
-      const dayTasks = tasks.filter(task => task.date === currentDateStr);
+      const dayTasks = tasks.filter(task => {
+        const matches = task.date === currentDateStr;
+        // Log specific task filtering
+        if (task.property === 'Main Street Deluxe Penthouse A' && task.cleaner === 'Lilia Cañal') {
+          console.log(`🎯 FILTERING Main Street task: date ${task.date} vs ${currentDateStr} = ${matches}`);
+        }
+        return matches;
+      });
       console.log('📅 Day view filter result:', dayTasks.length, 'tasks for', currentDateStr);
       return dayTasks;
     
