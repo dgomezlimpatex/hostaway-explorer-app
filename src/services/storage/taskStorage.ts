@@ -110,9 +110,17 @@ export class TaskStorageService extends BaseStorageService<Task, TaskCreateData>
 
     // Aplicar filtro por sede - usar parámetro si está disponible, sino localStorage
     const sedeId = options?.sedeId || getActiveSedeId();
+    console.log('🔥 CRITICAL SEDE FILTER DEBUG:', {
+      sedeIdFromParam: options?.sedeId,
+      sedeIdFromLocalStorage: getActiveSedeId(),
+      finalSedeId: sedeId,
+      willFilterBySede: !!sedeId
+    });
     if (sedeId) {
       query = query.eq('sede_id', sedeId);
-      console.log('📋 Filtering by sede_id:', sedeId);
+      console.log('📋 APPLYING SEDE FILTER - sede_id:', sedeId);
+    } else {
+      console.log('📋 NO SEDE FILTER APPLIED - will show all tasks');
     }
 
     // Optimización para limpiadores: filtrar en BD por fecha
