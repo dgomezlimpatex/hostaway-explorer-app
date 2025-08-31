@@ -64,16 +64,9 @@ export const useOptimizedTasks = ({
         console.log('📅 Date range of cleaner tasks:', optimizedTasks.length > 0 ? 
           `${optimizedTasks[0]?.date} to ${optimizedTasks[optimizedTasks.length-1]?.date}` : 'No tasks');
         
-        // For cleaners in mobile, we want ALL tasks so they can navigate through future dates
-        // Only apply view filtering for desktop cleaners or non-day views
-        if (currentView === 'day') {
-          // Return all cleaner tasks for mobile navigation, let the mobile component filter by selected date
-          return await filterTasksByUserRole(optimizedTasks, userRole, currentCleanerId, cleaners);
-        } else {
-          // For week/three-day views, apply the view filtering
-          const viewFiltered = filterTasksByView(optimizedTasks, currentDate, currentView);
-          return await filterTasksByUserRole(viewFiltered, userRole, currentCleanerId, cleaners);
-        }
+        // For cleaners, ALWAYS return ALL their tasks so they can see upcoming tasks
+        // Let the UI components (calendar, tasks page) handle filtering by current date if needed
+        return await filterTasksByUserRole(optimizedTasks, userRole, currentCleanerId, cleaners);
       }
       
       // For non-cleaners, ALWAYS fetch fresh data after forced invalidation
