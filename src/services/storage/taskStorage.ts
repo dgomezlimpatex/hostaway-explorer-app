@@ -131,22 +131,21 @@ export class TaskStorageService extends BaseStorageService<Task, TaskCreateData>
 
     console.log('🚨 CRITICAL FIX - Fetching ALL tasks without ANY limits');
     
-    // SOLUCIÓN DEFINITIVA: Hacer múltiples consultas si es necesario
+    // FIXED: Use separate queries to avoid CARTESIAN PRODUCT that creates duplicates
     let allTasks: any[] = [];
     let offset = 0;
-    const batchSize = 900; // Usar 900 para estar seguro bajo el límite de 1000
+    const batchSize = 900;
     let hasMore = true;
     
     while (hasMore) {
       console.log(`🔄 Fetching batch starting at offset ${offset}`);
       
+      // STEP 1: Get base tasks data only (no JOINs to avoid cartesian product)
       let batchQuery = supabase
         .from('tasks')
         .select(`
           *,
-          task_reports(overall_status),
-          properties!tasks_propiedad_id_fkey(codigo),
-          task_assignments(id, cleaner_id, cleaner_name)
+          properties!tasks_propiedad_id_fkey(codigo)
         `)
         .eq('sede_id', sedeId || getActiveSedeId())
         .order('date', { ascending: true })
@@ -164,17 +163,39 @@ export class TaskStorageService extends BaseStorageService<Task, TaskCreateData>
         hasMore = false;
         console.log(`✅ No more data. Total fetched: ${allTasks.length}`);
       } else {
-        allTasks = allTasks.concat(batchData);
+        // STEP 2: For each task, get assignments and reports separately
+        const tasksWithRelations = await Promise.all(
+          batchData.map(async (task) => {
+            // Get task assignments
+            const { data: assignments } = await supabase
+              .from('task_assignments')
+              .select('id, cleaner_id, cleaner_name')
+              .eq('task_id', task.id);
+            
+            // Get task reports
+            const { data: reports } = await supabase
+              .from('task_reports')
+              .select('overall_status')
+              .eq('task_id', task.id);
+            
+            return {
+              ...task,
+              task_assignments: assignments || [],
+              task_reports: reports || []
+            };
+          })
+        );
+        
+        allTasks = allTasks.concat(tasksWithRelations);
         console.log(`📦 Batch fetched: ${batchData.length} tasks. Total so far: ${allTasks.length}`);
         
         if (batchData.length < batchSize) {
-          hasMore = false; // Si obtuvimos menos del tamaño del lote, no hay más datos
+          hasMore = false;
         } else {
           offset += batchSize;
         }
       }
       
-      // Safeguard para evitar loops infinitos
       if (offset > 50000) {
         console.warn('⚠️ Reached maximum offset, stopping');
         break;
