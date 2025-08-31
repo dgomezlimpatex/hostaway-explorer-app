@@ -129,17 +129,59 @@ export class TaskStorageService extends BaseStorageService<Task, TaskCreateData>
       console.log('📋 Will filter by cleaner after fetching results:', options.cleanerId);
     }
 
-    console.log('🔍 EXECUTING QUERY WITH DEBUG - about to fetch with limit 15000');
+    console.log('🚨 CRITICAL FIX - Fetching ALL tasks without ANY limits');
     
-    const { data, error } = await query
-      .order('date', { ascending: true })
-      .order('start_time', { ascending: true })
-      .range(0, 14999); // Usar range en lugar de limit para forzar más de 1000
+    // SOLUCIÓN DEFINITIVA: Hacer múltiples consultas si es necesario
+    let allTasks: any[] = [];
+    let offset = 0;
+    const batchSize = 900; // Usar 900 para estar seguro bajo el límite de 1000
+    let hasMore = true;
+    
+    while (hasMore) {
+      console.log(`🔄 Fetching batch starting at offset ${offset}`);
+      
+      let batchQuery = supabase
+        .from('tasks')
+        .select(`
+          *,
+          task_reports(overall_status),
+          properties!tasks_propiedad_id_fkey(codigo),
+          task_assignments(id, cleaner_id, cleaner_name)
+        `)
+        .eq('sede_id', sedeId || getActiveSedeId())
+        .order('date', { ascending: true })
+        .order('start_time', { ascending: true })
+        .range(offset, offset + batchSize - 1);
 
-    if (error) {
-      console.error('❌ Error fetching tasks with reports and assignments:', error);
-      throw error;
+      const { data: batchData, error: batchError } = await batchQuery;
+      
+      if (batchError) {
+        console.error('❌ Error fetching batch:', batchError);
+        throw batchError;
+      }
+      
+      if (!batchData || batchData.length === 0) {
+        hasMore = false;
+        console.log(`✅ No more data. Total fetched: ${allTasks.length}`);
+      } else {
+        allTasks = allTasks.concat(batchData);
+        console.log(`📦 Batch fetched: ${batchData.length} tasks. Total so far: ${allTasks.length}`);
+        
+        if (batchData.length < batchSize) {
+          hasMore = false; // Si obtuvimos menos del tamaño del lote, no hay más datos
+        } else {
+          offset += batchSize;
+        }
+      }
+      
+      // Safeguard para evitar loops infinitos
+      if (offset > 50000) {
+        console.warn('⚠️ Reached maximum offset, stopping');
+        break;
+      }
     }
+    
+    const data = allTasks;
 
     // Map and sync task status with report status, handle multiple assignments
     const mappedTasks: Task[] = [];
