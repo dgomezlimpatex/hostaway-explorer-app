@@ -123,24 +123,47 @@ export class TaskStorageService extends BaseStorageService<Task, TaskCreateData>
     // Check for recurring tasks that might be causing the issue
     const recurringTasks = await checkRecurringTasks();
     
-    // FIXED: Query with explicit limit of 15000 tasks to override Supabase default
-    const { data, error } = await supabase
-      .from('tasks')
-      .select(`
-        *,
-        properties!tasks_propiedad_id_fkey(codigo),
-        task_reports(overall_status),
-        task_assignments(id, cleaner_id, cleaner_name)
-      `)
-      .eq('sede_id', sedeId)
-      .order('date', { ascending: true })
-      .order('start_time', { ascending: true })
-      .limit(15000);
+    // FIXED: Use pagination to get ALL tasks beyond Supabase's 1000 record limit
+    let allTasks: any[] = [];
+    let hasMore = true;
+    let offset = 0;
+    const batchSize = 1000;
+    
+    while (hasMore) {
+      const { data: batchData, error } = await supabase
+        .from('tasks')
+        .select(`
+          *,
+          properties!tasks_propiedad_id_fkey(codigo),
+          task_reports(overall_status),
+          task_assignments(id, cleaner_id, cleaner_name)
+        `)
+        .eq('sede_id', sedeId)
+        .order('date', { ascending: true })
+        .order('start_time', { ascending: true })
+        .range(offset, offset + batchSize - 1);
 
-    if (error) {
-      console.error('❌ Error fetching tasks:', error);
-      throw error;
+      if (error) {
+        console.error('❌ Error fetching tasks batch:', error);
+        throw error;
+      }
+
+      if (!batchData || batchData.length === 0) {
+        hasMore = false;
+      } else {
+        allTasks = [...allTasks, ...batchData];
+        offset += batchSize;
+        
+        // If we got less than batchSize, we've reached the end
+        if (batchData.length < batchSize) {
+          hasMore = false;
+        }
+        
+        console.log(`📦 Fetched batch: ${batchData.length} tasks, total so far: ${allTasks.length}`);
+      }
     }
+    
+    const data = allTasks;
 
     console.log(`📦 Fetched ${data?.length || 0} task records from database`);
     
