@@ -90,21 +90,18 @@ export const useTasks = (currentDate: Date, currentView: ViewType) => {
     onSuccess: (data) => {
       console.log('✅ useTasks - createTaskMutation onSuccess:', data);
       
-      // Invalidate ALL task-related queries with broader pattern
-      queryClient.invalidateQueries({ 
+      // Force invalidate ALL task-related queries (more aggressive)
+      queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      
+      // Remove specific cached queries to force complete refresh
+      queryClient.removeQueries({ 
         predicate: (query) => {
-          return Array.isArray(query.queryKey) && 
-                 query.queryKey[0] === 'tasks';
+          const key = query.queryKey;
+          return Array.isArray(key) && key[0] === 'tasks';
         }
       });
       
-      // Immediate cache removal to force refetch
-      queryClient.removeQueries({ 
-        predicate: (query) => {
-          return Array.isArray(query.queryKey) && 
-                 query.queryKey[0] === 'tasks';
-        }
-      });
+      console.log('🔄 useTasks - Invalidated and removed all task caches after create');
     },
     onError: (error) => {
       console.error('❌ useTasks - createTaskMutation onError:', error);

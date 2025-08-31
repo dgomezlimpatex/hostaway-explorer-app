@@ -64,18 +64,12 @@ export const useOptimizedTasks = ({
         return await filterTasksByUserRole(viewFiltered, userRole, currentCleanerId, cleaners);
       }
       
-      // For non-cleaners, use cached approach
-      const sedeId = activeSede?.id || 'no-sede';
-      const cachedAllTasks = queryClient.getQueryData(['tasks', 'all', sedeId]);
-      if (cachedAllTasks) {
-        console.log('📋 Using cached tasks:', (cachedAllTasks as Task[]).length, 'tasks');
-        const filteredByView = filterTasksByView(cachedAllTasks as Task[], currentDate, currentView);
-        console.log('📋 After view filtering:', filteredByView.length, 'tasks for', currentDate.toISOString().split('T')[0]);
-        return await filterTasksByUserRole(filteredByView, userRole, currentCleanerId, cleaners);
-      }
+      // For non-cleaners, ALWAYS fetch fresh data after forced invalidation
+      console.log('📋 Skipping cache to ensure fresh data after task operations');
 
       // Si no hay cache, obtener todas las tareas y cachearlas por sede
       console.log('📋 No cache found, fetching all tasks from database');
+      const sedeId = activeSede?.id || 'no-sede';
       const allTasks = await taskStorageService.getTasks();
       console.log('📋 Fetched tasks from database:', allTasks.length, 'tasks');
       queryClient.setQueryData(['tasks', 'all', sedeId], allTasks);
