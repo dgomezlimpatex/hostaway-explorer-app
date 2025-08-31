@@ -240,8 +240,20 @@ function filterTasksByView(tasks: Task[], currentDate: Date, currentView: ViewTy
         }
         return matches;
       });
-      console.log('📅 Day view filter result:', dayTasks.length, 'tasks for', currentDateStr);
-      return dayTasks;
+  console.log('📅 Day view filter result:', dayTasks.length, 'tasks for', currentDateStr);
+  
+  // DEBUG: Log what tasks are actually being returned for rendering
+  if (currentDateStr === '2025-09-01') {
+    console.log('🎯 TASKS BEING RETURNED FOR SEPT 1:', dayTasks.map(t => ({
+      id: t.id,
+      property: t.property,
+      cleaner: t.cleaner,
+      date: t.date,
+      status: t.status
+    })));
+  }
+  
+  return dayTasks;
     
     case 'three-day':
       const threeDayDates = Array.from({ length: 3 }, (_, i) => {
