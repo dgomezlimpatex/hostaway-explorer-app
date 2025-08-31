@@ -202,14 +202,7 @@ export class TaskStorageService extends BaseStorageService<Task, TaskCreateData>
         status: finalStatus
       };
 
-      // FIXED: Check if we already added this task to prevent duplicates
-      const existingTaskIndex = mappedTasks.findIndex(t => t.id === task.id);
-      if (existingTaskIndex !== -1) {
-        console.log(`⚠️ DUPLICATE DETECTED: Task ${task.property} (${task.id}) already exists, skipping`);
-        return; // Skip this duplicate
-      }
-
-      // Handle multiple assignments - FIXED: Don't create duplicate task instances
+      // Handle multiple assignments - combine all cleaners into one task
       if (task.task_assignments && task.task_assignments.length > 0) {
         // Combine all cleaner names separated by commas
         const allCleanerNames = task.task_assignments.map(a => a.cleaner_name).join(', ');
@@ -229,11 +222,13 @@ export class TaskStorageService extends BaseStorageService<Task, TaskCreateData>
         const mappedTask = taskStorageConfig.mapFromDB(taskData);
         mappedTasks.push(mappedTask);
         
-        console.log(`✅ Task ${task.property} (${task.date}) mapped with ${task.task_assignments.length} assignments: ${allCleanerNames}`);
+        console.log(`✅ Task ${task.property} (${task.date}) - ID: ${task.id} - mapped with ${task.task_assignments.length} assignments: ${allCleanerNames}`);
       } else {
         // No specific assignments, use original task data
         const mappedTask = taskStorageConfig.mapFromDB(baseTaskData);
         mappedTasks.push(mappedTask);
+        
+        console.log(`✅ Task ${task.property} (${task.date}) - ID: ${task.id} - mapped without assignments`);
       }
     });
 

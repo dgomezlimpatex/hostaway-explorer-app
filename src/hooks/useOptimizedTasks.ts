@@ -210,15 +210,16 @@ async function filterTasksByUserRole(tasks: Task[], userRole: string | null, cur
 function filterTasksByView(tasks: Task[], currentDate: Date, currentView: ViewType): Task[] {
   const currentDateStr = currentDate.toISOString().split('T')[0];
   
-  // DEBUG: Log specific task that is causing issues
-  const problematicTask = tasks.find(t => t.property === 'Main Street Deluxe Penthouse A' && t.cleaner === 'Lilia Cañal');
-  if (problematicTask) {
-    console.log('🚨 DEBUGGING Main Street Deluxe Penthouse A task:', {
-      taskId: problematicTask.id,
-      taskDate: problematicTask.date,
-      currentDate: currentDateStr,
-      matches: problematicTask.date === currentDateStr,
-      status: problematicTask.status
+  // DEBUG: Log all tasks with their dates to identify the duplicate source
+  const problematicTasks = tasks.filter(t => t.property === 'Main Street Deluxe Penthouse A' && t.cleaner === 'Lilia Cañal');
+  if (problematicTasks.length > 0) {
+    console.log('🚨 DEBUGGING Main Street Deluxe Penthouse A tasks:', {
+      taskCount: problematicTasks.length,
+      tasks: problematicTasks.map(t => ({
+        id: t.id,
+        date: t.date,
+        status: t.status
+      }))
     });
   }
   
@@ -235,7 +236,7 @@ function filterTasksByView(tasks: Task[], currentDate: Date, currentView: ViewTy
         const matches = task.date === currentDateStr;
         // Log specific task filtering
         if (task.property === 'Main Street Deluxe Penthouse A' && task.cleaner === 'Lilia Cañal') {
-          console.log(`🎯 FILTERING Main Street task: date ${task.date} vs ${currentDateStr} = ${matches}`);
+          console.log(`🎯 FILTERING Main Street task: ID ${task.id}, date ${task.date} vs ${currentDateStr} = ${matches}`);
         }
         return matches;
       });
