@@ -50,9 +50,9 @@ export const useOptimizedTasks = ({
         activeSede: activeSede?.id
       });
 
-      // For cleaners, use optimized query that filters in the database by date only
+      // For cleaners, get ALL their tasks (not limited by current date for navigation)
       if (userRole === 'cleaner' && currentCleanerId) {
-        console.log('🔍 Using optimized cleaner query');
+        console.log('🔍 Using optimized cleaner query - fetching ALL cleaner tasks for navigation');
         const optimizedTasks = await taskStorageService.getTasks({
           cleanerId: currentCleanerId,
           includePastTasks: false,
@@ -60,9 +60,20 @@ export const useOptimizedTasks = ({
           sedeId: activeSede?.id // Pasar sede del contexto
         });
         
-        // Filter by current view (day, week, etc.) and cleaner assignment
-        const viewFiltered = filterTasksByView(optimizedTasks, currentDate, currentView);
-        return await filterTasksByUserRole(viewFiltered, userRole, currentCleanerId, cleaners);
+        console.log('📅 Cleaner tasks fetched:', optimizedTasks.length, 'tasks available');
+        console.log('📅 Date range of cleaner tasks:', optimizedTasks.length > 0 ? 
+          `${optimizedTasks[0]?.date} to ${optimizedTasks[optimizedTasks.length-1]?.date}` : 'No tasks');
+        
+        // For cleaners in mobile, we want ALL tasks so they can navigate through future dates
+        // Only apply view filtering for desktop cleaners or non-day views
+        if (currentView === 'day') {
+          // Return all cleaner tasks for mobile navigation, let the mobile component filter by selected date
+          return await filterTasksByUserRole(optimizedTasks, userRole, currentCleanerId, cleaners);
+        } else {
+          // For week/three-day views, apply the view filtering
+          const viewFiltered = filterTasksByView(optimizedTasks, currentDate, currentView);
+          return await filterTasksByUserRole(viewFiltered, userRole, currentCleanerId, cleaners);
+        }
       }
       
       // For non-cleaners, ALWAYS fetch fresh data after forced invalidation

@@ -80,22 +80,22 @@ const {
     if (userRole === 'cleaner') {
       console.log('Rendering mobile cleaner view');
       
-      // Calculate today's and tomorrow's tasks for the cleaner
+      // Calculate current day and tomorrow's tasks for the cleaner
       const currentDateStr = currentDate.toISOString().split('T')[0];
       
-      // Calculate tomorrow's date more simply
+      // Calculate tomorrow's date
       const tomorrowDate = new Date(currentDate);
       tomorrowDate.setDate(currentDate.getDate() + 1);
       const tomorrowDateStr = tomorrowDate.toISOString().split('T')[0];
       
-      // Filter tasks for the current cleaner (assuming tasks already filtered by role in hook)
+      // Filter tasks for current date and tomorrow - cleaner can navigate to see future tasks
       const todayTasks = tasks.filter(task => task.date === currentDateStr);
       const tomorrowTasks = tasks.filter(task => task.date === tomorrowDateStr);
       
-      console.log('Mobile cleaner - Today tasks:', todayTasks.length, 'Tomorrow tasks:', tomorrowTasks.length);
-      console.log('All tasks:', tasks.length, 'Current date:', currentDateStr, 'Tomorrow date:', tomorrowDateStr);
-      console.log('Tasks dates:', tasks.map(task => ({ id: task.id, date: task.date, property: task.property })));
-      console.log('Tomorrow tasks found:', tomorrowTasks.map(task => ({ id: task.id, date: task.date, property: task.property })));
+      console.log('Mobile cleaner - Tasks for', currentDateStr + ':', todayTasks.length, 'Tomorrow tasks:', tomorrowTasks.length);
+      console.log('All available tasks:', tasks.length, 'Date range:', tasks.length > 0 ? `${tasks[0]?.date} to ${tasks[tasks.length-1]?.date}` : 'No tasks');
+      console.log('Tasks dates available:', [...new Set(tasks.map(task => task.date))].sort());
+      console.log('Current date tasks found:', todayTasks.map(task => ({ id: task.id, date: task.date, property: task.property })));
       
       return (
         <>
