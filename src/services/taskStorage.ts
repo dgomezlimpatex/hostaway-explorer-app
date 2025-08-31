@@ -15,6 +15,7 @@ export const taskStorageService = {
     cleanerId?: string;
     includePastTasks?: boolean;
     userRole?: string;
+    sedeId?: string;
   }): Promise<Task[]> => {
     const now = Date.now();
     const cacheKey = JSON.stringify(options || {});

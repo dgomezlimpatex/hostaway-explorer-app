@@ -56,7 +56,8 @@ export const useOptimizedTasks = ({
         const optimizedTasks = await taskStorageService.getTasks({
           cleanerId: currentCleanerId,
           includePastTasks: false,
-          userRole: userRole
+          userRole: userRole,
+          sedeId: activeSede?.id // Pasar sede del contexto
         });
         
         // Filter by current view (day, week, etc.) and cleaner assignment
@@ -70,7 +71,9 @@ export const useOptimizedTasks = ({
       // Si no hay cache, obtener todas las tareas y cachearlas por sede
       console.log('📋 No cache found, fetching all tasks from database');
       const sedeId = activeSede?.id || 'no-sede';
-      const allTasks = await taskStorageService.getTasks();
+      const allTasks = await taskStorageService.getTasks({
+        sedeId: activeSede?.id // Pasar sede del contexto
+      });
       console.log('📋 Fetched tasks from database:', allTasks.length, 'tasks');
       queryClient.setQueryData(['tasks', 'all', sedeId], allTasks);
       

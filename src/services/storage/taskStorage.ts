@@ -79,6 +79,7 @@ export class TaskStorageService extends BaseStorageService<Task, TaskCreateData>
     cleanerId?: string;
     includePastTasks?: boolean;
     userRole?: string;
+    sedeId?: string; // Nuevo: recibir sede_id como parámetro
   }): Promise<Task[]> {
     console.log('📋 taskStorage - getTasks called with options:', options);
     
@@ -107,10 +108,11 @@ export class TaskStorageService extends BaseStorageService<Task, TaskCreateData>
         task_assignments(id, cleaner_id, cleaner_name)
       `);
 
-    // Aplicar filtro por sede
-    const activeSedeId = getActiveSedeId();
-    if (activeSedeId) {
-      query = query.eq('sede_id', activeSedeId);
+    // Aplicar filtro por sede - usar parámetro si está disponible, sino localStorage
+    const sedeId = options?.sedeId || getActiveSedeId();
+    if (sedeId) {
+      query = query.eq('sede_id', sedeId);
+      console.log('📋 Filtering by sede_id:', sedeId);
     }
 
     // Optimización para limpiadores: filtrar en BD por fecha
