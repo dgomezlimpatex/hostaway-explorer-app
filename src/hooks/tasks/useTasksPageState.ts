@@ -61,9 +61,19 @@ export const useTasksPageState = () => {
     console.log('useTasksPageState - invalidated task queries with centralized system');
   }, [invalidateTasks]);
 
-  // Filter and sort tasks
+  // Filter and sort tasks - FIXED: Better logging
   const filteredTasks = useMemo(() => {
-    return filterTasks(tasks, { 
+    console.log('🔍 Filtering tasks:', {
+      totalTasks: tasks.length,
+      userRole,
+      currentUserCleanerId,
+      currentUserName: profile?.full_name || profile?.email,
+      searchTerm,
+      showPastTasks,
+      filters
+    });
+    
+    const result = filterTasks(tasks, { 
       searchTerm, 
       showPastTasks, 
       userRole,
@@ -71,6 +81,10 @@ export const useTasksPageState = () => {
       currentUserId: currentUserCleanerId,
       ...filters 
     });
+    
+    console.log('📋 Tasks after filtering:', result.length, 'from', tasks.length);
+    
+    return result;
   }, [tasks, searchTerm, showPastTasks, userRole, filters, profile, currentUserCleanerId]);
 
   const sortedTasks = useMemo(() => {
