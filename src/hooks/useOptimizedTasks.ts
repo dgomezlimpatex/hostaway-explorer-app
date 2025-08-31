@@ -42,14 +42,12 @@ export const useOptimizedTasks = ({
   const query = useQuery({
     queryKey,
     queryFn: async () => {
-      console.log('🔥🔥🔥 CRITICAL SEDE DEBUG - useOptimizedTasks queryFn called:', {
+      console.log('🔥🔥🔥 FORCE QUERY EXECUTION - useOptimizedTasks queryFn called:', {
         currentDate: currentDate.toISOString().split('T')[0],
         currentView,
         userRole,
         currentCleanerId,
-        activeSede: activeSede?.id,
-        activeSedeFromContext: activeSede,
-        localStorageActiveSede: localStorage.getItem('activeSede')
+        activeSede: activeSede?.id
       });
 
       // For cleaners, use optimized query that filters in the database by date only
