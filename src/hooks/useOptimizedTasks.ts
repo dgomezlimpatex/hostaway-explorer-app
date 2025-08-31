@@ -42,6 +42,14 @@ export const useOptimizedTasks = ({
   const query = useQuery({
     queryKey,
     queryFn: async () => {
+      console.log('📅 useOptimizedTasks queryFn called:', {
+        currentDate: currentDate.toISOString().split('T')[0],
+        currentView,
+        userRole,
+        currentCleanerId,
+        activeSede: activeSede?.id
+      });
+
       // For cleaners, use optimized query that filters in the database by date only
       if (userRole === 'cleaner' && currentCleanerId) {
         console.log('🔍 Using optimized cleaner query');
@@ -60,15 +68,20 @@ export const useOptimizedTasks = ({
       const sedeId = activeSede?.id || 'no-sede';
       const cachedAllTasks = queryClient.getQueryData(['tasks', 'all', sedeId]);
       if (cachedAllTasks) {
+        console.log('📋 Using cached tasks:', (cachedAllTasks as Task[]).length, 'tasks');
         const filteredByView = filterTasksByView(cachedAllTasks as Task[], currentDate, currentView);
+        console.log('📋 After view filtering:', filteredByView.length, 'tasks for', currentDate.toISOString().split('T')[0]);
         return await filterTasksByUserRole(filteredByView, userRole, currentCleanerId, cleaners);
       }
 
       // Si no hay cache, obtener todas las tareas y cachearlas por sede
+      console.log('📋 No cache found, fetching all tasks from database');
       const allTasks = await taskStorageService.getTasks();
+      console.log('📋 Fetched tasks from database:', allTasks.length, 'tasks');
       queryClient.setQueryData(['tasks', 'all', sedeId], allTasks);
       
       const filteredByView = filterTasksByView(allTasks, currentDate, currentView);
+      console.log('📋 After view filtering (from DB):', filteredByView.length, 'tasks for', currentDate.toISOString().split('T')[0]);
       return await filterTasksByUserRole(filteredByView, userRole, currentCleanerId, cleaners);
     },
     staleTime: userRole === 'cleaner' ? 30000 : 0, // 30s cache for cleaners, 0 for others
@@ -177,10 +190,18 @@ async function filterTasksByUserRole(tasks: Task[], userRole: string | null, cur
 // Función helper optimizada para filtrar tareas
 function filterTasksByView(tasks: Task[], currentDate: Date, currentView: ViewType): Task[] {
   const currentDateStr = currentDate.toISOString().split('T')[0];
+  console.log('🔍 filterTasksByView called:', {
+    currentDateStr,
+    currentView,
+    totalTasks: tasks.length,
+    taskDates: tasks.map(t => t.date).slice(0, 10) // First 10 dates for debugging
+  });
   
   switch (currentView) {
     case 'day':
-      return tasks.filter(task => task.date === currentDateStr);
+      const dayTasks = tasks.filter(task => task.date === currentDateStr);
+      console.log('📅 Day view filter result:', dayTasks.length, 'tasks for', currentDateStr);
+      return dayTasks;
     
     case 'three-day':
       const threeDayDates = Array.from({ length: 3 }, (_, i) => {
@@ -188,7 +209,9 @@ function filterTasksByView(tasks: Task[], currentDate: Date, currentView: ViewTy
         date.setDate(date.getDate() + i);
         return date.toISOString().split('T')[0];
       });
-      return tasks.filter(task => threeDayDates.includes(task.date));
+      const threeDayTasks = tasks.filter(task => threeDayDates.includes(task.date));
+      console.log('📅 Three-day view filter result:', threeDayTasks.length, 'tasks for dates:', threeDayDates);
+      return threeDayTasks;
     
     case 'week':
       // Calculate the full week containing the current date (Monday to Sunday)
@@ -205,9 +228,12 @@ function filterTasksByView(tasks: Task[], currentDate: Date, currentView: ViewTy
       
       console.log(`📅 Week view filter: ${startDateStr} to ${endDateStr} (current date: ${currentDate.toISOString().split('T')[0]})`);
       
-      return tasks.filter(task => task.date >= startDateStr && task.date <= endDateStr);
+      const weekTasks = tasks.filter(task => task.date >= startDateStr && task.date <= endDateStr);
+      console.log('📅 Week view filter result:', weekTasks.length, 'tasks');
+      return weekTasks;
     
     default:
+      console.log('📅 Unknown view, returning all tasks:', tasks.length);
       return tasks;
   }
 }
