@@ -42,7 +42,7 @@ export const useOptimizedTasks = ({
   const query = useQuery({
     queryKey,
     queryFn: async () => {
-      console.log('📅 useOptimizedTasks queryFn called:', {
+      console.log('🔥🔥🔥 FORCE QUERY EXECUTION - useOptimizedTasks queryFn called:', {
         currentDate: currentDate.toISOString().split('T')[0],
         currentView,
         userRole,
@@ -84,21 +84,34 @@ export const useOptimizedTasks = ({
       console.log('📋 After view filtering (from DB):', filteredByView.length, 'tasks for', currentDate.toISOString().split('T')[0]);
       return await filterTasksByUserRole(filteredByView, userRole, currentCleanerId, cleaners);
     },
-    staleTime: userRole === 'cleaner' ? 30000 : 0, // 30s cache for cleaners, 0 for others
-    gcTime: 5 * 60 * 1000, // 5 minutos
+    staleTime: 0, // Force no cache
+    gcTime: 0, // Force immediate garbage collection
     enabled: enabled && (userRole !== 'cleaner' || currentCleanerId !== null) && !!activeSede,
     refetchOnWindowFocus: true,
+    refetchOnMount: true, // Force refetch on mount
   });
   
   const { data: tasks = [], isLoading, error } = query;
 
   // Función optimizada para filtrar tareas
   const filteredTasks = useMemo(() => {
-    if (!tasks) return [];
+    console.log('🔥 CRITICAL DEBUG: filteredTasks calculation', {
+      tasksLength: tasks?.length || 0,
+      currentDateStr: currentDate.toISOString().split('T')[0],
+      firstFewTasks: tasks?.slice(0, 3).map(t => ({ date: t.date, property: t.property })) || []
+    });
+    
+    if (!tasks) {
+      console.log('🔥 CRITICAL: No tasks available');
+      return [];
+    }
     
     // Aplicar filtros adicionales si es necesario
-    return tasks.filter(task => task && task.date);
-  }, [tasks]);
+    const filtered = tasks.filter(task => task && task.date);
+    console.log('🔥 CRITICAL: After basic filtering:', filtered.length, 'tasks');
+    
+    return filtered;
+  }, [tasks, currentDate]);
 
   // Prefetch para las próximas fechas (solo para no-cleaners)
   const prefetchNextDates = useMemo(() => {
@@ -130,7 +143,16 @@ export const useOptimizedTasks = ({
     isLoading,
     isInitialLoading: isLoading && query.fetchStatus !== 'idle',
     error,
-    queryKey
+    queryKey,
+    
+    // DEBUG INFO
+    debugInfo: {
+      rawTasksCount: tasks?.length || 0,
+      filteredTasksCount: filteredTasks?.length || 0,
+      currentDateStr: currentDate.toISOString().split('T')[0],
+      userRole,
+      activeSede: activeSede?.id
+    }
   };
 };
 
