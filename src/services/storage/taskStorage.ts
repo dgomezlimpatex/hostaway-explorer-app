@@ -98,111 +98,75 @@ export class TaskStorageService extends BaseStorageService<Task, TaskCreateData>
       }
     };
     
-    // Get tasks with a LEFT JOIN to task_reports, properties, and task_assignments
-    let query = supabase
+    // Check for recurring tasks that might be causing the issue
+    const checkRecurringTasks = async () => {
+      try {
+        const { data: recurringTasks } = await supabase
+          .from('recurring_tasks')
+          .select('*')
+          .ilike('name', '%Main Street Deluxe Penthouse A%')
+          .eq('is_active', true);
+        
+        if (recurringTasks && recurringTasks.length > 0) {
+          console.warn('🔄 FOUND ACTIVE RECURRING TASKS for Main Street:', recurringTasks);
+          return recurringTasks;
+        }
+      } catch (error) {
+        console.error('Error checking recurring tasks:', error);
+      }
+      return [];
+    };
+    
+    // Aplicar filtro por sede - usar parámetro si está disponible, sino localStorage
+    const sedeId = options?.sedeId || getActiveSedeId();
+    
+    // Check for recurring tasks that might be causing the issue
+    const recurringTasks = await checkRecurringTasks();
+    
+    // FIXED: Simple query to avoid cartesian products
+    const { data, error } = await supabase
       .from('tasks')
       .select(`
         *,
-        task_reports(overall_status),
         properties!tasks_propiedad_id_fkey(codigo),
+        task_reports(overall_status),
         task_assignments(id, cleaner_id, cleaner_name)
-      `);
+      `)
+      .eq('sede_id', sedeId)
+      .order('date', { ascending: true })
+      .order('start_time', { ascending: true });
 
-    // Aplicar filtro por sede - usar parámetro si está disponible, sino localStorage
-    const sedeId = options?.sedeId || getActiveSedeId();
-    if (sedeId) {
-      query = query.eq('sede_id', sedeId);
-      console.log('📋 Filtering by sede_id:', sedeId);
+    if (error) {
+      console.error('❌ Error fetching tasks:', error);
+      throw error;
     }
 
-    // Optimización para limpiadores: filtrar en BD por fecha
-    if (options?.cleanerId && options?.userRole === 'cleaner') {
-      console.log('📋 Applying cleaner-specific optimizations');
-      
-      // Filtrar por fecha si no se incluyen tareas pasadas
-      if (!options.includePastTasks) {
-        const today = new Date().toISOString().split('T')[0];
-        query = query.gte('date', today);
-        console.log('📋 Filtering tasks from date:', today);
-      }
-      
-      console.log('📋 Will filter by cleaner after fetching results:', options.cleanerId);
-    }
-
-    console.log('🚨 CRITICAL FIX - Fetching ALL tasks without ANY limits');
+    console.log(`📦 Fetched ${data?.length || 0} task records from database`);
     
-    // FIXED: Use separate queries to avoid CARTESIAN PRODUCT that creates duplicates
-    let allTasks: any[] = [];
-    let offset = 0;
-    const batchSize = 900;
-    let hasMore = true;
+    // Debugging: Check for the problematic task
+    const mainStreetTasks = (data || []).filter(task => 
+      task.property?.includes('Main Street Deluxe Penthouse A')
+    );
     
-    while (hasMore) {
-      console.log(`🔄 Fetching batch starting at offset ${offset}`);
+    if (mainStreetTasks.length > 0) {
+      console.log('🔍 FOUND Main Street Deluxe Penthouse A tasks:', {
+        count: mainStreetTasks.length,
+        tasks: mainStreetTasks.map(t => ({
+          id: t.id,
+          date: t.date,
+          property: t.property,
+          status: t.status,
+          assignments: t.task_assignments?.length || 0,
+          reports: t.task_reports?.length || 0
+        }))
+      });
       
-      // STEP 1: Get base tasks data only (no JOINs to avoid cartesian product)
-      let batchQuery = supabase
-        .from('tasks')
-        .select(`
-          *,
-          properties!tasks_propiedad_id_fkey(codigo)
-        `)
-        .eq('sede_id', sedeId || getActiveSedeId())
-        .order('date', { ascending: true })
-        .order('start_time', { ascending: true })
-        .range(offset, offset + batchSize - 1);
-
-      const { data: batchData, error: batchError } = await batchQuery;
-      
-      if (batchError) {
-        console.error('❌ Error fetching batch:', batchError);
-        throw batchError;
-      }
-      
-      if (!batchData || batchData.length === 0) {
-        hasMore = false;
-        console.log(`✅ No more data. Total fetched: ${allTasks.length}`);
-      } else {
-        // STEP 2: For each task, get assignments and reports separately
-        const tasksWithRelations = await Promise.all(
-          batchData.map(async (task) => {
-            // Get task assignments
-            const { data: assignments } = await supabase
-              .from('task_assignments')
-              .select('id, cleaner_id, cleaner_name')
-              .eq('task_id', task.id);
-            
-            // Get task reports
-            const { data: reports } = await supabase
-              .from('task_reports')
-              .select('overall_status')
-              .eq('task_id', task.id);
-            
-            return {
-              ...task,
-              task_assignments: assignments || [],
-              task_reports: reports || []
-            };
-          })
-        );
-        
-        allTasks = allTasks.concat(tasksWithRelations);
-        console.log(`📦 Batch fetched: ${batchData.length} tasks. Total so far: ${allTasks.length}`);
-        
-        if (batchData.length < batchSize) {
-          hasMore = false;
-        } else {
-          offset += batchSize;
-        }
-      }
-      
-      if (offset > 50000) {
-        console.warn('⚠️ Reached maximum offset, stopping');
-        break;
+      // Check if this might be from recurring tasks
+      const uniqueDates = [...new Set(mainStreetTasks.map(t => t.date))];
+      if (uniqueDates.length > 5) {
+        console.warn('⚠️ POSSIBLE RECURRING TASK ISSUE: Main Street task appears on multiple dates:', uniqueDates);
       }
     }
-    
-    const data = allTasks;
 
     // Map and sync task status with report status, handle multiple assignments
     const mappedTasks: Task[] = [];
