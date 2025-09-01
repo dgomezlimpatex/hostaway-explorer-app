@@ -199,10 +199,6 @@ export class TaskStorageService extends BaseStorageService<Task, TaskCreateData>
       
       // Sync task status: if has completed report but task status is not 'completed', prioritize report status
       const finalStatus = hasCompletedReport ? 'completed' : task.status;
-      
-      if (hasCompletedReport && task.status !== 'completed') {
-        console.log(`🔄 Task ${task.property} (${task.id}) has completed report but status is ${task.status}, updating to completed`);
-      }
 
       // Base task data
       const baseTaskData = {
