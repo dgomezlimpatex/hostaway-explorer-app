@@ -58,31 +58,19 @@ export const useTasksPageState = () => {
     lastRefetchRef.current = now;
     // Invalidar todas las queries de tareas con sistema centralizado
     invalidateTasks();
-    console.log('useTasksPageState - invalidated task queries with centralized system');
+    
   }, [invalidateTasks]);
 
-  // Filter and sort tasks - FIXED: Better logging
+  // Filter and sort tasks
   const filteredTasks = useMemo(() => {
-    console.log('🔍 Filtering tasks:', {
-      totalTasks: tasks.length,
-      userRole,
-      currentUserCleanerId,
-      currentUserName: profile?.full_name || profile?.email,
+    const result = filterTasks(tasks, {
       searchTerm,
       showPastTasks,
-      filters
-    });
-    
-    const result = filterTasks(tasks, { 
-      searchTerm, 
-      showPastTasks, 
       userRole,
       currentUserName: profile?.full_name || profile?.email,
       currentUserId: currentUserCleanerId,
       ...filters 
     });
-    
-    console.log('📋 Tasks after filtering:', result.length, 'from', tasks.length);
     
     return result;
   }, [tasks, searchTerm, showPastTasks, userRole, filters, profile, currentUserCleanerId]);

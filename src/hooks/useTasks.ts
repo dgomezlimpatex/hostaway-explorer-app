@@ -21,11 +21,9 @@ export const useTasks = (currentDate: Date, currentView: ViewType) => {
   // Mutación para eliminar TODAS las tareas usando el nuevo método
   const deleteAllTasksMutation = useMutation({
     mutationFn: async () => {
-      console.log('deleteAllTasksMutation - using taskStorageService.deleteAllTasks');
       return await taskStorageService.deleteAllTasks();
     },
     onSuccess: () => {
-      console.log('deleteAllTasksMutation - all tasks deleted successfully');
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
     },
     onError: (error) => {
@@ -75,13 +73,10 @@ export const useTasks = (currentDate: Date, currentView: ViewType) => {
 
   const createTaskMutation = useMutation({
     mutationFn: async (taskData: Omit<Task, 'id'>) => {
-      console.log('🔵 useTasks - createTaskMutation called with:', taskData);
       const result = await taskStorageService.createTask(taskData);
-      console.log('✅ useTasks - taskStorageService.createTask result:', result);
       
       // If a cleaner is assigned during creation, send assignment email
       if (result.cleanerId && result.cleaner) {
-        console.log('📧 Sending assignment email for newly created task with cleaner:', result.cleaner);
         await taskStorageService.assignTask(result.id, result.cleaner, result.cleanerId);
       }
       
@@ -116,13 +111,9 @@ export const useTasks = (currentDate: Date, currentView: ViewType) => {
       const currentTask = tasks.find(t => t.id === taskId || t.originalTaskId === taskId);
       const realTaskId = currentTask?.originalTaskId || taskId;
       
-      console.log('🗑️ useTasks - currentTask found:', currentTask);
-      console.log('🗑️ useTasks - realTaskId to delete:', realTaskId);
       
       // Delete the task directly - the taskCleanupService.deleteTask already handles sending cancellation emails
-      console.log('🗑️ useTasks - calling taskStorageService.deleteTask with realTaskId:', realTaskId);
       const result = await taskStorageService.deleteTask(realTaskId);
-      console.log('🗑️ useTasks - deleteTask result:', result);
       return result;
     },
     onSuccess: (data, taskId) => {

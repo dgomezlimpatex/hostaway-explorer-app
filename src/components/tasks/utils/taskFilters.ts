@@ -42,25 +42,14 @@ export const filterTasks = (tasks: Task[], filters: TaskFilters): Task[] => {
 
     // Role-based filtering - FIXED: Improved cleaner filtering
     if (filters.userRole === 'cleaner') {
-      console.log('🔍 Filtering tasks for cleaner:', {
-        taskId: task.id,
-        taskCleanerId: task.cleanerId,
-        taskCleaner: task.cleaner,
-        currentUserId: filters.currentUserId,
-        currentUserName: filters.currentUserName
-      });
-      
       // Cleaners see tasks assigned to them by ID or name
       const isAssignedById = task.cleanerId && task.cleanerId === filters.currentUserId;
       const isAssignedByName = task.cleaner && filters.currentUserName && 
                                task.cleaner.includes(filters.currentUserName);
       
       if (!isAssignedById && !isAssignedByName) {
-        console.log('🚫 Task filtered out - not assigned to cleaner');
         return false;
       }
-      
-      console.log('✅ Task passes cleaner filter');
     }
 
     // Filtro por estado

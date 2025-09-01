@@ -17,11 +17,7 @@ export const taskStorageService = {
     userRole?: string;
     sedeId?: string;
   }): Promise<Task[]> => {
-    console.log('🚀 FORCING FRESH QUERY - bypassing cache');
-    
-    // Force fresh query without cache for debugging
     const result = await baseTaskStorage.getTasks(options);
-    console.log(`📋 taskStorage - FRESH QUERY loaded ${result.length} tasks with options:`, options);
     return result;
   },
   createTask: (task: Omit<Task, 'id' | 'created_at' | 'updated_at'>) => baseTaskStorage.createTask(task),

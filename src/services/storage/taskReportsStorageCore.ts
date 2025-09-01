@@ -31,7 +31,6 @@ export class TaskReportsStorageService {
       `);
 
     if (activeSedeId) {
-      console.log('📋 Filtering task reports by sede through tasks:', activeSedeId);
       query = query.eq('tasks.sede_id', activeSedeId);
     }
 

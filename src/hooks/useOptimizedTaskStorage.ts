@@ -11,19 +11,16 @@ export const useOptimizedTaskStorage = () => {
   const optimizedGetTasks = useCallback(async () => {
     // Check if already fetching
     if (fetchingRef.current) {
-      console.log('📋 taskStorage - using existing fetch promise');
       return fetchingRef.current;
     }
 
     // Check cache first
     if (tasksCache && Date.now() - tasksCache.timestamp < CACHE_DURATION) {
-      console.log('📋 taskStorage - using cached data');
       return tasksCache.data;
     }
 
     // Create fetch promise
     fetchingRef.current = taskStorageService.getTasks();
-    console.log('📋 taskStorage - creating new fetch request');
 
     try {
       const data = await fetchingRef.current;
@@ -42,7 +39,6 @@ export const useOptimizedTaskStorage = () => {
   }, []);
 
   const invalidateCache = useCallback(() => {
-    console.log('📋 taskStorage - cache invalidated');
     tasksCache = null;
     fetchingRef.current = null;
   }, []);

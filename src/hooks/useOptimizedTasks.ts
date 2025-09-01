@@ -78,11 +78,9 @@ export const useOptimizedTasks = ({
       const allTasks = await taskStorageService.getTasks({
         sedeId: activeSede?.id // Pasar sede del contexto
       });
-      console.log('📋 Fetched tasks from database:', allTasks.length, 'tasks');
       queryClient.setQueryData(['tasks', 'all', sedeId], allTasks);
       
       const filteredByView = filterTasksByView(allTasks, currentDate, currentView);
-      console.log('📋 After view filtering (from DB):', filteredByView.length, 'tasks for', currentDate.toISOString().split('T')[0]);
       return await filterTasksByUserRole(filteredByView, userRole, currentCleanerId, cleaners);
     },
     staleTime: 0, // Force no cache
@@ -109,7 +107,6 @@ export const useOptimizedTasks = ({
     
     // Aplicar filtros adicionales si es necesario
     const filtered = tasks.filter(task => task && task.date);
-    console.log('🔥 CRITICAL: After basic filtering:', filtered.length, 'tasks');
     
     return filtered;
   }, [tasks, currentDate]);
@@ -161,11 +158,9 @@ export const useOptimizedTasks = ({
 async function filterTasksByUserRole(tasks: Task[], userRole: string | null, currentCleanerId: string | null, cleaners?: any[]): Promise<Task[]> {
   // If user is a cleaner, only show their assigned tasks
   if (userRole === 'cleaner' && currentCleanerId) {
-    console.log('🔍 Filtering tasks for cleaner:', currentCleanerId);
     const tasksForCleaner: Task[] = [];
     
     for (const task of tasks) {
-      console.log('📝 Checking task:', task.id, 'direct cleanerId:', task.cleanerId);
       
       // Check if task is directly assigned to this cleaner
       if (task.cleanerId === currentCleanerId) {
@@ -227,24 +222,10 @@ function filterTasksByView(tasks: Task[], currentDate: Date, currentView: ViewTy
     });
   }
   
-  console.log('🔍 filterTasksByView called:', {
-    currentDateStr,
-    currentView,
-    totalTasks: tasks.length,
-    taskDates: tasks.map(t => t.date).slice(0, 10) // First 10 dates for debugging
-  });
   
   switch (currentView) {
     case 'day':
-      const dayTasks = tasks.filter(task => {
-        const matches = task.date === currentDateStr;
-        // Log specific task filtering
-        if (task.property === 'Main Street Deluxe Penthouse A' && task.cleaner === 'Lilia Cañal') {
-          console.log(`🎯 FILTERING Main Street task: ID ${task.id}, date ${task.date} vs ${currentDateStr} = ${matches}`);
-        }
-        return matches;
-      });
-  console.log('📅 Day view filter result:', dayTasks.length, 'tasks for', currentDateStr);
+      const dayTasks = tasks.filter(task => task.date === currentDateStr);
   
   // DEBUG: Log what tasks are actually being returned for rendering
   if (currentDateStr === '2025-09-01') {

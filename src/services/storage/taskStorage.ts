@@ -81,7 +81,6 @@ export class TaskStorageService extends BaseStorageService<Task, TaskCreateData>
     userRole?: string;
     sedeId?: string; // Nuevo: recibir sede_id como parámetro
   }): Promise<Task[]> {
-    console.log('📋 taskStorage - getTasks called with options:', options);
     
     // Función helper para obtener la sede activa
     const getActiveSedeId = (): string | null => {
@@ -231,17 +230,12 @@ export class TaskStorageService extends BaseStorageService<Task, TaskCreateData>
         const mappedTask = taskStorageConfig.mapFromDB(taskData);
         mappedTasks.push(mappedTask);
         
-        console.log(`✅ Task ${task.property} (${task.date}) - ID: ${task.id} - mapped with ${task.task_assignments.length} assignments: ${allCleanerNames}`);
       } else {
         // No specific assignments, use original task data
         const mappedTask = taskStorageConfig.mapFromDB(baseTaskData);
         mappedTasks.push(mappedTask);
-        
-        console.log(`✅ Task ${task.property} (${task.date}) - ID: ${task.id} - mapped without assignments`);
       }
     });
-
-    console.log(`📋 taskStorage - returning ${mappedTasks.length} task instances (including multiple assignments), ${mappedTasks.filter(t => t.status === 'completed').length} completed`);
     return mappedTasks;
   }
 
