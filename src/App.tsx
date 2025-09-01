@@ -1,4 +1,5 @@
 
+import React, { Suspense } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -9,34 +10,43 @@ import { SedeContextProvider } from "@/contexts/SedeContextProvider";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { RoleProtectedRoute } from "@/components/auth/RoleProtectedRoute";
 import { useSessionTimeout } from "@/hooks/useSessionTimeout";
-import Index from "./pages/Index";
-import Auth from "./pages/Auth";
-import AcceptInvitation from "./pages/AcceptInvitation";
-import UserManagement from "./pages/UserManagement";
-import SedeManagement from "./pages/SedeManagement";
-import SecurityManagement from "./pages/SecurityManagement";
-import Calendar from "./pages/Calendar";
-import Tasks from "./pages/Tasks";
-import Clients from "./pages/Clients";
-import Properties from "./pages/Properties";
-import Workers from "./pages/Workers";
-import PropertyGroups from "./pages/PropertyGroups";
-import Reports from "./pages/Reports";
-import HostawaySyncLogs from "./pages/HostawaySyncLogs";
-import ChecklistTemplates from "./pages/ChecklistTemplates";
-import CleaningReports from "./pages/CleaningReports";
-import InventoryDashboard from "./pages/InventoryDashboard";
-import InventoryStock from "./pages/InventoryStock";
-import InventoryMovements from "./pages/InventoryMovements";
-import InventoryConfig from "./pages/InventoryConfig";
-import InventoryReports from "./pages/InventoryReports";
-import NotFound from "./pages/NotFound";
-import LogisticsPicklists from "./pages/LogisticsPicklists";
-import LogisticsPicklistDetails from "./pages/LogisticsPicklistDetails";
-import LogisticsPicklistEdit from "./pages/LogisticsPicklistEdit";
-import LogisticsDeliveries from "./pages/LogisticsDeliveries";
-import LogisticsDashboard from "./pages/LogisticsDashboard";
-import LogisticsReports from "./pages/LogisticsReports";
+
+// Lazy load pages for better First Contentful Paint
+const Index = React.lazy(() => import("./pages/Index"));
+const Auth = React.lazy(() => import("./pages/Auth"));
+const AcceptInvitation = React.lazy(() => import("./pages/AcceptInvitation"));
+const UserManagement = React.lazy(() => import("./pages/UserManagement"));
+const SedeManagement = React.lazy(() => import("./pages/SedeManagement"));
+const SecurityManagement = React.lazy(() => import("./pages/SecurityManagement"));
+const Calendar = React.lazy(() => import("./pages/Calendar"));
+const Tasks = React.lazy(() => import("./pages/Tasks"));
+const Clients = React.lazy(() => import("./pages/Clients"));
+const Properties = React.lazy(() => import("./pages/Properties"));
+const Workers = React.lazy(() => import("./pages/Workers"));
+const PropertyGroups = React.lazy(() => import("./pages/PropertyGroups"));
+const Reports = React.lazy(() => import("./pages/Reports"));
+const HostawaySyncLogs = React.lazy(() => import("./pages/HostawaySyncLogs"));
+const ChecklistTemplates = React.lazy(() => import("./pages/ChecklistTemplates"));
+const CleaningReports = React.lazy(() => import("./pages/CleaningReports"));
+const InventoryDashboard = React.lazy(() => import("./pages/InventoryDashboard"));
+const InventoryStock = React.lazy(() => import("./pages/InventoryStock"));
+const InventoryMovements = React.lazy(() => import("./pages/InventoryMovements"));
+const InventoryConfig = React.lazy(() => import("./pages/InventoryConfig"));
+const InventoryReports = React.lazy(() => import("./pages/InventoryReports"));
+const NotFound = React.lazy(() => import("./pages/NotFound"));
+const LogisticsPicklists = React.lazy(() => import("./pages/LogisticsPicklists"));
+const LogisticsPicklistDetails = React.lazy(() => import("./pages/LogisticsPicklistDetails"));
+const LogisticsPicklistEdit = React.lazy(() => import("./pages/LogisticsPicklistEdit"));
+const LogisticsDeliveries = React.lazy(() => import("./pages/LogisticsDeliveries"));
+const LogisticsDashboard = React.lazy(() => import("./pages/LogisticsDashboard"));
+const LogisticsReports = React.lazy(() => import("./pages/LogisticsReports"));
+
+// Loading component for better user experience
+const PageLoader = () => (
+  <div className="flex items-center justify-center min-h-screen">
+    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+  </div>
+);
 
 const queryClient = new QueryClient();
 
@@ -56,6 +66,7 @@ function App() {
               <Toaster />
               <Sonner />
             <BrowserRouter>
+            <Suspense fallback={<PageLoader />}>
             <Routes>
               <Route path="/auth" element={<Auth />} />
               {/* Ruta pública para aceptar invitaciones */}
@@ -235,6 +246,7 @@ function App() {
               } />
               <Route path="*" element={<NotFound />} />
             </Routes>
+            </Suspense>
           </BrowserRouter>
             </SecurityWrapper>
           </SedeContextProvider>

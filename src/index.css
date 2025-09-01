@@ -116,6 +116,8 @@
   body {
     @apply bg-background text-foreground;
     transition: background-color 0.3s ease, color 0.3s ease;
+    /* Font optimization for better FCP */
+    font-display: swap;
     /* Mejoras para móvil */
     -webkit-text-size-adjust: 100%;
     -webkit-font-smoothing: antialiased;
