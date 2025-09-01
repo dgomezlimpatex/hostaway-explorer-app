@@ -11,6 +11,73 @@
     <!-- Preconnect to external origins to reduce network latency -->
     <link rel="preconnect" href="https://qyipyygojlfhdghnraus.supabase.co">
     <link rel="dns-prefetch" href="https://qyipyygojlfhdghnraus.supabase.co">
+    
+    <!-- Critical CSS for First Contentful Paint optimization -->
+    <style>
+      :root {
+        --background: 0 0% 100%;
+        --foreground: 222.2 84% 4.9%;
+        --primary: 216 83% 56%;
+        --primary-foreground: 210 40% 98%;
+        --card: 0 0% 100%;
+        --card-foreground: 222.2 84% 4.9%;
+        --border: 214.3 31.8% 91.4%;
+        --muted: 210 40% 96.1%;
+        --muted-foreground: 215.4 16.3% 46.9%;
+      }
+      
+      .dark {
+        --background: 222.2 84% 4.9%;
+        --foreground: 210 40% 98%;
+        --card: 222.2 84% 4.9%;
+        --card-foreground: 210 40% 98%;
+        --border: 217.2 32.6% 17.5%;
+        --muted: 217.2 32.6% 17.5%;
+        --muted-foreground: 215 20.2% 65.1%;
+      }
+      
+      * {
+        border-color: hsl(var(--border));
+      }
+      
+      body {
+        background-color: hsl(var(--background));
+        color: hsl(var(--foreground));
+        font-family: system-ui, -apple-system, sans-serif;
+        margin: 0;
+        padding: 0;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+        font-display: swap;
+      }
+      
+      #root {
+        min-height: 100vh;
+      }
+      
+      /* Loading spinner for immediate feedback */
+      .initial-loader {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 100vh;
+        background-color: hsl(var(--background));
+      }
+      
+      .spinner {
+        width: 32px;
+        height: 32px;
+        border: 2px solid hsl(var(--muted));
+        border-top: 2px solid hsl(var(--primary));
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+      }
+      
+      @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+      }
+    </style>
 
     <meta property="og:title" content="Gestión Limpatex" />
     <meta property="og:description" content="Sistema de gestión de limpieza Limpatex" />
