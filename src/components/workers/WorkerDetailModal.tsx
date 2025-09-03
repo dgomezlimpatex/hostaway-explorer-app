@@ -10,13 +10,14 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Calendar, Clock, FileText, User, DollarSign, Phone } from 'lucide-react';
+import { Calendar, Clock, FileText, User, DollarSign, Phone, BarChart3 } from 'lucide-react';
 import { Cleaner } from '@/types/calendar';
 import { WorkerTimeTracking } from './WorkerTimeTracking';
 import { WorkerScheduleCalendar } from './WorkerScheduleCalendar'; 
 import { WorkerBasicInfo } from './WorkerBasicInfo';
 import { WorkerHoursOverview } from './WorkerHoursOverview';
 import { AlertsPanel } from './AlertsPanel';
+import { TaskTimeBreakdown } from './TaskTimeBreakdown';
 import { useWorkerHoursOverview } from '@/hooks/useWorkerAlerts';
 
 interface WorkerDetailModalProps {
@@ -107,7 +108,7 @@ export const WorkerDetailModal = ({ worker, open, onOpenChange }: WorkerDetailMo
 
           {/* Tabs principales */}
           <Tabs defaultValue="overview" className="flex-1">
-            <TabsList className="grid w-full grid-cols-5">
+            <TabsList className="grid w-full grid-cols-6">
               <TabsTrigger value="overview" className="flex items-center gap-2">
                 <Clock className="h-4 w-4" />
                 Resumen
@@ -115,6 +116,10 @@ export const WorkerDetailModal = ({ worker, open, onOpenChange }: WorkerDetailMo
               <TabsTrigger value="info" className="flex items-center gap-2">
                 <User className="h-4 w-4" />
                 Información
+              </TabsTrigger>
+              <TabsTrigger value="tasks" className="flex items-center gap-2">
+                <BarChart3 className="h-4 w-4" />
+                Tareas
               </TabsTrigger>
               <TabsTrigger value="schedule" className="flex items-center gap-2">
                 <Calendar className="h-4 w-4" />
@@ -162,6 +167,13 @@ export const WorkerDetailModal = ({ worker, open, onOpenChange }: WorkerDetailMo
 
             <TabsContent value="info" className="space-y-4">
               <WorkerBasicInfo worker={worker} />
+            </TabsContent>
+
+            <TabsContent value="tasks" className="space-y-4">
+              <TaskTimeBreakdown 
+                workerId={worker.id} 
+                workerName={worker.name}
+              />
             </TabsContent>
 
               <TabsContent value="schedule" className="space-y-4">
