@@ -118,15 +118,29 @@ export const WorkerDetailModal = ({ worker, open, onOpenChange }: WorkerDetailMo
             </TabsList>
 
             <TabsContent value="overview">
-              <WorkerHoursOverview 
-                overview={overview} 
-                workerName={worker.name}
-                showProjections={true}
-              />
+              {overview ? (
+                <WorkerHoursOverview 
+                  overview={overview} 
+                  workerName={worker.name}
+                  showProjections={true}
+                />
+              ) : (
+                <div className="text-center py-8 text-muted-foreground">
+                  <p>No hay datos de contrato disponibles</p>
+                  <p className="text-sm">Configure un contrato para ver el resumen de horas</p>
+                </div>
+              )}
             </TabsContent>
             
             <TabsContent value="alerts">
-              <AlertsPanel className="h-fit" />
+              {alerts.length > 0 ? (
+                <AlertsPanel className="h-fit" />
+              ) : (
+                <div className="text-center py-8 text-muted-foreground">
+                  <p>Sin alertas activas</p>
+                  <p className="text-sm">Todo funciona correctamente</p>
+                </div>
+              )}
             </TabsContent>
             
             <TabsContent value="tasks">
