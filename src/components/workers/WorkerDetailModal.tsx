@@ -19,6 +19,7 @@ import { WorkerHoursOverview } from './WorkerHoursOverview';
 import { AlertsPanel } from './AlertsPanel';
 import { TaskTimeBreakdown } from './TaskTimeBreakdown';
 import { SalaryCalculation } from './SalaryCalculation';
+import { VacationRequestsList } from './VacationRequestsList';
 import { useWorkerHoursOverview } from '@/hooks/useWorkerAlerts';
 
 interface WorkerDetailModalProps {
@@ -109,13 +110,14 @@ export const WorkerDetailModal = ({ worker, open, onOpenChange }: WorkerDetailMo
 
           {/* Tabs principales */}
           <Tabs defaultValue="overview" className="flex-1">
-            <TabsList className="grid w-full grid-cols-5">
-              <TabsTrigger value="overview">Resumen</TabsTrigger>
-              <TabsTrigger value="alerts">Alertas</TabsTrigger>
-              <TabsTrigger value="tasks">Tareas</TabsTrigger>
-              <TabsTrigger value="salary">Nómina</TabsTrigger>
-              <TabsTrigger value="contracts">Contratos</TabsTrigger>
-            </TabsList>
+        <TabsList className="grid w-full grid-cols-6">
+          <TabsTrigger value="overview">Resumen</TabsTrigger>
+          <TabsTrigger value="alerts">Alertas</TabsTrigger>
+          <TabsTrigger value="tasks">Tareas</TabsTrigger>
+          <TabsTrigger value="salary">Nómina</TabsTrigger>
+          <TabsTrigger value="vacations">Vacaciones</TabsTrigger>
+          <TabsTrigger value="contracts">Contratos</TabsTrigger>
+        </TabsList>
 
             <TabsContent value="overview">
               {overview ? (
@@ -152,6 +154,14 @@ export const WorkerDetailModal = ({ worker, open, onOpenChange }: WorkerDetailMo
             
             <TabsContent value="salary">
               <SalaryCalculation cleanerId={worker.id} cleanerName={worker.name} />
+            </TabsContent>
+            
+            <TabsContent value="vacations">
+              <VacationRequestsList 
+                cleanerId={worker.id} 
+                cleanerName={worker.name}
+                isManager={true}
+              />
             </TabsContent>
             
             <TabsContent value="contracts">
