@@ -100,11 +100,11 @@ export const ContractDetail: React.FC<ContractDetailProps> = ({
   };
 
   const calculateMonthlySalary = () => {
-    return (contract.hourlyRate * contract.contractHoursPerWeek * 4.33).toFixed(2);
+    return (contract.hourly_rate * contract.contract_hours_per_week * 4.33).toFixed(2);
   };
 
   const calculateAnnualSalary = () => {
-    return (contract.hourlyRate * contract.contractHoursPerWeek * 52).toFixed(2);
+    return (contract.hourly_rate * contract.contract_hours_per_week * 52).toFixed(2);
   };
 
   return (
@@ -128,8 +128,8 @@ export const ContractDetail: React.FC<ContractDetailProps> = ({
                 {getStatusIcon(contract.status)}
                 <span className="ml-2 capitalize">{contract.status}</span>
               </Badge>
-              <Badge className={getContractTypeColor(contract.type)}>
-                {getContractTypeLabel(contract.type)}
+              <Badge className={getContractTypeColor(contract.contract_type)}>
+                {getContractTypeLabel(contract.contract_type)}
               </Badge>
             </div>
             <div className="text-sm text-muted-foreground">
@@ -158,8 +158,8 @@ export const ContractDetail: React.FC<ContractDetailProps> = ({
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Tipo de Contrato:</span>
-                  <Badge className={getContractTypeColor(contract.type)} variant="outline">
-                    {getContractTypeLabel(contract.type)}
+                  <Badge className={getContractTypeColor(contract.contract_type)} variant="outline">
+                    {getContractTypeLabel(contract.contract_type)}
                   </Badge>
                 </div>
               </CardContent>
@@ -176,11 +176,11 @@ export const ContractDetail: React.FC<ContractDetailProps> = ({
               <CardContent className="space-y-3">
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Tarifa por Hora:</span>
-                  <span className="font-medium">€{contract.hourlyRate}</span>
+                  <span className="font-medium">€{contract.hourly_rate}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Horas Semanales:</span>
-                  <span>{contract.contractHoursPerWeek}h</span>
+                  <span>{contract.contract_hours_per_week}h</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Salario Mensual:</span>
@@ -207,25 +207,25 @@ export const ContractDetail: React.FC<ContractDetailProps> = ({
                 <div className="space-y-2">
                   <span className="text-sm text-muted-foreground">Fecha de Inicio</span>
                   <div className="font-medium">
-                    {format(new Date(contract.startDate), 'dd MMM yyyy', { locale: es })}
+                    {format(new Date(contract.start_date), 'dd MMM yyyy', { locale: es })}
                   </div>
                 </div>
                 
                 <div className="space-y-2">
                   <span className="text-sm text-muted-foreground">Fecha de Fin</span>
                   <div className="font-medium">
-                    {contract.endDate 
-                      ? format(new Date(contract.endDate), 'dd MMM yyyy', { locale: es })
+                    {contract.end_date 
+                      ? format(new Date(contract.end_date), 'dd MMM yyyy', { locale: es })
                       : 'Contrato Indefinido'
                     }
                   </div>
                 </div>
 
-                {contract.renewalDate && (
+                {contract.renewal_date && (
                   <div className="space-y-2">
                     <span className="text-sm text-muted-foreground">Renovación</span>
                     <div className="font-medium">
-                      {format(new Date(contract.renewalDate), 'dd MMM yyyy', { locale: es })}
+                      {format(new Date(contract.renewal_date), 'dd MMM yyyy', { locale: es })}
                     </div>
                   </div>
                 )}

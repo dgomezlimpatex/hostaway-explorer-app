@@ -9,9 +9,9 @@ export const useWorkerContracts = () => {
   });
 };
 
-export const useWorkerContract = (cleanerId: string) => {
+export const useCleanerContracts = (cleanerId: string) => {
   return useQuery({
-    queryKey: ['worker-contract', cleanerId],
+    queryKey: ['worker-contracts', cleanerId],
     queryFn: () => workerContractsStorage.getByCleanerId(cleanerId),
     enabled: !!cleanerId,
   });
@@ -19,8 +19,15 @@ export const useWorkerContract = (cleanerId: string) => {
 
 export const useActiveContracts = () => {
   return useQuery({
-    queryKey: ['active-contracts'],
+    queryKey: ['worker-contracts', 'active'],
     queryFn: () => workerContractsStorage.getActiveContracts(),
+  });
+};
+
+export const useContractsByStatus = (status: 'draft' | 'active' | 'expired' | 'terminated') => {
+  return useQuery({
+    queryKey: ['worker-contracts', 'status', status],
+    queryFn: () => workerContractsStorage.getByStatus(status),
   });
 };
 
@@ -29,9 +36,9 @@ export const useCreateWorkerContract = () => {
 
   return useMutation({
     mutationFn: (contractData: CreateWorkerContractData) => workerContractsStorage.create(contractData),
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['worker-contracts'] });
-      queryClient.invalidateQueries({ queryKey: ['active-contracts'] });
+      queryClient.invalidateQueries({ queryKey: ['worker-contracts', data.cleaner_id] });
       toast({
         title: "Contrato creado",
         description: "El contrato ha sido creado exitosamente.",
@@ -56,8 +63,7 @@ export const useUpdateWorkerContract = () => {
       workerContractsStorage.update(id, updates),
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['worker-contracts'] });
-      queryClient.invalidateQueries({ queryKey: ['worker-contract', data.cleanerId] });
-      queryClient.invalidateQueries({ queryKey: ['active-contracts'] });
+      queryClient.invalidateQueries({ queryKey: ['worker-contracts', data.cleaner_id] });
       toast({
         title: "Contrato actualizado",
         description: "El contrato ha sido actualizado exitosamente.",
@@ -74,24 +80,52 @@ export const useUpdateWorkerContract = () => {
   });
 };
 
-export const useDeactivateContract = () => {
+export const useActivateWorkerContract = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (id: string) => workerContractsStorage.deactivateContract(id),
-    onSuccess: () => {
+    mutationFn: ({ id, activatedBy }: { id: string; activatedBy: string }) => 
+      workerContractsStorage.activate(id, activatedBy),
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['worker-contracts'] });
-      queryClient.invalidateQueries({ queryKey: ['active-contracts'] });
+      queryClient.invalidateQueries({ queryKey: ['worker-contracts', data.cleaner_id] });
+      queryClient.invalidateQueries({ queryKey: ['worker-contracts', 'active'] });
       toast({
-        title: "Contrato desactivado",
-        description: "El contrato ha sido desactivado exitosamente.",
+        title: "Contrato activado",
+        description: "El contrato ha sido activado exitosamente.",
       });
     },
     onError: (error) => {
-      console.error('Deactivate contract error:', error);
+      console.error('Activate worker contract error:', error);
       toast({
         title: "Error",
-        description: "Ha ocurrido un error al desactivar el contrato.",
+        description: "Ha ocurrido un error al activar el contrato.",
+        variant: "destructive",
+      });
+    },
+  });
+};
+
+export const useTerminateWorkerContract = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ id, terminatedBy, notes }: { id: string; terminatedBy: string; notes?: string }) => 
+      workerContractsStorage.terminate(id, terminatedBy, notes),
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['worker-contracts'] });
+      queryClient.invalidateQueries({ queryKey: ['worker-contracts', data.cleaner_id] });
+      queryClient.invalidateQueries({ queryKey: ['worker-contracts', 'active'] });
+      toast({
+        title: "Contrato terminado",
+        description: "El contrato ha sido terminado.",
+      });
+    },
+    onError: (error) => {
+      console.error('Terminate worker contract error:', error);
+      toast({
+        title: "Error",
+        description: "Ha ocurrido un error al terminar el contrato.",
         variant: "destructive",
       });
     },
@@ -105,14 +139,13 @@ export const useDeleteWorkerContract = () => {
     mutationFn: (id: string) => workerContractsStorage.delete(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['worker-contracts'] });
-      queryClient.invalidateQueries({ queryKey: ['active-contracts'] });
       toast({
         title: "Contrato eliminado",
         description: "El contrato ha sido eliminado exitosamente.",
       });
     },
     onError: (error) => {
-      console.error('Delete contract error:', error);
+      console.error('Delete worker contract error:', error);
       toast({
         title: "Error",
         description: "Ha ocurrido un error al eliminar el contrato.",

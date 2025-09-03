@@ -1,133 +1,178 @@
 import { supabase } from '@/integrations/supabase/client';
-import { WorkerContract } from '@/types/calendar';
 import { BaseStorageService } from './baseStorage';
 
-export interface CreateWorkerContractData {
-  cleanerId: string;
-  contractType: 'full-time' | 'part-time' | 'temporary' | 'freelance';
-  startDate: string;
-  endDate?: string;
-  baseSalary: number;
-  hourlyRate?: number;
-  overtimeRate?: number;
-  vacationDaysPerYear?: number;
-  sickDaysPerYear?: number;
-  contractHoursPerWeek?: number;
-  paymentFrequency?: 'weekly' | 'biweekly' | 'monthly';
-  benefits?: Record<string, any>;
+export interface WorkerContract {
+  id: string;
+  cleaner_id: string;
+  contract_type: 'full-time' | 'part-time' | 'temporary' | 'freelance';
+  position: string;
+  department: string;
+  hourly_rate: number;
+  contract_hours_per_week: number;
+  start_date: string;
+  end_date?: string;
+  renewal_date?: string;
+  status: 'draft' | 'active' | 'expired' | 'terminated';
+  benefits: string[];
   notes?: string;
-  isActive?: boolean;
+  documents: Array<{
+    name: string;
+    url: string;
+    uploadDate: string;
+  }>;
+  created_by: string;
+  created_at: string;
+  updated_at: string;
 }
 
-export interface UpdateWorkerContractData extends Partial<CreateWorkerContractData> {}
+export interface CreateWorkerContractData {
+  cleaner_id: string;
+  contract_type: 'full-time' | 'part-time' | 'temporary' | 'freelance';
+  position: string;
+  department: string;
+  hourly_rate: number;
+  contract_hours_per_week: number;
+  start_date: string;
+  end_date?: string;
+  renewal_date?: string;
+  status?: 'draft' | 'active' | 'expired' | 'terminated';
+  benefits?: string[];
+  notes?: string;
+}
 
-// Database mapping functions
-const mapWorkerContractFromDB = (row: any): WorkerContract => ({
-  id: row.id,
-  created_at: row.created_at,
-  updated_at: row.updated_at,
-  cleanerId: row.cleaner_id,
-  contractType: row.contract_type,
-  startDate: row.start_date,
-  endDate: row.end_date,
-  baseSalary: row.base_salary,
-  hourlyRate: row.hourly_rate,
-  overtimeRate: row.overtime_rate,
-  vacationDaysPerYear: row.vacation_days_per_year,
-  sickDaysPerYear: row.sick_days_per_year,
-  contractHoursPerWeek: row.contract_hours_per_week,
-  paymentFrequency: row.payment_frequency,
-  benefits: row.benefits || {},
-  notes: row.notes,
-  isActive: row.is_active
-});
+export interface UpdateWorkerContractData {
+  contract_type?: 'full-time' | 'part-time' | 'temporary' | 'freelance';
+  position?: string;
+  department?: string;
+  hourly_rate?: number;
+  contract_hours_per_week?: number;
+  start_date?: string;
+  end_date?: string;
+  renewal_date?: string;
+  status?: 'draft' | 'active' | 'expired' | 'terminated';
+  benefits?: string[];
+  notes?: string;
+}
 
-const mapWorkerContractToDB = (contract: Partial<CreateWorkerContractData>): any => {
-  const updateData: any = {};
-  
-  if (contract.cleanerId !== undefined) updateData.cleaner_id = contract.cleanerId;
-  if (contract.contractType !== undefined) updateData.contract_type = contract.contractType;
-  if (contract.startDate !== undefined) updateData.start_date = contract.startDate;
-  if (contract.endDate !== undefined) updateData.end_date = contract.endDate;
-  if (contract.baseSalary !== undefined) updateData.base_salary = contract.baseSalary;
-  if (contract.hourlyRate !== undefined) updateData.hourly_rate = contract.hourlyRate;
-  if (contract.overtimeRate !== undefined) updateData.overtime_rate = contract.overtimeRate;
-  if (contract.vacationDaysPerYear !== undefined) updateData.vacation_days_per_year = contract.vacationDaysPerYear;
-  if (contract.sickDaysPerYear !== undefined) updateData.sick_days_per_year = contract.sickDaysPerYear;
-  if (contract.contractHoursPerWeek !== undefined) updateData.contract_hours_per_week = contract.contractHoursPerWeek;
-  if (contract.paymentFrequency !== undefined) updateData.payment_frequency = contract.paymentFrequency;
-  if (contract.benefits !== undefined) updateData.benefits = contract.benefits;
-  if (contract.notes !== undefined) updateData.notes = contract.notes;
-  if (contract.isActive !== undefined) updateData.is_active = contract.isActive;
-
-  return updateData;
+const mapWorkerContractFromDB = (row: any): WorkerContract => {
+  return {
+    id: row.id,
+    cleaner_id: row.cleaner_id,
+    contract_type: row.contract_type,
+    position: row.position,
+    department: row.department,
+    hourly_rate: parseFloat(row.hourly_rate),
+    contract_hours_per_week: row.contract_hours_per_week,
+    start_date: row.start_date,
+    end_date: row.end_date,
+    renewal_date: row.renewal_date,
+    status: row.status,
+    benefits: row.benefits || [],
+    notes: row.notes,
+    documents: row.documents || [],
+    created_by: row.created_by,
+    created_at: row.created_at,
+    updated_at: row.updated_at,
+  };
 };
 
-interface WorkerContractsStorageConfig {
-  tableName: 'worker_contracts';
-  mapFromDB: typeof mapWorkerContractFromDB;
-  mapToDB: typeof mapWorkerContractToDB;
-  enforceSedeFilter: boolean;
-}
+const mapWorkerContractToDB = (data: CreateWorkerContractData | UpdateWorkerContractData) => {
+  return {
+    ...data,
+    hourly_rate: data.hourly_rate?.toString(),
+  };
+};
 
-class WorkerContractsStorageService extends BaseStorageService<WorkerContract, CreateWorkerContractData> {
-  constructor() {
-    super({
-      tableName: 'worker_contracts',
-      mapFromDB: mapWorkerContractFromDB,
-      mapToDB: mapWorkerContractToDB,
-      enforceSedeFilter: false // No direct sede filter, filtered through cleaners
-    } as WorkerContractsStorageConfig);
-  }
-
-  async getByCleanerId(cleanerId: string): Promise<WorkerContract | null> {
+class WorkerContractsStorageService {
+  async getAll(): Promise<WorkerContract[]> {
     const { data, error } = await supabase
       .from('worker_contracts')
       .select('*')
-      .eq('cleaner_id', cleanerId)
-      .eq('is_active', true)
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .single();
-
-    if (error) {
-      if (error.code === 'PGRST116') {
-        return null; // No contract found
-      }
-      console.error('Error fetching worker contract:', error);
-      throw error;
-    }
-
-    return data ? mapWorkerContractFromDB(data) : null;
-  }
-
-  async getActiveContracts(): Promise<WorkerContract[]> {
-    const { data, error } = await supabase
-      .from('worker_contracts')
-      .select('*')
-      .eq('is_active', true)
       .order('created_at', { ascending: false });
 
     if (error) {
-      console.error('Error fetching active contracts:', error);
-      throw error;
+      console.error('Error fetching worker contracts:', error);
+      throw new Error(`Failed to fetch worker contracts: ${error.message}`);
     }
 
     return data?.map(mapWorkerContractFromDB) || [];
   }
 
-  async deactivateContract(id: string): Promise<boolean> {
-    const { error } = await supabase
+  async getByCleanerId(cleanerId: string): Promise<WorkerContract[]> {
+    const { data, error } = await supabase
       .from('worker_contracts')
-      .update({ is_active: false })
-      .eq('id', id);
+      .select('*')
+      .eq('cleaner_id', cleanerId)
+      .order('created_at', { ascending: false });
 
     if (error) {
-      console.error('Error deactivating contract:', error);
-      throw error;
+      console.error(`Error fetching contracts for cleaner ${cleanerId}:`, error);
+      throw new Error(`Failed to fetch contracts: ${error.message}`);
     }
 
-    return true;
+    return data?.map(mapWorkerContractFromDB) || [];
+  }
+
+  async getByStatus(status: 'draft' | 'active' | 'expired' | 'terminated'): Promise<WorkerContract[]> {
+    const { data, error } = await supabase
+      .from('worker_contracts')
+      .select('*')
+      .eq('status', status)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error(`Error fetching contracts with status ${status}:`, error);
+      throw new Error(`Failed to fetch contracts: ${error.message}`);
+    }
+
+    return data?.map(mapWorkerContractFromDB) || [];
+  }
+
+  async getActiveContracts(): Promise<WorkerContract[]> {
+    return this.getByStatus('active');
+  }
+
+  async create(contractData: CreateWorkerContractData): Promise<WorkerContract> {
+    const { data: userData } = await supabase.auth.getUser();
+    if (!userData.user) throw new Error('User not authenticated');
+
+    const { data, error } = await supabase
+      .from('worker_contracts')
+      .insert({ ...contractData, created_by: userData.user.id })
+      .select()
+      .single();
+
+    if (error) throw new Error(`Failed to create contract: ${error.message}`);
+    return mapWorkerContractFromDB(data);
+  }
+
+  async update(id: string, updates: UpdateWorkerContractData): Promise<WorkerContract> {
+    const { data, error } = await supabase
+      .from('worker_contracts')
+      .update(updates)
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) throw new Error(`Failed to update contract: ${error.message}`);
+    return mapWorkerContractFromDB(data);
+  }
+
+  async delete(id: string): Promise<void> {
+    const { error } = await supabase
+      .from('worker_contracts')
+      .delete()
+      .eq('id', id);
+
+    if (error) throw new Error(`Failed to delete contract: ${error.message}`);
+  }
+
+  async activate(id: string, activatedBy: string): Promise<WorkerContract> {
+    return this.update(id, { status: 'active' });
+  }
+
+  async terminate(id: string, terminatedBy: string, notes?: string): Promise<WorkerContract> {
+    return this.update(id, { status: 'terminated', notes });
   }
 }
 

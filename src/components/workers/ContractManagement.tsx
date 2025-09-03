@@ -31,53 +31,13 @@ import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { ContractForm } from './ContractForm';
 import { ContractDetail } from './ContractDetail';
+import { useCleanerContracts } from '@/hooks/useWorkerContracts';
 
 interface ContractManagementProps {
   cleanerId: string;
   cleanerName: string;
   isManager?: boolean;
 }
-
-// Mock data - En una aplicación real, esto vendría de una API
-const mockContracts = [
-  {
-    id: '1',
-    type: 'full-time',
-    startDate: '2024-01-15',
-    endDate: null,
-    status: 'active',
-    hourlyRate: 12.50,
-    contractHoursPerWeek: 40,
-    position: 'Limpiador Senior',
-    department: 'Limpieza Residencial',
-    benefits: ['Seguro médico', 'Vacaciones pagadas', 'Bonificación anual'],
-    documents: [
-      { name: 'Contrato Principal', url: '#', uploadDate: '2024-01-15' },
-      { name: 'Anexo Horarios', url: '#', uploadDate: '2024-01-20' }
-    ],
-    notes: 'Contrato principal con todas las prestaciones incluidas',
-    createdAt: '2024-01-15T09:00:00Z',
-    renewalDate: '2025-01-15'
-  },
-  {
-    id: '2',
-    type: 'part-time',
-    startDate: '2023-06-01',
-    endDate: '2023-12-31',
-    status: 'expired',
-    hourlyRate: 11.00,
-    contractHoursPerWeek: 20,
-    position: 'Limpiador',
-    department: 'Limpieza Comercial',
-    benefits: ['Vacaciones proporcionales'],
-    documents: [
-      { name: 'Contrato Temporal', url: '#', uploadDate: '2023-06-01' }
-    ],
-    notes: 'Contrato temporal de 6 meses',
-    createdAt: '2023-06-01T09:00:00Z',
-    renewalDate: null
-  }
-];
 
 export const ContractManagement: React.FC<ContractManagementProps> = ({ 
   cleanerId, 
@@ -88,8 +48,7 @@ export const ContractManagement: React.FC<ContractManagementProps> = ({
   const [selectedContract, setSelectedContract] = useState<any>(null);
   const [editingContract, setEditingContract] = useState<any>(null);
 
-  // Filter contracts for this cleaner (in real app, fetch by cleanerId)
-  const contracts = mockContracts;
+  const { data: contracts = [], isLoading } = useCleanerContracts(cleanerId);
   
   // Separate by status
   const activeContracts = contracts.filter(contract => contract.status === 'active');
@@ -151,6 +110,19 @@ export const ContractManagement: React.FC<ContractManagementProps> = ({
         return 'bg-muted/10 text-muted-foreground border-muted/20';
     }
   };
+
+  if (isLoading) {
+    return (
+      <Card>
+        <CardContent className="p-6">
+          <div className="flex items-center justify-center">
+            <Clock className="h-6 w-6 animate-spin mr-2" />
+            Cargando contratos...
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -220,25 +192,25 @@ export const ContractManagement: React.FC<ContractManagementProps> = ({
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Tipo</p>
-                <Badge className={getContractTypeColor(activeContracts[0].type)}>
-                  {getContractTypeLabel(activeContracts[0].type)}
+                <Badge className={getContractTypeColor(activeContracts[0].contract_type)}>
+                  {getContractTypeLabel(activeContracts[0].contract_type)}
                 </Badge>
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Tarifa</p>
-                <p className="font-medium">€{activeContracts[0].hourlyRate}/hora</p>
+                <p className="font-medium">€{activeContracts[0].hourly_rate}/hora</p>
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Horas Semanales</p>
-                <p className="font-medium">{activeContracts[0].contractHoursPerWeek}h</p>
+                <p className="font-medium">{activeContracts[0].contract_hours_per_week}h</p>
               </div>
             </div>
             <div className="mt-4 flex items-center justify-between">
               <div className="text-sm text-muted-foreground">
-                Desde: {format(new Date(activeContracts[0].startDate), 'dd MMM yyyy', { locale: es })}
-                {activeContracts[0].renewalDate && (
+                Desde: {format(new Date(activeContracts[0].start_date), 'dd MMM yyyy', { locale: es })}
+                {activeContracts[0].renewal_date && (
                   <span className="ml-4">
-                    Renovación: {format(new Date(activeContracts[0].renewalDate), 'dd MMM yyyy', { locale: es })}
+                    Renovación: {format(new Date(activeContracts[0].renewal_date), 'dd MMM yyyy', { locale: es })}
                   </span>
                 )}
               </div>
@@ -287,20 +259,20 @@ export const ContractManagement: React.FC<ContractManagementProps> = ({
                   {contracts.map((contract) => (
                     <TableRow key={contract.id}>
                       <TableCell>
-                        <Badge className={getContractTypeColor(contract.type)}>
-                          {getContractTypeLabel(contract.type)}
-                        </Badge>
+                <Badge className={getContractTypeColor(contract.contract_type)}>
+                  {getContractTypeLabel(contract.contract_type)}
+                </Badge>
                       </TableCell>
                       <TableCell>
-                        <div className="text-sm">
-                          <div>{format(new Date(contract.startDate), 'dd MMM yyyy', { locale: es })}</div>
-                          <div className="text-muted-foreground">
-                            {contract.endDate 
-                              ? format(new Date(contract.endDate), 'dd MMM yyyy', { locale: es })
-                              : 'Indefinido'
-                            }
-                          </div>
-                        </div>
+              <div className="text-sm">
+                <div>{format(new Date(contract.start_date), 'dd MMM yyyy', { locale: es })}</div>
+                <div className="text-muted-foreground">
+                  {contract.end_date 
+                    ? format(new Date(contract.end_date), 'dd MMM yyyy', { locale: es })
+                    : 'Indefinido'
+                  }
+                </div>
+              </div>
                       </TableCell>
                       <TableCell>
                         <div className="text-sm">
@@ -309,11 +281,11 @@ export const ContractManagement: React.FC<ContractManagementProps> = ({
                         </div>
                       </TableCell>
                       <TableCell>
-                        <span className="font-medium">€{contract.hourlyRate}</span>
+                        <span className="font-medium">€{contract.hourly_rate}</span>
                         <div className="text-xs text-muted-foreground">por hora</div>
                       </TableCell>
                       <TableCell>
-                        <span className="font-medium">{contract.contractHoursPerWeek}h</span>
+                        <span className="font-medium">{contract.contract_hours_per_week}h</span>
                         <div className="text-xs text-muted-foreground">semanales</div>
                       </TableCell>
                       <TableCell>

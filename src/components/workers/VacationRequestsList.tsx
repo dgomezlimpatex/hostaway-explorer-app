@@ -23,7 +23,7 @@ import {
   CheckCircle2,
   XCircle 
 } from 'lucide-react';
-import { useVacationRequests, useUpdateVacationRequest } from '@/hooks/useVacationRequests';
+import { useCleanerVacationRequests, useUpdateVacationRequest } from '@/hooks/useVacationRequests';
 import { VacationRequest } from '@/types/calendar';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -45,11 +45,11 @@ export const VacationRequestsList: React.FC<VacationRequestsListProps> = ({
   const [selectedRequest, setSelectedRequest] = useState<VacationRequest | null>(null);
   const [editingRequest, setEditingRequest] = useState<VacationRequest | null>(null);
 
-  const { data: requests = [], isLoading } = useVacationRequests();
+  const { data: requests = [], isLoading } = useCleanerVacationRequests(cleanerId);
   const updateRequest = useUpdateVacationRequest();
 
-  // Filter requests for this cleaner
-  const cleanerRequests = requests.filter(req => req.cleanerId === cleanerId);
+  // All requests are already filtered for this cleaner from the hook
+  const cleanerRequests = requests;
   
   // Separate by status
   const pendingRequests = cleanerRequests.filter(req => req.status === 'pending');
@@ -216,20 +216,20 @@ export const VacationRequestsList: React.FC<VacationRequestsListProps> = ({
                   {cleanerRequests.map((request) => (
                     <TableRow key={request.id}>
                       <TableCell>
-                        <Badge variant="outline">
-                          {getRequestTypeLabel(request.requestType)}
-                        </Badge>
+                         <Badge variant="outline">
+                           {getRequestTypeLabel(request.request_type)}
+                         </Badge>
                       </TableCell>
                       <TableCell>
                         <div className="text-sm">
-                          <div>{format(new Date(request.startDate), 'dd MMM yyyy', { locale: es })}</div>
-                          <div className="text-muted-foreground">
-                            {format(new Date(request.endDate), 'dd MMM yyyy', { locale: es })}
-                          </div>
+                           <div>{format(new Date(request.start_date), 'dd MMM yyyy', { locale: es })}</div>
+                           <div className="text-muted-foreground">
+                             {format(new Date(request.end_date), 'dd MMM yyyy', { locale: es })}
+                           </div>
                         </div>
                       </TableCell>
                       <TableCell>
-                        <span className="font-medium">{request.daysRequested}</span>
+                        <span className="font-medium">{request.days_requested}</span>
                       </TableCell>
                       <TableCell>
                         <Badge className={getStatusColor(request.status)}>
@@ -238,7 +238,7 @@ export const VacationRequestsList: React.FC<VacationRequestsListProps> = ({
                         </Badge>
                       </TableCell>
                       <TableCell className="text-sm text-muted-foreground">
-                        {format(new Date(request.requestedAt), 'dd MMM yyyy', { locale: es })}
+                        {format(new Date(request.requested_at), 'dd MMM yyyy', { locale: es })}
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">

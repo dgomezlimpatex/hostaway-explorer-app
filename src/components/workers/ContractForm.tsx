@@ -40,6 +40,7 @@ import { es } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useCreateWorkerContract, useUpdateWorkerContract } from '@/hooks/useWorkerContracts';
 
 const formSchema = z.object({
   type: z.enum(['full-time', 'part-time', 'temporary', 'freelance'], {
@@ -89,47 +90,52 @@ export const ContractForm: React.FC<ContractFormProps> = ({
   open,
   onOpenChange,
 }) => {
+  const createContract = useCreateWorkerContract();
+  const updateContract = useUpdateWorkerContract();
+  
   const isEditing = !!contract;
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      type: contract?.type || 'full-time',
-      startDate: contract ? new Date(contract.startDate) : undefined,
-      endDate: contract && contract.endDate ? new Date(contract.endDate) : undefined,
+      type: contract?.contract_type || 'full-time',
+      startDate: contract ? new Date(contract.start_date) : undefined,
+      endDate: contract && contract.end_date ? new Date(contract.end_date) : undefined,
       position: contract?.position || '',
       department: contract?.department || '',
-      hourlyRate: contract?.hourlyRate || 0,
-      contractHoursPerWeek: contract?.contractHoursPerWeek || 40,
+      hourlyRate: contract?.hourly_rate || 0,
+      contractHoursPerWeek: contract?.contract_hours_per_week || 40,
       benefits: contract?.benefits || [],
       notes: contract?.notes || '',
-      renewalDate: contract && contract.renewalDate ? new Date(contract.renewalDate) : undefined,
+      renewalDate: contract && contract.renewal_date ? new Date(contract.renewal_date) : undefined,
     },
   });
 
   const onSubmit = async (data: FormData) => {
     try {
       const contractData = {
-        cleanerId,
-        ...data,
-        startDate: data.startDate.toISOString().split('T')[0],
-        endDate: data.endDate?.toISOString().split('T')[0],
-        renewalDate: data.renewalDate?.toISOString().split('T')[0],
+        cleaner_id: cleanerId,
+        contract_type: data.type,
+        position: data.position,
+        department: data.department,
+        hourly_rate: data.hourlyRate,
+        contract_hours_per_week: data.contractHoursPerWeek,
+        start_date: data.startDate.toISOString().split('T')[0],
+        end_date: data.endDate?.toISOString().split('T')[0],
+        renewal_date: data.renewalDate?.toISOString().split('T')[0],
         status: 'draft' as const,
-        createdAt: new Date().toISOString(),
+        benefits: data.benefits || [],
+        notes: data.notes,
       };
 
-      console.log('Contract data:', contractData);
-
-      // TODO: Implement actual contract creation/update
-      // if (isEditing && contract) {
-      //   await updateContract.mutateAsync({
-      //     id: contract.id,
-      //     updates: contractData,
-      //   });
-      // } else {
-      //   await createContract.mutateAsync(contractData);
-      // }
+      if (isEditing && contract) {
+        await updateContract.mutateAsync({
+          id: contract.id,
+          updates: contractData,
+        });
+      } else {
+        await createContract.mutateAsync(contractData);
+      }
 
       form.reset();
       onOpenChange(false);
@@ -491,8 +497,16 @@ export const ContractForm: React.FC<ContractFormProps> = ({
               >
                 Cancelar
               </Button>
-              <Button type="submit">
-                {isEditing ? 'Actualizar Contrato' : 'Crear Contrato'}
+              <Button
+                type="submit"
+                disabled={createContract.isPending || updateContract.isPending}
+              >
+                {createContract.isPending || updateContract.isPending
+                  ? 'Procesando...'
+                  : isEditing
+                  ? 'Actualizar Contrato'
+                  : 'Crear Contrato'
+                }
               </Button>
             </div>
           </form>
