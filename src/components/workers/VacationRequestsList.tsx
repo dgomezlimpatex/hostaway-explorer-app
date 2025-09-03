@@ -72,13 +72,13 @@ export const VacationRequestsList: React.FC<VacationRequestsListProps> = ({
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'pending':
-        return 'bg-yellow-100 text-yellow-800';
+        return 'bg-warning/10 text-warning-foreground border-warning/20';
       case 'approved':
-        return 'bg-green-100 text-green-800';
+        return 'bg-success/10 text-success-foreground border-success/20';
       case 'rejected':
-        return 'bg-red-100 text-red-800';
+        return 'bg-destructive/10 text-destructive-foreground border-destructive/20';
       default:
-        return 'bg-gray-100 text-gray-800';
+        return 'bg-muted/10 text-muted-foreground border-muted/20';
     }
   };
 
@@ -158,7 +158,7 @@ export const VacationRequestsList: React.FC<VacationRequestsListProps> = ({
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-yellow-600">Pendientes</CardTitle>
+            <CardTitle className="text-sm font-medium text-warning-foreground">Pendientes</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{pendingRequests.length}</div>
@@ -167,7 +167,7 @@ export const VacationRequestsList: React.FC<VacationRequestsListProps> = ({
         
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-green-600">Aprobadas</CardTitle>
+            <CardTitle className="text-sm font-medium text-success-foreground">Aprobadas</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{approvedRequests.length}</div>
@@ -176,7 +176,7 @@ export const VacationRequestsList: React.FC<VacationRequestsListProps> = ({
         
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-red-600">Rechazadas</CardTitle>
+            <CardTitle className="text-sm font-medium text-destructive-foreground">Rechazadas</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{rejectedRequests.length}</div>
@@ -252,22 +252,22 @@ export const VacationRequestsList: React.FC<VacationRequestsListProps> = ({
                           
                           {isManager && request.status === 'pending' && (
                             <>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => handleApprove(request.id)}
-                                disabled={updateRequest.isPending}
-                              >
-                                <Check className="h-4 w-4 text-green-600" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => handleReject(request.id)}
-                                disabled={updateRequest.isPending}
-                              >
-                                <X className="h-4 w-4 text-red-600" />
-                              </Button>
+                               <Button
+                                 variant="ghost"
+                                 size="sm"
+                                 onClick={() => handleApprove(request.id)}
+                                 disabled={updateRequest.isPending}
+                               >
+                                 <Check className="h-4 w-4 text-success-foreground" />
+                               </Button>
+                               <Button
+                                 variant="ghost"
+                                 size="sm"
+                                 onClick={() => handleReject(request.id)}
+                                 disabled={updateRequest.isPending}
+                               >
+                                 <X className="h-4 w-4 text-destructive-foreground" />
+                               </Button>
                             </>
                           )}
                           

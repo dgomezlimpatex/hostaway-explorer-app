@@ -59,13 +59,13 @@ export const VacationRequestDetail: React.FC<VacationRequestDetailProps> = ({
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'pending':
-        return 'bg-yellow-100 text-yellow-800';
+        return 'bg-warning/10 text-warning-foreground border-warning/20';
       case 'approved':
-        return 'bg-green-100 text-green-800';
+        return 'bg-success/10 text-success-foreground border-success/20';
       case 'rejected':
-        return 'bg-red-100 text-red-800';
+        return 'bg-destructive/10 text-destructive-foreground border-destructive/20';
       default:
-        return 'bg-gray-100 text-gray-800';
+        return 'bg-muted/10 text-muted-foreground border-muted/20';
     }
   };
 
@@ -85,13 +85,13 @@ export const VacationRequestDetail: React.FC<VacationRequestDetailProps> = ({
   const getRequestTypeColor = (type: string) => {
     switch (type) {
       case 'vacation':
-        return 'bg-blue-100 text-blue-800';
+        return 'bg-primary/10 text-primary-foreground border-primary/20';
       case 'sick':
-        return 'bg-red-100 text-red-800';
+        return 'bg-destructive/10 text-destructive-foreground border-destructive/20';
       case 'personal':
-        return 'bg-purple-100 text-purple-800';
+        return 'bg-secondary/10 text-secondary-foreground border-secondary/20';
       default:
-        return 'bg-gray-100 text-gray-800';
+        return 'bg-muted/10 text-muted-foreground border-muted/20';
     }
   };
 
@@ -185,7 +185,7 @@ export const VacationRequestDetail: React.FC<VacationRequestDetailProps> = ({
             {request.reason && (
               <div>
                 <h4 className="text-sm font-medium mb-2">Motivo</h4>
-                <p className="text-sm text-muted-foreground bg-gray-50 p-3 rounded-lg">
+                <p className="text-sm text-muted-foreground bg-muted/50 p-3 rounded-lg">
                   {request.reason}
                 </p>
               </div>
@@ -194,7 +194,7 @@ export const VacationRequestDetail: React.FC<VacationRequestDetailProps> = ({
             {request.notes && (
               <div>
                 <h4 className="text-sm font-medium mb-2">Notas Adicionales</h4>
-                <p className="text-sm text-muted-foreground bg-gray-50 p-3 rounded-lg">
+                <p className="text-sm text-muted-foreground bg-muted/50 p-3 rounded-lg">
                   {request.notes}
                 </p>
               </div>
@@ -203,7 +203,7 @@ export const VacationRequestDetail: React.FC<VacationRequestDetailProps> = ({
             {request.reviewNotes && (
               <div>
                 <h4 className="text-sm font-medium mb-2">Notas de Revisión</h4>
-                <p className="text-sm text-muted-foreground bg-gray-50 p-3 rounded-lg">
+                <p className="text-sm text-muted-foreground bg-muted/50 p-3 rounded-lg">
                   {request.reviewNotes}
                 </p>
               </div>
@@ -219,7 +219,8 @@ export const VacationRequestDetail: React.FC<VacationRequestDetailProps> = ({
                 <div className="flex gap-3">
                   <Button
                     onClick={() => onApprove?.(request.id)}
-                    className="flex items-center gap-2 bg-green-600 hover:bg-green-700"
+                    className="flex items-center gap-2"
+                    variant="default"
                   >
                     <Check className="h-4 w-4" />
                     Aprobar Solicitud

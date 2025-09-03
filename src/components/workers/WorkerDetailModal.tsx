@@ -19,6 +19,8 @@ import { WorkerHoursOverview } from './WorkerHoursOverview';
 import { AlertsPanel } from './AlertsPanel';
 import { TaskTimeBreakdown } from './TaskTimeBreakdown';
 import { SalaryCalculation } from './SalaryCalculation';
+import { VacationRequestsList } from './VacationRequestsList';
+import { ContractManagement } from './ContractManagement';
 import { useWorkerHoursOverview } from '@/hooks/useWorkerAlerts';
 
 interface WorkerDetailModalProps {
@@ -156,16 +158,19 @@ export const WorkerDetailModal = ({ worker, open, onOpenChange }: WorkerDetailMo
             </TabsContent>
             
             <TabsContent value="vacations">
-              <div className="text-center py-8 text-muted-foreground">
-                <p>Sistema de vacaciones en desarrollo</p>
-                <p className="text-sm">Funcionalidad de gestión de vacaciones próximamente</p>
-              </div>
+              <VacationRequestsList 
+                cleanerId={worker.id} 
+                cleanerName={worker.name}
+                isManager={true}
+              />
             </TabsContent>
             
             <TabsContent value="contracts">
-              <div className="text-center py-8 text-muted-foreground">
-                Gestión de contratos en desarrollo
-              </div>
+              <ContractManagement 
+                cleanerId={worker.id} 
+                cleanerName={worker.name}
+                isManager={true}
+              />
             </TabsContent>
           </Tabs>
         </div>

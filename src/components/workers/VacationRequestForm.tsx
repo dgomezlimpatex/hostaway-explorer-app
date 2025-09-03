@@ -270,8 +270,8 @@ export const VacationRequestForm: React.FC<VacationRequestFormProps> = ({
 
             {/* Days calculation */}
             {daysRequested > 0 && (
-              <div className="p-3 bg-blue-50 rounded-lg">
-                <p className="text-sm text-blue-800">
+              <div className="p-3 bg-primary/10 rounded-lg border border-primary/20">
+                <p className="text-sm text-primary-foreground">
                   <strong>Días solicitados:</strong> {daysRequested} días
                 </p>
               </div>
