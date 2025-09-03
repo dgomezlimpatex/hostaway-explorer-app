@@ -239,7 +239,7 @@ export const UserManagement = () => {
   };
 
   const copyInvitationLink = (invitation: any) => {
-    const appUrl = window.location.origin;
+    const appUrl = 'https://id-preview--47420173-53cc-4a1a-8da8-d4b51fe8c6fe.lovable.app';
     const invitationUrl = `${appUrl}/accept-invitation?token=${invitation.invitation_token}&email=${encodeURIComponent(invitation.email)}`;
     
     navigator.clipboard.writeText(invitationUrl).then(() => {
