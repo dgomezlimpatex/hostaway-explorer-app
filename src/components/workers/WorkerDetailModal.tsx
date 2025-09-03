@@ -15,6 +15,9 @@ import { Cleaner } from '@/types/calendar';
 import { WorkerTimeTracking } from './WorkerTimeTracking';
 import { WorkerScheduleCalendar } from './WorkerScheduleCalendar'; 
 import { WorkerBasicInfo } from './WorkerBasicInfo';
+import { WorkerHoursOverview } from './WorkerHoursOverview';
+import { AlertsPanel } from './AlertsPanel';
+import { useWorkerHoursOverview } from '@/hooks/useWorkerAlerts';
 
 interface WorkerDetailModalProps {
   worker: Cleaner | null;
@@ -23,6 +26,8 @@ interface WorkerDetailModalProps {
 }
 
 export const WorkerDetailModal = ({ worker, open, onOpenChange }: WorkerDetailModalProps) => {
+  const { overview, alerts } = useWorkerHoursOverview(worker?.id || '');
+  
   if (!worker) return null;
 
   const getContractTypeBadge = (type?: string) => {
@@ -101,8 +106,12 @@ export const WorkerDetailModal = ({ worker, open, onOpenChange }: WorkerDetailMo
           </div>
 
           {/* Tabs principales */}
-          <Tabs defaultValue="info" className="flex-1">
-            <TabsList className="grid w-full grid-cols-4">
+          <Tabs defaultValue="overview" className="flex-1">
+            <TabsList className="grid w-full grid-cols-5">
+              <TabsTrigger value="overview" className="flex items-center gap-2">
+                <Clock className="h-4 w-4" />
+                Resumen
+              </TabsTrigger>
               <TabsTrigger value="info" className="flex items-center gap-2">
                 <User className="h-4 w-4" />
                 Información
@@ -122,9 +131,38 @@ export const WorkerDetailModal = ({ worker, open, onOpenChange }: WorkerDetailMo
             </TabsList>
 
             <div className="mt-4 flex-1 overflow-auto">
-              <TabsContent value="info" className="space-y-4">
-                <WorkerBasicInfo worker={worker} />
-              </TabsContent>
+            <TabsContent value="overview" className="space-y-4">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div>
+                  {overview ? (
+                    <WorkerHoursOverview 
+                      overview={overview} 
+                      workerName={worker.name}
+                      showProjections={true}
+                    />
+                  ) : (
+                    <div className="text-center py-8 text-muted-foreground">
+                      <p>No hay datos de contrato disponibles</p>
+                      <p className="text-sm">Configure un contrato para ver el resumen de horas</p>
+                    </div>
+                  )}
+                </div>
+                <div>
+                  {alerts.length > 0 ? (
+                    <AlertsPanel className="h-fit" />
+                  ) : (
+                    <div className="text-center py-8 text-muted-foreground">
+                      <p>Sin alertas activas</p>
+                      <p className="text-sm">Todo funciona correctamente</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="info" className="space-y-4">
+              <WorkerBasicInfo worker={worker} />
+            </TabsContent>
 
               <TabsContent value="schedule" className="space-y-4">
                 <WorkerScheduleCalendar workerId={worker.id} />

@@ -2085,6 +2085,7 @@ export type Database = {
         Row: {
           approved_at: string | null
           approved_by: string | null
+          base_salary: number | null
           break_duration_minutes: number | null
           cleaner_id: string
           clock_in: string | null
@@ -2094,13 +2095,18 @@ export type Database = {
           id: string
           notes: string | null
           overtime_hours: number | null
+          overtime_multiplier: number | null
           status: string | null
+          task_id: string | null
           total_hours: number | null
           updated_at: string
+          vacation_hours_accrued: number | null
+          vacation_hours_used: number | null
         }
         Insert: {
           approved_at?: string | null
           approved_by?: string | null
+          base_salary?: number | null
           break_duration_minutes?: number | null
           cleaner_id: string
           clock_in?: string | null
@@ -2110,13 +2116,18 @@ export type Database = {
           id?: string
           notes?: string | null
           overtime_hours?: number | null
+          overtime_multiplier?: number | null
           status?: string | null
+          task_id?: string | null
           total_hours?: number | null
           updated_at?: string
+          vacation_hours_accrued?: number | null
+          vacation_hours_used?: number | null
         }
         Update: {
           approved_at?: string | null
           approved_by?: string | null
+          base_salary?: number | null
           break_duration_minutes?: number | null
           cleaner_id?: string
           clock_in?: string | null
@@ -2126,9 +2137,13 @@ export type Database = {
           id?: string
           notes?: string | null
           overtime_hours?: number | null
+          overtime_multiplier?: number | null
           status?: string | null
+          task_id?: string | null
           total_hours?: number | null
           updated_at?: string
+          vacation_hours_accrued?: number | null
+          vacation_hours_used?: number | null
         }
         Relationships: [
           {
@@ -2136,6 +2151,13 @@ export type Database = {
             columns: ["cleaner_id"]
             isOneToOne: false
             referencedRelation: "cleaners"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "time_logs_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
             referencedColumns: ["id"]
           },
         ]
@@ -2228,6 +2250,136 @@ export type Database = {
             columns: ["sede_id"]
             isOneToOne: false
             referencedRelation: "sedes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      vacation_requests: {
+        Row: {
+          cleaner_id: string
+          created_at: string | null
+          days_requested: number
+          end_date: string
+          id: string
+          notes: string | null
+          reason: string | null
+          request_type: string | null
+          requested_at: string | null
+          review_notes: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          start_date: string
+          status: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          cleaner_id: string
+          created_at?: string | null
+          days_requested: number
+          end_date: string
+          id?: string
+          notes?: string | null
+          reason?: string | null
+          request_type?: string | null
+          requested_at?: string | null
+          review_notes?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          start_date: string
+          status?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          cleaner_id?: string
+          created_at?: string | null
+          days_requested?: number
+          end_date?: string
+          id?: string
+          notes?: string | null
+          reason?: string | null
+          request_type?: string | null
+          requested_at?: string | null
+          review_notes?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          start_date?: string
+          status?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vacation_requests_cleaner_id_fkey"
+            columns: ["cleaner_id"]
+            isOneToOne: false
+            referencedRelation: "cleaners"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      worker_contracts: {
+        Row: {
+          base_salary: number
+          benefits: Json | null
+          cleaner_id: string
+          contract_hours_per_week: number | null
+          contract_type: string
+          created_at: string | null
+          end_date: string | null
+          hourly_rate: number | null
+          id: string
+          is_active: boolean | null
+          notes: string | null
+          overtime_rate: number | null
+          payment_frequency: string | null
+          sick_days_per_year: number | null
+          start_date: string
+          updated_at: string | null
+          vacation_days_per_year: number | null
+        }
+        Insert: {
+          base_salary?: number
+          benefits?: Json | null
+          cleaner_id: string
+          contract_hours_per_week?: number | null
+          contract_type?: string
+          created_at?: string | null
+          end_date?: string | null
+          hourly_rate?: number | null
+          id?: string
+          is_active?: boolean | null
+          notes?: string | null
+          overtime_rate?: number | null
+          payment_frequency?: string | null
+          sick_days_per_year?: number | null
+          start_date: string
+          updated_at?: string | null
+          vacation_days_per_year?: number | null
+        }
+        Update: {
+          base_salary?: number
+          benefits?: Json | null
+          cleaner_id?: string
+          contract_hours_per_week?: number | null
+          contract_type?: string
+          created_at?: string | null
+          end_date?: string | null
+          hourly_rate?: number | null
+          id?: string
+          is_active?: boolean | null
+          notes?: string | null
+          overtime_rate?: number | null
+          payment_frequency?: string | null
+          sick_days_per_year?: number | null
+          start_date?: string
+          updated_at?: string | null
+          vacation_days_per_year?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "worker_contracts_cleaner_id_fkey"
+            columns: ["cleaner_id"]
+            isOneToOne: false
+            referencedRelation: "cleaners"
             referencedColumns: ["id"]
           },
         ]

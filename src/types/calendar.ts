@@ -82,6 +82,12 @@ export interface TimeLog extends BaseEntity {
   status: 'pending' | 'approved' | 'rejected';
   approvedBy?: string;
   approvedAt?: string;
+  // New fields from Phase 1
+  taskId?: string;
+  baseSalary?: number;
+  overtimeMultiplier?: number;
+  vacationHoursAccrued?: number;
+  vacationHoursUsed?: number;
 }
 
 export interface WorkSchedule extends BaseEntity {
@@ -92,4 +98,81 @@ export interface WorkSchedule extends BaseEntity {
   isWorkingDay: boolean;
   scheduleType: 'regular' | 'overtime' | 'holiday';
   notes?: string;
+}
+
+// New interfaces from Phase 1
+export interface WorkerContract extends BaseEntity {
+  cleanerId: string;
+  contractType: 'full-time' | 'part-time' | 'temporary' | 'freelance';
+  startDate: string;
+  endDate?: string;
+  baseSalary: number;
+  hourlyRate?: number;
+  overtimeRate: number;
+  vacationDaysPerYear: number;
+  sickDaysPerYear: number;
+  contractHoursPerWeek: number;
+  paymentFrequency: 'weekly' | 'biweekly' | 'monthly';
+  benefits: Record<string, any>;
+  notes?: string;
+  isActive: boolean;
+}
+
+export interface VacationRequest extends BaseEntity {
+  cleanerId: string;
+  startDate: string;
+  endDate: string;
+  daysRequested: number;
+  requestType: 'vacation' | 'sick' | 'personal';
+  status: 'pending' | 'approved' | 'rejected';
+  reason?: string;
+  notes?: string;
+  requestedAt: string;
+  reviewedBy?: string;
+  reviewedAt?: string;
+  reviewNotes?: string;
+}
+
+// Extended types for Phase 2-6
+export interface WorkerHoursOverview {
+  cleanerId: string;
+  contractHours: number;
+  workedHours: number;
+  remainingHours: number;
+  overtimeHours: number;
+  efficiencyRate: number;
+  weeklyProjection: number;
+  monthlyProjection: number;
+}
+
+export interface WorkerAlert {
+  type: 'hours_exceeded' | 'hours_deficit' | 'vacation_pending' | 'schedule_conflict';
+  severity: 'low' | 'medium' | 'high' | 'critical';
+  cleanerId: string;
+  message: string;
+  actionRequired: boolean;
+  suggestedAction?: string;
+}
+
+export interface TaskTimeBreakdown {
+  taskId: string;
+  taskName: string;
+  taskType: string;
+  timeSpent: number;
+  scheduledTime: number;
+  efficiency: number;
+  date: string;
+}
+
+export interface SalaryCalculation {
+  cleanerId: string;
+  period: string;
+  baseSalary: number;
+  overtimePay: number;
+  bonuses: number;
+  deductions: number;
+  totalGross: number;
+  totalNet: number;
+  hoursWorked: number;
+  overtimeHours: number;
 }
