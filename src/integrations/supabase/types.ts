@@ -2324,6 +2324,7 @@ export type Database = {
           contract_hours_per_week: number | null
           contract_type: string
           created_at: string | null
+          department: string | null
           end_date: string | null
           hourly_rate: number | null
           id: string
@@ -2331,8 +2332,11 @@ export type Database = {
           notes: string | null
           overtime_rate: number | null
           payment_frequency: string | null
+          position: string | null
+          renewal_date: string | null
           sick_days_per_year: number | null
           start_date: string
+          status: string | null
           updated_at: string | null
           vacation_days_per_year: number | null
         }
@@ -2343,6 +2347,7 @@ export type Database = {
           contract_hours_per_week?: number | null
           contract_type?: string
           created_at?: string | null
+          department?: string | null
           end_date?: string | null
           hourly_rate?: number | null
           id?: string
@@ -2350,8 +2355,11 @@ export type Database = {
           notes?: string | null
           overtime_rate?: number | null
           payment_frequency?: string | null
+          position?: string | null
+          renewal_date?: string | null
           sick_days_per_year?: number | null
           start_date: string
+          status?: string | null
           updated_at?: string | null
           vacation_days_per_year?: number | null
         }
@@ -2362,6 +2370,7 @@ export type Database = {
           contract_hours_per_week?: number | null
           contract_type?: string
           created_at?: string | null
+          department?: string | null
           end_date?: string | null
           hourly_rate?: number | null
           id?: string
@@ -2369,8 +2378,11 @@ export type Database = {
           notes?: string | null
           overtime_rate?: number | null
           payment_frequency?: string | null
+          position?: string | null
+          renewal_date?: string | null
           sick_days_per_year?: number | null
           start_date?: string
+          status?: string | null
           updated_at?: string | null
           vacation_days_per_year?: number | null
         }
