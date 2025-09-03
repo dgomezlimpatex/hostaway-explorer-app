@@ -81,9 +81,9 @@ export const VacationRequestForm: React.FC<VacationRequestFormProps> = ({
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      startDate: request ? new Date(request.start_date) : undefined,
-      endDate: request ? new Date(request.end_date) : undefined,
-      requestType: request?.request_type || 'vacation',
+      startDate: request ? new Date(request.startDate) : undefined,
+      endDate: request ? new Date(request.endDate) : undefined,
+      requestType: request?.requestType || 'vacation',
       reason: request?.reason || '',
       notes: request?.notes || '',
     },
@@ -100,11 +100,11 @@ export const VacationRequestForm: React.FC<VacationRequestFormProps> = ({
   const onSubmit = async (data: FormData) => {
     try {
       const requestData = {
-        cleaner_id: cleanerId,
-        start_date: data.startDate.toISOString().split('T')[0],
-        end_date: data.endDate.toISOString().split('T')[0],
-        days_requested: daysRequested,
-        request_type: data.requestType,
+        cleanerId: cleanerId,
+        startDate: data.startDate.toISOString().split('T')[0],
+        endDate: data.endDate.toISOString().split('T')[0],
+        daysRequested: daysRequested,
+        requestType: data.requestType,
         reason: data.reason,
         notes: data.notes,
       };

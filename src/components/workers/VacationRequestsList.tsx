@@ -216,20 +216,20 @@ export const VacationRequestsList: React.FC<VacationRequestsListProps> = ({
                   {cleanerRequests.map((request) => (
                     <TableRow key={request.id}>
                       <TableCell>
-                         <Badge variant="outline">
-                           {getRequestTypeLabel(request.request_type)}
-                         </Badge>
+                          <Badge variant="outline">
+                            {getRequestTypeLabel(request.requestType)}
+                          </Badge>
                       </TableCell>
                       <TableCell>
                         <div className="text-sm">
-                           <div>{format(new Date(request.start_date), 'dd MMM yyyy', { locale: es })}</div>
-                           <div className="text-muted-foreground">
-                             {format(new Date(request.end_date), 'dd MMM yyyy', { locale: es })}
-                           </div>
-                        </div>
+                            <div>{format(new Date(request.startDate), 'dd MMM yyyy', { locale: es })}</div>
+                            <div className="text-muted-foreground">
+                              {format(new Date(request.endDate), 'dd MMM yyyy', { locale: es })}
+                            </div>
+                         </div>
                       </TableCell>
                       <TableCell>
-                        <span className="font-medium">{request.days_requested}</span>
+                        <span className="font-medium">{request.daysRequested}</span>
                       </TableCell>
                       <TableCell>
                         <Badge className={getStatusColor(request.status)}>
@@ -238,7 +238,7 @@ export const VacationRequestsList: React.FC<VacationRequestsListProps> = ({
                         </Badge>
                       </TableCell>
                       <TableCell className="text-sm text-muted-foreground">
-                        {format(new Date(request.requested_at), 'dd MMM yyyy', { locale: es })}
+                        {format(new Date(request.requestedAt), 'dd MMM yyyy', { locale: es })}
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">

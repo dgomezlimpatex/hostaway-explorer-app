@@ -13,9 +13,10 @@ export class SalaryCalculationService {
     const { startDate, endDate, cleanerId } = period;
     
     // Get worker contract
-    const contract = await workerContractsStorage.getByCleanerId(cleanerId);
+    const contracts = await workerContractsStorage.getByCleanerId(cleanerId);
+    const contract = contracts.find(c => c.isActive);
     if (!contract) {
-      throw new Error('No se encontró contrato para el trabajador');
+      throw new Error('No se encontró contrato activo para el trabajador');
     }
 
     // Get time logs for the period
@@ -31,9 +32,9 @@ export class SalaryCalculationService {
     const vacationHours = this.calculateVacationHours(timeLogs);
     
     // Calculate pay
-    const regularPay = regularHours * contract.hourlyRate;
-    const overtimePay = overtimeHours * contract.hourlyRate * contract.overtimeRate;
-    const vacationPay = vacationHours * contract.hourlyRate;
+    const regularPay = regularHours * (contract.hourlyRate || 0);
+    const overtimePay = overtimeHours * (contract.hourlyRate || 0) * contract.overtimeRate;
+    const vacationPay = vacationHours * (contract.hourlyRate || 0);
     
     // Calculate deductions
     const socialSecurityDeduction = this.calculateSocialSecurity(regularPay + overtimePay);
@@ -47,7 +48,7 @@ export class SalaryCalculationService {
       cleanerId,
       period: { startDate, endDate },
       contract: {
-        hourlyRate: contract.hourlyRate,
+        hourlyRate: contract.hourlyRate || 0,
         overtimeRate: contract.overtimeRate,
         contractHoursPerWeek: contract.contractHoursPerWeek,
         vacationDaysPerYear: contract.vacationDaysPerYear,
@@ -74,7 +75,7 @@ export class SalaryCalculationService {
     };
   }
 
-  private calculateRegularHours(timeLogs: TimeLog[], contract: WorkerContract): number {
+  private calculateRegularHours(timeLogs: TimeLog[], contract: any): number {
     const weeklyContractHours = contract.contractHoursPerWeek;
     let totalRegularHours = 0;
 
@@ -89,7 +90,7 @@ export class SalaryCalculationService {
     return totalRegularHours;
   }
 
-  private calculateOvertimeHours(timeLogs: TimeLog[], contract: WorkerContract): number {
+  private calculateOvertimeHours(timeLogs: TimeLog[], contract: any): number {
     const weeklyContractHours = contract.contractHoursPerWeek;
     let totalOvertimeHours = 0;
 

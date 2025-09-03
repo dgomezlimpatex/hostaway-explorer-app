@@ -38,7 +38,7 @@ export const useCreateWorkerContract = () => {
     mutationFn: (contractData: CreateWorkerContractData) => workerContractsStorage.create(contractData),
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['worker-contracts'] });
-      queryClient.invalidateQueries({ queryKey: ['worker-contracts', data.cleaner_id] });
+      queryClient.invalidateQueries({ queryKey: ['worker-contracts', data.cleanerId] });
       toast({
         title: "Contrato creado",
         description: "El contrato ha sido creado exitosamente.",
@@ -63,7 +63,7 @@ export const useUpdateWorkerContract = () => {
       workerContractsStorage.update(id, updates),
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['worker-contracts'] });
-      queryClient.invalidateQueries({ queryKey: ['worker-contracts', data.cleaner_id] });
+      queryClient.invalidateQueries({ queryKey: ['worker-contracts', data.cleanerId] });
       toast({
         title: "Contrato actualizado",
         description: "El contrato ha sido actualizado exitosamente.",
@@ -88,7 +88,7 @@ export const useActivateWorkerContract = () => {
       workerContractsStorage.activate(id, activatedBy),
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['worker-contracts'] });
-      queryClient.invalidateQueries({ queryKey: ['worker-contracts', data.cleaner_id] });
+      queryClient.invalidateQueries({ queryKey: ['worker-contracts', data.cleanerId] });
       queryClient.invalidateQueries({ queryKey: ['worker-contracts', 'active'] });
       toast({
         title: "Contrato activado",
@@ -114,7 +114,7 @@ export const useTerminateWorkerContract = () => {
       workerContractsStorage.terminate(id, terminatedBy, notes),
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['worker-contracts'] });
-      queryClient.invalidateQueries({ queryKey: ['worker-contracts', data.cleaner_id] });
+      queryClient.invalidateQueries({ queryKey: ['worker-contracts', data.cleanerId] });
       queryClient.invalidateQueries({ queryKey: ['worker-contracts', 'active'] });
       toast({
         title: "Contrato terminado",

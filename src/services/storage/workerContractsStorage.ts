@@ -1,29 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
-import { BaseStorageService } from './baseStorage';
-
-export interface WorkerContract {
-  id: string;
-  cleaner_id: string;
-  contract_type: 'full-time' | 'part-time' | 'temporary' | 'freelance';
-  position: string;
-  department: string;
-  hourly_rate: number;
-  contract_hours_per_week: number;
-  start_date: string;
-  end_date?: string;
-  renewal_date?: string;
-  status: 'draft' | 'active' | 'expired' | 'terminated';
-  benefits: string[];
-  notes?: string;
-  documents: Array<{
-    name: string;
-    url: string;
-    uploadDate: string;
-  }>;
-  created_by: string;
-  created_at: string;
-  updated_at: string;
-}
+import { WorkerContract } from '@/types/calendar';
 
 export interface CreateWorkerContractData {
   cleaner_id: string;
@@ -57,29 +33,22 @@ export interface UpdateWorkerContractData {
 const mapWorkerContractFromDB = (row: any): WorkerContract => {
   return {
     id: row.id,
-    cleaner_id: row.cleaner_id,
-    contract_type: row.contract_type,
-    position: row.position,
-    department: row.department,
-    hourly_rate: parseFloat(row.hourly_rate),
-    contract_hours_per_week: row.contract_hours_per_week,
-    start_date: row.start_date,
-    end_date: row.end_date,
-    renewal_date: row.renewal_date,
-    status: row.status,
-    benefits: row.benefits || [],
+    cleanerId: row.cleaner_id,
+    contractType: row.contract_type,
+    startDate: row.start_date,
+    endDate: row.end_date,
+    baseSalary: 0,
+    hourlyRate: parseFloat(row.hourly_rate || 0),
+    overtimeRate: 1.5,
+    vacationDaysPerYear: 22,
+    sickDaysPerYear: 10,
+    contractHoursPerWeek: row.contract_hours_per_week || 40,
+    paymentFrequency: 'monthly' as const,
+    benefits: row.benefits || {},
     notes: row.notes,
-    documents: row.documents || [],
-    created_by: row.created_by,
+    isActive: row.status === 'active',
     created_at: row.created_at,
     updated_at: row.updated_at,
-  };
-};
-
-const mapWorkerContractToDB = (data: CreateWorkerContractData | UpdateWorkerContractData) => {
-  return {
-    ...data,
-    hourly_rate: data.hourly_rate?.toString(),
   };
 };
 
@@ -92,7 +61,7 @@ class WorkerContractsStorageService {
 
     if (error) {
       console.error('Error fetching worker contracts:', error);
-      throw new Error(`Failed to fetch worker contracts: ${error.message}`);
+      throw error;
     }
 
     return data?.map(mapWorkerContractFromDB) || [];
@@ -106,43 +75,40 @@ class WorkerContractsStorageService {
       .order('created_at', { ascending: false });
 
     if (error) {
-      console.error(`Error fetching contracts for cleaner ${cleanerId}:`, error);
-      throw new Error(`Failed to fetch contracts: ${error.message}`);
-    }
-
-    return data?.map(mapWorkerContractFromDB) || [];
-  }
-
-  async getByStatus(status: 'draft' | 'active' | 'expired' | 'terminated'): Promise<WorkerContract[]> {
-    const { data, error } = await supabase
-      .from('worker_contracts')
-      .select('*')
-      .eq('status', status)
-      .order('created_at', { ascending: false });
-
-    if (error) {
-      console.error(`Error fetching contracts with status ${status}:`, error);
-      throw new Error(`Failed to fetch contracts: ${error.message}`);
+      console.error('Error fetching worker contracts by cleaner:', error);
+      throw error;
     }
 
     return data?.map(mapWorkerContractFromDB) || [];
   }
 
   async getActiveContracts(): Promise<WorkerContract[]> {
-    return this.getByStatus('active');
+    const { data, error } = await supabase
+      .from('worker_contracts')
+      .select('*')
+      .eq('status', 'active')
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Error fetching active contracts:', error);
+      throw error;
+    }
+
+    return data ? data.map(mapWorkerContractFromDB) : [];
   }
 
   async create(contractData: CreateWorkerContractData): Promise<WorkerContract> {
-    const { data: userData } = await supabase.auth.getUser();
-    if (!userData.user) throw new Error('User not authenticated');
-
     const { data, error } = await supabase
       .from('worker_contracts')
-      .insert({ ...contractData, created_by: userData.user.id })
+      .insert(contractData)
       .select()
       .single();
 
-    if (error) throw new Error(`Failed to create contract: ${error.message}`);
+    if (error) {
+      console.error('Error creating worker contract:', error);
+      throw error;
+    }
+
     return mapWorkerContractFromDB(data);
   }
 
@@ -154,7 +120,65 @@ class WorkerContractsStorageService {
       .select()
       .single();
 
-    if (error) throw new Error(`Failed to update contract: ${error.message}`);
+    if (error) {
+      console.error('Error updating worker contract:', error);
+      throw error;
+    }
+
+    return mapWorkerContractFromDB(data);
+  }
+
+  async getByStatus(status: string): Promise<WorkerContract[]> {
+    const { data, error } = await supabase
+      .from('worker_contracts')
+      .select('*')
+      .eq('status', status)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Error fetching contracts by status:', error);
+      throw error;
+    }
+
+    return data?.map(mapWorkerContractFromDB) || [];
+  }
+
+  async activate(id: string, activatedBy: string): Promise<WorkerContract> {
+    const { data, error } = await supabase
+      .from('worker_contracts')
+      .update({ 
+        status: 'active',
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error activating worker contract:', error);
+      throw error;
+    }
+
+    return mapWorkerContractFromDB(data);
+  }
+
+  async terminate(id: string, terminatedBy: string, notes?: string): Promise<WorkerContract> {
+    const { data, error } = await supabase
+      .from('worker_contracts')
+      .update({ 
+        status: 'terminated',
+        notes: notes || 'Contract terminated',
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error terminating worker contract:', error);
+      throw error;
+    }
+
     return mapWorkerContractFromDB(data);
   }
 
@@ -164,15 +188,10 @@ class WorkerContractsStorageService {
       .delete()
       .eq('id', id);
 
-    if (error) throw new Error(`Failed to delete contract: ${error.message}`);
-  }
-
-  async activate(id: string, activatedBy: string): Promise<WorkerContract> {
-    return this.update(id, { status: 'active' });
-  }
-
-  async terminate(id: string, terminatedBy: string, notes?: string): Promise<WorkerContract> {
-    return this.update(id, { status: 'terminated', notes });
+    if (error) {
+      console.error('Error deleting worker contract:', error);
+      throw error;
+    }
   }
 }
 

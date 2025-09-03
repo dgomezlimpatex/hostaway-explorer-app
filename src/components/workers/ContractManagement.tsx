@@ -50,35 +50,27 @@ export const ContractManagement: React.FC<ContractManagementProps> = ({
 
   const { data: contracts = [], isLoading } = useCleanerContracts(cleanerId);
   
-  // Separate by status
-  const activeContracts = contracts.filter(contract => contract.status === 'active');
-  const expiredContracts = contracts.filter(contract => contract.status === 'expired');
-  const draftContracts = contracts.filter(contract => contract.status === 'draft');
+  // Separate by status - Using isActive and endDate to determine status
+  const activeContracts = contracts.filter(c => c.isActive);
+  const expiredContracts = contracts.filter(c => !c.isActive && c.endDate && new Date(c.endDate) < new Date());
+  const draftContracts = contracts.filter(c => !c.isActive && (!c.endDate || new Date(c.endDate) >= new Date()));
 
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'active':
-        return <CheckCircle2 className="h-4 w-4" />;
-      case 'expired':
-        return <XCircle className="h-4 w-4" />;
-      case 'draft':
-        return <Clock className="h-4 w-4" />;
-      default:
-        return <AlertTriangle className="h-4 w-4" />;
-    }
+  const getStatusIcon = (isActive: boolean, endDate?: string) => {
+    if (isActive) return <CheckCircle2 className="h-4 w-4" />;
+    if (endDate && new Date(endDate) < new Date()) return <XCircle className="h-4 w-4" />;
+    return <Clock className="h-4 w-4" />;
   };
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'active':
-        return 'bg-success/10 text-success-foreground border-success/20';
-      case 'expired':
-        return 'bg-destructive/10 text-destructive-foreground border-destructive/20';
-      case 'draft':
-        return 'bg-warning/10 text-warning-foreground border-warning/20';
-      default:
-        return 'bg-muted/10 text-muted-foreground border-muted/20';
-    }
+  const getStatusColor = (isActive: boolean, endDate?: string) => {
+    if (isActive) return 'bg-success/10 text-success-foreground border-success/20';
+    if (endDate && new Date(endDate) < new Date()) return 'bg-destructive/10 text-destructive-foreground border-destructive/20';
+    return 'bg-warning/10 text-warning-foreground border-warning/20';
+  };
+
+  const getStatusLabel = (isActive: boolean, endDate?: string) => {
+    if (isActive) return 'Activo';
+    if (endDate && new Date(endDate) < new Date()) return 'Vencido';
+    return 'Borrador';
   };
 
   const getContractTypeLabel = (type: string) => {
@@ -185,32 +177,28 @@ export const ContractManagement: React.FC<ContractManagementProps> = ({
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <div>
-                <p className="text-sm text-muted-foreground">Posición</p>
-                <p className="font-medium">{activeContracts[0].position}</p>
-              </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <p className="text-sm text-muted-foreground">Tipo</p>
-                <Badge className={getContractTypeColor(activeContracts[0].contract_type)}>
-                  {getContractTypeLabel(activeContracts[0].contract_type)}
+                <Badge className={getContractTypeColor(activeContracts[0].contractType)}>
+                  {getContractTypeLabel(activeContracts[0].contractType)}
                 </Badge>
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Tarifa</p>
-                <p className="font-medium">€{activeContracts[0].hourly_rate}/hora</p>
+                <p className="font-medium">€{activeContracts[0].hourlyRate}/hora</p>
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Horas Semanales</p>
-                <p className="font-medium">{activeContracts[0].contract_hours_per_week}h</p>
+                <p className="font-medium">{activeContracts[0].contractHoursPerWeek}h</p>
               </div>
             </div>
             <div className="mt-4 flex items-center justify-between">
               <div className="text-sm text-muted-foreground">
-                Desde: {format(new Date(activeContracts[0].start_date), 'dd MMM yyyy', { locale: es })}
-                {activeContracts[0].renewal_date && (
+                Desde: {format(new Date(activeContracts[0].startDate), 'dd MMM yyyy', { locale: es })}
+                {activeContracts[0].endDate && (
                   <span className="ml-4">
-                    Renovación: {format(new Date(activeContracts[0].renewal_date), 'dd MMM yyyy', { locale: es })}
+                    Hasta: {format(new Date(activeContracts[0].endDate), 'dd MMM yyyy', { locale: es })}
                   </span>
                 )}
               </div>
@@ -248,7 +236,6 @@ export const ContractManagement: React.FC<ContractManagementProps> = ({
                   <TableRow>
                     <TableHead>Tipo</TableHead>
                     <TableHead>Período</TableHead>
-                    <TableHead>Posición</TableHead>
                     <TableHead>Tarifa</TableHead>
                     <TableHead>Horas</TableHead>
                     <TableHead>Estado</TableHead>
@@ -259,39 +246,33 @@ export const ContractManagement: React.FC<ContractManagementProps> = ({
                   {contracts.map((contract) => (
                     <TableRow key={contract.id}>
                       <TableCell>
-                <Badge className={getContractTypeColor(contract.contract_type)}>
-                  {getContractTypeLabel(contract.contract_type)}
-                </Badge>
-                      </TableCell>
-                      <TableCell>
-              <div className="text-sm">
-                <div>{format(new Date(contract.start_date), 'dd MMM yyyy', { locale: es })}</div>
-                <div className="text-muted-foreground">
-                  {contract.end_date 
-                    ? format(new Date(contract.end_date), 'dd MMM yyyy', { locale: es })
-                    : 'Indefinido'
-                  }
-                </div>
-              </div>
+                        <Badge className={getContractTypeColor(contract.contractType)}>
+                          {getContractTypeLabel(contract.contractType)}
+                        </Badge>
                       </TableCell>
                       <TableCell>
                         <div className="text-sm">
-                          <div className="font-medium">{contract.position}</div>
-                          <div className="text-muted-foreground">{contract.department}</div>
+                          <div>{format(new Date(contract.startDate), 'dd MMM yyyy', { locale: es })}</div>
+                          <div className="text-muted-foreground">
+                            {contract.endDate 
+                              ? format(new Date(contract.endDate), 'dd MMM yyyy', { locale: es })
+                              : 'Indefinido'
+                            }
+                          </div>
                         </div>
                       </TableCell>
                       <TableCell>
-                        <span className="font-medium">€{contract.hourly_rate}</span>
+                        <span className="font-medium">€{contract.hourlyRate}</span>
                         <div className="text-xs text-muted-foreground">por hora</div>
                       </TableCell>
                       <TableCell>
-                        <span className="font-medium">{contract.contract_hours_per_week}h</span>
+                        <span className="font-medium">{contract.contractHoursPerWeek}h</span>
                         <div className="text-xs text-muted-foreground">semanales</div>
                       </TableCell>
                       <TableCell>
-                        <Badge className={getStatusColor(contract.status)}>
-                          {getStatusIcon(contract.status)}
-                          <span className="ml-1 capitalize">{contract.status}</span>
+                        <Badge className={getStatusColor(contract.isActive, contract.endDate)}>
+                          {getStatusIcon(contract.isActive, contract.endDate)}
+                          <span className="ml-1">{getStatusLabel(contract.isActive, contract.endDate)}</span>
                         </Badge>
                       </TableCell>
                       <TableCell>
