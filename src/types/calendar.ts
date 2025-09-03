@@ -1,4 +1,3 @@
-
 import { BaseEntity } from './common';
 
 export interface Cleaner extends BaseEntity {
@@ -79,6 +78,7 @@ export interface TimeLog extends BaseEntity {
   totalHours: number;
   overtimeHours: number;
   notes?: string;
+  workedHours: number;
   status: 'pending' | 'approved' | 'rejected';
   approvedBy?: string;
   approvedAt?: string;
@@ -166,13 +166,30 @@ export interface TaskTimeBreakdown {
 
 export interface SalaryCalculation {
   cleanerId: string;
-  period: string;
-  baseSalary: number;
-  overtimePay: number;
-  bonuses: number;
-  deductions: number;
-  totalGross: number;
-  totalNet: number;
-  hoursWorked: number;
-  overtimeHours: number;
+  period: { startDate: Date; endDate: Date };
+  contract: {
+    hourlyRate: number;
+    overtimeRate: number;
+    contractHoursPerWeek: number;
+    vacationDaysPerYear: number;
+  };
+  hours: {
+    regular: number;
+    overtime: number;
+    vacation: number;
+    total: number;
+  };
+  pay: {
+    regular: number;
+    overtime: number;
+    vacation: number;
+    gross: number;
+  };
+  deductions: {
+    socialSecurity: number;
+    taxes: number;
+    total: number;
+  };
+  netPay: number;
+  generatedAt: Date;
 }

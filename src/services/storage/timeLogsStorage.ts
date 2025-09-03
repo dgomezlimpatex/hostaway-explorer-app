@@ -42,6 +42,7 @@ const mapTimeLogFromDB = (row: any): TimeLog => ({
   totalHours: row.total_hours || 0,
   overtimeHours: row.overtime_hours || 0,
   notes: row.notes,
+  workedHours: row.worked_hours || row.total_hours || 0,
   status: row.status,
   approvedBy: row.approved_by,
   approvedAt: row.approved_at,

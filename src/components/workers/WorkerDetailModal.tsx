@@ -18,6 +18,7 @@ import { WorkerBasicInfo } from './WorkerBasicInfo';
 import { WorkerHoursOverview } from './WorkerHoursOverview';
 import { AlertsPanel } from './AlertsPanel';
 import { TaskTimeBreakdown } from './TaskTimeBreakdown';
+import { SalaryCalculation } from './SalaryCalculation';
 import { useWorkerHoursOverview } from '@/hooks/useWorkerAlerts';
 
 interface WorkerDetailModalProps {
@@ -108,99 +109,42 @@ export const WorkerDetailModal = ({ worker, open, onOpenChange }: WorkerDetailMo
 
           {/* Tabs principales */}
           <Tabs defaultValue="overview" className="flex-1">
-            <TabsList className="grid w-full grid-cols-6">
-              <TabsTrigger value="overview" className="flex items-center gap-2">
-                <Clock className="h-4 w-4" />
-                Resumen
-              </TabsTrigger>
-              <TabsTrigger value="info" className="flex items-center gap-2">
-                <User className="h-4 w-4" />
-                Información
-              </TabsTrigger>
-              <TabsTrigger value="tasks" className="flex items-center gap-2">
-                <BarChart3 className="h-4 w-4" />
-                Tareas
-              </TabsTrigger>
-              <TabsTrigger value="schedule" className="flex items-center gap-2">
-                <Calendar className="h-4 w-4" />
-                Horarios
-              </TabsTrigger>
-              <TabsTrigger value="time" className="flex items-center gap-2">
-                <Clock className="h-4 w-4" />
-                Control Tiempo
-              </TabsTrigger>
-              <TabsTrigger value="reports" className="flex items-center gap-2">
-                <FileText className="h-4 w-4" />
-                Reportes
-              </TabsTrigger>
+            <TabsList className="grid w-full grid-cols-5">
+              <TabsTrigger value="overview">Resumen</TabsTrigger>
+              <TabsTrigger value="alerts">Alertas</TabsTrigger>
+              <TabsTrigger value="tasks">Tareas</TabsTrigger>
+              <TabsTrigger value="salary">Nómina</TabsTrigger>
+              <TabsTrigger value="contracts">Contratos</TabsTrigger>
             </TabsList>
 
-            <div className="mt-4 flex-1 overflow-auto">
-            <TabsContent value="overview" className="space-y-4">
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <div>
-                  {overview ? (
-                    <WorkerHoursOverview 
-                      overview={overview} 
-                      workerName={worker.name}
-                      showProjections={true}
-                    />
-                  ) : (
-                    <div className="text-center py-8 text-muted-foreground">
-                      <p>No hay datos de contrato disponibles</p>
-                      <p className="text-sm">Configure un contrato para ver el resumen de horas</p>
-                    </div>
-                  )}
-                </div>
-                <div>
-                  {alerts.length > 0 ? (
-                    <AlertsPanel className="h-fit" />
-                  ) : (
-                    <div className="text-center py-8 text-muted-foreground">
-                      <p>Sin alertas activas</p>
-                      <p className="text-sm">Todo funciona correctamente</p>
-                    </div>
-                  )}
-                </div>
-              </div>
+            <TabsContent value="overview">
+              <WorkerHoursOverview 
+                overview={overview} 
+                workerName={worker.name}
+                showProjections={true}
+              />
             </TabsContent>
-
-            <TabsContent value="info" className="space-y-4">
-              <WorkerBasicInfo worker={worker} />
+            
+            <TabsContent value="alerts">
+              <AlertsPanel className="h-fit" />
             </TabsContent>
-
-            <TabsContent value="tasks" className="space-y-4">
+            
+            <TabsContent value="tasks">
               <TaskTimeBreakdown 
                 workerId={worker.id} 
                 workerName={worker.name}
               />
             </TabsContent>
-
-              <TabsContent value="schedule" className="space-y-4">
-                <WorkerScheduleCalendar workerId={worker.id} />
-              </TabsContent>
-
-              <TabsContent value="time" className="space-y-4">
-                <WorkerTimeTracking workerId={worker.id} />
-              </TabsContent>
-
-              <TabsContent value="reports" className="space-y-4">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Reportes y Estadísticas</CardTitle>
-                    <CardDescription>
-                      Análisis de rendimiento y estadísticas del trabajador
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-center py-8 text-muted-foreground">
-                      <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                      <p>Funcionalidad de reportes en desarrollo</p>
-                    </div>
-                  </CardContent>
-                </Card>
-              </TabsContent>
-            </div>
+            
+            <TabsContent value="salary">
+              <SalaryCalculation cleanerId={worker.id} cleanerName={worker.name} />
+            </TabsContent>
+            
+            <TabsContent value="contracts">
+              <div className="text-center py-8 text-muted-foreground">
+                Gestión de contratos en desarrollo
+              </div>
+            </TabsContent>
           </Tabs>
         </div>
       </DialogContent>
