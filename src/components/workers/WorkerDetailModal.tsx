@@ -54,8 +54,8 @@ export const WorkerDetailModal = ({ worker, open, onOpenChange }: WorkerDetailMo
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden">
-        <DialogHeader>
+      <DialogContent className="max-w-5xl max-h-[95vh] overflow-y-auto">
+        <DialogHeader className="sticky top-0 bg-background z-10 pb-4">
           <DialogTitle className="flex items-center gap-2">
             <User className="h-5 w-5" />
             {worker.name}
@@ -65,7 +65,7 @@ export const WorkerDetailModal = ({ worker, open, onOpenChange }: WorkerDetailMo
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex flex-col h-full">
+        <div className="space-y-6">
           {/* Información básica resumida */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
             <Card>
@@ -110,68 +110,82 @@ export const WorkerDetailModal = ({ worker, open, onOpenChange }: WorkerDetailMo
           </div>
 
           {/* Tabs principales */}
-          <Tabs defaultValue="overview" className="flex-1">
-        <TabsList className="grid w-full grid-cols-6">
-          <TabsTrigger value="overview">Resumen</TabsTrigger>
-          <TabsTrigger value="alerts">Alertas</TabsTrigger>
-          <TabsTrigger value="tasks">Tareas</TabsTrigger>
-          <TabsTrigger value="salary">Nómina</TabsTrigger>
-          <TabsTrigger value="vacations">Vacaciones</TabsTrigger>
-          <TabsTrigger value="contracts">Contratos</TabsTrigger>
-        </TabsList>
+          <Tabs defaultValue="overview" className="w-full">
+            <TabsList className="grid w-full grid-cols-6 sticky top-[120px] bg-background z-10">
+              <TabsTrigger value="overview">Resumen</TabsTrigger>
+              <TabsTrigger value="alerts">Alertas</TabsTrigger>
+              <TabsTrigger value="tasks">Tareas</TabsTrigger>
+              <TabsTrigger value="salary">Nómina</TabsTrigger>
+              <TabsTrigger value="vacations">Vacaciones</TabsTrigger>
+              <TabsTrigger value="contracts">Contratos</TabsTrigger>
+            </TabsList>
 
-            <TabsContent value="overview">
-              {overview ? (
-                <WorkerHoursOverview 
-                  overview={overview} 
-                  workerName={worker.name}
-                  showProjections={true}
-                />
-              ) : (
-                <div className="text-center py-8 text-muted-foreground">
-                  <p>No hay datos de contrato disponibles</p>
-                  <p className="text-sm">Configure un contrato para ver el resumen de horas</p>
+            <div className="mt-4 space-y-6">
+              <TabsContent value="overview" className="mt-0">
+                {overview ? (
+                  <div className="max-h-[60vh] overflow-y-auto">
+                    <WorkerHoursOverview 
+                      overview={overview} 
+                      workerName={worker.name}
+                      showProjections={true}
+                    />
+                  </div>
+                ) : (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <p>No hay datos de contrato disponibles</p>
+                    <p className="text-sm">Configure un contrato para ver el resumen de horas</p>
+                  </div>
+                )}
+              </TabsContent>
+              
+              <TabsContent value="alerts" className="mt-0">
+                <div className="max-h-[60vh] overflow-y-auto">
+                  {alerts.length > 0 ? (
+                    <AlertsPanel className="h-fit" />
+                  ) : (
+                    <div className="text-center py-8 text-muted-foreground">
+                      <p>Sin alertas activas</p>
+                      <p className="text-sm">Todo funciona correctamente</p>
+                    </div>
+                  )}
                 </div>
-              )}
-            </TabsContent>
-            
-            <TabsContent value="alerts">
-              {alerts.length > 0 ? (
-                <AlertsPanel className="h-fit" />
-              ) : (
-                <div className="text-center py-8 text-muted-foreground">
-                  <p>Sin alertas activas</p>
-                  <p className="text-sm">Todo funciona correctamente</p>
+              </TabsContent>
+              
+              <TabsContent value="tasks" className="mt-0">
+                <div className="max-h-[60vh] overflow-y-auto">
+                  <TaskTimeBreakdown 
+                    workerId={worker.id} 
+                    workerName={worker.name}
+                  />
                 </div>
-              )}
-            </TabsContent>
-            
-            <TabsContent value="tasks">
-              <TaskTimeBreakdown 
-                workerId={worker.id} 
-                workerName={worker.name}
-              />
-            </TabsContent>
-            
-            <TabsContent value="salary">
-              <SalaryCalculation cleanerId={worker.id} cleanerName={worker.name} />
-            </TabsContent>
-            
-            <TabsContent value="vacations">
-              <VacationRequestsList 
-                cleanerId={worker.id} 
-                cleanerName={worker.name}
-                isManager={true}
-              />
-            </TabsContent>
-            
-            <TabsContent value="contracts">
-              <ContractManagement 
-                cleanerId={worker.id} 
-                cleanerName={worker.name}
-                isManager={true}
-              />
-            </TabsContent>
+              </TabsContent>
+              
+              <TabsContent value="salary" className="mt-0">
+                <div className="max-h-[60vh] overflow-y-auto">
+                  <SalaryCalculation cleanerId={worker.id} cleanerName={worker.name} />
+                </div>
+              </TabsContent>
+              
+              <TabsContent value="vacations" className="mt-0">
+                <div className="max-h-[60vh] overflow-y-auto">
+                  <VacationRequestsList 
+                    cleanerId={worker.id} 
+                    cleanerName={worker.name}
+                    isManager={true}
+                  />
+                </div>
+              </TabsContent>
+              
+              <TabsContent value="contracts" className="mt-0">
+                <div className="max-h-[60vh] overflow-y-auto">
+                  <ContractManagement 
+                    cleanerId={worker.id} 
+                    cleanerName={worker.name}
+                    isManager={true}
+                  />
+                </div>
+              </TabsContent>
+            </div>
           </Tabs>
         </div>
       </DialogContent>
