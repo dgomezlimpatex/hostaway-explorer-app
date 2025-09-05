@@ -127,8 +127,14 @@ export const useOptimizedTasks = ({
     // Apply view-based date filtering ONLY for non-cleaners in calendar
     // For cleaners, let them see all their tasks for navigation
     if (userRole !== 'cleaner') {
+      const currentDateString = currentDate.toISOString().split('T')[0];
+      console.log('🔍 About to filter by view - tasks before filtering:', validTasks.length);
+      console.log('🔍 Current view:', currentView, 'Current date:', currentDateString);
+      console.log('🔍 First few tasks dates:', validTasks.slice(0, 5).map(t => t.date));
+      
       const viewFiltered = filterTasksByView(validTasks, currentDate, currentView);
       console.log('🎯 View filtered tasks (non-cleaner):', viewFiltered.length);
+      console.log('🔍 Filtered tasks dates:', viewFiltered.slice(0, 5).map(t => t.date));
       return viewFiltered;
     }
     
