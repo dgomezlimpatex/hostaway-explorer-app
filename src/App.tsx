@@ -1,5 +1,5 @@
 
-import React from "react";
+import React, { Suspense, useTransition } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -42,12 +42,22 @@ const LogisticsDeliveries = React.lazy(() => import("./pages/LogisticsDeliveries
 const LogisticsDashboard = React.lazy(() => import("./pages/LogisticsDashboard"));
 const LogisticsReports = React.lazy(() => import("./pages/LogisticsReports"));
 
-// Helper component to wrap lazy routes with error boundary
-const LazyRoute = ({ children }: { children: React.ReactNode }) => (
-  <LazyLoadErrorBoundary>
-    {children}
-  </LazyLoadErrorBoundary>
-);
+// Helper component to wrap lazy routes with error boundary and transition
+const LazyRoute = ({ children }: { children: React.ReactNode }) => {
+  const [isPending, startTransition] = useTransition();
+  
+  return (
+    <LazyLoadErrorBoundary>
+      <Suspense fallback={
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        </div>
+      }>
+        {children}
+      </Suspense>
+    </LazyLoadErrorBoundary>
+  );
+};
 
 const queryClient = new QueryClient();
 
@@ -102,14 +112,18 @@ function App() {
               <Route path="/calendar" element={
                 <ProtectedRoute>
                   <RoleProtectedRoute requiredModule="calendar">
-                    <Calendar />
+                    <LazyRoute>
+                      <Calendar />
+                    </LazyRoute>
                   </RoleProtectedRoute>
                 </ProtectedRoute>
               } />
               <Route path="/tasks" element={
                 <ProtectedRoute>
                   <RoleProtectedRoute requiredModule="tasks">
-                    <Tasks />
+                    <LazyRoute>
+                      <Tasks />
+                    </LazyRoute>
                   </RoleProtectedRoute>
                 </ProtectedRoute>
               } />
@@ -125,7 +139,9 @@ function App() {
               <Route path="/properties" element={
                 <ProtectedRoute>
                   <RoleProtectedRoute requiredModule="properties">
-                    <Properties />
+                    <LazyRoute>
+                      <Properties />
+                    </LazyRoute>
                   </RoleProtectedRoute>
                 </ProtectedRoute>
               } />
@@ -153,7 +169,9 @@ function App() {
               <Route path="/reports" element={
                 <ProtectedRoute>
                   <RoleProtectedRoute requiredModule="reports">
-                    <Reports />
+                    <LazyRoute>
+                      <Reports />
+                    </LazyRoute>
                   </RoleProtectedRoute>
                 </ProtectedRoute>
               } />

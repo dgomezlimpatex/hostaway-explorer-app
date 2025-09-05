@@ -1,4 +1,4 @@
-import React, { Component, ReactNode, Suspense } from 'react';
+import React, { Component, ReactNode, Suspense, startTransition } from 'react';
 import { Button } from '@/components/ui/button';
 import { RefreshCw, AlertTriangle } from 'lucide-react';
 
@@ -74,11 +74,13 @@ export class LazyLoadErrorBoundary extends Component<Props, State> {
   }
 
   static getDerivedStateFromError(error: Error): State {
-    // Check if it's a dynamic import error (lazy loading failure)
+    // Check for various types of loading errors
     const isLazyLoadError = error.message?.includes('Failed to fetch dynamically imported module') ||
                            error.message?.includes('Loading chunk') ||
                            error.message?.includes('Loading CSS chunk') ||
-                           error.name === 'ChunkLoadError';
+                           error.message?.includes('suspended while responding to synchronous input') ||
+                           error.name === 'ChunkLoadError' ||
+                           error.message?.includes('Minified React error #426');
 
     return {
       hasError: true,
@@ -100,19 +102,22 @@ export class LazyLoadErrorBoundary extends Component<Props, State> {
       return;
     }
 
-    // Clear any existing timeout
-    if (this.retryTimeoutId) {
-      clearTimeout(this.retryTimeoutId);
-    }
+    // Use startTransition for retry to avoid sync suspension issues
+    startTransition(() => {
+      // Clear any existing timeout
+      if (this.retryTimeoutId) {
+        clearTimeout(this.retryTimeoutId);
+      }
 
-    // Add a delay before retrying to avoid hammering the server
-    this.retryTimeoutId = window.setTimeout(() => {
-      this.setState({
-        hasError: false,
-        error: null,
-        retryCount: retryCount + 1
-      });
-    }, 1000 * (retryCount + 1)); // Exponential backoff: 1s, 2s, 3s
+      // Add a delay before retrying to avoid hammering the server
+      this.retryTimeoutId = window.setTimeout(() => {
+        this.setState({
+          hasError: false,
+          error: null,
+          retryCount: retryCount + 1
+        });
+      }, 1000 * (retryCount + 1)); // Exponential backoff: 1s, 2s, 3s
+    });
   };
 
   componentWillUnmount() {
@@ -136,10 +141,6 @@ export class LazyLoadErrorBoundary extends Component<Props, State> {
       throw this.state.error;
     }
 
-    return (
-      <Suspense fallback={<LazyLoader />}>
-        {this.props.children}
-      </Suspense>
-    );
+    return <>{this.props.children}</>;
   }
 }
