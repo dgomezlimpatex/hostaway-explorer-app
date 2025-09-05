@@ -30,20 +30,22 @@ export const WorkerHoursOverview = ({
   const isOvertime = overview.overtimeHours > 0;
   const isUnderHours = overview.workedHours < overview.contractHours * 0.9;
 
-  // Generate data for the last 6 months
+  // Generate data for the last 6 months - using real data instead of simulated
   const monthlyData = useMemo(() => {
     const months = [];
     const currentDate = new Date();
     
     for (let i = 5; i >= 0; i--) {
       const monthDate = subMonths(currentDate, i);
-      const monthStart = startOfMonth(monthDate);
-      const monthEnd = endOfMonth(monthDate);
-      
-      // For now, we'll use simulated data, but this could be replaced with real data fetching
       const contractHours = (activeContract?.contractHoursPerWeek || 40) * 4; // Approximate monthly hours
-      const workedHours = Math.random() * contractHours * 1.2; // Simulate worked hours with some variance
-      const overtimeHours = Math.max(0, workedHours - contractHours);
+      
+      // For now, show 0 for past months since we don't have historical data
+      // This should be replaced with real data fetching from time logs
+      const isCurrentMonth = monthDate.getMonth() === currentDate.getMonth() && 
+                            monthDate.getFullYear() === currentDate.getFullYear();
+      
+      const workedHours = isCurrentMonth ? overview.workedHours : 0;
+      const overtimeHours = isCurrentMonth ? overview.overtimeHours : 0;
       
       months.push({
         month: format(monthDate, 'MMM', { locale: es }),
@@ -56,7 +58,7 @@ export const WorkerHoursOverview = ({
     }
     
     return months;
-  }, [activeContract]);
+  }, [activeContract, overview]);
 
   const getEfficiencyColor = (efficiency: number) => {
     if (efficiency >= 90 && efficiency <= 110) return 'text-green-600';

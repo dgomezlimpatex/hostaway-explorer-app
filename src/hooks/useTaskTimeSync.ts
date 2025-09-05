@@ -19,7 +19,13 @@ export const useTaskTimeSync = (cleanerId: string, month?: Date) => {
   const { tasks } = useTasks(currentMonth, 'week');
   
   const cleanerTasks = useMemo(() => {
-    return tasks.filter(task => task.cleanerId === cleanerId);
+    const today = new Date();
+    today.setHours(23, 59, 59, 999); // End of today
+    
+    return tasks.filter(task => {
+      const taskDate = new Date(task.date);
+      return task.cleanerId === cleanerId && taskDate <= today;
+    });
   }, [tasks, cleanerId]);
 
   // Calculate task time breakdown
@@ -59,25 +65,31 @@ export const useTaskTimeSync = (cleanerId: string, month?: Date) => {
     return breakdown.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
   }, [cleanerTasks, timeLogs]);
 
-  // Statistics
+  // Statistics - only count tasks from today or earlier
   const stats = useMemo(() => {
-    const totalTimeSpent = taskTimeBreakdown.reduce((sum, item) => sum + item.timeSpent, 0);
-    const totalScheduledTime = taskTimeBreakdown.reduce((sum, item) => sum + item.scheduledTime, 0);
-    const averageEfficiency = taskTimeBreakdown.length > 0 
-      ? taskTimeBreakdown.reduce((sum, item) => sum + item.efficiency, 0) / taskTimeBreakdown.length 
+    const today = new Date();
+    today.setHours(23, 59, 59, 999);
+    
+    const validTasks = cleanerTasks.filter(task => new Date(task.date) <= today);
+    const validBreakdown = taskTimeBreakdown.filter(item => new Date(item.date) <= today);
+    
+    const totalTimeSpent = validBreakdown.reduce((sum, item) => sum + item.timeSpent, 0);
+    const totalScheduledTime = validBreakdown.reduce((sum, item) => sum + item.scheduledTime, 0);
+    const averageEfficiency = validBreakdown.length > 0 
+      ? validBreakdown.reduce((sum, item) => sum + item.efficiency, 0) / validBreakdown.length 
       : 0;
     
-    const tasksWithTimeLogs = taskTimeBreakdown.filter(item => item.timeSpent > 0);
-    const tasksWithoutTimeLogs = taskTimeBreakdown.filter(item => item.timeSpent === 0);
+    const tasksWithTimeLogs = validBreakdown.filter(item => item.timeSpent > 0);
+    const tasksWithoutTimeLogs = validBreakdown.filter(item => item.timeSpent === 0);
 
     return {
       totalTimeSpent,
       totalScheduledTime,
       averageEfficiency,
-      tasksCompleted: cleanerTasks.filter(task => task.status === 'completed').length,
+      tasksCompleted: validTasks.filter(task => task.status === 'completed').length,
       tasksWithTimeLogs: tasksWithTimeLogs.length,
       tasksWithoutTimeLogs: tasksWithoutTimeLogs.length,
-      totalTasks: cleanerTasks.length
+      totalTasks: validTasks.length
     };
   }, [taskTimeBreakdown, cleanerTasks]);
 

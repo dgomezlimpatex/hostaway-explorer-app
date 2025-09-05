@@ -39,8 +39,16 @@ export const TaskTimeBreakdown = ({ workerId, workerName, month }: TaskTimeBreak
   const syncTasksWithTimeLogs = useSyncTasksWithTimeLogs();
   const createTimeLogFromTask = useCreateTimeLogFromTask();
 
-  // Filter breakdown by type and include all tasks
+  // Filter breakdown by type and include only tasks from today or earlier
+  const today = new Date();
+  today.setHours(23, 59, 59, 999); // End of today
+  
   const filteredBreakdown = taskTimeBreakdown.filter(item => {
+    const taskDate = new Date(item.date);
+    
+    // Only include tasks from today or earlier
+    if (taskDate > today) return false;
+    
     if (filterType === 'all') return true;
     if (filterType === 'completed') return item.taskStatus === 'completed';
     if (filterType === 'pending') return item.taskStatus !== 'completed';
