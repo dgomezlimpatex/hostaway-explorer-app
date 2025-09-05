@@ -2496,6 +2496,10 @@ export type Database = {
         Args: { cleaner_updates: Json[] }
         Returns: undefined
       }
+      user_can_access_task: {
+        Args: { task_sede_id: string }
+        Returns: boolean
+      }
       user_has_role: {
         Args: { check_role: Database["public"]["Enums"]["app_role"] }
         Returns: boolean

@@ -129,15 +129,21 @@ export class TaskStorageService extends BaseStorageService<Task, TaskCreateData>
     const batchSize = 1000;
     
     while (hasMore) {
-      const { data: batchData, error } = await supabase
+      let query = supabase
         .from('tasks')
         .select(`
           *,
           properties!tasks_propiedad_id_fkey(codigo),
           task_reports(overall_status),
           task_assignments(id, cleaner_id, cleaner_name)
-        `)
-        .eq('sede_id', sedeId)
+        `);
+      
+      // Solo aplicar filtro de sede si existe
+      if (sedeId && sedeId !== 'no-sede') {
+        query = query.eq('sede_id', sedeId);
+      }
+      
+      const { data: batchData, error } = await query
         .order('date', { ascending: true })
         .order('start_time', { ascending: true })
         .range(offset, offset + batchSize - 1);

@@ -85,7 +85,7 @@ export const useOptimizedTasks = ({
     },
     staleTime: 0, // Force no cache
     gcTime: 0, // Force immediate garbage collection
-    enabled: enabled && (userRole !== 'cleaner' || currentCleanerId !== null) && !!activeSede,
+    enabled: enabled && (userRole !== 'cleaner' || currentCleanerId !== null),
     refetchOnWindowFocus: true,
     refetchOnMount: true, // Force refetch on mount
   });

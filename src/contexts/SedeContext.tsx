@@ -75,6 +75,7 @@ export const SedeProvider = ({ children }: SedeProviderProps) => {
     try {
       setLoading(true);
       const sedes = await sedeStorageService.getUserAccessibleSedes();
+      console.log('📍 Sedes disponibles cargadas:', sedes?.length || 0);
       setAvailableSedes(sedes);
 
       // Obtener sede activa actual (desde estado o localStorage)
@@ -82,9 +83,11 @@ export const SedeProvider = ({ children }: SedeProviderProps) => {
       
       // Sincronizar sede activa con sedes disponibles
       const finalActiveSede = syncActiveSede(sedes, currentActiveSede);
+      console.log('📍 Sede activa final:', finalActiveSede?.nombre || 'ninguna');
       
       // Solo invalidar cache si cambió la sede y hay datos previos
       if (finalActiveSede?.id !== currentActiveSede?.id && currentActiveSede !== null) {
+        console.log('🔄 Invalidando queries por cambio de sede');
         // Invalidate queries in batches to prevent excessive requests
         const queriesToInvalidate = [
           ['tasks'],
