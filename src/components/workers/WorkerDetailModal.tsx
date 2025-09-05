@@ -22,6 +22,7 @@ import { SalaryCalculation } from './SalaryCalculation';
 import { VacationRequestsList } from './VacationRequestsList';
 import { ContractManagement } from './ContractManagement';
 import { useWorkerHoursOverview } from '@/hooks/useWorkerAlerts';
+import { useCleanerContracts } from '@/hooks/useWorkerContracts';
 
 interface WorkerDetailModalProps {
   worker: Cleaner | null;
@@ -31,6 +32,15 @@ interface WorkerDetailModalProps {
 
 export const WorkerDetailModal = ({ worker, open, onOpenChange }: WorkerDetailModalProps) => {
   const { overview, alerts } = useWorkerHoursOverview(worker?.id || '');
+  const { data: contracts = [] } = useCleanerContracts(worker?.id || '');
+  
+  // Get active contract data
+  const activeContract = contracts.find(contract => contract.isActive);
+  
+  // Use contract data if available, fallback to worker data
+  const displayHours = activeContract?.contractHoursPerWeek || worker?.contractHoursPerWeek || 0;
+  const displayRate = activeContract?.hourlyRate || worker?.hourlyRate;
+  const displayContractType = activeContract?.contractType || worker?.contractType;
   
   if (!worker) return null;
 
@@ -76,7 +86,7 @@ export const WorkerDetailModal = ({ worker, open, onOpenChange }: WorkerDetailMo
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{worker.contractHoursPerWeek || 0}h</div>
+                <div className="text-2xl font-bold">{displayHours}h</div>
                 <div className="text-xs text-muted-foreground">por semana</div>
               </CardContent>
             </Card>
@@ -90,7 +100,7 @@ export const WorkerDetailModal = ({ worker, open, onOpenChange }: WorkerDetailMo
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">
-                  {worker.hourlyRate ? `€${worker.hourlyRate}` : 'N/A'}
+                  {displayRate ? `€${displayRate}` : 'N/A'}
                 </div>
                 <div className="text-xs text-muted-foreground">por hora</div>
               </CardContent>
@@ -101,9 +111,12 @@ export const WorkerDetailModal = ({ worker, open, onOpenChange }: WorkerDetailMo
                 <CardTitle className="text-sm">Tipo de Contrato</CardTitle>
               </CardHeader>
               <CardContent>
-                {getContractTypeBadge(worker.contractType)}
+                {getContractTypeBadge(displayContractType)}
                 <div className="text-xs text-muted-foreground mt-1">
-                  {worker.startDate && `Desde ${new Date(worker.startDate).toLocaleDateString()}`}
+                  {activeContract?.startDate 
+                    ? `Desde ${new Date(activeContract.startDate).toLocaleDateString()}` 
+                    : worker.startDate && `Desde ${new Date(worker.startDate).toLocaleDateString()}`
+                  }
                 </div>
               </CardContent>
             </Card>
