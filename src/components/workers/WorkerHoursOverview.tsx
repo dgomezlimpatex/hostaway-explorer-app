@@ -37,7 +37,7 @@ export const WorkerHoursOverview = ({
     
     for (let i = 5; i >= 0; i--) {
       const monthDate = subMonths(currentDate, i);
-      const contractHours = (activeContract?.contractHoursPerWeek || 40) * 4; // Approximate monthly hours
+      const contractHours = (activeContract?.contractHoursPerWeek || 40) * 4.345; // Correct monthly hours calculation
       
       // For now, show 0 for past months since we don't have historical data
       // This should be replaced with real data fetching from time logs
