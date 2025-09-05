@@ -67,7 +67,9 @@ export const useOptimizedTasks = ({
         
         // For cleaners, ALWAYS return ALL their tasks so they can see upcoming tasks
         // Let the UI components (calendar, tasks page) handle filtering by current date if needed
-        return await filterTasksByUserRole(optimizedTasks, userRole, currentCleanerId, cleaners);
+        const cleanerFiltered = await filterTasksByUserRole(optimizedTasks, userRole, currentCleanerId, cleaners);
+        console.log('🎯 CLEANER: Final tasks after role filtering:', cleanerFiltered.length);
+        return cleanerFiltered;
       }
       
       // For non-cleaners, ALWAYS fetch fresh data after forced invalidation
@@ -82,7 +84,9 @@ export const useOptimizedTasks = ({
       queryClient.setQueryData(['tasks', 'all', sedeId], allTasks);
       
       const filteredByView = filterTasksByView(allTasks, currentDate, currentView);
-      return await filterTasksByUserRole(filteredByView, userRole, currentCleanerId, cleaners);
+      const finalFiltered = await filterTasksByUserRole(filteredByView, userRole, currentCleanerId, cleaners);
+      console.log('🎯 NON-CLEANER: Final tasks after all filtering:', finalFiltered.length);
+      return finalFiltered;
     },
     staleTime: 0, // Force no cache
     gcTime: 0, // Force immediate garbage collection
@@ -98,7 +102,10 @@ export const useOptimizedTasks = ({
     console.log('🔥 CRITICAL DEBUG: filteredTasks calculation', {
       tasksLength: tasks?.length || 0,
       currentDateStr: currentDate.toISOString().split('T')[0],
-      firstFewTasks: tasks?.slice(0, 3).map(t => ({ date: t.date, property: t.property })) || []
+      firstFewTasks: tasks?.slice(0, 3).map(t => ({ date: t.date, property: t.property })) || [],
+      activeSede: activeSede?.id,
+      userRole,
+      currentCleanerId
     });
     
     if (!tasks) {
@@ -106,11 +113,16 @@ export const useOptimizedTasks = ({
       return [];
     }
     
+    console.log('🎯 Raw tasks available for filtering:', tasks.length);
+    console.log('🎯 Sample tasks:', tasks.slice(0, 3).map(t => ({ id: t.id, date: t.date, property: t.property, cleaner: t.cleaner })));
+    
     // Aplicar filtros adicionales si es necesario
     const filtered = tasks.filter(task => task && task.date);
     
+    console.log('🎯 Final filtered tasks:', filtered.length);
+    
     return filtered;
-  }, [tasks, currentDate]);
+  }, [tasks, currentDate, activeSede, userRole, currentCleanerId]);
 
   // Prefetch para las próximas fechas (solo para no-cleaners)
   const prefetchNextDates = useMemo(() => {

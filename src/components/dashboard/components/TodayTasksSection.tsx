@@ -84,9 +84,9 @@ export const TodayTasksSection = ({
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {paginatedTodayTasks.map((task) => (
+            {paginatedTodayTasks.map((task, index) => (
               <div 
-                key={task.id} 
+                key={`${task.id}-${index}`} 
                 className="p-4 bg-gradient-to-br from-gray-50 to-gray-100 rounded-lg border cursor-pointer transition-all hover:shadow-md hover:scale-105 hover:bg-gradient-to-br hover:from-blue-50 hover:to-blue-100"
                 onClick={() => onTaskClick(task)}
               >
