@@ -155,31 +155,27 @@ export const UserManagement = () => {
   // Mutation para eliminar usuario completamente
   const deleteUserMutation = useMutation({
     mutationFn: async (userId: string) => {
-      // 1. Primero eliminar el rol
-      const { error: roleError } = await supabase
-        .from('user_roles')
-        .delete()
-        .eq('user_id', userId);
+      const { data: { session } } = await supabase.auth.getSession();
       
-      if (roleError) throw roleError;
-
-      // 2. Eliminar de cleaners si existe
-      const { error: cleanerError } = await supabase
-        .from('cleaners')
-        .delete()
-        .eq('user_id', userId);
-      
-      // No lanzar error si no existe en cleaners
-      console.log('Cleaner deletion result:', cleanerError);
-
-      // 3. Eliminar completamente el usuario de auth.users
-      // Esto también eliminará automáticamente el profile por CASCADE
-      const { error: authError } = await supabase.auth.admin.deleteUser(userId);
-      
-      if (authError) {
-        console.error('Error deleting user from auth:', authError);
-        throw new Error('No se pudo eliminar el usuario de la autenticación');
+      if (!session) {
+        throw new Error('No tienes sesión activa');
       }
+
+      const response = await fetch('https://qyipyygojlfhdghnraus.supabase.co/functions/v1/delete-user', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({ userId }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Error al eliminar usuario');
+      }
+
+      return await response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['active-users'] });
