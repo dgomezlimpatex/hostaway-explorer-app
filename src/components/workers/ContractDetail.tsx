@@ -204,31 +204,34 @@ export const ContractDetail: React.FC<ContractDetailProps> = ({
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="space-y-2">
-                  <span className="text-sm text-muted-foreground">Fecha de Inicio</span>
-                  <div className="font-medium">
-                    {format(new Date(contract.start_date), 'dd MMM yyyy', { locale: es })}
-                  </div>
-                </div>
-                
-                <div className="space-y-2">
-                  <span className="text-sm text-muted-foreground">Fecha de Fin</span>
-                  <div className="font-medium">
-                    {contract.end_date 
-                      ? format(new Date(contract.end_date), 'dd MMM yyyy', { locale: es })
-                      : 'Contrato Indefinido'
-                    }
-                  </div>
-                </div>
+                 <div className="space-y-2">
+                   <span className="text-sm text-muted-foreground">Fecha de Inicio</span>
+                   <div className="font-medium">
+                     {contract.start_date && !isNaN(Date.parse(contract.start_date)) 
+                       ? format(new Date(contract.start_date), 'dd MMM yyyy', { locale: es })
+                       : 'Fecha no disponible'
+                     }
+                   </div>
+                 </div>
+                 
+                 <div className="space-y-2">
+                   <span className="text-sm text-muted-foreground">Fecha de Fin</span>
+                   <div className="font-medium">
+                     {contract.end_date && !isNaN(Date.parse(contract.end_date))
+                       ? format(new Date(contract.end_date), 'dd MMM yyyy', { locale: es })
+                       : 'Contrato Indefinido'
+                     }
+                   </div>
+                 </div>
 
-                {contract.renewal_date && (
-                  <div className="space-y-2">
-                    <span className="text-sm text-muted-foreground">Renovación</span>
-                    <div className="font-medium">
-                      {format(new Date(contract.renewal_date), 'dd MMM yyyy', { locale: es })}
-                    </div>
-                  </div>
-                )}
+                 {contract.renewal_date && !isNaN(Date.parse(contract.renewal_date)) && (
+                   <div className="space-y-2">
+                     <span className="text-sm text-muted-foreground">Renovación</span>
+                     <div className="font-medium">
+                       {format(new Date(contract.renewal_date), 'dd MMM yyyy', { locale: es })}
+                     </div>
+                   </div>
+                 )}
               </div>
             </CardContent>
           </Card>
@@ -271,10 +274,13 @@ export const ContractDetail: React.FC<ContractDetailProps> = ({
                       <div className="flex items-center gap-3">
                         <FileText className="h-5 w-5 text-muted-foreground" />
                         <div>
-                          <div className="font-medium">{doc.name}</div>
-                          <div className="text-sm text-muted-foreground">
-                            Subido el {format(new Date(doc.uploadDate), 'dd MMM yyyy', { locale: es })}
-                          </div>
+                           <div className="font-medium">{doc.name}</div>
+                           <div className="text-sm text-muted-foreground">
+                             {doc.uploadDate && !isNaN(Date.parse(doc.uploadDate))
+                               ? `Subido el ${format(new Date(doc.uploadDate), 'dd MMM yyyy', { locale: es })}`
+                               : 'Fecha de subida no disponible'
+                             }
+                           </div>
                         </div>
                       </div>
                       <Button variant="ghost" size="sm">
@@ -320,7 +326,7 @@ export const ContractDetail: React.FC<ContractDetailProps> = ({
                   </Button>
                 )}
                 
-                {contract.renewalDate && new Date(contract.renewalDate) < new Date() && (
+                {contract.renewal_date && !isNaN(Date.parse(contract.renewal_date)) && new Date(contract.renewal_date) < new Date() && (
                   <Button variant="outline" className="flex items-center gap-2">
                     <RefreshCw className="h-4 w-4" />
                     Renovar Contrato
