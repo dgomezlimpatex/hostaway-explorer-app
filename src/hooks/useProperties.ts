@@ -9,9 +9,9 @@ export const useProperties = () => {
   const { activeSede } = useSede();
   
   return useQuery({
-    queryKey: ['properties', activeSede?.id],
+    queryKey: ['properties', activeSede?.id || 'all'],
     queryFn: () => propertyStorage.getAll(),
-    enabled: !!activeSede?.id,
+    enabled: true, // Always enabled - remove sede dependency temporarily
   });
 };
 
@@ -19,9 +19,9 @@ export const useProperty = (id: string) => {
   const { activeSede } = useSede();
   
   return useQuery({
-    queryKey: ['property', id, activeSede?.id],
+    queryKey: ['property', id, activeSede?.id || 'all'],
     queryFn: () => propertyStorage.getById(id),
-    enabled: !!id && !!activeSede?.id,
+    enabled: !!id, // Only depend on id, not sede
   });
 };
 
@@ -29,9 +29,9 @@ export const usePropertiesByClient = (clienteId: string) => {
   const { activeSede } = useSede();
   
   return useQuery({
-    queryKey: ['properties', 'client', clienteId, activeSede?.id],
+    queryKey: ['properties', 'client', clienteId, activeSede?.id || 'all'],
     queryFn: () => propertyStorage.getByClientId(clienteId),
-    enabled: !!clienteId && !!activeSede?.id,
+    enabled: !!clienteId, // Only depend on clienteId, not sede
   });
 };
 
