@@ -3,6 +3,7 @@ import { useInvitations, useCreateInvitation, useRevokeInvitation } from '@/hook
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useCleaners } from '@/hooks/useCleaners';
+import { useSedes } from '@/hooks/useSedes';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -89,6 +90,7 @@ export const UserManagement = () => {
 
   const { data: invitations, isLoading } = useInvitations();
   const { cleaners } = useCleaners();
+  const { allSedes, grantSedeAccess, revokeSedeAccess, isGrantingAccess, isRevokingAccess } = useSedes();
   const createInvitation = useCreateInvitation();
   const revokeInvitation = useRevokeInvitation();
 
@@ -118,6 +120,30 @@ export const UserManagement = () => {
       }));
       
       return combinedData;
+    }
+  });
+
+  // Query para obtener asignaciones de sede de usuarios
+  const { data: userSedeAccess, isLoading: isLoadingSedeAccess } = useQuery({
+    queryKey: ['user-sede-access'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('user_sede_access')
+        .select(`
+          user_id,
+          sede_id,
+          can_access,
+          sedes (
+            id,
+            nombre,
+            codigo,
+            ciudad
+          )
+        `)
+        .eq('can_access', true);
+      
+      if (error) throw error;
+      return data || [];
     }
   });
 
@@ -234,6 +260,32 @@ export const UserManagement = () => {
     return cleaners?.some(cleaner => cleaner.user_id === userId);
   };
 
+  // Helper para obtener sedes asignadas a un usuario
+  const getUserAssignedSedes = (userId: string) => {
+    return userSedeAccess?.filter(access => access.user_id === userId) || [];
+  };
+
+  // Helper para verificar si un usuario tiene acceso a una sede específica
+  const hasSedeAccess = (userId: string, sedeId: string) => {
+    return userSedeAccess?.some(access => 
+      access.user_id === userId && 
+      access.sede_id === sedeId && 
+      access.can_access
+    ) || false;
+  };
+
+  // Manejar asignación de sede
+  const handleGrantSedeAccess = (userId: string, sedeId: string) => {
+    grantSedeAccess({ userId, sedeId });
+    queryClient.invalidateQueries({ queryKey: ['user-sede-access'] });
+  };
+
+  // Manejar revocación de sede
+  const handleRevokeSedeAccess = (userId: string, sedeId: string) => {
+    revokeSedeAccess({ userId, sedeId });
+    queryClient.invalidateQueries({ queryKey: ['user-sede-access'] });
+  };
+
   const copyInvitationLink = (invitation: any) => {
     const appUrl = 'https://id-preview--47420173-53cc-4a1a-8da8-d4b51fe8c6fe.lovable.app';
     const invitationUrl = `${appUrl}/accept-invitation?token=${invitation.invitation_token}&email=${encodeURIComponent(invitation.email)}`;
@@ -246,7 +298,7 @@ export const UserManagement = () => {
     });
   };
 
-  if (isLoading || isLoadingUsers) {
+  if (isLoading || isLoadingUsers || isLoadingSedeAccess) {
     return (
       <div className="flex items-center justify-center p-8">
         <div className="text-center">
@@ -440,6 +492,7 @@ export const UserManagement = () => {
                   <TableHead>Email</TableHead>
                   <TableHead>Rol</TableHead>
                   <TableHead>Fecha de Registro</TableHead>
+                  <TableHead>Sedes Asignadas</TableHead>
                   <TableHead>Estado en Trabajadores</TableHead>
                   <TableHead>Acciones</TableHead>
                 </TableRow>
@@ -470,6 +523,46 @@ export const UserManagement = () => {
                       </TableCell>
                       <TableCell>
                         {new Date(user.created_at).toLocaleDateString('es-ES')}
+                      </TableCell>
+                      <TableCell>
+                        <div className="space-y-2">
+                          <div className="flex flex-wrap gap-1">
+                            {getUserAssignedSedes(user.user_id).map((access) => (
+                              <Badge key={access.sede_id} variant="secondary" className="text-xs">
+                                {access.sedes?.nombre} ({access.sedes?.codigo})
+                              </Badge>
+                            ))}
+                            {getUserAssignedSedes(user.user_id).length === 0 && (
+                              <span className="text-gray-400 text-sm">Sin sedes asignadas</span>
+                            )}
+                          </div>
+                          <div className="flex flex-wrap gap-1">
+                            <Select onValueChange={(sedeId) => handleGrantSedeAccess(user.user_id, sedeId)}>
+                              <SelectTrigger className="h-6 text-xs w-auto">
+                                <SelectValue placeholder="Asignar sede" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {allSedes?.filter(sede => !hasSedeAccess(user.user_id, sede.id)).map((sede) => (
+                                  <SelectItem key={sede.id} value={sede.id}>
+                                    {sede.nombre} ({sede.codigo})
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            {getUserAssignedSedes(user.user_id).map((access) => (
+                              <Button
+                                key={access.sede_id}
+                                variant="outline"
+                                size="sm"
+                                className="h-6 px-2 text-xs text-red-600 hover:text-red-700"
+                                onClick={() => handleRevokeSedeAccess(user.user_id, access.sede_id)}
+                                disabled={isRevokingAccess}
+                              >
+                                ✕ {access.sedes?.codigo}
+                              </Button>
+                            ))}
+                          </div>
+                        </div>
                       </TableCell>
                       <TableCell>
                         {(user.role === 'cleaner' || user.role === 'admin') && (
@@ -535,7 +628,7 @@ export const UserManagement = () => {
                 })}
                 {activeUsers?.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center py-8 text-gray-500">
+                    <TableCell colSpan={7} className="text-center py-8 text-gray-500">
                       No hay usuarios activos registrados
                     </TableCell>
                   </TableRow>
