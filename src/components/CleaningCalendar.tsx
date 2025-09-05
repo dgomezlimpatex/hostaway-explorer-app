@@ -68,6 +68,7 @@ const {
   }, [headerScrollRef]);
 
   if (isLoading && (!tasks || tasks.length === 0)) {
+    console.log('🔄 CleaningCalendar: Showing loading spinner', { isLoading, tasksLength: tasks?.length || 0 });
     return (
       <div className="flex items-center justify-center h-screen bg-background">
         <LoadingSpinner size="lg" text="Cargando calendario..." />
@@ -75,8 +76,17 @@ const {
     );
   }
 
+  console.log('🎯 CleaningCalendar: Determining view to render', {
+    isMobile,
+    userRole,
+    tasksLength: tasks?.length || 0,
+    cleanersLength: cleaners?.length || 0,
+    isLoading
+  });
+
   // Mobile views - render specific mobile interfaces
   if (isMobile) {
+    console.log('📱 CleaningCalendar: Rendering mobile view');
     if (userRole === 'cleaner') {
       console.log('Rendering mobile cleaner view');
       
@@ -179,7 +189,7 @@ const {
 
   // Desktop views
   if (userRole === 'cleaner') {
-    console.log('Rendering desktop cleaner view');
+    console.log('🖥️ CleaningCalendar: Rendering desktop cleaner view');
     
     // Calculate today's and tomorrow's tasks for the cleaner
     const currentDateStr = currentDate.toISOString().split('T')[0];
@@ -237,6 +247,13 @@ const {
   }
 
   // Desktop manager/admin view
+  console.log('🖥️ CleaningCalendar: Rendering desktop manager/admin view', {
+    userRole,
+    tasksLength: tasks.length,
+    cleanersLength: cleaners.length,
+    currentDateStr: currentDate.toISOString().split('T')[0]
+  });
+  
   return (
     <div className="min-h-screen bg-background text-foreground transition-colors duration-300">
       <div className="space-y-4 px-2 py-4 max-w-full">
