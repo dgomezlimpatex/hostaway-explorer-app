@@ -78,9 +78,17 @@ function App() {
               <Sonner />
             <BrowserRouter>
             <Routes>
-              <Route path="/auth" element={<Auth />} />
+              <Route path="/auth" element={
+                <LazyRoute>
+                  <Auth />
+                </LazyRoute>
+              } />
               {/* Ruta pública para aceptar invitaciones */}
-              <Route path="/accept-invitation" element={<AcceptInvitation />} />
+              <Route path="/accept-invitation" element={
+                <LazyRoute>
+                  <AcceptInvitation />
+                </LazyRoute>
+              } />
               <Route path="/" element={
                 <ProtectedRoute>
                   <LazyRoute>
@@ -91,21 +99,27 @@ function App() {
               <Route path="/user-management" element={
                 <ProtectedRoute>
                   <RoleProtectedRoute requiredModule="users">
-                    <UserManagement />
+                    <LazyRoute>
+                      <UserManagement />
+                    </LazyRoute>
                   </RoleProtectedRoute>
                 </ProtectedRoute>
               } />
               <Route path="/sede-management" element={
                 <ProtectedRoute>
                   <RoleProtectedRoute requiredModule="admin">
-                    <SedeManagement />
+                    <LazyRoute>
+                      <SedeManagement />
+                    </LazyRoute>
                   </RoleProtectedRoute>
                 </ProtectedRoute>
               } />
               <Route path="/admin/security" element={
                 <ProtectedRoute>
                   <RoleProtectedRoute requiredModule="admin">
-                    <SecurityManagement />
+                    <LazyRoute>
+                      <SecurityManagement />
+                    </LazyRoute>
                   </RoleProtectedRoute>
                 </ProtectedRoute>
               } />
@@ -148,21 +162,27 @@ function App() {
               <Route path="/workers" element={
                 <ProtectedRoute>
                   <RoleProtectedRoute requiredModule="workers">
-                    <Workers />
+                    <LazyRoute>
+                      <Workers />
+                    </LazyRoute>
                   </RoleProtectedRoute>
                 </ProtectedRoute>
               } />
               <Route path="/property-groups" element={
                 <ProtectedRoute>
                   <RoleProtectedRoute requiredModule="propertyGroups">
-                    <PropertyGroups />
+                    <LazyRoute>
+                      <PropertyGroups />
+                    </LazyRoute>
                   </RoleProtectedRoute>
                 </ProtectedRoute>
               } />
               <Route path="/checklist-templates" element={
                 <ProtectedRoute>
                   <RoleProtectedRoute requiredModule="tasks">
-                    <ChecklistTemplates />
+                    <LazyRoute>
+                      <ChecklistTemplates />
+                    </LazyRoute>
                   </RoleProtectedRoute>
                 </ProtectedRoute>
               } />
@@ -178,95 +198,125 @@ function App() {
               <Route path="/hostaway-sync-logs" element={
                 <ProtectedRoute>
                   <RoleProtectedRoute requiredModule="hostaway">
-                    <HostawaySyncLogs />
+                    <LazyRoute>
+                      <HostawaySyncLogs />
+                    </LazyRoute>
                   </RoleProtectedRoute>
                 </ProtectedRoute>
               } />
               <Route path="/cleaning-reports" element={
                 <ProtectedRoute>
                   <RoleProtectedRoute requiredModule="reports">
-                    <CleaningReports />
+                    <LazyRoute>
+                      <CleaningReports />
+                    </LazyRoute>
                   </RoleProtectedRoute>
                 </ProtectedRoute>
               } />
               <Route path="/inventory" element={
                 <ProtectedRoute>
                   <RoleProtectedRoute requiredModule="inventory">
-                    <InventoryDashboard />
+                    <LazyRoute>
+                      <InventoryDashboard />
+                    </LazyRoute>
                   </RoleProtectedRoute>
                 </ProtectedRoute>
               } />
               <Route path="/inventory/stock" element={
                 <ProtectedRoute>
                   <RoleProtectedRoute requiredModule="inventory">
-                    <InventoryStock />
+                    <LazyRoute>
+                      <InventoryStock />
+                    </LazyRoute>
                   </RoleProtectedRoute>
                 </ProtectedRoute>
               } />
               <Route path="/inventory/movements" element={
                 <ProtectedRoute>
                   <RoleProtectedRoute requiredModule="inventory">
-                    <InventoryMovements />
+                    <LazyRoute>
+                      <InventoryMovements />
+                    </LazyRoute>
                   </RoleProtectedRoute>
                 </ProtectedRoute>
               } />
               <Route path="/inventory/config" element={
                 <ProtectedRoute>
                   <RoleProtectedRoute requiredModule="inventory">
-                    <InventoryConfig />
+                    <LazyRoute>
+                      <InventoryConfig />
+                    </LazyRoute>
                   </RoleProtectedRoute>
                 </ProtectedRoute>
               } />
               <Route path="/inventory/reports" element={
                 <ProtectedRoute>
                   <RoleProtectedRoute requiredModule="inventory">
-                    <InventoryReports />
+                    <LazyRoute>
+                      <InventoryReports />
+                    </LazyRoute>
                   </RoleProtectedRoute>
                 </ProtectedRoute>
               } />
               <Route path="/logistics/dashboard" element={
                 <ProtectedRoute>
                   <RoleProtectedRoute requiredModule="logistics">
-                    <LogisticsDashboard />
+                    <LazyRoute>
+                      <LogisticsDashboard />
+                    </LazyRoute>
                   </RoleProtectedRoute>
                 </ProtectedRoute>
               } />
               <Route path="/logistics/reports" element={
                 <ProtectedRoute>
                   <RoleProtectedRoute requiredModule="logistics">
-                    <LogisticsReports />
+                    <LazyRoute>
+                      <LogisticsReports />
+                    </LazyRoute>
                   </RoleProtectedRoute>
                 </ProtectedRoute>
               } />
               <Route path="/logistics/picklists" element={
                 <ProtectedRoute>
                   <RoleProtectedRoute requiredModule="logistics">
-                    <LogisticsPicklists />
+                    <LazyRoute>
+                      <LogisticsPicklists />
+                    </LazyRoute>
                   </RoleProtectedRoute>
                 </ProtectedRoute>
               } />
               <Route path="/logistics/picklists/:id" element={
                 <ProtectedRoute>
                   <RoleProtectedRoute requiredModule="logistics">
-                    <LogisticsPicklistDetails />
+                    <LazyRoute>
+                      <LogisticsPicklistDetails />
+                    </LazyRoute>
                   </RoleProtectedRoute>
                 </ProtectedRoute>
               } />
               <Route path="/logistics/picklists/:id/edit" element={
                 <ProtectedRoute>
                   <RoleProtectedRoute requiredModule="logistics">
-                    <LogisticsPicklistEdit />
+                    <LazyRoute>
+                      <LogisticsPicklistEdit />
+                    </LazyRoute>
                   </RoleProtectedRoute>
                 </ProtectedRoute>
               } />
               <Route path="/logistics/deliveries" element={
                 <ProtectedRoute>
                   <RoleProtectedRoute requiredModule="logistics">
-                    <LogisticsDeliveries />
+                    <LazyRoute>
+                      <LogisticsDeliveries />
+                    </LazyRoute>
                   </RoleProtectedRoute>
                 </ProtectedRoute>
               } />
-              <Route path="*" element={<NotFound />} />
+              <Route path="*" element={
+                <LazyRoute>
+                  <NotFound />
+                </LazyRoute>
+              } />
             </Routes>
           </BrowserRouter>
             </SecurityWrapper>
