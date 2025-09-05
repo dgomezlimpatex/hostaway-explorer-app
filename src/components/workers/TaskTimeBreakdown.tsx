@@ -39,9 +39,11 @@ export const TaskTimeBreakdown = ({ workerId, workerName, month }: TaskTimeBreak
   const syncTasksWithTimeLogs = useSyncTasksWithTimeLogs();
   const createTimeLogFromTask = useCreateTimeLogFromTask();
 
-  // Filter breakdown by type
+  // Filter breakdown by type and include all tasks
   const filteredBreakdown = taskTimeBreakdown.filter(item => {
     if (filterType === 'all') return true;
+    if (filterType === 'completed') return item.taskStatus === 'completed';
+    if (filterType === 'pending') return item.taskStatus !== 'completed';
     if (filterType === 'with-logs') return item.timeSpent > 0;
     if (filterType === 'without-logs') return item.timeSpent === 0;
     if (filterType === 'efficient') return item.efficiency >= 90;
@@ -167,18 +169,18 @@ export const TaskTimeBreakdown = ({ workerId, workerName, month }: TaskTimeBreak
         <Card>
           <CardContent className="p-4">
             <div className="text-2xl font-bold text-blue-600">
-              {stats.tasksWithTimeLogs}
+              {stats.totalTasks}
             </div>
-            <div className="text-xs text-muted-foreground">Con Registros</div>
+            <div className="text-xs text-muted-foreground">Total Tareas</div>
           </CardContent>
         </Card>
         
         <Card>
           <CardContent className="p-4">
-            <div className="text-2xl font-bold text-orange-600">
-              {stats.tasksWithoutTimeLogs}
+            <div className="text-2xl font-bold text-green-600">
+              {stats.tasksCompleted}
             </div>
-            <div className="text-xs text-muted-foreground">Sin Registros</div>
+            <div className="text-xs text-muted-foreground">Completadas</div>
           </CardContent>
         </Card>
       </div>
@@ -199,6 +201,8 @@ export const TaskTimeBreakdown = ({ workerId, workerName, month }: TaskTimeBreak
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Todas las tareas</SelectItem>
+                  <SelectItem value="completed">Completadas</SelectItem>
+                  <SelectItem value="pending">Pendientes</SelectItem>
                   <SelectItem value="with-logs">Con registros</SelectItem>
                   <SelectItem value="without-logs">Sin registros</SelectItem>
                   <SelectItem value="efficient">Eficientes (≥90%)</SelectItem>
@@ -215,6 +219,7 @@ export const TaskTimeBreakdown = ({ workerId, workerName, month }: TaskTimeBreak
               <TableRow>
                 <TableHead>Fecha</TableHead>
                 <TableHead>Tarea</TableHead>
+                <TableHead>Estado</TableHead>
                 <TableHead>Tipo</TableHead>
                 <TableHead>Tiempo Planificado</TableHead>
                 <TableHead>Tiempo Real</TableHead>
@@ -233,6 +238,14 @@ export const TaskTimeBreakdown = ({ workerId, workerName, month }: TaskTimeBreak
                   </TableCell>
                   <TableCell>
                     <div className="font-medium">{item.taskName}</div>
+                  </TableCell>
+                  <TableCell>
+                    <Badge 
+                      variant={item.taskStatus === 'completed' ? 'default' : 'outline'}
+                      className={item.taskStatus === 'completed' ? 'bg-green-100 text-green-800' : ''}
+                    >
+                      {item.taskStatus === 'completed' ? 'Completada' : 'Pendiente'}
+                    </Badge>
                   </TableCell>
                   <TableCell>
                     <Badge variant="outline">{item.taskType}</Badge>
@@ -257,7 +270,7 @@ export const TaskTimeBreakdown = ({ workerId, workerName, month }: TaskTimeBreak
                     </div>
                   </TableCell>
                   <TableCell>
-                    {item.timeSpent === 0 && (
+                    {item.timeSpent === 0 && item.taskStatus !== 'completed' && (
                       <Button
                         size="sm"
                         variant="outline"
@@ -273,7 +286,7 @@ export const TaskTimeBreakdown = ({ workerId, workerName, month }: TaskTimeBreak
               ))}
               {filteredBreakdown.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                  <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
                     No hay tareas que coincidan con el filtro seleccionado
                   </TableCell>
                 </TableRow>

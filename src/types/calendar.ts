@@ -158,6 +158,7 @@ export interface TaskTimeBreakdown {
   taskId: string;
   taskName: string;
   taskType: string;
+  taskStatus: string;
   timeSpent: number;
   scheduledTime: number;
   efficiency: number;

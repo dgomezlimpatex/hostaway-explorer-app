@@ -48,6 +48,7 @@ export const useTaskTimeSync = (cleanerId: string, month?: Date) => {
         taskId: task.id,
         taskName: task.property,
         taskType: task.type,
+        taskStatus: task.status || 'pending',
         timeSpent,
         scheduledTime,
         efficiency,

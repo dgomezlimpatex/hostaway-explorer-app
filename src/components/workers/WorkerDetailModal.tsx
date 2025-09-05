@@ -140,6 +140,7 @@ export const WorkerDetailModal = ({ worker, open, onOpenChange }: WorkerDetailMo
                     <WorkerHoursOverview 
                       overview={overview} 
                       workerName={worker.name}
+                      workerId={worker.id}
                       showProjections={true}
                     />
                   </div>
