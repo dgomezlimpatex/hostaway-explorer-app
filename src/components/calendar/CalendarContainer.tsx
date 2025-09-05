@@ -80,12 +80,42 @@ export const CalendarContainer = ({
 
   // Memoized task filtering for desktop view
   const { assignedTasks, unassignedTasks } = useMemo(() => {
+    console.log('📦 CalendarContainer - Processing tasks:', {
+      totalTasks: tasks.length,
+      currentDateStr: currentDate.toISOString().split('T')[0],
+      firstFewTasks: tasks.slice(0, 5).map(t => ({ 
+        id: t.id, 
+        date: t.date, 
+        property: t.property, 
+        cleaner: t.cleaner, 
+        cleanerId: t.cleanerId 
+      }))
+    });
+    
     // A task is considered assigned if it has either cleaner name OR cleaner_id
     const assigned = tasks.filter(task => task.cleaner || task.cleanerId);
     // A task is unassigned if it has neither cleaner name NOR cleaner_id
     const unassigned = tasks.filter(task => !task.cleaner && !task.cleanerId);
+    
+    console.log('📦 CalendarContainer - Task separation result:', {
+      assignedCount: assigned.length,
+      unassignedCount: unassigned.length,
+      assignedSample: assigned.slice(0, 3).map(t => ({ 
+        id: t.id, 
+        property: t.property, 
+        cleaner: t.cleaner, 
+        cleanerId: t.cleanerId 
+      })),
+      unassignedSample: unassigned.slice(0, 3).map(t => ({ 
+        id: t.id, 
+        property: t.property, 
+        cleaner: t.cleaner, 
+        cleanerId: t.cleanerId 
+      }))
+    });
+    
     return { assignedTasks: assigned, unassignedTasks: unassigned };
-  }, [tasks]);
+  }, [tasks, currentDate]);
 
   // Build assignments map for visible assigned tasks (task_id -> [cleaner_id])
   const taskIds = useMemo(() => assignedTasks.map(t => t.id), [assignedTasks]);

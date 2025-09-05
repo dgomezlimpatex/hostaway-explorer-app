@@ -194,6 +194,14 @@ export const CalendarGrid = memo(forwardRef<HTMLDivElement, CalendarGridProps>(
 
     // Memoize cleaner rows with tasks
     const cleanerRows = useMemo(() => {
+      console.log('🎭 CalendarGrid - Processing cleaner rows:', {
+        cleanersCount: cleaners.length,
+        assignedTasksCount: assignedTasks.length,
+        currentDateStr: currentDate.toISOString().split('T')[0],
+        firstFewTasks: assignedTasks.slice(0, 3).map(t => ({ id: t.id, date: t.date, property: t.property, cleaner: t.cleaner })),
+        assignmentsMapExists: !!assignmentsMap
+      });
+      
       return cleaners.map((cleaner, index) => {
         // Filter tasks by cleaner_id (preferred), cleaner name (fallback),
         // or via assignmentsMap (multiple assignees)
@@ -201,6 +209,13 @@ export const CalendarGrid = memo(forwardRef<HTMLDivElement, CalendarGridProps>(
           if (task.cleanerId === cleaner.id || task.cleaner === cleaner.name) return true;
           // Check multiple assignments map
           return Array.isArray((assignmentsMap as any)?.[task.id]) && (assignmentsMap as any)[task.id].includes(cleaner.id);
+        });
+        
+        console.log(`👷 Cleaner ${cleaner.name} tasks:`, {
+          cleanerName: cleaner.name,
+          cleanerId: cleaner.id,
+          tasksCount: cleanerTasks.length,
+          tasks: cleanerTasks.map(t => ({ id: t.id, property: t.property, date: t.date }))
         });
         
         return (
