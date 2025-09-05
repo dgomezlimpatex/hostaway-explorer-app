@@ -123,7 +123,7 @@ export const ContractForm: React.FC<ContractFormProps> = ({
         start_date: data.startDate.toISOString().split('T')[0],
         end_date: data.endDate?.toISOString().split('T')[0],
         renewal_date: data.renewalDate?.toISOString().split('T')[0],
-        status: 'draft' as const,
+        status: 'active' as const,
         benefits: data.benefits || [],
         notes: data.notes,
       };
