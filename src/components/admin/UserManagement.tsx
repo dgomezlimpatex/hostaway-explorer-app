@@ -244,11 +244,32 @@ export const UserManagement = () => {
   };
 
   const handleAddCleaner = (user: any) => {
+    // Validate that we have available sedes before attempting to add cleaner
+    if (!allSedes || allSedes.length === 0) {
+      toast({
+        title: 'Error',
+        description: 'No hay sedes disponibles para asignar al trabajador.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    // Use the first available sede as default, or show sede selector
+    const defaultSedeId = allSedes[0]?.id;
+    if (!defaultSedeId) {
+      toast({
+        title: 'Error',
+        description: 'No se pudo determinar una sede válida.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     addCleanerMutation.mutate({
       userId: user.user_id,
       email: user.profiles.email,
       name: user.profiles.full_name || user.profiles.email,
-      sedeId: "00000000-0000-0000-0000-000000000000" // TODO: Get from sede context
+      sedeId: defaultSedeId
     });
   };
 

@@ -40,6 +40,7 @@ export interface SedeContextType {
   activeSede: Sede | null;
   availableSedes: Sede[];
   loading: boolean;
+  isInitialized?: boolean;
   
   // Acciones
   setActiveSede: (sede: Sede) => void;

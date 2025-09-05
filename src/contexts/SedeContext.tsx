@@ -67,6 +67,11 @@ export const SedeProvider = ({ children }: SedeProviderProps) => {
 
   // Cargar sedes disponibles y sincronizar estado
   const refreshSedes = useCallback(async () => {
+    // Prevent multiple simultaneous calls
+    if (loading) {
+      return;
+    }
+    
     try {
       setLoading(true);
       const sedes = await sedeStorageService.getUserAccessibleSedes();
@@ -78,22 +83,39 @@ export const SedeProvider = ({ children }: SedeProviderProps) => {
       // Sincronizar sede activa con sedes disponibles
       const finalActiveSede = syncActiveSede(sedes, currentActiveSede);
       
-      // Solo invalidar cache si cambió la sede
-      if (finalActiveSede?.id !== currentActiveSede?.id) {
-        queryClient.invalidateQueries({ queryKey: ['tasks'] });
-        queryClient.invalidateQueries({ queryKey: ['cleaners'] });
-        queryClient.invalidateQueries({ queryKey: ['properties'] });
-        queryClient.invalidateQueries({ queryKey: ['clients'] });
+      // Solo invalidar cache si cambió la sede y hay datos previos
+      if (finalActiveSede?.id !== currentActiveSede?.id && currentActiveSede !== null) {
+        // Invalidate queries in batches to prevent excessive requests
+        const queriesToInvalidate = [
+          ['tasks'],
+          ['task-reports'], 
+          ['cleaners'],
+          ['properties'],
+          ['clients'],
+          ['recurring-tasks']
+        ];
+        
+        // Use a small delay to batch invalidations
+        setTimeout(() => {
+          queriesToInvalidate.forEach(queryKey => {
+            queryClient.invalidateQueries({ queryKey });
+          });
+        }, 100);
       }
 
     } catch (error) {
       console.error('Error loading sedes:', error);
       setAvailableSedes([]);
+      // Don't show toast on initial load to prevent spam
+      if (isInitialized) {
+        // Could emit a global error here if needed
+        console.warn('Failed to refresh sedes after initialization');
+      }
     } finally {
       setLoading(false);
       setIsInitialized(true);
     }
-  }, [activeSede, restoreSedeFromStorage, syncActiveSede, queryClient]);
+  }, [activeSede, restoreSedeFromStorage, syncActiveSede, queryClient, loading, isInitialized]);
 
   // Inicializar contexto una sola vez
   useEffect(() => {
@@ -165,6 +187,7 @@ export const SedeProvider = ({ children }: SedeProviderProps) => {
     activeSede,
     availableSedes,
     loading,
+    isInitialized,
     setActiveSede,
     refreshSedes,
     isActiveSedeSet,
