@@ -69,9 +69,20 @@ export class BaseStorageService<T extends BaseEntity, CreateData = Omit<T, keyof
     // Aplicar filtro automático por sede si está habilitado
     if (this.config.enforceSedeFilter !== false) {
       const activeSedeId = await this.getActiveSedeId();
+      console.log(`🏢 BaseStorage.getAll for table ${this.config.tableName}:`, {
+        enforceSedeFilter: this.config.enforceSedeFilter,
+        activeSedeId,
+        hasGlobalContext: !!globalSedeContext
+      });
+      
       if (activeSedeId) {
         query = query.eq('sede_id', activeSedeId);
+        console.log(`🔍 Applied sede filter: ${activeSedeId} for table ${this.config.tableName}`);
+      } else {
+        console.warn(`⚠️ NO SEDE FILTER applied for table ${this.config.tableName} - activeSedeId is null`);
       }
+    } else {
+      console.log(`🚫 Sede filter disabled for table ${this.config.tableName}`);
     }
     
     if (orderBy) {
@@ -84,6 +95,12 @@ export class BaseStorageService<T extends BaseEntity, CreateData = Omit<T, keyof
       console.error(`Error fetching ${this.config.tableName}:`, error);
       throw error;
     }
+
+    console.log(`📊 BaseStorage.getAll result for ${this.config.tableName}:`, {
+      recordCount: data?.length || 0,
+      activeSedeId: await this.getActiveSedeId(),
+      sampleRecords: data?.slice(0, 2).map((r: any) => ({ id: r.id, sede_id: r.sede_id })) || []
+    });
 
     return data?.map(this.config.mapFromDB) || [];
   }
