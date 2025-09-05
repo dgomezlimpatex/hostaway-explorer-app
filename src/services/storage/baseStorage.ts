@@ -28,7 +28,22 @@ export class BaseStorageService<T extends BaseEntity, CreateData = Omit<T, keyof
   private async getActiveSedeId(): Promise<string | null> {
     // Usar contexto global si está disponible
     if (globalSedeContext) {
-      return globalSedeContext.getActiveSedeId();
+      const sedeId = globalSedeContext.getActiveSedeId();
+      
+      // Si no hay sede pero el contexto está disponible, intentar esperar
+      if (!sedeId) {
+        try {
+          console.log(`⏳ BaseStorage: No sede activa, intentando esperar...`);
+          const waitedSedeId = await globalSedeContext.waitForActiveSede();
+          console.log(`✅ BaseStorage: Sede obtenida después de esperar: ${waitedSedeId}`);
+          return waitedSedeId;
+        } catch (error) {
+          console.warn(`⚠️ BaseStorage: No se pudo esperar por sede activa:`, error.message);
+          return null;
+        }
+      }
+      
+      return sedeId;
     }
     
     // Fallback a localStorage (mantener compatibilidad)
