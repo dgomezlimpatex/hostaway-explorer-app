@@ -10,7 +10,16 @@ const SedeContextInitializer = ({ children }: { children: React.ReactNode }) => 
   
   useEffect(() => {
     // Configurar contexto global para que BaseStorage pueda acceder a la sede activa
-    const getActiveSedeId = () => context.activeSede?.id || null;
+    const getActiveSedeId = () => {
+      const sedeId = context.activeSede?.id || null;
+      console.log(`🏢 SedeContextProvider.getActiveSedeId called:`, {
+        activeSede: context.activeSede?.nombre || 'null',
+        sedeId,
+        loading: context.loading,
+        availableSedesCount: context.availableSedes.length
+      });
+      return sedeId;
+    };
     
     const waitForActiveSede = async (timeout = 5000): Promise<string> => {
       return new Promise((resolve, reject) => {
@@ -40,6 +49,13 @@ const SedeContextInitializer = ({ children }: { children: React.ReactNode }) => 
         }
       });
     };
+
+    console.log(`🔧 SedeContextProvider.useEffect: Configurando contexto global`, {
+      activeSede: context.activeSede?.nombre || 'null',
+      loading: context.loading,
+      availableSedesCount: context.availableSedes.length,
+      isInitialized: context.isInitialized
+    });
 
     setGlobalSedeContext({
       getActiveSedeId,
