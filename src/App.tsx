@@ -1,5 +1,5 @@
 
-import React, { Suspense } from "react";
+import React from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -10,6 +10,7 @@ import { SedeContextProvider } from "@/contexts/SedeContextProvider";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { RoleProtectedRoute } from "@/components/auth/RoleProtectedRoute";
 import { useSessionTimeout } from "@/hooks/useSessionTimeout";
+import { LazyLoadErrorBoundary } from "@/components/common/LazyLoadErrorBoundary";
 
 // Lazy load pages for better First Contentful Paint
 const Index = React.lazy(() => import("./pages/Index"));
@@ -41,11 +42,11 @@ const LogisticsDeliveries = React.lazy(() => import("./pages/LogisticsDeliveries
 const LogisticsDashboard = React.lazy(() => import("./pages/LogisticsDashboard"));
 const LogisticsReports = React.lazy(() => import("./pages/LogisticsReports"));
 
-// Loading component for better user experience
-const PageLoader = () => (
-  <div className="flex items-center justify-center min-h-screen">
-    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-  </div>
+// Helper component to wrap lazy routes with error boundary
+const LazyRoute = ({ children }: { children: React.ReactNode }) => (
+  <LazyLoadErrorBoundary>
+    {children}
+  </LazyLoadErrorBoundary>
 );
 
 const queryClient = new QueryClient();
@@ -66,14 +67,15 @@ function App() {
               <Toaster />
               <Sonner />
             <BrowserRouter>
-            <Suspense fallback={<PageLoader />}>
             <Routes>
               <Route path="/auth" element={<Auth />} />
               {/* Ruta pública para aceptar invitaciones */}
               <Route path="/accept-invitation" element={<AcceptInvitation />} />
               <Route path="/" element={
                 <ProtectedRoute>
-                  <Index />
+                  <LazyRoute>
+                    <Index />
+                  </LazyRoute>
                 </ProtectedRoute>
               } />
               <Route path="/user-management" element={
@@ -114,7 +116,9 @@ function App() {
               <Route path="/clients" element={
                 <ProtectedRoute>
                   <RoleProtectedRoute requiredModule="clients">
-                    <Clients />
+                    <LazyRoute>
+                      <Clients />
+                    </LazyRoute>
                   </RoleProtectedRoute>
                 </ProtectedRoute>
               } />
@@ -246,7 +250,6 @@ function App() {
               } />
               <Route path="*" element={<NotFound />} />
             </Routes>
-            </Suspense>
           </BrowserRouter>
             </SecurityWrapper>
           </SedeContextProvider>
