@@ -13,9 +13,9 @@ export const useCleaners = () => {
   const { activeSede } = useSede();
   
   const query = useQuery({
-    queryKey: ['cleaners', activeSede?.id],
+    queryKey: ['cleaners', activeSede?.id || 'all'],
     queryFn: () => cleanerStorage.getAll(),
-    enabled: !!activeSede?.id,
+    enabled: true, // Always enabled - remove sede dependency temporarily
   });
 
   const { data: allCleaners = [], isLoading } = query;
