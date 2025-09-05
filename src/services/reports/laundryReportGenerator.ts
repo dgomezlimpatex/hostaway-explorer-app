@@ -1,6 +1,12 @@
 
 import { LaundryReport } from '@/types/reports';
 
+// Helper function to format names to uppercase
+const formatNameToUppercase = (name: string | undefined | null): string => {
+  if (!name || name === 'N/A' || name === 'Sin asignar' || name === 'Sin supervisor') return name || '';
+  return name.toUpperCase();
+};
+
 export const generateLaundryReport = (tasks: any[], properties: any[], clients: any[]): LaundryReport[] => {
   return tasks
     .filter(task => task.type && (
@@ -62,19 +68,19 @@ export const generateLaundryReport = (tasks: any[], properties: any[], clients: 
         endTime: task.endTime || task.end_time || '00:00',
         type: task.type,
         status: task.status,
-        cleaner: task.cleaner || 'Sin asignar',
+        cleaner: formatNameToUppercase(task.cleaner) || 'Sin asignar',
         client: client?.nombre || task.client || 'Cliente desconocido',
         
         // Campos adicionales para exportación CSV
         sede: property?.sede_id || 'N/A', // Nueva información de sede
         serviceDate: task.date,
-        supervisor: client?.supervisor || task.supervisor || 'Sin supervisor',
+        supervisor: formatNameToUppercase(client?.supervisor || task.supervisor) || 'Sin supervisor',
         serviceType: formatServiceType(task.type),
         taskStatus: task.status === 'completed' ? 'Completada' :
                    task.status === 'in-progress' ? 'En Progreso' : 'Pendiente',
         totalCost: property?.costeServicio || task.coste || 0,
         serviceHours: (property?.duracionServicio || task.duration || task.duracion || 120) / 60, // Convertir minutos a horas
-        workTeam: task.cleaner || 'Sin asignar',
+        workTeam: formatNameToUppercase(task.cleaner) || 'Sin asignar',
         paymentMethod: client?.metodoPago || task.metodo_pago || 'No especificado',
         incidents: incidenciasText,
 

@@ -1,6 +1,12 @@
 
 import { TaskReport } from '@/types/reports';
 
+// Helper function to format names to uppercase
+const formatNameToUppercase = (name: string | undefined | null): string => {
+  if (!name || name === 'N/A' || name === 'Sin asignar' || name === 'Sin supervisor') return name || '';
+  return name.toUpperCase();
+};
+
 export const generateTaskReport = (tasks: any[], properties: any[], clients: any[]): TaskReport[] => {
   console.log('🔍 TaskReportGenerator - Processing:', {
     totalTasks: tasks.length,
@@ -106,19 +112,19 @@ export const generateTaskReport = (tasks: any[], properties: any[], clients: any
       endTime: task.endTime || task.end_time || '00:00',
       type: task.type,
       status: task.status,
-      cleaner: task.cleaner || 'Sin asignar',
+      cleaner: formatNameToUppercase(task.cleaner) || 'Sin asignar',
       client: clientName,
       
       // Campos adicionales para exportación CSV
       sede: property?.sede_id || 'N/A', // Nueva información de sede
       serviceDate: task.date,
-      supervisor: clientSupervisor,
+      supervisor: formatNameToUppercase(clientSupervisor),
       serviceType: formatServiceType(task.type),
       taskStatus: task.status === 'completed' ? 'Completada' :
                  task.status === 'in-progress' ? 'En Progreso' : 'Pendiente',
       totalCost: taskCost,
       serviceHours: taskDuration / 60, // Convertir minutos a horas
-      workTeam: task.cleaner || 'Sin asignar', // Ya contiene los nombres separados por comas
+      workTeam: formatNameToUppercase(task.cleaner) || 'Sin asignar', // Ya contiene los nombres separados por comas
       paymentMethod: paymentMethodSpanish,
       incidents: incidenciasText
     };

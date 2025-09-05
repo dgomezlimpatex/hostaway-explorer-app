@@ -2,6 +2,12 @@ import { TaskReport, BillingReport, SummaryReport, LaundryReport } from '@/types
 
 type ReportData = TaskReport[] | BillingReport[] | SummaryReport | LaundryReport[];
 
+// Helper function to format names to uppercase
+const formatNameToUppercase = (name: string | undefined | null): string => {
+  if (!name || name === 'N/A' || name === 'Sin asignar' || name === 'Sin supervisor') return name || '';
+  return name.toUpperCase();
+};
+
 // Helper function to format dates from YYYY-MM-DD to DD/MM/YYYY
 const formatDateForCSV = (dateString: string): string => {
   if (!dateString || dateString === 'N/A') return dateString;
@@ -75,13 +81,13 @@ const generateTasksCSV = (data: TaskReport[]): string => {
   const rows = data.map(task => [
     task.sede || 'N/A', // Incluir información de sede
     formatDateForCSV(task.serviceDate),
-    task.supervisor,
+    formatNameToUppercase(task.supervisor),
     task.client,
     task.serviceType,
     task.taskStatus,
     task.totalCost.toFixed(2).replace('.', ','),
     task.serviceHours.toFixed(2).replace('.', ','),
-    task.workTeam,
+    formatNameToUppercase(task.workTeam),
     task.paymentMethod,
     task.incidents
   ]);
@@ -130,7 +136,7 @@ const generateSummaryCSV = (data: SummaryReport): string => {
     ['Duración Promedio (min)', data.averageTaskDuration.toString()],
     ['', ''],
     ['Top Trabajadores', ''],
-    ...data.topCleaners.map(cleaner => [cleaner.name, `${cleaner.tasks} tareas`]),
+    ...data.topCleaners.map(cleaner => [formatNameToUppercase(cleaner.name), `${cleaner.tasks} tareas`]),
     ['', ''],
     ['Top Clientes', ''],
     ...data.topClients.map(client => [client.name, `${client.tasks} tareas`])
@@ -186,7 +192,7 @@ const generateLaundryCSV = (data: LaundryReport[]): string => {
     item.startTime || '',
     item.endTime || '',
     item.client || '',
-    item.cleaner || '',
+    formatNameToUppercase(item.cleaner) || '',
     (item.textiles?.sabanas || 0).toString(),
     (item.textiles?.sabanasRequenas || 0).toString(),
     (item.textiles?.sabanasSuite || 0).toString(),
