@@ -74,8 +74,9 @@ export const SedeProvider = ({ children }: SedeProviderProps) => {
     
     try {
       setLoading(true);
+      console.log('🏢 Refreshing sedes...');
       const sedes = await sedeStorageService.getUserAccessibleSedes();
-      console.log('📍 Sedes disponibles cargadas:', sedes?.length || 0);
+      console.log('🏢 Available sedes:', sedes.length, sedes.map(s => ({ id: s.id, nombre: s.nombre })));
       setAvailableSedes(sedes);
 
       // Obtener sede activa actual (desde estado o localStorage)

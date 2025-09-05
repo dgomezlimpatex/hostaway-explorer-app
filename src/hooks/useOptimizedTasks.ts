@@ -47,7 +47,8 @@ export const useOptimizedTasks = ({
         currentView,
         userRole,
         currentCleanerId,
-        activeSede: activeSede?.id
+        activeSede: activeSede?.id,
+        hasActiveSede: !!activeSede
       });
 
       // For cleaners, get ALL their tasks (not limited by current date for navigation)

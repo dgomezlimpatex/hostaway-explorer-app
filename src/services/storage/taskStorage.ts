@@ -1,4 +1,3 @@
-
 import { Task } from '@/types/calendar';
 import { BaseStorageService } from './baseStorage';
 import { supabase } from '@/integrations/supabase/client';
@@ -79,8 +78,9 @@ export class TaskStorageService extends BaseStorageService<Task, TaskCreateData>
     cleanerId?: string;
     includePastTasks?: boolean;
     userRole?: string;
-    sedeId?: string; // Nuevo: recibir sede_id como parámetro
+    sedeId?: string;
   }): Promise<Task[]> {
+    console.log('🔍 TaskStorageService.getTasks called with options:', options);
     
     // Función helper para obtener la sede activa
     const getActiveSedeId = (): string | null => {
@@ -97,36 +97,21 @@ export class TaskStorageService extends BaseStorageService<Task, TaskCreateData>
       }
     };
     
-    // Check for recurring tasks that might be causing the issue
-    const checkRecurringTasks = async () => {
-      try {
-        const { data: recurringTasks } = await supabase
-          .from('recurring_tasks')
-          .select('*')
-          .ilike('name', '%Main Street Deluxe Penthouse A%')
-          .eq('is_active', true);
-        
-        if (recurringTasks && recurringTasks.length > 0) {
-          console.warn('🔄 FOUND ACTIVE RECURRING TASKS for Main Street:', recurringTasks);
-          return recurringTasks;
-        }
-      } catch (error) {
-        console.error('Error checking recurring tasks:', error);
-      }
-      return [];
-    };
-    
     // Aplicar filtro por sede - usar parámetro si está disponible, sino localStorage
     const sedeId = options?.sedeId || getActiveSedeId();
+    console.log('🏢 Using sede_id for task filtering:', sedeId);
     
-    // Check for recurring tasks that might be causing the issue
-    const recurringTasks = await checkRecurringTasks();
+    if (!sedeId || sedeId === 'no-sede') {
+      console.warn('⚠️ No sede_id available - fetching ALL tasks (fallback)');
+    }
     
     // FIXED: Use pagination to get ALL tasks beyond Supabase's 1000 record limit
     let allTasks: any[] = [];
     let hasMore = true;
     let offset = 0;
     const batchSize = 1000;
+    
+    console.log('📋 Starting to fetch tasks with pagination...');
     
     while (hasMore) {
       let query = supabase
@@ -170,33 +155,8 @@ export class TaskStorageService extends BaseStorageService<Task, TaskCreateData>
     
     const data = allTasks;
 
-    console.log(`📦 Fetched ${data?.length || 0} task records from database`);
+    console.log(`📦 Fetched ${data?.length || 0} task records from database for sede: ${sedeId || 'ALL'}`);
     
-    // Debugging: Check for the problematic task
-    const mainStreetTasks = (data || []).filter(task => 
-      task.property?.includes('Main Street Deluxe Penthouse A')
-    );
-    
-    if (mainStreetTasks.length > 0) {
-      console.log('🔍 FOUND Main Street Deluxe Penthouse A tasks:', {
-        count: mainStreetTasks.length,
-        tasks: mainStreetTasks.map(t => ({
-          id: t.id,
-          date: t.date,
-          property: t.property,
-          status: t.status,
-          assignments: t.task_assignments?.length || 0,
-          reports: t.task_reports?.length || 0
-        }))
-      });
-      
-      // Check if this might be from recurring tasks
-      const uniqueDates = [...new Set(mainStreetTasks.map(t => t.date))];
-      if (uniqueDates.length > 5) {
-        console.warn('⚠️ POSSIBLE RECURRING TASK ISSUE: Main Street task appears on multiple dates:', uniqueDates);
-      }
-    }
-
     // Map and sync task status with report status, handle multiple assignments
     const mappedTasks: Task[] = [];
     
