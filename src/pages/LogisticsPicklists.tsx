@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useSede } from '@/contexts/SedeContext';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -53,6 +54,7 @@ const statusColors = {
 
 export default function LogisticsPicklists() {
   const { toast } = useToast();
+  const { activeSede } = useSede();
   const [loading, setLoading] = useState(false);
   const [list, setList] = useState<Picklist[]>([]);
   const [code, setCode] = useState("");
@@ -110,13 +112,22 @@ export default function LogisticsPicklists() {
   }
 
   async function createPicklist() {
+    if (!activeSede?.id) {
+      toast({ 
+        title: "Error", 
+        description: "No hay una sede activa seleccionada", 
+        variant: "destructive" 
+      });
+      return;
+    }
+
     const finalCode = code.trim() || genCode;
     setLoading(true);
     const { error } = await supabase.from("logistics_picklists").insert({
       code: finalCode,
       scheduled_date: date || null,
       notes: notes || null,
-      sede_id: "00000000-0000-0000-0000-000000000000", // TODO: Get from sede context
+      sede_id: activeSede.id,
     });
     setLoading(false);
     if (error) {
@@ -201,12 +212,12 @@ export default function LogisticsPicklists() {
           </div>
           <Button 
             onClick={createPicklist} 
-            disabled={loading}
+            disabled={loading || !activeSede?.id}
             className="w-full sm:w-auto h-12 px-8 text-base font-medium shadow-lg hover:shadow-xl"
             size="lg"
           >
             <Plus className="mr-2 h-5 w-5" />
-            Crear Picklist
+            {!activeSede?.id ? "Selecciona una sede" : "Crear Picklist"}
           </Button>
         </CardContent>
       </Card>
