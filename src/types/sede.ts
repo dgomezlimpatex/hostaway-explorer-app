@@ -43,7 +43,7 @@ export interface SedeContextType {
   isInitialized?: boolean;
   
   // Acciones
-  setActiveSede: (sede: Sede) => void;
+  setActiveSede: (sede: Sede | null) => void;
   refreshSedes: () => Promise<void>;
   
   // Helpers

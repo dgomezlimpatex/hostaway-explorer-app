@@ -135,7 +135,7 @@ export const SedeProvider = ({ children }: SedeProviderProps) => {
       console.log('🏢 SedeContext: No user authenticated, skipping sede loading');
       setLoading(false);
       setIsInitialized(true);
-      setActiveSede(null);
+      setActiveSedeState(null);
       setAvailableSedes([]);
       return;
     }
@@ -147,7 +147,13 @@ export const SedeProvider = ({ children }: SedeProviderProps) => {
     }
   }, [user, authLoading, refreshSedes, isInitialized]);
 
-  const setActiveSede = useCallback((sede: Sede) => {
+  const setActiveSede = useCallback((sede: Sede | null) => {
+    // Verificar que sede no sea null
+    if (!sede) {
+      console.warn('⚠️ setActiveSede called with null sede');
+      return;
+    }
+    
     const previousSedeId = activeSede?.id;
     
     // Solo proceder si es diferente
