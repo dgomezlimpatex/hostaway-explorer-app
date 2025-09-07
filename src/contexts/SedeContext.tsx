@@ -3,6 +3,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Sede, SedeContextType } from '@/types/sede';
 import { sedeStorageService } from '@/services/storage/sedeStorage';
+import { useAuth } from '@/hooks/useAuth';
 
 const SedeContext = createContext<SedeContextType | undefined>(undefined);
 
@@ -14,6 +15,7 @@ interface SedeProviderProps {
 
 export const SedeProvider = ({ children }: SedeProviderProps) => {
   const queryClient = useQueryClient();
+  const { user, isLoading: authLoading } = useAuth();
   const [activeSede, setActiveSedeState] = useState<Sede | null>(null);
   const [availableSedes, setAvailableSedes] = useState<Sede[]>([]);
   const [loading, setLoading] = useState(true);
@@ -121,12 +123,29 @@ export const SedeProvider = ({ children }: SedeProviderProps) => {
     }
   }, [activeSede, restoreSedeFromStorage, syncActiveSede, queryClient, loading, isInitialized]);
 
-  // Inicializar contexto una sola vez
+  // Inicializar contexto una sola vez cuando el usuario esté autenticado
   useEffect(() => {
+    // Si la autenticación aún está cargando, esperar
+    if (authLoading) {
+      return;
+    }
+    
+    // Si no hay usuario autenticado, marcar como inicializado sin cargar sedes
+    if (!user) {
+      console.log('🏢 SedeContext: No user authenticated, skipping sede loading');
+      setLoading(false);
+      setIsInitialized(true);
+      setActiveSede(null);
+      setAvailableSedes([]);
+      return;
+    }
+    
+    // Si hay usuario autenticado y no se ha inicializado, cargar sedes
     if (!isInitialized) {
+      console.log('🏢 SedeContext: User authenticated, loading sedes...');
       refreshSedes();
     }
-  }, [refreshSedes, isInitialized]);
+  }, [user, authLoading, refreshSedes, isInitialized]);
 
   const setActiveSede = useCallback((sede: Sede) => {
     const previousSedeId = activeSede?.id;

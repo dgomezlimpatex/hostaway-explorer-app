@@ -28,7 +28,20 @@ const SedeContextInitializer = ({ children }: { children: React.ReactNode }) => 
           return;
         }
         
+        // Si el contexto no está inicializado, rechazar inmediatamente
+        if (!context.isInitialized) {
+          reject(new Error('SedeContext no está inicializado'));
+          return;
+        }
+        
+        // Si no hay sedes disponibles y ya se inicializó, rechazar
+        if (context.availableSedes.length === 0 && context.isInitialized) {
+          reject(new Error('No hay sedes disponibles para el usuario'));
+          return;
+        }
+        
         if (context.loading || context.activeSede) {
+          // Si está cargando o hay una sede, esperar un poco más
           const timeoutId = setTimeout(() => {
             reject(new Error('Timeout: No se pudo obtener una sede activa'));
           }, timeout);
