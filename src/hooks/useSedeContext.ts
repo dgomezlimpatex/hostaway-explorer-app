@@ -26,8 +26,8 @@ export const useSedeContext = () => {
         return;
       }
       
-      if (context.loading) {
-        // Si está cargando, esperar un poco más
+      if (context.loading || context.activeSede) {
+        // Si está cargando o hay una sede, esperar un poco más
         const timeoutId = setTimeout(() => {
           reject(new Error('Timeout: No se pudo obtener una sede activa'));
         }, timeout);
@@ -38,7 +38,7 @@ export const useSedeContext = () => {
             clearInterval(interval);
             clearTimeout(timeoutId);
             resolve(context.activeSede.id);
-          } else if (!context.loading && context.availableSedes.length === 0) {
+          } else if (!context.loading && !context.activeSede && context.availableSedes.length === 0) {
             clearInterval(interval);
             clearTimeout(timeoutId);
             reject(new Error('No hay sedes disponibles para el usuario'));

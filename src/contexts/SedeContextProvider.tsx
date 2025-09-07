@@ -28,7 +28,7 @@ const SedeContextInitializer = ({ children }: { children: React.ReactNode }) => 
           return;
         }
         
-        if (context.loading) {
+        if (context.loading || context.activeSede) {
           const timeoutId = setTimeout(() => {
             reject(new Error('Timeout: No se pudo obtener una sede activa'));
           }, timeout);
@@ -38,7 +38,7 @@ const SedeContextInitializer = ({ children }: { children: React.ReactNode }) => 
               clearInterval(interval);
               clearTimeout(timeoutId);
               resolve(context.activeSede.id);
-            } else if (!context.loading && context.availableSedes.length === 0) {
+            } else if (!context.loading && !context.activeSede && context.availableSedes.length === 0) {
               clearInterval(interval);
               clearTimeout(timeoutId);
               reject(new Error('No hay sedes disponibles para el usuario'));
