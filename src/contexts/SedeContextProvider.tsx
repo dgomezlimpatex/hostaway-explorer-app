@@ -28,38 +28,35 @@ const SedeContextInitializer = ({ children }: { children: React.ReactNode }) => 
           return;
         }
         
-        // Si el contexto no está inicializado, rechazar inmediatamente
-        if (!context.isInitialized) {
-          reject(new Error('SedeContext no está inicializado'));
-          return;
-        }
+        const timeoutId = setTimeout(() => {
+          reject(new Error('Timeout: No se pudo obtener una sede activa'));
+        }, timeout);
         
-        // Si no hay sedes disponibles y ya se inicializó, rechazar
-        if (context.availableSedes.length === 0 && context.isInitialized) {
-          reject(new Error('No hay sedes disponibles para el usuario'));
-          return;
-        }
-        
-        if (context.loading || context.activeSede) {
-          // Si está cargando o hay una sede, esperar un poco más
-          const timeoutId = setTimeout(() => {
-            reject(new Error('Timeout: No se pudo obtener una sede activa'));
-          }, timeout);
+        const interval = setInterval(() => {
+          // Si ya hay sede activa, resolver
+          if (context.activeSede?.id) {
+            clearInterval(interval);
+            clearTimeout(timeoutId);
+            resolve(context.activeSede.id);
+            return;
+          }
           
-          const interval = setInterval(() => {
-            if (context.activeSede?.id) {
-              clearInterval(interval);
-              clearTimeout(timeoutId);
-              resolve(context.activeSede.id);
-            } else if (!context.loading && !context.activeSede && context.availableSedes.length === 0) {
-              clearInterval(interval);
-              clearTimeout(timeoutId);
-              reject(new Error('No hay sedes disponibles para el usuario'));
-            }
-          }, 100);
-        } else {
-          reject(new Error('No hay sede activa y no se está cargando'));
-        }
+          // Si el contexto está inicializado pero no hay sedes disponibles, rechazar
+          if (context.isInitialized && context.availableSedes.length === 0) {
+            clearInterval(interval);
+            clearTimeout(timeoutId);
+            reject(new Error('No hay sedes disponibles para el usuario'));
+            return;
+          }
+          
+          // Si el contexto está inicializado, no está cargando, y no hay sede activa, rechazar
+          if (context.isInitialized && !context.loading && !context.activeSede) {
+            clearInterval(interval);
+            clearTimeout(timeoutId);
+            reject(new Error('No hay sede activa'));
+            return;
+          }
+        }, 100);
       });
     };
 
