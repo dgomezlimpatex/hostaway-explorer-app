@@ -3,6 +3,21 @@ import { supabase } from '@/integrations/supabase/client';
 import { RecurringTask } from '@/types/recurring';
 import { Task } from '@/types/calendar';
 
+// Helper function to get sede_id from context or throw error
+const getSedeId = (): string => {
+  // Try to get from localStorage as fallback
+  const activeSedeId = localStorage.getItem('activeSede');
+  if (activeSedeId) {
+    try {
+      const sede = JSON.parse(activeSedeId);
+      return sede.id;
+    } catch {
+      // If parsing fails, fallback
+    }
+  }
+  throw new Error('No hay sede activa disponible para crear la tarea recurrente');
+};
+
 export const recurringTaskStorage = {
   getAll: async (): Promise<RecurringTask[]> => {
     const { data, error } = await supabase
@@ -120,7 +135,7 @@ export const recurringTaskStorage = {
         is_active: taskData.isActive,
         next_execution: nextExecution,
         last_execution: taskData.lastExecution,
-        sede_id: "00000000-0000-0000-0000-000000000000" // TODO: Get from sede context
+        sede_id: getSedeId()
       })
       .select()
       .single();
@@ -306,7 +321,7 @@ export const recurringTaskStorage = {
           coste: newTask.cost,
           metodo_pago: newTask.paymentMethod,
           supervisor: newTask.supervisor,
-          sede_id: "00000000-0000-0000-0000-000000000000" // TODO: Get from sede context
+          sede_id: getSedeId()
         })
         .select()
         .single();
@@ -399,15 +414,62 @@ function calculateNextExecutionFromData(data: {
     case 'daily':
       nextDate.setDate(nextDate.getDate() + data.interval);
       break;
+      
     case 'weekly':
-      nextDate.setDate(nextDate.getDate() + (data.interval * 7));
-      break;
-    case 'monthly':
-      nextDate.setMonth(nextDate.getMonth() + data.interval);
-      if (data.dayOfMonth) {
-        nextDate.setDate(data.dayOfMonth);
+      if (data.daysOfWeek && data.daysOfWeek.length > 0) {
+        // Find the next occurrence of any of the specified days
+        const sortedDays = [...data.daysOfWeek].sort((a, b) => a - b);
+        const currentDay = nextDate.getDay();
+        
+        // Try to find next day in the same week
+        let foundInSameWeek = false;
+        for (const targetDay of sortedDays) {
+          if (targetDay > currentDay) {
+            const daysToAdd = targetDay - currentDay;
+            nextDate.setDate(nextDate.getDate() + daysToAdd);
+            foundInSameWeek = true;
+            break;
+          }
+        }
+        
+        // If no day found in current week, go to next week(s) and use first day
+        if (!foundInSameWeek) {
+          const firstDay = sortedDays[0];
+          const daysUntilNextWeek = 7 - currentDay;
+          const daysToFirstDayOfWeek = firstDay === 0 ? 0 : firstDay; // Sunday is 0
+          const totalDays = daysUntilNextWeek + daysToFirstDayOfWeek + ((data.interval - 1) * 7);
+          nextDate.setDate(nextDate.getDate() + totalDays);
+        }
+      } else {
+        // Fallback to simple weekly increment
+        nextDate.setDate(nextDate.getDate() + (data.interval * 7));
       }
       break;
+      
+    case 'monthly':
+      nextDate.setMonth(nextDate.getMonth() + data.interval);
+      
+      if (data.dayOfMonth) {
+        const targetDay = data.dayOfMonth;
+        const lastDayOfMonth = new Date(nextDate.getFullYear(), nextDate.getMonth() + 1, 0).getDate();
+        
+        // Handle end-of-month cases (e.g., day 31 in February)
+        if (targetDay > lastDayOfMonth) {
+          nextDate.setDate(lastDayOfMonth);
+        } else {
+          nextDate.setDate(targetDay);
+        }
+      }
+      break;
+  }
+
+  // Check if next execution exceeds end date
+  if (data.endDate) {
+    const endDate = new Date(data.endDate);
+    if (nextDate > endDate) {
+      // Return a date far in the future to indicate task should be deactivated
+      return '2099-12-31';
+    }
   }
 
   return nextDate.toISOString().split('T')[0];

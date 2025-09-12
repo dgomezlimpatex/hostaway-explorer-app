@@ -41,6 +41,7 @@ const LogisticsPicklistEdit = React.lazy(() => import("./pages/LogisticsPicklist
 const LogisticsDeliveries = React.lazy(() => import("./pages/LogisticsDeliveries"));
 const LogisticsDashboard = React.lazy(() => import("./pages/LogisticsDashboard"));
 const LogisticsReports = React.lazy(() => import("./pages/LogisticsReports"));
+const RecurringTasksPage = React.lazy(() => import("./pages/RecurringTasksPage"));
 
 // Helper component to wrap lazy routes with error boundary and transition
 const LazyRoute = ({ children }: { children: React.ReactNode }) => {
@@ -182,6 +183,15 @@ function App() {
                   <RoleProtectedRoute requiredModule="tasks">
                     <LazyRoute>
                       <ChecklistTemplates />
+                    </LazyRoute>
+                  </RoleProtectedRoute>
+                </ProtectedRoute>
+              } />
+              <Route path="/recurring-tasks" element={
+                <ProtectedRoute>
+                  <RoleProtectedRoute requiredModule="tasks">
+                    <LazyRoute>
+                      <RecurringTasksPage />
                     </LazyRoute>
                   </RoleProtectedRoute>
                 </ProtectedRoute>
