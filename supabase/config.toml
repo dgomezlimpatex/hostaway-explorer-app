@@ -1,5 +1,42 @@
-
 project_id = "qyipyygojlfhdghnraus"
+
+[api]
+enabled = true
+port = 54321
+schemas = ["public", "graphql_public"]
+extra_search_path = ["public", "extensions"]
+max_rows = 1000
+
+[db]
+port = 54322
+
+[studio]
+enabled = true
+port = 54323
+
+[inbucket]
+enabled = true
+port = 54324
+smtp_port = 54325
+pop3_port = 54326
+
+[storage]
+enabled = true
+port = 54327
+file_size_limit = "50MiB"
+
+[auth]
+enabled = true
+port = 54328
+site_url = "http://127.0.0.1:8080"
+additional_redirect_urls = ["https://127.0.0.1:8080"]
+jwt_expiry = 3600
+refresh_token_rotation_enabled = true
+refresh_token_reuse_interval = 10
+
+[edge_runtime]
+enabled = true
+port = 54329
 
 [functions.hostaway-sync]
 verify_jwt = false
@@ -16,14 +53,14 @@ verify_jwt = false
 [functions.send-invitation-email]
 verify_jwt = false
 
-[functions]
-  [functions.hostaway-sync]
-    import_map = "import_map.json"
-  [functions.insert-properties]
-    import_map = "import_map.json"
-  [functions.setup-automation]
-    import_map = "import_map.json"
-  [functions.send-task-assignment-email]
-    import_map = "import_map.json"
-  [functions.send-invitation-email]
-    import_map = "import_map.json"
+[functions.send-task-schedule-change-email]
+verify_jwt = false
+
+[functions.send-task-unassignment-email]
+verify_jwt = false
+
+[functions.auto-assign-tasks]
+verify_jwt = false
+
+[functions.process-recurring-tasks]
+verify_jwt = false

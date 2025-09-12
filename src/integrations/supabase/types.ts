@@ -1486,6 +1486,51 @@ export type Database = {
         }
         Relationships: []
       }
+      recurring_task_executions: {
+        Row: {
+          created_at: string
+          error_message: string | null
+          execution_date: string
+          generated_task_id: string | null
+          id: string
+          recurring_task_id: string
+          success: boolean
+        }
+        Insert: {
+          created_at?: string
+          error_message?: string | null
+          execution_date?: string
+          generated_task_id?: string | null
+          id?: string
+          recurring_task_id: string
+          success?: boolean
+        }
+        Update: {
+          created_at?: string
+          error_message?: string | null
+          execution_date?: string
+          generated_task_id?: string | null
+          id?: string
+          recurring_task_id?: string
+          success?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_recurring_task_executions_generated_task"
+            columns: ["generated_task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_recurring_task_executions_recurring_task"
+            columns: ["recurring_task_id"]
+            isOneToOne: false
+            referencedRelation: "recurring_tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       recurring_tasks: {
         Row: {
           check_in: string
