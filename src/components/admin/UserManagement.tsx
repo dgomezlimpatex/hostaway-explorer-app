@@ -430,7 +430,7 @@ export const UserManagement = () => {
                 {invitations?.map((invitation) => {
                   const StatusIcon = statusIcons[invitation.status];
                   const isExpired = new Date(invitation.expires_at) < new Date();
-                  const canRevoke = invitation.status === 'pending' && !isExpired;
+                  const canRevoke = invitation.status === 'pending'; // Allow revoking even if expired
                   
                   return (
                     <TableRow key={invitation.id}>
