@@ -85,6 +85,7 @@ export const UserManagement = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [email, setEmail] = useState('');
   const [role, setRole] = useState<AppRole>('cleaner');
+  const [sedeId, setSedeId] = useState<string>('');
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -224,13 +225,28 @@ export const UserManagement = () => {
   const handleCreateInvitation = (e: React.FormEvent) => {
     e.preventDefault();
     if (!email.trim()) return;
+    
+    // Validar que si el rol es cleaner, debe tener sede_id
+    if (role === 'cleaner' && !sedeId) {
+      toast({
+        title: 'Error',
+        description: 'Para invitar un limpiador debe seleccionar una sede',
+        variant: 'destructive',
+      });
+      return;
+    }
 
     createInvitation.mutate(
-      { email: email.trim(), role },
+      { 
+        email: email.trim(), 
+        role, 
+        sede_id: role === 'cleaner' ? sedeId : undefined 
+      },
       {
         onSuccess: () => {
           setEmail('');
           setRole('cleaner');
+          setSedeId('');
           setIsOpen(false);
         },
       }
@@ -376,7 +392,12 @@ export const UserManagement = () => {
               
               <div className="space-y-2">
                 <Label htmlFor="role">Rol</Label>
-                <Select value={role} onValueChange={(value: AppRole) => setRole(value)}>
+                <Select value={role} onValueChange={(value: AppRole) => {
+                  setRole(value);
+                  if (value !== 'cleaner') {
+                    setSedeId(''); // Limpiar sede si no es cleaner
+                  }
+                }}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
@@ -389,6 +410,24 @@ export const UserManagement = () => {
                   </SelectContent>
                 </Select>
               </div>
+              
+              {role === 'cleaner' && (
+                <div className="space-y-2">
+                  <Label htmlFor="sede">Sede</Label>
+                  <Select value={sedeId} onValueChange={setSedeId}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecciona una sede" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {allSedes?.map((sede) => (
+                        <SelectItem key={sede.id} value={sede.id}>
+                          {sede.nombre} ({sede.codigo})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
               
               <DialogFooter>
                 <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>

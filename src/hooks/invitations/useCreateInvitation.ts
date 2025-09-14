@@ -23,6 +23,7 @@ export const useCreateInvitation = () => {
           email: invitationData.email,
           role: invitationData.role,
           invited_by: user.id,
+          sede_id: invitationData.sede_id,
         })
         .select()
         .single();

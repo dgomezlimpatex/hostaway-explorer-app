@@ -2217,6 +2217,7 @@ export type Database = {
           invitation_token: string | null
           invited_by: string
           role: Database["public"]["Enums"]["app_role"]
+          sede_id: string | null
           status: Database["public"]["Enums"]["invitation_status"] | null
         }
         Insert: {
@@ -2228,6 +2229,7 @@ export type Database = {
           invitation_token?: string | null
           invited_by: string
           role: Database["public"]["Enums"]["app_role"]
+          sede_id?: string | null
           status?: Database["public"]["Enums"]["invitation_status"] | null
         }
         Update: {
@@ -2239,9 +2241,18 @@ export type Database = {
           invitation_token?: string | null
           invited_by?: string
           role?: Database["public"]["Enums"]["app_role"]
+          sede_id?: string | null
           status?: Database["public"]["Enums"]["invitation_status"] | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "user_invitations_sede_id_fkey"
+            columns: ["sede_id"]
+            isOneToOne: false
+            referencedRelation: "sedes"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_roles: {
         Row: {
@@ -2486,11 +2497,18 @@ export type Database = {
         Returns: undefined
       }
       create_user_invitation_secure: {
-        Args: {
-          expires_hours?: number
-          invite_email: string
-          invite_role: string
-        }
+        Args:
+          | {
+              expires_hours?: number
+              invite_email: string
+              invite_role: string
+            }
+          | {
+              expires_hours?: number
+              invite_email: string
+              invite_role: string
+              invite_sede_id?: string
+            }
         Returns: string
       }
       get_current_user_role: {

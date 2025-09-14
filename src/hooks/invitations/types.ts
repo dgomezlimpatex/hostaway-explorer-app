@@ -19,4 +19,5 @@ export interface UserInvitation {
 export interface CreateInvitationData {
   email: string;
   role: AppRole;
+  sede_id?: string; // Opcional para otros roles, requerido para cleaner
 }
