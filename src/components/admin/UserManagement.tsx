@@ -240,7 +240,7 @@ export const UserManagement = () => {
       { 
         email: email.trim(), 
         role, 
-        sede_id: role === 'cleaner' ? sedeId : undefined 
+        sede_id: sedeId || undefined
       },
       {
         onSuccess: () => {
@@ -394,8 +394,9 @@ export const UserManagement = () => {
                 <Label htmlFor="role">Rol</Label>
                 <Select value={role} onValueChange={(value: AppRole) => {
                   setRole(value);
-                  if (value !== 'cleaner') {
-                    setSedeId(''); // Limpiar sede si no es cleaner
+                  // Solo admin no necesita sede específica
+                  if (value === 'admin') {
+                    setSedeId('');
                   }
                 }}>
                   <SelectTrigger>
@@ -411,9 +412,11 @@ export const UserManagement = () => {
                 </Select>
               </div>
               
-              {role === 'cleaner' && (
+              {role !== 'admin' && (
                 <div className="space-y-2">
-                  <Label htmlFor="sede">Sede</Label>
+                  <Label htmlFor="sede">
+                    Sede {role === 'cleaner' ? '(Requerido)' : '(Opcional)'}
+                  </Label>
                   <Select value={sedeId} onValueChange={setSedeId}>
                     <SelectTrigger>
                       <SelectValue placeholder="Selecciona una sede" />
@@ -426,6 +429,11 @@ export const UserManagement = () => {
                       ))}
                     </SelectContent>
                   </Select>
+                  {role !== 'cleaner' && (
+                    <p className="text-sm text-muted-foreground">
+                      Si no seleccionas una sede, el usuario tendrá acceso a todas las sedes.
+                    </p>
+                  )}
                 </div>
               )}
               
