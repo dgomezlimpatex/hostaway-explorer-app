@@ -311,14 +311,37 @@ export const UserManagement = () => {
     ) || false;
   };
 
-  // Manejar asignación de sede
+  // Verificar si un usuario es admin
+  const isUserAdmin = (userId: string) => {
+    return activeUsers?.some(user => 
+      user.user_id === userId && user.role === 'admin'
+    ) || false;
+  };
+
+  // Manejar asignación de sede (no permitir para admins)
   const handleGrantSedeAccess = (userId: string, sedeId: string) => {
+    if (isUserAdmin(userId)) {
+      toast({
+        title: 'Información',
+        description: 'Los administradores tienen acceso automático a todas las sedes.',
+        variant: 'default',
+      });
+      return;
+    }
     grantSedeAccess({ userId, sedeId });
     queryClient.invalidateQueries({ queryKey: ['user-sede-access'] });
   };
 
-  // Manejar revocación de sede
+  // Manejar revocación de sede (no permitir para admins)
   const handleRevokeSedeAccess = (userId: string, sedeId: string) => {
+    if (isUserAdmin(userId)) {
+      toast({
+        title: 'Información',
+        description: 'Los administradores tienen acceso automático a todas las sedes y no se puede revocar.',
+        variant: 'default',
+      });
+      return;
+    }
     revokeSedeAccess({ userId, sedeId });
     queryClient.invalidateQueries({ queryKey: ['user-sede-access'] });
   };
@@ -595,41 +618,51 @@ export const UserManagement = () => {
                       <TableCell>
                         <div className="space-y-2">
                           <div className="flex flex-wrap gap-1">
-                            {getUserAssignedSedes(user.user_id).map((access) => (
-                              <Badge key={access.sede_id} variant="secondary" className="text-xs">
-                                {access.sedes?.nombre} ({access.sedes?.codigo})
+                            {user.role === 'admin' ? (
+                              <Badge variant="default" className="text-xs bg-blue-100 text-blue-800">
+                                Acceso a todas las sedes
                               </Badge>
-                            ))}
-                            {getUserAssignedSedes(user.user_id).length === 0 && (
-                              <span className="text-gray-400 text-sm">Sin sedes asignadas</span>
+                            ) : (
+                              <>
+                                {getUserAssignedSedes(user.user_id).map((access) => (
+                                  <Badge key={access.sede_id} variant="secondary" className="text-xs">
+                                    {access.sedes?.nombre} ({access.sedes?.codigo})
+                                  </Badge>
+                                ))}
+                                {getUserAssignedSedes(user.user_id).length === 0 && (
+                                  <span className="text-gray-400 text-sm">Sin sedes asignadas</span>
+                                )}
+                              </>
                             )}
                           </div>
-                          <div className="flex flex-wrap gap-1">
-                            <Select onValueChange={(sedeId) => handleGrantSedeAccess(user.user_id, sedeId)}>
-                              <SelectTrigger className="h-6 text-xs w-auto">
-                                <SelectValue placeholder="Asignar sede" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {allSedes?.filter(sede => !hasSedeAccess(user.user_id, sede.id)).map((sede) => (
-                                  <SelectItem key={sede.id} value={sede.id}>
-                                    {sede.nombre} ({sede.codigo})
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                            {getUserAssignedSedes(user.user_id).map((access) => (
-                              <Button
-                                key={access.sede_id}
-                                variant="outline"
-                                size="sm"
-                                className="h-6 px-2 text-xs text-red-600 hover:text-red-700"
-                                onClick={() => handleRevokeSedeAccess(user.user_id, access.sede_id)}
-                                disabled={isRevokingAccess}
-                              >
-                                ✕ {access.sedes?.codigo}
-                              </Button>
-                            ))}
-                          </div>
+                          {user.role !== 'admin' && (
+                            <div className="flex flex-wrap gap-1">
+                              <Select onValueChange={(sedeId) => handleGrantSedeAccess(user.user_id, sedeId)}>
+                                <SelectTrigger className="h-6 text-xs w-auto">
+                                  <SelectValue placeholder="Asignar sede" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {allSedes?.filter(sede => !hasSedeAccess(user.user_id, sede.id)).map((sede) => (
+                                    <SelectItem key={sede.id} value={sede.id}>
+                                      {sede.nombre} ({sede.codigo})
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                              {getUserAssignedSedes(user.user_id).map((access) => (
+                                <Button
+                                  key={access.sede_id}
+                                  variant="outline"
+                                  size="sm"
+                                  className="h-6 px-2 text-xs text-red-600 hover:text-red-700"
+                                  onClick={() => handleRevokeSedeAccess(user.user_id, access.sede_id)}
+                                  disabled={isRevokingAccess}
+                                >
+                                  ✕ {access.sedes?.codigo}
+                                </Button>
+                              ))}
+                            </div>
+                          )}
                         </div>
                       </TableCell>
                       <TableCell>

@@ -80,34 +80,34 @@ export const sedeStorageService = {
   // Obtener sedes accesibles por el usuario actual
   async getUserAccessibleSedes(): Promise<Sede[]> {
     try {
-      // Primero intentamos obtener todas las sedes (para admins)
-      const { data: allSedes, error: allSedesError } = await supabase
+      // Usar la función RPC que maneja correctamente admins y usuarios regulares
+      const { data: sedeIds, error: rpcError } = await supabase
+        .rpc('get_user_accessible_sedes');
+
+      if (rpcError) {
+        console.error('Error calling get_user_accessible_sedes:', rpcError);
+        throw rpcError;
+      }
+
+      // Si no hay sedes accesibles, retornar array vacío
+      if (!sedeIds || sedeIds.length === 0) {
+        return [];
+      }
+
+      // Obtener los datos completos de las sedes
+      const { data: sedes, error: sedesError } = await supabase
         .from('sedes')
         .select('*')
+        .in('id', sedeIds)
         .eq('is_active', true)
         .order('nombre');
 
-      if (!allSedesError && allSedes) {
-        // Si puede ver todas las sedes, es admin
-        return allSedes.map(mapSedeFromDB);
+      if (sedesError) {
+        console.error('Error fetching sedes data:', sedesError);
+        throw sedesError;
       }
 
-      // Si no puede ver todas, obtener solo las sedes con acceso específico
-      const { data: userSedes, error: userSedesError } = await supabase
-        .from('user_sede_access')
-        .select(`
-          sede_id,
-          sedes!inner(*)
-        `)
-        .eq('can_access', true)
-        .eq('sedes.is_active', true);
-
-      if (userSedesError) {
-        console.error('Error fetching user accessible sedes:', userSedesError);
-        throw userSedesError;
-      }
-
-      return userSedes?.map(item => mapSedeFromDB(item.sedes)) || [];
+      return sedes?.map(mapSedeFromDB) || [];
     } catch (error) {
       console.error('Error in getUserAccessibleSedes:', error);
       return [];
