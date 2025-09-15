@@ -19,14 +19,7 @@ export const SedeContextProvider = ({ children }: { children: React.ReactNode })
  * Component interno que configura el contexto global después de que SedeProvider esté listo
  */
 const SedeContextInitializer = ({ children }: { children: React.ReactNode }) => {
-  let context;
-  
-  try {
-    context = useSede();
-  } catch (error) {
-    console.error('❌ SedeContextInitializer: Error accessing sede context:', error);
-    return <>{children}</>;
-  }
+  const context = useSede();
 
   const getActiveSedeId = useCallback(() => {
     if (!context || !context.activeSede) {
@@ -42,7 +35,7 @@ const SedeContextInitializer = ({ children }: { children: React.ReactNode }) => 
     return sedeId;
   }, [context]);
 
-  const waitForActiveSede = useCallback(async (timeout = 5000): Promise<string> => {
+  const waitForActiveSede = useCallback(async (timeout = 3000): Promise<string> => {
     return new Promise((resolve, reject) => {
       console.log('⏳ waitForActiveSede started:', {
         currentActiveSede: context?.activeSede?.nombre || 'none',
@@ -62,23 +55,21 @@ const SedeContextInitializer = ({ children }: { children: React.ReactNode }) => 
       if (context?.isInitialized && !context?.loading && context?.availableSedes?.length > 0) {
         const firstSede = context.availableSedes[0];
         console.log('🎯 waitForActiveSede - auto-selecting first sede:', firstSede.nombre);
-        // Utilizar setActiveSede del contexto para establecer la sede
         context.setActiveSede(firstSede);
         resolve(firstSede.id);
         return;
       }
 
-      const timeoutId = setTimeout(() => {
-        console.error('❌ waitForActiveSede - timeout after', timeout, 'ms');
-        reject(new Error('Timeout: No se pudo obtener una sede activa'));
-      }, timeout);
+      let attempts = 0;
+      const maxAttempts = Math.floor(timeout / 100);
 
       const interval = setInterval(() => {
+        attempts++;
+        
         // Verificar si ya hay sede activa
         if (context?.activeSede?.id) {
           console.log('✅ waitForActiveSede - sede found:', context.activeSede.nombre);
           clearInterval(interval);
-          clearTimeout(timeoutId);
           resolve(context.activeSede.id);
           return;
         }
@@ -91,7 +82,6 @@ const SedeContextInitializer = ({ children }: { children: React.ReactNode }) => 
             console.log('🎯 waitForActiveSede - auto-selecting first sede (polling):', firstSede.nombre);
             context.setActiveSede(firstSede);
             clearInterval(interval);
-            clearTimeout(timeoutId);
             resolve(firstSede.id);
             return;
           }
@@ -100,12 +90,27 @@ const SedeContextInitializer = ({ children }: { children: React.ReactNode }) => 
           if (!context?.availableSedes?.length) {
             console.error('❌ waitForActiveSede - no sedes available');
             clearInterval(interval);
-            clearTimeout(timeoutId);
             reject(new Error('No hay sedes disponibles para el usuario'));
             return;
           }
         }
+
+        // Timeout después de intentos máximos
+        if (attempts >= maxAttempts) {
+          console.error('❌ waitForActiveSede - timeout after', timeout, 'ms');
+          clearInterval(interval);
+          reject(new Error('Timeout: No se pudo obtener una sede activa'));
+        }
       }, 100);
+      
+      // También agregar un timeout absoluto como respaldo
+      setTimeout(() => {
+        clearInterval(interval);
+        if (!context?.activeSede?.id) {
+          console.error('❌ waitForActiveSede - absolute timeout');
+          reject(new Error('Timeout: No se pudo obtener una sede activa'));
+        }
+      }, timeout);
     });
   }, [context]);
 
