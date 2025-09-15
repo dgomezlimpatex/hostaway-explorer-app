@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Sede, SedeContextType } from '@/types/sede';
 import { sedeStorageService } from '@/services/storage/sedeStorage';
 import { useAuth } from '@/hooks/useAuth';
+import { setGlobalSedeContext } from '@/services/storage/baseStorage';
 
 const SedeContext = createContext<SedeContextType | undefined>(undefined);
 
@@ -315,7 +316,6 @@ export const SedeProvider = ({ children }: SedeProviderProps) => {
     };
 
     // Configurar contexto global para BaseStorage
-    const { setGlobalSedeContext } = require('@/services/storage/baseStorage');
     setGlobalSedeContext({
       getActiveSedeId,
       waitForActiveSede,
