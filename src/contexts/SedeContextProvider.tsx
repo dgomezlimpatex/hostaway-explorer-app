@@ -42,7 +42,7 @@ const SedeContextInitializer = ({ children }: { children: React.ReactNode }) => 
     return sedeId;
   }, [context]);
 
-  const waitForActiveSede = useCallback(async (timeout = 15000): Promise<string> => {
+  const waitForActiveSede = useCallback(async (timeout = 5000): Promise<string> => {
     return new Promise((resolve, reject) => {
       console.log('⏳ waitForActiveSede started:', {
         currentActiveSede: context?.activeSede?.nombre || 'none',
@@ -55,6 +55,16 @@ const SedeContextInitializer = ({ children }: { children: React.ReactNode }) => 
       if (context?.activeSede?.id) {
         console.log('✅ waitForActiveSede - sede found immediately:', context.activeSede.nombre);
         resolve(context.activeSede.id);
+        return;
+      }
+
+      // Si está inicializado y hay sedes disponibles pero no hay activa, auto-seleccionar la primera
+      if (context?.isInitialized && !context?.loading && context?.availableSedes?.length > 0) {
+        const firstSede = context.availableSedes[0];
+        console.log('🎯 waitForActiveSede - auto-selecting first sede:', firstSede.nombre);
+        // Utilizar setActiveSede del contexto para establecer la sede
+        context.setActiveSede(firstSede);
+        resolve(firstSede.id);
         return;
       }
 
@@ -75,6 +85,17 @@ const SedeContextInitializer = ({ children }: { children: React.ReactNode }) => 
 
         // Si está inicializado y no está cargando
         if (context?.isInitialized && !context?.loading) {
+          // Si hay sedes disponibles pero no hay activa, auto-seleccionar
+          if (context?.availableSedes?.length > 0) {
+            const firstSede = context.availableSedes[0];
+            console.log('🎯 waitForActiveSede - auto-selecting first sede (polling):', firstSede.nombre);
+            context.setActiveSede(firstSede);
+            clearInterval(interval);
+            clearTimeout(timeoutId);
+            resolve(firstSede.id);
+            return;
+          }
+          
           // Si no hay sedes disponibles
           if (!context?.availableSedes?.length) {
             console.error('❌ waitForActiveSede - no sedes available');

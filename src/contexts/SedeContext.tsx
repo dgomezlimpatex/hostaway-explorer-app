@@ -69,11 +69,6 @@ export const SedeProvider = ({ children }: SedeProviderProps) => {
 
   // Cargar sedes disponibles y sincronizar estado
   const refreshSedes = useCallback(async () => {
-    // Prevent multiple simultaneous calls
-    if (loading) {
-      return;
-    }
-    
     try {
       setLoading(true);
       console.log('🏢 SedeContext: Refreshing sedes...');
@@ -85,58 +80,33 @@ export const SedeProvider = ({ children }: SedeProviderProps) => {
       const currentActiveSede = activeSede || restoreSedeFromStorage();
       console.log('🏢 SedeContext: Current active sede:', currentActiveSede?.nombre || 'ninguna');
       
-      // Sincronizar sede activa con sedes disponibles
-      const finalActiveSede = syncActiveSede(sedes, currentActiveSede);
-      console.log('🏢 SedeContext: Final active sede after sync:', finalActiveSede?.nombre || 'ninguna');
-      
       // Si no hay sede activa pero hay sedes disponibles, seleccionar la primera automáticamente
-      if (!finalActiveSede && sedes.length > 0) {
+      if (!currentActiveSede && sedes.length > 0) {
         const firstSede = sedes[0];
         console.log('🎯 SedeContext: Auto-selecting first available sede:', firstSede.nombre);
         setActiveSedeState(firstSede);
         localStorage.setItem(ACTIVE_SEDE_KEY, JSON.stringify(firstSede));
-      }
-      
-      // Solo invalidar cache si cambió la sede y hay datos previos
-      if (finalActiveSede?.id !== currentActiveSede?.id && currentActiveSede !== null) {
-        console.log('🔄 SedeContext: Invalidating queries due to sede change');
-        // Invalidate queries in batches to prevent excessive requests
-        const queriesToInvalidate = [
-          ['tasks'],
-          ['task-reports'], 
-          ['cleaners'],
-          ['properties'],
-          ['clients'],
-          ['recurring-tasks']
-        ];
-        
-        // Use a small delay to batch invalidations
-        setTimeout(() => {
-          queriesToInvalidate.forEach(queryKey => {
-            queryClient.invalidateQueries({ queryKey });
-          });
-        }, 100);
+      } else {
+        // Sincronizar sede activa con sedes disponibles
+        const finalActiveSede = syncActiveSede(sedes, currentActiveSede);
+        console.log('🏢 SedeContext: Final active sede after sync:', finalActiveSede?.nombre || 'ninguna');
       }
 
     } catch (error) {
       console.error('🏢 SedeContext: Error loading sedes:', error);
       setAvailableSedes([]);
-      // Don't show toast on initial load to prevent spam
-      if (isInitialized) {
-        // Could emit a global error here if needed
-        console.warn('🏢 SedeContext: Failed to refresh sedes after initialization');
-      }
     } finally {
       setLoading(false);
       setIsInitialized(true);
       console.log('🏢 SedeContext: Refresh sedes completed. Loading:', false, 'Initialized:', true);
     }
-  }, [activeSede, restoreSedeFromStorage, syncActiveSede, queryClient, loading, isInitialized]);
+  }, [activeSede, restoreSedeFromStorage, syncActiveSede]);
 
   // Inicializar contexto una sola vez cuando el usuario esté autenticado
   useEffect(() => {
     // Si la autenticación aún está cargando, esperar
     if (authLoading) {
+      console.log('🏢 SedeContext: Auth still loading, waiting...');
       return;
     }
     
@@ -151,11 +121,11 @@ export const SedeProvider = ({ children }: SedeProviderProps) => {
     }
     
     // Si hay usuario autenticado y no se ha inicializado, cargar sedes
-    if (!isInitialized) {
-      console.log('🏢 SedeContext: User authenticated, loading sedes...');
+    if (!isInitialized && !loading) {
+      console.log('🏢 SedeContext: User authenticated, loading sedes...', { userId: user.id });
       refreshSedes();
     }
-  }, [user, authLoading, refreshSedes, isInitialized]);
+  }, [user, authLoading, isInitialized, loading]);
 
   const setActiveSede = useCallback((sede: Sede | null) => {
     // Verificar que sede no sea null
