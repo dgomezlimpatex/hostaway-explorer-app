@@ -132,11 +132,38 @@ export const sedeStorageService = {
 
   // Gestión de accesos de usuarios a sedes
   async grantUserSedeAccess(userId: string, sedeId: string): Promise<UserSedeAccess> {
-    return baseUserSedeAccessService.create({
-      user_id: userId,
-      sede_id: sedeId,
-      can_access: true,
-    });
+    try {
+      // Usar UPSERT para evitar errores de clave duplicada
+      const { data, error } = await supabase
+        .from('user_sede_access')
+        .upsert(
+          {
+            user_id: userId,
+            sede_id: sedeId,
+            can_access: true,
+            updated_at: new Date().toISOString()
+          },
+          {
+            onConflict: 'user_id,sede_id'
+          }
+        )
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Error granting sede access:', error);
+        throw error;
+      }
+
+      if (!data) {
+        throw new Error('No se pudo crear el acceso a la sede');
+      }
+
+      return mapUserSedeAccessFromDB(data);
+    } catch (error) {
+      console.error('Error in grantUserSedeAccess:', error);
+      throw error;
+    }
   },
 
   async revokeUserSedeAccess(userId: string, sedeId: string): Promise<void> {
