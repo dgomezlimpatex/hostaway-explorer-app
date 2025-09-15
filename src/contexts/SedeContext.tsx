@@ -14,12 +14,23 @@ interface SedeProviderProps {
 }
 
 export const SedeProvider = ({ children }: SedeProviderProps) => {
+  console.log('🏗️ SedeProvider: Component mounting');
+  
   const queryClient = useQueryClient();
   const { user, isLoading: authLoading } = useAuth();
   const [activeSede, setActiveSedeState] = useState<Sede | null>(null);
   const [availableSedes, setAvailableSedes] = useState<Sede[]>([]);
   const [loading, setLoading] = useState(true);
   const [isInitialized, setIsInitialized] = useState(false);
+
+  console.log('🏗️ SedeProvider: Current state:', {
+    user: user ? { id: user.id, email: user.email } : 'null',
+    authLoading,
+    activeSede: activeSede?.nombre || 'null',
+    availableSedesCount: availableSedes.length,
+    loading,
+    isInitialized
+  });
 
   // Función para validar y restaurar sede desde localStorage
   const restoreSedeFromStorage = useCallback(() => {
@@ -204,13 +215,131 @@ export const SedeProvider = ({ children }: SedeProviderProps) => {
     hasAccessToSede,
   };
 
+  console.log('🎯 SedeProvider: Providing context value:', {
+    activeSede: value.activeSede?.nombre || 'null',
+    availableSedesCount: value.availableSedes.length,
+    loading: value.loading,
+    isInitialized: value.isInitialized
+  });
+
+  // Configurar contexto global para BaseStorage
+  useEffect(() => {
+    console.log('🔧 SedeProvider: Configurando contexto global', {
+      activeSede: activeSede?.nombre || 'null',
+      loading,
+      isInitialized,
+      availableSedesCount: availableSedes.length
+    });
+
+    const getActiveSedeId = () => {
+      if (!activeSede) {
+        console.log('🏢 Global Context getActiveSedeId: No active sede');
+        return null;
+      }
+      const sedeId = activeSede.id;
+      console.log(`🏢 Global Context getActiveSedeId:`, {
+        activeSede: activeSede.nombre,
+        sedeId,
+        loading,
+        isInitialized
+      });
+      return sedeId;
+    };
+
+    const waitForActiveSede = async (timeout = 3000): Promise<string> => {
+      return new Promise((resolve, reject) => {
+        console.log('⏳ waitForActiveSede started:', {
+          currentActiveSede: activeSede?.nombre || 'none',
+          loading,
+          isInitialized,
+          availableSedesCount: availableSedes.length
+        });
+
+        // Si ya hay sede activa, resolver inmediatamente
+        if (activeSede?.id) {
+          console.log('✅ waitForActiveSede - sede found immediately:', activeSede.nombre);
+          resolve(activeSede.id);
+          return;
+        }
+
+        // Si está inicializado y hay sedes disponibles pero no hay activa, auto-seleccionar la primera
+        if (isInitialized && !loading && availableSedes.length > 0) {
+          const firstSede = availableSedes[0];
+          console.log('🎯 waitForActiveSede - auto-selecting first sede:', firstSede.nombre);
+          setActiveSede(firstSede);
+          resolve(firstSede.id);
+          return;
+        }
+
+        let attempts = 0;
+        const maxAttempts = Math.floor(timeout / 100);
+
+        const interval = setInterval(() => {
+          attempts++;
+          
+          // Verificar si ya hay sede activa
+          if (activeSede?.id) {
+            console.log('✅ waitForActiveSede - sede found:', activeSede.nombre);
+            clearInterval(interval);
+            resolve(activeSede.id);
+            return;
+          }
+
+          // Si está inicializado y no está cargando
+          if (isInitialized && !loading) {
+            // Si hay sedes disponibles pero no hay activa, auto-seleccionar
+            if (availableSedes.length > 0) {
+              const firstSede = availableSedes[0];
+              console.log('🎯 waitForActiveSede - auto-selecting first sede (polling):', firstSede.nombre);
+              setActiveSede(firstSede);
+              clearInterval(interval);
+              resolve(firstSede.id);
+              return;
+            }
+            
+            // Si no hay sedes disponibles
+            console.error('❌ waitForActiveSede - no sedes available');
+            clearInterval(interval);
+            reject(new Error('No hay sedes disponibles para el usuario'));
+            return;
+          }
+
+          // Timeout después de intentos máximos
+          if (attempts >= maxAttempts) {
+            console.error('❌ waitForActiveSede - timeout after', timeout, 'ms');
+            clearInterval(interval);
+            reject(new Error('Timeout: No se pudo obtener una sede activa'));
+          }
+        }, 100);
+      });
+    };
+
+    // Configurar contexto global para BaseStorage
+    const { setGlobalSedeContext } = require('@/services/storage/baseStorage');
+    setGlobalSedeContext({
+      getActiveSedeId,
+      waitForActiveSede,
+    });
+  }, [activeSede, availableSedes, loading, isInitialized, setActiveSede]);
+
   return <SedeContext.Provider value={value}>{children}</SedeContext.Provider>;
 };
 
 export const useSede = () => {
   const context = useContext(SedeContext);
+  console.log('🔍 useSede called - context status:', {
+    contextExists: !!context,
+    contextValues: context ? {
+      activeSede: context.activeSede?.nombre || 'null',
+      availableSedesCount: context.availableSedes?.length || 0,
+      loading: context.loading,
+      isInitialized: context.isInitialized
+    } : 'CONTEXT_IS_UNDEFINED'
+  });
+  
   if (context === undefined) {
     console.error('❌ useSede: Context is undefined. Make sure the component is wrapped in SedeProvider');
+    console.error('❌ Call stack:', new Error().stack);
     throw new Error('useSede must be used within a SedeProvider');
   }
   return context;
