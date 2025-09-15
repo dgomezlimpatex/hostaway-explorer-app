@@ -77,7 +77,7 @@ function App() {
             <SecurityWrapper>
               <Toaster />
               <Sonner />
-            <BrowserRouter>
+              <BrowserRouter>
             <Routes>
               <Route path="/auth" element={
                 <LazyRoute>

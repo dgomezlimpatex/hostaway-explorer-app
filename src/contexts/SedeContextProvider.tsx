@@ -3,12 +3,18 @@ import { SedeProvider, useSede } from './SedeContext';
 import { setGlobalSedeContext } from '@/services/storage/baseStorage';
 
 /**
- * Provider wrapper que configura el contexto global para BaseStorage
+ * Component interno que inicializa el contexto global solo después de que SedeProvider esté listo
  */
 const SedeContextInitializer = ({ children }: { children: React.ReactNode }) => {
   const context = useSede();
   
   useEffect(() => {
+    // Solo configurar el contexto global si el contexto está disponible
+    if (!context) {
+      console.warn('🚫 SedeContextInitializer: Context not available yet');
+      return;
+    }
+
     // Configurar contexto global para que BaseStorage pueda acceder a la sede activa
     const getActiveSedeId = () => {
       const sedeId = context.activeSede?.id || null;

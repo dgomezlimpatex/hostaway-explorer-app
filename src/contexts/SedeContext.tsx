@@ -240,6 +240,7 @@ export const SedeProvider = ({ children }: SedeProviderProps) => {
 export const useSede = () => {
   const context = useContext(SedeContext);
   if (context === undefined) {
+    console.error('❌ useSede: Context is undefined. Make sure the component is wrapped in SedeProvider');
     throw new Error('useSede must be used within a SedeProvider');
   }
   return context;
