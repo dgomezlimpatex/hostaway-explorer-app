@@ -80,9 +80,13 @@ export const sedeStorageService = {
   // Obtener sedes accesibles por el usuario actual
   async getUserAccessibleSedes(): Promise<Sede[]> {
     try {
+      console.log('🔍 sedeStorage: Fetching user accessible sedes...');
+      
       // Usar la función RPC que maneja correctamente admins y usuarios regulares
       const { data: sedeIds, error: rpcError } = await supabase
         .rpc('get_user_accessible_sedes');
+
+      console.log('🔍 sedeStorage: RPC result:', { sedeIds, error: rpcError });
 
       if (rpcError) {
         console.error('Error calling get_user_accessible_sedes:', rpcError);
@@ -91,8 +95,11 @@ export const sedeStorageService = {
 
       // Si no hay sedes accesibles, retornar array vacío
       if (!sedeIds || sedeIds.length === 0) {
+        console.log('🔍 sedeStorage: No accessible sedes found for user');
         return [];
       }
+
+      console.log('🔍 sedeStorage: Fetching sede details for IDs:', sedeIds);
 
       // Obtener los datos completos de las sedes
       const { data: sedes, error: sedesError } = await supabase
@@ -107,7 +114,10 @@ export const sedeStorageService = {
         throw sedesError;
       }
 
-      return sedes?.map(mapSedeFromDB) || [];
+      const mappedSedes = sedes?.map(mapSedeFromDB) || [];
+      console.log('🔍 sedeStorage: Final accessible sedes:', mappedSedes.length, mappedSedes.map(s => ({ id: s.id, nombre: s.nombre })));
+
+      return mappedSedes;
     } catch (error) {
       console.error('Error in getUserAccessibleSedes:', error);
       return [];

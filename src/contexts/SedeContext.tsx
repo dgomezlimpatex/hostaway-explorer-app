@@ -76,29 +76,30 @@ export const SedeProvider = ({ children }: SedeProviderProps) => {
     
     try {
       setLoading(true);
-      console.log('🏢 Refreshing sedes...');
+      console.log('🏢 SedeContext: Refreshing sedes...');
       const sedes = await sedeStorageService.getUserAccessibleSedes();
-      console.log('🏢 Available sedes:', sedes.length, sedes.map(s => ({ id: s.id, nombre: s.nombre })));
+      console.log('🏢 SedeContext: Available sedes loaded:', sedes.length, sedes.map(s => ({ id: s.id, nombre: s.nombre })));
       setAvailableSedes(sedes);
 
       // Obtener sede activa actual (desde estado o localStorage)
       const currentActiveSede = activeSede || restoreSedeFromStorage();
+      console.log('🏢 SedeContext: Current active sede:', currentActiveSede?.nombre || 'ninguna');
       
       // Sincronizar sede activa con sedes disponibles
       const finalActiveSede = syncActiveSede(sedes, currentActiveSede);
-      console.log('📍 Sede activa final:', finalActiveSede?.nombre || 'ninguna');
+      console.log('🏢 SedeContext: Final active sede after sync:', finalActiveSede?.nombre || 'ninguna');
       
       // Si no hay sede activa pero hay sedes disponibles, seleccionar la primera automáticamente
       if (!finalActiveSede && sedes.length > 0) {
         const firstSede = sedes[0];
-        console.log('🎯 Auto-seleccionando primera sede disponible:', firstSede.nombre);
+        console.log('🎯 SedeContext: Auto-selecting first available sede:', firstSede.nombre);
         setActiveSedeState(firstSede);
-        localStorage.setItem('activeSede', JSON.stringify(firstSede));
+        localStorage.setItem(ACTIVE_SEDE_KEY, JSON.stringify(firstSede));
       }
       
       // Solo invalidar cache si cambió la sede y hay datos previos
       if (finalActiveSede?.id !== currentActiveSede?.id && currentActiveSede !== null) {
-        console.log('🔄 Invalidando queries por cambio de sede');
+        console.log('🔄 SedeContext: Invalidating queries due to sede change');
         // Invalidate queries in batches to prevent excessive requests
         const queriesToInvalidate = [
           ['tasks'],
@@ -118,16 +119,17 @@ export const SedeProvider = ({ children }: SedeProviderProps) => {
       }
 
     } catch (error) {
-      console.error('Error loading sedes:', error);
+      console.error('🏢 SedeContext: Error loading sedes:', error);
       setAvailableSedes([]);
       // Don't show toast on initial load to prevent spam
       if (isInitialized) {
         // Could emit a global error here if needed
-        console.warn('Failed to refresh sedes after initialization');
+        console.warn('🏢 SedeContext: Failed to refresh sedes after initialization');
       }
     } finally {
       setLoading(false);
       setIsInitialized(true);
+      console.log('🏢 SedeContext: Refresh sedes completed. Loading:', false, 'Initialized:', true);
     }
   }, [activeSede, restoreSedeFromStorage, syncActiveSede, queryClient, loading, isInitialized]);
 

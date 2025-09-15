@@ -21,7 +21,7 @@ const SedeContextInitializer = ({ children }: { children: React.ReactNode }) => 
       return sedeId;
     };
     
-    const waitForActiveSede = async (timeout = 5000): Promise<string> => {
+    const waitForActiveSede = async (timeout = 10000): Promise<string> => {
       return new Promise((resolve, reject) => {
         if (context.activeSede?.id) {
           resolve(context.activeSede.id);
@@ -41,20 +41,25 @@ const SedeContextInitializer = ({ children }: { children: React.ReactNode }) => 
             return;
           }
           
-          // Si el contexto está inicializado pero no hay sedes disponibles, rechazar
-          if (context.isInitialized && context.availableSedes.length === 0) {
-            clearInterval(interval);
-            clearTimeout(timeoutId);
-            reject(new Error('No hay sedes disponibles para el usuario'));
-            return;
-          }
-          
-          // Si el contexto está inicializado, no está cargando, y no hay sede activa, rechazar
-          if (context.isInitialized && !context.loading && !context.activeSede) {
-            clearInterval(interval);
-            clearTimeout(timeoutId);
-            reject(new Error('No hay sede activa'));
-            return;
+          // Si el contexto está inicializado Y no está cargando
+          if (context.isInitialized && !context.loading) {
+            // Si no hay sedes disponibles, rechazar
+            if (context.availableSedes.length === 0) {
+              clearInterval(interval);
+              clearTimeout(timeoutId);
+              reject(new Error('No hay sedes disponibles para el usuario'));
+              return;
+            }
+            
+            // Si hay sedes pero no hay sede activa, esperar un poco más para auto-selección
+            // Solo rechazar si han pasado más de 2 segundos sin sede activa
+            const elapsed = timeout - (timeout - 2000);
+            if (elapsed > 2000 && !context.activeSede) {
+              clearInterval(interval);
+              clearTimeout(timeoutId);
+              reject(new Error('No hay sede activa después de la inicialización'));
+              return;
+            }
           }
         }, 100);
       });
