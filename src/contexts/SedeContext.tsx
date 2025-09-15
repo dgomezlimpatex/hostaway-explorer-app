@@ -88,6 +88,14 @@ export const SedeProvider = ({ children }: SedeProviderProps) => {
       const finalActiveSede = syncActiveSede(sedes, currentActiveSede);
       console.log('📍 Sede activa final:', finalActiveSede?.nombre || 'ninguna');
       
+      // Si no hay sede activa pero hay sedes disponibles, seleccionar la primera automáticamente
+      if (!finalActiveSede && sedes.length > 0) {
+        const firstSede = sedes[0];
+        console.log('🎯 Auto-seleccionando primera sede disponible:', firstSede.nombre);
+        setActiveSedeState(firstSede);
+        localStorage.setItem('activeSede', JSON.stringify(firstSede));
+      }
+      
       // Solo invalidar cache si cambió la sede y hay datos previos
       if (finalActiveSede?.id !== currentActiveSede?.id && currentActiveSede !== null) {
         console.log('🔄 Invalidando queries por cambio de sede');
