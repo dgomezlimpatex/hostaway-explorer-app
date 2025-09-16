@@ -133,7 +133,7 @@ export const SedeProvider = ({ children }: SedeProviderProps) => {
     }
     
     // Si hay usuario autenticado y no se ha inicializado, cargar sedes
-    if (!isInitialized && !loading) {
+    if (!isInitialized) {
       console.log('🏢 SedeContext: User authenticated, loading sedes...', { userId: user.id });
       refreshSedes();
     }
