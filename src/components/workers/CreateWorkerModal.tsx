@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -14,7 +14,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { AlertTriangle } from 'lucide-react';
+import { AlertTriangle, Building2 } from 'lucide-react';
 import { useCreateCleaner } from "@/hooks/useCleaners";
 import { useSede } from '@/contexts/SedeContext';
 import { CreateCleanerData } from "@/services/cleanerStorage";
@@ -25,7 +25,8 @@ interface CreateWorkerModalProps {
 }
 
 export const CreateWorkerModal = ({ open, onOpenChange }: CreateWorkerModalProps) => {
-  const { activeSede, isActiveSedeSet } = useSede();
+  const { availableSedes, activeSede } = useSede();
+  const [selectedSedeId, setSelectedSedeId] = useState<string>('');
   const [formData, setFormData] = useState<CreateCleanerData>({
     name: '',
     email: '',
@@ -42,16 +43,32 @@ export const CreateWorkerModal = ({ open, onOpenChange }: CreateWorkerModalProps
 
   const createCleaner = useCreateCleaner();
 
+  // Auto-seleccionar sede activa si existe
+  useEffect(() => {
+    if (activeSede && availableSedes.length > 0) {
+      setSelectedSedeId(activeSede.id);
+    } else if (availableSedes.length === 1) {
+      setSelectedSedeId(availableSedes[0].id);
+    }
+  }, [activeSede, availableSedes]);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.name.trim() || !isActiveSedeSet()) {
+    if (!formData.name.trim() || !selectedSedeId) {
       return;
+    }
+
+    // Temporarily set the selected sede as active in localStorage for the creation
+    const selectedSede = availableSedes.find(s => s.id === selectedSedeId);
+    if (selectedSede) {
+      localStorage.setItem('activeSede', JSON.stringify(selectedSede));
     }
 
     createCleaner.mutate(formData, {
       onSuccess: () => {
         onOpenChange(false);
+        setSelectedSedeId('');
         setFormData({
           name: '',
           email: '',
@@ -76,6 +93,8 @@ export const CreateWorkerModal = ({ open, onOpenChange }: CreateWorkerModalProps
     }));
   };
 
+  const selectedSede = availableSedes.find(s => s.id === selectedSedeId);
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[500px]">
@@ -86,20 +105,48 @@ export const CreateWorkerModal = ({ open, onOpenChange }: CreateWorkerModalProps
           </DialogDescription>
         </DialogHeader>
         
-        {!isActiveSedeSet() ? (
+        {availableSedes.length === 0 ? (
           <Alert className="mb-4">
             <AlertTriangle className="h-4 w-4" />
             <AlertDescription>
-              Debes seleccionar una sede antes de crear un trabajador.
+              No tienes sedes asignadas. Contacta al administrador para obtener acceso.
             </AlertDescription>
           </Alert>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="mb-4 p-3 bg-blue-50 rounded-lg">
-              <p className="text-sm text-blue-700">
-                📍 Creando trabajador en: <strong>{activeSede?.nombre}</strong>
-              </p>
+            <div className="space-y-2">
+              <Label htmlFor="sede">Sede *</Label>
+              <Select value={selectedSedeId} onValueChange={setSelectedSedeId} required>
+                <SelectTrigger className="bg-background border border-border">
+                  <SelectValue placeholder="Selecciona una sede">
+                    {selectedSede && (
+                      <div className="flex items-center gap-2">
+                        <Building2 className="h-4 w-4" />
+                        {selectedSede.nombre}
+                      </div>
+                    )}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent className="bg-background border border-border shadow-lg">
+                  {availableSedes.map((sede) => (
+                    <SelectItem key={sede.id} value={sede.id} className="hover:bg-accent">
+                      <div className="flex items-center gap-2">
+                        <Building2 className="h-4 w-4" />
+                        {sede.nombre}
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
+
+            {selectedSede && (
+              <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-950/50 rounded-lg">
+                <p className="text-sm text-blue-700 dark:text-blue-300">
+                  📍 Creando trabajador en: <strong>{selectedSede.nombre}</strong>
+                </p>
+              </div>
+            )}
 
             <div className="space-y-2">
               <Label htmlFor="name">Nombre completo *</Label>
@@ -227,17 +274,17 @@ export const CreateWorkerModal = ({ open, onOpenChange }: CreateWorkerModalProps
             <Label htmlFor="isActive">Trabajador activo</Label>
           </div>
 
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              Cancelar
-            </Button>
-            <Button type="submit" disabled={createCleaner.isPending || !isActiveSedeSet()}>
-              {createCleaner.isPending ? 'Creando...' : 'Crear Trabajador'}
-            </Button>
-          </DialogFooter>
-          </form>
-        )}
-      </DialogContent>
-    </Dialog>
-  );
-};
+           <DialogFooter>
+             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+               Cancelar
+             </Button>
+             <Button type="submit" disabled={createCleaner.isPending || !selectedSedeId || !formData.name.trim()}>
+               {createCleaner.isPending ? 'Creando...' : 'Crear Trabajador'}
+             </Button>
+           </DialogFooter>
+           </form>
+         )}
+       </DialogContent>
+     </Dialog>
+   );
+ };
