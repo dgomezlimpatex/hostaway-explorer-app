@@ -75,11 +75,17 @@ export const ChecklistSection: React.FC<ChecklistSectionProps> = ({
     const key = `${categoryId}.${itemId}`;
     const newChecklist = { ...checklist };
     
+    // CRITICAL FIX: Preservar el estado actual de completed al agregar media
     if (!newChecklist[key]) {
-      newChecklist[key] = { completed: false, notes: '', media_urls: [] };
+      // Mantener el estado completado si existe, sino false por defecto
+      const currentCompleted = checklist[key]?.completed || false;
+      newChecklist[key] = { completed: currentCompleted, notes: '', media_urls: [] };
     }
     
-    newChecklist[key].media_urls = [...(newChecklist[key].media_urls || []), mediaUrl];
+    // Agregar la nueva media URL
+    const currentMediaUrls = newChecklist[key].media_urls || [];
+    newChecklist[key].media_urls = [...currentMediaUrls, mediaUrl];
+    
     console.log('ChecklistSection - updated checklist item:', newChecklist[key]);
     onChecklistChange(newChecklist);
   };
