@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Plus, Trash2, AlertTriangle } from 'lucide-react';
 import { MediaCapture } from './MediaCapture';
 import { useReportDebugger } from '@/utils/reportDebugger';
+import { useMobileErrorHandler } from '@/hooks/useMobileErrorHandler';
 interface Issue {
   id: string;
   type: 'damage' | 'missing' | 'maintenance' | 'cleanliness' | 'other';
@@ -27,6 +28,7 @@ export const IssuesSection: React.FC<IssuesSectionProps> = ({
   isReadOnly = false
 }) => {
   const { logIncident, logError } = useReportDebugger();
+  const { addIncidentError } = useMobileErrorHandler();
   const [newIssue, setNewIssue] = useState<Partial<Issue>>({
     type: 'other',
     severity: 'low',
@@ -63,46 +65,65 @@ export const IssuesSection: React.FC<IssuesSectionProps> = ({
     color: 'bg-red-100 text-red-800'
   }];
   const addIssue = () => {
-    if (!newIssue.description?.trim()) return;
+    if (!newIssue.description?.trim()) {
+      const errorMsg = 'La descripción de la incidencia es obligatoria';
+      addIncidentError('Campo requerido', errorMsg, {
+        reportId,
+        missingField: 'description',
+        currentIssuesCount: issues.length
+      }, 'Intentando agregar incidencia sin descripción');
+      return;
+    }
     
-    // CRITICAL FIX: Generar ID más único y agregar metadata para debug
-    const timestamp = new Date().toISOString();
-    const issue: Issue = {
-      id: `issue-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-      type: newIssue.type as Issue['type'],
-      description: newIssue.description.trim(),
-      severity: newIssue.severity as Issue['severity'],
-      media_urls: newIssue.media_urls || []
-    };
-    
-    console.log('✅ CRITICAL: IssuesSection - adding new issue with enhanced data:', {
-      issue,
-      timestamp,
-      reportId,
-      currentIssuesCount: issues.length,
-      totalIssuesAfterAdd: issues.length + 1
-    });
-    
-    // CRITICAL: Log para debugging
-    logIncident('ADD', {
-      issue,
-      reportId,
-      currentIssuesCount: issues.length,
-      totalIssuesAfterAdd: issues.length + 1
-    }, reportId);
-    
-    const updatedIssues = [...issues, issue];
-    onIssuesChange(updatedIssues);
-    
-    // Limpiar form
-    setNewIssue({
-      type: 'other',
-      severity: 'low', 
-      description: '',
-      media_urls: []
-    });
-    
-    console.log('✅ Issue added successfully, new issues array:', updatedIssues);
+    try {
+      // CRITICAL FIX: Generar ID más único y agregar metadata para debug
+      const timestamp = new Date().toISOString();
+      const issue: Issue = {
+        id: `issue-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        type: newIssue.type as Issue['type'],
+        description: newIssue.description.trim(),
+        severity: newIssue.severity as Issue['severity'],
+        media_urls: newIssue.media_urls || []
+      };
+      
+      console.log('✅ CRITICAL: IssuesSection - adding new issue with enhanced data:', {
+        issue,
+        timestamp,
+        reportId,
+        currentIssuesCount: issues.length,
+        totalIssuesAfterAdd: issues.length + 1
+      });
+      
+      // CRITICAL: Log para debugging
+      logIncident('ADD', {
+        issue,
+        reportId,
+        currentIssuesCount: issues.length,
+        totalIssuesAfterAdd: issues.length + 1
+      }, reportId);
+      
+      const updatedIssues = [...issues, issue];
+      onIssuesChange(updatedIssues);
+      
+      // Limpiar form
+      setNewIssue({
+        type: 'other',
+        severity: 'low', 
+        description: '',
+        media_urls: []
+      });
+      
+      console.log('✅ Issue added successfully, new issues array:', updatedIssues);
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : 'Error desconocido al agregar incidencia';
+      addIncidentError('Error al agregar incidencia', errorMsg, {
+        reportId,
+        currentIssuesCount: issues.length,
+        newIssueData: newIssue
+      }, 'Agregando nueva incidencia');
+      
+      console.error('❌ Error adding issue:', error);
+    }
   };
   const removeIssue = (issueId: string) => {
     onIssuesChange(issues.filter(issue => issue.id !== issueId));

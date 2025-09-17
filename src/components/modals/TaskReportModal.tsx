@@ -12,6 +12,8 @@ import { useAuth } from '@/hooks/useAuth';
 import { useCleaners } from '@/hooks/useCleaners';
 import { useProcessAutomaticConsumption } from '@/hooks/useAmenityMappings';
 import { useOptimizedAutoSave } from '@/hooks/useOptimizedAutoSave';
+import { useMobileErrorHandler } from '@/hooks/useMobileErrorHandler';
+import { MobileErrorDisplay } from '@/components/mobile/MobileErrorDisplay';
 import { TaskReportHeader } from './task-report/TaskReportHeader';
 import { TaskReportTabs } from './task-report/TaskReportTabs';
 import { TaskReportFooter } from './task-report/TaskReportFooter';
@@ -32,6 +34,17 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { isMobile, isTablet } = useDeviceType();
+  
+  // Mobile error handling
+  const { 
+    errors: mobileErrors, 
+    isVisible: showMobileErrors,
+    addSaveError,
+    addNetworkError,
+    dismissError,
+    dismissAllErrors
+  } = useMobileErrorHandler();
+  
   const { createReport, updateReport, isCreatingReport, isUpdatingReport } = useTaskReports();
   const processAutomaticConsumption = useProcessAutomaticConsumption();
   const { data: existingReport, isLoading: isLoadingReport } = useTaskReport(task?.id || '');
@@ -348,9 +361,17 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
 
     // Verificar que el usuario esté autenticado
     if (!user?.id) {
+      const errorMsg = 'Debes estar autenticado para guardar reportes. Por favor, inicia sesión de nuevo.';
+      addSaveError('Error de autenticación', errorMsg, {
+        userId: user?.id,
+        taskId: task.id,
+        hasUser: !!user,
+        reportId: currentReport?.id
+      }, 'Intentando guardar reporte sin autenticación');
+      
       toast({
         title: "Error de autenticación",
-        description: "Debes estar autenticado para guardar reportes. Por favor, inicia sesión de nuevo.",
+        description: errorMsg,
         variant: "destructive",
       });
       return;
@@ -358,9 +379,17 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
 
     // Verificar que tenemos el ID del limpiador actual
     if (!currentCleanerId) {
+      const errorMsg = 'No se pudo identificar tu perfil de limpiador. Contacta al administrador.';
+      addSaveError('Error de identificación', errorMsg, {
+        userId: user?.id,
+        taskId: task.id,
+        currentCleanerId,
+        cleanerData: cleaners // Fixed: usar cleaners en lugar de cleaner
+      }, 'Intentando guardar sin ID de limpiador');
+      
       toast({
         title: "Error",
-        description: "No se pudo identificar tu perfil de limpiador. Contacta al administrador.",
+        description: errorMsg,
         variant: "destructive",
       });
       return;
@@ -418,6 +447,19 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
       }
     } catch (error) {
       console.error('Error saving report:', error);
+      const errorMsg = error instanceof Error ? error.message : 'Error desconocido al guardar reporte';
+      
+      addSaveError('Error al guardar reporte', errorMsg, {
+        userId: user?.id,
+        taskId: task.id,
+        currentCleanerId,
+        reportId: currentReport?.id,
+        hasCurrentReport: !!currentReport,
+        hasExistingReport: !!existingReport,
+        issuesCount: issues.length,
+        completionPercentage
+      }, 'Guardando reporte desde modal');
+      
       toast({
         title: "Error",
         description: "No se pudo guardar el reporte. Verifica que estés autenticado e inténtalo de nuevo.",
@@ -528,6 +570,23 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
       onOpenChange(false);
     } catch (error) {
       console.error('Error completing report:', error);
+      const errorMsg = error instanceof Error ? error.message : 'Error desconocido al completar reporte';
+      
+      addSaveError('Error al completar reporte', errorMsg, {
+        userId: user?.id,
+        taskId: task.id,
+        currentCleanerId,
+        reportId: currentReport?.id,
+        completionPercentage,
+        issuesCount: issues.length,
+        hasPropertyId: !!task.propertyId
+      }, 'Completando reporte final');
+      
+      toast({
+        title: "Error al completar",
+        description: "No se pudo completar el reporte. Inténtalo de nuevo.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -619,6 +678,15 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
           </div>
         </div>
       </DialogContent>
+
+      {/* Mobile Error Display */}
+      {isMobile && showMobileErrors && (
+        <MobileErrorDisplay
+          errors={mobileErrors}
+          onDismiss={dismissError}
+          onDismissAll={dismissAllErrors}
+        />
+      )}
     </Dialog>
   );
 };

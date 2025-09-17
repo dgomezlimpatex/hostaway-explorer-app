@@ -13,6 +13,7 @@ interface UseMediaUploadProps {
   reportId?: string;
   checklistItemId?: string;
   onMediaCaptured: (mediaUrl: string) => void;
+  onUploadError?: (error: string | Error, context?: any, userAction?: string) => void;
   existingMediaCount: number;
 }
 
@@ -20,6 +21,7 @@ export const useMediaUpload = ({
   reportId,
   checklistItemId,
   onMediaCaptured,
+  onUploadError,
   existingMediaCount,
 }: UseMediaUploadProps) => {
   const { uploadMediaAsync, isUploadingMedia } = useTaskReports();
@@ -147,6 +149,14 @@ export const useMediaUpload = ({
 
     const validation = validateFile(file);
     if (!validation.isValid) {
+      const errorMsg = validation.error || 'Archivo no válido';
+      onUploadError?.(errorMsg, { 
+        fileName: file.name, 
+        fileSize: file.size,
+        reportId,
+        checklistItemId 
+      }, 'Intentando subir foto desde cámara');
+      
       toast({
         title: "Error de validación",
         description: validation.error,
@@ -165,9 +175,18 @@ export const useMediaUpload = ({
     const attempts = uploadAttempts.get(fileKey) || 0;
     
     if (attempts >= 3) {
+      const errorMsg = 'Este archivo ha fallado 3 veces. Por favor, intenta con otro archivo.';
+      onUploadError?.(errorMsg, {
+        fileName: file.name,
+        fileSize: file.size,
+        attempts: attempts,
+        reportId,
+        checklistItemId
+      }, 'Reintentando subir archivo después de 3 fallos');
+      
       toast({
         title: "Máximo de intentos alcanzado",
-        description: "Este archivo ha fallado 3 veces. Por favor, intenta con otro archivo.",
+        description: errorMsg,
         variant: "destructive",
       });
       setPreviewUrl(null);
@@ -267,6 +286,17 @@ export const useMediaUpload = ({
         newMap.set(fileKey, attempts + 1);
         return newMap;
       });
+      
+      // CRÍTICO: Reportar error a sistema móvil
+      onUploadError?.(error, {
+        fileName: file.name,
+        fileSize: file.size,
+        reportId,
+        checklistItemId,
+        attempt: attempts + 1,
+        errorType: error instanceof Error ? error.constructor.name : 'Unknown',
+        isOnline: navigator.onLine
+      }, 'Subiendo foto desde cámara');
       
       // Error más descriptivo y específico
       let errorMessage = "No se pudo subir el archivo.";

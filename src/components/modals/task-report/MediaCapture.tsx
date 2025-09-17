@@ -7,6 +7,7 @@ import { MediaPreview } from './components/MediaPreview';
 import { MediaGrid } from './components/MediaGrid';
 import { MediaInfo } from './components/MediaInfo';
 import { useReportDebugger } from '@/utils/reportDebugger';
+import { useMobileErrorHandler } from '@/hooks/useMobileErrorHandler';
 
 interface MediaCaptureProps {
   onMediaCaptured: (mediaUrl: string) => void;
@@ -26,6 +27,7 @@ export const MediaCapture: React.FC<MediaCaptureProps> = ({
   isReadOnly = false,
 }) => {
   const { logMedia } = useReportDebugger();
+  const { addUploadError } = useMobileErrorHandler();
   const {
     uploadSingleFile,
     uploadMultipleFiles,
@@ -38,6 +40,9 @@ export const MediaCapture: React.FC<MediaCaptureProps> = ({
     onMediaCaptured: (mediaUrl) => {
       logMedia('CAPTURED', { mediaUrl, reportId, checklistItemId }, reportId);
       onMediaCaptured(mediaUrl);
+    },
+    onUploadError: (error, context, userAction) => {
+      addUploadError('Error al subir archivo', error, context, userAction);
     },
     existingMediaCount: existingMedia.length,
   });
