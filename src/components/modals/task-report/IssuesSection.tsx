@@ -6,6 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Plus, Trash2, AlertTriangle } from 'lucide-react';
 import { MediaCapture } from './MediaCapture';
+import { useReportDebugger } from '@/utils/reportDebugger';
 interface Issue {
   id: string;
   type: 'damage' | 'missing' | 'maintenance' | 'cleanliness' | 'other';
@@ -25,6 +26,7 @@ export const IssuesSection: React.FC<IssuesSectionProps> = ({
   reportId,
   isReadOnly = false
 }) => {
+  const { logIncident, logError } = useReportDebugger();
   const [newIssue, setNewIssue] = useState<Partial<Issue>>({
     type: 'other',
     severity: 'low',
@@ -62,21 +64,45 @@ export const IssuesSection: React.FC<IssuesSectionProps> = ({
   }];
   const addIssue = () => {
     if (!newIssue.description?.trim()) return;
+    
+    // CRITICAL FIX: Generar ID más único y agregar metadata para debug
+    const timestamp = new Date().toISOString();
     const issue: Issue = {
-      id: `issue-${Date.now()}`,
+      id: `issue-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       type: newIssue.type as Issue['type'],
-      description: newIssue.description,
+      description: newIssue.description.trim(),
       severity: newIssue.severity as Issue['severity'],
       media_urls: newIssue.media_urls || []
     };
-    console.log('IssuesSection - adding new issue:', issue);
-    onIssuesChange([...issues, issue]);
+    
+    console.log('✅ CRITICAL: IssuesSection - adding new issue with enhanced data:', {
+      issue,
+      timestamp,
+      reportId,
+      currentIssuesCount: issues.length,
+      totalIssuesAfterAdd: issues.length + 1
+    });
+    
+    // CRITICAL: Log para debugging
+    logIncident('ADD', {
+      issue,
+      reportId,
+      currentIssuesCount: issues.length,
+      totalIssuesAfterAdd: issues.length + 1
+    }, reportId);
+    
+    const updatedIssues = [...issues, issue];
+    onIssuesChange(updatedIssues);
+    
+    // Limpiar form
     setNewIssue({
       type: 'other',
-      severity: 'low',
+      severity: 'low', 
       description: '',
       media_urls: []
     });
+    
+    console.log('✅ Issue added successfully, new issues array:', updatedIssues);
   };
   const removeIssue = (issueId: string) => {
     onIssuesChange(issues.filter(issue => issue.id !== issueId));

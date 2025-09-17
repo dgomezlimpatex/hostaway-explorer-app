@@ -115,7 +115,7 @@ export const SequentialTaskReport: React.FC<SequentialTaskReportProps> = ({
   return (
     <div className="flex flex-col h-full">
       {/* Step Content */}
-      <div className={`flex-1 min-h-0 ${currentStep === 'checklist' ? '' : 'overflow-auto'}`}>
+      <div className={`flex-1 ${currentStep === 'checklist' ? 'min-h-0' : 'min-h-[500px]'} ${currentStep === 'checklist' ? '' : 'overflow-auto'}`}>
         {currentStep === 'checklist' && (
           <div className="space-y-4 h-[60vh] overflow-y-auto">
             {isLoadingTemplates ? (
@@ -154,7 +154,7 @@ export const SequentialTaskReport: React.FC<SequentialTaskReportProps> = ({
         )}
 
         {currentStep === 'media' && (
-          <div className="space-y-4">
+          <div className="space-y-4 min-h-[400px]">
             <div className="text-center py-6">
               <Camera className="h-12 w-12 text-blue-500 mx-auto mb-3" />
               <h4 className="text-lg font-semibold mb-2">Sube fotos del trabajo</h4>
@@ -164,9 +164,23 @@ export const SequentialTaskReport: React.FC<SequentialTaskReportProps> = ({
             </div>
             <MediaCapture
               onMediaCaptured={(mediaUrl) => {
-                console.log('Media captured:', mediaUrl);
+                console.log('✅ CRITICAL: Media captured in SequentialTaskReport:', mediaUrl);
+                // CRITICAL FIX: Agregar la nueva media al estado reportMedia
+                if (reportId) {
+                  // Crear objeto media temporal hasta que se recargue desde la DB
+                  const newMedia = {
+                    id: `temp-${Date.now()}`,
+                    file_url: mediaUrl,
+                    media_type: 'photo' as const,
+                    task_report_id: reportId,
+                    timestamp: new Date().toISOString(),
+                    created_at: new Date().toISOString()
+                  };
+                  onReportMediaChange([...reportMedia, newMedia]);
+                }
               }}
               onMediaDeleted={(mediaId) => {
+                console.log('🗑️ Media deleted in SequentialTaskReport:', mediaId);
                 const updatedMedia = reportMedia.filter(media => media.id !== mediaId);
                 onReportMediaChange(updatedMedia);
               }}

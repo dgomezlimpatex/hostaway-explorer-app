@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useTaskReports } from '@/hooks/useTaskReports';
 import { useToast } from '@/hooks/use-toast';
 import { useFileUploadSecurity } from '@/hooks/useFileUploadSecurity';
@@ -6,6 +6,8 @@ import { useNetworkStatus } from '@/hooks/useNetworkStatus';
 import { useDeviceType } from '@/hooks/use-mobile';
 import { compressImage, shouldCompressImage } from '@/utils/imageCompression';
 import { offlineStorage } from '@/utils/offlineStorage';
+import { useMediaCleanup } from '@/utils/mediaCleanup';
+import { useQueryClient } from '@tanstack/react-query';
 
 interface UseMediaUploadProps {
   reportId?: string;
@@ -25,9 +27,19 @@ export const useMediaUpload = ({
   const { validateFile: secureValidateFile } = useFileUploadSecurity();
   const { isOnline, isSlowConnection } = useNetworkStatus();
   const { isMobile } = useDeviceType();
+  const { registerUrl, revokeUrl, revokeAll } = useMediaCleanup();
+  const queryClient = useQueryClient();
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [uploadingCount, setUploadingCount] = useState(0);
   const [uploadAttempts, setUploadAttempts] = useState<Map<string, number>>(new Map());
+
+  // CRITICAL FIX: Limpieza automática al desmontar componente
+  useEffect(() => {
+    return () => {
+      console.log('🧹 useMediaUpload: Cleaning up on unmount');
+      revokeAll(); // Limpiar todas las URLs registradas
+    };
+  }, [revokeAll]);
 
   const validateFile = (file: File): { isValid: boolean; error?: string } => {
     console.log('🔍 VALIDANDO ARCHIVO:', {
@@ -143,8 +155,9 @@ export const useMediaUpload = ({
       return;
     }
 
-    // Crear preview inmediato
+    // CRITICAL FIX: Crear preview con limpieza automática de memoria
     const url = URL.createObjectURL(file);
+    registerUrl(url, 300000); // Auto-cleanup en 5 min
     setPreviewUrl(url);
 
     // Verificar intentos previos para este archivo
@@ -201,9 +214,25 @@ export const useMediaUpload = ({
         checklistItemId,
       });
       
-      console.log('✅ MediaUpload - upload successful:', data);
+      console.log('✅ CRITICAL: MediaUpload - upload successful:', {
+        data,
+        fileName: preparedFile.name,
+        reportId,
+        checklistItemId
+      });
+      
       onMediaCaptured(data.file_url);
+      
+      // CRITICAL FIX: Limpiar preview URL y invalidar cache correctamente
+      if (previewUrl) {
+        revokeUrl(previewUrl);
+      }
       setPreviewUrl(null);
+      
+      // CRITICAL: Invalidar cache para que el dashboard se actualice inmediatamente
+      queryClient.invalidateQueries({ queryKey: ['task-media'] });
+      queryClient.invalidateQueries({ queryKey: ['all-task-media'] });
+      queryClient.invalidateQueries({ queryKey: ['task-reports'] });
       
       // Reset attempts counter on success
       setUploadAttempts(prev => {
@@ -217,7 +246,19 @@ export const useMediaUpload = ({
         description: "La evidencia se ha guardado correctamente.",
       });
     } catch (error) {
-      console.error('❌ MediaUpload - upload failed:', error);
+      console.error('❌ CRITICAL: MediaUpload - upload failed:', {
+        error,
+        fileName: file.name,
+        fileSize: file.size,
+        reportId,
+        checklistItemId,
+        attempt: attempts + 1
+      });
+      
+      // CRITICAL FIX: Limpiar preview URL para evitar UI en blanco
+      if (previewUrl) {
+        revokeUrl(previewUrl);
+      }
       setPreviewUrl(null);
       
       // Incrementar contador de intentos
@@ -378,6 +419,10 @@ export const useMediaUpload = ({
                 
                 console.log(`✅ MediaUpload - batch upload ${originalIndex + 1} successful:`, data);
                 onMediaCaptured(data.file_url);
+                
+                // CRITICAL: Invalidar cache después de cada upload exitoso en batch
+                queryClient.invalidateQueries({ queryKey: ['task-media', reportId] });
+                
                 return { success: true, type: 'online', data };
               }
             } catch (error) {
@@ -422,6 +467,13 @@ export const useMediaUpload = ({
     });
     
     setUploadingCount(0);
+    
+    // CRITICAL: Invalidar cache completo después del batch upload
+    if (successCount > 0) {
+      queryClient.invalidateQueries({ queryKey: ['task-media'] });
+      queryClient.invalidateQueries({ queryKey: ['all-task-media'] }); 
+      queryClient.invalidateQueries({ queryKey: ['task-reports'] });
+    }
     
     // Mostrar resultado final
     if (offlineCount > 0 && successCount === 0) {

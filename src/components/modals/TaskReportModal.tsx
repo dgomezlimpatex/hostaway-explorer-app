@@ -372,7 +372,13 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
       checklist_template_id: currentTemplate?.id,
       checklist_completed: checklist,
       notes,
-      issues_found: issues,
+      issues_found: issues.map(issue => ({
+        ...issue,
+        // CRITICAL FIX: Asegurar metadata completa para incidencias  
+        created_at: issue.created_at || new Date().toISOString(),
+        task_id: task.id,
+        cleaner_id: currentCleanerId
+      })),
       overall_status: completionPercentage === 100 ? 'completed' as const : 'in_progress' as const,
     };
 
@@ -382,7 +388,9 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
       currentReport: currentReport?.id,
       existingReport: existingReport?.id,
       hasStartedTask,
-      reportData
+      reportData,
+      issuesCount: issues.length,
+      issuesData: issues // CRITICAL: Log complete issues data for debugging
     });
 
     try {

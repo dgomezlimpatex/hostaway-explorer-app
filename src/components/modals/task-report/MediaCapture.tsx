@@ -6,6 +6,7 @@ import { MediaUploadButtons } from './components/MediaUploadButtons';
 import { MediaPreview } from './components/MediaPreview';
 import { MediaGrid } from './components/MediaGrid';
 import { MediaInfo } from './components/MediaInfo';
+import { useReportDebugger } from '@/utils/reportDebugger';
 
 interface MediaCaptureProps {
   onMediaCaptured: (mediaUrl: string) => void;
@@ -24,6 +25,7 @@ export const MediaCapture: React.FC<MediaCaptureProps> = ({
   existingMedia = [],
   isReadOnly = false,
 }) => {
+  const { logMedia } = useReportDebugger();
   const {
     uploadSingleFile,
     uploadMultipleFiles,
@@ -33,7 +35,10 @@ export const MediaCapture: React.FC<MediaCaptureProps> = ({
   } = useMediaUpload({
     reportId,
     checklistItemId,
-    onMediaCaptured,
+    onMediaCaptured: (mediaUrl) => {
+      logMedia('CAPTURED', { mediaUrl, reportId, checklistItemId }, reportId);
+      onMediaCaptured(mediaUrl);
+    },
     existingMediaCount: existingMedia.length,
   });
 
