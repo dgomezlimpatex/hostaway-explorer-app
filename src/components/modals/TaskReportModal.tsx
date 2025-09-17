@@ -81,18 +81,30 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
   // Initialize report data when modal opens
   useEffect(() => {
     if (open && task) {
-      console.log('TaskReportModal - initializing for task:', task.id);
+      console.log('🚀 TaskReportModal - initializing for task:', task.id, {
+        hasExistingReport: !!existingReport,
+        existingReportId: existingReport?.id,
+        isLoadingReport
+      });
       
       if (existingReport) {
-        console.log('TaskReportModal - loading existing report:', existingReport);
+        console.log('✅ TaskReportModal - loading existing report:', {
+          reportId: existingReport.id,
+          taskId: existingReport.task_id,
+          checklistData: existingReport.checklist_completed,
+          issuesCount: existingReport.issues_found?.length || 0,
+          notes: existingReport.notes?.substring(0, 50) || 'no notes'
+        });
+        
         setCurrentReport(existingReport);
         setChecklist(existingReport.checklist_completed || {});
         setNotes(existingReport.notes || '');
         setIssues(existingReport.issues_found || []);
-        setHasStartedTask(true); // Task already started if report exists
-        reportCreationAttempted.current = task.id; // Mark as handled
-      } else {
-        // Reset state for new task
+        setHasStartedTask(true);
+        reportCreationAttempted.current = task.id;
+      } else if (!isLoadingReport) {
+        // CRITICAL FIX: Only reset if we're sure there's no existing report (not still loading)
+        console.log('🔄 TaskReportModal - no existing report found, resetting state');
         setCurrentReport(null);
         setChecklist({});
         setNotes('');
@@ -100,6 +112,8 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
         setReportMedia([]);
         setHasStartedTask(false);
         reportCreationAttempted.current = null;
+      } else {
+        console.log('⏳ TaskReportModal - still loading existing report, waiting...');
       }
 
       // Find appropriate template - first check if property has assigned checklist

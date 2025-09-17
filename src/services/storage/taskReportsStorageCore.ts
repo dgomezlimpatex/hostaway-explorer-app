@@ -57,13 +57,29 @@ export class TaskReportsStorageService {
   }
 
   async getTaskReportByTaskId(taskId: string): Promise<TaskReport | null> {
-    const { data, error } = await supabase
+    console.log('🔍 Getting task report by task ID:', taskId);
+    
+    // CRITICAL FIX: Apply same sede filtering as getTaskReports() to ensure consistency
+    const activeSedeId = await this.getActiveSedeId();
+    console.log('🏢 Active sede ID for task report lookup:', activeSedeId);
+    
+    let query = supabase
       .from('task_reports')
-      .select('*')
+      .select(`
+        *,
+        tasks!inner(sede_id)
+      `)
       .eq('task_id', taskId)
       .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle();
+      .limit(1);
+
+    // Apply sede filter if active sede exists (same logic as getTaskReports)
+    if (activeSedeId) {
+      console.log('🔍 Filtering task report by sede:', activeSedeId);
+      query = query.eq('tasks.sede_id', activeSedeId);
+    }
+
+    const { data, error } = await query.maybeSingle();
 
     if (error) {
       console.error('Error fetching task report:', error);
