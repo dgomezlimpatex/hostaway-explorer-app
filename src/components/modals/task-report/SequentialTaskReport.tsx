@@ -10,6 +10,7 @@ import { MediaCapture } from './MediaCapture';
 import { IssuesSection } from './IssuesSection';
 import { ReportSummary } from './ReportSummary';
 import { useDeviceType } from '@/hooks/use-mobile';
+import { useMobileErrorHandler } from '@/hooks/useMobileErrorHandler';
 
 interface SequentialTaskReportProps {
   currentStep: 'checklist' | 'issues' | 'media' | 'summary';
@@ -55,6 +56,7 @@ export const SequentialTaskReport: React.FC<SequentialTaskReportProps> = ({
   currentReport,
 }) => {
   const { isMobile } = useDeviceType();
+  const { addError } = useMobileErrorHandler();
 
   const steps = [
     { key: 'checklist', title: 'Lista de Tareas', icon: CheckSquare, description: 'Completa todas las tareas del checklist' },
@@ -70,24 +72,71 @@ export const SequentialTaskReport: React.FC<SequentialTaskReportProps> = ({
     // Si la tarea está completada, permitir navegación libre
     if (isTaskCompleted) return true;
     
-    switch (currentStep) {
-      case 'checklist':
-        return completionPercentage === 100;
-      case 'issues':
-        return true; // Siempre se puede proceder (aunque no haya incidencias)
-      case 'media':
-        return reportMedia.length > 0;
-      case 'summary':
-        return true;
-      default:
-        return false;
-    }
+    const canProceed = (() => {
+      switch (currentStep) {
+        case 'checklist':
+          return completionPercentage === 100;
+        case 'issues':
+          return true; // Siempre se puede proceder (aunque no haya incidencias)
+        case 'media':
+          return reportMedia.length > 0;
+        case 'summary':
+          return true;
+        default:
+          return false;
+      }
+    })();
+
+    console.log('🔍 canProceedToNext debug:', {
+      currentStep,
+      canProceed,
+      isTaskCompleted,
+      completionPercentage,
+      reportMediaLength: reportMedia.length,
+      currentStepIndex,
+      stepsLength: steps.length
+    });
+
+    return canProceed;
   };
 
   const handleNext = () => {
-    const nextIndex = currentStepIndex + 1;
-    if (nextIndex < steps.length) {
-      onStepChange(steps[nextIndex].key as typeof currentStep);
+    console.log('🔄 handleNext clicked:', {
+      currentStep,
+      currentStepIndex,
+      nextIndex: currentStepIndex + 1,
+      stepsLength: steps.length,
+      canProceed: canProceedToNext(),
+      nextStepKey: steps[currentStepIndex + 1]?.key
+    });
+
+    try {
+      const nextIndex = currentStepIndex + 1;
+      if (nextIndex < steps.length) {
+        console.log('✅ Navigating to next step:', steps[nextIndex].key);
+        onStepChange(steps[nextIndex].key as typeof currentStep);
+      } else {
+        console.log('❌ Cannot navigate - at last step');
+        if (isMobile) {
+          addError(
+            'general',
+            'Navegación bloqueada',
+            'Has llegado al final del formulario',
+            { currentStep, currentStepIndex, stepsLength: steps.length }
+          );
+        }
+      }
+    } catch (error) {
+      console.error('❌ Error in handleNext:', error);
+      if (isMobile) {
+        addError(
+          'general',
+          'Error de navegación',
+          `No se pudo avanzar desde ${currentStep}`,
+          { currentStep, error: error instanceof Error ? error.message : 'Error desconocido' },
+          'Haciendo click en botón Siguiente'
+        );
+      }
     }
   };
 
@@ -249,9 +298,28 @@ export const SequentialTaskReport: React.FC<SequentialTaskReportProps> = ({
             </Button>
 
             <Button
-              onClick={handleNext}
+              onClick={(e) => {
+                console.log('🖱️ Next button clicked:', {
+                  currentStep,
+                  disabled: !canProceedToNext() || currentStepIndex === steps.length - 1,
+                  canProceed: canProceedToNext(),
+                  currentStepIndex,
+                  isLastStep: currentStepIndex === steps.length - 1,
+                  event: e.type,
+                  target: e.target
+                });
+                handleNext();
+              }}
+              onTouchEnd={(e) => {
+                // ANDROID FIX: Fallback para problemas de touch en Android
+                console.log('📱 Touch end event on Next button');
+                e.preventDefault();
+                if (!(!canProceedToNext() || currentStepIndex === steps.length - 1)) {
+                  handleNext();
+                }
+              }}
               disabled={!canProceedToNext() || currentStepIndex === steps.length - 1}
-              className="flex items-center text-xs h-8 px-3"
+              className="flex items-center text-xs h-8 px-3 touch-manipulation"
               size="sm"
             >
               Siguiente
