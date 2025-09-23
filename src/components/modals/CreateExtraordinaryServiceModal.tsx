@@ -245,7 +245,13 @@ export const CreateExtraordinaryServiceModal = ({
                 <Calendar
                   mode="single"
                   selected={formData.serviceDate}
-                  onSelect={(date) => date && handleChange('serviceDate', date)}
+                  onSelect={(date) => {
+                    if (date) {
+                      // Crear una nueva fecha en la zona horaria local para evitar desfases
+                      const localDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+                      handleChange('serviceDate', localDate);
+                    }
+                  }}
                   initialFocus
                   className={cn("p-3 pointer-events-auto")}
                 />
