@@ -14,6 +14,7 @@ import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { CreateTaskModal } from '@/components/modals/CreateTaskModal';
 import { BatchCreateTaskModal } from '@/components/modals/BatchCreateTaskModal';
 import { TaskDetailsModal } from '@/components/modals/TaskDetailsModal';
+import { CreateExtraordinaryServiceModal } from '@/components/modals/CreateExtraordinaryServiceModal';
 
 // Lazy load components for better performance
 const DashboardStatsCards = lazy(() => import('./components/DashboardStatsCards').then(module => ({ default: module.DashboardStatsCards })));
@@ -34,6 +35,7 @@ export const ManagerDashboard = () => {
   const [currentTaskPage, setCurrentTaskPage] = useState(0);
   const [selectedTask, setSelectedTask] = useState(null);
   const [isTaskDetailsOpen, setIsTaskDetailsOpen] = useState(false);
+  const [isExtraordinaryServiceModalOpen, setIsExtraordinaryServiceModalOpen] = useState(false);
   const { canAccessModule } = useRolePermissions();
   const isMobile = useIsMobile();
   
@@ -166,6 +168,21 @@ export const ManagerDashboard = () => {
     setIsTaskDetailsOpen(false);
   }, []);
 
+  const handleCreateExtraordinaryService = useCallback(async (serviceData) => {
+    try {
+      console.log('Creating extraordinary service:', serviceData);
+      // Aquí se implementará la lógica para crear el servicio extraordinario
+      // Por ahora, mostramos un mensaje de éxito
+      setIsExtraordinaryServiceModalOpen(false);
+    } catch (error) {
+      console.error('Error creating extraordinary service:', error);
+    }
+  }, []);
+
+  const handleOpenExtraordinaryServiceModal = useCallback(() => {
+    setIsExtraordinaryServiceModalOpen(true);
+  }, []);
+
 
   return (
     <SidebarProvider>
@@ -232,6 +249,7 @@ export const ManagerDashboard = () => {
                   monthlyMetrics={monthlyMetrics}
                   onOpenCreateModal={handleOpenCreateModal}
                   onOpenBatchModal={handleOpenBatchModal}
+                  onOpenExtraordinaryServiceModal={handleOpenExtraordinaryServiceModal}
                 />
               </Suspense>
 
@@ -284,6 +302,14 @@ export const ManagerDashboard = () => {
           onDeleteTask={handleDeleteTask}
         />
       )}
+
+      {/* Modal de servicio extraordinario */}
+      <CreateExtraordinaryServiceModal
+        open={isExtraordinaryServiceModalOpen}
+        onOpenChange={setIsExtraordinaryServiceModalOpen}
+        onCreateService={handleCreateExtraordinaryService}
+        currentDate={selectedDate}
+      />
     </SidebarProvider>
   );
 };

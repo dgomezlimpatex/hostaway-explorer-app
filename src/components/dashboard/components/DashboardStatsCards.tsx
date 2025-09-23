@@ -23,12 +23,14 @@ interface DashboardStatsCardsProps {
   monthlyMetrics: MonthlyMetrics;
   onOpenCreateModal: () => void;
   onOpenBatchModal: () => void;
+  onOpenExtraordinaryServiceModal: () => void;
 }
 
 export const DashboardStatsCards = ({ 
   monthlyMetrics, 
   onOpenCreateModal, 
-  onOpenBatchModal 
+  onOpenBatchModal,
+  onOpenExtraordinaryServiceModal
 }: DashboardStatsCardsProps) => {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-8">
@@ -64,20 +66,27 @@ export const DashboardStatsCards = ({
       </Card>
 
       {/* Action Buttons */}
-      <div className="lg:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div className="lg:col-span-2 grid grid-cols-1 sm:grid-cols-3 gap-4">
         <Button 
           onClick={onOpenCreateModal}
-          className="h-full bg-gradient-to-br from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white border-0 shadow-lg flex flex-col items-center justify-center py-8"
+          className="h-full bg-gradient-to-br from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white border-0 shadow-lg flex flex-col items-center justify-center py-6"
         >
-          <Plus className="h-8 w-8 mb-2" />
-          <span className="text-lg font-semibold">Añadir Tarea</span>
+          <Plus className="h-6 w-6 mb-2" />
+          <span className="text-sm font-semibold text-center">Añadir Tarea</span>
         </Button>
         <Button 
           onClick={onOpenBatchModal}
-          className="h-full bg-gradient-to-br from-indigo-500 to-indigo-600 hover:from-indigo-600 hover:to-indigo-700 text-white border-0 shadow-lg flex flex-col items-center justify-center py-8"
+          className="h-full bg-gradient-to-br from-indigo-500 to-indigo-600 hover:from-indigo-600 hover:to-indigo-700 text-white border-0 shadow-lg flex flex-col items-center justify-center py-6"
         >
-          <PlusSquare className="h-8 w-8 mb-2" />
-          <span className="text-lg font-semibold">Tareas Múltiples</span>
+          <PlusSquare className="h-6 w-6 mb-2" />
+          <span className="text-sm font-semibold text-center">Tareas Múltiples</span>
+        </Button>
+        <Button 
+          onClick={onOpenExtraordinaryServiceModal}
+          className="h-full bg-gradient-to-br from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white border-0 shadow-lg flex flex-col items-center justify-center py-6"
+        >
+          <CheckCircle2 className="h-6 w-6 mb-2" />
+          <span className="text-sm font-semibold text-center">Servicio Extraordinario</span>
         </Button>
       </div>
     </div>
