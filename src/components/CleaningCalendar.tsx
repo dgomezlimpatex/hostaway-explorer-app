@@ -30,6 +30,8 @@ const {
     bodyScrollRef,
     isCreateModalOpen,
     setIsCreateModalOpen,
+    isBatchCreateModalOpen,
+    setIsBatchCreateModalOpen,
     isExtraordinaryServiceModalOpen,
     setIsExtraordinaryServiceModalOpen,
     selectedTask,
@@ -44,8 +46,10 @@ const {
     navigateDate,
     goToToday,
     handleNewTask,
+    handleNewBatchTask,
     handleNewExtraordinaryService,
     handleCreateTask,
+    handleBatchCreateTasks,
     handleCreateExtraordinaryService,
     handleTaskClick,
     handleUpdateTask,
@@ -135,6 +139,8 @@ const {
           <CalendarModalsWithSuspense
             isCreateModalOpen={false} // Cleaners can't create tasks
             setIsCreateModalOpen={() => {}} // No-op for cleaners
+            isBatchCreateModalOpen={false} // Cleaners can't create batch tasks
+            setIsBatchCreateModalOpen={() => {}} // No-op for cleaners
             isExtraordinaryServiceModalOpen={false} // Cleaners can't create extraordinary services
             setIsExtraordinaryServiceModalOpen={() => {}} // No-op for cleaners
             selectedTask={selectedTask}
@@ -142,6 +148,7 @@ const {
             setIsTaskModalOpen={setIsTaskModalOpen}
             currentDate={currentDate}
             onCreateTask={() => {}} // No-op for cleaners
+            onBatchCreateTasks={() => {}} // No-op for cleaners
             onCreateExtraordinaryService={() => {}} // No-op for cleaners
             onUpdateTask={handleUpdateTask}
             onDeleteTask={() => {}} // Cleaners can't delete tasks
@@ -170,6 +177,8 @@ const {
           <CalendarModalsWithSuspense
             isCreateModalOpen={isCreateModalOpen}
             setIsCreateModalOpen={setIsCreateModalOpen}
+            isBatchCreateModalOpen={isBatchCreateModalOpen}
+            setIsBatchCreateModalOpen={setIsBatchCreateModalOpen}
             isExtraordinaryServiceModalOpen={isExtraordinaryServiceModalOpen}
             setIsExtraordinaryServiceModalOpen={setIsExtraordinaryServiceModalOpen}
             selectedTask={selectedTask}
@@ -177,6 +186,7 @@ const {
             setIsTaskModalOpen={setIsTaskModalOpen}
             currentDate={currentDate}
             onCreateTask={handleCreateTask}
+            onBatchCreateTasks={handleBatchCreateTasks}
             onCreateExtraordinaryService={handleCreateExtraordinaryService}
             onUpdateTask={handleUpdateTask}
             onDeleteTask={handleDeleteTask}
@@ -230,6 +240,8 @@ const {
         <CalendarModalsWithSuspense
           isCreateModalOpen={false} // Cleaners can't create tasks
           setIsCreateModalOpen={() => {}} // No-op for cleaners
+          isBatchCreateModalOpen={false} // Cleaners can't create batch tasks
+          setIsBatchCreateModalOpen={() => {}} // No-op for cleaners
           isExtraordinaryServiceModalOpen={false} // Cleaners can't create extraordinary services
           setIsExtraordinaryServiceModalOpen={() => {}} // No-op for cleaners
           selectedTask={selectedTask}
@@ -237,6 +249,7 @@ const {
           setIsTaskModalOpen={setIsTaskModalOpen}
           currentDate={currentDate}
           onCreateTask={() => {}} // No-op for cleaners
+          onBatchCreateTasks={() => {}} // No-op for cleaners
           onCreateExtraordinaryService={() => {}} // No-op for cleaners
           onUpdateTask={handleUpdateTask}
           onDeleteTask={() => {}} // Cleaners can't delete tasks
@@ -269,6 +282,7 @@ const {
           onGoToToday={goToToday}
           onViewChange={setCurrentView}
           onNewTask={handleNewTask}
+          onNewBatchTask={handleNewBatchTask}
           onNewExtraordinaryService={handleNewExtraordinaryService}
         />
 
@@ -283,6 +297,8 @@ const {
           bodyScrollRef={bodyScrollRef}
           isCreateModalOpen={isCreateModalOpen}
           setIsCreateModalOpen={setIsCreateModalOpen}
+          isBatchCreateModalOpen={isBatchCreateModalOpen}
+          setIsBatchCreateModalOpen={setIsBatchCreateModalOpen}
           isExtraordinaryServiceModalOpen={isExtraordinaryServiceModalOpen}
           setIsExtraordinaryServiceModalOpen={setIsExtraordinaryServiceModalOpen}
           selectedTask={selectedTask}
@@ -297,6 +313,7 @@ const {
           handleBodyScroll={handleBodyScroll}
           handleTaskClick={handleTaskClick}
           handleCreateTask={handleCreateTask}
+          handleBatchCreateTasks={handleBatchCreateTasks}
           handleCreateExtraordinaryService={handleCreateExtraordinaryService}
           handleUpdateTask={handleUpdateTask}
           handleDeleteTask={handleDeleteTask}

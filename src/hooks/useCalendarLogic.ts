@@ -29,6 +29,7 @@ export const useCalendarLogic = () => {
   const { data: availability = [], isInitialLoading: isInitialLoadingAvailability } = useAllCleanersAvailability();
   const { toast } = useToast();
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isBatchCreateModalOpen, setIsBatchCreateModalOpen] = useState(false);
   const [isExtraordinaryServiceModalOpen, setIsExtraordinaryServiceModalOpen] = useState(false);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
@@ -193,6 +194,11 @@ export const useCalendarLogic = () => {
     setIsExtraordinaryServiceModalOpen(true);
   }, []);
 
+  const handleNewBatchTask = useCallback(() => {
+    console.log('🔵 useCalendarLogic - handleNewBatchTask called, opening modal');
+    setIsBatchCreateModalOpen(true);
+  }, []);
+
   const handleCreateTask = useCallback(async (taskData: Omit<Task, 'id'>) => {
     console.log('🔵 useCalendarLogic - handleCreateTask called with:', taskData);
     try {
@@ -274,6 +280,29 @@ export const useCalendarLogic = () => {
     }
   }, [createTask, toast, currentDate]);
 
+  const handleBatchCreateTasks = useCallback(async (tasksData: Omit<Task, 'id'>[]) => {
+    console.log('🔵 useCalendarLogic - handleBatchCreateTasks called with:', tasksData.length, 'tasks');
+    try {
+      // Create all tasks sequentially
+      for (const taskData of tasksData) {
+        await createTask(taskData);
+      }
+      
+      toast({
+        title: "Tareas creadas",
+        description: `Se han creado ${tasksData.length} tareas correctamente.`,
+      });
+      setIsBatchCreateModalOpen(false);
+    } catch (error) {
+      console.error('❌ useCalendarLogic - handleBatchCreateTasks error:', error);
+      toast({
+        title: "Error",
+        description: "No se pudieron crear todas las tareas.",
+        variant: "destructive",
+      });
+    }
+  }, [createTask, toast]);
+
   const handleTaskClick = useCallback((task: Task) => {
     // Para mobile cleaners, esto se maneja en el componente directamente
     // Para desktop, abre el modal de edición
@@ -353,6 +382,8 @@ export const useCalendarLogic = () => {
     // Modal states
     isCreateModalOpen,
     setIsCreateModalOpen,
+    isBatchCreateModalOpen,
+    setIsBatchCreateModalOpen,
     isExtraordinaryServiceModalOpen,
     setIsExtraordinaryServiceModalOpen,
     selectedTask,
@@ -371,8 +402,10 @@ export const useCalendarLogic = () => {
     navigateDate,
     goToToday,
     handleNewTask,
+    handleNewBatchTask,
     handleNewExtraordinaryService,
     handleCreateTask,
+    handleBatchCreateTasks,
     handleCreateExtraordinaryService,
     handleTaskClick,
     handleUpdateTask,

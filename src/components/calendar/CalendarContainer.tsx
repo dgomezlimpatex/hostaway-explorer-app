@@ -24,6 +24,8 @@ interface CalendarContainerProps {
   bodyScrollRef: React.RefObject<HTMLDivElement>;
   isCreateModalOpen: boolean;
   setIsCreateModalOpen: (open: boolean) => void;
+  isBatchCreateModalOpen: boolean;
+  setIsBatchCreateModalOpen: (open: boolean) => void;
   isExtraordinaryServiceModalOpen: boolean;
   setIsExtraordinaryServiceModalOpen: (open: boolean) => void;
   selectedTask: Task | null;
@@ -38,6 +40,7 @@ interface CalendarContainerProps {
   handleBodyScroll: (e: React.UIEvent<HTMLDivElement>) => void;
   handleTaskClick: (task: Task) => void;
   handleCreateTask: (taskData: Omit<Task, 'id'>) => Promise<void>;
+  handleBatchCreateTasks: (tasksData: Omit<Task, 'id'>[]) => Promise<void>;
   handleCreateExtraordinaryService: (serviceData: any) => Promise<void>;
   handleUpdateTask: (taskId: string, updates: Partial<Task>) => Promise<void>;
   handleDeleteTask: (taskId: string) => Promise<void>;
@@ -55,6 +58,8 @@ export const CalendarContainer = ({
   bodyScrollRef,
   isCreateModalOpen,
   setIsCreateModalOpen,
+  isBatchCreateModalOpen,
+  setIsBatchCreateModalOpen,
   isExtraordinaryServiceModalOpen,
   setIsExtraordinaryServiceModalOpen,
   selectedTask,
@@ -69,6 +74,7 @@ export const CalendarContainer = ({
   handleBodyScroll,
   handleTaskClick,
   handleCreateTask,
+  handleBatchCreateTasks,
   handleCreateExtraordinaryService,
   handleUpdateTask,
   handleDeleteTask,
@@ -263,6 +269,8 @@ export const CalendarContainer = ({
       <CalendarModalsWithSuspense
         isCreateModalOpen={isCreateModalOpen}
         setIsCreateModalOpen={setIsCreateModalOpen}
+        isBatchCreateModalOpen={isBatchCreateModalOpen}
+        setIsBatchCreateModalOpen={setIsBatchCreateModalOpen}
         isExtraordinaryServiceModalOpen={isExtraordinaryServiceModalOpen}
         setIsExtraordinaryServiceModalOpen={setIsExtraordinaryServiceModalOpen}
         selectedTask={selectedTask}
@@ -270,6 +278,7 @@ export const CalendarContainer = ({
         setIsTaskModalOpen={setIsTaskModalOpen}
         currentDate={currentDate}
         onCreateTask={handleCreateTask}
+        onBatchCreateTasks={handleBatchCreateTasks}
         onCreateExtraordinaryService={handleCreateExtraordinaryService}
         onUpdateTask={handleUpdateTask}
         onDeleteTask={handleDeleteTask}

@@ -1,6 +1,6 @@
 
 import { Button } from "@/components/ui/button";
-import { ChevronLeft, ChevronRight, Calendar, Plus, ArrowLeft } from "lucide-react";
+import { ChevronLeft, ChevronRight, Calendar, Plus, ArrowLeft, Users } from "lucide-react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { cn } from "@/lib/utils";
@@ -20,6 +20,7 @@ interface ResponsiveCalendarHeaderProps {
   onGoToToday: () => void;
   onViewChange: (view: ViewType) => void;
   onNewTask: () => void;
+  onNewBatchTask?: () => void;
   onNewExtraordinaryService?: () => void;
 }
 
@@ -30,6 +31,7 @@ export const ResponsiveCalendarHeader = ({
   onGoToToday,
   onViewChange,
   onNewTask,
+  onNewBatchTask,
   onNewExtraordinaryService
 }: ResponsiveCalendarHeaderProps) => {
   const { isMobile, isTablet } = useDeviceType();
@@ -93,6 +95,20 @@ export const ResponsiveCalendarHeader = ({
                 <Plus className="h-4 w-4" />
                 {!isMobile && <span>Nueva Tarea</span>}
               </Button>
+              {onNewBatchTask && (
+                <Button
+                  onClick={() => {
+                    console.log('🔴 ResponsiveCalendarHeader - Tareas Múltiples button clicked!');
+                    onNewBatchTask();
+                  }}
+                  size={isMobile ? "sm" : "default"}
+                  variant="outline"
+                  className="gap-1 md:gap-2"
+                >
+                  <Users className="h-4 w-4" />
+                  {!isMobile && <span>Múltiples</span>}
+                </Button>
+              )}
               {onNewExtraordinaryService && (
                 <Button
                   onClick={() => {

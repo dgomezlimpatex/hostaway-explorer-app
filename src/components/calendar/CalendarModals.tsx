@@ -1,5 +1,6 @@
 
 import { CreateTaskModal } from "../modals/CreateTaskModal";
+import { BatchCreateTaskModal } from "../modals/BatchCreateTaskModal";
 import { CreateExtraordinaryServiceModal } from "../modals/CreateExtraordinaryServiceModal";
 import { TaskDetailsModal } from "../modals/TaskDetailsModal";
 import { Task } from "@/types/calendar";
@@ -7,6 +8,8 @@ import { Task } from "@/types/calendar";
 interface CalendarModalsProps {
   isCreateModalOpen: boolean;
   setIsCreateModalOpen: (open: boolean) => void;
+  isBatchCreateModalOpen: boolean;
+  setIsBatchCreateModalOpen: (open: boolean) => void;
   isExtraordinaryServiceModalOpen: boolean;
   setIsExtraordinaryServiceModalOpen: (open: boolean) => void;
   selectedTask: Task | null;
@@ -14,6 +17,7 @@ interface CalendarModalsProps {
   setIsTaskModalOpen: (open: boolean) => void;
   currentDate: Date;
   onCreateTask: (taskData: Omit<Task, 'id'>) => Promise<void>;
+  onBatchCreateTasks: (tasksData: Omit<Task, 'id'>[]) => Promise<void>;
   onCreateExtraordinaryService: (serviceData: any) => Promise<void>;
   onUpdateTask: (taskId: string, updates: Partial<Task>) => Promise<void>;
   onDeleteTask: (taskId: string) => Promise<void>;
@@ -23,6 +27,8 @@ interface CalendarModalsProps {
 export const CalendarModals = ({
   isCreateModalOpen,
   setIsCreateModalOpen,
+  isBatchCreateModalOpen,
+  setIsBatchCreateModalOpen,
   isExtraordinaryServiceModalOpen,
   setIsExtraordinaryServiceModalOpen,
   selectedTask,
@@ -30,6 +36,7 @@ export const CalendarModals = ({
   setIsTaskModalOpen,
   currentDate,
   onCreateTask,
+  onBatchCreateTasks,
   onCreateExtraordinaryService,
   onUpdateTask,
   onDeleteTask,
@@ -42,6 +49,12 @@ export const CalendarModals = ({
         onOpenChange={setIsCreateModalOpen}
         onCreateTask={onCreateTask}
         currentDate={currentDate}
+      />
+
+      <BatchCreateTaskModal
+        open={isBatchCreateModalOpen}
+        onOpenChange={setIsBatchCreateModalOpen}
+        onCreateTasks={onBatchCreateTasks}
       />
 
       <CreateExtraordinaryServiceModal
