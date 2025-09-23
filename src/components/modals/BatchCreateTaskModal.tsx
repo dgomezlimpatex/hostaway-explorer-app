@@ -79,7 +79,7 @@ export const BatchCreateTaskModal = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-[800px] max-h-[95vh] min-h-[600px] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-xl font-bold text-blue-700 flex items-center gap-2">
             <Users className="h-5 w-5" />
