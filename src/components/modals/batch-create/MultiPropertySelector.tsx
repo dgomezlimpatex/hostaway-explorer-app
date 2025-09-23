@@ -89,7 +89,7 @@ export const MultiPropertySelector = ({
               </div>
             </div>
           </CardHeader>
-          <CardContent className="space-y-2 max-h-60 overflow-y-auto">
+          <CardContent className="space-y-2 max-h-80 overflow-y-auto">
             {availableProperties.map((property) => (
               <div
                 key={property.id}
