@@ -175,26 +175,52 @@ export const useTasks = (currentDate: Date, currentView: ViewType) => {
       if (!cleaner) {
         throw new Error('Cleaner not found');
       }
-      
-      // Actualización optimista inmediata
-      const currentDate = new Date().toISOString().split('T')[0];
-      const sedeId = 'no-sede'; // TODO: get from context
-      
-      ['day', 'three-day', 'week'].forEach(view => {
-        const queryKey = ['tasks', currentDate, view, sedeId];
-        queryClient.setQueryData(queryKey, (oldData: Task[] = []) => {
-          return oldData.map(task => 
-            task.id === taskId 
-              ? { ...task, cleanerId, cleaner: cleaner.name }
-              : task
-          );
-        });
-      });
 
       console.log('assignTaskMutation - assigning task:', { taskId, cleanerId, cleanerName: cleaner.name });
       
       // Use the assignment service which handles email notifications
       return await taskAssignmentService.assignTask(taskId, cleaner.name, cleanerId);
+    },
+    onMutate: async ({ taskId, cleanerId, cleaners }) => {
+      const cleaner = cleaners.find(c => c.id === cleanerId);
+      if (!cleaner) return;
+
+      // Actualización optimista inmediata en TODAS las queries relevantes
+      const currentDate = new Date().toISOString().split('T')[0];
+      const sedeId = 'no-sede'; // TODO: get from context
+      
+      // Cancelar queries en vuelo
+      await queryClient.cancelQueries({ queryKey: ['tasks'] });
+      
+      // Actualizar múltiples vistas y fechas
+      const dates = [currentDate];
+      const tomorrow = new Date();
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      dates.push(tomorrow.toISOString().split('T')[0]);
+      
+      dates.forEach(date => {
+        ['day', 'three-day', 'week'].forEach(view => {
+          const queryKey = ['tasks', date, view, sedeId];
+          queryClient.setQueryData(queryKey, (oldData: Task[] = []) => {
+            return oldData.map(task => 
+              task.id === taskId 
+                ? { ...task, cleanerId, cleaner: cleaner.name }
+                : task
+            );
+          });
+        });
+      });
+
+      // También actualizar la query general de tasks si existe
+      queryClient.setQueryData(['tasks'], (oldData: Task[] = []) => {
+        return oldData.map(task => 
+          task.id === taskId 
+            ? { ...task, cleanerId, cleaner: cleaner.name }
+            : task
+        );
+      });
+
+      console.log('✅ Optimistic update applied for task assignment');
     },
     onSuccess: (data, variables) => {
       console.log('Task assigned successfully:', data);
