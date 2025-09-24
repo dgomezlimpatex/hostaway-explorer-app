@@ -1,47 +1,42 @@
 
 import React, { useCallback } from "react";
 import { ResponsiveCalendarHeader } from "./calendar/ResponsiveCalendarHeader";
-import { OptimizedCalendarContainer } from "./calendar/OptimizedCalendarContainer";
+import { CalendarContainer } from "./calendar/CalendarContainer";
 import { CleanerMobileCalendar } from "./calendar/CleanerMobileCalendar";
 import { CleanerDesktopCalendar } from "./calendar/CleanerDesktopCalendar";
 import { ManagerMobileCalendar } from "./calendar/ManagerMobileCalendar";
 import { CalendarModalsWithSuspense } from "./calendar/LazyCalendarComponents";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
-import { useOptimizedCalendarLogic } from "@/hooks/useOptimizedCalendarLogic";
+import { useCalendarLogic } from "@/hooks/useCalendarLogic";
 import { useCalendarNavigation } from "@/hooks/useCalendarNavigation";
 import { useDeviceType } from "@/hooks/use-mobile";
 import { useAuth } from "@/hooks/useAuth";
-import { PerformanceNotice } from "./optimizations/PerformanceEnhancements";
 
 const CleaningCalendar = () => {
   const { isMobile } = useDeviceType();
   const { userRole } = useAuth();
-  const { setCurrentDate } = useCalendarNavigation();
 
-const {
+  // Calendar logic and data
+  const {
     tasks,
     cleaners,
     currentDate,
     currentView,
-    isLoading,
     timeSlots,
-    availability,
     headerScrollRef,
     bodyScrollRef,
-    isCreateModalOpen,
-    setIsCreateModalOpen,
-    isBatchCreateModalOpen,
-    setIsBatchCreateModalOpen,
-    isExtraordinaryServiceModalOpen,
-    setIsExtraordinaryServiceModalOpen,
+    isLoading,
     selectedTask,
     isTaskModalOpen,
-    setIsTaskModalOpen,
+    isCreateModalOpen,
+    isBatchCreateModalOpen,
+    isExtraordinaryServiceModalOpen,
     dragState,
     handleDragStart,
     handleDragEnd,
     handleDragOver,
     handleDrop,
+    availability,
     setCurrentView,
     navigateDate,
     goToToday,
@@ -56,10 +51,15 @@ const {
     handleDeleteTask,
     handleDeleteAllTasks,
     handleUnassignTask,
-    assignedTasks,
-    unassignedTasks,
-    getTaskPosition
-  } = useOptimizedCalendarLogic();
+    setIsTaskModalOpen,
+    setIsCreateModalOpen,
+    setIsBatchCreateModalOpen,
+    setIsExtraordinaryServiceModalOpen,
+  } = useCalendarLogic();
+  
+  // Separate tasks into assigned and unassigned
+  const assignedTasks = tasks.filter(task => task.cleanerId && task.cleaner);
+  const unassignedTasks = tasks.filter(task => !task.cleanerId && !task.cleaner);
 
   // Memoized scroll handlers with useCallback
   const handleHeaderScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
@@ -272,11 +272,7 @@ const {
   
   return (
     <div className="min-h-screen bg-background text-foreground transition-colors duration-300">
-      <div className="space-y-4 px-2 py-4 max-w-full">
-        {/* Performance notices */}
-        <PerformanceNotice itemCount={cleaners.length} type="trabajadores" />
-        <PerformanceNotice itemCount={tasks.length} type="tareas" />
-        
+      <div className="space-y-4 px-2 py-4 max-w-full">        
         {/* Enhanced Responsive Header */}
         <ResponsiveCalendarHeader
           currentDate={currentDate}
@@ -290,7 +286,7 @@ const {
         />
 
         {/* Calendar Container */}
-        <OptimizedCalendarContainer
+        <CalendarContainer
           tasks={tasks}
           cleaners={cleaners}
           currentDate={currentDate}
