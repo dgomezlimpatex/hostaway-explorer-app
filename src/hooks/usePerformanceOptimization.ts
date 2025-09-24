@@ -76,7 +76,7 @@ export const usePerformanceOptimization = (config: Partial<PerformanceConfig> = 
     ms?: number
   ): T => {
     if (!defaultConfig.enableDebounce) return fn;
-    return debounce(fn, ms || defaultConfig.debounceMs) as T;
+    return debounce(fn, ms || defaultConfig.debounceMs) as unknown as T;
   }, [defaultConfig.enableDebounce, defaultConfig.debounceMs]);
 
   // Should use virtualization check

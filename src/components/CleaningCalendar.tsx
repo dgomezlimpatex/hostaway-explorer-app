@@ -1,13 +1,13 @@
 
-import { useCallback } from "react";
+import React, { useCallback } from "react";
 import { ResponsiveCalendarHeader } from "./calendar/ResponsiveCalendarHeader";
-import { CalendarContainer } from "./calendar/CalendarContainer";
+import { OptimizedCalendarContainer } from "./calendar/OptimizedCalendarContainer";
 import { CleanerMobileCalendar } from "./calendar/CleanerMobileCalendar";
 import { CleanerDesktopCalendar } from "./calendar/CleanerDesktopCalendar";
 import { ManagerMobileCalendar } from "./calendar/ManagerMobileCalendar";
 import { CalendarModalsWithSuspense } from "./calendar/LazyCalendarComponents";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
-import { useCalendarLogic } from "@/hooks/useCalendarLogic";
+import { useOptimizedCalendarLogic } from "@/hooks/useOptimizedCalendarLogic";
 import { useCalendarNavigation } from "@/hooks/useCalendarNavigation";
 import { useDeviceType } from "@/hooks/use-mobile";
 import { useAuth } from "@/hooks/useAuth";
@@ -55,8 +55,11 @@ const {
     handleUpdateTask,
     handleDeleteTask,
     handleDeleteAllTasks,
-    handleUnassignTask
-  } = useCalendarLogic();
+    handleUnassignTask,
+    assignedTasks,
+    unassignedTasks,
+    getTaskPosition
+  } = useOptimizedCalendarLogic();
 
   // Memoized scroll handlers with useCallback
   const handleHeaderScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
@@ -287,7 +290,7 @@ const {
         />
 
         {/* Calendar Container */}
-        <CalendarContainer
+        <OptimizedCalendarContainer
           tasks={tasks}
           cleaners={cleaners}
           currentDate={currentDate}

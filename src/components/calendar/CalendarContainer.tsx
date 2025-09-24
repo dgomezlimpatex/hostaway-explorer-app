@@ -14,7 +14,7 @@ import { getTaskPosition, isTimeSlotOccupied, detectTaskOverlaps } from "@/utils
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 
-interface CalendarContainerProps {
+export interface CalendarContainerProps {
   tasks: Task[];
   cleaners: Cleaner[];
   currentDate: Date;

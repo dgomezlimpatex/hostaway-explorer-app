@@ -35,6 +35,23 @@ export const useTasks = (currentDate: Date, currentView: ViewType) => {
     mutationFn: async ({ taskId, updates }: { taskId: string; updates: Partial<Task> }) => {
       console.log('updateTaskMutation - updating task:', { taskId, updates });
       
+      // Actualización optimista inmediata
+      const currentDate = new Date().toISOString().split('T')[0];
+      const sedeId = 'no-sede'; // TODO: get from context
+      
+      // Actualizar caché optimistamente
+      const affectedDates = [updates.date, currentDate].filter(Boolean) as string[];
+      affectedDates.forEach(date => {
+        ['day', 'three-day', 'week'].forEach(view => {
+          const queryKey = ['tasks', date, view, sedeId];
+          queryClient.setQueryData(queryKey, (oldData: Task[] = []) => {
+            return oldData.map(task => 
+              task.id === taskId ? { ...task, ...updates } : task
+            );
+          });
+        });
+      });
+
       // Get current task to check for schedule changes
       const currentTask = tasks.find(t => t.id === taskId);
       
@@ -53,22 +70,37 @@ export const useTasks = (currentDate: Date, currentView: ViewType) => {
       }
     },
     onSuccess: (data, variables) => {
-      // Invalidate ALL task-related queries with broader pattern
-      queryClient.invalidateQueries({ 
-        predicate: (query) => {
-          return Array.isArray(query.queryKey) && 
-                 query.queryKey[0] === 'tasks';
-        }
+      // Invalidación específica solo en las fechas afectadas
+      const currentDate = new Date().toISOString().split('T')[0];
+      const sedeId = 'no-sede'; // TODO: get from context
+      const affectedDates = [variables.updates.date, currentDate].filter(Boolean);
+      
+      affectedDates.forEach(date => {
+        ['day', 'three-day', 'week'].forEach(view => {
+          queryClient.invalidateQueries({ 
+            queryKey: ['tasks', date, view, sedeId] 
+          });
+        });
       });
       
-      // Immediate cache removal to force refetch
-      queryClient.removeQueries({ 
-        predicate: (query) => {
-          return Array.isArray(query.queryKey) && 
-                 query.queryKey[0] === 'tasks';
-        }
-      });
+      console.log('⚡ Optimized task update cache invalidation for dates:', affectedDates);
     },
+    onError: (error, variables) => {
+      // Revertir actualizaciones optimistas
+      const currentDate = new Date().toISOString().split('T')[0];
+      const sedeId = 'no-sede'; // TODO: get from context
+      const affectedDates = [variables.updates.date, currentDate].filter(Boolean);
+      
+      affectedDates.forEach(date => {
+        ['day', 'three-day', 'week'].forEach(view => {
+          queryClient.invalidateQueries({ 
+            queryKey: ['tasks', date, view, sedeId] 
+          });
+        });
+      });
+      
+      console.error('Task update failed, reverted optimistic updates');
+    }
   });
 
   const createTaskMutation = useMutation({
@@ -143,6 +175,22 @@ export const useTasks = (currentDate: Date, currentView: ViewType) => {
       if (!cleaner) {
         throw new Error('Cleaner not found');
       }
+      
+      // Actualización optimista inmediata
+      const currentDate = new Date().toISOString().split('T')[0];
+      const sedeId = 'no-sede'; // TODO: get from context
+      
+      ['day', 'three-day', 'week'].forEach(view => {
+        const queryKey = ['tasks', currentDate, view, sedeId];
+        queryClient.setQueryData(queryKey, (oldData: Task[] = []) => {
+          return oldData.map(task => 
+            task.id === taskId 
+              ? { ...task, cleanerId, cleaner: cleaner.name }
+              : task
+          );
+        });
+      });
+
       console.log('assignTaskMutation - assigning task:', { taskId, cleanerId, cleanerName: cleaner.name });
       
       // Use the assignment service which handles email notifications
@@ -151,20 +199,14 @@ export const useTasks = (currentDate: Date, currentView: ViewType) => {
     onSuccess: (data, variables) => {
       console.log('Task assigned successfully:', data);
       
-      // Invalidate ALL task-related queries with broader pattern
-      queryClient.invalidateQueries({ 
-        predicate: (query) => {
-          return Array.isArray(query.queryKey) && 
-                 query.queryKey[0] === 'tasks';
-        }
-      });
+      // Invalidación específica solo para la fecha actual
+      const currentDate = new Date().toISOString().split('T')[0];
+      const sedeId = 'no-sede'; // TODO: get from context
       
-      // Immediate cache removal to force refetch
-      queryClient.removeQueries({ 
-        predicate: (query) => {
-          return Array.isArray(query.queryKey) && 
-                 query.queryKey[0] === 'tasks';
-        }
+      ['day', 'three-day', 'week'].forEach(view => {
+        queryClient.invalidateQueries({ 
+          queryKey: ['tasks', currentDate, view, sedeId] 
+        });
       });
       
       const cleaner = variables.cleaners.find(c => c.id === variables.cleanerId);
@@ -172,9 +214,22 @@ export const useTasks = (currentDate: Date, currentView: ViewType) => {
         title: "Tarea asignada",
         description: `Se ha asignado la tarea a ${cleaner?.name} y se le ha enviado una notificación por email.`,
       });
+      
+      console.log('⚡ Optimized task assignment cache invalidation');
     },
-    onError: (error: any) => {
+    onError: (error: any, variables) => {
       console.error('Error assigning task:', error);
+      
+      // Revertir actualización optimista
+      const currentDate = new Date().toISOString().split('T')[0];
+      const sedeId = 'no-sede'; // TODO: get from context
+      
+      ['day', 'three-day', 'week'].forEach(view => {
+        queryClient.invalidateQueries({ 
+          queryKey: ['tasks', currentDate, view, sedeId] 
+        });
+      });
+      
       toast({
         title: "Error",
         description: error.message || "No se pudo asignar la tarea.",

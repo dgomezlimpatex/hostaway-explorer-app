@@ -51,12 +51,12 @@ export const MemoizedCalendarGrid = memo<{
   // Use virtualization for large cleaner lists
   if (shouldUseVirtualization(cleaners.length)) {
     return (
-      <div className="text-center p-4 bg-blue-50 border border-blue-200 rounded-lg">
-        <p className="text-blue-700 font-medium">
-          ⚡ Modo de Rendimiento Optimizado Activado
+      <div className="text-center p-4 bg-primary/10 border border-primary/20 rounded-lg">
+        <p className="text-primary font-medium">
+          ⚡ Modo Optimizado Activo
         </p>
-        <p className="text-blue-600 text-sm mt-1">
-          Lista grande de trabajadores detectada ({cleaners.length} trabajadores)
+        <p className="text-primary/70 text-sm mt-1">
+          {cleaners.length} trabajadores - Usando virtualización
         </p>
       </div>
     );
