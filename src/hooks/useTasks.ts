@@ -278,7 +278,7 @@ export const useTasks = (currentDate: Date, currentView: ViewType) => {
     onSuccess: (data, taskId) => {
       console.log('Task unassigned successfully:', data);
       
-      // Invalidate ALL task-related queries with broader pattern
+      // Invalidación agresiva de TODAS las queries relacionadas con tasks
       queryClient.invalidateQueries({ 
         predicate: (query) => {
           return Array.isArray(query.queryKey) && 
@@ -286,8 +286,8 @@ export const useTasks = (currentDate: Date, currentView: ViewType) => {
         }
       });
       
-      // Immediate cache removal to force refetch
-      queryClient.removeQueries({ 
+      // Forzar refetch inmediato
+      queryClient.refetchQueries({ 
         predicate: (query) => {
           return Array.isArray(query.queryKey) && 
                  query.queryKey[0] === 'tasks';
@@ -298,6 +298,8 @@ export const useTasks = (currentDate: Date, currentView: ViewType) => {
         title: "Tarea desasignada",
         description: "Se ha desasignado la tarea y se ha enviado una notificación por email.",
       });
+      
+      console.log('⚡ Forced aggressive task unassignment cache invalidation and refetch');
     },
     onError: (error: any) => {
       console.error('Error unassigning task:', error);
