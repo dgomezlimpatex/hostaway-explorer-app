@@ -225,14 +225,20 @@ export const useTasks = (currentDate: Date, currentView: ViewType) => {
     onSuccess: (data, variables) => {
       console.log('Task assigned successfully:', data);
       
-      // Invalidación específica solo para la fecha actual
-      const currentDate = new Date().toISOString().split('T')[0];
-      const sedeId = 'no-sede'; // TODO: get from context
+      // Invalidación agresiva de TODAS las queries relacionadas con tasks
+      queryClient.invalidateQueries({ 
+        predicate: (query) => {
+          return Array.isArray(query.queryKey) && 
+                 query.queryKey[0] === 'tasks';
+        }
+      });
       
-      ['day', 'three-day', 'week'].forEach(view => {
-        queryClient.invalidateQueries({ 
-          queryKey: ['tasks', currentDate, view, sedeId] 
-        });
+      // Forzar refetch inmediato
+      queryClient.refetchQueries({ 
+        predicate: (query) => {
+          return Array.isArray(query.queryKey) && 
+                 query.queryKey[0] === 'tasks';
+        }
       });
       
       const cleaner = variables.cleaners.find(c => c.id === variables.cleanerId);
@@ -241,7 +247,7 @@ export const useTasks = (currentDate: Date, currentView: ViewType) => {
         description: `Se ha asignado la tarea a ${cleaner?.name} y se le ha enviado una notificación por email.`,
       });
       
-      console.log('⚡ Optimized task assignment cache invalidation');
+      console.log('⚡ Forced aggressive task assignment cache invalidation and refetch');
     },
     onError: (error: any, variables) => {
       console.error('Error assigning task:', error);

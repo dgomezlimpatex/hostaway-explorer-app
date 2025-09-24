@@ -91,11 +91,11 @@ export const useOptimizedTasks = ({
       console.log('🎯 NON-CLEANER: Final tasks after all filtering:', finalFiltered.length);
       return finalFiltered;
     },
-    staleTime: 30000, // Cache for 30 seconds
+    staleTime: 0, // Allow immediate updates for task assignments
     gcTime: 60000, // Keep in cache for 1 minute
     enabled: enabled && (userRole !== 'cleaner' || currentCleanerId !== null),
-    refetchOnWindowFocus: false, // Don't refetch on window focus
-    refetchOnMount: false, // Don't refetch on mount
+    refetchOnWindowFocus: true, // Allow refetch on window focus
+    refetchOnMount: true, // Allow refetch on mount for fresh data
   });
   
   const { data: tasks = [], isLoading, error } = query;
