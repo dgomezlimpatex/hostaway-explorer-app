@@ -243,7 +243,7 @@ export const SedeProvider = ({ children }: SedeProviderProps) => {
       return activeSede.id;
     };
 
-    const waitForActiveSede = async (timeout = 3000): Promise<string> => {
+    const waitForActiveSede = async (timeout = 10000): Promise<string> => {
       return new Promise((resolve, reject) => {
         console.log('⏳ waitForActiveSede started');
 
@@ -263,7 +263,36 @@ export const SedeProvider = ({ children }: SedeProviderProps) => {
           return;
         }
 
-        // Si no hay sedes disponibles
+        // Si aún se está cargando, esperar un poco más
+        if (loading) {
+          const checkInterval = setInterval(() => {
+            if (activeSede?.id) {
+              clearInterval(checkInterval);
+              console.log('✅ waitForActiveSede - found after waiting:', activeSede.nombre);
+              resolve(activeSede.id);
+            } else if (availableSedes.length > 0 && !activeSede) {
+              clearInterval(checkInterval);
+              const firstSede = availableSedes[0];
+              console.log('🎯 waitForActiveSede - auto-selecting after waiting:', firstSede.nombre);
+              setActiveSede(firstSede);
+              resolve(firstSede.id);
+            } else if (!loading && availableSedes.length === 0) {
+              clearInterval(checkInterval);
+              console.error('❌ waitForActiveSede - no sedes available after loading completed');
+              reject(new Error('No hay sedes disponibles para el usuario'));
+            }
+          }, 500);
+
+          setTimeout(() => {
+            clearInterval(checkInterval);
+            console.error('❌ waitForActiveSede - timeout after', timeout, 'ms');
+            reject(new Error('Timeout esperando por sede activa'));
+          }, timeout);
+          
+          return;
+        }
+
+        // Si no hay sedes disponibles y no se está cargando
         console.error('❌ waitForActiveSede - no sedes available');
         reject(new Error('No hay sedes disponibles para el usuario'));
       });

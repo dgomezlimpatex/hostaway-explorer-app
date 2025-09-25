@@ -10,12 +10,12 @@ import { useCacheInvalidation } from './useCacheInvalidation';
 
 export const useCleaners = () => {
   const { userRole, user } = useAuth();
-  const { activeSede } = useSede();
+  const { activeSede, isInitialized, loading } = useSede();
   
   const query = useQuery({
     queryKey: ['cleaners', activeSede?.id || 'all'],
     queryFn: () => cleanerStorage.getAll(),
-    enabled: true, // Always enabled - remove sede dependency temporarily
+    enabled: isInitialized && !loading, // Wait for sede context to be fully initialized
   });
 
   const { data: allCleaners = [], isLoading } = query;

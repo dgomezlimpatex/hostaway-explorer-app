@@ -22,7 +22,7 @@ export const useOptimizedTasks = ({
   const queryClient = useQueryClient();
   const { userRole, user } = useAuth();
   const { cleaners } = useCleaners();
-  const { activeSede } = useSede();
+  const { activeSede, isInitialized, loading } = useSede();
 
   // Get current user's cleaner ID if they are a cleaner
   const currentCleanerId = useMemo(() => {
@@ -93,7 +93,7 @@ export const useOptimizedTasks = ({
     },
     staleTime: 0, // Allow immediate updates for task assignments
     gcTime: 60000, // Keep in cache for 1 minute
-    enabled: enabled && (userRole !== 'cleaner' || currentCleanerId !== null),
+    enabled: enabled && isInitialized && !loading && (userRole !== 'cleaner' || currentCleanerId !== null),
     refetchOnWindowFocus: true, // Allow refetch on window focus
     refetchOnMount: true, // Allow refetch on mount for fresh data
   });

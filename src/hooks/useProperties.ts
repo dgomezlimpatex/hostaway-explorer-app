@@ -6,32 +6,32 @@ import { useSede } from '@/contexts/SedeContext';
 import { useCacheInvalidation } from './useCacheInvalidation';
 
 export const useProperties = () => {
-  const { activeSede } = useSede();
+  const { activeSede, isInitialized, loading } = useSede();
   
   return useQuery({
     queryKey: ['properties', activeSede?.id || 'all'],
     queryFn: () => propertyStorage.getAll(),
-    enabled: true, // Always enabled - remove sede dependency temporarily
+    enabled: isInitialized && !loading, // Wait for sede context to be fully initialized
   });
 };
 
 export const useProperty = (id: string) => {
-  const { activeSede } = useSede();
+  const { activeSede, isInitialized, loading } = useSede();
   
   return useQuery({
     queryKey: ['property', id, activeSede?.id || 'all'],
     queryFn: () => propertyStorage.getById(id),
-    enabled: !!id, // Only depend on id, not sede
+    enabled: !!id && isInitialized && !loading, // Wait for both id and sede context
   });
 };
 
 export const usePropertiesByClient = (clienteId: string) => {
-  const { activeSede } = useSede();
+  const { activeSede, isInitialized, loading } = useSede();
   
   return useQuery({
     queryKey: ['properties', 'client', clienteId, activeSede?.id || 'all'],
     queryFn: () => propertyStorage.getByClientId(clienteId),
-    enabled: !!clienteId, // Only depend on clienteId, not sede
+    enabled: !!clienteId && isInitialized && !loading, // Wait for both clienteId and sede context
   });
 };
 

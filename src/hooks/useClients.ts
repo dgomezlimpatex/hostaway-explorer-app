@@ -6,12 +6,12 @@ import { useSede } from '@/contexts/SedeContext';
 import { useCacheInvalidation } from './useCacheInvalidation';
 
 export const useClients = () => {
-  const { activeSede } = useSede();
+  const { activeSede, isInitialized, loading } = useSede();
   
   return useQuery({
     queryKey: ['clients', activeSede?.id || 'all'],
     queryFn: () => clientStorage.getAll(),
-    enabled: true, // Always enabled - remove sede dependency temporarily
+    enabled: isInitialized && !loading, // Wait for sede context to be fully initialized
   });
 };
 
