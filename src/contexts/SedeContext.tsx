@@ -223,10 +223,8 @@ export const SedeProvider = ({ children }: SedeProviderProps) => {
     isInitialized: value.isInitialized
   });
 
-  // Configurar contexto global para BaseStorage una sola vez al inicializar
+  // Configurar contexto global cada vez que cambien los datos relevantes
   useEffect(() => {
-    if (!isInitialized) return;
-    
     console.log('🔧 SedeProvider: Configurando contexto global', {
       activeSede: activeSede?.nombre || 'null',
       loading,
@@ -235,6 +233,14 @@ export const SedeProvider = ({ children }: SedeProviderProps) => {
     });
 
     const getActiveSedeId = () => {
+      console.log(`🏢 Global Context getActiveSedeId called:`, {
+        activeSede: activeSede?.nombre || 'null',
+        hasActiveSede: !!activeSede,
+        availableSedesCount: availableSedes.length,
+        loading,
+        isInitialized
+      });
+      
       if (!activeSede) {
         console.log('🏢 Global Context getActiveSedeId: No active sede');
         return null;
@@ -243,9 +249,14 @@ export const SedeProvider = ({ children }: SedeProviderProps) => {
       return activeSede.id;
     };
 
-    const waitForActiveSede = async (timeout = 10000): Promise<string> => {
+    const waitForActiveSede = async (timeout = 15000): Promise<string> => {
       return new Promise((resolve, reject) => {
-        console.log('⏳ waitForActiveSede started');
+        console.log('⏳ waitForActiveSede started', {
+          activeSede: activeSede?.nombre || 'null',
+          availableSedesCount: availableSedes.length,
+          loading,
+          isInitialized
+        });
 
         // Si ya hay sede activa, resolver inmediatamente
         if (activeSede?.id) {
@@ -255,7 +266,7 @@ export const SedeProvider = ({ children }: SedeProviderProps) => {
         }
 
         // Si hay sedes disponibles, auto-seleccionar la primera
-        if (availableSedes.length > 0) {
+        if (availableSedes.length > 0 && !activeSede) {
           const firstSede = availableSedes[0];
           console.log('🎯 waitForActiveSede - auto-selecting:', firstSede.nombre);
           setActiveSede(firstSede);
@@ -263,8 +274,9 @@ export const SedeProvider = ({ children }: SedeProviderProps) => {
           return;
         }
 
-        // Si aún se está cargando, esperar un poco más
-        if (loading) {
+        // Si no hay sedes disponibles pero aún se está inicializando, esperar
+        if (!isInitialized || loading) {
+          console.log('⏳ Still initializing or loading, waiting...');
           const checkInterval = setInterval(() => {
             if (activeSede?.id) {
               clearInterval(checkInterval);
@@ -276,12 +288,12 @@ export const SedeProvider = ({ children }: SedeProviderProps) => {
               console.log('🎯 waitForActiveSede - auto-selecting after waiting:', firstSede.nombre);
               setActiveSede(firstSede);
               resolve(firstSede.id);
-            } else if (!loading && availableSedes.length === 0) {
+            } else if (isInitialized && !loading && availableSedes.length === 0) {
               clearInterval(checkInterval);
               console.error('❌ waitForActiveSede - no sedes available after loading completed');
               reject(new Error('No hay sedes disponibles para el usuario'));
             }
-          }, 500);
+          }, 200);
 
           setTimeout(() => {
             clearInterval(checkInterval);
@@ -292,18 +304,22 @@ export const SedeProvider = ({ children }: SedeProviderProps) => {
           return;
         }
 
-        // Si no hay sedes disponibles y no se está cargando
-        console.error('❌ waitForActiveSede - no sedes available');
+        // Si ya se inicializó y no hay sedes disponibles
+        console.error('❌ waitForActiveSede - no sedes available', {
+          isInitialized,
+          loading,
+          availableSedesCount: availableSedes.length
+        });
         reject(new Error('No hay sedes disponibles para el usuario'));
       });
     };
 
-    // Configurar contexto global
+    // Configurar contexto global siempre, incluso si no está inicializado
     setGlobalSedeContext({
       getActiveSedeId,
       waitForActiveSede,
     });
-  }, [isInitialized, activeSede, availableSedes, setActiveSede]);
+  }, [activeSede, availableSedes, loading, isInitialized, setActiveSede]);
 
   return <SedeContext.Provider value={value}>{children}</SedeContext.Provider>;
 };

@@ -26,24 +26,25 @@ export class BaseStorageService<T extends BaseEntity, CreateData = Omit<T, keyof
   constructor(private config: StorageConfig<T, CreateData>) {}
 
   private async getActiveSedeId(): Promise<string | null> {
+    console.log('🔍 BaseStorage.getActiveSedeId called', {
+      hasGlobalContext: !!globalSedeContext,
+      tableName: this.config.tableName
+    });
+    
     // Usar contexto global si está disponible
     if (globalSedeContext) {
       const sedeId = globalSedeContext.getActiveSedeId();
+      console.log('🔍 BaseStorage: Got sede from global context:', sedeId);
       
-      // Si no hay sede pero el contexto está disponible, intentar esperar
-      if (!sedeId) {
-        try {
-          console.log(`⏳ BaseStorage: No sede activa, intentando esperar...`);
-          const waitedSedeId = await globalSedeContext.waitForActiveSede();
-          console.log(`✅ BaseStorage: Sede obtenida después de esperar: ${waitedSedeId}`);
-          return waitedSedeId;
-        } catch (error) {
-          console.warn(`⚠️ BaseStorage: No se pudo esperar por sede activa:`, error.message);
-          return null;
-        }
+      // Si hay sede, devolverla directamente
+      if (sedeId) {
+        return sedeId;
       }
       
-      return sedeId;
+      // Si no hay sede pero el contexto está disponible, NO esperar aquí
+      // Las queries ya tienen su propia lógica de enabled
+      console.log('🔍 BaseStorage: No sede available from global context, returning null');
+      return null;
     }
     
     // Fallback a localStorage (mantener compatibilidad)
@@ -51,11 +52,13 @@ export class BaseStorageService<T extends BaseEntity, CreateData = Omit<T, keyof
       const activeSede = localStorage.getItem('activeSede');
       if (activeSede) {
         const sede = JSON.parse(activeSede);
+        console.log('🔍 BaseStorage: Got sede from localStorage:', sede.id);
         return sede.id;
       }
+      console.log('🔍 BaseStorage: No sede in localStorage');
       return null;
     } catch (error) {
-      console.warn('Error getting active sede:', error);
+      console.warn('Error getting active sede from localStorage:', error);
       return null;
     }
   }
