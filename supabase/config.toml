@@ -41,6 +41,15 @@ port = 54329
 [functions.hostaway-sync]
 verify_jwt = false
 
+[functions.hostaway-sync-with-retry]
+verify_jwt = false
+
+[functions.manage-hostaway-cron]
+verify_jwt = false
+
+[functions.send-sync-error-email]
+verify_jwt = false
+
 [functions.insert-properties]
 verify_jwt = false
 

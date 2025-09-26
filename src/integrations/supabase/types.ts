@@ -521,6 +521,60 @@ export type Database = {
           },
         ]
       }
+      hostaway_sync_errors: {
+        Row: {
+          created_at: string
+          error_details: Json | null
+          error_message: string
+          error_type: string
+          id: string
+          resolved: boolean | null
+          resolved_at: string | null
+          retry_attempt: number | null
+          schedule_id: string | null
+          sync_log_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          error_details?: Json | null
+          error_message: string
+          error_type: string
+          id?: string
+          resolved?: boolean | null
+          resolved_at?: string | null
+          retry_attempt?: number | null
+          schedule_id?: string | null
+          sync_log_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          error_details?: Json | null
+          error_message?: string
+          error_type?: string
+          id?: string
+          resolved?: boolean | null
+          resolved_at?: string | null
+          retry_attempt?: number | null
+          schedule_id?: string | null
+          sync_log_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hostaway_sync_errors_schedule_id_fkey"
+            columns: ["schedule_id"]
+            isOneToOne: false
+            referencedRelation: "hostaway_sync_schedules"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hostaway_sync_errors_sync_log_id_fkey"
+            columns: ["sync_log_id"]
+            isOneToOne: false
+            referencedRelation: "hostaway_sync_logs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       hostaway_sync_logs: {
         Row: {
           cancelled_reservations: number | null
@@ -528,8 +582,11 @@ export type Database = {
           errors: string[] | null
           id: string
           new_reservations: number | null
+          original_sync_id: string | null
           reservations_details: Json | null
           reservations_processed: number | null
+          retry_attempt: number | null
+          schedule_name: string | null
           status: string
           sync_completed_at: string | null
           sync_started_at: string
@@ -539,6 +596,7 @@ export type Database = {
           tasks_details: Json | null
           tasks_modified: number | null
           tasks_modified_details: Json | null
+          triggered_by: string | null
           updated_reservations: number | null
         }
         Insert: {
@@ -547,8 +605,11 @@ export type Database = {
           errors?: string[] | null
           id?: string
           new_reservations?: number | null
+          original_sync_id?: string | null
           reservations_details?: Json | null
           reservations_processed?: number | null
+          retry_attempt?: number | null
+          schedule_name?: string | null
           status?: string
           sync_completed_at?: string | null
           sync_started_at: string
@@ -558,6 +619,7 @@ export type Database = {
           tasks_details?: Json | null
           tasks_modified?: number | null
           tasks_modified_details?: Json | null
+          triggered_by?: string | null
           updated_reservations?: number | null
         }
         Update: {
@@ -566,8 +628,11 @@ export type Database = {
           errors?: string[] | null
           id?: string
           new_reservations?: number | null
+          original_sync_id?: string | null
           reservations_details?: Json | null
           reservations_processed?: number | null
+          retry_attempt?: number | null
+          schedule_name?: string | null
           status?: string
           sync_completed_at?: string | null
           sync_started_at?: string
@@ -577,7 +642,52 @@ export type Database = {
           tasks_details?: Json | null
           tasks_modified?: number | null
           tasks_modified_details?: Json | null
+          triggered_by?: string | null
           updated_reservations?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hostaway_sync_logs_original_sync_id_fkey"
+            columns: ["original_sync_id"]
+            isOneToOne: false
+            referencedRelation: "hostaway_sync_logs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      hostaway_sync_schedules: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          hour: number
+          id: string
+          is_active: boolean
+          minute: number
+          name: string
+          timezone: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          hour: number
+          id?: string
+          is_active?: boolean
+          minute: number
+          name: string
+          timezone?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          hour?: number
+          id?: string
+          is_active?: boolean
+          minute?: number
+          name?: string
+          timezone?: string
+          updated_at?: string
         }
         Relationships: []
       }

@@ -1,6 +1,7 @@
 
 import { supabase } from "@/integrations/supabase/client";
 import { HostawaySyncLog, TaskDetail, ReservationDetail } from "@/types/hostaway";
+import { HostawaySchedule, CreateScheduleRequest, UpdateScheduleRequest } from "@/types/hostawaySchedule";
 
 export const hostawaySync = {
   // Ejecutar inserción de propiedades
@@ -152,5 +153,116 @@ export const hostawaySync = {
         errors: latestLog.errors
       } : null
     };
+  },
+
+  // ===== GESTIÓN DE HORARIOS =====
+
+  // Obtener todos los horarios de sincronización
+  async getSchedules(): Promise<HostawaySchedule[]> {
+    const { data, error } = await supabase
+      .from('hostaway_sync_schedules')
+      .select('*')
+      .order('hour', { ascending: true });
+    
+    if (error) {
+      console.error('Error obteniendo horarios:', error);
+      throw error;
+    }
+    
+    return data || [];
+  },
+
+  // Crear nuevo horario
+  async createSchedule(scheduleData: CreateScheduleRequest): Promise<HostawaySchedule> {
+    const { data, error } = await supabase
+      .from('hostaway_sync_schedules')
+      .insert({
+        ...scheduleData,
+        timezone: scheduleData.timezone || 'Europe/Madrid',
+        is_active: scheduleData.is_active ?? true
+      })
+      .select()
+      .single();
+    
+    if (error) {
+      console.error('Error creando horario:', error);
+      throw error;
+    }
+    
+    // Reconfigurar cron jobs
+    await this.setupCronJobs();
+    
+    return data;
+  },
+
+  // Actualizar horario existente
+  async updateSchedule(id: string, updates: UpdateScheduleRequest): Promise<HostawaySchedule> {
+    const { data, error } = await supabase
+      .from('hostaway_sync_schedules')
+      .update(updates)
+      .eq('id', id)
+      .select()
+      .single();
+    
+    if (error) {
+      console.error('Error actualizando horario:', error);
+      throw error;
+    }
+    
+    // Reconfigurar cron jobs
+    await this.setupCronJobs();
+    
+    return data;
+  },
+
+  // Eliminar horario
+  async deleteSchedule(id: string): Promise<void> {
+    const { error } = await supabase
+      .from('hostaway_sync_schedules')
+      .delete()
+      .eq('id', id);
+    
+    if (error) {
+      console.error('Error eliminando horario:', error);
+      throw error;
+    }
+    
+    // Reconfigurar cron jobs
+    await this.setupCronJobs();
+  },
+
+  // Configurar trabajos cron
+  async setupCronJobs() {
+    console.log('Configurando trabajos cron...');
+    
+    const { data, error } = await supabase.functions.invoke('manage-hostaway-cron', {
+      body: { action: 'setup' }
+    });
+    
+    if (error) {
+      console.error('Error configurando cron jobs:', error);
+      throw error;
+    }
+    
+    return data;
+  },
+
+  // Ejecutar sincronización para un horario específico
+  async runScheduledSync(scheduleId: string) {
+    console.log('Ejecutando sincronización programada...');
+    
+    const { data, error } = await supabase.functions.invoke('manage-hostaway-cron', {
+      body: { 
+        action: 'sync',
+        scheduleId 
+      }
+    });
+    
+    if (error) {
+      console.error('Error en sincronización programada:', error);
+      throw error;
+    }
+    
+    return data;
   }
 };
