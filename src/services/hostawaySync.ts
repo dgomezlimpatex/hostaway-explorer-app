@@ -130,11 +130,11 @@ export const hostawaySync = {
     
     const latestLog = logs?.[0];
     
-    const { data: totalReservations } = await supabase
+    const { count: totalReservations } = await supabase
       .from('hostaway_reservations')
       .select('*', { count: 'exact', head: true });
     
-    const { data: activeTasks } = await supabase
+    const { count: activeTasks } = await supabase
       .from('tasks')
       .select('*', { count: 'exact', head: true })
       .not('cleaner_id', 'is', null);
