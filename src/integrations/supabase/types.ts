@@ -2621,6 +2621,10 @@ export type Database = {
             }
         Returns: string
       }
+      exec_sql: {
+        Args: { query: string }
+        Returns: Json
+      }
       get_current_user_role: {
         Args: Record<PropertyKey, never>
         Returns: Database["public"]["Enums"]["app_role"]
