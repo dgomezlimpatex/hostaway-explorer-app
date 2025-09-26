@@ -6,11 +6,13 @@ import { taskAssignmentService } from '@/services/storage/taskAssignmentService'
 import { useOptimizedTasks } from './useOptimizedTasks';
 import { useToast } from '@/hooks/use-toast';
 import { useCacheInvalidation } from './useCacheInvalidation';
+import { useSedeContext } from './useSedeContext';
 
 export const useTasks = (currentDate: Date, currentView: ViewType) => {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const { invalidateTasks } = useCacheInvalidation();
+  const { isSedeActive, waitForActiveSede, refreshSedes } = useSedeContext();
 
   // Usar el hook optimizado en lugar del query básico
   const { tasks, isLoading, isInitialLoading: isInitialLoadingTasks, error, queryKey } = useOptimizedTasks({
@@ -105,6 +107,23 @@ export const useTasks = (currentDate: Date, currentView: ViewType) => {
 
   const createTaskMutation = useMutation({
     mutationFn: async (taskData: Omit<Task, 'id'>) => {
+      console.log('🎯 createTaskMutation - Starting task creation');
+      
+      // Verificar sede activa antes de proceder
+      if (!isSedeActive()) {
+        console.log('🏢 No active sede, attempting to refresh and wait...');
+        try {
+          // Primero intentar refrescar las sedes
+          await refreshSedes();
+          // Luego esperar por sede activa con timeout más largo
+          await waitForActiveSede(10000); // 10 segundos
+          console.log('✅ Sede active después del refresh');
+        } catch (error) {
+          console.error('❌ No se pudo obtener sede activa después del refresh:', error);
+          throw new Error('No se puede crear la tarea: no hay sede activa. Por favor, verifica tu conexión y vuelve a intentar.');
+        }
+      }
+      
       const result = await taskStorageService.createTask(taskData);
       
       // If a cleaner is assigned during creation, send assignment email
@@ -132,6 +151,13 @@ export const useTasks = (currentDate: Date, currentView: ViewType) => {
     },
     onError: (error) => {
       console.error('❌ useTasks - createTaskMutation onError:', error);
+      
+      // Mostrar mensaje de error más claro al usuario
+      toast({
+        title: "Error al crear tarea",
+        description: error.message || "No se pudo crear la tarea. Por favor, intenta de nuevo.",
+        variant: "destructive",
+      });
     },
   });
 
