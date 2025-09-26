@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { ArrowLeft, Calendar, CheckCircle, XCircle, AlertCircle, RefreshCw, ChevronDown, ChevronRight, FileText, Users, Calendar as CalendarIcon } from 'lucide-react';
+import { ArrowLeft, Calendar, CheckCircle, XCircle, AlertCircle, RefreshCw, ChevronDown, ChevronRight, FileText, Users, Calendar as CalendarIcon, Settings } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { hostawaySync } from '@/services/hostawaySync';
 import { useProperties } from '@/hooks/useProperties';
@@ -137,10 +137,18 @@ const HostawaySyncLogs = () => {
               </p>
             </div>
           </div>
-          <Button onClick={() => refetch()} variant="outline">
-            <RefreshCw className="h-4 w-4 mr-2" />
-            Actualizar
-          </Button>
+          <div className="flex gap-2">
+            <Link to="/hostaway-automation">
+              <Button variant="outline">
+                <Settings className="h-4 w-4 mr-2" />
+                Automatización
+              </Button>
+            </Link>
+            <Button onClick={() => refetch()} variant="outline">
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Actualizar
+            </Button>
+          </div>
         </div>
 
         {/* Logs List */}
