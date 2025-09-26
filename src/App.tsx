@@ -42,6 +42,7 @@ const LogisticsDeliveries = React.lazy(() => import("./pages/LogisticsDeliveries
 const LogisticsDashboard = React.lazy(() => import("./pages/LogisticsDashboard"));
 const LogisticsReports = React.lazy(() => import("./pages/LogisticsReports"));
 const RecurringTasksPage = React.lazy(() => import("./pages/RecurringTasksPage"));
+const HostawayAutomation = React.lazy(() => import("./pages/HostawayAutomation"));
 
 // Helper component to wrap lazy routes with error boundary and transition
 const LazyRoute = ({ children }: { children: React.ReactNode }) => {
@@ -210,6 +211,15 @@ function App() {
                   <RoleProtectedRoute requiredModule="hostaway">
                     <LazyRoute>
                       <HostawaySyncLogs />
+                    </LazyRoute>
+                  </RoleProtectedRoute>
+                </ProtectedRoute>
+              } />
+              <Route path="/hostaway-automation" element={
+                <ProtectedRoute>
+                  <RoleProtectedRoute requiredModule="hostaway">
+                    <LazyRoute>
+                      <HostawayAutomation />
                     </LazyRoute>
                   </RoleProtectedRoute>
                 </ProtectedRoute>
