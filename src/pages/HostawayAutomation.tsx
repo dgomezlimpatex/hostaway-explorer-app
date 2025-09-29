@@ -41,6 +41,24 @@ const HostawayAutomation = () => {
     }
   });
 
+  // Mutation para configurar cron jobs automáticos
+  const setupCronMutation = useMutation({
+    mutationFn: () => hostawaySync.setupCronJobs(),
+    onSuccess: (data) => {
+      toast({
+        title: "Cron jobs configurados",
+        description: `Se configuraron ${data?.schedulesProcessed || 0} horarios automáticos.`,
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "No se pudieron configurar los cron jobs",
+        variant: "destructive",
+      });
+    }
+  });
+
   const formatDate = (dateString: string | null) => {
     if (!dateString) return 'Nunca';
     return new Date(dateString).toLocaleString('es-ES', {
@@ -122,9 +140,17 @@ const HostawayAutomation = () => {
                 <Button
                   onClick={() => runSyncMutation.mutate()}
                   disabled={runSyncMutation.isPending}
-                  className="w-full"
+                  className="w-full mb-2"
                 >
                   {runSyncMutation.isPending ? 'Sincronizando...' : 'Sincronización Manual'}
+                </Button>
+                <Button
+                  onClick={() => setupCronMutation.mutate()}
+                  disabled={setupCronMutation.isPending}
+                  variant="outline"
+                  className="w-full"
+                >
+                  {setupCronMutation.isPending ? 'Configurando...' : 'Configurar Automático'}
                 </Button>
               </div>
             </div>
