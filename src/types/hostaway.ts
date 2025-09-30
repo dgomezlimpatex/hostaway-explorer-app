@@ -37,5 +37,6 @@ export interface HostawaySyncLog {
   tasks_cancelled_details: TaskDetail[] | null;
   tasks_modified_details: TaskDetail[] | null;
   reservations_details: ReservationDetail[] | null;
+  triggered_by: string | null;
   created_at: string;
 }

@@ -161,9 +161,14 @@ const HostawaySyncLogs = () => {
                     <div className="flex items-center gap-3">
                       {getStatusIcon(log.status)}
                       <div>
-                        <CardTitle className="text-lg">
-                          Sincronización del {formatDate(log.sync_started_at)}
-                        </CardTitle>
+                        <div className="flex items-center gap-2 mb-1">
+                          <CardTitle className="text-lg">
+                            Sincronización del {formatDate(log.sync_started_at)}
+                          </CardTitle>
+                          <Badge variant={log.triggered_by === 'manual' ? 'outline' : 'secondary'} className="text-xs">
+                            {log.triggered_by === 'manual' ? '🔧 Manual' : '⏰ Automática'}
+                          </Badge>
+                        </div>
                         <CardDescription>
                           {log.sync_completed_at ? (
                             <>Duración: {Math.round((new Date(log.sync_completed_at).getTime() - new Date(log.sync_started_at).getTime()) / 1000)} segundos</>
