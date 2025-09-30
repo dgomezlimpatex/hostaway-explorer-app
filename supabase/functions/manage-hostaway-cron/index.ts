@@ -32,56 +32,57 @@ const setupCronJobs = async (supabase: any) => {
 
   console.log(`📋 Found ${schedules?.length || 0} active schedules`);
 
-  // Limpiar trabajos existentes (esto es simplificado, en producción requeriría más lógica)
-  try {
-    // Eliminar todos los trabajos cron existentes para Hostaway
-    const { error: deleteError } = await supabase.rpc('cron.unschedule', {
-      job_name: 'hostaway_sync_%'
-    }).then(() => {
-      console.log('🗑️ Existing cron jobs cleaned up');
-    }).catch((err: any) => {
-      console.log('ℹ️ No existing jobs to clean or cleanup failed:', err.message);
-    });
-  } catch (cleanupError) {
-    console.log('ℹ️ Cleanup step skipped:', cleanupError);
+  const supabaseUrl = Deno.env.get('SUPABASE_URL');
+  const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY');
+  
+  if (!supabaseUrl || !supabaseAnonKey) {
+    throw new Error('Missing SUPABASE_URL or SUPABASE_ANON_KEY');
   }
 
   // Crear nuevos trabajos cron para cada schedule activo
+  const results = [];
   for (const schedule of schedules || []) {
     const jobName = `hostaway_sync_${schedule.id.replace(/-/g, '_')}`;
     const cronExpression = convertToCronExpression(schedule.hour, schedule.minute, schedule.timezone);
+    const functionUrl = `${supabaseUrl}/functions/v1/hostaway-sync`;
+    const authHeader = `{"Content-Type": "application/json", "Authorization": "Bearer ${supabaseAnonKey}"}`;
+    const requestBody = JSON.stringify({
+      scheduleId: schedule.id,
+      scheduleName: schedule.name,
+      triggeredBy: 'automatic'
+    });
     
     try {
-      // Crear el trabajo cron usando pg_cron
-      const cronQuery = `
-        SELECT cron.schedule(
-          '${jobName}',
-          '${cronExpression}',
-          $$
-          SELECT net.http_post(
-            url := '${Deno.env.get('SUPABASE_URL')}/functions/v1/hostaway-sync-with-retry',
-            headers := '{"Content-Type": "application/json", "Authorization": "Bearer ${Deno.env.get('SUPABASE_ANON_KEY')}"}'::JSONB,
-            body := '{"scheduleId": "${schedule.id}", "scheduleName": "${schedule.name}", "isRetry": false}'::JSONB
-          ) as request_id;
-          $$
-        );
-      `;
-
-      const { error: cronError } = await supabase.rpc('exec_sql', { 
-        query: cronQuery 
+      const { data: cronResult, error: cronError } = await supabase.rpc('manage_hostaway_cron_job', {
+        job_name: jobName,
+        cron_schedule: cronExpression,
+        function_url: functionUrl,
+        auth_header: authHeader,
+        request_body: requestBody
       });
 
       if (cronError) {
         console.error(`❌ Error creating cron job for ${schedule.name}:`, cronError);
+        results.push({ schedule: schedule.name, success: false, error: cronError.message });
+      } else if (cronResult?.success === false) {
+        console.error(`❌ Cron job failed for ${schedule.name}:`, cronResult.error);
+        results.push({ schedule: schedule.name, success: false, error: cronResult.error });
       } else {
         console.log(`✅ Cron job created for ${schedule.name} at ${schedule.hour}:${schedule.minute.toString().padStart(2, '0')}`);
+        console.log(`   Job ID: ${cronResult?.job_id}, Schedule: ${cronExpression}`);
+        results.push({ schedule: schedule.name, success: true, jobId: cronResult?.job_id });
       }
-    } catch (jobError) {
+    } catch (jobError: any) {
       console.error(`❌ Failed to create cron job for ${schedule.name}:`, jobError);
+      results.push({ schedule: schedule.name, success: false, error: jobError.message });
     }
   }
 
-  return { success: true, schedulesProcessed: schedules?.length || 0 };
+  return { 
+    success: true, 
+    schedulesProcessed: schedules?.length || 0,
+    results: results
+  };
 };
 
 serve(async (req) => {

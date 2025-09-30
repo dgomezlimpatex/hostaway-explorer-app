@@ -2621,8 +2621,8 @@ export type Database = {
             }
         Returns: string
       }
-      exec_sql: {
-        Args: { query: string }
+      delete_hostaway_cron_job: {
+        Args: { job_name: string }
         Returns: Json
       }
       get_current_user_role: {
@@ -2644,6 +2644,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      list_hostaway_cron_jobs: {
+        Args: Record<PropertyKey, never>
+        Returns: Json
+      }
       log_security_event: {
         Args: { event_data?: Json; event_type: string; target_user_id?: string }
         Returns: undefined
@@ -2656,6 +2660,16 @@ export type Database = {
           to_sede_id_param?: string
         }
         Returns: undefined
+      }
+      manage_hostaway_cron_job: {
+        Args: {
+          auth_header: string
+          cron_schedule: string
+          function_url: string
+          job_name: string
+          request_body: string
+        }
+        Returns: Json
       }
       process_automatic_inventory_consumption: {
         Args: {
