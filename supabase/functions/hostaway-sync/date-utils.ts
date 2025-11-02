@@ -15,9 +15,9 @@ export function getDateRange() {
   tomorrow.setDate(tomorrow.getDate() + 1);
   const tomorrowStr = tomorrow.toISOString().split('T')[0];
 
-  // Calcular fecha de fin (desde hoy + 30 días para asegurar que capturamos todas las reservas)
+  // Calcular fecha de fin (desde hoy + 14 días)
   const endDate = new Date(madridTime);
-  endDate.setDate(endDate.getDate() + 30);
+  endDate.setDate(endDate.getDate() + 14);
   const endDateStr = endDate.toISOString().split('T')[0];
   
   return {
