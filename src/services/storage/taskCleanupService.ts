@@ -105,13 +105,17 @@ export class TaskCleanupService {
       const { error: emailError } = await supabase.functions.invoke('send-task-unassignment-email', {
         body: {
           taskId: task.id,
-          taskDate: task.date,
-          taskStartTime: task.start_time,
-          taskEndTime: task.end_time,
-          propertyName: task.properties?.nombre || task.property,
-          propertyAddress: task.properties?.direccion || task.address,
-          cleanerName: task.cleaners.name,
           cleanerEmail: task.cleaners.email,
+          cleanerName: task.cleaners.name,
+          taskData: {
+            property: task.properties?.nombre || task.property || 'N/A',
+            address: task.properties?.direccion || task.address || 'N/A',
+            date: task.date,
+            startTime: task.start_time || 'N/A',
+            endTime: task.end_time || 'N/A',
+            type: task.type,
+            notes: task.notes
+          },
           reason: 'cancelled'
         }
       });
