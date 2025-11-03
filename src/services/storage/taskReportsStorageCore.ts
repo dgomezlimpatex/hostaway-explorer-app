@@ -18,9 +18,6 @@ export class TaskReportsStorageService {
   }
 
   async getTaskReports(): Promise<TaskReport[]> {
-    console.log('📋 Fetching task reports from database...');
-    console.log('📋 Current user ID:', (await supabase.auth.getUser()).data.user?.id);
-    
     // Filtrar por sede a través de la relación con tasks
     const activeSedeId = await this.getActiveSedeId();
     let query = supabase
@@ -38,12 +35,8 @@ export class TaskReportsStorageService {
 
     if (error) {
       console.error('❌ Error fetching task reports:', error);
-      console.error('❌ Error details:', error.message, error.details, error.hint);
       throw error;
     }
-
-    console.log('✅ Raw task reports data received:', data?.length || 0, 'reports');
-    console.log('📊 First report sample:', data?.[0]);
 
     // Transform JSON data to proper types
     const transformedData = (data || []).map(item => ({
@@ -52,16 +45,12 @@ export class TaskReportsStorageService {
       issues_found: item.issues_found as any[]
     }));
 
-    console.log('🔄 Transformed task reports count:', transformedData.length);
     return transformedData;
   }
 
   async getTaskReportByTaskId(taskId: string): Promise<TaskReport | null> {
-    console.log('🔍 Getting task report by task ID:', taskId);
-    
     // CRITICAL FIX: Apply same sede filtering as getTaskReports() to ensure consistency
     const activeSedeId = await this.getActiveSedeId();
-    console.log('🏢 Active sede ID for task report lookup:', activeSedeId);
     
     let query = supabase
       .from('task_reports')

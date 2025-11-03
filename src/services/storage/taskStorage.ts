@@ -99,7 +99,6 @@ export class TaskStorageService extends BaseStorageService<Task, TaskCreateData>
     
     // Aplicar filtro por sede - usar parámetro si está disponible, sino localStorage
     const sedeId = options?.sedeId || getActiveSedeId();
-    console.log('🏢 Using sede_id for task filtering:', sedeId);
     
     if (!sedeId || sedeId === 'no-sede') {
       console.warn('⚠️ No sede_id available - fetching ALL tasks (fallback)');
@@ -110,8 +109,6 @@ export class TaskStorageService extends BaseStorageService<Task, TaskCreateData>
     let hasMore = true;
     let offset = 0;
     const batchSize = 1000;
-    
-    console.log('📋 Starting to fetch tasks with pagination...');
     
     while (hasMore) {
       let query = supabase
@@ -148,14 +145,10 @@ export class TaskStorageService extends BaseStorageService<Task, TaskCreateData>
         if (batchData.length < batchSize) {
           hasMore = false;
         }
-        
-        console.log(`📦 Fetched batch: ${batchData.length} tasks, total so far: ${allTasks.length}`);
       }
     }
     
     const data = allTasks;
-
-    console.log(`📦 Fetched ${data?.length || 0} task records from database for sede: ${sedeId || 'ALL'}`);
     
     // Map and sync task status with report status, handle multiple assignments
     const mappedTasks: Task[] = [];

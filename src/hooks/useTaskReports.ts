@@ -19,10 +19,7 @@ export const useTaskReports = () => {
   } = useQuery({
     queryKey: ['task-reports', activeSede?.id || 'no-sede'],
     queryFn: async () => {
-      console.log('🚀 useQuery queryFn executing...');
-      const result = await taskReportsStorageService.getTaskReports();
-      console.log('🚀 useQuery queryFn result:', result?.length || 0, 'reports');
-      return result;
+      return await taskReportsStorageService.getTaskReports();
     },
     staleTime: 0, // Deshabilitar cache temporalmente
     gcTime: 0, // Deshabilitar cache temporalmente

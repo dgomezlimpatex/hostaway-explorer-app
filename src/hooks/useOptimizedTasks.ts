@@ -45,18 +45,8 @@ export const useOptimizedTasks = ({
   const query = useQuery({
     queryKey,
     queryFn: async () => {
-      console.log('🔥🔥🔥 FORCE QUERY EXECUTION - useOptimizedTasks queryFn called:', {
-        currentDate: currentDate.toISOString().split('T')[0],
-        currentView,
-        userRole,
-        currentCleanerId,
-        activeSede: activeSede?.id,
-        hasActiveSede: !!activeSede
-      });
-
       // For cleaners, get ALL their tasks (not limited by current date for navigation)
       if (userRole === 'cleaner' && currentCleanerId) {
-        console.log('🔍 Using optimized cleaner query - fetching ALL cleaner tasks for navigation');
         const optimizedTasks = await taskStorageService.getTasks({
           cleanerId: currentCleanerId,
           includePastTasks: false,
@@ -64,22 +54,13 @@ export const useOptimizedTasks = ({
           sedeId: activeSede?.id // Pasar sede del contexto
         });
         
-        console.log('📅 Cleaner tasks fetched:', optimizedTasks.length, 'tasks available');
-        console.log('📅 Date range of cleaner tasks:', optimizedTasks.length > 0 ? 
-          `${optimizedTasks[0]?.date} to ${optimizedTasks[optimizedTasks.length-1]?.date}` : 'No tasks');
-        
         // For cleaners, ALWAYS return ALL their tasks so they can see upcoming tasks
         // Let the UI components (calendar, tasks page) handle filtering by current date if needed
         const cleanerFiltered = await filterTasksByUserRole(optimizedTasks, userRole, currentCleanerId, cleaners);
-        console.log('🎯 CLEANER: Final tasks after role filtering:', cleanerFiltered.length);
         return cleanerFiltered;
       }
       
       // For non-cleaners, ALWAYS fetch fresh data after forced invalidation
-      console.log('📋 Skipping cache to ensure fresh data after task operations');
-
-      // Si no hay cache, obtener todas las tareas y cachearlas por sede
-      console.log('📋 No cache found, fetching all tasks from database');
       const sedeId = activeSede?.id || 'no-sede';
       const allTasks = await taskStorageService.getTasks({
         sedeId: activeSede?.id // Pasar sede del contexto
@@ -88,7 +69,6 @@ export const useOptimizedTasks = ({
       
       const filteredByView = filterTasksByView(allTasks, currentDate, currentView);
       const finalFiltered = await filterTasksByUserRole(filteredByView, userRole, currentCleanerId, cleaners);
-      console.log('🎯 NON-CLEANER: Final tasks after all filtering:', finalFiltered.length);
       return finalFiltered;
     },
     staleTime: 0, // Allow immediate updates for task assignments
@@ -102,43 +82,20 @@ export const useOptimizedTasks = ({
 
   // Función optimizada para filtrar tareas con filtro por fecha según la vista
   const filteredTasks = useMemo(() => {
-    console.log('🔥 CRITICAL DEBUG: filteredTasks calculation', {
-      tasksLength: tasks?.length || 0,
-      currentDateStr: currentDate.toISOString().split('T')[0],
-      currentView,
-      firstFewTasks: tasks?.slice(0, 3).map(t => ({ date: t.date, property: t.property })) || [],
-      activeSede: activeSede?.id,
-      userRole,
-      currentCleanerId
-    });
-    
     if (!tasks) {
-      console.log('🔥 CRITICAL: No tasks available');
       return [];
     }
     
-    console.log('🎯 Raw tasks available for filtering:', tasks.length);
-    console.log('🎯 Sample tasks:', tasks.slice(0, 3).map(t => ({ id: t.id, date: t.date, property: t.property, cleaner: t.cleaner })));
-    
     // Apply basic validity filter
     const validTasks = tasks.filter(task => task && task.date);
-    console.log('🎯 Valid tasks after filtering:', validTasks.length);
     
     // Apply view-based date filtering ONLY for non-cleaners in calendar
     // For cleaners, let them see all their tasks for navigation
     if (userRole !== 'cleaner') {
-      const currentDateString = currentDate.toISOString().split('T')[0];
-      console.log('🔍 About to filter by view - tasks before filtering:', validTasks.length);
-      console.log('🔍 Current view:', currentView, 'Current date:', currentDateString);
-      console.log('🔍 First few tasks dates:', validTasks.slice(0, 5).map(t => t.date));
-      
       const viewFiltered = filterTasksByView(validTasks, currentDate, currentView);
-      console.log('🎯 View filtered tasks (non-cleaner):', viewFiltered.length);
-      console.log('🔍 Filtered tasks dates:', viewFiltered.slice(0, 5).map(t => t.date));
       return viewFiltered;
     }
     
-    console.log('🎯 Final filtered tasks (cleaner - all tasks):', validTasks.length);
     return validTasks;
   }, [tasks, currentDate, currentView, activeSede, userRole, currentCleanerId]);
 
@@ -240,48 +197,9 @@ async function filterTasksByUserRole(tasks: Task[], userRole: string | null, cur
 function filterTasksByView(tasks: Task[], currentDate: Date, currentView: ViewType): Task[] {
   const currentDateStr = currentDate.toISOString().split('T')[0];
   
-  console.log('📅 filterTasksByView called with:', {
-    tasksCount: tasks.length,
-    currentDateStr,
-    currentView,
-    availableDates: [...new Set(tasks.map(t => t.date))].sort()
-  });
-  
-  // DEBUG: Log all tasks with their dates to identify the duplicate source
-  const problematicTasks = tasks.filter(t => t.property === 'Main Street Deluxe Penthouse A' && t.cleaner === 'Lilia Cañal');
-  if (problematicTasks.length > 0) {
-    console.log('🚨 DEBUGGING Main Street Deluxe Penthouse A tasks:', {
-      taskCount: problematicTasks.length,
-      tasks: problematicTasks.map(t => ({
-        id: t.id,
-        date: t.date,
-        status: t.status
-      }))
-    });
-  }
-  
-  
   switch (currentView) {
     case 'day':
-      const dayTasks = tasks.filter(task => task.date === currentDateStr);
-      console.log('📅 Day view filter result:', {
-        currentDate: currentDateStr,
-        tasksFound: dayTasks.length,
-        tasksForToday: dayTasks.map(t => ({ id: t.id, property: t.property, date: t.date }))
-      });
-  
-      // DEBUG: Log what tasks are actually being returned for rendering
-      if (currentDateStr === '2025-09-05') {
-        console.log('🎯 TASKS BEING RETURNED FOR SEPT 5:', dayTasks.map(t => ({
-          id: t.id,
-          property: t.property,
-          cleaner: t.cleaner,
-          date: t.date,
-          status: t.status
-        })));
-      }
-  
-      return dayTasks;
+      return tasks.filter(task => task.date === currentDateStr);
     
     case 'three-day':
       const threeDayDates = Array.from({ length: 3 }, (_, i) => {
@@ -289,9 +207,7 @@ function filterTasksByView(tasks: Task[], currentDate: Date, currentView: ViewTy
         date.setDate(date.getDate() + i);
         return date.toISOString().split('T')[0];
       });
-      const threeDayTasks = tasks.filter(task => threeDayDates.includes(task.date));
-      console.log('📅 Three-day view filter result:', threeDayTasks.length, 'tasks for dates:', threeDayDates);
-      return threeDayTasks;
+      return tasks.filter(task => threeDayDates.includes(task.date));
     
     case 'week':
       // Calculate the full week containing the current date (Monday to Sunday)
@@ -306,14 +222,9 @@ function filterTasksByView(tasks: Task[], currentDate: Date, currentView: ViewTy
       const startDateStr = startOfWeek.toISOString().split('T')[0];
       const endDateStr = endOfWeek.toISOString().split('T')[0];
       
-      console.log(`📅 Week view filter: ${startDateStr} to ${endDateStr} (current date: ${currentDate.toISOString().split('T')[0]})`);
-      
-      const weekTasks = tasks.filter(task => task.date >= startDateStr && task.date <= endDateStr);
-      console.log('📅 Week view filter result:', weekTasks.length, 'tasks');
-      return weekTasks;
+      return tasks.filter(task => task.date >= startDateStr && task.date <= endDateStr);
     
     default:
-      console.log('📅 Unknown view, returning all tasks:', tasks.length);
       return tasks;
   }
 }

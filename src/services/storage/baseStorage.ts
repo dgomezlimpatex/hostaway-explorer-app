@@ -26,15 +26,9 @@ export class BaseStorageService<T extends BaseEntity, CreateData = Omit<T, keyof
   constructor(private config: StorageConfig<T, CreateData>) {}
 
   private async getActiveSedeId(): Promise<string | null> {
-    console.log('🔍 BaseStorage.getActiveSedeId called', {
-      hasGlobalContext: !!globalSedeContext,
-      tableName: this.config.tableName
-    });
-    
     // Usar contexto global si está disponible
     if (globalSedeContext) {
       const sedeId = globalSedeContext.getActiveSedeId();
-      console.log('🔍 BaseStorage: Got sede from global context:', sedeId);
       
       // Si hay sede, devolverla directamente
       if (sedeId) {
@@ -43,7 +37,6 @@ export class BaseStorageService<T extends BaseEntity, CreateData = Omit<T, keyof
       
       // Si no hay sede pero el contexto está disponible, NO esperar aquí
       // Las queries ya tienen su propia lógica de enabled
-      console.log('🔍 BaseStorage: No sede available from global context, returning null');
       return null;
     }
     
@@ -52,10 +45,8 @@ export class BaseStorageService<T extends BaseEntity, CreateData = Omit<T, keyof
       const activeSede = localStorage.getItem('activeSede');
       if (activeSede) {
         const sede = JSON.parse(activeSede);
-        console.log('🔍 BaseStorage: Got sede from localStorage:', sede.id);
         return sede.id;
       }
-      console.log('🔍 BaseStorage: No sede in localStorage');
       return null;
     } catch (error) {
       console.warn('Error getting active sede from localStorage:', error);
@@ -87,15 +78,9 @@ export class BaseStorageService<T extends BaseEntity, CreateData = Omit<T, keyof
     // Aplicar filtro automático por sede si está habilitado
     if (this.config.enforceSedeFilter !== false) {
       const activeSedeId = await this.getActiveSedeId();
-      console.log(`🏢 BaseStorage.getAll for table ${this.config.tableName}:`, {
-        enforceSedeFilter: this.config.enforceSedeFilter,
-        activeSedeId,
-        hasGlobalContext: !!globalSedeContext
-      });
       
       if (activeSedeId) {
         query = query.eq('sede_id', activeSedeId);
-        console.log(`🔍 Applied sede filter: ${activeSedeId} for table ${this.config.tableName}`);
       } else {
         console.warn(`⚠️ NO SEDE FILTER applied for table ${this.config.tableName} - activeSedeId is null`);
       }
@@ -113,12 +98,6 @@ export class BaseStorageService<T extends BaseEntity, CreateData = Omit<T, keyof
       console.error(`Error fetching ${this.config.tableName}:`, error);
       throw error;
     }
-
-    console.log(`📊 BaseStorage.getAll result for ${this.config.tableName}:`, {
-      recordCount: data?.length || 0,
-      activeSedeId: await this.getActiveSedeId(),
-      sampleRecords: data?.slice(0, 2).map((r: any) => ({ id: r.id, sede_id: r.sede_id })) || []
-    });
 
     return data?.map(this.config.mapFromDB) || [];
   }
