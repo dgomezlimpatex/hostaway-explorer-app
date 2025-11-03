@@ -224,8 +224,12 @@ export const useCalendarLogic = () => {
     console.log('🟢🟢🟢 EXTRAORDINARY SERVICE - FULL DATA:', serviceData);
     
     // Convert extraordinary service data to task format
+    // Format date in local timezone to avoid UTC conversion issues
+    const localDate = serviceData.serviceDate;
+    const formattedDate = `${localDate.getFullYear()}-${String(localDate.getMonth() + 1).padStart(2, '0')}-${String(localDate.getDate()).padStart(2, '0')}`;
+    
     const taskData: Omit<Task, 'id'> = {
-      date: serviceData.serviceDate.toISOString().split('T')[0],
+      date: formattedDate,
       startTime: '09:00', // Default start time
       endTime: (() => {
         const startMinutes = 9 * 60; // 09:00 in minutes
