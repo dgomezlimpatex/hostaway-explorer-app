@@ -11,10 +11,14 @@ import { useCalendarLogic } from "@/hooks/useCalendarLogic";
 import { useCalendarNavigation } from "@/hooks/useCalendarNavigation";
 import { useDeviceType } from "@/hooks/use-mobile";
 import { useAuth } from "@/hooks/useAuth";
+import { useAuthGuard } from "@/hooks/useAuthGuard";
+import { useSede } from "@/contexts/SedeContext";
 
 const CleaningCalendar = () => {
   const { isMobile } = useDeviceType();
   const { userRole } = useAuth();
+  const { isLoading: authGuardLoading, hasFullAccess } = useAuthGuard();
+  const { isInitialized: sedeInitialized, loading: sedeLoading } = useSede();
 
   // Calendar logic and data
   const {
@@ -73,6 +77,30 @@ const CleaningCalendar = () => {
       headerScrollRef.current.scrollLeft = e.currentTarget.scrollLeft;
     }
   }, [headerScrollRef]);
+
+  // Wait for auth and sede initialization before showing calendar
+  if (authGuardLoading || !sedeInitialized || sedeLoading) {
+    console.log('🔄 CleaningCalendar: Waiting for initialization', { 
+      authGuardLoading, 
+      sedeInitialized, 
+      sedeLoading 
+    });
+    return (
+      <div className="flex items-center justify-center h-screen bg-background">
+        <LoadingSpinner size="lg" text="Inicializando sistema..." />
+      </div>
+    );
+  }
+
+  // Check if user has full access
+  if (!hasFullAccess) {
+    console.log('⚠️ CleaningCalendar: User does not have full access');
+    return (
+      <div className="flex items-center justify-center h-screen bg-background">
+        <LoadingSpinner size="lg" text="Verificando permisos..." />
+      </div>
+    );
+  }
 
   if (isLoading && (!tasks || tasks.length === 0)) {
     console.log('🔄 CleaningCalendar: Showing loading spinner', { isLoading, tasksLength: tasks?.length || 0 });
