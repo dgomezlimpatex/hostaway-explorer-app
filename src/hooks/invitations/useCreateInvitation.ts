@@ -31,7 +31,7 @@ export const useCreateInvitation = () => {
       if (error) throw error;
 
       // Enviar email de invitación
-      const appUrl = 'https://id-preview--47420173-53cc-4a1a-8da8-d4b51fe8c6fe.lovable.app';
+      const appUrl = window.location.origin;
       const inviterName = profile?.full_name || profile?.email || 'Un administrador';
 
       const { error: emailError } = await supabase.functions.invoke('send-invitation-email', {
