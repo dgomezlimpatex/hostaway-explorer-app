@@ -20,7 +20,6 @@ import { CreateExtraordinaryServiceModal } from '@/components/modals/CreateExtra
 const DashboardStatsCards = lazy(() => import('./components/DashboardStatsCards').then(module => ({ default: module.DashboardStatsCards })));
 const TodayTasksSection = lazy(() => import('./components/TodayTasksSection').then(module => ({ default: module.TodayTasksSection })));
 import DashboardMetricsCards from './components/DashboardMetricsCards';
-const SecurityStatusWidget = lazy(() => import('@/components/admin/security/SecurityStatusWidget').then(module => ({ default: module.SecurityStatusWidget })));
 const HostawayIntegrationWidget = lazy(() => import('@/components/hostaway/HostawayIntegrationWidget').then(module => ({ default: module.HostawayIntegrationWidget })));
 
 // Loading component for Suspense
@@ -219,13 +218,6 @@ export const ManagerDashboard = () => {
                   </Suspense>
                 </div>
               )}
-
-              {/* Security Status Widget - for admins/managers */}
-              <div className="mb-6">
-                <Suspense fallback={<ComponentLoader />}>
-                  <SecurityStatusWidget />
-                </Suspense>
-              </div>
 
               {/* Header */}
               <div className="mb-8 flex items-center justify-between">
