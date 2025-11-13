@@ -56,10 +56,9 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
   const [currentReport, setCurrentReport] = useState<TaskReport | null>(null);
   const [checklist, setChecklist] = useState<Record<string, any>>({});
   const [notes, setNotes] = useState('');
-  const [issues, setIssues] = useState<any[]>([]);
   const [reportMedia, setReportMedia] = useState<TaskMedia[]>([]);
   const [activeTab, setActiveTab] = useState('checklist');
-  const [currentStep, setCurrentStep] = useState<'checklist' | 'issues' | 'media' | 'summary'>('checklist');
+  const [currentStep, setCurrentStep] = useState<'checklist' | 'media' | 'summary'>('checklist');
   const [currentTemplate, setCurrentTemplate] = useState<TaskChecklistTemplate | undefined>();
   const [hasStartedTask, setHasStartedTask] = useState(false);
   const [isChecklistCompleted, setIsChecklistCompleted] = useState(false);
@@ -99,7 +98,6 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
         setCurrentReport(existingReport);
         setChecklist(existingReport.checklist_completed || {});
         setNotes(existingReport.notes || '');
-        setIssues(existingReport.issues_found || []);
         setHasStartedTask(true);
         reportCreationAttempted.current = task.id;
       } else if (!isLoadingReport) {
@@ -108,7 +106,6 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
         setCurrentReport(null);
         setChecklist({});
         setNotes('');
-        setIssues([]);
         setReportMedia([]);
         setHasStartedTask(false);
         reportCreationAttempted.current = null;
@@ -286,9 +283,9 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
   const autoSaveData = useMemo(() => ({
     checklist_completed: checklist,
     notes,
-    issues_found: issues,
+    issues_found: [],
     overall_status: completionPercentage === 100 ? 'completed' as const : 'in_progress' as const,
-  }), [checklist, notes, issues, completionPercentage]);
+  }), [checklist, notes, completionPercentage]);
 
   const { forceSave, isOnline } = useOptimizedAutoSave({
     data: autoSaveData,
@@ -318,7 +315,7 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
     // 4. No es la carga inicial
     if (!wasCompleted && nowCompleted && currentStep === 'checklist' && hasStartedTask) {
       console.log('✅ Checklist completado, avanzando automáticamente');
-      setTimeout(() => setCurrentStep('issues'), 800); // Más tiempo para evitar clicks accidentales
+      setTimeout(() => setCurrentStep('media'), 800); // Más tiempo para evitar clicks accidentales
     }
   }, [completionPercentage, currentStep, isChecklistCompleted, requiredValidation.isValid, hasStartedTask]);
 
@@ -415,13 +412,7 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
       checklist_template_id: currentTemplate?.id,
       checklist_completed: checklist,
       notes,
-      issues_found: issues.map(issue => ({
-        ...issue,
-        // CRITICAL FIX: Asegurar metadata completa para incidencias  
-        created_at: issue.created_at || new Date().toISOString(),
-        task_id: task.id,
-        cleaner_id: currentCleanerId
-      })),
+      issues_found: [],
       overall_status: completionPercentage === 100 ? 'completed' as const : 'in_progress' as const,
     };
 
@@ -431,9 +422,7 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
       currentReport: currentReport?.id,
       existingReport: existingReport?.id,
       hasStartedTask,
-      reportData,
-      issuesCount: issues.length,
-      issuesData: issues // CRITICAL: Log complete issues data for debugging
+      reportData
     });
 
     try {
@@ -470,7 +459,6 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
         reportId: currentReport?.id,
         hasCurrentReport: !!currentReport,
         hasExistingReport: !!existingReport,
-        issuesCount: issues.length,
         completionPercentage
       }, 'Guardando reporte desde modal');
       
@@ -519,7 +507,7 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
       checklist_template_id: currentTemplate?.id,
       checklist_completed: checklist,
       notes,
-      issues_found: issues,
+      issues_found: [],
       overall_status: 'completed' as const,
       end_time: new Date().toISOString(),
     };
@@ -592,7 +580,6 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
         currentCleanerId,
         reportId: currentReport?.id,
         completionPercentage,
-        issuesCount: issues.length,
         hasPropertyId: !!task.propertyId
       }, 'Completando reporte final');
       
@@ -647,13 +634,11 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
             onTabChange={setActiveTab}
             currentStep={currentStep}
             onStepChange={setCurrentStep}
-            issues={issues}
             isLoadingTemplates={isLoadingTemplates}
             currentTemplate={currentTemplate}
             checklist={checklist}
             onChecklistChange={setChecklist}
             reportId={currentReport?.id}
-            onIssuesChange={setIssues}
             notes={notes}
             onNotesChange={setNotes}
             task={task}

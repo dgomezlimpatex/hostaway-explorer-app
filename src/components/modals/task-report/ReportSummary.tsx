@@ -19,7 +19,6 @@ interface ReportSummaryProps {
   task: Task;
   template: TaskChecklistTemplate | undefined;
   checklist: Record<string, any>;
-  issues: any[];
   notes: string;
   completionPercentage: number;
   currentReport?: TaskReport;
@@ -29,7 +28,6 @@ export const ReportSummary: React.FC<ReportSummaryProps> = ({
   task,
   template,
   checklist,
-  issues,
   notes,
   completionPercentage,
   currentReport,
@@ -222,23 +220,13 @@ export const ReportSummary: React.FC<ReportSummaryProps> = ({
       </Card>
 
       {/* Estadísticas adicionales */}
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-2 gap-4">
         <Card>
           <CardContent className="pt-6">
             <div className="text-center">
               <Camera className="h-8 w-8 mx-auto mb-2 text-blue-500" />
               <p className="text-2xl font-bold">{totalPhotos}</p>
               <p className="text-sm text-gray-600">Fotos</p>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="pt-6">
-            <div className="text-center">
-              <AlertTriangle className="h-8 w-8 mx-auto mb-2 text-orange-500" />
-              <p className="text-2xl font-bold">{issues.length}</p>
-              <p className="text-sm text-gray-600">Incidencias</p>
             </div>
           </CardContent>
         </Card>
@@ -253,30 +241,6 @@ export const ReportSummary: React.FC<ReportSummaryProps> = ({
           </CardContent>
         </Card>
       </div>
-
-      {/* Incidencias destacadas */}
-      {issues.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-md flex items-center">
-              <AlertTriangle className="h-4 w-4 mr-2 text-orange-500" />
-              Incidencias Reportadas
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2">
-              {issues.map((issue, index) => (
-                <div key={index} className="flex items-center justify-between p-2 bg-orange-50 rounded">
-                  <span className="text-sm">{issue.description}</span>
-                  <Badge variant="outline" className="text-xs">
-                    {issue.severity === 'high' ? 'Alto' : issue.severity === 'medium' ? 'Medio' : 'Bajo'}
-                  </Badge>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
 
       {/* Notas */}
       {notes && (

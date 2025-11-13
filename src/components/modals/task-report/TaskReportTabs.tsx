@@ -4,7 +4,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Task } from '@/types/calendar';
 import { TaskChecklistTemplate, TaskMedia, TaskReport } from '@/types/taskReports';
 import { ChecklistSection } from './ChecklistSection';
-import { IssuesSection } from './IssuesSection';
 import { NotesSection } from './NotesSection';
 import { MediaCapture } from './MediaCapture';
 import { ReportSummary } from './ReportSummary';
@@ -14,15 +13,13 @@ import { useDeviceType } from '@/hooks/use-mobile';
 interface TaskReportTabsProps {
   activeTab: string;
   onTabChange: (tab: string) => void;
-  currentStep: 'checklist' | 'issues' | 'media' | 'summary';
-  onStepChange: (step: 'checklist' | 'issues' | 'media' | 'summary') => void;
-  issues: any[];
+  currentStep: 'checklist' | 'media' | 'summary';
+  onStepChange: (step: 'checklist' | 'media' | 'summary') => void;
   isLoadingTemplates: boolean;
   currentTemplate: TaskChecklistTemplate | undefined;
   checklist: Record<string, any>;
   onChecklistChange: (checklist: Record<string, any>) => void;
   reportId?: string;
-  onIssuesChange: (issues: any[]) => void;
   notes: string;
   onNotesChange: (notes: string) => void;
   task: Task;
@@ -40,13 +37,11 @@ export const TaskReportTabs: React.FC<TaskReportTabsProps> = ({
   onTabChange,
   currentStep,
   onStepChange,
-  issues,
   isLoadingTemplates,
   currentTemplate,
   checklist,
   onChecklistChange,
   reportId,
-  onIssuesChange,
   notes,
   onNotesChange,
   task,
@@ -66,13 +61,11 @@ export const TaskReportTabs: React.FC<TaskReportTabsProps> = ({
       <SequentialTaskReport
         currentStep={currentStep}
         onStepChange={onStepChange}
-        issues={issues}
         isLoadingTemplates={isLoadingTemplates}
         currentTemplate={currentTemplate}
         checklist={checklist}
         onChecklistChange={onChecklistChange}
         reportId={reportId}
-        onIssuesChange={onIssuesChange}
         notes={notes}
         onNotesChange={onNotesChange}
         task={task}
@@ -109,12 +102,9 @@ export const TaskReportTabs: React.FC<TaskReportTabsProps> = ({
 
   return (
     <Tabs value={activeTab} onValueChange={onTabChange} className="flex flex-col h-full">
-      <TabsList className="grid w-full grid-cols-4 mb-4">
+      <TabsList className="grid w-full grid-cols-3 mb-4">
         <TabsTrigger value="checklist" className="text-xs">
           {getTabLabel('checklist', <CheckSquare className="h-4 w-4" />, 'Lista', 'Lista')}
-        </TabsTrigger>
-        <TabsTrigger value="issues" className="text-xs">
-          {getTabLabel('issues', <AlertTriangle className="h-4 w-4" />, 'Issues', 'Issues')}
         </TabsTrigger>
         <TabsTrigger value="photos" className="text-xs">
           {getTabLabel('photos', <Camera className="h-4 w-4" />, 'Fotos', 'Fotos')}
@@ -139,15 +129,6 @@ export const TaskReportTabs: React.FC<TaskReportTabsProps> = ({
               isReadOnly={isTaskCompleted}
             />
           )}
-        </TabsContent>
-
-        <TabsContent value="issues" className="mt-0 h-full overflow-auto">
-          <IssuesSection
-            issues={issues}
-            onIssuesChange={onIssuesChange}
-            reportId={reportId}
-            isReadOnly={false}
-          />
         </TabsContent>
 
         <TabsContent value="photos" className="mt-0 h-full overflow-auto">
@@ -199,7 +180,6 @@ export const TaskReportTabs: React.FC<TaskReportTabsProps> = ({
             task={task}
             template={currentTemplate}
             checklist={checklist}
-            issues={issues}
             notes={notes}
             completionPercentage={completionPercentage}
             currentReport={currentReport}
