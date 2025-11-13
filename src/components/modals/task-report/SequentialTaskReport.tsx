@@ -7,21 +7,18 @@ import { Task } from '@/types/calendar';
 import { TaskChecklistTemplate, TaskMedia, TaskReport } from '@/types/taskReports';
 import { ChecklistSection } from './ChecklistSection';
 import { MediaCapture } from './MediaCapture';
-import { IssuesSection } from './IssuesSection';
 import { ReportSummary } from './ReportSummary';
 import { useDeviceType } from '@/hooks/use-mobile';
 import { useMobileErrorHandler } from '@/hooks/useMobileErrorHandler';
 
 interface SequentialTaskReportProps {
-  currentStep: 'checklist' | 'issues' | 'media' | 'summary';
-  onStepChange: (step: 'checklist' | 'issues' | 'media' | 'summary') => void;
-  issues: any[];
+  currentStep: 'checklist' | 'media' | 'summary';
+  onStepChange: (step: 'checklist' | 'media' | 'summary') => void;
   isLoadingTemplates: boolean;
   currentTemplate: TaskChecklistTemplate | undefined;
   checklist: Record<string, any>;
   onChecklistChange: (checklist: Record<string, any>) => void;
   reportId?: string;
-  onIssuesChange: (issues: any[]) => void;
   notes: string;
   onNotesChange: (notes: string) => void;
   task: Task;
@@ -37,13 +34,11 @@ interface SequentialTaskReportProps {
 export const SequentialTaskReport: React.FC<SequentialTaskReportProps> = ({
   currentStep,
   onStepChange,
-  issues,
   isLoadingTemplates,
   currentTemplate,
   checklist,
   onChecklistChange,
   reportId,
-  onIssuesChange,
   notes,
   onNotesChange,
   task,
@@ -60,7 +55,6 @@ export const SequentialTaskReport: React.FC<SequentialTaskReportProps> = ({
 
   const steps = [
     { key: 'checklist', title: 'Lista de Tareas', icon: CheckSquare, description: 'Completa todas las tareas del checklist' },
-    { key: 'issues', title: 'Incidencias', icon: AlertTriangle, description: 'Reporta cualquier problema encontrado' },
     { key: 'media', title: 'Fotos', icon: Camera, description: 'Sube fotos del trabajo realizado' },
     { key: 'summary', title: 'Resumen', icon: CheckCircle, description: 'Revisa y finaliza el reporte' },
   ];
@@ -76,8 +70,6 @@ export const SequentialTaskReport: React.FC<SequentialTaskReportProps> = ({
       switch (currentStep) {
         case 'checklist':
           return completionPercentage === 100;
-        case 'issues':
-          return true; // Siempre se puede proceder (aunque no haya incidencias)
         case 'media':
           return reportMedia.length > 0;
         case 'summary':
@@ -183,25 +175,6 @@ export const SequentialTaskReport: React.FC<SequentialTaskReportProps> = ({
           </div>
         )}
 
-        {currentStep === 'issues' && (
-          <div className="space-y-4">
-            <div className="text-center py-6">
-              <AlertTriangle className="h-12 w-12 text-orange-500 mx-auto mb-3" />
-              <h4 className="text-lg font-semibold mb-2">¿Encontraste algún problema?</h4>
-              <p className="text-sm text-muted-foreground mb-4">
-                Reporta cualquier incidencia o problema durante la limpieza
-              </p>
-            </div>
-            <IssuesSection
-              issues={issues}
-              onIssuesChange={onIssuesChange}
-              reportId={reportId}
-              isReadOnly={false}
-            />
-            
-          </div>
-        )}
-
         {currentStep === 'media' && (
           <div className="space-y-4 min-h-[400px]">
             <div className="text-center py-6">
@@ -253,7 +226,6 @@ export const SequentialTaskReport: React.FC<SequentialTaskReportProps> = ({
               task={task}
               template={currentTemplate}
               checklist={checklist}
-              issues={issues}
               notes={notes}
               completionPercentage={completionPercentage}
               currentReport={currentReport}
