@@ -33,7 +33,7 @@ export const mapCleanerToDB = (cleaner: Partial<CreateCleanerData>): any => {
   if (cleaner.contractHoursPerWeek !== undefined) updateData.contract_hours_per_week = cleaner.contractHoursPerWeek;
   if (cleaner.hourlyRate !== undefined) updateData.hourly_rate = cleaner.hourlyRate;
   if (cleaner.contractType !== undefined) updateData.contract_type = cleaner.contractType;
-  if (cleaner.startDate !== undefined) updateData.start_date = cleaner.startDate;
+  if (cleaner.startDate !== undefined) updateData.start_date = cleaner.startDate || null;
   if (cleaner.emergencyContactName !== undefined) updateData.emergency_contact_name = cleaner.emergencyContactName;
   if (cleaner.emergencyContactPhone !== undefined) updateData.emergency_contact_phone = cleaner.emergencyContactPhone;
   if (cleaner.sede_id !== undefined) updateData.sede_id = cleaner.sede_id;
