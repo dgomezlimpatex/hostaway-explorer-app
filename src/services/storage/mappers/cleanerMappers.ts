@@ -36,6 +36,7 @@ export const mapCleanerToDB = (cleaner: Partial<CreateCleanerData>): any => {
   if (cleaner.startDate !== undefined) updateData.start_date = cleaner.startDate;
   if (cleaner.emergencyContactName !== undefined) updateData.emergency_contact_name = cleaner.emergencyContactName;
   if (cleaner.emergencyContactPhone !== undefined) updateData.emergency_contact_phone = cleaner.emergencyContactPhone;
+  if (cleaner.sede_id !== undefined) updateData.sede_id = cleaner.sede_id;
 
   return updateData;
 };

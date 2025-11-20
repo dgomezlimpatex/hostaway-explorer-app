@@ -59,31 +59,28 @@ export const CreateWorkerModal = ({ open, onOpenChange }: CreateWorkerModalProps
       return;
     }
 
-    // Temporarily set the selected sede as active in localStorage for the creation
-    const selectedSede = availableSedes.find(s => s.id === selectedSedeId);
-    if (selectedSede) {
-      localStorage.setItem('activeSede', JSON.stringify(selectedSede));
-    }
-
-    createCleaner.mutate(formData, {
-      onSuccess: () => {
-        onOpenChange(false);
-        setSelectedSedeId('');
-        setFormData({
-          name: '',
-          email: '',
-          telefono: '',
-          avatar: '',
-          isActive: true,
-          contractHoursPerWeek: 40,
-          hourlyRate: undefined,
-          contractType: 'full-time',
-          startDate: '',
-          emergencyContactName: '',
-          emergencyContactPhone: '',
-        });
-      },
-    });
+    createCleaner.mutate(
+      { ...formData, sede_id: selectedSedeId },
+      {
+        onSuccess: () => {
+          onOpenChange(false);
+          setSelectedSedeId('');
+          setFormData({
+            name: '',
+            email: '',
+            telefono: '',
+            avatar: '',
+            isActive: true,
+            contractHoursPerWeek: 40,
+            hourlyRate: undefined,
+            contractType: 'full-time',
+            startDate: '',
+            emergencyContactName: '',
+            emergencyContactPhone: '',
+          });
+        },
+      }
+    );
   };
 
   const handleChange = (field: keyof CreateCleanerData, value: string | boolean | number) => {

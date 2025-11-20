@@ -17,6 +17,7 @@ export interface CreateCleanerData {
   startDate?: string;
   emergencyContactName?: string;
   emergencyContactPhone?: string;
+  sede_id?: string;
 }
 
 class CleanerStorageService extends BaseStorageService<Cleaner, CreateCleanerData> {

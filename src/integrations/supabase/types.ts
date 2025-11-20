@@ -1769,7 +1769,7 @@ export type Database = {
           event_data: Json | null
           event_type: string
           id: string
-          ip_address: unknown | null
+          ip_address: unknown
           user_agent: string | null
           user_id: string | null
         }
@@ -1778,7 +1778,7 @@ export type Database = {
           event_data?: Json | null
           event_type: string
           id?: string
-          ip_address?: unknown | null
+          ip_address?: unknown
           user_agent?: string | null
           user_id?: string | null
         }
@@ -1787,7 +1787,7 @@ export type Database = {
           event_data?: Json | null
           event_type?: string
           id?: string
-          ip_address?: unknown | null
+          ip_address?: unknown
           user_agent?: string | null
           user_id?: string | null
         }
@@ -1836,7 +1836,7 @@ export type Database = {
           event_type: string
           from_sede_id: string | null
           id: string
-          ip_address: unknown | null
+          ip_address: unknown
           to_sede_id: string | null
           user_agent: string | null
           user_id: string | null
@@ -1847,7 +1847,7 @@ export type Database = {
           event_type: string
           from_sede_id?: string | null
           id?: string
-          ip_address?: unknown | null
+          ip_address?: unknown
           to_sede_id?: string | null
           user_agent?: string | null
           user_id?: string | null
@@ -1858,7 +1858,7 @@ export type Database = {
           event_type?: string
           from_sede_id?: string | null
           id?: string
-          ip_address?: unknown | null
+          ip_address?: unknown
           to_sede_id?: string | null
           user_agent?: string | null
           user_id?: string | null
@@ -2602,37 +2602,31 @@ export type Database = {
         }
         Returns: boolean
       }
-      cleanup_expired_invitations: {
-        Args: Record<PropertyKey, never>
-        Returns: undefined
-      }
-      create_user_invitation_secure: {
-        Args:
-          | {
-              expires_hours?: number
-              invite_email: string
-              invite_role: string
-            }
-          | {
+      cleanup_expired_invitations: { Args: never; Returns: undefined }
+      create_user_invitation_secure:
+        | {
+            Args: {
               expires_hours?: number
               invite_email: string
               invite_role: string
               invite_sede_id?: string
             }
-        Returns: string
-      }
-      delete_hostaway_cron_job: {
-        Args: { job_name: string }
-        Returns: Json
-      }
+            Returns: string
+          }
+        | {
+            Args: {
+              expires_hours?: number
+              invite_email: string
+              invite_role: string
+            }
+            Returns: string
+          }
+      delete_hostaway_cron_job: { Args: { job_name: string }; Returns: Json }
       get_current_user_role: {
-        Args: Record<PropertyKey, never>
+        Args: never
         Returns: Database["public"]["Enums"]["app_role"]
       }
-      get_user_accessible_sedes: {
-        Args: Record<PropertyKey, never>
-        Returns: string[]
-      }
+      get_user_accessible_sedes: { Args: never; Returns: string[] }
       get_user_role: {
         Args: { _user_id: string }
         Returns: Database["public"]["Enums"]["app_role"]
@@ -2644,10 +2638,7 @@ export type Database = {
         }
         Returns: boolean
       }
-      list_hostaway_cron_jobs: {
-        Args: Record<PropertyKey, never>
-        Returns: Json
-      }
+      list_hostaway_cron_jobs: { Args: never; Returns: Json }
       log_security_event: {
         Args: { event_data?: Json; event_type: string; target_user_id?: string }
         Returns: undefined
@@ -2687,10 +2678,7 @@ export type Database = {
         Args: { cleaner_updates: Json[] }
         Returns: undefined
       }
-      user_can_access_task: {
-        Args: { task_sede_id: string }
-        Returns: boolean
-      }
+      user_can_access_task: { Args: { task_sede_id: string }; Returns: boolean }
       user_has_role: {
         Args: { check_role: Database["public"]["Enums"]["app_role"] }
         Returns: boolean
@@ -2699,10 +2687,7 @@ export type Database = {
         Args: { _sede_id: string; _user_id: string }
         Returns: boolean
       }
-      user_is_admin_or_manager: {
-        Args: Record<PropertyKey, never>
-        Returns: boolean
-      }
+      user_is_admin_or_manager: { Args: never; Returns: boolean }
       verify_invitation: {
         Args: { email: string; token: string }
         Returns: boolean
