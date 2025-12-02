@@ -261,14 +261,18 @@ export const CreateExtraordinaryServiceModal = ({
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="serviceDuration">Duración del Servicio (minutos) *</Label>
+              <Label htmlFor="serviceDuration">Duración del Servicio (horas) *</Label>
               <Input
                 id="serviceDuration"
                 type="number"
-                min="15"
-                step="15"
-                value={formData.serviceDuration}
-                onChange={(e) => handleChange('serviceDuration', parseInt(e.target.value) || 0)}
+                min="0.25"
+                step="0.25"
+                value={(formData.serviceDuration / 60).toFixed(2)}
+                onChange={(e) => {
+                  const hours = parseFloat(e.target.value) || 0;
+                  handleChange('serviceDuration', Math.round(hours * 60));
+                }}
+                placeholder="Ej: 1.5 = 1h 30min"
                 required
               />
             </div>
