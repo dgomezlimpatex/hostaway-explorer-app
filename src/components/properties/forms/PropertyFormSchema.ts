@@ -2,7 +2,7 @@
 import * as z from 'zod';
 
 export const propertySchema = z.object({
-  codigo: z.string().min(1, 'El código es obligatorio'),
+  codigo: z.string().optional().default(''),
   nombre: z.string().min(1, 'El nombre es obligatorio'),
   direccion: z.string().min(1, 'La dirección es obligatoria'),
   numeroCamas: z.number().min(0, 'El número de camas debe ser positivo'),

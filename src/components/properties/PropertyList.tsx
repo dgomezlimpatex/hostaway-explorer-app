@@ -1,6 +1,6 @@
 
 import { useState } from 'react';
-import { useProperties, useDeleteProperty } from '@/hooks/useProperties';
+import { useProperties, useDeleteProperty, useCreateProperty } from '@/hooks/useProperties';
 import { useClientData } from '@/hooks/useClientData';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -24,7 +24,8 @@ import {
   ChevronDown,
   ChevronRight,
   User,
-  Building
+  Building,
+  Copy
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -43,6 +44,7 @@ export const PropertyList = () => {
   const { data: properties = [], isLoading } = useProperties();
   const { clients, getClientName } = useClientData();
   const deleteProperty = useDeleteProperty();
+  const createProperty = useCreateProperty();
   const [editingProperty, setEditingProperty] = useState<Property | null>(null);
   const [assigningProperty, setAssigningProperty] = useState<Property | null>(null);
   const [openClients, setOpenClients] = useState<Set<string>>(new Set());
@@ -53,6 +55,46 @@ export const PropertyList = () => {
       await deleteProperty.mutateAsync(id);
     } catch (error) {
       console.error('Error deleting property:', error);
+    }
+  };
+
+  const handleDuplicate = async (property: Property) => {
+    try {
+      const duplicatedData = {
+        codigo: property.codigo ? `${property.codigo}-copia` : '',
+        nombre: `${property.nombre} (copia)`,
+        direccion: property.direccion,
+        numeroCamas: property.numeroCamas,
+        numeroCamasPequenas: property.numeroCamasPequenas,
+        numeroCamasSuite: property.numeroCamasSuite,
+        numeroSofasCama: property.numeroSofasCama,
+        numeroBanos: property.numeroBanos,
+        duracionServicio: property.duracionServicio,
+        costeServicio: property.costeServicio,
+        checkInPredeterminado: property.checkInPredeterminado,
+        checkOutPredeterminado: property.checkOutPredeterminado,
+        numeroSabanas: property.numeroSabanas,
+        numeroSabanasRequenas: property.numeroSabanasRequenas,
+        numeroSabanasSuite: property.numeroSabanasSuite,
+        numeroToallasGrandes: property.numeroToallasGrandes,
+        numeroTotallasPequenas: property.numeroTotallasPequenas,
+        numeroAlfombrines: property.numeroAlfombrines,
+        numeroFundasAlmohada: property.numeroFundasAlmohada,
+        kitAlimentario: property.kitAlimentario,
+        amenitiesBano: property.amenitiesBano,
+        amenitiesCocina: property.amenitiesCocina,
+        cantidadRollosPapelHigienico: property.cantidadRollosPapelHigienico,
+        cantidadRollosPapelCocina: property.cantidadRollosPapelCocina,
+        notas: property.notas,
+        clienteId: property.clienteId,
+      };
+      await createProperty.mutateAsync(duplicatedData);
+      toast({
+        title: "Propiedad duplicada",
+        description: `Se ha creado una copia de "${property.nombre}"`,
+      });
+    } catch (error) {
+      console.error('Error duplicating property:', error);
     }
   };
 
@@ -184,6 +226,14 @@ export const PropertyList = () => {
                                 >
                                   <CheckSquare className="h-4 w-4" />
                                   Checklist
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handleDuplicate(property)}
+                                  title="Duplicar propiedad"
+                                >
+                                  <Copy className="h-4 w-4" />
                                 </Button>
                                 <Button
                                   variant="outline"
