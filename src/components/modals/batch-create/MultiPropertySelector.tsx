@@ -23,9 +23,11 @@ export const MultiPropertySelector = ({
   const { data: clients = [] } = useClients();
   const { data: allProperties = [] } = useProperties();
 
-  // Filtrar propiedades por cliente seleccionado
+  // Filtrar propiedades por cliente seleccionado y ordenar alfabéticamente
   const availableProperties = selectedClientId 
-    ? allProperties.filter(p => p.clienteId === selectedClientId)
+    ? allProperties
+        .filter(p => p.clienteId === selectedClientId)
+        .sort((a, b) => (a.codigo || a.nombre).localeCompare(b.codigo || b.nombre, 'es', { numeric: true }))
     : [];
 
   const selectedClient = clients.find(c => c.id === selectedClientId);
