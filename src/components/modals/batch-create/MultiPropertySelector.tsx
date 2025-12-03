@@ -89,33 +89,35 @@ export const MultiPropertySelector = ({
               </div>
             </div>
           </CardHeader>
-          <CardContent className="space-y-2 max-h-80 overflow-y-auto">
-            {availableProperties.map((property) => (
-              <div
-                key={property.id}
-                className="flex items-center space-x-3 p-2 rounded-lg hover:bg-gray-50 border border-gray-100"
-              >
-                <Checkbox
-                  checked={selectedProperties.includes(property.id)}
-                  onCheckedChange={() => handlePropertyToggle(property.id)}
-                />
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className="font-medium text-sm">{property.codigo}</span>
-                    <span className="text-gray-600 text-sm">-</span>
-                    <span className="text-gray-800 text-sm">{property.nombre}</span>
+          <CardContent className="max-h-[50vh] overflow-y-auto">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+              {availableProperties.map((property) => (
+                <div
+                  key={property.id}
+                  className="flex items-center space-x-3 p-2 rounded-lg hover:bg-muted/50 border border-border"
+                >
+                  <Checkbox
+                    checked={selectedProperties.includes(property.id)}
+                    onCheckedChange={() => handlePropertyToggle(property.id)}
+                  />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium text-sm">{property.codigo}</span>
+                      <span className="text-muted-foreground text-sm">-</span>
+                      <span className="text-foreground text-sm truncate">{property.nombre}</span>
+                    </div>
+                    <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
+                      <MapPin className="h-3 w-3" />
+                      <span className="truncate">{property.direccion}</span>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-1 text-xs text-gray-500 mt-1">
-                    <MapPin className="h-3 w-3" />
-                    <span className="truncate">{property.direccion}</span>
+                  <div className="text-right text-xs text-muted-foreground">
+                    <div>{property.costeServicio}€</div>
+                    <div>{property.duracionServicio}min</div>
                   </div>
                 </div>
-                <div className="text-right text-xs text-gray-500">
-                  <div>{property.costeServicio}€</div>
-                  <div>{property.duracionServicio}min</div>
-                </div>
-              </div>
-            ))}
+              ))}
+            </div>
             
             {availableProperties.length === 0 && (
               <div className="text-center py-4 text-gray-500 text-sm">
