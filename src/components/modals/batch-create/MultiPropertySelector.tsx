@@ -23,11 +23,22 @@ export const MultiPropertySelector = ({
   const { data: clients = [] } = useClients();
   const { data: allProperties = [] } = useProperties();
 
-  // Filtrar propiedades por cliente seleccionado y ordenar alfabéticamente
+  // Filtrar propiedades por cliente seleccionado y ordenar numéricamente
   const availableProperties = selectedClientId 
     ? allProperties
         .filter(p => p.clienteId === selectedClientId)
-        .sort((a, b) => (a.codigo || a.nombre).localeCompare(b.codigo || b.nombre, 'es', { numeric: true }))
+        .sort((a, b) => {
+          const getNumericPart = (str: string) => {
+            const match = str.match(/(\d+)/);
+            return match ? parseInt(match[1], 10) : 0;
+          };
+          const aKey = a.codigo || a.nombre;
+          const bKey = b.codigo || b.nombre;
+          const aNum = getNumericPart(aKey);
+          const bNum = getNumericPart(bKey);
+          if (aNum !== bNum) return aNum - bNum;
+          return aKey.localeCompare(bKey, 'es');
+        })
     : [];
 
   const selectedClient = clients.find(c => c.id === selectedClientId);
