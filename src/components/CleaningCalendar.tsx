@@ -1,5 +1,5 @@
 
-import React, { useCallback } from "react";
+import React, { useCallback, useRef, useEffect } from "react";
 import { ResponsiveCalendarHeader } from "./calendar/ResponsiveCalendarHeader";
 import { CalendarContainer } from "./calendar/CalendarContainer";
 import { CleanerMobileCalendar } from "./calendar/CleanerMobileCalendar";
@@ -13,10 +13,12 @@ import { useDeviceType } from "@/hooks/use-mobile";
 import { useAuth } from "@/hooks/useAuth";
 import { useAuthGuard } from "@/hooks/useAuthGuard";
 import { useSede } from "@/contexts/SedeContext";
+import { Loader2 } from "lucide-react";
 
 const CleaningCalendar = () => {
   const { isMobile } = useDeviceType();
   const { userRole } = useAuth();
+  const hasLoadedOnce = useRef(false);
   const { isLoading: authGuardLoading, hasFullAccess } = useAuthGuard();
   const { isInitialized: sedeInitialized, loading: sedeLoading } = useSede();
 
@@ -61,6 +63,13 @@ const CleaningCalendar = () => {
     setIsExtraordinaryServiceModalOpen,
   } = useCalendarLogic();
   
+  // Track if we've loaded data at least once to avoid full-screen loading on refetches
+  useEffect(() => {
+    if (tasks.length > 0 || cleaners.length > 0) {
+      hasLoadedOnce.current = true;
+    }
+  }, [tasks.length, cleaners.length]);
+
   // Separate tasks into assigned and unassigned
   const assignedTasks = tasks.filter(task => task.cleanerId && task.cleaner);
   const unassignedTasks = tasks.filter(task => !task.cleanerId && !task.cleaner);
@@ -102,14 +111,19 @@ const CleaningCalendar = () => {
     );
   }
 
-  if (isLoading && (!tasks || tasks.length === 0)) {
-    console.log('🔄 CleaningCalendar: Showing loading spinner', { isLoading, tasksLength: tasks?.length || 0 });
+  // Only show full-screen loading on the very first load, not during refetches
+  const isInitialLoad = !hasLoadedOnce.current && isLoading && (!tasks || tasks.length === 0);
+  if (isInitialLoad) {
+    console.log('🔄 CleaningCalendar: Showing initial loading spinner', { isLoading, tasksLength: tasks?.length || 0 });
     return (
       <div className="flex items-center justify-center h-screen bg-background">
         <LoadingSpinner size="lg" text="Cargando calendario..." />
       </div>
     );
   }
+
+  // Show subtle loading indicator during refetches (non-blocking)
+  const isRefetching = hasLoadedOnce.current && isLoading;
 
   console.log('🎯 CleaningCalendar: Determining view to render', {
     isMobile,
@@ -144,7 +158,14 @@ const CleaningCalendar = () => {
       
       return (
         <>
-          <div className="min-h-screen bg-background text-foreground transition-colors duration-300">
+          <div className="min-h-screen bg-background text-foreground transition-colors duration-300 relative">
+            {/* Subtle loading indicator during refetches */}
+            {isRefetching && (
+              <div className="fixed top-4 right-4 z-50 flex items-center gap-2 bg-background/90 backdrop-blur-sm border rounded-lg px-3 py-2 shadow-md">
+                <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                <span className="text-sm text-muted-foreground">Actualizando...</span>
+              </div>
+            )}
             <CleanerMobileCalendar
               currentDate={currentDate}
               onNavigateDate={navigateDate}
@@ -193,7 +214,14 @@ const CleaningCalendar = () => {
       
       return (
         <>
-          <div className="min-h-screen bg-background text-foreground transition-colors duration-300">
+          <div className="min-h-screen bg-background text-foreground transition-colors duration-300 relative">
+            {/* Subtle loading indicator during refetches */}
+            {isRefetching && (
+              <div className="fixed top-4 right-4 z-50 flex items-center gap-2 bg-background/90 backdrop-blur-sm border rounded-lg px-3 py-2 shadow-md">
+                <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                <span className="text-sm text-muted-foreground">Actualizando...</span>
+              </div>
+            )}
             <ManagerMobileCalendar
               currentDate={currentDate}
               tasks={tasks}
@@ -248,6 +276,13 @@ const CleaningCalendar = () => {
     
     return (
       <>
+        {/* Subtle loading indicator during refetches */}
+        {isRefetching && (
+          <div className="fixed top-4 right-4 z-50 flex items-center gap-2 bg-background/90 backdrop-blur-sm border rounded-lg px-3 py-2 shadow-md">
+            <Loader2 className="h-4 w-4 animate-spin text-primary" />
+            <span className="text-sm text-muted-foreground">Actualizando...</span>
+          </div>
+        )}
         <CleanerDesktopCalendar
           currentDate={currentDate}
           onNavigateDate={navigateDate}
@@ -299,7 +334,14 @@ const CleaningCalendar = () => {
   });
   
   return (
-    <div className="min-h-screen bg-background text-foreground transition-colors duration-300">
+    <div className="min-h-screen bg-background text-foreground transition-colors duration-300 relative">
+      {/* Subtle loading indicator during refetches */}
+      {isRefetching && (
+        <div className="fixed top-4 right-4 z-50 flex items-center gap-2 bg-background/90 backdrop-blur-sm border rounded-lg px-3 py-2 shadow-md">
+          <Loader2 className="h-4 w-4 animate-spin text-primary" />
+          <span className="text-sm text-muted-foreground">Actualizando...</span>
+        </div>
+      )}
       <div className="space-y-4 px-2 py-4 max-w-full">        
         {/* Enhanced Responsive Header */}
         <ResponsiveCalendarHeader
