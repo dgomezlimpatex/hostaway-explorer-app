@@ -1,4 +1,3 @@
-
 import {
   Dialog,
   DialogContent,
@@ -11,9 +10,10 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { Task } from "@/types/calendar";
 import { Badge } from "@/components/ui/badge";
-import { Calendar, Clock, Users } from "lucide-react";
+import { Calendar, Clock, Users, User } from "lucide-react";
 import { MultiPropertySelector } from "./batch-create/MultiPropertySelector";
 import { BatchTaskForm } from "./batch-create/BatchTaskForm";
+import { BatchCleanerAssignment } from "./batch-create/BatchCleanerAssignment";
 import { useBatchCreateTask } from "./batch-create/useBatchCreateTask";
 
 interface BatchCreateTaskModalProps {
@@ -36,7 +36,10 @@ export const BatchCreateTaskModal = ({
     setSelectedClientId,
     batchData,
     updateBatchData,
+    assignmentConfig,
+    setAssignmentConfig,
     generateTasksFromBatch,
+    getSchedulePreview,
     resetBatchForm
   } = useBatchCreateTask();
 
@@ -61,14 +64,39 @@ export const BatchCreateTaskModal = ({
       return;
     }
 
+    // Validate assignment config
+    if (assignmentConfig.mode === 'single' && !assignmentConfig.selectedCleanerId) {
+      toast({
+        title: "Error",
+        description: "Debes seleccionar un cleaner para asignar las tareas.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (assignmentConfig.mode === 'distributed' && assignmentConfig.selectedCleanerIds.length === 0) {
+      toast({
+        title: "Error",
+        description: "Debes seleccionar al menos un cleaner para distribuir las tareas.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     const tasks = generateTasksFromBatch();
     onCreateTasks(tasks);
     onOpenChange(false);
     resetBatchForm();
     
+    const assignmentMessage = assignmentConfig.mode === 'none' 
+      ? 'sin asignar'
+      : assignmentConfig.mode === 'single'
+        ? 'asignadas a un cleaner'
+        : `distribuidas entre ${assignmentConfig.selectedCleanerIds.length} cleaners`;
+    
     toast({
       title: "Tareas creadas",
-      description: `Se han creado ${tasks.length} tareas correctamente.`,
+      description: `Se han creado ${tasks.length} tareas ${assignmentMessage}.`,
     });
   };
 
@@ -77,16 +105,24 @@ export const BatchCreateTaskModal = ({
     resetBatchForm();
   };
 
+  const schedulePreview = getSchedulePreview();
+
+  const getAssignmentLabel = () => {
+    if (assignmentConfig.mode === 'none') return 'Sin asignar';
+    if (assignmentConfig.mode === 'single') return 'Asignar a un cleaner';
+    return `Distribuir entre ${assignmentConfig.selectedCleanerIds.length} cleaners`;
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[800px] max-h-[95vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-[900px] max-h-[95vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="text-xl font-bold text-blue-700 flex items-center gap-2">
+          <DialogTitle className="text-xl font-bold text-primary flex items-center gap-2">
             <Users className="h-5 w-5" />
             Crear Múltiples Tareas
           </DialogTitle>
           <DialogDescription>
-            Selecciona múltiples propiedades y configura los datos comunes para crear varias tareas a la vez.
+            Selecciona propiedades, configura datos comunes y asigna cleaners para crear varias tareas a la vez.
           </DialogDescription>
         </DialogHeader>
         
@@ -102,7 +138,7 @@ export const BatchCreateTaskModal = ({
           {selectedProperties.length > 0 && (
             <>
               <div className="border-t pt-4">
-                <h3 className="font-medium text-gray-900 mb-3 flex items-center gap-2">
+                <h3 className="font-medium text-foreground mb-3 flex items-center gap-2">
                   <Calendar className="h-4 w-4" />
                   Configuración común para todas las tareas
                 </h3>
@@ -112,17 +148,66 @@ export const BatchCreateTaskModal = ({
                 />
               </div>
 
-              {/* Resumen */}
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                <h4 className="font-medium text-blue-900 mb-2 flex items-center gap-2">
+              {/* Asignación de Cleaners */}
+              <div className="border-t pt-4">
+                <BatchCleanerAssignment
+                  config={assignmentConfig}
+                  onConfigChange={setAssignmentConfig}
+                  taskCount={selectedProperties.length}
+                />
+              </div>
+
+              {/* Resumen Mejorado */}
+              <div className="bg-primary/5 border border-primary/20 rounded-lg p-4">
+                <h4 className="font-medium text-primary mb-3 flex items-center gap-2">
                   <Clock className="h-4 w-4" />
                   Resumen
                 </h4>
-                <div className="text-sm text-blue-800 space-y-1">
-                  <p>Se crearán <Badge variant="secondary">{selectedProperties.length}</Badge> tareas</p>
-                  <p>Fecha: <span className="font-medium">{batchData.date}</span></p>
-                  <p>Horario: <span className="font-medium">{batchData.startTime} - {batchData.endTime}</span></p>
-                  <p>Tipo: <span className="font-medium">{batchData.type}</span></p>
+                <div className="text-sm space-y-2">
+                  <div className="flex items-center gap-2">
+                    <span className="text-muted-foreground">Tareas a crear:</span>
+                    <Badge variant="secondary">{selectedProperties.length}</Badge>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-muted-foreground">Fecha:</span>
+                    <span className="font-medium">{batchData.date}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-muted-foreground">Tipo:</span>
+                    <span className="font-medium">{batchData.type}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-muted-foreground">Asignación:</span>
+                    <Badge variant={assignmentConfig.mode === 'none' ? 'outline' : 'default'}>
+                      {getAssignmentLabel()}
+                    </Badge>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-muted-foreground">Horarios:</span>
+                    <span className="font-medium">
+                      {assignmentConfig.autoScale ? 'Escalonados automáticamente' : 'Mismo horario'}
+                    </span>
+                  </div>
+
+                  {/* Vista previa de distribución */}
+                  {schedulePreview.length > 0 && (
+                    <div className="mt-3 pt-3 border-t border-primary/10">
+                      <p className="text-xs font-medium text-muted-foreground mb-2 flex items-center gap-1">
+                        <User className="h-3 w-3" />
+                        Vista previa de horarios:
+                      </p>
+                      <div className="space-y-1">
+                        {schedulePreview.map((item, idx) => (
+                          <div key={idx} className="text-xs flex justify-between bg-background/50 p-2 rounded">
+                            <span className="font-medium">{item.cleanerName}</span>
+                            <span className="text-muted-foreground">
+                              {item.taskCount} tareas ({item.startTime} - {item.endTime})
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             </>
@@ -135,7 +220,6 @@ export const BatchCreateTaskModal = ({
             <Button 
               type="submit" 
               disabled={selectedProperties.length === 0}
-              className="bg-blue-600 hover:bg-blue-700"
             >
               Crear {selectedProperties.length} Tareas
             </Button>
