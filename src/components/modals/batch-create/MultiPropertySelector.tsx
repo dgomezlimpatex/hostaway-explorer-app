@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
-import { Building, MapPin } from "lucide-react";
+import { Building } from "lucide-react";
 import { useClients } from '@/hooks/useClients';
 import { useProperties } from '@/hooks/useProperties';
 import { ClientPropertySelector } from '../ClientPropertySelector';
@@ -92,30 +92,23 @@ export const MultiPropertySelector = ({
             </div>
           </CardHeader>
           <CardContent className="max-h-[50vh] overflow-y-auto">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+            <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-2">
               {availableProperties.map((property) => (
                 <div
                   key={property.id}
-                  className="flex items-center space-x-3 p-2 rounded-lg hover:bg-muted/50 border border-border"
+                  className="flex items-center space-x-2 p-2 rounded-lg hover:bg-muted/50 border border-border"
                 >
                   <Checkbox
                     checked={selectedProperties.includes(property.id)}
                     onCheckedChange={() => handlePropertyToggle(property.id)}
                   />
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium text-sm">{property.codigo}</span>
-                      <span className="text-muted-foreground text-sm">-</span>
-                      <span className="text-foreground text-sm truncate">{property.nombre}</span>
+                    <div className="font-medium text-sm">
+                      {property.codigo} - {property.nombre}
                     </div>
-                    <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
-                      <MapPin className="h-3 w-3" />
-                      <span className="truncate">{property.direccion}</span>
+                    <div className="flex items-center justify-between text-xs text-muted-foreground mt-0.5">
+                      <span>{property.costeServicio}€ · {property.duracionServicio}min</span>
                     </div>
-                  </div>
-                  <div className="text-right text-xs text-muted-foreground">
-                    <div>{property.costeServicio}€</div>
-                    <div>{property.duracionServicio}min</div>
                   </div>
                 </div>
               ))}
