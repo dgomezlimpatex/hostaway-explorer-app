@@ -169,14 +169,51 @@ export const ManagerDashboard = () => {
 
   const handleCreateExtraordinaryService = useCallback(async (serviceData) => {
     try {
-      console.log('Creating extraordinary service:', serviceData);
-      // Aquí se implementará la lógica para crear el servicio extraordinario
-      // Por ahora, mostramos un mensaje de éxito
+      console.log('🟢 ManagerDashboard - Creating extraordinary service:', serviceData);
+      
+      // Convert extraordinary service data to task format
+      const localDate = serviceData.serviceDate;
+      const formattedDate = `${localDate.getFullYear()}-${String(localDate.getMonth() + 1).padStart(2, '0')}-${String(localDate.getDate()).padStart(2, '0')}`;
+      
+      const taskData = {
+        date: formattedDate,
+        startTime: '09:00',
+        endTime: (() => {
+          const startMinutes = 9 * 60;
+          const endMinutes = startMinutes + serviceData.serviceDuration;
+          const endHours = Math.floor(endMinutes / 60);
+          const endMins = endMinutes % 60;
+          return `${endHours.toString().padStart(2, '0')}:${endMins.toString().padStart(2, '0')}`;
+        })(),
+        checkIn: '09:00',
+        checkOut: '09:00',
+        property: serviceData.serviceName,
+        address: serviceData.serviceAddress,
+        type: 'trabajo-extraordinario',
+        status: 'pending',
+        cleaner: '',
+        cleanerId: undefined,
+        duration: serviceData.serviceDuration,
+        cost: serviceData.serviceCost,
+        paymentMethod: 'transferencia',
+        supervisor: '',
+        backgroundColor: '#8B5CF6',
+        notes: serviceData.notes || '',
+        clienteId: null,
+        propertyId: null,
+        extraordinaryClientName: serviceData.clientName,
+        extraordinaryClientEmail: serviceData.email,
+        extraordinaryClientPhone: serviceData.phoneNumber,
+        extraordinaryBillingAddress: serviceData.billingAddress,
+      };
+
+      console.log('🟢 ManagerDashboard - Task data to create:', taskData);
+      await handleCreateTask(taskData);
       setIsExtraordinaryServiceModalOpen(false);
     } catch (error) {
-      console.error('Error creating extraordinary service:', error);
+      console.error('❌ ManagerDashboard - Error creating extraordinary service:', error);
     }
-  }, []);
+  }, [handleCreateTask]);
 
   const handleOpenExtraordinaryServiceModal = useCallback(() => {
     setIsExtraordinaryServiceModalOpen(true);
