@@ -103,11 +103,11 @@ export const MultiPropertySelector = ({
             </div>
           </CardHeader>
           <CardContent className="max-h-[50vh] overflow-y-auto">
-            <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-2">
+            <div className="columns-1 lg:columns-2 xl:columns-3 gap-2 space-y-2">
               {availableProperties.map((property) => (
                 <div
                   key={property.id}
-                  className="flex items-center space-x-2 p-2 rounded-lg hover:bg-muted/50 border border-border"
+                  className="flex items-center space-x-2 p-2 rounded-lg hover:bg-muted/50 border border-border break-inside-avoid"
                 >
                   <Checkbox
                     checked={selectedProperties.includes(property.id)}
