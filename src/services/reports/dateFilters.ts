@@ -31,14 +31,17 @@ export const filterTasksByDateRange = (tasks: any[], filters: ReportFilters) => 
 
 export const applyAdditionalFilters = (tasks: any[], filters: ReportFilters, properties: any[]) => {
   return tasks.filter(task => {
-    if (filters.cleanerId && task.cleaner_id !== filters.cleanerId) return false;
+    // Filtro por cleaner (cleanerId en camelCase por mapper)
+    if (filters.cleanerId && task.cleanerId !== filters.cleanerId) return false;
+    
+    // Filtro por cliente
     if (filters.clientId) {
-      // Buscar propiedad por ID (propiedad_id) o por nombre como fallback
+      // Buscar propiedad por ID (propertyId en camelCase por mapper) o por nombre como fallback
       const property = properties.find(p => 
-        p.id === task.propiedad_id || p.nombre === task.property
+        p.id === task.propertyId || p.nombre === task.property
       );
-      // Verificar clienteId de la propiedad (camelCase por mapper) o cliente_id directo de la tarea (snake_case de DB)
-      const taskClientId = property?.clienteId || task.cliente_id;
+      // Verificar clienteId de la propiedad o de la tarea (ambos en camelCase por mapper)
+      const taskClientId = property?.clienteId || task.clienteId;
       if (taskClientId !== filters.clientId) return false;
     }
     return true;
