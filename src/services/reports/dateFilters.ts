@@ -31,10 +31,15 @@ export const filterTasksByDateRange = (tasks: any[], filters: ReportFilters) => 
 
 export const applyAdditionalFilters = (tasks: any[], filters: ReportFilters, properties: any[]) => {
   return tasks.filter(task => {
-    if (filters.cleanerId && task.cleaner !== filters.cleanerId) return false;
+    if (filters.cleanerId && task.cleaner_id !== filters.cleanerId) return false;
     if (filters.clientId) {
-      const property = properties.find(p => p.nombre === task.property);
-      if (!property || property.clienteId !== filters.clientId) return false;
+      // Buscar propiedad por ID (propiedad_id) o por nombre como fallback
+      const property = properties.find(p => 
+        p.id === task.propiedad_id || p.nombre === task.property
+      );
+      // Verificar cliente_id de la propiedad o cliente_id directo de la tarea
+      const taskClientId = property?.cliente_id || task.cliente_id;
+      if (taskClientId !== filters.clientId) return false;
     }
     return true;
   });
