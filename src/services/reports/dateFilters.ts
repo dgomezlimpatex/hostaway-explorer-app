@@ -37,8 +37,8 @@ export const applyAdditionalFilters = (tasks: any[], filters: ReportFilters, pro
       const property = properties.find(p => 
         p.id === task.propiedad_id || p.nombre === task.property
       );
-      // Verificar cliente_id de la propiedad o cliente_id directo de la tarea
-      const taskClientId = property?.cliente_id || task.cliente_id;
+      // Verificar clienteId de la propiedad (camelCase por mapper) o cliente_id directo de la tarea (snake_case de DB)
+      const taskClientId = property?.clienteId || task.cliente_id;
       if (taskClientId !== filters.clientId) return false;
     }
     return true;
