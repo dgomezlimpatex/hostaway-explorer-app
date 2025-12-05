@@ -106,12 +106,14 @@ const NewTasksAlert = ({
   dateStart, 
   dateEnd, 
   snapshotTaskIds,
+  originalTaskIds,
   filters,
   onEditClick
 }: { 
   dateStart: string; 
   dateEnd: string;
   snapshotTaskIds: string[];
+  originalTaskIds: string[];
   filters?: Record<string, any>;
   onEditClick: () => void;
 }) => {
@@ -119,8 +121,8 @@ const NewTasksAlert = ({
   const sedeIds = filters?.sedeIds || (filters?.sedeId ? [filters.sedeId] : undefined);
   
   const { data: changes } = useQuery({
-    queryKey: ['share-link-changes', dateStart, dateEnd, snapshotTaskIds, sedeIds],
-    queryFn: () => detectTaskChanges(snapshotTaskIds, dateStart, dateEnd, sedeIds),
+    queryKey: ['share-link-changes', dateStart, dateEnd, originalTaskIds, snapshotTaskIds, sedeIds],
+    queryFn: () => detectTaskChanges(originalTaskIds, snapshotTaskIds, dateStart, dateEnd, sedeIds),
     staleTime: 30000, // 30 seconds
     refetchInterval: 60000, // Refetch every minute
   });
@@ -338,6 +340,7 @@ const LaundryShareManagement = () => {
                                 dateStart={link.dateStart}
                                 dateEnd={link.dateEnd}
                                 snapshotTaskIds={link.snapshotTaskIds}
+                                originalTaskIds={link.originalTaskIds}
                                 filters={link.filters}
                                 onEditClick={() => handleEditClick(link)}
                               />

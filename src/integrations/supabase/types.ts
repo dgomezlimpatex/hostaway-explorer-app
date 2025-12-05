@@ -996,6 +996,7 @@ export type Database = {
           id: string
           is_active: boolean
           is_permanent: boolean
+          original_task_ids: string[] | null
           snapshot_task_ids: string[] | null
           token: string
           updated_at: string
@@ -1010,6 +1011,7 @@ export type Database = {
           id?: string
           is_active?: boolean
           is_permanent?: boolean
+          original_task_ids?: string[] | null
           snapshot_task_ids?: string[] | null
           token: string
           updated_at?: string
@@ -1024,6 +1026,7 @@ export type Database = {
           id?: string
           is_active?: boolean
           is_permanent?: boolean
+          original_task_ids?: string[] | null
           snapshot_task_ids?: string[] | null
           token?: string
           updated_at?: string
