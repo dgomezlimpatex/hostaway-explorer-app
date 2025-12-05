@@ -19,6 +19,7 @@ interface TaskItem {
   id: string;
   property: string;
   code: string;
+  clientName: string;
   date: string;
   checkOut: string;
 }
@@ -45,7 +46,10 @@ export const LaundryShareEditModal = ({
           property,
           date,
           check_out,
-          properties (codigo)
+          properties (
+            codigo,
+            clients (nombre)
+          )
         `)
         .gte('date', shareLink.dateStart)
         .lte('date', shareLink.dateEnd);
@@ -68,6 +72,7 @@ export const LaundryShareEditModal = ({
         id: t.id,
         property: t.property,
         code: (t.properties as any)?.codigo || '',
+        clientName: (t.properties as any)?.clients?.nombre || '',
         date: t.date,
         checkOut: t.check_out,
       })) as TaskItem[];
@@ -203,6 +208,11 @@ export const LaundryShareEditModal = ({
                               <span className="font-medium truncate">
                                 {task.code || task.property}
                               </span>
+                              {task.clientName && (
+                                <span className="text-xs text-muted-foreground truncate">
+                                  ({task.clientName})
+                                </span>
+                              )}
                             </div>
                             <div className="text-xs text-muted-foreground mt-1">
                               Check-out: {task.checkOut}
