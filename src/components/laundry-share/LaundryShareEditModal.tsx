@@ -3,7 +3,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Loader2, Trash2, Home, Calendar } from 'lucide-react';
+import { Loader2, Trash2, Home, Calendar, Sparkles } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -173,10 +174,14 @@ export const LaundryShareEditModal = ({
             </div>
             <ScrollArea className="h-[600px] pr-4">
               <div className="columns-1 md:columns-2 xl:columns-3 gap-4">
-                {(() => {
+              {(() => {
                   let lastDate = '';
+                  // Determine which tasks are truly new (not in originalTaskIds)
+                  const originalTaskSet = new Set(shareLink?.originalTaskIds || []);
+                  
                   return tasks.map(task => {
                     const isIncluded = !excludedTasks.has(task.id);
+                    const isNewTask = originalTaskSet.size > 0 && !originalTaskSet.has(task.id);
                     const showDateHeader = task.date !== lastDate;
                     lastDate = task.date;
                     
@@ -192,9 +197,11 @@ export const LaundryShareEditModal = ({
                         )}
                         <div
                           className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
-                            isIncluded 
-                              ? 'bg-card hover:bg-muted/50' 
-                              : 'bg-muted/30 opacity-60'
+                            isNewTask
+                              ? 'bg-emerald-500/10 border-emerald-500/50 hover:bg-emerald-500/20'
+                              : isIncluded 
+                                ? 'bg-card hover:bg-muted/50' 
+                                : 'bg-muted/30 opacity-60'
                           }`}
                           onClick={() => toggleTask(task.id)}
                         >
@@ -212,6 +219,12 @@ export const LaundryShareEditModal = ({
                                 <span className="text-xs text-muted-foreground truncate">
                                   ({task.clientName})
                                 </span>
+                              )}
+                              {isNewTask && (
+                                <Badge className="bg-emerald-500 hover:bg-emerald-600 text-white text-[10px] px-1.5 py-0 h-4 shrink-0">
+                                  <Sparkles className="h-2.5 w-2.5 mr-0.5" />
+                                  Nueva
+                                </Badge>
                               )}
                             </div>
                             <div className="text-xs text-muted-foreground mt-1">
