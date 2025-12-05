@@ -18,11 +18,13 @@ import {
   Clock,
   AlertCircle,
   RefreshCw,
-  Home
+  Home,
+  Pencil
 } from 'lucide-react';
 import { useLaundryShareLinks, LaundryShareLink } from '@/hooks/useLaundryShareLinks';
 import { useLaundryTracking } from '@/hooks/useLaundryTracking';
 import { LaundryShareLinkModal } from '@/components/laundry-share/LaundryShareLinkModal';
+import { LaundryShareEditModal } from '@/components/laundry-share/LaundryShareEditModal';
 import { 
   copyShareLinkToClipboard, 
   getShareLinkUrl, 
@@ -47,21 +49,36 @@ import {
 } from '@/components/ui/alert-dialog';
 
 // Component to show properties for a share link
-const ShareLinkProperties = ({ dateStart, dateEnd }: { dateStart: string; dateEnd: string }) => {
+const ShareLinkProperties = ({ 
+  dateStart, 
+  dateEnd,
+  snapshotTaskIds 
+}: { 
+  dateStart: string; 
+  dateEnd: string;
+  snapshotTaskIds: string[];
+}) => {
   const { data: properties, isLoading } = useQuery({
-    queryKey: ['share-link-properties', dateStart, dateEnd],
+    queryKey: ['share-link-properties', dateStart, dateEnd, snapshotTaskIds],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('tasks')
-        .select('property, propiedad_id')
+        .select('id, property, properties(codigo)')
         .gte('date', dateStart)
         .lte('date', dateEnd);
 
       if (error) throw error;
       
-      // Get unique property names
-      const uniqueProperties = [...new Set(data?.map(t => t.property) || [])];
-      return uniqueProperties;
+      // Filter to only include tasks in the snapshot
+      const snapshotSet = new Set(snapshotTaskIds);
+      const includedTasks = (data || []).filter(t => snapshotSet.has(t.id));
+      
+      // Get unique property codes, sorted alphabetically
+      const uniqueCodes = [...new Set(includedTasks.map(t => 
+        (t.properties as any)?.codigo || t.property
+      ))].sort((a, b) => a.localeCompare(b, 'es', { numeric: true }));
+      
+      return uniqueCodes;
     },
   });
 
@@ -111,6 +128,7 @@ const LaundryShareManagement = () => {
   const navigate = useNavigate();
   const { shareLinks, isLoading, refetch, deactivateShareLink } = useLaundryShareLinks();
   const [createModalOpen, setCreateModalOpen] = useState(false);
+  const [editModalOpen, setEditModalOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedLink, setSelectedLink] = useState<LaundryShareLink | null>(null);
   
@@ -126,6 +144,11 @@ const LaundryShareManagement = () => {
         description: 'Ya puedes compartirlo por WhatsApp',
       });
     }
+  };
+
+  const handleEditClick = (link: LaundryShareLink) => {
+    setSelectedLink(link);
+    setEditModalOpen(true);
   };
 
   const handleDeleteClick = (link: LaundryShareLink) => {
@@ -256,11 +279,23 @@ const LaundryShareManagement = () => {
                             {getShareLinkUrl(link.token)}
                           </div>
                           
-                          <ShareLinkProperties dateStart={link.dateStart} dateEnd={link.dateEnd} />
+                          <ShareLinkProperties 
+                            dateStart={link.dateStart} 
+                            dateEnd={link.dateEnd} 
+                            snapshotTaskIds={link.snapshotTaskIds}
+                          />
                           <ShareLinkStats shareLinkId={link.id} />
                         </div>
                         
                         <div className="flex items-center gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleEditClick(link)}
+                          >
+                            <Pencil className="h-4 w-4 mr-1" />
+                            Editar
+                          </Button>
                           <Button
                             variant="outline"
                             size="sm"
@@ -307,6 +342,13 @@ const LaundryShareManagement = () => {
           onOpenChange={setCreateModalOpen}
           dateStart={dateStart}
           dateEnd={dateEnd}
+        />
+
+        {/* Edit modal */}
+        <LaundryShareEditModal
+          open={editModalOpen}
+          onOpenChange={setEditModalOpen}
+          shareLink={selectedLink}
         />
 
         {/* Delete confirmation dialog */}

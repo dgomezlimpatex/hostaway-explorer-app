@@ -53,6 +53,7 @@ const PublicLaundryView = () => {
           check_out,
           propiedad_id,
           properties (
+            codigo,
             numero_sabanas,
             numero_sabanas_pequenas,
             numero_sabanas_suite,
@@ -69,35 +70,38 @@ const PublicLaundryView = () => {
           )
         `)
         .gte('date', shareLink.dateStart)
-        .lte('date', shareLink.dateEnd)
-        .order('date', { ascending: true })
-        .order('check_out', { ascending: true });
+        .lte('date', shareLink.dateEnd);
 
       if (error) throw error;
-      return data || [];
+      
+      // Sort by property code alphabetically
+      const sorted = (data || []).sort((a, b) => {
+        const codeA = (a.properties as any)?.codigo || a.property || '';
+        const codeB = (b.properties as any)?.codigo || b.property || '';
+        return codeA.localeCompare(codeB, 'es', { numeric: true });
+      });
+      
+      return sorted;
     },
     enabled: !!shareLink,
   });
 
-  // Map tasks to LaundryTask format with change detection
+  // Map tasks to LaundryTask format - only include tasks in the snapshot
   const tasks: LaundryTask[] = useMemo(() => {
     if (!tasksData || !shareLink) return [];
 
     const snapshotSet = new Set(shareLink.snapshotTaskIds);
-    const currentIds = new Set(tasksData.map(t => t.id));
 
-    const mappedTasks = tasksData.map(task => {
+    // Filter to only include tasks that are in the snapshot (manager-approved tasks)
+    const includedTasks = tasksData.filter(task => snapshotSet.has(task.id));
+
+    const mappedTasks = includedTasks.map(task => {
       const prop = task.properties as any;
-      let changeStatus: 'new' | 'modified' | undefined;
-      
-      if (!snapshotSet.has(task.id)) {
-        changeStatus = 'new';
-      }
-      // Note: 'modified' detection would require storing more snapshot data
 
       return {
         id: task.id,
         property: task.property,
+        propertyCode: prop?.codigo || task.property,
         address: task.address,
         date: task.date,
         checkIn: task.check_in,
@@ -115,14 +119,8 @@ const PublicLaundryView = () => {
         shampoo: prop?.champu || 0,
         conditioner: prop?.acondicionador || 0,
         toiletPaper: prop?.papel_higienico || 0,
-        changeStatus,
       } as LaundryTask;
     });
-
-    // Add removed tasks from snapshot
-    const removedTaskIds = shareLink.snapshotTaskIds.filter(id => !currentIds.has(id));
-    // Note: We can't show removed tasks without fetching them separately
-    // For now, we'll skip showing removed tasks in the public view
 
     return mappedTasks;
   }, [tasksData, shareLink]);
