@@ -1,13 +1,12 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useLaundryShareLinkByToken } from '@/hooks/useLaundryShareLinks';
 import { useLaundryTracking, LaundryDeliveryStatus } from '@/hooks/useLaundryTracking';
 import { LaundryDeliveryCard, LaundryTask } from '@/components/laundry-share/LaundryDeliveryCard';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
-import { Loader2, AlertCircle, Package, Truck, CheckCircle2, RefreshCw, Filter } from 'lucide-react';
+import { Loader2, AlertCircle, Package, CheckCircle2, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { formatDateRange } from '@/services/laundryShareService';
 import { Toaster } from '@/components/ui/toaster';
@@ -49,8 +48,9 @@ const PublicLaundryView = () => {
           property,
           address,
           date,
-          check_in,
-          check_out,
+          start_time,
+          end_time,
+          cleaner,
           propiedad_id,
           properties (
             codigo,
@@ -104,8 +104,8 @@ const PublicLaundryView = () => {
         propertyCode: prop?.codigo || task.property,
         address: task.address,
         date: task.date,
-        checkIn: task.check_in,
-        checkOut: task.check_out,
+        serviceTime: `${task.start_time} - ${task.end_time}`,
+        cleaner: task.cleaner || undefined,
         sheets: prop?.numero_sabanas || 0,
         sheetsSmall: prop?.numero_sabanas_pequenas || 0,
         sheetsSuite: prop?.numero_sabanas_suite || 0,
@@ -148,12 +148,10 @@ const PublicLaundryView = () => {
     });
   }, [tasks, filterDate, filterStatus, getTaskTracking]);
 
-  // Handle status update
+  // Handle status update - simplified, no name required
   const handleStatusUpdate = async (
     taskId: string, 
-    status: LaundryDeliveryStatus, 
-    personName: string, 
-    notes?: string
+    status: LaundryDeliveryStatus
   ) => {
     if (!shareLink) return;
 
@@ -161,8 +159,7 @@ const PublicLaundryView = () => {
       shareLinkId: shareLink.id,
       taskId,
       status,
-      personName,
-      notes,
+      personName: 'Repartidor', // Default name since we no longer ask
     });
   };
 
