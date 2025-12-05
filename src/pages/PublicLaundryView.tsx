@@ -1,0 +1,316 @@
+import { useEffect, useMemo, useState } from 'react';
+import { useParams } from 'react-router-dom';
+import { useLaundryShareLinkByToken } from '@/hooks/useLaundryShareLinks';
+import { useLaundryTracking, LaundryDeliveryStatus } from '@/hooks/useLaundryTracking';
+import { LaundryDeliveryCard, LaundryTask } from '@/components/laundry-share/LaundryDeliveryCard';
+import { supabase } from '@/integrations/supabase/client';
+import { useQuery } from '@tanstack/react-query';
+import { Loader2, AlertCircle, Package, Truck, CheckCircle2, RefreshCw, Filter } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { formatDateRange } from '@/services/laundryShareService';
+import { Toaster } from '@/components/ui/toaster';
+
+type FilterStatus = 'all' | 'pending' | 'prepared' | 'delivered';
+
+const PublicLaundryView = () => {
+  const { token } = useParams<{ token: string }>();
+  const [filterStatus, setFilterStatus] = useState<FilterStatus>('all');
+  const [filterDate, setFilterDate] = useState<string>('all');
+
+  // Fetch share link data
+  const { 
+    data: shareLink, 
+    isLoading: isLoadingLink, 
+    error: linkError 
+  } = useLaundryShareLinkByToken(token);
+
+  // Fetch tracking data
+  const { 
+    trackingData, 
+    isLoading: isLoadingTracking, 
+    updateTracking, 
+    getTaskTracking,
+    stats,
+    refetch: refetchTracking 
+  } = useLaundryTracking(shareLink?.id);
+
+  // Fetch tasks for the share link's date range
+  const { data: tasksData, isLoading: isLoadingTasks, refetch: refetchTasks } = useQuery({
+    queryKey: ['public-laundry-tasks', shareLink?.id],
+    queryFn: async () => {
+      if (!shareLink) return [];
+
+      const { data, error } = await supabase
+        .from('tasks')
+        .select(`
+          id,
+          property,
+          address,
+          date,
+          check_in,
+          check_out,
+          propiedad_id,
+          properties (
+            numero_sabanas,
+            numero_sabanas_pequenas,
+            numero_sabanas_suite,
+            numero_fundas_almohada,
+            numero_toallas_grandes,
+            numero_toallas_pequenas,
+            numero_alfombrines,
+            kit_alimentario,
+            jabon_liquido,
+            gel_ducha,
+            champu,
+            acondicionador,
+            papel_higienico
+          )
+        `)
+        .gte('date', shareLink.dateStart)
+        .lte('date', shareLink.dateEnd)
+        .in('type', ['limpieza', 'check', 'mantenimiento'])
+        .order('date', { ascending: true })
+        .order('check_out', { ascending: true });
+
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!shareLink,
+  });
+
+  // Map tasks to LaundryTask format with change detection
+  const tasks: LaundryTask[] = useMemo(() => {
+    if (!tasksData || !shareLink) return [];
+
+    const snapshotSet = new Set(shareLink.snapshotTaskIds);
+    const currentIds = new Set(tasksData.map(t => t.id));
+
+    const mappedTasks = tasksData.map(task => {
+      const prop = task.properties as any;
+      let changeStatus: 'new' | 'modified' | undefined;
+      
+      if (!snapshotSet.has(task.id)) {
+        changeStatus = 'new';
+      }
+      // Note: 'modified' detection would require storing more snapshot data
+
+      return {
+        id: task.id,
+        property: task.property,
+        address: task.address,
+        date: task.date,
+        checkIn: task.check_in,
+        checkOut: task.check_out,
+        sheets: prop?.numero_sabanas || 0,
+        sheetsSmall: prop?.numero_sabanas_pequenas || 0,
+        sheetsSuite: prop?.numero_sabanas_suite || 0,
+        pillowCases: prop?.numero_fundas_almohada || 0,
+        towelsLarge: prop?.numero_toallas_grandes || 0,
+        towelsSmall: prop?.numero_toallas_pequenas || 0,
+        bathMats: prop?.numero_alfombrines || 0,
+        foodKit: prop?.kit_alimentario || 0,
+        soapLiquid: prop?.jabon_liquido || 0,
+        showerGel: prop?.gel_ducha || 0,
+        shampoo: prop?.champu || 0,
+        conditioner: prop?.acondicionador || 0,
+        toiletPaper: prop?.papel_higienico || 0,
+        changeStatus,
+      } as LaundryTask;
+    });
+
+    // Add removed tasks from snapshot
+    const removedTaskIds = shareLink.snapshotTaskIds.filter(id => !currentIds.has(id));
+    // Note: We can't show removed tasks without fetching them separately
+    // For now, we'll skip showing removed tasks in the public view
+
+    return mappedTasks;
+  }, [tasksData, shareLink]);
+
+  // Get unique dates for filter
+  const uniqueDates = useMemo(() => {
+    const dates = [...new Set(tasks.map(t => t.date))];
+    return dates.sort();
+  }, [tasks]);
+
+  // Filter tasks
+  const filteredTasks = useMemo(() => {
+    return tasks.filter(task => {
+      // Date filter
+      if (filterDate !== 'all' && task.date !== filterDate) return false;
+
+      // Status filter
+      if (filterStatus !== 'all') {
+        const tracking = getTaskTracking(task.id);
+        const status = tracking?.status || 'pending';
+        if (status !== filterStatus) return false;
+      }
+
+      return true;
+    });
+  }, [tasks, filterDate, filterStatus, getTaskTracking]);
+
+  // Handle status update
+  const handleStatusUpdate = async (
+    taskId: string, 
+    status: LaundryDeliveryStatus, 
+    personName: string, 
+    notes?: string
+  ) => {
+    if (!shareLink) return;
+
+    await updateTracking.mutateAsync({
+      shareLinkId: shareLink.id,
+      taskId,
+      status,
+      personName,
+      notes,
+    });
+  };
+
+  // Refresh data
+  const handleRefresh = () => {
+    refetchTasks();
+    refetchTracking();
+  };
+
+  // Loading state
+  if (isLoadingLink || isLoadingTasks) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="text-center space-y-4">
+          <Loader2 className="h-10 w-10 animate-spin mx-auto text-primary" />
+          <p className="text-muted-foreground">Cargando lista de lavandería...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Error state
+  if (linkError || !shareLink) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background p-4">
+        <div className="text-center space-y-4 max-w-md">
+          <AlertCircle className="h-12 w-12 mx-auto text-destructive" />
+          <h1 className="text-xl font-semibold">Enlace no válido</h1>
+          <p className="text-muted-foreground">
+            {linkError?.message || 'Este enlace no existe, ha expirado o ha sido desactivado.'}
+          </p>
+          <p className="text-sm text-muted-foreground">
+            Contacta con el supervisor para obtener un nuevo enlace.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // Calculate progress percentages
+  const totalTasks = tasks.length;
+  const preparedCount = stats.prepared + stats.delivered;
+  const deliveredCount = stats.delivered;
+
+  return (
+    <div className="min-h-screen bg-background">
+      {/* Header */}
+      <header className="sticky top-0 z-10 bg-background border-b">
+        <div className="container max-w-2xl mx-auto px-4 py-3">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="font-semibold text-lg">Lista de Lavandería</h1>
+              <p className="text-sm text-muted-foreground">
+                {formatDateRange(shareLink.dateStart, shareLink.dateEnd)}
+              </p>
+            </div>
+            <Button variant="ghost" size="icon" onClick={handleRefresh}>
+              <RefreshCw className="h-4 w-4" />
+            </Button>
+          </div>
+
+          {/* Progress stats */}
+          <div className="flex gap-4 mt-3 text-sm">
+            <div className="flex items-center gap-1">
+              <Package className="h-4 w-4 text-muted-foreground" />
+              <span>{totalTasks} total</span>
+            </div>
+            <div className="flex items-center gap-1 text-blue-600">
+              <Package className="h-4 w-4" />
+              <span>{preparedCount} preparadas</span>
+            </div>
+            <div className="flex items-center gap-1 text-green-600">
+              <CheckCircle2 className="h-4 w-4" />
+              <span>{deliveredCount} entregadas</span>
+            </div>
+          </div>
+
+          {/* Progress bar */}
+          <div className="mt-2 h-2 bg-muted rounded-full overflow-hidden">
+            <div 
+              className="h-full bg-green-500 transition-all duration-300"
+              style={{ width: `${totalTasks > 0 ? (deliveredCount / totalTasks) * 100 : 0}%` }}
+            />
+          </div>
+        </div>
+      </header>
+
+      {/* Filters */}
+      <div className="container max-w-2xl mx-auto px-4 py-3 border-b bg-muted/30">
+        <div className="flex gap-2">
+          <Select value={filterDate} onValueChange={setFilterDate}>
+            <SelectTrigger className="w-[140px]">
+              <SelectValue placeholder="Fecha" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todas las fechas</SelectItem>
+              {uniqueDates.map(date => (
+                <SelectItem key={date} value={date}>
+                  {new Date(date).toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', month: 'short' })}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          <Select value={filterStatus} onValueChange={(v) => setFilterStatus(v as FilterStatus)}>
+            <SelectTrigger className="w-[140px]">
+              <SelectValue placeholder="Estado" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos</SelectItem>
+              <SelectItem value="pending">Pendientes</SelectItem>
+              <SelectItem value="prepared">Preparadas</SelectItem>
+              <SelectItem value="delivered">Entregadas</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      {/* Task list */}
+      <main className="container max-w-2xl mx-auto px-4 py-4">
+        {filteredTasks.length === 0 ? (
+          <div className="text-center py-12 text-muted-foreground">
+            <Package className="h-12 w-12 mx-auto mb-4 opacity-50" />
+            <p>No hay tareas que coincidan con los filtros</p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {filteredTasks.map(task => (
+              <LaundryDeliveryCard
+                key={task.id}
+                task={task}
+                tracking={getTaskTracking(task.id)}
+                shareLinkId={shareLink.id}
+                onStatusUpdate={handleStatusUpdate}
+                isUpdating={updateTracking.isPending}
+              />
+            ))}
+          </div>
+        )}
+      </main>
+
+      {/* Toast notifications */}
+      <Toaster />
+    </div>
+  );
+};
+
+export default PublicLaundryView;

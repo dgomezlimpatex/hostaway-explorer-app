@@ -928,6 +928,108 @@ export type Database = {
           },
         ]
       }
+      laundry_delivery_tracking: {
+        Row: {
+          created_at: string
+          delivered_at: string | null
+          delivered_by_name: string | null
+          id: string
+          notes: string | null
+          prepared_at: string | null
+          prepared_by_name: string | null
+          share_link_id: string
+          status: Database["public"]["Enums"]["laundry_delivery_status"]
+          task_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          delivered_at?: string | null
+          delivered_by_name?: string | null
+          id?: string
+          notes?: string | null
+          prepared_at?: string | null
+          prepared_by_name?: string | null
+          share_link_id: string
+          status?: Database["public"]["Enums"]["laundry_delivery_status"]
+          task_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          delivered_at?: string | null
+          delivered_by_name?: string | null
+          id?: string
+          notes?: string | null
+          prepared_at?: string | null
+          prepared_by_name?: string | null
+          share_link_id?: string
+          status?: Database["public"]["Enums"]["laundry_delivery_status"]
+          task_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "laundry_delivery_tracking_share_link_id_fkey"
+            columns: ["share_link_id"]
+            isOneToOne: false
+            referencedRelation: "laundry_share_links"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "laundry_delivery_tracking_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      laundry_share_links: {
+        Row: {
+          created_at: string
+          created_by: string
+          date_end: string
+          date_start: string
+          expires_at: string | null
+          filters: Json | null
+          id: string
+          is_active: boolean
+          is_permanent: boolean
+          snapshot_task_ids: string[] | null
+          token: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          date_end: string
+          date_start: string
+          expires_at?: string | null
+          filters?: Json | null
+          id?: string
+          is_active?: boolean
+          is_permanent?: boolean
+          snapshot_task_ids?: string[] | null
+          token: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          date_end?: string
+          date_start?: string
+          expires_at?: string | null
+          filters?: Json | null
+          id?: string
+          is_active?: boolean
+          is_permanent?: boolean
+          snapshot_task_ids?: string[] | null
+          token?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       logistics_deliveries: {
         Row: {
           completed_at: string | null
@@ -2708,6 +2810,7 @@ export type Database = {
         | "ajuste"
         | "consumo_automatico"
       invitation_status: "pending" | "accepted" | "expired" | "revoked"
+      laundry_delivery_status: "pending" | "prepared" | "delivered"
       logistics_delivery_status:
         | "planned"
         | "in_transit"
@@ -2865,6 +2968,7 @@ export const Constants = {
         "consumo_automatico",
       ],
       invitation_status: ["pending", "accepted", "expired", "revoked"],
+      laundry_delivery_status: ["pending", "prepared", "delivered"],
       logistics_delivery_status: [
         "planned",
         "in_transit",
