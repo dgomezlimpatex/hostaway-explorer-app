@@ -16,7 +16,8 @@ import {
   CheckCircle2,
   Package,
   Truck,
-  LogOut
+  LogOut,
+  Shirt
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useRolePermissions } from '@/hooks/useRolePermissions';
@@ -98,6 +99,12 @@ const managementItems: NavigationItem[] = [
     href: '/logistics/dashboard',
     icon: Truck,
     permission: 'logistics'
+  },
+  {
+    title: 'Lavandería',
+    href: '/lavanderia/gestion',
+    icon: Shirt,
+    permission: 'reports'
   },
 ];
 
