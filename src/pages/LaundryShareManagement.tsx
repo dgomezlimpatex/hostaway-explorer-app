@@ -165,37 +165,35 @@ const NewTasksAlert = ({
 };
 
 // Compact real-time counter for deliveries
-const ShareLinkCounter = ({ shareLinkId }: { shareLinkId: string }) => {
+const ShareLinkCounter = ({ shareLinkId, totalTasks }: { shareLinkId: string; totalTasks: number }) => {
   const { stats } = useLaundryTracking(shareLinkId);
   
-  const total = stats.pending + stats.prepared + stats.delivered;
-  if (total === 0) return null;
+  if (totalTasks === 0) return null;
 
-  const deliveredPercent = Math.round((stats.delivered / total) * 100);
+  const preparedCount = stats.prepared + stats.delivered;
+  const deliveredPercent = Math.round((stats.delivered / totalTasks) * 100);
 
   return (
-    <div className="flex items-center gap-3 text-sm">
+    <div className="flex items-center gap-3 text-sm flex-wrap">
       <div className="flex items-center gap-1.5">
         <Package className="h-4 w-4 text-muted-foreground" />
-        <span className="text-muted-foreground">{total} total</span>
+        <span className="text-muted-foreground">{totalTasks} total</span>
       </div>
       <div className="h-4 w-px bg-border" />
       <div className="flex items-center gap-1.5">
         <div className="h-2 w-2 rounded-full bg-blue-400" />
-        <span className="text-blue-600 dark:text-blue-400 font-medium">{stats.prepared + stats.delivered} preparadas</span>
+        <span className="text-blue-600 dark:text-blue-400 font-medium">{preparedCount}/{totalTasks} preparadas</span>
       </div>
       <div className="flex items-center gap-1.5">
         <div className="h-2 w-2 rounded-full bg-emerald-500" />
-        <span className="text-emerald-600 dark:text-emerald-400 font-medium">{stats.delivered} entregadas</span>
+        <span className="text-emerald-600 dark:text-emerald-400 font-medium">{stats.delivered}/{totalTasks} entregadas</span>
       </div>
-      {total > 0 && (
-        <Badge 
-          variant={deliveredPercent === 100 ? "default" : "secondary"}
-          className={deliveredPercent === 100 ? "bg-emerald-500 hover:bg-emerald-600" : ""}
-        >
-          {deliveredPercent}%
-        </Badge>
-      )}
+      <Badge 
+        variant={deliveredPercent === 100 ? "default" : "secondary"}
+        className={deliveredPercent === 100 ? "bg-emerald-500 hover:bg-emerald-600" : ""}
+      >
+        {deliveredPercent}%
+      </Badge>
     </div>
   );
 };
@@ -444,7 +442,7 @@ const LaundryShareManagement = () => {
                         />
                         
                         {/* Real-time Counter */}
-                        <ShareLinkCounter shareLinkId={link.id} />
+                        <ShareLinkCounter shareLinkId={link.id} totalTasks={link.snapshotTaskIds?.length || 0} />
                       </div>
                       
                       {/* Actions Sidebar */}
