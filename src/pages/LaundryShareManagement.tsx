@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Progress } from '@/components/ui/progress';
 import { 
   Link, 
   Plus, 
@@ -16,11 +17,14 @@ import {
   Truck,
   CheckCircle2,
   Clock,
-  AlertCircle,
   RefreshCw,
   Home,
   Pencil,
-  AlertTriangle
+  AlertTriangle,
+  Sparkles,
+  Share2,
+  ArrowLeft,
+  LinkIcon
 } from 'lucide-react';
 import { useLaundryShareLinks, LaundryShareLink } from '@/hooks/useLaundryShareLinks';
 import { useLaundryTracking } from '@/hooks/useLaundryTracking';
@@ -86,15 +90,15 @@ const ShareLinkProperties = ({
   });
 
   if (isLoading) return <span className="text-muted-foreground text-xs">Cargando...</span>;
-  if (!properties || properties.length === 0) return <span className="text-muted-foreground text-xs">Sin propiedades</span>;
+  if (!properties || properties.length === 0) return null;
 
   return (
-    <div className="flex items-center gap-1 flex-wrap">
-      <Home className="h-3 w-3 text-muted-foreground shrink-0" />
-      <span className="text-xs text-muted-foreground">
-        {properties.length <= 3 
+    <div className="flex items-center gap-2 flex-wrap">
+      <Home className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+      <span className="text-sm text-muted-foreground">
+        {properties.length <= 4 
           ? properties.join(', ')
-          : `${properties.slice(0, 3).join(', ')} +${properties.length - 3} más`
+          : `${properties.slice(0, 4).join(', ')} +${properties.length - 4} más`
         }
       </span>
     </div>
@@ -123,8 +127,8 @@ const NewTasksAlert = ({
   const { data: changes } = useQuery({
     queryKey: ['share-link-changes', dateStart, dateEnd, originalTaskIds, snapshotTaskIds, sedeIds],
     queryFn: () => detectTaskChanges(originalTaskIds, snapshotTaskIds, dateStart, dateEnd, sedeIds),
-    staleTime: 30000, // 30 seconds
-    refetchInterval: 60000, // Refetch every minute
+    staleTime: 30000,
+    refetchInterval: 60000,
   });
 
   if (!changes || (changes.newTasks.length === 0 && changes.removedTasks.length === 0)) {
@@ -140,18 +144,18 @@ const NewTasksAlert = ({
         <TooltipTrigger asChild>
           <button
             onClick={onEditClick}
-            className="flex items-center gap-1 px-2 py-1 rounded-md bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 text-xs font-medium hover:bg-amber-200 dark:hover:bg-amber-900/50 transition-colors"
+            className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 text-xs font-medium hover:bg-amber-200 dark:hover:bg-amber-900/50 transition-colors"
           >
             <AlertTriangle className="h-3 w-3" />
             {hasNew && <span>+{changes.newTasks.length} nuevas</span>}
             {hasNew && hasRemoved && <span className="mx-0.5">/</span>}
-            {hasRemoved && <span className="text-red-600 dark:text-red-400">-{changes.removedTasks.length} eliminadas</span>}
+            {hasRemoved && <span className="text-red-600 dark:text-red-400">-{changes.removedTasks.length}</span>}
           </button>
         </TooltipTrigger>
         <TooltipContent side="top" className="max-w-xs">
           <p className="text-sm">
-            {hasNew && `${changes.newTasks.length} tarea(s) nueva(s) no incluida(s) en el enlace. `}
-            {hasRemoved && `${changes.removedTasks.length} tarea(s) del enlace ya no existe(n). `}
+            {hasNew && `${changes.newTasks.length} tarea(s) nueva(s) no incluida(s). `}
+            {hasRemoved && `${changes.removedTasks.length} tarea(s) eliminada(s). `}
             Haz clic para editar.
           </p>
         </TooltipContent>
@@ -160,26 +164,45 @@ const NewTasksAlert = ({
   );
 };
 
-// Component to show tracking stats for a share link
+// Component to show tracking stats with progress
 const ShareLinkStats = ({ shareLinkId }: { shareLinkId: string }) => {
   const { stats } = useLaundryTracking(shareLinkId);
   
   const total = stats.pending + stats.prepared + stats.delivered;
-  if (total === 0) return <span className="text-muted-foreground text-sm">Sin entregas registradas</span>;
+  if (total === 0) return null;
+
+  const preparedPercent = ((stats.prepared + stats.delivered) / total) * 100;
+  const deliveredPercent = (stats.delivered / total) * 100;
 
   return (
-    <div className="flex items-center gap-3 text-sm">
-      <div className="flex items-center gap-1">
-        <Package className="h-4 w-4 text-muted-foreground" />
-        <span>{total} total</span>
+    <div className="space-y-2">
+      <div className="flex items-center justify-between text-sm">
+        <span className="text-muted-foreground">Progreso de entrega</span>
+        <span className="font-medium">{stats.delivered}/{total} entregas</span>
       </div>
-      <div className="flex items-center gap-1 text-blue-600">
-        <Package className="h-4 w-4" />
-        <span>{stats.prepared + stats.delivered}</span>
+      <div className="relative h-2 w-full overflow-hidden rounded-full bg-muted">
+        <div 
+          className="absolute h-full bg-blue-400 transition-all duration-300"
+          style={{ width: `${preparedPercent}%` }}
+        />
+        <div 
+          className="absolute h-full bg-emerald-500 transition-all duration-300"
+          style={{ width: `${deliveredPercent}%` }}
+        />
       </div>
-      <div className="flex items-center gap-1 text-green-600">
-        <CheckCircle2 className="h-4 w-4" />
-        <span>{stats.delivered}</span>
+      <div className="flex items-center gap-4 text-xs text-muted-foreground">
+        <div className="flex items-center gap-1">
+          <div className="h-2 w-2 rounded-full bg-muted-foreground/30" />
+          <span>Pendiente: {stats.pending}</span>
+        </div>
+        <div className="flex items-center gap-1">
+          <div className="h-2 w-2 rounded-full bg-blue-400" />
+          <span>Preparado: {stats.prepared}</span>
+        </div>
+        <div className="flex items-center gap-1">
+          <div className="h-2 w-2 rounded-full bg-emerald-500" />
+          <span>Entregado: {stats.delivered}</span>
+        </div>
       </div>
     </div>
   );
@@ -231,59 +254,109 @@ const LaundryShareManagement = () => {
     window.open(url, '_blank');
   };
 
-  return (
-    <div className="container mx-auto py-6 space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2 mb-2">
-            <Button variant="ghost" size="sm" onClick={() => navigate(-1)}>
-              ← Volver
-            </Button>
-          </div>
-          <h1 className="text-2xl font-bold flex items-center gap-2">
-            <Link className="h-6 w-6" />
-            Gestión de Enlaces de Lavandería
-          </h1>
-          <p className="text-muted-foreground mt-1">
-            Crea y gestiona enlaces compartibles para los repartidores
-          </p>
-        </div>
-        <Button onClick={() => setCreateModalOpen(true)}>
-          <Plus className="h-4 w-4 mr-2" />
-          Nuevo Enlace
-        </Button>
-      </div>
+  const activeLinks = shareLinks?.filter(l => !isShareLinkExpired(l.expiresAt)) || [];
+  const expiredLinks = shareLinks?.filter(l => isShareLinkExpired(l.expiresAt)) || [];
 
-        {/* Quick create section */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">Crear Enlace Rápido</CardTitle>
-            <CardDescription>
-              Selecciona el rango de fechas para generar un nuevo enlace compartible
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="flex flex-col sm:flex-row gap-4 items-end">
-              <div className="space-y-2 flex-1">
-                <Label htmlFor="dateStart">Fecha inicio</Label>
-                <Input
-                  id="dateStart"
-                  type="date"
-                  value={dateStart}
-                  onChange={(e) => setDateStart(e.target.value)}
-                />
+  return (
+    <div className="min-h-screen bg-gradient-to-b from-background to-muted/20">
+      <div className="container mx-auto py-6 px-4 space-y-8">
+        {/* Hero Header */}
+        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary/10 via-primary/5 to-background border p-6 md:p-8">
+          <div className="absolute top-0 right-0 w-64 h-64 bg-primary/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
+          <div className="relative">
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={() => navigate(-1)}
+              className="mb-4 -ml-2 text-muted-foreground hover:text-foreground"
+            >
+              <ArrowLeft className="h-4 w-4 mr-1" />
+              Volver
+            </Button>
+            
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+              <div>
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="p-2.5 rounded-xl bg-primary/10">
+                    <Share2 className="h-6 w-6 text-primary" />
+                  </div>
+                  <h1 className="text-2xl md:text-3xl font-bold">
+                    Enlaces de Lavandería
+                  </h1>
+                </div>
+                <p className="text-muted-foreground max-w-xl">
+                  Genera enlaces seguros para compartir las entregas de lavandería con los repartidores. 
+                  Sin necesidad de login, actualización en tiempo real.
+                </p>
               </div>
-              <div className="space-y-2 flex-1">
-                <Label htmlFor="dateEnd">Fecha fin</Label>
-                <Input
-                  id="dateEnd"
-                  type="date"
-                  value={dateEnd}
-                  onChange={(e) => setDateEnd(e.target.value)}
-                />
+              
+              <Button 
+                size="lg" 
+                onClick={() => setCreateModalOpen(true)}
+                className="shrink-0 shadow-lg shadow-primary/20"
+              >
+                <Plus className="h-5 w-5 mr-2" />
+                Nuevo Enlace
+              </Button>
+            </div>
+            
+            {/* Quick Stats */}
+            <div className="flex flex-wrap gap-4 mt-6">
+              <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-background/80 border">
+                <LinkIcon className="h-4 w-4 text-primary" />
+                <span className="text-sm font-medium">{activeLinks.length} activos</span>
               </div>
-              <Button onClick={() => setCreateModalOpen(true)}>
+              {expiredLinks.length > 0 && (
+                <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-background/80 border">
+                  <Clock className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm text-muted-foreground">{expiredLinks.length} expirados</span>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Quick Create Card */}
+        <Card className="border-dashed border-2 hover:border-primary/50 transition-colors">
+          <CardContent className="p-6">
+            <div className="flex flex-col lg:flex-row lg:items-end gap-6">
+              <div className="flex-1 space-y-4">
+                <div className="flex items-center gap-2">
+                  <Sparkles className="h-5 w-5 text-primary" />
+                  <h3 className="font-semibold text-lg">Crear Enlace Rápido</h3>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  Selecciona el rango de fechas y genera un enlace instantáneamente
+                </p>
+                <div className="flex flex-col sm:flex-row gap-4">
+                  <div className="space-y-2 flex-1">
+                    <Label htmlFor="dateStart" className="text-xs text-muted-foreground">Desde</Label>
+                    <Input
+                      id="dateStart"
+                      type="date"
+                      value={dateStart}
+                      onChange={(e) => setDateStart(e.target.value)}
+                      className="bg-background"
+                    />
+                  </div>
+                  <div className="space-y-2 flex-1">
+                    <Label htmlFor="dateEnd" className="text-xs text-muted-foreground">Hasta</Label>
+                    <Input
+                      id="dateEnd"
+                      type="date"
+                      value={dateEnd}
+                      onChange={(e) => setDateEnd(e.target.value)}
+                      className="bg-background"
+                    />
+                  </div>
+                </div>
+              </div>
+              <Button 
+                onClick={() => setCreateModalOpen(true)}
+                variant="outline"
+                size="lg"
+                className="lg:w-auto w-full"
+              >
                 <Link className="h-4 w-4 mr-2" />
                 Generar Enlace
               </Button>
@@ -291,124 +364,226 @@ const LaundryShareManagement = () => {
           </CardContent>
         </Card>
 
-        {/* Active links list */}
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
-            <div>
-              <CardTitle className="text-lg">Enlaces Activos</CardTitle>
-              <CardDescription>
-                {shareLinks?.length || 0} enlaces activos
-              </CardDescription>
+        {/* Active Links Section */}
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <h2 className="text-xl font-semibold">Enlaces Activos</h2>
+              <Badge variant="secondary" className="rounded-full">
+                {activeLinks.length}
+              </Badge>
             </div>
-            <Button variant="ghost" size="icon" onClick={() => refetch()}>
-              <RefreshCw className="h-4 w-4" />
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={() => refetch()}
+              className="text-muted-foreground"
+            >
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Actualizar
             </Button>
-          </CardHeader>
-          <CardContent>
-            {isLoading ? (
-              <div className="text-center py-8 text-muted-foreground">
-                Cargando enlaces...
-              </div>
-            ) : shareLinks && shareLinks.length > 0 ? (
-              <div className="space-y-3">
-                {shareLinks.map((link) => {
-                  const expired = isShareLinkExpired(link.expiresAt);
-                  
-                  return (
-                    <div
-                      key={link.id}
-                      className={`p-4 rounded-lg border ${expired ? 'bg-muted/50 opacity-60' : 'bg-card'}`}
-                    >
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                        <div className="space-y-1 flex-1">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <span className="font-medium">
+          </div>
+
+          {isLoading ? (
+            <Card>
+              <CardContent className="py-12">
+                <div className="flex flex-col items-center justify-center text-muted-foreground">
+                  <RefreshCw className="h-8 w-8 animate-spin mb-4" />
+                  <p>Cargando enlaces...</p>
+                </div>
+              </CardContent>
+            </Card>
+          ) : activeLinks.length > 0 ? (
+            <div className="grid gap-4">
+              {activeLinks.map((link) => (
+                <Card 
+                  key={link.id} 
+                  className="group hover:shadow-md transition-all duration-200 overflow-hidden"
+                >
+                  <CardContent className="p-0">
+                    <div className="flex flex-col lg:flex-row">
+                      {/* Main Content */}
+                      <div className="flex-1 p-5 space-y-4">
+                        {/* Header with date and badges */}
+                        <div className="flex flex-wrap items-center gap-2">
+                          <div className="flex items-center gap-2">
+                            <Calendar className="h-4 w-4 text-primary" />
+                            <span className="font-semibold text-lg">
                               {formatDateRange(link.dateStart, link.dateEnd)}
                             </span>
-                            {expired ? (
-                              <Badge variant="destructive">Expirado</Badge>
-                            ) : link.isPermanent ? (
-                              <Badge variant="secondary">Permanente</Badge>
-                            ) : (
-                              <Badge variant="outline">
-                                <Clock className="h-3 w-3 mr-1" />
-                                {formatExpirationStatus(link.expiresAt, link.isPermanent)}
-                              </Badge>
-                            )}
-                            {!expired && (
-                              <NewTasksAlert 
-                                dateStart={link.dateStart}
-                                dateEnd={link.dateEnd}
-                                snapshotTaskIds={link.snapshotTaskIds}
-                                originalTaskIds={link.originalTaskIds}
-                                filters={link.filters}
-                                onEditClick={() => handleEditClick(link)}
-                              />
-                            )}
                           </div>
-                          
-                          <div className="text-sm text-muted-foreground font-mono">
-                            {getShareLinkUrl(link.token)}
-                          </div>
-                          
-                          <ShareLinkProperties 
-                            dateStart={link.dateStart} 
-                            dateEnd={link.dateEnd} 
+                          {link.isPermanent ? (
+                            <Badge className="bg-primary/10 text-primary hover:bg-primary/20 border-0">
+                              Permanente
+                            </Badge>
+                          ) : (
+                            <Badge variant="outline" className="text-muted-foreground">
+                              <Clock className="h-3 w-3 mr-1" />
+                              {formatExpirationStatus(link.expiresAt, link.isPermanent)}
+                            </Badge>
+                          )}
+                          <NewTasksAlert 
+                            dateStart={link.dateStart}
+                            dateEnd={link.dateEnd}
                             snapshotTaskIds={link.snapshotTaskIds}
+                            originalTaskIds={link.originalTaskIds}
+                            filters={link.filters}
+                            onEditClick={() => handleEditClick(link)}
                           />
-                          <ShareLinkStats shareLinkId={link.id} />
                         </div>
                         
-                        <div className="flex items-center gap-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleEditClick(link)}
-                          >
-                            <Pencil className="h-4 w-4 mr-1" />
-                            Editar
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleCopyLink(link.token)}
-                          >
-                            <Copy className="h-4 w-4 mr-1" />
-                            Copiar
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => openExternalLink(link.token)}
-                          >
-                            <ExternalLink className="h-4 w-4 mr-1" />
-                            Abrir
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="text-destructive hover:text-destructive"
-                            onClick={() => handleDeleteClick(link)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+                        {/* URL */}
+                        <div 
+                          className="flex items-center gap-2 p-2.5 rounded-lg bg-muted/50 cursor-pointer hover:bg-muted transition-colors"
+                          onClick={() => handleCopyLink(link.token)}
+                        >
+                          <LinkIcon className="h-4 w-4 text-muted-foreground shrink-0" />
+                          <span className="text-sm font-mono text-muted-foreground truncate flex-1">
+                            {getShareLinkUrl(link.token)}
+                          </span>
+                          <Copy className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
                         </div>
+                        
+                        {/* Properties */}
+                        <ShareLinkProperties 
+                          dateStart={link.dateStart} 
+                          dateEnd={link.dateEnd} 
+                          snapshotTaskIds={link.snapshotTaskIds}
+                        />
+                        
+                        {/* Progress Stats */}
+                        <ShareLinkStats shareLinkId={link.id} />
+                      </div>
+                      
+                      {/* Actions Sidebar */}
+                      <div className="flex lg:flex-col items-center gap-1 p-3 lg:p-4 border-t lg:border-t-0 lg:border-l bg-muted/30">
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleEditClick(link)}
+                                className="h-9 w-9"
+                              >
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>Editar tareas</TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                        
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleCopyLink(link.token)}
+                                className="h-9 w-9"
+                              >
+                                <Copy className="h-4 w-4" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>Copiar enlace</TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                        
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => openExternalLink(link.token)}
+                                className="h-9 w-9"
+                              >
+                                <ExternalLink className="h-4 w-4" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>Abrir enlace</TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                        
+                        <div className="flex-1 lg:flex-none" />
+                        
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleDeleteClick(link)}
+                                className="h-9 w-9 text-destructive hover:text-destructive hover:bg-destructive/10"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>Desactivar enlace</TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
                       </div>
                     </div>
-                  );
-                })}
-              </div>
-            ) : (
-              <div className="text-center py-12 text-muted-foreground">
-                <Link className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                <p>No hay enlaces activos</p>
-                <p className="text-sm">Crea un nuevo enlace para compartir con los repartidores</p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          ) : (
+            <Card className="border-dashed">
+              <CardContent className="py-16">
+                <div className="flex flex-col items-center justify-center text-center">
+                  <div className="p-4 rounded-full bg-muted mb-4">
+                    <Share2 className="h-10 w-10 text-muted-foreground/50" />
+                  </div>
+                  <h3 className="font-semibold text-lg mb-2">No hay enlaces activos</h3>
+                  <p className="text-muted-foreground text-sm max-w-sm mb-6">
+                    Crea un nuevo enlace para compartir las entregas de lavandería con los repartidores
+                  </p>
+                  <Button onClick={() => setCreateModalOpen(true)}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Crear primer enlace
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </div>
 
-        {/* Create modal */}
+        {/* Expired Links Section (collapsed) */}
+        {expiredLinks.length > 0 && (
+          <div className="space-y-4">
+            <h2 className="text-lg font-medium text-muted-foreground">
+              Enlaces Expirados ({expiredLinks.length})
+            </h2>
+            <div className="grid gap-3 opacity-60">
+              {expiredLinks.map((link) => (
+                <Card key={link.id} className="bg-muted/30">
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <Calendar className="h-4 w-4 text-muted-foreground" />
+                        <span className="font-medium">
+                          {formatDateRange(link.dateStart, link.dateEnd)}
+                        </span>
+                        <Badge variant="destructive" className="text-xs">Expirado</Badge>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleDeleteClick(link)}
+                        className="text-destructive hover:text-destructive"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Modals */}
         <LaundryShareLinkModal
           open={createModalOpen}
           onOpenChange={setCreateModalOpen}
@@ -416,14 +591,12 @@ const LaundryShareManagement = () => {
           dateEnd={dateEnd}
         />
 
-        {/* Edit modal */}
         <LaundryShareEditModal
           open={editModalOpen}
           onOpenChange={setEditModalOpen}
           shareLink={selectedLink}
         />
 
-        {/* Delete confirmation dialog */}
         <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
           <AlertDialogContent>
             <AlertDialogHeader>
@@ -445,6 +618,7 @@ const LaundryShareManagement = () => {
           </AlertDialogContent>
         </AlertDialog>
       </div>
+    </div>
   );
 };
 
