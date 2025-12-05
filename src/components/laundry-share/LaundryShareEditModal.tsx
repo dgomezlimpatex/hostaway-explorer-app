@@ -167,13 +167,13 @@ export const LaundryShareEditModal = ({
               {includedCount} de {totalCount} tareas incluidas
             </div>
             <ScrollArea className="h-[600px] pr-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-2">
+              <div className="columns-1 md:columns-2 xl:columns-3 gap-4">
                 {tasks.map(task => {
                   const isIncluded = !excludedTasks.has(task.id);
                   return (
                     <div
                       key={task.id}
-                      className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
+                      className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors break-inside-avoid mb-2 ${
                         isIncluded 
                           ? 'bg-card hover:bg-muted/50' 
                           : 'bg-muted/30 opacity-60'
