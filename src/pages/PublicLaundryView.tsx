@@ -5,7 +5,7 @@ import { useLaundryTracking, LaundryDeliveryStatus } from '@/hooks/useLaundryTra
 import { LaundryDeliveryCard, LaundryTask } from '@/components/laundry-share/LaundryDeliveryCard';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
-import { Loader2, AlertCircle, Package, CheckCircle2, RefreshCw, Calendar } from 'lucide-react';
+import { Loader2, AlertCircle, Package, CheckCircle2, RefreshCw, Calendar, ChevronDown, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { formatDateRange } from '@/services/laundryShareService';
@@ -17,6 +17,7 @@ const PublicLaundryView = () => {
   const { token } = useParams<{ token: string }>();
   const [filterStatus, setFilterStatus] = useState<FilterStatus>('all');
   const [filterDate, setFilterDate] = useState<string>('all');
+  const [collapsedDates, setCollapsedDates] = useState<Set<string>>(new Set());
 
   // Fetch share link data
   const { 
@@ -322,35 +323,60 @@ const PublicLaundryView = () => {
           </div>
         ) : (
           <div className="space-y-4">
-            {Object.entries(tasksByDate).sort(([a], [b]) => a.localeCompare(b)).map(([date, dateTasks]) => (
-              <div key={date}>
-                {/* Date separator */}
-                <div className="flex items-center gap-2 mb-3 sticky top-[120px] bg-background py-2 z-[5]">
-                  <Calendar className="h-4 w-4 text-primary" />
-                  <span className="font-medium text-primary capitalize">
-                    {formatDateSeparator(date)}
-                  </span>
-                  <div className="flex-1 h-px bg-border" />
-                  <span className="text-sm text-muted-foreground">
-                    {dateTasks.length} {dateTasks.length === 1 ? 'tarea' : 'tareas'}
-                  </span>
+            {Object.entries(tasksByDate).sort(([a], [b]) => a.localeCompare(b)).map(([date, dateTasks]) => {
+              const isCollapsed = collapsedDates.has(date);
+              const toggleCollapse = () => {
+                setCollapsedDates(prev => {
+                  const next = new Set(prev);
+                  if (next.has(date)) {
+                    next.delete(date);
+                  } else {
+                    next.add(date);
+                  }
+                  return next;
+                });
+              };
+
+              return (
+                <div key={date}>
+                  {/* Date separator - clickable to toggle */}
+                  <button
+                    onClick={toggleCollapse}
+                    className="w-full flex items-center gap-2 mb-3 sticky top-[120px] bg-background py-2 z-[5] hover:bg-muted/50 rounded-md transition-colors -mx-2 px-2"
+                  >
+                    {isCollapsed ? (
+                      <ChevronRight className="h-4 w-4 text-primary" />
+                    ) : (
+                      <ChevronDown className="h-4 w-4 text-primary" />
+                    )}
+                    <Calendar className="h-4 w-4 text-primary" />
+                    <span className="font-medium text-primary capitalize">
+                      {formatDateSeparator(date)}
+                    </span>
+                    <div className="flex-1 h-px bg-border" />
+                    <span className="text-sm text-muted-foreground">
+                      {dateTasks.length} {dateTasks.length === 1 ? 'tarea' : 'tareas'}
+                    </span>
+                  </button>
+                  
+                  {/* Tasks for this date - collapsible */}
+                  {!isCollapsed && (
+                    <div className="space-y-3">
+                      {dateTasks.map(task => (
+                        <LaundryDeliveryCard
+                          key={task.id}
+                          task={task}
+                          tracking={getTaskTracking(task.id)}
+                          shareLinkId={shareLink.id}
+                          onStatusUpdate={handleStatusUpdate}
+                          isUpdating={updateTracking.isPending}
+                        />
+                      ))}
+                    </div>
+                  )}
                 </div>
-                
-                {/* Tasks for this date */}
-                <div className="space-y-3">
-                  {dateTasks.map(task => (
-                    <LaundryDeliveryCard
-                      key={task.id}
-                      task={task}
-                      tracking={getTaskTracking(task.id)}
-                      shareLinkId={shareLink.id}
-                      onStatusUpdate={handleStatusUpdate}
-                      isUpdating={updateTracking.isPending}
-                    />
-                  ))}
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </main>
