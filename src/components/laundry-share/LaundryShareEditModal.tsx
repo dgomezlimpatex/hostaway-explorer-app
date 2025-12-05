@@ -148,7 +148,7 @@ export const LaundryShareEditModal = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-2xl max-h-[90vh]">
+      <DialogContent className="sm:max-w-5xl max-h-[90vh]">
         <DialogHeader>
           <DialogTitle>Editar Tareas del Enlace</DialogTitle>
           <DialogDescription>
@@ -166,8 +166,8 @@ export const LaundryShareEditModal = ({
             <div className="text-sm text-muted-foreground mb-2">
               {includedCount} de {totalCount} tareas incluidas
             </div>
-            <ScrollArea className="h-[500px] pr-4">
-              <div className="space-y-2">
+            <ScrollArea className="h-[600px] pr-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-2">
                 {tasks.map(task => {
                   const isIncluded = !excludedTasks.has(task.id);
                   return (
