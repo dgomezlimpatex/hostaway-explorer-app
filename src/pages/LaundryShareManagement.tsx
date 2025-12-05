@@ -164,46 +164,38 @@ const NewTasksAlert = ({
   );
 };
 
-// Component to show tracking stats with progress
-const ShareLinkStats = ({ shareLinkId }: { shareLinkId: string }) => {
+// Compact real-time counter for deliveries
+const ShareLinkCounter = ({ shareLinkId }: { shareLinkId: string }) => {
   const { stats } = useLaundryTracking(shareLinkId);
   
   const total = stats.pending + stats.prepared + stats.delivered;
   if (total === 0) return null;
 
-  const preparedPercent = ((stats.prepared + stats.delivered) / total) * 100;
-  const deliveredPercent = (stats.delivered / total) * 100;
+  const deliveredPercent = Math.round((stats.delivered / total) * 100);
 
   return (
-    <div className="space-y-2">
-      <div className="flex items-center justify-between text-sm">
-        <span className="text-muted-foreground">Progreso de entrega</span>
-        <span className="font-medium">{stats.delivered}/{total} entregas</span>
+    <div className="flex items-center gap-3 text-sm">
+      <div className="flex items-center gap-1.5">
+        <Package className="h-4 w-4 text-muted-foreground" />
+        <span className="text-muted-foreground">{total} total</span>
       </div>
-      <div className="relative h-2 w-full overflow-hidden rounded-full bg-muted">
-        <div 
-          className="absolute h-full bg-blue-400 transition-all duration-300"
-          style={{ width: `${preparedPercent}%` }}
-        />
-        <div 
-          className="absolute h-full bg-emerald-500 transition-all duration-300"
-          style={{ width: `${deliveredPercent}%` }}
-        />
+      <div className="h-4 w-px bg-border" />
+      <div className="flex items-center gap-1.5">
+        <div className="h-2 w-2 rounded-full bg-blue-400" />
+        <span className="text-blue-600 dark:text-blue-400 font-medium">{stats.prepared + stats.delivered} preparadas</span>
       </div>
-      <div className="flex items-center gap-4 text-xs text-muted-foreground">
-        <div className="flex items-center gap-1">
-          <div className="h-2 w-2 rounded-full bg-muted-foreground/30" />
-          <span>Pendiente: {stats.pending}</span>
-        </div>
-        <div className="flex items-center gap-1">
-          <div className="h-2 w-2 rounded-full bg-blue-400" />
-          <span>Preparado: {stats.prepared}</span>
-        </div>
-        <div className="flex items-center gap-1">
-          <div className="h-2 w-2 rounded-full bg-emerald-500" />
-          <span>Entregado: {stats.delivered}</span>
-        </div>
+      <div className="flex items-center gap-1.5">
+        <div className="h-2 w-2 rounded-full bg-emerald-500" />
+        <span className="text-emerald-600 dark:text-emerald-400 font-medium">{stats.delivered} entregadas</span>
       </div>
+      {total > 0 && (
+        <Badge 
+          variant={deliveredPercent === 100 ? "default" : "secondary"}
+          className={deliveredPercent === 100 ? "bg-emerald-500 hover:bg-emerald-600" : ""}
+        >
+          {deliveredPercent}%
+        </Badge>
+      )}
     </div>
   );
 };
@@ -451,8 +443,8 @@ const LaundryShareManagement = () => {
                           snapshotTaskIds={link.snapshotTaskIds}
                         />
                         
-                        {/* Progress Stats */}
-                        <ShareLinkStats shareLinkId={link.id} />
+                        {/* Real-time Counter */}
+                        <ShareLinkCounter shareLinkId={link.id} />
                       </div>
                       
                       {/* Actions Sidebar */}
