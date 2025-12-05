@@ -70,7 +70,6 @@ const PublicLaundryView = () => {
         `)
         .gte('date', shareLink.dateStart)
         .lte('date', shareLink.dateEnd)
-        .in('type', ['limpieza', 'check', 'mantenimiento'])
         .order('date', { ascending: true })
         .order('check_out', { ascending: true });
 
