@@ -43,6 +43,8 @@ const LogisticsDashboard = React.lazy(() => import("./pages/LogisticsDashboard")
 const LogisticsReports = React.lazy(() => import("./pages/LogisticsReports"));
 const RecurringTasksPage = React.lazy(() => import("./pages/RecurringTasksPage"));
 const HostawayAutomation = React.lazy(() => import("./pages/HostawayAutomation"));
+const PublicLaundryView = React.lazy(() => import("./pages/PublicLaundryView"));
+const LaundryShareManagement = React.lazy(() => import("./pages/LaundryShareManagement"));
 
 // Helper component to wrap lazy routes with error boundary and transition
 const LazyRoute = ({ children }: { children: React.ReactNode }) => {
@@ -89,6 +91,12 @@ function App() {
               <Route path="/accept-invitation" element={
                 <LazyRoute>
                   <AcceptInvitation />
+                </LazyRoute>
+              } />
+              {/* Ruta pública para vista de lavandería (repartidores sin cuenta) */}
+              <Route path="/lavanderia/:token" element={
+                <LazyRoute>
+                  <PublicLaundryView />
                 </LazyRoute>
               } />
               <Route path="/" element={
@@ -328,6 +336,15 @@ function App() {
                   <RoleProtectedRoute requiredModule="logistics">
                     <LazyRoute>
                       <LogisticsDeliveries />
+                    </LazyRoute>
+                  </RoleProtectedRoute>
+                </ProtectedRoute>
+              } />
+              <Route path="/lavanderia/gestion" element={
+                <ProtectedRoute>
+                  <RoleProtectedRoute requiredModule="reports">
+                    <LazyRoute>
+                      <LaundryShareManagement />
                     </LazyRoute>
                   </RoleProtectedRoute>
                 </ProtectedRoute>
