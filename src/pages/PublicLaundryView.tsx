@@ -5,7 +5,7 @@ import { useLaundryTracking, LaundryDeliveryStatus } from '@/hooks/useLaundryTra
 import { LaundryDeliveryCard, LaundryTask } from '@/components/laundry-share/LaundryDeliveryCard';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
-import { Loader2, AlertCircle, Package, CheckCircle2, RefreshCw } from 'lucide-react';
+import { Loader2, AlertCircle, Package, CheckCircle2, RefreshCw, Calendar } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { formatDateRange } from '@/services/laundryShareService';
@@ -78,8 +78,13 @@ const PublicLaundryView = () => {
 
       if (error) throw error;
       
-      // Sort by property code alphabetically
+      // Sort by date first, then by property code alphabetically
       const sorted = (data || []).sort((a, b) => {
+        // First sort by date
+        const dateCompare = a.date.localeCompare(b.date);
+        if (dateCompare !== 0) return dateCompare;
+        
+        // Then by property code
         const codeA = (a.properties as any)?.codigo || a.property || '';
         const codeB = (b.properties as any)?.codigo || b.property || '';
         return codeA.localeCompare(codeB, 'es', { numeric: true });
@@ -155,6 +160,28 @@ const PublicLaundryView = () => {
       return true;
     });
   }, [tasks, filterDate, filterStatus, getTaskTracking]);
+
+  // Group filtered tasks by date
+  const tasksByDate = useMemo(() => {
+    const grouped: Record<string, LaundryTask[]> = {};
+    filteredTasks.forEach(task => {
+      if (!grouped[task.date]) {
+        grouped[task.date] = [];
+      }
+      grouped[task.date].push(task);
+    });
+    return grouped;
+  }, [filteredTasks]);
+
+  // Format date for separator
+  const formatDateSeparator = (dateStr: string) => {
+    const date = new Date(dateStr);
+    return date.toLocaleDateString('es-ES', { 
+      weekday: 'long', 
+      day: 'numeric', 
+      month: 'long' 
+    });
+  };
 
   // Handle status update - simplified, no name required
   const handleStatusUpdate = async (
@@ -294,16 +321,35 @@ const PublicLaundryView = () => {
             <p>No hay tareas que coincidan con los filtros</p>
           </div>
         ) : (
-          <div className="space-y-3">
-            {filteredTasks.map(task => (
-              <LaundryDeliveryCard
-                key={task.id}
-                task={task}
-                tracking={getTaskTracking(task.id)}
-                shareLinkId={shareLink.id}
-                onStatusUpdate={handleStatusUpdate}
-                isUpdating={updateTracking.isPending}
-              />
+          <div className="space-y-4">
+            {Object.entries(tasksByDate).sort(([a], [b]) => a.localeCompare(b)).map(([date, dateTasks]) => (
+              <div key={date}>
+                {/* Date separator */}
+                <div className="flex items-center gap-2 mb-3 sticky top-[120px] bg-background py-2 z-[5]">
+                  <Calendar className="h-4 w-4 text-primary" />
+                  <span className="font-medium text-primary capitalize">
+                    {formatDateSeparator(date)}
+                  </span>
+                  <div className="flex-1 h-px bg-border" />
+                  <span className="text-sm text-muted-foreground">
+                    {dateTasks.length} {dateTasks.length === 1 ? 'tarea' : 'tareas'}
+                  </span>
+                </div>
+                
+                {/* Tasks for this date */}
+                <div className="space-y-3">
+                  {dateTasks.map(task => (
+                    <LaundryDeliveryCard
+                      key={task.id}
+                      task={task}
+                      tracking={getTaskTracking(task.id)}
+                      shareLinkId={shareLink.id}
+                      onStatusUpdate={handleStatusUpdate}
+                      isUpdating={updateTracking.isPending}
+                    />
+                  ))}
+                </div>
+              </div>
             ))}
           </div>
         )}
