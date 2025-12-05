@@ -10,6 +10,7 @@ import { cn } from '@/lib/utils';
 export interface LaundryTask {
   id: string;
   property: string;
+  propertyCode?: string;
   address: string;
   date: string;
   checkIn: string;
@@ -109,10 +110,15 @@ export const LaundryDeliveryCard = ({
           <div className="flex items-start justify-between gap-2">
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
-                <h3 className="font-semibold text-lg truncate">{task.property}</h3>
+                <h3 className="font-semibold text-lg truncate">
+                  {task.propertyCode || task.property}
+                </h3>
                 {getChangeStatusBadge()}
                 {getStatusBadge()}
               </div>
+              {task.propertyCode && task.property !== task.propertyCode && (
+                <p className="text-sm text-muted-foreground truncate">{task.property}</p>
+              )}
               <div className="flex items-center gap-1 text-muted-foreground text-sm mt-1">
                 <MapPin className="h-3 w-3 shrink-0" />
                 <span className="truncate">{task.address}</span>
