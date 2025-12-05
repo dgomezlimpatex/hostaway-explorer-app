@@ -77,25 +77,29 @@ export const fetchLaundryTasksForDateRange = async (
   return (data || []).map(t => t.id);
 };
 
-// Detect changes between snapshot and current tasks
+// Detect changes between original tasks (at creation time) and current tasks
 export interface TaskChanges {
   newTasks: string[];
   removedTasks: string[];
-  // Modified detection would require storing more data in snapshot
 }
 
 export const detectTaskChanges = async (
-  snapshotTaskIds: string[],
+  originalTaskIds: string[], // All tasks that existed when link was created
+  snapshotTaskIds: string[], // Tasks currently included in the snapshot
   dateStart: string,
   dateEnd: string,
   sedeIds?: string[]
 ): Promise<TaskChanges> => {
   const currentTaskIds = await fetchLaundryTasksForDateRange(dateStart, dateEnd, sedeIds);
   
+  const originalSet = new Set(originalTaskIds);
   const snapshotSet = new Set(snapshotTaskIds);
   const currentSet = new Set(currentTaskIds);
 
-  const newTasks = currentTaskIds.filter(id => !snapshotSet.has(id));
+  // New tasks = tasks that exist now but didn't exist at link creation
+  const newTasks = currentTaskIds.filter(id => !originalSet.has(id));
+  
+  // Removed tasks = tasks in snapshot that no longer exist
   const removedTasks = snapshotTaskIds.filter(id => !currentSet.has(id));
 
   return {

@@ -13,6 +13,7 @@ export interface LaundryShareLink {
   isPermanent: boolean;
   isActive: boolean;
   snapshotTaskIds: string[];
+  originalTaskIds: string[]; // All tasks at creation time (for detecting truly new tasks)
   filters: Record<string, any>;
   createdAt: string;
   updatedAt: string;
@@ -24,6 +25,7 @@ interface CreateShareLinkParams {
   expiresAt?: string | null;
   isPermanent: boolean;
   taskIds: string[];
+  allTaskIds: string[]; // All tasks at creation time
   filters?: Record<string, any>;
 }
 
@@ -48,6 +50,7 @@ const mapToShareLink = (row: any): LaundryShareLink => ({
   isPermanent: row.is_permanent,
   isActive: row.is_active,
   snapshotTaskIds: row.snapshot_task_ids || [],
+  originalTaskIds: row.original_task_ids || row.snapshot_task_ids || [], // Fallback to snapshot for old links
   filters: row.filters || {},
   createdAt: row.created_at,
   updatedAt: row.updated_at,
@@ -90,6 +93,7 @@ export const useLaundryShareLinks = () => {
           expires_at: params.isPermanent ? null : params.expiresAt,
           is_permanent: params.isPermanent,
           snapshot_task_ids: params.taskIds,
+          original_task_ids: params.allTaskIds, // Store all tasks at creation time
           filters: params.filters || {},
         })
         .select()

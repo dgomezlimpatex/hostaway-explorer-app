@@ -36,8 +36,8 @@ export const LaundryShareLinkModal = ({
   const handleGenerate = async () => {
     setIsGenerating(true);
     try {
-      // Fetch current task IDs for snapshot
-      const taskIds = await fetchLaundryTasksForDateRange(dateStart, dateEnd, sedeIds);
+      // Fetch current task IDs for snapshot (all tasks at creation time)
+      const allTaskIds = await fetchLaundryTasksForDateRange(dateStart, dateEnd, sedeIds);
       
       const expiresAt = calculateExpirationDate(expiration);
       
@@ -46,7 +46,8 @@ export const LaundryShareLinkModal = ({
         dateEnd,
         expiresAt,
         isPermanent: expiration === 'permanent',
-        taskIds,
+        taskIds: allTaskIds, // Initially all tasks are included
+        allTaskIds, // Store all tasks for future comparison
         filters: sedeIds ? { sedeIds } : {},
       });
 
