@@ -17,7 +17,8 @@ import {
   CheckCircle2,
   Clock,
   AlertCircle,
-  RefreshCw
+  RefreshCw,
+  Home
 } from 'lucide-react';
 import { useLaundryShareLinks, LaundryShareLink } from '@/hooks/useLaundryShareLinks';
 import { useLaundryTracking } from '@/hooks/useLaundryTracking';
@@ -32,6 +33,8 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { format, addDays } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -42,6 +45,42 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+
+// Component to show properties for a share link
+const ShareLinkProperties = ({ dateStart, dateEnd }: { dateStart: string; dateEnd: string }) => {
+  const { data: properties, isLoading } = useQuery({
+    queryKey: ['share-link-properties', dateStart, dateEnd],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('tasks')
+        .select('property, propiedad_id')
+        .gte('date', dateStart)
+        .lte('date', dateEnd)
+        .in('type', ['limpieza', 'check', 'mantenimiento']);
+
+      if (error) throw error;
+      
+      // Get unique property names
+      const uniqueProperties = [...new Set(data?.map(t => t.property) || [])];
+      return uniqueProperties;
+    },
+  });
+
+  if (isLoading) return <span className="text-muted-foreground text-xs">Cargando...</span>;
+  if (!properties || properties.length === 0) return <span className="text-muted-foreground text-xs">Sin propiedades</span>;
+
+  return (
+    <div className="flex items-center gap-1 flex-wrap">
+      <Home className="h-3 w-3 text-muted-foreground shrink-0" />
+      <span className="text-xs text-muted-foreground">
+        {properties.length <= 3 
+          ? properties.join(', ')
+          : `${properties.slice(0, 3).join(', ')} +${properties.length - 3} más`
+        }
+      </span>
+    </div>
+  );
+};
 
 // Component to show tracking stats for a share link
 const ShareLinkStats = ({ shareLinkId }: { shareLinkId: string }) => {
@@ -218,6 +257,7 @@ const LaundryShareManagement = () => {
                             {getShareLinkUrl(link.token)}
                           </div>
                           
+                          <ShareLinkProperties dateStart={link.dateStart} dateEnd={link.dateEnd} />
                           <ShareLinkStats shareLinkId={link.id} />
                         </div>
                         
