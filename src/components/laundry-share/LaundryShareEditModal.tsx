@@ -168,38 +168,51 @@ export const LaundryShareEditModal = ({
             </div>
             <ScrollArea className="h-[600px] pr-4">
               <div className="columns-1 md:columns-2 xl:columns-3 gap-4">
-                {tasks.map(task => {
-                  const isIncluded = !excludedTasks.has(task.id);
-                  return (
-                    <div
-                      key={task.id}
-                      className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors break-inside-avoid mb-2 ${
-                        isIncluded 
-                          ? 'bg-card hover:bg-muted/50' 
-                          : 'bg-muted/30 opacity-60'
-                      }`}
-                      onClick={() => toggleTask(task.id)}
-                    >
-                      <Checkbox
-                        checked={isIncluded}
-                        onCheckedChange={() => toggleTask(task.id)}
-                      />
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <Home className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                          <span className="font-medium truncate">
-                            {task.code || task.property}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
-                          <Calendar className="h-3 w-3" />
-                          <span>{formatDate(task.date)}</span>
-                          <span>• Check-out: {task.checkOut}</span>
+                {(() => {
+                  let lastDate = '';
+                  return tasks.map(task => {
+                    const isIncluded = !excludedTasks.has(task.id);
+                    const showDateHeader = task.date !== lastDate;
+                    lastDate = task.date;
+                    
+                    return (
+                      <div key={task.id} className="break-inside-avoid mb-2">
+                        {showDateHeader && (
+                          <div className="flex items-center gap-2 py-2 mb-2 border-b border-border">
+                            <Calendar className="h-4 w-4 text-primary" />
+                            <span className="font-semibold text-sm text-primary">
+                              {formatDate(task.date)}
+                            </span>
+                          </div>
+                        )}
+                        <div
+                          className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
+                            isIncluded 
+                              ? 'bg-card hover:bg-muted/50' 
+                              : 'bg-muted/30 opacity-60'
+                          }`}
+                          onClick={() => toggleTask(task.id)}
+                        >
+                          <Checkbox
+                            checked={isIncluded}
+                            onCheckedChange={() => toggleTask(task.id)}
+                          />
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2">
+                              <Home className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                              <span className="font-medium truncate">
+                                {task.code || task.property}
+                              </span>
+                            </div>
+                            <div className="text-xs text-muted-foreground mt-1">
+                              Check-out: {task.checkOut}
+                            </div>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  );
-                })}
+                    );
+                  });
+                })()}
               </div>
             </ScrollArea>
           </>
