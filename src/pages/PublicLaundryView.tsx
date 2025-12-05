@@ -66,7 +66,11 @@ const PublicLaundryView = () => {
             gel_ducha,
             champu,
             acondicionador,
-            papel_higienico
+            papel_higienico,
+            cantidad_rollos_papel_higienico,
+            cantidad_rollos_papel_cocina,
+            amenities_bano,
+            amenities_cocina
           )
         `)
         .gte('date', shareLink.dateStart)
@@ -119,6 +123,10 @@ const PublicLaundryView = () => {
         shampoo: prop?.champu || 0,
         conditioner: prop?.acondicionador || 0,
         toiletPaper: prop?.papel_higienico || 0,
+        toiletPaperRolls: prop?.cantidad_rollos_papel_higienico || 0,
+        kitchenPaperRolls: prop?.cantidad_rollos_papel_cocina || 0,
+        bathroomAmenities: prop?.amenities_bano || 0,
+        kitchenAmenities: prop?.amenities_cocina || 0,
       } as LaundryTask;
     });
 

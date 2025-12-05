@@ -28,6 +28,10 @@ export interface LaundryTask {
   shampoo: number;
   conditioner: number;
   toiletPaper: number;
+  toiletPaperRolls: number;
+  kitchenPaperRolls: number;
+  bathroomAmenities: number;
+  kitchenAmenities: number;
   // Change status
   changeStatus?: 'new' | 'modified' | 'removed';
 }
@@ -83,7 +87,9 @@ export const LaundryDeliveryCard = ({
 
   // Check if task has any amenities
   const hasAmenities = task.foodKit > 0 || task.soapLiquid > 0 || task.showerGel > 0 ||
-    task.shampoo > 0 || task.conditioner > 0 || task.toiletPaper > 0;
+    task.shampoo > 0 || task.conditioner > 0 || task.toiletPaper > 0 || 
+    task.toiletPaperRolls > 0 || task.kitchenPaperRolls > 0 || 
+    task.bathroomAmenities > 0 || task.kitchenAmenities > 0;
 
   return (
     <Card className={cn(
@@ -178,12 +184,24 @@ export const LaundryDeliveryCard = ({
               {task.conditioner > 0 && (
                 <Badge variant="outline">Acondicionador: {task.conditioner}</Badge>
               )}
-              {task.toiletPaper > 0 && (
-                <Badge variant="outline">Papel higiénico: {task.toiletPaper}</Badge>
-              )}
+                {task.toiletPaper > 0 && (
+                  <Badge variant="outline">Papel higiénico: {task.toiletPaper}</Badge>
+                )}
+                {task.toiletPaperRolls > 0 && (
+                  <Badge variant="outline">Rollos P. Higiénico: {task.toiletPaperRolls}</Badge>
+                )}
+                {task.kitchenPaperRolls > 0 && (
+                  <Badge variant="outline">Rollos P. Cocina: {task.kitchenPaperRolls}</Badge>
+                )}
+                {task.bathroomAmenities > 0 && (
+                  <Badge variant="outline">Kit baño: {task.bathroomAmenities}</Badge>
+                )}
+                {task.kitchenAmenities > 0 && (
+                  <Badge variant="outline">Kit cocina: {task.kitchenAmenities}</Badge>
+                )}
+              </div>
             </div>
-          </div>
-        )}
+          )}
 
         {/* Status info */}
         {tracking && status !== 'pending' && (
