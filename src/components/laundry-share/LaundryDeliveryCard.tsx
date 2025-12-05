@@ -1,10 +1,8 @@
-import { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { MapPin, Clock, Package, CheckCircle2, Truck, AlertCircle } from 'lucide-react';
+import { MapPin, Clock, Package, CheckCircle2, Truck, User } from 'lucide-react';
 import { LaundryDeliveryTracking, LaundryDeliveryStatus } from '@/hooks/useLaundryTracking';
-import { DeliveryStatusModal } from './DeliveryStatusModal';
 import { cn } from '@/lib/utils';
 
 export interface LaundryTask {
@@ -13,8 +11,8 @@ export interface LaundryTask {
   propertyCode?: string;
   address: string;
   date: string;
-  checkIn: string;
-  checkOut: string;
+  serviceTime: string; // start_time - end_time
+  cleaner?: string;
   // Textiles
   sheets: number;
   sheetsSmall: number;
@@ -38,7 +36,7 @@ interface LaundryDeliveryCardProps {
   task: LaundryTask;
   tracking?: LaundryDeliveryTracking;
   shareLinkId: string;
-  onStatusUpdate: (taskId: string, status: LaundryDeliveryStatus, personName: string, notes?: string) => void;
+  onStatusUpdate: (taskId: string, status: LaundryDeliveryStatus) => void;
   isUpdating?: boolean;
 }
 
@@ -49,19 +47,10 @@ export const LaundryDeliveryCard = ({
   onStatusUpdate,
   isUpdating,
 }: LaundryDeliveryCardProps) => {
-  const [statusModalOpen, setStatusModalOpen] = useState(false);
-  const [targetStatus, setTargetStatus] = useState<LaundryDeliveryStatus>('prepared');
-
   const status = tracking?.status || 'pending';
 
   const handleStatusClick = (newStatus: LaundryDeliveryStatus) => {
-    setTargetStatus(newStatus);
-    setStatusModalOpen(true);
-  };
-
-  const handleConfirmStatus = (personName: string, notes?: string) => {
-    onStatusUpdate(task.id, targetStatus, personName, notes);
-    setStatusModalOpen(false);
+    onStatusUpdate(task.id, newStatus);
   };
 
   const getChangeStatusBadge = () => {
@@ -97,160 +86,153 @@ export const LaundryDeliveryCard = ({
     task.shampoo > 0 || task.conditioner > 0 || task.toiletPaper > 0;
 
   return (
-    <>
-      <Card className={cn(
-        "transition-all",
-        task.changeStatus === 'removed' && "opacity-60 line-through",
-        task.changeStatus === 'new' && "ring-2 ring-green-500",
-        task.changeStatus === 'modified' && "ring-2 ring-yellow-500",
-        status === 'delivered' && "bg-green-50 dark:bg-green-950/20"
-      )}>
-        <CardContent className="p-4 space-y-3">
-          {/* Header */}
-          <div className="flex items-start justify-between gap-2">
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 flex-wrap">
-                <h3 className="font-semibold text-lg truncate">
-                  {task.propertyCode || task.property}
-                </h3>
-                {getChangeStatusBadge()}
-                {getStatusBadge()}
-              </div>
-              {task.propertyCode && task.property !== task.propertyCode && (
-                <p className="text-sm text-muted-foreground truncate">{task.property}</p>
-              )}
-              <div className="flex items-center gap-1 text-muted-foreground text-sm mt-1">
-                <MapPin className="h-3 w-3 shrink-0" />
-                <span className="truncate">{task.address}</span>
-              </div>
+    <Card className={cn(
+      "transition-all",
+      task.changeStatus === 'removed' && "opacity-60 line-through",
+      task.changeStatus === 'new' && "ring-2 ring-green-500",
+      task.changeStatus === 'modified' && "ring-2 ring-yellow-500",
+      status === 'delivered' && "bg-green-50 dark:bg-green-950/20"
+    )}>
+      <CardContent className="p-4 space-y-3">
+        {/* Header */}
+        <div className="flex items-start justify-between gap-2">
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <h3 className="font-semibold text-lg truncate">
+                {task.propertyCode || task.property}
+              </h3>
+              {getChangeStatusBadge()}
+              {getStatusBadge()}
+            </div>
+            {task.propertyCode && task.property !== task.propertyCode && (
+              <p className="text-sm text-muted-foreground truncate">{task.property}</p>
+            )}
+            <div className="flex items-center gap-1 text-muted-foreground text-sm mt-1">
+              <MapPin className="h-3 w-3 shrink-0" />
+              <span className="truncate">{task.address}</span>
             </div>
           </div>
+        </div>
 
-          {/* Time info */}
-          <div className="flex items-center gap-4 text-sm">
+        {/* Service time and cleaner */}
+        <div className="flex flex-wrap items-center gap-4 text-sm">
+          <div className="flex items-center gap-1">
+            <Clock className="h-4 w-4 text-muted-foreground" />
+            <span>Servicio: {task.serviceTime}</span>
+          </div>
+          {task.cleaner && (
             <div className="flex items-center gap-1">
-              <Clock className="h-4 w-4 text-muted-foreground" />
-              <span>Check-out: {task.checkOut}</span>
+              <User className="h-4 w-4 text-muted-foreground" />
+              <span>{task.cleaner}</span>
             </div>
-            <div className="flex items-center gap-1">
-              <span>Check-in: {task.checkIn}</span>
+          )}
+        </div>
+
+        {/* Textiles */}
+        {hasTextiles && (
+          <div className="space-y-1">
+            <p className="text-sm font-medium text-muted-foreground">Textiles:</p>
+            <div className="flex flex-wrap gap-2">
+              {task.sheets > 0 && (
+                <Badge variant="outline">Sábanas dobles: {task.sheets}</Badge>
+              )}
+              {task.sheetsSmall > 0 && (
+                <Badge variant="outline">Sábanas indiv: {task.sheetsSmall}</Badge>
+              )}
+              {task.sheetsSuite > 0 && (
+                <Badge variant="outline">Sábanas suite: {task.sheetsSuite}</Badge>
+              )}
+              {task.pillowCases > 0 && (
+                <Badge variant="outline">Fundas almohada: {task.pillowCases}</Badge>
+              )}
+              {task.towelsLarge > 0 && (
+                <Badge variant="outline">Toallas grandes: {task.towelsLarge}</Badge>
+              )}
+              {task.towelsSmall > 0 && (
+                <Badge variant="outline">Toallas pequeñas: {task.towelsSmall}</Badge>
+              )}
+              {task.bathMats > 0 && (
+                <Badge variant="outline">Alfombrines: {task.bathMats}</Badge>
+              )}
             </div>
           </div>
+        )}
 
-          {/* Textiles */}
-          {hasTextiles && (
-            <div className="space-y-1">
-              <p className="text-sm font-medium text-muted-foreground">Textiles:</p>
-              <div className="flex flex-wrap gap-2">
-                {task.sheets > 0 && (
-                  <Badge variant="outline">Sábanas dobles: {task.sheets}</Badge>
-                )}
-                {task.sheetsSmall > 0 && (
-                  <Badge variant="outline">Sábanas indiv: {task.sheetsSmall}</Badge>
-                )}
-                {task.sheetsSuite > 0 && (
-                  <Badge variant="outline">Sábanas suite: {task.sheetsSuite}</Badge>
-                )}
-                {task.pillowCases > 0 && (
-                  <Badge variant="outline">Fundas almohada: {task.pillowCases}</Badge>
-                )}
-                {task.towelsLarge > 0 && (
-                  <Badge variant="outline">Toallas grandes: {task.towelsLarge}</Badge>
-                )}
-                {task.towelsSmall > 0 && (
-                  <Badge variant="outline">Toallas pequeñas: {task.towelsSmall}</Badge>
-                )}
-                {task.bathMats > 0 && (
-                  <Badge variant="outline">Alfombrines: {task.bathMats}</Badge>
-                )}
+        {/* Amenities */}
+        {hasAmenities && (
+          <div className="space-y-1">
+            <p className="text-sm font-medium text-muted-foreground">Amenities:</p>
+            <div className="flex flex-wrap gap-2">
+              {task.foodKit > 0 && (
+                <Badge variant="outline">Kit alimentario: {task.foodKit}</Badge>
+              )}
+              {task.soapLiquid > 0 && (
+                <Badge variant="outline">Jabón líquido: {task.soapLiquid}</Badge>
+              )}
+              {task.showerGel > 0 && (
+                <Badge variant="outline">Gel ducha: {task.showerGel}</Badge>
+              )}
+              {task.shampoo > 0 && (
+                <Badge variant="outline">Champú: {task.shampoo}</Badge>
+              )}
+              {task.conditioner > 0 && (
+                <Badge variant="outline">Acondicionador: {task.conditioner}</Badge>
+              )}
+              {task.toiletPaper > 0 && (
+                <Badge variant="outline">Papel higiénico: {task.toiletPaper}</Badge>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Status info */}
+        {tracking && status !== 'pending' && (
+          <div className="text-xs text-muted-foreground border-t pt-2">
+            {tracking.preparedByName && (
+              <p>Preparada por: {tracking.preparedByName} - {new Date(tracking.preparedAt!).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}</p>
+            )}
+            {tracking.deliveredByName && (
+              <p>Entregada por: {tracking.deliveredByName} - {new Date(tracking.deliveredAt!).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}</p>
+            )}
+            {tracking.notes && <p className="italic mt-1">Nota: {tracking.notes}</p>}
+          </div>
+        )}
+
+        {/* Action buttons - single click */}
+        {task.changeStatus !== 'removed' && (
+          <div className="flex gap-2 pt-2">
+            {status === 'pending' && (
+              <Button
+                size="sm"
+                variant="outline"
+                className="flex-1"
+                onClick={() => handleStatusClick('prepared')}
+                disabled={isUpdating}
+              >
+                <Package className="h-4 w-4 mr-2" />
+                Marcar Preparada
+              </Button>
+            )}
+            {(status === 'pending' || status === 'prepared') && (
+              <Button
+                size="sm"
+                className="flex-1"
+                onClick={() => handleStatusClick('delivered')}
+                disabled={isUpdating}
+              >
+                <Truck className="h-4 w-4 mr-2" />
+                Marcar Entregada
+              </Button>
+            )}
+            {status === 'delivered' && (
+              <div className="flex items-center gap-2 text-green-600">
+                <CheckCircle2 className="h-5 w-5" />
+                <span className="font-medium">Completada</span>
               </div>
-            </div>
-          )}
-
-          {/* Amenities */}
-          {hasAmenities && (
-            <div className="space-y-1">
-              <p className="text-sm font-medium text-muted-foreground">Amenities:</p>
-              <div className="flex flex-wrap gap-2">
-                {task.foodKit > 0 && (
-                  <Badge variant="outline">Kit alimentario: {task.foodKit}</Badge>
-                )}
-                {task.soapLiquid > 0 && (
-                  <Badge variant="outline">Jabón líquido: {task.soapLiquid}</Badge>
-                )}
-                {task.showerGel > 0 && (
-                  <Badge variant="outline">Gel ducha: {task.showerGel}</Badge>
-                )}
-                {task.shampoo > 0 && (
-                  <Badge variant="outline">Champú: {task.shampoo}</Badge>
-                )}
-                {task.conditioner > 0 && (
-                  <Badge variant="outline">Acondicionador: {task.conditioner}</Badge>
-                )}
-                {task.toiletPaper > 0 && (
-                  <Badge variant="outline">Papel higiénico: {task.toiletPaper}</Badge>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* Status info */}
-          {tracking && status !== 'pending' && (
-            <div className="text-xs text-muted-foreground border-t pt-2">
-              {tracking.preparedByName && (
-                <p>Preparada por: {tracking.preparedByName} - {new Date(tracking.preparedAt!).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}</p>
-              )}
-              {tracking.deliveredByName && (
-                <p>Entregada por: {tracking.deliveredByName} - {new Date(tracking.deliveredAt!).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}</p>
-              )}
-              {tracking.notes && <p className="italic mt-1">Nota: {tracking.notes}</p>}
-            </div>
-          )}
-
-          {/* Action buttons */}
-          {task.changeStatus !== 'removed' && (
-            <div className="flex gap-2 pt-2">
-              {status === 'pending' && (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="flex-1"
-                  onClick={() => handleStatusClick('prepared')}
-                  disabled={isUpdating}
-                >
-                  <Package className="h-4 w-4 mr-2" />
-                  Marcar Preparada
-                </Button>
-              )}
-              {(status === 'pending' || status === 'prepared') && (
-                <Button
-                  size="sm"
-                  className="flex-1"
-                  onClick={() => handleStatusClick('delivered')}
-                  disabled={isUpdating}
-                >
-                  <Truck className="h-4 w-4 mr-2" />
-                  Marcar Entregada
-                </Button>
-              )}
-              {status === 'delivered' && (
-                <div className="flex items-center gap-2 text-green-600">
-                  <CheckCircle2 className="h-5 w-5" />
-                  <span className="font-medium">Completada</span>
-                </div>
-              )}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      <DeliveryStatusModal
-        open={statusModalOpen}
-        onOpenChange={setStatusModalOpen}
-        targetStatus={targetStatus}
-        propertyName={task.property}
-        onConfirm={handleConfirmStatus}
-      />
-    </>
+            )}
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 };
