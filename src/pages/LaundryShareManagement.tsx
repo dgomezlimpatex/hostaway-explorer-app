@@ -55,8 +55,7 @@ const ShareLinkProperties = ({ dateStart, dateEnd }: { dateStart: string; dateEn
         .from('tasks')
         .select('property, propiedad_id')
         .gte('date', dateStart)
-        .lte('date', dateEnd)
-        .in('type', ['limpieza', 'check', 'mantenimiento']);
+        .lte('date', dateEnd);
 
       if (error) throw error;
       

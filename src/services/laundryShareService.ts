@@ -61,8 +61,7 @@ export const fetchLaundryTasksForDateRange = async (
     .from('tasks')
     .select('id')
     .gte('date', dateStart)
-    .lte('date', dateEnd)
-    .in('type', ['limpieza', 'check', 'mantenimiento']);
+    .lte('date', dateEnd);
 
   if (sedeIds && sedeIds.length > 0) {
     query = query.in('sede_id', sedeIds);
