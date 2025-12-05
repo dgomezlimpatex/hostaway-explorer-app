@@ -52,8 +52,13 @@ export const LaundryShareEditModal = ({
 
       if (error) throw error;
 
-      // Sort by code
+      // Sort by date first, then by code alphabetically
       const sorted = (data || []).sort((a, b) => {
+        // First sort by date
+        const dateCompare = a.date.localeCompare(b.date);
+        if (dateCompare !== 0) return dateCompare;
+        
+        // Then sort alphabetically by code
         const codeA = (a.properties as any)?.codigo || a.property || '';
         const codeB = (b.properties as any)?.codigo || b.property || '';
         return codeA.localeCompare(codeB, 'es', { numeric: true });
@@ -143,7 +148,7 @@ export const LaundryShareEditModal = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="sm:max-w-2xl max-h-[90vh]">
         <DialogHeader>
           <DialogTitle>Editar Tareas del Enlace</DialogTitle>
           <DialogDescription>
@@ -161,7 +166,7 @@ export const LaundryShareEditModal = ({
             <div className="text-sm text-muted-foreground mb-2">
               {includedCount} de {totalCount} tareas incluidas
             </div>
-            <ScrollArea className="h-[400px] pr-4">
+            <ScrollArea className="h-[500px] pr-4">
               <div className="space-y-2">
                 {tasks.map(task => {
                   const isIncluded = !excludedTasks.has(task.id);
