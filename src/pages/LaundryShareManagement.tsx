@@ -19,7 +19,8 @@ import {
   AlertCircle,
   RefreshCw,
   Home,
-  Pencil
+  Pencil,
+  AlertTriangle
 } from 'lucide-react';
 import { useLaundryShareLinks, LaundryShareLink } from '@/hooks/useLaundryShareLinks';
 import { useLaundryTracking } from '@/hooks/useLaundryTracking';
@@ -30,8 +31,10 @@ import {
   getShareLinkUrl, 
   formatDateRange, 
   formatExpirationStatus,
-  isShareLinkExpired 
+  isShareLinkExpired,
+  detectTaskChanges
 } from '@/services/laundryShareService';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useToast } from '@/hooks/use-toast';
 import { format, addDays } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -95,6 +98,58 @@ const ShareLinkProperties = ({
         }
       </span>
     </div>
+  );
+};
+
+// Component to show new tasks alert
+const NewTasksAlert = ({ 
+  dateStart, 
+  dateEnd, 
+  snapshotTaskIds,
+  onEditClick
+}: { 
+  dateStart: string; 
+  dateEnd: string;
+  snapshotTaskIds: string[];
+  onEditClick: () => void;
+}) => {
+  const { data: changes } = useQuery({
+    queryKey: ['share-link-changes', dateStart, dateEnd, snapshotTaskIds],
+    queryFn: () => detectTaskChanges(snapshotTaskIds, dateStart, dateEnd),
+    staleTime: 30000, // 30 seconds
+    refetchInterval: 60000, // Refetch every minute
+  });
+
+  if (!changes || (changes.newTasks.length === 0 && changes.removedTasks.length === 0)) {
+    return null;
+  }
+
+  const hasNew = changes.newTasks.length > 0;
+  const hasRemoved = changes.removedTasks.length > 0;
+
+  return (
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button
+            onClick={onEditClick}
+            className="flex items-center gap-1 px-2 py-1 rounded-md bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 text-xs font-medium hover:bg-amber-200 dark:hover:bg-amber-900/50 transition-colors"
+          >
+            <AlertTriangle className="h-3 w-3" />
+            {hasNew && <span>+{changes.newTasks.length} nuevas</span>}
+            {hasNew && hasRemoved && <span className="mx-0.5">/</span>}
+            {hasRemoved && <span className="text-red-600 dark:text-red-400">-{changes.removedTasks.length} eliminadas</span>}
+          </button>
+        </TooltipTrigger>
+        <TooltipContent side="top" className="max-w-xs">
+          <p className="text-sm">
+            {hasNew && `${changes.newTasks.length} tarea(s) nueva(s) no incluida(s) en el enlace. `}
+            {hasRemoved && `${changes.removedTasks.length} tarea(s) del enlace ya no existe(n). `}
+            Haz clic para editar.
+          </p>
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
   );
 };
 
@@ -272,6 +327,14 @@ const LaundryShareManagement = () => {
                                 <Clock className="h-3 w-3 mr-1" />
                                 {formatExpirationStatus(link.expiresAt, link.isPermanent)}
                               </Badge>
+                            )}
+                            {!expired && (
+                              <NewTasksAlert 
+                                dateStart={link.dateStart}
+                                dateEnd={link.dateEnd}
+                                snapshotTaskIds={link.snapshotTaskIds}
+                                onEditClick={() => handleEditClick(link)}
+                              />
                             )}
                           </div>
                           
