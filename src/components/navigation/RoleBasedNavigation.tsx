@@ -12,7 +12,8 @@ import {
   Layers,
   FileText,
   Package,
-  Truck
+  Truck,
+  Shirt
 } from 'lucide-react';
 
 export const RoleBasedNavigation = () => {
@@ -185,6 +186,19 @@ export const RoleBasedNavigation = () => {
               gradientTo="to-sky-600"
               iconColor="text-white"
               hoverBorderColor="hover:border-sky-300"
+            />
+          )}
+
+          {canAccessModule('reports') && (
+            <NavigationCard
+              to="/lavanderia/gestion"
+              title="Lavandería"
+              description="Gestiona enlaces compartibles para repartidores de lavandería"
+              icon={Shirt}
+              gradientFrom="bg-gradient-to-br from-pink-500"
+              gradientTo="to-pink-600"
+              iconColor="text-white"
+              hoverBorderColor="hover:border-pink-300"
             />
           )}
 
