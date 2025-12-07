@@ -131,19 +131,50 @@ export const useUpdateCleanersOrder = () => {
 
 export const useDeleteCleaner = () => {
   const queryClient = useQueryClient();
-  const { invalidateCleaners } = useCacheInvalidation();
+  const { invalidateCleaners, invalidateTasks } = useCacheInvalidation();
 
   return useMutation({
     mutationFn: async (id: string) => {
+      // First, unassign all tasks from this cleaner before deleting
+      const { supabase } = await import('@/integrations/supabase/client');
+      
+      // Update all tasks that have this cleaner_id to remove the assignment
+      const { error: unassignError } = await supabase
+        .from('tasks')
+        .update({ 
+          cleaner: null, 
+          cleaner_id: null,
+          updated_at: new Date().toISOString()
+        })
+        .eq('cleaner_id', id);
+      
+      if (unassignError) {
+        console.error('Error unassigning tasks from cleaner:', unassignError);
+        throw new Error('Error al desasignar tareas del trabajador');
+      }
+      
+      // Also delete any task_assignments for this cleaner
+      const { error: assignmentError } = await supabase
+        .from('task_assignments')
+        .delete()
+        .eq('cleaner_id', id);
+      
+      if (assignmentError) {
+        console.error('Error deleting task assignments:', assignmentError);
+        // Don't throw here, continue with cleaner deletion
+      }
+      
+      // Now delete the cleaner
       const success = await cleanerStorage.delete(id);
       if (!success) throw new Error('Trabajador no encontrado');
       return success;
     },
     onSuccess: () => {
       invalidateCleaners();
+      invalidateTasks(); // Also invalidate tasks since they were modified
       toast({
         title: "Trabajador eliminado",
-        description: "El trabajador ha sido eliminado exitosamente.",
+        description: "El trabajador ha sido eliminado. Sus tareas asignadas han sido desasignadas.",
       });
     },
     onError: (error) => {
