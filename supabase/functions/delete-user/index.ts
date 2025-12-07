@@ -95,7 +95,27 @@ Deno.serve(async (req) => {
       )
     }
 
-    // 1. Delete from user_roles
+    // 1. Delete from security_audit_log (has FK to auth.users)
+    const { error: auditDeleteError } = await supabaseAdmin
+      .from('security_audit_log')
+      .delete()
+      .eq('user_id', userId)
+
+    if (auditDeleteError && auditDeleteError.code !== 'PGRST116') {
+      console.error('Error deleting from security_audit_log:', auditDeleteError)
+    }
+
+    // 2. Delete from sede_audit_log (has FK to auth.users)
+    const { error: sedeAuditDeleteError } = await supabaseAdmin
+      .from('sede_audit_log')
+      .delete()
+      .eq('user_id', userId)
+
+    if (sedeAuditDeleteError && sedeAuditDeleteError.code !== 'PGRST116') {
+      console.error('Error deleting from sede_audit_log:', sedeAuditDeleteError)
+    }
+
+    // 3. Delete from user_roles
     const { error: roleDeleteError } = await supabaseAdmin
       .from('user_roles')
       .delete()
@@ -106,18 +126,17 @@ Deno.serve(async (req) => {
       throw roleDeleteError
     }
 
-    // 2. Delete from cleaners if exists
+    // 4. Delete from cleaners if exists
     const { error: cleanerDeleteError } = await supabaseAdmin
       .from('cleaners')
       .delete()
       .eq('user_id', userId)
 
-    // Don't throw error if user doesn't exist in cleaners table
     if (cleanerDeleteError && cleanerDeleteError.code !== 'PGRST116') {
       console.error('Error deleting from cleaners:', cleanerDeleteError)
     }
 
-    // 3. Delete user from auth.users (this will cascade delete profile)
+    // 5. Delete user from auth.users (this will cascade delete profile)
     const { error: deleteError } = await supabaseAdmin.auth.admin.deleteUser(userId)
 
     if (deleteError) {
