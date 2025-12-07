@@ -148,17 +148,19 @@ export const UserManagement = () => {
     }
   });
 
-  // Mutation para añadir cleaner
+  // Mutation para añadir cleaner (usa upsert para evitar conflictos si ya existe)
   const addCleanerMutation = useMutation({
     mutationFn: async ({ userId, email, name, sedeId }: { userId: string; email: string; name: string; sedeId: string }) => {
       const { error } = await supabase
         .from('cleaners')
-        .insert({
+        .upsert({
           user_id: userId,
           name: name || email,
           email,
           is_active: true,
           sede_id: sedeId
+        }, {
+          onConflict: 'user_id'
         });
       
       if (error) throw error;
