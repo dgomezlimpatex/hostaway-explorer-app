@@ -262,22 +262,24 @@ export const UserManagement = () => {
   };
 
   const handleAddCleaner = (user: any) => {
-    // Validate that we have available sedes before attempting to add cleaner
-    if (!allSedes || allSedes.length === 0) {
+    // Get the sede assigned to this user (from their invitation or user_sede_access)
+    const userSedes = getUserAssignedSedes(user.user_id);
+    
+    // Use the user's assigned sede, or fall back to first available sede
+    let targetSedeId: string | undefined;
+    
+    if (userSedes.length > 0) {
+      // Use the first sede the user has access to
+      targetSedeId = userSedes[0].sede_id;
+    } else if (allSedes && allSedes.length > 0) {
+      // Fallback to first available sede if user has no assigned sedes
+      targetSedeId = allSedes[0]?.id;
+    }
+
+    if (!targetSedeId) {
       toast({
         title: 'Error',
         description: 'No hay sedes disponibles para asignar al trabajador.',
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    // Use the first available sede as default, or show sede selector
-    const defaultSedeId = allSedes[0]?.id;
-    if (!defaultSedeId) {
-      toast({
-        title: 'Error',
-        description: 'No se pudo determinar una sede válida.',
         variant: 'destructive',
       });
       return;
@@ -287,7 +289,7 @@ export const UserManagement = () => {
       userId: user.user_id,
       email: user.profiles.email,
       name: user.profiles.full_name || user.profiles.email,
-      sedeId: defaultSedeId
+      sedeId: targetSedeId
     });
   };
 
