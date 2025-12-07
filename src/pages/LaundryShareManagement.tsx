@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useSede } from '@/contexts/SedeContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -201,6 +202,7 @@ const ShareLinkCounter = ({ shareLinkId, totalTasks }: { shareLinkId: string; to
 const LaundryShareManagement = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
+  const { activeSede } = useSede();
   const { shareLinks, isLoading, refetch, deactivateShareLink } = useLaundryShareLinks();
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [editModalOpen, setEditModalOpen] = useState(false);
@@ -579,6 +581,7 @@ const LaundryShareManagement = () => {
           onOpenChange={setCreateModalOpen}
           dateStart={dateStart}
           dateEnd={dateEnd}
+          sedeIds={activeSede ? [activeSede.id] : undefined}
         />
 
         <LaundryShareEditModal
