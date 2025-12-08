@@ -146,13 +146,7 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
     }
   }, [open, task, existingReport, templates, propertyChecklistAssignment]);
 
-  // Reset creation tracking when modal closes
-  useEffect(() => {
-    if (!open) {
-      reportCreationAttempted.current = null;
-      setHasStartedTask(false);
-    }
-  }, [open]);
+  // NOTE: Modal close auto-save useEffect moved below where forceSave is defined
 
   // Update currentReport when existingReport changes (after creation)
   useEffect(() => {
@@ -302,7 +296,33 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
     enabled: hasStartedTask && !!currentReport
   });
 
-  // Lógica mejorada para transición de pasos - más conservadora
+  // CRITICAL: Auto-save when modal closes to prevent data loss
+  useEffect(() => {
+    if (!open && hasStartedTask && currentReport) {
+      // User is closing the modal while having started the task
+      const hasChecklistContent = Object.keys(checklist).length > 0;
+      const hasNotesContent = notes && notes.trim().length > 0;
+      
+      if (hasChecklistContent || hasNotesContent) {
+        console.log('💾 TaskReportModal: Auto-saving on modal close', {
+          reportId: currentReport.id,
+          checklistItems: Object.keys(checklist).length,
+          hasNotes: hasNotesContent
+        });
+        
+        // Force save before closing
+        forceSave();
+      }
+      
+      // Reset state after saving attempt
+      reportCreationAttempted.current = null;
+      setHasStartedTask(false);
+    } else if (!open) {
+      reportCreationAttempted.current = null;
+      setHasStartedTask(false);
+    }
+  }, [open, hasStartedTask, currentReport, checklist, notes, forceSave]);
+
   useEffect(() => {
     const wasCompleted = isChecklistCompleted;
     const nowCompleted = completionPercentage === 100 && requiredValidation.isValid;
