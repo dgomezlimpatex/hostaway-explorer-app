@@ -73,7 +73,21 @@ export const useCalendarLogic = () => {
     if (timeSlot) {
       const [startHour, startMinute] = task.startTime.split(':').map(Number);
       const [endHour, endMinute] = task.endTime.split(':').map(Number);
-      const originalDurationMinutes = (endHour * 60 + endMinute) - (startHour * 60 + startMinute);
+      
+      // Validate that we have valid time values (handle cases like 24:00 or invalid times)
+      let originalDurationMinutes: number;
+      if (isNaN(startHour) || isNaN(endHour) || startHour >= 24 || endHour > 24) {
+        // Fallback to task duration or default 2 hours
+        originalDurationMinutes = task.duration || 120;
+        console.warn('Invalid task times detected, using duration fallback:', originalDurationMinutes);
+      } else {
+        originalDurationMinutes = (endHour * 60 + endMinute) - (startHour * 60 + startMinute);
+        // Handle negative duration (e.g., end time before start time)
+        if (originalDurationMinutes <= 0) {
+          originalDurationMinutes = task.duration || 120;
+          console.warn('Invalid duration calculated, using fallback:', originalDurationMinutes);
+        }
+      }
       
       const [newStartHour, newStartMinute] = timeSlot.split(':').map(Number);
       const newEndTotalMinutes = (newStartHour * 60 + newStartMinute) + originalDurationMinutes;
@@ -82,7 +96,6 @@ export const useCalendarLogic = () => {
       
       // Clamp end time to 23:59 max to avoid invalid times like 24:00 or 25:00
       if (newEndHour >= 24) {
-        newEndHour = 23;
         endTime = '23:59';
         toast({
           title: "Horario ajustado",
@@ -144,26 +157,14 @@ export const useCalendarLogic = () => {
     }
 
     try {
-      // If timeSlot is provided, also update the task's start time
+      // If timeSlot is provided, update the task's start and end time
       if (timeSlot) {
-        // Calculate end time based on original duration
-        const [startHour, startMinute] = task.startTime.split(':').map(Number);
-        const [endHour, endMinute] = task.endTime.split(':').map(Number);
-        const originalDurationMinutes = (endHour * 60 + endMinute) - (startHour * 60 + startMinute);
-        
-        const [newStartHour, newStartMinute] = timeSlot.split(':').map(Number);
-        const newEndTotalMinutes = (newStartHour * 60 + newStartMinute) + originalDurationMinutes;
-        const newEndHour = Math.floor(newEndTotalMinutes / 60);
-        const newEndMinute = newEndTotalMinutes % 60;
-        
-        const newEndTime = `${newEndHour.toString().padStart(2, '0')}:${newEndMinute.toString().padStart(2, '0')}`;
-        
-        // Update both assignment and time
+        // Use the already calculated endTime (with clamp applied)
         await updateTask({
           taskId,
           updates: {
             startTime: timeSlot,
-            endTime: newEndTime
+            endTime: endTime
           }
         });
       }
