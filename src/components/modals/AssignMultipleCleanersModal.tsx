@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import {
   Dialog,
   DialogContent,
@@ -36,6 +37,7 @@ export const AssignMultipleCleanersModal = ({
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
   const { cleaners, isLoading: isLoadingCleaners } = useCleaners();
+  const queryClient = useQueryClient();
 
   useEffect(() => {
     if (task && open) {
@@ -81,6 +83,10 @@ export const AssignMultipleCleanersModal = ({
     try {
       await multipleTaskAssignmentService.assignMultipleCleaners(task.originalTaskId || task.id, selectedCleaners);
       
+      // Invalidate and refetch tasks cache immediately
+      await queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      queryClient.refetchQueries({ queryKey: ['tasks'] });
+      
       toast({
         title: "Limpiadoras asignadas",
         description: `Se han asignado ${selectedCleaners.length} limpiadora(s) a la tarea.`,
@@ -108,6 +114,10 @@ export const AssignMultipleCleanersModal = ({
       await multipleTaskAssignmentService.clearTaskAssignments(task.originalTaskId || task.id);
       setSelectedCleaners([]);
       setCurrentAssignments([]);
+      
+      // Invalidate and refetch tasks cache immediately
+      await queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      queryClient.refetchQueries({ queryKey: ['tasks'] });
       
       toast({
         title: "Asignaciones eliminadas",
