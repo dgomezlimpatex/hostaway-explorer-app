@@ -77,10 +77,21 @@ export const useCalendarLogic = () => {
       
       const [newStartHour, newStartMinute] = timeSlot.split(':').map(Number);
       const newEndTotalMinutes = (newStartHour * 60 + newStartMinute) + originalDurationMinutes;
-      const newEndHour = Math.floor(newEndTotalMinutes / 60);
+      let newEndHour = Math.floor(newEndTotalMinutes / 60);
       const newEndMinute = newEndTotalMinutes % 60;
       
-      endTime = `${newEndHour.toString().padStart(2, '0')}:${newEndMinute.toString().padStart(2, '0')}`;
+      // Clamp end time to 23:59 max to avoid invalid times like 24:00 or 25:00
+      if (newEndHour >= 24) {
+        newEndHour = 23;
+        endTime = '23:59';
+        toast({
+          title: "Horario ajustado",
+          description: "La hora de fin se ha ajustado a 23:59 para mantenerla dentro del día.",
+          variant: "default",
+        });
+      } else {
+        endTime = `${newEndHour.toString().padStart(2, '0')}:${newEndMinute.toString().padStart(2, '0')}`;
+      }
     }
 
     // Check for overlapping tasks
