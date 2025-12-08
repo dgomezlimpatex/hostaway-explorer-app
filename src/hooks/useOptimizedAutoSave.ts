@@ -22,33 +22,57 @@ export const useOptimizedAutoSave = ({
   const lastDataRef = useRef<any>(null);
   const lastSaveRef = useRef<number>(0);
   const isInitialLoadRef = useRef<boolean>(true);
+  const saveCountRef = useRef<number>(0);
+
+  // Reset initial load ref when reportId changes (new report)
+  useEffect(() => {
+    if (reportId) {
+      console.log('🔄 AutoSave: New report detected, resetting state', { reportId });
+      isInitialLoadRef.current = true;
+      saveCountRef.current = 0;
+    }
+  }, [reportId]);
 
   // Configuración dinámica del intervalo de autoguardado
   const getAutoSaveInterval = useCallback(() => {
     if (!isOnline) return 0; // No autoguardar offline
     if (isMobile) {
-      return isSlowConnection ? 20000 : 15000; // Más tiempo en móvil
+      return isSlowConnection ? 15000 : 10000; // Reducido para móvil
     }
-    return 8000; // Más conservador en escritorio
+    return 5000; // Más frecuente en escritorio
   }, [isOnline, isMobile, isSlowConnection]);
+
+  // Helper to check if data has meaningful content
+  const hasChecklistContent = useCallback((checklistData: any): boolean => {
+    if (!checklistData || typeof checklistData !== 'object') return false;
+    const checklistCompleted = checklistData.checklist_completed;
+    if (!checklistCompleted || typeof checklistCompleted !== 'object') return false;
+    return Object.keys(checklistCompleted).length > 0;
+  }, []);
 
   const saveData = useCallback(() => {
     const now = Date.now();
     const interval = getAutoSaveInterval();
     
-    // No autoguardar si es la carga inicial
-    if (isInitialLoadRef.current) {
-      isInitialLoadRef.current = false;
-      lastDataRef.current = data;
-      return;
-    }
-    
-    // Verificar si han pasado suficientes tiempo desde el último guardado
-    if (now - lastSaveRef.current < interval) {
+    // Skip if disabled or no interval
+    if (!enabled || interval === 0) {
       return;
     }
 
-    // Verificar si los datos han cambiado significativamente
+    // FIXED: On initial load, just store the reference and mark as initialized
+    if (isInitialLoadRef.current) {
+      console.log('📦 AutoSave: Initial load, storing baseline data');
+      isInitialLoadRef.current = false;
+      lastDataRef.current = JSON.parse(JSON.stringify(data));
+      return;
+    }
+    
+    // Check minimum time between saves
+    if (now - lastSaveRef.current < Math.min(interval, 3000)) {
+      return;
+    }
+
+    // Compare data for changes
     const currentDataStr = JSON.stringify(data);
     const lastDataStr = JSON.stringify(lastDataRef.current);
     
@@ -56,22 +80,35 @@ export const useOptimizedAutoSave = ({
       return;
     }
 
-    // Verificar que los datos tienen contenido válido
-    if (!data || Object.keys(data).length === 0) {
+    // FIXED: Allow saving even if checklist is empty (notes could have changed)
+    // Only skip if ALL data is empty
+    const hasNotes = data?.notes && data.notes.trim().length > 0;
+    const hasChecklist = hasChecklistContent(data);
+    
+    if (!hasNotes && !hasChecklist && !data?.issues_found?.length) {
+      console.log('⏭️ AutoSave: Skipping - no meaningful content to save');
       return;
     }
+
+    console.log('💾 AutoSave: Saving data...', {
+      reportId,
+      saveCount: ++saveCountRef.current,
+      hasChecklist,
+      hasNotes,
+      isOnline
+    });
 
     if (!isOnline && reportId) {
       // Guardar offline con throttling
       offlineStorage.saveReportOffline(reportId, data);
-      console.log('🔄 Auto-saved offline:', reportId);
+      console.log('🔄 AutoSave: Saved offline');
     } else if (isOnline) {
-      // Guardar online silenciosamente con debounce
+      // Guardar online silenciosamente
       try {
         onSave(data, true);
-        console.log('🔄 Auto-saved online');
+        console.log('🔄 AutoSave: Saved online successfully');
       } catch (error) {
-        console.error('❌ Auto-save error:', error);
+        console.error('❌ AutoSave: Error saving online:', error);
         // Fallback a offline si falla
         if (reportId) {
           offlineStorage.saveReportOffline(reportId, data);
@@ -79,9 +116,9 @@ export const useOptimizedAutoSave = ({
       }
     }
 
-    lastDataRef.current = data;
+    lastDataRef.current = JSON.parse(JSON.stringify(data));
     lastSaveRef.current = now;
-  }, [data, onSave, reportId, isOnline, getAutoSaveInterval]);
+  }, [data, onSave, reportId, isOnline, getAutoSaveInterval, enabled, hasChecklistContent]);
 
   // Configurar autoguardado con debounce mejorado
   useEffect(() => {
@@ -120,13 +157,13 @@ export const useOptimizedAutoSave = ({
     if (isOnline && reportId && !isInitialLoadRef.current) {
       const offlineData = offlineStorage.getReportOffline(reportId);
       if (offlineData && Object.keys(offlineData).length > 0) {
-        console.log('🔄 Syncing offline data for report:', reportId);
+        console.log('🔄 AutoSave: Syncing offline data for report:', reportId);
         try {
           onSave(offlineData, true);
           offlineStorage.removeReportOffline(reportId);
-          console.log('✅ Offline data synced successfully');
+          console.log('✅ AutoSave: Offline data synced successfully');
         } catch (error) {
-          console.error('❌ Failed to sync offline data:', error);
+          console.error('❌ AutoSave: Failed to sync offline data:', error);
         }
       }
     }
@@ -134,37 +171,48 @@ export const useOptimizedAutoSave = ({
 
   // Función para forzar guardado manual con protección contra race conditions
   const forceSave = useCallback(() => {
-    if (!data || Object.keys(data).length === 0) {
-      console.warn('⚠️ Attempted to save empty data');
+    if (!data) {
+      console.warn('⚠️ AutoSave: Attempted to force save with null data');
+      return;
+    }
+
+    // Check for meaningful content
+    const hasNotes = data?.notes && data.notes.trim().length > 0;
+    const hasChecklist = hasChecklistContent(data);
+    
+    if (!hasNotes && !hasChecklist) {
+      console.warn('⚠️ AutoSave: Force save skipped - no meaningful content');
       return;
     }
 
     // Prevenir múltiples guardados simultáneos
     const now = Date.now();
-    if (now - lastSaveRef.current < 2000) { // 2 segundos mínimo entre guardados forzados
-      console.log('⏱️ Force save throttled, too frequent');
+    if (now - lastSaveRef.current < 1500) { // 1.5 segundos mínimo entre guardados forzados
+      console.log('⏱️ AutoSave: Force save throttled, too frequent');
       return;
     }
+
+    console.log('💾 AutoSave: Force saving...', { reportId, isOnline });
 
     if (isOnline) {
       try {
         onSave(data, false); // No silencioso para mostrar feedback
-        console.log('💾 Force saved online');
+        console.log('💾 AutoSave: Force saved online');
       } catch (error) {
-        console.error('❌ Force save error:', error);
+        console.error('❌ AutoSave: Force save error:', error);
         if (reportId) {
           offlineStorage.saveReportOffline(reportId, data);
-          console.log('💾 Force saved offline as fallback');
+          console.log('💾 AutoSave: Force saved offline as fallback');
         }
       }
     } else if (reportId) {
       offlineStorage.saveReportOffline(reportId, data);
-      console.log('💾 Force saved offline');
+      console.log('💾 AutoSave: Force saved offline');
     }
     
-    lastDataRef.current = data;
+    lastDataRef.current = JSON.parse(JSON.stringify(data));
     lastSaveRef.current = now;
-  }, [data, onSave, reportId, isOnline]);
+  }, [data, onSave, reportId, isOnline, hasChecklistContent]);
 
   return {
     forceSave,
