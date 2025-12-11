@@ -140,10 +140,10 @@ export const LaundryDeliveryCard = ({
             <p className="text-sm font-medium text-muted-foreground">Textiles:</p>
             <div className="flex flex-wrap gap-2">
               {task.sheets > 0 && (
-                <Badge variant="outline">Sábanas dobles: {task.sheets}</Badge>
+                <Badge variant="outline">Sábanas: {task.sheets}</Badge>
               )}
               {task.sheetsSmall > 0 && (
-                <Badge variant="outline">Sábanas indiv: {task.sheetsSmall}</Badge>
+                <Badge variant="outline">Sábanas pequeñas: {task.sheetsSmall}</Badge>
               )}
               {task.sheetsSuite > 0 && (
                 <Badge variant="outline">Sábanas suite: {task.sheetsSuite}</Badge>
