@@ -14,6 +14,7 @@ import {
   Trash2, 
   ExternalLink, 
   Calendar,
+  CalendarRange,
   Package,
   Truck,
   CheckCircle2,
@@ -41,7 +42,7 @@ import {
 } from '@/services/laundryShareService';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useToast } from '@/hooks/use-toast';
-import { format, addDays } from 'date-fns';
+import { format, addDays, startOfWeek, endOfWeek } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -246,6 +247,15 @@ const LaundryShareManagement = () => {
     window.open(url, '_blank');
   };
 
+  const handleWeeklyPlannerClick = () => {
+    const today = new Date();
+    const weekStart = startOfWeek(today, { weekStartsOn: 1 }); // Monday
+    const weekEnd = endOfWeek(today, { weekStartsOn: 1 }); // Sunday
+    setDateStart(format(weekStart, 'yyyy-MM-dd'));
+    setDateEnd(format(weekEnd, 'yyyy-MM-dd'));
+    setCreateModalOpen(true);
+  };
+
   const activeLinks = shareLinks?.filter(l => !isShareLinkExpired(l.expiresAt)) || [];
   const expiredLinks = shareLinks?.filter(l => isShareLinkExpired(l.expiresAt)) || [];
 
@@ -282,14 +292,25 @@ const LaundryShareManagement = () => {
                 </p>
               </div>
               
-              <Button 
-                size="lg" 
-                onClick={() => setCreateModalOpen(true)}
-                className="shrink-0 shadow-lg shadow-primary/20"
-              >
-                <Plus className="h-5 w-5 mr-2" />
-                Nuevo Enlace
-              </Button>
+              <div className="flex flex-col sm:flex-row gap-2 shrink-0">
+                <Button 
+                  size="lg" 
+                  variant="outline"
+                  onClick={handleWeeklyPlannerClick}
+                  className="shadow-sm"
+                >
+                  <CalendarRange className="h-5 w-5 mr-2" />
+                  Planificador Semanal
+                </Button>
+                <Button 
+                  size="lg" 
+                  onClick={() => setCreateModalOpen(true)}
+                  className="shadow-lg shadow-primary/20"
+                >
+                  <Plus className="h-5 w-5 mr-2" />
+                  Nuevo Enlace
+                </Button>
+              </div>
             </div>
             
             {/* Quick Stats */}
