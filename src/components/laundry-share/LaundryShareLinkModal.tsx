@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -16,6 +16,7 @@ interface LaundryShareLinkModalProps {
   dateStart: string;
   dateEnd: string;
   sedeIds?: string[];
+  allowDateEdit?: boolean;
 }
 
 type ExpirationOption = 'day' | 'week' | 'month' | 'permanent';
@@ -23,9 +24,10 @@ type ExpirationOption = 'day' | 'week' | 'month' | 'permanent';
 export const LaundryShareLinkModal = ({
   open,
   onOpenChange,
-  dateStart,
-  dateEnd,
+  dateStart: initialDateStart,
+  dateEnd: initialDateEnd,
   sedeIds,
+  allowDateEdit = false,
 }: LaundryShareLinkModalProps) => {
   const { toast } = useToast();
   const { activeSede } = useSede();
@@ -34,6 +36,16 @@ export const LaundryShareLinkModal = ({
   const [generatedLink, setGeneratedLink] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [dateStart, setDateStart] = useState(initialDateStart);
+  const [dateEnd, setDateEnd] = useState(initialDateEnd);
+  
+  // Sync with prop changes when modal opens
+  useEffect(() => {
+    if (open) {
+      setDateStart(initialDateStart);
+      setDateEnd(initialDateEnd);
+    }
+  }, [open, initialDateStart, initialDateEnd]);
 
   const handleGenerate = async () => {
     if (!activeSede?.id) {
@@ -117,16 +129,41 @@ export const LaundryShareLinkModal = ({
         </DialogHeader>
 
         <div className="space-y-4 py-4">
-          {/* Date range info */}
-          <div className="rounded-lg bg-muted p-3">
-            <p className="text-sm text-muted-foreground">Período seleccionado:</p>
-            <p className="font-medium">
-              {dateStart === dateEnd 
-                ? formatDate(dateStart)
-                : `${formatDate(dateStart)} - ${formatDate(dateEnd)}`
-              }
-            </p>
-          </div>
+          {/* Date range - editable or display only */}
+          {allowDateEdit ? (
+            <div className="space-y-3">
+              <Label>Rango de fechas</Label>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-muted-foreground">Desde</Label>
+                  <Input
+                    type="date"
+                    value={dateStart}
+                    onChange={(e) => setDateStart(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-muted-foreground">Hasta</Label>
+                  <Input
+                    type="date"
+                    value={dateEnd}
+                    onChange={(e) => setDateEnd(e.target.value)}
+                    min={dateStart}
+                  />
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="rounded-lg bg-muted p-3">
+              <p className="text-sm text-muted-foreground">Período seleccionado:</p>
+              <p className="font-medium">
+                {dateStart === dateEnd 
+                  ? formatDate(dateStart)
+                  : `${formatDate(dateStart)} - ${formatDate(dateEnd)}`
+                }
+              </p>
+            </div>
+          )}
 
           {!generatedLink ? (
             <>
