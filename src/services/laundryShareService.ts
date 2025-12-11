@@ -52,6 +52,7 @@ export const calculateExpirationDate = (option: 'day' | 'week' | 'month' | 'perm
 };
 
 // Fetch tasks for laundry (to be included in snapshot)
+// Only includes tasks of type 'mantenimiento-airbnb'
 export const fetchLaundryTasksForDateRange = async (
   dateStart: string,
   dateEnd: string,
@@ -61,7 +62,8 @@ export const fetchLaundryTasksForDateRange = async (
     .from('tasks')
     .select('id')
     .gte('date', dateStart)
-    .lte('date', dateEnd);
+    .lte('date', dateEnd)
+    .eq('type', 'mantenimiento-airbnb');
 
   if (sedeIds && sedeIds.length > 0) {
     query = query.in('sede_id', sedeIds);

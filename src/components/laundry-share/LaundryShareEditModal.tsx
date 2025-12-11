@@ -54,7 +54,8 @@ export const LaundryShareEditModal = ({
           )
         `)
         .gte('date', shareLink.dateStart)
-        .lte('date', shareLink.dateEnd);
+        .lte('date', shareLink.dateEnd)
+        .eq('type', 'mantenimiento-airbnb');
 
       // Filter by sede if the link has one
       if (shareLink.sedeId) {
