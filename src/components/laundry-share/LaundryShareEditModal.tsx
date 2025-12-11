@@ -34,19 +34,20 @@ export const LaundryShareEditModal = ({
   const queryClient = useQueryClient();
   const [excludedTasks, setExcludedTasks] = useState<Set<string>>(new Set());
 
-  // Fetch tasks for this share link's date range
+  // Fetch tasks for this share link's date range (filtered by sede)
   const { data: tasks, isLoading } = useQuery({
     queryKey: ['share-link-edit-tasks', shareLink?.id],
     queryFn: async () => {
       if (!shareLink) return [];
 
-      const { data, error } = await supabase
+      let query = supabase
         .from('tasks')
         .select(`
           id,
           property,
           date,
           check_out,
+          sede_id,
           properties (
             codigo,
             clients (nombre)
@@ -54,6 +55,13 @@ export const LaundryShareEditModal = ({
         `)
         .gte('date', shareLink.dateStart)
         .lte('date', shareLink.dateEnd);
+
+      // Filter by sede if the link has one
+      if (shareLink.sedeId) {
+        query = query.eq('sede_id', shareLink.sedeId);
+      }
+
+      const { data, error } = await query;
 
       if (error) throw error;
 

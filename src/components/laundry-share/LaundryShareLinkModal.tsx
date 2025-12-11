@@ -8,6 +8,7 @@ import { Copy, Check, Link, Loader2 } from 'lucide-react';
 import { useLaundryShareLinks } from '@/hooks/useLaundryShareLinks';
 import { copyShareLinkToClipboard, getShareLinkUrl, calculateExpirationDate, fetchLaundryTasksForDateRange } from '@/services/laundryShareService';
 import { useToast } from '@/hooks/use-toast';
+import { useSede } from '@/contexts/SedeContext';
 
 interface LaundryShareLinkModalProps {
   open: boolean;
@@ -27,6 +28,7 @@ export const LaundryShareLinkModal = ({
   sedeIds,
 }: LaundryShareLinkModalProps) => {
   const { toast } = useToast();
+  const { activeSede } = useSede();
   const { createShareLink } = useLaundryShareLinks();
   const [expiration, setExpiration] = useState<ExpirationOption>('week');
   const [generatedLink, setGeneratedLink] = useState<string | null>(null);
@@ -34,10 +36,20 @@ export const LaundryShareLinkModal = ({
   const [isGenerating, setIsGenerating] = useState(false);
 
   const handleGenerate = async () => {
+    if (!activeSede?.id) {
+      toast({
+        title: 'Error',
+        description: 'No hay sede activa seleccionada',
+        variant: 'destructive',
+      });
+      return;
+    }
+    
     setIsGenerating(true);
     try {
-      // Fetch current task IDs for snapshot (all tasks at creation time)
-      const allTaskIds = await fetchLaundryTasksForDateRange(dateStart, dateEnd, sedeIds);
+      // Fetch current task IDs for snapshot (only from current sede)
+      const currentSedeIds = [activeSede.id];
+      const allTaskIds = await fetchLaundryTasksForDateRange(dateStart, dateEnd, currentSedeIds);
       
       const expiresAt = calculateExpirationDate(expiration);
       
@@ -48,7 +60,8 @@ export const LaundryShareLinkModal = ({
         isPermanent: expiration === 'permanent',
         taskIds: allTaskIds, // Initially all tasks are included
         allTaskIds, // Store all tasks for future comparison
-        filters: sedeIds ? { sedeIds } : {},
+        sedeId: activeSede.id, // Associate with current sede
+        filters: { sedeIds: currentSedeIds },
       });
 
       const url = getShareLinkUrl(result.token);
