@@ -72,16 +72,10 @@ const managementItems: NavigationItem[] = [
     permission: 'propertyGroups'
   },
   {
-    title: 'Inventario',
-    href: '/inventory',
+    title: 'Lavandería',
+    href: '/lavanderia/gestion',
     icon: Package,
-    permission: 'inventory'
-  },
-  {
-    title: 'Logística',
-    href: '/logistics/picklists',
-    icon: Truck,
-    permission: 'logistics'
+    permission: 'reports'
   },
 ];
 
