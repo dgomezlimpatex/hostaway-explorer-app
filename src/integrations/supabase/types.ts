@@ -997,6 +997,7 @@ export type Database = {
           is_active: boolean
           is_permanent: boolean
           original_task_ids: string[] | null
+          sede_id: string | null
           snapshot_task_ids: string[] | null
           token: string
           updated_at: string
@@ -1012,6 +1013,7 @@ export type Database = {
           is_active?: boolean
           is_permanent?: boolean
           original_task_ids?: string[] | null
+          sede_id?: string | null
           snapshot_task_ids?: string[] | null
           token: string
           updated_at?: string
@@ -1027,11 +1029,20 @@ export type Database = {
           is_active?: boolean
           is_permanent?: boolean
           original_task_ids?: string[] | null
+          sede_id?: string | null
           snapshot_task_ids?: string[] | null
           token?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "laundry_share_links_sede_id_fkey"
+            columns: ["sede_id"]
+            isOneToOne: false
+            referencedRelation: "sedes"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       logistics_deliveries: {
         Row: {

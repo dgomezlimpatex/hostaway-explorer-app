@@ -1,12 +1,13 @@
-import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useSede } from '@/contexts/SedeContext';
 
 export interface LaundryShareLink {
   id: string;
   token: string;
   createdBy: string;
+  sedeId: string | null;
   dateStart: string;
   dateEnd: string;
   expiresAt: string | null;
@@ -44,6 +45,7 @@ const mapToShareLink = (row: any): LaundryShareLink => ({
   id: row.id,
   token: row.token,
   createdBy: row.created_by,
+  sedeId: row.sede_id,
   dateStart: row.date_start,
   dateEnd: row.date_end,
   expiresAt: row.expires_at,
@@ -59,25 +61,30 @@ const mapToShareLink = (row: any): LaundryShareLink => ({
 export const useLaundryShareLinks = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { activeSede } = useSede();
 
-  // Fetch all active share links
+  // Fetch all active share links for the current sede
   const { data: shareLinks, isLoading, error, refetch } = useQuery({
-    queryKey: ['laundry-share-links'],
+    queryKey: ['laundry-share-links', activeSede?.id],
     queryFn: async () => {
+      if (!activeSede?.id) return [];
+      
       const { data, error } = await supabase
         .from('laundry_share_links')
         .select('*')
         .eq('is_active', true)
+        .eq('sede_id', activeSede.id)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
       return (data || []).map(mapToShareLink);
     },
+    enabled: !!activeSede?.id,
   });
 
   // Create a new share link
   const createShareLink = useMutation({
-    mutationFn: async (params: CreateShareLinkParams) => {
+    mutationFn: async (params: CreateShareLinkParams & { sedeId: string }) => {
       const { data: userData } = await supabase.auth.getUser();
       if (!userData.user) throw new Error('Usuario no autenticado');
 
@@ -88,6 +95,7 @@ export const useLaundryShareLinks = () => {
         .insert({
           token,
           created_by: userData.user.id,
+          sede_id: params.sedeId,
           date_start: params.dateStart,
           date_end: params.dateEnd,
           expires_at: params.isPermanent ? null : params.expiresAt,
