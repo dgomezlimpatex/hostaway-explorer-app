@@ -1,12 +1,11 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSede } from '@/contexts/SedeContext';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Progress } from '@/components/ui/progress';
 import { 
   Link, 
   Plus, 
@@ -23,10 +22,13 @@ import {
   Home,
   Pencil,
   AlertTriangle,
-  Sparkles,
   Share2,
   ArrowLeft,
-  LinkIcon
+  LinkIcon,
+  Sparkles,
+  ChevronDown,
+  ChevronUp,
+  Eye
 } from 'lucide-react';
 import { useLaundryShareLinks, LaundryShareLink } from '@/hooks/useLaundryShareLinks';
 import { useLaundryTracking } from '@/hooks/useLaundryTracking';
@@ -56,6 +58,11 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/components/ui/collapsible';
 
 // Component to show properties for a share link
 const ShareLinkProperties = ({ 
@@ -78,11 +85,9 @@ const ShareLinkProperties = ({
 
       if (error) throw error;
       
-      // Filter to only include tasks in the snapshot
       const snapshotSet = new Set(snapshotTaskIds);
       const includedTasks = (data || []).filter(t => snapshotSet.has(t.id));
       
-      // Get unique property codes, sorted alphabetically
       const uniqueCodes = [...new Set(includedTasks.map(t => 
         (t.properties as any)?.codigo || t.property
       ))].sort((a, b) => a.localeCompare(b, 'es', { numeric: true }));
@@ -91,18 +96,21 @@ const ShareLinkProperties = ({
     },
   });
 
-  if (isLoading) return <span className="text-muted-foreground text-xs">Cargando...</span>;
+  if (isLoading) return <span className="text-xs text-muted-foreground">...</span>;
   if (!properties || properties.length === 0) return null;
 
   return (
-    <div className="flex items-center gap-2 flex-wrap">
-      <Home className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-      <span className="text-sm text-muted-foreground">
-        {properties.length <= 4 
-          ? properties.join(', ')
-          : `${properties.slice(0, 4).join(', ')} +${properties.length - 4} más`
-        }
-      </span>
+    <div className="flex flex-wrap gap-1">
+      {properties.slice(0, 5).map((code, i) => (
+        <Badge key={i} variant="outline" className="text-xs font-normal bg-background">
+          {code}
+        </Badge>
+      ))}
+      {properties.length > 5 && (
+        <Badge variant="outline" className="text-xs font-normal bg-muted">
+          +{properties.length - 5}
+        </Badge>
+      )}
     </div>
   );
 };
@@ -123,7 +131,6 @@ const NewTasksAlert = ({
   filters?: Record<string, any>;
   onEditClick: () => void;
 }) => {
-  // Extract sedeIds from filters if available
   const sedeIds = filters?.sedeIds || (filters?.sedeId ? [filters.sedeId] : undefined);
   
   const { data: changes } = useQuery({
@@ -137,28 +144,22 @@ const NewTasksAlert = ({
     return null;
   }
 
-  const hasNew = changes.newTasks.length > 0;
-  const hasRemoved = changes.removedTasks.length > 0;
-
   return (
     <TooltipProvider>
       <Tooltip>
         <TooltipTrigger asChild>
           <button
             onClick={onEditClick}
-            className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 text-xs font-medium hover:bg-amber-200 dark:hover:bg-amber-900/50 transition-colors"
+            className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-warning/10 text-warning text-xs font-medium hover:bg-warning/20 transition-colors"
           >
             <AlertTriangle className="h-3 w-3" />
-            {hasNew && <span>+{changes.newTasks.length} nuevas</span>}
-            {hasNew && hasRemoved && <span className="mx-0.5">/</span>}
-            {hasRemoved && <span className="text-red-600 dark:text-red-400">-{changes.removedTasks.length}</span>}
+            <span>Cambios detectados</span>
           </button>
         </TooltipTrigger>
-        <TooltipContent side="top" className="max-w-xs">
+        <TooltipContent side="top">
           <p className="text-sm">
-            {hasNew && `${changes.newTasks.length} tarea(s) nueva(s) no incluida(s). `}
-            {hasRemoved && `${changes.removedTasks.length} tarea(s) eliminada(s). `}
-            Haz clic para editar.
+            {changes.newTasks.length > 0 && `${changes.newTasks.length} nueva(s). `}
+            {changes.removedTasks.length > 0 && `${changes.removedTasks.length} eliminada(s).`}
           </p>
         </TooltipContent>
       </Tooltip>
@@ -166,37 +167,155 @@ const NewTasksAlert = ({
   );
 };
 
-// Compact real-time counter for deliveries
-const ShareLinkCounter = ({ shareLinkId, totalTasks }: { shareLinkId: string; totalTasks: number }) => {
+// Progress bar for deliveries
+const DeliveryProgress = ({ shareLinkId, totalTasks }: { shareLinkId: string; totalTasks: number }) => {
   const { stats } = useLaundryTracking(shareLinkId);
   
   if (totalTasks === 0) return null;
 
-  const preparedCount = stats.prepared + stats.delivered;
+  const preparedPercent = Math.round(((stats.prepared + stats.delivered) / totalTasks) * 100);
   const deliveredPercent = Math.round((stats.delivered / totalTasks) * 100);
 
   return (
-    <div className="flex items-center gap-3 text-sm flex-wrap">
-      <div className="flex items-center gap-1.5">
-        <Package className="h-4 w-4 text-muted-foreground" />
-        <span className="text-muted-foreground">{totalTasks} total</span>
+    <div className="space-y-2">
+      <div className="flex items-center justify-between text-xs">
+        <div className="flex items-center gap-4">
+          <span className="flex items-center gap-1.5">
+            <Package className="h-3.5 w-3.5 text-muted-foreground" />
+            <span className="text-muted-foreground">{totalTasks}</span>
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span className="h-2 w-2 rounded-full bg-blue-500" />
+            <span className="text-blue-600 dark:text-blue-400">{stats.prepared + stats.delivered} prep.</span>
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span className="h-2 w-2 rounded-full bg-emerald-500" />
+            <span className="text-emerald-600 dark:text-emerald-400">{stats.delivered} entreg.</span>
+          </span>
+        </div>
+        <span className={`font-semibold ${deliveredPercent === 100 ? 'text-emerald-600 dark:text-emerald-400' : 'text-foreground'}`}>
+          {deliveredPercent}%
+        </span>
       </div>
-      <div className="h-4 w-px bg-border" />
-      <div className="flex items-center gap-1.5">
-        <div className="h-2 w-2 rounded-full bg-blue-400" />
-        <span className="text-blue-600 dark:text-blue-400 font-medium">{preparedCount}/{totalTasks} preparadas</span>
+      <div className="h-1.5 bg-muted rounded-full overflow-hidden">
+        <div 
+          className="h-full bg-gradient-to-r from-blue-500 to-emerald-500 rounded-full transition-all duration-500"
+          style={{ width: `${deliveredPercent}%` }}
+        />
       </div>
-      <div className="flex items-center gap-1.5">
-        <div className="h-2 w-2 rounded-full bg-emerald-500" />
-        <span className="text-emerald-600 dark:text-emerald-400 font-medium">{stats.delivered}/{totalTasks} entregadas</span>
-      </div>
-      <Badge 
-        variant={deliveredPercent === 100 ? "default" : "secondary"}
-        className={deliveredPercent === 100 ? "bg-emerald-500 hover:bg-emerald-600" : ""}
-      >
-        {deliveredPercent}%
-      </Badge>
     </div>
+  );
+};
+
+// Link card component
+const LinkCard = ({ 
+  link, 
+  onEdit, 
+  onCopy, 
+  onOpen, 
+  onDelete 
+}: { 
+  link: LaundryShareLink;
+  onEdit: () => void;
+  onCopy: () => void;
+  onOpen: () => void;
+  onDelete: () => void;
+}) => {
+  return (
+    <Card className="group hover:shadow-lg hover:border-primary/20 transition-all duration-300">
+      <CardContent className="p-0">
+        <div className="p-4 space-y-3">
+          {/* Header */}
+          <div className="flex items-start justify-between gap-2">
+            <div className="space-y-1 min-w-0 flex-1">
+              <div className="flex items-center gap-2 flex-wrap">
+                <h3 className="font-semibold text-base">
+                  {formatDateRange(link.dateStart, link.dateEnd)}
+                </h3>
+                {link.isPermanent ? (
+                  <Badge className="bg-primary/10 text-primary border-0 text-xs">
+                    <Sparkles className="h-3 w-3 mr-1" />
+                    Permanente
+                  </Badge>
+                ) : (
+                  <Badge variant="outline" className="text-xs text-muted-foreground font-normal">
+                    <Clock className="h-3 w-3 mr-1" />
+                    {formatExpirationStatus(link.expiresAt, link.isPermanent)}
+                  </Badge>
+                )}
+              </div>
+              <NewTasksAlert 
+                dateStart={link.dateStart}
+                dateEnd={link.dateEnd}
+                snapshotTaskIds={link.snapshotTaskIds}
+                originalTaskIds={link.originalTaskIds}
+                filters={link.filters}
+                onEditClick={onEdit}
+              />
+            </div>
+            
+            {/* Quick actions */}
+            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onEdit}>
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Editar</TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onOpen}>
+                      <ExternalLink className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Abrir</TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </div>
+          </div>
+
+          {/* Properties */}
+          <ShareLinkProperties 
+            dateStart={link.dateStart} 
+            dateEnd={link.dateEnd} 
+            snapshotTaskIds={link.snapshotTaskIds}
+          />
+          
+          {/* Progress */}
+          <DeliveryProgress shareLinkId={link.id} totalTasks={link.snapshotTaskIds?.length || 0} />
+        </div>
+        
+        {/* Footer with URL and actions */}
+        <div className="flex items-center gap-2 px-4 py-3 bg-muted/30 border-t">
+          <button 
+            onClick={onCopy}
+            className="flex-1 flex items-center gap-2 px-3 py-2 rounded-md bg-background hover:bg-muted transition-colors text-left min-w-0"
+          >
+            <LinkIcon className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+            <span className="text-xs font-mono text-muted-foreground truncate">
+              {getShareLinkUrl(link.token).replace('https://', '')}
+            </span>
+          </button>
+          <Button variant="secondary" size="sm" onClick={onCopy} className="shrink-0">
+            <Copy className="h-3.5 w-3.5 mr-1.5" />
+            Copiar
+          </Button>
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            className="h-8 w-8 text-destructive hover:text-destructive shrink-0"
+            onClick={onDelete}
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
   );
 };
 
@@ -209,8 +328,8 @@ const LaundryShareManagement = () => {
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedLink, setSelectedLink] = useState<LaundryShareLink | null>(null);
+  const [showExpired, setShowExpired] = useState(false);
   
-  // Default date range: today + 7 days
   const [dateStart, setDateStart] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [dateEnd, setDateEnd] = useState(format(addDays(new Date(), 7), 'yyyy-MM-dd'));
 
@@ -243,14 +362,13 @@ const LaundryShareManagement = () => {
   };
 
   const openExternalLink = (token: string) => {
-    const url = getShareLinkUrl(token);
-    window.open(url, '_blank');
+    window.open(getShareLinkUrl(token), '_blank');
   };
 
   const handleWeeklyPlannerClick = () => {
     const today = new Date();
-    const weekStart = startOfWeek(today, { weekStartsOn: 1 }); // Monday
-    const weekEnd = endOfWeek(today, { weekStartsOn: 1 }); // Sunday
+    const weekStart = startOfWeek(today, { weekStartsOn: 1 });
+    const weekEnd = endOfWeek(today, { weekStartsOn: 1 });
     setDateStart(format(weekStart, 'yyyy-MM-dd'));
     setDateEnd(format(weekEnd, 'yyyy-MM-dd'));
     setCreateModalOpen(true);
@@ -259,379 +377,241 @@ const LaundryShareManagement = () => {
   const activeLinks = shareLinks?.filter(l => !isShareLinkExpired(l.expiresAt)) || [];
   const expiredLinks = shareLinks?.filter(l => isShareLinkExpired(l.expiresAt)) || [];
 
+  // Stats
+  const totalTasks = activeLinks.reduce((acc, l) => acc + (l.snapshotTaskIds?.length || 0), 0);
+
   return (
-    <div className="min-h-screen bg-gradient-to-b from-background to-muted/20">
-      <div className="container mx-auto py-6 px-4 space-y-8">
-        {/* Hero Header */}
-        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary/10 via-primary/5 to-background border p-6 md:p-8">
-          <div className="absolute top-0 right-0 w-64 h-64 bg-primary/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
-          <div className="relative">
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              onClick={() => navigate(-1)}
-              className="mb-4 -ml-2 text-muted-foreground hover:text-foreground"
-            >
-              <ArrowLeft className="h-4 w-4 mr-1" />
-              Volver
-            </Button>
-            
-            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-              <div>
-                <div className="flex items-center gap-3 mb-2">
-                  <div className="p-2.5 rounded-xl bg-primary/10">
-                    <Share2 className="h-6 w-6 text-primary" />
-                  </div>
-                  <h1 className="text-2xl md:text-3xl font-bold">
-                    Enlaces de Lavandería
-                  </h1>
-                </div>
-                <p className="text-muted-foreground max-w-xl">
-                  Genera enlaces seguros para compartir las entregas de lavandería con los repartidores. 
-                  Sin necesidad de login, actualización en tiempo real.
-                </p>
-              </div>
-              
-              <div className="flex flex-col sm:flex-row gap-2 shrink-0">
-                <Button 
-                  size="lg" 
-                  variant="outline"
-                  onClick={handleWeeklyPlannerClick}
-                  className="shadow-sm"
-                >
-                  <CalendarRange className="h-5 w-5 mr-2" />
-                  Planificador Semanal
-                </Button>
-                <Button 
-                  size="lg" 
-                  onClick={() => setCreateModalOpen(true)}
-                  className="shadow-lg shadow-primary/20"
-                >
-                  <Plus className="h-5 w-5 mr-2" />
-                  Nuevo Enlace
-                </Button>
-              </div>
-            </div>
-            
-            {/* Quick Stats */}
-            <div className="flex flex-wrap gap-4 mt-6">
-              <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-background/80 border">
-                <LinkIcon className="h-4 w-4 text-primary" />
-                <span className="text-sm font-medium">{activeLinks.length} activos</span>
-              </div>
-              {expiredLinks.length > 0 && (
-                <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-background/80 border">
-                  <Clock className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-sm text-muted-foreground">{expiredLinks.length} expirados</span>
-                </div>
-              )}
-            </div>
+    <div className="min-h-screen bg-gradient-to-b from-background via-background to-muted/30">
+      <div className="container mx-auto py-6 px-4 max-w-5xl space-y-6">
+        
+        {/* Header */}
+        <div className="flex items-center gap-4">
+          <Button 
+            variant="ghost" 
+            size="icon"
+            onClick={() => navigate(-1)}
+            className="shrink-0"
+          >
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+          <div className="flex-1 min-w-0">
+            <h1 className="text-2xl font-bold truncate">Enlaces de Lavandería</h1>
+            <p className="text-sm text-muted-foreground">
+              {activeSede?.nombre || 'Todas las sedes'}
+            </p>
           </div>
+          <Button onClick={() => setCreateModalOpen(true)} className="shrink-0">
+            <Plus className="h-4 w-4 mr-2" />
+            <span className="hidden sm:inline">Nuevo</span>
+          </Button>
         </div>
 
-        {/* Quick Create Card */}
-        <Card className="border-dashed border-2 hover:border-primary/50 transition-colors">
-          <CardContent className="p-6">
-            <div className="flex flex-col lg:flex-row lg:items-end gap-6">
-              <div className="flex-1 space-y-4">
-                <div className="flex items-center gap-2">
-                  <Sparkles className="h-5 w-5 text-primary" />
-                  <h3 className="font-semibold text-lg">Crear Enlace Rápido</h3>
-                </div>
-                <p className="text-sm text-muted-foreground">
-                  Selecciona el rango de fechas y genera un enlace instantáneamente
-                </p>
-                <div className="flex flex-col sm:flex-row gap-4">
-                  <div className="space-y-2 flex-1">
-                    <Label htmlFor="dateStart" className="text-xs text-muted-foreground">Desde</Label>
-                    <Input
-                      id="dateStart"
-                      type="date"
-                      value={dateStart}
-                      onChange={(e) => setDateStart(e.target.value)}
-                      className="bg-background"
-                    />
-                  </div>
-                  <div className="space-y-2 flex-1">
-                    <Label htmlFor="dateEnd" className="text-xs text-muted-foreground">Hasta</Label>
-                    <Input
-                      id="dateEnd"
-                      type="date"
-                      value={dateEnd}
-                      onChange={(e) => setDateEnd(e.target.value)}
-                      className="bg-background"
-                    />
-                  </div>
-                </div>
-              </div>
-              <Button 
-                onClick={() => setCreateModalOpen(true)}
-                variant="outline"
-                size="lg"
-                className="lg:w-auto w-full"
-              >
-                <Link className="h-4 w-4 mr-2" />
-                Generar Enlace
-              </Button>
+        {/* Quick Actions */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          <button
+            onClick={handleWeeklyPlannerClick}
+            className="flex flex-col items-center gap-2 p-4 rounded-xl border-2 border-dashed hover:border-primary/50 hover:bg-primary/5 transition-all group"
+          >
+            <div className="p-3 rounded-full bg-primary/10 group-hover:bg-primary/20 transition-colors">
+              <CalendarRange className="h-5 w-5 text-primary" />
             </div>
-          </CardContent>
-        </Card>
+            <span className="text-sm font-medium">Semana Actual</span>
+          </button>
+          
+          <button
+            onClick={() => {
+              setDateStart(format(new Date(), 'yyyy-MM-dd'));
+              setDateEnd(format(new Date(), 'yyyy-MM-dd'));
+              setCreateModalOpen(true);
+            }}
+            className="flex flex-col items-center gap-2 p-4 rounded-xl border-2 border-dashed hover:border-primary/50 hover:bg-primary/5 transition-all group"
+          >
+            <div className="p-3 rounded-full bg-primary/10 group-hover:bg-primary/20 transition-colors">
+              <Calendar className="h-5 w-5 text-primary" />
+            </div>
+            <span className="text-sm font-medium">Solo Hoy</span>
+          </button>
+          
+          <button
+            onClick={() => {
+              setDateStart(format(new Date(), 'yyyy-MM-dd'));
+              setDateEnd(format(addDays(new Date(), 3), 'yyyy-MM-dd'));
+              setCreateModalOpen(true);
+            }}
+            className="flex flex-col items-center gap-2 p-4 rounded-xl border-2 border-dashed hover:border-primary/50 hover:bg-primary/5 transition-all group"
+          >
+            <div className="p-3 rounded-full bg-primary/10 group-hover:bg-primary/20 transition-colors">
+              <Package className="h-5 w-5 text-primary" />
+            </div>
+            <span className="text-sm font-medium">3 Días</span>
+          </button>
+          
+          <button
+            onClick={() => setCreateModalOpen(true)}
+            className="flex flex-col items-center gap-2 p-4 rounded-xl border-2 border-dashed hover:border-primary/50 hover:bg-primary/5 transition-all group"
+          >
+            <div className="p-3 rounded-full bg-primary/10 group-hover:bg-primary/20 transition-colors">
+              <Sparkles className="h-5 w-5 text-primary" />
+            </div>
+            <span className="text-sm font-medium">Personalizado</span>
+          </button>
+        </div>
 
-        {/* Active Links Section */}
-        <div className="space-y-4">
+        {/* Stats Row */}
+        <div className="grid grid-cols-3 gap-3">
+          <Card className="bg-gradient-to-br from-primary/5 to-transparent">
+            <CardContent className="p-4 flex items-center gap-3">
+              <div className="p-2.5 rounded-lg bg-primary/10">
+                <LinkIcon className="h-5 w-5 text-primary" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold">{activeLinks.length}</p>
+                <p className="text-xs text-muted-foreground">Activos</p>
+              </div>
+            </CardContent>
+          </Card>
+          
+          <Card className="bg-gradient-to-br from-emerald-500/5 to-transparent">
+            <CardContent className="p-4 flex items-center gap-3">
+              <div className="p-2.5 rounded-lg bg-emerald-500/10">
+                <Package className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold">{totalTasks}</p>
+                <p className="text-xs text-muted-foreground">Tareas</p>
+              </div>
+            </CardContent>
+          </Card>
+          
+          <Card className="bg-gradient-to-br from-muted to-transparent">
+            <CardContent className="p-4 flex items-center gap-3">
+              <div className="p-2.5 rounded-lg bg-muted">
+                <Clock className="h-5 w-5 text-muted-foreground" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold">{expiredLinks.length}</p>
+                <p className="text-xs text-muted-foreground">Expirados</p>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Active Links */}
+        <div className="space-y-3">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <h2 className="text-xl font-semibold">Enlaces Activos</h2>
-              <Badge variant="secondary" className="rounded-full">
-                {activeLinks.length}
-              </Badge>
-            </div>
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              onClick={() => refetch()}
-              className="text-muted-foreground"
-            >
-              <RefreshCw className="h-4 w-4 mr-2" />
-              Actualizar
+            <h2 className="text-lg font-semibold flex items-center gap-2">
+              <Share2 className="h-5 w-5 text-primary" />
+              Enlaces Activos
+            </h2>
+            <Button variant="ghost" size="sm" onClick={() => refetch()}>
+              <RefreshCw className="h-4 w-4" />
             </Button>
           </div>
 
           {isLoading ? (
-            <Card>
-              <CardContent className="py-12">
-                <div className="flex flex-col items-center justify-center text-muted-foreground">
-                  <RefreshCw className="h-8 w-8 animate-spin mb-4" />
-                  <p>Cargando enlaces...</p>
-                </div>
-              </CardContent>
-            </Card>
+            <div className="flex items-center justify-center py-12">
+              <RefreshCw className="h-6 w-6 animate-spin text-muted-foreground" />
+            </div>
           ) : activeLinks.length > 0 ? (
-            <div className="grid gap-4">
+            <div className="grid gap-3 md:grid-cols-2">
               {activeLinks.map((link) => (
-                <Card 
-                  key={link.id} 
-                  className="group hover:shadow-md transition-all duration-200 overflow-hidden"
-                >
-                  <CardContent className="p-0">
-                    <div className="flex flex-col lg:flex-row">
-                      {/* Main Content */}
-                      <div className="flex-1 p-5 space-y-4">
-                        {/* Header with date and badges */}
-                        <div className="flex flex-wrap items-center gap-2">
-                          <div className="flex items-center gap-2">
-                            <Calendar className="h-4 w-4 text-primary" />
-                            <span className="font-semibold text-lg">
-                              {formatDateRange(link.dateStart, link.dateEnd)}
-                            </span>
-                          </div>
-                          {link.isPermanent ? (
-                            <Badge className="bg-primary/10 text-primary hover:bg-primary/20 border-0">
-                              Permanente
-                            </Badge>
-                          ) : (
-                            <Badge variant="outline" className="text-muted-foreground">
-                              <Clock className="h-3 w-3 mr-1" />
-                              {formatExpirationStatus(link.expiresAt, link.isPermanent)}
-                            </Badge>
-                          )}
-                          <NewTasksAlert 
-                            dateStart={link.dateStart}
-                            dateEnd={link.dateEnd}
-                            snapshotTaskIds={link.snapshotTaskIds}
-                            originalTaskIds={link.originalTaskIds}
-                            filters={link.filters}
-                            onEditClick={() => handleEditClick(link)}
-                          />
-                        </div>
-                        
-                        {/* URL */}
-                        <div 
-                          className="flex items-center gap-2 p-2.5 rounded-lg bg-muted/50 cursor-pointer hover:bg-muted transition-colors"
-                          onClick={() => handleCopyLink(link.token)}
-                        >
-                          <LinkIcon className="h-4 w-4 text-muted-foreground shrink-0" />
-                          <span className="text-sm font-mono text-muted-foreground truncate flex-1">
-                            {getShareLinkUrl(link.token)}
-                          </span>
-                          <Copy className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
-                        </div>
-                        
-                        {/* Properties */}
-                        <ShareLinkProperties 
-                          dateStart={link.dateStart} 
-                          dateEnd={link.dateEnd} 
-                          snapshotTaskIds={link.snapshotTaskIds}
-                        />
-                        
-                        {/* Real-time Counter */}
-                        <ShareLinkCounter shareLinkId={link.id} totalTasks={link.snapshotTaskIds?.length || 0} />
-                      </div>
-                      
-                      {/* Actions Sidebar */}
-                      <div className="flex lg:flex-col items-center gap-1 p-3 lg:p-4 border-t lg:border-t-0 lg:border-l bg-muted/30">
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => handleEditClick(link)}
-                                className="h-9 w-9"
-                              >
-                                <Pencil className="h-4 w-4" />
-                              </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>Editar tareas</TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
-                        
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => handleCopyLink(link.token)}
-                                className="h-9 w-9"
-                              >
-                                <Copy className="h-4 w-4" />
-                              </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>Copiar enlace</TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
-                        
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => openExternalLink(link.token)}
-                                className="h-9 w-9"
-                              >
-                                <ExternalLink className="h-4 w-4" />
-                              </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>Abrir enlace</TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
-                        
-                        <div className="flex-1 lg:flex-none" />
-                        
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => handleDeleteClick(link)}
-                                className="h-9 w-9 text-destructive hover:text-destructive hover:bg-destructive/10"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>Desactivar enlace</TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
+                <LinkCard
+                  key={link.id}
+                  link={link}
+                  onEdit={() => handleEditClick(link)}
+                  onCopy={() => handleCopyLink(link.token)}
+                  onOpen={() => openExternalLink(link.token)}
+                  onDelete={() => handleDeleteClick(link)}
+                />
               ))}
             </div>
           ) : (
             <Card className="border-dashed">
-              <CardContent className="py-16">
-                <div className="flex flex-col items-center justify-center text-center">
-                  <div className="p-4 rounded-full bg-muted mb-4">
-                    <Share2 className="h-10 w-10 text-muted-foreground/50" />
-                  </div>
-                  <h3 className="font-semibold text-lg mb-2">No hay enlaces activos</h3>
-                  <p className="text-muted-foreground text-sm max-w-sm mb-6">
-                    Crea un nuevo enlace para compartir las entregas de lavandería con los repartidores
-                  </p>
-                  <Button onClick={() => setCreateModalOpen(true)}>
-                    <Plus className="h-4 w-4 mr-2" />
-                    Crear primer enlace
-                  </Button>
+              <CardContent className="py-12 flex flex-col items-center text-center">
+                <div className="p-4 rounded-full bg-muted mb-4">
+                  <Share2 className="h-8 w-8 text-muted-foreground/50" />
                 </div>
+                <h3 className="font-semibold mb-1">Sin enlaces activos</h3>
+                <p className="text-sm text-muted-foreground mb-4 max-w-xs">
+                  Crea un enlace para compartir con los repartidores
+                </p>
+                <Button onClick={() => setCreateModalOpen(true)} size="sm">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Crear enlace
+                </Button>
               </CardContent>
             </Card>
           )}
         </div>
 
-        {/* Expired Links Section (collapsed) */}
+        {/* Expired Links */}
         {expiredLinks.length > 0 && (
-          <div className="space-y-4">
-            <h2 className="text-lg font-medium text-muted-foreground">
-              Enlaces Expirados ({expiredLinks.length})
-            </h2>
-            <div className="grid gap-3 opacity-60">
+          <Collapsible open={showExpired} onOpenChange={setShowExpired}>
+            <CollapsibleTrigger asChild>
+              <button className="flex items-center gap-2 w-full py-2 text-sm text-muted-foreground hover:text-foreground transition-colors">
+                {showExpired ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                <span>Enlaces expirados ({expiredLinks.length})</span>
+              </button>
+            </CollapsibleTrigger>
+            <CollapsibleContent className="space-y-2 pt-2">
               {expiredLinks.map((link) => (
-                <Card key={link.id} className="bg-muted/30">
-                  <CardContent className="p-4">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <Calendar className="h-4 w-4 text-muted-foreground" />
-                        <span className="font-medium">
-                          {formatDateRange(link.dateStart, link.dateEnd)}
-                        </span>
-                        <Badge variant="destructive" className="text-xs">Expirado</Badge>
-                      </div>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleDeleteClick(link)}
-                        className="text-destructive hover:text-destructive"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
+                <div 
+                  key={link.id} 
+                  className="flex items-center justify-between p-3 rounded-lg bg-muted/50 opacity-60"
+                >
+                  <div className="flex items-center gap-2">
+                    <Calendar className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-sm">{formatDateRange(link.dateStart, link.dateEnd)}</span>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 text-destructive"
+                    onClick={() => handleDeleteClick(link)}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
               ))}
-            </div>
-          </div>
+            </CollapsibleContent>
+          </Collapsible>
         )}
-
-        {/* Modals */}
-        <LaundryShareLinkModal
-          open={createModalOpen}
-          onOpenChange={setCreateModalOpen}
-          dateStart={dateStart}
-          dateEnd={dateEnd}
-          sedeIds={activeSede ? [activeSede.id] : undefined}
-        />
-
-        <LaundryShareEditModal
-          open={editModalOpen}
-          onOpenChange={setEditModalOpen}
-          shareLink={selectedLink}
-        />
-
-        <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>¿Desactivar este enlace?</AlertDialogTitle>
-              <AlertDialogDescription>
-                El enlace dejará de funcionar y los repartidores no podrán acceder a él.
-                Esta acción no se puede deshacer.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Cancelar</AlertDialogCancel>
-              <AlertDialogAction
-                onClick={handleConfirmDelete}
-                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              >
-                Desactivar
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
       </div>
+
+      {/* Modals */}
+      <LaundryShareLinkModal
+        open={createModalOpen}
+        onOpenChange={setCreateModalOpen}
+        dateStart={dateStart}
+        dateEnd={dateEnd}
+        sedeIds={activeSede ? [activeSede.id] : undefined}
+      />
+
+      <LaundryShareEditModal
+        open={editModalOpen}
+        onOpenChange={setEditModalOpen}
+        shareLink={selectedLink}
+      />
+
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Desactivar este enlace?</AlertDialogTitle>
+            <AlertDialogDescription>
+              El enlace dejará de funcionar y los repartidores no podrán acceder.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Desactivar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
