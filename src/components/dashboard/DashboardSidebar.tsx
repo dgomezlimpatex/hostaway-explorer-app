@@ -14,8 +14,6 @@ import {
   Home,
   AlertTriangle,
   CheckCircle2,
-  Package,
-  Truck,
   LogOut,
   Shirt
 } from 'lucide-react';
@@ -87,18 +85,6 @@ const managementItems: NavigationItem[] = [
     href: '/property-groups',
     icon: Layers,
     permission: 'propertyGroups'
-  },
-  {
-    title: 'Inventario',
-    href: '/inventory',
-    icon: Package,
-    permission: 'inventory'
-  },
-  {
-    title: 'Logística',
-    href: '/logistics/dashboard',
-    icon: Truck,
-    permission: 'logistics'
   },
   {
     title: 'Lavandería',
