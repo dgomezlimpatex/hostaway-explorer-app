@@ -1,9 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Loader2, Trash2, Home, Calendar, Sparkles } from 'lucide-react';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { Loader2, Home, Sparkles, ChevronDown, ChevronRight } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -33,6 +34,7 @@ export const LaundryShareEditModal = ({
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [excludedTasks, setExcludedTasks] = useState<Set<string>>(new Set());
+  const [collapsedDates, setCollapsedDates] = useState<Set<string>>(new Set());
 
   // Fetch tasks for this share link's date range (filtered by sede)
   const { data: tasks, isLoading } = useQuery({
@@ -144,6 +146,18 @@ export const LaundryShareEditModal = ({
     });
   };
 
+  const toggleDateCollapse = (date: string) => {
+    setCollapsedDates(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(date)) {
+        newSet.delete(date);
+      } else {
+        newSet.add(date);
+      }
+      return newSet;
+    });
+  };
+
   const handleSave = () => {
     if (!tasks) return;
     const includedTaskIds = tasks.filter(t => !excludedTasks.has(t.id)).map(t => t.id);
@@ -160,6 +174,47 @@ export const LaundryShareEditModal = ({
 
   const includedCount = tasks ? tasks.length - excludedTasks.size : 0;
   const totalCount = tasks?.length || 0;
+
+  // Group tasks by date
+  const tasksByDate = useMemo(() => {
+    if (!tasks) return new Map<string, TaskItem[]>();
+    
+    const originalTaskSet = new Set(shareLink?.originalTaskIds || []);
+    
+    // Sort tasks: new tasks first within each date, then by code
+    const sortedTasks = [...tasks].sort((a, b) => {
+      // First by date
+      const dateCompare = a.date.localeCompare(b.date);
+      if (dateCompare !== 0) return dateCompare;
+      
+      const aIsNew = originalTaskSet.size > 0 && !originalTaskSet.has(a.id);
+      const bIsNew = originalTaskSet.size > 0 && !originalTaskSet.has(b.id);
+      
+      // New tasks first within same date
+      if (aIsNew && !bIsNew) return -1;
+      if (!aIsNew && bIsNew) return 1;
+      
+      // Then by code
+      return (a.code || a.property).localeCompare(b.code || b.property, 'es', { numeric: true });
+    });
+    
+    const grouped = new Map<string, TaskItem[]>();
+    for (const task of sortedTasks) {
+      const existing = grouped.get(task.date) || [];
+      existing.push(task);
+      grouped.set(task.date, existing);
+    }
+    return grouped;
+  }, [tasks, shareLink?.originalTaskIds]);
+
+  // Get stats per date
+  const getDateStats = (date: string) => {
+    const dateTasks = tasksByDate.get(date) || [];
+    const included = dateTasks.filter(t => !excludedTasks.has(t.id)).length;
+    return { included, total: dateTasks.length };
+  };
+
+  const originalTaskSet = useMemo(() => new Set(shareLink?.originalTaskIds || []), [shareLink?.originalTaskIds]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -182,87 +237,84 @@ export const LaundryShareEditModal = ({
               {includedCount} de {totalCount} tareas incluidas
             </div>
             <ScrollArea className="h-[600px] pr-4">
-              <div className="columns-1 md:columns-2 xl:columns-3 gap-4">
-              {(() => {
-                  // Determine which tasks are truly new (not in originalTaskIds)
-                  const originalTaskSet = new Set(shareLink?.originalTaskIds || []);
+              <div className="space-y-3">
+                {Array.from(tasksByDate.entries()).map(([date, dateTasks]) => {
+                  const isCollapsed = collapsedDates.has(date);
+                  const stats = getDateStats(date);
                   
-                  // Sort tasks: new tasks first, then by date and code
-                  const sortedTasks = [...tasks].sort((a, b) => {
-                    const aIsNew = originalTaskSet.size > 0 && !originalTaskSet.has(a.id);
-                    const bIsNew = originalTaskSet.size > 0 && !originalTaskSet.has(b.id);
-                    
-                    // New tasks first
-                    if (aIsNew && !bIsNew) return -1;
-                    if (!aIsNew && bIsNew) return 1;
-                    
-                    // Then by date
-                    const dateCompare = a.date.localeCompare(b.date);
-                    if (dateCompare !== 0) return dateCompare;
-                    
-                    // Then by code
-                    return (a.code || a.property).localeCompare(b.code || b.property, 'es', { numeric: true });
-                  });
-                  
-                  let lastDate = '';
-                  
-                  return sortedTasks.map(task => {
-                    const isIncluded = !excludedTasks.has(task.id);
-                    const isNewTask = originalTaskSet.size > 0 && !originalTaskSet.has(task.id);
-                    const showDateHeader = task.date !== lastDate;
-                    lastDate = task.date;
-                    
-                    return (
-                      <div key={task.id} className="break-inside-avoid mb-2">
-                        {showDateHeader && (
-                          <div className="flex items-center gap-2 py-2 mb-2 border-b border-border">
-                            <Calendar className="h-4 w-4 text-primary" />
-                            <span className="font-semibold text-sm text-primary">
-                              {formatDate(task.date)}
-                            </span>
-                          </div>
+                  return (
+                    <Collapsible
+                      key={date}
+                      open={!isCollapsed}
+                      onOpenChange={() => toggleDateCollapse(date)}
+                    >
+                      <CollapsibleTrigger className="flex items-center gap-2 w-full py-2 px-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors cursor-pointer">
+                        {isCollapsed ? (
+                          <ChevronRight className="h-4 w-4 text-primary shrink-0" />
+                        ) : (
+                          <ChevronDown className="h-4 w-4 text-primary shrink-0" />
                         )}
-                        <div
-                          className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
-                            isNewTask
-                              ? 'bg-emerald-500/10 border-emerald-500/50 hover:bg-emerald-500/20'
-                              : isIncluded 
-                                ? 'bg-card hover:bg-muted/50' 
-                                : 'bg-muted/30 opacity-60'
-                          }`}
-                          onClick={() => toggleTask(task.id)}
-                        >
-                          <Checkbox
-                            checked={isIncluded}
-                            onCheckedChange={() => toggleTask(task.id)}
-                          />
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2">
-                              <Home className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                              <span className="font-medium truncate">
-                                {task.code || task.property}
-                              </span>
-                              {task.clientName && (
-                                <span className="text-xs text-muted-foreground truncate">
-                                  ({task.clientName})
-                                </span>
-                              )}
-                              {isNewTask && (
-                                <Badge className="bg-emerald-500 hover:bg-emerald-600 text-white text-[10px] px-1.5 py-0 h-4 shrink-0">
-                                  <Sparkles className="h-2.5 w-2.5 mr-0.5" />
-                                  Nueva
-                                </Badge>
-                              )}
-                            </div>
-                            <div className="text-xs text-muted-foreground mt-1">
-                              Check-out: {task.checkOut}
-                            </div>
-                          </div>
+                        <span className="font-semibold text-sm text-primary">
+                          {formatDate(date)}
+                        </span>
+                        <Badge variant="secondary" className="ml-auto text-xs">
+                          {stats.included}/{stats.total}
+                        </Badge>
+                      </CollapsibleTrigger>
+                      
+                      <CollapsibleContent>
+                        <div className="columns-1 md:columns-2 xl:columns-3 gap-4 mt-2 pl-2">
+                          {dateTasks.map(task => {
+                            const isIncluded = !excludedTasks.has(task.id);
+                            const isNewTask = originalTaskSet.size > 0 && !originalTaskSet.has(task.id);
+                            
+                            return (
+                              <div key={task.id} className="break-inside-avoid mb-2">
+                                <div
+                                  className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
+                                    isNewTask
+                                      ? 'bg-emerald-500/10 border-emerald-500/50 hover:bg-emerald-500/20'
+                                      : isIncluded 
+                                        ? 'bg-card hover:bg-muted/50' 
+                                        : 'bg-muted/30 opacity-60'
+                                  }`}
+                                  onClick={() => toggleTask(task.id)}
+                                >
+                                  <Checkbox
+                                    checked={isIncluded}
+                                    onCheckedChange={() => toggleTask(task.id)}
+                                  />
+                                  <div className="flex-1 min-w-0">
+                                    <div className="flex items-center gap-2">
+                                      <Home className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                                      <span className="font-medium truncate">
+                                        {task.code || task.property}
+                                      </span>
+                                      {task.clientName && (
+                                        <span className="text-xs text-muted-foreground truncate">
+                                          ({task.clientName})
+                                        </span>
+                                      )}
+                                      {isNewTask && (
+                                        <Badge className="bg-emerald-500 hover:bg-emerald-600 text-white text-[10px] px-1.5 py-0 h-4 shrink-0">
+                                          <Sparkles className="h-2.5 w-2.5 mr-0.5" />
+                                          Nueva
+                                        </Badge>
+                                      )}
+                                    </div>
+                                    <div className="text-xs text-muted-foreground mt-1">
+                                      Check-out: {task.checkOut}
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })}
                         </div>
-                      </div>
-                    );
-                  });
-                })()}
+                      </CollapsibleContent>
+                    </Collapsible>
+                  );
+                })}
               </div>
             </ScrollArea>
           </>
