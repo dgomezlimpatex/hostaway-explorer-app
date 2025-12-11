@@ -175,11 +175,29 @@ export const LaundryShareEditModal = ({
             <ScrollArea className="h-[600px] pr-4">
               <div className="columns-1 md:columns-2 xl:columns-3 gap-4">
               {(() => {
-                  let lastDate = '';
                   // Determine which tasks are truly new (not in originalTaskIds)
                   const originalTaskSet = new Set(shareLink?.originalTaskIds || []);
                   
-                  return tasks.map(task => {
+                  // Sort tasks: new tasks first, then by date and code
+                  const sortedTasks = [...tasks].sort((a, b) => {
+                    const aIsNew = originalTaskSet.size > 0 && !originalTaskSet.has(a.id);
+                    const bIsNew = originalTaskSet.size > 0 && !originalTaskSet.has(b.id);
+                    
+                    // New tasks first
+                    if (aIsNew && !bIsNew) return -1;
+                    if (!aIsNew && bIsNew) return 1;
+                    
+                    // Then by date
+                    const dateCompare = a.date.localeCompare(b.date);
+                    if (dateCompare !== 0) return dateCompare;
+                    
+                    // Then by code
+                    return (a.code || a.property).localeCompare(b.code || b.property, 'es', { numeric: true });
+                  });
+                  
+                  let lastDate = '';
+                  
+                  return sortedTasks.map(task => {
                     const isIncluded = !excludedTasks.has(task.id);
                     const isNewTask = originalTaskSet.size > 0 && !originalTaskSet.has(task.id);
                     const showDateHeader = task.date !== lastDate;
