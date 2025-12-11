@@ -329,6 +329,7 @@ const LaundryShareManagement = () => {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedLink, setSelectedLink] = useState<LaundryShareLink | null>(null);
   const [showExpired, setShowExpired] = useState(false);
+  const [allowDateEdit, setAllowDateEdit] = useState(false);
   
   const [dateStart, setDateStart] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [dateEnd, setDateEnd] = useState(format(addDays(new Date(), 7), 'yyyy-MM-dd'));
@@ -422,6 +423,7 @@ const LaundryShareManagement = () => {
             onClick={() => {
               setDateStart(format(new Date(), 'yyyy-MM-dd'));
               setDateEnd(format(new Date(), 'yyyy-MM-dd'));
+              setAllowDateEdit(false);
               setCreateModalOpen(true);
             }}
             className="flex flex-col items-center gap-2 p-4 rounded-xl border-2 border-dashed hover:border-primary/50 hover:bg-primary/5 transition-all group"
@@ -434,8 +436,9 @@ const LaundryShareManagement = () => {
           
           <button
             onClick={() => {
-              setDateStart(format(new Date(), 'yyyy-MM-dd'));
-              setDateEnd(format(addDays(new Date(), 3), 'yyyy-MM-dd'));
+              setDateStart(format(addDays(new Date(), 1), 'yyyy-MM-dd'));
+              setDateEnd(format(addDays(new Date(), 1), 'yyyy-MM-dd'));
+              setAllowDateEdit(false);
               setCreateModalOpen(true);
             }}
             className="flex flex-col items-center gap-2 p-4 rounded-xl border-2 border-dashed hover:border-primary/50 hover:bg-primary/5 transition-all group"
@@ -443,11 +446,14 @@ const LaundryShareManagement = () => {
             <div className="p-3 rounded-full bg-primary/10 group-hover:bg-primary/20 transition-colors">
               <Package className="h-5 w-5 text-primary" />
             </div>
-            <span className="text-sm font-medium">3 Días</span>
+            <span className="text-sm font-medium">Mañana</span>
           </button>
           
           <button
-            onClick={() => setCreateModalOpen(true)}
+            onClick={() => {
+              setAllowDateEdit(true);
+              setCreateModalOpen(true);
+            }}
             className="flex flex-col items-center gap-2 p-4 rounded-xl border-2 border-dashed hover:border-primary/50 hover:bg-primary/5 transition-all group"
           >
             <div className="p-3 rounded-full bg-primary/10 group-hover:bg-primary/20 transition-colors">
@@ -585,6 +591,7 @@ const LaundryShareManagement = () => {
         dateStart={dateStart}
         dateEnd={dateEnd}
         sedeIds={activeSede ? [activeSede.id] : undefined}
+        allowDateEdit={allowDateEdit}
       />
 
       <LaundryShareEditModal
