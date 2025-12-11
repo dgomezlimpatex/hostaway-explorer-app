@@ -11,8 +11,6 @@ import {
   UserPlus,
   Layers,
   FileText,
-  Package,
-  Truck,
   Shirt
 } from 'lucide-react';
 
@@ -159,33 +157,6 @@ export const RoleBasedNavigation = () => {
               gradientTo="to-gray-600"
               iconColor="text-white"
               hoverBorderColor="hover:border-gray-300"
-            />
-          )}
-
-          {/* Nueva sección para inventario */}
-          {canAccessModule('inventory') && (
-            <NavigationCard
-              to="/inventory"
-              title="Inventario"
-              description="Gestiona el stock y movimientos de productos de limpieza"
-              icon={Package}
-              gradientFrom="bg-gradient-to-br from-amber-500"
-              gradientTo="to-amber-600"
-              iconColor="text-white"
-              hoverBorderColor="hover:border-amber-300"
-            />
-          )}
-
-          {canAccessModule('logistics') && (
-            <NavigationCard
-              to="/logistics/dashboard"
-              title="Logística"
-              description="Prepara picklists y gestiona entregas internas"
-              icon={Truck}
-              gradientFrom="bg-gradient-to-br from-sky-500"
-              gradientTo="to-sky-600"
-              iconColor="text-white"
-              hoverBorderColor="hover:border-sky-300"
             />
           )}
 
