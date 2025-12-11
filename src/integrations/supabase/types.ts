@@ -2714,7 +2714,6 @@ export type Database = {
               expires_hours?: number
               invite_email: string
               invite_role: string
-              invite_sede_id?: string
             }
             Returns: string
           }
@@ -2723,6 +2722,7 @@ export type Database = {
               expires_hours?: number
               invite_email: string
               invite_role: string
+              invite_sede_id?: string
             }
             Returns: string
           }
