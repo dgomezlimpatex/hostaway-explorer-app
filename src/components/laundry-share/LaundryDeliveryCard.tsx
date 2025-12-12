@@ -1,7 +1,9 @@
+import { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { MapPin, Clock, Package, CheckCircle2, Truck, User } from 'lucide-react';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { MapPin, Clock, Package, CheckCircle2, Truck, User, FileText, ChevronDown } from 'lucide-react';
 import { LaundryDeliveryTracking, LaundryDeliveryStatus } from '@/hooks/useLaundryTracking';
 import { cn } from '@/lib/utils';
 
@@ -13,6 +15,7 @@ export interface LaundryTask {
   date: string;
   serviceTime: string; // start_time - end_time
   cleaner?: string;
+  propertyNotes?: string;
   // Textiles
   sheets: number;
   sheetsSmall: number;
@@ -52,6 +55,7 @@ export const LaundryDeliveryCard = ({
   isUpdating,
 }: LaundryDeliveryCardProps) => {
   const status = tracking?.status || 'pending';
+  const [notesOpen, setNotesOpen] = useState(false);
 
   const handleStatusClick = (newStatus: LaundryDeliveryStatus) => {
     onStatusUpdate(task.id, newStatus);
@@ -202,6 +206,33 @@ export const LaundryDeliveryCard = ({
               </div>
             </div>
           )}
+
+        {/* Property notes - collapsible */}
+        {task.propertyNotes && (
+          <Collapsible open={notesOpen} onOpenChange={setNotesOpen}>
+            <CollapsibleTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="w-full justify-between text-muted-foreground hover:text-foreground"
+              >
+                <span className="flex items-center gap-2">
+                  <FileText className="h-4 w-4" />
+                  Notas del apartamento
+                </span>
+                <ChevronDown className={cn(
+                  "h-4 w-4 transition-transform",
+                  notesOpen && "rotate-180"
+                )} />
+              </Button>
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <div className="mt-2 p-3 rounded-md bg-muted/50 text-sm whitespace-pre-wrap">
+                {task.propertyNotes}
+              </div>
+            </CollapsibleContent>
+          </Collapsible>
+        )}
 
         {/* Status info */}
         {tracking && status !== 'pending' && (

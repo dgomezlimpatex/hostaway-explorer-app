@@ -55,6 +55,7 @@ const PublicLaundryView = () => {
           propiedad_id,
           properties (
             codigo,
+            notas,
             numero_sabanas,
             numero_sabanas_pequenas,
             numero_sabanas_suite,
@@ -116,6 +117,7 @@ const PublicLaundryView = () => {
         date: task.date,
         serviceTime: `${task.start_time} - ${task.end_time}`,
         cleaner: task.cleaner || undefined,
+        propertyNotes: prop?.notas || undefined,
         sheets: prop?.numero_sabanas || 0,
         sheetsSmall: prop?.numero_sabanas_pequenas || 0,
         sheetsSuite: prop?.numero_sabanas_suite || 0,
