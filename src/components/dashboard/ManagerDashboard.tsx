@@ -21,6 +21,7 @@ const DashboardStatsCards = lazy(() => import('./components/DashboardStatsCards'
 const TodayTasksSection = lazy(() => import('./components/TodayTasksSection').then(module => ({ default: module.TodayTasksSection })));
 import DashboardMetricsCards from './components/DashboardMetricsCards';
 const HostawayIntegrationWidget = lazy(() => import('@/components/hostaway/HostawayIntegrationWidget').then(module => ({ default: module.HostawayIntegrationWidget })));
+const LinenControlWidget = lazy(() => import('./components/LinenControlWidget').then(module => ({ default: module.LinenControlWidget })));
 
 // Loading component for Suspense
 const ComponentLoader = () => (
@@ -302,6 +303,13 @@ export const ManagerDashboard = () => {
                 unassignedTasksCount={unassignedTasks.length}
                 todayTasks={todayTasks}
               />
+
+              {/* Linen Control Widget */}
+              {canAccessModule('reports') && (
+                <Suspense fallback={<ComponentLoader />}>
+                  <LinenControlWidget />
+                </Suspense>
+              )}
             </div>
           </div>
           </main>
