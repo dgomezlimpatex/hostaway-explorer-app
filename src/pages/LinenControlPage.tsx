@@ -49,9 +49,9 @@ const LinenControlPage = () => {
   const [statusFilter, setStatusFilter] = useState<LinenStatus | 'all'>('all');
   const [buildingFilter, setBuildingFilter] = useState<string>('all');
 
-  // Get unique building codes for filter
+  // Get unique building codes for filter (exclude empty strings)
   const buildingCodes = useMemo(() => {
-    const codes = [...new Set(propertyStatuses.map(p => p.buildingCode))];
+    const codes = [...new Set(propertyStatuses.map(p => p.buildingCode).filter(code => code && code.trim() !== ''))];
     return codes.sort();
   }, [propertyStatuses]);
 
