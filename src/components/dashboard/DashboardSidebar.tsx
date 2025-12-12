@@ -15,7 +15,8 @@ import {
   AlertTriangle,
   CheckCircle2,
   LogOut,
-  Shirt
+  Shirt,
+  Bed
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useRolePermissions } from '@/hooks/useRolePermissions';
@@ -85,6 +86,12 @@ const managementItems: NavigationItem[] = [
     href: '/property-groups',
     icon: Layers,
     permission: 'propertyGroups'
+  },
+  {
+    title: 'Control de Mudas',
+    href: '/control-mudas',
+    icon: Bed,
+    permission: 'reports'
   },
   {
     title: 'Lavandería',
