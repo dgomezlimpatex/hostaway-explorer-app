@@ -389,6 +389,7 @@ export type Database = {
           fecha_actualizacion: string
           fecha_creacion: string
           id: string
+          linen_control_enabled: boolean
           metodo_pago: string
           nombre: string
           sede_id: string
@@ -408,6 +409,7 @@ export type Database = {
           fecha_actualizacion?: string
           fecha_creacion?: string
           id?: string
+          linen_control_enabled?: boolean
           metodo_pago: string
           nombre: string
           sede_id: string
@@ -427,6 +429,7 @@ export type Database = {
           fecha_actualizacion?: string
           fecha_creacion?: string
           id?: string
+          linen_control_enabled?: boolean
           metodo_pago?: string
           nombre?: string
           sede_id?: string
@@ -1371,6 +1374,7 @@ export type Database = {
           jabon_liquido: number
           kit_alimentario: number
           limpiacristales: number
+          linen_control_enabled: boolean | null
           nombre: string
           notas: string | null
           numero_alfombrines: number
@@ -1424,6 +1428,7 @@ export type Database = {
           jabon_liquido?: number
           kit_alimentario?: number
           limpiacristales?: number
+          linen_control_enabled?: boolean | null
           nombre: string
           notas?: string | null
           numero_alfombrines?: number
@@ -1477,6 +1482,7 @@ export type Database = {
           jabon_liquido?: number
           kit_alimentario?: number
           limpiacristales?: number
+          linen_control_enabled?: boolean | null
           nombre?: string
           notas?: string | null
           numero_alfombrines?: number

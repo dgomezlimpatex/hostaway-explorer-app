@@ -16,6 +16,7 @@ export const mapClientFromDB = (row: any): Client => ({
   metodoPago: row.metodo_pago as Client['metodoPago'],
   supervisor: row.supervisor,
   factura: row.factura,
+  linenControlEnabled: row.linen_control_enabled,
   fechaCreacion: row.fecha_creacion,
   fechaActualizacion: row.fecha_actualizacion
 });
@@ -34,6 +35,7 @@ export const mapClientToDB = (client: Partial<CreateClientData>): any => {
   if (client.metodoPago !== undefined) updateData.metodo_pago = client.metodoPago;
   if (client.supervisor !== undefined) updateData.supervisor = client.supervisor;
   if (client.factura !== undefined) updateData.factura = client.factura;
+  if (client.linenControlEnabled !== undefined) updateData.linen_control_enabled = client.linenControlEnabled;
 
   return updateData;
 };

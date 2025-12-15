@@ -20,6 +20,7 @@ export interface Client extends BaseEntity {
   metodoPago: 'transferencia' | 'efectivo' | 'bizum';
   supervisor: string;
   factura: boolean;
+  linenControlEnabled?: boolean;
   
   // Metadatos (mantenemos por compatibilidad, pero usamos los de BaseEntity)
   fechaCreacion: string;
@@ -38,4 +39,5 @@ export interface CreateClientData {
   metodoPago: 'transferencia' | 'efectivo' | 'bizum';
   supervisor: string;
   factura: boolean;
+  linenControlEnabled?: boolean;
 }

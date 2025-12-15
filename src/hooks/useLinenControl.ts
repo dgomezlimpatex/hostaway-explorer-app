@@ -36,7 +36,7 @@ export interface LinenControlStats {
 export const useLinenControl = () => {
   const { activeSede, isInitialized } = useSede();
 
-  // Fetch all properties with their clients
+  // Fetch all properties with their clients (including linen control settings)
   const { data: properties, isLoading: propertiesLoading } = useQuery({
     queryKey: ['linen-control-properties', activeSede?.id],
     queryFn: async () => {
@@ -49,13 +49,26 @@ export const useLinenControl = () => {
           codigo,
           nombre,
           cliente_id,
-          clients (nombre)
+          linen_control_enabled,
+          clients (nombre, linen_control_enabled)
         `)
         .eq('sede_id', activeSede.id)
         .order('codigo', { ascending: true });
 
       if (error) throw error;
-      return data || [];
+      
+      // Filter properties based on linen control settings:
+      // Property linen_control_enabled: null = inherit from client, true/false = explicit override
+      return (data || []).filter(property => {
+        const clientEnabled = (property.clients as any)?.linen_control_enabled ?? false;
+        const propertyOverride = property.linen_control_enabled;
+        
+        // If property has explicit override, use it; otherwise inherit from client
+        if (propertyOverride !== null) {
+          return propertyOverride === true;
+        }
+        return clientEnabled === true;
+      });
     },
     enabled: isInitialized && !!activeSede?.id,
   });
