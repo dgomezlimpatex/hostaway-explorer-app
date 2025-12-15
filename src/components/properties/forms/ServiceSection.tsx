@@ -1,15 +1,21 @@
-
 import { FormField, FormItem, FormLabel, FormControl, FormMessage, FormDescription } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
-import { Control } from 'react-hook-form';
+import { Control, useWatch } from 'react-hook-form';
 import { PropertyFormData } from './PropertyFormSchema';
+import { useClients } from '@/hooks/useClients';
 
 interface ServiceSectionProps {
   control: Control<PropertyFormData>;
 }
 
 export const ServiceSection = ({ control }: ServiceSectionProps) => {
+  const { data: clients } = useClients();
+  const selectedClientId = useWatch({ control, name: 'clienteId' });
+  
+  // Get the client's linen control setting to use as default
+  const selectedClient = clients?.find(c => c.id === selectedClientId);
+  const clientLinenControlEnabled = selectedClient?.linenControlEnabled ?? false;
   const convertMinutesToTime = (minutes: number): string => {
     const hours = Math.floor(minutes / 60);
     const mins = minutes % 60;
@@ -118,24 +124,32 @@ export const ServiceSection = ({ control }: ServiceSectionProps) => {
       <FormField
         control={control}
         name="linenControlEnabled"
-        render={({ field }) => (
-          <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-            <div className="space-y-0.5">
-              <FormLabel className="text-base flex items-center gap-2">
-                🧺 Gestión de lavandería
-              </FormLabel>
-              <FormDescription>
-                Activar para incluir en el control de mudas
-              </FormDescription>
-            </div>
-            <FormControl>
-              <Switch
-                checked={field.value === true}
-                onCheckedChange={(checked) => field.onChange(checked ? true : null)}
-              />
-            </FormControl>
-          </FormItem>
-        )}
+        render={({ field }) => {
+          // Property value takes precedence, otherwise inherit from client
+          const effectiveValue = field.value !== null ? field.value : clientLinenControlEnabled;
+          
+          return (
+            <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+              <div className="space-y-0.5">
+                <FormLabel className="text-base flex items-center gap-2">
+                  🧺 Gestión de lavandería
+                </FormLabel>
+                <FormDescription>
+                  {field.value === null 
+                    ? `Heredado del cliente (${clientLinenControlEnabled ? 'Activado' : 'Desactivado'})`
+                    : 'Configuración personalizada para esta propiedad'
+                  }
+                </FormDescription>
+              </div>
+              <FormControl>
+                <Switch
+                  checked={effectiveValue}
+                  onCheckedChange={(checked) => field.onChange(checked)}
+                />
+              </FormControl>
+            </FormItem>
+          );
+        }}
       />
     </div>
   );
