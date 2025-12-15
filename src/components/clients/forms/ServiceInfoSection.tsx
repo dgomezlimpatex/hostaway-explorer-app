@@ -146,6 +146,29 @@ export const ServiceInfoSection = ({ control }: ServiceInfoSectionProps) => {
             </FormItem>
           )}
         />
+
+        <FormField
+          control={control}
+          name="linenControlEnabled"
+          render={({ field }) => (
+            <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+              <FormControl>
+                <Checkbox
+                  checked={field.value || false}
+                  onCheckedChange={field.onChange}
+                />
+              </FormControl>
+              <div className="space-y-1 leading-none">
+                <FormLabel className="flex items-center gap-2">
+                  🛏️ Control de Mudas
+                </FormLabel>
+                <p className="text-xs text-muted-foreground">
+                  Activar seguimiento de ropa limpia para este cliente
+                </p>
+              </div>
+            </FormItem>
+          )}
+        />
       </div>
     </div>
   );

@@ -33,6 +33,7 @@ export const mapPropertyFromDB = (row: any): Property => ({
   clienteId: row.cliente_id,
   hostaway_listing_id: row.hostaway_listing_id,
   hostaway_internal_name: row.hostaway_internal_name,
+  linenControlEnabled: row.linen_control_enabled,
   fechaCreacion: row.fecha_creacion,
   fechaActualizacion: row.fecha_actualizacion
 });
@@ -66,6 +67,7 @@ export const mapPropertyToDB = (property: Partial<CreatePropertyData>): any => {
   if (property.cantidadRollosPapelCocina !== undefined) updateData.cantidad_rollos_papel_cocina = property.cantidadRollosPapelCocina;
   if (property.notas !== undefined) updateData.notas = property.notas;
   if (property.clienteId !== undefined) updateData.cliente_id = property.clienteId;
+  if (property.linenControlEnabled !== undefined) updateData.linen_control_enabled = property.linenControlEnabled;
 
   return updateData;
 };

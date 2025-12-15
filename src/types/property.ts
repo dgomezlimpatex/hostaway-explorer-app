@@ -50,6 +50,9 @@ export interface Property extends BaseEntity {
   hostaway_listing_id: number | null;
   hostaway_internal_name: string | null;
   
+  // Linen control (null = inherit from client)
+  linenControlEnabled: boolean | null;
+  
   // Metadatos (mantenemos por compatibilidad, pero usamos los de BaseEntity)
   fechaCreacion: string;
   fechaActualizacion: string;
@@ -82,4 +85,5 @@ export interface CreatePropertyData {
   cantidadRollosPapelCocina: number;
   notas: string;
   clienteId: string;
+  linenControlEnabled?: boolean | null;
 }

@@ -41,6 +41,7 @@ export const CreateClientModal = () => {
       metodoPago: 'transferencia',
       supervisor: '',
       factura: false,
+      linenControlEnabled: false,
     },
   });
 

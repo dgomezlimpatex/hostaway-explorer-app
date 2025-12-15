@@ -58,6 +58,7 @@ export const useTaskPreview = (task: Task | null) => {
         clienteId: data.cliente_id,
         hostaway_listing_id: data.hostaway_listing_id,
         hostaway_internal_name: data.hostaway_internal_name,
+        linenControlEnabled: data.linen_control_enabled,
         fechaCreacion: data.fecha_creacion,
         fechaActualizacion: data.fecha_actualizacion,
       };
