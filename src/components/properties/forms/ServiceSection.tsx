@@ -1,6 +1,7 @@
 
-import { FormField, FormItem, FormLabel, FormControl, FormMessage } from '@/components/ui/form';
+import { FormField, FormItem, FormLabel, FormControl, FormMessage, FormDescription } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
+import { Switch } from '@/components/ui/switch';
 import { Control } from 'react-hook-form';
 import { PropertyFormData } from './PropertyFormSchema';
 
@@ -113,6 +114,29 @@ export const ServiceSection = ({ control }: ServiceSectionProps) => {
           )}
         />
       </div>
+
+      <FormField
+        control={control}
+        name="linenControlEnabled"
+        render={({ field }) => (
+          <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+            <div className="space-y-0.5">
+              <FormLabel className="text-base flex items-center gap-2">
+                🧺 Gestión de lavandería
+              </FormLabel>
+              <FormDescription>
+                Activar para incluir en el control de mudas
+              </FormDescription>
+            </div>
+            <FormControl>
+              <Switch
+                checked={field.value === true}
+                onCheckedChange={(checked) => field.onChange(checked ? true : null)}
+              />
+            </FormControl>
+          </FormItem>
+        )}
+      />
     </div>
   );
 };

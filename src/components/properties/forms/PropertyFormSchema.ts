@@ -28,6 +28,7 @@ export const propertySchema = z.object({
   cantidadRollosPapelCocina: z.number().min(0, 'La cantidad de rollos de papel de cocina debe ser positiva'),
   notas: z.string().optional(),
   clienteId: z.string().min(1, 'Debe seleccionar un cliente'),
+  linenControlEnabled: z.boolean().nullable().optional(),
 });
 
 export type PropertyFormData = z.infer<typeof propertySchema>;
