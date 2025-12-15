@@ -63,6 +63,7 @@ export const EditPropertyModal: React.FC<EditPropertyModalProps> = ({
         cantidadRollosPapelCocina: property.cantidadRollosPapelCocina || 0,
         notas: property.notas || '',
         clienteId: property.clienteId,
+        linenControlEnabled: property.linenControlEnabled ?? null,
     } : undefined,
   });
 
@@ -96,6 +97,7 @@ export const EditPropertyModal: React.FC<EditPropertyModalProps> = ({
         cantidadRollosPapelCocina: property.cantidadRollosPapelCocina || 0,
         notas: property.notas || '',
         clienteId: property.clienteId,
+        linenControlEnabled: property.linenControlEnabled ?? null,
       });
     }
   }, [property, form]);

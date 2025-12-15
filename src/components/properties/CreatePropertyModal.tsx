@@ -53,6 +53,7 @@ export const CreatePropertyModal = () => {
       cantidadRollosPapelCocina: 0,
       notas: '',
       clienteId: '',
+      linenControlEnabled: null,
     },
   });
 
@@ -89,6 +90,7 @@ export const CreatePropertyModal = () => {
       cantidadRollosPapelCocina: data.cantidadRollosPapelCocina,
       notas: data.notas || '',
       clienteId: data.clienteId,
+      linenControlEnabled: data.linenControlEnabled ?? null,
     };
 
     createProperty.mutate(propertyData, {
