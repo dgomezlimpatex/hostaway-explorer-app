@@ -52,15 +52,28 @@ export const calculateExpirationDate = (option: 'day' | 'week' | 'month' | 'perm
 };
 
 // Fetch tasks for laundry (to be included in snapshot)
-// Only includes tasks of type 'mantenimiento-airbnb'
+// Only includes tasks of type 'mantenimiento-airbnb' AND properties with linen control enabled
 export const fetchLaundryTasksForDateRange = async (
   dateStart: string,
   dateEnd: string,
   sedeIds?: string[]
 ): Promise<string[]> => {
+  // First fetch tasks with property info
   let query = supabase
     .from('tasks')
-    .select('id')
+    .select(`
+      id,
+      propiedad_id,
+      properties:propiedad_id (
+        id,
+        linen_control_enabled,
+        cliente_id,
+        clients:cliente_id (
+          id,
+          linen_control_enabled
+        )
+      )
+    `)
     .gte('date', dateStart)
     .lte('date', dateEnd)
     .eq('type', 'mantenimiento-airbnb');
@@ -76,7 +89,22 @@ export const fetchLaundryTasksForDateRange = async (
     return [];
   }
 
-  return (data || []).map(t => t.id);
+  // Filter tasks based on linen control settings
+  // Property setting takes precedence, otherwise inherit from client
+  const filteredTasks = (data || []).filter(task => {
+    const property = task.properties as any;
+    if (!property) return false;
+    
+    const propertyLinenEnabled = property.linen_control_enabled;
+    const clientLinenEnabled = property.clients?.linen_control_enabled ?? false;
+    
+    // If property has explicit setting, use it; otherwise inherit from client
+    const effectiveValue = propertyLinenEnabled !== null ? propertyLinenEnabled : clientLinenEnabled;
+    
+    return effectiveValue === true;
+  });
+
+  return filteredTasks.map(t => t.id);
 };
 
 // Detect changes between original tasks (at creation time) and current tasks
