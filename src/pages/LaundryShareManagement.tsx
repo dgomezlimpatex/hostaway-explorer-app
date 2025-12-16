@@ -28,7 +28,8 @@ import {
   Sparkles,
   ChevronDown,
   ChevronUp,
-  Eye
+  Eye,
+  Search
 } from 'lucide-react';
 import { useLaundryShareLinks, LaundryShareLink } from '@/hooks/useLaundryShareLinks';
 import { useLaundryTracking } from '@/hooks/useLaundryTracking';
@@ -330,9 +331,34 @@ const LaundryShareManagement = () => {
   const [selectedLink, setSelectedLink] = useState<LaundryShareLink | null>(null);
   const [showExpired, setShowExpired] = useState(false);
   const [allowDateEdit, setAllowDateEdit] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
   
   const [dateStart, setDateStart] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [dateEnd, setDateEnd] = useState(format(addDays(new Date(), 7), 'yyyy-MM-dd'));
+
+  // Fetch property codes for all tasks in active links for search functionality
+  const allTaskIds = shareLinks?.flatMap(l => l.snapshotTaskIds) || [];
+  const { data: taskPropertyMap } = useQuery({
+    queryKey: ['laundry-share-properties-search', allTaskIds],
+    queryFn: async () => {
+      if (allTaskIds.length === 0) return new Map<string, string>();
+      
+      const { data, error } = await supabase
+        .from('tasks')
+        .select('id, property, properties(codigo)')
+        .in('id', allTaskIds);
+      
+      if (error) throw error;
+      
+      const map = new Map<string, string>();
+      (data || []).forEach(t => {
+        const code = (t.properties as any)?.codigo || t.property;
+        map.set(t.id, code.toLowerCase());
+      });
+      return map;
+    },
+    enabled: allTaskIds.length > 0,
+  });
 
   const handleCopyLink = async (token: string) => {
     const success = await copyShareLinkToClipboard(token);
@@ -375,8 +401,20 @@ const LaundryShareManagement = () => {
     setCreateModalOpen(true);
   };
 
-  const activeLinks = shareLinks?.filter(l => !isShareLinkExpired(l.expiresAt)) || [];
-  const expiredLinks = shareLinks?.filter(l => isShareLinkExpired(l.expiresAt)) || [];
+  // Filter links by search query
+  const filterBySearch = (links: LaundryShareLink[]) => {
+    if (!searchQuery.trim() || !taskPropertyMap) return links;
+    const query = searchQuery.toLowerCase().trim();
+    return links.filter(link => 
+      link.snapshotTaskIds.some(taskId => {
+        const propertyCode = taskPropertyMap.get(taskId);
+        return propertyCode?.includes(query);
+      })
+    );
+  };
+
+  const activeLinks = filterBySearch(shareLinks?.filter(l => !isShareLinkExpired(l.expiresAt)) || []);
+  const expiredLinks = filterBySearch(shareLinks?.filter(l => isShareLinkExpired(l.expiresAt)) || []);
 
   // Stats
   const totalTasks = activeLinks.reduce((acc, l) => acc + (l.snapshotTaskIds?.length || 0), 0);
@@ -461,6 +499,17 @@ const LaundryShareManagement = () => {
             </div>
             <span className="text-sm font-medium">Personalizado</span>
           </button>
+        </div>
+
+        {/* Search */}
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Buscar por código de propiedad..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-9"
+          />
         </div>
 
         {/* Stats Row */}
