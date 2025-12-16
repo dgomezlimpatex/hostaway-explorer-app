@@ -36,7 +36,7 @@ export const LaundryShareEditModal = ({
   const [excludedTasks, setExcludedTasks] = useState<Set<string>>(new Set());
   const [collapsedDates, setCollapsedDates] = useState<Set<string>>(new Set());
 
-  // Fetch tasks for this share link's date range (filtered by sede)
+  // Fetch tasks for this share link's date range (filtered by sede and linen control)
   const { data: tasks, isLoading } = useQuery({
     queryKey: ['share-link-edit-tasks', shareLink?.id],
     queryFn: async () => {
@@ -52,7 +52,11 @@ export const LaundryShareEditModal = ({
           sede_id,
           properties (
             codigo,
-            clients (nombre)
+            linen_control_enabled,
+            clients (
+              nombre,
+              linen_control_enabled
+            )
           )
         `)
         .gte('date', shareLink.dateStart)
@@ -68,8 +72,22 @@ export const LaundryShareEditModal = ({
 
       if (error) throw error;
 
+      // Filter by linen control enabled (property setting takes precedence, otherwise inherit from client)
+      const filteredData = (data || []).filter(task => {
+        const property = task.properties as any;
+        if (!property) return false;
+        
+        const propertyLinenEnabled = property.linen_control_enabled;
+        const clientLinenEnabled = property.clients?.linen_control_enabled ?? false;
+        
+        // If property has explicit setting, use it; otherwise inherit from client
+        const effectiveValue = propertyLinenEnabled !== null ? propertyLinenEnabled : clientLinenEnabled;
+        
+        return effectiveValue === true;
+      });
+
       // Sort by date first, then by code alphabetically
-      const sorted = (data || []).sort((a, b) => {
+      const sorted = filteredData.sort((a, b) => {
         // First sort by date
         const dateCompare = a.date.localeCompare(b.date);
         if (dateCompare !== 0) return dateCompare;
