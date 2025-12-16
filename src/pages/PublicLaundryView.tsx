@@ -5,8 +5,9 @@ import { useLaundryTracking, LaundryDeliveryStatus } from '@/hooks/useLaundryTra
 import { LaundryDeliveryCard, LaundryTask } from '@/components/laundry-share/LaundryDeliveryCard';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
-import { Loader2, AlertCircle, Package, CheckCircle2, RefreshCw, Calendar, ChevronDown, ChevronRight } from 'lucide-react';
+import { Loader2, AlertCircle, Package, CheckCircle2, RefreshCw, Calendar, ChevronDown, ChevronRight, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { formatDateRange } from '@/services/laundryShareService';
 import { Toaster } from '@/components/ui/toaster';
@@ -18,6 +19,7 @@ const PublicLaundryView = () => {
   const [filterStatus, setFilterStatus] = useState<FilterStatus>('all');
   const [filterDate, setFilterDate] = useState<string>('all');
   const [collapsedDates, setCollapsedDates] = useState<Set<string>>(new Set());
+  const [searchQuery, setSearchQuery] = useState('');
 
   // Fetch share link data
   const { 
@@ -150,6 +152,15 @@ const PublicLaundryView = () => {
   // Filter tasks
   const filteredTasks = useMemo(() => {
     return tasks.filter(task => {
+      // Search filter
+      if (searchQuery.trim()) {
+        const query = searchQuery.toLowerCase().trim();
+        const matchesCode = task.propertyCode?.toLowerCase().includes(query);
+        const matchesProperty = task.property?.toLowerCase().includes(query);
+        const matchesAddress = task.address?.toLowerCase().includes(query);
+        if (!matchesCode && !matchesProperty && !matchesAddress) return false;
+      }
+
       // Date filter
       if (filterDate !== 'all' && task.date !== filterDate) return false;
 
@@ -162,7 +173,7 @@ const PublicLaundryView = () => {
 
       return true;
     });
-  }, [tasks, filterDate, filterStatus, getTaskTracking]);
+  }, [tasks, filterDate, filterStatus, searchQuery, getTaskTracking]);
 
   // Group filtered tasks by date
   const tasksByDate = useMemo(() => {
@@ -287,32 +298,46 @@ const PublicLaundryView = () => {
 
       {/* Filters */}
       <div className="container max-w-2xl mx-auto px-4 py-3 border-b bg-muted/30">
-        <div className="flex gap-2">
-          <Select value={filterDate} onValueChange={setFilterDate}>
-            <SelectTrigger className="w-[140px]">
-              <SelectValue placeholder="Fecha" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todas las fechas</SelectItem>
-              {uniqueDates.map(date => (
-                <SelectItem key={date} value={date}>
-                  {new Date(date).toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', month: 'short' })}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+        <div className="flex flex-col gap-2">
+          {/* Search input */}
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Buscar por código o dirección..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-9"
+            />
+          </div>
+          
+          {/* Dropdown filters */}
+          <div className="flex gap-2">
+            <Select value={filterDate} onValueChange={setFilterDate}>
+              <SelectTrigger className="w-[140px]">
+                <SelectValue placeholder="Fecha" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todas las fechas</SelectItem>
+                {uniqueDates.map(date => (
+                  <SelectItem key={date} value={date}>
+                    {new Date(date).toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', month: 'short' })}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
 
-          <Select value={filterStatus} onValueChange={(v) => setFilterStatus(v as FilterStatus)}>
-            <SelectTrigger className="w-[140px]">
-              <SelectValue placeholder="Estado" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todos</SelectItem>
-              <SelectItem value="pending">Pendientes</SelectItem>
-              <SelectItem value="prepared">Preparadas</SelectItem>
-              <SelectItem value="delivered">Entregadas</SelectItem>
-            </SelectContent>
-          </Select>
+            <Select value={filterStatus} onValueChange={(v) => setFilterStatus(v as FilterStatus)}>
+              <SelectTrigger className="w-[140px]">
+                <SelectValue placeholder="Estado" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos</SelectItem>
+                <SelectItem value="pending">Pendientes</SelectItem>
+                <SelectItem value="prepared">Preparadas</SelectItem>
+                <SelectItem value="delivered">Entregadas</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
       </div>
 
