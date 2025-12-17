@@ -34,6 +34,7 @@ export const mapPropertyFromDB = (row: any): Property => ({
   hostaway_listing_id: row.hostaway_listing_id,
   hostaway_internal_name: row.hostaway_internal_name,
   linenControlEnabled: row.linen_control_enabled,
+  isActive: row.is_active,
   fechaCreacion: row.fecha_creacion,
   fechaActualizacion: row.fecha_actualizacion
 });
@@ -68,6 +69,7 @@ export const mapPropertyToDB = (property: Partial<CreatePropertyData>): any => {
   if (property.notas !== undefined) updateData.notas = property.notas;
   if (property.clienteId !== undefined) updateData.cliente_id = property.clienteId;
   if (property.linenControlEnabled !== undefined) updateData.linen_control_enabled = property.linenControlEnabled;
+  if (property.isActive !== undefined) updateData.is_active = property.isActive;
 
   return updateData;
 };

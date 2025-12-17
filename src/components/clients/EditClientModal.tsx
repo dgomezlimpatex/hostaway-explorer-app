@@ -51,6 +51,7 @@ export const EditClientModal = ({ client, trigger }: EditClientModalProps) => {
       supervisor: client.supervisor,
       factura: client.factura,
       linenControlEnabled: client.linenControlEnabled || false,
+      isActive: client.isActive !== false,
     },
   });
 
@@ -361,6 +362,29 @@ export const EditClientModal = ({ client, trigger }: EditClientModalProps) => {
                         </FormLabel>
                         <p className="text-xs text-muted-foreground">
                           Activar seguimiento de ropa limpia
+                        </p>
+                      </div>
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="isActive"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                      <FormControl>
+                        <Checkbox
+                          checked={field.value !== false}
+                          onCheckedChange={field.onChange}
+                        />
+                      </FormControl>
+                      <div className="space-y-1 leading-none">
+                        <FormLabel className="flex items-center gap-2">
+                          ✅ Cliente Activo
+                        </FormLabel>
+                        <p className="text-xs text-muted-foreground">
+                          Si está desactivado, no aparecerá en selectores
                         </p>
                       </div>
                     </FormItem>

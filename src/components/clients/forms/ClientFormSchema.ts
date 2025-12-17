@@ -24,6 +24,7 @@ export const clientSchema = z.object({
   supervisor: z.string().min(1, 'El supervisor es obligatorio'),
   factura: z.boolean(),
   linenControlEnabled: z.boolean().optional(),
+  isActive: z.boolean().optional(),
 });
 
 export type ClientFormData = z.infer<typeof clientSchema>;

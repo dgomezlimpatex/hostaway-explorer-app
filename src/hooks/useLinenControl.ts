@@ -36,7 +36,7 @@ export interface LinenControlStats {
 export const useLinenControl = () => {
   const { activeSede, isInitialized } = useSede();
 
-  // Fetch all properties with their clients (including linen control settings)
+  // Fetch all properties with their clients (including linen control and active settings)
   const { data: properties, isLoading: propertiesLoading } = useQuery({
     queryKey: ['linen-control-properties', activeSede?.id],
     queryFn: async () => {
@@ -50,24 +50,29 @@ export const useLinenControl = () => {
           nombre,
           cliente_id,
           linen_control_enabled,
-          clients (nombre, linen_control_enabled)
+          is_active,
+          clients (nombre, linen_control_enabled, is_active)
         `)
         .eq('sede_id', activeSede.id)
         .order('codigo', { ascending: true });
 
       if (error) throw error;
       
-      // Filter properties based on linen control settings:
-      // Property linen_control_enabled: null = inherit from client, true/false = explicit override
+      // Filter properties based on linen control AND active settings:
+      // Property settings: null = inherit from client, true/false = explicit override
       return (data || []).filter(property => {
         const clientEnabled = (property.clients as any)?.linen_control_enabled ?? false;
-        const propertyOverride = property.linen_control_enabled;
+        const clientIsActive = (property.clients as any)?.is_active !== false;
+        const propertyLinenOverride = property.linen_control_enabled;
+        const propertyActiveOverride = property.is_active;
         
-        // If property has explicit override, use it; otherwise inherit from client
-        if (propertyOverride !== null) {
-          return propertyOverride === true;
-        }
-        return clientEnabled === true;
+        // Check if property is effectively active
+        const isEffectivelyActive = propertyActiveOverride !== null ? propertyActiveOverride : clientIsActive;
+        if (!isEffectivelyActive) return false;
+        
+        // Check if linen control is enabled
+        const isLinenEnabled = propertyLinenOverride !== null ? propertyLinenOverride : clientEnabled;
+        return isLinenEnabled === true;
       });
     },
     enabled: isInitialized && !!activeSede?.id,

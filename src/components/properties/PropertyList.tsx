@@ -201,13 +201,24 @@ export const PropertyList = () => {
                 <CollapsibleContent>
                   <CardContent className="pt-0">
                     <div className="space-y-4">
-                      {clientProperties.map((property: Property) => (
-                        <Card key={property.id} className="border-l-4 border-l-green-500 hover:shadow-md transition-shadow">
+                        {clientProperties.map((property: Property) => {
+                          // Calculate effective active status
+                          const client = clients.find(c => c.id === property.clienteId);
+                          const clientIsActive = client?.isActive !== false;
+                          const isEffectivelyActive = property.isActive !== null ? property.isActive : clientIsActive;
+                          
+                          return (
+                          <Card key={property.id} className={`border-l-4 ${isEffectivelyActive ? 'border-l-green-500' : 'border-l-red-500 opacity-60'} hover:shadow-md transition-shadow`}>
                           <CardHeader className="pb-3">
                             <div className="flex justify-between items-start">
                               <div>
-                                <CardTitle className="text-lg">
+                                <CardTitle className="text-lg flex items-center gap-2">
                                   {property.nombre}
+                                  {!isEffectivelyActive && (
+                                    <Badge variant="destructive" className="text-xs">
+                                      {property.isActive === false ? 'Inactivo' : 'Heredado: Inactivo'}
+                                    </Badge>
+                                  )}
                                 </CardTitle>
                                 <CardDescription className="flex items-center gap-2 mt-1">
                                   <Badge variant="secondary">{property.codigo}</Badge>
@@ -306,7 +317,8 @@ export const PropertyList = () => {
                             </div>
                           </CardContent>
                         </Card>
-                      ))}
+                        );
+                        })}
                     </div>
                   </CardContent>
                 </CollapsibleContent>
