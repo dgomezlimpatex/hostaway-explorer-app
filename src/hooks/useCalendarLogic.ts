@@ -7,6 +7,20 @@ import { useToast } from "@/hooks/use-toast";
 import { Task } from "@/types/calendar";
 import { isCleanerAvailableAtTime } from "@/utils/availabilityUtils";
 import { detectTaskOverlaps } from "@/utils/taskPositioning";
+import { supabase } from "@/integrations/supabase/client";
+import { format } from "date-fns";
+import { ABSENCE_TYPE_LABELS } from "@/types/workerAbsence";
+
+// Helper function to check time overlap
+const timeRangesOverlap = (start1: string, end1: string, start2: string, end2: string): boolean => {
+  const toMinutes = (time: string) => {
+    const [h, m] = time.split(':').map(Number);
+    return h * 60 + m;
+  };
+  const s1 = toMinutes(start1), e1 = toMinutes(end1);
+  const s2 = toMinutes(start2), e2 = toMinutes(end2);
+  return s1 < e2 && e1 > s2;
+};
 
 export const useCalendarLogic = () => {
   const {
@@ -104,6 +118,84 @@ export const useCalendarLogic = () => {
         });
       } else {
         endTime = `${newEndHour.toString().padStart(2, '0')}:${newEndMinute.toString().padStart(2, '0')}`;
+      }
+    }
+
+    // Check for worker absence conflicts
+    const taskDateStr = format(taskDate, 'yyyy-MM-dd');
+    const dayOfWeek = taskDate.getDay();
+    
+    // Check fixed days off
+    const { data: fixedDayOff } = await supabase
+      .from('worker_fixed_days_off')
+      .select('*')
+      .eq('cleaner_id', cleanerId)
+      .eq('day_of_week', dayOfWeek)
+      .eq('is_active', true)
+      .maybeSingle();
+    
+    if (fixedDayOff) {
+      const confirmed = window.confirm(
+        `⚠️ DÍA LIBRE FIJO\n\n` +
+        `El trabajador tiene este día marcado como día libre fijo.\n\n` +
+        `¿Deseas asignar la tarea de todas formas?`
+      );
+      if (!confirmed) return;
+    }
+
+    // Check absences (full day)
+    const { data: absences } = await supabase
+      .from('worker_absences')
+      .select('*')
+      .eq('cleaner_id', cleanerId)
+      .lte('start_date', taskDateStr)
+      .gte('end_date', taskDateStr);
+
+    const fullDayAbsence = absences?.find(a => !a.start_time || !a.end_time);
+    if (fullDayAbsence) {
+      const absenceLabel = ABSENCE_TYPE_LABELS[fullDayAbsence.absence_type as keyof typeof ABSENCE_TYPE_LABELS] || fullDayAbsence.absence_type;
+      const confirmed = window.confirm(
+        `⚠️ AUSENCIA DEL TRABAJADOR\n\n` +
+        `El trabajador tiene registrada una ausencia: ${absenceLabel}\n\n` +
+        `¿Deseas asignar la tarea de todas formas?`
+      );
+      if (!confirmed) return;
+    }
+
+    // Check hourly absences for time overlap
+    const hourlyAbsences = absences?.filter(a => a.start_time && a.end_time) || [];
+    for (const absence of hourlyAbsences) {
+      if (timeRangesOverlap(startTime, endTime, absence.start_time!, absence.end_time!)) {
+        const absenceLabel = ABSENCE_TYPE_LABELS[absence.absence_type as keyof typeof ABSENCE_TYPE_LABELS] || absence.absence_type;
+        const confirmed = window.confirm(
+          `⚠️ CONFLICTO DE HORARIO\n\n` +
+          `El trabajador tiene: ${absenceLabel}\n` +
+          `Horario: ${absence.start_time?.slice(0,5)} - ${absence.end_time?.slice(0,5)}\n\n` +
+          `¿Deseas asignar la tarea de todas formas?`
+        );
+        if (!confirmed) return;
+        break;
+      }
+    }
+
+    // Check maintenance cleanings for time overlap
+    const { data: maintenanceCleanings } = await supabase
+      .from('worker_maintenance_cleanings')
+      .select('*')
+      .eq('cleaner_id', cleanerId)
+      .eq('is_active', true)
+      .contains('days_of_week', [dayOfWeek]);
+
+    for (const maintenance of maintenanceCleanings || []) {
+      if (timeRangesOverlap(startTime, endTime, maintenance.start_time, maintenance.end_time)) {
+        const confirmed = window.confirm(
+          `⚠️ LIMPIEZA DE MANTENIMIENTO\n\n` +
+          `El trabajador tiene: ${maintenance.location_name}\n` +
+          `Horario: ${maintenance.start_time.slice(0,5)} - ${maintenance.end_time.slice(0,5)}\n\n` +
+          `¿Deseas asignar la tarea de todas formas?`
+        );
+        if (!confirmed) return;
+        break;
       }
     }
 

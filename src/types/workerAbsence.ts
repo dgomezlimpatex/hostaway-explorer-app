@@ -109,6 +109,25 @@ export const ABSENCE_TYPE_CONFIG: Record<AbsenceType, { label: string; color: st
   external_work: { label: 'Trabajo externo', color: '#92400E', icon: '🏢' },
 };
 
+// Helper exports for easy access
+export const ABSENCE_TYPE_LABELS: Record<string, string> = {
+  vacation: 'Vacaciones',
+  sick: 'Baja médica',
+  day_off: 'Día libre',
+  holiday: 'Festivo',
+  personal: 'Personal',
+  external_work: 'Trabajo externo',
+};
+
+export const ABSENCE_TYPE_COLORS: Record<string, string> = {
+  vacation: '#3B82F6',
+  sick: '#F97316',
+  day_off: '#6B7280',
+  holiday: '#EF4444',
+  personal: '#8B5CF6',
+  external_work: '#92400E',
+};
+
 export const MAINTENANCE_COLOR = '#EAB308'; // Yellow for maintenance cleanings
 
 export const DAY_OF_WEEK_LABELS: Record<number, string> = {
