@@ -47,14 +47,8 @@ export const WorkersColumn = ({ cleaners, onDragOver, onDrop, absenceStatus }: W
   };
 
   return (
-    <div className="w-48 bg-gray-50 border-r border-gray-200 flex-shrink-0 flex flex-col">
-      {/* Header */}
-      <div className="h-16 bg-white border-b border-gray-200 flex items-center px-4 flex-shrink-0">
-        <span className="font-semibold text-gray-700">Trabajadores</span>
-      </div>
-      
+    <div className="w-48 bg-gray-50 border-r border-gray-200 flex-shrink-0">
       {/* Workers List */}
-      <div className="flex-1">
         {cleaners.map((cleaner, index) => {
           const status = absenceStatus?.[cleaner.id];
           const isAbsent = status?.isAbsent;
@@ -146,7 +140,6 @@ export const WorkersColumn = ({ cleaners, onDragOver, onDrop, absenceStatus }: W
             </div>
           );
         })}
-      </div>
     </div>
   );
 };
