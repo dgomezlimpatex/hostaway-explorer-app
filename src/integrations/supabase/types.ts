@@ -389,6 +389,7 @@ export type Database = {
           fecha_actualizacion: string
           fecha_creacion: string
           id: string
+          is_active: boolean
           linen_control_enabled: boolean
           metodo_pago: string
           nombre: string
@@ -409,6 +410,7 @@ export type Database = {
           fecha_actualizacion?: string
           fecha_creacion?: string
           id?: string
+          is_active?: boolean
           linen_control_enabled?: boolean
           metodo_pago: string
           nombre: string
@@ -429,6 +431,7 @@ export type Database = {
           fecha_actualizacion?: string
           fecha_creacion?: string
           id?: string
+          is_active?: boolean
           linen_control_enabled?: boolean
           metodo_pago?: string
           nombre?: string
@@ -1371,6 +1374,7 @@ export type Database = {
           hostaway_internal_name: string | null
           hostaway_listing_id: number | null
           id: string
+          is_active: boolean | null
           jabon_liquido: number
           kit_alimentario: number
           limpiacristales: number
@@ -1425,6 +1429,7 @@ export type Database = {
           hostaway_internal_name?: string | null
           hostaway_listing_id?: number | null
           id?: string
+          is_active?: boolean | null
           jabon_liquido?: number
           kit_alimentario?: number
           limpiacristales?: number
@@ -1479,6 +1484,7 @@ export type Database = {
           hostaway_internal_name?: string | null
           hostaway_listing_id?: number | null
           id?: string
+          is_active?: boolean | null
           jabon_liquido?: number
           kit_alimentario?: number
           limpiacristales?: number

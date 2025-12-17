@@ -151,6 +151,37 @@ export const ServiceSection = ({ control }: ServiceSectionProps) => {
           );
         }}
       />
+
+      <FormField
+        control={control}
+        name="isActive"
+        render={({ field }) => {
+          const clientIsActive = selectedClient?.isActive !== false;
+          const effectiveValue = field.value !== null ? field.value : clientIsActive;
+          
+          return (
+            <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+              <div className="space-y-0.5">
+                <FormLabel className="text-base flex items-center gap-2">
+                  ✅ Propiedad Activa
+                </FormLabel>
+                <FormDescription>
+                  {field.value === null 
+                    ? `Heredado del cliente (${clientIsActive ? 'Activa' : 'Inactiva'})`
+                    : 'Configuración personalizada para esta propiedad'
+                  }
+                </FormDescription>
+              </div>
+              <FormControl>
+                <Switch
+                  checked={effectiveValue}
+                  onCheckedChange={(checked) => field.onChange(checked)}
+                />
+              </FormControl>
+            </FormItem>
+          );
+        }}
+      />
     </div>
   );
 };

@@ -52,7 +52,7 @@ export const calculateExpirationDate = (option: 'day' | 'week' | 'month' | 'perm
 };
 
 // Fetch tasks for laundry (to be included in snapshot)
-// Only includes tasks of type 'mantenimiento-airbnb' AND properties with linen control enabled
+// Only includes tasks of type 'mantenimiento-airbnb' AND properties with linen control enabled AND active
 export const fetchLaundryTasksForDateRange = async (
   dateStart: string,
   dateEnd: string,
@@ -67,10 +67,12 @@ export const fetchLaundryTasksForDateRange = async (
       properties:propiedad_id (
         id,
         linen_control_enabled,
+        is_active,
         cliente_id,
         clients:cliente_id (
           id,
-          linen_control_enabled
+          linen_control_enabled,
+          is_active
         )
       )
     `)
@@ -89,19 +91,23 @@ export const fetchLaundryTasksForDateRange = async (
     return [];
   }
 
-  // Filter tasks based on linen control settings
+  // Filter tasks based on linen control AND active settings
   // Property setting takes precedence, otherwise inherit from client
   const filteredTasks = (data || []).filter(task => {
     const property = task.properties as any;
     if (!property) return false;
     
+    // Check if property is effectively active
+    const clientIsActive = property.clients?.is_active !== false;
+    const isEffectivelyActive = property.is_active !== null ? property.is_active : clientIsActive;
+    if (!isEffectivelyActive) return false;
+    
+    // Check if linen control is enabled
     const propertyLinenEnabled = property.linen_control_enabled;
     const clientLinenEnabled = property.clients?.linen_control_enabled ?? false;
+    const effectiveLinenValue = propertyLinenEnabled !== null ? propertyLinenEnabled : clientLinenEnabled;
     
-    // If property has explicit setting, use it; otherwise inherit from client
-    const effectiveValue = propertyLinenEnabled !== null ? propertyLinenEnabled : clientLinenEnabled;
-    
-    return effectiveValue === true;
+    return effectiveLinenValue === true;
   });
 
   return filteredTasks.map(t => t.id);

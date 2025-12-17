@@ -23,10 +23,19 @@ export const MultiPropertySelector = ({
   const { data: clients = [] } = useClients();
   const { data: allProperties = [] } = useProperties();
 
-  // Filtrar propiedades por cliente seleccionado y ordenar numéricamente
+  // Find selected client and check if it's active
+  const selectedClient = clients.find(c => c.id === selectedClientId);
+  const clientIsActive = selectedClient?.isActive !== false;
+
+  // Filtrar propiedades por cliente seleccionado, solo activas, y ordenar numéricamente
   const availableProperties = selectedClientId 
     ? allProperties
-        .filter(p => p.clienteId === selectedClientId)
+        .filter(p => {
+          if (p.clienteId !== selectedClientId) return false;
+          // Check if property is effectively active (inherit from client if null)
+          const isEffectivelyActive = p.isActive !== null ? p.isActive : clientIsActive;
+          return isEffectivelyActive;
+        })
         .sort((a, b) => {
           const getNumericPart = (str: string) => {
             const match = str.match(/(\d+)/);
@@ -40,8 +49,6 @@ export const MultiPropertySelector = ({
           return aKey.localeCompare(bKey, 'es');
         })
     : [];
-
-  const selectedClient = clients.find(c => c.id === selectedClientId);
 
   const handleClientChange = (client: any) => {
     setSelectedClientId(client?.id || null);

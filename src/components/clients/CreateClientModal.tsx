@@ -42,6 +42,7 @@ export const CreateClientModal = () => {
       supervisor: '',
       factura: false,
       linenControlEnabled: false,
+      isActive: true,
     },
   });
 

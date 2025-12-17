@@ -66,18 +66,23 @@ const ClientCard = ({ client }: { client: Client }) => {
   };
 
   return (
-    <Card className="hover:shadow-lg transition-shadow">
+    <Card className={`hover:shadow-lg transition-shadow ${client.isActive === false ? 'opacity-60' : ''}`}>
       <CardHeader className="pb-3">
         <div className="flex justify-between items-start">
           <div>
-            <CardTitle className="text-lg font-semibold text-gray-900">
+            <CardTitle className="text-lg font-semibold text-gray-900 flex items-center gap-2">
               {client.nombre}
+              {client.isActive === false && (
+                <Badge variant="destructive" className="text-xs">
+                  Inactivo
+                </Badge>
+              )}
             </CardTitle>
             <p className="text-sm text-gray-600 mt-1">
               {client.cifNif}
             </p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap">
             <ServiceTypeBadge type={client.tipoServicio} />
             {client.factura && (
               <Badge className="bg-green-100 text-green-800">

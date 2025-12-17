@@ -29,6 +29,7 @@ export const propertySchema = z.object({
   notas: z.string().optional(),
   clienteId: z.string().min(1, 'Debe seleccionar un cliente'),
   linenControlEnabled: z.boolean().nullable().optional(),
+  isActive: z.boolean().nullable().optional(),
 });
 
 export type PropertyFormData = z.infer<typeof propertySchema>;

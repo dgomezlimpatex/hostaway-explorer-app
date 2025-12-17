@@ -34,15 +34,24 @@ export const ClientPropertySelector = ({
   const clientSelectValue = selectedClientId || undefined;
   const propertySelectValue = selectedPropertyId || undefined;
 
-  // Filter and sort properties by selected client
+  // Filter and sort properties by selected client - only show active properties
   const availableProperties = selectedClientId 
     ? properties
-        .filter(property => property.clienteId === selectedClientId)
+        .filter(property => {
+          if (property.clienteId !== selectedClientId) return false;
+          // Check if property is effectively active (inherit from client if null)
+          const client = clients.find(c => c.id === selectedClientId);
+          const clientIsActive = client?.isActive !== false;
+          const isEffectivelyActive = property.isActive !== null ? property.isActive : clientIsActive;
+          return isEffectivelyActive;
+        })
         .sort((a, b) => a.nombre.localeCompare(b.nombre))
     : [];
 
-  // Sort clients alphabetically
-  const sortedClients = clients.sort((a, b) => a.nombre.localeCompare(b.nombre));
+  // Sort clients alphabetically - only show active clients
+  const sortedClients = clients
+    .filter(c => c.isActive !== false)
+    .sort((a, b) => a.nombre.localeCompare(b.nombre));
 
   const handleClientSelect = (clientId: string) => {
     if (!clientId) return;
