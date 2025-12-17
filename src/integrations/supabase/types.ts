@@ -2610,6 +2610,95 @@ export type Database = {
           },
         ]
       }
+      worker_absence_audit_log: {
+        Row: {
+          action: string
+          changed_at: string
+          changed_by: string | null
+          cleaner_id: string
+          id: string
+          new_data: Json | null
+          old_data: Json | null
+          reference_id: string | null
+          reference_type: string
+        }
+        Insert: {
+          action: string
+          changed_at?: string
+          changed_by?: string | null
+          cleaner_id: string
+          id?: string
+          new_data?: Json | null
+          old_data?: Json | null
+          reference_id?: string | null
+          reference_type: string
+        }
+        Update: {
+          action?: string
+          changed_at?: string
+          changed_by?: string | null
+          cleaner_id?: string
+          id?: string
+          new_data?: Json | null
+          old_data?: Json | null
+          reference_id?: string | null
+          reference_type?: string
+        }
+        Relationships: []
+      }
+      worker_absences: {
+        Row: {
+          absence_type: string
+          cleaner_id: string
+          created_at: string
+          created_by: string | null
+          end_date: string
+          end_time: string | null
+          id: string
+          location_name: string | null
+          notes: string | null
+          start_date: string
+          start_time: string | null
+          updated_at: string
+        }
+        Insert: {
+          absence_type: string
+          cleaner_id: string
+          created_at?: string
+          created_by?: string | null
+          end_date: string
+          end_time?: string | null
+          id?: string
+          location_name?: string | null
+          notes?: string | null
+          start_date: string
+          start_time?: string | null
+          updated_at?: string
+        }
+        Update: {
+          absence_type?: string
+          cleaner_id?: string
+          created_at?: string
+          created_by?: string | null
+          end_date?: string
+          end_time?: string | null
+          id?: string
+          location_name?: string | null
+          notes?: string | null
+          start_date?: string
+          start_time?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "worker_absences_cleaner_id_fkey"
+            columns: ["cleaner_id"]
+            isOneToOne: false
+            referencedRelation: "cleaners"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       worker_contracts: {
         Row: {
           base_salary: number
@@ -2683,6 +2772,94 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "worker_contracts_cleaner_id_fkey"
+            columns: ["cleaner_id"]
+            isOneToOne: false
+            referencedRelation: "cleaners"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      worker_fixed_days_off: {
+        Row: {
+          cleaner_id: string
+          created_at: string
+          created_by: string | null
+          day_of_week: number
+          id: string
+          is_active: boolean
+          updated_at: string
+        }
+        Insert: {
+          cleaner_id: string
+          created_at?: string
+          created_by?: string | null
+          day_of_week: number
+          id?: string
+          is_active?: boolean
+          updated_at?: string
+        }
+        Update: {
+          cleaner_id?: string
+          created_at?: string
+          created_by?: string | null
+          day_of_week?: number
+          id?: string
+          is_active?: boolean
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "worker_fixed_days_off_cleaner_id_fkey"
+            columns: ["cleaner_id"]
+            isOneToOne: false
+            referencedRelation: "cleaners"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      worker_maintenance_cleanings: {
+        Row: {
+          cleaner_id: string
+          created_at: string
+          created_by: string | null
+          days_of_week: number[]
+          end_time: string
+          id: string
+          is_active: boolean
+          location_name: string
+          notes: string | null
+          start_time: string
+          updated_at: string
+        }
+        Insert: {
+          cleaner_id: string
+          created_at?: string
+          created_by?: string | null
+          days_of_week: number[]
+          end_time: string
+          id?: string
+          is_active?: boolean
+          location_name: string
+          notes?: string | null
+          start_time: string
+          updated_at?: string
+        }
+        Update: {
+          cleaner_id?: string
+          created_at?: string
+          created_by?: string | null
+          days_of_week?: number[]
+          end_time?: string
+          id?: string
+          is_active?: boolean
+          location_name?: string
+          notes?: string | null
+          start_time?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "worker_maintenance_cleanings_cleaner_id_fkey"
             columns: ["cleaner_id"]
             isOneToOne: false
             referencedRelation: "cleaners"

@@ -10,7 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Calendar, Clock, FileText, User, DollarSign, Phone, BarChart3 } from 'lucide-react';
+import { Calendar, Clock, FileText, User, DollarSign, Phone, BarChart3, CalendarOff } from 'lucide-react';
 import { Cleaner } from '@/types/calendar';
 import { WorkerTimeTracking } from './WorkerTimeTracking';
 import { WorkerScheduleCalendar } from './WorkerScheduleCalendar'; 
@@ -19,8 +19,8 @@ import { WorkerHoursOverview } from './WorkerHoursOverview';
 import { AlertsPanel } from './AlertsPanel';
 import { TaskTimeBreakdown } from './TaskTimeBreakdown';
 import { SalaryCalculation } from './SalaryCalculation';
-import { VacationRequestsList } from './VacationRequestsList';
 import { ContractManagement } from './ContractManagement';
+import { AbsencesTab } from './absences/AbsencesTab';
 import { useWorkerHoursOverview } from '@/hooks/useWorkerAlerts';
 import { useCleanerContracts } from '@/hooks/useWorkerContracts';
 
@@ -129,7 +129,7 @@ export const WorkerDetailModal = ({ worker, open, onOpenChange }: WorkerDetailMo
               <TabsTrigger value="alerts">Alertas</TabsTrigger>
               <TabsTrigger value="tasks">Tareas</TabsTrigger>
               <TabsTrigger value="salary">Nómina</TabsTrigger>
-              <TabsTrigger value="vacations">Vacaciones</TabsTrigger>
+              <TabsTrigger value="absences">Ausencias</TabsTrigger>
               <TabsTrigger value="contracts">Contratos</TabsTrigger>
             </TabsList>
 
@@ -180,12 +180,11 @@ export const WorkerDetailModal = ({ worker, open, onOpenChange }: WorkerDetailMo
                 </div>
               </TabsContent>
               
-              <TabsContent value="vacations" className="mt-0">
+              <TabsContent value="absences" className="mt-0">
                 <div className="max-h-[60vh] overflow-y-auto">
-                  <VacationRequestsList 
+                  <AbsencesTab 
                     cleanerId={worker.id} 
                     cleanerName={worker.name}
-                    isManager={true}
                   />
                 </div>
               </TabsContent>
