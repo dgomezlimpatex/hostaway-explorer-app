@@ -13,6 +13,7 @@ import { CleanerAvailability } from "@/hooks/useCleanerAvailability";
 import { getTaskPosition, isTimeSlotOccupied, detectTaskOverlaps } from "@/utils/taskPositioning";
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { useWorkersAbsenceStatus } from "@/hooks/useWorkersAbsenceStatus";
 
 export interface CalendarContainerProps {
   tasks: Task[];
@@ -149,6 +150,10 @@ export const CalendarContainer = ({
     return map;
   }, [assignmentRows]);
 
+  // Fetch absence status for all cleaners on current date
+  const cleanerIds = useMemo(() => cleaners.map(c => c.id), [cleaners]);
+  const { data: absenceStatus } = useWorkersAbsenceStatus(cleanerIds, currentDate);
+
   // Detect overlapping tasks by cleaner
   const overlapsByCleanerMap = useMemo(() => {
     const map: Record<string, any[]> = {};
@@ -249,6 +254,7 @@ export const CalendarContainer = ({
             getTaskPosition={getTaskPosition}
             isTimeSlotOccupied={checkTimeSlotOccupied}
             assignmentsMap={assignmentsMap}
+            absenceStatus={absenceStatus}
           />
         </div>
       </div>
