@@ -55,19 +55,27 @@ export const WorkersColumn = ({ cleaners, onDragOver, onDrop, absenceStatus }: W
           const hasMaintenance = status?.maintenanceCleanings && status.maintenanceCleanings.length > 0;
           const hasHourlyAbsence = status?.hourlyAbsences && status.hourlyAbsences.length > 0;
 
+          // Convert hex to rgba for proper opacity
+          const getAbsenceBgColor = (hexColor: string) => {
+            const hex = hexColor.replace('#', '');
+            const r = parseInt(hex.substring(0, 2), 16);
+            const g = parseInt(hex.substring(2, 4), 16);
+            const b = parseInt(hex.substring(4, 6), 16);
+            return `rgba(${r}, ${g}, ${b}, 0.15)`;
+          };
+
           return (
             <div 
               key={cleaner.id} 
               className={cn(
                 "h-20 border-b-2 border-gray-300 p-3 flex items-center transition-colors cursor-pointer relative",
-                isAbsent 
-                  ? "opacity-80" 
-                  : index % 2 === 0 ? "bg-white hover:bg-gray-100" : "bg-gray-50 hover:bg-gray-100"
+                !isAbsent && (index % 2 === 0 ? "bg-white hover:bg-gray-100" : "bg-gray-50 hover:bg-gray-100")
               )}
               style={isAbsent ? { 
-                backgroundColor: `${status?.absenceColor || '#6B7280'}15`,
-                borderLeftWidth: '4px',
-                borderLeftColor: status?.absenceColor || '#6B7280'
+                backgroundColor: getAbsenceBgColor(status?.absenceColor || '#6B7280'),
+                borderLeftWidth: '5px',
+                borderLeftColor: status?.absenceColor || '#6B7280',
+                borderLeftStyle: 'solid'
               } : undefined}
               onDragOver={handleDragOver}
               onDragLeave={handleDragLeave}
