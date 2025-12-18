@@ -126,6 +126,7 @@ export const CalendarLayout = ({
                   getTaskPosition={getTaskPosition}
                   isTimeSlotOccupied={isTimeSlotOccupied}
                   assignmentsMap={assignmentsMap}
+                  absenceStatus={absenceStatus}
                 />
               </div>
             </div>
