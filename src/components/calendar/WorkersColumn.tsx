@@ -59,10 +59,16 @@ export const WorkersColumn = ({ cleaners, onDragOver, onDrop, absenceStatus }: W
             <div 
               key={cleaner.id} 
               className={cn(
-                "h-20 border-b-2 border-gray-300 p-3 flex items-center hover:bg-gray-100 transition-colors cursor-pointer relative",
-                index % 2 === 0 ? "bg-white" : "bg-gray-50",
-                isAbsent && "opacity-60"
+                "h-20 border-b-2 border-gray-300 p-3 flex items-center transition-colors cursor-pointer relative",
+                isAbsent 
+                  ? "opacity-80" 
+                  : index % 2 === 0 ? "bg-white hover:bg-gray-100" : "bg-gray-50 hover:bg-gray-100"
               )}
+              style={isAbsent ? { 
+                backgroundColor: `${status?.absenceColor || '#6B7280'}15`,
+                borderLeftWidth: '4px',
+                borderLeftColor: status?.absenceColor || '#6B7280'
+              } : undefined}
               onDragOver={handleDragOver}
               onDragLeave={handleDragLeave}
               onDrop={(e) => handleDrop(e, cleaner.id)}
