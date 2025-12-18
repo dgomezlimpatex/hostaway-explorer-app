@@ -6,6 +6,7 @@ import { Task, Cleaner } from "@/types/calendar";
 import { CleanerAvailability } from "@/hooks/useCleanerAvailability";
 import { getCleanerAvailabilityForDay, timeToMinutes, isCleanerAvailableAtTime } from "@/utils/availabilityUtils";
 import { getTaskPositionWithOverlap } from "@/utils/taskPositioning";
+import { WorkerAbsenceStatus } from "@/hooks/useWorkersAbsenceStatus";
 
 interface CalendarGridProps {
   cleaners: Cleaner[];
@@ -24,7 +25,17 @@ interface CalendarGridProps {
   isTimeSlotOccupied: (cleanerId: string, hour: number, minute: number) => boolean;
   // Map of task_id -> array of cleaner_ids assigned via task_assignments
   assignmentsMap?: Record<string, string[]>;
+  absenceStatus?: Record<string, WorkerAbsenceStatus>;
 }
+
+// Helper to convert hex to rgba
+const hexToRgba = (hex: string, alpha: number) => {
+  const cleanHex = hex.replace('#', '');
+  const r = parseInt(cleanHex.substring(0, 2), 16);
+  const g = parseInt(cleanHex.substring(2, 4), 16);
+  const b = parseInt(cleanHex.substring(4, 6), 16);
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+};
 
 // Memoized cleaner row component for better performance
 const CleanerRow = memo(({ 
@@ -42,7 +53,8 @@ const CleanerRow = memo(({
   onTaskClick,
   getTaskPosition,
   isTimeSlotOccupied,
-  cleaners
+  cleaners,
+  absenceStatus
 }: {
   cleaner: Cleaner;
   index: number;
@@ -59,6 +71,7 @@ const CleanerRow = memo(({
   getTaskPosition: (startTime: string, endTime: string) => { left: string; width: string };
   isTimeSlotOccupied: (cleanerId: string, hour: number, minute: number) => boolean;
   cleaners: Cleaner[];
+  absenceStatus?: WorkerAbsenceStatus;
 }) => {
   // Removed excessive availability logging
 
@@ -158,12 +171,21 @@ const CleanerRow = memo(({
     });
   }, [cleanerTasks, cleaner.id, dragState.draggedTask?.id, onTaskClick, onDragStart, onDragEnd]);
 
+   const isAbsent = absenceStatus?.isAbsent;
+   const absenceColor = absenceStatus?.absenceColor || '#6B7280';
+
    return (
      <div 
        className={cn(
-         "h-20 relative hover:bg-accent/50 dark:hover:bg-accent/30 transition-colors flex border-b-2 border-border",
-         index % 2 === 0 ? "bg-background" : "bg-muted/30"
+         "h-20 relative transition-colors flex border-b-2 border-border",
+         !isAbsent && (index % 2 === 0 ? "bg-background hover:bg-accent/50" : "bg-muted/30 hover:bg-accent/50")
        )}
+       style={isAbsent ? {
+         backgroundColor: hexToRgba(absenceColor, 0.12),
+         borderLeftWidth: '5px',
+         borderLeftColor: absenceColor,
+         borderLeftStyle: 'solid'
+       } : undefined}
      >
        {timeSlotElements}
        {taskElements}
@@ -189,7 +211,8 @@ export const CalendarGrid = memo(forwardRef<HTMLDivElement, CalendarGridProps>(
     onTaskClick,
     getTaskPosition,
     isTimeSlotOccupied,
-    assignmentsMap
+    assignmentsMap,
+    absenceStatus
    }, ref) => {
 
     // Memoize cleaner rows with tasks
@@ -236,10 +259,11 @@ export const CalendarGrid = memo(forwardRef<HTMLDivElement, CalendarGridProps>(
             getTaskPosition={getTaskPosition}
             isTimeSlotOccupied={isTimeSlotOccupied}
             cleaners={cleaners}
+            absenceStatus={absenceStatus?.[cleaner.id]}
           />
         );
       });
-    }, [cleaners, timeSlots, assignedTasks, availability, currentDate, dragState, onDragOver, onDrop, onDragStart, onDragEnd, onTaskClick, getTaskPosition, isTimeSlotOccupied, assignmentsMap]);
+    }, [cleaners, timeSlots, assignedTasks, availability, currentDate, dragState, onDragOver, onDrop, onDragStart, onDragEnd, onTaskClick, getTaskPosition, isTimeSlotOccupied, assignmentsMap, absenceStatus]);
 
      return (
        <div className="flex-1 relative">
