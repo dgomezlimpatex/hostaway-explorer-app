@@ -47,7 +47,7 @@ export const WorkersColumn = ({ cleaners, onDragOver, onDrop, absenceStatus }: W
   };
 
   return (
-    <div className="w-48 bg-gray-50 border-r border-gray-200 flex-shrink-0">
+    <div className="w-64 bg-gray-50 border-r border-gray-200 flex-shrink-0">
       {/* Workers List */}
         {cleaners.map((cleaner, index) => {
           const status = absenceStatus?.[cleaner.id];
