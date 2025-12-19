@@ -40,9 +40,17 @@ export const CreateAbsenceModal: React.FC<CreateAbsenceModalProps> = ({
 }) => {
   const createMutation = useCreateWorkerAbsence();
   
+  // Helper to format date as YYYY-MM-DD without timezone conversion
+  const formatDateLocal = (date: Date): string => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+  
   const defaultDate = initialDate 
-    ? initialDate.toISOString().split('T')[0] 
-    : new Date().toISOString().split('T')[0];
+    ? formatDateLocal(initialDate) 
+    : formatDateLocal(new Date());
 
   const [formData, setFormData] = useState({
     absenceType: 'vacation' as AbsenceType,
@@ -59,8 +67,8 @@ export const CreateAbsenceModal: React.FC<CreateAbsenceModalProps> = ({
   React.useEffect(() => {
     if (open) {
       const newDate = initialDate 
-        ? initialDate.toISOString().split('T')[0] 
-        : new Date().toISOString().split('T')[0];
+        ? formatDateLocal(initialDate) 
+        : formatDateLocal(new Date());
       setFormData(prev => ({
         ...prev,
         startDate: newDate,
