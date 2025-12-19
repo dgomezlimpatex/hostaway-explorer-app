@@ -2,6 +2,13 @@
 import { memo, useCallback } from "react";
 import { cn } from "@/lib/utils";
 
+interface HourlyAbsence {
+  type: string;
+  startTime: string;
+  endTime: string;
+  color: string;
+}
+
 interface TimeSlotProps {
   hour: number;
   minute: number;
@@ -9,6 +16,7 @@ interface TimeSlotProps {
   isOccupied: boolean;
   isAvailable?: boolean;
   draggedTaskId?: string | null;
+  hourlyAbsence?: HourlyAbsence | null;
   onDragOver: (e: React.DragEvent) => void;
   onDrop: (e: React.DragEvent, cleanerId: string, timeSlot?: string) => void;
   children?: React.ReactNode;
@@ -21,6 +29,7 @@ export const TimeSlot = memo(({
   isOccupied, 
   isAvailable = true,
   draggedTaskId,
+  hourlyAbsence,
   onDragOver, 
   onDrop,
   children 
@@ -71,23 +80,41 @@ export const TimeSlot = memo(({
       className={cn(
         "relative min-w-[60px] w-[60px] h-20 border-r border-gray-200 transition-colors flex-shrink-0",
         // Available slots
-        isAvailable && allowDrop && "hover:bg-blue-50 cursor-pointer",
+        isAvailable && !hourlyAbsence && allowDrop && "hover:bg-blue-50 cursor-pointer",
         // Unavailable slots - show with different styling
-        !isAvailable && "bg-red-50 border-red-200",
+        !isAvailable && !hourlyAbsence && "bg-red-50 border-red-200",
         // Occupied slots
-        showAsOccupied && "bg-gray-100"
+        showAsOccupied && !hourlyAbsence && "bg-gray-100"
       )}
+      style={hourlyAbsence ? {
+        backgroundColor: `${hourlyAbsence.color}20`,
+        borderColor: `${hourlyAbsence.color}40`
+      } : undefined}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
       data-time={timeString}
       data-cleaner-id={cleanerId}
-      title={!isAvailable ? "Trabajador no disponible en este horario" : undefined}
+      title={hourlyAbsence 
+        ? `Ausencia: ${hourlyAbsence.startTime} - ${hourlyAbsence.endTime}` 
+        : !isAvailable 
+          ? "Trabajador no disponible en este horario" 
+          : undefined}
     >
       {children}
       
+      {/* Hourly absence indicator */}
+      {hourlyAbsence && (
+        <div 
+          className="absolute inset-0 flex items-center justify-center opacity-40"
+          style={{ backgroundColor: hourlyAbsence.color }}
+        >
+          <div className="w-full h-[2px] bg-white/60 transform -rotate-12"></div>
+        </div>
+      )}
+      
       {/* Drop indicator - show when dragging over available slot */}
-      {allowDrop && (
+      {allowDrop && !hourlyAbsence && (
         <div className="absolute inset-0 border-2 border-dashed border-blue-400 bg-blue-50 opacity-0 transition-opacity duration-200 pointer-events-none drop-indicator" />
       )}
       

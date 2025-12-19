@@ -7,6 +7,7 @@ import { CleanerAvailability } from "@/hooks/useCleanerAvailability";
 import { getCleanerAvailabilityForDay, timeToMinutes, isCleanerAvailableAtTime } from "@/utils/availabilityUtils";
 import { getTaskPositionWithOverlap } from "@/utils/taskPositioning";
 import { WorkerAbsenceStatus } from "@/hooks/useWorkersAbsenceStatus";
+import { ABSENCE_TYPE_COLORS } from "@/types/workerAbsence";
 
 interface CalendarGridProps {
   cleaners: Cleaner[];
@@ -95,14 +96,43 @@ const CleanerRow = memo(({
     };
   }, [cleaner.id, currentDate, availability]);
 
+  // Helper to check if a time slot falls within an hourly absence
+  const getHourlyAbsenceForSlot = useMemo(() => {
+    return (hour: number, minute: number) => {
+      if (!absenceStatus?.hourlyAbsences || absenceStatus.hourlyAbsences.length === 0) {
+        return null;
+      }
+      
+      const slotTime = hour * 60 + minute;
+      
+      for (const absence of absenceStatus.hourlyAbsences) {
+        const [startH, startM] = absence.startTime.split(':').map(Number);
+        const [endH, endM] = absence.endTime.split(':').map(Number);
+        const absenceStart = startH * 60 + startM;
+        const absenceEnd = endH * 60 + endM;
+        
+        // Check if slot start is within the absence range
+        if (slotTime >= absenceStart && slotTime < absenceEnd) {
+          return {
+            type: absence.type,
+            startTime: absence.startTime,
+            endTime: absence.endTime,
+            color: ABSENCE_TYPE_COLORS[absence.type] || '#6B7280'
+          };
+        }
+      }
+      
+      return null;
+    };
+  }, [absenceStatus?.hourlyAbsences]);
+
   // Memoize time slots for this cleaner
   const timeSlotElements = useMemo(() => {
     return timeSlots.map((time) => {
       const [hour, minute] = time.split(':').map(Number);
       const isOccupied = isTimeSlotOccupied(cleaner.id, hour, minute);
       const isAvailable = isTimeSlotAvailable(hour, minute);
-      
-      // Removed excessive timeslot status logging
+      const hourlyAbsence = getHourlyAbsenceForSlot(hour, minute);
       
       return (
         <TimeSlot
@@ -112,13 +142,14 @@ const CleanerRow = memo(({
           cleanerId={cleaner.id}
           isOccupied={isOccupied}
           isAvailable={isAvailable}
+          hourlyAbsence={hourlyAbsence}
           draggedTaskId={dragState.draggedTask?.id}
           onDragOver={onDragOver}
           onDrop={(e, cleanerId, timeSlot) => onDrop(e, cleanerId, cleaners, timeSlot)}
         />
       );
     });
-  }, [timeSlots, cleaner.id, cleaner.name, isTimeSlotOccupied, isTimeSlotAvailable, dragState.draggedTask?.id, onDragOver, onDrop, cleaners]);
+  }, [timeSlots, cleaner.id, cleaner.name, isTimeSlotOccupied, isTimeSlotAvailable, getHourlyAbsenceForSlot, dragState.draggedTask?.id, onDragOver, onDrop, cleaners]);
 
   // Memoize task elements for this cleaner with overlap detection
   const taskElements = useMemo(() => {
