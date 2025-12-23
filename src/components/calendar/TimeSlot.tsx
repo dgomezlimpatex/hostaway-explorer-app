@@ -7,6 +7,7 @@ interface HourlyAbsence {
   startTime: string;
   endTime: string;
   color: string;
+  locationName?: string;
 }
 
 interface TimeSlotProps {
@@ -96,7 +97,9 @@ export const TimeSlot = memo(({
       data-time={timeString}
       data-cleaner-id={cleanerId}
       title={hourlyAbsence 
-        ? `Ausencia: ${hourlyAbsence.startTime} - ${hourlyAbsence.endTime}` 
+        ? hourlyAbsence.type === 'maintenance' && hourlyAbsence.locationName
+          ? `${hourlyAbsence.locationName}: ${hourlyAbsence.startTime} - ${hourlyAbsence.endTime}`
+          : `Ausencia: ${hourlyAbsence.startTime} - ${hourlyAbsence.endTime}` 
         : !isAvailable 
           ? "Trabajador no disponible en este horario" 
           : undefined}
