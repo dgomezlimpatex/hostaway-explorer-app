@@ -7,7 +7,7 @@ import { CleanerAvailability } from "@/hooks/useCleanerAvailability";
 import { getCleanerAvailabilityForDay, timeToMinutes, isCleanerAvailableAtTime } from "@/utils/availabilityUtils";
 import { getTaskPositionWithOverlap } from "@/utils/taskPositioning";
 import { WorkerAbsenceStatus } from "@/hooks/useWorkersAbsenceStatus";
-import { ABSENCE_TYPE_COLORS } from "@/types/workerAbsence";
+import { ABSENCE_TYPE_COLORS, MAINTENANCE_COLOR } from "@/types/workerAbsence";
 
 interface CalendarGridProps {
   cleaners: Cleaner[];
@@ -96,35 +96,53 @@ const CleanerRow = memo(({
     };
   }, [cleaner.id, currentDate, availability]);
 
-  // Helper to check if a time slot falls within an hourly absence
+  // Helper to check if a time slot falls within an hourly absence or maintenance cleaning
   const getHourlyAbsenceForSlot = useMemo(() => {
     return (hour: number, minute: number) => {
-      if (!absenceStatus?.hourlyAbsences || absenceStatus.hourlyAbsences.length === 0) {
-        return null;
-      }
-      
       const slotTime = hour * 60 + minute;
       
-      for (const absence of absenceStatus.hourlyAbsences) {
-        const [startH, startM] = absence.startTime.split(':').map(Number);
-        const [endH, endM] = absence.endTime.split(':').map(Number);
-        const absenceStart = startH * 60 + startM;
-        const absenceEnd = endH * 60 + endM;
-        
-        // Check if slot start is within the absence range
-        if (slotTime >= absenceStart && slotTime < absenceEnd) {
-          return {
-            type: absence.type,
-            startTime: absence.startTime,
-            endTime: absence.endTime,
-            color: ABSENCE_TYPE_COLORS[absence.type] || '#6B7280'
-          };
+      // Check hourly absences first
+      if (absenceStatus?.hourlyAbsences && absenceStatus.hourlyAbsences.length > 0) {
+        for (const absence of absenceStatus.hourlyAbsences) {
+          const [startH, startM] = absence.startTime.split(':').map(Number);
+          const [endH, endM] = absence.endTime.split(':').map(Number);
+          const absenceStart = startH * 60 + startM;
+          const absenceEnd = endH * 60 + endM;
+          
+          if (slotTime >= absenceStart && slotTime < absenceEnd) {
+            return {
+              type: absence.type,
+              startTime: absence.startTime,
+              endTime: absence.endTime,
+              color: ABSENCE_TYPE_COLORS[absence.type] || '#6B7280'
+            };
+          }
+        }
+      }
+      
+      // Check maintenance cleanings
+      if (absenceStatus?.maintenanceCleanings && absenceStatus.maintenanceCleanings.length > 0) {
+        for (const maintenance of absenceStatus.maintenanceCleanings) {
+          const [startH, startM] = maintenance.startTime.split(':').map(Number);
+          const [endH, endM] = maintenance.endTime.split(':').map(Number);
+          const maintenanceStart = startH * 60 + startM;
+          const maintenanceEnd = endH * 60 + endM;
+          
+          if (slotTime >= maintenanceStart && slotTime < maintenanceEnd) {
+            return {
+              type: 'maintenance',
+              startTime: maintenance.startTime,
+              endTime: maintenance.endTime,
+              color: MAINTENANCE_COLOR,
+              locationName: maintenance.locationName
+            };
+          }
         }
       }
       
       return null;
     };
-  }, [absenceStatus?.hourlyAbsences]);
+  }, [absenceStatus?.hourlyAbsences, absenceStatus?.maintenanceCleanings]);
 
   // Memoize time slots for this cleaner
   const timeSlotElements = useMemo(() => {
