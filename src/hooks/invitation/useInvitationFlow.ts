@@ -94,15 +94,26 @@ export const useInvitationFlow = () => {
     verifyInvitation.mutate(
       { token, email },
       {
-        onSuccess: (isValid) => {
-          console.log('Verification success:', isValid);
-          if (isValid) {
+        onSuccess: (result) => {
+          console.log('Verification success:', result);
+          
+          // Si la invitación ya fue aceptada, redirigir al login
+          if (result.alreadyAccepted) {
+            toast({
+              title: 'Invitación ya utilizada',
+              description: result.message || 'Esta invitación ya fue aceptada. Por favor, inicia sesión.',
+            });
+            navigate('/auth');
+            return;
+          }
+          
+          if (result.isValid) {
             setStep('signup');
           } else {
             console.error('Invitation is not valid');
             toast({
               title: 'Error',
-              description: 'La invitación ha expirado o no es válida',
+              description: result.message || 'La invitación ha expirado o no es válida',
               variant: 'destructive',
             });
             navigate('/auth');
