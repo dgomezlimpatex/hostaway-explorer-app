@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Clock, MapPin } from 'lucide-react';
 import { 
   WorkerAbsence, 
   WorkerFixedDayOff, 
@@ -11,6 +11,11 @@ import {
 } from '@/types/workerAbsence';
 import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
 
 interface AbsenceCalendarViewProps {
   cleanerId: string;
@@ -75,6 +80,20 @@ export const AbsenceCalendarView: React.FC<AbsenceCalendarViewProps> = ({
   const hasMaintenanceCleaning = (date: Date): boolean => {
     const dayOfWeek = date.getDay();
     return maintenanceCleanings.some(m => m.isActive && m.daysOfWeek.includes(dayOfWeek));
+  };
+
+  const getMaintenanceCleaningsForDate = (date: Date): WorkerMaintenanceCleaning[] => {
+    const dayOfWeek = date.getDay();
+    return maintenanceCleanings.filter(m => m.isActive && m.daysOfWeek.includes(dayOfWeek));
+  };
+
+  const getAbsencesForDate = (date: Date): WorkerAbsence[] => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const dateStr = `${year}-${month}-${day}`;
+    
+    return absences.filter(a => dateStr >= a.startDate && dateStr <= a.endDate);
   };
 
   const getDateStyle = (date: Date): { bg: string; border: string; pattern?: string } => {
@@ -174,12 +193,15 @@ export const AbsenceCalendarView: React.FC<AbsenceCalendarViewProps> = ({
             const isFixedOff = hasFixedDayOff(day.date);
             const hasMaintenance = hasMaintenanceCleaning(day.date);
             
-            return (
+            const maintenanceList = getMaintenanceCleaningsForDate(day.date);
+            const absenceList = getAbsencesForDate(day.date);
+            const hasDetails = maintenanceList.length > 0 || absenceList.length > 0 || isFixedOff;
+            
+            const dayButton = (
               <button
-                key={index}
-                onClick={() => onDateClick(day.date!)}
+                onClick={() => !hasDetails && onDateClick(day.date!)}
                 className={cn(
-                  'h-12 rounded-md flex flex-col items-center justify-center text-sm transition-colors relative',
+                  'h-12 w-full rounded-md flex flex-col items-center justify-center text-sm transition-colors relative',
                   style.bg,
                   style.border,
                   style.pattern === 'striped' && 'bg-stripes'
@@ -202,6 +224,105 @@ export const AbsenceCalendarView: React.FC<AbsenceCalendarViewProps> = ({
                   <span className="text-[10px] leading-none">🧹</span>
                 )}
               </button>
+            );
+            
+            if (!hasDetails) {
+              return <div key={index}>{dayButton}</div>;
+            }
+            
+            return (
+              <Popover key={index}>
+                <PopoverTrigger asChild>
+                  {dayButton}
+                </PopoverTrigger>
+                <PopoverContent className="w-72 p-3" align="center">
+                  <div className="space-y-3">
+                    <div className="text-sm font-medium text-center border-b pb-2">
+                      {day.date.toLocaleDateString('es-ES', { 
+                        weekday: 'long', 
+                        day: 'numeric', 
+                        month: 'long' 
+                      })}
+                    </div>
+                    
+                    {/* Ausencias */}
+                    {absenceList.length > 0 && (
+                      <div className="space-y-2">
+                        <h4 className="text-xs font-semibold text-muted-foreground uppercase">Ausencias</h4>
+                        {absenceList.map((abs) => {
+                          const config = ABSENCE_TYPE_CONFIG[abs.absenceType];
+                          return (
+                            <div 
+                              key={abs.id} 
+                              className="flex items-start gap-2 p-2 rounded-md text-sm"
+                              style={{ backgroundColor: `${config.color}20` }}
+                            >
+                              <span>{config.icon}</span>
+                              <div className="flex-1">
+                              <div className="font-medium">{config.label}</div>
+                              {abs.startTime && abs.endTime && (
+                                <div className="flex items-center gap-1 text-xs text-muted-foreground mt-0.5">
+                                  <Clock className="h-3 w-3" />
+                                  {abs.startTime} - {abs.endTime}
+                                </div>
+                              )}
+                              {abs.notes && (
+                                <div className="text-xs text-muted-foreground mt-0.5">{abs.notes}</div>
+                              )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                    
+                    {/* Limpiezas de mantenimiento */}
+                    {maintenanceList.length > 0 && (
+                      <div className="space-y-2">
+                        <h4 className="text-xs font-semibold text-muted-foreground uppercase">Limpiezas de mantenimiento</h4>
+                        {maintenanceList.map((maint) => (
+                          <div 
+                            key={maint.id} 
+                            className="flex items-start gap-2 p-2 rounded-md bg-yellow-50 dark:bg-yellow-900/20 text-sm"
+                          >
+                            <span>🧹</span>
+                            <div className="flex-1">
+                              <div className="font-medium flex items-center gap-1">
+                                <MapPin className="h-3 w-3" />
+                                {maint.locationName}
+                              </div>
+                              <div className="flex items-center gap-1 text-xs text-muted-foreground mt-0.5">
+                                <Clock className="h-3 w-3" />
+                                {maint.startTime} - {maint.endTime}
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    
+                    {/* Día libre fijo */}
+                    {isFixedOff && !absence && (
+                      <div className="space-y-2">
+                        <h4 className="text-xs font-semibold text-muted-foreground uppercase">Día libre fijo</h4>
+                        <div className="flex items-center gap-2 p-2 rounded-md bg-muted text-sm">
+                          <span>📅</span>
+                          <span>Este es un día libre fijo configurado</span>
+                        </div>
+                      </div>
+                    )}
+                    
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="w-full mt-2"
+                      onClick={() => onDateClick(day.date!)}
+                    >
+                      Añadir nueva ausencia
+                    </Button>
+                  </div>
+                </PopoverContent>
+              </Popover>
             );
           })}
         </div>
