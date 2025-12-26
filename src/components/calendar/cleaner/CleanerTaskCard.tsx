@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { memo } from 'react';
 import { Task } from '@/types/calendar';
 import { MapPin, Calendar } from 'lucide-react';
 
@@ -7,7 +7,7 @@ interface CleanerTaskCardProps {
   onClick: () => void;
 }
 
-export const CleanerTaskCard: React.FC<CleanerTaskCardProps> = ({
+const CleanerTaskCardComponent: React.FC<CleanerTaskCardProps> = ({
   task,
   onClick
 }) => {
@@ -106,7 +106,7 @@ export const CleanerTaskCard: React.FC<CleanerTaskCardProps> = ({
             {/* Start time */}
             <div className="text-left">
               <div className="text-2xl font-bold">{task.startTime}</div>
-              <div className="text-white/80 text-sm font-medium">Start</div>
+              <div className="text-white/80 text-sm font-medium">Inicio</div>
             </div>
             
             {/* Duration badge */}
@@ -117,7 +117,7 @@ export const CleanerTaskCard: React.FC<CleanerTaskCardProps> = ({
             {/* End time */}
             <div className="text-right">
               <div className="text-2xl font-bold">{task.endTime}</div>
-              <div className="text-white/80 text-sm font-medium">End</div>
+              <div className="text-white/80 text-sm font-medium">Fin</div>
             </div>
           </div>
           
@@ -135,3 +135,6 @@ export const CleanerTaskCard: React.FC<CleanerTaskCardProps> = ({
     </div>
   );
 };
+
+// Memoize component to prevent unnecessary re-renders
+export const CleanerTaskCard = memo(CleanerTaskCardComponent);

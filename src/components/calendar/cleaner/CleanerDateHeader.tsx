@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, memo, useCallback } from 'react';
 import { ChevronLeft, ChevronRight, Home, Calendar as CalendarIcon } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -12,14 +12,19 @@ interface CleanerDateHeaderProps {
   onDateChange?: (date: Date) => void;
 }
 
-export const CleanerDateHeader: React.FC<CleanerDateHeaderProps> = ({
+const CleanerDateHeaderComponent: React.FC<CleanerDateHeaderProps> = ({
   currentDate,
   onNavigateDate,
   onDateChange
 }) => {
   const navigate = useNavigate();
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
-  const formatDate = (date: Date) => {
+  
+  const handleGoHome = useCallback(() => navigate('/'), [navigate]);
+  const handlePrevDate = useCallback(() => onNavigateDate('prev'), [onNavigateDate]);
+  const handleNextDate = useCallback(() => onNavigateDate('next'), [onNavigateDate]);
+  
+  const formatDate = useCallback((date: Date) => {
     const day = date.getDate().toString().padStart(2, '0');
     const month = (date.getMonth() + 1).toString().padStart(2, '0');
     const weekday = date.toLocaleDateString('es-ES', { weekday: 'short' }).toUpperCase();
@@ -40,7 +45,7 @@ export const CleanerDateHeader: React.FC<CleanerDateHeaderProps> = ({
       <Button
         variant="ghost"
         size="sm"
-        onClick={() => navigate('/')}
+        onClick={handleGoHome}
         className="h-10 w-10 rounded-full bg-background/50 backdrop-blur-sm border border-border/50 hover:bg-background/80 transition-all duration-200"
       >
         <Home className="h-4 w-4 text-foreground" />
@@ -49,7 +54,7 @@ export const CleanerDateHeader: React.FC<CleanerDateHeaderProps> = ({
       {/* Navegación de fecha */}
       <div className="flex items-center gap-2">
         <button
-          onClick={() => onNavigateDate('prev')}
+          onClick={handlePrevDate}
           className="h-10 w-10 rounded-full bg-background/50 backdrop-blur-sm border border-border/50 flex items-center justify-center hover:bg-background/80 transition-all duration-200 active:scale-95"
         >
           <ChevronLeft className="h-4 w-4 text-foreground" />
@@ -76,7 +81,6 @@ export const CleanerDateHeader: React.FC<CleanerDateHeaderProps> = ({
               selected={currentDate}
               onSelect={(date) => {
                 if (date) {
-                  console.log('Calendar date selected:', date.toISOString().split('T')[0]);
                   if (onDateChange) {
                     onDateChange(date);
                   }
@@ -90,7 +94,7 @@ export const CleanerDateHeader: React.FC<CleanerDateHeaderProps> = ({
         </Popover>
         
         <button
-          onClick={() => onNavigateDate('next')}
+          onClick={handleNextDate}
           className="h-10 w-10 rounded-full bg-background/50 backdrop-blur-sm border border-border/50 flex items-center justify-center hover:bg-background/80 transition-all duration-200 active:scale-95"
         >
           <ChevronRight className="h-4 w-4 text-foreground" />
@@ -104,3 +108,6 @@ export const CleanerDateHeader: React.FC<CleanerDateHeaderProps> = ({
     </div>
   );
 };
+
+// Memoize component
+export const CleanerDateHeader = memo(CleanerDateHeaderComponent);
