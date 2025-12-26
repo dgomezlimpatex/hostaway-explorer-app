@@ -24,7 +24,7 @@ const CleanerDateHeaderComponent: React.FC<CleanerDateHeaderProps> = ({
   const handlePrevDate = useCallback(() => onNavigateDate('prev'), [onNavigateDate]);
   const handleNextDate = useCallback(() => onNavigateDate('next'), [onNavigateDate]);
   
-  const formatDate = useCallback((date: Date) => {
+  const formatDate = (date: Date) => {
     const day = date.getDate().toString().padStart(2, '0');
     const month = (date.getMonth() + 1).toString().padStart(2, '0');
     const weekday = date.toLocaleDateString('es-ES', { weekday: 'short' }).toUpperCase();
