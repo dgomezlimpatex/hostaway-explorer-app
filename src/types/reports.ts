@@ -1,7 +1,41 @@
 
 import { BaseEntity, TimeRange, ServiceInfo } from './common';
 
-export type ReportType = 'tasks' | 'billing' | 'summary' | 'laundry';
+export type ReportType = 'tasks' | 'billing' | 'summary' | 'laundry' | 'client-billing';
+
+// Client Billing Types
+export interface TaskBillingDetail {
+  taskId: string;
+  date: string;
+  type: string;
+  duration: number;
+  cost: number;
+  status: string;
+  cleaner: string;
+  checkIn: string;
+  checkOut: string;
+}
+
+export interface PropertyBillingDetail {
+  propertyId: string;
+  propertyName: string;
+  propertyCode: string;
+  direccion: string;
+  totalCleanings: number;
+  totalCost: number;
+  tasks: TaskBillingDetail[];
+}
+
+export interface ClientBillingReport {
+  clientId: string;
+  clientName: string;
+  cifNif: string;
+  direccionFacturacion: string;
+  metodoPago: string;
+  totalServices: number;
+  totalCost: number;
+  properties: PropertyBillingDetail[];
+}
 
 export interface TaskReport {
   sede?: string; // Nueva propiedad para información de sede

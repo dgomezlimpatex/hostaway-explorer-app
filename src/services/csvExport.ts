@@ -27,7 +27,7 @@ const formatDateForCSV = (dateString: string): string => {
 export const exportToCSV = (
   data: ReportData,
   filename: string,
-  reportType: 'tasks' | 'billing' | 'summary' | 'laundry'
+  reportType: string
 ) => {
   let csvContent = '';
   
