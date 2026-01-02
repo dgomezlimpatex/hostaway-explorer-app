@@ -112,12 +112,15 @@ export const useClientBillingReport = (filters: ClientBillingFilters) => {
         const property = propertiesMap.get(propertyId);
         if (!property) return;
 
+        // Use property's coste_servicio as fallback when task has no cost
+        const defaultCost = property.coste_servicio || 0;
+
         const taskDetails: TaskBillingDetail[] = propertyTasks.map(task => ({
           taskId: task.id,
           date: task.date,
           type: task.type || 'Limpieza',
-          duration: task.duracion || 0,
-          cost: task.coste || 0,
+          duration: task.duracion || property.duracion_servicio || 0,
+          cost: task.coste != null && task.coste > 0 ? task.coste : defaultCost,
           status: task.status,
           cleaner: task.cleaner || 'Sin asignar',
           checkIn: task.check_in || '',
