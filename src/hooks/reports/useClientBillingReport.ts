@@ -43,6 +43,19 @@ export const useClientBillingReport = (filters: ClientBillingFilters) => {
       const { data: tasks, error: tasksError } = await tasksQuery;
       if (tasksError) throw tasksError;
 
+      // Fetch task assignments for multiple cleaners
+      const taskIds = (tasks || []).map(t => t.id);
+      let taskAssignments: { task_id: string; cleaner_name: string }[] = [];
+      
+      if (taskIds.length > 0) {
+        const { data: assignments, error: assignmentsError } = await supabase
+          .from('task_assignments')
+          .select('task_id, cleaner_name')
+          .in('task_id', taskIds);
+        if (assignmentsError) throw assignmentsError;
+        taskAssignments = assignments || [];
+      }
+
       // Fetch clients
       let clientsQuery = supabase.from('clients').select('*');
       if (activeSede?.id) {
@@ -59,18 +72,27 @@ export const useClientBillingReport = (filters: ClientBillingFilters) => {
       const { data: properties, error: propertiesError } = await propertiesQuery;
       if (propertiesError) throw propertiesError;
 
-      return { tasks: tasks || [], clients: clients || [], properties: properties || [] };
+      return { tasks: tasks || [], clients: clients || [], properties: properties || [], taskAssignments };
     },
   });
 
   const reportData = useMemo<ClientBillingReport[]>(() => {
     if (!rawData) return [];
 
-    const { tasks, clients, properties } = rawData;
+    const { tasks, clients, properties, taskAssignments } = rawData;
 
     // Create lookup maps
     const clientsMap = new Map(clients.map(c => [c.id, c]));
     const propertiesMap = new Map(properties.map(p => [p.id, p]));
+    
+    // Create assignments map: task_id -> array of cleaner names
+    const assignmentsMap = new Map<string, string[]>();
+    taskAssignments.forEach(a => {
+      if (!assignmentsMap.has(a.task_id)) {
+        assignmentsMap.set(a.task_id, []);
+      }
+      assignmentsMap.get(a.task_id)!.push(a.cleaner_name);
+    });
 
     // Group tasks by client
     const tasksByClient = new Map<string, typeof tasks>();
@@ -114,17 +136,25 @@ export const useClientBillingReport = (filters: ClientBillingFilters) => {
         // Use property's coste_servicio as fallback when task has no cost
         const defaultCost = property.coste_servicio || 0;
 
-        const taskDetails: TaskBillingDetail[] = propertyTasks.map(task => ({
-          taskId: task.id,
-          date: task.date,
-          type: task.type || 'Limpieza',
-          duration: task.duracion || property.duracion_servicio || 0,
-          cost: task.coste != null && task.coste > 0 ? task.coste : defaultCost,
-          status: task.status,
-          cleaner: task.cleaner || 'Sin asignar',
-          checkIn: task.check_in || '',
-          checkOut: task.check_out || '',
-        })).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+        const taskDetails: TaskBillingDetail[] = propertyTasks.map(task => {
+          // Get cleaners from assignments, fallback to task.cleaner
+          const assignedCleaners = assignmentsMap.get(task.id);
+          const cleanerDisplay = assignedCleaners && assignedCleaners.length > 0
+            ? assignedCleaners.join(', ')
+            : (task.cleaner || 'Sin asignar');
+          
+          return {
+            taskId: task.id,
+            date: task.date,
+            type: task.type || 'Limpieza',
+            duration: task.duracion || property.duracion_servicio || 0,
+            cost: task.coste != null && task.coste > 0 ? task.coste : defaultCost,
+            status: task.status,
+            cleaner: cleanerDisplay,
+            checkIn: task.check_in || '',
+            checkOut: task.check_out || '',
+          };
+        }).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
         const propertyCost = taskDetails.reduce((sum, t) => sum + t.cost, 0);
         
