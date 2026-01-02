@@ -14,7 +14,8 @@ import {
   AlertTriangle,
   CheckCircle2,
   Package,
-  Truck
+  Truck,
+  Receipt
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useRolePermissions } from '@/hooks/useRolePermissions';
@@ -97,6 +98,15 @@ const reportsItems: NavigationItem[] = [
     href: '/checklist-templates',
     icon: CheckCircle2,
     permission: 'tasks'
+  },
+];
+
+const billingItems: NavigationItem[] = [
+  {
+    title: 'Facturación por Cliente',
+    href: '/client-billing',
+    icon: Receipt,
+    permission: 'reports'
   },
 ];
 
@@ -203,6 +213,7 @@ export const MobileDashboardSidebar = ({ onNavigate }: MobileDashboardSidebarPro
       {renderNavigationSection('General', generalItems)}
       {renderNavigationSection('Gestión', managementItems)}
       {renderNavigationSection('Reportes', reportsItems)}
+      {renderNavigationSection('Facturación', billingItems)}
       
       {/* Administración - Solo para admin/manager */}
       {isAdminOrManager() && renderNavigationSection('Administración', adminItems)}
