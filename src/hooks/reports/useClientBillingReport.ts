@@ -143,8 +143,8 @@ export const useClientBillingReport = (filters: ClientBillingFilters) => {
         totalClientServices += taskDetails.length;
       });
 
-      // Sort properties by total cleanings
-      propertiesData.sort((a, b) => b.totalCleanings - a.totalCleanings);
+      // Sort properties alphabetically by name
+      propertiesData.sort((a, b) => a.propertyName.localeCompare(b.propertyName));
 
       reports.push({
         clientId,
