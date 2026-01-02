@@ -18,11 +18,10 @@ export const useClientBillingReport = (filters: ClientBillingFilters) => {
   const { data: rawData, isLoading, error } = useQuery({
     queryKey: ['clientBillingReport', filters, activeSede?.id],
     queryFn: async () => {
-      // Fetch tasks with status completed
+      // Fetch all tasks
       let tasksQuery = supabase
         .from('tasks')
-        .select('*')
-        .eq('status', 'completed');
+        .select('*');
 
       if (activeSede?.id) {
         tasksQuery = tasksQuery.eq('sede_id', activeSede.id);
