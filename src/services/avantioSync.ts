@@ -1,0 +1,252 @@
+import { supabase } from "@/integrations/supabase/client";
+import { AvantioSyncLog, TaskDetail, ReservationDetail, AvantioSchedule, CreateScheduleRequest, UpdateScheduleRequest } from "@/types/avantio";
+
+export const avantioSync = {
+  // Ejecutar sincronización manual
+  async runSync() {
+    console.log('Ejecutando sincronización manual con Avantio...');
+    
+    const { data, error } = await supabase.functions.invoke('avantio-sync');
+    
+    if (error) {
+      console.error('Error en sincronización:', error);
+      throw error;
+    }
+    
+    return data;
+  },
+
+  // Configurar automatización (cron jobs)
+  async setupAutomation() {
+    console.log('Configurando automatización de Avantio...');
+    
+    const { data, error } = await supabase.functions.invoke('manage-avantio-cron', {
+      body: { action: 'setup' }
+    });
+    
+    if (error) {
+      console.error('Error en configuración automática:', error);
+      throw error;
+    }
+    
+    return data;
+  },
+
+  // Eliminar todas las reservas de Avantio
+  async deleteAllAvantioReservations() {
+    console.log('Eliminando todas las reservas de Avantio...');
+    
+    const { error } = await supabase
+      .from('avantio_reservations')
+      .delete()
+      .neq('id', '00000000-0000-0000-0000-000000000000');
+
+    if (error) {
+      console.error('Error eliminando reservas de Avantio:', error);
+      throw error;
+    }
+
+    console.log('Todas las reservas de Avantio eliminadas exitosamente');
+    return true;
+  },
+
+  // Obtener logs de sincronización
+  async getSyncLogs(limit = 10): Promise<AvantioSyncLog[]> {
+    const { data, error } = await supabase
+      .from('avantio_sync_logs')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(limit);
+    
+    if (error) {
+      console.error('Error obteniendo logs:', error);
+      throw error;
+    }
+    
+    const transformedData: AvantioSyncLog[] = (data || []).map(log => {
+      const logAny = log as any;
+      return {
+        ...log,
+        tasks_details: Array.isArray(log.tasks_details) ? log.tasks_details as unknown as TaskDetail[] : null,
+        tasks_cancelled_details: Array.isArray(logAny.tasks_cancelled_details) ? logAny.tasks_cancelled_details as unknown as TaskDetail[] : null,
+        tasks_modified_details: Array.isArray(logAny.tasks_modified_details) ? logAny.tasks_modified_details as unknown as TaskDetail[] : null,
+        reservations_details: Array.isArray(log.reservations_details) ? log.reservations_details as unknown as ReservationDetail[] : null,
+        tasks_cancelled: logAny.tasks_cancelled || 0,
+        tasks_modified: logAny.tasks_modified || 0,
+      };
+    });
+    
+    return transformedData;
+  },
+
+  // Obtener reservas de Avantio
+  async getAvantioReservations(limit = 50) {
+    const { data, error } = await supabase
+      .from('avantio_reservations')
+      .select(`
+        *,
+        properties:property_id(nombre, direccion),
+        tasks:task_id(*)
+      `)
+      .order('created_at', { ascending: false })
+      .limit(limit);
+    
+    if (error) {
+      console.error('Error obteniendo reservas:', error);
+      throw error;
+    }
+    
+    return data;
+  },
+
+  // Obtener estadísticas de sincronización
+  async getSyncStats() {
+    const { data: logs, error } = await supabase
+      .from('avantio_sync_logs')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(1);
+    
+    if (error) {
+      console.error('Error obteniendo estadísticas:', error);
+      throw error;
+    }
+    
+    const latestLog = logs?.[0];
+    
+    const { count: totalReservations } = await supabase
+      .from('avantio_reservations')
+      .select('*', { count: 'exact', head: true });
+    
+    const { count: activeTasks } = await supabase
+      .from('tasks')
+      .select('*', { count: 'exact', head: true })
+      .not('cleaner_id', 'is', null);
+    
+    return {
+      lastSync: latestLog?.sync_completed_at || null,
+      lastSyncStatus: latestLog?.status || null,
+      totalReservations: totalReservations || 0,
+      activeTasks: activeTasks || 0,
+      lastSyncStats: latestLog ? {
+        reservationsProcessed: latestLog.reservations_processed,
+        newReservations: latestLog.new_reservations,
+        updatedReservations: latestLog.updated_reservations,
+        cancelledReservations: latestLog.cancelled_reservations,
+        tasksCreated: latestLog.tasks_created,
+        errors: latestLog.errors
+      } : null
+    };
+  },
+
+  // ===== GESTIÓN DE HORARIOS =====
+
+  // Obtener todos los horarios de sincronización
+  async getSchedules(): Promise<AvantioSchedule[]> {
+    const { data, error } = await supabase
+      .from('avantio_sync_schedules')
+      .select('*')
+      .order('hour', { ascending: true });
+    
+    if (error) {
+      console.error('Error obteniendo horarios:', error);
+      throw error;
+    }
+    
+    return data || [];
+  },
+
+  // Crear nuevo horario
+  async createSchedule(scheduleData: CreateScheduleRequest): Promise<AvantioSchedule> {
+    const { data, error } = await supabase
+      .from('avantio_sync_schedules')
+      .insert({
+        ...scheduleData,
+        timezone: scheduleData.timezone || 'Europe/Madrid',
+        is_active: scheduleData.is_active ?? true
+      })
+      .select()
+      .single();
+    
+    if (error) {
+      console.error('Error creando horario:', error);
+      throw error;
+    }
+    
+    // Reconfigurar cron jobs
+    await this.setupCronJobs();
+    
+    return data;
+  },
+
+  // Actualizar horario existente
+  async updateSchedule(id: string, updates: UpdateScheduleRequest): Promise<AvantioSchedule> {
+    const { data, error } = await supabase
+      .from('avantio_sync_schedules')
+      .update(updates)
+      .eq('id', id)
+      .select()
+      .single();
+    
+    if (error) {
+      console.error('Error actualizando horario:', error);
+      throw error;
+    }
+    
+    // Reconfigurar cron jobs
+    await this.setupCronJobs();
+    
+    return data;
+  },
+
+  // Eliminar horario
+  async deleteSchedule(id: string): Promise<void> {
+    const { error } = await supabase
+      .from('avantio_sync_schedules')
+      .delete()
+      .eq('id', id);
+    
+    if (error) {
+      console.error('Error eliminando horario:', error);
+      throw error;
+    }
+    
+    // Reconfigurar cron jobs
+    await this.setupCronJobs();
+  },
+
+  // Configurar trabajos cron
+  async setupCronJobs() {
+    console.log('Configurando trabajos cron de Avantio...');
+    
+    const { data, error } = await supabase.functions.invoke('manage-avantio-cron', {
+      body: { action: 'setup' }
+    });
+    
+    if (error) {
+      console.error('Error configurando cron jobs:', error);
+      throw error;
+    }
+    
+    return data;
+  },
+
+  // Ejecutar sincronización para un horario específico
+  async runScheduledSync(scheduleId: string) {
+    console.log('Ejecutando sincronización programada...');
+    
+    const { data, error } = await supabase.functions.invoke('manage-avantio-cron', {
+      body: { 
+        action: 'sync',
+        scheduleId 
+      }
+    });
+    
+    if (error) {
+      console.error('Error en sincronización programada:', error);
+      throw error;
+    }
+    
+    return data;
+  }
+};

@@ -170,6 +170,276 @@ export type Database = {
           },
         ]
       }
+      avantio_reservations: {
+        Row: {
+          accommodation_id: string | null
+          accommodation_name: string | null
+          adults: number | null
+          arrival_date: string
+          avantio_reservation_id: string
+          cancellation_date: string | null
+          children: number | null
+          cliente_id: string | null
+          created_at: string
+          currency: string | null
+          departure_date: string
+          guest_email: string | null
+          guest_name: string
+          id: string
+          last_sync_at: string
+          nights: number | null
+          notes: string | null
+          property_id: string | null
+          reservation_date: string | null
+          status: string
+          task_id: string | null
+          total_amount: number | null
+          updated_at: string
+        }
+        Insert: {
+          accommodation_id?: string | null
+          accommodation_name?: string | null
+          adults?: number | null
+          arrival_date: string
+          avantio_reservation_id: string
+          cancellation_date?: string | null
+          children?: number | null
+          cliente_id?: string | null
+          created_at?: string
+          currency?: string | null
+          departure_date: string
+          guest_email?: string | null
+          guest_name: string
+          id?: string
+          last_sync_at?: string
+          nights?: number | null
+          notes?: string | null
+          property_id?: string | null
+          reservation_date?: string | null
+          status: string
+          task_id?: string | null
+          total_amount?: number | null
+          updated_at?: string
+        }
+        Update: {
+          accommodation_id?: string | null
+          accommodation_name?: string | null
+          adults?: number | null
+          arrival_date?: string
+          avantio_reservation_id?: string
+          cancellation_date?: string | null
+          children?: number | null
+          cliente_id?: string | null
+          created_at?: string
+          currency?: string | null
+          departure_date?: string
+          guest_email?: string | null
+          guest_name?: string
+          id?: string
+          last_sync_at?: string
+          nights?: number | null
+          notes?: string | null
+          property_id?: string | null
+          reservation_date?: string | null
+          status?: string
+          task_id?: string | null
+          total_amount?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "avantio_reservations_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "avantio_reservations_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "avantio_reservations_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      avantio_sync_errors: {
+        Row: {
+          created_at: string
+          error_details: Json | null
+          error_message: string
+          error_type: string
+          id: string
+          resolved: boolean | null
+          resolved_at: string | null
+          retry_attempt: number | null
+          schedule_id: string | null
+          sync_log_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          error_details?: Json | null
+          error_message: string
+          error_type: string
+          id?: string
+          resolved?: boolean | null
+          resolved_at?: string | null
+          retry_attempt?: number | null
+          schedule_id?: string | null
+          sync_log_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          error_details?: Json | null
+          error_message?: string
+          error_type?: string
+          id?: string
+          resolved?: boolean | null
+          resolved_at?: string | null
+          retry_attempt?: number | null
+          schedule_id?: string | null
+          sync_log_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "avantio_sync_errors_schedule_id_fkey"
+            columns: ["schedule_id"]
+            isOneToOne: false
+            referencedRelation: "avantio_sync_schedules"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "avantio_sync_errors_sync_log_id_fkey"
+            columns: ["sync_log_id"]
+            isOneToOne: false
+            referencedRelation: "avantio_sync_logs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      avantio_sync_logs: {
+        Row: {
+          cancelled_reservations: number | null
+          created_at: string
+          errors: string[] | null
+          id: string
+          new_reservations: number | null
+          original_sync_id: string | null
+          reservations_details: Json | null
+          reservations_processed: number | null
+          retry_attempt: number | null
+          schedule_name: string | null
+          status: string
+          sync_completed_at: string | null
+          sync_started_at: string
+          tasks_cancelled: number | null
+          tasks_cancelled_details: Json | null
+          tasks_created: number | null
+          tasks_details: Json | null
+          tasks_modified: number | null
+          tasks_modified_details: Json | null
+          triggered_by: string | null
+          updated_reservations: number | null
+        }
+        Insert: {
+          cancelled_reservations?: number | null
+          created_at?: string
+          errors?: string[] | null
+          id?: string
+          new_reservations?: number | null
+          original_sync_id?: string | null
+          reservations_details?: Json | null
+          reservations_processed?: number | null
+          retry_attempt?: number | null
+          schedule_name?: string | null
+          status?: string
+          sync_completed_at?: string | null
+          sync_started_at?: string
+          tasks_cancelled?: number | null
+          tasks_cancelled_details?: Json | null
+          tasks_created?: number | null
+          tasks_details?: Json | null
+          tasks_modified?: number | null
+          tasks_modified_details?: Json | null
+          triggered_by?: string | null
+          updated_reservations?: number | null
+        }
+        Update: {
+          cancelled_reservations?: number | null
+          created_at?: string
+          errors?: string[] | null
+          id?: string
+          new_reservations?: number | null
+          original_sync_id?: string | null
+          reservations_details?: Json | null
+          reservations_processed?: number | null
+          retry_attempt?: number | null
+          schedule_name?: string | null
+          status?: string
+          sync_completed_at?: string | null
+          sync_started_at?: string
+          tasks_cancelled?: number | null
+          tasks_cancelled_details?: Json | null
+          tasks_created?: number | null
+          tasks_details?: Json | null
+          tasks_modified?: number | null
+          tasks_modified_details?: Json | null
+          triggered_by?: string | null
+          updated_reservations?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "avantio_sync_logs_original_sync_id_fkey"
+            columns: ["original_sync_id"]
+            isOneToOne: false
+            referencedRelation: "avantio_sync_logs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      avantio_sync_schedules: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          hour: number
+          id: string
+          is_active: boolean
+          minute: number
+          name: string
+          timezone: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          hour: number
+          id?: string
+          is_active?: boolean
+          minute?: number
+          name: string
+          timezone?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          hour?: number
+          id?: string
+          is_active?: boolean
+          minute?: number
+          name?: string
+          timezone?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       cleaner_availability: {
         Row: {
           cleaner_id: string
@@ -1351,6 +1621,8 @@ export type Database = {
           ambientador_bano: number
           amenities_bano: number
           amenities_cocina: number
+          avantio_accommodation_id: string | null
+          avantio_accommodation_name: string | null
           azucar: number
           bayetas_cocina: number
           bolsas_basura: number
@@ -1406,6 +1678,8 @@ export type Database = {
           ambientador_bano?: number
           amenities_bano?: number
           amenities_cocina?: number
+          avantio_accommodation_id?: string | null
+          avantio_accommodation_name?: string | null
           azucar?: number
           bayetas_cocina?: number
           bolsas_basura?: number
@@ -1461,6 +1735,8 @@ export type Database = {
           ambientador_bano?: number
           amenities_bano?: number
           amenities_cocina?: number
+          avantio_accommodation_id?: string | null
+          avantio_accommodation_name?: string | null
           azucar?: number
           bayetas_cocina?: number
           bolsas_basura?: number
@@ -2926,6 +3202,7 @@ export type Database = {
             }
             Returns: string
           }
+      delete_avantio_cron_job: { Args: { job_name: string }; Returns: Json }
       delete_hostaway_cron_job: { Args: { job_name: string }; Returns: Json }
       get_current_user_role: {
         Args: never
@@ -2943,6 +3220,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      list_avantio_cron_jobs: { Args: never; Returns: Json }
       list_hostaway_cron_jobs: { Args: never; Returns: Json }
       log_security_event: {
         Args: { event_data?: Json; event_type: string; target_user_id?: string }
@@ -2956,6 +3234,16 @@ export type Database = {
           to_sede_id_param?: string
         }
         Returns: undefined
+      }
+      manage_avantio_cron_job: {
+        Args: {
+          auth_header: string
+          cron_schedule: string
+          function_url: string
+          job_name: string
+          request_body: string
+        }
+        Returns: Json
       }
       manage_hostaway_cron_job: {
         Args: {

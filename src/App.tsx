@@ -43,6 +43,7 @@ const LogisticsDashboard = React.lazy(() => import("./pages/LogisticsDashboard")
 const LogisticsReports = React.lazy(() => import("./pages/LogisticsReports"));
 const RecurringTasksPage = React.lazy(() => import("./pages/RecurringTasksPage"));
 const HostawayAutomation = React.lazy(() => import("./pages/HostawayAutomation"));
+const AvantioAutomation = React.lazy(() => import("./pages/AvantioAutomation"));
 const PublicLaundryView = React.lazy(() => import("./pages/PublicLaundryView"));
 const LaundryShareManagement = React.lazy(() => import("./pages/LaundryShareManagement"));
 const LinenControlPage = React.lazy(() => import("./pages/LinenControlPage"));
@@ -230,6 +231,15 @@ function App() {
                   <RoleProtectedRoute requiredModule="hostaway">
                     <LazyRoute>
                       <HostawayAutomation />
+                    </LazyRoute>
+                  </RoleProtectedRoute>
+                </ProtectedRoute>
+              } />
+              <Route path="/avantio-automation" element={
+                <ProtectedRoute>
+                  <RoleProtectedRoute requiredModule="hostaway">
+                    <LazyRoute>
+                      <AvantioAutomation />
                     </LazyRoute>
                   </RoleProtectedRoute>
                 </ProtectedRoute>
