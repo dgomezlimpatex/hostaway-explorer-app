@@ -1,8 +1,8 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useSede } from '@/contexts/SedeContext';
-import { useMemo } from 'react';
-import { format, parseISO, isToday, isBefore, startOfDay } from 'date-fns';
+import { useMemo, useEffect } from 'react';
+import { format } from 'date-fns';
 
 export type LinenStatus = 'clean' | 'needs-linen' | 'overdue';
 
@@ -35,6 +35,32 @@ export interface LinenControlStats {
 
 export const useLinenControl = () => {
   const { activeSede, isInitialized } = useSede();
+  const queryClient = useQueryClient();
+
+  // Subscribe to real-time updates for laundry_delivery_tracking
+  useEffect(() => {
+    if (!activeSede?.id) return;
+
+    const channel = supabase
+      .channel('linen-control-realtime')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'laundry_delivery_tracking'
+        },
+        () => {
+          // Invalidate tracking query to refresh data
+          queryClient.invalidateQueries({ queryKey: ['linen-control-tracking', activeSede.id] });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [activeSede?.id, queryClient]);
 
   // Fetch all properties with their clients (including linen control and active settings)
   const { data: properties, isLoading: propertiesLoading } = useQuery({
@@ -144,6 +170,8 @@ export const useLinenControl = () => {
       return data || [];
     },
     enabled: isInitialized && !!activeSede?.id,
+    staleTime: 10000, // Refetch every 10 seconds
+    refetchInterval: 30000, // Also refetch every 30 seconds as backup
   });
 
   // Fetch tasks to map task_id -> propiedad_id for delivery tracking
@@ -176,7 +204,12 @@ export const useLinenControl = () => {
     // Create a map of task_id -> task details
     const taskMap = new Map(allTasksForMapping.map(t => [t.id, t]));
 
-    // Create a map of propiedad_id -> last delivery
+    // Create a set of task_ids that have been delivered (the task ITSELF was delivered)
+    const deliveredTaskIds = new Set(
+      deliveryTracking.map(t => t.task_id)
+    );
+
+    // Create a map of propiedad_id -> last delivery (for general tracking)
     const lastDeliveryByProperty = new Map<string, { date: string; deliveredBy: string }>();
     
     for (const tracking of deliveryTracking) {
@@ -231,29 +264,29 @@ export const useLinenControl = () => {
       }
 
       // Determine status
-      // Logic: A property needs linen if:
-      // 1. There's NO delivery tracking record ever (never been delivered via the system)
-      // 2. There's a cleaning that started and no delivery after it
+      // KEY LOGIC:
+      // 1. If the property has a next cleaning task and that task's linen has been delivered -> clean
+      // 2. If there's no delivery ever -> needs-linen
+      // 3. If cleaning started and no delivery for that specific task -> needs-linen/overdue
       let status: LinenStatus = 'clean';
 
-      // If there's never been a delivery tracked, the property needs linen
-      // (since we don't know when linen was last delivered)
-      if (!lastDelivery) {
+      // First check: if next cleaning task exists and has been delivered via the system
+      if (nextCleaning && deliveredTaskIds.has(nextCleaning.taskId)) {
+        // The linen for the upcoming/current cleaning has been delivered
+        status = 'clean';
+      } else if (!lastDelivery) {
+        // Never been a delivery tracked for this property
         status = 'needs-linen';
       } else if (nextCleaning && cleaningStarted) {
-        // There's a cleaning that has started - check if delivery was after
-        const lastDeliveryDate = new Date(lastDelivery.date);
-        const cleaningDateTime = new Date(`${nextCleaning.date}T${nextCleaning.time}`);
-
-        if (lastDeliveryDate < cleaningDateTime) {
-          // Delivery was before the cleaning started, needs fresh linen
+        // There's a cleaning that has started - check if delivery was for this task
+        // If the specific task hasn't been delivered, it needs linen
+        if (!deliveredTaskIds.has(nextCleaning.taskId)) {
           if (nextCleaning.date < todayStr) {
             status = 'overdue';
           } else {
             status = 'needs-linen';
           }
         }
-        // If lastDeliveryDate >= cleaningDateTime, it's still 'clean'
       }
 
       return {
