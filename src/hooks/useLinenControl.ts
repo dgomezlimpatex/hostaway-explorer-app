@@ -231,24 +231,29 @@ export const useLinenControl = () => {
       }
 
       // Determine status
+      // Logic: A property needs linen if:
+      // 1. There's NO delivery tracking record ever (never been delivered via the system)
+      // 2. There's a cleaning that started and no delivery after it
       let status: LinenStatus = 'clean';
 
-      if (nextCleaning) {
-        // Check if last delivery is after the previous cleaning
-        // If cleaning started and no delivery after, needs linen
-        if (cleaningStarted) {
-          const lastDeliveryDate = lastDelivery?.date ? new Date(lastDelivery.date) : null;
-          const cleaningDateTime = new Date(`${nextCleaning.date}T${nextCleaning.time}`);
+      // If there's never been a delivery tracked, the property needs linen
+      // (since we don't know when linen was last delivered)
+      if (!lastDelivery) {
+        status = 'needs-linen';
+      } else if (nextCleaning && cleaningStarted) {
+        // There's a cleaning that has started - check if delivery was after
+        const lastDeliveryDate = new Date(lastDelivery.date);
+        const cleaningDateTime = new Date(`${nextCleaning.date}T${nextCleaning.time}`);
 
-          if (!lastDeliveryDate || lastDeliveryDate < cleaningDateTime) {
-            // Check if overdue (cleaning was yesterday or before)
-            if (nextCleaning.date < todayStr) {
-              status = 'overdue';
-            } else {
-              status = 'needs-linen';
-            }
+        if (lastDeliveryDate < cleaningDateTime) {
+          // Delivery was before the cleaning started, needs fresh linen
+          if (nextCleaning.date < todayStr) {
+            status = 'overdue';
+          } else {
+            status = 'needs-linen';
           }
         }
+        // If lastDeliveryDate >= cleaningDateTime, it's still 'clean'
       }
 
       return {
