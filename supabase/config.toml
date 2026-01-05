@@ -73,3 +73,9 @@ verify_jwt = false
 
 [functions.process-recurring-tasks]
 verify_jwt = false
+
+[functions.avantio-sync]
+verify_jwt = false
+
+[functions.manage-avantio-cron]
+verify_jwt = false
