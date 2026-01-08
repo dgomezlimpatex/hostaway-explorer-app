@@ -45,6 +45,7 @@ const RecurringTasksPage = React.lazy(() => import("./pages/RecurringTasksPage")
 const HostawayAutomation = React.lazy(() => import("./pages/HostawayAutomation"));
 const AvantioAutomation = React.lazy(() => import("./pages/AvantioAutomation"));
 const PublicLaundryView = React.lazy(() => import("./pages/PublicLaundryView"));
+const PublicLaundryScheduledView = React.lazy(() => import("./pages/PublicLaundryScheduledView"));
 const LaundryShareManagement = React.lazy(() => import("./pages/LaundryShareManagement"));
 const LinenControlPage = React.lazy(() => import("./pages/LinenControlPage"));
 const ClientBilling = React.lazy(() => import("./pages/ClientBilling"));
@@ -100,6 +101,12 @@ function App() {
               <Route path="/lavanderia/:token" element={
                 <LazyRoute>
                   <PublicLaundryView />
+                </LazyRoute>
+              } />
+              {/* Nueva ruta para vista programada de lavandería */}
+              <Route path="/reparto/:token" element={
+                <LazyRoute>
+                  <PublicLaundryScheduledView />
                 </LazyRoute>
               } />
               <Route path="/" element={

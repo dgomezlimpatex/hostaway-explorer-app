@@ -1204,8 +1204,55 @@ export type Database = {
           },
         ]
       }
+      laundry_delivery_schedule: {
+        Row: {
+          collection_days: number[]
+          created_at: string
+          day_of_week: number
+          id: string
+          is_active: boolean
+          name: string
+          sede_id: string | null
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          collection_days: number[]
+          created_at?: string
+          day_of_week: number
+          id?: string
+          is_active?: boolean
+          name: string
+          sede_id?: string | null
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          collection_days?: number[]
+          created_at?: string
+          day_of_week?: number
+          id?: string
+          is_active?: boolean
+          name?: string
+          sede_id?: string | null
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "laundry_delivery_schedule_sede_id_fkey"
+            columns: ["sede_id"]
+            isOneToOne: false
+            referencedRelation: "sedes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       laundry_delivery_tracking: {
         Row: {
+          collected_at: string | null
+          collected_by_name: string | null
+          collection_status: string
           created_at: string
           delivered_at: string | null
           delivered_by_name: string | null
@@ -1219,6 +1266,9 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          collected_at?: string | null
+          collected_by_name?: string | null
+          collection_status?: string
           created_at?: string
           delivered_at?: string | null
           delivered_by_name?: string | null
@@ -1232,6 +1282,9 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          collected_at?: string | null
+          collected_by_name?: string | null
+          collection_status?: string
           created_at?: string
           delivered_at?: string | null
           delivered_by_name?: string | null
@@ -1263,15 +1316,18 @@ export type Database = {
       }
       laundry_share_links: {
         Row: {
+          collection_dates: string[] | null
           created_at: string
           created_by: string
           date_end: string
           date_start: string
+          delivery_day: number | null
           expires_at: string | null
           filters: Json | null
           id: string
           is_active: boolean
           is_permanent: boolean
+          link_type: string
           original_task_ids: string[] | null
           sede_id: string | null
           snapshot_task_ids: string[] | null
@@ -1279,15 +1335,18 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          collection_dates?: string[] | null
           created_at?: string
           created_by: string
           date_end: string
           date_start: string
+          delivery_day?: number | null
           expires_at?: string | null
           filters?: Json | null
           id?: string
           is_active?: boolean
           is_permanent?: boolean
+          link_type?: string
           original_task_ids?: string[] | null
           sede_id?: string | null
           snapshot_task_ids?: string[] | null
@@ -1295,15 +1354,18 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          collection_dates?: string[] | null
           created_at?: string
           created_by?: string
           date_end?: string
           date_start?: string
+          delivery_day?: number | null
           expires_at?: string | null
           filters?: Json | null
           id?: string
           is_active?: boolean
           is_permanent?: boolean
+          link_type?: string
           original_task_ids?: string[] | null
           sede_id?: string | null
           snapshot_task_ids?: string[] | null

@@ -1,10 +1,10 @@
 import { supabase } from '@/integrations/supabase/client';
 
 // Get the base URL for share links
-export const getShareLinkUrl = (token: string): string => {
-  // Use current origin for the URL
+export const getShareLinkUrl = (token: string, scheduled: boolean = false): string => {
   const baseUrl = window.location.origin;
-  return `${baseUrl}/lavanderia/${token}`;
+  const path = scheduled ? 'reparto' : 'lavanderia';
+  return `${baseUrl}/${path}/${token}`;
 };
 
 // Copy share link to clipboard
