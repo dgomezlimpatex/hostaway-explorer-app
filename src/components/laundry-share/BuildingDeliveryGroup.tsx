@@ -3,9 +3,11 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { Building2, ChevronDown, ChevronRight, Truck, CheckCircle2 } from 'lucide-react';
+import { Building2, ChevronDown, ChevronRight, Truck, CheckCircle2, User, Calendar } from 'lucide-react';
 import { BuildingGroup, LaundryApartment } from '@/services/laundryScheduleService';
 import { cn } from '@/lib/utils';
+import { format, parseISO } from 'date-fns';
+import { es } from 'date-fns/locale';
 
 interface BuildingDeliveryGroupProps {
   building: BuildingGroup;
@@ -126,6 +128,19 @@ export const BuildingDeliveryGroup = ({
                           </span>
                           {isDelivered && (
                             <CheckCircle2 className="h-4 w-4 text-green-600" />
+                          )}
+                        </div>
+                        {/* Service date and cleaner info */}
+                        <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-muted-foreground mt-0.5">
+                          <span className="flex items-center gap-1">
+                            <Calendar className="h-3 w-3" />
+                            {format(parseISO(apt.date), "EEE d MMM", { locale: es })}
+                          </span>
+                          {apt.cleaner && (
+                            <span className="flex items-center gap-1">
+                              <User className="h-3 w-3" />
+                              {apt.cleaner}
+                            </span>
                           )}
                         </div>
                         {textileItems.length > 0 && (

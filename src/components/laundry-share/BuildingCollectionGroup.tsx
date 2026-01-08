@@ -4,9 +4,11 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { Building2, ChevronDown, ChevronRight, Package, CheckCircle2 } from 'lucide-react';
+import { Building2, ChevronDown, ChevronRight, Package, CheckCircle2, User, Calendar } from 'lucide-react';
 import { BuildingGroup, LaundryApartment } from '@/services/laundryScheduleService';
 import { cn } from '@/lib/utils';
+import { format, parseISO } from 'date-fns';
+import { es } from 'date-fns/locale';
 
 interface BuildingCollectionGroupProps {
   building: BuildingGroup;
@@ -116,6 +118,19 @@ export const BuildingCollectionGroup = ({
                       )}>
                         {apt.propertyCode}
                       </span>
+                      {/* Service date and cleaner info */}
+                      <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-muted-foreground mt-0.5">
+                        <span className="flex items-center gap-1">
+                          <Calendar className="h-3 w-3" />
+                          {format(parseISO(apt.date), "EEE d MMM", { locale: es })}
+                        </span>
+                        {apt.cleaner && (
+                          <span className="flex items-center gap-1">
+                            <User className="h-3 w-3" />
+                            {apt.cleaner}
+                          </span>
+                        )}
+                      </div>
                     </div>
                     {isCollected && (
                       <CheckCircle2 className="h-4 w-4 text-green-600 shrink-0" />
