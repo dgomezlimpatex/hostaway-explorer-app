@@ -342,8 +342,8 @@ const LaundryShareManagement = () => {
   const [dateStart, setDateStart] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [dateEnd, setDateEnd] = useState(format(addDays(new Date(), 7), 'yyyy-MM-dd'));
 
-  const handleCopyLink = async (token: string) => {
-    const success = await copyShareLinkToClipboard(token);
+  const handleCopyLink = async (token: string, scheduled: boolean = false) => {
+    const success = await copyShareLinkToClipboard(token, scheduled);
     if (success) {
       toast({
         title: 'Enlace copiado',
@@ -370,8 +370,8 @@ const LaundryShareManagement = () => {
     }
   };
 
-  const openExternalLink = (token: string) => {
-    window.open(getShareLinkUrl(token), '_blank');
+  const openExternalLink = (token: string, scheduled: boolean = false) => {
+    window.open(getShareLinkUrl(token, scheduled), '_blank');
   };
 
   const handleWeeklyPlannerClick = () => {
@@ -383,6 +383,9 @@ const LaundryShareManagement = () => {
     setCreateModalOpen(true);
   };
 
+  // Separate scheduled vs legacy links
+  const scheduledLinks = shareLinks?.filter(l => l.linkType === 'scheduled' && !isShareLinkExpired(l.expiresAt)) || [];
+  const legacyActiveLinks = shareLinks?.filter(l => l.linkType !== 'scheduled' && !isShareLinkExpired(l.expiresAt)) || [];
   const activeLinks = shareLinks?.filter(l => !isShareLinkExpired(l.expiresAt)) || [];
   const expiredLinks = shareLinks?.filter(l => isShareLinkExpired(l.expiresAt)) || [];
 
@@ -454,9 +457,29 @@ const LaundryShareManagement = () => {
               </CardContent>
             </Card>
             
-            <p className="text-sm text-muted-foreground text-center">
-              Los enlaces de reparto programado aparecerán aquí una vez creados
-            </p>
+            {/* Scheduled Links List */}
+            {isLoading ? (
+              <div className="flex items-center justify-center py-12">
+                <RefreshCw className="h-6 w-6 animate-spin text-muted-foreground" />
+              </div>
+            ) : scheduledLinks.length > 0 ? (
+              <div className="grid gap-3 md:grid-cols-2">
+                {scheduledLinks.map((link) => (
+                  <LinkCard
+                    key={link.id}
+                    link={link}
+                    onEdit={() => handleEditClick(link)}
+                    onCopy={() => handleCopyLink(link.token, true)}
+                    onOpen={() => openExternalLink(link.token, true)}
+                    onDelete={() => handleDeleteClick(link)}
+                  />
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground text-center py-4">
+                Los enlaces de reparto programado aparecerán aquí una vez creados
+              </p>
+            )}
           </TabsContent>
 
           {/* Legacy links tab */}
@@ -525,8 +548,8 @@ const LaundryShareManagement = () => {
                     <LinkIcon className="h-5 w-5 text-primary" />
                   </div>
                   <div>
-                    <p className="text-2xl font-bold">{activeLinks.length}</p>
-                    <p className="text-xs text-muted-foreground">Activos</p>
+                    <p className="text-2xl font-bold">{legacyActiveLinks.length}</p>
+                    <p className="text-xs text-muted-foreground">Clásicos</p>
                   </div>
                 </CardContent>
               </Card>
@@ -572,9 +595,9 @@ const LaundryShareManagement = () => {
                 <div className="flex items-center justify-center py-12">
                   <RefreshCw className="h-6 w-6 animate-spin text-muted-foreground" />
                 </div>
-              ) : activeLinks.length > 0 ? (
+              ) : legacyActiveLinks.length > 0 ? (
                 <div className="grid gap-3 md:grid-cols-2">
-                  {activeLinks.map((link) => (
+                  {legacyActiveLinks.map((link) => (
                     <LinkCard
                       key={link.id}
                       link={link}

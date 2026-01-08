@@ -16,6 +16,7 @@ export interface LaundryShareLink {
   snapshotTaskIds: string[];
   originalTaskIds: string[]; // All tasks at creation time (for detecting truly new tasks)
   filters: Record<string, any>;
+  linkType: string | null; // 'scheduled' or 'legacy' or null
   createdAt: string;
   updatedAt: string;
 }
@@ -28,6 +29,7 @@ interface CreateShareLinkParams {
   taskIds: string[];
   allTaskIds: string[]; // All tasks at creation time
   filters?: Record<string, any>;
+  linkType?: string; // 'scheduled' or undefined for legacy
 }
 
 // Generate a random token for share links
@@ -54,6 +56,7 @@ const mapToShareLink = (row: any): LaundryShareLink => ({
   snapshotTaskIds: row.snapshot_task_ids || [],
   originalTaskIds: row.original_task_ids || row.snapshot_task_ids || [], // Fallback to snapshot for old links
   filters: row.filters || {},
+  linkType: row.link_type,
   createdAt: row.created_at,
   updatedAt: row.updated_at,
 });
@@ -103,6 +106,7 @@ export const useLaundryShareLinks = () => {
           snapshot_task_ids: params.taskIds,
           original_task_ids: params.allTaskIds, // Store all tasks at creation time
           filters: params.filters || {},
+          link_type: params.linkType || 'legacy',
         })
         .select()
         .single();

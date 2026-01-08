@@ -5,7 +5,7 @@ import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Copy, Check, Link, Loader2, Calendar, Truck, Package } from 'lucide-react';
+import { Copy, Check, Link, Loader2, Calendar, Truck, Package, ExternalLink } from 'lucide-react';
 import { useLaundryShareLinks } from '@/hooks/useLaundryShareLinks';
 import { useDeliveryDayOptions, DeliveryDayOption } from '@/hooks/useLaundrySchedule';
 import { copyShareLinkToClipboard, getShareLinkUrl, calculateExpirationDate } from '@/services/laundryShareService';
@@ -133,10 +133,10 @@ export const LaundryScheduledLinkModal = ({
         taskIds,
         allTaskIds: taskIds,
         sedeId: activeSede.id,
+        linkType: 'scheduled',
         filters: { 
           deliveryDay: selectedOption.schedule.dayOfWeek,
           collectionDates: dates,
-          linkType: 'scheduled',
         },
       });
 
@@ -362,9 +362,16 @@ export const LaundryScheduledLinkModal = ({
               </Button>
             </>
           ) : (
-            <>
+            <div className="flex items-center gap-2 w-full justify-end">
               <Button variant="outline" onClick={handleClose}>
                 Cerrar
+              </Button>
+              <Button 
+                variant="outline" 
+                onClick={() => generatedLink && window.open(generatedLink, '_blank')}
+              >
+                <ExternalLink className="mr-2 h-4 w-4" />
+                Abrir
               </Button>
               <Button onClick={handleCopy}>
                 {copied ? (
@@ -375,11 +382,11 @@ export const LaundryScheduledLinkModal = ({
                 ) : (
                   <>
                     <Copy className="mr-2 h-4 w-4" />
-                    Copiar Enlace
+                    Copiar
                   </>
                 )}
               </Button>
-            </>
+            </div>
           )}
         </DialogFooter>
       </DialogContent>
