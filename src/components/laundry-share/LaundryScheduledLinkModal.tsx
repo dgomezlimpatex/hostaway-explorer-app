@@ -125,7 +125,8 @@ export const LaundryScheduledLinkModal = ({
         },
       });
 
-      const url = getShareLinkUrl(result.token);
+      // Use the scheduled route for scheduled links
+      const url = getShareLinkUrl(result.token, true);
       setGeneratedLink(url);
     } catch (error) {
       console.error('Error generating link:', error);
@@ -138,7 +139,7 @@ export const LaundryScheduledLinkModal = ({
     if (!generatedLink) return;
     
     const token = generatedLink.split('/').pop() || '';
-    const success = await copyShareLinkToClipboard(token);
+    const success = await copyShareLinkToClipboard(token, true);
     
     if (success) {
       setCopied(true);
