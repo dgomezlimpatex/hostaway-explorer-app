@@ -2,25 +2,35 @@ import { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Calendar, Truck, Plus, Copy, ExternalLink, Loader2 } from 'lucide-react';
+import { Calendar, Plus, Copy, ExternalLink, Loader2 } from 'lucide-react';
 import { format, addDays } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { useSede } from '@/contexts/SedeContext';
 import { useLaundryShareLinks, LaundryShareLink } from '@/hooks/useLaundryShareLinks';
-import { copyShareLinkToClipboard, getShareLinkUrl } from '@/services/laundryShareService';
+import { copyShareLinkToClipboard, getShareLinkUrl, calculateExpirationDate } from '@/services/laundryShareService';
+import { fetchTasksForDates } from '@/services/laundryScheduleService';
 import { useToast } from '@/hooks/use-toast';
 import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
 
 interface QuickDayCardProps {
   label: string;
   date: Date;
   existingLink?: LaundryShareLink;
-  onCreateClick: () => void;
+  onCreateLink: () => Promise<void>;
   isCreating: boolean;
+  taskCount: number;
+  isLoadingTasks: boolean;
 }
 
-const QuickDayCard = ({ label, date, existingLink, onCreateClick, isCreating }: QuickDayCardProps) => {
+const QuickDayCard = ({ 
+  label, 
+  date, 
+  existingLink, 
+  onCreateLink, 
+  isCreating, 
+  taskCount,
+  isLoadingTasks 
+}: QuickDayCardProps) => {
   const { toast } = useToast();
   const dayName = format(date, 'EEEE', { locale: es });
   const dateFormatted = format(date, "d 'de' MMMM", { locale: es });
@@ -59,6 +69,11 @@ const QuickDayCard = ({ label, date, existingLink, onCreateClick, isCreating }: 
                 </Badge>
               </div>
               <p className="text-xs text-muted-foreground capitalize">{dateFormatted}</p>
+              {!existingLink && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  {isLoadingTasks ? '...' : `${taskCount} servicios`}
+                </p>
+              )}
             </div>
             
             {existingLink ? (
@@ -84,8 +99,8 @@ const QuickDayCard = ({ label, date, existingLink, onCreateClick, isCreating }: 
               <Button 
                 size="sm" 
                 className="w-full"
-                onClick={onCreateClick}
-                disabled={isCreating}
+                onClick={onCreateLink}
+                disabled={isCreating || taskCount === 0}
               >
                 {isCreating ? (
                   <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
@@ -102,13 +117,10 @@ const QuickDayCard = ({ label, date, existingLink, onCreateClick, isCreating }: 
   );
 };
 
-interface QuickDayLinksWidgetProps {
-  onOpenScheduledModal: (preselectedDate?: Date) => void;
-}
-
-export const QuickDayLinksWidget = ({ onOpenScheduledModal }: QuickDayLinksWidgetProps) => {
+export const QuickDayLinksWidget = () => {
   const { activeSede } = useSede();
-  const { shareLinks } = useLaundryShareLinks();
+  const { toast } = useToast();
+  const { shareLinks, createShareLink, refetch } = useLaundryShareLinks();
   const [creatingFor, setCreatingFor] = useState<'today' | 'tomorrow' | null>(null);
 
   const today = new Date();
@@ -116,6 +128,19 @@ export const QuickDayLinksWidget = ({ onOpenScheduledModal }: QuickDayLinksWidge
   
   const todayStr = format(today, 'yyyy-MM-dd');
   const tomorrowStr = format(tomorrow, 'yyyy-MM-dd');
+
+  // Fetch task counts for today and tomorrow
+  const { data: todayTasks, isLoading: loadingToday } = useQuery({
+    queryKey: ['quick-day-tasks', todayStr, activeSede?.id],
+    queryFn: () => fetchTasksForDates([todayStr], activeSede?.id || ''),
+    enabled: !!activeSede?.id,
+  });
+
+  const { data: tomorrowTasks, isLoading: loadingTomorrow } = useQuery({
+    queryKey: ['quick-day-tasks', tomorrowStr, activeSede?.id],
+    queryFn: () => fetchTasksForDates([tomorrowStr], activeSede?.id || ''),
+    enabled: !!activeSede?.id,
+  });
 
   // Find existing scheduled links for today and tomorrow
   const scheduledLinks = shareLinks?.filter(l => l.linkType === 'scheduled') || [];
@@ -128,14 +153,55 @@ export const QuickDayLinksWidget = ({ onOpenScheduledModal }: QuickDayLinksWidge
     l.dateStart === tomorrowStr && l.dateEnd === tomorrowStr
   );
 
-  const handleCreateToday = () => {
-    setCreatingFor('today');
-    onOpenScheduledModal(today);
-  };
+  const handleCreateLink = async (date: Date, dayType: 'today' | 'tomorrow') => {
+    if (!activeSede?.id) return;
 
-  const handleCreateTomorrow = () => {
-    setCreatingFor('tomorrow');
-    onOpenScheduledModal(tomorrow);
+    setCreatingFor(dayType);
+    
+    try {
+      const dateStr = format(date, 'yyyy-MM-dd');
+      const tasks = await fetchTasksForDates([dateStr], activeSede.id);
+      
+      if (tasks.length === 0) {
+        toast({
+          title: 'Sin servicios',
+          description: 'No hay servicios programados para esta fecha',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      const taskIds = tasks.map(t => t.taskId);
+      const expiresAt = calculateExpirationDate('week');
+
+      await createShareLink.mutateAsync({
+        dateStart: dateStr,
+        dateEnd: dateStr,
+        taskIds: taskIds,
+        allTaskIds: taskIds,
+        isPermanent: false,
+        expiresAt,
+        filters: { sedeId: activeSede.id },
+        linkType: 'scheduled',
+        sedeId: activeSede.id,
+      });
+
+      await refetch();
+      
+      toast({
+        title: 'Enlace creado',
+        description: `Enlace para ${dayType === 'today' ? 'hoy' : 'mañana'} generado correctamente`,
+      });
+    } catch (error) {
+      console.error('Error creating quick link:', error);
+      toast({
+        title: 'Error',
+        description: 'No se pudo crear el enlace',
+        variant: 'destructive',
+      });
+    } finally {
+      setCreatingFor(null);
+    }
   };
 
   return (
@@ -144,15 +210,19 @@ export const QuickDayLinksWidget = ({ onOpenScheduledModal }: QuickDayLinksWidge
         label="Hoy"
         date={today}
         existingLink={todayLink}
-        onCreateClick={handleCreateToday}
+        onCreateLink={() => handleCreateLink(today, 'today')}
         isCreating={creatingFor === 'today'}
+        taskCount={todayTasks?.length || 0}
+        isLoadingTasks={loadingToday}
       />
       <QuickDayCard
         label="Mañana"
         date={tomorrow}
         existingLink={tomorrowLink}
-        onCreateClick={handleCreateTomorrow}
+        onCreateLink={() => handleCreateLink(tomorrow, 'tomorrow')}
         isCreating={creatingFor === 'tomorrow'}
+        taskCount={tomorrowTasks?.length || 0}
+        isLoadingTasks={loadingTomorrow}
       />
     </div>
   );
