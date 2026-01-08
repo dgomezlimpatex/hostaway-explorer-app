@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -38,6 +38,9 @@ export const LaundryScheduledLinkModal = ({
   const [copied, setCopied] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [previewData, setPreviewData] = useState<{ count: number; loading: boolean }>({ count: 0, loading: false });
+  
+  // Track last fetched key to prevent duplicate calls
+  const lastFetchKey = useRef<string>('');
 
   // Reset state when modal opens
   useEffect(() => {
@@ -46,29 +49,41 @@ export const LaundryScheduledLinkModal = ({
       setCopied(false);
       setSelectedDayIndex(0);
       setWeekOffset(0);
+      setPreviewData({ count: 0, loading: false });
+      lastFetchKey.current = '';
     }
   }, [open]);
 
   // Get selected delivery option
-  const selectedOption = useMemo(() => {
-    return deliveryOptions[selectedDayIndex];
-  }, [deliveryOptions, selectedDayIndex]);
+  const selectedOption = deliveryOptions[selectedDayIndex];
 
-  // Load preview data when selection changes
+  // Load preview data when selection changes - use stable dependencies
   useEffect(() => {
-    if (!selectedOption || !activeSede?.id) return;
+    if (!selectedOption || !activeSede?.id || !open) return;
+    
+    // Create a stable key to check if we need to refetch
+    const collectionDatesStr = selectedOption.collectionDates.map(d => format(d, 'yyyy-MM-dd')).join(',');
+    const fetchKey = `${collectionDatesStr}-${activeSede.id}`;
+    
+    // Skip if we already fetched this data
+    if (fetchKey === lastFetchKey.current) return;
+    lastFetchKey.current = fetchKey;
 
     const loadPreview = async () => {
       setPreviewData({ count: 0, loading: true });
       
-      const dates = selectedOption.collectionDates.map(d => format(d, 'yyyy-MM-dd'));
-      const tasks = await fetchTasksForDates(dates, activeSede.id);
-      
-      setPreviewData({ count: tasks.length, loading: false });
+      try {
+        const dates = collectionDatesStr.split(',');
+        const tasks = await fetchTasksForDates(dates, activeSede.id);
+        setPreviewData({ count: tasks.length, loading: false });
+      } catch (error) {
+        console.error('Error loading preview:', error);
+        setPreviewData({ count: 0, loading: false });
+      }
     };
 
     loadPreview();
-  }, [selectedOption, activeSede?.id]);
+  }, [selectedDayIndex, weekOffset, activeSede?.id, open, deliveryOptions.length]);
 
   // Week options
   const weekOptions = useMemo(() => {
