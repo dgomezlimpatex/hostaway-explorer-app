@@ -38,6 +38,7 @@ import { LaundryShareLinkModal } from '@/components/laundry-share/LaundryShareLi
 import { LaundryShareEditModal } from '@/components/laundry-share/LaundryShareEditModal';
 import { LaundryScheduledLinkModal } from '@/components/laundry-share/LaundryScheduledLinkModal';
 import { LaundryScheduleConfigModal } from '@/components/laundry-share/LaundryScheduleConfigModal';
+import { QuickDayLinksWidget } from '@/components/laundry-share/QuickDayLinksWidget';
 import { 
   copyShareLinkToClipboard, 
   getShareLinkUrl, 
@@ -331,6 +332,7 @@ const LaundryShareManagement = () => {
   const { shareLinks, isLoading, refetch, deactivateShareLink } = useLaundryShareLinks();
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [scheduledModalOpen, setScheduledModalOpen] = useState(false);
+  const [scheduledModalPreselectedDate, setScheduledModalPreselectedDate] = useState<Date | undefined>(undefined);
   const [configModalOpen, setConfigModalOpen] = useState(false);
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -437,6 +439,14 @@ const LaundryShareManagement = () => {
 
           {/* Scheduled delivery tab */}
           <TabsContent value="scheduled" className="space-y-4">
+            {/* Quick access widget for today/tomorrow */}
+            <QuickDayLinksWidget 
+              onOpenScheduledModal={(preselectedDate) => {
+                setScheduledModalPreselectedDate(preselectedDate);
+                setScheduledModalOpen(true);
+              }}
+            />
+            
             <Card className="bg-gradient-to-br from-primary/5 to-transparent border-primary/20">
               <CardContent className="p-6">
                 <div className="flex items-center gap-4">
@@ -449,7 +459,10 @@ const LaundryShareManagement = () => {
                       Genera enlaces con secciones separadas de recogida y entrega, agrupados por edificio
                     </p>
                   </div>
-                  <Button onClick={() => setScheduledModalOpen(true)} size="lg">
+                  <Button onClick={() => {
+                    setScheduledModalPreselectedDate(undefined);
+                    setScheduledModalOpen(true);
+                  }} size="lg">
                     <Plus className="h-4 w-4 mr-2" />
                     Generar Enlace
                   </Button>
@@ -675,7 +688,11 @@ const LaundryShareManagement = () => {
 
       <LaundryScheduledLinkModal
         open={scheduledModalOpen}
-        onOpenChange={setScheduledModalOpen}
+        onOpenChange={(open) => {
+          setScheduledModalOpen(open);
+          if (!open) setScheduledModalPreselectedDate(undefined);
+        }}
+        preselectedDate={scheduledModalPreselectedDate}
       />
 
       <LaundryScheduleConfigModal

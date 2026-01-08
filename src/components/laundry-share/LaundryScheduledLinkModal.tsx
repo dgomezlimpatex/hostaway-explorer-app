@@ -18,6 +18,7 @@ import { es } from 'date-fns/locale';
 interface LaundryScheduledLinkModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  preselectedDate?: Date;
 }
 
 type ExpirationOption = 'day' | 'week' | 'month' | 'permanent';
@@ -25,6 +26,7 @@ type ExpirationOption = 'day' | 'week' | 'month' | 'permanent';
 export const LaundryScheduledLinkModal = ({
   open,
   onOpenChange,
+  preselectedDate,
 }: LaundryScheduledLinkModalProps) => {
   const { toast } = useToast();
   const { activeSede } = useSede();
@@ -42,17 +44,31 @@ export const LaundryScheduledLinkModal = ({
   // Track last fetched key to prevent duplicate calls
   const lastFetchKey = useRef<string>('');
 
-  // Reset state when modal opens
+  // Reset state when modal opens and handle preselected date
   useEffect(() => {
     if (open) {
       setGeneratedLink(null);
       setCopied(false);
-      setSelectedDayIndex(0);
-      setWeekOffset(0);
       setPreviewData({ count: 0, loading: false });
       lastFetchKey.current = '';
+      
+      // If we have a preselected date, find the matching delivery option
+      if (preselectedDate && deliveryOptions.length > 0) {
+        const targetDateStr = format(preselectedDate, 'yyyy-MM-dd');
+        const matchingIndex = deliveryOptions.findIndex(opt => 
+          format(opt.deliveryDate, 'yyyy-MM-dd') === targetDateStr
+        );
+        if (matchingIndex >= 0) {
+          setSelectedDayIndex(matchingIndex);
+        } else {
+          setSelectedDayIndex(0);
+        }
+      } else {
+        setSelectedDayIndex(0);
+        setWeekOffset(0);
+      }
     }
-  }, [open]);
+  }, [open, preselectedDate, deliveryOptions]);
 
   // Get selected delivery option
   const selectedOption = deliveryOptions[selectedDayIndex];
