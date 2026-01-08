@@ -28,12 +28,16 @@ import {
   Sparkles,
   ChevronDown,
   ChevronUp,
-  Eye
+  Eye,
+  Settings,
+  CalendarDays
 } from 'lucide-react';
 import { useLaundryShareLinks, LaundryShareLink } from '@/hooks/useLaundryShareLinks';
 import { useLaundryTracking } from '@/hooks/useLaundryTracking';
 import { LaundryShareLinkModal } from '@/components/laundry-share/LaundryShareLinkModal';
 import { LaundryShareEditModal } from '@/components/laundry-share/LaundryShareEditModal';
+import { LaundryScheduledLinkModal } from '@/components/laundry-share/LaundryScheduledLinkModal';
+import { LaundryScheduleConfigModal } from '@/components/laundry-share/LaundryScheduleConfigModal';
 import { 
   copyShareLinkToClipboard, 
   getShareLinkUrl, 
@@ -63,6 +67,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from '@/components/ui/collapsible';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 // Component to show properties for a share link
 const ShareLinkProperties = ({ 
@@ -325,11 +330,14 @@ const LaundryShareManagement = () => {
   const { activeSede } = useSede();
   const { shareLinks, isLoading, refetch, deactivateShareLink } = useLaundryShareLinks();
   const [createModalOpen, setCreateModalOpen] = useState(false);
+  const [scheduledModalOpen, setScheduledModalOpen] = useState(false);
+  const [configModalOpen, setConfigModalOpen] = useState(false);
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedLink, setSelectedLink] = useState<LaundryShareLink | null>(null);
   const [showExpired, setShowExpired] = useState(false);
   const [allowDateEdit, setAllowDateEdit] = useState(false);
+  const [activeTab, setActiveTab] = useState('scheduled');
   
   const [dateStart, setDateStart] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [dateEnd, setDateEnd] = useState(format(addDays(new Date(), 7), 'yyyy-MM-dd'));
@@ -401,187 +409,235 @@ const LaundryShareManagement = () => {
               {activeSede?.nombre || 'Todas las sedes'}
             </p>
           </div>
-          <Button onClick={() => setCreateModalOpen(true)} className="shrink-0">
-            <Plus className="h-4 w-4 mr-2" />
-            <span className="hidden sm:inline">Nuevo</span>
+          <Button 
+            variant="outline" 
+            size="icon"
+            onClick={() => setConfigModalOpen(true)}
+            className="shrink-0"
+          >
+            <Settings className="h-4 w-4" />
           </Button>
         </div>
 
-        {/* Quick Actions */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-          <button
-            onClick={handleWeeklyPlannerClick}
-            className="flex flex-col items-center gap-2 p-4 rounded-xl border-2 border-dashed hover:border-primary/50 hover:bg-primary/5 transition-all group"
-          >
-            <div className="p-3 rounded-full bg-primary/10 group-hover:bg-primary/20 transition-colors">
-              <CalendarRange className="h-5 w-5 text-primary" />
-            </div>
-            <span className="text-sm font-medium">Semana Actual</span>
-          </button>
-          
-          <button
-            onClick={() => {
-              setDateStart(format(new Date(), 'yyyy-MM-dd'));
-              setDateEnd(format(new Date(), 'yyyy-MM-dd'));
-              setAllowDateEdit(false);
-              setCreateModalOpen(true);
-            }}
-            className="flex flex-col items-center gap-2 p-4 rounded-xl border-2 border-dashed hover:border-primary/50 hover:bg-primary/5 transition-all group"
-          >
-            <div className="p-3 rounded-full bg-primary/10 group-hover:bg-primary/20 transition-colors">
-              <Calendar className="h-5 w-5 text-primary" />
-            </div>
-            <span className="text-sm font-medium">Solo Hoy</span>
-          </button>
-          
-          <button
-            onClick={() => {
-              setDateStart(format(addDays(new Date(), 1), 'yyyy-MM-dd'));
-              setDateEnd(format(addDays(new Date(), 1), 'yyyy-MM-dd'));
-              setAllowDateEdit(false);
-              setCreateModalOpen(true);
-            }}
-            className="flex flex-col items-center gap-2 p-4 rounded-xl border-2 border-dashed hover:border-primary/50 hover:bg-primary/5 transition-all group"
-          >
-            <div className="p-3 rounded-full bg-primary/10 group-hover:bg-primary/20 transition-colors">
-              <Package className="h-5 w-5 text-primary" />
-            </div>
-            <span className="text-sm font-medium">Mañana</span>
-          </button>
-          
-          <button
-            onClick={() => {
-              setAllowDateEdit(true);
-              setCreateModalOpen(true);
-            }}
-            className="flex flex-col items-center gap-2 p-4 rounded-xl border-2 border-dashed hover:border-primary/50 hover:bg-primary/5 transition-all group"
-          >
-            <div className="p-3 rounded-full bg-primary/10 group-hover:bg-primary/20 transition-colors">
-              <Sparkles className="h-5 w-5 text-primary" />
-            </div>
-            <span className="text-sm font-medium">Personalizado</span>
-          </button>
-        </div>
+        {/* Tabs for scheduled vs legacy */}
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="scheduled" className="flex items-center gap-2">
+              <CalendarDays className="h-4 w-4" />
+              Reparto Programado
+            </TabsTrigger>
+            <TabsTrigger value="legacy" className="flex items-center gap-2">
+              <LinkIcon className="h-4 w-4" />
+              Enlaces Clásicos
+            </TabsTrigger>
+          </TabsList>
 
-        {/* Stats Row */}
-        <div className="grid grid-cols-3 gap-3">
-          <Card className="bg-gradient-to-br from-primary/5 to-transparent">
-            <CardContent className="p-4 flex items-center gap-3">
-              <div className="p-2.5 rounded-lg bg-primary/10">
-                <LinkIcon className="h-5 w-5 text-primary" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold">{activeLinks.length}</p>
-                <p className="text-xs text-muted-foreground">Activos</p>
-              </div>
-            </CardContent>
-          </Card>
-          
-          <Card className="bg-gradient-to-br from-emerald-500/5 to-transparent">
-            <CardContent className="p-4 flex items-center gap-3">
-              <div className="p-2.5 rounded-lg bg-emerald-500/10">
-                <Package className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold">{totalTasks}</p>
-                <p className="text-xs text-muted-foreground">Tareas</p>
-              </div>
-            </CardContent>
-          </Card>
-          
-          <Card className="bg-gradient-to-br from-muted to-transparent">
-            <CardContent className="p-4 flex items-center gap-3">
-              <div className="p-2.5 rounded-lg bg-muted">
-                <Clock className="h-5 w-5 text-muted-foreground" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold">{expiredLinks.length}</p>
-                <p className="text-xs text-muted-foreground">Expirados</p>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Active Links */}
-        <div className="space-y-3">
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold flex items-center gap-2">
-              <Share2 className="h-5 w-5 text-primary" />
-              Enlaces Activos
-            </h2>
-            <Button variant="ghost" size="sm" onClick={() => refetch()}>
-              <RefreshCw className="h-4 w-4" />
-            </Button>
-          </div>
-
-          {isLoading ? (
-            <div className="flex items-center justify-center py-12">
-              <RefreshCw className="h-6 w-6 animate-spin text-muted-foreground" />
-            </div>
-          ) : activeLinks.length > 0 ? (
-            <div className="grid gap-3 md:grid-cols-2">
-              {activeLinks.map((link) => (
-                <LinkCard
-                  key={link.id}
-                  link={link}
-                  onEdit={() => handleEditClick(link)}
-                  onCopy={() => handleCopyLink(link.token)}
-                  onOpen={() => openExternalLink(link.token)}
-                  onDelete={() => handleDeleteClick(link)}
-                />
-              ))}
-            </div>
-          ) : (
-            <Card className="border-dashed">
-              <CardContent className="py-12 flex flex-col items-center text-center">
-                <div className="p-4 rounded-full bg-muted mb-4">
-                  <Share2 className="h-8 w-8 text-muted-foreground/50" />
-                </div>
-                <h3 className="font-semibold mb-1">Sin enlaces activos</h3>
-                <p className="text-sm text-muted-foreground mb-4 max-w-xs">
-                  Crea un enlace para compartir con los repartidores
-                </p>
-                <Button onClick={() => setCreateModalOpen(true)} size="sm">
-                  <Plus className="h-4 w-4 mr-2" />
-                  Crear enlace
-                </Button>
-              </CardContent>
-            </Card>
-          )}
-        </div>
-
-        {/* Expired Links */}
-        {expiredLinks.length > 0 && (
-          <Collapsible open={showExpired} onOpenChange={setShowExpired}>
-            <CollapsibleTrigger asChild>
-              <button className="flex items-center gap-2 w-full py-2 text-sm text-muted-foreground hover:text-foreground transition-colors">
-                {showExpired ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                <span>Enlaces expirados ({expiredLinks.length})</span>
-              </button>
-            </CollapsibleTrigger>
-            <CollapsibleContent className="space-y-2 pt-2">
-              {expiredLinks.map((link) => (
-                <div 
-                  key={link.id} 
-                  className="flex items-center justify-between p-3 rounded-lg bg-muted/50 opacity-60"
-                >
-                  <div className="flex items-center gap-2">
-                    <Calendar className="h-4 w-4 text-muted-foreground" />
-                    <span className="text-sm">{formatDateRange(link.dateStart, link.dateEnd)}</span>
+          {/* Scheduled delivery tab */}
+          <TabsContent value="scheduled" className="space-y-4">
+            <Card className="bg-gradient-to-br from-primary/5 to-transparent border-primary/20">
+              <CardContent className="p-6">
+                <div className="flex items-center gap-4">
+                  <div className="p-3 rounded-xl bg-primary/10">
+                    <Truck className="h-8 w-8 text-primary" />
                   </div>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8 text-destructive"
-                    onClick={() => handleDeleteClick(link)}
-                  >
-                    <Trash2 className="h-4 w-4" />
+                  <div className="flex-1">
+                    <h3 className="font-semibold text-lg">Nuevo Sistema de Reparto</h3>
+                    <p className="text-sm text-muted-foreground">
+                      Genera enlaces con secciones separadas de recogida y entrega, agrupados por edificio
+                    </p>
+                  </div>
+                  <Button onClick={() => setScheduledModalOpen(true)} size="lg">
+                    <Plus className="h-4 w-4 mr-2" />
+                    Generar Enlace
                   </Button>
                 </div>
-              ))}
-            </CollapsibleContent>
-          </Collapsible>
-        )}
+              </CardContent>
+            </Card>
+            
+            <p className="text-sm text-muted-foreground text-center">
+              Los enlaces de reparto programado aparecerán aquí una vez creados
+            </p>
+          </TabsContent>
+
+          {/* Legacy links tab */}
+          <TabsContent value="legacy" className="space-y-4">
+            {/* Quick Actions */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+              <button
+                onClick={handleWeeklyPlannerClick}
+                className="flex flex-col items-center gap-2 p-4 rounded-xl border-2 border-dashed hover:border-primary/50 hover:bg-primary/5 transition-all group"
+              >
+                <div className="p-3 rounded-full bg-primary/10 group-hover:bg-primary/20 transition-colors">
+                  <CalendarRange className="h-5 w-5 text-primary" />
+                </div>
+                <span className="text-sm font-medium">Semana Actual</span>
+              </button>
+              
+              <button
+                onClick={() => {
+                  setDateStart(format(new Date(), 'yyyy-MM-dd'));
+                  setDateEnd(format(new Date(), 'yyyy-MM-dd'));
+                  setAllowDateEdit(false);
+                  setCreateModalOpen(true);
+                }}
+                className="flex flex-col items-center gap-2 p-4 rounded-xl border-2 border-dashed hover:border-primary/50 hover:bg-primary/5 transition-all group"
+              >
+                <div className="p-3 rounded-full bg-primary/10 group-hover:bg-primary/20 transition-colors">
+                  <Calendar className="h-5 w-5 text-primary" />
+                </div>
+                <span className="text-sm font-medium">Solo Hoy</span>
+              </button>
+              
+              <button
+                onClick={() => {
+                  setDateStart(format(addDays(new Date(), 1), 'yyyy-MM-dd'));
+                  setDateEnd(format(addDays(new Date(), 1), 'yyyy-MM-dd'));
+                  setAllowDateEdit(false);
+                  setCreateModalOpen(true);
+                }}
+                className="flex flex-col items-center gap-2 p-4 rounded-xl border-2 border-dashed hover:border-primary/50 hover:bg-primary/5 transition-all group"
+              >
+                <div className="p-3 rounded-full bg-primary/10 group-hover:bg-primary/20 transition-colors">
+                  <Package className="h-5 w-5 text-primary" />
+                </div>
+                <span className="text-sm font-medium">Mañana</span>
+              </button>
+              
+              <button
+                onClick={() => {
+                  setAllowDateEdit(true);
+                  setCreateModalOpen(true);
+                }}
+                className="flex flex-col items-center gap-2 p-4 rounded-xl border-2 border-dashed hover:border-primary/50 hover:bg-primary/5 transition-all group"
+              >
+                <div className="p-3 rounded-full bg-primary/10 group-hover:bg-primary/20 transition-colors">
+                  <Sparkles className="h-5 w-5 text-primary" />
+                </div>
+                <span className="text-sm font-medium">Personalizado</span>
+              </button>
+            </div>
+
+            {/* Stats Row */}
+            <div className="grid grid-cols-3 gap-3">
+              <Card className="bg-gradient-to-br from-primary/5 to-transparent">
+                <CardContent className="p-4 flex items-center gap-3">
+                  <div className="p-2.5 rounded-lg bg-primary/10">
+                    <LinkIcon className="h-5 w-5 text-primary" />
+                  </div>
+                  <div>
+                    <p className="text-2xl font-bold">{activeLinks.length}</p>
+                    <p className="text-xs text-muted-foreground">Activos</p>
+                  </div>
+                </CardContent>
+              </Card>
+              
+              <Card className="bg-gradient-to-br from-emerald-500/5 to-transparent">
+                <CardContent className="p-4 flex items-center gap-3">
+                  <div className="p-2.5 rounded-lg bg-emerald-500/10">
+                    <Package className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+                  </div>
+                  <div>
+                    <p className="text-2xl font-bold">{totalTasks}</p>
+                    <p className="text-xs text-muted-foreground">Tareas</p>
+                  </div>
+                </CardContent>
+              </Card>
+              
+              <Card className="bg-gradient-to-br from-muted to-transparent">
+                <CardContent className="p-4 flex items-center gap-3">
+                  <div className="p-2.5 rounded-lg bg-muted">
+                    <Clock className="h-5 w-5 text-muted-foreground" />
+                  </div>
+                  <div>
+                    <p className="text-2xl font-bold">{expiredLinks.length}</p>
+                    <p className="text-xs text-muted-foreground">Expirados</p>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Active Links */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <h2 className="text-lg font-semibold flex items-center gap-2">
+                  <Share2 className="h-5 w-5 text-primary" />
+                  Enlaces Activos
+                </h2>
+                <Button variant="ghost" size="sm" onClick={() => refetch()}>
+                  <RefreshCw className="h-4 w-4" />
+                </Button>
+              </div>
+
+              {isLoading ? (
+                <div className="flex items-center justify-center py-12">
+                  <RefreshCw className="h-6 w-6 animate-spin text-muted-foreground" />
+                </div>
+              ) : activeLinks.length > 0 ? (
+                <div className="grid gap-3 md:grid-cols-2">
+                  {activeLinks.map((link) => (
+                    <LinkCard
+                      key={link.id}
+                      link={link}
+                      onEdit={() => handleEditClick(link)}
+                      onCopy={() => handleCopyLink(link.token)}
+                      onOpen={() => openExternalLink(link.token)}
+                      onDelete={() => handleDeleteClick(link)}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <Card className="border-dashed">
+                  <CardContent className="py-12 flex flex-col items-center text-center">
+                    <div className="p-4 rounded-full bg-muted mb-4">
+                      <Share2 className="h-8 w-8 text-muted-foreground/50" />
+                    </div>
+                    <h3 className="font-semibold mb-1">Sin enlaces activos</h3>
+                    <p className="text-sm text-muted-foreground mb-4 max-w-xs">
+                      Crea un enlace para compartir con los repartidores
+                    </p>
+                    <Button onClick={() => setCreateModalOpen(true)} size="sm">
+                      <Plus className="h-4 w-4 mr-2" />
+                      Crear enlace
+                    </Button>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+
+            {/* Expired Links */}
+            {expiredLinks.length > 0 && (
+              <Collapsible open={showExpired} onOpenChange={setShowExpired}>
+                <CollapsibleTrigger asChild>
+                  <button className="flex items-center gap-2 w-full py-2 text-sm text-muted-foreground hover:text-foreground transition-colors">
+                    {showExpired ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                    <span>Enlaces expirados ({expiredLinks.length})</span>
+                  </button>
+                </CollapsibleTrigger>
+                <CollapsibleContent className="space-y-2 pt-2">
+                  {expiredLinks.map((link) => (
+                    <div 
+                      key={link.id} 
+                      className="flex items-center justify-between p-3 rounded-lg bg-muted/50 opacity-60"
+                    >
+                      <div className="flex items-center gap-2">
+                        <Calendar className="h-4 w-4 text-muted-foreground" />
+                        <span className="text-sm">{formatDateRange(link.dateStart, link.dateEnd)}</span>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-destructive"
+                        onClick={() => handleDeleteClick(link)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))}
+                </CollapsibleContent>
+              </Collapsible>
+            )}
+          </TabsContent>
+        </Tabs>
       </div>
 
       {/* Modals */}
@@ -592,6 +648,16 @@ const LaundryShareManagement = () => {
         dateEnd={dateEnd}
         sedeIds={activeSede ? [activeSede.id] : undefined}
         allowDateEdit={allowDateEdit}
+      />
+
+      <LaundryScheduledLinkModal
+        open={scheduledModalOpen}
+        onOpenChange={setScheduledModalOpen}
+      />
+
+      <LaundryScheduleConfigModal
+        open={configModalOpen}
+        onOpenChange={setConfigModalOpen}
       />
 
       <LaundryShareEditModal

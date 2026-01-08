@@ -8,8 +8,8 @@ export const getShareLinkUrl = (token: string, scheduled: boolean = false): stri
 };
 
 // Copy share link to clipboard
-export const copyShareLinkToClipboard = async (token: string): Promise<boolean> => {
-  const url = getShareLinkUrl(token);
+export const copyShareLinkToClipboard = async (token: string, scheduled: boolean = false): Promise<boolean> => {
+  const url = getShareLinkUrl(token, scheduled);
   try {
     await navigator.clipboard.writeText(url);
     return true;
