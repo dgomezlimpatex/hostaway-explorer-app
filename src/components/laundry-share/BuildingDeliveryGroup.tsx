@@ -95,17 +95,41 @@ export const BuildingDeliveryGroup = ({
               {building.apartments.map(apt => {
                 const tracking = trackingMap.get(apt.taskId);
                 const isDelivered = tracking?.deliveryStatus === 'delivered';
-                const { textiles } = apt;
+                const { textiles, amenities } = apt;
 
-                // Build textile summary
-                const textileItems: string[] = [];
-                if (textiles.sheets > 0) textileItems.push(`${textiles.sheets} sáb`);
-                if (textiles.sheetsSmall > 0) textileItems.push(`${textiles.sheetsSmall} sáb.peq`);
-                if (textiles.sheetsSuite > 0) textileItems.push(`${textiles.sheetsSuite} sáb.suite`);
-                if (textiles.pillowCases > 0) textileItems.push(`${textiles.pillowCases} fund`);
-                if (textiles.towelsLarge > 0) textileItems.push(`${textiles.towelsLarge} toal.G`);
-                if (textiles.towelsSmall > 0) textileItems.push(`${textiles.towelsSmall} toal.P`);
-                if (textiles.bathMats > 0) textileItems.push(`${textiles.bathMats} alf`);
+                // Build items list with full names
+                const allItems: string[] = [];
+                
+                // Textiles
+                if (textiles.sheets > 0) allItems.push(`${textiles.sheets} sábanas`);
+                if (textiles.sheetsSmall > 0) allItems.push(`${textiles.sheetsSmall} sábanas pequeñas`);
+                if (textiles.sheetsSuite > 0) allItems.push(`${textiles.sheetsSuite} sábanas suite`);
+                if (textiles.pillowCases > 0) allItems.push(`${textiles.pillowCases} fundas almohada`);
+                if (textiles.towelsLarge > 0) allItems.push(`${textiles.towelsLarge} toallas grandes`);
+                if (textiles.towelsSmall > 0) allItems.push(`${textiles.towelsSmall} toallas pequeñas`);
+                if (textiles.bathMats > 0) allItems.push(`${textiles.bathMats} alfombrines`);
+                
+                // Amenities
+                if (amenities.toiletPaper > 0) allItems.push(`${amenities.toiletPaper} papel higiénico`);
+                if (amenities.kitchenPaper > 0) allItems.push(`${amenities.kitchenPaper} papel cocina`);
+                if (amenities.shampoo > 0) allItems.push(`${amenities.shampoo} champú`);
+                if (amenities.conditioner > 0) allItems.push(`${amenities.conditioner} acondicionador`);
+                if (amenities.showerGel > 0) allItems.push(`${amenities.showerGel} gel ducha`);
+                if (amenities.liquidSoap > 0) allItems.push(`${amenities.liquidSoap} jabón líquido`);
+                if (amenities.bathroomAmenities > 0) allItems.push(`${amenities.bathroomAmenities} amenities baño`);
+                if (amenities.kitchenAmenities > 0) allItems.push(`${amenities.kitchenAmenities} amenities cocina`);
+                if (amenities.bathroomAirFreshener > 0) allItems.push(`${amenities.bathroomAirFreshener} ambientador baño`);
+                if (amenities.trashBags > 0) allItems.push(`${amenities.trashBags} bolsas basura`);
+                if (amenities.dishwasherDetergent > 0) allItems.push(`${amenities.dishwasherDetergent} detergente lavavajillas`);
+                if (amenities.kitchenCloths > 0) allItems.push(`${amenities.kitchenCloths} bayetas cocina`);
+                if (amenities.sponges > 0) allItems.push(`${amenities.sponges} estropajos`);
+                if (amenities.glassCleaner > 0) allItems.push(`${amenities.glassCleaner} limpiacristales`);
+                if (amenities.bathroomDisinfectant > 0) allItems.push(`${amenities.bathroomDisinfectant} desinfectante baño`);
+                if (amenities.oil > 0) allItems.push(`${amenities.oil} aceite`);
+                if (amenities.vinegar > 0) allItems.push(`${amenities.vinegar} vinagre`);
+                if (amenities.salt > 0) allItems.push(`${amenities.salt} sal`);
+                if (amenities.sugar > 0) allItems.push(`${amenities.sugar} azúcar`);
+                if (amenities.foodKit > 0) allItems.push(`${amenities.foodKit} kit alimentario`);
 
                 return (
                   <div
@@ -143,12 +167,12 @@ export const BuildingDeliveryGroup = ({
                             </span>
                           )}
                         </div>
-                        {textileItems.length > 0 && (
+                        {allItems.length > 0 && (
                           <p className={cn(
                             'text-sm text-muted-foreground mt-1',
                             isDelivered && 'line-through'
                           )}>
-                            {textileItems.join(' · ')}
+                            {allItems.join(' · ')}
                           </p>
                         )}
                       </div>

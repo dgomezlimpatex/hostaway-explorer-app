@@ -27,6 +27,28 @@ export interface LaundryApartment {
     towelsSmall: number;
     bathMats: number;
   };
+  amenities: {
+    toiletPaper: number;
+    kitchenPaper: number;
+    shampoo: number;
+    conditioner: number;
+    showerGel: number;
+    liquidSoap: number;
+    bathroomAmenities: number;
+    kitchenAmenities: number;
+    bathroomAirFreshener: number;
+    trashBags: number;
+    dishwasherDetergent: number;
+    kitchenCloths: number;
+    sponges: number;
+    glassCleaner: number;
+    bathroomDisinfectant: number;
+    oil: number;
+    vinegar: number;
+    salt: number;
+    sugar: number;
+    foodKit: number;
+  };
   collectionStatus: 'pending' | 'collected';
   deliveryStatus: 'pending' | 'prepared' | 'delivered';
 }
@@ -122,6 +144,26 @@ export const fetchTasksForDates = async (
         numero_toallas_grandes,
         numero_toallas_pequenas,
         numero_alfombrines,
+        papel_higienico,
+        papel_cocina,
+        champu,
+        acondicionador,
+        gel_ducha,
+        jabon_liquido,
+        amenities_bano,
+        amenities_cocina,
+        ambientador_bano,
+        bolsas_basura,
+        detergente_lavavajillas,
+        bayetas_cocina,
+        estropajos,
+        limpiacristales,
+        desinfectante_bano,
+        aceite,
+        vinagre,
+        sal,
+        azucar,
+        kit_alimentario,
         cliente_id,
         clients:cliente_id (
           id,
@@ -182,6 +224,28 @@ export const fetchTasksForDates = async (
         towelsLarge: prop?.numero_toallas_grandes || 0,
         towelsSmall: prop?.numero_toallas_pequenas || 0,
         bathMats: prop?.numero_alfombrines || 0,
+      },
+      amenities: {
+        toiletPaper: prop?.papel_higienico || 0,
+        kitchenPaper: prop?.papel_cocina || 0,
+        shampoo: prop?.champu || 0,
+        conditioner: prop?.acondicionador || 0,
+        showerGel: prop?.gel_ducha || 0,
+        liquidSoap: prop?.jabon_liquido || 0,
+        bathroomAmenities: prop?.amenities_bano || 0,
+        kitchenAmenities: prop?.amenities_cocina || 0,
+        bathroomAirFreshener: prop?.ambientador_bano || 0,
+        trashBags: prop?.bolsas_basura || 0,
+        dishwasherDetergent: prop?.detergente_lavavajillas || 0,
+        kitchenCloths: prop?.bayetas_cocina || 0,
+        sponges: prop?.estropajos || 0,
+        glassCleaner: prop?.limpiacristales || 0,
+        bathroomDisinfectant: prop?.desinfectante_bano || 0,
+        oil: prop?.aceite || 0,
+        vinegar: prop?.vinagre || 0,
+        salt: prop?.sal || 0,
+        sugar: prop?.azucar || 0,
+        foodKit: prop?.kit_alimentario || 0,
       },
       collectionStatus: 'pending',
       deliveryStatus: 'pending',
