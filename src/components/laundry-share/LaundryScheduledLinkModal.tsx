@@ -132,20 +132,11 @@ export const LaundryScheduledLinkModal = ({
     
     setIsGenerating(true);
     try {
-      // Collection dates (dirty laundry to pick up)
-      const collectionDates = selectedOption.collectionDates.map(d => format(d, 'yyyy-MM-dd'));
-      const collectionTasks = await fetchTasksForDates(collectionDates, activeSede.id);
-      const collectionTaskIds = collectionTasks.map(t => t.taskId);
+      const dates = selectedOption.collectionDates.map(d => format(d, 'yyyy-MM-dd'));
+      const tasks = await fetchTasksForDates(dates, activeSede.id);
+      const taskIds = tasks.map(t => t.taskId);
       
-      // Delivery dates (clean laundry to deliver for future services)
-      const deliveryDates = selectedOption.deliveryDates.map(d => format(d, 'yyyy-MM-dd'));
-      const deliveryTasks = await fetchTasksForDates(deliveryDates, activeSede.id);
-      const deliveryTaskIds = deliveryTasks.map(t => t.taskId);
-      
-      // Combine all unique task IDs
-      const allTaskIds = [...new Set([...collectionTaskIds, ...deliveryTaskIds])];
-      
-      if (allTaskIds.length === 0) {
+      if (taskIds.length === 0) {
         toast({
           title: 'Sin tareas',
           description: 'No hay tareas de lavandería para las fechas seleccionadas',
@@ -156,27 +147,21 @@ export const LaundryScheduledLinkModal = ({
       }
 
       const expiresAt = calculateExpirationDate(expiration);
-      
-      // Date range covers both collection and delivery dates
-      const allDates = [...collectionDates, ...deliveryDates].sort();
-      const dateStart = allDates[0];
-      const dateEnd = allDates[allDates.length - 1];
+      const dateStart = format(selectedOption.collectionDates[0], 'yyyy-MM-dd');
+      const dateEnd = format(selectedOption.collectionDates[selectedOption.collectionDates.length - 1], 'yyyy-MM-dd');
       
       const result = await createShareLink.mutateAsync({
         dateStart,
         dateEnd,
         expiresAt,
         isPermanent: expiration === 'permanent',
-        taskIds: allTaskIds,
-        allTaskIds: allTaskIds,
+        taskIds,
+        allTaskIds: taskIds,
         sedeId: activeSede.id,
         linkType: 'scheduled',
         filters: { 
           deliveryDay: selectedOption.schedule.dayOfWeek,
-          collectionDates: collectionDates,
-          deliveryDates: deliveryDates,
-          collectionTaskIds: collectionTaskIds,
-          deliveryTaskIds: deliveryTaskIds,
+          collectionDates: dates,
         },
       });
 
@@ -285,9 +270,6 @@ export const LaundryScheduledLinkModal = ({
                           </Label>
                           <p className="text-sm text-muted-foreground">
                             {option.description}
-                          </p>
-                          <p className="text-sm text-primary">
-                            {option.deliveryDescription}
                           </p>
                         </div>
                       </div>

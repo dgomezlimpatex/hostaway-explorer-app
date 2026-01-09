@@ -10,7 +10,7 @@ export interface DeliverySchedule {
   sedeId: string | null;
   dayOfWeek: number; // 0=Sunday, 1=Monday...6=Saturday
   name: string;
-  collectionDays: number[]; // Days of week for collection (dirty laundry from these service days)
+  collectionDays: number[]; // Days of week for collection
   isActive: boolean;
   sortOrder: number;
 }
@@ -18,11 +18,9 @@ export interface DeliverySchedule {
 export interface DeliveryDayOption {
   schedule: DeliverySchedule;
   deliveryDate: Date;
-  collectionDates: Date[]; // Dates to COLLECT dirty laundry from (services that happened these days)
-  deliveryDates: Date[]; // Dates to DELIVER clean laundry for (services that will happen these days)
+  collectionDates: Date[];
   label: string;
   description: string;
-  deliveryDescription: string;
 }
 
 // Map database row to interface
@@ -151,15 +149,6 @@ export const useLaundryDeliverySchedule = () => {
 
 /**
  * Calculate delivery day options for the current/next week
- * 
- * Logic:
- * - collectionDates: Services that HAPPENED on these days -> we COLLECT dirty laundry from them
- * - deliveryDates: Services that WILL HAPPEN after the delivery day -> we DELIVER clean laundry for them
- * 
- * Example for Friday delivery:
- * - collectionDays configured as [3, 4] (Wed, Thu)
- * - We COLLECT dirty laundry from Wed+Thu services
- * - We DELIVER clean laundry FOR Sat+Sun services (the next delivery day's collection days)
  */
 export const useDeliveryDayOptions = (weekOffset: number = 0) => {
   const { schedules, isLoading } = useLaundryDeliverySchedule();
@@ -170,67 +159,51 @@ export const useDeliveryDayOptions = (weekOffset: number = 0) => {
     const today = new Date();
     const weekStart = startOfWeek(addDays(today, weekOffset * 7), { weekStartsOn: 1 }); // Monday start
 
-    // Sort schedules by day of week for finding "next" delivery day
-    const sortedSchedules = [...schedules].sort((a, b) => {
-      // Convert to Monday=0 based for sorting
-      const aDay = a.dayOfWeek === 0 ? 6 : a.dayOfWeek - 1;
-      const bDay = b.dayOfWeek === 0 ? 6 : b.dayOfWeek - 1;
-      return aDay - bDay;
-    });
-
-    sortedSchedules.forEach((schedule, idx) => {
+    schedules.forEach(schedule => {
       // Calculate the delivery date for this week
       let deliveryDate = addDays(weekStart, schedule.dayOfWeek === 0 ? 6 : schedule.dayOfWeek - 1);
       
-      // === COLLECTION DATES (dirty laundry from past services) ===
+      // Calculate collection dates based on collectionDays
       const collectionDates: Date[] = [];
       schedule.collectionDays.forEach(collectionDay => {
-        // Find the most recent occurrence of that day before or on delivery day
-        let daysBack = (schedule.dayOfWeek - collectionDay + 7) % 7;
-        if (daysBack === 0) daysBack = 7; // Same day means previous week
+        // Collection days are relative to the delivery day
+        // We need to find the most recent occurrence of that day before the delivery
+        let collectionDate = subDays(deliveryDate, 
+          (schedule.dayOfWeek - collectionDay + 7) % 7 || 7
+        );
         
-        const collectionDate = subDays(deliveryDate, daysBack);
+        // For same-week logic
+        if (getDay(collectionDate) !== collectionDay) {
+          collectionDate = subDays(deliveryDate, 
+            (schedule.dayOfWeek - collectionDay + 7) % 7
+          );
+        }
+        
+        // If collection day > delivery day, it was from previous week
+        if (collectionDay > schedule.dayOfWeek || 
+            (collectionDay === schedule.dayOfWeek)) {
+          collectionDate = subDays(collectionDate, 7);
+        }
+        
         collectionDates.push(collectionDate);
       });
+
+      // Sort collection dates
       collectionDates.sort((a, b) => a.getTime() - b.getTime());
 
-      // === DELIVERY DATES (clean laundry for future services) ===
-      // Find the next delivery day's collection days - those are the services we're delivering FOR
-      const nextScheduleIdx = (idx + 1) % sortedSchedules.length;
-      const nextSchedule = sortedSchedules[nextScheduleIdx];
-      
-      const deliveryDates: Date[] = [];
-      nextSchedule.collectionDays.forEach(nextCollectionDay => {
-        // These days happen AFTER current delivery day
-        let daysForward = (nextCollectionDay - schedule.dayOfWeek + 7) % 7;
-        if (daysForward === 0) daysForward = 7; // Same day means next week
-        
-        const deliveryForDate = addDays(deliveryDate, daysForward);
-        deliveryDates.push(deliveryForDate);
-      });
-      deliveryDates.sort((a, b) => a.getTime() - b.getTime());
-
-      // Build label and descriptions
+      // Build label and description
       const label = `${schedule.name} ${format(deliveryDate, 'd MMM', { locale: es })}`;
-      
       const collectionDayNames = schedule.collectionDays
         .map(d => DAY_NAMES[d])
         .join(' + ');
       const description = `Recoge servicios de: ${collectionDayNames}`;
-      
-      const deliveryDayNames = nextSchedule.collectionDays
-        .map(d => DAY_NAMES[d])
-        .join(' + ');
-      const deliveryDescription = `Entrega para: ${deliveryDayNames}`;
 
       options.push({
         schedule,
         deliveryDate,
         collectionDates,
-        deliveryDates,
         label,
         description,
-        deliveryDescription,
       });
     });
   }
