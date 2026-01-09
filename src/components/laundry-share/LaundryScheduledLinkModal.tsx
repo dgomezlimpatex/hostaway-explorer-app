@@ -43,31 +43,40 @@ export const LaundryScheduledLinkModal = ({
   
   // Track last fetched key to prevent duplicate calls
   const lastFetchKey = useRef<string>('');
+  // Track if we've initialized the selection for this modal opening
+  const hasInitialized = useRef(false);
 
-  // Reset state when modal opens and handle preselected date
+  // Reset state when modal opens
   useEffect(() => {
     if (open) {
       setGeneratedLink(null);
       setCopied(false);
       setPreviewData({ count: 0, loading: false });
       lastFetchKey.current = '';
+      hasInitialized.current = false;
       
-      // If we have a preselected date, find the matching delivery option
-      if (preselectedDate && deliveryOptions.length > 0) {
-        const targetDateStr = format(preselectedDate, 'yyyy-MM-dd');
-        const matchingIndex = deliveryOptions.findIndex(opt => 
-          format(opt.deliveryDate, 'yyyy-MM-dd') === targetDateStr
-        );
-        if (matchingIndex >= 0) {
-          setSelectedDayIndex(matchingIndex);
-        } else {
-          setSelectedDayIndex(0);
-        }
-      } else {
+      // Only reset selection if no preselected date
+      if (!preselectedDate) {
         setSelectedDayIndex(0);
         setWeekOffset(0);
       }
     }
+  }, [open, preselectedDate]);
+
+  // Handle preselected date matching - only once when options load
+  useEffect(() => {
+    if (!open || hasInitialized.current || deliveryOptions.length === 0) return;
+    
+    if (preselectedDate) {
+      const targetDateStr = format(preselectedDate, 'yyyy-MM-dd');
+      const matchingIndex = deliveryOptions.findIndex(opt => 
+        format(opt.deliveryDate, 'yyyy-MM-dd') === targetDateStr
+      );
+      if (matchingIndex >= 0) {
+        setSelectedDayIndex(matchingIndex);
+      }
+    }
+    hasInitialized.current = true;
   }, [open, preselectedDate, deliveryOptions]);
 
   // Get selected delivery option
