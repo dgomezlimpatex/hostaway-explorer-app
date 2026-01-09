@@ -55,11 +55,22 @@ const PublicLaundryScheduledView = () => {
     return map;
   }, [trackingData]);
 
-  // Fetch tasks for the share link
-  const { data: tasksData, isLoading: isLoadingTasks, refetch: refetchTasks } = useQuery({
-    queryKey: ['public-laundry-scheduled-tasks', shareLink?.id],
+  // Get collection and delivery task IDs from filters
+  const collectionTaskIds = useMemo(() => {
+    const filters = shareLink?.filters as any;
+    return filters?.collectionTaskIds || shareLink?.snapshotTaskIds || [];
+  }, [shareLink]);
+
+  const deliveryTaskIds = useMemo(() => {
+    const filters = shareLink?.filters as any;
+    return filters?.deliveryTaskIds || shareLink?.snapshotTaskIds || [];
+  }, [shareLink]);
+
+  // Fetch tasks for COLLECTION (dirty laundry to pick up)
+  const { data: collectionTasksData, isLoading: isLoadingCollectionTasks, refetch: refetchCollectionTasks } = useQuery({
+    queryKey: ['public-laundry-collection-tasks', shareLink?.id, collectionTaskIds],
     queryFn: async () => {
-      if (!shareLink) return [];
+      if (!shareLink || collectionTaskIds.length === 0) return [];
 
       const { data, error } = await supabase
         .from('tasks')
@@ -85,27 +96,67 @@ const PublicLaundryScheduledView = () => {
             numero_alfombrines
           )
         `)
-        .gte('date', shareLink.dateStart)
-        .lte('date', shareLink.dateEnd);
+        .in('id', collectionTaskIds);
 
       if (error) throw error;
       
-      return (data || [])
-        .filter(task => shareLink.snapshotTaskIds.includes(task.id))
-        .sort((a, b) => {
-          const codeA = (a.properties as any)?.codigo || a.property || '';
-          const codeB = (b.properties as any)?.codigo || b.property || '';
-          return codeA.localeCompare(codeB, 'es', { numeric: true });
-        });
+      return (data || []).sort((a, b) => {
+        const codeA = (a.properties as any)?.codigo || a.property || '';
+        const codeB = (b.properties as any)?.codigo || b.property || '';
+        return codeA.localeCompare(codeB, 'es', { numeric: true });
+      });
     },
-    enabled: !!shareLink,
+    enabled: !!shareLink && collectionTaskIds.length > 0,
   });
 
-  // Map to LaundryApartment format
-  const apartments: LaundryApartment[] = useMemo(() => {
-    if (!tasksData) return [];
+  // Fetch tasks for DELIVERY (clean laundry to deliver for future services)
+  const { data: deliveryTasksData, isLoading: isLoadingDeliveryTasks, refetch: refetchDeliveryTasks } = useQuery({
+    queryKey: ['public-laundry-delivery-tasks', shareLink?.id, deliveryTaskIds],
+    queryFn: async () => {
+      if (!shareLink || deliveryTaskIds.length === 0) return [];
 
-    return tasksData.map(task => {
+      const { data, error } = await supabase
+        .from('tasks')
+        .select(`
+          id,
+          property,
+          address,
+          date,
+          start_time,
+          end_time,
+          cleaner,
+          propiedad_id,
+          properties (
+            id,
+            codigo,
+            nombre,
+            numero_sabanas,
+            numero_sabanas_pequenas,
+            numero_sabanas_suite,
+            numero_fundas_almohada,
+            numero_toallas_grandes,
+            numero_toallas_pequenas,
+            numero_alfombrines
+          )
+        `)
+        .in('id', deliveryTaskIds);
+
+      if (error) throw error;
+      
+      return (data || []).sort((a, b) => {
+        const codeA = (a.properties as any)?.codigo || a.property || '';
+        const codeB = (b.properties as any)?.codigo || b.property || '';
+        return codeA.localeCompare(codeB, 'es', { numeric: true });
+      });
+    },
+    enabled: !!shareLink && deliveryTaskIds.length > 0,
+  });
+
+  // Map to LaundryApartment format - for Collection
+  const collectionApartments: LaundryApartment[] = useMemo(() => {
+    if (!collectionTasksData) return [];
+
+    return collectionTasksData.map(task => {
       const prop = task.properties as any;
       const tracking = trackingMap.get(task.id);
 
@@ -131,28 +182,68 @@ const PublicLaundryScheduledView = () => {
         deliveryStatus: (tracking?.deliveryStatus as 'pending' | 'prepared' | 'delivered') || 'pending',
       };
     });
-  }, [tasksData, trackingMap]);
+  }, [collectionTasksData, trackingMap]);
 
-  // Group by building
-  const buildingGroups = useMemo(() => 
-    groupApartmentsByBuilding(apartments), 
-    [apartments]
+  // Map to LaundryApartment format - for Delivery
+  const deliveryApartments: LaundryApartment[] = useMemo(() => {
+    if (!deliveryTasksData) return [];
+
+    return deliveryTasksData.map(task => {
+      const prop = task.properties as any;
+      const tracking = trackingMap.get(task.id);
+
+      return {
+        taskId: task.id,
+        propertyId: prop?.id || '',
+        propertyCode: prop?.codigo || task.property,
+        propertyName: prop?.nombre || task.property,
+        address: task.address,
+        date: task.date,
+        serviceTime: `${task.start_time} - ${task.end_time}`,
+        cleaner: task.cleaner || undefined,
+        textiles: {
+          sheets: prop?.numero_sabanas || 0,
+          sheetsSmall: prop?.numero_sabanas_pequenas || 0,
+          sheetsSuite: prop?.numero_sabanas_suite || 0,
+          pillowCases: prop?.numero_fundas_almohada || 0,
+          towelsLarge: prop?.numero_toallas_grandes || 0,
+          towelsSmall: prop?.numero_toallas_pequenas || 0,
+          bathMats: prop?.numero_alfombrines || 0,
+        },
+        collectionStatus: (tracking?.collectionStatus as 'pending' | 'collected') || 'pending',
+        deliveryStatus: (tracking?.deliveryStatus as 'pending' | 'prepared' | 'delivered') || 'pending',
+      };
+    });
+  }, [deliveryTasksData, trackingMap]);
+
+  // Group by building - separate for collection and delivery
+  const collectionBuildingGroups = useMemo(() => 
+    groupApartmentsByBuilding(collectionApartments), 
+    [collectionApartments]
   );
 
-  // Calculate stats
+  const deliveryBuildingGroups = useMemo(() => 
+    groupApartmentsByBuilding(deliveryApartments), 
+    [deliveryApartments]
+  );
+
+  // Calculate stats - separate for collection and delivery
   const stats = useMemo(() => {
-    const total = apartments.length;
-    const collected = apartments.filter(a => {
+    const collectionTotal = collectionApartments.length;
+    const deliveryTotal = deliveryApartments.length;
+    
+    const collected = collectionApartments.filter(a => {
       const t = trackingMap.get(a.taskId);
       return t?.collectionStatus === 'collected';
     }).length;
-    const delivered = apartments.filter(a => {
+    
+    const delivered = deliveryApartments.filter(a => {
       const t = trackingMap.get(a.taskId);
       return t?.deliveryStatus === 'delivered';
     }).length;
 
-    return { total, collected, delivered };
-  }, [apartments, trackingMap]);
+    return { collectionTotal, deliveryTotal, collected, delivered };
+  }, [collectionApartments, deliveryApartments, trackingMap]);
 
   // Update tracking mutation
   const updateTracking = useMutation({
@@ -252,12 +343,13 @@ const PublicLaundryScheduledView = () => {
   };
 
   const handleRefresh = () => {
-    refetchTasks();
+    refetchCollectionTasks();
+    refetchDeliveryTasks();
     refetchTracking();
   };
 
   // Loading state
-  if (isLoadingLink || isLoadingTasks) {
+  if (isLoadingLink || isLoadingCollectionTasks || isLoadingDeliveryTasks) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center space-y-4">
@@ -303,12 +395,12 @@ const PublicLaundryScheduledView = () => {
           {/* Stats */}
           <div className="flex gap-4 mt-3 text-sm">
             <div className="flex items-center gap-1">
-              <Building2 className="h-4 w-4 text-muted-foreground" />
-              <span>{buildingGroups.length} edificios</span>
+              <Package className="h-4 w-4 text-muted-foreground" />
+              <span>{stats.collectionTotal} para recoger</span>
             </div>
             <div className="flex items-center gap-1">
-              <Package className="h-4 w-4 text-muted-foreground" />
-              <span>{stats.total} apartamentos</span>
+              <Truck className="h-4 w-4 text-muted-foreground" />
+              <span>{stats.deliveryTotal} para entregar</span>
             </div>
           </div>
 
@@ -319,20 +411,20 @@ const PublicLaundryScheduledView = () => {
               <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
                 <div 
                   className="h-full bg-amber-500 transition-all duration-300"
-                  style={{ width: `${stats.total > 0 ? (stats.collected / stats.total) * 100 : 0}%` }}
+                  style={{ width: `${stats.collectionTotal > 0 ? (stats.collected / stats.collectionTotal) * 100 : 0}%` }}
                 />
               </div>
-              <span className="w-12 text-right">{stats.collected}/{stats.total}</span>
+              <span className="w-12 text-right">{stats.collected}/{stats.collectionTotal}</span>
             </div>
             <div className="flex items-center gap-2 text-xs">
               <span className="w-16 text-muted-foreground">Entrega</span>
               <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
                 <div 
                   className="h-full bg-green-500 transition-all duration-300"
-                  style={{ width: `${stats.total > 0 ? (stats.delivered / stats.total) * 100 : 0}%` }}
+                  style={{ width: `${stats.deliveryTotal > 0 ? (stats.delivered / stats.deliveryTotal) * 100 : 0}%` }}
                 />
               </div>
-              <span className="w-12 text-right">{stats.delivered}/{stats.total}</span>
+              <span className="w-12 text-right">{stats.delivered}/{stats.deliveryTotal}</span>
             </div>
           </div>
         </div>
@@ -345,11 +437,11 @@ const PublicLaundryScheduledView = () => {
             <TabsList className="w-full grid grid-cols-2 h-12">
               <TabsTrigger value="collect" className="gap-2">
                 <Package className="h-4 w-4" />
-                Recoger Sucia
+                Recoger Sucia ({stats.collectionTotal})
               </TabsTrigger>
               <TabsTrigger value="deliver" className="gap-2">
                 <Truck className="h-4 w-4" />
-                Entregar Limpia
+                Entregar Limpia ({stats.deliveryTotal})
               </TabsTrigger>
             </TabsList>
           </div>
@@ -358,14 +450,14 @@ const PublicLaundryScheduledView = () => {
         {/* Collection tab */}
         <TabsContent value="collect" className="mt-0">
           <main className="container max-w-2xl mx-auto px-4 py-4">
-            {buildingGroups.length === 0 ? (
+            {collectionBuildingGroups.length === 0 ? (
               <div className="text-center py-12 text-muted-foreground">
                 <Package className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                <p>No hay apartamentos para este reparto</p>
+                <p>No hay apartamentos para recoger ropa sucia</p>
               </div>
             ) : (
               <div className="space-y-3">
-                {buildingGroups.map(building => (
+                {collectionBuildingGroups.map(building => (
                   <BuildingCollectionGroup
                     key={building.buildingCode}
                     building={building}
@@ -383,14 +475,14 @@ const PublicLaundryScheduledView = () => {
         {/* Delivery tab */}
         <TabsContent value="deliver" className="mt-0">
           <main className="container max-w-2xl mx-auto px-4 py-4">
-            {buildingGroups.length === 0 ? (
+            {deliveryBuildingGroups.length === 0 ? (
               <div className="text-center py-12 text-muted-foreground">
                 <Truck className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                <p>No hay apartamentos para este reparto</p>
+                <p>No hay apartamentos para entregar ropa limpia</p>
               </div>
             ) : (
               <div className="space-y-3">
-                {buildingGroups.map(building => (
+                {deliveryBuildingGroups.map(building => (
                   <BuildingDeliveryGroup
                     key={building.buildingCode}
                     building={building}
