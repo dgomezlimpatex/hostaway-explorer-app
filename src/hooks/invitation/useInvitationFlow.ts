@@ -158,10 +158,18 @@ export const useInvitationFlow = () => {
       return;
     }
 
-    if (password.length < 6) {
+    // Validación completa de contraseña
+    const passwordErrors: string[] = [];
+    if (password.length < 8) passwordErrors.push('al menos 8 caracteres');
+    if (!/[A-Z]/.test(password)) passwordErrors.push('una letra mayúscula');
+    if (!/[a-z]/.test(password)) passwordErrors.push('una letra minúscula');
+    if (!/\d/.test(password)) passwordErrors.push('un número');
+    if (!/[!@#$%^&*(),.?":{}|<>]/.test(password)) passwordErrors.push('un carácter especial (!@#$%^&*...)');
+
+    if (passwordErrors.length > 0) {
       toast({
-        title: 'Error', 
-        description: 'La contraseña debe tener al menos 6 caracteres',
+        title: 'Contraseña inválida',
+        description: `La contraseña debe contener: ${passwordErrors.join(', ')}`,
         variant: 'destructive',
       });
       return;
