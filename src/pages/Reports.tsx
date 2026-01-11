@@ -5,8 +5,15 @@ import { ReportFiltersComponent } from '@/components/reports/ReportFilters';
 import { TaskReportTable, BillingReportTable, SummaryReportCard, LaundryReportTable } from '@/components/reports/ReportTables';
 import { useReports } from '@/hooks/useReports';
 import { exportToCSV } from '@/services/csvExport';
+import { exportToExcel } from '@/services/excelExport';
 import { ReportFilters } from '@/types/filters';
 import { Link } from 'react-router-dom';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 export default function Reports() {
   const [filters, setFilters] = useState<ReportFilters>({
@@ -23,6 +30,13 @@ export default function Reports() {
     exportToCSV(reportData, filename, filters.reportType);
   };
 
+  const handleExportExcel = () => {
+    if (!reportData) return;
+    
+    const filename = `reporte_${filters.reportType}_${new Date().toISOString().split('T')[0]}`;
+    exportToExcel(reportData, filename, filters.reportType, true);
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
       <div className="max-w-7xl mx-auto space-y-6">
@@ -33,9 +47,21 @@ export default function Reports() {
             <p className="text-gray-600">Genera y exporta reportes detallados de tu negocio</p>
           </div>
           <div className="flex gap-2">
-            <Button onClick={handleExportCSV} disabled={!reportData || isLoading}>
-              📥 Exportar CSV
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button disabled={!reportData || isLoading}>
+                  📥 Exportar
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={handleExportCSV}>
+                  📄 Exportar CSV
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleExportExcel}>
+                  📊 Exportar Excel (hoja por día)
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
             <Link to="/">
               <Button variant="outline">
                 🏠 Volver al Menú
