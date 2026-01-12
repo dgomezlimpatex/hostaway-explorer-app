@@ -161,34 +161,31 @@ export const useDeliveryDayOptions = (weekOffset: number = 0) => {
 
     schedules.forEach(schedule => {
       // Calculate the delivery date for this week
-      let deliveryDate = addDays(weekStart, schedule.dayOfWeek === 0 ? 6 : schedule.dayOfWeek - 1);
+      // dayOfWeek: 0=Sunday, 1=Monday...6=Saturday
+      // weekStart is Monday (day 1)
+      // So: Monday=0 offset, Tuesday=1, ..., Sunday=6 offset from weekStart
+      const dayOffset = schedule.dayOfWeek === 0 ? 6 : schedule.dayOfWeek - 1;
+      const deliveryDate = addDays(weekStart, dayOffset);
       
       // Calculate collection dates based on collectionDays
+      // collectionDays are the days of the week (0-6) when services happen
+      // These are the days BEFORE the delivery date
       const collectionDates: Date[] = [];
       schedule.collectionDays.forEach(collectionDay => {
-        // Collection days are relative to the delivery day
-        // We need to find the most recent occurrence of that day before the delivery
-        let collectionDate = subDays(deliveryDate, 
-          (schedule.dayOfWeek - collectionDay + 7) % 7 || 7
-        );
+        // Calculate how many days back from the delivery date
+        const deliveryDayOfWeek = getDay(deliveryDate); // 0=Sunday to 6=Saturday
+        let daysBack = (deliveryDayOfWeek - collectionDay + 7) % 7;
         
-        // For same-week logic
-        if (getDay(collectionDate) !== collectionDay) {
-          collectionDate = subDays(deliveryDate, 
-            (schedule.dayOfWeek - collectionDay + 7) % 7
-          );
+        // If daysBack is 0, it means same day - should be previous week (7 days back)
+        if (daysBack === 0) {
+          daysBack = 7;
         }
         
-        // If collection day > delivery day, it was from previous week
-        if (collectionDay > schedule.dayOfWeek || 
-            (collectionDay === schedule.dayOfWeek)) {
-          collectionDate = subDays(collectionDate, 7);
-        }
-        
+        const collectionDate = subDays(deliveryDate, daysBack);
         collectionDates.push(collectionDate);
       });
 
-      // Sort collection dates
+      // Sort collection dates chronologically
       collectionDates.sort((a, b) => a.getTime() - b.getTime());
 
       // Build label and description
