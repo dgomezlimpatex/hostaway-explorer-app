@@ -15,6 +15,8 @@ import { LazyLoadErrorBoundary } from "@/components/common/LazyLoadErrorBoundary
 // Lazy load pages for better First Contentful Paint
 const Index = React.lazy(() => import("./pages/Index"));
 const Auth = React.lazy(() => import("./pages/Auth"));
+const ForgotPassword = React.lazy(() => import("./pages/ForgotPassword"));
+const ResetPassword = React.lazy(() => import("./pages/ResetPassword"));
 const AcceptInvitation = React.lazy(() => import("./pages/AcceptInvitation"));
 const UserManagement = React.lazy(() => import("./pages/UserManagement"));
 const SedeManagement = React.lazy(() => import("./pages/SedeManagement"));
@@ -89,6 +91,16 @@ function App() {
               <Route path="/auth" element={
                 <LazyRoute>
                   <Auth />
+                </LazyRoute>
+              } />
+              <Route path="/forgot-password" element={
+                <LazyRoute>
+                  <ForgotPassword />
+                </LazyRoute>
+              } />
+              <Route path="/reset-password" element={
+                <LazyRoute>
+                  <ResetPassword />
                 </LazyRoute>
               } />
               {/* Ruta pública para aceptar invitaciones */}
