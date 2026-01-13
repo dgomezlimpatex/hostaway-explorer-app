@@ -159,6 +159,8 @@ export const useDeliveryDayOptions = (weekOffset: number = 0) => {
     const today = new Date();
     const weekStart = startOfWeek(addDays(today, weekOffset * 7), { weekStartsOn: 1 }); // Monday start
 
+    console.log('useDeliveryDayOptions: today=', format(today, 'yyyy-MM-dd'), 'weekStart=', format(weekStart, 'yyyy-MM-dd'), 'weekOffset=', weekOffset);
+
     schedules.forEach(schedule => {
       // Calculate the delivery date for this week
       // dayOfWeek: 0=Sunday, 1=Monday...6=Saturday
@@ -183,6 +185,8 @@ export const useDeliveryDayOptions = (weekOffset: number = 0) => {
 
       // Sort collection dates chronologically
       collectionDates.sort((a, b) => a.getTime() - b.getTime());
+
+      console.log('useDeliveryDayOptions: schedule=', schedule.name, 'deliveryDate=', format(deliveryDate, 'yyyy-MM-dd'), 'collectionDates=', collectionDates.map(d => format(d, 'yyyy-MM-dd')));
 
       // Build label and description
       const label = `${schedule.name} ${format(deliveryDate, 'd MMM', { locale: es })}`;
