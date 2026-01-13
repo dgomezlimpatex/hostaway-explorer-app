@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { Building2, ChevronDown, ChevronRight, Truck, CheckCircle2, User, Calendar } from 'lucide-react';
+import { Building2, ChevronDown, ChevronRight, Truck, CheckCircle2, User, Calendar, PackageCheck } from 'lucide-react';
 import { BuildingGroup, LaundryApartment } from '@/services/laundryScheduleService';
 import { cn } from '@/lib/utils';
 import { format, parseISO } from 'date-fns';
@@ -12,6 +12,8 @@ import { es } from 'date-fns/locale';
 interface BuildingDeliveryGroupProps {
   building: BuildingGroup;
   trackingMap: Map<string, { collectionStatus: string; deliveryStatus: string }>;
+  onPrepare: (taskId: string) => void;
+  onPrepareAll: (taskIds: string[]) => void;
   onDeliver: (taskId: string) => void;
   onDeliverAll: (taskIds: string[]) => void;
   isUpdating: boolean;
@@ -20,6 +22,8 @@ interface BuildingDeliveryGroupProps {
 export const BuildingDeliveryGroup = ({
   building,
   trackingMap,
+  onPrepare,
+  onPrepareAll,
   onDeliver,
   onDeliverAll,
   isUpdating,
@@ -33,19 +37,28 @@ export const BuildingDeliveryGroup = ({
       const status = tracking?.deliveryStatus || 'pending';
       if (status === 'delivered') {
         acc.delivered++;
+      } else if (status === 'prepared') {
+        acc.prepared++;
       } else {
         acc.pending++;
       }
       return acc;
     },
-    { delivered: 0, pending: 0 }
+    { delivered: 0, prepared: 0, pending: 0 }
   );
 
-  const allDelivered = stats.pending === 0;
-  const pendingTaskIds = building.apartments
+  const allDelivered = stats.pending === 0 && stats.prepared === 0;
+  const pendingPrepareTaskIds = building.apartments
     .filter(apt => {
       const tracking = trackingMap.get(apt.taskId);
-      return !tracking || tracking.deliveryStatus !== 'delivered';
+      return !tracking || tracking.deliveryStatus === 'pending';
+    })
+    .map(apt => apt.taskId);
+  
+  const pendingDeliverTaskIds = building.apartments
+    .filter(apt => {
+      const tracking = trackingMap.get(apt.taskId);
+      return tracking?.deliveryStatus === 'prepared';
     })
     .map(apt => apt.taskId);
 
@@ -94,7 +107,9 @@ export const BuildingDeliveryGroup = ({
             <div className="space-y-2">
               {building.apartments.map(apt => {
                 const tracking = trackingMap.get(apt.taskId);
-                const isDelivered = tracking?.deliveryStatus === 'delivered';
+                const status = tracking?.deliveryStatus || 'pending';
+                const isPrepared = status === 'prepared';
+                const isDelivered = status === 'delivered';
                 const { textiles, amenities } = apt;
 
                 // Build items list with full names
@@ -138,7 +153,9 @@ export const BuildingDeliveryGroup = ({
                       'p-3 rounded-md transition-colors',
                       isDelivered 
                         ? 'bg-green-100 dark:bg-green-900/30' 
-                        : 'bg-muted/30 hover:bg-muted/50'
+                        : isPrepared
+                          ? 'bg-blue-100 dark:bg-blue-900/30'
+                          : 'bg-muted/30 hover:bg-muted/50'
                     )}
                   >
                     <div className="flex items-start justify-between gap-2">
@@ -152,6 +169,9 @@ export const BuildingDeliveryGroup = ({
                           </span>
                           {isDelivered && (
                             <CheckCircle2 className="h-4 w-4 text-green-600" />
+                          )}
+                          {isPrepared && (
+                            <PackageCheck className="h-4 w-4 text-blue-600" />
                           )}
                         </div>
                         {/* Service date and cleaner info */}
@@ -176,35 +196,63 @@ export const BuildingDeliveryGroup = ({
                           </p>
                         )}
                       </div>
-                      {!isDelivered && (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => onDeliver(apt.taskId)}
-                          disabled={isUpdating}
-                          className="shrink-0"
-                        >
-                          <Truck className="h-3 w-3 mr-1" />
-                          Entregar
-                        </Button>
-                      )}
+                      <div className="flex flex-col gap-1 shrink-0">
+                        {!isPrepared && !isDelivered && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => onPrepare(apt.taskId)}
+                            disabled={isUpdating}
+                            className="text-blue-600 border-blue-300 hover:bg-blue-50"
+                          >
+                            <PackageCheck className="h-3 w-3 mr-1" />
+                            Preparar
+                          </Button>
+                        )}
+                        {isPrepared && !isDelivered && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => onDeliver(apt.taskId)}
+                            disabled={isUpdating}
+                            className="text-green-600 border-green-300 hover:bg-green-50"
+                          >
+                            <Truck className="h-3 w-3 mr-1" />
+                            Entregar
+                          </Button>
+                        )}
+                      </div>
                     </div>
                   </div>
                 );
               })}
             </div>
 
+            {/* Prepare all button */}
+            {pendingPrepareTaskIds.length > 0 && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full mt-3 text-blue-600 border-blue-300 hover:bg-blue-50"
+                onClick={() => onPrepareAll(pendingPrepareTaskIds)}
+                disabled={isUpdating}
+              >
+                <PackageCheck className="h-4 w-4 mr-2" />
+                Preparar todo ({pendingPrepareTaskIds.length})
+              </Button>
+            )}
+
             {/* Deliver all button */}
-            {pendingTaskIds.length > 0 && (
+            {pendingDeliverTaskIds.length > 0 && (
               <Button
                 variant="default"
                 size="sm"
-                className="w-full mt-3"
-                onClick={() => onDeliverAll(pendingTaskIds)}
+                className="w-full mt-2 bg-green-600 hover:bg-green-700"
+                onClick={() => onDeliverAll(pendingDeliverTaskIds)}
                 disabled={isUpdating}
               >
                 <Truck className="h-4 w-4 mr-2" />
-                Entregar todo ({pendingTaskIds.length})
+                Entregar todo ({pendingDeliverTaskIds.length})
               </Button>
             )}
           </CardContent>

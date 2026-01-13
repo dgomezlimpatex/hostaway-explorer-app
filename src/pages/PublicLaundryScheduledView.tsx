@@ -3,7 +3,7 @@ import { useParams } from 'react-router-dom';
 import { useLaundryShareLinkByToken } from '@/hooks/useLaundryShareLinks';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Loader2, AlertCircle, Package, Truck, CheckCircle2, RefreshCw, Building2 } from 'lucide-react';
+import { Loader2, AlertCircle, Package, Truck, CheckCircle2, RefreshCw, Building2, PackageCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { formatDateRange } from '@/services/laundryShareService';
@@ -17,7 +17,7 @@ const PublicLaundryScheduledView = () => {
   const { token } = useParams<{ token: string }>();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [activeTab, setActiveTab] = useState<'collect' | 'deliver'>('collect');
+  const [activeTab, setActiveTab] = useState<'collect' | 'deliver'>('deliver');
 
   // Fetch share link data
   const { 
@@ -188,12 +188,16 @@ const PublicLaundryScheduledView = () => {
       const t = trackingMap.get(a.taskId);
       return t?.collectionStatus === 'collected';
     }).length;
+    const prepared = apartments.filter(a => {
+      const t = trackingMap.get(a.taskId);
+      return t?.deliveryStatus === 'prepared' || t?.deliveryStatus === 'delivered';
+    }).length;
     const delivered = apartments.filter(a => {
       const t = trackingMap.get(a.taskId);
       return t?.deliveryStatus === 'delivered';
     }).length;
 
-    return { total, collected, delivered };
+    return { total, collected, prepared, delivered };
   }, [apartments, trackingMap]);
 
   // Update tracking mutation
@@ -201,7 +205,7 @@ const PublicLaundryScheduledView = () => {
     mutationFn: async (params: { 
       taskId: string; 
       collectionStatus?: 'collected'; 
-      deliveryStatus?: 'delivered';
+      deliveryStatus?: 'prepared' | 'delivered';
     }) => {
       if (!shareLink?.id) throw new Error('No share link');
       const now = new Date().toISOString();
@@ -223,8 +227,13 @@ const PublicLaundryScheduledView = () => {
         }
         if (params.deliveryStatus) {
           updateData.status = params.deliveryStatus;
-          updateData.delivered_at = now;
-          updateData.delivered_by_name = 'Repartidor';
+          if (params.deliveryStatus === 'prepared') {
+            updateData.prepared_at = now;
+            updateData.prepared_by_name = 'Repartidor';
+          } else if (params.deliveryStatus === 'delivered') {
+            updateData.delivered_at = now;
+            updateData.delivered_by_name = 'Repartidor';
+          }
         }
 
         const { error } = await supabase
@@ -246,8 +255,13 @@ const PublicLaundryScheduledView = () => {
           insertData.collected_by_name = 'Repartidor';
         }
         if (params.deliveryStatus) {
-          insertData.delivered_at = now;
-          insertData.delivered_by_name = 'Repartidor';
+          if (params.deliveryStatus === 'prepared') {
+            insertData.prepared_at = now;
+            insertData.prepared_by_name = 'Repartidor';
+          } else if (params.deliveryStatus === 'delivered') {
+            insertData.delivered_at = now;
+            insertData.delivered_by_name = 'Repartidor';
+          }
         }
 
         const { error } = await supabase
@@ -280,6 +294,17 @@ const PublicLaundryScheduledView = () => {
       await updateTracking.mutateAsync({ taskId, collectionStatus: 'collected' });
     }
     toast({ title: 'Recogida completada', description: `${taskIds.length} apartamentos marcados` });
+  };
+
+  const handlePrepare = (taskId: string) => {
+    updateTracking.mutate({ taskId, deliveryStatus: 'prepared' });
+  };
+
+  const handlePrepareAll = async (taskIds: string[]) => {
+    for (const taskId of taskIds) {
+      await updateTracking.mutateAsync({ taskId, deliveryStatus: 'prepared' });
+    }
+    toast({ title: 'Preparación completada', description: `${taskIds.length} apartamentos preparados` });
   };
 
   const handleDeliver = (taskId: string) => {
@@ -367,7 +392,17 @@ const PublicLaundryScheduledView = () => {
               <span className="w-12 text-right">{stats.collected}/{stats.total}</span>
             </div>
             <div className="flex items-center gap-2 text-xs">
-              <span className="w-16 text-muted-foreground">Entrega</span>
+              <span className="w-16 text-muted-foreground">Preparado</span>
+              <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
+                <div 
+                  className="h-full bg-blue-500 transition-all duration-300"
+                  style={{ width: `${stats.total > 0 ? (stats.prepared / stats.total) * 100 : 0}%` }}
+                />
+              </div>
+              <span className="w-12 text-right">{stats.prepared}/{stats.total}</span>
+            </div>
+            <div className="flex items-center gap-2 text-xs">
+              <span className="w-16 text-muted-foreground">Entregado</span>
               <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
                 <div 
                   className="h-full bg-green-500 transition-all duration-300"
@@ -390,8 +425,8 @@ const PublicLaundryScheduledView = () => {
                 Recoger Sucia
               </TabsTrigger>
               <TabsTrigger value="deliver" className="gap-2">
-                <Truck className="h-4 w-4" />
-                Entregar Limpia
+                <PackageCheck className="h-4 w-4" />
+                Preparación / Entrega
               </TabsTrigger>
             </TabsList>
           </div>
@@ -437,6 +472,8 @@ const PublicLaundryScheduledView = () => {
                     key={building.buildingCode}
                     building={building}
                     trackingMap={trackingMap}
+                    onPrepare={handlePrepare}
+                    onPrepareAll={handlePrepareAll}
                     onDeliver={handleDeliver}
                     onDeliverAll={handleDeliverAll}
                     isUpdating={updateTracking.isPending}
