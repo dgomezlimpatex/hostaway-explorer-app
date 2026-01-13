@@ -99,7 +99,9 @@ export const LaundryScheduledLinkModal = ({
       
       try {
         const dates = collectionDatesStr.split(',');
+        console.log('LaundryScheduledLinkModal: Fetching tasks for dates:', dates, 'sedeId:', activeSede.id);
         const tasks = await fetchTasksForDates(dates, activeSede.id);
+        console.log('LaundryScheduledLinkModal: Found tasks:', tasks.length, tasks.map(t => ({ id: t.taskId, date: t.date, code: t.propertyCode })));
         setPreviewData({ count: tasks.length, loading: false });
       } catch (error) {
         console.error('Error loading preview:', error);
