@@ -173,13 +173,9 @@ export const useDeliveryDayOptions = (weekOffset: number = 0) => {
       const collectionDates: Date[] = [];
       schedule.collectionDays.forEach(collectionDay => {
         // Calculate how many days back from the delivery date
+        // Now collection can be on the same day as delivery (daysBack = 0 is valid)
         const deliveryDayOfWeek = getDay(deliveryDate); // 0=Sunday to 6=Saturday
-        let daysBack = (deliveryDayOfWeek - collectionDay + 7) % 7;
-        
-        // If daysBack is 0, it means same day - should be previous week (7 days back)
-        if (daysBack === 0) {
-          daysBack = 7;
-        }
+        const daysBack = (deliveryDayOfWeek - collectionDay + 7) % 7;
         
         const collectionDate = subDays(deliveryDate, daysBack);
         collectionDates.push(collectionDate);
