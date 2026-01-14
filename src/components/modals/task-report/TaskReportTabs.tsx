@@ -105,15 +105,12 @@ export const TaskReportTabs: React.FC<TaskReportTabsProps> = ({
 
   return (
     <Tabs value={activeTab} onValueChange={onTabChange} className="flex flex-col h-full">
-      <TabsList className="grid w-full grid-cols-3 mb-4">
+      <TabsList className="grid w-full grid-cols-2 mb-4">
         <TabsTrigger value="checklist" className="text-xs">
           {getTabLabel('checklist', <CheckSquare className="h-4 w-4" />, 'Lista', 'Lista')}
         </TabsTrigger>
-        <TabsTrigger value="photos" className="text-xs">
-          {getTabLabel('photos', <Camera className="h-4 w-4" />, 'Fotos', 'Fotos')}
-        </TabsTrigger>
         <TabsTrigger value="summary" className="text-xs">
-          {getTabLabel('summary', <BarChart3 className="h-4 w-4" />, 'Fin', 'Fin')}
+          {getTabLabel('summary', <BarChart3 className="h-4 w-4" />, 'Resumen', 'Resumen')}
         </TabsTrigger>
       </TabsList>
 
@@ -134,50 +131,6 @@ export const TaskReportTabs: React.FC<TaskReportTabsProps> = ({
               onAdditionalTaskComplete={onAdditionalTaskComplete}
             />
           )}
-        </TabsContent>
-
-        <TabsContent value="photos" className="mt-0 h-full overflow-auto">
-          <MediaCapture
-            onMediaCaptured={(mediaUrl) => {
-              console.log('Media captured:', mediaUrl);
-              // Actualizar el checklist para reflejar las fotos subidas
-              if (currentTemplate) {
-                const updatedChecklist = { ...checklist };
-                let updated = false;
-                
-                // Buscar items que requieren fotos y no tienen fotos aún
-                currentTemplate.checklist_items.forEach(category => {
-                  category.items.forEach(item => {
-                    if (item.photo_required) {
-                      const key = `${category.id}.${item.id}`;
-                      const itemData = updatedChecklist[key] || {};
-                      
-                      // Si el item no tiene fotos, agregar esta foto
-                      if (!itemData.media_urls || itemData.media_urls.length === 0) {
-                        updatedChecklist[key] = {
-                          ...itemData,
-                          media_urls: [mediaUrl]
-                        };
-                        updated = true;
-                        return; // Solo asignar a un item por foto
-                      }
-                    }
-                  });
-                });
-                
-                if (updated) {
-                  onChecklistChange(updatedChecklist);
-                }
-              }
-            }}
-            onMediaDeleted={(mediaId) => {
-              const updatedMedia = reportMedia.filter(media => media.id !== mediaId);
-              onReportMediaChange(updatedMedia);
-            }}
-            reportId={reportId}
-            existingMedia={reportMedia}
-            isReadOnly={false}
-          />
         </TabsContent>
 
         <TabsContent value="summary" className="mt-0 h-full overflow-auto">

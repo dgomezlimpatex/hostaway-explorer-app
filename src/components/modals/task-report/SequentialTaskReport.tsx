@@ -57,7 +57,6 @@ export const SequentialTaskReport: React.FC<SequentialTaskReportProps> = ({
 
   const steps = [
     { key: 'checklist', title: 'Lista de Tareas', icon: CheckSquare, description: 'Completa todas las tareas del checklist' },
-    { key: 'media', title: 'Fotos', icon: Camera, description: 'Sube fotos del trabajo realizado' },
     { key: 'summary', title: 'Resumen', icon: CheckCircle, description: 'Revisa y finaliza el reporte' },
   ];
 
@@ -72,8 +71,6 @@ export const SequentialTaskReport: React.FC<SequentialTaskReportProps> = ({
       switch (currentStep) {
         case 'checklist':
           return completionPercentage === 100;
-        case 'media':
-          return reportMedia.length > 0;
         case 'summary':
           return true;
         default:
@@ -212,40 +209,6 @@ export const SequentialTaskReport: React.FC<SequentialTaskReportProps> = ({
           </div>
         )}
 
-        {currentStep === 'media' && (
-          <div className="p-3 space-y-4">
-            <div className="text-center py-4">
-              <Camera className="h-10 w-10 text-blue-500 mx-auto mb-2" />
-              <h4 className="text-base font-semibold mb-1">Sube fotos del trabajo</h4>
-              <p className="text-xs text-muted-foreground">
-                Documenta el trabajo realizado
-              </p>
-            </div>
-            <MediaCapture
-              onMediaCaptured={(mediaUrl) => {
-                if (reportId) {
-                  const newMedia = {
-                    id: `temp-${Date.now()}`,
-                    file_url: mediaUrl,
-                    media_type: 'photo' as const,
-                    task_report_id: reportId,
-                    timestamp: new Date().toISOString(),
-                    created_at: new Date().toISOString()
-                  };
-                  onReportMediaChange([...reportMedia, newMedia]);
-                }
-              }}
-              onMediaDeleted={(mediaId) => {
-                const updatedMedia = reportMedia.filter(media => media.id !== mediaId);
-                onReportMediaChange(updatedMedia);
-              }}
-              reportId={reportId}
-              existingMedia={reportMedia}
-              isReadOnly={false}
-            />
-          </div>
-        )}
-
         {currentStep === 'summary' && (
           <div className="p-3 space-y-4">
             <div className="text-center py-4">
@@ -320,7 +283,6 @@ export const SequentialTaskReport: React.FC<SequentialTaskReportProps> = ({
           {!canProceedToNext() && (
             <p className="text-xs text-center text-muted-foreground mt-2">
               {currentStep === 'checklist' && 'Completa todas las tareas para continuar'}
-              {currentStep === 'media' && 'Sube al menos una foto para continuar'}
             </p>
           )}
         </div>
