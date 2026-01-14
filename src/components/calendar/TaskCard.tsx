@@ -1,4 +1,3 @@
-import { Badge } from "@/components/ui/badge";
 import { Clock, GripVertical, ListTodo } from "lucide-react";
 import { Task } from "@/hooks/useCalendarData";
 import { cn } from "@/lib/utils";
