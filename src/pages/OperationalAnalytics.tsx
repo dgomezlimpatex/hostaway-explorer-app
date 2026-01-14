@@ -91,8 +91,16 @@ const OperationalAnalytics = () => {
                   mode="range"
                   selected={{ from: dateRange.start, to: dateRange.end }}
                   onSelect={(range) => {
+                    // react-day-picker (range) sets `from` on first click and `to` on second.
+                    // We update the state on every change so the user can change the start date.
                     if (range?.from && range?.to) {
                       setDateRange({ start: range.from, end: range.to });
+                      return;
+                    }
+
+                    if (range?.from && !range?.to) {
+                      // First click (start selection) – temporarily collapse to a single day.
+                      setDateRange({ start: range.from, end: range.from });
                     }
                   }}
                   locale={es}
