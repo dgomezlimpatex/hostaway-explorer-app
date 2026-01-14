@@ -2579,6 +2579,7 @@ export type Database = {
       }
       tasks: {
         Row: {
+          additional_tasks: Json | null
           address: string
           assignment_confidence: number | null
           auto_assigned: boolean | null
@@ -2610,6 +2611,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          additional_tasks?: Json | null
           address: string
           assignment_confidence?: number | null
           auto_assigned?: boolean | null
@@ -2641,6 +2643,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          additional_tasks?: Json | null
           address?: string
           assignment_confidence?: number | null
           auto_assigned?: boolean | null

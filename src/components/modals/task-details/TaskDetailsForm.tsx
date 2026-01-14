@@ -1,4 +1,4 @@
-import { Task } from "@/types/calendar";
+import { Task, AdditionalTask } from "@/types/calendar";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { TaskDetailsHeader } from "./components/TaskDetailsHeader";
@@ -11,7 +11,9 @@ import { PropertyNotesSection } from "./components/PropertyNotesSection";
 import { TaskNotesSection } from "./components/TaskNotesSection";
 import { ExtraordinaryServiceBillingSection } from "./components/ExtraordinaryServiceBillingSection";
 import { InventoryTaskIntegration } from "@/components/inventory/InventoryTaskIntegration";
+import { AdditionalTasksSection } from "./AdditionalTasksSection";
 import { useAuth } from "@/hooks/useAuth";
+import { useAdditionalTasks } from "@/hooks/useAdditionalTasks";
 interface TaskDetailsFormProps {
   task: Task;
   isEditing: boolean;
@@ -25,9 +27,18 @@ export const TaskDetailsForm = ({
   onFieldChange
 }: TaskDetailsFormProps) => {
   const { userRole } = useAuth();
+  const { addSubtask, removeSubtask } = useAdditionalTasks();
   const [propertyData, setPropertyData] = useState<any>(null);
   const [clientData, setClientData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+
+  const handleAddSubtask = (subtask: Omit<AdditionalTask, 'id' | 'completed' | 'addedAt' | 'addedBy'>) => {
+    addSubtask({ task, subtask });
+  };
+
+  const handleRemoveSubtask = (subtaskId: string) => {
+    removeSubtask({ task, subtaskId });
+  };
 
   useEffect(() => {
     const fetchPropertyAndClientInfo = async () => {
@@ -124,6 +135,14 @@ export const TaskDetailsForm = ({
       />
 
       <PropertyNotesSection propertyData={propertyData} />
+
+      {/* Additional Subtasks Section - visible for admin/manager */}
+      <AdditionalTasksSection
+        task={task}
+        onAddSubtask={handleAddSubtask}
+        onRemoveSubtask={handleRemoveSubtask}
+        isEditing={isEditing}
+      />
     </div>
   );
 };
