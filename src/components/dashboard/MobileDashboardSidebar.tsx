@@ -15,7 +15,8 @@ import {
   CheckCircle2,
   Package,
   Truck,
-  Receipt
+  Receipt,
+  TrendingUp
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useRolePermissions } from '@/hooks/useRolePermissions';
@@ -91,6 +92,12 @@ const reportsItems: NavigationItem[] = [
     title: 'Dashboard de Reportes',
     href: '/cleaning-reports',
     icon: FileText,
+    permission: 'reports'
+  },
+  {
+    title: 'Análisis Operativo',
+    href: '/operational-analytics',
+    icon: TrendingUp,
     permission: 'reports'
   },
   {
