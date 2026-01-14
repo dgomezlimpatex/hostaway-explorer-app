@@ -1,11 +1,35 @@
 import React, { memo } from 'react';
 import { Task } from '@/types/calendar';
-import { MapPin, Calendar } from 'lucide-react';
+import { MapPin, Calendar, ListTodo } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface CleanerTaskCardProps {
   task: Task;
   onClick: () => void;
 }
+
+// Subtask badge component for cleaner view
+const SubtaskBadge = ({ task }: { task: Task }) => {
+  const additionalTasks = task.additionalTasks || [];
+  if (additionalTasks.length === 0) return null;
+  
+  const pendingCount = additionalTasks.filter(t => !t.completed).length;
+  const allCompleted = pendingCount === 0;
+  
+  return (
+    <div 
+      className={cn(
+        "absolute -top-2 -right-2 z-20 flex items-center gap-1 px-2 py-1 rounded-full text-xs font-bold shadow-lg",
+        allCompleted 
+          ? "bg-green-500 text-white" 
+          : "bg-red-500 text-white animate-pulse"
+      )}
+    >
+      <ListTodo className="h-3.5 w-3.5" />
+      <span>{pendingCount > 0 ? `${pendingCount} extra` : '✓'}</span>
+    </div>
+  );
+};
 
 const CleanerTaskCardComponent: React.FC<CleanerTaskCardProps> = ({
   task,
@@ -73,9 +97,10 @@ const CleanerTaskCardComponent: React.FC<CleanerTaskCardProps> = ({
       <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -translate-y-16 translate-x-16"></div>
       <div className="absolute bottom-0 left-0 w-24 h-24 bg-white/5 rounded-full translate-y-12 -translate-x-12"></div>
       
+      {/* Subtask badge */}
+      <SubtaskBadge task={task} />
+      
       <div className="relative z-10">
-        {/* Status indicator in top right */}
-        <div className="absolute top-0 right-0 w-3 h-3 bg-white rounded-full opacity-80"></div>
         
         {/* Main content */}
         <div className="space-y-4">

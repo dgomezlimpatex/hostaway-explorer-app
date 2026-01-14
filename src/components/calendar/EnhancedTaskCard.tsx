@@ -1,9 +1,32 @@
 import React from "react";
 import { Task } from "@/types/calendar";
-import { Clock } from "lucide-react";
+import { Clock, ListTodo } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useClientData } from "@/hooks/useClientData";
+
+// Subtask badge component
+const SubtaskBadge = ({ task }: { task: Task }) => {
+  const additionalTasks = task.additionalTasks || [];
+  if (additionalTasks.length === 0) return null;
+  
+  const pendingCount = additionalTasks.filter(t => !t.completed).length;
+  const allCompleted = pendingCount === 0;
+  
+  return (
+    <div 
+      className={cn(
+        "absolute -top-1.5 -right-1.5 z-20 flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-bold shadow-md",
+        allCompleted 
+          ? "bg-green-500 text-white" 
+          : "bg-red-500 text-white animate-pulse"
+      )}
+    >
+      <ListTodo className="h-3 w-3" />
+      <span>{pendingCount > 0 ? pendingCount : additionalTasks.length}</span>
+    </div>
+  );
+};
 
 interface EnhancedTaskCardProps {
   task: Task;
@@ -103,14 +126,8 @@ export const EnhancedTaskCard = React.memo(({
               )}
             </div>
 
-            {/* Indicador de arrastre */}
-            <div className="absolute top-1 right-1 opacity-30 group-hover:opacity-100 transition-opacity duration-200">
-              <div className="grid grid-cols-2 gap-0.5">
-                {[...Array(6)].map((_, i) => (
-                  <div key={i} className="w-1 h-1 rounded-full bg-gray-400 dark:bg-gray-500" />
-                ))}
-              </div>
-            </div>
+            {/* Subtask badge */}
+            <SubtaskBadge task={task} />
           </div>
         </TooltipTrigger>
         <TooltipContent side="top" className="max-w-xs">
