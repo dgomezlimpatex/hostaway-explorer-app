@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { Dialog, DialogContent, DialogHeader } from '@/components/ui/dialog';
 import { Task } from '@/types/calendar';
 import { TaskReport, TaskChecklistTemplate, TaskMedia } from '@/types/taskReports';
@@ -19,6 +19,7 @@ import { TaskReportTabs } from './task-report/TaskReportTabs';
 import { TaskReportFooter } from './task-report/TaskReportFooter';
 import { NetworkStatusIndicator } from '@/components/ui/network-status-indicator';
 import { OfflineSyncIndicator } from '@/components/ui/offline-sync-indicator';
+import { useAdditionalTasks } from '@/hooks/useAdditionalTasks';
 
 interface TaskReportModalProps {
   task: Task | null;
@@ -46,6 +47,7 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
   } = useMobileErrorHandler();
   
   const { createReport, updateReport, isCreatingReport, isUpdatingReport } = useTaskReports();
+  const { completeSubtask } = useAdditionalTasks();
   const processAutomaticConsumption = useProcessAutomaticConsumption();
   const { data: existingReport, isLoading: isLoadingReport } = useTaskReport(task?.id || '');
   const { data: templates, isLoading: isLoadingTemplates } = useChecklistTemplates();
@@ -611,6 +613,24 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
     }
   };
 
+  // Handler for completing additional subtasks from the checklist
+  const handleAdditionalTaskComplete = useCallback((
+    subtaskId: string, 
+    completed: boolean, 
+    notes?: string, 
+    mediaUrls?: string[]
+  ) => {
+    if (!task) return;
+    
+    completeSubtask({
+      task,
+      subtaskId,
+      completed,
+      notes,
+      mediaUrls
+    });
+  }, [task, completeSubtask]);
+
   if (!task) return null;
 
   const canComplete = isTaskFromToday && requiredValidation.isValid;
@@ -669,6 +689,7 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
             hasStartedTask={hasStartedTask}
             onComplete={handleComplete}
             currentReport={currentReport}
+            onAdditionalTaskComplete={handleAdditionalTaskComplete}
           />
         </div>
 

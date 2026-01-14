@@ -30,6 +30,7 @@ interface TaskReportTabsProps {
   hasStartedTask: boolean;
   onComplete: () => Promise<void>;
   currentReport?: TaskReport;
+  onAdditionalTaskComplete?: (subtaskId: string, completed: boolean, notes?: string, mediaUrls?: string[]) => void;
 }
 
 export const TaskReportTabs: React.FC<TaskReportTabsProps> = ({
@@ -52,6 +53,7 @@ export const TaskReportTabs: React.FC<TaskReportTabsProps> = ({
   hasStartedTask,
   onComplete,
   currentReport,
+  onAdditionalTaskComplete,
 }) => {
   const { isMobile } = useDeviceType();
 
@@ -76,6 +78,7 @@ export const TaskReportTabs: React.FC<TaskReportTabsProps> = ({
         hasStartedTask={hasStartedTask}
         onComplete={onComplete}
         currentReport={currentReport}
+        onAdditionalTaskComplete={onAdditionalTaskComplete}
       />
     );
   }
@@ -127,6 +130,8 @@ export const TaskReportTabs: React.FC<TaskReportTabsProps> = ({
               onChecklistChange={onChecklistChange}
               reportId={reportId}
               isReadOnly={isTaskCompleted}
+              task={task}
+              onAdditionalTaskComplete={onAdditionalTaskComplete}
             />
           )}
         </TabsContent>

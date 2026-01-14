@@ -29,6 +29,7 @@ interface SequentialTaskReportProps {
   hasStartedTask: boolean;
   onComplete: () => Promise<void>;
   currentReport?: TaskReport;
+  onAdditionalTaskComplete?: (subtaskId: string, completed: boolean, notes?: string, mediaUrls?: string[]) => void;
 }
 
 export const SequentialTaskReport: React.FC<SequentialTaskReportProps> = ({
@@ -49,6 +50,7 @@ export const SequentialTaskReport: React.FC<SequentialTaskReportProps> = ({
   hasStartedTask,
   onComplete,
   currentReport,
+  onAdditionalTaskComplete,
 }) => {
   const { isMobile } = useDeviceType();
   const { addError } = useMobileErrorHandler();
@@ -170,6 +172,8 @@ export const SequentialTaskReport: React.FC<SequentialTaskReportProps> = ({
                 onChecklistChange={onChecklistChange}
                 reportId={reportId}
                 isReadOnly={isTaskCompleted}
+                task={task}
+                onAdditionalTaskComplete={onAdditionalTaskComplete}
               />
             )}
           </div>
