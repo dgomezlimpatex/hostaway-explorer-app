@@ -1,17 +1,21 @@
 
+import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Users, Clock, TrendingUp, AlertTriangle, CheckCircle, Timer, Zap } from 'lucide-react';
+import { Users, Clock, TrendingUp, Timer, Zap, ExternalLink } from 'lucide-react';
 import { CleanerPerformanceAnalysis } from '@/hooks/analytics/useOperationalAnalytics';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
+import { CleanerTasksDetailModal } from './CleanerTasksDetailModal';
 
 interface CleanerPerformancePanelProps {
   performance: CleanerPerformanceAnalysis[];
 }
 
 export const CleanerPerformancePanel = ({ performance }: CleanerPerformancePanelProps) => {
+  const [selectedCleaner, setSelectedCleaner] = useState<CleanerPerformanceAnalysis | null>(null);
+
   const getEfficiencyColor = (efficiency: number) => {
     if (efficiency >= 100) return 'text-success';
     if (efficiency >= 85) return 'text-primary';
@@ -37,7 +41,7 @@ export const CleanerPerformancePanel = ({ performance }: CleanerPerformancePanel
   };
 
   const chartData = performance.slice(0, 10).map(c => ({
-    name: c.cleanerName.split(' ')[0], // First name only
+    name: c.cleanerName.split(' ')[0],
     efficiency: c.avgEfficiency,
     tasks: c.taskCount,
   }));
@@ -47,6 +51,10 @@ export const CleanerPerformancePanel = ({ performance }: CleanerPerformancePanel
     if (efficiency >= 85) return 'hsl(var(--primary))';
     if (efficiency >= 70) return 'hsl(var(--warning))';
     return 'hsl(var(--destructive))';
+  };
+
+  const handleCleanerClick = (cleaner: CleanerPerformanceAnalysis) => {
+    setSelectedCleaner(cleaner);
   };
 
   return (
@@ -114,7 +122,7 @@ export const CleanerPerformancePanel = ({ performance }: CleanerPerformancePanel
             Detalle por Trabajador
           </CardTitle>
           <CardDescription>
-            Métricas completas de rendimiento individual
+            Métricas completas de rendimiento individual. Click en una fila para ver tareas.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -132,9 +140,16 @@ export const CleanerPerformancePanel = ({ performance }: CleanerPerformancePanel
             </TableHeader>
             <TableBody>
               {performance.map((cleaner) => (
-                <TableRow key={cleaner.cleanerId}>
+                <TableRow 
+                  key={cleaner.cleanerId}
+                  className="cursor-pointer hover:bg-muted/50 transition-colors"
+                  onClick={() => handleCleanerClick(cleaner)}
+                >
                   <TableCell>
-                    <div className="font-medium">{cleaner.cleanerName}</div>
+                    <div className="flex items-center gap-2">
+                      <div className="font-medium">{cleaner.cleanerName}</div>
+                      <ExternalLink className="h-3 w-3 text-muted-foreground" />
+                    </div>
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex items-center justify-end gap-2">
@@ -231,6 +246,14 @@ export const CleanerPerformancePanel = ({ performance }: CleanerPerformancePanel
           </div>
         </CardContent>
       </Card>
+
+      {/* Detail Modal */}
+      <CleanerTasksDetailModal
+        open={!!selectedCleaner}
+        onOpenChange={(open) => !open && setSelectedCleaner(null)}
+        cleaner={selectedCleaner}
+        tasks={selectedCleaner?.tasks || []}
+      />
     </div>
   );
 };

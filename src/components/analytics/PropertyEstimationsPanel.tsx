@@ -1,17 +1,20 @@
 
+import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { ArrowDown, ArrowUp, CheckCircle, AlertTriangle, XCircle, Clock } from 'lucide-react';
+import { ArrowDown, ArrowUp, CheckCircle, AlertTriangle, Clock, ExternalLink } from 'lucide-react';
 import { PropertyEstimationAnalysis } from '@/hooks/analytics/useOperationalAnalytics';
+import { PropertyTasksDetailModal } from './PropertyTasksDetailModal';
 
 interface PropertyEstimationsPanelProps {
   estimations: PropertyEstimationAnalysis[];
 }
 
 export const PropertyEstimationsPanel = ({ estimations }: PropertyEstimationsPanelProps) => {
+  const [selectedProperty, setSelectedProperty] = useState<PropertyEstimationAnalysis | null>(null);
+  
   const overestimated = estimations.filter(e => e.status === 'overestimated');
   const underestimated = estimations.filter(e => e.status === 'underestimated');
   const accurate = estimations.filter(e => e.status === 'accurate');
@@ -40,6 +43,10 @@ export const PropertyEstimationsPanel = ({ estimations }: PropertyEstimationsPan
           </Badge>
         );
     }
+  };
+
+  const handlePropertyClick = (prop: PropertyEstimationAnalysis) => {
+    setSelectedProperty(prop);
   };
 
   return (
@@ -93,7 +100,7 @@ export const PropertyEstimationsPanel = ({ estimations }: PropertyEstimationsPan
               Propiedades que Requieren Ajuste
             </CardTitle>
             <CardDescription>
-              Propiedades con diferencia superior al 15% entre tiempo estimado y real
+              Propiedades con diferencia superior al 15% entre tiempo estimado y real. Click en una fila para ver detalles.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -111,11 +118,18 @@ export const PropertyEstimationsPanel = ({ estimations }: PropertyEstimationsPan
               </TableHeader>
               <TableBody>
                 {[...underestimated, ...overestimated].slice(0, 15).map((prop) => (
-                  <TableRow key={prop.propertyId}>
+                  <TableRow 
+                    key={prop.propertyId}
+                    className="cursor-pointer hover:bg-muted/50 transition-colors"
+                    onClick={() => handlePropertyClick(prop)}
+                  >
                     <TableCell>
-                      <div>
-                        <p className="font-medium">{prop.propertyName}</p>
-                        <p className="text-xs text-muted-foreground">{prop.propertyCode}</p>
+                      <div className="flex items-center gap-2">
+                        <div>
+                          <p className="font-medium">{prop.propertyName}</p>
+                          <p className="text-xs text-muted-foreground">{prop.propertyCode}</p>
+                        </div>
+                        <ExternalLink className="h-3 w-3 text-muted-foreground" />
                       </div>
                     </TableCell>
                     <TableCell className="text-right font-mono">
@@ -156,7 +170,7 @@ export const PropertyEstimationsPanel = ({ estimations }: PropertyEstimationsPan
             Todas las Propiedades
           </CardTitle>
           <CardDescription>
-            Vista completa de estimaciones por propiedad
+            Vista completa de estimaciones por propiedad. Click en una fila para ver tareas.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -174,11 +188,18 @@ export const PropertyEstimationsPanel = ({ estimations }: PropertyEstimationsPan
               {estimations.map((prop) => {
                 const accuracy = 100 - Math.abs(prop.differencePercentage);
                 return (
-                  <TableRow key={prop.propertyId}>
+                  <TableRow 
+                    key={prop.propertyId}
+                    className="cursor-pointer hover:bg-muted/50 transition-colors"
+                    onClick={() => handlePropertyClick(prop)}
+                  >
                     <TableCell>
-                      <div>
-                        <p className="font-medium">{prop.propertyName}</p>
-                        <p className="text-xs text-muted-foreground">{prop.propertyCode}</p>
+                      <div className="flex items-center gap-2">
+                        <div>
+                          <p className="font-medium">{prop.propertyName}</p>
+                          <p className="text-xs text-muted-foreground">{prop.propertyCode}</p>
+                        </div>
+                        <ExternalLink className="h-3 w-3 text-muted-foreground" />
                       </div>
                     </TableCell>
                     <TableCell className="text-right font-mono">
@@ -208,6 +229,16 @@ export const PropertyEstimationsPanel = ({ estimations }: PropertyEstimationsPan
           </Table>
         </CardContent>
       </Card>
+
+      {/* Detail Modal */}
+      <PropertyTasksDetailModal
+        open={!!selectedProperty}
+        onOpenChange={(open) => !open && setSelectedProperty(null)}
+        propertyName={selectedProperty?.propertyName || ''}
+        propertyCode={selectedProperty?.propertyCode || ''}
+        tasks={selectedProperty?.tasks || []}
+        estimatedMinutes={selectedProperty?.estimatedMinutes || 0}
+      />
     </div>
   );
 };

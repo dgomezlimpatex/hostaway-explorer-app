@@ -3,6 +3,24 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useSede } from '@/contexts/SedeContext';
 
+export interface PropertyTaskDetail {
+  taskId: string;
+  taskDate: Date;
+  cleanerName: string;
+  actualMinutes: number;
+  punctualityMinutes: number;
+}
+
+export interface CleanerTaskDetail {
+  taskId: string;
+  taskDate: Date;
+  propertyName: string;
+  propertyCode: string;
+  estimatedMinutes: number;
+  actualMinutes: number;
+  punctualityMinutes: number;
+}
+
 export interface PropertyEstimationAnalysis {
   propertyId: string;
   propertyName: string;
@@ -14,14 +32,15 @@ export interface PropertyEstimationAnalysis {
   differencePercentage: number;
   suggestedDuration: number;
   status: 'overestimated' | 'underestimated' | 'accurate';
+  tasks: PropertyTaskDetail[];
 }
 
 export interface CleanerPerformanceAnalysis {
   cleanerId: string;
   cleanerName: string;
-  avgPunctuality: number; // minutos de diferencia promedio
-  avgEfficiency: number; // porcentaje
-  consistencyScore: number; // desviación estándar
+  avgPunctuality: number;
+  avgEfficiency: number;
+  consistencyScore: number;
   taskCount: number;
   avgTaskDuration: number;
   minDuration: number;
@@ -29,6 +48,7 @@ export interface CleanerPerformanceAnalysis {
   onTimePercentage: number;
   earlyPercentage: number;
   latePercentage: number;
+  tasks: CleanerTaskDetail[];
 }
 
 export interface DayOfWeekPattern {
@@ -216,6 +236,17 @@ export const useOperationalAnalytics = (dateRange?: { start: Date; end: Date }) 
           if (diffPercent < -15) status = 'overestimated';
           else if (diffPercent > 15) status = 'underestimated';
           
+          // Build task details for this property
+          const taskDetails: PropertyTaskDetail[] = items
+            .map(i => ({
+              taskId: i.taskId,
+              taskDate: i.taskDate,
+              cleanerName: i.cleanerName,
+              actualMinutes: Math.round(i.actualMinutes),
+              punctualityMinutes: Math.round(i.punctualityMinutes),
+            }))
+            .sort((a, b) => b.taskDate.getTime() - a.taskDate.getTime());
+          
           return {
             propertyId,
             propertyName: items[0].propertyName,
@@ -225,8 +256,9 @@ export const useOperationalAnalytics = (dateRange?: { start: Date; end: Date }) 
             taskCount: items.length,
             differenceMinutes: Math.round(diff),
             differencePercentage: Math.round(diffPercent),
-            suggestedDuration: Math.round(avgActual / 5) * 5, // Round to nearest 5
+            suggestedDuration: Math.round(avgActual / 5) * 5,
             status,
+            tasks: taskDetails,
           };
         })
         .filter(p => p.taskCount >= 2)
@@ -260,6 +292,19 @@ export const useOperationalAnalytics = (dateRange?: { start: Date; end: Date }) 
           const early = items.filter(i => i.punctualityMinutes < -10).length;
           const late = items.filter(i => i.punctualityMinutes > 10).length;
           
+          // Build task details for this cleaner
+          const taskDetails: CleanerTaskDetail[] = items
+            .map(i => ({
+              taskId: i.taskId,
+              taskDate: i.taskDate,
+              propertyName: i.propertyName,
+              propertyCode: i.propertyCode,
+              estimatedMinutes: i.estimatedMinutes,
+              actualMinutes: Math.round(i.actualMinutes),
+              punctualityMinutes: Math.round(i.punctualityMinutes),
+            }))
+            .sort((a, b) => b.taskDate.getTime() - a.taskDate.getTime());
+          
           return {
             cleanerId,
             cleanerName: items[0].cleanerName,
@@ -273,6 +318,7 @@ export const useOperationalAnalytics = (dateRange?: { start: Date; end: Date }) 
             onTimePercentage: Math.round((onTime / items.length) * 100),
             earlyPercentage: Math.round((early / items.length) * 100),
             latePercentage: Math.round((late / items.length) * 100),
+            tasks: taskDetails,
           };
         })
         .filter(c => c.taskCount >= 3)
