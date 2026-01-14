@@ -75,37 +75,125 @@ export class TaskStorageService extends BaseStorageService<Task, TaskCreateData>
     super(taskStorageConfig);
   }
 
+  // Optimized method for cleaners - fetches only their tasks from server
+  async getTasksForCleaner(cleanerId: string, sedeId?: string): Promise<Task[]> {
+    const effectiveSedeId = sedeId || this.getSedeIdFromStorage();
+    
+    // Get today's date for filtering - only fetch from today onwards
+    const today = new Date().toISOString().split('T')[0];
+    
+    // Query tasks where cleaner is assigned via task_assignments table
+    let query = supabase
+      .from('tasks')
+      .select(`
+        *,
+        properties!tasks_propiedad_id_fkey(codigo),
+        task_reports(overall_status),
+        task_assignments!inner(id, cleaner_id, cleaner_name)
+      `)
+      .eq('task_assignments.cleaner_id', cleanerId)
+      .gte('date', today)
+      .order('date', { ascending: true })
+      .order('start_time', { ascending: true });
+    
+    if (effectiveSedeId && effectiveSedeId !== 'no-sede') {
+      query = query.eq('sede_id', effectiveSedeId);
+    }
+    
+    const { data: assignedTasks, error: assignedError } = await query;
+    
+    if (assignedError) {
+      console.error('Error fetching assigned tasks for cleaner:', assignedError);
+      throw assignedError;
+    }
+    
+    // Also fetch tasks directly assigned via cleaner_id field (legacy)
+    let legacyQuery = supabase
+      .from('tasks')
+      .select(`
+        *,
+        properties!tasks_propiedad_id_fkey(codigo),
+        task_reports(overall_status),
+        task_assignments(id, cleaner_id, cleaner_name)
+      `)
+      .eq('cleaner_id', cleanerId)
+      .gte('date', today)
+      .order('date', { ascending: true })
+      .order('start_time', { ascending: true });
+    
+    if (effectiveSedeId && effectiveSedeId !== 'no-sede') {
+      legacyQuery = legacyQuery.eq('sede_id', effectiveSedeId);
+    }
+    
+    const { data: legacyTasks, error: legacyError } = await legacyQuery;
+    
+    if (legacyError) {
+      console.error('Error fetching legacy tasks for cleaner:', legacyError);
+    }
+    
+    // Merge and deduplicate by task id
+    const taskMap = new Map<string, any>();
+    
+    [...(assignedTasks || []), ...(legacyTasks || [])].forEach(task => {
+      if (!taskMap.has(task.id)) {
+        taskMap.set(task.id, task);
+      }
+    });
+    
+    // Map to Task objects
+    return Array.from(taskMap.values()).map(task => this.mapTaskFromDB(task));
+  }
+
+  private getSedeIdFromStorage(): string | null {
+    try {
+      const activeSede = localStorage.getItem('activeSede');
+      if (activeSede) {
+        const sede = JSON.parse(activeSede);
+        return sede.id;
+      }
+      return null;
+    } catch (error) {
+      return null;
+    }
+  }
+
+  private mapTaskFromDB(task: any): Task {
+    const hasCompletedReport = task.task_reports?.some((report: any) => report.overall_status === 'completed');
+    const finalStatus = hasCompletedReport ? 'completed' : task.status;
+
+    // Handle multiple assignments - combine all cleaners into one task
+    let cleanerName = task.cleaner;
+    let cleanerIdValue = task.cleaner_id;
+    
+    if (task.task_assignments && task.task_assignments.length > 0) {
+      cleanerName = task.task_assignments.map((a: any) => a.cleaner_name).join(', ');
+      cleanerIdValue = task.task_assignments[0].cleaner_id;
+    }
+
+    return taskStorageConfig.mapFromDB({
+      ...task,
+      status: finalStatus,
+      cleaner: cleanerName,
+      cleaner_id: cleanerIdValue,
+      originalTaskId: task.id,
+      assignments: task.task_assignments
+    });
+  }
+
   async getTasks(options?: {
     cleanerId?: string;
     includePastTasks?: boolean;
     userRole?: string;
     sedeId?: string;
   }): Promise<Task[]> {
-    console.log('🔍 TaskStorageService.getTasks called with options:', options);
+    const sedeId = options?.sedeId || this.getSedeIdFromStorage();
     
-    // Función helper para obtener la sede activa
-    const getActiveSedeId = (): string | null => {
-      try {
-        const activeSede = localStorage.getItem('activeSede');
-        if (activeSede) {
-          const sede = JSON.parse(activeSede);
-          return sede.id;
-        }
-        return null;
-      } catch (error) {
-        console.warn('Error getting active sede:', error);
-        return null;
-      }
-    };
-    
-    // Aplicar filtro por sede - usar parámetro si está disponible, sino localStorage
-    const sedeId = options?.sedeId || getActiveSedeId();
-    
-    if (!sedeId || sedeId === 'no-sede') {
-      console.warn('⚠️ No sede_id available - fetching ALL tasks (fallback)');
+    // OPTIMIZED: For cleaners, use the dedicated method
+    if (options?.userRole === 'cleaner' && options?.cleanerId) {
+      return this.getTasksForCleaner(options.cleanerId, sedeId || undefined);
     }
     
-    // FIXED: Use pagination to get ALL tasks beyond Supabase's 1000 record limit
+    // For non-cleaners, fetch with pagination (existing logic but optimized)
     let allTasks: any[] = [];
     let hasMore = true;
     let offset = 0;
@@ -121,7 +209,6 @@ export class TaskStorageService extends BaseStorageService<Task, TaskCreateData>
           task_assignments(id, cleaner_id, cleaner_name)
         `);
       
-      // Solo aplicar filtro de sede si existe
       if (sedeId && sedeId !== 'no-sede') {
         query = query.eq('sede_id', sedeId);
       }
@@ -132,7 +219,7 @@ export class TaskStorageService extends BaseStorageService<Task, TaskCreateData>
         .range(offset, offset + batchSize - 1);
 
       if (error) {
-        console.error('❌ Error fetching tasks batch:', error);
+        console.error('Error fetching tasks batch:', error);
         throw error;
       }
 
@@ -142,57 +229,13 @@ export class TaskStorageService extends BaseStorageService<Task, TaskCreateData>
         allTasks = [...allTasks, ...batchData];
         offset += batchSize;
         
-        // If we got less than batchSize, we've reached the end
         if (batchData.length < batchSize) {
           hasMore = false;
         }
       }
     }
     
-    const data = allTasks;
-    
-    // Map and sync task status with report status, handle multiple assignments
-    const mappedTasks: Task[] = [];
-    
-    (data || []).forEach(task => {
-      const hasCompletedReport = task.task_reports?.some(report => report.overall_status === 'completed');
-      
-      // Sync task status: if has completed report but task status is not 'completed', prioritize report status
-      const finalStatus = hasCompletedReport ? 'completed' : task.status;
-
-      // Base task data
-      const baseTaskData = {
-        ...task,
-        status: finalStatus
-      };
-
-      // Handle multiple assignments - combine all cleaners into one task
-      if (task.task_assignments && task.task_assignments.length > 0) {
-        // Combine all cleaner names separated by commas
-        const allCleanerNames = task.task_assignments.map(a => a.cleaner_name).join(', ');
-        
-        // Use the first cleaner's ID as primary, but store all cleaner names
-        const primaryAssignment = task.task_assignments[0];
-        
-        const taskData = {
-          ...baseTaskData,
-          cleaner: allCleanerNames, // Combine all names
-          cleaner_id: primaryAssignment.cleaner_id, // Primary cleaner ID
-          originalTaskId: task.id,
-          // Store all assignments for reference
-          assignments: task.task_assignments
-        };
-        
-        const mappedTask = taskStorageConfig.mapFromDB(taskData);
-        mappedTasks.push(mappedTask);
-        
-      } else {
-        // No specific assignments, use original task data
-        const mappedTask = taskStorageConfig.mapFromDB(baseTaskData);
-        mappedTasks.push(mappedTask);
-      }
-    });
-    return mappedTasks;
+    return allTasks.map(task => this.mapTaskFromDB(task));
   }
 
   async createTask(task: TaskCreateData): Promise<Task> {
