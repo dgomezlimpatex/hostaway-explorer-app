@@ -16,13 +16,13 @@ const SubtaskBadge = ({ task }: { task: Task }) => {
   return (
     <div 
       className={cn(
-        "absolute -top-1.5 -right-1.5 z-20 flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-bold shadow-md",
+        "absolute top-1 right-1 z-20 flex items-center gap-0.5 px-1 py-0.5 rounded-full text-[9px] font-bold shadow-sm",
         allCompleted 
           ? "bg-green-500 text-white" 
           : "bg-red-500 text-white animate-pulse"
       )}
     >
-      <ListTodo className="h-3 w-3" />
+      <ListTodo className="h-2.5 w-2.5" />
       <span>{pendingCount > 0 ? pendingCount : additionalTasks.length}</span>
     </div>
   );
