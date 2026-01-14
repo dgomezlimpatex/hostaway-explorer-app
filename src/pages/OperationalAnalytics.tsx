@@ -6,7 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { format, subDays, startOfMonth, endOfMonth } from 'date-fns';
+import { format, subDays, subMonths } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { CalendarIcon, BarChart3, Users, Building2, Clock, TrendingUp, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -19,8 +19,8 @@ import { AnalyticsSummaryCards } from '@/components/analytics/AnalyticsSummaryCa
 
 const OperationalAnalytics = () => {
   const [dateRange, setDateRange] = useState<{ start: Date; end: Date }>({
-    start: startOfMonth(new Date()),
-    end: endOfMonth(new Date()),
+    start: subMonths(new Date(), 6),
+    end: new Date(),
   });
 
   const { data, isLoading, error } = useOperationalAnalytics(dateRange);
