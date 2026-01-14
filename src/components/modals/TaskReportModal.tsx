@@ -64,6 +64,8 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
   const [currentTemplate, setCurrentTemplate] = useState<TaskChecklistTemplate | undefined>();
   const [hasStartedTask, setHasStartedTask] = useState(false);
   const [isChecklistCompleted, setIsChecklistCompleted] = useState(false);
+  const [isHeaderCollapsed, setIsHeaderCollapsed] = useState(false);
+  const lastScrollTop = useRef(0);
   
   // Ref to track if we've already tried to create a report for this task
   const reportCreationAttempted = useRef<string | null>(null);
@@ -646,29 +648,51 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
     return "max-w-4xl max-h-[90vh] overflow-hidden flex flex-col";
   };
 
+  const handleContentScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
+    if (!isMobile) return;
+    const scrollTop = e.currentTarget.scrollTop;
+    const scrollDelta = scrollTop - lastScrollTop.current;
+    
+    // Only collapse/expand after scrolling more than 10px
+    if (Math.abs(scrollDelta) > 10) {
+      if (scrollDelta > 0 && scrollTop > 50) {
+        // Scrolling down - collapse header
+        setIsHeaderCollapsed(true);
+      } else if (scrollDelta < 0) {
+        // Scrolling up - show header
+        setIsHeaderCollapsed(false);
+      }
+      lastScrollTop.current = scrollTop;
+    }
+  }, [isMobile]);
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className={getModalClasses()}>
-        <DialogHeader className="flex-shrink-0">
+        <DialogHeader className="flex-shrink-0 pb-1">
           <div className="flex items-center justify-between">
-            <div className="flex-1">
+            <div className="flex-1 min-w-0">
               <TaskReportHeader
                 task={task}
                 reportStatus={reportStatus}
                 completionPercentage={completionPercentage}
                 isLoadingReport={isLoadingReport}
+                isCollapsed={isMobile && isHeaderCollapsed}
               />
             </div>
             {isMobile && (
               <NetworkStatusIndicator 
-                className="ml-2" 
+                className="ml-2 flex-shrink-0" 
                 showText={false}
               />
             )}
           </div>
         </DialogHeader>
 
-        <div className="flex-1 overflow-auto">
+        <div 
+          className="flex-1 overflow-auto"
+          onScroll={handleContentScroll}
+        >
           <TaskReportTabs
             activeTab={activeTab}
             onTabChange={setActiveTab}

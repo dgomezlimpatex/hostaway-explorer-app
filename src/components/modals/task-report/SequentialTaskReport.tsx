@@ -157,9 +157,9 @@ export const SequentialTaskReport: React.FC<SequentialTaskReportProps> = ({
 
   return (
     <div className="flex flex-col h-full max-h-[calc(100vh-200px)] overflow-hidden">
-      {/* Step Indicators - Compact for mobile */}
-      <div className="flex-shrink-0 px-2 py-3 border-b bg-muted/30">
-        <div className="flex items-center justify-between gap-2">
+      {/* Step Indicators - Ultra compact */}
+      <div className="flex-shrink-0 px-2 py-1.5 border-b bg-muted/30">
+        <div className="flex items-center gap-1">
           {steps.map((step, index) => {
             const StepIcon = step.icon;
             const isActive = index === currentStepIndex;
@@ -174,7 +174,7 @@ export const SequentialTaskReport: React.FC<SequentialTaskReportProps> = ({
                   }
                 }}
                 disabled={!isCompleted && !isActive && !isTaskCompleted}
-                className={`flex-1 flex flex-col items-center gap-1 p-2 rounded-lg transition-all ${
+                className={`flex-1 flex items-center justify-center gap-1 py-1.5 px-2 rounded-md transition-all text-xs font-medium ${
                   isActive 
                     ? 'bg-primary text-primary-foreground shadow-sm' 
                     : isCompleted 
@@ -182,10 +182,8 @@ export const SequentialTaskReport: React.FC<SequentialTaskReportProps> = ({
                       : 'bg-muted text-muted-foreground opacity-50'
                 }`}
               >
-                <StepIcon className="h-4 w-4" />
-                <span className="text-[10px] font-medium truncate max-w-full">
-                  {step.title}
-                </span>
+                <StepIcon className="h-3.5 w-3.5" />
+                <span className="hidden xs:inline">{step.title}</span>
               </button>
             );
           })}
