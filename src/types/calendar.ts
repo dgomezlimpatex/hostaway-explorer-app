@@ -23,6 +23,22 @@ export interface TimeSlot {
 
 export type ViewType = 'day' | 'three-day' | 'week';
 
+// Additional subtasks for cleaning tasks
+export interface AdditionalTask {
+  id: string;
+  text: string;
+  photoRequired: boolean;
+  completed: boolean;
+  completedAt?: string;
+  completedBy?: string;
+  completedByName?: string;
+  addedBy: string;
+  addedByName?: string;
+  addedAt: string;
+  notes?: string;
+  mediaUrls?: string[];
+}
+
 export interface Task extends BaseEntity {
   property: string;
   propertyCode?: string;
@@ -51,6 +67,8 @@ export interface Task extends BaseEntity {
   extraordinaryClientEmail?: string;
   extraordinaryClientPhone?: string;
   extraordinaryBillingAddress?: string;
+  // Additional subtasks
+  additionalTasks?: AdditionalTask[];
 }
 
 export interface Assignment {

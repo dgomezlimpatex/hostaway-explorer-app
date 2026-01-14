@@ -35,7 +35,8 @@ const taskStorageConfig = {
     extraordinaryClientEmail: row.extraordinary_client_email,
     extraordinaryClientPhone: row.extraordinary_client_phone,
     extraordinaryBillingAddress: row.extraordinary_billing_address,
-    originalTaskId: row.originalTaskId || row.id // Para asignaciones múltiples
+    originalTaskId: row.originalTaskId || row.id, // Para asignaciones múltiples
+    additionalTasks: row.additional_tasks || [], // Map additional tasks
   }),
   mapToDB: (task: Partial<TaskCreateData>): any => {
     const data: any = {};

@@ -1,5 +1,5 @@
 import { Badge } from "@/components/ui/badge";
-import { Clock, GripVertical } from "lucide-react";
+import { Clock, GripVertical, ListTodo } from "lucide-react";
 import { Task } from "@/hooks/useCalendarData";
 import { cn } from "@/lib/utils";
 import { useClientData } from "@/hooks/useClientData";
@@ -13,6 +13,29 @@ interface TaskCardProps {
   onDragEnd?: (e: React.DragEvent) => void;
   draggable?: boolean;
 }
+
+// Subtask badge component
+const SubtaskBadge = ({ task }: { task: Task }) => {
+  const additionalTasks = task.additionalTasks || [];
+  if (additionalTasks.length === 0) return null;
+  
+  const pendingCount = additionalTasks.filter(t => !t.completed).length;
+  const allCompleted = pendingCount === 0;
+  
+  return (
+    <div 
+      className={cn(
+        "absolute -top-1 -right-1 z-20 flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-bold shadow-md",
+        allCompleted 
+          ? "bg-green-500 text-white" 
+          : "bg-red-500 text-white animate-pulse"
+      )}
+    >
+      <ListTodo className="h-3 w-3" />
+      <span>{pendingCount > 0 ? pendingCount : additionalTasks.length}</span>
+    </div>
+  );
+};
 
 export const TaskCard = ({
   task,
@@ -77,7 +100,7 @@ export const TaskCard = ({
     <div 
       className={cn(
         getStatusColor(task.status), 
-        "rounded-lg p-2 text-white shadow-lg hover:shadow-xl transition-all duration-200 cursor-move group relative overflow-hidden select-none",
+        "rounded-lg p-2 text-white shadow-lg hover:shadow-xl transition-all duration-200 cursor-move group relative overflow-visible select-none",
         isDragging && "opacity-50 scale-95 rotate-3"
       )} 
       style={style} 
@@ -87,6 +110,9 @@ export const TaskCard = ({
       onDragEnd={handleDragEnd} 
       onDragOver={handleDragOver}
     >
+      {/* Subtask badge */}
+      <SubtaskBadge task={task} />
+
       {/* Drag handle */}
       {draggable && (
         <div className="absolute top-1 right-1 opacity-0 group-hover:opacity-70 transition-opacity">
@@ -95,7 +121,7 @@ export const TaskCard = ({
       )}
 
       {/* Background pattern */}
-      <div className="absolute inset-0 opacity-10 bg-gradient-to-br from-white to-transparent" />
+      <div className="absolute inset-0 opacity-10 bg-gradient-to-br from-white to-transparent rounded-lg" />
       
       {/* Content */}
       <div className="relative z-10 space-y-1">
