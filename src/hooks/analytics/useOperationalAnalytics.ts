@@ -78,8 +78,12 @@ export const useOperationalAnalytics = (dateRange?: { start: Date; end: Date }) 
   return useQuery({
     queryKey: ['operationalAnalytics', activeSede?.id, dateRange?.start?.toISOString(), dateRange?.end?.toISOString()],
     queryFn: async (): Promise<OperationalAnalyticsData> => {
-      // Fetch task reports with related data
-      let taskReportsQuery = supabase
+      // Build date filter for tasks
+      const startDate = dateRange?.start ? dateRange.start.toISOString().split('T')[0] : null;
+      const endDate = dateRange?.end ? dateRange.end.toISOString().split('T')[0] : null;
+
+      // Fetch task reports with tasks and properties in a single query
+      let query = supabase
         .from('task_reports')
         .select(`
           id,
@@ -88,41 +92,44 @@ export const useOperationalAnalytics = (dateRange?: { start: Date; end: Date }) 
           start_time,
           end_time,
           overall_status,
-          created_at
+          created_at,
+          tasks!inner (
+            id,
+            duracion,
+            start_time,
+            date,
+            propiedad_id,
+            cleaner_id,
+            sede_id,
+            status,
+            properties:propiedad_id (
+              id,
+              nombre,
+              codigo,
+              duracion_servicio
+            )
+          )
         `)
         .not('start_time', 'is', null)
         .not('end_time', 'is', null);
 
-      const { data: taskReports, error: reportsError } = await taskReportsQuery;
-      if (reportsError) throw reportsError;
-
-      // Fetch tasks with properties
-      let tasksQuery = supabase
-        .from('tasks')
-        .select(`
-          id,
-          duracion,
-          start_time,
-          date,
-          propiedad_id,
-          cleaner_id,
-          status,
-          properties:propiedad_id (
-            id,
-            nombre,
-            codigo,
-            duracion_servicio
-          )
-        `);
-      
+      // Apply sede filter through tasks
       if (activeSede?.id) {
-        tasksQuery = tasksQuery.eq('sede_id', activeSede.id);
+        query = query.eq('tasks.sede_id', activeSede.id);
       }
 
-      const { data: tasks, error: tasksError } = await tasksQuery;
-      if (tasksError) throw tasksError;
+      // Apply date range filter through tasks
+      if (startDate) {
+        query = query.gte('tasks.date', startDate);
+      }
+      if (endDate) {
+        query = query.lte('tasks.date', endDate);
+      }
 
-      // Fetch cleaners
+      const { data: taskReportsWithTasks, error: reportsError } = await query;
+      if (reportsError) throw reportsError;
+
+      // Fetch cleaners for name lookup
       let cleanersQuery = supabase.from('cleaners').select('id, name');
       if (activeSede?.id) {
         cleanersQuery = cleanersQuery.eq('sede_id', activeSede.id);
@@ -130,14 +137,12 @@ export const useOperationalAnalytics = (dateRange?: { start: Date; end: Date }) 
       const { data: cleaners, error: cleanersError } = await cleanersQuery;
       if (cleanersError) throw cleanersError;
 
-      // Create lookup maps
-      const taskMap = new Map(tasks?.map(t => [t.id, t]) || []);
       const cleanerMap = new Map(cleaners?.map(c => [c.id, c.name]) || []);
 
-      // Combine data for analysis
-      const combinedData = (taskReports || [])
+      // Process combined data
+      const combinedData = (taskReportsWithTasks || [])
         .map(report => {
-          const task = taskMap.get(report.task_id);
+          const task = report.tasks as any;
           if (!task || !task.properties) return null;
           
           const startTime = new Date(report.start_time!);
@@ -189,10 +194,8 @@ export const useOperationalAnalytics = (dateRange?: { start: Date; end: Date }) 
           taskDate: Date;
         }>;
 
-      // Apply date range filter if provided
-      const filteredData = dateRange 
-        ? combinedData.filter(d => d.taskDate >= dateRange.start && d.taskDate <= dateRange.end)
-        : combinedData;
+      // Data is already filtered by date range in query
+      const filteredData = combinedData;
 
       // 1. Property Estimations Analysis
       const propertyGroups = new Map<string, typeof filteredData>();
