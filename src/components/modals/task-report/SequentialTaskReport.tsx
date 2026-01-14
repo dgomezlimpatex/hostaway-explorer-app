@@ -156,11 +156,46 @@ export const SequentialTaskReport: React.FC<SequentialTaskReportProps> = ({
   }
 
   return (
-    <div className="flex flex-col h-full">
-      {/* Step Content */}
-      <div className={`flex-1 ${currentStep === 'checklist' ? 'min-h-0' : 'min-h-[500px]'} ${currentStep === 'checklist' ? '' : 'overflow-auto'}`}>
+    <div className="flex flex-col h-full max-h-[calc(100vh-200px)] overflow-hidden">
+      {/* Step Indicators - Compact for mobile */}
+      <div className="flex-shrink-0 px-2 py-3 border-b bg-muted/30">
+        <div className="flex items-center justify-between gap-2">
+          {steps.map((step, index) => {
+            const StepIcon = step.icon;
+            const isActive = index === currentStepIndex;
+            const isCompleted = index < currentStepIndex;
+            
+            return (
+              <button
+                key={step.key}
+                onClick={() => {
+                  if (isCompleted || isTaskCompleted) {
+                    onStepChange(step.key as typeof currentStep);
+                  }
+                }}
+                disabled={!isCompleted && !isActive && !isTaskCompleted}
+                className={`flex-1 flex flex-col items-center gap-1 p-2 rounded-lg transition-all ${
+                  isActive 
+                    ? 'bg-primary text-primary-foreground shadow-sm' 
+                    : isCompleted 
+                      ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' 
+                      : 'bg-muted text-muted-foreground opacity-50'
+                }`}
+              >
+                <StepIcon className="h-4 w-4" />
+                <span className="text-[10px] font-medium truncate max-w-full">
+                  {step.title}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Step Content - Scrollable area */}
+      <div className="flex-1 overflow-y-auto overscroll-contain pb-20">
         {currentStep === 'checklist' && (
-          <div className="space-y-4 h-[60vh] overflow-y-auto">
+          <div className="p-3">
             {isLoadingTemplates ? (
               <div className="flex items-center justify-center py-8">
                 <Clock className="h-8 w-8 animate-spin text-gray-400" />
@@ -180,20 +215,17 @@ export const SequentialTaskReport: React.FC<SequentialTaskReportProps> = ({
         )}
 
         {currentStep === 'media' && (
-          <div className="space-y-4 min-h-[400px]">
-            <div className="text-center py-6">
-              <Camera className="h-12 w-12 text-blue-500 mx-auto mb-3" />
-              <h4 className="text-lg font-semibold mb-2">Sube fotos del trabajo</h4>
-              <p className="text-sm text-muted-foreground mb-4">
-                Documenta el trabajo realizado con fotos
+          <div className="p-3 space-y-4">
+            <div className="text-center py-4">
+              <Camera className="h-10 w-10 text-blue-500 mx-auto mb-2" />
+              <h4 className="text-base font-semibold mb-1">Sube fotos del trabajo</h4>
+              <p className="text-xs text-muted-foreground">
+                Documenta el trabajo realizado
               </p>
             </div>
             <MediaCapture
               onMediaCaptured={(mediaUrl) => {
-                console.log('✅ CRITICAL: Media captured in SequentialTaskReport:', mediaUrl);
-                // CRITICAL FIX: Agregar la nueva media al estado reportMedia
                 if (reportId) {
-                  // Crear objeto media temporal hasta que se recargue desde la DB
                   const newMedia = {
                     id: `temp-${Date.now()}`,
                     file_url: mediaUrl,
@@ -206,7 +238,6 @@ export const SequentialTaskReport: React.FC<SequentialTaskReportProps> = ({
                 }
               }}
               onMediaDeleted={(mediaId) => {
-                console.log('🗑️ Media deleted in SequentialTaskReport:', mediaId);
                 const updatedMedia = reportMedia.filter(media => media.id !== mediaId);
                 onReportMediaChange(updatedMedia);
               }}
@@ -218,11 +249,11 @@ export const SequentialTaskReport: React.FC<SequentialTaskReportProps> = ({
         )}
 
         {currentStep === 'summary' && (
-          <div className="space-y-4">
-            <div className="text-center py-6">
-              <CheckCircle className="h-12 w-12 text-green-500 mx-auto mb-3" />
-              <h4 className="text-lg font-semibold mb-2">Resumen Final</h4>
-              <p className="text-sm text-muted-foreground mb-4">
+          <div className="p-3 space-y-4">
+            <div className="text-center py-4">
+              <CheckCircle className="h-10 w-10 text-green-500 mx-auto mb-2" />
+              <h4 className="text-base font-semibold mb-1">Resumen Final</h4>
+              <p className="text-xs text-muted-foreground">
                 Revisa el reporte antes de finalizarlo
               </p>
             </div>
@@ -236,7 +267,7 @@ export const SequentialTaskReport: React.FC<SequentialTaskReportProps> = ({
             />
             
             {!isTaskCompleted && (
-              <div className="pt-6 border-t">
+              <div className="pt-4 border-t">
                 <Button 
                   onClick={handleFinishReport}
                   className="w-full"
@@ -248,7 +279,7 @@ export const SequentialTaskReport: React.FC<SequentialTaskReportProps> = ({
                 </Button>
                 
                 {completionPercentage < 100 && (
-                  <p className="text-sm text-muted-foreground text-center mt-2">
+                  <p className="text-xs text-muted-foreground text-center mt-2">
                     Completa todas las tareas obligatorias para finalizar
                   </p>
                 )}
@@ -258,64 +289,41 @@ export const SequentialTaskReport: React.FC<SequentialTaskReportProps> = ({
         )}
       </div>
 
-      {/* Navigation Footer */}
+      {/* Fixed Navigation Footer - Always visible at bottom */}
       {currentStep !== 'summary' && (
-        <div className="border-t pt-2 mt-2 flex-shrink-0">
-          <div className="flex justify-between items-center mb-2">
+        <div className="fixed bottom-0 left-0 right-0 bg-background border-t shadow-lg p-3 z-50 safe-area-pb">
+          <div className="flex items-center gap-3 max-w-lg mx-auto">
             <Button
               variant="outline"
               onClick={handlePrevious}
               disabled={currentStepIndex === 0}
-              className="flex items-center text-xs h-8 px-3"
-              size="sm"
+              className="flex-1 h-12 text-sm font-medium"
             >
-              <ArrowLeft className="mr-1 h-3 w-3" />
+              <ArrowLeft className="mr-2 h-4 w-4" />
               Anterior
             </Button>
 
             <Button
-              onClick={(e) => {
-                console.log('🖱️ Next button clicked:', {
-                  currentStep,
-                  disabled: !canProceedToNext() || currentStepIndex === steps.length - 1,
-                  canProceed: canProceedToNext(),
-                  currentStepIndex,
-                  isLastStep: currentStepIndex === steps.length - 1,
-                  event: e.type,
-                  target: e.target
-                });
-                handleNext();
-              }}
+              onClick={handleNext}
               onTouchEnd={(e) => {
-                // ANDROID FIX: Fallback para problemas de touch en Android
-                console.log('📱 Touch end event on Next button');
                 e.preventDefault();
                 if (!(!canProceedToNext() || currentStepIndex === steps.length - 1)) {
                   handleNext();
                 }
               }}
               disabled={!canProceedToNext() || currentStepIndex === steps.length - 1}
-              className="flex items-center text-xs h-8 px-3 touch-manipulation"
-              size="sm"
+              className="flex-1 h-12 text-sm font-medium touch-manipulation"
             >
               Siguiente
-              <ArrowRight className="ml-1 h-3 w-3" />
+              <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
           </div>
           
           {!canProceedToNext() && (
-            <div className="text-center">
-              {currentStep === 'checklist' && (
-                <p className="text-xs text-muted-foreground">
-                  Completa todas las tareas para continuar
-                </p>
-              )}
-              {currentStep === 'media' && (
-                <p className="text-xs text-muted-foreground">
-                  Sube al menos una foto para continuar
-                </p>
-              )}
-            </div>
+            <p className="text-xs text-center text-muted-foreground mt-2">
+              {currentStep === 'checklist' && 'Completa todas las tareas para continuar'}
+              {currentStep === 'media' && 'Sube al menos una foto para continuar'}
+            </p>
           )}
         </div>
       )}
