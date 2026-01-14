@@ -1,4 +1,3 @@
-
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useMemo } from 'react';
 import { Task, ViewType } from '@/types/calendar';
@@ -6,7 +5,6 @@ import { taskStorageService } from '@/services/taskStorage';
 import { useAuth } from '@/hooks/useAuth';
 import { useCleaners } from '@/hooks/useCleaners';
 import { useSede } from '@/contexts/SedeContext';
-import { multipleTaskAssignmentService } from '@/services/storage/multipleTaskAssignmentService';
 
 interface UseOptimizedTasksProps {
   currentDate: Date;
@@ -31,76 +29,68 @@ export const useOptimizedTasks = ({
     return currentCleaner?.id || null;
   }, [userRole, user?.id, cleaners]);
 
-  // Cache key optimizado con dependencias mínimas incluyendo sede
+  // OPTIMIZED: Simpler query key - for cleaners we don't need date in key since we fetch all their tasks
   const queryKey = useMemo(() => {
-    console.log('🔑 Building query key with activeSede:', activeSede?.id, 'activeSede object:', activeSede);
+    if (userRole === 'cleaner' && currentCleanerId) {
+      return ['tasks', 'cleaner', currentCleanerId, activeSede?.id || 'no-sede'];
+    }
     return [
       'tasks',
       currentDate.toISOString().split('T')[0],
       currentView,
       activeSede?.id || 'no-sede'
     ];
-  }, [currentDate, currentView, activeSede?.id]);
+  }, [currentDate, currentView, activeSede?.id, userRole, currentCleanerId]);
 
   const query = useQuery({
     queryKey,
     queryFn: async () => {
-      // For cleaners, get ALL their tasks (not limited by current date for navigation)
+      // OPTIMIZED: For cleaners, use server-side filtering
       if (userRole === 'cleaner' && currentCleanerId) {
-        const optimizedTasks = await taskStorageService.getTasks({
+        return taskStorageService.getTasks({
           cleanerId: currentCleanerId,
-          includePastTasks: false,
-          userRole: userRole,
-          sedeId: activeSede?.id // Pasar sede del contexto
+          userRole: 'cleaner',
+          sedeId: activeSede?.id
         });
-        
-        // For cleaners, ALWAYS return ALL their tasks so they can see upcoming tasks
-        // Let the UI components (calendar, tasks page) handle filtering by current date if needed
-        const cleanerFiltered = await filterTasksByUserRole(optimizedTasks, userRole, currentCleanerId, cleaners);
-        return cleanerFiltered;
       }
       
-      // For non-cleaners, ALWAYS fetch fresh data after forced invalidation
-      const sedeId = activeSede?.id || 'no-sede';
+      // For non-cleaners, fetch all tasks
       const allTasks = await taskStorageService.getTasks({
-        sedeId: activeSede?.id // Pasar sede del contexto
+        sedeId: activeSede?.id
       });
+      
+      const sedeId = activeSede?.id || 'no-sede';
       queryClient.setQueryData(['tasks', 'all', sedeId], allTasks);
       
-      const filteredByView = filterTasksByView(allTasks, currentDate, currentView);
-      const finalFiltered = await filterTasksByUserRole(filteredByView, userRole, currentCleanerId, cleaners);
-      return finalFiltered;
+      return filterTasksByView(allTasks, currentDate, currentView);
     },
-    staleTime: 0, // Allow immediate updates for task assignments
-    gcTime: 60000, // Keep in cache for 1 minute
+    staleTime: userRole === 'cleaner' ? 30000 : 0, // Cleaners can have stale data for 30s
+    gcTime: 60000,
     enabled: enabled && isInitialized && !loading && (userRole !== 'cleaner' || currentCleanerId !== null),
-    refetchOnWindowFocus: true, // Allow refetch on window focus
-    refetchOnMount: true, // Allow refetch on mount for fresh data
+    refetchOnWindowFocus: true,
+    refetchOnMount: true,
   });
   
   const { data: tasks = [], isLoading, error } = query;
 
-  // Función optimizada para filtrar tareas con filtro por fecha según la vista
+  // Filter tasks by view for display (only applies date filtering for non-cleaners in memo)
   const filteredTasks = useMemo(() => {
-    if (!tasks) {
+    if (!tasks || tasks.length === 0) {
       return [];
     }
     
-    // Apply basic validity filter
     const validTasks = tasks.filter(task => task && task.date);
     
-    // Apply view-based date filtering ONLY for non-cleaners in calendar
-    // For cleaners, let them see all their tasks for navigation
-    if (userRole !== 'cleaner') {
-      const viewFiltered = filterTasksByView(validTasks, currentDate, currentView);
-      return viewFiltered;
+    // For cleaners, don't apply view-based filtering - let them see all their tasks
+    if (userRole === 'cleaner') {
+      return validTasks;
     }
     
-    return validTasks;
-  }, [tasks, currentDate, currentView, activeSede, userRole, currentCleanerId]);
+    return filterTasksByView(validTasks, currentDate, currentView);
+  }, [tasks, currentDate, currentView, userRole]);
 
-  // Prefetch para las próximas fechas (solo para no-cleaners)
-  const prefetchNextDates = useMemo(() => {
+  // Prefetch for next dates (only for non-cleaners)
+  useMemo(() => {
     if (!enabled || !activeSede?.id || userRole === 'cleaner') return;
 
     const tomorrow = new Date(currentDate);
@@ -109,20 +99,20 @@ export const useOptimizedTasks = ({
     const nextWeek = new Date(currentDate);
     nextWeek.setDate(nextWeek.getDate() + 7);
 
+    const sedeId = activeSede?.id || 'no-sede';
+    
     [tomorrow, nextWeek].forEach(date => {
-      const sedeId = activeSede?.id || 'no-sede';
       queryClient.prefetchQuery({
         queryKey: ['tasks', date.toISOString().split('T')[0], currentView, sedeId],
         queryFn: async () => {
           const allTasks = queryClient.getQueryData(['tasks', 'all', sedeId]) as Task[] || 
-                          await taskStorageService.getTasks();
-          const filteredByView = filterTasksByView(allTasks, date, currentView);
-          return await filterTasksByUserRole(filteredByView, userRole, currentCleanerId, cleaners);
+                          await taskStorageService.getTasks({ sedeId: activeSede?.id });
+          return filterTasksByView(allTasks, date, currentView);
         },
         staleTime: 5 * 60 * 1000,
       });
     });
-  }, [currentDate, currentView, queryClient, enabled, activeSede?.id, userRole, currentCleanerId, cleaners]);
+  }, [currentDate, currentView, queryClient, enabled, activeSede?.id, userRole]);
 
   return {
     tasks: filteredTasks,
@@ -130,8 +120,6 @@ export const useOptimizedTasks = ({
     isInitialLoading: isLoading && query.fetchStatus !== 'idle',
     error,
     queryKey,
-    
-    // DEBUG INFO
     debugInfo: {
       rawTasksCount: tasks?.length || 0,
       filteredTasksCount: filteredTasks?.length || 0,
@@ -142,58 +130,7 @@ export const useOptimizedTasks = ({
   };
 };
 
-// Function to filter tasks by user role
-async function filterTasksByUserRole(tasks: Task[], userRole: string | null, currentCleanerId: string | null, cleaners?: any[]): Promise<Task[]> {
-  // If user is a cleaner, only show their assigned tasks
-  if (userRole === 'cleaner' && currentCleanerId) {
-    const tasksForCleaner: Task[] = [];
-    
-    for (const task of tasks) {
-      
-      // Check if task is directly assigned to this cleaner
-      if (task.cleanerId === currentCleanerId) {
-        console.log('✅ Task directly assigned to cleaner');
-        tasksForCleaner.push(task);
-        continue;
-      }
-      
-      // Check if cleaner appears in the combined cleaner field (for multiple assignments)
-      // We need to get the cleaner name from the cleaners array to compare
-      const currentCleanerName = cleaners?.find(c => c.id === currentCleanerId)?.name;
-      if (task.cleaner && currentCleanerName && task.cleaner.includes(currentCleanerName)) {
-        console.log('✅ Task assigned via multiple assignments (name check)');
-        tasksForCleaner.push(task);
-        continue;
-      }
-      
-      // Check if task has multiple assignments including this cleaner (fallback)
-      try {
-        const assignments = await multipleTaskAssignmentService.getTaskAssignments(task.id);
-        console.log('📋 Multiple assignments for task', task.id, ':', assignments);
-        const isAssigned = assignments.some(assignment => assignment.cleaner_id === currentCleanerId);
-        console.log('🎯 Is assigned in multiple assignments:', isAssigned);
-        if (isAssigned) {
-          console.log('✅ Task assigned via multiple assignments');
-          tasksForCleaner.push(task);
-        }
-      } catch (error) {
-        console.error('❌ Error checking task assignments for task', task.id, ':', error);
-        // If there's an error, fall back to direct assignment check
-        if (task.cleanerId === currentCleanerId) {
-          tasksForCleaner.push(task);
-        }
-      }
-    }
-    
-    console.log('🎯 Final filtered tasks for cleaner:', tasksForCleaner.length);
-    return tasksForCleaner;
-  }
-  
-  // Admins, managers, supervisors can see all tasks
-  return tasks;
-}
-
-// Función helper optimizada para filtrar tareas
+// Helper function to filter tasks by view
 function filterTasksByView(tasks: Task[], currentDate: Date, currentView: ViewType): Task[] {
   const currentDateStr = currentDate.toISOString().split('T')[0];
   
@@ -210,14 +147,13 @@ function filterTasksByView(tasks: Task[], currentDate: Date, currentView: ViewTy
       return tasks.filter(task => threeDayDates.includes(task.date));
     
     case 'week':
-      // Calculate the full week containing the current date (Monday to Sunday)
       const startOfWeek = new Date(currentDate);
-      const dayOfWeek = startOfWeek.getDay(); // 0 = Sunday, 1 = Monday, etc.
-      const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek; // If Sunday, go back 6 days; otherwise, go to Monday
+      const dayOfWeek = startOfWeek.getDay();
+      const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
       startOfWeek.setDate(startOfWeek.getDate() + mondayOffset);
       
       const endOfWeek = new Date(startOfWeek);
-      endOfWeek.setDate(endOfWeek.getDate() + 6); // Sunday is 6 days after Monday
+      endOfWeek.setDate(endOfWeek.getDate() + 6);
       
       const startDateStr = startOfWeek.toISOString().split('T')[0];
       const endDateStr = endOfWeek.toISOString().split('T')[0];
