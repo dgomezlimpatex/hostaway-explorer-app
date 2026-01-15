@@ -223,7 +223,11 @@ export const QuickAddReservations = ({
                         mode="single"
                         selected={row.checkInDate}
                         onSelect={(date) => handleDateSelect(row.id, date, 'checkIn')}
-                        disabled={(date) => date < new Date()}
+                        disabled={(date) => {
+                          const today = new Date();
+                          today.setHours(0, 0, 0, 0);
+                          return date < today;
+                        }}
                         initialFocus
                       />
                     </PopoverContent>
@@ -257,10 +261,11 @@ export const QuickAddReservations = ({
                         mode="single"
                         selected={row.checkOutDate}
                         onSelect={(date) => handleDateSelect(row.id, date, 'checkOut')}
-                        disabled={(date) => 
-                          date < new Date() || 
-                          (row.checkInDate ? date <= row.checkInDate : false)
-                        }
+                        disabled={(date) => {
+                          const today = new Date();
+                          today.setHours(0, 0, 0, 0);
+                          return date < today || (row.checkInDate ? date <= row.checkInDate : false);
+                        }}
                         initialFocus
                         className="pointer-events-auto"
                       />
