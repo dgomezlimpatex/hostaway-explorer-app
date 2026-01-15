@@ -26,6 +26,7 @@ import {
 import { useUpdateClient } from '@/hooks/useClients';
 import { CreateClientData, Client } from '@/types/client';
 import { Edit } from 'lucide-react';
+import { ClientPortalSection } from '@/components/client-portal/ClientPortalSection';
 
 interface EditClientModalProps {
   client: Client;
@@ -392,6 +393,9 @@ export const EditClientModal = ({ client, trigger }: EditClientModalProps) => {
                 />
               </div>
             </div>
+
+            {/* Portal de Reservas */}
+            <ClientPortalSection clientId={client.id} clientName={client.nombre} />
 
             <div className="flex justify-end gap-2 pt-4">
               <Button
