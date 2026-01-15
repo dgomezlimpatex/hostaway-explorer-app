@@ -255,28 +255,44 @@ export const ReservationsCalendar = ({
                 </div>
 
                 {/* Day cells */}
-                {weekDays.map(day => {
+                {weekDays.map((day, dayIndex) => {
+                  // Check if this day is occupied (check-in <= day < check-out)
                   const dayReservations = propertyReservations.filter(r => {
                     const checkIn = new Date(r.checkInDate);
                     const checkOut = new Date(r.checkOutDate);
-                    return day >= checkIn && day < checkOut;
+                    checkIn.setHours(0, 0, 0, 0);
+                    checkOut.setHours(0, 0, 0, 0);
+                    const currentDay = new Date(day);
+                    currentDay.setHours(0, 0, 0, 0);
+                    return currentDay >= checkIn && currentDay < checkOut;
                   }).map(r => ({
                     ...r,
                     isCheckIn: isSameDay(new Date(r.checkInDate), day),
-                    isCheckOut: isSameDay(new Date(r.checkOutDate), day),
+                    isCheckOut: false, // Check-out day is not occupied
                   }));
 
                   const hasReservation = dayReservations.length > 0;
                   const isCheckIn = dayReservations.some(r => r.isCheckIn);
-                  const isCheckOut = dayReservations.some(r => r.isCheckOut);
+                  
+                  // Check if next day starts a new reservation (to determine if we should round the right side)
+                  const nextDay = dayIndex < weekDays.length - 1 ? weekDays[dayIndex + 1] : null;
+                  const isLastDayOfReservation = nextDay && dayReservations.some(r => {
+                    const checkOut = new Date(r.checkOutDate);
+                    checkOut.setHours(0, 0, 0, 0);
+                    const nextDayNormalized = new Date(nextDay);
+                    nextDayNormalized.setHours(0, 0, 0, 0);
+                    return checkOut.getTime() === nextDayNormalized.getTime();
+                  });
+                  
+                  // Check if this is the last day of the week and reservation continues
+                  const isEndOfWeek = dayIndex === weekDays.length - 1;
 
                   return (
                     <div
                       key={day.toISOString()}
                       className={cn(
-                        "p-1 border-l min-h-[50px] flex items-center justify-center",
-                        isToday(day) && "bg-primary/5",
-                        hasReservation && "relative"
+                        "border-l min-h-[50px] flex items-center relative",
+                        isToday(day) && "bg-primary/5"
                       )}
                     >
                       {hasReservation && (
@@ -284,21 +300,23 @@ export const ReservationsCalendar = ({
                           <Tooltip>
                             <TooltipTrigger asChild>
                               <div
-                                className={cn(
-                                  "w-full h-8 rounded-md flex items-center justify-center gap-1 cursor-default",
-                                  isCheckIn && "rounded-l-full pl-1",
-                                  isCheckOut && "rounded-r-full pr-1"
-                                )}
+                                className="absolute inset-y-2 inset-x-0 flex items-center justify-center cursor-default"
                                 style={{
                                   backgroundColor: color.bg,
                                   borderTop: `2px solid ${color.border}`,
                                   borderBottom: `2px solid ${color.border}`,
                                   borderLeft: isCheckIn ? `2px solid ${color.border}` : 'none',
-                                  borderRight: isCheckOut ? `2px solid ${color.border}` : 'none',
+                                  borderRight: isLastDayOfReservation ? `2px solid ${color.border}` : 'none',
+                                  borderTopLeftRadius: isCheckIn ? '9999px' : '0',
+                                  borderBottomLeftRadius: isCheckIn ? '9999px' : '0',
+                                  borderTopRightRadius: isLastDayOfReservation ? '9999px' : '0',
+                                  borderBottomRightRadius: isLastDayOfReservation ? '9999px' : '0',
+                                  marginLeft: isCheckIn ? '4px' : '0',
+                                  marginRight: isLastDayOfReservation ? '4px' : '0',
                                 }}
                               >
                                 {isCheckIn && <LogIn className="h-3 w-3" style={{ color: color.text }} />}
-                                {isCheckOut && <LogOut className="h-3 w-3" style={{ color: color.text }} />}
+                                {isLastDayOfReservation && <LogOut className="h-3 w-3 ml-auto mr-1" style={{ color: color.text }} />}
                               </div>
                             </TooltipTrigger>
                             <TooltipContent>
@@ -309,7 +327,6 @@ export const ReservationsCalendar = ({
                                       {format(new Date(r.checkInDate), 'd MMM', { locale: es })} → {format(new Date(r.checkOutDate), 'd MMM', { locale: es })}
                                     </p>
                                     {r.isCheckIn && <p className="text-xs text-emerald-600">Check-in</p>}
-                                    {r.isCheckOut && <p className="text-xs text-rose-600">Check-out</p>}
                                   </div>
                                 ))}
                               </div>
