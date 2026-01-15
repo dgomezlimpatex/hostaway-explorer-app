@@ -30,6 +30,7 @@ interface ReservationRow {
   guestCount: number | undefined;
   specialRequests: string;
   isExpanded: boolean;
+  checkOutOpen: boolean;
 }
 
 interface QuickAddReservationsProps {
@@ -47,6 +48,7 @@ const createEmptyRow = (): ReservationRow => ({
   guestCount: undefined,
   specialRequests: '',
   isExpanded: false,
+  checkOutOpen: false,
 });
 
 export const QuickAddReservations = ({
@@ -89,9 +91,10 @@ export const QuickAddReservations = ({
       if (type === 'checkIn') {
         // If selecting check-in and no check-out, auto-set check-out to next day
         const checkOutDate = row.checkOutDate || (date ? addDays(date, 1) : undefined);
-        return { ...row, checkInDate: date, checkOutDate };
+        // Auto-open check-out calendar after selecting check-in
+        return { ...row, checkInDate: date, checkOutDate, checkOutOpen: true };
       } else {
-        return { ...row, checkOutDate: date };
+        return { ...row, checkOutDate: date, checkOutOpen: false };
       }
     }));
   }, []);
@@ -229,7 +232,10 @@ export const QuickAddReservations = ({
 
                 {/* Check-out date */}
                 <div className="sm:col-span-3">
-                  <Popover>
+                  <Popover 
+                    open={row.checkOutOpen} 
+                    onOpenChange={(open) => updateRow(row.id, { checkOutOpen: open })}
+                  >
                     <PopoverTrigger asChild>
                       <Button
                         variant="outline"
@@ -256,6 +262,7 @@ export const QuickAddReservations = ({
                           (row.checkInDate ? date <= row.checkInDate : false)
                         }
                         initialFocus
+                        className="pointer-events-auto"
                       />
                     </PopoverContent>
                   </Popover>
