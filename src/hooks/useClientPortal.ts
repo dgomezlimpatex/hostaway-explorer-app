@@ -417,7 +417,7 @@ export const useClientProperties = (clientId: string | undefined) => {
         .from('properties')
         .select('id, nombre, codigo, direccion, check_out_predeterminado, duracion_servicio')
         .eq('cliente_id', clientId)
-        .eq('is_active', true)
+        .or('is_active.eq.true,is_active.is.null')
         .order('nombre');
       
       if (error) throw error;
