@@ -647,6 +647,156 @@ export type Database = {
           },
         ]
       }
+      client_portal_access: {
+        Row: {
+          access_pin: string
+          client_id: string
+          created_at: string
+          id: string
+          is_active: boolean
+          last_access_at: string | null
+          portal_token: string
+          updated_at: string
+        }
+        Insert: {
+          access_pin: string
+          client_id: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          last_access_at?: string | null
+          portal_token?: string
+          updated_at?: string
+        }
+        Update: {
+          access_pin?: string
+          client_id?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          last_access_at?: string | null
+          portal_token?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_portal_access_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: true
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      client_reservation_logs: {
+        Row: {
+          action: string
+          client_id: string
+          created_at: string
+          id: string
+          new_data: Json | null
+          old_data: Json | null
+          reservation_id: string | null
+        }
+        Insert: {
+          action: string
+          client_id: string
+          created_at?: string
+          id?: string
+          new_data?: Json | null
+          old_data?: Json | null
+          reservation_id?: string | null
+        }
+        Update: {
+          action?: string
+          client_id?: string
+          created_at?: string
+          id?: string
+          new_data?: Json | null
+          old_data?: Json | null
+          reservation_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_reservation_logs_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_reservation_logs_reservation_id_fkey"
+            columns: ["reservation_id"]
+            isOneToOne: false
+            referencedRelation: "client_reservations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      client_reservations: {
+        Row: {
+          check_in_date: string
+          check_out_date: string
+          client_id: string
+          created_at: string
+          guest_count: number | null
+          id: string
+          property_id: string
+          special_requests: string | null
+          status: string
+          task_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          check_in_date: string
+          check_out_date: string
+          client_id: string
+          created_at?: string
+          guest_count?: number | null
+          id?: string
+          property_id: string
+          special_requests?: string | null
+          status?: string
+          task_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          check_in_date?: string
+          check_out_date?: string
+          client_id?: string
+          created_at?: string
+          guest_count?: number | null
+          id?: string
+          property_id?: string
+          special_requests?: string | null
+          status?: string
+          task_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_reservations_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_reservations_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_reservations_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       clients: {
         Row: {
           cif_nif: string
@@ -3269,6 +3419,7 @@ export type Database = {
           }
       delete_avantio_cron_job: { Args: { job_name: string }; Returns: Json }
       delete_hostaway_cron_job: { Args: { job_name: string }; Returns: Json }
+      generate_random_pin: { Args: never; Returns: string }
       get_current_user_role: {
         Args: never
         Returns: Database["public"]["Enums"]["app_role"]
