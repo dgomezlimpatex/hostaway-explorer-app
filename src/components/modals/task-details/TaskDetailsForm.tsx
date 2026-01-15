@@ -86,15 +86,7 @@ export const TaskDetailsForm = ({
 
   return (
     <div className="space-y-6">
-      {/* Ocultar inventario para cleaners */}
-      {userRole !== 'cleaner' && task && task.propertyId && (
-        <InventoryTaskIntegration 
-          taskId={task.id} 
-          propertyId={task.propertyId}
-        />
-      )}
-      
-      <TaskDetailsHeader 
+      <TaskDetailsHeader
         task={task}
         isEditing={isEditing}
         formData={formData}
