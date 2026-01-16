@@ -61,13 +61,14 @@ export class PropertyChecklistStorageService {
         .select('*')
         .eq('property_id', propertyId)
         .eq('is_active', true)
-        .single();
+        .maybeSingle();
 
       if (error) {
-        if (error.code === 'PGRST116') {
-          return null; // No assignment found
-        }
         console.error('Error fetching property checklist assignment:', error);
+        return null;
+      }
+
+      if (!data) {
         return null;
       }
 
