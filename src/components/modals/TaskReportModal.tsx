@@ -629,7 +629,7 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
   const handleAdditionalTaskComplete = useCallback((
     subtaskId: string, 
     completed: boolean, 
-    notes?: string, 
+    notesParam?: string, 
     mediaUrls?: string[]
   ) => {
     if (!task) return;
@@ -638,17 +638,13 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
       task,
       subtaskId,
       completed,
-      notes,
+      notes: notesParam,
       mediaUrls
     });
   }, [task, completeSubtask]);
 
-  if (!task) return null;
-
-  const canComplete = isTaskFromToday && requiredValidation.isValid;
-
-  // Responsive modal classes
-  const getModalClasses = () => {
+  // Responsive modal classes - moved BEFORE conditional return
+  const getModalClasses = useCallback(() => {
     if (isMobile) {
       return "w-full max-w-full h-full max-h-full m-0 rounded-none overflow-hidden flex flex-col";
     }
@@ -656,7 +652,7 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
       return "w-[95vw] max-w-3xl max-h-[85vh] overflow-hidden flex flex-col";
     }
     return "max-w-4xl max-h-[90vh] overflow-hidden flex flex-col";
-  };
+  }, [isMobile, isTablet]);
 
   const handleContentScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
     if (!isMobile) return;
@@ -675,6 +671,12 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
       lastScrollTop.current = scrollTop;
     }
   }, [isMobile]);
+
+  // FIXED: All hooks are now above this conditional return
+  if (!task) return null;
+
+  const canComplete = isTaskFromToday && requiredValidation.isValid;
+
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
