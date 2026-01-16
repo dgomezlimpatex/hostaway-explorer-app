@@ -46,7 +46,11 @@ export const TaskDetailsModal = ({
       console.log('🔍 TaskDetailsModal - isEditing set to:', openInEditMode);
     }
   }, [task, openInEditMode]);
+
+  // FIXED: Todos los hooks están arriba. Este return condicional es seguro.
+  // Solo retornamos null si no hay task - todos los hooks ya se ejecutaron.
   if (!task) return null;
+
   const handleSave = async () => {
     console.log('💾 handleSave called with formData:', formData);
     
