@@ -1,4 +1,4 @@
-import React, { createContext, useContext, ReactNode } from 'react';
+import React, { createContext, useContext, ReactNode, useMemo } from 'react';
 import { useMobileErrorHandler } from '@/hooks/useMobileErrorHandler';
 import { MobileErrorDisplay } from './MobileErrorDisplay';
 import { useDeviceType } from '@/hooks/use-mobile';
@@ -64,21 +64,26 @@ export const useMobileErrorContext = (): MobileErrorContextType => {
   return context;
 };
 
-// Hook para usar en cualquier componente
-export const useGlobalMobileError = () => {
+// Funciones vacías para modo no-móvil (evita violación de rules-of-hooks)
+const noopErrorHandlers: MobileErrorContextType = {
+  addUploadError: () => {},
+  addIncidentError: () => {},
+  addSaveError: () => {},
+  addNetworkError: () => {},
+  clearErrors: () => {},
+  errorCount: 0,
+};
+
+// Hook para usar en cualquier componente - FIXED: no conditional hook calls
+export const useGlobalMobileError = (): MobileErrorContextType => {
   const { isMobile } = useDeviceType();
+  const context = useContext(MobileErrorContext);
   
-  // Si no es móvil, devolver funciones vacías
-  if (!isMobile) {
-    return {
-      addUploadError: () => {},
-      addIncidentError: () => {},
-      addSaveError: () => {},
-      addNetworkError: () => {},
-      clearErrors: () => {},
-      errorCount: 0,
-    };
-  }
-  
-  return useMobileErrorContext();
+  // Siempre llamamos useContext, pero devolvemos noop si no es móvil o no hay contexto
+  return useMemo(() => {
+    if (!isMobile || !context) {
+      return noopErrorHandlers;
+    }
+    return context;
+  }, [isMobile, context]);
 };

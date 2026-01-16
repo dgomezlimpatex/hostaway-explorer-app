@@ -15,7 +15,10 @@ export const MobileDashboardHeader = () => {
   const [open, setOpen] = useState(false);
   const isMobile = useIsMobile();
 
-  if (!isMobile) return null;
+  // FIXED: No early return - render conditionally within JSX
+  if (!isMobile) {
+    return null;
+  }
 
   return (
     <>
