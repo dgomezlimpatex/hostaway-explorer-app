@@ -46,7 +46,14 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
     dismissAllErrors
   } = useMobileErrorHandler();
   
-  const { createReport, updateReport, isCreatingReport, isUpdatingReport } = useTaskReports();
+  const {
+    createReport,
+    createReportAsync,
+    updateReport,
+    updateReportAsync,
+    isCreatingReport,
+    isUpdatingReport,
+  } = useTaskReports();
   const { completeSubtask } = useAdditionalTasks();
   const processAutomaticConsumption = useProcessAutomaticConsumption();
   const { data: existingReport, isLoading: isLoadingReport } = useTaskReport(task?.id || '');
@@ -186,94 +193,91 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
 
   // Validate required items completion
   const requiredValidation = useMemo(() => {
-    if (!currentTemplate) return { isValid: true, missingItems: [], missingPhotos: [] };
-    
+    const categories = currentTemplate?.checklist_items ?? [];
+    if (categories.length === 0) {
+      return { isValid: true, missingItems: [], missingPhotos: [] };
+    }
+
     const missingItems: string[] = [];
     const missingPhotos: string[] = [];
-    
-    currentTemplate.checklist_items.forEach(category => {
-      category.items.forEach(item => {
+
+    categories.forEach((category) => {
+      const items = category?.items ?? [];
+      items.forEach((item) => {
         const key = `${category.id}.${item.id}`;
         const itemData = checklist[key];
-        
+
         if (item.required && !itemData?.completed) {
           missingItems.push(item.task);
         }
-        
+
         if (item.photo_required && (!itemData?.media_urls || itemData.media_urls.length === 0)) {
           missingPhotos.push(item.task);
         }
       });
     });
-    
+
     return {
       isValid: missingItems.length === 0 && missingPhotos.length === 0,
       missingItems,
-      missingPhotos
+      missingPhotos,
     };
   }, [checklist, currentTemplate]);
 
   // Calculate completion percentage - más conservador para evitar completar prematuramente
   const completionPercentage = React.useMemo(() => {
-    if (!currentTemplate) return 0;
-    
-    const totalItems = currentTemplate.checklist_items?.reduce(
-      (acc, category) => acc + category.items.length, 
-      0
-    ) || 0;
-    
+    const categories = currentTemplate?.checklist_items ?? [];
+    if (categories.length === 0) return 0;
+
+    const totalItems = categories.reduce((acc, category) => acc + (category?.items?.length ?? 0), 0);
     if (totalItems === 0) return 0;
-    
-    // Contar elementos completados de forma más estricta
+
     let fullyCompletedItems = 0;
     let totalRequiredItems = 0;
-    
-    currentTemplate.checklist_items.forEach(category => {
-      category.items.forEach(item => {
+
+    categories.forEach((category) => {
+      const items = category?.items ?? [];
+      items.forEach((item) => {
         const key = `${category.id}.${item.id}`;
         const itemData = checklist[key];
-        
-        // Contar elementos requeridos
+
         if (item.required) {
           totalRequiredItems++;
         }
-        
-        // Elemento completado solo si:
-        // 1. Está marcado como completado explícitamente
-        // 2. Si la foto es requerida, debe tener al menos una foto válida
-        // 3. Si tiene notas requeridas, deben estar presentes
+
         const isExplicitlyCompleted = itemData?.completed === true;
-        const hasRequiredPhoto = !item.photo_required || 
+        const hasRequiredPhoto =
+          !item.photo_required ||
           (itemData?.media_urls && Array.isArray(itemData.media_urls) && itemData.media_urls.length > 0);
-        
-        // Solo contar como completado si cumple TODOS los requisitos
+
         if (isExplicitlyCompleted && hasRequiredPhoto) {
           fullyCompletedItems++;
         }
       });
     });
-    
-    // Usar elementos requeridos como base mínima si existen
-    const baseItems = totalRequiredItems > 0 ? totalRequiredItems : totalItems;
+
     const percentage = Math.round((fullyCompletedItems / totalItems) * 100);
-    
+
     // No permitir 100% a menos que TODOS los elementos requeridos estén completados
     if (percentage >= 100 && totalRequiredItems > 0) {
-      const requiredCompleted = currentTemplate.checklist_items.reduce((count, category) => {
-        return count + category.items.filter(item => {
-          if (!item.required) return false;
-          const key = `${category.id}.${item.id}`;
-          const itemData = checklist[key];
-          const isCompleted = itemData?.completed === true;
-          const hasRequiredPhoto = !item.photo_required || 
-            (itemData?.media_urls && itemData.media_urls.length > 0);
-          return isCompleted && hasRequiredPhoto;
-        }).length;
+      const requiredCompleted = categories.reduce((count, category) => {
+        const items = category?.items ?? [];
+        return (
+          count +
+          items.filter((item) => {
+            if (!item.required) return false;
+            const key = `${category.id}.${item.id}`;
+            const itemData = checklist[key];
+            const isCompleted = itemData?.completed === true;
+            const hasRequiredPhoto = !item.photo_required || (itemData?.media_urls && itemData.media_urls.length > 0);
+            return isCompleted && hasRequiredPhoto;
+          }).length
+        );
       }, 0);
-      
+
       return requiredCompleted === totalRequiredItems ? 100 : Math.min(95, percentage);
     }
-    
+
     return Math.min(percentage, 99); // Never auto-complete at 100% sin validación explícita
   }, [checklist, currentTemplate]);
 
@@ -356,7 +360,6 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
       return;
     }
 
-    // Verificar que tenemos el ID del limpiador actual
     if (!currentCleanerId) {
       toast({
         title: "Error",
@@ -366,27 +369,32 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
       return;
     }
 
-    if (reportCreationAttempted.current !== task.id) {
-      console.log('TaskReportModal - starting task and creating report');
-      reportCreationAttempted.current = task.id;
-      
-      // Create report with start time
-      const reportData = {
-        task_id: task.id,
-        cleaner_id: currentCleanerId, // Usar SIEMPRE el ID del limpiador actual para tareas múltiples
-        checklist_completed: {},
-        notes: '',
-        issues_found: [],
-        overall_status: 'in_progress' as const,
-        start_time: new Date().toISOString(),
-      };
-      
-      createReport(reportData);
+    if (reportCreationAttempted.current === task.id) return;
+
+    console.log('TaskReportModal - starting task and creating report');
+    reportCreationAttempted.current = task.id;
+
+    const reportData = {
+      task_id: task.id,
+      cleaner_id: currentCleanerId,
+      checklist_completed: {},
+      notes: '',
+      issues_found: [],
+      overall_status: 'in_progress' as const,
+      start_time: new Date().toISOString(),
+    };
+
+    try {
+      const created = await createReportAsync(reportData);
+      setCurrentReport(created);
       setHasStartedTask(true);
-      
+    } catch (error) {
+      console.error('❌ Error starting task report:', error);
+      reportCreationAttempted.current = null;
       toast({
-        title: "Tarea iniciada",
-        description: "El reporte se ha iniciado correctamente.",
+        title: "Error",
+        description: "No se pudo iniciar el reporte. Inténtalo de nuevo.",
+        variant: "destructive",
       });
     }
   };
@@ -394,50 +402,58 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
   const handleSave = async () => {
     if (!task) return;
 
-    // Verificar que el usuario esté autenticado
     if (!user?.id) {
       const errorMsg = 'Debes estar autenticado para guardar reportes. Por favor, inicia sesión de nuevo.';
-      addSaveError('Error de autenticación', errorMsg, {
-        userId: user?.id,
-        taskId: task.id,
-        hasUser: !!user,
-        reportId: currentReport?.id
-      }, 'Intentando guardar reporte sin autenticación');
-      
+      addSaveError(
+        'Error de autenticación',
+        errorMsg,
+        {
+          userId: user?.id,
+          taskId: task.id,
+          hasUser: !!user,
+          reportId: currentReport?.id,
+        },
+        'Intentando guardar reporte sin autenticación'
+      );
+
       toast({
-        title: "Error de autenticación",
+        title: 'Error de autenticación',
         description: errorMsg,
-        variant: "destructive",
+        variant: 'destructive',
       });
       return;
     }
 
-    // Verificar que tenemos el ID del limpiador actual
     if (!currentCleanerId) {
       const errorMsg = 'No se pudo identificar tu perfil de limpiador. Contacta al administrador.';
-      addSaveError('Error de identificación', errorMsg, {
-        userId: user?.id,
-        taskId: task.id,
-        currentCleanerId,
-        cleanerData: cleaners // Fixed: usar cleaners en lugar de cleaner
-      }, 'Intentando guardar sin ID de limpiador');
-      
+      addSaveError(
+        'Error de identificación',
+        errorMsg,
+        {
+          userId: user?.id,
+          taskId: task.id,
+          currentCleanerId,
+          cleanerData: cleaners,
+        },
+        'Intentando guardar sin ID de limpiador'
+      );
+
       toast({
-        title: "Error",
+        title: 'Error',
         description: errorMsg,
-        variant: "destructive",
+        variant: 'destructive',
       });
       return;
     }
 
     const reportData = {
       task_id: task.id,
-      cleaner_id: currentCleanerId, // Usar SIEMPRE el ID del limpiador actual para tareas múltiples
+      cleaner_id: currentCleanerId,
       checklist_template_id: currentTemplate?.id,
       checklist_completed: checklist,
       notes,
       issues_found: [],
-      overall_status: completionPercentage === 100 ? 'completed' as const : 'in_progress' as const,
+      overall_status: completionPercentage === 100 ? ('completed' as const) : ('in_progress' as const),
     };
 
     console.log('TaskReportModal - handleSave called with:', {
@@ -446,50 +462,48 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
       currentReport: currentReport?.id,
       existingReport: existingReport?.id,
       hasStartedTask,
-      reportData
+      reportData,
     });
 
     try {
-      // Si tenemos un currentReport y existingReport coinciden, actualizar
       if (currentReport && existingReport && currentReport.id === existingReport.id) {
-        console.log('TaskReportModal - updating existing report:', currentReport.id, reportData);
-        updateReport({ 
-          reportId: currentReport.id, 
-          updates: reportData 
+        const updated = await updateReportAsync({
+          reportId: currentReport.id,
+          updates: reportData,
         });
+        setCurrentReport(updated);
       } else {
-        console.log('TaskReportModal - creating new report because:', {
-          noCurrentReport: !currentReport,
-          noExistingReport: !existingReport,
-          mismatch: currentReport?.id !== existingReport?.id
-        });
-        // Crear el reporte con start_time
         const createData = {
           ...reportData,
           start_time: new Date().toISOString(),
         };
-        createReport(createData);
-        // Marcar que hemos comenzado la tarea
+        const created = await createReportAsync(createData);
+        setCurrentReport(created);
         setHasStartedTask(true);
       }
     } catch (error) {
       console.error('Error saving report:', error);
       const errorMsg = error instanceof Error ? error.message : 'Error desconocido al guardar reporte';
-      
-      addSaveError('Error al guardar reporte', errorMsg, {
-        userId: user?.id,
-        taskId: task.id,
-        currentCleanerId,
-        reportId: currentReport?.id,
-        hasCurrentReport: !!currentReport,
-        hasExistingReport: !!existingReport,
-        completionPercentage
-      }, 'Guardando reporte desde modal');
-      
+
+      addSaveError(
+        'Error al guardar reporte',
+        errorMsg,
+        {
+          userId: user?.id,
+          taskId: task.id,
+          currentCleanerId,
+          reportId: currentReport?.id,
+          hasCurrentReport: !!currentReport,
+          hasExistingReport: !!existingReport,
+          completionPercentage,
+        },
+        'Guardando reporte desde modal'
+      );
+
       toast({
-        title: "Error",
-        description: "No se pudo guardar el reporte. Verifica que estés autenticado e inténtalo de nuevo.",
-        variant: "destructive",
+        title: 'Error',
+        description: 'No se pudo guardar el reporte. Verifica que estés autenticado e inténtalo de nuevo.',
+        variant: 'destructive',
       });
     }
   };
@@ -497,7 +511,6 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
   const handleComplete = async () => {
     if (!task) return;
 
-    // Validar que la tarea sea de hoy
     if (!isTaskFromToday) {
       toast({
         title: "Error",
@@ -507,7 +520,6 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
       return;
     }
 
-    // Validar que todas las tareas obligatorias estén completadas
     if (!requiredValidation.isValid) {
       const messages = [];
       if (requiredValidation.missingItems.length > 0) {
@@ -516,7 +528,7 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
       if (requiredValidation.missingPhotos.length > 0) {
         messages.push(`Fotos requeridas: ${requiredValidation.missingPhotos.join(', ')}`);
       }
-      
+
       toast({
         title: "Reporte incompleto",
         description: messages.join('. '),
@@ -527,7 +539,7 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
 
     const reportData = {
       task_id: task.id,
-      cleaner_id: currentCleanerId, // Usar SIEMPRE el ID del limpiador actual para tareas múltiples
+      cleaner_id: currentCleanerId,
       checklist_template_id: currentTemplate?.id,
       checklist_completed: checklist,
       notes,
@@ -538,44 +550,38 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
 
     try {
       if (currentReport) {
-        await updateReport({ 
-          reportId: currentReport.id, 
-          updates: reportData 
+        const updated = await updateReportAsync({
+          reportId: currentReport.id,
+          updates: reportData,
         });
+        setCurrentReport(updated);
       } else {
-        await createReport({
+        const created = await createReportAsync({
           ...reportData,
           start_time: new Date().toISOString(),
         });
+        setCurrentReport(created);
       }
 
-      // También actualizar el estado de la tarea
       console.log('🔄 Actualizando estado de la tarea a completed:', task.id);
       const { supabase } = await import('@/integrations/supabase/client');
-      const { data, error } = await supabase
-        .from('tasks')
-        .update({ status: 'completed' })
-        .eq('id', task.id);
-      
+      const { error } = await supabase.from('tasks').update({ status: 'completed' }).eq('id', task.id);
+
       if (error) {
         console.error('❌ Error actualizando estado de tarea:', error);
         throw error;
-      } else {
-        console.log('✅ Estado de tarea actualizado correctamente:', data);
       }
 
-      // Procesar consumo automático de inventario si hay propiedad asociada
       if (task.propertyId) {
         console.log('🔄 Procesando consumo automático de inventario para tarea:', task.id);
         try {
           await processAutomaticConsumption.mutateAsync({
             taskId: task.id,
-            propertyId: task.propertyId
+            propertyId: task.propertyId,
           });
           console.log('✅ Consumo automático procesado correctamente');
         } catch (inventoryError) {
           console.error('⚠️ Error procesando consumo automático (no crítico):', inventoryError);
-          // No lanzamos el error para que no bloquee la finalización del reporte
           toast({
             title: "Advertencia",
             description: "El reporte se completó pero hubo un problema procesando el inventario automáticamente.",
@@ -583,30 +589,34 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
           });
         }
       }
-      
-      // Invalidar cache de tareas para que se recargue en el dashboard
+
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
       console.log('🔄 Cache de tareas invalidado');
-      
+
       toast({
         title: "Reporte completado",
         description: "El reporte se ha finalizado exitosamente.",
       });
-      
+
       onOpenChange(false);
     } catch (error) {
       console.error('Error completing report:', error);
       const errorMsg = error instanceof Error ? error.message : 'Error desconocido al completar reporte';
-      
-      addSaveError('Error al completar reporte', errorMsg, {
-        userId: user?.id,
-        taskId: task.id,
-        currentCleanerId,
-        reportId: currentReport?.id,
-        completionPercentage,
-        hasPropertyId: !!task.propertyId
-      }, 'Completando reporte final');
-      
+
+      addSaveError(
+        'Error al completar reporte',
+        errorMsg,
+        {
+          userId: user?.id,
+          taskId: task.id,
+          currentCleanerId,
+          reportId: currentReport?.id,
+          completionPercentage,
+          hasPropertyId: !!task.propertyId,
+        },
+        'Completando reporte final'
+      );
+
       toast({
         title: "Error al completar",
         description: "No se pudo completar el reporte. Inténtalo de nuevo.",

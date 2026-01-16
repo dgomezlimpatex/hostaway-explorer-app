@@ -10,6 +10,7 @@ interface Props {
 interface State {
   hasError: boolean;
   error: Error | null;
+  isLazyLoadError: boolean;
   retryCount: number;
 }
 
@@ -28,11 +29,11 @@ const LazyLoadError = ({ onRetry, error }: { onRetry: () => void; error: Error |
         <AlertTriangle className="h-6 w-6 text-destructive" />
         <h2 className="text-lg font-semibold">Error al cargar la página</h2>
       </div>
-      
+
       <p className="text-muted-foreground mb-6 text-sm">
         Ha ocurrido un error al cargar esta sección. Esto puede deberse a problemas de conexión o de servidor.
       </p>
-      
+
       {error && (
         <details className="mb-4">
           <summary className="text-xs text-muted-foreground cursor-pointer hover:text-foreground">
@@ -43,17 +44,13 @@ const LazyLoadError = ({ onRetry, error }: { onRetry: () => void; error: Error |
           </pre>
         </details>
       )}
-      
+
       <div className="flex gap-2">
         <Button onClick={onRetry} className="flex-1">
           <RefreshCw className="h-4 w-4 mr-2" />
           Reintentar
         </Button>
-        <Button 
-          variant="outline" 
-          onClick={() => window.location.reload()}
-          className="flex-1"
-        >
+        <Button variant="outline" onClick={() => window.location.reload()} className="flex-1">
           Recargar página
         </Button>
       </div>
@@ -69,23 +66,28 @@ export class LazyLoadErrorBoundary extends Component<Props, State> {
     this.state = {
       hasError: false,
       error: null,
-      retryCount: 0
+      isLazyLoadError: false,
+      retryCount: 0,
     };
   }
 
-  static getDerivedStateFromError(error: Error): State {
-    // Check for various types of loading errors
-    const isLazyLoadError = error.message?.includes('Failed to fetch dynamically imported module') ||
-                           error.message?.includes('Loading chunk') ||
-                           error.message?.includes('Loading CSS chunk') ||
-                           error.message?.includes('suspended while responding to synchronous input') ||
-                           error.name === 'ChunkLoadError' ||
-                           error.message?.includes('Minified React error #426');
+  static getDerivedStateFromError(thrown: unknown): State {
+    const error = thrown instanceof Error ? thrown : new Error(typeof thrown === 'string' ? thrown : JSON.stringify(thrown));
+
+    const message = error?.message || '';
+    const isLazyLoadError =
+      message.includes('Failed to fetch dynamically imported module') ||
+      message.includes('Loading chunk') ||
+      message.includes('Loading CSS chunk') ||
+      message.includes('suspended while responding to synchronous input') ||
+      error.name === 'ChunkLoadError' ||
+      message.includes('Minified React error #426');
 
     return {
       hasError: true,
-      error: isLazyLoadError ? error : null,
-      retryCount: 0
+      error,
+      isLazyLoadError,
+      retryCount: 0,
     };
   }
 
@@ -95,28 +97,25 @@ export class LazyLoadErrorBoundary extends Component<Props, State> {
 
   handleRetry = () => {
     const { retryCount } = this.state;
-    
-    // Limit retries to prevent infinite loops
+
     if (retryCount >= 3) {
       window.location.reload();
       return;
     }
 
-    // Use startTransition for retry to avoid sync suspension issues
     startTransition(() => {
-      // Clear any existing timeout
       if (this.retryTimeoutId) {
         clearTimeout(this.retryTimeoutId);
       }
 
-      // Add a delay before retrying to avoid hammering the server
       this.retryTimeoutId = window.setTimeout(() => {
         this.setState({
           hasError: false,
           error: null,
-          retryCount: retryCount + 1
+          isLazyLoadError: false,
+          retryCount: retryCount + 1,
         });
-      }, 1000 * (retryCount + 1)); // Exponential backoff: 1s, 2s, 3s
+      }, 1000 * (retryCount + 1));
     });
   };
 
@@ -128,17 +127,12 @@ export class LazyLoadErrorBoundary extends Component<Props, State> {
 
   render() {
     if (this.state.hasError) {
-      // If it's a lazy load error, show our custom error component
-      if (this.state.error) {
-        return <LazyLoadError onRetry={this.handleRetry} error={this.state.error} />;
-      }
-      
-      // For other errors, use the provided fallback or throw
+      // For ANY error, show a safe fallback instead of throwing `null`
       if (this.props.fallback) {
         return this.props.fallback;
       }
-      
-      throw this.state.error;
+
+      return <LazyLoadError onRetry={this.handleRetry} error={this.state.error} />;
     }
 
     return <>{this.props.children}</>;
