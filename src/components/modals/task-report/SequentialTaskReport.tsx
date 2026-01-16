@@ -150,13 +150,13 @@ export const SequentialTaskReport: React.FC<SequentialTaskReportProps> = ({
   // Determinar si mostrar el placeholder
   const showNotStartedPlaceholder = !hasStartedTask && !isTaskCompleted;
 
-  // FIXED: Un único return con lógica condicional dentro del JSX
+  // FIXED: Keys únicas para evitar errores de removeChild en reconciliación de React
   return (
-    <>
+    <React.Fragment key={`sequential-${task.id}-${hasStartedTask ? 'started' : 'not-started'}`}>
       {showNotStartedPlaceholder ? (
-        <TaskNotStartedPlaceholder />
+        <TaskNotStartedPlaceholder key="placeholder" />
       ) : (
-        <div className="flex flex-col h-full max-h-[calc(100vh-200px)] overflow-hidden">
+        <div key="content" className="flex flex-col h-full max-h-[calc(100vh-200px)] overflow-hidden">
           {/* Step Indicators - Ultra compact */}
           <div className="flex-shrink-0 px-2 py-1.5 border-b bg-muted/30">
             <div className="flex items-center gap-1">
@@ -292,6 +292,6 @@ export const SequentialTaskReport: React.FC<SequentialTaskReportProps> = ({
           )}
         </div>
       )}
-    </>
+    </React.Fragment>
   );
 };

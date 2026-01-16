@@ -150,13 +150,14 @@ export const TaskReportTabs: React.FC<TaskReportTabsProps> = ({
   // Determinar qué contenido mostrar (sin retornos condicionales tempranos)
   const showNotStartedPlaceholder = !hasStartedTask && !isTaskCompleted;
 
-  // FIXED: Siempre renderizamos un único return con lógica condicional dentro del JSX
+  // FIXED: Keys únicas para evitar errores de removeChild en reconciliación de React
   return (
-    <>
+    <React.Fragment key={`task-report-${task.id}-${hasStartedTask ? 'started' : 'not-started'}`}>
       {showNotStartedPlaceholder ? (
-        <TaskNotStartedPlaceholder />
+        <TaskNotStartedPlaceholder key="placeholder" />
       ) : isMobile ? (
         <SequentialTaskReport
+          key="sequential-mobile"
           currentStep={currentStep}
           onStepChange={onStepChange}
           isLoadingTemplates={isLoadingTemplates}
@@ -178,6 +179,7 @@ export const TaskReportTabs: React.FC<TaskReportTabsProps> = ({
         />
       ) : (
         <DesktopTabsView
+          key="desktop-tabs"
           activeTab={activeTab}
           onTabChange={onTabChange}
           isLoadingTemplates={isLoadingTemplates}
@@ -193,6 +195,6 @@ export const TaskReportTabs: React.FC<TaskReportTabsProps> = ({
           onAdditionalTaskComplete={onAdditionalTaskComplete}
         />
       )}
-    </>
+    </React.Fragment>
   );
 };
