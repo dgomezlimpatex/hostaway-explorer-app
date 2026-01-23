@@ -1,7 +1,7 @@
 
 import { ReportType } from './reports';
 
-export type DateRange = 'today' | 'week' | 'month' | 'custom' | 'all' | 'tomorrow' | 'this-week' | 'next-week';
+export type DateRange = 'today' | 'yesterday' | 'week' | 'month' | 'custom' | 'all' | 'tomorrow' | 'this-week' | 'next-week';
 
 export interface BaseFilters {
   dateRange: DateRange;

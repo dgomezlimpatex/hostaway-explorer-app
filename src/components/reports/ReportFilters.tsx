@@ -91,6 +91,7 @@ export const ReportFiltersComponent = ({ filters, onFiltersChange }: ReportFilte
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="today">Hoy</SelectItem>
+                <SelectItem value="yesterday">Ayer</SelectItem>
                 <SelectItem value="week">Esta Semana</SelectItem>
                 <SelectItem value="month">Este Mes</SelectItem>
                 <SelectItem value="custom">Personalizado</SelectItem>
