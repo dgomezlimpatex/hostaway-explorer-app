@@ -79,12 +79,13 @@ export class MultipleTaskAssignmentService {
       }
 
       // Send assignment emails only to newly added cleaners
+      // NOTE: task data is already fresh from DB (fetched above on line 49-53)
       const emailPromises = (newCleaners || []).map(async (cleaner) => {
         if (cleaner.email) {
           try {
             console.log('Sending assignment email to new cleaner:', cleaner.email, 'for task:', taskId);
             
-            // Prepare task data for email
+            // Prepare task data for email using fresh DB data
             const taskData = {
               property: task.property,
               address: task.address,
@@ -94,6 +95,8 @@ export class MultipleTaskAssignmentService {
               type: task.type || 'Limpieza general',
               notes: task.supervisor ? `Supervisor: ${task.supervisor}` : undefined
             };
+
+            console.log('📧 Multiple assignment email - Task data (fresh from DB):', taskData);
 
             // Call the edge function to send the email
             const { data: emailData, error: emailError } = await supabase.functions.invoke('send-task-assignment-email', {
