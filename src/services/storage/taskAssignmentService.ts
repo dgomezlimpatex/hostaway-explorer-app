@@ -182,6 +182,40 @@ export class TaskAssignmentService {
 
   private async sendTaskAssignmentEmail(task: Task, cleanerId: string): Promise<void> {
     try {
+      // IMPORTANT: Fetch fresh task data from database to ensure we have the latest times
+      // This fixes the issue where emails were sent with outdated start/end times
+      const { data: freshTaskData, error: taskError } = await supabase
+        .from('tasks')
+        .select('*, properties!tasks_propiedad_id_fkey(nombre, direccion)')
+        .eq('id', task.id)
+        .single();
+
+      if (taskError) {
+        console.error('Error fetching fresh task data:', taskError);
+        // Fall back to the task object we have if fresh fetch fails
+      }
+
+      // Use fresh data from DB if available, otherwise fall back to passed task object
+      const taskForEmail = freshTaskData ? {
+        property: freshTaskData.property,
+        address: freshTaskData.address || freshTaskData.properties?.direccion,
+        date: freshTaskData.date,
+        startTime: freshTaskData.start_time,
+        endTime: freshTaskData.end_time,
+        type: freshTaskData.type,
+        supervisor: freshTaskData.supervisor
+      } : {
+        property: task.property,
+        address: task.address,
+        date: task.date,
+        startTime: task.startTime,
+        endTime: task.endTime,
+        type: task.type,
+        supervisor: task.supervisor
+      };
+
+      console.log('📧 Task data for email (fresh from DB):', taskForEmail);
+
       // Get cleaner details from the cleaners table
       const { data: cleaner, error: cleanerError } = await supabase
         .from('cleaners')
@@ -201,16 +235,18 @@ export class TaskAssignmentService {
 
       console.log('Sending assignment email to cleaner:', cleaner.email);
 
-      // Prepare task data for email
+      // Prepare task data for email using fresh data
       const taskData = {
-        property: task.property,
-        address: task.address,
-        date: task.date,
-        startTime: task.startTime,
-        endTime: task.endTime,
-        type: task.type || 'Limpieza general',
-        notes: task.supervisor ? `Supervisor: ${task.supervisor}` : undefined
+        property: taskForEmail.property,
+        address: taskForEmail.address,
+        date: taskForEmail.date,
+        startTime: taskForEmail.startTime,
+        endTime: taskForEmail.endTime,
+        type: taskForEmail.type || 'Limpieza general',
+        notes: taskForEmail.supervisor ? `Supervisor: ${taskForEmail.supervisor}` : undefined
       };
+
+      console.log('📧 Final email taskData:', taskData);
 
       // Call the edge function to send the email
       const { data, error: emailError } = await supabase.functions.invoke('send-task-assignment-email', {
@@ -236,6 +272,38 @@ export class TaskAssignmentService {
 
   private async sendTaskScheduleChangeEmail(task: Task, cleanerId: string, originalTask: Task): Promise<void> {
     try {
+      // IMPORTANT: Fetch fresh task data from database to ensure we have the latest times
+      const { data: freshTaskData, error: taskError } = await supabase
+        .from('tasks')
+        .select('*, properties!tasks_propiedad_id_fkey(nombre, direccion)')
+        .eq('id', task.id)
+        .single();
+
+      if (taskError) {
+        console.error('Error fetching fresh task data:', taskError);
+      }
+
+      // Use fresh data from DB if available
+      const taskForEmail = freshTaskData ? {
+        property: freshTaskData.property,
+        address: freshTaskData.address || freshTaskData.properties?.direccion,
+        date: freshTaskData.date,
+        startTime: freshTaskData.start_time,
+        endTime: freshTaskData.end_time,
+        type: freshTaskData.type,
+        supervisor: freshTaskData.supervisor
+      } : {
+        property: task.property,
+        address: task.address,
+        date: task.date,
+        startTime: task.startTime,
+        endTime: task.endTime,
+        type: task.type,
+        supervisor: task.supervisor
+      };
+
+      console.log('📧 Schedule change email - Task data (fresh from DB):', taskForEmail);
+
       // Get cleaner details from the cleaners table
       const { data: cleaner, error: cleanerError } = await supabase
         .from('cleaners')
@@ -255,22 +323,24 @@ export class TaskAssignmentService {
 
       console.log('Sending schedule change email to cleaner:', cleaner.email);
 
-      // Prepare task data for email
+      // Prepare task data for email using fresh data
       const taskData = {
-        property: task.property,
-        address: task.address,
-        date: task.date,
-        startTime: task.startTime,
-        endTime: task.endTime,
-        type: task.type || 'Limpieza general',
-        notes: task.supervisor ? `Supervisor: ${task.supervisor}` : undefined
+        property: taskForEmail.property,
+        address: taskForEmail.address,
+        date: taskForEmail.date,
+        startTime: taskForEmail.startTime,
+        endTime: taskForEmail.endTime,
+        type: taskForEmail.type || 'Limpieza general',
+        notes: taskForEmail.supervisor ? `Supervisor: ${taskForEmail.supervisor}` : undefined
       };
 
       const changes = {
-        oldDate: originalTask.date, // Siempre mostrar la fecha original
-        oldStartTime: originalTask.startTime !== task.startTime ? originalTask.startTime : undefined,
-        oldEndTime: originalTask.endTime !== task.endTime ? originalTask.endTime : undefined,
+        oldDate: originalTask.date,
+        oldStartTime: originalTask.startTime !== taskForEmail.startTime ? originalTask.startTime : undefined,
+        oldEndTime: originalTask.endTime !== taskForEmail.endTime ? originalTask.endTime : undefined,
       };
+
+      console.log('📧 Final schedule change email taskData:', taskData, 'changes:', changes);
 
       // Call the edge function to send the email
       const { data, error: emailError } = await supabase.functions.invoke('send-task-schedule-change-email', {
@@ -297,6 +367,38 @@ export class TaskAssignmentService {
 
   private async sendTaskUnassignmentEmail(task: Task, cleanerId: string, reason: 'unassigned' | 'cancelled'): Promise<void> {
     try {
+      // IMPORTANT: Fetch fresh task data from database to ensure we have the latest times
+      const { data: freshTaskData, error: taskError } = await supabase
+        .from('tasks')
+        .select('*, properties!tasks_propiedad_id_fkey(nombre, direccion)')
+        .eq('id', task.id)
+        .single();
+
+      if (taskError) {
+        console.error('Error fetching fresh task data:', taskError);
+      }
+
+      // Use fresh data from DB if available
+      const taskForEmail = freshTaskData ? {
+        property: freshTaskData.property,
+        address: freshTaskData.address || freshTaskData.properties?.direccion,
+        date: freshTaskData.date,
+        startTime: freshTaskData.start_time,
+        endTime: freshTaskData.end_time,
+        type: freshTaskData.type,
+        supervisor: freshTaskData.supervisor
+      } : {
+        property: task.property,
+        address: task.address,
+        date: task.date,
+        startTime: task.startTime,
+        endTime: task.endTime,
+        type: task.type,
+        supervisor: task.supervisor
+      };
+
+      console.log('📧 Unassignment email - Task data (fresh from DB):', taskForEmail);
+
       // Get cleaner details from the cleaners table
       const { data: cleaner, error: cleanerError } = await supabase
         .from('cleaners')
@@ -316,16 +418,18 @@ export class TaskAssignmentService {
 
       console.log('Sending unassignment email to cleaner:', cleaner.email, 'reason:', reason);
 
-      // Prepare task data for email
+      // Prepare task data for email using fresh data
       const taskData = {
-        property: task.property,
-        address: task.address,
-        date: task.date,
-        startTime: task.startTime,
-        endTime: task.endTime,
-        type: task.type || 'Limpieza general',
-        notes: task.supervisor ? `Supervisor: ${task.supervisor}` : undefined
+        property: taskForEmail.property,
+        address: taskForEmail.address,
+        date: taskForEmail.date,
+        startTime: taskForEmail.startTime,
+        endTime: taskForEmail.endTime,
+        type: taskForEmail.type || 'Limpieza general',
+        notes: taskForEmail.supervisor ? `Supervisor: ${taskForEmail.supervisor}` : undefined
       };
+
+      console.log('📧 Final unassignment email taskData:', taskData);
 
       // Call the edge function to send the email
       const { data, error: emailError } = await supabase.functions.invoke('send-task-unassignment-email', {
