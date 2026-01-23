@@ -9,6 +9,10 @@ export const filterTasksByDateRange = (tasks: any[], filters: ReportFilters) => 
       case 'today':
         const today = new Date();
         return taskDate.toDateString() === today.toDateString();
+      case 'yesterday':
+        const yesterday = new Date();
+        yesterday.setDate(yesterday.getDate() - 1);
+        return taskDate.toDateString() === yesterday.toDateString();
       case 'week':
         const weekStart = new Date();
         weekStart.setDate(weekStart.getDate() - weekStart.getDay());
