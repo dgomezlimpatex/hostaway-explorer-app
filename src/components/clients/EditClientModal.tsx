@@ -69,7 +69,7 @@ export const EditClientModal = ({ client, trigger }: EditClientModalProps) => {
       <div onClick={() => setOpen(true)}>
         {trigger}
       </div>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-xl font-bold text-blue-700 flex items-center gap-2">
             <Edit className="h-5 w-5" />
