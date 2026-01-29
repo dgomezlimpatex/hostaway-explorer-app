@@ -125,13 +125,8 @@ function App() {
                 </LazyRoute>
               } />
               {/* Portal de reservas para clientes (ruta pública) */}
-              {/* Soporta ambos formatos: /portal/token y /portal/client-slug/token */}
-              <Route path="/portal/:token" element={
-                <LazyRoute>
-                  <ClientPortal />
-                </LazyRoute>
-              } />
-              <Route path="/portal/:clientSlug/:token" element={
+              {/* Nuevo formato: /portal/nombre-cliente-abc12def (nombre + código corto) */}
+              <Route path="/portal/:identifier" element={
                 <LazyRoute>
                   <ClientPortal />
                 </LazyRoute>

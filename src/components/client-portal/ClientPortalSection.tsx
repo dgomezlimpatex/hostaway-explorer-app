@@ -28,6 +28,18 @@ const createClientSlug = (name: string): string => {
     .substring(0, 50); // Limit length
 };
 
+interface ClientPortalAccessWithShortCode {
+  id: string;
+  clientId: string;
+  accessPin: string;
+  portalToken: string;
+  shortCode: string;
+  isActive: boolean;
+  lastAccessAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export const ClientPortalSection = ({ clientId, clientName }: ClientPortalSectionProps) => {
   const { toast } = useToast();
   const [showPin, setShowPin] = useState(false);
@@ -39,7 +51,10 @@ export const ClientPortalSection = ({ clientId, clientName }: ClientPortalSectio
 
   const baseUrl = window.location.origin;
   const clientSlug = createClientSlug(clientName);
-  const portalUrl = portalAccess ? `${baseUrl}/portal/${clientSlug}/${portalAccess.portalToken}` : '';
+  // Use short_code for cleaner URLs: /portal/client-slug-abc12def
+  const portalUrl = portalAccess?.shortCode 
+    ? `${baseUrl}/portal/${clientSlug}-${portalAccess.shortCode}` 
+    : '';
 
   const handleCreateAccess = () => {
     createAccess.mutate(clientId, {

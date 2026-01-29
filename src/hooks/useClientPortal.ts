@@ -39,11 +39,12 @@ export const useClientPortalAccess = (clientId: string | undefined) => {
         clientId: data.client_id,
         accessPin: data.access_pin,
         portalToken: data.portal_token,
+        shortCode: data.short_code,
         isActive: data.is_active,
         lastAccessAt: data.last_access_at,
         createdAt: data.created_at,
         updatedAt: data.updated_at,
-      } as ClientPortalAccess;
+      };
     },
     enabled: !!clientId,
   });
@@ -328,7 +329,62 @@ export const useClientReservationLogs = (filters?: {
 
 // ============= PUBLIC PORTAL HOOKS =============
 
-// Verify portal token and get client info
+// Extract short_code from URL identifier (e.g., "client-name-abc12def" -> "abc12def")
+export const extractShortCodeFromIdentifier = (identifier: string): string => {
+  // The short_code is the last 8 characters after the last hyphen
+  const parts = identifier.split('-');
+  if (parts.length > 0) {
+    const lastPart = parts[parts.length - 1];
+    if (lastPart.length === 8) {
+      return lastPart;
+    }
+  }
+  // Fallback: treat entire identifier as short_code or token
+  return identifier;
+};
+
+// Verify portal by short_code and get client info
+export const useVerifyPortalShortCode = (identifier: string | undefined) => {
+  return useQuery({
+    queryKey: ['portal-verify-shortcode', identifier],
+    queryFn: async () => {
+      if (!identifier) return null;
+      
+      const shortCode = extractShortCodeFromIdentifier(identifier);
+      
+      const { data, error } = await supabase
+        .from('client_portal_access')
+        .select(`
+          *,
+          clients (
+            id,
+            nombre
+          )
+        `)
+        .eq('short_code', shortCode)
+        .eq('is_active', true)
+        .maybeSingle();
+      
+      if (error) throw error;
+      if (!data) return null;
+      
+      return {
+        portalAccess: {
+          id: data.id,
+          clientId: data.client_id,
+          accessPin: data.access_pin,
+          portalToken: data.portal_token,
+          shortCode: data.short_code,
+          isActive: data.is_active,
+        },
+        clientName: (data.clients as any)?.nombre || 'Cliente',
+      };
+    },
+    enabled: !!identifier,
+  });
+};
+
+// Legacy: Verify portal token (for backward compatibility)
 export const useVerifyPortalToken = (token: string | undefined) => {
   return useQuery({
     queryKey: ['portal-verify-token', token],
@@ -357,6 +413,7 @@ export const useVerifyPortalToken = (token: string | undefined) => {
           clientId: data.client_id,
           accessPin: data.access_pin,
           portalToken: data.portal_token,
+          shortCode: data.short_code,
           isActive: data.is_active,
         },
         clientName: (data.clients as any)?.nombre || 'Cliente',
@@ -366,13 +423,16 @@ export const useVerifyPortalToken = (token: string | undefined) => {
   });
 };
 
-// Authenticate with PIN
+// Authenticate with PIN (supports both short_code and legacy token)
 export const useAuthenticatePortal = () => {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: async ({ token, pin }: { token: string; pin: string }) => {
-      const { data, error } = await supabase
+    mutationFn: async ({ identifier, pin }: { identifier: string; pin: string }) => {
+      const shortCode = extractShortCodeFromIdentifier(identifier);
+      
+      // Try short_code first
+      let { data, error } = await supabase
         .from('client_portal_access')
         .select(`
           *,
@@ -381,10 +441,30 @@ export const useAuthenticatePortal = () => {
             nombre
           )
         `)
-        .eq('portal_token', token)
+        .eq('short_code', shortCode)
         .eq('access_pin', pin)
         .eq('is_active', true)
         .maybeSingle();
+      
+      // Fallback to legacy portal_token if not found
+      if (!data && !error) {
+        const legacyResult = await supabase
+          .from('client_portal_access')
+          .select(`
+            *,
+            clients (
+              id,
+              nombre
+            )
+          `)
+          .eq('portal_token', identifier)
+          .eq('access_pin', pin)
+          .eq('is_active', true)
+          .maybeSingle();
+        
+        data = legacyResult.data;
+        error = legacyResult.error;
+      }
       
       if (error) throw error;
       if (!data) {
@@ -401,6 +481,7 @@ export const useAuthenticatePortal = () => {
         clientId: data.client_id,
         clientName: (data.clients as any)?.nombre || 'Cliente',
         portalToken: data.portal_token,
+        shortCode: data.short_code,
       };
     },
   });

@@ -656,6 +656,7 @@ export type Database = {
           is_active: boolean
           last_access_at: string | null
           portal_token: string
+          short_code: string
           updated_at: string
         }
         Insert: {
@@ -666,6 +667,7 @@ export type Database = {
           is_active?: boolean
           last_access_at?: string | null
           portal_token?: string
+          short_code?: string
           updated_at?: string
         }
         Update: {
@@ -676,6 +678,7 @@ export type Database = {
           is_active?: boolean
           last_access_at?: string | null
           portal_token?: string
+          short_code?: string
           updated_at?: string
         }
         Relationships: [
@@ -3420,6 +3423,7 @@ export type Database = {
       delete_avantio_cron_job: { Args: { job_name: string }; Returns: Json }
       delete_hostaway_cron_job: { Args: { job_name: string }; Returns: Json }
       generate_random_pin: { Args: never; Returns: string }
+      generate_short_code: { Args: never; Returns: string }
       get_current_user_role: {
         Args: never
         Returns: Database["public"]["Enums"]["app_role"]
