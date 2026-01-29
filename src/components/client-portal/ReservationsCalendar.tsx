@@ -356,11 +356,6 @@ export const ReservationsCalendar = ({
                                     <ArrowRightToLine className="h-3 w-3" />
                                   </div>
                                 )}
-                                {isLastDayOfReservation && (
-                                  <div className="flex items-center justify-center bg-rose-500 text-white rounded-full w-5 h-5 ml-auto mr-1 shadow-sm">
-                                    <ArrowLeftFromLine className="h-3 w-3" />
-                                  </div>
-                                )}
                               </div>
                             </TooltipTrigger>
                             <TooltipContent>
@@ -379,13 +374,28 @@ export const ReservationsCalendar = ({
                         </TooltipProvider>
                       )}
                       
-                      {/* Check-out only indicator (when property is not occupied) */}
-                      {!hasReservation && isCheckOut && (
-                        <div className="absolute inset-0 flex items-center justify-center">
-                          <div className="flex items-center justify-center bg-rose-500 text-white rounded-full w-6 h-6 shadow-sm">
-                            <ArrowLeftFromLine className="h-3.5 w-3.5" />
-                          </div>
-                        </div>
+                      {/* Check-out indicator - only shown on actual checkout day */}
+                      {isCheckOut && (
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <div className={cn(
+                                "absolute inset-0 flex items-center",
+                                hasReservation ? "justify-end pr-1" : "justify-center"
+                              )}>
+                                <div className="flex items-center justify-center bg-rose-500 text-white rounded-full w-6 h-6 shadow-sm z-10">
+                                  <ArrowLeftFromLine className="h-3.5 w-3.5" />
+                                </div>
+                              </div>
+                            </TooltipTrigger>
+                            <TooltipContent className="bg-rose-50 border-rose-200">
+                              <p className="font-semibold text-rose-700 flex items-center gap-1.5">
+                                <ArrowLeftFromLine className="h-3.5 w-3.5" />
+                                Salida
+                              </p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
                       )}
                     </div>
                   );
