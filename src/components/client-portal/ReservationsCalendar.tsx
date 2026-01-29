@@ -2,7 +2,7 @@
 import { useMemo, useState } from 'react';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isToday, startOfWeek, endOfWeek, addWeeks, subWeeks, addMonths, subMonths, isSameDay } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { ChevronLeft, ChevronRight, Loader2, Calendar, CalendarDays, LayoutList, LogIn, LogOut } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Loader2, Calendar, CalendarDays, LayoutList, ArrowRightToLine, ArrowLeftFromLine } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ClientReservation } from '@/types/clientPortal';
@@ -70,17 +70,21 @@ export const ReservationsCalendar = ({
   // Adjust for Monday start
   const startPadding = firstDayOfWeek === 0 ? 6 : firstDayOfWeek - 1;
 
-  // Get reservations for a specific day with check-in/out info
-  const getReservationsForDay = (date: Date) => {
-    return reservations.filter(r => {
-      const checkIn = new Date(r.checkInDate);
-      const checkOut = new Date(r.checkOutDate);
-      return date >= checkIn && date < checkOut;
-    }).map(r => ({
-      ...r,
-      isCheckIn: isSameDay(new Date(r.checkInDate), date),
-      isCheckOut: isSameDay(new Date(r.checkOutDate), date),
-    }));
+  // Get check-ins and check-outs for a specific day
+  const getEventsForDay = (date: Date) => {
+    const checkIns: ClientReservation[] = [];
+    const checkOuts: ClientReservation[] = [];
+    
+    reservations.forEach(r => {
+      if (isSameDay(new Date(r.checkInDate), date)) {
+        checkIns.push(r);
+      }
+      if (isSameDay(new Date(r.checkOutDate), date)) {
+        checkOuts.push(r);
+      }
+    });
+    
+    return { checkIns, checkOuts };
   };
 
   // Get unique properties for timeline view
@@ -134,7 +138,7 @@ export const ReservationsCalendar = ({
 
   if (isLoading) {
     return (
-      <Card>
+      <Card className="border-0 shadow-lg">
         <CardContent className="py-12 text-center">
           <Loader2 className="h-8 w-8 animate-spin mx-auto text-muted-foreground" />
           <p className="mt-4 text-muted-foreground">Cargando calendario...</p>
@@ -143,49 +147,75 @@ export const ReservationsCalendar = ({
     );
   }
 
-  const renderReservationBadge = (r: ClientReservation & { isCheckIn?: boolean; isCheckOut?: boolean }, compact = false) => {
-    const color = getPropertyColor(r.propertyId, propertyColorMap);
-    
+  // Check-in badge (green)
+  const renderCheckInBadge = (r: ClientReservation, compact = false) => {
     return (
-      <TooltipProvider key={r.id}>
+      <TooltipProvider key={`in-${r.id}`}>
         <Tooltip>
           <TooltipTrigger asChild>
             <div
               className={cn(
-                "rounded-md border transition-all hover:scale-[1.02]",
-                compact ? "text-[9px] px-1 py-0.5" : "text-xs p-1.5"
+                "flex items-center gap-1.5 rounded-lg border-2 border-emerald-500/30 bg-emerald-500/10 transition-all hover:bg-emerald-500/20",
+                compact ? "text-[10px] px-1.5 py-0.5" : "text-xs px-2 py-1"
               )}
-              style={{
-                backgroundColor: color.bg,
-                borderColor: color.border,
-              }}
             >
-              <div className="flex items-center gap-1">
-                {r.isCheckIn && (
-                  <LogIn className={cn("shrink-0", compact ? "h-2.5 w-2.5" : "h-3 w-3")} style={{ color: color.text }} />
-                )}
-                {r.isCheckOut && (
-                  <LogOut className={cn("shrink-0", compact ? "h-2.5 w-2.5" : "h-3 w-3")} style={{ color: color.text }} />
-                )}
-                <span className="font-medium truncate" style={{ color: color.text }}>
-                  {r.property?.codigo || r.property?.nombre}
-                </span>
-              </div>
-              {!compact && r.property?.nombre && r.property?.codigo && (
-                <div className="text-muted-foreground truncate text-[10px]">
-                  {r.property.nombre}
-                </div>
-              )}
+              <ArrowRightToLine className={cn(
+                "text-emerald-600 shrink-0",
+                compact ? "h-3 w-3" : "h-3.5 w-3.5"
+              )} />
+              <span className="font-semibold text-emerald-700 truncate">
+                {r.property?.codigo || r.property?.nombre}
+              </span>
             </div>
           </TooltipTrigger>
-          <TooltipContent side="top" className="max-w-[200px]">
+          <TooltipContent side="top" className="bg-emerald-50 border-emerald-200">
             <div className="space-y-1">
-              <p className="font-medium">{r.property?.nombre}</p>
-              <p className="text-xs text-muted-foreground">
-                {format(new Date(r.checkInDate), 'd MMM', { locale: es })} → {format(new Date(r.checkOutDate), 'd MMM', { locale: es })}
+              <p className="font-semibold text-emerald-800 flex items-center gap-1.5">
+                <ArrowRightToLine className="h-3.5 w-3.5" />
+                Entrada
               </p>
-              {r.isCheckIn && <p className="text-xs text-emerald-600 flex items-center gap-1"><LogIn className="h-3 w-3" /> Check-in</p>}
-              {r.isCheckOut && <p className="text-xs text-rose-600 flex items-center gap-1"><LogOut className="h-3 w-3" /> Check-out</p>}
+              <p className="text-sm text-emerald-700">{r.property?.nombre}</p>
+              <p className="text-xs text-emerald-600">
+                {format(new Date(r.checkInDate), "d MMMM", { locale: es })}
+              </p>
+            </div>
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+    );
+  };
+
+  // Check-out badge (red)
+  const renderCheckOutBadge = (r: ClientReservation, compact = false) => {
+    return (
+      <TooltipProvider key={`out-${r.id}`}>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <div
+              className={cn(
+                "flex items-center gap-1.5 rounded-lg border-2 border-rose-500/30 bg-rose-500/10 transition-all hover:bg-rose-500/20",
+                compact ? "text-[10px] px-1.5 py-0.5" : "text-xs px-2 py-1"
+              )}
+            >
+              <ArrowLeftFromLine className={cn(
+                "text-rose-600 shrink-0",
+                compact ? "h-3 w-3" : "h-3.5 w-3.5"
+              )} />
+              <span className="font-semibold text-rose-700 truncate">
+                {r.property?.codigo || r.property?.nombre}
+              </span>
+            </div>
+          </TooltipTrigger>
+          <TooltipContent side="top" className="bg-rose-50 border-rose-200">
+            <div className="space-y-1">
+              <p className="font-semibold text-rose-800 flex items-center gap-1.5">
+                <ArrowLeftFromLine className="h-3.5 w-3.5" />
+                Salida
+              </p>
+              <p className="text-sm text-rose-700">{r.property?.nombre}</p>
+              <p className="text-xs text-rose-600">
+                {format(new Date(r.checkOutDate), "d MMMM", { locale: es })}
+              </p>
             </div>
           </TooltipContent>
         </Tooltip>
@@ -196,35 +226,39 @@ export const ReservationsCalendar = ({
   const renderTimelineView = () => {
     if (uniqueProperties.length === 0) {
       return (
-        <div className="text-center py-8 text-muted-foreground">
-          No hay propiedades con reservas para mostrar
+        <div className="text-center py-12 text-muted-foreground">
+          <Calendar className="h-12 w-12 mx-auto mb-3 opacity-30" />
+          <p>No hay propiedades con reservas para mostrar</p>
         </div>
       );
     }
 
     return (
-      <div className="overflow-x-auto">
+      <div className="overflow-x-auto -mx-4 px-4">
         <div className="min-w-[700px]">
           {/* Header with days */}
-          <div className="grid" style={{ gridTemplateColumns: '140px repeat(7, 1fr)' }}>
-            <div className="p-2 border-b font-medium text-sm text-muted-foreground">
+          <div className="grid rounded-t-xl overflow-hidden bg-muted/50" style={{ gridTemplateColumns: '160px repeat(7, 1fr)' }}>
+            <div className="p-3 font-semibold text-sm text-muted-foreground border-r border-border/50">
               Propiedad
             </div>
             {weekDays.map(day => (
               <div
                 key={day.toISOString()}
                 className={cn(
-                  "p-2 border-b border-l text-center",
+                  "p-3 text-center border-l border-border/30",
                   isToday(day) && "bg-primary/10"
                 )}
               >
                 <div className={cn(
-                  "text-sm font-medium",
-                  isToday(day) && "text-primary"
+                  "text-lg font-bold",
+                  isToday(day) ? "text-primary" : "text-foreground"
                 )}>
                   {format(day, 'd')}
                 </div>
-                <div className="text-xs text-muted-foreground">
+                <div className={cn(
+                  "text-xs font-medium uppercase tracking-wide",
+                  isToday(day) ? "text-primary/80" : "text-muted-foreground"
+                )}>
                   {format(day, 'EEE', { locale: es })}
                 </div>
               </div>
@@ -232,25 +266,32 @@ export const ReservationsCalendar = ({
           </div>
 
           {/* Property rows */}
-          {uniqueProperties.map(property => {
+          {uniqueProperties.map((property, propIndex) => {
             const propertyReservations = getReservationsForProperty(property.id);
             const color = getPropertyColor(property.id, propertyColorMap);
+            const isLastRow = propIndex === uniqueProperties.length - 1;
 
             return (
               <div
                 key={property.id}
-                className="grid border-b"
-                style={{ gridTemplateColumns: '140px repeat(7, 1fr)' }}
+                className={cn(
+                  "grid border-l border-r border-b border-border/50",
+                  isLastRow && "rounded-b-xl overflow-hidden"
+                )}
+                style={{ gridTemplateColumns: '160px repeat(7, 1fr)' }}
               >
                 {/* Property name */}
-                <div className="p-2 flex items-center gap-2">
+                <div className="p-3 flex items-center gap-3 bg-muted/20 border-r border-border/30">
                   <div 
-                    className="w-3 h-3 rounded-full shrink-0" 
-                    style={{ backgroundColor: color.text }}
+                    className="w-3 h-3 rounded-full shrink-0 shadow-sm" 
+                    style={{ 
+                      backgroundColor: color.text,
+                      boxShadow: `0 0 0 2px white, 0 0 0 4px ${color.border}`
+                    }}
                   />
                   <div className="min-w-0">
-                    <div className="text-sm font-medium truncate">{property.codigo}</div>
-                    <div className="text-[10px] text-muted-foreground truncate">{property.nombre}</div>
+                    <div className="text-sm font-bold truncate">{property.codigo}</div>
+                    <div className="text-[11px] text-muted-foreground truncate">{property.nombre}</div>
                   </div>
                 </div>
 
@@ -265,16 +306,13 @@ export const ReservationsCalendar = ({
                     const currentDay = new Date(day);
                     currentDay.setHours(0, 0, 0, 0);
                     return currentDay >= checkIn && currentDay < checkOut;
-                  }).map(r => ({
-                    ...r,
-                    isCheckIn: isSameDay(new Date(r.checkInDate), day),
-                    isCheckOut: false, // Check-out day is not occupied
-                  }));
+                  });
 
                   const hasReservation = dayReservations.length > 0;
-                  const isCheckIn = dayReservations.some(r => r.isCheckIn);
+                  const isCheckIn = dayReservations.some(r => isSameDay(new Date(r.checkInDate), day));
+                  const isCheckOut = propertyReservations.some(r => isSameDay(new Date(r.checkOutDate), day));
                   
-                  // Check if next day starts a new reservation (to determine if we should round the right side)
+                  // Check if next day starts a new reservation
                   const nextDay = dayIndex < weekDays.length - 1 ? weekDays[dayIndex + 1] : null;
                   const isLastDayOfReservation = nextDay && dayReservations.some(r => {
                     const checkOut = new Date(r.checkOutDate);
@@ -283,56 +321,71 @@ export const ReservationsCalendar = ({
                     nextDayNormalized.setHours(0, 0, 0, 0);
                     return checkOut.getTime() === nextDayNormalized.getTime();
                   });
-                  
-                  // Check if this is the last day of the week and reservation continues
-                  const isEndOfWeek = dayIndex === weekDays.length - 1;
 
                   return (
                     <div
                       key={day.toISOString()}
                       className={cn(
-                        "border-l min-h-[50px] flex items-center relative",
+                        "border-l border-border/30 min-h-[60px] flex items-center relative",
                         isToday(day) && "bg-primary/5"
                       )}
                     >
+                      {/* Occupied bar */}
                       {hasReservation && (
                         <TooltipProvider>
                           <Tooltip>
                             <TooltipTrigger asChild>
                               <div
-                                className="absolute inset-y-2 inset-x-0 flex items-center justify-center cursor-default"
+                                className="absolute inset-y-3 inset-x-0 flex items-center cursor-default"
                                 style={{
                                   backgroundColor: color.bg,
                                   borderTop: `2px solid ${color.border}`,
                                   borderBottom: `2px solid ${color.border}`,
-                                  borderLeft: isCheckIn ? `2px solid ${color.border}` : 'none',
-                                  borderRight: isLastDayOfReservation ? `2px solid ${color.border}` : 'none',
-                                  borderTopLeftRadius: isCheckIn ? '9999px' : '0',
-                                  borderBottomLeftRadius: isCheckIn ? '9999px' : '0',
-                                  borderTopRightRadius: isLastDayOfReservation ? '9999px' : '0',
-                                  borderBottomRightRadius: isLastDayOfReservation ? '9999px' : '0',
+                                  borderLeft: isCheckIn ? `3px solid ${color.text}` : 'none',
+                                  borderRight: isLastDayOfReservation ? `3px solid ${color.text}` : 'none',
+                                  borderTopLeftRadius: isCheckIn ? '8px' : '0',
+                                  borderBottomLeftRadius: isCheckIn ? '8px' : '0',
+                                  borderTopRightRadius: isLastDayOfReservation ? '8px' : '0',
+                                  borderBottomRightRadius: isLastDayOfReservation ? '8px' : '0',
                                   marginLeft: isCheckIn ? '4px' : '0',
                                   marginRight: isLastDayOfReservation ? '4px' : '0',
                                 }}
                               >
-                                {isCheckIn && <LogIn className="h-3 w-3" style={{ color: color.text }} />}
-                                {isLastDayOfReservation && <LogOut className="h-3 w-3 ml-auto mr-1" style={{ color: color.text }} />}
+                                {isCheckIn && (
+                                  <div className="flex items-center justify-center bg-emerald-500 text-white rounded-full w-5 h-5 ml-1 shadow-sm">
+                                    <ArrowRightToLine className="h-3 w-3" />
+                                  </div>
+                                )}
+                                {isLastDayOfReservation && (
+                                  <div className="flex items-center justify-center bg-rose-500 text-white rounded-full w-5 h-5 ml-auto mr-1 shadow-sm">
+                                    <ArrowLeftFromLine className="h-3 w-3" />
+                                  </div>
+                                )}
                               </div>
                             </TooltipTrigger>
                             <TooltipContent>
                               <div className="space-y-1">
                                 {dayReservations.map(r => (
-                                  <div key={r.id}>
-                                    <p className="text-xs">
+                                  <div key={r.id} className="text-xs">
+                                    <p className="font-medium">{r.property?.nombre}</p>
+                                    <p className="text-muted-foreground">
                                       {format(new Date(r.checkInDate), 'd MMM', { locale: es })} → {format(new Date(r.checkOutDate), 'd MMM', { locale: es })}
                                     </p>
-                                    {r.isCheckIn && <p className="text-xs text-emerald-600">Check-in</p>}
                                   </div>
                                 ))}
                               </div>
                             </TooltipContent>
                           </Tooltip>
                         </TooltipProvider>
+                      )}
+                      
+                      {/* Check-out only indicator (when property is not occupied) */}
+                      {!hasReservation && isCheckOut && (
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <div className="flex items-center justify-center bg-rose-500 text-white rounded-full w-6 h-6 shadow-sm">
+                            <ArrowLeftFromLine className="h-3.5 w-3.5" />
+                          </div>
+                        </div>
                       )}
                     </div>
                   );
@@ -345,25 +398,188 @@ export const ReservationsCalendar = ({
     );
   };
 
+  const renderWeekView = () => {
+    return (
+      <div className="grid grid-cols-7 gap-3">
+        {weekDays.map(day => {
+          const { checkIns, checkOuts } = getEventsForDay(day);
+          const hasEvents = checkIns.length > 0 || checkOuts.length > 0;
+          const isCurrentDay = isToday(day);
+
+          return (
+            <div
+              key={day.toISOString()}
+              className={cn(
+                "min-h-[160px] rounded-xl border-2 flex flex-col transition-all",
+                isCurrentDay 
+                  ? "border-primary bg-primary/5 shadow-sm" 
+                  : hasEvents 
+                    ? "border-border bg-card" 
+                    : "border-border/50 bg-muted/20"
+              )}
+            >
+              {/* Day header */}
+              <div className={cn(
+                "text-center py-2 border-b",
+                isCurrentDay ? "border-primary/30 bg-primary/10" : "border-border/50"
+              )}>
+                <span className={cn(
+                  "text-2xl font-bold",
+                  isCurrentDay ? "text-primary" : "text-foreground"
+                )}>
+                  {format(day, 'd')}
+                </span>
+                <div className={cn(
+                  "text-xs font-medium uppercase tracking-wide",
+                  isCurrentDay ? "text-primary/80" : "text-muted-foreground"
+                )}>
+                  {format(day, 'EEEE', { locale: es })}
+                </div>
+              </div>
+              
+              {/* Events */}
+              <div className="flex-1 p-2 space-y-2 overflow-y-auto">
+                {/* Check-outs first (morning) */}
+                {checkOuts.map(r => renderCheckOutBadge(r))}
+                
+                {/* Check-ins (afternoon) */}
+                {checkIns.map(r => renderCheckInBadge(r))}
+                
+                {!hasEvents && (
+                  <div className="text-xs text-muted-foreground/50 text-center py-4">
+                    —
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
+
+  const renderMonthView = () => {
+    return (
+      <div className="grid grid-cols-7 gap-1">
+        {/* Empty cells for start padding */}
+        {Array.from({ length: startPadding }).map((_, i) => (
+          <div key={`pad-${i}`} className="aspect-square" />
+        ))}
+
+        {/* Days */}
+        {monthDays.map(day => {
+          const { checkIns, checkOuts } = getEventsForDay(day);
+          const hasEvents = checkIns.length > 0 || checkOuts.length > 0;
+          const isCurrentDay = isToday(day);
+
+          return (
+            <TooltipProvider key={day.toISOString()}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div
+                    className={cn(
+                      "aspect-square p-1 border-2 rounded-lg flex flex-col transition-all cursor-default",
+                      isCurrentDay 
+                        ? "border-primary bg-primary/10 shadow-sm" 
+                        : hasEvents 
+                          ? "border-border hover:border-primary/50 hover:bg-muted/50" 
+                          : "border-transparent hover:bg-muted/30"
+                    )}
+                  >
+                    <span className={cn(
+                      "text-xs font-bold text-center",
+                      isCurrentDay ? "text-primary" : "text-foreground"
+                    )}>
+                      {format(day, 'd')}
+                    </span>
+                    
+                    {/* Event indicators */}
+                    <div className="flex-1 flex flex-col items-center justify-center gap-0.5">
+                      {checkOuts.length > 0 && (
+                        <div className="flex items-center justify-center gap-0.5">
+                          <div className="w-2 h-2 rounded-full bg-rose-500" />
+                          {checkOuts.length > 1 && (
+                            <span className="text-[8px] font-bold text-rose-600">
+                              {checkOuts.length}
+                            </span>
+                          )}
+                        </div>
+                      )}
+                      {checkIns.length > 0 && (
+                        <div className="flex items-center justify-center gap-0.5">
+                          <div className="w-2 h-2 rounded-full bg-emerald-500" />
+                          {checkIns.length > 1 && (
+                            <span className="text-[8px] font-bold text-emerald-600">
+                              {checkIns.length}
+                            </span>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </TooltipTrigger>
+                {hasEvents && (
+                  <TooltipContent side="top" className="max-w-[220px]">
+                    <div className="space-y-2">
+                      <p className="font-semibold text-sm">
+                        {format(day, "EEEE d 'de' MMMM", { locale: es })}
+                      </p>
+                      {checkOuts.length > 0 && (
+                        <div className="space-y-1">
+                          <p className="text-xs font-medium text-rose-600 flex items-center gap-1">
+                            <ArrowLeftFromLine className="h-3 w-3" />
+                            Salidas ({checkOuts.length})
+                          </p>
+                          {checkOuts.map(r => (
+                            <p key={r.id} className="text-xs text-muted-foreground pl-4">
+                              {r.property?.codigo} - {r.property?.nombre}
+                            </p>
+                          ))}
+                        </div>
+                      )}
+                      {checkIns.length > 0 && (
+                        <div className="space-y-1">
+                          <p className="text-xs font-medium text-emerald-600 flex items-center gap-1">
+                            <ArrowRightToLine className="h-3 w-3" />
+                            Entradas ({checkIns.length})
+                          </p>
+                          {checkIns.map(r => (
+                            <p key={r.id} className="text-xs text-muted-foreground pl-4">
+                              {r.property?.codigo} - {r.property?.nombre}
+                            </p>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </TooltipContent>
+                )}
+              </Tooltip>
+            </TooltipProvider>
+          );
+        })}
+      </div>
+    );
+  };
+
   return (
-    <Card>
-      <CardHeader className="pb-2">
-        <div className="flex items-center justify-between flex-wrap gap-2">
-          <CardTitle className="capitalize">
+    <Card className="border-0 shadow-lg overflow-hidden">
+      <CardHeader className="bg-gradient-to-r from-primary/5 via-primary/10 to-primary/5 border-b pb-4">
+        <div className="flex items-center justify-between flex-wrap gap-3">
+          <CardTitle className="capitalize text-xl">
             {getHeaderTitle()}
           </CardTitle>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
             {/* View mode toggle */}
             <ToggleGroup 
               type="single" 
               value={viewMode} 
               onValueChange={(val) => val && setViewMode(val as ViewMode)}
-              className="bg-muted rounded-lg p-1"
+              className="bg-background/80 backdrop-blur rounded-lg p-1 shadow-sm border"
             >
               <ToggleGroupItem 
                 value="week" 
                 aria-label="Vista semanal"
-                className="data-[state=on]:bg-background data-[state=on]:shadow-sm px-3 py-1.5 text-xs"
+                className="data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=on]:shadow-sm px-3 py-1.5 text-xs font-medium"
               >
                 <CalendarDays className="h-4 w-4 mr-1.5" />
                 Semana
@@ -371,7 +587,7 @@ export const ReservationsCalendar = ({
               <ToggleGroupItem 
                 value="timeline" 
                 aria-label="Vista timeline"
-                className="data-[state=on]:bg-background data-[state=on]:shadow-sm px-3 py-1.5 text-xs"
+                className="data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=on]:shadow-sm px-3 py-1.5 text-xs font-medium"
               >
                 <LayoutList className="h-4 w-4 mr-1.5" />
                 Timeline
@@ -379,7 +595,7 @@ export const ReservationsCalendar = ({
               <ToggleGroupItem 
                 value="month" 
                 aria-label="Vista mensual"
-                className="data-[state=on]:bg-background data-[state=on]:shadow-sm px-3 py-1.5 text-xs"
+                className="data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=on]:shadow-sm px-3 py-1.5 text-xs font-medium"
               >
                 <Calendar className="h-4 w-4 mr-1.5" />
                 Mes
@@ -387,22 +603,29 @@ export const ReservationsCalendar = ({
             </ToggleGroup>
 
             <div className="flex items-center gap-1">
-              <Button variant="outline" size="sm" onClick={goToToday}>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={goToToday}
+                className="font-medium shadow-sm"
+              >
                 Hoy
               </Button>
-              <Button variant="ghost" size="icon" onClick={goToPrevious}>
+              <Button variant="ghost" size="icon" onClick={goToPrevious} className="hover:bg-primary/10">
                 <ChevronLeft className="h-4 w-4" />
               </Button>
-              <Button variant="ghost" size="icon" onClick={goToNext}>
+              <Button variant="ghost" size="icon" onClick={goToNext} className="hover:bg-primary/10">
                 <ChevronRight className="h-4 w-4" />
               </Button>
             </div>
           </div>
         </div>
       </CardHeader>
-      <CardContent>
+      <CardContent className="p-4">
         {viewMode === 'timeline' ? (
           renderTimelineView()
+        ) : viewMode === 'week' ? (
+          renderWeekView()
         ) : (
           <>
             {/* Week day headers */}
@@ -410,138 +633,52 @@ export const ReservationsCalendar = ({
               {['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'].map(day => (
                 <div
                   key={day}
-                  className="text-center text-xs font-medium text-muted-foreground py-2"
+                  className="text-center text-xs font-bold text-muted-foreground py-2 uppercase tracking-wider"
                 >
                   {day}
                 </div>
               ))}
             </div>
-
-            {viewMode === 'month' ? (
-              /* Month Calendar grid */
-              <div className="grid grid-cols-7 gap-1">
-                {/* Empty cells for start padding */}
-                {Array.from({ length: startPadding }).map((_, i) => (
-                  <div key={`pad-${i}`} className="aspect-square" />
-                ))}
-
-                {/* Days */}
-                {monthDays.map(day => {
-                  const dayReservations = getReservationsForDay(day);
-                  const hasReservations = dayReservations.length > 0;
-                  const isCurrentDay = isToday(day);
-
-                  return (
-                    <div
-                      key={day.toISOString()}
-                      className={cn(
-                        "aspect-square p-0.5 border rounded-md flex flex-col",
-                        isCurrentDay && "ring-2 ring-primary",
-                        hasReservations && "bg-muted/50"
-                      )}
-                    >
-                      <span className={cn(
-                        "text-xs font-medium text-center",
-                        isCurrentDay && "text-primary"
-                      )}>
-                        {format(day, 'd')}
-                      </span>
-                      
-                      {/* Reservation indicators */}
-                      <div className="flex-1 overflow-hidden space-y-0.5">
-                        {dayReservations.slice(0, 2).map((r) => renderReservationBadge(r, true))}
-                        {dayReservations.length > 2 && (
-                          <div className="text-[9px] text-muted-foreground text-center">
-                            +{dayReservations.length - 2}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            ) : (
-              /* Week view - larger cells with more detail */
-              <div className="grid grid-cols-7 gap-2">
-                {weekDays.map(day => {
-                  const dayReservations = getReservationsForDay(day);
-                  const hasReservations = dayReservations.length > 0;
-                  const isCurrentDay = isToday(day);
-
-                  return (
-                    <div
-                      key={day.toISOString()}
-                      className={cn(
-                        "min-h-[140px] p-2 border rounded-lg flex flex-col",
-                        isCurrentDay && "ring-2 ring-primary",
-                        hasReservations && "bg-muted/30"
-                      )}
-                    >
-                      {/* Day header */}
-                      <div className={cn(
-                        "text-center mb-2 pb-2 border-b",
-                        isCurrentDay && "border-primary/30"
-                      )}>
-                        <span className={cn(
-                          "text-lg font-bold",
-                          isCurrentDay && "text-primary"
-                        )}>
-                          {format(day, 'd')}
-                        </span>
-                        <div className={cn(
-                          "text-xs text-muted-foreground",
-                          isCurrentDay && "text-primary/70"
-                        )}>
-                          {format(day, 'EEE', { locale: es })}
-                        </div>
-                      </div>
-                      
-                      {/* Reservations list */}
-                      <div className="flex-1 space-y-1.5 overflow-y-auto">
-                        {dayReservations.length === 0 ? (
-                          <div className="text-xs text-muted-foreground text-center py-2">
-                            Sin reservas
-                          </div>
-                        ) : (
-                          dayReservations.map((r) => renderReservationBadge(r))
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
+            {renderMonthView()}
           </>
         )}
 
         {/* Legend */}
-        <div className="flex flex-wrap items-center gap-4 mt-4 text-xs text-muted-foreground">
-          <div className="flex items-center gap-1.5">
-            <LogIn className="h-3 w-3 text-emerald-600" />
-            <span>Check-in</span>
+        <div className="flex flex-wrap items-center gap-6 mt-6 pt-4 border-t text-sm">
+          <div className="flex items-center gap-2">
+            <div className="flex items-center justify-center bg-emerald-500 text-white rounded-full w-5 h-5">
+              <ArrowRightToLine className="h-3 w-3" />
+            </div>
+            <span className="font-medium text-emerald-700">Entrada</span>
           </div>
-          <div className="flex items-center gap-1.5">
-            <LogOut className="h-3 w-3 text-rose-600" />
-            <span>Check-out</span>
+          <div className="flex items-center gap-2">
+            <div className="flex items-center justify-center bg-rose-500 text-white rounded-full w-5 h-5">
+              <ArrowLeftFromLine className="h-3 w-3" />
+            </div>
+            <span className="font-medium text-rose-700">Salida</span>
           </div>
-          <div className="flex items-center gap-1.5">
-            <div className="w-3 h-3 rounded border ring-2 ring-primary" />
-            <span>Hoy</span>
+          <div className="flex items-center gap-2">
+            <div className="w-5 h-5 rounded-lg border-2 border-primary bg-primary/10" />
+            <span className="font-medium text-muted-foreground">Hoy</span>
           </div>
-          {uniqueProperties.slice(0, 3).map(prop => {
-            const color = getPropertyColor(prop.id, propertyColorMap);
-            return (
-              <div key={prop.id} className="flex items-center gap-1.5">
-                <div 
-                  className="w-3 h-3 rounded-full" 
-                  style={{ backgroundColor: color.text }}
-                />
-                <span>{prop.codigo}</span>
-              </div>
-            );
-          })}
-          {uniqueProperties.length > 3 && (
-            <span className="text-muted-foreground">+{uniqueProperties.length - 3} más</span>
+          {uniqueProperties.length > 0 && (
+            <div className="flex items-center gap-3 ml-auto">
+              {uniqueProperties.slice(0, 4).map(prop => {
+                const color = getPropertyColor(prop.id, propertyColorMap);
+                return (
+                  <div key={prop.id} className="flex items-center gap-1.5">
+                    <div 
+                      className="w-3 h-3 rounded-full" 
+                      style={{ backgroundColor: color.text }}
+                    />
+                    <span className="text-xs font-medium text-muted-foreground">{prop.codigo}</span>
+                  </div>
+                );
+              })}
+              {uniqueProperties.length > 4 && (
+                <span className="text-xs text-muted-foreground">+{uniqueProperties.length - 4}</span>
+              )}
+            </div>
           )}
         </div>
       </CardContent>
