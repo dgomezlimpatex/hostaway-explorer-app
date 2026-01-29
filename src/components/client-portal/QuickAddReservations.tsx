@@ -47,7 +47,7 @@ const createEmptyRow = (): ReservationRow => ({
   checkOutDate: undefined,
   guestCount: undefined,
   specialRequests: '',
-  isExpanded: false,
+  isExpanded: true, // Always expanded by default
   checkOutOpen: false,
 });
 
@@ -274,18 +274,7 @@ export const QuickAddReservations = ({
                 </div>
 
                 {/* Actions */}
-                <div className="sm:col-span-2 flex items-center gap-1">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => updateRow(row.id, { isExpanded: !row.isExpanded })}
-                    className="h-9 w-9"
-                  >
-                    <MessageSquare className={cn(
-                      "h-4 w-4",
-                      row.isExpanded && "text-primary"
-                    )} />
-                  </Button>
+                <div className="sm:col-span-2 flex items-center justify-end gap-1">
                   {rows.length > 1 && (
                     <Button
                       variant="ghost"
@@ -299,38 +288,36 @@ export const QuickAddReservations = ({
                 </div>
               </div>
 
-              {/* Expanded section */}
-              {row.isExpanded && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t">
-                  <div>
-                    <label className="text-sm text-muted-foreground flex items-center gap-1 mb-1">
-                      <Users className="h-3 w-3" />
-                      Huéspedes
-                    </label>
-                    <Input
-                      type="number"
-                      min={1}
-                      placeholder="Número"
-                      value={row.guestCount || ''}
-                      onChange={(e) => updateRow(row.id, { 
-                        guestCount: e.target.value ? parseInt(e.target.value) : undefined 
-                      })}
-                    />
-                  </div>
-                  <div className="sm:col-span-1">
-                    <label className="text-sm text-muted-foreground flex items-center gap-1 mb-1">
-                      <MessageSquare className="h-3 w-3" />
-                      Peticiones especiales
-                    </label>
-                    <Textarea
-                      placeholder="Llaves en portería, hora llegada..."
-                      value={row.specialRequests}
-                      onChange={(e) => updateRow(row.id, { specialRequests: e.target.value })}
-                      rows={2}
-                    />
-                  </div>
+              {/* Always visible optional fields */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t">
+                <div>
+                  <label className="text-sm text-muted-foreground flex items-center gap-1 mb-1">
+                    <Users className="h-3 w-3" />
+                    Huéspedes <span className="text-muted-foreground/60">(opcional)</span>
+                  </label>
+                  <Input
+                    type="number"
+                    min={1}
+                    placeholder="Número"
+                    value={row.guestCount || ''}
+                    onChange={(e) => updateRow(row.id, { 
+                      guestCount: e.target.value ? parseInt(e.target.value) : undefined 
+                    })}
+                  />
                 </div>
-              )}
+                <div className="sm:col-span-1">
+                  <label className="text-sm text-muted-foreground flex items-center gap-1 mb-1">
+                    <MessageSquare className="h-3 w-3" />
+                    Peticiones especiales
+                  </label>
+                  <Textarea
+                    placeholder="Llaves en portería, hora llegada..."
+                    value={row.specialRequests}
+                    onChange={(e) => updateRow(row.id, { specialRequests: e.target.value })}
+                    rows={2}
+                  />
+                </div>
+              </div>
             </div>
           ))}
         </div>
