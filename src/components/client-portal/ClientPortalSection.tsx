@@ -17,6 +17,17 @@ interface ClientPortalSectionProps {
   clientName: string;
 }
 
+// Helper to create URL-friendly slug from client name
+const createClientSlug = (name: string): string => {
+  return name
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '') // Remove accents
+    .replace(/[^a-z0-9]+/g, '-') // Replace non-alphanumeric with hyphens
+    .replace(/^-+|-+$/g, '') // Remove leading/trailing hyphens
+    .substring(0, 50); // Limit length
+};
+
 export const ClientPortalSection = ({ clientId, clientName }: ClientPortalSectionProps) => {
   const { toast } = useToast();
   const [showPin, setShowPin] = useState(false);
@@ -27,7 +38,8 @@ export const ClientPortalSection = ({ clientId, clientName }: ClientPortalSectio
   const toggleStatus = useTogglePortalStatus();
 
   const baseUrl = window.location.origin;
-  const portalUrl = portalAccess ? `${baseUrl}/portal/${portalAccess.portalToken}` : '';
+  const clientSlug = createClientSlug(clientName);
+  const portalUrl = portalAccess ? `${baseUrl}/portal/${clientSlug}/${portalAccess.portalToken}` : '';
 
   const handleCreateAccess = () => {
     createAccess.mutate(clientId, {
@@ -81,12 +93,23 @@ export const ClientPortalSection = ({ clientId, clientName }: ClientPortalSectio
     );
   };
 
-  const copyToClipboard = (text: string, label: string) => {
+  const copyToClipboard = (e: React.MouseEvent, text: string, label: string) => {
+    e.stopPropagation();
     navigator.clipboard.writeText(text);
     toast({
       title: 'Copiado',
       description: `${label} copiado al portapapeles`,
     });
+  };
+
+  const handleOpenPortal = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    window.open(portalUrl, '_blank');
+  };
+
+  const handleToggleShowPin = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setShowPin(!showPin);
   };
 
   if (isLoading) {
@@ -164,14 +187,14 @@ export const ClientPortalSection = ({ clientId, clientName }: ClientPortalSectio
             <Button
               variant="outline"
               size="icon"
-              onClick={() => copyToClipboard(portalUrl, 'Enlace')}
+              onClick={(e) => copyToClipboard(e, portalUrl, 'Enlace')}
             >
               <Copy className="h-4 w-4" />
             </Button>
             <Button
               variant="outline"
               size="icon"
-              onClick={() => window.open(portalUrl, '_blank')}
+              onClick={handleOpenPortal}
             >
               <ExternalLink className="h-4 w-4" />
             </Button>
@@ -188,14 +211,14 @@ export const ClientPortalSection = ({ clientId, clientName }: ClientPortalSectio
             <Button
               variant="outline"
               size="icon"
-              onClick={() => setShowPin(!showPin)}
+              onClick={handleToggleShowPin}
             >
               {showPin ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
             </Button>
             <Button
               variant="outline"
               size="icon"
-              onClick={() => copyToClipboard(portalAccess.accessPin, 'PIN')}
+              onClick={(e) => copyToClipboard(e, portalAccess.accessPin, 'PIN')}
             >
               <Copy className="h-4 w-4" />
             </Button>
