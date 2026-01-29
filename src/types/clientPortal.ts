@@ -56,5 +56,6 @@ export interface PortalSession {
   clientId: string;
   clientName: string;
   portalToken: string;
+  shortCode?: string;
   authenticatedAt: number;
 }

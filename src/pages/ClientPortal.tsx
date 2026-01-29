@@ -1,7 +1,7 @@
 
 import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
-import { useVerifyPortalToken, useAuthenticatePortal } from '@/hooks/useClientPortal';
+import { useVerifyPortalShortCode, useVerifyPortalToken, useAuthenticatePortal, extractShortCodeFromIdentifier } from '@/hooks/useClientPortal';
 import { PortalSession } from '@/types/clientPortal';
 import { ClientPortalAuth } from '@/components/client-portal/ClientPortalAuth';
 import { ClientPortalDashboard } from '@/components/client-portal/ClientPortalDashboard';
@@ -11,11 +11,30 @@ const SESSION_KEY = 'client_portal_session';
 const SESSION_DURATION = 24 * 60 * 60 * 1000; // 24 hours
 
 const ClientPortal = () => {
-  const { token } = useParams<{ token: string }>();
+  // Support both new format (/portal/client-name-abc12def) and legacy (/portal/uuid-token)
+  const { identifier, token: legacyToken, clientSlug } = useParams<{ 
+    identifier?: string; 
+    token?: string;
+    clientSlug?: string;
+  }>();
+  
+  // Determine which identifier to use
+  const urlIdentifier = identifier || legacyToken || (clientSlug && legacyToken ? legacyToken : undefined);
+  
   const [session, setSession] = useState<PortalSession | null>(null);
   const [isCheckingSession, setIsCheckingSession] = useState(true);
   
-  const { data: portalData, isLoading: isVerifying, error } = useVerifyPortalToken(token);
+  // Try short_code lookup first (new format)
+  const { data: shortCodeData, isLoading: isVerifyingShortCode, error: shortCodeError } = useVerifyPortalShortCode(urlIdentifier);
+  
+  // Fallback to legacy token lookup if short_code fails
+  const shouldTryLegacy = !shortCodeData && !isVerifyingShortCode && urlIdentifier;
+  const { data: legacyData, isLoading: isVerifyingLegacy } = useVerifyPortalToken(shouldTryLegacy ? urlIdentifier : undefined);
+  
+  const portalData = shortCodeData || legacyData;
+  const isVerifying = isVerifyingShortCode || (shouldTryLegacy && isVerifyingLegacy);
+  const error = !portalData && !isVerifying ? shortCodeError : null;
+  
   const authenticateMutation = useAuthenticatePortal();
 
   // Check for existing session on mount
@@ -24,9 +43,12 @@ const ClientPortal = () => {
     if (storedSession) {
       try {
         const parsed = JSON.parse(storedSession) as PortalSession;
-        // Verify session is for this token and not expired
+        // Verify session is for this identifier and not expired
+        const sessionIdentifier = parsed.shortCode || parsed.portalToken;
+        const currentShortCode = urlIdentifier ? extractShortCodeFromIdentifier(urlIdentifier) : null;
+        
         if (
-          parsed.portalToken === token &&
+          (sessionIdentifier === currentShortCode || parsed.portalToken === urlIdentifier) &&
           Date.now() - parsed.authenticatedAt < SESSION_DURATION
         ) {
           setSession(parsed);
@@ -38,17 +60,18 @@ const ClientPortal = () => {
       }
     }
     setIsCheckingSession(false);
-  }, [token]);
+  }, [urlIdentifier]);
 
   const handleAuthenticate = async (pin: string) => {
-    if (!token) return;
+    if (!urlIdentifier) return;
     
-    const result = await authenticateMutation.mutateAsync({ token, pin });
+    const result = await authenticateMutation.mutateAsync({ identifier: urlIdentifier, pin });
     
     const newSession: PortalSession = {
       clientId: result.clientId,
       clientName: result.clientName,
       portalToken: result.portalToken,
+      shortCode: result.shortCode,
       authenticatedAt: Date.now(),
     };
     
