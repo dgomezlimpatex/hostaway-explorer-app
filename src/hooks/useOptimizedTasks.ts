@@ -56,7 +56,8 @@ export const useOptimizedTasks = ({
     return result;
   };
 
-  // Calculate date range based on current view - this ensures we load the right data
+  // Calculate date range based on current view - OPTIMIZED to avoid hitting 1000 row limit
+  // Use smaller windows centered on the viewed date to ensure we get the right data
   const dateRange = useMemo(() => {
     const viewDate = new Date(currentDate);
     let dateFrom: Date;
@@ -64,32 +65,39 @@ export const useOptimizedTasks = ({
     
     switch (currentView) {
       case 'day':
-        // For day view, load ±45 days from the viewed date (safer than month calculation)
+        // For day view, load ±14 days from the viewed date (smaller window to avoid limit)
         dateFrom = new Date(viewDate);
-        dateFrom.setDate(dateFrom.getDate() - 45);
+        dateFrom.setDate(dateFrom.getDate() - 14);
         dateTo = new Date(viewDate);
-        dateTo.setDate(dateTo.getDate() + 45);
+        dateTo.setDate(dateTo.getDate() + 14);
         break;
       case 'three-day':
-        // For 3-day view, load ±45 days from the viewed date
+        // For 3-day view, load ±14 days from the viewed date
         dateFrom = new Date(viewDate);
-        dateFrom.setDate(dateFrom.getDate() - 45);
+        dateFrom.setDate(dateFrom.getDate() - 14);
         dateTo = new Date(viewDate);
-        dateTo.setDate(dateTo.getDate() + 45);
+        dateTo.setDate(dateTo.getDate() + 14);
         break;
       case 'week':
-        // For week view, load ±60 days from the viewed date
+        // For week view, load ±21 days from the viewed date
         dateFrom = new Date(viewDate);
-        dateFrom.setDate(dateFrom.getDate() - 60);
+        dateFrom.setDate(dateFrom.getDate() - 21);
         dateTo = new Date(viewDate);
-        dateTo.setDate(dateTo.getDate() + 60);
+        dateTo.setDate(dateTo.getDate() + 21);
         break;
       default:
         dateFrom = new Date(viewDate);
-        dateFrom.setDate(dateFrom.getDate() - 45);
+        dateFrom.setDate(dateFrom.getDate() - 14);
         dateTo = new Date(viewDate);
-        dateTo.setDate(dateTo.getDate() + 45);
+        dateTo.setDate(dateTo.getDate() + 14);
     }
+    
+    console.log('📅 useOptimizedTasks - calculated dateRange:', {
+      viewDate: formatMadridDate(viewDate),
+      dateFrom: formatMadridDate(dateFrom),
+      dateTo: formatMadridDate(dateTo),
+      currentView
+    });
     
     return {
       dateFrom: formatMadridDate(dateFrom),
