@@ -5,7 +5,7 @@ import { Link } from 'react-router-dom';
 import { ClientBillingFilters } from '@/components/billing/ClientBillingFilters';
 import { ClientBillingReportTable } from '@/components/billing/ClientBillingReportTable';
 import { useClientBillingReport } from '@/hooks/reports/useClientBillingReport';
-import { exportClientBillingToCSV, exportAllClientsBillingToCSV } from '@/services/clientBillingCsvExport';
+import { exportClientBillingToExcel, exportAllClientsBillingToExcel } from '@/services/clientBillingExcelExport';
 import { ClientBillingReport as ClientBillingReportType } from '@/types/reports';
 import { Download, Home, Receipt } from 'lucide-react';
 import { startOfMonth, endOfMonth } from 'date-fns';
@@ -33,10 +33,10 @@ export default function ClientBilling() {
 
   const handleExportClient = (client: ClientBillingReportType) => {
     try {
-      exportClientBillingToCSV(client, filters.startDate, filters.endDate);
-      toast.success(`CSV exportado para ${client.clientName}`);
+      exportClientBillingToExcel(client, filters.startDate, filters.endDate);
+      toast.success(`Excel exportado para ${client.clientName}`);
     } catch (error) {
-      toast.error('Error al exportar CSV');
+      toast.error('Error al exportar Excel');
     }
   };
 
@@ -46,10 +46,10 @@ export default function ClientBilling() {
       return;
     }
     try {
-      exportAllClientsBillingToCSV(reportData, filters.startDate, filters.endDate);
-      toast.success('CSV exportado con todos los clientes');
+      exportAllClientsBillingToExcel(reportData, filters.startDate, filters.endDate);
+      toast.success('Excel exportado con todos los clientes');
     } catch (error) {
-      toast.error('Error al exportar CSV');
+      toast.error('Error al exportar Excel');
     }
   };
 
