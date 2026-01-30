@@ -15,13 +15,21 @@ const corsHeaders = {
 };
 
 const formatSpanishDate = (dateString: string): string => {
-  const date = new Date(dateString);
-  return date.toLocaleDateString('es-ES', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric'
-  });
+  try {
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return 'Fecha inválida';
+    return date.toLocaleDateString('es-ES', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric'
+    });
+  } catch {
+    return 'Fecha no disponible';
+  }
 };
+
+// Maximum reservations to include in email to prevent oversized emails
+const MAX_RESERVATIONS_IN_EMAIL = 100;
 
 interface ReservationLog {
   id: string;
@@ -34,15 +42,84 @@ interface ReservationLog {
   created_at: string;
 }
 
-interface Client {
-  id: string;
-  nombre: string;
+interface ReservationItem {
+  clientName: string;
+  propertyName: string;
+  checkOutDate: string;
 }
 
-interface Property {
-  id: string;
-  nombre: string;
-  codigo: string;
+interface GroupedReservations {
+  [clientName: string]: ReservationItem[];
+}
+
+// Batch fetch function to handle large ID sets (avoid PostgreSQL IN clause limits)
+async function fetchInBatches<T>(
+  table: string,
+  column: string,
+  ids: string[],
+  selectFields: string,
+  batchSize = 100
+): Promise<T[]> {
+  const results: T[] = [];
+  
+  for (let i = 0; i < ids.length; i += batchSize) {
+    const batchIds = ids.slice(i, i + batchSize);
+    const { data, error } = await supabase
+      .from(table)
+      .select(selectFields)
+      .in(column, batchIds);
+    
+    if (error) {
+      console.error(`Error fetching batch from ${table}:`, error);
+      throw error;
+    }
+    
+    if (data) {
+      results.push(...(data as T[]));
+    }
+  }
+  
+  return results;
+}
+
+// Paginated fetch for logs to handle more than 1000 records
+async function fetchAllLogs(startDate: string, endDate: string): Promise<ReservationLog[]> {
+  const allLogs: ReservationLog[] = [];
+  const pageSize = 500;
+  let offset = 0;
+  let hasMore = true;
+  
+  while (hasMore) {
+    const { data, error } = await supabase
+      .from('client_reservation_logs')
+      .select('id, client_id, reservation_id, new_data, created_at')
+      .eq('action', 'created')
+      .gte('created_at', startDate)
+      .lte('created_at', endDate)
+      .order('created_at', { ascending: false })
+      .range(offset, offset + pageSize - 1);
+    
+    if (error) {
+      console.error("Error fetching logs page:", error);
+      throw error;
+    }
+    
+    if (data && data.length > 0) {
+      allLogs.push(...(data as ReservationLog[]));
+      offset += pageSize;
+      hasMore = data.length === pageSize;
+    } else {
+      hasMore = false;
+    }
+    
+    // Safety limit: max 5000 logs to prevent infinite loops
+    if (allLogs.length >= 5000) {
+      console.warn("⚠️ Reached safety limit of 5000 logs");
+      break;
+    }
+  }
+  
+  return allLogs;
 }
 
 const handler = async (req: Request): Promise<Response> => {
@@ -59,24 +136,13 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log(`⏰ Time window: ${threeHoursAgo.toISOString()} to ${now.toISOString()}`);
 
-    // Query reservation logs for created reservations in the last 3 hours
-    const { data: logs, error: logsError } = await supabase
-      .from('client_reservation_logs')
-      .select('id, client_id, reservation_id, new_data, created_at')
-      .eq('action', 'created')
-      .gte('created_at', threeHoursAgo.toISOString())
-      .lte('created_at', now.toISOString())
-      .order('created_at', { ascending: false });
+    // Fetch all logs with pagination
+    const logs = await fetchAllLogs(threeHoursAgo.toISOString(), now.toISOString());
 
-    if (logsError) {
-      console.error("❌ Error fetching reservation logs:", logsError);
-      throw new Error(`Error fetching logs: ${logsError.message}`);
-    }
-
-    console.log(`📋 Found ${logs?.length || 0} new reservations in the last 3 hours`);
+    console.log(`📋 Found ${logs.length} new reservations in the last 3 hours`);
 
     // If no new reservations, exit without sending email
-    if (!logs || logs.length === 0) {
+    if (logs.length === 0) {
       console.log("✅ No new reservations to report. Skipping email.");
       return new Response(JSON.stringify({ 
         success: true, 
@@ -89,40 +155,34 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     // Get unique client IDs and property IDs
-    const clientIds = [...new Set(logs.map(l => l.client_id))];
-    const propertyIds = [...new Set(logs.map(l => (l.new_data as any)?.property_id).filter(Boolean))];
+    const clientIds = [...new Set(logs.map(l => l.client_id).filter(Boolean))];
+    const propertyIds = [...new Set(
+      logs.map(l => (l.new_data as any)?.property_id).filter(Boolean)
+    )];
 
-    // Fetch clients
-    const { data: clients, error: clientsError } = await supabase
-      .from('clients')
-      .select('id, nombre')
-      .in('id', clientIds);
+    console.log(`📊 Unique clients: ${clientIds.length}, Unique properties: ${propertyIds.length}`);
 
-    if (clientsError) {
-      console.error("❌ Error fetching clients:", clientsError);
-      throw new Error(`Error fetching clients: ${clientsError.message}`);
-    }
-
-    // Fetch properties
-    const { data: properties, error: propertiesError } = await supabase
-      .from('properties')
-      .select('id, nombre, codigo')
-      .in('id', propertyIds);
-
-    if (propertiesError) {
-      console.error("❌ Error fetching properties:", propertiesError);
-      throw new Error(`Error fetching properties: ${propertiesError.message}`);
-    }
+    // Fetch clients and properties in batches
+    const [clients, properties] = await Promise.all([
+      fetchInBatches<{ id: string; nombre: string }>(
+        'clients', 'id', clientIds, 'id, nombre'
+      ),
+      fetchInBatches<{ id: string; nombre: string; codigo: string }>(
+        'properties', 'id', propertyIds, 'id, nombre, codigo'
+      )
+    ]);
 
     // Create lookup maps
-    const clientMap = new Map((clients || []).map(c => [c.id, c.nombre]));
-    const propertyMap = new Map((properties || []).map(p => [p.id, `${p.nombre} (${p.codigo})`]));
+    const clientMap = new Map(clients.map(c => [c.id, c.nombre]));
+    const propertyMap = new Map(properties.map(p => [p.id, `${p.nombre} (${p.codigo})`]));
 
     // Build reservation list for email
-    const reservationItems = logs.map(log => {
+    const reservationItems: ReservationItem[] = logs.map(log => {
       const clientName = clientMap.get(log.client_id) || 'Cliente desconocido';
       const propertyId = (log.new_data as any)?.property_id;
-      const propertyName = propertyId ? (propertyMap.get(propertyId) || 'Propiedad desconocida') : 'Propiedad desconocida';
+      const propertyName = propertyId 
+        ? (propertyMap.get(propertyId) || 'Propiedad desconocida') 
+        : 'Propiedad desconocida';
       const checkOutDate = (log.new_data as any)?.check_out_date;
       const formattedDate = checkOutDate ? formatSpanishDate(checkOutDate) : 'Fecha no disponible';
 
@@ -133,7 +193,53 @@ const handler = async (req: Request): Promise<Response> => {
       };
     });
 
-    // Generate email HTML
+    // Group reservations by client for better readability
+    const groupedByClient: GroupedReservations = {};
+    for (const item of reservationItems) {
+      if (!groupedByClient[item.clientName]) {
+        groupedByClient[item.clientName] = [];
+      }
+      groupedByClient[item.clientName].push(item);
+    }
+
+    // Sort clients alphabetically
+    const sortedClients = Object.keys(groupedByClient).sort((a, b) => 
+      a.localeCompare(b, 'es')
+    );
+
+    // Check if we need to truncate
+    const totalReservations = reservationItems.length;
+    const willTruncate = totalReservations > MAX_RESERVATIONS_IN_EMAIL;
+    
+    // Generate email HTML with grouped reservations
+    let reservationHtml = '';
+    let displayedCount = 0;
+    
+    for (const clientName of sortedClients) {
+      if (displayedCount >= MAX_RESERVATIONS_IN_EMAIL) break;
+      
+      const clientReservations = groupedByClient[clientName];
+      const remainingSlots = MAX_RESERVATIONS_IN_EMAIL - displayedCount;
+      const reservationsToShow = clientReservations.slice(0, remainingSlots);
+      
+      reservationHtml += `
+        <div class="client-group">
+          <div class="client-header">${clientName} (${clientReservations.length})</div>
+          ${reservationsToShow.map(item => `
+            <div class="reservation-item">
+              <span class="property-name">${item.propertyName}</span>
+              <span class="checkout-date">Salida: ${item.checkOutDate}</span>
+            </div>
+          `).join('')}
+          ${clientReservations.length > reservationsToShow.length 
+            ? `<div class="more-items">... y ${clientReservations.length - reservationsToShow.length} más</div>` 
+            : ''}
+        </div>
+      `;
+      
+      displayedCount += reservationsToShow.length;
+    }
+
     const emailHtml = `
       <!DOCTYPE html>
       <html>
@@ -143,15 +249,21 @@ const handler = async (req: Request): Promise<Response> => {
         <style>
           body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; }
           .header { background: linear-gradient(135deg, #3b82f6, #1d4ed8); color: white; padding: 20px; border-radius: 8px 8px 0 0; text-align: center; }
+          .header h1 { margin: 0; font-size: 20px; }
           .content { background: #f9f9f9; padding: 20px; border-radius: 0 0 8px 8px; border: 1px solid #e5e5e5; }
-          .reservation-list { background: white; border-radius: 6px; padding: 15px; margin: 15px 0; }
-          .reservation-item { padding: 10px 0; border-bottom: 1px solid #eee; }
+          .summary { background: #dbeafe; border: 1px solid #93c5fd; border-radius: 6px; padding: 12px; margin: 0 0 15px 0; text-align: center; }
+          .client-group { background: white; border-radius: 6px; padding: 15px; margin-bottom: 10px; border: 1px solid #e5e5e5; }
+          .client-header { font-weight: bold; color: #1d4ed8; font-size: 14px; margin-bottom: 10px; padding-bottom: 8px; border-bottom: 2px solid #dbeafe; }
+          .reservation-item { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #f0f0f0; font-size: 13px; }
           .reservation-item:last-child { border-bottom: none; }
-          .client-name { font-weight: bold; color: #1d4ed8; }
-          .property-name { color: #555; }
-          .checkout-date { color: #059669; font-weight: 500; }
-          .summary { background: #dbeafe; border: 1px solid #93c5fd; border-radius: 6px; padding: 12px; margin: 15px 0; text-align: center; }
+          .property-name { color: #555; flex: 1; }
+          .checkout-date { color: #059669; font-weight: 500; white-space: nowrap; margin-left: 10px; }
+          .more-items { color: #6b7280; font-style: italic; font-size: 12px; margin-top: 8px; }
+          .truncation-notice { background: #fef3c7; border: 1px solid #f59e0b; border-radius: 6px; padding: 10px; margin-top: 15px; font-size: 12px; color: #92400e; }
           .footer { margin-top: 20px; padding-top: 15px; border-top: 1px solid #e5e5e5; font-size: 12px; color: #666; text-align: center; }
+          .stats { display: flex; justify-content: center; gap: 20px; margin-top: 10px; font-size: 12px; }
+          .stat { text-align: center; }
+          .stat-value { font-weight: bold; color: #1d4ed8; font-size: 16px; }
         </style>
       </head>
       <body>
@@ -161,18 +273,28 @@ const handler = async (req: Request): Promise<Response> => {
         
         <div class="content">
           <div class="summary">
-            <strong>Se han añadido ${reservationItems.length} reserva${reservationItems.length > 1 ? 's' : ''} en las últimas 3 horas</strong>
+            <strong>Se han añadido ${totalReservations} reserva${totalReservations > 1 ? 's' : ''} en las últimas 3 horas</strong>
+            <div class="stats">
+              <div class="stat">
+                <div class="stat-value">${sortedClients.length}</div>
+                <div>Cliente${sortedClients.length > 1 ? 's' : ''}</div>
+              </div>
+              <div class="stat">
+                <div class="stat-value">${propertyIds.length}</div>
+                <div>Propiedad${propertyIds.length > 1 ? 'es' : ''}</div>
+              </div>
+            </div>
           </div>
 
-          <div class="reservation-list">
-            ${reservationItems.map(item => `
-              <div class="reservation-item">
-                <span class="client-name">${item.clientName}</span> - 
-                <span class="property-name">${item.propertyName}</span> - 
-                <span class="checkout-date">Salida: ${item.checkOutDate}</span>
-              </div>
-            `).join('')}
-          </div>
+          ${reservationHtml}
+          
+          ${willTruncate ? `
+            <div class="truncation-notice">
+              ⚠️ Se muestran las primeras ${MAX_RESERVATIONS_IN_EMAIL} reservas. 
+              Total: ${totalReservations} reservas. 
+              Consulta el sistema para ver todas.
+            </div>
+          ` : ''}
         </div>
         
         <div class="footer">
@@ -187,7 +309,7 @@ const handler = async (req: Request): Promise<Response> => {
     const emailResponse = await resend.emails.send({
       from: "Sistema de Gestión <noreply@limpatexgestion.com>",
       to: ["dgomezlimpatex@gmail.com"],
-      subject: `📋 ${reservationItems.length} Nueva${reservationItems.length > 1 ? 's' : ''} Reserva${reservationItems.length > 1 ? 's' : ''} del Portal de Clientes`,
+      subject: `📋 ${totalReservations} Nueva${totalReservations > 1 ? 's' : ''} Reserva${totalReservations > 1 ? 's' : ''} del Portal (${sortedClients.length} cliente${sortedClients.length > 1 ? 's' : ''})`,
       html: emailHtml,
     });
 
@@ -196,8 +318,11 @@ const handler = async (req: Request): Promise<Response> => {
     return new Response(JSON.stringify({ 
       success: true, 
       emailResponse,
-      reservationsCount: reservationItems.length,
-      message: `Email sent with ${reservationItems.length} reservations`
+      reservationsCount: totalReservations,
+      clientsCount: sortedClients.length,
+      propertiesCount: propertyIds.length,
+      truncated: willTruncate,
+      message: `Email sent with ${totalReservations} reservations from ${sortedClients.length} clients`
     }), {
       status: 200,
       headers: { "Content-Type": "application/json", ...corsHeaders },
