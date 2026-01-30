@@ -1,5 +1,5 @@
 
-import { useState, useEffect, createContext, useContext } from 'react';
+import { useState, useEffect, createContext, useContext, useRef } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import type { Database } from '@/integrations/supabase/types';
@@ -97,18 +97,19 @@ export const useAuthProvider = (): AuthContextType => {
   const [userRole, setUserRole] = useState<AppRole | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Add state to prevent multiple processing calls
-  const [processingUser, setProcessingUser] = useState<string | null>(null);
+  // Use ref to prevent multiple processing calls (avoids hook reconciliation issues)
+  const processingUserRef = useRef<string | null>(null);
+  const isMountedRef = useRef(true);
 
   const processUser = async (userId: string) => {
     // Prevent multiple calls for the same user
-    if (processingUser === userId) {
+    if (processingUserRef.current === userId) {
       console.log('🔍 Already processing user:', userId);
       return;
     }
 
     try {
-      setProcessingUser(userId);
+      processingUserRef.current = userId;
       console.log('🔍 Processing user authentication:', userId);
       
       // Obtener perfil del usuario
@@ -173,18 +174,23 @@ export const useAuthProvider = (): AuthContextType => {
         console.log('🎭 Role data found:', roleData);
       }
 
-      setProfile(profileData);
-      setUserRole(roleData || null);
+      if (isMountedRef.current) {
+        setProfile(profileData);
+        setUserRole(roleData || null);
+      }
     } catch (error) {
       console.error('❌ Error in processUser:', error);
-      setProfile(null);
-      setUserRole(null);
+      if (isMountedRef.current) {
+        setProfile(null);
+        setUserRole(null);
+      }
     } finally {
-      setProcessingUser(null);
+      processingUserRef.current = null;
     }
   };
 
   useEffect(() => {
+    isMountedRef.current = true;
     // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
@@ -194,35 +200,44 @@ export const useAuthProvider = (): AuthContextType => {
 
         if (session?.user) {
           // Only process if not already processing this user
-          if (processingUser !== session.user.id) {
+          if (processingUserRef.current !== session.user.id) {
             // Defer user processing to avoid blocking auth state change
             setTimeout(() => {
-              processUser(session.user.id);
+              if (isMountedRef.current) {
+                processUser(session.user.id);
+              }
             }, 100); // Slight delay to prevent race conditions
           }
         } else {
           setProfile(null);
           setUserRole(null);
-          setProcessingUser(null);
+          processingUserRef.current = null;
         }
         
-        setIsLoading(false);
+        if (isMountedRef.current) {
+          setIsLoading(false);
+        }
       }
     );
 
     // Check for existing session
     supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!isMountedRef.current) return;
+      
       setSession(session);
       setUser(session?.user ?? null);
       
-      if (session?.user && processingUser !== session.user.id) {
+      if (session?.user && processingUserRef.current !== session.user.id) {
         processUser(session.user.id);
       }
       
       setIsLoading(false);
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      isMountedRef.current = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
   const signIn = async (email: string, password: string) => {
