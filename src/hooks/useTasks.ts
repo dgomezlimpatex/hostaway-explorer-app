@@ -7,12 +7,18 @@ import { useOptimizedTasks } from './useOptimizedTasks';
 import { useToast } from '@/hooks/use-toast';
 import { useCacheInvalidation } from './useCacheInvalidation';
 import { useSedeContext } from './useSedeContext';
+import { useSede } from '@/contexts/SedeContext';
+import { logger } from '@/utils/logger';
 
 export const useTasks = (currentDate: Date, currentView: ViewType) => {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const { invalidateTasks } = useCacheInvalidation();
   const { isSedeActive, waitForActiveSede, refreshSedes } = useSedeContext();
+  const { activeSede } = useSede();
+  
+  // Obtener sedeId del contexto real en lugar de hardcodearlo
+  const sedeId = activeSede?.id || 'no-sede';
 
   // Usar el hook optimizado en lugar del query básico
   const { tasks, isLoading, isInitialLoading: isInitialLoadingTasks, error, queryKey } = useOptimizedTasks({
@@ -35,14 +41,13 @@ export const useTasks = (currentDate: Date, currentView: ViewType) => {
 
   const updateTaskMutation = useMutation({
     mutationFn: async ({ taskId, updates }: { taskId: string; updates: Partial<Task> }) => {
-      console.log('updateTaskMutation - updating task:', { taskId, updates });
+      logger.log('updateTaskMutation - updating task:', { taskId, updates });
       
       // Actualización optimista inmediata
-      const currentDate = new Date().toISOString().split('T')[0];
-      const sedeId = 'no-sede'; // TODO: get from context
+      const currentDateStr = new Date().toISOString().split('T')[0];
       
       // Actualizar caché optimistamente
-      const affectedDates = [updates.date, currentDate].filter(Boolean) as string[];
+      const affectedDates = [updates.date, currentDateStr].filter(Boolean) as string[];
       affectedDates.forEach(date => {
         ['day', 'three-day', 'week'].forEach(view => {
           const queryKey = ['tasks', date, view, sedeId];
@@ -73,9 +78,8 @@ export const useTasks = (currentDate: Date, currentView: ViewType) => {
     },
     onSuccess: (data, variables) => {
       // Invalidación específica solo en las fechas afectadas
-      const currentDate = new Date().toISOString().split('T')[0];
-      const sedeId = 'no-sede'; // TODO: get from context
-      const affectedDates = [variables.updates.date, currentDate].filter(Boolean);
+      const currentDateStr = new Date().toISOString().split('T')[0];
+      const affectedDates = [variables.updates.date, currentDateStr].filter(Boolean);
       
       affectedDates.forEach(date => {
         ['day', 'three-day', 'week'].forEach(view => {
@@ -85,13 +89,12 @@ export const useTasks = (currentDate: Date, currentView: ViewType) => {
         });
       });
       
-      console.log('⚡ Optimized task update cache invalidation for dates:', affectedDates);
+      logger.log('⚡ Optimized task update cache invalidation for dates:', affectedDates);
     },
     onError: (error, variables) => {
       // Revertir actualizaciones optimistas
-      const currentDate = new Date().toISOString().split('T')[0];
-      const sedeId = 'no-sede'; // TODO: get from context
-      const affectedDates = [variables.updates.date, currentDate].filter(Boolean);
+      const currentDateStr = new Date().toISOString().split('T')[0];
+      const affectedDates = [variables.updates.date, currentDateStr].filter(Boolean);
       
       affectedDates.forEach(date => {
         ['day', 'three-day', 'week'].forEach(view => {
@@ -101,25 +104,25 @@ export const useTasks = (currentDate: Date, currentView: ViewType) => {
         });
       });
       
-      console.error('Task update failed, reverted optimistic updates');
+      logger.error('Task update failed, reverted optimistic updates');
     }
   });
 
   const createTaskMutation = useMutation({
     mutationFn: async (taskData: Omit<Task, 'id'>) => {
-      console.log('🎯 createTaskMutation - Starting task creation');
+      logger.log('🎯 createTaskMutation - Starting task creation');
       
       // Verificar sede activa antes de proceder
       if (!isSedeActive()) {
-        console.log('🏢 No active sede, attempting to refresh and wait...');
+        logger.log('🏢 No active sede, attempting to refresh and wait...');
         try {
           // Primero intentar refrescar las sedes
           await refreshSedes();
           // Luego esperar por sede activa con timeout más largo
           await waitForActiveSede(10000); // 10 segundos
-          console.log('✅ Sede active después del refresh');
+          logger.log('✅ Sede active después del refresh');
         } catch (error) {
-          console.error('❌ No se pudo obtener sede activa después del refresh:', error);
+          logger.error('❌ No se pudo obtener sede activa después del refresh:', error);
           throw new Error('No se puede crear la tarea: no hay sede activa. Por favor, verifica tu conexión y vuelve a intentar.');
         }
       }
@@ -134,7 +137,7 @@ export const useTasks = (currentDate: Date, currentView: ViewType) => {
       return result;
     },
     onSuccess: (data) => {
-      console.log('✅ useTasks - createTaskMutation onSuccess:', data);
+      logger.log('✅ useTasks - createTaskMutation onSuccess:', data);
       
       // Force invalidate ALL task-related queries (more aggressive)
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
@@ -147,10 +150,10 @@ export const useTasks = (currentDate: Date, currentView: ViewType) => {
         }
       });
       
-      console.log('🔄 useTasks - Invalidated and removed all task caches after create');
+      logger.log('🔄 useTasks - Invalidated and removed all task caches after create');
     },
     onError: (error) => {
-      console.error('❌ useTasks - createTaskMutation onError:', error);
+      logger.error('❌ useTasks - createTaskMutation onError:', error);
       
       // Mostrar mensaje de error más claro al usuario
       toast({
@@ -163,19 +166,18 @@ export const useTasks = (currentDate: Date, currentView: ViewType) => {
 
   const deleteTaskMutation = useMutation({
     mutationFn: async (taskId: string) => {
-      console.log('🗑️ useTasks - deleteTask called with taskId:', taskId);
+      logger.log('🗑️ useTasks - deleteTask called with taskId:', taskId);
       
       // Find the task by either id or originalTaskId to get the real task id
       const currentTask = tasks.find(t => t.id === taskId || t.originalTaskId === taskId);
       const realTaskId = currentTask?.originalTaskId || taskId;
-      
       
       // Delete the task directly - the taskCleanupService.deleteTask already handles sending cancellation emails
       const result = await taskStorageService.deleteTask(realTaskId);
       return result;
     },
     onSuccess: (data, taskId) => {
-      console.log('✅ useTasks - deleteTask successful for taskId:', taskId);
+      logger.log('✅ useTasks - deleteTask successful for taskId:', taskId);
       
       // Invalidate ALL task-related queries with broader pattern
       queryClient.invalidateQueries({ 
@@ -202,7 +204,7 @@ export const useTasks = (currentDate: Date, currentView: ViewType) => {
         throw new Error('Cleaner not found');
       }
 
-      console.log('assignTaskMutation - assigning task:', { taskId, cleanerId, cleanerName: cleaner.name });
+      logger.log('assignTaskMutation - assigning task:', { taskId, cleanerId, cleanerName: cleaner.name });
       
       // Use the assignment service which handles email notifications
       return await taskAssignmentService.assignTask(taskId, cleaner.name, cleanerId);
@@ -212,14 +214,13 @@ export const useTasks = (currentDate: Date, currentView: ViewType) => {
       if (!cleaner) return;
 
       // Actualización optimista inmediata en TODAS las queries relevantes
-      const currentDate = new Date().toISOString().split('T')[0];
-      const sedeId = 'no-sede'; // TODO: get from context
+      const currentDateStr = new Date().toISOString().split('T')[0];
       
       // Cancelar queries en vuelo
       await queryClient.cancelQueries({ queryKey: ['tasks'] });
       
       // Actualizar múltiples vistas y fechas
-      const dates = [currentDate];
+      const dates = [currentDateStr];
       const tomorrow = new Date();
       tomorrow.setDate(tomorrow.getDate() + 1);
       dates.push(tomorrow.toISOString().split('T')[0]);
@@ -246,10 +247,10 @@ export const useTasks = (currentDate: Date, currentView: ViewType) => {
         );
       });
 
-      console.log('✅ Optimistic update applied for task assignment');
+      logger.log('✅ Optimistic update applied for task assignment');
     },
     onSuccess: (data, variables) => {
-      console.log('Task assigned successfully:', data);
+      logger.log('Task assigned successfully:', data);
       
       // Invalidación agresiva de TODAS las queries relacionadas con tasks
       queryClient.invalidateQueries({ 
@@ -273,18 +274,17 @@ export const useTasks = (currentDate: Date, currentView: ViewType) => {
         description: `Se ha asignado la tarea a ${cleaner?.name} y se le ha enviado una notificación por email.`,
       });
       
-      console.log('⚡ Forced aggressive task assignment cache invalidation and refetch');
+      logger.log('⚡ Forced aggressive task assignment cache invalidation and refetch');
     },
     onError: (error: any, variables) => {
-      console.error('Error assigning task:', error);
+      logger.error('Error assigning task:', error);
       
       // Revertir actualización optimista
-      const currentDate = new Date().toISOString().split('T')[0];
-      const sedeId = 'no-sede'; // TODO: get from context
+      const currentDateStr = new Date().toISOString().split('T')[0];
       
       ['day', 'three-day', 'week'].forEach(view => {
         queryClient.invalidateQueries({ 
-          queryKey: ['tasks', currentDate, view, sedeId] 
+          queryKey: ['tasks', currentDateStr, view, sedeId] 
         });
       });
       
@@ -298,11 +298,11 @@ export const useTasks = (currentDate: Date, currentView: ViewType) => {
 
   const unassignTaskMutation = useMutation({
     mutationFn: async (taskId: string) => {
-      console.log('unassignTaskMutation - unassigning task:', taskId);
+      logger.log('unassignTaskMutation - unassigning task:', taskId);
       return await taskAssignmentService.unassignTask(taskId);
     },
     onSuccess: (data, taskId) => {
-      console.log('Task unassigned successfully:', data);
+      logger.log('Task unassigned successfully:', data);
       
       // Invalidación agresiva de TODAS las queries relacionadas con tasks
       queryClient.invalidateQueries({ 
@@ -325,10 +325,10 @@ export const useTasks = (currentDate: Date, currentView: ViewType) => {
         description: "Se ha desasignado la tarea y se ha enviado una notificación por email.",
       });
       
-      console.log('⚡ Forced aggressive task unassignment cache invalidation and refetch');
+      logger.log('⚡ Forced aggressive task unassignment cache invalidation and refetch');
     },
     onError: (error: any) => {
-      console.error('Error unassigning task:', error);
+      logger.error('Error unassigning task:', error);
       toast({
         title: "Error",
         description: error.message || "No se pudo desasignar la tarea.",
