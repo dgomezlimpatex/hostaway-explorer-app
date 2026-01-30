@@ -96,6 +96,27 @@ export const useOptimizedTasks = ({
     };
   }, [currentDate, currentView]);
 
+  // Determine if we can fetch tasks:
+  // - We need an activeSede (either restored from localStorage or loaded from server)
+  // - For cleaners, we also need their cleanerId
+  // - If isInitialized is true, the server has validated the sede
+  // - If activeSede exists but isInitialized is false, we can still fetch (sede was restored from localStorage)
+  const canFetchTasks = enabled && 
+    !!activeSede?.id && 
+    (isInitialized || !loading) && // Either fully initialized OR not in loading state
+    (userRole !== 'cleaner' || currentCleanerId !== null);
+
+  // Debug logging to help diagnose loading issues
+  console.log('📋 useOptimizedTasks state:', {
+    canFetchTasks,
+    activeSede: activeSede?.nombre || 'none',
+    sedeId: activeSede?.id || 'none',
+    isInitialized,
+    loading,
+    userRole,
+    enabled
+  });
+
   const query = useQuery({
     queryKey,
     queryFn: async () => {
@@ -122,7 +143,7 @@ export const useOptimizedTasks = ({
     },
     staleTime: userRole === 'cleaner' ? 30000 : 0, // Cleaners can have stale data for 30s
     gcTime: 60000,
-    enabled: enabled && isInitialized && !loading && (userRole !== 'cleaner' || currentCleanerId !== null),
+    enabled: canFetchTasks,
     refetchOnWindowFocus: true,
     refetchOnMount: true,
   });
