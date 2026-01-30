@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -10,24 +11,28 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { Task } from "@/types/calendar";
 import { Badge } from "@/components/ui/badge";
-import { Calendar, Clock, Users, User } from "lucide-react";
+import { Calendar, Clock, Users, User, Loader2 } from "lucide-react";
 import { MultiPropertySelector } from "./batch-create/MultiPropertySelector";
 import { BatchTaskForm } from "./batch-create/BatchTaskForm";
 import { BatchCleanerAssignment } from "./batch-create/BatchCleanerAssignment";
 import { useBatchCreateTask } from "./batch-create/useBatchCreateTask";
+import { Progress } from "@/components/ui/progress";
 
 interface BatchCreateTaskModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onCreateTasks: (tasks: Omit<Task, 'id'>[]) => void;
+  onCreateTasks: (tasks: Omit<Task, 'id'>[]) => Promise<any>;
+  isCreating?: boolean;
 }
 
 export const BatchCreateTaskModal = ({ 
   open, 
   onOpenChange, 
-  onCreateTasks 
+  onCreateTasks,
+  isCreating = false,
 }: BatchCreateTaskModalProps) => {
   const { toast } = useToast();
+  const [isSubmitting, setIsSubmitting] = useState(false);
   
   const {
     selectedProperties,
@@ -43,7 +48,7 @@ export const BatchCreateTaskModal = ({
     resetBatchForm
   } = useBatchCreateTask();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (selectedProperties.length === 0) {
@@ -84,20 +89,19 @@ export const BatchCreateTaskModal = ({
     }
 
     const tasks = generateTasksFromBatch();
-    onCreateTasks(tasks);
-    onOpenChange(false);
-    resetBatchForm();
     
-    const assignmentMessage = assignmentConfig.mode === 'none' 
-      ? 'sin asignar'
-      : assignmentConfig.mode === 'single'
-        ? 'asignadas a un cleaner'
-        : `distribuidas entre ${assignmentConfig.selectedCleanerIds.length} cleaners`;
+    setIsSubmitting(true);
     
-    toast({
-      title: "Tareas creadas",
-      description: `Se han creado ${tasks.length} tareas ${assignmentMessage}.`,
-    });
+    try {
+      await onCreateTasks(tasks);
+      onOpenChange(false);
+      resetBatchForm();
+    } catch (error) {
+      // Error is handled by the parent
+      console.error('Batch create error in modal:', error);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleCancel = () => {
@@ -106,6 +110,7 @@ export const BatchCreateTaskModal = ({
   };
 
   const schedulePreview = getSchedulePreview();
+  const isLoading = isSubmitting || isCreating;
 
   const getAssignmentLabel = () => {
     if (assignmentConfig.mode === 'none') return 'Sin asignar';
@@ -213,15 +218,36 @@ export const BatchCreateTaskModal = ({
             </>
           )}
 
+          {/* Progress indicator during creation */}
+          {isLoading && (
+            <div className="bg-muted/50 rounded-lg p-4 space-y-3">
+              <div className="flex items-center gap-2 text-sm font-medium">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Creando {selectedProperties.length} tareas...
+              </div>
+              <Progress value={100} className="animate-pulse" />
+              <p className="text-xs text-muted-foreground">
+                Por favor espera, esto puede tardar unos segundos...
+              </p>
+            </div>
+          )}
+
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={handleCancel}>
+            <Button type="button" variant="outline" onClick={handleCancel} disabled={isLoading}>
               Cancelar
             </Button>
             <Button 
               type="submit" 
-              disabled={selectedProperties.length === 0}
+              disabled={selectedProperties.length === 0 || isLoading}
             >
-              Crear {selectedProperties.length} Tareas
+              {isLoading ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Creando...
+                </>
+              ) : (
+                `Crear ${selectedProperties.length} Tareas`
+              )}
             </Button>
           </DialogFooter>
         </form>

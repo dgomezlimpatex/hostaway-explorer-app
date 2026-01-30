@@ -337,6 +337,90 @@ export const useTasks = (currentDate: Date, currentView: ViewType) => {
     },
   });
 
+  // Batch create tasks using the Edge Function
+  const batchCreateTasksMutation = useMutation({
+    mutationFn: async ({ tasks, sendEmails = true }: { tasks: Omit<Task, 'id'>[]; sendEmails?: boolean }) => {
+      logger.log(`📦 batchCreateTasksMutation - Creating ${tasks.length} tasks`);
+      
+      // Verificar sede activa antes de proceder
+      if (!isSedeActive()) {
+        logger.log('🏢 No active sede, attempting to refresh and wait...');
+        try {
+          await refreshSedes();
+          await waitForActiveSede(10000);
+          logger.log('✅ Sede active después del refresh');
+        } catch (error) {
+          logger.error('❌ No se pudo obtener sede activa después del refresh:', error);
+          throw new Error('No se puede crear las tareas: no hay sede activa.');
+        }
+      }
+      
+      const response = await fetch(
+        'https://qyipyygojlfhdghnraus.supabase.co/functions/v1/batch-create-tasks',
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF5aXB5eWdvamxmaGRnaG5yYXVzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDk1NTUyNTYsImV4cCI6MjA2NTEzMTI1Nn0.8L48rM_j_95tM37KRB6pBo4PgsLcHWoMMMO-OkPGw2Q`,
+          },
+          body: JSON.stringify({
+            tasks: tasks.map(task => ({
+              property: task.property,
+              address: task.address,
+              date: task.date,
+              startTime: task.startTime,
+              endTime: task.endTime,
+              type: task.type,
+              status: task.status,
+              checkIn: task.checkIn,
+              checkOut: task.checkOut,
+              clienteId: task.clienteId,
+              propertyId: task.propertyId,
+              duration: task.duration,
+              cost: task.cost,
+              paymentMethod: task.paymentMethod,
+              supervisor: task.supervisor,
+              cleanerId: task.cleanerId,
+              cleanerName: task.cleaner,
+              // Note: cleanerEmail would need to be fetched from cleaners list if needed
+            })),
+            sedeId,
+            sendEmails,
+          }),
+        }
+      );
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to create batch tasks');
+      }
+      
+      return await response.json();
+    },
+    onSuccess: (data) => {
+      logger.log(`✅ Batch created ${data.created} tasks, ${data.emailsSent} emails sent`);
+      
+      // Single cache invalidation for all tasks
+      queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      queryClient.removeQueries({ 
+        predicate: (query) => {
+          const key = query.queryKey;
+          return Array.isArray(key) && key[0] === 'tasks';
+        }
+      });
+      
+      logger.log('🔄 Cache invalidated after batch create');
+    },
+    onError: (error) => {
+      logger.error('❌ Batch create failed:', error);
+      toast({
+        title: "Error al crear tareas",
+        description: error.message || "No se pudieron crear las tareas.",
+        variant: "destructive",
+      });
+    },
+  });
+
   return {
     tasks,
     isLoading,
@@ -344,12 +428,14 @@ export const useTasks = (currentDate: Date, currentView: ViewType) => {
     error,
     updateTask: updateTaskMutation.mutate,
     createTask: createTaskMutation.mutate,
+    batchCreateTasks: batchCreateTasksMutation.mutateAsync,
     deleteTask: deleteTaskMutation.mutate,
     deleteAllTasks: deleteAllTasksMutation.mutate,
     assignTask: assignTaskMutation.mutate,
     unassignTask: unassignTaskMutation.mutate,
     isUpdatingTask: updateTaskMutation.isPending,
     isCreatingTask: createTaskMutation.isPending,
+    isBatchCreating: batchCreateTasksMutation.isPending,
     isDeletingTask: deleteTaskMutation.isPending,
     isDeletingAllTasks: deleteAllTasksMutation.isPending,
     isAssigningTask: assignTaskMutation.isPending,

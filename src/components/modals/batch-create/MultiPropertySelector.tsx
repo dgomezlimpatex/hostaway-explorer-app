@@ -1,12 +1,11 @@
-
-import { useState, useEffect } from 'react';
+import { useState, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Badge } from "@/components/ui/badge";
 import { Building } from "lucide-react";
 import { useClients } from '@/hooks/useClients';
 import { useProperties } from '@/hooks/useProperties';
 import { ClientPropertySelector } from '../ClientPropertySelector';
+import { PropertyGridSelector } from './PropertyGridSelector';
+import { PropertyGridToolbar } from './PropertyGridToolbar';
 
 interface MultiPropertySelectorProps {
   selectedProperties: string[];
@@ -56,21 +55,37 @@ export const MultiPropertySelector = ({
     onClientChange?.(client?.id || null);
   };
 
-  const handlePropertyToggle = (propertyId: string) => {
-    const newSelection = selectedProperties.includes(propertyId)
-      ? selectedProperties.filter(id => id !== propertyId)
-      : [...selectedProperties, propertyId];
-    
-    onPropertiesChange(newSelection);
-  };
+  const handleSelectAll = useCallback(() => {
+    onPropertiesChange(availableProperties.map(p => p.id));
+  }, [availableProperties, onPropertiesChange]);
 
-  const handleSelectAll = () => {
-    if (selectedProperties.length === availableProperties.length) {
-      onPropertiesChange([]);
-    } else {
-      onPropertiesChange(availableProperties.map(p => p.id));
-    }
-  };
+  const handleDeselectAll = useCallback(() => {
+    onPropertiesChange([]);
+  }, [onPropertiesChange]);
+
+  const handleInvertSelection = useCallback(() => {
+    const currentSet = new Set(selectedProperties);
+    const inverted = availableProperties
+      .filter(p => !currentSet.has(p.id))
+      .map(p => p.id);
+    onPropertiesChange(inverted);
+  }, [availableProperties, selectedProperties, onPropertiesChange]);
+
+  const handleSelectRange = useCallback((start: number, end: number) => {
+    // Find properties whose numeric code falls within the range
+    const inRange = availableProperties.filter(p => {
+      const code = p.codigo || p.nombre;
+      const match = code.match(/(\d+)/);
+      if (!match) return false;
+      const num = parseInt(match[1], 10);
+      return num >= start && num <= end;
+    });
+    
+    // Add to current selection (union)
+    const currentSet = new Set(selectedProperties);
+    inRange.forEach(p => currentSet.add(p.id));
+    onPropertiesChange(Array.from(currentSet));
+  }, [availableProperties, selectedProperties, onPropertiesChange]);
 
   return (
     <div className="space-y-4">
@@ -86,57 +101,34 @@ export const MultiPropertySelector = ({
         />
       </div>
 
-      {/* Lista de Propiedades */}
+      {/* Lista de Propiedades con Grid */}
       {selectedClientId && (
         <Card>
           <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-base flex items-center gap-2">
-                <Building className="h-4 w-4" />
-                Propiedades de {selectedClient?.nombre}
-              </CardTitle>
-              <div className="flex items-center gap-2">
-                <Badge variant="secondary">
-                  {selectedProperties.length} / {availableProperties.length} seleccionadas
-                </Badge>
-                <button
-                  type="button"
-                  onClick={handleSelectAll}
-                  className="text-sm text-blue-600 hover:text-blue-800"
-                >
-                  {selectedProperties.length === availableProperties.length ? 'Deseleccionar todas' : 'Seleccionar todas'}
-                </button>
-              </div>
-            </div>
+            <CardTitle className="text-base flex items-center gap-2">
+              <Building className="h-4 w-4" />
+              Propiedades de {selectedClient?.nombre}
+            </CardTitle>
           </CardHeader>
-          <CardContent className="max-h-[50vh] overflow-y-auto">
-            <div className="columns-1 lg:columns-2 xl:columns-3 gap-2 space-y-2">
-              {availableProperties.map((property) => (
-                <div
-                  key={property.id}
-                  className="flex items-center space-x-2 p-2 rounded-lg hover:bg-muted/50 border border-border break-inside-avoid"
-                >
-                  <Checkbox
-                    checked={selectedProperties.includes(property.id)}
-                    onCheckedChange={() => handlePropertyToggle(property.id)}
-                  />
-                  <div className="flex-1 min-w-0">
-                    <div className="font-medium text-sm">
-                      {property.codigo} - {property.nombre}
-                    </div>
-                    <div className="flex items-center justify-between text-xs text-muted-foreground mt-0.5">
-                      <span>{property.costeServicio}€ · {property.duracionServicio}min</span>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
+          <CardContent className="space-y-3">
+            {/* Toolbar with quick actions */}
+            <PropertyGridToolbar
+              selectedCount={selectedProperties.length}
+              totalCount={availableProperties.length}
+              onSelectAll={handleSelectAll}
+              onDeselectAll={handleDeselectAll}
+              onInvertSelection={handleInvertSelection}
+              onSelectRange={handleSelectRange}
+            />
             
-            {availableProperties.length === 0 && (
-              <div className="text-center py-4 text-gray-500 text-sm">
-                No hay propiedades disponibles para este cliente
-              </div>
-            )}
+            {/* Grid de propiedades */}
+            <PropertyGridSelector
+              properties={availableProperties}
+              selectedIds={selectedProperties}
+              onSelectionChange={onPropertiesChange}
+              onSelectAll={handleSelectAll}
+              onDeselectAll={handleDeselectAll}
+            />
           </CardContent>
         </Card>
       )}

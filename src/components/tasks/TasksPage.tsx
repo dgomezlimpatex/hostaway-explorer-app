@@ -44,6 +44,7 @@ const TasksPage = memo(() => {
     selectedTaskForHistory,
     isHistoryModalOpen,
     setIsHistoryModalOpen,
+    isBatchCreating,
     handleCreateTask,
     handleBatchCreateTasks,
     handleShowHistory,
@@ -134,7 +135,8 @@ const TasksPage = memo(() => {
           <BatchCreateTaskModal 
             open={isBatchCreateModalOpen} 
             onOpenChange={setIsBatchCreateModalOpen} 
-            onCreateTasks={handleBatchCreateTasks} 
+            onCreateTasks={handleBatchCreateTasks}
+            isCreating={isBatchCreating}
           />
         </>
       )}
