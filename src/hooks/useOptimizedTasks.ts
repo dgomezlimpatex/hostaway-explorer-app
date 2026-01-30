@@ -100,26 +100,47 @@ export const useOptimizedTasks = ({
   const query = useQuery({
     queryKey,
     queryFn: async () => {
+      console.log('📋 useOptimizedTasks - queryFn executing:', {
+        userRole,
+        currentCleanerId,
+        activeSede: activeSede?.id,
+        dateRange,
+        queryKey
+      });
+      
       // OPTIMIZED: For cleaners, use server-side filtering
       if (userRole === 'cleaner' && currentCleanerId) {
-        return taskStorageService.getTasks({
+        const result = await taskStorageService.getTasks({
           cleanerId: currentCleanerId,
           userRole: 'cleaner',
           sedeId: activeSede?.id
         });
+        console.log('📋 useOptimizedTasks - cleaner tasks loaded:', result.length);
+        return result;
       }
       
       // For non-cleaners, fetch tasks based on the current view date range
+      console.log('📋 useOptimizedTasks - fetching tasks with params:', {
+        sedeId: activeSede?.id,
+        dateFrom: dateRange.dateFrom,
+        dateTo: dateRange.dateTo
+      });
+      
       const allTasks = await taskStorageService.getTasks({
         sedeId: activeSede?.id,
         dateFrom: dateRange.dateFrom,
         dateTo: dateRange.dateTo
       });
       
+      console.log('📋 useOptimizedTasks - tasks fetched:', allTasks.length);
+      
       const sedeId = activeSede?.id || 'no-sede';
       queryClient.setQueryData(['tasks', 'all', sedeId], allTasks);
       
-      return filterTasksByView(allTasks, currentDate, currentView);
+      const filtered = filterTasksByView(allTasks, currentDate, currentView);
+      console.log('📋 useOptimizedTasks - filtered tasks:', filtered.length);
+      
+      return filtered;
     },
     staleTime: userRole === 'cleaner' ? 30000 : 0, // Cleaners can have stale data for 30s
     gcTime: 60000,
