@@ -22,7 +22,7 @@ export const exportClientBillingToCSV = (
   
   lines.push('');
   lines.push(`Total Servicios: ${client.totalServices}`);
-  lines.push(`Total Facturado: €${client.totalCost.toFixed(2)}`);
+  lines.push(`Total Facturado: €${client.totalCost.toFixed(2).replace('.', ',')}`);
   lines.push('');
 
   // Column headers
@@ -41,7 +41,7 @@ export const exportClientBillingToCSV = (
         task.checkOut || '-',
         task.duration.toString(),
         `"${task.cleaner}"`,
-        task.cost.toFixed(2),
+        task.cost.toFixed(2).replace('.', ','),
       ];
       lines.push(row.join(','));
     });
@@ -53,11 +53,11 @@ export const exportClientBillingToCSV = (
   lines.push('Propiedad,Código,Nº Limpiezas,Subtotal (€)');
   
   client.properties.forEach(property => {
-    lines.push(`"${property.propertyName}",${property.propertyCode},${property.totalCleanings},${property.totalCost.toFixed(2)}`);
+    lines.push(`"${property.propertyName}",${property.propertyCode},${property.totalCleanings},${property.totalCost.toFixed(2).replace('.', ',')}`);
   });
 
   lines.push('');
-  lines.push(`TOTAL,,${client.totalServices},${client.totalCost.toFixed(2)}`);
+  lines.push(`TOTAL,,${client.totalServices},${client.totalCost.toFixed(2).replace('.', ',')}`);
 
   // Create and download file
   const csvContent = '\uFEFF' + lines.join('\n'); // Add BOM for Excel
@@ -98,7 +98,7 @@ export const exportAllClientsBillingToCSV = (
   
   lines.push(`Total Clientes: ${clients.length}`);
   lines.push(`Total Servicios: ${totalServices}`);
-  lines.push(`Total Facturado: €${totalAmount.toFixed(2)}`);
+  lines.push(`Total Facturado: €${totalAmount.toFixed(2).replace('.', ',')}`);
   lines.push('');
 
   // Column headers
@@ -117,7 +117,7 @@ export const exportAllClientsBillingToCSV = (
           task.type,
           task.duration.toString(),
           `"${task.cleaner}"`,
-          task.cost.toFixed(2),
+          task.cost.toFixed(2).replace('.', ','),
         ];
         lines.push(row.join(','));
       });
