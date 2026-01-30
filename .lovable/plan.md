@@ -1,95 +1,235 @@
 
 
-## Plan: Notificaciones por Email de Reservas del Portal de Clientes
+# Plan de Optimización de Backend y Base de Datos
 
-### Resumen
+## Resumen Ejecutivo
 
-Implementar un sistema de notificaciones por email usando Resend que te avise cuando los clientes añadan reservas a través de su portal. El sistema enviará un resumen cada 3 horas (de 9:00 a 21:00) con todas las reservas añadidas en ese periodo.
-
----
-
-### Cómo Funcionará
-
-1. Cada 3 horas (9:00, 12:00, 15:00, 18:00, 21:00), el sistema verificará si hay nuevas reservas
-2. Buscará en los logs de reservas las creadas en las últimas 3 horas
-3. Si hay reservas nuevas, te enviará un email con el formato:
-   - **Cliente** - **Propiedad** - **Fecha de salida**
-4. Si no hay reservas nuevas en ese periodo, no se enviará email
+Este plan implementa 5 optimizaciones que harán la aplicación más rápida y eficiente, con especial atención a tu requisito de **cargar solo tareas de 1 mes antes/después** mientras mantienes accesibles las tareas antiguas.
 
 ---
 
-### Ejemplo del Email
+## Las 5 Optimizaciones Explicadas de Forma Sencilla
+
+### 1. Velocidad de búsqueda (Índices)
+
+**Qué haremos:** Añadir "índices" a la base de datos
+
+**Resultado esperado:** El calendario cargará en menos de 1 segundo (ahora tarda 2-4 segundos)
+
+**Cambios específicos:**
+- Crear un índice combinado para buscar tareas por fecha + sede + estado
+- Crear un índice para acelerar la verificación de permisos de usuario
+
+**Riesgo:** Ninguno. Los índices son como el índice de un libro - no cambian los datos, solo ayudan a encontrarlos más rápido.
+
+---
+
+### 2. Cargar solo lo necesario (Ventana de 1 mes)
+
+**Qué haremos:** Modificar la aplicación para que solo cargue tareas dentro de una "ventana" de 1 mes antes y 1 mes después de la fecha actual.
+
+**Tu preocupación resuelta:** Cuando quieras ver tareas más antiguas:
+- El sistema detectará que estás buscando fuera de la ventana normal
+- Mostrará un pequeño indicador de "cargando..."
+- Traerá esas tareas específicas sin recargar todo
+
+**Cómo funcionará para ti:**
+| Acción | Velocidad | Datos cargados |
+|--------|-----------|----------------|
+| Abrir calendario | Rápido (~0.5s) | Solo 1 mes ± |
+| Ir a febrero 2026 | Instantáneo | Ya en memoria |
+| Ir a diciembre 2024 | 1-2 segundos | Carga bajo demanda |
+| Ver reporte de 2024 | 1-2 segundos | Consulta directa a BD |
+
+---
+
+### 3. Corrección del error de sedes
+
+**Qué haremos:** Corregir un error donde el sistema a veces usa "no-sede" en lugar de la sede real.
+
+**Resultado:** 
+- No verás tareas de otras sedes mezcladas
+- La caché funcionará correctamente al cambiar de sede
+
+---
+
+### 4. Optimización de reportes
+
+**Qué haremos:** Los reportes consultarán directamente la base de datos con filtros, en lugar de cargar todas las tareas y filtrar después.
+
+**Resultado:**
+- Reportes de meses pasados cargarán en 1-2 segundos
+- No afectará la memoria del navegador
+
+---
+
+### 5. Limpieza de mensajes internos (console.logs)
+
+**Qué haremos:** Eliminar los mensajes de depuración que ralentizan la aplicación.
+
+**Resultado:** La aplicación será ligeramente más fluida, especialmente en móviles.
+
+---
+
+## Detalles Técnicos (para referencia)
+
+### Fase 1: Índices de Base de Datos
+
+```sql
+-- Índice para búsquedas frecuentes del calendario
+CREATE INDEX CONCURRENTLY idx_tasks_date_sede_status 
+ON tasks(date, sede_id, status);
+
+-- Índice para verificación de roles (acelera cada petición)
+CREATE INDEX CONCURRENTLY idx_user_roles_user_role 
+ON user_roles(user_id, role);
+
+-- Índice para acceso a sedes
+CREATE INDEX CONCURRENTLY idx_user_sede_access_composite 
+ON user_sede_access(user_id, sede_id, can_access);
+
+-- Índice para fotos (la tabla más grande: 15MB, 38,960 fotos)
+CREATE INDEX CONCURRENTLY idx_task_media_task_id 
+ON task_media(task_id);
+```
+
+La palabra `CONCURRENTLY` significa que se crean sin bloquear la aplicación - los usuarios pueden seguir trabajando.
+
+---
+
+### Fase 2: Carga de Tareas por Ventana Temporal
+
+**Archivos a modificar:**
+
+1. **`src/services/storage/taskStorage.ts`**
+   - Añadir parámetros `dateFrom` y `dateTo` al método `getTasks()`
+   - Por defecto: 1 mes antes y 1 mes después de hoy
+
+2. **`src/hooks/useOptimizedTasks.ts`**
+   - Calcular automáticamente la ventana de fechas según la vista actual
+   - Detectar cuando el usuario navega fuera del rango cargado
+   - Cargar datos adicionales solo cuando sea necesario
+
+3. **`src/hooks/tasks/useTasksPageState.ts`**
+   - Implementar paginación desde el servidor para la lista de tareas
+   - Solo traer 50 tareas a la vez con opción de "cargar más"
+
+**Nuevo flujo de datos:**
 
 ```
-📋 Nuevas Reservas del Portal de Clientes
-
-Se han añadido 3 reservas en las últimas 3 horas:
-
-• Apartamentos López - Marina 5A - Salida: 15/02/2026
-• Apartamentos López - Playa 2B - Salida: 18/02/2026  
-• Gestión Turística SL - Centro 1 - Salida: 20/02/2026
-
----
-Resumen automático del Sistema de Gestión
-```
-
----
-
-### Requisito Previo
-
-Necesitaré que añadas la clave de API de Resend como secreto:
-- **Nombre**: `RESEND_API_KEY`
-- **Valor**: Tu clave API de Resend
-
-Ya tienes Resend configurado para otros emails (asignación de tareas, invitaciones, etc.), así que probablemente ya tengas este secreto. Si no lo tienes, puedes obtener la clave en https://resend.com/api-keys
-
----
-
-### Detalles Técnicos
-
-#### 1. Nueva Edge Function: `send-reservation-digest-email`
-
-Creará una función que:
-- Consulte `client_reservation_logs` para obtener reservas creadas en las últimas 3 horas
-- Agrupe la información por cliente y propiedad
-- Envíe un email formateado a dgomezlimpatex@gmail.com
-- Solo envíe si hay al menos una reserva nueva
-
-```text
 ┌─────────────────────────────────────────────────────────────┐
-│                    Edge Function Flow                        │
+│  Usuario abre calendario (30 Ene 2026)                      │
 ├─────────────────────────────────────────────────────────────┤
-│  1. Recibe llamada del cron job                             │
-│  2. Calcula ventana de tiempo (últimas 3 horas)             │
-│  3. Consulta client_reservation_logs WHERE action='created' │
-│  4. JOIN con clients y properties para obtener nombres      │
-│  5. Si hay resultados → genera email con lista              │
-│  6. Envía email via Resend                                  │
-│  7. Retorna éxito/error                                     │
+│  Sistema calcula: 30 Dic 2025 → 28 Feb 2026                 │
+│  Carga: ~100 tareas (estimado)                              │
+│  Tiempo: <1 segundo                                         │
+└─────────────────────────────────────────────────────────────┘
+          │
+          ▼
+┌─────────────────────────────────────────────────────────────┐
+│  Usuario navega a Octubre 2025                              │
+├─────────────────────────────────────────────────────────────┤
+│  Sistema detecta: fuera del rango cargado                   │
+│  Nueva consulta: 1 Sep 2025 → 30 Nov 2025                   │
+│  Muestra indicador de carga                                 │
+│  Tiempo: 1-2 segundos                                       │
 └─────────────────────────────────────────────────────────────┘
 ```
 
-#### 2. Configuración del Cron Job
+---
 
-Se programará para ejecutarse cada 3 horas dentro del horario de 9:00 a 21:00:
+### Fase 3: Corrección del Error de Sedes
 
-| Hora | Cron Expression |
-|------|-----------------|
-| 9:00, 12:00, 15:00, 18:00, 21:00 | `0 9,12,15,18,21 * * *` |
+**Archivo:** `src/hooks/useTasks.ts`
 
-#### 3. Archivos a Crear/Modificar
+Cambiar todas las líneas con:
+```typescript
+const sedeId = 'no-sede'; // TODO: get from context
+```
 
-| Archivo | Acción |
-|---------|--------|
-| `supabase/functions/send-reservation-digest-email/index.ts` | Crear |
-| `supabase/config.toml` | Añadir configuración de la función |
-| SQL para cron job | Ejecutar para programar el trigger |
+Por:
+```typescript
+const { activeSede } = useSede();
+const sedeId = activeSede?.id || 'no-sede';
+```
+
+Esto afecta a las líneas 42, 77, 93, 217, 283 del archivo.
 
 ---
 
-### Notas Adicionales
+### Fase 4: Reportes con Paginación Servidor
 
-- El email se enviará desde `noreply@limpatexgestion.com` (dominio ya verificado en Resend)
-- El formato del email será similar al de las notificaciones de tareas existentes
-- Si no hay reservas nuevas en un periodo de 3 horas, no recibirás email (para no saturar tu bandeja)
+**Archivos a modificar:**
+
+1. **`src/hooks/reports/useReportData.ts`**
+   - Añadir filtros de fecha directamente en la consulta SQL
+   - En lugar de traer todas las tareas y filtrar en el navegador
+
+2. **`src/services/storage/taskStorage.ts`**
+   - Nuevo método: `getTasksForReports(filters)` que aplica filtros en la base de datos
+
+**Consulta optimizada para reportes:**
+```sql
+SELECT * FROM tasks 
+WHERE date BETWEEN '2025-01-01' AND '2025-01-31'
+AND sede_id = 'tu-sede-id'
+ORDER BY date, start_time
+```
+
+En lugar de cargar 4,500 tareas y filtrar 100.
+
+---
+
+### Fase 5: Limpieza de Console.logs
+
+**Archivos afectados:** 70 archivos con ~1,746 mensajes de depuración
+
+**Solución:** Crear un sistema de logging condicional:
+
+```typescript
+// src/utils/logger.ts
+const isDev = import.meta.env.DEV;
+
+export const logger = {
+  log: (...args: any[]) => isDev && console.log(...args),
+  warn: (...args: any[]) => isDev && console.warn(...args),
+  error: (...args: any[]) => console.error(...args), // Errores siempre se muestran
+};
+```
+
+Y reemplazar progresivamente los `console.log` por `logger.log`.
+
+---
+
+## Orden de Implementación Recomendado
+
+| Paso | Optimización | Tiempo estimado | Impacto |
+|------|-------------|-----------------|---------|
+| 1 | Índices de base de datos | 10 minutos | Alto - mejora inmediata |
+| 2 | Corrección sedes (useTasks.ts) | 15 minutos | Medio - evita bugs |
+| 3 | Ventana temporal de tareas | 1 hora | Alto - reduce datos cargados |
+| 4 | Reportes con filtros BD | 45 minutos | Medio - reportes más rápidos |
+| 5 | Limpieza console.logs | 30 minutos | Bajo - app más fluida |
+
+---
+
+## Métricas Esperadas Después de las Optimizaciones
+
+| Métrica | Antes | Después |
+|---------|-------|---------|
+| Tiempo carga calendario | 2-4 segundos | <1 segundo |
+| Datos transferidos por sesión | ~5 MB | <1 MB |
+| Tareas en memoria | 4,500 | ~100 (1 mes) |
+| Tiempo de reporte mensual | 3-5 segundos | 1-2 segundos |
+| Escaneos BD por día | 6 mil millones | <100 millones |
+
+---
+
+## Seguridad de los Cambios
+
+- **Los índices** no modifican datos, solo aceleran búsquedas
+- **La ventana temporal** no elimina tareas, solo cambia cuándo se cargan
+- **La corrección de sedes** es un fix de bug existente
+- **Los reportes** seguirán mostrando los mismos datos, solo más rápido
+- **La limpieza de logs** no afecta funcionalidad, solo rendimiento
 
