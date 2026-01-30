@@ -42,6 +42,19 @@ export const useOptimizedTasks = ({
     ];
   }, [currentDate, currentView, activeSede?.id, userRole, currentCleanerId]);
 
+  // Robust function to add/subtract months without date overflow issues
+  const addMonths = (date: Date, months: number): Date => {
+    const result = new Date(date);
+    const targetMonth = result.getMonth() + months;
+    result.setDate(1); // Set to first day to avoid overflow
+    result.setMonth(targetMonth);
+    // Set to last day of month if original day was higher than new month's days
+    const originalDay = date.getDate();
+    const daysInNewMonth = new Date(result.getFullYear(), result.getMonth() + 1, 0).getDate();
+    result.setDate(Math.min(originalDay, daysInNewMonth));
+    return result;
+  };
+
   // Calculate date range based on current view - this ensures we load the right data
   const dateRange = useMemo(() => {
     const viewDate = new Date(currentDate);
@@ -50,31 +63,31 @@ export const useOptimizedTasks = ({
     
     switch (currentView) {
       case 'day':
-        // For day view, load ±1 month from the viewed date
+        // For day view, load ±45 days from the viewed date (safer than month calculation)
         dateFrom = new Date(viewDate);
-        dateFrom.setMonth(dateFrom.getMonth() - 1);
+        dateFrom.setDate(dateFrom.getDate() - 45);
         dateTo = new Date(viewDate);
-        dateTo.setMonth(dateTo.getMonth() + 1);
+        dateTo.setDate(dateTo.getDate() + 45);
         break;
       case 'three-day':
-        // For 3-day view, load ±1 month from the viewed date
+        // For 3-day view, load ±45 days from the viewed date
         dateFrom = new Date(viewDate);
-        dateFrom.setMonth(dateFrom.getMonth() - 1);
+        dateFrom.setDate(dateFrom.getDate() - 45);
         dateTo = new Date(viewDate);
-        dateTo.setMonth(dateTo.getMonth() + 1);
+        dateTo.setDate(dateTo.getDate() + 45);
         break;
       case 'week':
-        // For week view, load ±2 months from the viewed date
+        // For week view, load ±60 days from the viewed date
         dateFrom = new Date(viewDate);
-        dateFrom.setMonth(dateFrom.getMonth() - 2);
+        dateFrom.setDate(dateFrom.getDate() - 60);
         dateTo = new Date(viewDate);
-        dateTo.setMonth(dateTo.getMonth() + 2);
+        dateTo.setDate(dateTo.getDate() + 60);
         break;
       default:
         dateFrom = new Date(viewDate);
-        dateFrom.setMonth(dateFrom.getMonth() - 1);
+        dateFrom.setDate(dateFrom.getDate() - 45);
         dateTo = new Date(viewDate);
-        dateTo.setMonth(dateTo.getMonth() + 1);
+        dateTo.setDate(dateTo.getDate() + 45);
     }
     
     return {
