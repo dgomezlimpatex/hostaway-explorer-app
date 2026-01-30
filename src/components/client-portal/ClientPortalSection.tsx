@@ -152,6 +152,7 @@ export const ClientPortalSection = ({ clientId, clientName }: ClientPortalSectio
             onClick={handleCreateAccess}
             disabled={createAccess.isPending}
             size="sm"
+            type="button"
           >
             <Link2 className="h-4 w-4 mr-2" />
             {createAccess.isPending ? 'Creando...' : 'Activar Portal'}
@@ -203,6 +204,7 @@ export const ClientPortalSection = ({ clientId, clientName }: ClientPortalSectio
               variant="outline"
               size="icon"
               onClick={(e) => copyToClipboard(e, portalUrl, 'Enlace')}
+              type="button"
             >
               <Copy className="h-4 w-4" />
             </Button>
@@ -210,6 +212,7 @@ export const ClientPortalSection = ({ clientId, clientName }: ClientPortalSectio
               variant="outline"
               size="icon"
               onClick={handleOpenPortal}
+              type="button"
             >
               <ExternalLink className="h-4 w-4" />
             </Button>
@@ -227,6 +230,7 @@ export const ClientPortalSection = ({ clientId, clientName }: ClientPortalSectio
               variant="outline"
               size="icon"
               onClick={handleToggleShowPin}
+              type="button"
             >
               {showPin ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
             </Button>
@@ -234,6 +238,7 @@ export const ClientPortalSection = ({ clientId, clientName }: ClientPortalSectio
               variant="outline"
               size="icon"
               onClick={(e) => copyToClipboard(e, portalAccess.accessPin, 'PIN')}
+              type="button"
             >
               <Copy className="h-4 w-4" />
             </Button>
@@ -242,6 +247,7 @@ export const ClientPortalSection = ({ clientId, clientName }: ClientPortalSectio
               size="icon"
               onClick={handleRegeneratePin}
               disabled={regeneratePin.isPending}
+              type="button"
             >
               <RefreshCw className={`h-4 w-4 ${regeneratePin.isPending ? 'animate-spin' : ''}`} />
             </Button>
