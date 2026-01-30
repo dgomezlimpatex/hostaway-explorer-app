@@ -5,6 +5,7 @@ import { taskStorageService } from '@/services/taskStorage';
 import { useAuth } from '@/hooks/useAuth';
 import { useCleaners } from '@/hooks/useCleaners';
 import { useSede } from '@/contexts/SedeContext';
+import { formatMadridDate } from '@/utils/date';
 
 interface UseOptimizedTasksProps {
   currentDate: Date;
@@ -36,7 +37,7 @@ export const useOptimizedTasks = ({
     }
     return [
       'tasks',
-      currentDate.toISOString().split('T')[0],
+      formatMadridDate(currentDate),
       currentView,
       activeSede?.id || 'no-sede'
     ];
@@ -91,8 +92,8 @@ export const useOptimizedTasks = ({
     }
     
     return {
-      dateFrom: dateFrom.toISOString().split('T')[0],
-      dateTo: dateTo.toISOString().split('T')[0]
+      dateFrom: formatMadridDate(dateFrom),
+      dateTo: formatMadridDate(dateTo)
     };
   }, [currentDate, currentView]);
 
@@ -179,7 +180,7 @@ export const useOptimizedTasks = ({
     debugInfo: {
       rawTasksCount: tasks?.length || 0,
       filteredTasksCount: filteredTasks?.length || 0,
-      currentDateStr: currentDate.toISOString().split('T')[0],
+      currentDateStr: formatMadridDate(currentDate),
       userRole,
       activeSede: activeSede?.id
     }
@@ -188,7 +189,7 @@ export const useOptimizedTasks = ({
 
 // Helper function to filter tasks by view
 function filterTasksByView(tasks: Task[], currentDate: Date, currentView: ViewType): Task[] {
-  const currentDateStr = currentDate.toISOString().split('T')[0];
+  const currentDateStr = formatMadridDate(currentDate);
   
   switch (currentView) {
     case 'day':
@@ -198,7 +199,7 @@ function filterTasksByView(tasks: Task[], currentDate: Date, currentView: ViewTy
       const threeDayDates = Array.from({ length: 3 }, (_, i) => {
         const date = new Date(currentDate);
         date.setDate(date.getDate() + i);
-        return date.toISOString().split('T')[0];
+        return formatMadridDate(date);
       });
       return tasks.filter(task => threeDayDates.includes(task.date));
     
@@ -211,8 +212,8 @@ function filterTasksByView(tasks: Task[], currentDate: Date, currentView: ViewTy
       const endOfWeek = new Date(startOfWeek);
       endOfWeek.setDate(endOfWeek.getDate() + 6);
       
-      const startDateStr = startOfWeek.toISOString().split('T')[0];
-      const endDateStr = endOfWeek.toISOString().split('T')[0];
+      const startDateStr = formatMadridDate(startOfWeek);
+      const endDateStr = formatMadridDate(endOfWeek);
       
       return tasks.filter(task => task.date >= startDateStr && task.date <= endDateStr);
     
