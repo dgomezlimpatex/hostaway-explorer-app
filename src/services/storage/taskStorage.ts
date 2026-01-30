@@ -234,16 +234,32 @@ export class TaskStorageService extends BaseStorageService<Task, TaskCreateData>
       query = query.eq('sede_id', sedeId);
     }
     
+    const TASK_LIMIT = 5000;
+    const WARNING_THRESHOLD = 4000; // 80% del límite
+    
     const { data, error } = await query
       .order('date', { ascending: true })
-      .order('start_time', { ascending: true });
+      .order('start_time', { ascending: true })
+      .limit(TASK_LIMIT);
 
     if (error) {
       console.error('❌ TaskStorage.getTasks - Error fetching tasks:', error);
       throw error;
     }
     
-    console.log('📦 TaskStorage.getTasks - tasks fetched:', data?.length || 0);
+    const taskCount = data?.length || 0;
+    console.log('📦 TaskStorage.getTasks - tasks fetched:', taskCount);
+    
+    // Advertencia cuando nos acercamos al límite
+    if (taskCount >= WARNING_THRESHOLD) {
+      console.warn(`⚠️ TaskStorage: Se han cargado ${taskCount} tareas (límite: ${TASK_LIMIT}). Considerar reducir el rango de fechas.`);
+    }
+    
+    // Advertencia crítica si llegamos al límite exacto
+    if (taskCount >= TASK_LIMIT) {
+      console.error(`🚨 TaskStorage: LÍMITE ALCANZADO (${TASK_LIMIT} tareas). Es posible que falten tareas. Reduce el rango de fechas.`);
+    }
+    
     return (data || []).map(task => this.mapTaskFromDB(task));
   }
 
