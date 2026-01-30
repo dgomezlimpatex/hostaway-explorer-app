@@ -185,6 +185,8 @@ export class TaskStorageService extends BaseStorageService<Task, TaskCreateData>
     includePastTasks?: boolean;
     userRole?: string;
     sedeId?: string;
+    dateFrom?: string;  // Nueva opción: fecha inicio del rango
+    dateTo?: string;    // Nueva opción: fecha fin del rango
   }): Promise<Task[]> {
     const sedeId = options?.sedeId || this.getSedeIdFromStorage();
     
@@ -193,49 +195,92 @@ export class TaskStorageService extends BaseStorageService<Task, TaskCreateData>
       return this.getTasksForCleaner(options.cleanerId, sedeId || undefined);
     }
     
-    // For non-cleaners, fetch with pagination (existing logic but optimized)
-    let allTasks: any[] = [];
-    let hasMore = true;
-    let offset = 0;
-    const batchSize = 1000;
+    // Calcular ventana temporal por defecto: 1 mes antes y 1 mes después
+    const today = new Date();
+    const defaultDateFrom = new Date(today);
+    defaultDateFrom.setMonth(defaultDateFrom.getMonth() - 1);
+    const defaultDateTo = new Date(today);
+    defaultDateTo.setMonth(defaultDateTo.getMonth() + 1);
     
-    while (hasMore) {
-      let query = supabase
-        .from('tasks')
-        .select(`
-          *,
-          properties!tasks_propiedad_id_fkey(codigo),
-          task_reports(overall_status),
-          task_assignments(id, cleaner_id, cleaner_name)
-        `);
-      
-      if (sedeId && sedeId !== 'no-sede') {
-        query = query.eq('sede_id', sedeId);
-      }
-      
-      const { data: batchData, error } = await query
-        .order('date', { ascending: true })
-        .order('start_time', { ascending: true })
-        .range(offset, offset + batchSize - 1);
-
-      if (error) {
-        console.error('Error fetching tasks batch:', error);
-        throw error;
-      }
-
-      if (!batchData || batchData.length === 0) {
-        hasMore = false;
-      } else {
-        allTasks = [...allTasks, ...batchData];
-        offset += batchSize;
-        
-        if (batchData.length < batchSize) {
-          hasMore = false;
-        }
-      }
+    const dateFrom = options?.dateFrom || defaultDateFrom.toISOString().split('T')[0];
+    const dateTo = options?.dateTo || defaultDateTo.toISOString().split('T')[0];
+    
+    // Query optimizada con rango de fechas
+    let query = supabase
+      .from('tasks')
+      .select(`
+        *,
+        properties!tasks_propiedad_id_fkey(codigo),
+        task_reports(overall_status),
+        task_assignments(id, cleaner_id, cleaner_name)
+      `)
+      .gte('date', dateFrom)
+      .lte('date', dateTo);
+    
+    if (sedeId && sedeId !== 'no-sede') {
+      query = query.eq('sede_id', sedeId);
     }
     
-    return allTasks.map(task => this.mapTaskFromDB(task));
+    const { data, error } = await query
+      .order('date', { ascending: true })
+      .order('start_time', { ascending: true });
+
+    if (error) {
+      console.error('Error fetching tasks:', error);
+      throw error;
+    }
+    
+    return (data || []).map(task => this.mapTaskFromDB(task));
+  }
+
+  // Nuevo método para reportes: obtiene tareas en un rango específico sin límites
+  async getTasksForReports(options: {
+    dateFrom: string;
+    dateTo: string;
+    sedeId?: string;
+    clienteId?: string;
+    propertyId?: string;
+    status?: string;
+  }): Promise<Task[]> {
+    const sedeId = options.sedeId || this.getSedeIdFromStorage();
+    
+    let query = supabase
+      .from('tasks')
+      .select(`
+        *,
+        properties!tasks_propiedad_id_fkey(codigo),
+        task_reports(overall_status),
+        task_assignments(id, cleaner_id, cleaner_name)
+      `)
+      .gte('date', options.dateFrom)
+      .lte('date', options.dateTo);
+    
+    if (sedeId && sedeId !== 'no-sede') {
+      query = query.eq('sede_id', sedeId);
+    }
+    
+    if (options.clienteId) {
+      query = query.eq('cliente_id', options.clienteId);
+    }
+    
+    if (options.propertyId) {
+      query = query.eq('propiedad_id', options.propertyId);
+    }
+    
+    if (options.status && options.status !== 'all') {
+      query = query.eq('status', options.status);
+    }
+    
+    const { data, error } = await query
+      .order('date', { ascending: true })
+      .order('start_time', { ascending: true });
+
+    if (error) {
+      console.error('Error fetching tasks for reports:', error);
+      throw error;
+    }
+    
+    return (data || []).map(task => this.mapTaskFromDB(task));
   }
 
   async createTask(task: TaskCreateData): Promise<Task> {

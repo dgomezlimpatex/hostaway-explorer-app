@@ -16,10 +16,25 @@ export const taskStorageService = {
     includePastTasks?: boolean;
     userRole?: string;
     sedeId?: string;
+    dateFrom?: string;
+    dateTo?: string;
   }): Promise<Task[]> => {
     const result = await baseTaskStorage.getTasks(options);
     return result;
   },
+  
+  // Método optimizado para reportes con filtros en base de datos
+  getTasksForReports: async (options: {
+    dateFrom: string;
+    dateTo: string;
+    sedeId?: string;
+    clienteId?: string;
+    propertyId?: string;
+    status?: string;
+  }): Promise<Task[]> => {
+    return baseTaskStorage.getTasksForReports(options);
+  },
+  
   createTask: (task: Omit<Task, 'id' | 'created_at' | 'updated_at'>) => baseTaskStorage.createTask(task),
   updateTask: (taskId: string, updates: Partial<Task>) => baseTaskStorage.updateTask(taskId, updates),
   deleteTask: (taskId: string) => taskCleanupService.deleteTask(taskId),
