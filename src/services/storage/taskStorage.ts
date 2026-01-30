@@ -188,22 +188,35 @@ export class TaskStorageService extends BaseStorageService<Task, TaskCreateData>
     dateFrom?: string;  // Nueva opción: fecha inicio del rango
     dateTo?: string;    // Nueva opción: fecha fin del rango
   }): Promise<Task[]> {
+    console.log('📦 TaskStorage.getTasks called with options:', options);
+    
     const sedeId = options?.sedeId || this.getSedeIdFromStorage();
+    console.log('📦 TaskStorage.getTasks - effective sedeId:', sedeId);
     
     // OPTIMIZED: For cleaners, use the dedicated method
     if (options?.userRole === 'cleaner' && options?.cleanerId) {
       return this.getTasksForCleaner(options.cleanerId, sedeId || undefined);
     }
     
-    // Calcular ventana temporal por defecto: 1 mes antes y 1 mes después
+    // Usar las fechas proporcionadas o calcular valores por defecto con días fijos
     const today = new Date();
-    const defaultDateFrom = new Date(today);
-    defaultDateFrom.setMonth(defaultDateFrom.getMonth() - 1);
-    const defaultDateTo = new Date(today);
-    defaultDateTo.setMonth(defaultDateTo.getMonth() + 1);
+    let dateFrom = options?.dateFrom;
+    let dateTo = options?.dateTo;
     
-    const dateFrom = options?.dateFrom || defaultDateFrom.toISOString().split('T')[0];
-    const dateTo = options?.dateTo || defaultDateTo.toISOString().split('T')[0];
+    // Si no se proporcionan fechas, usar ±45 días desde hoy
+    if (!dateFrom) {
+      const defaultFrom = new Date(today);
+      defaultFrom.setDate(defaultFrom.getDate() - 45);
+      dateFrom = defaultFrom.toISOString().split('T')[0];
+    }
+    
+    if (!dateTo) {
+      const defaultTo = new Date(today);
+      defaultTo.setDate(defaultTo.getDate() + 45);
+      dateTo = defaultTo.toISOString().split('T')[0];
+    }
+    
+    console.log('📦 TaskStorage.getTasks - date range:', { dateFrom, dateTo });
     
     // Query optimizada con rango de fechas
     let query = supabase
@@ -226,10 +239,11 @@ export class TaskStorageService extends BaseStorageService<Task, TaskCreateData>
       .order('start_time', { ascending: true });
 
     if (error) {
-      console.error('Error fetching tasks:', error);
+      console.error('❌ TaskStorage.getTasks - Error fetching tasks:', error);
       throw error;
     }
     
+    console.log('📦 TaskStorage.getTasks - tasks fetched:', data?.length || 0);
     return (data || []).map(task => this.mapTaskFromDB(task));
   }
 
