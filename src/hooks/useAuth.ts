@@ -1,5 +1,5 @@
 
-import { useState, useEffect, createContext, useContext } from 'react';
+import { useState, useEffect, createContext, useContext, useRef } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import type { Database } from '@/integrations/supabase/types';
@@ -97,20 +97,19 @@ export const useAuthProvider = (): AuthContextType => {
   const [userRole, setUserRole] = useState<AppRole | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Add state to prevent multiple processing calls
-  const [processingUser, setProcessingUser] = useState<string | null>(null);
-  // Track if initial session check is complete
-  const [initialCheckComplete, setInitialCheckComplete] = useState(false);
+  // Use refs to avoid stale closures and HMR issues with hook count changes
+  const processingUserRef = useRef<string | null>(null);
+  const initialCheckCompleteRef = useRef(false);
 
   const processUser = async (userId: string, setLoadingFalseWhenDone = false) => {
     // Prevent multiple calls for the same user
-    if (processingUser === userId) {
+    if (processingUserRef.current === userId) {
       console.log('🔍 Already processing user:', userId);
       return;
     }
 
     try {
-      setProcessingUser(userId);
+      processingUserRef.current = userId;
       console.log('🔍 Processing user authentication:', userId);
       
       // Obtener perfil del usuario
@@ -182,7 +181,7 @@ export const useAuthProvider = (): AuthContextType => {
       setProfile(null);
       setUserRole(null);
     } finally {
-      setProcessingUser(null);
+      processingUserRef.current = null;
       // Only set loading to false after user processing is complete
       if (setLoadingFalseWhenDone) {
         setIsLoading(false);
@@ -204,13 +203,13 @@ export const useAuthProvider = (): AuthContextType => {
 
         if (currentSession?.user) {
           // For subsequent auth changes (not initial load), process user
-          if (initialCheckComplete) {
+          if (initialCheckCompleteRef.current) {
             await processUser(currentSession.user.id, true);
           }
         } else {
           setProfile(null);
           setUserRole(null);
-          setProcessingUser(null);
+          processingUserRef.current = null;
           setIsLoading(false);
         }
       }
@@ -239,7 +238,7 @@ export const useAuthProvider = (): AuthContextType => {
         }
       } finally {
         if (mounted) {
-          setInitialCheckComplete(true);
+          initialCheckCompleteRef.current = true;
         }
       }
     };
