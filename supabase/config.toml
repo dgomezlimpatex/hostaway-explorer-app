@@ -79,3 +79,6 @@ verify_jwt = false
 
 [functions.manage-avantio-cron]
 verify_jwt = false
+
+[functions.send-reservation-digest-email]
+verify_jwt = false
