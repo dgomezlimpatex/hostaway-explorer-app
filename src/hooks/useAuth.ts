@@ -1,5 +1,5 @@
 
-import { useState, useEffect, createContext, useContext, useRef } from 'react';
+import { useState, useEffect, createContext, useContext } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import type { Database } from '@/integrations/supabase/types';
@@ -97,19 +97,18 @@ export const useAuthProvider = (): AuthContextType => {
   const [userRole, setUserRole] = useState<AppRole | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Use refs to avoid stale closures and HMR issues with hook count changes
-  const processingUserRef = useRef<string | null>(null);
-  const initialCheckCompleteRef = useRef(false);
+  // Add state to prevent multiple processing calls
+  const [processingUser, setProcessingUser] = useState<string | null>(null);
 
-  const processUser = async (userId: string, setLoadingFalseWhenDone = false) => {
+  const processUser = async (userId: string) => {
     // Prevent multiple calls for the same user
-    if (processingUserRef.current === userId) {
+    if (processingUser === userId) {
       console.log('🔍 Already processing user:', userId);
       return;
     }
 
     try {
-      processingUserRef.current = userId;
+      setProcessingUser(userId);
       console.log('🔍 Processing user authentication:', userId);
       
       // Obtener perfil del usuario
@@ -181,74 +180,49 @@ export const useAuthProvider = (): AuthContextType => {
       setProfile(null);
       setUserRole(null);
     } finally {
-      processingUserRef.current = null;
-      // Only set loading to false after user processing is complete
-      if (setLoadingFalseWhenDone) {
-        setIsLoading(false);
-      }
+      setProcessingUser(null);
     }
   };
 
   useEffect(() => {
-    let mounted = true;
-    
-    // Set up auth state listener FIRST (as per Supabase best practices)
+    // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, currentSession) => {
-        if (!mounted) return;
-        
-        console.log('Auth state changed:', event, currentSession?.user?.id);
-        setSession(currentSession);
-        setUser(currentSession?.user ?? null);
+      async (event, session) => {
+        console.log('Auth state changed:', event, session?.user?.id);
+        setSession(session);
+        setUser(session?.user ?? null);
 
-        if (currentSession?.user) {
-          // For subsequent auth changes (not initial load), process user
-          if (initialCheckCompleteRef.current) {
-            await processUser(currentSession.user.id, true);
+        if (session?.user) {
+          // Only process if not already processing this user
+          if (processingUser !== session.user.id) {
+            // Defer user processing to avoid blocking auth state change
+            setTimeout(() => {
+              processUser(session.user.id);
+            }, 100); // Slight delay to prevent race conditions
           }
         } else {
           setProfile(null);
           setUserRole(null);
-          processingUserRef.current = null;
-          setIsLoading(false);
+          setProcessingUser(null);
         }
+        
+        setIsLoading(false);
       }
     );
 
-    // Check for existing session AFTER setting up listener
-    const initializeAuth = async () => {
-      try {
-        const { data: { session: existingSession } } = await supabase.auth.getSession();
-        
-        if (!mounted) return;
-        
-        setSession(existingSession);
-        setUser(existingSession?.user ?? null);
-        
-        if (existingSession?.user) {
-          // Process user and WAIT for it to complete before setting loading false
-          await processUser(existingSession.user.id, true);
-        } else {
-          setIsLoading(false);
-        }
-      } catch (error) {
-        console.error('Error initializing auth:', error);
-        if (mounted) {
-          setIsLoading(false);
-        }
-      } finally {
-        if (mounted) {
-          initialCheckCompleteRef.current = true;
-        }
+    // Check for existing session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      setUser(session?.user ?? null);
+      
+      if (session?.user && processingUser !== session.user.id) {
+        processUser(session.user.id);
       }
-    };
+      
+      setIsLoading(false);
+    });
 
-    initializeAuth();
-
-    return () => {
-      mounted = false;
-      subscription.unsubscribe();
-    };
+    return () => subscription.unsubscribe();
   }, []);
 
   const signIn = async (email: string, password: string) => {

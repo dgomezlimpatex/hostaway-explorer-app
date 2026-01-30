@@ -106,9 +106,7 @@ export const ManagerDashboard = () => {
 
   // Tareas del día
   const todayTasks = useMemo(() => {
-    const now = new Date();
-    const madridNow = new Date(now.toLocaleString('en-US', { timeZone: 'Europe/Madrid' }));
-    const today = madridNow.toISOString().split('T')[0];
+    const today = format(new Date(), 'yyyy-MM-dd');
     return tasks.filter(task => task.date === today);
   }, [tasks]);
 

@@ -1,17 +1,10 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useEffect, useMemo } from 'react';
+import { useMemo } from 'react';
 import { Task, ViewType } from '@/types/calendar';
 import { taskStorageService } from '@/services/taskStorage';
 import { useAuth } from '@/hooks/useAuth';
 import { useCleaners } from '@/hooks/useCleaners';
 import { useSede } from '@/contexts/SedeContext';
-
-// IMPORTANT: avoid Date#toISOString() for UI date matching because it uses UTC.
-// Business logic here should match the Madrid day, regardless of user's device timezone.
-const toMadridDateString = (date: Date): string => {
-  const madridDate = new Date(date.toLocaleString('en-US', { timeZone: 'Europe/Madrid' }));
-  return madridDate.toISOString().split('T')[0];
-};
 
 interface UseOptimizedTasksProps {
   currentDate: Date;
@@ -43,7 +36,7 @@ export const useOptimizedTasks = ({
     }
     return [
       'tasks',
-      toMadridDateString(currentDate),
+      currentDate.toISOString().split('T')[0],
       currentView,
       activeSede?.id || 'no-sede'
     ];
@@ -98,20 +91,10 @@ export const useOptimizedTasks = ({
     }
     
     return {
-      dateFrom: toMadridDateString(dateFrom),
-      dateTo: toMadridDateString(dateTo)
+      dateFrom: dateFrom.toISOString().split('T')[0],
+      dateTo: dateTo.toISOString().split('T')[0]
     };
   }, [currentDate, currentView]);
-
-  // Determine if we can fetch tasks:
-  // - We need an activeSede (either restored from localStorage or loaded from server)
-  // - For cleaners, we also need their cleanerId
-  // - If isInitialized is true, the server has validated the sede
-  // - If activeSede exists but isInitialized is false, we can still fetch (sede was restored from localStorage)
-  const canFetchTasks = enabled && 
-    !!activeSede?.id && 
-    (isInitialized || !loading) && // Either fully initialized OR not in loading state
-    (userRole !== 'cleaner' || currentCleanerId !== null);
 
   const query = useQuery({
     queryKey,
@@ -139,7 +122,7 @@ export const useOptimizedTasks = ({
     },
     staleTime: userRole === 'cleaner' ? 30000 : 0, // Cleaners can have stale data for 30s
     gcTime: 60000,
-    enabled: canFetchTasks,
+    enabled: enabled && isInitialized && !loading && (userRole !== 'cleaner' || currentCleanerId !== null),
     refetchOnWindowFocus: true,
     refetchOnMount: true,
   });
@@ -163,7 +146,7 @@ export const useOptimizedTasks = ({
   }, [tasks, currentDate, currentView, userRole]);
 
   // Prefetch for next dates (only for non-cleaners)
-  useEffect(() => {
+  useMemo(() => {
     if (!enabled || !activeSede?.id || userRole === 'cleaner') return;
 
     const tomorrow = new Date(currentDate);
@@ -173,14 +156,13 @@ export const useOptimizedTasks = ({
     nextWeek.setDate(nextWeek.getDate() + 7);
 
     const sedeId = activeSede?.id || 'no-sede';
-
+    
     [tomorrow, nextWeek].forEach(date => {
       queryClient.prefetchQuery({
-        queryKey: ['tasks', toMadridDateString(date), currentView, sedeId],
+        queryKey: ['tasks', date.toISOString().split('T')[0], currentView, sedeId],
         queryFn: async () => {
-          const allTasks = (queryClient.getQueryData(['tasks', 'all', sedeId]) as Task[] | undefined) ||
-            await taskStorageService.getTasks({ sedeId: activeSede?.id });
-
+          const allTasks = queryClient.getQueryData(['tasks', 'all', sedeId]) as Task[] || 
+                          await taskStorageService.getTasks({ sedeId: activeSede?.id });
           return filterTasksByView(allTasks, date, currentView);
         },
         staleTime: 5 * 60 * 1000,
@@ -197,7 +179,7 @@ export const useOptimizedTasks = ({
     debugInfo: {
       rawTasksCount: tasks?.length || 0,
       filteredTasksCount: filteredTasks?.length || 0,
-      currentDateStr: toMadridDateString(currentDate),
+      currentDateStr: currentDate.toISOString().split('T')[0],
       userRole,
       activeSede: activeSede?.id
     }
@@ -206,7 +188,7 @@ export const useOptimizedTasks = ({
 
 // Helper function to filter tasks by view
 function filterTasksByView(tasks: Task[], currentDate: Date, currentView: ViewType): Task[] {
-  const currentDateStr = toMadridDateString(currentDate);
+  const currentDateStr = currentDate.toISOString().split('T')[0];
   
   switch (currentView) {
     case 'day':
@@ -216,7 +198,7 @@ function filterTasksByView(tasks: Task[], currentDate: Date, currentView: ViewTy
       const threeDayDates = Array.from({ length: 3 }, (_, i) => {
         const date = new Date(currentDate);
         date.setDate(date.getDate() + i);
-        return toMadridDateString(date);
+        return date.toISOString().split('T')[0];
       });
       return tasks.filter(task => threeDayDates.includes(task.date));
     
@@ -229,8 +211,8 @@ function filterTasksByView(tasks: Task[], currentDate: Date, currentView: ViewTy
       const endOfWeek = new Date(startOfWeek);
       endOfWeek.setDate(endOfWeek.getDate() + 6);
       
-      const startDateStr = toMadridDateString(startOfWeek);
-      const endDateStr = toMadridDateString(endOfWeek);
+      const startDateStr = startOfWeek.toISOString().split('T')[0];
+      const endDateStr = endOfWeek.toISOString().split('T')[0];
       
       return tasks.filter(task => task.date >= startDateStr && task.date <= endDateStr);
     
