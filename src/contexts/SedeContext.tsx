@@ -17,18 +17,33 @@ interface SedeProviderProps {
 export const SedeProvider = ({ children }: SedeProviderProps) => {
   const queryClient = useQueryClient();
   const { user, isLoading: authLoading } = useAuth();
-  const [activeSede, setActiveSedeState] = useState<Sede | null>(null);
   const [availableSedes, setAvailableSedes] = useState<Sede[]>([]);
   const [loading, setLoading] = useState(true);
   const [isInitialized, setIsInitialized] = useState(false);
 
-  // Función para validar y restaurar sede desde localStorage
-  const restoreSedeFromStorage = useCallback(() => {
+  // Restaurar sede inmediatamente al montar (antes de cualquier efecto async)
+  // Esto usa un inicializador de estado para ejecutarse sincrónicamente en el primer render
+  const [activeSede, setActiveSedeState] = useState<Sede | null>(() => {
     try {
       const savedSede = localStorage.getItem(ACTIVE_SEDE_KEY);
       if (savedSede) {
         const parsedSede = JSON.parse(savedSede) as Sede;
-        setActiveSedeState(parsedSede);
+        console.log('🏢 SedeContext: Restored sede from localStorage immediately:', parsedSede.nombre);
+        return parsedSede;
+      }
+    } catch (error) {
+      console.error('Error parsing saved sede on init:', error);
+      localStorage.removeItem(ACTIVE_SEDE_KEY);
+    }
+    return null;
+  });
+
+  // Función helper para restaurar desde localStorage (usada en refreshSedes)
+  const restoreSedeFromStorage = useCallback((): Sede | null => {
+    try {
+      const savedSede = localStorage.getItem(ACTIVE_SEDE_KEY);
+      if (savedSede) {
+        const parsedSede = JSON.parse(savedSede) as Sede;
         return parsedSede;
       }
     } catch (error) {
