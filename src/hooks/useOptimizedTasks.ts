@@ -42,6 +42,47 @@ export const useOptimizedTasks = ({
     ];
   }, [currentDate, currentView, activeSede?.id, userRole, currentCleanerId]);
 
+  // Calculate date range based on current view - this ensures we load the right data
+  const dateRange = useMemo(() => {
+    const viewDate = new Date(currentDate);
+    let dateFrom: Date;
+    let dateTo: Date;
+    
+    switch (currentView) {
+      case 'day':
+        // For day view, load ±1 month from the viewed date
+        dateFrom = new Date(viewDate);
+        dateFrom.setMonth(dateFrom.getMonth() - 1);
+        dateTo = new Date(viewDate);
+        dateTo.setMonth(dateTo.getMonth() + 1);
+        break;
+      case 'three-day':
+        // For 3-day view, load ±1 month from the viewed date
+        dateFrom = new Date(viewDate);
+        dateFrom.setMonth(dateFrom.getMonth() - 1);
+        dateTo = new Date(viewDate);
+        dateTo.setMonth(dateTo.getMonth() + 1);
+        break;
+      case 'week':
+        // For week view, load ±2 months from the viewed date
+        dateFrom = new Date(viewDate);
+        dateFrom.setMonth(dateFrom.getMonth() - 2);
+        dateTo = new Date(viewDate);
+        dateTo.setMonth(dateTo.getMonth() + 2);
+        break;
+      default:
+        dateFrom = new Date(viewDate);
+        dateFrom.setMonth(dateFrom.getMonth() - 1);
+        dateTo = new Date(viewDate);
+        dateTo.setMonth(dateTo.getMonth() + 1);
+    }
+    
+    return {
+      dateFrom: dateFrom.toISOString().split('T')[0],
+      dateTo: dateTo.toISOString().split('T')[0]
+    };
+  }, [currentDate, currentView]);
+
   const query = useQuery({
     queryKey,
     queryFn: async () => {
@@ -54,9 +95,11 @@ export const useOptimizedTasks = ({
         });
       }
       
-      // For non-cleaners, fetch all tasks
+      // For non-cleaners, fetch tasks based on the current view date range
       const allTasks = await taskStorageService.getTasks({
-        sedeId: activeSede?.id
+        sedeId: activeSede?.id,
+        dateFrom: dateRange.dateFrom,
+        dateTo: dateRange.dateTo
       });
       
       const sedeId = activeSede?.id || 'no-sede';
