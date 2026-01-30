@@ -82,3 +82,6 @@ verify_jwt = false
 
 [functions.send-reservation-digest-email]
 verify_jwt = false
+
+[functions.batch-create-tasks]
+verify_jwt = false
