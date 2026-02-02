@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import {
   Dialog,
   DialogContent,
@@ -7,21 +7,13 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Calendar, Clock, FileText, User, DollarSign, Phone, BarChart3, CalendarOff } from 'lucide-react';
+import { Clock, User, DollarSign } from 'lucide-react';
 import { Cleaner } from '@/types/calendar';
-import { WorkerTimeTracking } from './WorkerTimeTracking';
-import { WorkerScheduleCalendar } from './WorkerScheduleCalendar'; 
-import { WorkerBasicInfo } from './WorkerBasicInfo';
-import { WorkerHoursOverview } from './WorkerHoursOverview';
-import { AlertsPanel } from './AlertsPanel';
 import { TaskTimeBreakdown } from './TaskTimeBreakdown';
-import { SalaryCalculation } from './SalaryCalculation';
 import { ContractManagement } from './ContractManagement';
 import { AbsencesTab } from './absences/AbsencesTab';
-import { useWorkerHoursOverview } from '@/hooks/useWorkerAlerts';
 import { useCleanerContracts } from '@/hooks/useWorkerContracts';
 
 interface WorkerDetailModalProps {
@@ -31,7 +23,6 @@ interface WorkerDetailModalProps {
 }
 
 export const WorkerDetailModal = ({ worker, open, onOpenChange }: WorkerDetailModalProps) => {
-  const { overview, alerts } = useWorkerHoursOverview(worker?.id || '');
   const { data: contracts = [] } = useCleanerContracts(worker?.id || '');
   
   // Get active contract data
@@ -123,60 +114,20 @@ export const WorkerDetailModal = ({ worker, open, onOpenChange }: WorkerDetailMo
           </div>
 
           {/* Tabs principales */}
-          <Tabs defaultValue="overview" className="w-full">
-            <TabsList className="grid w-full grid-cols-6 sticky top-[120px] bg-background z-10">
-              <TabsTrigger value="overview">Resumen</TabsTrigger>
-              <TabsTrigger value="alerts">Alertas</TabsTrigger>
+          <Tabs defaultValue="tasks" className="w-full">
+            <TabsList className="grid w-full grid-cols-3 sticky top-[120px] bg-background z-10">
               <TabsTrigger value="tasks">Tareas</TabsTrigger>
-              <TabsTrigger value="salary">Nómina</TabsTrigger>
               <TabsTrigger value="absences">Ausencias</TabsTrigger>
               <TabsTrigger value="contracts">Contratos</TabsTrigger>
             </TabsList>
 
             <div className="mt-4 space-y-6">
-              <TabsContent value="overview" className="mt-0">
-                {overview ? (
-                  <div className="max-h-[60vh] overflow-y-auto">
-                    <WorkerHoursOverview 
-                      overview={overview} 
-                      workerName={worker.name}
-                      workerId={worker.id}
-                      showProjections={true}
-                    />
-                  </div>
-                ) : (
-                  <div className="text-center py-8 text-muted-foreground">
-                    <p>No hay datos de contrato disponibles</p>
-                    <p className="text-sm">Configure un contrato para ver el resumen de horas</p>
-                  </div>
-                )}
-              </TabsContent>
-              
-              <TabsContent value="alerts" className="mt-0">
-                <div className="max-h-[60vh] overflow-y-auto">
-                  {alerts.length > 0 ? (
-                    <AlertsPanel className="h-fit" />
-                  ) : (
-                    <div className="text-center py-8 text-muted-foreground">
-                      <p>Sin alertas activas</p>
-                      <p className="text-sm">Todo funciona correctamente</p>
-                    </div>
-                  )}
-                </div>
-              </TabsContent>
-              
               <TabsContent value="tasks" className="mt-0">
                 <div className="max-h-[60vh] overflow-y-auto">
                   <TaskTimeBreakdown 
                     workerId={worker.id} 
                     workerName={worker.name}
                   />
-                </div>
-              </TabsContent>
-              
-              <TabsContent value="salary" className="mt-0">
-                <div className="max-h-[60vh] overflow-y-auto">
-                  <SalaryCalculation cleanerId={worker.id} cleanerName={worker.name} />
                 </div>
               </TabsContent>
               
