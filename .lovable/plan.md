@@ -1,210 +1,297 @@
 
-# Plan: Optimización de Creación Múltiple de Tareas
+# Plan: Sistema de Control de Horas Trabajadas vs Contrato (Actualizado)
 
-## Resumen
-Implementar optimizaciones tanto en backend (Edge Function batch) como en frontend (UI de selección mejorada) para permitir crear hasta 30+ tareas simultáneas de forma rápida y eficiente.
+## Cambios Solicitados
 
----
-
-## Parte 1: Backend - Edge Function `batch-create-tasks`
-
-### 1.1 Nueva Edge Function
-
-Crear una función que procese múltiples tareas en una sola llamada HTTP:
-
-**Funcionalidades:**
-- Recibe array de tareas (hasta 50)
-- INSERT batch en una sola operación
-- Agrupa emails por cleaner (1 email resumen en lugar de 30 individuales)
-- Retorna resultado con IDs creados y estadísticas
-
-```text
-┌─────────────────┐     1 llamada      ┌──────────────────────┐
-│   Frontend      │ ─────────────────► │  batch-create-tasks  │
-│ (30 tareas)     │                    │                      │
-└─────────────────┘                    │  ┌────────────────┐  │
-                                       │  │ INSERT batch   │  │
-                                       │  │ (30 en 1 op)   │  │
-                                       │  └────────────────┘  │
-                                       │         │            │
-                                       │  ┌────────────────┐  │
-                                       │  │ Email resumen  │  │
-                                       │  │ por cleaner    │  │
-                                       │  └────────────────┘  │
-                                       └──────────────────────┘
-```
-
-### 1.2 Email Consolidado
-
-Nuevo template que lista todas las tareas asignadas:
-
-```text
-📋 Se te han asignado 15 nuevas tareas
-
-Tareas para el 30 de enero 2026:
-• Habitación 22 - 09:00 a 10:00
-• Habitación 23 - 10:00 a 11:00
-... (lista completa)
-```
+1. **Contar TODAS las tareas asignadas**, no solo las completadas (ya que a veces no terminan el formulario pero sí hacen el servicio)
+2. **Añadir/modificar horas manualmente** sin crear tareas
+3. **Widget en el dashboard principal** con resumen de horas y alertas
 
 ---
 
-## Parte 2: Frontend - Grid de Habitaciones
+## Parte 1: Ajustes Manuales de Horas
 
-### 2.1 Nuevo Diseño de Botones
+### 1.1 Nueva Tabla: `worker_hour_adjustments`
 
-Transformar el selector actual de checkboxes pequeños a botones grandes estilo "grid de hotel":
+Tabla para registrar ajustes manuales de horas (positivos o negativos):
 
 ```text
-┌───────────────────────────────────────────────────────────────┐
-│  HERRAMIENTAS:  [Todas] [Invertir] [Limpiar]  Rango: [22-35] │
-├───────────────────────────────────────────────────────────────┤
-│                                                               │
-│  ┌────────┐  ┌────────┐  ┌────────┐  ┌────────┐  ┌────────┐  │
-│  │   22   │  │   23   │  │   24   │  │   25   │  │   26   │  │
-│  │ 45€    │  │ 45€    │  │ 45€    │  │ 45€    │  │ 45€    │  │
-│  │ 60min  │  │ 60min  │  │ 60min  │  │ 60min  │  │ 60min  │  │
-│  └────────┘  └────────┘  └────────┘  └────────┘  └────────┘  │
-│  ┌────────┐  ┌────────┐  ┌────────┐  ┌────────┐  ┌────────┐  │
-│  │   27   │  │   28   │  │   29   │  │   30   │  │   31   │  │
-│  │ 45€    │  │ 45€    │  │ 45€    │  │ 45€    │  │ 45€    │  │
-│  │ 60min  │  │ 60min  │  │ 60min  │  │ 60min  │  │ 60min  │  │
-│  └────────┘  └────────┘  └────────┘  └────────┘  └────────┘  │
-│                                                               │
-│  ✓ 12 seleccionadas                                          │
-└───────────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────────────┐
+│  AJUSTES MANUALES DE HORAS                                               │
+├──────────────────────────────────────────────────────────────────────────┤
+│  + 2.5h  │  28 Ene  │  Horas extra formación   │  Añadido por: Admin    │
+│  - 1.0h  │  27 Ene  │  Llegada tarde           │  Añadido por: Manager  │
+│  + 3.0h  │  26 Ene  │  Limpieza emergencia     │  Añadido por: Admin    │
+└──────────────────────────────────────────────────────────────────────────┘
 ```
 
-**Características:**
-- Botones táctiles grandes (~80x80px mínimo)
-- Número de habitación prominente (fuente 2xl/3xl)
-- Info secundaria: precio y duración
-- Estado visual claro: seleccionado = borde azul + fondo azul claro
-- Grid responsivo: 6 columnas desktop, 4 tablet, 3 móvil
+**Campos:**
+- `cleaner_id`: ID del trabajador
+- `date`: Fecha del ajuste
+- `hours`: Horas (positivo = añadir, negativo = restar)
+- `reason`: Motivo del ajuste
+- `category`: Tipo (extra, formación, ausencia, corrección, otro)
+- `created_by`: Quién añadió el ajuste
+- `notes`: Notas adicionales
 
-### 2.2 Barra de Herramientas Rápidas
+### 1.2 Formulario de Ajuste Manual
 
-- **Botón "Todas"**: Seleccionar/deseleccionar todas
-- **Botón "Invertir"**: Invertir selección actual
-- **Botón "Limpiar"**: Deseleccionar todas
-- **Input de Rango**: Escribir "22-35" y presionar Enter para seleccionar ese rango
-- **Contador**: Badge flotante "15 seleccionadas"
+Desde el detalle del trabajador o desde el dashboard:
 
-### 2.3 Atajos de Teclado
-
-- `Ctrl+A` / `Cmd+A`: Seleccionar todas
-- `Escape`: Limpiar selección
-
-### 2.4 Indicador de Progreso
-
-Durante la creación batch:
-- Barra de progreso: "Creando tareas..."
-- Estado del botón cambia a spinner + texto
-- Toast de éxito al finalizar
+```text
+┌────────────────────────────────────────────────────────────────────┐
+│  Añadir Ajuste de Horas                                            │
+├────────────────────────────────────────────────────────────────────┤
+│  Trabajador:  [Lilia Mercedes        v]                            │
+│  Fecha:       [28/01/2026           📅]                            │
+│  Tipo:        ( ) Añadir horas  ( ) Restar horas                  │
+│  Horas:       [2.5    ] horas                                      │
+│  Categoría:   [Horas extra          v]                             │
+│  Motivo:      [Formación nuevo producto________________]           │
+│                                                                    │
+│                          [Cancelar]  [Guardar Ajuste]              │
+└────────────────────────────────────────────────────────────────────┘
+```
 
 ---
 
-## Sección Técnica
+## Parte 2: Calculo de Horas (Actualizado)
+
+### 2.1 Fuentes de Horas
+
+El sistema sumará horas de **tres fuentes**:
+
+1. **Limpiezas turísticas**: Tareas asignadas a la limpiadora (cualquier estado excepto canceladas)
+2. **Limpiezas de mantenimiento**: Horas fijas de `worker_maintenance_cleanings`
+3. **Ajustes manuales**: De la nueva tabla `worker_hour_adjustments`
+
+```text
+TOTAL = Turísticas + Mantenimiento + Ajustes Manuales
+        (tareas)    (fijo semanal)   (+ o -)
+```
+
+### 2.2 Cálculo de Horas Turísticas
+
+Ya no filtra por `status = 'completed'`:
+
+```typescript
+// ANTES (solo completadas)
+tasks.filter(t => t.cleanerId === cleanerId && t.status === 'completed')
+
+// AHORA (todas las asignadas, excluyendo canceladas)
+tasks.filter(t => 
+  t.cleanerId === cleanerId && 
+  t.status !== 'cancelled'
+)
+```
+
+---
+
+## Parte 3: Widget en Dashboard Principal
+
+### 3.1 Nuevo Widget: Control de Horas
+
+Añadir al dashboard un widget compacto que muestre:
+
+```text
+┌────────────────────────────────────────────────────────────────────────┐
+│  Control de Horas - Esta Semana                      [Ver Completo >] │
+├────────────────────────────────────────────────────────────────────────┤
+│                                                                        │
+│  ┌───────────────────────────────────────────────────────────────────┐│
+│  │ Lilia Mercedes    ████████████████████░░░ 22/25h         Verde -3h││
+│  │ Carlos Astorga    ████████████████████████ 17.5/15h  Amarillo +2.5││
+│  │ Kianay Anandra    █████████████░░░░░░░░░░░ 18/30h        Rojo -12h││
+│  └───────────────────────────────────────────────────────────────────┘│
+│                                                                        │
+│  Alertas: 2 trabajadores con horas extra | 1 con déficit significativo│
+└────────────────────────────────────────────────────────────────────────┘
+```
+
+### 3.2 Notificaciones en Dashboard
+
+Mostrar toast automáticas cuando:
+- Una limpiadora supera el 100% de sus horas contractuales
+- Una limpiadora está por debajo del 80% a mitad de semana
+- Hay ajustes manuales pendientes de revisión
+
+---
+
+## Parte 4: Dashboard Completo de Horas
+
+### 4.1 Página Dedicada `/workload`
+
+Vista completa con más detalles:
+
+```text
+┌────────────────────────────────────────────────────────────────────────────┐
+│  CONTROL DE HORAS - Semana 27 Ene - 2 Feb 2026                            │
+│  [Semana anterior] [Siguiente]  [Vista: Semanal v]  [+ Añadir Ajuste]     │
+├────────────────────────────────────────────────────────────────────────────┤
+│                                                                            │
+│  ┌──────────────────────────────────────────────────────────────────────┐ │
+│  │ LILIA MERCEDES                              Contrato: 25h/semana     │ │
+│  │ ████████████████████░░░░ 22h                          Verde -3h     │ │
+│  │                                                                      │ │
+│  │ Desglose:                                                            │ │
+│  │   Turísticas:    14.0 h  (12 tareas)                                │ │
+│  │   Mantenimiento:  8.0 h  (fijo semanal)                             │ │
+│  │   Ajustes:       +0.0 h                                              │ │
+│  │   ─────────────────────                                              │ │
+│  │   TOTAL:         22.0 h                                              │ │
+│  │                                                                      │ │
+│  │   [Ver Detalle]  [+ Ajustar Horas]                                   │ │
+│  └──────────────────────────────────────────────────────────────────────┘ │
+│                                                                            │
+│  ┌──────────────────────────────────────────────────────────────────────┐ │
+│  │ CARLOS ASTORGA                              Contrato: 15h/semana     │ │
+│  │ ████████████████████████████ 17.5h                Amarillo +2.5h    │ │
+│  │                                                                      │ │
+│  │ Desglose:                                                            │ │
+│  │   Turísticas:    17.5 h  (14 tareas)                                │ │
+│  │   Mantenimiento:  0.0 h                                              │ │
+│  │   Ajustes:       +0.0 h                                              │ │
+│  │   ─────────────────────                                              │ │
+│  │   TOTAL:         17.5 h                                              │ │
+│  └──────────────────────────────────────────────────────────────────────┘ │
+└────────────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## Seccion Tecnica
+
+### Nueva Tabla en Base de Datos
+
+```sql
+CREATE TABLE worker_hour_adjustments (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  cleaner_id UUID NOT NULL REFERENCES cleaners(id),
+  date DATE NOT NULL,
+  hours NUMERIC(5,2) NOT NULL,  -- Positivo o negativo
+  category TEXT NOT NULL DEFAULT 'other',  -- extra, training, absence, correction, other
+  reason TEXT NOT NULL,
+  notes TEXT,
+  created_by UUID NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT now(),
+  updated_at TIMESTAMPTZ DEFAULT now()
+);
+```
 
 ### Archivos a Crear
 
-| Archivo | Propósito |
+| Archivo | Proposito |
 |---------|-----------|
-| `supabase/functions/batch-create-tasks/index.ts` | Edge Function para creación batch con INSERT múltiple y emails consolidados |
-| `src/components/modals/batch-create/PropertyGridSelector.tsx` | Nuevo componente de grid de habitaciones con botones grandes |
-| `src/components/modals/batch-create/PropertyGridToolbar.tsx` | Barra de herramientas con selector de rango y botones rápidos |
+| `src/pages/WorkloadDashboard.tsx` | Pagina principal del dashboard de control de horas |
+| `src/components/workload/WorkloadWidget.tsx` | Widget compacto para el dashboard principal |
+| `src/components/workload/WorkloadOverviewCard.tsx` | Card de resumen por trabajador |
+| `src/components/workload/WorkloadDetailPanel.tsx` | Panel detallado con desglose |
+| `src/components/workload/HourAdjustmentModal.tsx` | Modal para añadir ajustes manuales |
+| `src/components/workload/HourAdjustmentsList.tsx` | Lista de ajustes de un trabajador |
+| `src/components/workload/WorkloadAlerts.tsx` | Componente de alertas |
+| `src/hooks/useWorkloadCalculation.ts` | Hook principal de calculo |
+| `src/hooks/useWorkerHourAdjustments.ts` | Hook para ajustes manuales (CRUD) |
+| `src/hooks/useMaintenanceHoursCalculation.ts` | Hook para horas de mantenimiento |
 
 ### Archivos a Modificar
 
 | Archivo | Cambios |
 |---------|---------|
-| `src/components/modals/batch-create/MultiPropertySelector.tsx` | Reemplazar layout de columnas por el nuevo PropertyGridSelector |
-| `src/components/modals/BatchCreateTaskModal.tsx` | Añadir indicador de progreso durante creación |
-| `src/hooks/tasks/useTasksPageActions.ts` | Nuevo método que llama a la Edge Function batch |
-| `src/hooks/useTasks.ts` | Añadir método `batchCreateTasks` para llamar a la Edge Function |
-| `supabase/config.toml` | Registrar nueva función batch-create-tasks |
+| `src/App.tsx` | Añadir ruta `/workload` |
+| `src/components/dashboard/ManagerDashboard.tsx` | Integrar WorkloadWidget |
+| `src/components/workers/WorkerDetailModal.tsx` | Añadir pestana de ajustes |
+| `src/hooks/useWorkerAlerts.ts` | Usar calculos reales |
+| `supabase/config.toml` | (si se necesita edge function) |
 
-### Estructura de la Edge Function
+### Logica de Calculo Principal
 
 ```typescript
-interface BatchCreateRequest {
-  tasks: Array<{
-    property: string;
-    address: string;
-    date: string;
-    startTime: string;
-    endTime: string;
-    type: string;
-    status: string;
-    checkIn: string;
-    checkOut: string;
-    clienteId: string;
-    propertyId: string;
-    duration: number;
-    cost: number;
-    paymentMethod: string;
-    supervisor: string;
-    cleanerId?: string;
-    cleanerName?: string;
-    cleanerEmail?: string;
-  }>;
-  sedeId: string;
-  sendEmails: boolean;
-}
-
-interface BatchCreateResponse {
-  success: boolean;
-  created: number;
-  taskIds: string[];
-  emailsSent: number;
-  errors?: Array<{ index: number; error: string }>;
+interface WorkloadSummary {
+  cleanerId: string;
+  cleanerName: string;
+  contractHoursPerWeek: number;
+  
+  // Horas turisticas (de tasks asignadas, no canceladas)
+  touristHours: number;
+  touristTaskCount: number;
+  
+  // Horas mantenimiento (fijas semanales)
+  maintenanceHours: number;
+  
+  // Ajustes manuales
+  adjustmentHours: number;  // Puede ser positivo o negativo
+  adjustments: HourAdjustment[];
+  
+  // Totales
+  totalWorked: number;  // tourist + maintenance + adjustments
+  remainingHours: number;
+  overtimeHours: number;
+  
+  // Estado
+  status: 'on-track' | 'overtime' | 'deficit' | 'critical-deficit';
+  percentageComplete: number;
 }
 ```
 
-### Flujo de Datos Optimizado
+### Calculo de Horas Turisticas (Actualizado)
 
-```text
-FLUJO ACTUAL:
-Frontend → createTask() x30 → 30 INSERT → 30 emails → 30 invalidaciones
-Tiempo: ~6 segundos
+```typescript
+async function calculateTouristHours(
+  cleanerId: string,
+  startDate: string,
+  endDate: string
+): Promise<{ hours: number; taskCount: number }> {
+  const { data: tasks } = await supabase
+    .from('tasks')
+    .select('start_time, end_time, duracion, status')
+    .eq('cleaner_id', cleanerId)
+    .gte('date', startDate)
+    .lte('date', endDate)
+    .neq('status', 'cancelled');  // Excluir solo canceladas
 
-FLUJO NUEVO:
-Frontend → batchCreate() x1 → 1 INSERT batch → 2-3 emails → 1 invalidación  
-Tiempo: ~0.5 segundos
+  let totalMinutes = 0;
+  for (const task of tasks || []) {
+    if (task.duracion) {
+      totalMinutes += task.duracion;
+    } else if (task.start_time && task.end_time) {
+      totalMinutes += diffInMinutes(task.end_time, task.start_time);
+    }
+  }
+
+  return {
+    hours: totalMinutes / 60,
+    taskCount: tasks?.length || 0
+  };
+}
 ```
 
-### CSS del Grid
+### Integracion con Dashboard
 
-```css
-/* Grid responsivo */
-grid-template-columns: repeat(6, 1fr);  /* Desktop */
-grid-template-columns: repeat(4, 1fr);  /* Tablet (lg) */
-grid-template-columns: repeat(3, 1fr);  /* Móvil (sm) */
+El widget se añadira despues de `DashboardMetricsCards`:
+
+```tsx
+// En ManagerDashboard.tsx
+<DashboardMetricsCards ... />
+
+{/* Nuevo widget de control de horas */}
+<Suspense fallback={<ComponentLoader />}>
+  <WorkloadWidget />
+</Suspense>
+
+<LinenControlWidget ... />
 ```
-
-### Componente de Botón de Habitación
-
-Estado normal:
-- Borde gris claro (`border-gray-200`)
-- Fondo blanco
-- Hover: fondo gris muy claro
-
-Estado seleccionado:
-- Borde azul (`border-blue-500`)
-- Fondo azul claro (`bg-blue-50`)
-- Texto azul (`text-blue-700`)
 
 ---
 
-## Resumen de Mejoras
+## Resumen de Funcionalidades
 
-| Aspecto | Antes | Después |
-|---------|-------|---------|
-| Tiempo creación 30 tareas | ~6 segundos | ~0.5 segundos |
-| Llamadas HTTP | 30 | 1 |
-| Emails enviados | 30 individuales | 2-3 consolidados |
-| Invalidaciones cache | 30 | 1 |
-| Tamaño botones | Checkbox pequeño | Botón 80x80px |
-| Selección de rango | Click individual | "22-35" automático |
-| Layout | Columnas verticales | Grid horizontal |
-
+| Funcionalidad | Descripcion |
+|---------------|-------------|
+| Cuenta todas las tareas | No solo completadas, cualquiera asignada (excepto canceladas) |
+| Ajustes manuales | Añadir o restar horas sin crear tareas |
+| Widget en dashboard | Resumen compacto con barras de progreso |
+| Dashboard completo | Pagina dedicada con todos los detalles |
+| Desglose por fuente | Ver turisticas, mantenimiento y ajustes por separado |
+| Semaforo visual | Verde/Amarillo/Rojo segun estado |
+| Notificaciones | Alertas cuando hay desviaciones importantes |
+| Vista semanal/mensual | Toggle entre periodos |
