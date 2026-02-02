@@ -11,10 +11,9 @@ import {
   TableHeader, 
   TableRow 
 } from "@/components/ui/table";
-import { Edit, Calendar, Clock, User, GripVertical } from "lucide-react";
+import { Edit, User, GripVertical } from "lucide-react";
 import { Cleaner } from "@/types/calendar";
 import { useDeleteCleaner, useUpdateCleanersOrder } from "@/hooks/useCleaners";
-import { AvailabilityModal } from './AvailabilityModal';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -35,7 +34,6 @@ interface WorkersListProps {
 }
 
 export const WorkersList = ({ workers, isLoading, onEditWorker, onViewWorker }: WorkersListProps) => {
-  const [availabilityWorker, setAvailabilityWorker] = useState<Cleaner | null>(null);
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   const [localWorkers, setLocalWorkers] = useState<Cleaner[]>(workers);
   
@@ -189,15 +187,6 @@ export const WorkersList = ({ workers, isLoading, onEditWorker, onViewWorker }: 
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => setAvailabilityWorker(worker)}
-                      className="flex items-center gap-1"
-                    >
-                      <Clock className="h-4 w-4" />
-                      Disponibilidad
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
                       onClick={() => onEditWorker(worker)}
                       className="flex items-center gap-1"
                     >
@@ -236,12 +225,6 @@ export const WorkersList = ({ workers, isLoading, onEditWorker, onViewWorker }: 
           </TableBody>
         </Table>
       </div>
-
-      <AvailabilityModal
-        worker={availabilityWorker}
-        open={!!availabilityWorker}
-        onOpenChange={(open) => !open && setAvailabilityWorker(null)}
-      />
     </>
   );
 };
