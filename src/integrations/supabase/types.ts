@@ -3311,6 +3311,53 @@ export type Database = {
           },
         ]
       }
+      worker_hour_adjustments: {
+        Row: {
+          category: string
+          cleaner_id: string
+          created_at: string
+          created_by: string
+          date: string
+          hours: number
+          id: string
+          notes: string | null
+          reason: string
+          updated_at: string
+        }
+        Insert: {
+          category?: string
+          cleaner_id: string
+          created_at?: string
+          created_by: string
+          date: string
+          hours: number
+          id?: string
+          notes?: string | null
+          reason: string
+          updated_at?: string
+        }
+        Update: {
+          category?: string
+          cleaner_id?: string
+          created_at?: string
+          created_by?: string
+          date?: string
+          hours?: number
+          id?: string
+          notes?: string | null
+          reason?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "worker_hour_adjustments_cleaner_id_fkey"
+            columns: ["cleaner_id"]
+            isOneToOne: false
+            referencedRelation: "cleaners"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       worker_maintenance_cleanings: {
         Row: {
           cleaner_id: string
