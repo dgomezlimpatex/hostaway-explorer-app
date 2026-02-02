@@ -55,13 +55,31 @@ export const useCreateCleaner = () => {
 
   return useMutation({
     mutationFn: async (cleanerData: CreateCleanerData) => {
-      return await cleanerStorage.create(cleanerData);
+      // Create the cleaner
+      const newCleaner = await cleanerStorage.create(cleanerData);
+      
+      // Create full availability (all days, 06:00-23:00)
+      if (newCleaner?.id) {
+        const { supabase } = await import('@/integrations/supabase/client');
+        const availabilityRecords = Array.from({ length: 7 }, (_, dayOfWeek) => ({
+          cleaner_id: newCleaner.id,
+          day_of_week: dayOfWeek,
+          is_available: true,
+          start_time: '06:00',
+          end_time: '23:00',
+        }));
+        
+        await supabase.from('cleaner_availability').insert(availabilityRecords);
+      }
+      
+      return newCleaner;
     },
     onSuccess: () => {
       invalidateCleaners();
+      queryClient.invalidateQueries({ queryKey: ['cleaner-availability'] });
       toast({
         title: "Trabajador creado",
-        description: "El trabajador ha sido creado exitosamente.",
+        description: "El trabajador ha sido creado con disponibilidad completa.",
       });
     },
     onError: (error) => {
