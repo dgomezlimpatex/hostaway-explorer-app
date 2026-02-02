@@ -54,6 +54,7 @@ const ClientBilling = React.lazy(() => import("./pages/ClientBilling"));
 const OperationalAnalytics = React.lazy(() => import("./pages/OperationalAnalytics"));
 const ClientPortal = React.lazy(() => import("./pages/ClientPortal"));
 const ClientReservationsAdmin = React.lazy(() => import("./pages/ClientReservationsAdmin"));
+const WorkloadDashboard = React.lazy(() => import("./pages/WorkloadDashboard"));
 
 // Helper component to wrap lazy routes with error boundary and transition
 const LazyRoute = ({ children }: { children: React.ReactNode }) => {
@@ -422,6 +423,15 @@ function App() {
                   <RoleProtectedRoute requiredModule="reports">
                     <LazyRoute>
                       <OperationalAnalytics />
+                    </LazyRoute>
+                  </RoleProtectedRoute>
+                </ProtectedRoute>
+              } />
+              <Route path="/workload" element={
+                <ProtectedRoute>
+                  <RoleProtectedRoute requiredModule="workers">
+                    <LazyRoute>
+                      <WorkloadDashboard />
                     </LazyRoute>
                   </RoleProtectedRoute>
                 </ProtectedRoute>
