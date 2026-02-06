@@ -420,13 +420,13 @@ const PublicLaundryScheduledView = () => {
         <div className="sticky top-[140px] z-[5] bg-background border-b">
           <div className="container max-w-2xl mx-auto px-4">
             <TabsList className="w-full grid grid-cols-2 h-12">
-              <TabsTrigger value="collect" className="gap-2">
-                <Package className="h-4 w-4" />
-                Recoger Sucia
-              </TabsTrigger>
               <TabsTrigger value="deliver" className="gap-2">
                 <PackageCheck className="h-4 w-4" />
                 Preparación / Entrega
+              </TabsTrigger>
+              <TabsTrigger value="collect" className="gap-2">
+                <Package className="h-4 w-4" />
+                Recoger Sucia
               </TabsTrigger>
             </TabsList>
           </div>
