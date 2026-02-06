@@ -1,9 +1,10 @@
-// Tipos para la sincronización con Avantio
+// Tipos para la sincronización con Avantio PMS v1
 
 export interface AvantioReservation {
   id: string;
   accommodationId: string;
   accommodationName?: string;
+  accommodationInternalName?: string;
   status: string;
   arrivalDate: string;
   departureDate: string;

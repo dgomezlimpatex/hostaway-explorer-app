@@ -1,294 +1,244 @@
-import { AvantioReservation, AvantioProperty } from './types.ts';
+import { AvantioReservation } from './types.ts';
 
+const API_BASE_URL = 'https://api.avantio.pro/pms/v1';
 const MAX_RETRIES = 3;
 const TIMEOUT_MS = 30000;
+const PAST_DAYS = 10;
+const FUTURE_DAYS = 30;
+const CREATION_CUTOFF_DAYS = 120;
 
-/**
- * IMPORTANTE: Esta función requiere que configures los siguientes secretos en Supabase:
- * - AVANTIO_API_URL: URL base de la API de Avantio
- * - AVANTIO_API_KEY: API Key de autenticación
- * - AVANTIO_CLIENT_ID: (Opcional) Client ID si usa OAuth
- * - AVANTIO_CLIENT_SECRET: (Opcional) Client Secret si usa OAuth
- * 
- * Cuando tengas la documentación de la API, ajusta los endpoints y formato de autenticación.
- */
+function formatDateSimple(dateString: string | undefined | null): string {
+  if (!dateString) return '';
+  try { return String(dateString).split('T')[0]; } catch { return ''; }
+}
 
-async function makeApiRequest(url: string, options: RequestInit, retries = MAX_RETRIES): Promise<Response> {
+function todayISO(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function addDaysISO(baseISO: string, deltaDays: number): string {
+  const d = new Date(baseISO + 'T00:00:00Z');
+  d.setUTCDate(d.getUTCDate() + deltaDays);
+  return d.toISOString().slice(0, 10);
+}
+
+function daysAgoISO(days: number): string {
+  const d = new Date();
+  d.setDate(d.getDate() - days);
+  return d.toISOString().slice(0, 10);
+}
+
+function headersAvantio(token: string): Record<string, string> {
+  return {
+    'accept': 'application/json',
+    'X-Avantio-Auth': token
+  };
+}
+
+function calculateNights(checkIn: string, checkOut: string): number {
+  if (!checkIn || !checkOut) return 1;
+  const start = new Date(checkIn);
+  const end = new Date(checkOut);
+  if (isNaN(start.getTime()) || isNaN(end.getTime())) return 1;
+  const diffDays = Math.ceil(Math.abs(end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+  return diffDays || 1;
+}
+
+async function httpGet(url: string, headers: Record<string, string>, retries = MAX_RETRIES): Promise<any> {
   for (let attempt = 1; attempt <= retries; attempt++) {
     try {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), TIMEOUT_MS);
-      
+
       const response = await fetch(url, {
-        ...options,
+        method: 'GET',
+        headers,
         signal: controller.signal
       });
-      
+
       clearTimeout(timeoutId);
-      
+
       if (response.ok) {
-        return response;
+        const text = await response.text();
+        try { return JSON.parse(text); } catch { return null; }
       }
-      
-      // Si es un error 4xx (excepto 429), no reintentar
+
+      // 4xx (except 429) - don't retry
       if (response.status >= 400 && response.status < 500 && response.status !== 429) {
-        throw new Error(`API Error ${response.status}: ${await response.text()}`);
+        const errorText = await response.text();
+        throw new Error(`API Error ${response.status}: ${errorText.slice(0, 400)}`);
       }
-      
-      // Para errores 5xx o 429, reintentar
+
+      // 5xx or 429 - retry with backoff
       if (attempt < retries) {
-        const waitTime = Math.pow(2, attempt) * 1000; // Exponential backoff
+        const waitTime = Math.pow(2, attempt) * 1000;
         console.log(`⏳ Reintentando en ${waitTime}ms... (intento ${attempt}/${retries})`);
         await new Promise(resolve => setTimeout(resolve, waitTime));
       }
     } catch (error) {
       if (error.name === 'AbortError') {
         console.log(`⏱️ Timeout en intento ${attempt}/${retries}`);
-      } else {
-        console.error(`❌ Error en intento ${attempt}/${retries}:`, error);
+      } else if (attempt === retries) {
+        throw error;
       }
-      
-      if (attempt === retries) {
+
+      if (attempt < retries) {
+        const waitTime = Math.pow(2, attempt) * 1000;
+        await new Promise(resolve => setTimeout(resolve, waitTime));
+      } else {
         throw error;
       }
     }
   }
-  
   throw new Error('Max retries exceeded');
 }
 
 /**
- * Obtener token de autenticación de Avantio
- * NOTA: Ajustar según el tipo de autenticación que use la API
+ * Get booking detail from Avantio API
  */
-export async function getAvantioToken(): Promise<string> {
-  const apiKey = Deno.env.get('AVANTIO_API_KEY');
-  const clientId = Deno.env.get('AVANTIO_CLIENT_ID');
-  const clientSecret = Deno.env.get('AVANTIO_CLIENT_SECRET');
-  const apiUrl = Deno.env.get('AVANTIO_API_URL');
-  
-  // Verificar que tenemos al menos la API key
-  if (!apiKey) {
-    throw new Error('AVANTIO_API_KEY no está configurada. Por favor, configura los secretos de Avantio.');
-  }
-  
-  // Si usa OAuth, obtener token
-  if (clientId && clientSecret && apiUrl) {
-    console.log('🔐 Obteniendo token OAuth de Avantio...');
-    
-    const tokenUrl = `${apiUrl}/oauth/token`;
-    const response = await makeApiRequest(tokenUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded'
-      },
-      body: new URLSearchParams({
-        grant_type: 'client_credentials',
-        client_id: clientId,
-        client_secret: clientSecret
-      })
-    });
-    
-    const tokenData = await response.json();
-    console.log('✅ Token OAuth obtenido');
-    return tokenData.access_token;
-  }
-  
-  // Si no usa OAuth, devolver la API key directamente
-  return apiKey;
+async function getBookingDetail(token: string, bookingId: string): Promise<any> {
+  const url = `${API_BASE_URL}/bookings/${encodeURIComponent(String(bookingId))}`;
+  const result = await httpGet(url, headersAvantio(token));
+  return result ? (result.data || result) : null;
 }
 
 /**
- * Obtener reservas de Avantio filtradas por fecha de checkout
- * NOTA: Ajustar endpoint y parámetros según documentación de Avantio
+ * Extract checkout date from list item (some list responses include it)
  */
-export async function fetchAvantioReservations(
-  token: string, 
-  startDate: string, 
-  endDate: string, 
-  offset: number = 0
-): Promise<AvantioReservation[]> {
-  const apiUrl = Deno.env.get('AVANTIO_API_URL');
-  
-  if (!apiUrl) {
-    throw new Error('AVANTIO_API_URL no está configurada');
-  }
-  
-  console.log(`📥 Obteniendo reservas de Avantio (offset: ${offset})...`);
-  console.log(`📅 Rango de fechas: ${startDate} a ${endDate}`);
-  
-  // NOTA: Ajustar este endpoint según la documentación de Avantio
-  // Este es un ejemplo genérico basado en APIs de channel managers similares
-  const url = new URL(`${apiUrl}/bookings`);
-  url.searchParams.set('checkout_from', startDate);
-  url.searchParams.set('checkout_to', endDate);
-  url.searchParams.set('offset', offset.toString());
-  url.searchParams.set('limit', '100');
-  
-  const response = await makeApiRequest(url.toString(), {
-    method: 'GET',
-    headers: {
-      'Authorization': `Bearer ${token}`,
-      'Content-Type': 'application/json',
-      'Accept': 'application/json'
+function getCheckOutFromList(item: any): string {
+  return formatDateSimple(
+    item?.dates?.departure ||
+    item?.dates?.checkOut ||
+    item?.departureDate ||
+    item?.checkOut
+  );
+}
+
+/**
+ * Extract creation date from list item
+ */
+function getCreationFromList(item: any): string {
+  return formatDateSimple(item?.creationDate || item?.createdAt || '');
+}
+
+/**
+ * Extract check-in from detail
+ */
+function getCheckIn(detail: any): string {
+  return formatDateSimple(detail.dates?.arrival || detail.dates?.checkIn || detail.dates?.start || '');
+}
+
+/**
+ * Extract check-out from detail
+ */
+function getCheckOut(detail: any): string {
+  return formatDateSimple(detail.dates?.departure || detail.dates?.checkOut || detail.dates?.end || '');
+}
+
+/**
+ * Normalize string
+ */
+function norm(s: any): string {
+  return (s || '').toString().trim();
+}
+
+/**
+ * Fetch all relevant Avantio reservations using real PMS v1 API.
+ * Paginates through bookings list, fetches detail for each,
+ * and filters by checkout date range.
+ */
+export async function fetchAllAvantioReservations(token: string): Promise<AvantioReservation[]> {
+  const today = todayISO();
+  const fromDate = addDaysISO(today, -PAST_DAYS);
+  const toDate = addDaysISO(today, FUTURE_DAYS);
+  const creationCutoff = daysAgoISO(CREATION_CUTOFF_DAYS);
+
+  console.log(`📅 Rango checkout: ${fromDate} a ${toDate} | Corte creación: ${creationCutoff}`);
+
+  const reservations: AvantioReservation[] = [];
+  let nextUrl: string | null = `${API_BASE_URL}/bookings?limit=50&sort=creationDate&order=desc`;
+  let pages = 0;
+  let detailCalls = 0;
+  let stopPagination = false;
+
+  while (nextUrl) {
+    pages++;
+    console.log(`📄 Página ${pages}: ${nextUrl}`);
+
+    const pageObj = await httpGet(nextUrl, headersAvantio(token));
+    if (!pageObj) break;
+
+    const list = pageObj.data || [];
+    if (!Array.isArray(list) || list.length === 0) break;
+
+    console.log(`📄 Página ${pages}: ${list.length} reservas en listado`);
+
+    for (const item of list) {
+      if (!item?.id) continue;
+
+      // Cut pagination by creation date
+      const created = getCreationFromList(item);
+      if (created && created < creationCutoff) {
+        stopPagination = true;
+        break;
+      }
+
+      // Pre-filter by checkout if available in list
+      const listCheckOut = getCheckOutFromList(item);
+      if (listCheckOut) {
+        if (listCheckOut < fromDate || listCheckOut > toDate) {
+          continue;
+        }
+      }
+
+      // Fetch detail
+      const detail = await getBookingDetail(token, item.id);
+      detailCalls++;
+      if (!detail) continue;
+
+      const bookingId = String(detail.id);
+      const status = norm(detail.status || '');
+      const accommodationName = norm(detail.accommodation?.name || detail.accommodation?.internalName || '');
+      const accommodationInternalName = norm(detail.accommodation?.internalName || '');
+
+      const checkIn = getCheckIn(detail);
+      const checkOut = getCheckOut(detail);
+      if (!checkOut) continue;
+
+      // Final filter by checkout range
+      if (checkOut < fromDate || checkOut > toDate) continue;
+
+      const reservation: AvantioReservation = {
+        id: bookingId,
+        accommodationId: String(detail.accommodation?.id || item.accommodationId || ''),
+        accommodationName: accommodationName,
+        accommodationInternalName: accommodationInternalName,
+        status: status,
+        arrivalDate: checkIn,
+        departureDate: checkOut,
+        reservationDate: formatDateSimple(detail.creationDate || detail.createdAt),
+        cancellationDate: formatDateSimple(detail.cancellationDate || detail.cancelledAt),
+        nights: calculateNights(checkIn, checkOut),
+        adults: detail.guests?.adults || detail.adults || 2,
+        children: detail.guests?.children || detail.children || 0,
+        guestName: norm(detail.customer?.name || detail.guest?.name || detail.guestName || 'Huésped Desconocido'),
+        guestEmail: detail.customer?.email || detail.guest?.email || detail.guestEmail,
+        totalAmount: detail.price?.total || detail.totalAmount || 0,
+        currency: detail.price?.currency || detail.currency || 'EUR',
+        notes: detail.remarks || detail.notes || ''
+      };
+
+      reservations.push(reservation);
     }
-  });
-  
-  const data = await response.json();
-  
-  // NOTA: Ajustar el mapeo según la estructura real de la respuesta de Avantio
-  // Este mapeo es genérico y debe ser adaptado
-  const reservations: AvantioReservation[] = (data.result || data.bookings || data.reservations || []).map((booking: any) => ({
-    id: String(booking.id || booking.reservation_id || booking.booking_id),
-    accommodationId: String(booking.accommodation_id || booking.property_id || booking.listing_id),
-    accommodationName: booking.accommodation_name || booking.property_name || booking.listing_name,
-    status: mapAvantioStatus(booking.status),
-    arrivalDate: formatDate(booking.check_in || booking.arrival_date || booking.start_date),
-    departureDate: formatDate(booking.check_out || booking.departure_date || booking.end_date),
-    reservationDate: booking.created_at || booking.reservation_date,
-    cancellationDate: booking.cancelled_at || booking.cancellation_date,
-    nights: calculateNights(
-      booking.check_in || booking.arrival_date,
-      booking.check_out || booking.departure_date
-    ),
-    adults: booking.adults || booking.guest_count || 2,
-    children: booking.children || 0,
-    guestName: extractGuestName(booking),
-    guestEmail: booking.guest_email || booking.email,
-    totalAmount: booking.total_amount || booking.price,
-    currency: booking.currency || 'EUR',
-    notes: booking.notes || booking.special_requests
-  }));
-  
-  console.log(`✅ Obtenidas ${reservations.length} reservas`);
+
+    if (stopPagination) {
+      console.log(`⛔ Stop paginación: creationDate < ${creationCutoff}`);
+      break;
+    }
+
+    nextUrl = pageObj?._links?.next || null;
+  }
+
+  console.log(`✅ Paginación completada. Páginas=${pages} | Detalle calls=${detailCalls} | Reservas en rango=${reservations.length}`);
   return reservations;
-}
-
-/**
- * Obtener todas las reservas paginando automáticamente
- */
-export async function fetchAllAvantioReservations(
-  token: string, 
-  startDate: string, 
-  endDate: string
-): Promise<AvantioReservation[]> {
-  let allReservations: AvantioReservation[] = [];
-  let offset = 0;
-  const limit = 100;
-  
-  while (true) {
-    const reservations = await fetchAvantioReservations(token, startDate, endDate, offset);
-    allReservations = [...allReservations, ...reservations];
-    
-    if (reservations.length < limit) {
-      break; // No hay más páginas
-    }
-    
-    offset += limit;
-  }
-  
-  console.log(`📊 Total de reservas obtenidas: ${allReservations.length}`);
-  return allReservations;
-}
-
-/**
- * Obtener propiedades/alojamientos de Avantio
- */
-export async function fetchAvantioProperties(token: string): Promise<AvantioProperty[]> {
-  const apiUrl = Deno.env.get('AVANTIO_API_URL');
-  
-  if (!apiUrl) {
-    throw new Error('AVANTIO_API_URL no está configurada');
-  }
-  
-  console.log('🏠 Obteniendo propiedades de Avantio...');
-  
-  // NOTA: Ajustar endpoint según documentación
-  const url = `${apiUrl}/accommodations`;
-  
-  const response = await makeApiRequest(url, {
-    method: 'GET',
-    headers: {
-      'Authorization': `Bearer ${token}`,
-      'Content-Type': 'application/json'
-    }
-  });
-  
-  const data = await response.json();
-  
-  const properties: AvantioProperty[] = (data.result || data.accommodations || []).map((prop: any) => ({
-    id: String(prop.id),
-    name: prop.name,
-    internalName: prop.internal_name || prop.reference
-  }));
-  
-  console.log(`✅ Obtenidas ${properties.length} propiedades`);
-  return properties;
-}
-
-// ============ FUNCIONES AUXILIARES ============
-
-function mapAvantioStatus(status: string): string {
-  // Mapear estados de Avantio a nuestro sistema
-  const statusMap: Record<string, string> = {
-    'confirmed': 'confirmed',
-    'pending': 'pending',
-    'cancelled': 'cancelled',
-    'canceled': 'cancelled',
-    'completed': 'confirmed',
-    'checked_in': 'confirmed',
-    'checked_out': 'confirmed',
-    'no_show': 'cancelled'
-  };
-  
-  return statusMap[status?.toLowerCase()] || status || 'pending';
-}
-
-function formatDate(dateStr: string): string {
-  if (!dateStr) return '';
-  
-  // Si ya está en formato YYYY-MM-DD, retornar
-  if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
-    return dateStr;
-  }
-  
-  // Intentar parsear otros formatos
-  const date = new Date(dateStr);
-  if (isNaN(date.getTime())) {
-    return dateStr;
-  }
-  
-  return date.toISOString().split('T')[0];
-}
-
-function calculateNights(checkIn: string, checkOut: string): number {
-  if (!checkIn || !checkOut) return 1;
-  
-  const start = new Date(checkIn);
-  const end = new Date(checkOut);
-  
-  if (isNaN(start.getTime()) || isNaN(end.getTime())) {
-    return 1;
-  }
-  
-  const diffTime = Math.abs(end.getTime() - start.getTime());
-  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-  
-  return diffDays || 1;
-}
-
-function extractGuestName(booking: any): string {
-  // Intentar obtener el nombre del huésped de varios campos posibles
-  if (booking.guest_name) return booking.guest_name;
-  if (booking.guest?.name) return booking.guest.name;
-  if (booking.customer_name) return booking.customer_name;
-  if (booking.guest_first_name && booking.guest_last_name) {
-    return `${booking.guest_first_name} ${booking.guest_last_name}`;
-  }
-  if (booking.first_name && booking.last_name) {
-    return `${booking.first_name} ${booking.last_name}`;
-  }
-  if (booking.booker_name) return booking.booker_name;
-  
-  return 'Huésped Desconocido';
 }
