@@ -9,8 +9,33 @@ const supabase = createClient(supabaseUrl, supabaseServiceKey);
 const TURQUOISE_CLIENT_ID = '669948a6-e5c3-4a73-a151-6ccca5c82adf';
 
 /**
+ * Helper: search property by codigo and auto-save avantio_accommodation_id
+ */
+async function findByCode(code: string, accommodationId?: string, accommodationName?: string) {
+  const { data, error } = await supabase
+    .from('properties')
+    .select('*')
+    .eq('cliente_id', TURQUOISE_CLIENT_ID)
+    .ilike('codigo', code);
+  
+  if (!error && data && data.length === 1) {
+    const prop = data[0];
+    console.log(`✅ Propiedad encontrada por código "${code}": ${prop.nombre}`);
+    if (accommodationId && !prop.avantio_accommodation_id) {
+      await supabase
+        .from('properties')
+        .update({ avantio_accommodation_id: accommodationId, avantio_accommodation_name: accommodationName })
+        .eq('id', prop.id);
+      console.log(`📝 avantio_accommodation_id actualizado para ${prop.nombre}`);
+    }
+    return prop;
+  }
+  return null;
+}
+
+/**
  * Find property by exact match - only Turquoise properties
- * Order: avantio_accommodation_id > exact name > exact code
+ * Order: avantio_accommodation_id > exact name > exact code > name as code > strip C prefix
  */
 export async function findPropertyByAvantioId(
   accommodationId: string, 
@@ -64,58 +89,22 @@ export async function findPropertyByAvantioId(
   
   // 3. Search by exact code (internalName = codigo, Turquoise only)
   if (accommodationInternalName) {
-    const { data: propertiesByCode, error: codeError } = await supabase
-      .from('properties')
-      .select('*')
-      .eq('cliente_id', TURQUOISE_CLIENT_ID)
-      .ilike('codigo', accommodationInternalName);
-    
-    if (!codeError && propertiesByCode && propertiesByCode.length === 1) {
-      const foundProperty = propertiesByCode[0];
-      console.log(`✅ Propiedad encontrada por código exacto: ${foundProperty.nombre} (código: ${foundProperty.codigo})`);
-      
-      if (accommodationId && !foundProperty.avantio_accommodation_id) {
-        await supabase
-          .from('properties')
-          .update({ 
-            avantio_accommodation_id: accommodationId,
-            avantio_accommodation_name: accommodationName 
-          })
-          .eq('id', foundProperty.id);
-        console.log(`📝 avantio_accommodation_id actualizado para ${foundProperty.nombre}`);
-      }
-      
-      return foundProperty;
-    }
+    const found = await findByCode(accommodationInternalName, accommodationId, accommodationName);
+    if (found) return found;
   }
 
-  // 4. Try matching Avantio name as code with C prefix stripped (CMD18.5 -> MD18.5)
+  // 4. Try matching accommodationName directly as codigo
+  if (accommodationName) {
+    const found = await findByCode(accommodationName, accommodationId, accommodationName);
+    if (found) return found;
+  }
+
+  // 5. Try stripping C prefix (CMD18.5 -> MD18.5)
   if (accommodationName) {
     const strippedCode = accommodationName.replace(/^C/, '');
     if (strippedCode !== accommodationName) {
-      const { data: propertiesByStripped, error: strippedError } = await supabase
-        .from('properties')
-        .select('*')
-        .eq('cliente_id', TURQUOISE_CLIENT_ID)
-        .ilike('codigo', strippedCode);
-      
-      if (!strippedError && propertiesByStripped && propertiesByStripped.length === 1) {
-        const foundProperty = propertiesByStripped[0];
-        console.log(`✅ Propiedad encontrada por código sin prefijo C: ${accommodationName} -> ${foundProperty.codigo}`);
-        
-        if (accommodationId && !foundProperty.avantio_accommodation_id) {
-          await supabase
-            .from('properties')
-            .update({ 
-              avantio_accommodation_id: accommodationId,
-              avantio_accommodation_name: accommodationName 
-            })
-            .eq('id', foundProperty.id);
-          console.log(`📝 avantio_accommodation_id actualizado para ${foundProperty.nombre}`);
-        }
-        
-        return foundProperty;
-      }
+      const found = await findByCode(strippedCode, accommodationId, accommodationName);
+      if (found) return found;
     }
   }
   
