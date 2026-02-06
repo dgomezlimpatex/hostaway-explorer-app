@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { Menu } from 'lucide-react';
+import { Menu, Search } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { GlobalSearch } from '@/components/navigation/GlobalSearch';
 import { Button } from '@/components/ui/button';
 import {
   Drawer,
@@ -26,6 +27,14 @@ export const MobileDashboardHeader = () => {
       <div className="bg-white border-b border-gray-200 p-4 flex items-center justify-between">
         <h1 className="text-lg font-semibold text-gray-900">Dashboard</h1>
         
+        <div className="flex items-center gap-2">
+          <GlobalSearch
+            trigger={
+              <Button variant="ghost" size="sm" className="p-2">
+                <Search className="h-5 w-5" />
+              </Button>
+            }
+          />
         <Drawer open={open} onOpenChange={setOpen}>
           <DrawerTrigger asChild>
             <Button variant="outline" size="sm" className="p-2">
@@ -39,6 +48,7 @@ export const MobileDashboardHeader = () => {
             <MobileDashboardSidebar onNavigate={() => setOpen(false)} />
           </DrawerContent>
         </Drawer>
+       </div>
       </div>
     </>
   );

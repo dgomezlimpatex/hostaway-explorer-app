@@ -1,5 +1,6 @@
 
 import React from 'react';
+import { GlobalSearch } from '@/components/navigation/GlobalSearch';
 import { NavLink, useLocation } from 'react-router-dom';
 import { 
   Calendar, 
@@ -18,7 +19,8 @@ import {
   Shirt,
   Bed,
   Receipt,
-  TrendingUp
+  TrendingUp,
+  Search
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useRolePermissions } from '@/hooks/useRolePermissions';
@@ -249,6 +251,24 @@ export const DashboardSidebar = () => {
             </div>
           </div>
         )}
+
+        {/* Global Search */}
+        <div className="px-3 pt-3">
+          {isCollapsed ? (
+            <GlobalSearch
+              trigger={
+                <button
+                  className="flex items-center justify-center w-8 h-8 rounded-md hover:bg-gray-100 transition-colors"
+                  onClick={() => {}}
+                >
+                  <Search className="h-4 w-4 text-gray-500" />
+                </button>
+              }
+            />
+          ) : (
+            <GlobalSearch />
+          )}
+        </div>
 
         {/* Navigation Sections */}
         <div className="flex-1 overflow-y-auto py-4 space-y-2">
