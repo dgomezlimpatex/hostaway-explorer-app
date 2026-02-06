@@ -144,76 +144,102 @@ function norm(s: any): string {
 
 /**
  * Fetch all relevant Avantio reservations using real PMS v1 API.
- * Paginates through bookings list, fetches detail for each,
- * and filters by checkout date range.
+ * Uses departure date filters to minimize API calls.
+ * Falls back to pagination with detail calls if needed.
  */
 export async function fetchAllAvantioReservations(token: string): Promise<AvantioReservation[]> {
+  const cleanToken = token.replace(/^["'\s]+|["'\s]+$/g, '');
   const today = todayISO();
   const fromDate = addDaysISO(today, -PAST_DAYS);
   const toDate = addDaysISO(today, FUTURE_DAYS);
-  const creationCutoff = daysAgoISO(CREATION_CUTOFF_DAYS);
 
-  console.log(`📅 Rango checkout: ${fromDate} a ${toDate} | Corte creación: ${creationCutoff}`);
+  console.log(`📅 Rango checkout: ${fromDate} a ${toDate}`);
+  console.log(`🔑 Token length: ${cleanToken.length}, starts with: ${cleanToken.substring(0, 4)}...`);
 
   const reservations: AvantioReservation[] = [];
-  let nextUrl: string | null = `${API_BASE_URL}/bookings?limit=50&sort=creationDate&order=desc`;
+  const MAX_PAGES = 20; // Safety limit
+  
+  // Try with departure date filter first
+  let nextUrl: string | null = `${API_BASE_URL}/bookings?limit=50&sort=creationDate&order=desc&departureFrom=${fromDate}&departureTo=${toDate}`;
   let pages = 0;
   let detailCalls = 0;
-  let stopPagination = false;
+  let usedDateFilter = true;
 
-  while (nextUrl) {
+  while (nextUrl && pages < MAX_PAGES) {
     pages++;
     console.log(`📄 Página ${pages}: ${nextUrl}`);
 
-    const pageObj = await httpGet(nextUrl, headersAvantio(token));
+    const pageObj = await httpGet(nextUrl, headersAvantio(cleanToken));
     if (!pageObj) break;
 
     const list = pageObj.data || [];
     if (!Array.isArray(list) || list.length === 0) break;
+
+    // Log first item structure on page 1
+    if (pages === 1) {
+      console.log(`📋 Primer item keys: ${JSON.stringify(Object.keys(list[0]))}`);
+      if (list[0]?.dates) console.log(`📋 Dates keys: ${JSON.stringify(Object.keys(list[0].dates))}`);
+      // If the API ignored our date filter (returned too many), fall back
+      if (list.length === 50 && !list[0]?.dates?.departure) {
+        console.log(`⚠️ API may not support date filters, items don't have departure dates in list`);
+      }
+    }
 
     console.log(`📄 Página ${pages}: ${list.length} reservas en listado`);
 
     for (const item of list) {
       if (!item?.id) continue;
 
-      // Cut pagination by creation date
-      const created = getCreationFromList(item);
-      if (created && created < creationCutoff) {
-        stopPagination = true;
-        break;
-      }
-
-      // Pre-filter by checkout if available in list
+      // Try to extract data directly from list item to avoid detail call
       const listCheckOut = getCheckOutFromList(item);
-      if (listCheckOut) {
-        if (listCheckOut < fromDate || listCheckOut > toDate) {
-          continue;
-        }
+      const listCheckIn = formatDateSimple(item?.dates?.arrival || item?.arrivalDate || item?.checkIn || '');
+      
+      // If list item has enough data, use it directly
+      if (listCheckOut && item?.accommodation) {
+        // Final filter by checkout range
+        if (listCheckOut < fromDate || listCheckOut > toDate) continue;
+
+        const reservation: AvantioReservation = {
+          id: String(item.id),
+          accommodationId: String(item.accommodation?.id || item.accommodationId || ''),
+          accommodationName: norm(item.accommodation?.name || item.accommodation?.internalName || ''),
+          accommodationInternalName: norm(item.accommodation?.internalName || ''),
+          status: norm(item.status || ''),
+          arrivalDate: listCheckIn,
+          departureDate: listCheckOut,
+          reservationDate: formatDateSimple(item.creationDate || item.createdAt),
+          cancellationDate: formatDateSimple(item.cancellationDate || item.cancelledAt),
+          nights: calculateNights(listCheckIn, listCheckOut),
+          adults: item.guests?.adults || item.adults || 2,
+          children: item.guests?.children || item.children || 0,
+          guestName: norm(item.customer?.name || item.guest?.name || item.guestName || 'Huésped Desconocido'),
+          guestEmail: item.customer?.email || item.guest?.email || item.guestEmail,
+          totalAmount: item.price?.total || item.totalAmount || 0,
+          currency: item.price?.currency || item.currency || 'EUR',
+          notes: item.remarks || item.notes || ''
+        };
+
+        reservations.push(reservation);
+        continue;
       }
 
-      // Fetch detail
-      const detail = await getBookingDetail(token, item.id);
+      // Fallback: fetch detail for items without enough list data
+      const detail = await getBookingDetail(cleanToken, item.id);
       detailCalls++;
       if (!detail) continue;
-
-      const bookingId = String(detail.id);
-      const status = norm(detail.status || '');
-      const accommodationName = norm(detail.accommodation?.name || detail.accommodation?.internalName || '');
-      const accommodationInternalName = norm(detail.accommodation?.internalName || '');
 
       const checkIn = getCheckIn(detail);
       const checkOut = getCheckOut(detail);
       if (!checkOut) continue;
 
-      // Final filter by checkout range
       if (checkOut < fromDate || checkOut > toDate) continue;
 
       const reservation: AvantioReservation = {
-        id: bookingId,
+        id: String(detail.id),
         accommodationId: String(detail.accommodation?.id || item.accommodationId || ''),
-        accommodationName: accommodationName,
-        accommodationInternalName: accommodationInternalName,
-        status: status,
+        accommodationName: norm(detail.accommodation?.name || detail.accommodation?.internalName || ''),
+        accommodationInternalName: norm(detail.accommodation?.internalName || ''),
+        status: norm(detail.status || ''),
         arrivalDate: checkIn,
         departureDate: checkOut,
         reservationDate: formatDateSimple(detail.creationDate || detail.createdAt),
@@ -231,12 +257,11 @@ export async function fetchAllAvantioReservations(token: string): Promise<Avanti
       reservations.push(reservation);
     }
 
-    if (stopPagination) {
-      console.log(`⛔ Stop paginación: creationDate < ${creationCutoff}`);
-      break;
-    }
-
     nextUrl = pageObj?._links?.next || null;
+  }
+
+  if (pages >= MAX_PAGES) {
+    console.log(`⚠️ Alcanzado límite máximo de ${MAX_PAGES} páginas`);
   }
 
   console.log(`✅ Paginación completada. Páginas=${pages} | Detalle calls=${detailCalls} | Reservas en rango=${reservations.length}`);
