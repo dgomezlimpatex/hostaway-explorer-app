@@ -5,57 +5,97 @@ const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
 const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
+// Client ID for Turquoise Apartments SL
+const TURQUOISE_CLIENT_ID = '669948a6-e5c3-4a73-a151-6ccca5c82adf';
+
 /**
- * Buscar propiedad por ID de Avantio o nombre
+ * Find property by exact match - only Turquoise properties
+ * Order: avantio_accommodation_id > exact name > exact code
  */
-export async function findPropertyByAvantioId(accommodationId: string, accommodationName?: string) {
-  console.log(`🔍 Buscando propiedad con avantio_accommodation_id: ${accommodationId}`);
+export async function findPropertyByAvantioId(
+  accommodationId: string, 
+  accommodationName?: string,
+  accommodationInternalName?: string
+) {
+  console.log(`🔍 Buscando propiedad: ID="${accommodationId}", nombre="${accommodationName || 'N/A'}", código="${accommodationInternalName || 'N/A'}"`);
   
-  // Primer intento: buscar por avantio_accommodation_id
-  const { data: property, error } = await supabase
-    .from('properties')
-    .select('*')
-    .eq('avantio_accommodation_id', accommodationId)
-    .single();
-  
-  if (error && error.code !== 'PGRST116') {
-    console.log(`❌ Error buscando propiedad por avantio_accommodation_id ${accommodationId}:`, error);
-    return null;
-  }
-  
-  if (property) {
-    console.log(`✅ Propiedad encontrada por ID: ${property.nombre} (ID: ${property.id})`);
-    return property;
-  }
-  
-  // Fallback: buscar por nombre si se proporciona
-  if (accommodationName) {
-    console.log(`🔄 Fallback: buscando propiedad por nombre: "${accommodationName}"`);
+  // 1. Search by avantio_accommodation_id (exact)
+  if (accommodationId) {
+    const { data: property, error } = await supabase
+      .from('properties')
+      .select('*')
+      .eq('avantio_accommodation_id', accommodationId)
+      .eq('cliente_id', TURQUOISE_CLIENT_ID)
+      .maybeSingle();
     
+    if (!error && property) {
+      console.log(`✅ Propiedad encontrada por avantio_accommodation_id: ${property.nombre}`);
+      return property;
+    }
+  }
+  
+  // 2. Search by exact name (case-insensitive, Turquoise only)
+  if (accommodationName) {
     const { data: propertiesByName, error: nameError } = await supabase
       .from('properties')
       .select('*')
-      .ilike('nombre', `%${accommodationName}%`);
+      .eq('cliente_id', TURQUOISE_CLIENT_ID)
+      .ilike('nombre', accommodationName);
     
-    if (nameError) {
-      console.log(`❌ Error buscando propiedad por nombre:`, nameError);
-      return null;
-    }
-    
-    if (propertiesByName && propertiesByName.length > 0) {
+    if (!nameError && propertiesByName && propertiesByName.length === 1) {
       const foundProperty = propertiesByName[0];
-      console.log(`✅ Propiedad encontrada por nombre: ${foundProperty.nombre} (ID: ${foundProperty.id})`);
-      console.log(`📝 Recomendación: actualizar avantio_accommodation_id a ${accommodationId} para esta propiedad`);
+      console.log(`✅ Propiedad encontrada por nombre exacto: ${foundProperty.nombre}`);
+      
+      // Auto-save avantio_accommodation_id for future lookups
+      if (accommodationId && !foundProperty.avantio_accommodation_id) {
+        await supabase
+          .from('properties')
+          .update({ 
+            avantio_accommodation_id: accommodationId,
+            avantio_accommodation_name: accommodationName 
+          })
+          .eq('id', foundProperty.id);
+        console.log(`📝 avantio_accommodation_id actualizado para ${foundProperty.nombre}`);
+      }
+      
       return foundProperty;
     }
   }
   
-  console.log(`❌ No se encontró propiedad con avantio_accommodation_id: ${accommodationId} ni por nombre: ${accommodationName || 'N/A'}`);
+  // 3. Search by exact code (internalName = codigo, Turquoise only)
+  if (accommodationInternalName) {
+    const { data: propertiesByCode, error: codeError } = await supabase
+      .from('properties')
+      .select('*')
+      .eq('cliente_id', TURQUOISE_CLIENT_ID)
+      .ilike('codigo', accommodationInternalName);
+    
+    if (!codeError && propertiesByCode && propertiesByCode.length === 1) {
+      const foundProperty = propertiesByCode[0];
+      console.log(`✅ Propiedad encontrada por código exacto: ${foundProperty.nombre} (código: ${foundProperty.codigo})`);
+      
+      // Auto-save avantio_accommodation_id
+      if (accommodationId && !foundProperty.avantio_accommodation_id) {
+        await supabase
+          .from('properties')
+          .update({ 
+            avantio_accommodation_id: accommodationId,
+            avantio_accommodation_name: accommodationName 
+          })
+          .eq('id', foundProperty.id);
+        console.log(`📝 avantio_accommodation_id actualizado para ${foundProperty.nombre}`);
+      }
+      
+      return foundProperty;
+    }
+  }
+  
+  console.log(`❌ No se encontró propiedad: ID="${accommodationId}", nombre="${accommodationName || 'N/A'}", código="${accommodationInternalName || 'N/A'}"`);
   return null;
 }
 
 /**
- * Validar que propiedad y cliente existen
+ * Validate that property and client exist
  */
 export async function validatePropertyAndClient(propertyId: string, clientId: string): Promise<{ valid: boolean; errors: string[] }> {
   const errors: string[] = [];
@@ -80,28 +120,20 @@ export async function validatePropertyAndClient(propertyId: string, clientId: st
     errors.push(`Cliente con ID ${clientId} no existe`);
   }
   
-  return {
-    valid: errors.length === 0,
-    errors
-  };
+  return { valid: errors.length === 0, errors };
 }
 
 /**
- * Crear tarea para una reserva
- * La limpieza se programa para el día del checkout
+ * Create task for a reservation (cleaning on checkout day)
  */
 export async function createTaskForReservation(reservation: AvantioReservation, property: any) {
   console.log(`📋 Creando tarea para reserva ${reservation.id} en propiedad ${property.nombre}`);
-  console.log(`📋 Fecha de salida (checkout): ${reservation.departureDate}`);
-  console.log(`📋 Huésped: ${reservation.guestName}`);
   
-  // Validar integridad referencial
   const validation = await validatePropertyAndClient(property.id, property.cliente_id);
   if (!validation.valid) {
     throw new Error(`Validación fallida: ${validation.errors.join(', ')}`);
   }
   
-  // Calcular horarios basados en la propiedad
   const startTime = '11:00';
   const durationMinutes = property.duracion_servicio || 60;
   const endHour = 11 + Math.floor(durationMinutes / 60);
@@ -111,7 +143,7 @@ export async function createTaskForReservation(reservation: AvantioReservation, 
   const taskData = {
     property: property.nombre,
     address: property.direccion,
-    date: reservation.departureDate, // La tarea es el día del checkout
+    date: reservation.departureDate,
     start_time: startTime,
     end_time: endTime,
     check_in: property.check_in_predeterminado,
@@ -123,13 +155,11 @@ export async function createTaskForReservation(reservation: AvantioReservation, 
     propiedad_id: property.id,
     cliente_id: property.cliente_id,
     sede_id: property.sede_id,
-    cleaner: null, // Tarea sin asignar
+    cleaner: null,
     cleaner_id: null,
-    background_color: '#10B981', // Verde para distinguir de Hostaway
+    background_color: '#10B981',
     notas: `Reserva Avantio: ${reservation.guestName}`
   };
-
-  console.log(`📋 Datos de la tarea a crear:`, taskData);
 
   const { data: task, error } = await supabase
     .from('tasks')
@@ -142,12 +172,12 @@ export async function createTaskForReservation(reservation: AvantioReservation, 
     throw error;
   }
 
-  console.log(`✅ Tarea creada exitosamente: ${task.id} para fecha ${task.date}`);
+  console.log(`✅ Tarea creada: ${task.id} para fecha ${task.date}`);
   return task;
 }
 
 /**
- * Obtener reserva existente
+ * Get existing reservation by Avantio ID
  */
 export async function getExistingReservation(reservationId: string) {
   const { data: existingReservation } = await supabase
@@ -160,7 +190,7 @@ export async function getExistingReservation(reservationId: string) {
 }
 
 /**
- * Insertar nueva reserva
+ * Insert new reservation
  */
 export async function insertReservation(reservationData: any) {
   if (reservationData.property_id && reservationData.cliente_id) {
@@ -176,7 +206,7 @@ export async function insertReservation(reservationData: any) {
 }
 
 /**
- * Actualizar reserva existente
+ * Update existing reservation
  */
 export async function updateReservation(reservationId: string, reservationData: any) {
   if (reservationData.property_id && reservationData.cliente_id) {
@@ -193,7 +223,7 @@ export async function updateReservation(reservationId: string, reservationData: 
 }
 
 /**
- * Eliminar tarea
+ * Delete task
  */
 export async function deleteTask(taskId: string) {
   return await supabase
@@ -203,7 +233,7 @@ export async function deleteTask(taskId: string) {
 }
 
 /**
- * Actualizar fecha de tarea
+ * Update task date and notify cleaner if assigned
  */
 export async function updateTaskDate(taskId: string, newDate: string) {
   console.log(`📅 Actualizando fecha de tarea ${taskId} a ${newDate}`);
@@ -221,10 +251,7 @@ export async function updateTaskDate(taskId: string, newDate: string) {
 
   const { data: task, error } = await supabase
     .from('tasks')
-    .update({ 
-      date: newDate,
-      updated_at: new Date().toISOString()
-    })
+    .update({ date: newDate, updated_at: new Date().toISOString() })
     .eq('id', taskId)
     .select()
     .single();
@@ -234,7 +261,7 @@ export async function updateTaskDate(taskId: string, newDate: string) {
     throw error;
   }
 
-  // Enviar notificación si hay limpiador asignado
+  // Notify cleaner if assigned and date changed
   if (originalTask.cleaner_id && originalTask.date !== newDate) {
     console.log(`📧 Enviando email de cambio de horario por sincronización Avantio`);
     try {
@@ -264,16 +291,16 @@ export async function updateTaskDate(taskId: string, newDate: string) {
         console.log(`✅ Email de cambio de horario enviado a ${cleaner.name}`);
       }
     } catch (emailError) {
-      console.error(`❌ Error enviando email de cambio de horario:`, emailError);
+      console.error(`❌ Error enviando email de cambio:`, emailError);
     }
   }
 
-  console.log(`✅ Fecha de tarea actualizada exitosamente: ${task.id} -> ${task.date}`);
+  console.log(`✅ Fecha de tarea actualizada: ${task.id} -> ${task.date}`);
   return task;
 }
 
 /**
- * Crear log de sincronización
+ * Create sync log
  */
 export async function createSyncLog() {
   const { data: syncLog, error: logError } = await supabase
@@ -294,11 +321,36 @@ export async function createSyncLog() {
 }
 
 /**
- * Actualizar log de sincronización
+ * Update sync log
  */
 export async function updateSyncLog(syncLogId: string, updates: any) {
   await supabase
     .from('avantio_sync_logs')
     .update(updates)
     .eq('id', syncLogId);
+}
+
+/**
+ * Log a sync error to avantio_sync_errors table
+ */
+export async function logSyncError(
+  errorType: string,
+  errorMessage: string,
+  errorDetails?: Record<string, any>,
+  syncLogId?: string | null
+) {
+  try {
+    await supabase
+      .from('avantio_sync_errors')
+      .insert({
+        sync_log_id: syncLogId || null,
+        error_type: errorType,
+        error_message: errorMessage,
+        error_details: errorDetails || null,
+        resolved: false
+      });
+    console.log(`📝 Error registrado en avantio_sync_errors: [${errorType}] ${errorMessage}`);
+  } catch (err) {
+    console.error('❌ Error registrando en avantio_sync_errors:', err);
+  }
 }

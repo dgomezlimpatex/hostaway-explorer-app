@@ -10,10 +10,7 @@ export class ResponseBuilder {
     return {
       success: true,
       message: 'Sincronización con Avantio completada exitosamente',
-      dateRange: {
-        start: startDate,
-        end: endDate
-      },
+      dateRange: { start: startDate, end: endDate },
       stats: {
         reservationsProcessed: stats.reservations_processed,
         newReservations: stats.new_reservations,
@@ -68,12 +65,9 @@ export class ResponseBuilder {
     return {
       success: false,
       message: 'Avantio no está configurado',
-      error: 'Faltan credenciales de API de Avantio. Por favor, configura AVANTIO_API_KEY y AVANTIO_API_URL en los secretos de Supabase.',
+      error: 'Falta el token de API de Avantio. Por favor, configura AVANTIO_API_TOKEN en los secretos de Supabase.',
       requiredSecrets: [
-        'AVANTIO_API_URL - URL base de la API de Avantio',
-        'AVANTIO_API_KEY - API Key de autenticación',
-        'AVANTIO_CLIENT_ID - (Opcional) Client ID para OAuth',
-        'AVANTIO_CLIENT_SECRET - (Opcional) Client Secret para OAuth'
+        'AVANTIO_API_TOKEN - Token de autenticación de la API de Avantio PMS v1'
       ],
       timestamp: new Date().toISOString()
     };

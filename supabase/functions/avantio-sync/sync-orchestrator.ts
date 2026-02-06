@@ -1,6 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.50.0";
 import { SyncStats } from './types.ts';
-import { getAvantioToken, fetchAllAvantioReservations } from './avantio-api.ts';
+import { fetchAllAvantioReservations } from './avantio-api.ts';
 import { ReservationProcessor } from './reservation-processor.ts';
 import { createSyncLog, updateSyncLog } from './database-operations.ts';
 
@@ -34,32 +34,27 @@ export class SyncOrchestrator {
     console.log(`📝 Log de sincronización iniciado: ${this.syncLogId}`);
   }
 
-  async performSync(): Promise<void> {
-    console.log('🚀 Iniciando sincronización con Avantio...');
+  getSyncLogId(): string | null {
+    return this.syncLogId;
+  }
+
+  async performSync(token: string): Promise<void> {
+    console.log('🚀 Iniciando sincronización con Avantio PMS v1...');
     
-    // Obtener token de Avantio
-    const token = await getAvantioToken();
-    
-    // Calcular rango de fechas (próximos 30 días)
-    const now = new Date();
-    const startDate = now.toISOString().split('T')[0];
-    const endDate = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-    
-    console.log(`📅 Rango de sincronización: ${startDate} a ${endDate}`);
-    
-    // Obtener reservas de Avantio
-    const reservations = await fetchAllAvantioReservations(token, startDate, endDate);
+    // Fetch all reservations using real API (pagination + detail included)
+    const reservations = await fetchAllAvantioReservations(token);
     
     console.log(`📊 Total de reservas a procesar: ${reservations.length}`);
     
-    // Procesar cada reserva
+    // Process each reservation
     for (let i = 0; i < reservations.length; i++) {
       try {
         await this.processor.processReservation(
           reservations[i],
           this.stats,
           i,
-          reservations.length
+          reservations.length,
+          this.syncLogId
         );
       } catch (error) {
         console.error(`❌ Error procesando reserva ${reservations[i].id}:`, error);
@@ -84,10 +79,10 @@ export class SyncOrchestrator {
       tasks_cancelled: this.stats.tasks_cancelled,
       tasks_modified: this.stats.tasks_modified,
       errors: this.stats.errors.length > 0 ? this.stats.errors : null,
-      tasks_details: this.stats.tasks_details?.length > 0 ? this.stats.tasks_details : null,
-      tasks_cancelled_details: this.stats.tasks_cancelled_details?.length > 0 ? this.stats.tasks_cancelled_details : null,
-      tasks_modified_details: this.stats.tasks_modified_details?.length > 0 ? this.stats.tasks_modified_details : null,
-      reservations_details: this.stats.reservations_details?.length > 0 ? this.stats.reservations_details : null
+      tasks_details: this.stats.tasks_details?.length ? this.stats.tasks_details : null,
+      tasks_cancelled_details: this.stats.tasks_cancelled_details?.length ? this.stats.tasks_cancelled_details : null,
+      tasks_modified_details: this.stats.tasks_modified_details?.length ? this.stats.tasks_modified_details : null,
+      reservations_details: this.stats.reservations_details?.length ? this.stats.reservations_details : null
     };
 
     if (error) {

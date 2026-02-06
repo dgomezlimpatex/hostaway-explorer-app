@@ -7,9 +7,10 @@ import {
   createTaskForReservation,
   updateReservation,
   deleteTask,
-  updateTaskDate
+  updateTaskDate,
+  logSyncError
 } from './database-operations.ts';
-import { shouldCreateTaskForReservation, getTaskCreationReason } from './reservation-validator.ts';
+import { shouldCreateTaskForReservation } from './reservation-validator.ts';
 
 export class ReservationProcessor {
   private supabase;
@@ -22,7 +23,8 @@ export class ReservationProcessor {
     reservation: AvantioReservation, 
     stats: SyncStats,
     reservationIndex: number,
-    totalReservations: number
+    totalReservations: number,
+    syncLogId?: string | null
   ): Promise<void> {
     console.log(`\n🔄 PROCESANDO RESERVA ${reservation.id} (${reservationIndex + 1}/${totalReservations})`);
     console.log(`   - Alojamiento: ${reservation.accommodationName || 'N/A'} (ID: ${reservation.accommodationId})`);
@@ -30,45 +32,48 @@ export class ReservationProcessor {
     console.log(`   - Check-out: ${reservation.departureDate}`);
     console.log(`   - Huésped: ${reservation.guestName}`);
 
-    // Buscar la propiedad
+    // Find property (exact match, Turquoise only)
     const property = await findPropertyByAvantioId(
       reservation.accommodationId, 
-      reservation.accommodationName
+      reservation.accommodationName,
+      reservation.accommodationInternalName
     );
     
     if (!property) {
-      const errorMsg = `Propiedad no encontrada: accommodationId ${reservation.accommodationId}, nombre: ${reservation.accommodationName || 'N/A'}`;
+      const errorMsg = `Propiedad no encontrada: nombre="${reservation.accommodationName || 'N/A'}", código="${reservation.accommodationInternalName || 'N/A'}", ID=${reservation.accommodationId}`;
       console.warn(`⚠️ ${errorMsg}`);
       stats.errors.push(errorMsg);
+      
+      await logSyncError('property_not_found', errorMsg, {
+        accommodation_id: reservation.accommodationId,
+        accommodation_name: reservation.accommodationName,
+        accommodation_internal_name: reservation.accommodationInternalName,
+        reservation_id: reservation.id,
+        guest_name: reservation.guestName,
+        departure_date: reservation.departureDate
+      }, syncLogId);
       return;
     }
 
     console.log(`✅ Propiedad encontrada: ${property.nombre}`);
 
-    // Verificar si la reserva está cancelada
-    const isCancelled = reservation.status.toLowerCase() === 'cancelled' || 
+    const isCancelled = reservation.status.toUpperCase() === 'CANCELLED' || 
                         reservation.status.toLowerCase() === 'canceled' ||
                         !!reservation.cancellationDate;
 
-    // Verificar si ya existe la reserva
     const existingReservation = await getExistingReservation(reservation.id);
 
     if (existingReservation) {
-      console.log(`📝 Reserva existente encontrada: ${existingReservation.id}`);
-      
       if (isCancelled) {
-        await this.handleCancelledReservation(reservation, existingReservation, property, stats);
+        await this.handleCancelledReservation(reservation, existingReservation, property, stats, syncLogId);
       } else {
-        await this.handleExistingReservation(reservation, existingReservation, property, stats);
+        await this.handleExistingReservation(reservation, existingReservation, property, stats, syncLogId);
       }
     } else {
       if (isCancelled) {
-        // Nueva reserva ya cancelada - crear sin tarea
-        console.log(`📝 Nueva reserva cancelada - creando sin tarea`);
-        await this.createCancelledReservation(reservation, property, stats);
+        await this.createCancelledReservation(reservation, property, stats, syncLogId);
       } else {
-        console.log(`🆕 Nueva reserva - Creando tarea`);
-        await this.handleNewReservation(reservation, property, stats);
+        await this.handleNewReservation(reservation, property, stats, syncLogId);
       }
     }
 
@@ -78,31 +83,38 @@ export class ReservationProcessor {
   private async handleNewReservation(
     reservation: AvantioReservation,
     property: any,
-    stats: SyncStats
+    stats: SyncStats,
+    syncLogId?: string | null
   ): Promise<void> {
     try {
-      const shouldCreateTask = shouldCreateTaskForReservation(reservation);
-      console.log(`🔍 ¿Crear tarea para reserva ${reservation.id}? ${shouldCreateTask}`);
-      console.log(`📋 Motivo: ${getTaskCreationReason(reservation)}`);
-      
+      const shouldCreate = shouldCreateTaskForReservation(reservation);
       let taskId = null;
       
-      if (shouldCreateTask) {
-        const task = await createTaskForReservation(reservation, property);
-        taskId = task.id;
-        stats.tasks_created++;
-        console.log(`✅ Tarea creada: ${task.id}`);
-        
-        if (!stats.tasks_details) stats.tasks_details = [];
-        stats.tasks_details.push({
-          reservation_id: reservation.id,
-          property_name: property.nombre,
-          task_id: task.id,
-          task_date: reservation.departureDate,
-          guest_name: reservation.guestName,
-          accommodation_id: reservation.accommodationId,
-          status: reservation.status
-        });
+      if (shouldCreate) {
+        try {
+          const task = await createTaskForReservation(reservation, property);
+          taskId = task.id;
+          stats.tasks_created++;
+          
+          if (!stats.tasks_details) stats.tasks_details = [];
+          stats.tasks_details.push({
+            reservation_id: reservation.id,
+            property_name: property.nombre,
+            task_id: task.id,
+            task_date: reservation.departureDate,
+            guest_name: reservation.guestName,
+            accommodation_id: reservation.accommodationId,
+            status: reservation.status
+          });
+        } catch (taskError) {
+          const errorMsg = `Error creando tarea para reserva ${reservation.id}: ${taskError.message}`;
+          stats.errors.push(errorMsg);
+          await logSyncError('task_creation_failed', errorMsg, {
+            reservation_id: reservation.id,
+            property_name: property.nombre,
+            departure_date: reservation.departureDate
+          }, syncLogId);
+        }
       }
 
       const reservationData = {
@@ -128,7 +140,11 @@ export class ReservationProcessor {
         last_sync_at: new Date().toISOString()
       };
 
-      await insertReservation(reservationData);
+      const { error: insertError } = await insertReservation(reservationData);
+      if (insertError) {
+        throw insertError;
+      }
+
       stats.new_reservations++;
       
       if (!stats.reservations_details) stats.reservations_details = [];
@@ -148,6 +164,10 @@ export class ReservationProcessor {
       const errorMsg = `Error creando nueva reserva ${reservation.id}: ${error.message}`;
       console.error(`❌ ${errorMsg}`);
       stats.errors.push(errorMsg);
+      await logSyncError('reservation_save_failed', errorMsg, {
+        reservation_id: reservation.id,
+        property_name: property.nombre
+      }, syncLogId);
     }
   }
 
@@ -155,30 +175,70 @@ export class ReservationProcessor {
     reservation: AvantioReservation,
     existingReservation: any,
     property: any,
-    stats: SyncStats
+    stats: SyncStats,
+    syncLogId?: string | null
   ): Promise<void> {
     try {
-      // Verificar cambios en la fecha de checkout
+      // Check if checkout date changed
       const dateChanged = existingReservation.departure_date !== reservation.departureDate;
       
       if (dateChanged && existingReservation.task_id) {
         console.log(`📅 Fecha de checkout cambió: ${existingReservation.departure_date} -> ${reservation.departureDate}`);
-        await updateTaskDate(existingReservation.task_id, reservation.departureDate);
-        stats.tasks_modified++;
-        
-        if (!stats.tasks_modified_details) stats.tasks_modified_details = [];
-        stats.tasks_modified_details.push({
-          reservation_id: reservation.id,
-          property_name: property.nombre,
-          task_id: existingReservation.task_id,
-          task_date: reservation.departureDate,
-          guest_name: reservation.guestName,
-          accommodation_id: reservation.accommodationId,
-          status: reservation.status
-        });
+        try {
+          await updateTaskDate(existingReservation.task_id, reservation.departureDate);
+          stats.tasks_modified++;
+          
+          if (!stats.tasks_modified_details) stats.tasks_modified_details = [];
+          stats.tasks_modified_details.push({
+            reservation_id: reservation.id,
+            property_name: property.nombre,
+            task_id: existingReservation.task_id,
+            task_date: reservation.departureDate,
+            guest_name: reservation.guestName,
+            accommodation_id: reservation.accommodationId,
+            status: reservation.status
+          });
+        } catch (taskError) {
+          const errorMsg = `Error actualizando tarea para reserva ${reservation.id}: ${taskError.message}`;
+          stats.errors.push(errorMsg);
+          await logSyncError('task_update_failed', errorMsg, {
+            reservation_id: reservation.id,
+            task_id: existingReservation.task_id,
+            old_date: existingReservation.departure_date,
+            new_date: reservation.departureDate
+          }, syncLogId);
+        }
       }
 
-      // Actualizar la reserva
+      // If no task exists yet but should have one, create it
+      if (!existingReservation.task_id && shouldCreateTaskForReservation(reservation)) {
+        try {
+          const task = await createTaskForReservation(reservation, property);
+          stats.tasks_created++;
+          
+          // Update reservation with new task_id
+          await updateReservation(existingReservation.id, { task_id: task.id });
+          
+          if (!stats.tasks_details) stats.tasks_details = [];
+          stats.tasks_details.push({
+            reservation_id: reservation.id,
+            property_name: property.nombre,
+            task_id: task.id,
+            task_date: reservation.departureDate,
+            guest_name: reservation.guestName,
+            accommodation_id: reservation.accommodationId,
+            status: reservation.status
+          });
+        } catch (taskError) {
+          const errorMsg = `Error creando tarea faltante para reserva ${reservation.id}: ${taskError.message}`;
+          stats.errors.push(errorMsg);
+          await logSyncError('task_creation_failed', errorMsg, {
+            reservation_id: reservation.id,
+            property_name: property.nombre
+          }, syncLogId);
+        }
+      }
+
       const reservationData = {
         guest_name: reservation.guestName,
         guest_email: reservation.guestEmail,
@@ -213,6 +273,10 @@ export class ReservationProcessor {
       const errorMsg = `Error actualizando reserva ${reservation.id}: ${error.message}`;
       console.error(`❌ ${errorMsg}`);
       stats.errors.push(errorMsg);
+      await logSyncError('reservation_save_failed', errorMsg, {
+        reservation_id: reservation.id,
+        property_name: property.nombre
+      }, syncLogId);
     }
   }
 
@@ -220,38 +284,46 @@ export class ReservationProcessor {
     reservation: AvantioReservation,
     existingReservation: any,
     property: any,
-    stats: SyncStats
+    stats: SyncStats,
+    syncLogId?: string | null
   ): Promise<void> {
     try {
       console.log(`🚫 Procesando cancelación de reserva ${reservation.id}`);
 
-      // Si tiene tarea asignada, eliminarla
       if (existingReservation.task_id) {
         console.log(`🗑️ Eliminando tarea asociada: ${existingReservation.task_id}`);
         
-        // Primero limpiar la referencia
-        await this.supabase
-          .from('avantio_reservations')
-          .update({ task_id: null })
-          .eq('id', existingReservation.id);
-        
-        // Luego eliminar la tarea
-        await deleteTask(existingReservation.task_id);
-        stats.tasks_cancelled++;
-        
-        if (!stats.tasks_cancelled_details) stats.tasks_cancelled_details = [];
-        stats.tasks_cancelled_details.push({
-          reservation_id: reservation.id,
-          property_name: property.nombre,
-          task_id: existingReservation.task_id,
-          task_date: reservation.departureDate,
-          guest_name: reservation.guestName,
-          accommodation_id: reservation.accommodationId,
-          status: 'cancelled'
-        });
+        try {
+          // Clear task reference first
+          await this.supabase
+            .from('avantio_reservations')
+            .update({ task_id: null })
+            .eq('id', existingReservation.id);
+          
+          await deleteTask(existingReservation.task_id);
+          stats.tasks_cancelled++;
+          
+          if (!stats.tasks_cancelled_details) stats.tasks_cancelled_details = [];
+          stats.tasks_cancelled_details.push({
+            reservation_id: reservation.id,
+            property_name: property.nombre,
+            task_id: existingReservation.task_id,
+            task_date: reservation.departureDate,
+            guest_name: reservation.guestName,
+            accommodation_id: reservation.accommodationId,
+            status: 'cancelled'
+          });
+        } catch (taskError) {
+          const errorMsg = `Error eliminando tarea ${existingReservation.task_id}: ${taskError.message}`;
+          stats.errors.push(errorMsg);
+          await logSyncError('task_deletion_failed', errorMsg, {
+            reservation_id: reservation.id,
+            task_id: existingReservation.task_id,
+            property_name: property.nombre
+          }, syncLogId);
+        }
       }
 
-      // Actualizar la reserva como cancelada
       await updateReservation(existingReservation.id, {
         status: 'cancelled',
         cancellation_date: reservation.cancellationDate || new Date().toISOString(),
@@ -277,13 +349,18 @@ export class ReservationProcessor {
       const errorMsg = `Error procesando cancelación ${reservation.id}: ${error.message}`;
       console.error(`❌ ${errorMsg}`);
       stats.errors.push(errorMsg);
+      await logSyncError('reservation_save_failed', errorMsg, {
+        reservation_id: reservation.id,
+        property_name: property.nombre
+      }, syncLogId);
     }
   }
 
   private async createCancelledReservation(
     reservation: AvantioReservation,
     property: any,
-    stats: SyncStats
+    stats: SyncStats,
+    syncLogId?: string | null
   ): Promise<void> {
     try {
       const reservationData = {
@@ -314,6 +391,10 @@ export class ReservationProcessor {
       const errorMsg = `Error creando reserva cancelada ${reservation.id}: ${error.message}`;
       console.error(`❌ ${errorMsg}`);
       stats.errors.push(errorMsg);
+      await logSyncError('reservation_save_failed', errorMsg, {
+        reservation_id: reservation.id,
+        property_name: property.nombre
+      }, syncLogId);
     }
   }
 }
