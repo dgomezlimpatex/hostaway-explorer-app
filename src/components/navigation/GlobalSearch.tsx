@@ -64,7 +64,7 @@ export const GlobalSearch = ({ trigger }: GlobalSearchProps) => {
           navigate(`/properties?search=${encodeURIComponent(result.title)}`);
           break;
         case 'worker':
-          navigate(`/workers?search=${encodeURIComponent(result.title)}`);
+          navigate(`/tasks?search=${encodeURIComponent(result.title)}`);
           break;
         case 'client':
           navigate(`/clients?search=${encodeURIComponent(result.title)}`);

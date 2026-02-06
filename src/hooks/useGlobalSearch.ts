@@ -89,7 +89,40 @@ export const useGlobalSearch = (searchTerm: string) => {
 
         if (abortController.signal.aborted) return;
 
-        const tasks: SearchResult[] = (tasksRes.data || []).map((t) => ({
+        // If we found workers but few/no tasks, also search tasks by those worker names
+        const matchedWorkerNames = (cleanersRes.data || []).map(c => c.name);
+        let workerTasks: typeof tasksRes.data = [];
+        
+        if (matchedWorkerNames.length > 0) {
+          const existingTaskIds = new Set((tasksRes.data || []).map(t => t.id));
+          
+          // Fetch tasks assigned to matching workers
+          let workerTasksQuery = supabase
+            .from('tasks')
+            .select('id, property, address, cleaner, status, date, type')
+            .in('cleaner', matchedWorkerNames)
+            .order('date', { ascending: false })
+            .limit(10);
+          
+          if (sedeId) {
+            workerTasksQuery = workerTasksQuery.eq('sede_id', sedeId);
+          }
+          
+          const workerTasksRes = await workerTasksQuery;
+          if (!abortController.signal.aborted) {
+            workerTasks = (workerTasksRes.data || []).filter(t => !existingTaskIds.has(t.id));
+          }
+        }
+
+        if (abortController.signal.aborted) return;
+
+        // Combine direct task matches + worker-related tasks
+        const allTasks = [...(tasksRes.data || []), ...workerTasks];
+        // Sort by date desc and limit
+        allTasks.sort((a, b) => b.date.localeCompare(a.date));
+        const limitedTasks = allTasks.slice(0, 15);
+
+        const tasks: SearchResult[] = limitedTasks.map((t) => ({
           id: t.id,
           type: 'task' as const,
           title: t.property || 'Sin propiedad',
