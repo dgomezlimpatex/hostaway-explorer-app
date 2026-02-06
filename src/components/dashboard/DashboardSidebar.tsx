@@ -20,7 +20,8 @@ import {
   Bed,
   Receipt,
   TrendingUp,
-  Search
+  Search,
+  RefreshCw
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useRolePermissions } from '@/hooks/useRolePermissions';
@@ -156,6 +157,12 @@ const adminItems: NavigationItem[] = [
     title: 'Hostaway Sync',
     href: '/hostaway-sync-logs',
     icon: AlertTriangle,
+    permission: 'hostaway'
+  },
+  {
+    title: 'Sincronización Avantio',
+    href: '/avantio-automation',
+    icon: RefreshCw,
     permission: 'hostaway'
   },
 ];
