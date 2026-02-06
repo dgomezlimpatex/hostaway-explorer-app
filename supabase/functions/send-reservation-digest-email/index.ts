@@ -154,10 +154,13 @@ const handler = async (req: Request): Promise<Response> => {
       });
     }
 
-    // Get unique client IDs and property IDs
+    // Get unique client IDs and property IDs (new_data uses camelCase keys)
     const clientIds = [...new Set(logs.map(l => l.client_id).filter(Boolean))];
     const propertyIds = [...new Set(
-      logs.map(l => (l.new_data as any)?.property_id).filter(Boolean)
+      logs.map(l => {
+        const nd = l.new_data as any;
+        return nd?.propertyId || nd?.property_id;
+      }).filter(Boolean)
     )];
 
     console.log(`📊 Unique clients: ${clientIds.length}, Unique properties: ${propertyIds.length}`);
@@ -176,14 +179,15 @@ const handler = async (req: Request): Promise<Response> => {
     const clientMap = new Map(clients.map(c => [c.id, c.nombre]));
     const propertyMap = new Map(properties.map(p => [p.id, `${p.nombre} (${p.codigo})`]));
 
-    // Build reservation list for email
+    // Build reservation list for email (handle both camelCase and snake_case keys)
     const reservationItems: ReservationItem[] = logs.map(log => {
       const clientName = clientMap.get(log.client_id) || 'Cliente desconocido';
-      const propertyId = (log.new_data as any)?.property_id;
-      const propertyName = propertyId 
-        ? (propertyMap.get(propertyId) || 'Propiedad desconocida') 
-        : 'Propiedad desconocida';
-      const checkOutDate = (log.new_data as any)?.check_out_date;
+      const nd = log.new_data as any;
+      const propertyId = nd?.propertyId || nd?.property_id;
+      const propertyNameFromLog = nd?.propertyName || nd?.property_name;
+      const propertyName = propertyNameFromLog 
+        || (propertyId ? (propertyMap.get(propertyId) || 'Propiedad desconocida') : 'Propiedad desconocida');
+      const checkOutDate = nd?.checkOutDate || nd?.check_out_date;
       const formattedDate = checkOutDate ? formatSpanishDate(checkOutDate) : 'Fecha no disponible';
 
       return {
