@@ -1,5 +1,6 @@
 import React from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
+import { GlobalSearch } from '@/components/navigation/GlobalSearch';
 import { 
   Calendar, 
   ClipboardList, 
@@ -205,7 +206,7 @@ export const MobileDashboardSidebar = ({ onNavigate }: MobileDashboardSidebarPro
     <div className="px-0 py-4 max-h-[70vh] overflow-y-auto">
       {/* Header */}
       <div className="px-4 pb-4 border-b border-gray-100 mb-4">
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 mb-3">
           <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
             <span className="text-white text-sm font-medium">A</span>
           </div>
@@ -214,6 +215,7 @@ export const MobileDashboardSidebar = ({ onNavigate }: MobileDashboardSidebarPro
             <p className="text-xs text-gray-500">Gestión de limpieza</p>
           </div>
         </div>
+        <GlobalSearch />
       </div>
 
       {/* Navigation Sections */}
