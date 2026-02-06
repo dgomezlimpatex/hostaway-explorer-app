@@ -52,7 +52,7 @@ export const useGlobalSearch = (searchTerm: string) => {
           .select('id, property, address, cleaner, status, date, type')
           .or(`property.ilike.${term},address.ilike.${term},cleaner.ilike.${term}`)
           .order('date', { ascending: false })
-          .limit(5);
+          .limit(10);
 
         let propertiesQuery = supabase
           .from('properties')
