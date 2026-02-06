@@ -91,6 +91,43 @@ export class SyncOrchestrator {
 
     await updateSyncLog(this.syncLogId, updates);
     console.log(`📝 Log de sincronización finalizado: ${this.syncLogId}`);
+
+    // Send error notification email if sync failed or had errors
+    if (!success || this.stats.errors.length > 0) {
+      await this.sendErrorNotificationEmail(success, error);
+    }
+  }
+
+  private async sendErrorNotificationEmail(success: boolean, error?: Error): Promise<void> {
+    try {
+      const errorSummary = !success 
+        ? `Sincronización FALLIDA: ${error?.message || 'Error desconocido'}`
+        : `Sincronización completada con ${this.stats.errors.length} errores`;
+
+      const errorDetails = this.stats.errors.slice(0, 20).join('\n');
+
+      console.log(`📧 Enviando email de notificación de errores...`);
+      
+      await this.supabase.functions.invoke('send-avantio-error-email', {
+        body: {
+          syncLogId: this.syncLogId,
+          success,
+          errorSummary,
+          errorDetails,
+          stats: {
+            reservations_processed: this.stats.reservations_processed,
+            new_reservations: this.stats.new_reservations,
+            updated_reservations: this.stats.updated_reservations,
+            tasks_created: this.stats.tasks_created,
+            errors_count: this.stats.errors.length
+          },
+          timestamp: new Date().toISOString()
+        }
+      });
+      console.log(`✅ Email de notificación enviado`);
+    } catch (emailError) {
+      console.error(`❌ Error enviando email de notificación:`, emailError);
+    }
   }
 
   getStats(): SyncStats {
