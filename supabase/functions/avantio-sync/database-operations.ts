@@ -74,7 +74,6 @@ export async function findPropertyByAvantioId(
       const foundProperty = propertiesByCode[0];
       console.log(`✅ Propiedad encontrada por código exacto: ${foundProperty.nombre} (código: ${foundProperty.codigo})`);
       
-      // Auto-save avantio_accommodation_id
       if (accommodationId && !foundProperty.avantio_accommodation_id) {
         await supabase
           .from('properties')
@@ -87,6 +86,36 @@ export async function findPropertyByAvantioId(
       }
       
       return foundProperty;
+    }
+  }
+
+  // 4. Try matching Avantio name as code with C prefix stripped (CMD18.5 -> MD18.5)
+  if (accommodationName) {
+    const strippedCode = accommodationName.replace(/^C/, '');
+    if (strippedCode !== accommodationName) {
+      const { data: propertiesByStripped, error: strippedError } = await supabase
+        .from('properties')
+        .select('*')
+        .eq('cliente_id', TURQUOISE_CLIENT_ID)
+        .ilike('codigo', strippedCode);
+      
+      if (!strippedError && propertiesByStripped && propertiesByStripped.length === 1) {
+        const foundProperty = propertiesByStripped[0];
+        console.log(`✅ Propiedad encontrada por código sin prefijo C: ${accommodationName} -> ${foundProperty.codigo}`);
+        
+        if (accommodationId && !foundProperty.avantio_accommodation_id) {
+          await supabase
+            .from('properties')
+            .update({ 
+              avantio_accommodation_id: accommodationId,
+              avantio_accommodation_name: accommodationName 
+            })
+            .eq('id', foundProperty.id);
+          console.log(`📝 avantio_accommodation_id actualizado para ${foundProperty.nombre}`);
+        }
+        
+        return foundProperty;
+      }
     }
   }
   
@@ -157,8 +186,7 @@ export async function createTaskForReservation(reservation: AvantioReservation, 
     sede_id: property.sede_id,
     cleaner: null,
     cleaner_id: null,
-    background_color: '#10B981',
-    notas: `Reserva Avantio: ${reservation.guestName}`
+    background_color: '#10B981'
   };
 
   const { data: task, error } = await supabase
