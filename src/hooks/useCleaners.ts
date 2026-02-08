@@ -69,7 +69,17 @@ export const useCreateCleaner = () => {
           end_time: '23:00',
         }));
         
-        await supabase.from('cleaner_availability').insert(availabilityRecords);
+        const { error: availError } = await supabase.from('cleaner_availability').insert(availabilityRecords);
+        if (availError) {
+          console.error('Error creating availability records:', availError);
+          // Retry with upsert to handle any conflicts
+          for (const record of availabilityRecords) {
+            await supabase.from('cleaner_availability').upsert(record, {
+              onConflict: 'cleaner_id,day_of_week',
+              ignoreDuplicates: false,
+            });
+          }
+        }
       }
       
       return newCleaner;
