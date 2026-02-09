@@ -57,10 +57,10 @@ interface UseWorkloadCalculationOptions {
 export const useWorkloadCalculation = (options: UseWorkloadCalculationOptions) => {
   const { startDate, endDate, cleanerId } = options;
   const { cleaners } = useCleaners();
-  const { data: contracts = [] } = useWorkerContracts();
+  const { data: contracts = [], isLoading: contractsLoading } = useWorkerContracts();
 
   return useQuery({
-    queryKey: ['workload', startDate, endDate, cleanerId],
+    queryKey: ['workload', startDate, endDate, cleanerId, contracts.length],
     queryFn: async (): Promise<WorkloadSummary[]> => {
       const start = new Date(startDate);
       const end = new Date(endDate);
@@ -193,7 +193,7 @@ export const useWorkloadCalculation = (options: UseWorkloadCalculationOptions) =
 
       return summaries;
     },
-    enabled: !!startDate && !!endDate && cleaners.length > 0,
+    enabled: !!startDate && !!endDate && cleaners.length > 0 && !contractsLoading,
     staleTime: 30000, // 30 seconds
   });
 };
