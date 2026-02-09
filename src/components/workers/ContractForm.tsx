@@ -53,13 +53,16 @@ const formSchema = z.object({
   position: z.string().min(1, 'La posición es requerida'),
   department: z.string().min(1, 'El departamento es requerido'),
   hourlyRate: z.number().min(0, 'La tarifa debe ser mayor a 0'),
-  contractHoursPerWeek: z.number().min(1, 'Las horas semanales son requeridas'),
+  contractHoursPerWeek: z.number().optional(),
   benefits: z.array(z.string()).optional(),
   notes: z.string().optional(),
   renewalDate: z.date().optional(),
 }).refine((data) => !data.endDate || data.endDate >= data.startDate, {
   message: 'La fecha de fin debe ser posterior a la fecha de inicio',
   path: ['endDate'],
+}).refine((data) => data.type === 'freelance' || (data.contractHoursPerWeek && data.contractHoursPerWeek >= 1), {
+  message: 'Las horas semanales son requeridas',
+  path: ['contractHoursPerWeek'],
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -113,13 +116,14 @@ export const ContractForm: React.FC<ContractFormProps> = ({
 
   const onSubmit = async (data: FormData) => {
     try {
+      const isFreelance = data.type === 'freelance';
       const contractData = {
         cleaner_id: cleanerId,
         contract_type: data.type,
         position: data.position,
         department: data.department,
         hourly_rate: data.hourlyRate,
-        contract_hours_per_week: data.contractHoursPerWeek,
+        contract_hours_per_week: isFreelance ? 0 : (data.contractHoursPerWeek || 0),
         start_date: data.startDate.toISOString().split('T')[0],
         end_date: data.endDate?.toISOString().split('T')[0],
         renewal_date: data.renewalDate?.toISOString().split('T')[0],
@@ -386,24 +390,27 @@ export const ContractForm: React.FC<ContractFormProps> = ({
                     )}
                   />
 
-                  <FormField
-                    control={form.control}
-                    name="contractHoursPerWeek"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Horas Semanales</FormLabel>
-                        <FormControl>
-                          <Input
-                            type="number"
-                            placeholder="40"
-                            {...field}
-                            onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                  {form.watch('type') !== 'freelance' && (
+                    <FormField
+                      control={form.control}
+                      name="contractHoursPerWeek"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Horas Semanales</FormLabel>
+                          <FormControl>
+                            <Input
+                              type="number"
+                              placeholder="40"
+                              {...field}
+                              value={field.value ?? ''}
+                              onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  )}
                 </div>
               </CardContent>
             </Card>
