@@ -144,6 +144,23 @@ export async function validatePropertyAndClient(propertyId: string, clientId: st
 /**
  * Create task for a reservation (cleaning on checkout day)
  */
+export function getTaskPropertyName(propertyName: string, reservationStatus: string): string {
+  const isRequested = reservationStatus.toUpperCase() === 'REQUESTED';
+  return isRequested ? `POSIBLE - ${propertyName}` : propertyName;
+}
+
+export async function updateTaskPropertyName(taskId: string, propertyName: string) {
+  console.log(`📝 Actualizando nombre de tarea ${taskId} a "${propertyName}"`);
+  const { error } = await supabase
+    .from('tasks')
+    .update({ property: propertyName, updated_at: new Date().toISOString() })
+    .eq('id', taskId);
+  if (error) {
+    console.error('❌ Error actualizando nombre de tarea:', error);
+    throw error;
+  }
+}
+
 export async function createTaskForReservation(reservation: AvantioReservation, property: any) {
   console.log(`📋 Creando tarea para reserva ${reservation.id} en propiedad ${property.nombre}`);
   
@@ -158,8 +175,10 @@ export async function createTaskForReservation(reservation: AvantioReservation, 
   const endMinute = durationMinutes % 60;
   const endTime = `${endHour.toString().padStart(2, '0')}:${endMinute.toString().padStart(2, '0')}`;
 
+  const taskPropertyName = getTaskPropertyName(property.nombre, reservation.status);
+
   const taskData = {
-    property: property.nombre,
+    property: taskPropertyName,
     address: property.direccion,
     date: reservation.departureDate,
     start_time: startTime,
