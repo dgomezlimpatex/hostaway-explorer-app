@@ -8,6 +8,8 @@ import {
   updateReservation,
   deleteTask,
   updateTaskDate,
+  updateTaskPropertyName,
+  getTaskPropertyName,
   logSyncError
 } from './database-operations.ts';
 import { shouldCreateTaskForReservation } from './reservation-validator.ts';
@@ -236,6 +238,25 @@ export class ReservationProcessor {
             reservation_id: reservation.id,
             property_name: property.nombre
           }, syncLogId);
+        }
+      }
+
+      // Handle REQUESTED status changes on task name
+      if (existingReservation.task_id) {
+        const statusChanged = existingReservation.status?.toUpperCase() !== reservation.status.toUpperCase();
+        if (statusChanged) {
+          const expectedName = getTaskPropertyName(property.nombre, reservation.status);
+          const currentTaskName = existingReservation.tasks?.property;
+          if (currentTaskName && currentTaskName !== expectedName) {
+            try {
+              await updateTaskPropertyName(existingReservation.task_id, expectedName);
+              console.log(`📝 Nombre de tarea actualizado: "${currentTaskName}" -> "${expectedName}"`);
+              stats.tasks_modified++;
+            } catch (taskError) {
+              const errorMsg = `Error actualizando nombre de tarea para reserva ${reservation.id}: ${taskError.message}`;
+              stats.errors.push(errorMsg);
+            }
+          }
         }
       }
 
