@@ -245,7 +245,7 @@ export class ReservationProcessor {
       if (existingReservation.task_id) {
         const statusChanged = existingReservation.status?.toUpperCase() !== reservation.status.toUpperCase();
         if (statusChanged) {
-          const expectedName = getTaskPropertyName(property.nombre, reservation.status);
+          const expectedName = getTaskPropertyName(property.nombre, property.codigo, reservation.status);
           const currentTaskName = existingReservation.tasks?.property;
           if (currentTaskName && currentTaskName !== expectedName) {
             try {
