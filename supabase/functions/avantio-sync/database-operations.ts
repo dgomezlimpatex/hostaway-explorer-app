@@ -144,9 +144,10 @@ export async function validatePropertyAndClient(propertyId: string, clientId: st
 /**
  * Create task for a reservation (cleaning on checkout day)
  */
-export function getTaskPropertyName(propertyName: string, reservationStatus: string): string {
+export function getTaskPropertyName(propertyName: string, propertyCodigo: string, reservationStatus: string): string {
+  const baseName = propertyCodigo ? `${propertyCodigo} ${propertyName}` : propertyName;
   const isRequested = reservationStatus.toUpperCase() === 'REQUESTED';
-  return isRequested ? `POSIBLE - ${propertyName}` : propertyName;
+  return isRequested ? `POSIBLE - ${baseName}` : baseName;
 }
 
 export async function updateTaskPropertyName(taskId: string, propertyName: string) {
@@ -175,7 +176,7 @@ export async function createTaskForReservation(reservation: AvantioReservation, 
   const endMinute = durationMinutes % 60;
   const endTime = `${endHour.toString().padStart(2, '0')}:${endMinute.toString().padStart(2, '0')}`;
 
-  const taskPropertyName = getTaskPropertyName(property.nombre, reservation.status);
+  const taskPropertyName = getTaskPropertyName(property.nombre, property.codigo, reservation.status);
 
   const taskData = {
     property: taskPropertyName,
