@@ -11,13 +11,13 @@ import {
   ChevronRight, 
   Clock, 
   Plus, 
-  AlertTriangle,
   Users,
   TrendingUp,
-  TrendingDown
+  TrendingDown,
+  CheckCircle
 } from 'lucide-react';
 import { useWorkloadCalculation } from '@/hooks/useWorkloadCalculation';
-import { WorkloadOverviewCard } from '@/components/workload/WorkloadOverviewCard';
+import { WorkloadTable } from '@/components/workload/WorkloadTable';
 import { HourAdjustmentModal } from '@/components/workload/HourAdjustmentModal';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -41,7 +41,6 @@ const WorkloadDashboard = () => {
   const [isAdjustmentModalOpen, setIsAdjustmentModalOpen] = useState(false);
   const [selectedCleanerIdForAdjustment, setSelectedCleanerIdForAdjustment] = useState<string | undefined>();
 
-  // Calculate date range based on view type
   const getDateRange = () => {
     if (viewType === 'weekly') {
       return {
@@ -94,11 +93,9 @@ const WorkloadDashboard = () => {
     }
   };
 
-  // Filter workers with contracts
   const workersWithContracts = (workloadData || []).filter(w => w.contractHoursPerWeek > 0);
   const workersWithoutContracts = (workloadData || []).filter(w => w.contractHoursPerWeek === 0);
   
-  // Summary stats
   const overtimeWorkers = workersWithContracts.filter(w => w.status === 'overtime');
   const deficitWorkers = workersWithContracts.filter(w => w.status === 'deficit' || w.status === 'critical-deficit');
   const onTrackWorkers = workersWithContracts.filter(w => w.status === 'on-track');
@@ -112,139 +109,73 @@ const WorkloadDashboard = () => {
           {!isMobile && <DashboardSidebar />}
           
           <main className="flex-1 overflow-auto">
-            <div className="p-6">
-              <div className="max-w-6xl mx-auto space-y-6">
-                {/* Header */}
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                  <div>
-                    <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-2">
-                      <Clock className="h-8 w-8" />
-                      Control de Horas
-                    </h1>
-                    <p className="text-muted-foreground mt-1">
-                      Seguimiento de horas trabajadas vs contrato
-                    </p>
+            <div className="p-4 sm:p-6">
+              <div className="max-w-6xl mx-auto space-y-4">
+                {/* Header + Controls in one row */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <h1 className="text-2xl font-bold flex items-center gap-2">
+                    <Clock className="h-6 w-6" />
+                    Control de Horas
+                  </h1>
+                  <div className="flex items-center gap-2">
+                    <Tabs value={viewType} onValueChange={(v) => setViewType(v as 'weekly' | 'monthly')}>
+                      <TabsList className="h-8">
+                        <TabsTrigger value="weekly" className="text-xs px-3">Semanal</TabsTrigger>
+                        <TabsTrigger value="monthly" className="text-xs px-3">Mensual</TabsTrigger>
+                      </TabsList>
+                    </Tabs>
+                    <Button size="sm" onClick={() => handleAddAdjustment()}>
+                      <Plus className="h-3.5 w-3.5 mr-1" />
+                      Ajuste
+                    </Button>
                   </div>
-                  <Button onClick={() => handleAddAdjustment()}>
-                    <Plus className="h-4 w-4 mr-2" />
-                    Añadir Ajuste
-                  </Button>
                 </div>
 
-                {/* Controls */}
+                {/* Date nav + Summary bar */}
                 <Card>
-                  <CardContent className="p-4">
-                    <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+                  <CardContent className="p-3">
+                    <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
                       {/* Date navigation */}
                       <div className="flex items-center gap-2">
-                        <Button variant="outline" size="icon" onClick={handlePrevious}>
+                        <Button variant="outline" size="icon" className="h-8 w-8" onClick={handlePrevious}>
                           <ChevronLeft className="h-4 w-4" />
                         </Button>
-                        <span className="text-lg font-medium min-w-[200px] text-center">
+                        <span className="text-sm font-medium min-w-[180px] text-center">
                           {getDateRangeLabel()}
                         </span>
-                        <Button variant="outline" size="icon" onClick={handleNext}>
+                        <Button variant="outline" size="icon" className="h-8 w-8" onClick={handleNext}>
                           <ChevronRight className="h-4 w-4" />
                         </Button>
                       </div>
 
-                      {/* View type toggle */}
-                      <Tabs value={viewType} onValueChange={(v) => setViewType(v as 'weekly' | 'monthly')}>
-                        <TabsList>
-                          <TabsTrigger value="weekly">Semanal</TabsTrigger>
-                          <TabsTrigger value="monthly">Mensual</TabsTrigger>
-                        </TabsList>
-                      </Tabs>
+                      {/* Inline summary stats */}
+                      <div className="flex items-center gap-4 text-sm">
+                        <div className="flex items-center gap-1.5">
+                          <Users className="h-4 w-4 text-muted-foreground" />
+                          <span className="font-medium">{workersWithContracts.length}</span>
+                        </div>
+                        <div className="flex items-center gap-1.5 text-green-600">
+                          <CheckCircle className="h-4 w-4" />
+                          <span className="font-medium">{onTrackWorkers.length}</span>
+                        </div>
+                        {overtimeWorkers.length > 0 && (
+                          <div className="flex items-center gap-1.5 text-amber-600">
+                            <TrendingUp className="h-4 w-4" />
+                            <span className="font-medium">{overtimeWorkers.length}</span>
+                          </div>
+                        )}
+                        {deficitWorkers.length > 0 && (
+                          <div className="flex items-center gap-1.5 text-red-600">
+                            <TrendingDown className="h-4 w-4" />
+                            <span className="font-medium">{deficitWorkers.length}</span>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
 
-                {/* Summary cards */}
-                <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
-                  <Card>
-                    <CardContent className="p-4">
-                      <div className="flex items-center gap-3">
-                        <div className="p-2 bg-blue-100 rounded-lg">
-                          <Users className="h-5 w-5 text-blue-600" />
-                        </div>
-                        <div>
-                          <p className="text-sm text-muted-foreground">Total Trabajadores</p>
-                          <p className="text-2xl font-bold">{workersWithContracts.length}</p>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  <Card>
-                    <CardContent className="p-4">
-                      <div className="flex items-center gap-3">
-                        <div className="p-2 bg-green-100 rounded-lg">
-                          <Clock className="h-5 w-5 text-green-600" />
-                        </div>
-                        <div>
-                          <p className="text-sm text-muted-foreground">En Rango</p>
-                          <p className="text-2xl font-bold text-green-600">{onTrackWorkers.length}</p>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  <Card>
-                    <CardContent className="p-4">
-                      <div className="flex items-center gap-3">
-                        <div className="p-2 bg-amber-100 rounded-lg">
-                          <TrendingUp className="h-5 w-5 text-amber-600" />
-                        </div>
-                        <div>
-                          <p className="text-sm text-muted-foreground">Horas Extra</p>
-                          <p className="text-2xl font-bold text-amber-600">{overtimeWorkers.length}</p>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  <Card>
-                    <CardContent className="p-4">
-                      <div className="flex items-center gap-3">
-                        <div className="p-2 bg-red-100 rounded-lg">
-                          <TrendingDown className="h-5 w-5 text-red-600" />
-                        </div>
-                        <div>
-                          <p className="text-sm text-muted-foreground">Déficit</p>
-                          <p className="text-2xl font-bold text-red-600">{deficitWorkers.length}</p>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </div>
-
-                {/* Alerts */}
-                {(overtimeWorkers.length > 0 || deficitWorkers.length > 0) && (
-                  <Card className="border-amber-200 bg-amber-50">
-                    <CardContent className="p-4">
-                      <div className="flex items-start gap-3">
-                        <AlertTriangle className="h-5 w-5 text-amber-600 mt-0.5" />
-                        <div>
-                          <h3 className="font-medium text-amber-900">Alertas de Horas</h3>
-                          <div className="flex flex-wrap gap-2 mt-2">
-                            {overtimeWorkers.map(w => (
-                              <Badge key={w.cleanerId} variant="outline" className="bg-amber-100 text-amber-800 border-amber-300">
-                                {w.cleanerName}: +{w.overtimeHours.toFixed(1)}h extra
-                              </Badge>
-                            ))}
-                            {deficitWorkers.map(w => (
-                              <Badge key={w.cleanerId} variant="outline" className="bg-red-100 text-red-800 border-red-300">
-                                {w.cleanerName}: -{w.remainingHours.toFixed(1)}h déficit
-                              </Badge>
-                            ))}
-                          </div>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                )}
-
-                {/* Worker list */}
+                {/* Worker table */}
                 {isLoading ? (
                   <div className="flex items-center justify-center py-12">
                     <LoadingSpinner size="lg" />
@@ -255,39 +186,29 @@ const WorkloadDashboard = () => {
                       <Users className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
                       <h3 className="text-lg font-medium mb-2">Sin trabajadores con contrato</h3>
                       <p className="text-muted-foreground">
-                        Configura contratos para los trabajadores en la sección de Trabajadores
+                        Configura contratos en la sección de Trabajadores
                       </p>
                     </CardContent>
                   </Card>
                 ) : (
-                  <div className="space-y-4">
-                    <h2 className="text-xl font-semibold">
-                      Trabajadores ({workersWithContracts.length})
-                    </h2>
-                    <div className="grid gap-4">
-                      {workersWithContracts.map(summary => (
-                        <WorkloadOverviewCard
-                          key={summary.cleanerId}
-                          summary={summary}
-                          onAddAdjustment={handleAddAdjustment}
-                        />
-                      ))}
-                    </div>
-                  </div>
+                  <WorkloadTable
+                    workers={workersWithContracts}
+                    onAddAdjustment={handleAddAdjustment}
+                  />
                 )}
 
                 {/* Workers without contracts */}
                 {workersWithoutContracts.length > 0 && (
                   <Card className="bg-muted/50">
-                    <CardHeader className="pb-2">
-                      <CardTitle className="text-sm text-muted-foreground">
-                        Trabajadores sin contrato configurado ({workersWithoutContracts.length})
+                    <CardHeader className="pb-2 pt-3 px-4">
+                      <CardTitle className="text-xs text-muted-foreground">
+                        Sin contrato ({workersWithoutContracts.length})
                       </CardTitle>
                     </CardHeader>
-                    <CardContent>
-                      <div className="flex flex-wrap gap-2">
+                    <CardContent className="px-4 pb-3">
+                      <div className="flex flex-wrap gap-1.5">
                         {workersWithoutContracts.map(w => (
-                          <Badge key={w.cleanerId} variant="outline">
+                          <Badge key={w.cleanerId} variant="outline" className="text-xs">
                             {w.cleanerName}
                           </Badge>
                         ))}
@@ -301,7 +222,6 @@ const WorkloadDashboard = () => {
         </div>
       </div>
 
-      {/* Adjustment Modal */}
       <HourAdjustmentModal
         open={isAdjustmentModalOpen}
         onOpenChange={setIsAdjustmentModalOpen}
