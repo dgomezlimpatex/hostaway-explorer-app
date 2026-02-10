@@ -7,8 +7,8 @@ import { AvantioReservation } from './types.ts';
 export function shouldCreateTaskForReservation(reservation: AvantioReservation): boolean {
   const statusUpper = reservation.status.toUpperCase();
   
-  // Cancelled reservations don't get tasks
-  if (statusUpper === 'CANCELLED' || statusUpper === 'CANCELED') {
+  // Cancelled or unavailable reservations don't get tasks
+  if (statusUpper === 'CANCELLED' || statusUpper === 'CANCELED' || statusUpper === 'UNAVAILABLE' || statusUpper === 'UNAVALIABLE') {
     return false;
   }
   
