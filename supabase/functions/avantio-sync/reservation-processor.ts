@@ -59,8 +59,11 @@ export class ReservationProcessor {
 
     console.log(`✅ Propiedad encontrada: ${property.nombre}`);
 
-    const isCancelled = reservation.status.toUpperCase() === 'CANCELLED' || 
-                        reservation.status.toLowerCase() === 'canceled' ||
+    const statusUpper = reservation.status.toUpperCase();
+    const isCancelled = statusUpper === 'CANCELLED' || 
+                        statusUpper === 'CANCELED' ||
+                        statusUpper === 'UNAVAILABLE' ||
+                        statusUpper === 'UNAVALIABLE' ||
                         !!reservation.cancellationDate;
 
     const existingReservation = await getExistingReservation(reservation.id);
