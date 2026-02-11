@@ -151,7 +151,7 @@ export const UserManagement = () => {
   // Mutation para añadir cleaner (usa upsert para evitar conflictos si ya existe)
   const addCleanerMutation = useMutation({
     mutationFn: async ({ userId, email, name, sedeId }: { userId: string; email: string; name: string; sedeId: string }) => {
-      const { error } = await supabase
+      const { data: cleanerData, error } = await supabase
         .from('cleaners')
         .upsert({
           user_id: userId,
@@ -161,9 +161,30 @@ export const UserManagement = () => {
           sede_id: sedeId
         }, {
           onConflict: 'user_id'
-        });
+        })
+        .select('id')
+        .single();
       
       if (error) throw error;
+
+      // Create full availability (all days, 06:00-23:00)
+      if (cleanerData?.id) {
+        const availabilityRecords = Array.from({ length: 7 }, (_, dayOfWeek) => ({
+          cleaner_id: cleanerData.id,
+          day_of_week: dayOfWeek,
+          is_available: true,
+          start_time: '06:00',
+          end_time: '23:00',
+        }));
+        
+        const { error: availError } = await supabase.from('cleaner_availability').upsert(availabilityRecords, {
+          onConflict: 'cleaner_id,day_of_week',
+          ignoreDuplicates: true,
+        });
+        if (availError) {
+          console.error('Error creating availability records:', availError);
+        }
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['cleaners'] });
