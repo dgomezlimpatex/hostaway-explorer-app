@@ -5,18 +5,27 @@ export class TaskCleanupService {
   async deleteAllTasks(): Promise<boolean> {
     console.log('deleteAllTasks - starting cleanup process');
     
-    // First, remove all task references from hostaway_reservations
-    const { error: updateError } = await supabase
+    // Remove all task references from hostaway_reservations
+    const { error: hostawayError } = await supabase
       .from('hostaway_reservations')
       .update({ task_id: null })
       .not('task_id', 'is', null);
 
-    if (updateError) {
-      console.error('Error updating hostaway_reservations:', updateError);
-      throw updateError;
+    if (hostawayError) {
+      console.error('Error updating hostaway_reservations:', hostawayError);
     }
 
-    console.log('deleteAllTasks - cleared all task references from hostaway_reservations');
+    // Remove all task references from avantio_reservations
+    const { error: avantioError } = await supabase
+      .from('avantio_reservations')
+      .update({ task_id: null })
+      .not('task_id', 'is', null);
+
+    if (avantioError) {
+      console.error('Error updating avantio_reservations:', avantioError);
+    }
+
+    console.log('deleteAllTasks - cleared all task references');
 
     // Then delete all tasks
     const { error: deleteError } = await supabase
@@ -37,15 +46,24 @@ export class TaskCleanupService {
     // First check if task has assigned cleaner and send notification
     await this.sendTaskCancellationNotification(taskId);
     
-    // Then delete any hostaway_reservations that reference this task
-    const { error: reservationsError } = await supabase
+    // Clear task references from hostaway_reservations
+    const { error: hostawayError } = await supabase
       .from('hostaway_reservations')
       .update({ task_id: null })
       .eq('task_id', taskId);
 
-    if (reservationsError) {
-      console.error('Error updating hostaway_reservations:', reservationsError);
-      throw reservationsError;
+    if (hostawayError) {
+      console.error('Error updating hostaway_reservations:', hostawayError);
+    }
+
+    // Clear task references from avantio_reservations
+    const { error: avantioError } = await supabase
+      .from('avantio_reservations')
+      .update({ task_id: null })
+      .eq('task_id', taskId);
+
+    if (avantioError) {
+      console.error('Error updating avantio_reservations:', avantioError);
     }
 
     // Finally delete the task
