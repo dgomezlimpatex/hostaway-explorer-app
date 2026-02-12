@@ -119,8 +119,13 @@ export class SyncOrchestrator {
             new_reservations: this.stats.new_reservations,
             updated_reservations: this.stats.updated_reservations,
             tasks_created: this.stats.tasks_created,
+            tasks_cancelled: this.stats.tasks_cancelled,
+            tasks_modified: this.stats.tasks_modified,
             errors_count: this.stats.errors.length
           },
+          tasks_details: this.stats.tasks_details || [],
+          tasks_cancelled_details: this.stats.tasks_cancelled_details || [],
+          tasks_modified_details: this.stats.tasks_modified_details || [],
           timestamp: new Date().toISOString()
         }
       });
