@@ -8,6 +8,16 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+interface TaskDetailEmail {
+  reservation_id: string;
+  property_name: string;
+  task_id: string;
+  task_date: string;
+  guest_name: string;
+  accommodation_id: string;
+  status: string;
+}
+
 interface ErrorEmailRequest {
   syncLogId: string;
   success: boolean;
@@ -18,8 +28,13 @@ interface ErrorEmailRequest {
     new_reservations: number;
     updated_reservations: number;
     tasks_created: number;
+    tasks_cancelled: number;
+    tasks_modified: number;
     errors_count: number;
   };
+  tasks_details?: TaskDetailEmail[];
+  tasks_cancelled_details?: TaskDetailEmail[];
+  tasks_modified_details?: TaskDetailEmail[];
   timestamp: string;
 }
 
@@ -36,82 +51,121 @@ const formatSpanishDate = (isoString: string): string => {
   });
 };
 
+const formatTaskDate = (dateStr: string): string => {
+  try {
+    const date = new Date(dateStr);
+    return date.toLocaleDateString('es-ES', {
+      timeZone: 'Europe/Madrid',
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric'
+    });
+  } catch {
+    return dateStr;
+  }
+};
+
+const generateTaskRows = (tasks: TaskDetailEmail[], actionLabel: string, color: string): string => {
+  if (!tasks || tasks.length === 0) return '';
+  return tasks.map(t => `
+    <tr>
+      <td style="padding: 6px 10px; border-bottom: 1px solid #e5e5e5; font-size: 13px;">${formatTaskDate(t.task_date)}</td>
+      <td style="padding: 6px 10px; border-bottom: 1px solid #e5e5e5; font-size: 13px;">${t.property_name}</td>
+      <td style="padding: 6px 10px; border-bottom: 1px solid #e5e5e5; font-size: 13px;">${t.guest_name || '-'}</td>
+      <td style="padding: 6px 10px; border-bottom: 1px solid #e5e5e5; font-size: 13px;">
+        <span style="background: ${color}; color: white; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: bold;">${actionLabel}</span>
+      </td>
+    </tr>
+  `).join('');
+};
+
 const generateEmailHTML = (data: ErrorEmailRequest): string => {
   const formattedDate = formatSpanishDate(data.timestamp);
-  const statusColor = data.success ? '#f59e0b' : '#dc2626';
-  const statusText = data.success ? 'Completada con Errores' : 'FALLIDA';
-  const statusEmoji = data.success ? '⚠️' : '🚨';
+  const hasErrors = data.stats.errors_count > 0;
+  const statusColor = !data.success ? '#dc2626' : hasErrors ? '#f59e0b' : '#16a34a';
+  const statusText = !data.success ? 'FALLIDA' : hasErrors ? 'Completada con Errores' : 'Completada';
+  const statusEmoji = !data.success ? '🚨' : hasErrors ? '⚠️' : '✅';
 
   const errorLines = data.errorDetails
-    .split('\n')
-    .map(line => `<li style="margin: 4px 0; font-size: 13px;">${line}</li>`)
-    .join('');
+    ? data.errorDetails.split('\n').filter(l => l.trim()).map(line => `<li style="margin: 4px 0; font-size: 13px;">${line}</li>`).join('')
+    : '';
+
+  // Build task summary table
+  const allTaskRows = [
+    generateTaskRows(data.tasks_details || [], 'Nueva', '#16a34a'),
+    generateTaskRows(data.tasks_modified_details || [], 'Modificada', '#2563eb'),
+    generateTaskRows(data.tasks_cancelled_details || [], 'Eliminada', '#dc2626'),
+  ].join('');
+
+  const hasTaskDetails = (data.tasks_details?.length || 0) + (data.tasks_modified_details?.length || 0) + (data.tasks_cancelled_details?.length || 0) > 0;
+
+  const taskSummarySection = hasTaskDetails ? `
+    <h3 style="margin: 20px 0 10px;">📋 Resumen de Tareas</h3>
+    <table style="width: 100%; border-collapse: collapse; background: white; border: 1px solid #e5e5e5; border-radius: 6px; overflow: hidden;">
+      <thead>
+        <tr style="background: #f3f4f6;">
+          <th style="padding: 8px 10px; text-align: left; font-size: 12px; color: #666; border-bottom: 2px solid #e5e5e5;">Fecha</th>
+          <th style="padding: 8px 10px; text-align: left; font-size: 12px; color: #666; border-bottom: 2px solid #e5e5e5;">Piso</th>
+          <th style="padding: 8px 10px; text-align: left; font-size: 12px; color: #666; border-bottom: 2px solid #e5e5e5;">Huésped</th>
+          <th style="padding: 8px 10px; text-align: left; font-size: 12px; color: #666; border-bottom: 2px solid #e5e5e5;">Estado</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${allTaskRows}
+      </tbody>
+    </table>
+  ` : '';
+
+  const errorSection = hasErrors ? `
+    <div class="error-box" style="background: #fef2f2; border: 1px solid #fecaca; border-radius: 6px; padding: 15px; margin: 15px 0;">
+      <div style="color: #dc2626; font-weight: bold; margin-bottom: 10px;">Detalle de Errores (máx. 20):</div>
+      <ul style="padding-left: 20px; margin: 10px 0;">
+        ${errorLines}
+      </ul>
+    </div>
+  ` : '';
 
   return `
     <!DOCTYPE html>
     <html>
     <head>
       <meta charset="utf-8">
-      <title>Error en Sincronización Avantio</title>
+      <title>Sincronización Avantio</title>
       <style>
         body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 650px; margin: 0 auto; padding: 20px; }
-        .header { background: linear-gradient(135deg, ${statusColor}, ${statusColor}dd); color: white; padding: 20px; border-radius: 8px 8px 0 0; text-align: center; }
-        .content { background: #f9f9f9; padding: 20px; border-radius: 0 0 8px 8px; border: 1px solid #e5e5e5; }
-        .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 15px 0; }
-        .stat-card { background: white; border: 1px solid #e5e5e5; border-radius: 6px; padding: 12px; text-align: center; }
-        .stat-value { font-size: 24px; font-weight: bold; color: #333; }
-        .stat-label { font-size: 12px; color: #666; }
-        .error-box { background: #fef2f2; border: 1px solid #fecaca; border-radius: 6px; padding: 15px; margin: 15px 0; }
-        .error-title { color: #dc2626; font-weight: bold; margin-bottom: 10px; }
-        .footer { margin-top: 20px; padding-top: 15px; border-top: 1px solid #e5e5e5; font-size: 12px; color: #666; text-align: center; }
       </style>
     </head>
     <body>
-      <div class="header">
+      <div style="background: linear-gradient(135deg, ${statusColor}, ${statusColor}dd); color: white; padding: 20px; border-radius: 8px 8px 0 0; text-align: center;">
         <h1>${statusEmoji} Sincronización Avantio: ${statusText}</h1>
         <p style="margin: 5px 0 0; opacity: 0.9;">${formattedDate}</p>
       </div>
       
-      <div class="content">
+      <div style="background: #f9f9f9; padding: 20px; border-radius: 0 0 8px 8px; border: 1px solid #e5e5e5;">
         <p><strong>${data.errorSummary}</strong></p>
 
-        <div class="stats-grid">
-          <div class="stat-card">
-            <div class="stat-value">${data.stats.reservations_processed}</div>
-            <div class="stat-label">Reservas procesadas</div>
+        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 15px 0;">
+          <div style="background: white; border: 1px solid #e5e5e5; border-radius: 6px; padding: 12px; text-align: center;">
+            <div style="font-size: 24px; font-weight: bold; color: #16a34a;">${data.stats.tasks_created}</div>
+            <div style="font-size: 12px; color: #666;">Nuevas</div>
           </div>
-          <div class="stat-card">
-            <div class="stat-value">${data.stats.new_reservations}</div>
-            <div class="stat-label">Nuevas reservas</div>
+          <div style="background: white; border: 1px solid #e5e5e5; border-radius: 6px; padding: 12px; text-align: center;">
+            <div style="font-size: 24px; font-weight: bold; color: #2563eb;">${data.stats.tasks_modified}</div>
+            <div style="font-size: 12px; color: #666;">Modificadas</div>
           </div>
-          <div class="stat-card">
-            <div class="stat-value">${data.stats.tasks_created}</div>
-            <div class="stat-label">Tareas creadas</div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-value" style="color: #dc2626;">${data.stats.errors_count}</div>
-            <div class="stat-label">Errores</div>
+          <div style="background: white; border: 1px solid #e5e5e5; border-radius: 6px; padding: 12px; text-align: center;">
+            <div style="font-size: 24px; font-weight: bold; color: #dc2626;">${data.stats.tasks_cancelled}</div>
+            <div style="font-size: 12px; color: #666;">Eliminadas</div>
           </div>
         </div>
 
-        <div class="error-box">
-          <div class="error-title">Detalle de Errores (máx. 20):</div>
-          <ul style="padding-left: 20px; margin: 10px 0;">
-            ${errorLines}
-          </ul>
-        </div>
+        ${taskSummarySection}
 
-        <h3>🔧 Acciones Recomendadas:</h3>
-        <ul>
-          <li>Revisa los errores de "Propiedad no encontrada" y vincula las propiedades en el sistema</li>
-          <li>Accede a <strong>Avantio Automatización</strong> en el dashboard para ver todos los errores</li>
-          <li>Marca los errores como resueltos una vez verificados</li>
-        </ul>
+        ${errorSection}
       </div>
       
-      <div class="footer">
-        <p>Email enviado automáticamente por el sistema de gestión de limpieza.<br/>
-        Accede al panel de errores en: Avantio Automatización → Errores de Sincronización</p>
+      <div style="margin-top: 20px; padding-top: 15px; border-top: 1px solid #e5e5e5; font-size: 12px; color: #666; text-align: center;">
+        <p>Email enviado automáticamente por el sistema de gestión de limpieza.</p>
       </div>
     </body>
     </html>
@@ -126,19 +180,22 @@ const handler = async (req: Request): Promise<Response> => {
   try {
     const data: ErrorEmailRequest = await req.json();
 
-    console.log(`📧 Enviando email de error Avantio: ${data.errorSummary}`);
+    console.log(`📧 Enviando email de sincronización Avantio: ${data.errorSummary}`);
 
-    const statusEmoji = data.success ? '⚠️' : '🚨';
-    const statusText = data.success ? 'Errores' : 'FALLO';
+    const hasErrors = data.stats.errors_count > 0;
+    const statusEmoji = !data.success ? '🚨' : hasErrors ? '⚠️' : '✅';
+    const statusText = !data.success ? 'FALLO' : hasErrors ? 'Errores' : 'OK';
+
+    const tasksSummary = `${data.stats.tasks_created}↑ ${data.stats.tasks_modified}~ ${data.stats.tasks_cancelled}↓`;
 
     const emailResponse = await resend.emails.send({
       from: "Sistema Avantio <noreply@resend.dev>",
       to: ["dgomezlimpatex@gmail.com"],
-      subject: `${statusEmoji} Sincronización Avantio: ${statusText} - ${data.stats.errors_count} errores`,
+      subject: `${statusEmoji} Avantio: ${statusText} | ${tasksSummary}${hasErrors ? ` | ${data.stats.errors_count} errores` : ''}`,
       html: generateEmailHTML(data),
     });
 
-    console.log("✅ Email de error Avantio enviado:", emailResponse);
+    console.log("✅ Email de sincronización Avantio enviado:", emailResponse);
 
     return new Response(JSON.stringify(emailResponse), {
       status: 200,
