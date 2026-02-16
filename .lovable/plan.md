@@ -1,96 +1,82 @@
 
-# Plan: Arreglo completo de subida de fotos en moviles Android
+# Plan: Corregir el fallo de envio de reportes en moviles (caso Thalia - iPhone)
 
-## Problema identificado
+## Problema raiz identificado
 
-Despues de analizar todo el flujo de subida de fotos, he encontrado **4 problemas criticos** que causan fallos silenciosos en moviles Android antiguos:
+Despues de analizar todo el flujo de envio de reportes, he encontrado **un fallo critico de condicion de carrera** que hace que los reportes completados se reviertan a "en progreso":
 
-### 1. Compresion de imagenes falla silenciosamente con formatos no estandar
-La funcion `compressImage` usa `canvas.toBlob(blob, file.type, quality)`. En Android antiguo:
-- Si `file.type` esta vacio (muy comun en Android viejo), el canvas produce un PNG enorme o falla
-- Si `file.type` es `image/heic` u otro formato no soportado por canvas, `toBlob` devuelve `null` y la compresion falla
-- Aunque hay un try/catch, la funcion `img.onerror` llama a `reject()` pero la URL creada con `createObjectURL` nunca se libera (fuga de memoria)
+### Secuencia del fallo:
 
-### 2. Supabase Storage recibe archivos sin Content-Type
-En `taskMediaStorage.ts`, el archivo se sube directamente sin especificar `contentType`. Cuando Android no reporta el MIME type del archivo, Supabase puede rechazar la subida o almacenarla incorrectamente.
+1. La operaria pulsa "Completar"
+2. El sistema actualiza el reporte a `overall_status: 'completed'` y la tarea a `status: 'completed'`
+3. Se cierra el modal (`onOpenChange(false)`)
+4. **AQUI ESTA EL BUG**: Al cerrarse el modal, se dispara un `useEffect` de "auto-guardado al cerrar" (linea 308 de TaskReportModal.tsx) que ejecuta `forceSave()`
+5. Ese auto-guardado calcula el estado basandose en `completionPercentage`, que puede no ser exactamente 100% en ese instante
+6. **RESULTADO**: El auto-guardado SOBREESCRIBE el reporte de vuelta a `in_progress`, deshaciendo todo el trabajo de la operaria
 
-### 3. Toast doble y confusion de errores
-Tanto `useMediaUpload.ts` como `useTaskReports.ts` (la mutation `uploadMediaMutation`) muestran toasts de exito/error. Esto produce mensajes duplicados que pueden confundir, y en algunos casos el toast de exito de la mutation aparece aunque el flujo completo haya fallado.
+### Evidencia en la base de datos:
 
-### 4. El `reportId` puede no estar listo
-Cuando el usuario inicia la tarea y rapidamente intenta subir fotos, el `reportId` puede aun no estar disponible. Aunque se anade un toast de error, en moviles Android antiguos los toasts pueden no ser visibles o el usuario puede no entenderlos.
+He verificado los datos de Thalia:
+- Tarea de hoy (`e0485750`): estado = `pending`, reporte = `in_progress` -- deberia ser `completed` en ambos
+- Tarea del 15 Feb (`258b010c`): estado = `pending`, reporte = `in_progress` -- mismo patron
+- Ninguna de sus tareas recientes tiene estado `completed`
+
+Esto confirma que el sistema esta revirtiendo los cambios sistematicamente.
+
+## Solucion
+
+### Archivo 1: `src/components/modals/TaskReportModal.tsx`
+
+**Cambio principal**: Anadir una bandera `isCompleting` que evite que el auto-guardado sobreescriba el estado al cerrar el modal.
+
+Cambios especificos:
+
+1. **Anadir estado `isCompleting`** (nuevo useState):
+   - Se activa al inicio de `handleComplete`
+   - Impide que el `useEffect` de auto-guardado al cerrar ejecute `forceSave()`
+
+2. **Modificar el useEffect de cierre del modal** (lineas 308-332):
+   - Anadir condicion: si `isCompleting` es true, NO ejecutar `forceSave()`
+   - Esto evita la sobreescritura del estado completado
+
+3. **Mejorar `handleComplete`** (lineas 511-626):
+   - Activar `isCompleting = true` al inicio
+   - Asegurar que primero se guarda el reporte, luego se actualiza la tarea, y solo si ambos tienen exito se cierra el modal
+   - Invalidar correctamente TODOS los caches relevantes (tasks, task-reports, task-report) para que la vista de la operaria se actualice
+   - Anadir invalidacion del query key especifico del cleaner: `['tasks', 'cleaner', currentCleanerId]`
+
+4. **Corregir `autoSaveData`** (linea 289):
+   - No cambiar a 'completed' automaticamente basandose en porcentaje
+   - El auto-guardado solo debe usar 'in_progress' -- el estado 'completed' solo se establece explicitamente en `handleComplete`
+
+### Archivo 2: `src/hooks/useOptimizedAutoSave.ts` (revision)
+
+Verificar que el hook de auto-guardado respeta la bandera y no ejecuta guardados despues de que el modal se cierre tras completar.
 
 ---
 
-## Solucion propuesta
+## Detalle tecnico del fix principal
 
-### Archivo 1: `src/utils/imageCompression.ts`
-- Anadir funcion `getMimeType(file)` que detecta el tipo MIME por extension cuando `file.type` esta vacio
-- Usar siempre `image/jpeg` como formato de salida del canvas (maxima compatibilidad)
-- Limpiar la URL de `createObjectURL` en todos los casos (onload y onerror)
-- En `shouldCompressImage`, usar la deteccion de MIME mejorada para no omitir archivos sin tipo
-
-### Archivo 2: `src/services/storage/taskMediaStorage.ts`
-- Anadir deteccion de MIME type por extension del archivo
-- Pasar `contentType` explicito a `supabase.storage.upload()` para garantizar que Supabase acepte el archivo
-- Renombrar archivos HEIC/HEIF a `.jpg` si se han comprimido
-
-### Archivo 3: `src/components/modals/task-report/hooks/useMediaUpload.ts`
-- Eliminar los toasts de exito duplicados (dejar solo los del hook, quitar los de la mutation)
-- Anadir mecanismo de espera del `reportId`: si no existe, esperar hasta 3 segundos con reintentos antes de fallar
-- Mejorar el log de errores para diagnostico remoto
-
-### Archivo 4: `src/hooks/useTaskReports.ts`
-- Eliminar el toast de exito/error en `uploadMediaMutation` (ya se maneja en `useMediaUpload`)
-- Solo mantener la invalidacion de cache
-
-### Archivo 5: `src/components/modals/task-report/components/MediaUploadButtons.tsx`
-- Simplificar al maximo los inputs de archivo para maxima compatibilidad Android
-- Anadir atributo `aria-label` para accesibilidad
-
----
-
-## Detalles tecnicos
-
-### Deteccion de MIME por extension (nuevo utility)
 ```text
-Mapa de extensiones comunes:
-.jpg/.jpeg -> image/jpeg
-.png -> image/png
-.heic/.heif -> image/heic
-.webp -> image/webp
-.mp4 -> video/mp4
-.mov -> video/quicktime
-(etc.)
+ANTES (buggy):
+  handleComplete() -> updateReport(completed) -> updateTask(completed) -> onOpenChange(false)
+  useEffect(open=false) -> forceSave() -> updateReport(in_progress) <-- BUG: sobreescribe!
+
+DESPUES (correcto):
+  handleComplete() -> isCompleting=true -> updateReport(completed) -> updateTask(completed) -> onOpenChange(false)
+  useEffect(open=false) -> if(isCompleting) SKIP forceSave() <-- protegido
 ```
 
-### Compresion segura
-```text
-Antes:  canvas.toBlob(callback, file.type, quality)
-         -> falla si file.type es vacio o no soportado
+## Cambios adicionales de robustez
 
-Despues: canvas.toBlob(callback, 'image/jpeg', quality)
-         -> siempre produce JPEG (compatible con todos los navegadores)
-         -> solo se intenta si el navegador puede decodificar la imagen
-```
-
-### Upload con Content-Type explicito
-```text
-Antes:  supabase.storage.upload(path, file)
-Despues: supabase.storage.upload(path, file, { contentType: detectedMimeType })
-```
-
-### Espera del reportId
-```text
-Si reportId no existe al intentar subir:
-1. Esperar 1 segundo y verificar de nuevo (3 intentos)
-2. Si sigue sin existir, mostrar mensaje claro al usuario
-3. Deshabilitar botones de subida visualmente cuando no hay reportId
-```
+- Invalidar el cache especifico para cleaners (`['tasks', 'cleaner', cleanerId, sedeId]`) despues de completar, ya que ese es el query key que usa `useOptimizedTasks` para las operarias
+- Anadir un pequeno delay antes de cerrar el modal para asegurar que las mutaciones se completen
+- Resetear `isCompleting` en el bloque catch para permitir reintentos
 
 ## Resultado esperado
-Cualquier operaria con cualquier movil Android (antiguo o nuevo) podra:
-1. Abrir la galeria o camara sin problemas
-2. Seleccionar una o varias fotos
-3. Ver que se suben correctamente con feedback visual claro
-4. No recibir errores silenciosos ni mensajes confusos
+
+Cuando una operaria (Thalia o cualquier otra) complete un reporte:
+1. El reporte quedara marcado como `completed` permanentemente
+2. La tarea quedara marcada como `completed` permanentemente  
+3. Al volver a la lista de tareas, vera la tarea como completada
+4. No habra "reinicio" ni perdida de datos
