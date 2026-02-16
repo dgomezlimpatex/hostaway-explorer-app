@@ -83,9 +83,8 @@ export const MediaUploadButtons: React.FC<MediaUploadButtonsProps> = ({
       <input
         ref={fileInputRef}
         type="file"
-        accept="image/*;capture=camera,video/*;capture=camcorder"
+        accept="image/*,video/*"
         onChange={handleFileSelect}
-        className="hidden"
         style={{ position: 'absolute', left: '-9999px', opacity: 0 }}
       />
 
@@ -96,7 +95,6 @@ export const MediaUploadButtons: React.FC<MediaUploadButtonsProps> = ({
         accept="image/*,video/*"
         multiple
         onChange={handleMultipleFileSelect}
-        className="hidden"
         style={{ position: 'absolute', left: '-9999px', opacity: 0 }}
       />
     </div>

@@ -142,8 +142,18 @@ export const useMediaUpload = ({
   }, [isMobile, isSlowConnection]);
 
   const uploadSingleFile = async (file: File) => {
-    if (!file || !reportId) {
-      console.warn('⚠️ No file or reportId provided');
+    if (!file) {
+      console.warn('⚠️ No file provided');
+      return;
+    }
+    
+    if (!reportId) {
+      console.error('❌ CRITICAL: No reportId available - upload cannot proceed');
+      toast({
+        title: "Error al subir",
+        description: "El reporte aún no se ha creado. Espera un momento e inténtalo de nuevo.",
+        variant: "destructive",
+      });
       return;
     }
 
@@ -337,8 +347,18 @@ export const useMediaUpload = ({
 
   // Upload en lotes optimizado y robusto
   const uploadMultipleFiles = async (files: FileList) => {
-    if (!files || files.length === 0 || !reportId) {
-      console.log('MediaUpload - uploadMultipleFiles early return:', { files: files?.length, reportId });
+    if (!files || files.length === 0) {
+      console.log('MediaUpload - uploadMultipleFiles early return: no files');
+      return;
+    }
+    
+    if (!reportId) {
+      console.error('❌ CRITICAL: No reportId available - batch upload cannot proceed');
+      toast({
+        title: "Error al subir",
+        description: "El reporte aún no se ha creado. Espera un momento e inténtalo de nuevo.",
+        variant: "destructive",
+      });
       return;
     }
 
