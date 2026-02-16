@@ -79,14 +79,14 @@ export const MediaUploadButtons: React.FC<MediaUploadButtonsProps> = ({
         {uploadingCount > 0 ? `Subiendo ${uploadingCount}...` : 'Galería'}
       </Button>
 
-      {/* Input para captura de cámara */}
+      {/* Input para captura de cámara - sin capture fijo para máxima compatibilidad */}
       <input
         ref={fileInputRef}
         type="file"
-        accept="image/*,video/*"
-        capture="environment"
+        accept="image/*;capture=camera,video/*;capture=camcorder"
         onChange={handleFileSelect}
         className="hidden"
+        style={{ position: 'absolute', left: '-9999px', opacity: 0 }}
       />
 
       {/* Input para selección múltiple de galería */}
@@ -97,6 +97,7 @@ export const MediaUploadButtons: React.FC<MediaUploadButtonsProps> = ({
         multiple
         onChange={handleMultipleFileSelect}
         className="hidden"
+        style={{ position: 'absolute', left: '-9999px', opacity: 0 }}
       />
     </div>
   );
