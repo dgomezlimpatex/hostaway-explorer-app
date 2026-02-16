@@ -1,6 +1,7 @@
 
 import { supabase } from '@/integrations/supabase/client';
 import { TaskMedia } from '@/types/taskReports';
+import { getMimeType } from '@/utils/imageCompression';
 
 export class TaskMediaStorageService {
   async getTaskMedia(reportId: string): Promise<TaskMedia[]> {
@@ -19,15 +20,27 @@ export class TaskMediaStorageService {
   }
 
   async uploadMedia(file: File, reportId: string, checklistItemId?: string): Promise<TaskMedia> {
+    // Detectar MIME type de forma robusta
+    const detectedMimeType = getMimeType(file);
+    console.log('📤 Upload media:', { 
+      name: file.name, 
+      size: file.size, 
+      browserType: file.type, 
+      detectedType: detectedMimeType 
+    });
+
     // Generar nombre único para el archivo
-    const fileExt = file.name.split('.').pop();
+    const fileExt = file.name.split('.').pop()?.toLowerCase() || 'jpg';
     const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
     const filePath = `${reportId}/${fileName}`;
 
-    // Subir archivo a storage
+    // Subir archivo a storage con contentType explícito
     const { error: uploadError } = await supabase.storage
       .from('task-reports-media')
-      .upload(filePath, file);
+      .upload(filePath, file, {
+        contentType: detectedMimeType,
+        upsert: false,
+      });
 
     if (uploadError) {
       console.error('Error uploading file:', uploadError);
@@ -40,9 +53,10 @@ export class TaskMediaStorageService {
       .getPublicUrl(filePath);
 
     // Crear registro en task_media
+    const isVideo = detectedMimeType.startsWith('video/');
     const mediaData = {
       task_report_id: reportId,
-      media_type: file.type.startsWith('video/') ? 'video' : 'photo' as 'photo' | 'video',
+      media_type: isVideo ? 'video' : 'photo' as 'photo' | 'video',
       file_url: publicUrl,
       checklist_item_id: checklistItemId,
       file_size: file.size,

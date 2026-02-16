@@ -79,7 +79,7 @@ export const useTaskReports = () => {
     },
   });
 
-  // Mutation para subir media
+  // Mutation para subir media (toasts manejados en useMediaUpload para evitar duplicados)
   const uploadMediaMutation = useMutation({
     mutationFn: ({ file, reportId, checklistItemId }: {
       file: File;
@@ -87,20 +87,12 @@ export const useTaskReports = () => {
       checklistItemId?: string;
     }) => taskReportsStorageService.uploadMedia(file, reportId, checklistItemId),
     onSuccess: (data, variables) => {
-      // Invalidar queries relacionadas
+      // Solo invalidar cache, los toasts se manejan en useMediaUpload
       queryClient.invalidateQueries({ queryKey: ['task-media', variables.reportId] });
-      toast({
-        title: "Archivo subido",
-        description: "El archivo se ha subido exitosamente.",
-      });
     },
     onError: (error) => {
       console.error('Error uploading media:', error);
-      toast({
-        title: "Error",
-        description: "No se pudo subir el archivo. Inténtalo de nuevo.",
-        variant: "destructive",
-      });
+      // No mostrar toast aquí - se maneja en useMediaUpload
     },
   });
 
