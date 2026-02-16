@@ -77,6 +77,9 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
   // Ref to track if we've already tried to create a report for this task
   const reportCreationAttempted = useRef<string | null>(null);
   
+  // CRITICAL FIX: Flag to prevent auto-save from overwriting completed status
+  const isCompletingRef = useRef(false);
+  
 
   // Get task media using the current report ID
   const { data: taskMedia = [], isLoading: isLoadingMedia } = useTaskMedia(currentReport?.id || '');
@@ -282,12 +285,14 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
   }, [checklist, currentTemplate]);
 
   // Optimized auto-save hook (after completionPercentage is defined)
+  // CRITICAL FIX: Auto-save should NEVER set 'completed' status.
+  // The 'completed' status must only be set explicitly via handleComplete.
   const autoSaveData = useMemo(() => ({
     checklist_completed: checklist,
     notes,
     issues_found: [],
-    overall_status: completionPercentage === 100 ? 'completed' as const : 'in_progress' as const,
-  }), [checklist, notes, completionPercentage]);
+    overall_status: 'in_progress' as const,
+  }), [checklist, notes]);
 
   const { forceSave, isOnline } = useOptimizedAutoSave({
     data: autoSaveData,
@@ -305,9 +310,18 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
   });
 
   // CRITICAL: Auto-save when modal closes to prevent data loss
+  // BUT: Skip if we just completed the report (isCompletingRef) to avoid overwriting
   useEffect(() => {
     if (!open && hasStartedTask && currentReport) {
-      // User is closing the modal while having started the task
+      // CRITICAL FIX: If we just completed, do NOT auto-save (it would overwrite 'completed' with 'in_progress')
+      if (isCompletingRef.current) {
+        console.log('🛡️ TaskReportModal: Skipping auto-save on close - report was just completed');
+        isCompletingRef.current = false;
+        reportCreationAttempted.current = null;
+        setHasStartedTask(false);
+        return;
+      }
+
       const hasChecklistContent = Object.keys(checklist).length > 0;
       const hasNotesContent = notes && notes.trim().length > 0;
       
@@ -326,6 +340,7 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
       reportCreationAttempted.current = null;
       setHasStartedTask(false);
     } else if (!open) {
+      isCompletingRef.current = false;
       reportCreationAttempted.current = null;
       setHasStartedTask(false);
     }
@@ -453,7 +468,7 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
       checklist_completed: checklist,
       notes,
       issues_found: [],
-      overall_status: completionPercentage === 100 ? ('completed' as const) : ('in_progress' as const),
+      overall_status: 'in_progress' as const,
     };
 
     console.log('TaskReportModal - handleSave called with:', {
@@ -511,7 +526,11 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
   const handleComplete = async () => {
     if (!task) return;
 
+    // CRITICAL FIX: Set flag IMMEDIATELY to prevent auto-save from overwriting
+    isCompletingRef.current = true;
+
     if (!isTaskFromToday) {
+      isCompletingRef.current = false;
       toast({
         title: "Error",
         description: "Solo puedes completar tareas del día de hoy.",
@@ -521,6 +540,7 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
     }
 
     if (!requiredValidation.isValid) {
+      isCompletingRef.current = false;
       const messages = [];
       if (requiredValidation.missingItems.length > 0) {
         messages.push(`Tareas pendientes: ${requiredValidation.missingItems.join(', ')}`);
@@ -549,20 +569,24 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
     };
 
     try {
+      // Step 1: Update/create the report with 'completed' status
       if (currentReport) {
         const updated = await updateReportAsync({
           reportId: currentReport.id,
           updates: reportData,
         });
         setCurrentReport(updated);
+        console.log('✅ Report updated to completed:', currentReport.id);
       } else {
         const created = await createReportAsync({
           ...reportData,
           start_time: new Date().toISOString(),
         });
         setCurrentReport(created);
+        console.log('✅ Report created as completed:', created.id);
       }
 
+      // Step 2: Update task status to 'completed'
       console.log('🔄 Actualizando estado de la tarea a completed:', task.id);
       const { supabase } = await import('@/integrations/supabase/client');
       const { error } = await supabase.from('tasks').update({ status: 'completed' }).eq('id', task.id);
@@ -571,7 +595,9 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
         console.error('❌ Error actualizando estado de tarea:', error);
         throw error;
       }
+      console.log('✅ Task updated to completed:', task.id);
 
+      // Step 3: Process automatic inventory consumption (non-critical)
       if (task.propertyId) {
         console.log('🔄 Procesando consumo automático de inventario para tarea:', task.id);
         try {
@@ -590,16 +616,33 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
         }
       }
 
-      queryClient.invalidateQueries({ queryKey: ['tasks'] });
-      console.log('🔄 Cache de tareas invalidado');
+      // Step 4: Invalidate ALL relevant caches thoroughly
+      console.log('🔄 Invalidando todos los caches relevantes...');
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['tasks'] }),
+        queryClient.invalidateQueries({ queryKey: ['task-reports'] }),
+        queryClient.invalidateQueries({ queryKey: ['task-report', task.id] }),
+        // Invalidate cleaner-specific task queries
+        ...(currentCleanerId ? [
+          queryClient.invalidateQueries({ queryKey: ['tasks', 'cleaner', currentCleanerId] }),
+        ] : []),
+      ]);
+      console.log('✅ Todos los caches invalidados');
 
       toast({
         title: "Reporte completado",
         description: "El reporte se ha finalizado exitosamente.",
       });
 
+      // Step 5: Small delay before closing to ensure mutations propagate
+      await new Promise(resolve => setTimeout(resolve, 300));
+      
+      // isCompletingRef stays true - it will be reset in the useEffect when open becomes false
       onOpenChange(false);
     } catch (error) {
+      // Reset flag on error to allow retry
+      isCompletingRef.current = false;
+      
       console.error('Error completing report:', error);
       const errorMsg = error instanceof Error ? error.message : 'Error desconocido al completar reporte';
 
