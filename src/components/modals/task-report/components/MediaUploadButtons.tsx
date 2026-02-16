@@ -21,19 +21,10 @@ export const MediaUploadButtons: React.FC<MediaUploadButtonsProps> = ({
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      console.log('📁 ARCHIVO SELECCIONADO DESDE CÁMARA:', {
-        name: file.name,
-        size: file.size,
-        sizeMB: Math.round(file.size / (1024 * 1024) * 100) / 100,
-        type: file.type || 'desconocido',
-        lastModified: file.lastModified,
-        lastModifiedDate: new Date(file.lastModified).toISOString()
-      });
-      console.log('📁 Llamando a onSingleFileSelect...');
+      console.log('📁 Archivo seleccionado:', file.name, `(${Math.round(file.size / 1024)}KB)`, file.type || 'sin tipo');
       onSingleFileSelect(file);
-    } else {
-      console.log('📁 No se seleccionó ningún archivo desde cámara');
     }
+    // Reset input para permitir re-selección del mismo archivo
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
@@ -42,10 +33,7 @@ export const MediaUploadButtons: React.FC<MediaUploadButtonsProps> = ({
   const handleMultipleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
     if (files && files.length > 0) {
-      console.log('📁 Archivos seleccionados desde galería:', files.length, 'archivos');
-      Array.from(files).forEach((file, index) => {
-        console.log(`  ${index + 1}.`, file.name, `(${Math.round(file.size / 1024)}KB)`, file.type || 'tipo desconocido');
-      });
+      console.log('📁 Archivos seleccionados:', files.length);
       onMultipleFileSelect(files);
     }
     if (galleryInputRef.current) {
@@ -62,6 +50,7 @@ export const MediaUploadButtons: React.FC<MediaUploadButtonsProps> = ({
         onClick={() => fileInputRef.current?.click()}
         disabled={isUploading || uploadingCount > 0}
         className="text-xs px-2 py-1 h-7"
+        aria-label="Tomar foto o seleccionar archivo"
       >
         <Camera className="h-3 w-3 mr-1" />
         {isUploading ? 'Subiendo...' : 'Foto'}
@@ -74,18 +63,20 @@ export const MediaUploadButtons: React.FC<MediaUploadButtonsProps> = ({
         onClick={() => galleryInputRef.current?.click()}
         disabled={isUploading || uploadingCount > 0}
         className="text-xs px-2 py-1 h-7"
+        aria-label="Seleccionar múltiples archivos de la galería"
       >
         <Upload className="h-3 w-3 mr-1" />
         {uploadingCount > 0 ? `Subiendo ${uploadingCount}...` : 'Galería'}
       </Button>
 
-      {/* Input para captura de cámara - sin capture fijo para máxima compatibilidad */}
+      {/* Input para foto individual - sin capture para máxima compatibilidad Android */}
       <input
         ref={fileInputRef}
         type="file"
         accept="image/*,video/*"
         onChange={handleFileSelect}
         style={{ position: 'absolute', left: '-9999px', opacity: 0 }}
+        aria-hidden="true"
       />
 
       {/* Input para selección múltiple de galería */}
@@ -96,6 +87,7 @@ export const MediaUploadButtons: React.FC<MediaUploadButtonsProps> = ({
         multiple
         onChange={handleMultipleFileSelect}
         style={{ position: 'absolute', left: '-9999px', opacity: 0 }}
+        aria-hidden="true"
       />
     </div>
   );

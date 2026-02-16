@@ -4,7 +4,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useFileUploadSecurity } from '@/hooks/useFileUploadSecurity';
 import { useNetworkStatus } from '@/hooks/useNetworkStatus';
 import { useDeviceType } from '@/hooks/use-mobile';
-import { compressImage, shouldCompressImage } from '@/utils/imageCompression';
+import { compressImage, shouldCompressImage, getMimeType } from '@/utils/imageCompression';
 import { offlineStorage } from '@/utils/offlineStorage';
 import { useMediaCleanup } from '@/utils/mediaCleanup';
 import { useQueryClient } from '@tanstack/react-query';
