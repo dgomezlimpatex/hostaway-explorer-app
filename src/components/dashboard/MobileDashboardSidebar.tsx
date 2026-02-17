@@ -17,7 +17,8 @@ import {
   Package,
   Truck,
   Receipt,
-  TrendingUp
+  TrendingUp,
+  Settings
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useRolePermissions } from '@/hooks/useRolePermissions';
@@ -133,6 +134,12 @@ const adminItems: NavigationItem[] = [
     title: 'Hostaway Sync',
     href: '/hostaway-sync-logs',
     icon: AlertTriangle,
+    permission: 'hostaway'
+  },
+  {
+    title: 'Avantio Sync',
+    href: '/avantio-automation',
+    icon: Settings,
     permission: 'hostaway'
   },
 ];
