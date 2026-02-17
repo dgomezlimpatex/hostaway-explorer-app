@@ -62,7 +62,87 @@ export class SyncOrchestrator {
       }
     }
     
+    // REPAIR: Check for reservations in DB with NULL task_id that should have tasks
+    await this.repairMissingTasks();
+    
     console.log('✅ Sincronización completada');
+  }
+
+  private async repairMissingTasks(): Promise<void> {
+    console.log('🔧 Verificando reservas sin tarea asignada...');
+    
+    const today = new Date().toISOString().slice(0, 10);
+    
+    const { data: orphanedReservations, error } = await this.supabase
+      .from('avantio_reservations')
+      .select('*, properties!avantio_reservations_property_id_fkey(*)')
+      .is('task_id', null)
+      .not('status', 'in', '("cancelled","CANCELLED","UNAVAILABLE")')
+      .gte('departure_date', today)
+      .not('property_id', 'is', null);
+
+    if (error) {
+      console.error('❌ Error buscando reservas huérfanas:', error);
+      return;
+    }
+
+    if (!orphanedReservations || orphanedReservations.length === 0) {
+      console.log('✅ No hay reservas sin tarea');
+      return;
+    }
+
+    console.log(`⚠️ Encontradas ${orphanedReservations.length} reservas sin tarea. Reparando...`);
+
+    for (const reservation of orphanedReservations) {
+      if (!reservation.properties) continue;
+      
+      try {
+        const { createTaskForReservation } = await import('./database-operations.ts');
+        
+        const avantioReservation = {
+          id: reservation.avantio_reservation_id,
+          accommodationId: reservation.accommodation_id || '',
+          accommodationName: reservation.accommodation_name || '',
+          accommodationInternalName: '',
+          status: reservation.status,
+          arrivalDate: reservation.arrival_date,
+          departureDate: reservation.departure_date,
+          reservationDate: reservation.reservation_date || '',
+          cancellationDate: reservation.cancellation_date || '',
+          nights: reservation.nights || 1,
+          adults: reservation.adults || 2,
+          children: reservation.children || 0,
+          guestName: reservation.guest_name,
+        };
+
+        const { shouldCreateTaskForReservation } = await import('./reservation-validator.ts');
+        if (!shouldCreateTaskForReservation(avantioReservation)) continue;
+
+        const task = await createTaskForReservation(avantioReservation, reservation.properties);
+        
+        await this.supabase
+          .from('avantio_reservations')
+          .update({ task_id: task.id })
+          .eq('id', reservation.id);
+
+        this.stats.tasks_created++;
+        if (!this.stats.tasks_details) this.stats.tasks_details = [];
+        this.stats.tasks_details.push({
+          reservation_id: reservation.avantio_reservation_id,
+          property_name: reservation.properties.nombre,
+          task_id: task.id,
+          task_date: reservation.departure_date,
+          guest_name: reservation.guest_name,
+          accommodation_id: reservation.accommodation_id || '',
+          status: `REPAIRED-${reservation.status}`
+        });
+
+        console.log(`✅ Tarea reparada: ${task.id} para reserva ${reservation.avantio_reservation_id} (${reservation.properties.nombre})`);
+      } catch (repairError) {
+        console.error(`❌ Error reparando reserva ${reservation.avantio_reservation_id}:`, repairError);
+        this.stats.errors.push(`Error reparando tarea para ${reservation.avantio_reservation_id}: ${repairError.message}`);
+      }
+    }
   }
 
   async finalizeSyncLog(success: boolean, error?: Error): Promise<void> {

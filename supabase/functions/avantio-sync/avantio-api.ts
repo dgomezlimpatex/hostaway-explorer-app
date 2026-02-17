@@ -137,9 +137,12 @@ async function resolveAccommodationInfo(
 export async function fetchAllAvantioReservations(token: string): Promise<AvantioReservation[]> {
   const cleanToken = token.replace(/^["'\s]+|["'\s]+$/g, '');
   const today = todayISO();
+  // CRITICAL FIX: Use yesterday as departureFrom to ensure we catch same-day checkouts
+  // The Avantio API's departureFrom appears to be exclusive (departure > from, not >=)
+  const fromDate = addDaysISO(today, -1);
   const toDate = addDaysISO(today, FUTURE_DAYS);
 
-  console.log(`📅 Rango checkout: ${today} a ${toDate}`);
+  console.log(`📅 Rango checkout: ${fromDate} a ${toDate} (incluye ayer para capturar checkouts de hoy)`);
 
   // Phase 1: Collect all raw items from list (fast, no detail calls)
   interface RawItem {
@@ -154,7 +157,7 @@ export async function fetchAllAvantioReservations(token: string): Promise<Avanti
   }
 
   const rawItems: RawItem[] = [];
-  let nextUrl: string | null = `${API_BASE_URL}/bookings?limit=50&sort=creationDate&order=desc&departureFrom=${today}&departureTo=${toDate}`;
+  let nextUrl: string | null = `${API_BASE_URL}/bookings?limit=50&sort=creationDate&order=desc&departureFrom=${fromDate}&departureTo=${toDate}`;
   let pages = 0;
 
   while (nextUrl && pages < MAX_PAGES) {
@@ -181,7 +184,7 @@ export async function fetchAllAvantioReservations(token: string): Promise<Avanti
       
       if (!checkOut) continue;
       // Double-check range (API should filter but be safe)
-      if (checkOut < today || checkOut > toDate) continue;
+      if (checkOut < fromDate || checkOut > toDate) continue;
 
       rawItems.push({
         id: String(item.id),
