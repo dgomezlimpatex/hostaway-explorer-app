@@ -297,6 +297,12 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
   const { forceSave, isOnline } = useOptimizedAutoSave({
     data: autoSaveData,
     onSave: (data, silent = true) => {
+      // CRITICAL FIX: Do NOT auto-save if we're in the middle of completing
+      // This prevents the timer-based auto-save from overwriting 'completed' with 'in_progress'
+      if (isCompletingRef.current) {
+        console.log('🛡️ AutoSave: Blocked during completion flow');
+        return;
+      }
       if (currentReport) {
         updateReport({ 
           reportId: currentReport.id, 
