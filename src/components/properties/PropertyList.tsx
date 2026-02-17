@@ -180,7 +180,14 @@ export const PropertyList = () => {
                             {clientName || `Cliente ${clientId}`}
                           </CardTitle>
                           <CardDescription>
-                            {clientProperties.length} propiedad{clientProperties.length !== 1 ? 'es' : ''}
+                            {(() => {
+                              const client = clients.find(c => c.id === clientId);
+                              const clientIsActive = client?.isActive !== false;
+                              const activeCount = clientProperties.filter(p => 
+                                p.isActive !== null ? p.isActive : clientIsActive
+                              ).length;
+                              return `${clientProperties.length} propiedad${clientProperties.length !== 1 ? 'es' : ''} · ${activeCount} activa${activeCount !== 1 ? 's' : ''}`;
+                            })()}
                           </CardDescription>
                         </div>
                       </div>
