@@ -184,86 +184,153 @@ export class ReservationProcessor {
     syncLogId?: string | null
   ): Promise<void> {
     try {
-      // Check if checkout date changed
-      const dateChanged = existingReservation.departure_date !== reservation.departureDate;
+      // Check if property/accommodation changed (reservation moved to different apartment)
+      const propertyChanged = existingReservation.property_id !== property.id;
       
-      if (dateChanged && existingReservation.task_id) {
-        console.log(`📅 Fecha de checkout cambió: ${existingReservation.departure_date} -> ${reservation.departureDate}`);
-        try {
-          await updateTaskDate(existingReservation.task_id, reservation.departureDate);
-          stats.tasks_modified++;
-          
-          if (!stats.tasks_modified_details) stats.tasks_modified_details = [];
-          stats.tasks_modified_details.push({
-            reservation_id: reservation.id,
-            property_name: property.nombre,
-            task_id: existingReservation.task_id,
-            task_date: reservation.departureDate,
-            guest_name: reservation.guestName,
-            accommodation_id: reservation.accommodationId,
-            status: reservation.status
-          });
-        } catch (taskError) {
-          const errorMsg = `Error actualizando tarea para reserva ${reservation.id}: ${taskError.message}`;
-          stats.errors.push(errorMsg);
-          await logSyncError('task_update_failed', errorMsg, {
-            reservation_id: reservation.id,
-            task_id: existingReservation.task_id,
-            old_date: existingReservation.departure_date,
-            new_date: reservation.departureDate
-          }, syncLogId);
+      if (propertyChanged) {
+        console.log(`🏠 Cambio de apartamento detectado: ${existingReservation.accommodation_name || existingReservation.accommodation_id} -> ${reservation.accommodationName || reservation.accommodationId}`);
+        
+        // Delete old task and create new one for the new property
+        if (existingReservation.task_id) {
+          console.log(`🗑️ Eliminando tarea del apartamento anterior: ${existingReservation.task_id}`);
+          try {
+            await this.supabase
+              .from('avantio_reservations')
+              .update({ task_id: null })
+              .eq('id', existingReservation.id);
+            await deleteTask(existingReservation.task_id);
+            stats.tasks_cancelled++;
+            
+            if (!stats.tasks_cancelled_details) stats.tasks_cancelled_details = [];
+            stats.tasks_cancelled_details.push({
+              reservation_id: reservation.id,
+              property_name: existingReservation.accommodation_name || 'Unknown',
+              task_id: existingReservation.task_id,
+              task_date: reservation.departureDate,
+              guest_name: reservation.guestName,
+              accommodation_id: existingReservation.accommodation_id || '',
+              status: 'property_changed'
+            });
+          } catch (taskError) {
+            const errorMsg = `Error eliminando tarea antigua por cambio de apartamento para reserva ${reservation.id}: ${taskError.message}`;
+            stats.errors.push(errorMsg);
+            await logSyncError('task_deletion_failed', errorMsg, {
+              reservation_id: reservation.id,
+              task_id: existingReservation.task_id,
+              old_property: existingReservation.accommodation_name,
+              new_property: reservation.accommodationName
+            }, syncLogId);
+          }
         }
-      }
-
-      // If no task exists yet but should have one, create it
-      if (!existingReservation.task_id && shouldCreateTaskForReservation(reservation)) {
-        try {
-          const task = await createTaskForReservation(reservation, property);
-          stats.tasks_created++;
-          
-          // Update reservation with new task_id
-          await updateReservation(existingReservation.id, { task_id: task.id });
-          
-          if (!stats.tasks_details) stats.tasks_details = [];
-          stats.tasks_details.push({
-            reservation_id: reservation.id,
-            property_name: property.nombre,
-            task_id: task.id,
-            task_date: reservation.departureDate,
-            guest_name: reservation.guestName,
-            accommodation_id: reservation.accommodationId,
-            status: reservation.status
-          });
-        } catch (taskError) {
-          const errorMsg = `Error creando tarea faltante para reserva ${reservation.id}: ${taskError.message}`;
-          stats.errors.push(errorMsg);
-          await logSyncError('task_creation_failed', errorMsg, {
-            reservation_id: reservation.id,
-            property_name: property.nombre
-          }, syncLogId);
+        
+        // Create new task for the new property
+        if (shouldCreateTaskForReservation(reservation)) {
+          try {
+            const task = await createTaskForReservation(reservation, property);
+            existingReservation.task_id = task.id; // Update reference for later
+            stats.tasks_created++;
+            
+            if (!stats.tasks_details) stats.tasks_details = [];
+            stats.tasks_details.push({
+              reservation_id: reservation.id,
+              property_name: property.nombre,
+              task_id: task.id,
+              task_date: reservation.departureDate,
+              guest_name: reservation.guestName,
+              accommodation_id: reservation.accommodationId,
+              status: reservation.status
+            });
+            console.log(`✅ Nueva tarea creada para apartamento ${property.nombre}`);
+          } catch (taskError) {
+            const errorMsg = `Error creando tarea para nuevo apartamento ${property.nombre}: ${taskError.message}`;
+            stats.errors.push(errorMsg);
+            await logSyncError('task_creation_failed', errorMsg, {
+              reservation_id: reservation.id,
+              property_name: property.nombre
+            }, syncLogId);
+          }
         }
-      }
+      } else {
+        // Same property - check if checkout date changed
+        const dateChanged = existingReservation.departure_date !== reservation.departureDate;
+        
+        if (dateChanged && existingReservation.task_id) {
+          console.log(`📅 Fecha de checkout cambió: ${existingReservation.departure_date} -> ${reservation.departureDate}`);
+          try {
+            await updateTaskDate(existingReservation.task_id, reservation.departureDate);
+            stats.tasks_modified++;
+            
+            if (!stats.tasks_modified_details) stats.tasks_modified_details = [];
+            stats.tasks_modified_details.push({
+              reservation_id: reservation.id,
+              property_name: property.nombre,
+              task_id: existingReservation.task_id,
+              task_date: reservation.departureDate,
+              guest_name: reservation.guestName,
+              accommodation_id: reservation.accommodationId,
+              status: reservation.status
+            });
+          } catch (taskError) {
+            const errorMsg = `Error actualizando tarea para reserva ${reservation.id}: ${taskError.message}`;
+            stats.errors.push(errorMsg);
+            await logSyncError('task_update_failed', errorMsg, {
+              reservation_id: reservation.id,
+              task_id: existingReservation.task_id,
+              old_date: existingReservation.departure_date,
+              new_date: reservation.departureDate
+            }, syncLogId);
+          }
+        }
 
-      // Handle REQUESTED status changes on task name
-      if (existingReservation.task_id) {
-        const statusChanged = existingReservation.status?.toUpperCase() !== reservation.status.toUpperCase();
-        if (statusChanged) {
-          const expectedName = getTaskPropertyName(property.nombre, property.codigo, reservation.status);
-          const currentTaskName = existingReservation.tasks?.property;
-          if (currentTaskName && currentTaskName !== expectedName) {
-            try {
-              await updateTaskPropertyName(existingReservation.task_id, expectedName);
-              console.log(`📝 Nombre de tarea actualizado: "${currentTaskName}" -> "${expectedName}"`);
-              stats.tasks_modified++;
-            } catch (taskError) {
-              const errorMsg = `Error actualizando nombre de tarea para reserva ${reservation.id}: ${taskError.message}`;
-              stats.errors.push(errorMsg);
+        // If no task exists yet but should have one, create it
+        if (!existingReservation.task_id && shouldCreateTaskForReservation(reservation)) {
+          try {
+            const task = await createTaskForReservation(reservation, property);
+            stats.tasks_created++;
+            
+            await updateReservation(existingReservation.id, { task_id: task.id });
+            
+            if (!stats.tasks_details) stats.tasks_details = [];
+            stats.tasks_details.push({
+              reservation_id: reservation.id,
+              property_name: property.nombre,
+              task_id: task.id,
+              task_date: reservation.departureDate,
+              guest_name: reservation.guestName,
+              accommodation_id: reservation.accommodationId,
+              status: reservation.status
+            });
+          } catch (taskError) {
+            const errorMsg = `Error creando tarea faltante para reserva ${reservation.id}: ${taskError.message}`;
+            stats.errors.push(errorMsg);
+            await logSyncError('task_creation_failed', errorMsg, {
+              reservation_id: reservation.id,
+              property_name: property.nombre
+            }, syncLogId);
+          }
+        }
+
+        // Handle REQUESTED status changes on task name
+        if (existingReservation.task_id) {
+          const statusChanged = existingReservation.status?.toUpperCase() !== reservation.status.toUpperCase();
+          if (statusChanged) {
+            const expectedName = getTaskPropertyName(property.nombre, property.codigo, reservation.status);
+            const currentTaskName = existingReservation.tasks?.property;
+            if (currentTaskName && currentTaskName !== expectedName) {
+              try {
+                await updateTaskPropertyName(existingReservation.task_id, expectedName);
+                console.log(`📝 Nombre de tarea actualizado: "${currentTaskName}" -> "${expectedName}"`);
+                stats.tasks_modified++;
+              } catch (taskError) {
+                const errorMsg = `Error actualizando nombre de tarea para reserva ${reservation.id}: ${taskError.message}`;
+                stats.errors.push(errorMsg);
+              }
             }
           }
         }
       }
 
-      const reservationData = {
+      const reservationData: any = {
         guest_name: reservation.guestName,
         guest_email: reservation.guestEmail,
         arrival_date: reservation.arrivalDate,
@@ -274,8 +341,16 @@ export class ReservationProcessor {
         children: reservation.children || 0,
         total_amount: reservation.totalAmount,
         notes: reservation.notes,
+        accommodation_id: reservation.accommodationId,
+        accommodation_name: reservation.accommodationName,
+        property_id: property.id,
         last_sync_at: new Date().toISOString()
       };
+
+      // Include new task_id if property changed
+      if (propertyChanged && existingReservation.task_id) {
+        reservationData.task_id = existingReservation.task_id;
+      }
 
       await updateReservation(existingReservation.id, reservationData);
       stats.updated_reservations++;
@@ -292,7 +367,7 @@ export class ReservationProcessor {
         action: 'updated'
       });
 
-      console.log(`✅ Reserva actualizada`);
+      console.log(`✅ Reserva actualizada${propertyChanged ? ' (cambio de apartamento)' : ''}`);
     } catch (error) {
       const errorMsg = `Error actualizando reserva ${reservation.id}: ${error.message}`;
       console.error(`❌ ${errorMsg}`);
