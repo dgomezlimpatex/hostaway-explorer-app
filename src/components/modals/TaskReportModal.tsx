@@ -312,7 +312,8 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
       }
     },
     reportId: currentReport?.id,
-    enabled: hasStartedTask && !!currentReport
+    enabled: hasStartedTask && !!currentReport,
+    isCompletingRef,
   });
 
   // CRITICAL: Auto-save when modal closes to prevent data loss

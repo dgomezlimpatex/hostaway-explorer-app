@@ -8,13 +8,15 @@ interface UseOptimizedAutoSaveProps {
   onSave: (data: any, silent?: boolean) => void;
   reportId?: string;
   enabled?: boolean;
+  isCompletingRef?: React.MutableRefObject<boolean>;
 }
 
 export const useOptimizedAutoSave = ({ 
   data, 
   onSave, 
   reportId,
-  enabled = true 
+  enabled = true,
+  isCompletingRef
 }: UseOptimizedAutoSaveProps) => {
   const { isOnline, isSlowConnection } = useNetworkStatus();
   const { isMobile } = useDeviceType();
@@ -51,6 +53,12 @@ export const useOptimizedAutoSave = ({
   }, []);
 
   const saveData = useCallback(() => {
+    // CRITICAL: Never auto-save during completion flow
+    if (isCompletingRef?.current) {
+      console.log('🛡️ AutoSave: Blocked by isCompletingRef in saveData');
+      return;
+    }
+
     const now = Date.now();
     const interval = getAutoSaveInterval();
     
@@ -171,6 +179,12 @@ export const useOptimizedAutoSave = ({
 
   // Función para forzar guardado manual con protección contra race conditions
   const forceSave = useCallback(() => {
+    // CRITICAL: Never force-save during completion flow
+    if (isCompletingRef?.current) {
+      console.log('🛡️ AutoSave: Force save blocked by isCompletingRef');
+      return;
+    }
+
     if (!data) {
       console.warn('⚠️ AutoSave: Attempted to force save with null data');
       return;
