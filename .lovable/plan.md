@@ -1,82 +1,59 @@
 
-# Plan: Corregir el fallo de envio de reportes en moviles (caso Thalia - iPhone)
 
-## Problema raiz identificado
+# Auto-eliminar tareas "POSIBLE" (REQUESTED) al llegar la hora del check-in
 
-Despues de analizar todo el flujo de envio de reportes, he encontrado **un fallo critico de condicion de carrera** que hace que los reportes completados se reviertan a "en progreso":
+## Contexto
 
-### Secuencia del fallo:
+Las reservas con estado "REQUESTED" generan tareas con prefijo "POSIBLE -". Actualmente se quedan indefinidamente aunque nunca se confirmen. El objetivo es que, si al llegar la fecha y hora del check-in (17:00) la reserva sigue en estado "REQUESTED", se elimine la tarea asociada automáticamente.
 
-1. La operaria pulsa "Completar"
-2. El sistema actualiza el reporte a `overall_status: 'completed'` y la tarea a `status: 'completed'`
-3. Se cierra el modal (`onOpenChange(false)`)
-4. **AQUI ESTA EL BUG**: Al cerrarse el modal, se dispara un `useEffect` de "auto-guardado al cerrar" (linea 308 de TaskReportModal.tsx) que ejecuta `forceSave()`
-5. Ese auto-guardado calcula el estado basandose en `completionPercentage`, que puede no ser exactamente 100% en ese instante
-6. **RESULTADO**: El auto-guardado SOBREESCRIBE el reporte de vuelta a `in_progress`, deshaciendo todo el trabajo de la operaria
+## Que va a cambiar
 
-### Evidencia en la base de datos:
+Cada vez que se ejecuta la sincronización de Avantio (automática o manual), se ejecutara un paso adicional que:
 
-He verificado los datos de Thalia:
-- Tarea de hoy (`e0485750`): estado = `pending`, reporte = `in_progress` -- deberia ser `completed` en ambos
-- Tarea del 15 Feb (`258b010c`): estado = `pending`, reporte = `in_progress` -- mismo patron
-- Ninguna de sus tareas recientes tiene estado `completed`
+1. Busca en la base de datos reservas con estado "REQUESTED" cuya fecha de llegada (arrival_date) + hora 17:00 ya haya pasado
+2. Elimina la tarea asociada (si existe)
+3. Actualiza la reserva para quitar el task_id (poniendolo a NULL)
+4. Registra la accion en las estadisticas del sync log
 
-Esto confirma que el sistema esta revirtiendo los cambios sistematicamente.
+## Detalles tecnicos
 
-## Solucion
+### Archivo: `supabase/functions/avantio-sync/sync-orchestrator.ts`
 
-### Archivo 1: `src/components/modals/TaskReportModal.tsx`
-
-**Cambio principal**: Anadir una bandera `isCompleting` que evite que el auto-guardado sobreescriba el estado al cerrar el modal.
-
-Cambios especificos:
-
-1. **Anadir estado `isCompleting`** (nuevo useState):
-   - Se activa al inicio de `handleComplete`
-   - Impide que el `useEffect` de auto-guardado al cerrar ejecute `forceSave()`
-
-2. **Modificar el useEffect de cierre del modal** (lineas 308-332):
-   - Anadir condicion: si `isCompleting` es true, NO ejecutar `forceSave()`
-   - Esto evita la sobreescritura del estado completado
-
-3. **Mejorar `handleComplete`** (lineas 511-626):
-   - Activar `isCompleting = true` al inicio
-   - Asegurar que primero se guarda el reporte, luego se actualiza la tarea, y solo si ambos tienen exito se cierra el modal
-   - Invalidar correctamente TODOS los caches relevantes (tasks, task-reports, task-report) para que la vista de la operaria se actualice
-   - Anadir invalidacion del query key especifico del cleaner: `['tasks', 'cleaner', currentCleanerId]`
-
-4. **Corregir `autoSaveData`** (linea 289):
-   - No cambiar a 'completed' automaticamente basandose en porcentaje
-   - El auto-guardado solo debe usar 'in_progress' -- el estado 'completed' solo se establece explicitamente en `handleComplete`
-
-### Archivo 2: `src/hooks/useOptimizedAutoSave.ts` (revision)
-
-Verificar que el hook de auto-guardado respeta la bandera y no ejecuta guardados despues de que el modal se cierre tras completar.
-
----
-
-## Detalle tecnico del fix principal
+Se anadira un nuevo metodo `cleanupExpiredRequestedTasks()` que se ejecutara despues de `repairMissingTasks()` dentro de `performSync()`:
 
 ```text
-ANTES (buggy):
-  handleComplete() -> updateReport(completed) -> updateTask(completed) -> onOpenChange(false)
-  useEffect(open=false) -> forceSave() -> updateReport(in_progress) <-- BUG: sobreescribe!
-
-DESPUES (correcto):
-  handleComplete() -> isCompleting=true -> updateReport(completed) -> updateTask(completed) -> onOpenChange(false)
-  useEffect(open=false) -> if(isCompleting) SKIP forceSave() <-- protegido
+performSync(token)
+  |
+  +-- Procesar reservas de la API
+  +-- repairMissingTasks()        (existente)
+  +-- cleanupExpiredRequestedTasks()  (NUEVO)
 ```
 
-## Cambios adicionales de robustez
+La logica del nuevo metodo:
 
-- Invalidar el cache especifico para cleaners (`['tasks', 'cleaner', cleanerId, sedeId]`) despues de completar, ya que ese es el query key que usa `useOptimizedTasks` para las operarias
-- Anadir un pequeno delay antes de cerrar el modal para asegurar que las mutaciones se completen
-- Resetear `isCompleting` en el bloque catch para permitir reintentos
+1. Calcular la fecha/hora actual en timezone Europe/Madrid
+2. Consultar `avantio_reservations` donde:
+   - `status` = 'REQUESTED' (case insensitive)
+   - `task_id` no es NULL
+   - `arrival_date` + 17:00 Europe/Madrid ya paso
+3. Para cada resultado:
+   - Eliminar la tarea con `deleteTask(task_id)`
+   - Actualizar la reserva: `task_id = NULL`
+   - Registrar en `stats.tasks_cancelled_details`
 
-## Resultado esperado
+### Logica de hora
 
-Cuando una operaria (Thalia o cualquier otra) complete un reporte:
-1. El reporte quedara marcado como `completed` permanentemente
-2. La tarea quedara marcada como `completed` permanentemente  
-3. Al volver a la lista de tareas, vera la tarea como completada
-4. No habra "reinicio" ni perdida de datos
+Se comparara con `arrival_date` a las 17:00 hora de Madrid. Ejemplo:
+- Reserva con `arrival_date = 2026-02-19` y hora actual = 19 Feb 17:01 Madrid -> se elimina la tarea
+- Reserva con `arrival_date = 2026-02-19` y hora actual = 19 Feb 16:59 Madrid -> no se toca
+
+### Archivos a modificar
+
+| Archivo | Cambio |
+|---------|--------|
+| `supabase/functions/avantio-sync/sync-orchestrator.ts` | Anadir metodo `cleanupExpiredRequestedTasks()` y llamarlo en `performSync()` |
+
+### Despliegue
+
+Se redesplegara la edge function `avantio-sync` para que el cambio entre en efecto en la proxima sincronizacion automatica.
+
