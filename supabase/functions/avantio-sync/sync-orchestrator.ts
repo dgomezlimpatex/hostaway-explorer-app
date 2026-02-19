@@ -65,6 +65,9 @@ export class SyncOrchestrator {
     // REPAIR: Check for reservations in DB with NULL task_id that should have tasks
     await this.repairMissingTasks();
     
+    // CLEANUP: Remove tasks for REQUESTED reservations past check-in time
+    await this.cleanupExpiredRequestedTasks();
+    
     console.log('✅ Sincronización completada');
   }
 
@@ -141,6 +144,78 @@ export class SyncOrchestrator {
       } catch (repairError) {
         console.error(`❌ Error reparando reserva ${reservation.avantio_reservation_id}:`, repairError);
         this.stats.errors.push(`Error reparando tarea para ${reservation.avantio_reservation_id}: ${repairError.message}`);
+      }
+    }
+  }
+
+  private async cleanupExpiredRequestedTasks(): Promise<void> {
+    console.log('🧹 Verificando tareas POSIBLE (REQUESTED) expiradas...');
+
+    // Current date/time in Europe/Madrid
+    const nowMadrid = new Date(new Date().toLocaleString('en-US', { timeZone: 'Europe/Madrid' }));
+    const todayStr = `${nowMadrid.getFullYear()}-${String(nowMadrid.getMonth() + 1).padStart(2, '0')}-${String(nowMadrid.getDate()).padStart(2, '0')}`;
+    const currentHour = nowMadrid.getHours();
+    const currentMinute = nowMadrid.getMinutes();
+
+    // Query: REQUESTED reservations with a task, arrival_date <= today
+    const { data: expiredRequested, error } = await this.supabase
+      .from('avantio_reservations')
+      .select('*, properties!avantio_reservations_property_id_fkey(*)')
+      .ilike('status', 'REQUESTED')
+      .not('task_id', 'is', null)
+      .lte('arrival_date', todayStr);
+
+    if (error) {
+      console.error('❌ Error buscando reservas REQUESTED expiradas:', error);
+      return;
+    }
+
+    if (!expiredRequested || expiredRequested.length === 0) {
+      console.log('✅ No hay tareas POSIBLE expiradas');
+      return;
+    }
+
+    // Filter: only those where arrival_date < today, OR arrival_date == today AND current time >= 17:00
+    const toCleanup = expiredRequested.filter(r => {
+      if (r.arrival_date < todayStr) return true;
+      // arrival_date === todayStr
+      return currentHour > 17 || (currentHour === 17 && currentMinute >= 0);
+    });
+
+    if (toCleanup.length === 0) {
+      console.log('✅ No hay tareas POSIBLE expiradas (aún no son las 17:00)');
+      return;
+    }
+
+    console.log(`⚠️ Eliminando ${toCleanup.length} tareas POSIBLE expiradas...`);
+
+    const { deleteTask } = await import('./database-operations.ts');
+
+    for (const reservation of toCleanup) {
+      try {
+        await this.supabase
+          .from('avantio_reservations')
+          .update({ task_id: null })
+          .eq('id', reservation.id);
+
+        await deleteTask(reservation.task_id);
+
+        this.stats.tasks_cancelled++;
+        if (!this.stats.tasks_cancelled_details) this.stats.tasks_cancelled_details = [];
+        this.stats.tasks_cancelled_details.push({
+          reservation_id: reservation.avantio_reservation_id,
+          property_name: reservation.properties?.nombre || reservation.accommodation_name || '',
+          task_id: reservation.task_id,
+          task_date: reservation.departure_date,
+          guest_name: reservation.guest_name,
+          accommodation_id: reservation.accommodation_id || '',
+          status: `EXPIRED-REQUESTED`
+        });
+
+        console.log(`🗑️ Tarea POSIBLE eliminada: ${reservation.task_id} (reserva ${reservation.avantio_reservation_id}, ${reservation.properties?.nombre || ''})`);
+      } catch (cleanupError) {
+        console.error(`❌ Error eliminando tarea POSIBLE ${reservation.task_id}:`, cleanupError);
+        this.stats.errors.push(`Error cleanup REQUESTED ${reservation.avantio_reservation_id}: ${cleanupError.message}`);
       }
     }
   }
