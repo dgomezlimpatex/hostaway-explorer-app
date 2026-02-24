@@ -56,7 +56,8 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
   } = useTaskReports();
   const { completeSubtask } = useAdditionalTasks();
   const processAutomaticConsumption = useProcessAutomaticConsumption();
-  const { data: existingReport, isLoading: isLoadingReport } = useTaskReport(task?.id || '');
+  const realTaskId = task?.originalTaskId || task?.id || '';
+  const { data: existingReport, isLoading: isLoadingReport } = useTaskReport(realTaskId);
   const { data: templates, isLoading: isLoadingTemplates } = useChecklistTemplates();
   const { data: propertyChecklistAssignment } = usePropertyChecklistAssignment(task?.propertyId || '');
   const { user, userRole } = useAuth();
@@ -94,6 +95,8 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
   // Initialize report data when modal opens
   useEffect(() => {
     if (open && task) {
+      // Reset completion lock when opening a task report
+      isCompletingRef.current = false;
       console.log('🚀 TaskReportModal - initializing for task:', task.id, {
         hasExistingReport: !!existingReport,
         existingReportId: existingReport?.id,
@@ -291,8 +294,8 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
     checklist_completed: checklist,
     notes,
     issues_found: [],
-    overall_status: 'in_progress' as const,
-  }), [checklist, notes]);
+    overall_status: isTaskCompleted ? ('completed' as const) : ('in_progress' as const),
+  }), [checklist, notes, isTaskCompleted]);
 
   const { forceSave, isOnline } = useOptimizedAutoSave({
     data: autoSaveData,
@@ -323,7 +326,6 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
       // CRITICAL FIX: If we just completed, do NOT auto-save (it would overwrite 'completed' with 'in_progress')
       if (isCompletingRef.current) {
         console.log('🛡️ TaskReportModal: Skipping auto-save on close - report was just completed');
-        isCompletingRef.current = false;
         reportCreationAttempted.current = null;
         setHasStartedTask(false);
         return;
@@ -347,7 +349,6 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
       reportCreationAttempted.current = null;
       setHasStartedTask(false);
     } else if (!open) {
-      isCompletingRef.current = false;
       reportCreationAttempted.current = null;
       setHasStartedTask(false);
     }
@@ -468,14 +469,19 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
       return;
     }
 
+    const reportStatusToPersist: 'completed' | 'in_progress' = isTaskCompleted ? 'completed' : 'in_progress';
+
     const reportData = {
-      task_id: task.id,
+      task_id: realTaskId,
       cleaner_id: currentCleanerId,
       checklist_template_id: currentTemplate?.id,
       checklist_completed: checklist,
       notes,
       issues_found: [],
-      overall_status: 'in_progress' as const,
+      overall_status: reportStatusToPersist,
+      ...(reportStatusToPersist === 'completed' ? {
+        end_time: currentReport?.end_time || new Date().toISOString(),
+      } : {}),
     };
 
     console.log('TaskReportModal - handleSave called with:', {
@@ -565,7 +571,7 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
     }
 
     const reportData = {
-      task_id: task.id,
+      task_id: realTaskId,
       cleaner_id: currentCleanerId,
       checklist_template_id: currentTemplate?.id,
       checklist_completed: checklist,
@@ -594,15 +600,25 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
       }
 
       // Step 2: Update task status to 'completed'
-      console.log('🔄 Actualizando estado de la tarea a completed:', task.id);
+      console.log('🔄 Actualizando estado de la tarea a completed:', realTaskId);
       const { supabase } = await import('@/integrations/supabase/client');
-      const { error } = await supabase.from('tasks').update({ status: 'completed' }).eq('id', task.id);
+      const { data: updatedTask, error } = await supabase
+        .from('tasks')
+        .update({ status: 'completed' })
+        .eq('id', realTaskId)
+        .select('id')
+        .maybeSingle();
 
       if (error) {
         console.error('❌ Error actualizando estado de tarea:', error);
         throw error;
       }
-      console.log('✅ Task updated to completed:', task.id);
+
+      if (!updatedTask) {
+        throw new Error(`No se encontró la tarea ${realTaskId} al completar`);
+      }
+
+      console.log('✅ Task updated to completed:', realTaskId);
 
       // Step 3: Process automatic inventory consumption (non-critical)
       if (task.propertyId) {
@@ -628,7 +644,7 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ['tasks'] }),
         queryClient.invalidateQueries({ queryKey: ['task-reports'] }),
-        queryClient.invalidateQueries({ queryKey: ['task-report', task.id] }),
+        queryClient.invalidateQueries({ queryKey: ['task-report', realTaskId] }),
         // Invalidate cleaner-specific task queries
         ...(currentCleanerId ? [
           queryClient.invalidateQueries({ queryKey: ['tasks', 'cleaner', currentCleanerId] }),
