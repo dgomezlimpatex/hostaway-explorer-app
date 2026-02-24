@@ -393,6 +393,13 @@ export class ReservationProcessor {
         console.log(`🗑️ Eliminando tarea asociada: ${existingReservation.task_id}`);
         
         try {
+          // Fetch task details to check if a cleaner is assigned
+          const { data: taskData } = await this.supabase
+            .from('tasks')
+            .select('*, cleaners(id, name, email)')
+            .eq('id', existingReservation.task_id)
+            .single();
+
           // Clear task reference first
           await this.supabase
             .from('avantio_reservations')
@@ -401,6 +408,33 @@ export class ReservationProcessor {
           
           await deleteTask(existingReservation.task_id);
           stats.tasks_cancelled++;
+
+          // Send cancellation email if cleaner was assigned
+          if (taskData?.cleaner_id && taskData?.cleaners?.email) {
+            console.log(`📧 Enviando email de cancelación a ${taskData.cleaners.name} (${taskData.cleaners.email})`);
+            try {
+              await this.supabase.functions.invoke('send-task-unassignment-email', {
+                body: {
+                  taskId: existingReservation.task_id,
+                  cleanerEmail: taskData.cleaners.email,
+                  cleanerName: taskData.cleaners.name,
+                  taskData: {
+                    property: taskData.property || property.nombre,
+                    address: taskData.address || property.direccion || '',
+                    date: taskData.date || reservation.departureDate,
+                    startTime: taskData.start_time || '',
+                    endTime: taskData.end_time || '',
+                    type: taskData.service_type || '',
+                    notes: `Reserva cancelada por sincronización Avantio. Huésped: ${reservation.guestName}`
+                  },
+                  reason: 'cancelled'
+                }
+              });
+              console.log(`✅ Email de cancelación enviado a ${taskData.cleaners.name}`);
+            } catch (emailError) {
+              console.error(`❌ Error enviando email de cancelación:`, emailError);
+            }
+          }
           
           if (!stats.tasks_cancelled_details) stats.tasks_cancelled_details = [];
           stats.tasks_cancelled_details.push({
