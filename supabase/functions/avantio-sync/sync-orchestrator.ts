@@ -193,12 +193,45 @@ export class SyncOrchestrator {
 
     for (const reservation of toCleanup) {
       try {
+        // Fetch task details to check if a cleaner is assigned
+        const { data: taskData } = await this.supabase
+          .from('tasks')
+          .select('*, cleaners(id, name, email)')
+          .eq('id', reservation.task_id)
+          .single();
+
         await this.supabase
           .from('avantio_reservations')
           .update({ task_id: null })
           .eq('id', reservation.id);
 
         await deleteTask(reservation.task_id);
+
+        // Send cancellation email if cleaner was assigned
+        if (taskData?.cleaner_id && taskData?.cleaners?.email) {
+          console.log(`📧 Enviando email de cancelación POSIBLE expirada a ${taskData.cleaners.name}`);
+          try {
+            await this.supabase.functions.invoke('send-task-unassignment-email', {
+              body: {
+                taskId: reservation.task_id,
+                cleanerEmail: taskData.cleaners.email,
+                cleanerName: taskData.cleaners.name,
+                taskData: {
+                  property: taskData.property || reservation.properties?.nombre || '',
+                  address: taskData.address || '',
+                  date: taskData.date || reservation.departure_date,
+                  startTime: taskData.start_time || '',
+                  endTime: taskData.end_time || '',
+                  type: taskData.service_type || '',
+                  notes: `Reserva POSIBLE expirada (no confirmada antes del check-in). Huésped: ${reservation.guest_name}`
+                },
+                reason: 'cancelled'
+              }
+            });
+          } catch (emailError) {
+            console.error(`❌ Error enviando email cancelación POSIBLE:`, emailError);
+          }
+        }
 
         this.stats.tasks_cancelled++;
         if (!this.stats.tasks_cancelled_details) this.stats.tasks_cancelled_details = [];
