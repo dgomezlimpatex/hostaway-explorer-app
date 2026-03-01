@@ -874,6 +874,54 @@ export type Database = {
           },
         ]
       }
+      daily_report_export_logs: {
+        Row: {
+          created_at: string
+          error_message: string | null
+          export_date: string
+          id: string
+          rows_exported: number
+          sede_id: string | null
+          status: string
+          token_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          error_message?: string | null
+          export_date: string
+          id?: string
+          rows_exported?: number
+          sede_id?: string | null
+          status?: string
+          token_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          error_message?: string | null
+          export_date?: string
+          id?: string
+          rows_exported?: number
+          sede_id?: string | null
+          status?: string
+          token_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "daily_report_export_logs_sede_id_fkey"
+            columns: ["sede_id"]
+            isOneToOne: false
+            referencedRelation: "sedes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "daily_report_export_logs_token_id_fkey"
+            columns: ["token_id"]
+            isOneToOne: false
+            referencedRelation: "report_export_tokens"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       hostaway_reservations: {
         Row: {
           adults: number | null
@@ -2375,6 +2423,50 @@ export type Database = {
           },
           {
             foreignKeyName: "recurring_tasks_sede_id_fkey"
+            columns: ["sede_id"]
+            isOneToOne: false
+            referencedRelation: "sedes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      report_export_tokens: {
+        Row: {
+          created_at: string
+          created_by: string
+          id: string
+          is_active: boolean
+          last_used_at: string | null
+          name: string
+          sede_id: string | null
+          token: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          id?: string
+          is_active?: boolean
+          last_used_at?: string | null
+          name?: string
+          sede_id?: string | null
+          token?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          id?: string
+          is_active?: boolean
+          last_used_at?: string | null
+          name?: string
+          sede_id?: string | null
+          token?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "report_export_tokens_sede_id_fkey"
             columns: ["sede_id"]
             isOneToOne: false
             referencedRelation: "sedes"

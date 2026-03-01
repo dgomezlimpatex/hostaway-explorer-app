@@ -8,6 +8,7 @@ import { exportToCSV } from '@/services/csvExport';
 import { exportToExcel } from '@/services/excelExport';
 import { ReportFilters } from '@/types/filters';
 import { Link } from 'react-router-dom';
+import ReportExportTokenManager from '@/components/reports/ReportExportTokenManager';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -97,6 +98,9 @@ export default function Reports() {
             )}
           </div>
         )}
+
+        {/* Exportación automática */}
+        <ReportExportTokenManager />
       </div>
     </div>
   );
