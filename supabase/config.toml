@@ -85,3 +85,6 @@ verify_jwt = false
 
 [functions.batch-create-tasks]
 verify_jwt = false
+
+[functions.daily-report-csv]
+verify_jwt = false
