@@ -75,23 +75,15 @@ export const SequentialTaskReport: React.FC<SequentialTaskReportProps> = ({
     const canProceed = (() => {
       switch (currentStep) {
         case 'checklist':
-          return completionPercentage === 100;
+          // Allow proceeding when completion is high enough (all items checked)
+          // The final validation happens at the summary step before completing
+          return completionPercentage >= 100;
         case 'summary':
           return true;
         default:
           return false;
       }
     })();
-
-    console.log('🔍 canProceedToNext debug:', {
-      currentStep,
-      canProceed,
-      isTaskCompleted,
-      completionPercentage,
-      reportMediaLength: reportMedia.length,
-      currentStepIndex,
-      stepsLength: steps.length
-    });
 
     return canProceed;
   };

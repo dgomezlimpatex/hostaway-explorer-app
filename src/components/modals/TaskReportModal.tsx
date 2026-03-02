@@ -230,7 +230,7 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
     };
   }, [checklist, currentTemplate]);
 
-  // Calculate completion percentage - más conservador para evitar completar prematuramente
+  // Calculate completion percentage
   const completionPercentage = React.useMemo(() => {
     const categories = currentTemplate?.checklist_items ?? [];
     if (categories.length === 0) return 0;
@@ -239,17 +239,12 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
     if (totalItems === 0) return 0;
 
     let fullyCompletedItems = 0;
-    let totalRequiredItems = 0;
 
     categories.forEach((category) => {
       const items = category?.items ?? [];
       items.forEach((item) => {
         const key = `${category.id}.${item.id}`;
         const itemData = checklist[key];
-
-        if (item.required) {
-          totalRequiredItems++;
-        }
 
         const isExplicitlyCompleted = itemData?.completed === true;
         const hasRequiredPhoto =
@@ -264,27 +259,8 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
 
     const percentage = Math.round((fullyCompletedItems / totalItems) * 100);
 
-    // No permitir 100% a menos que TODOS los elementos requeridos estén completados
-    if (percentage >= 100 && totalRequiredItems > 0) {
-      const requiredCompleted = categories.reduce((count, category) => {
-        const items = category?.items ?? [];
-        return (
-          count +
-          items.filter((item) => {
-            if (!item.required) return false;
-            const key = `${category.id}.${item.id}`;
-            const itemData = checklist[key];
-            const isCompleted = itemData?.completed === true;
-            const hasRequiredPhoto = !item.photo_required || (itemData?.media_urls && itemData.media_urls.length > 0);
-            return isCompleted && hasRequiredPhoto;
-          }).length
-        );
-      }, 0);
-
-      return requiredCompleted === totalRequiredItems ? 100 : Math.min(95, percentage);
-    }
-
-    return Math.min(percentage, 99); // Never auto-complete at 100% sin validación explícita
+    // Allow 100% when all required validations pass (requiredValidation handles the strict check)
+    return percentage;
   }, [checklist, currentTemplate]);
 
   // Optimized auto-save hook (after completionPercentage is defined)
@@ -365,8 +341,8 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
     // 3. El usuario está en el paso de checklist
     // 4. No es la carga inicial
     if (!wasCompleted && nowCompleted && currentStep === 'checklist' && hasStartedTask) {
-      console.log('✅ Checklist completado, avanzando automáticamente');
-      setTimeout(() => setCurrentStep('media'), 800); // Más tiempo para evitar clicks accidentales
+      console.log('✅ Checklist completado, avanzando automáticamente al resumen');
+      setTimeout(() => setCurrentStep('summary'), 800);
     }
   }, [completionPercentage, currentStep, isChecklistCompleted, requiredValidation.isValid, hasStartedTask]);
 
