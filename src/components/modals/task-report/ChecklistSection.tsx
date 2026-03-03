@@ -3,7 +3,7 @@ import React, { useState, useRef, useMemo, useEffect, useCallback } from 'react'
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Camera, FileText, CheckCircle, AlertTriangle, ListTodo, ChevronDown, ChevronUp, MessageSquare } from 'lucide-react';
+import { Camera, FileText, CheckCircle, AlertTriangle, ListTodo, ChevronDown, ChevronUp, MessageSquare, ArrowDown } from 'lucide-react';
 import { TaskChecklistTemplate, ChecklistCategory, ChecklistItem } from '@/types/taskReports';
 import { AdditionalTask, Task } from '@/types/calendar';
 import { MediaCapture } from './MediaCapture';
@@ -37,6 +37,8 @@ export const ChecklistSection: React.FC<ChecklistSectionProps> = ({
   const latestReportIdRef = useRef<string | undefined>(reportId);
   // Hidden file input refs for auto-opening camera/gallery on photo-required tasks
   const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
+  // Refs for each task item DOM element (for scroll-to-incomplete)
+  const itemRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
   // Initialize ALL categories as expanded by default
   const allCategoryIds = useMemo(() => {
@@ -180,6 +182,60 @@ export const ChecklistSection: React.FC<ChecklistSectionProps> = ({
       return next;
     });
   };
+
+  // Get all incomplete item keys for scroll-to functionality
+  const getIncompleteItems = useCallback(() => {
+    const incomplete: { key: string; categoryId: string; task: string }[] = [];
+    
+    template?.checklist_items.forEach((category) => {
+      category.items.forEach((item) => {
+        const key = `${category.id}.${item.id}`;
+        const itemData = checklist[key];
+        const isCompleted = itemData?.completed;
+        const needsPhoto = item.photo_required && (!itemData?.media_urls || itemData.media_urls.length === 0);
+        
+        if (!isCompleted || needsPhoto) {
+          incomplete.push({ key, categoryId: category.id, task: item.task });
+        }
+      });
+    });
+
+    // Additional tasks
+    additionalTasks.forEach((subtask) => {
+      if (!subtask.completed) {
+        incomplete.push({ key: `additional.${subtask.id}`, categoryId: 'additional', task: subtask.text });
+      }
+    });
+
+    return incomplete;
+  }, [template, checklist, additionalTasks]);
+
+  const scrollToNextIncomplete = useCallback(() => {
+    const incomplete = getIncompleteItems();
+    if (incomplete.length === 0) return;
+
+    const first = incomplete[0];
+    
+    // Expand the category if collapsed
+    setExpandedCategories(prev => {
+      const next = new Set(prev);
+      next.add(first.categoryId);
+      return next;
+    });
+
+    // Scroll to the element after a tick (to let category expand)
+    setTimeout(() => {
+      const el = itemRefs.current[first.key];
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        // Flash highlight
+        el.classList.add('ring-2', 'ring-primary', 'ring-offset-1');
+        setTimeout(() => {
+          el.classList.remove('ring-2', 'ring-primary', 'ring-offset-1');
+        }, 2000);
+      }
+    }, 150);
+  }, [getIncompleteItems]);
 
   // Calculate totals
   const totalItems = (template?.checklist_items.reduce((acc, cat) => acc + cat.items.length, 0) || 0) + additionalTasks.length;
@@ -390,7 +446,7 @@ export const ChecklistSection: React.FC<ChecklistSectionProps> = ({
                   const hasMedia = itemData?.media_urls?.length > 0;
 
                   return (
-                    <div key={item.id}>
+                    <div key={item.id} ref={(el) => { itemRefs.current[key] = el; }} className="transition-all duration-300 rounded-lg">
                       {/* Hidden file input for auto-opening camera on photo-required tasks */}
                       {item.photo_required && !isReadOnly && (
                         <input
@@ -595,6 +651,28 @@ export const ChecklistSection: React.FC<ChecklistSectionProps> = ({
           </div>
         );
       })}
+
+      {/* Floating "find incomplete" button */}
+      {(() => {
+        const incomplete = getIncompleteItems();
+        if (incomplete.length === 0 || isReadOnly) return null;
+        return (
+          <button
+            onClick={scrollToNextIncomplete}
+            className={cn(
+              "sticky bottom-2 mx-auto flex items-center gap-1.5 px-4 py-2 rounded-full",
+              "bg-primary text-primary-foreground shadow-lg shadow-primary/25",
+              "text-xs font-semibold touch-manipulation active:scale-95 transition-transform",
+              "animate-in fade-in slide-in-from-bottom-2 duration-300"
+            )}
+          >
+            <ArrowDown className="h-3.5 w-3.5" />
+            {incomplete.length === 1 
+              ? 'Falta 1 tarea' 
+              : `Faltan ${incomplete.length} tareas`}
+          </button>
+        );
+      })()}
     </div>
   );
 };
