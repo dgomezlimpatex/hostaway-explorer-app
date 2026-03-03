@@ -1,5 +1,5 @@
 
-import React, { useState, useRef, useMemo, useEffect } from 'react';
+import React, { useState, useRef, useMemo, useEffect, useCallback } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -8,6 +8,9 @@ import { TaskChecklistTemplate, ChecklistCategory, ChecklistItem } from '@/types
 import { AdditionalTask, Task } from '@/types/calendar';
 import { MediaCapture } from './MediaCapture';
 import { cn } from '@/lib/utils';
+import { useTaskReports } from '@/hooks/useTaskReports';
+import { useToast } from '@/hooks/use-toast';
+import { compressImage, shouldCompressImage } from '@/utils/imageCompression';
 
 interface ChecklistSectionProps {
   template: TaskChecklistTemplate | undefined;
@@ -29,6 +32,8 @@ export const ChecklistSection: React.FC<ChecklistSectionProps> = ({
   onAdditionalTaskComplete,
 }) => {
   const [expandedItem, setExpandedItem] = useState<string | null>(null);
+  const { uploadMediaAsync } = useTaskReports();
+  const { toast } = useToast();
   // Hidden file input refs for auto-opening camera/gallery on photo-required tasks
   const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
@@ -376,12 +381,34 @@ export const ChecklistSection: React.FC<ChecklistSectionProps> = ({
                           ref={(el) => { fileInputRefs.current[key] = el; }}
                           type="file"
                           accept="image/*,video/*"
-                          onChange={(e) => {
+                          onChange={async (e) => {
                             const file = e.target.files?.[0];
-                            if (file) {
-                              // Use the MediaCapture's upload flow via a synthetic approach
-                              // We'll trigger the expanded panel instead for proper upload handling
+                            if (file && reportId) {
+                              console.log('📸 Auto-capture file selected:', file.name, file.size);
                               setExpandedItem(key);
+                              try {
+                                // Compress if needed
+                                let fileToUpload = file;
+                                if (shouldCompressImage(file)) {
+                                  try {
+                                    fileToUpload = await compressImage(file);
+                                  } catch { fileToUpload = file; }
+                                }
+                                const data = await uploadMediaAsync({
+                                  file: fileToUpload,
+                                  reportId,
+                                  checklistItemId: key,
+                                });
+                                console.log('✅ Auto-capture upload success:', data);
+                                handleMediaAdded(category.id, item.id, data.file_url);
+                                toast({ title: "Foto subida", description: "Evidencia guardada correctamente" });
+                              } catch (error) {
+                                console.error('❌ Auto-capture upload failed:', error);
+                                toast({ title: "Error al subir foto", description: "Inténtalo de nuevo", variant: "destructive" });
+                              }
+                            } else if (file && !reportId) {
+                              setExpandedItem(key);
+                              toast({ title: "Espera un momento", description: "El reporte se está creando...", variant: "destructive" });
                             }
                             if (e.target) e.target.value = '';
                           }}
