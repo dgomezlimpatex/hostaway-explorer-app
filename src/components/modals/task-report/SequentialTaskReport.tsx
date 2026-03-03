@@ -7,6 +7,7 @@ import { ChecklistSection } from './ChecklistSection';
 import { ReportSummary } from './ReportSummary';
 import { useDeviceType } from '@/hooks/use-mobile';
 import { useMobileErrorHandler } from '@/hooks/useMobileErrorHandler';
+import { cn } from '@/lib/utils';
 
 interface SequentialTaskReportProps {
   currentStep: 'checklist' | 'media' | 'summary';
@@ -103,9 +104,9 @@ export const SequentialTaskReport: React.FC<SequentialTaskReportProps> = ({
         <TaskNotStartedPlaceholder key="placeholder" />
       ) : (
         <div key="content" className="flex flex-col h-full max-h-[calc(100vh-180px)] overflow-hidden">
-          {/* Minimal step indicators */}
-          <div className="flex-shrink-0 px-3 py-2 border-b bg-muted/20">
-            <div className="flex items-center gap-2">
+          {/* Step indicators - compact pill style */}
+          <div className="flex-shrink-0 px-4 py-2.5 border-b border-border/40 bg-muted/10">
+            <div className="flex items-center gap-1.5">
               {steps.map((step, index) => {
                 const StepIcon = step.icon;
                 const isActive = index === currentStepIndex;
@@ -113,7 +114,12 @@ export const SequentialTaskReport: React.FC<SequentialTaskReportProps> = ({
                 
                 return (
                   <React.Fragment key={step.key}>
-                    {index > 0 && <div className="h-px flex-1 bg-border" />}
+                    {index > 0 && (
+                      <div className={cn(
+                        "h-0.5 flex-1 rounded-full transition-colors duration-300",
+                        isCompleted ? "bg-primary" : "bg-border"
+                      )} />
+                    )}
                     <button
                       onClick={() => {
                         if (isCompleted || isTaskCompleted) {
@@ -121,13 +127,14 @@ export const SequentialTaskReport: React.FC<SequentialTaskReportProps> = ({
                         }
                       }}
                       disabled={!isCompleted && !isActive && !isTaskCompleted}
-                      className={`flex items-center gap-1.5 py-1.5 px-3 rounded-full transition-all text-xs font-medium ${
+                      className={cn(
+                        "flex items-center gap-1.5 py-1.5 px-4 rounded-full transition-all text-xs font-semibold",
                         isActive 
-                          ? 'bg-primary text-primary-foreground shadow-sm' 
+                          ? "bg-primary text-primary-foreground shadow-md shadow-primary/25" 
                           : isCompleted 
-                            ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' 
-                            : 'text-muted-foreground opacity-50'
-                      }`}
+                            ? "bg-primary/10 text-primary" 
+                            : "text-muted-foreground/50"
+                      )}
                     >
                       <StepIcon className="h-3.5 w-3.5" />
                       <span>{step.title}</span>
