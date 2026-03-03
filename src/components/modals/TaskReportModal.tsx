@@ -116,9 +116,10 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
         setChecklist(existingReport.checklist_completed || {});
         setNotes(existingReport.notes || '');
         setHasStartedTask(true);
-        reportCreationAttempted.current = task.id;
-      } else if (!isLoadingReport) {
-        // CRITICAL FIX: Only reset if we're sure there's no existing report (not still loading)
+        reportCreationAttempted.current = realTaskId;
+      } else if (!isLoadingReport && !currentReport && !hasStartedTask) {
+        // Solo resetear si NO hay reporte cargado localmente y la tarea no ha empezado
+        // (evita volver a mostrar la pantalla intermedia durante cargas asíncronas)
         console.log('🔄 TaskReportModal - no existing report found, resetting state');
         setCurrentReport(null);
         setChecklist({});
@@ -127,7 +128,7 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
         setHasStartedTask(false);
         reportCreationAttempted.current = null;
       } else {
-        console.log('⏳ TaskReportModal - still loading existing report, waiting...');
+        console.log('⏳ TaskReportModal - preserving local started state while data settles');
       }
 
       // Find appropriate template - first check if property has assigned checklist
@@ -161,7 +162,7 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
         setCurrentTemplate(selectedTemplate);
       }
     }
-  }, [open, task, existingReport, templates, propertyChecklistAssignment]);
+  }, [open, task, existingReport, isLoadingReport, templates, propertyChecklistAssignment, currentReport, hasStartedTask, realTaskId]);
 
   // NOTE: Modal close auto-save useEffect moved below where forceSave is defined
 
@@ -348,10 +349,19 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
 
   // Auto-start task when modal opens (skip intermediate "Tarea no iniciada" screen)
   useEffect(() => {
-    if (open && task && !hasStartedTask && !isLoadingReport && !existingReport && isTaskFromToday && currentCleanerId && !reportCreationAttempted.current) {
+    if (
+      open &&
+      task &&
+      !hasStartedTask &&
+      !isLoadingReport &&
+      !existingReport &&
+      isTaskFromToday &&
+      currentCleanerId &&
+      reportCreationAttempted.current !== realTaskId
+    ) {
       handleStartTask();
     }
-  }, [open, task, hasStartedTask, isLoadingReport, existingReport, isTaskFromToday, currentCleanerId]);
+  }, [open, task, hasStartedTask, isLoadingReport, existingReport, isTaskFromToday, currentCleanerId, realTaskId]);
 
   // Removed old auto-save logic - now handled by useOptimizedAutoSave hook
 
@@ -374,13 +384,13 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
       return;
     }
 
-    if (reportCreationAttempted.current === task.id) return;
+    if (reportCreationAttempted.current === realTaskId) return;
 
     console.log('TaskReportModal - starting task and creating report');
-    reportCreationAttempted.current = task.id;
+    reportCreationAttempted.current = realTaskId;
 
     const reportData = {
-      task_id: task.id,
+      task_id: realTaskId,
       cleaner_id: currentCleanerId,
       checklist_completed: {},
       notes: '',
