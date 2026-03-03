@@ -40,14 +40,19 @@ export const filterTasks = (tasks: Task[], filters: TaskFilters): Task[] => {
       }
     }
 
-    // Role-based filtering - FIXED: Improved cleaner filtering
+    // Role-based filtering for cleaners: only their tasks, only today
     if (filters.userRole === 'cleaner') {
-      // Cleaners see tasks assigned to them by ID or name
       const isAssignedById = task.cleanerId && task.cleanerId === filters.currentUserId;
       const isAssignedByName = task.cleaner && filters.currentUserName && 
                                task.cleaner.includes(filters.currentUserName);
       
       if (!isAssignedById && !isAssignedByName) {
+        return false;
+      }
+
+      // Cleaners only see today's tasks
+      const today = new Date().toISOString().split('T')[0];
+      if (task.date !== today) {
         return false;
       }
     }
