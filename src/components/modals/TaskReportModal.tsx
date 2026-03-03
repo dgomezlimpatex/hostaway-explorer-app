@@ -166,16 +166,13 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
 
   // NOTE: Modal close auto-save useEffect moved below where forceSave is defined
 
-  // Update currentReport when existingReport changes (after creation)
+  // Sync currentReport only when backend report exists; never clear local freshly-created report
   useEffect(() => {
-    if (existingReport) {
+    if (existingReport?.id) {
       console.log('TaskReportModal - syncing current report with existing:', existingReport.id);
-      setCurrentReport(existingReport);
-    } else {
-      console.log('TaskReportModal - no existing report, clearing current report');
-      setCurrentReport(null);
+      setCurrentReport(prev => (prev?.id === existingReport.id ? prev : existingReport));
     }
-  }, [existingReport]);
+  }, [existingReport?.id]);
 
   // Update reportMedia when taskMedia changes
   useEffect(() => {
