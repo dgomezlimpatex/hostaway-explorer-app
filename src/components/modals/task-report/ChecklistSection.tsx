@@ -437,6 +437,8 @@ export const ChecklistSection: React.FC<ChecklistSectionProps> = ({
 
                               console.log('✅ Auto-capture upload success:', data);
                               handleMediaAdded(category.id, item.id, data.file_url);
+                              // Auto-mark as completed now that photo evidence exists
+                              handleItemToggle(category.id, item.id, true);
                               toast({ title: "Foto subida", description: "Evidencia guardada correctamente" });
                             } catch (error) {
                               console.error('❌ Auto-capture upload failed:', error);
@@ -507,11 +509,13 @@ export const ChecklistSection: React.FC<ChecklistSectionProps> = ({
                               )}
                               {item.photo_required && (
                                 <span className={cn(
-                                  "inline-flex items-center text-[10px] px-1.5 py-0.5 rounded-full",
-                                  hasMedia ? "text-blue-600 bg-blue-50" : "text-slate-500 bg-slate-100"
+                                  "inline-flex items-center text-[10px] px-1.5 py-0.5 rounded-full font-medium",
+                                  hasMedia 
+                                    ? "text-blue-600 bg-blue-50" 
+                                    : "text-amber-700 bg-amber-100 animate-pulse"
                                 )}>
                                   <Camera className="h-2.5 w-2.5 mr-0.5" />
-                                  {hasMedia ? `${itemData.media_urls.length}` : 'Foto'}
+                                  {hasMedia ? `${itemData.media_urls.length} foto(s)` : '📷 Foto obligatoria'}
                                 </span>
                               )}
                               {hasNotes && <MessageSquare className="h-3 w-3 text-muted-foreground" />}
@@ -524,7 +528,13 @@ export const ChecklistSection: React.FC<ChecklistSectionProps> = ({
                       {item.photo_required && (hasMedia || isExpanded) && (
                         <div className="px-2 py-1.5">
                           <MediaCapture
-                            onMediaCaptured={(mediaUrl) => handleMediaAdded(category.id, item.id, mediaUrl)}
+                            onMediaCaptured={(mediaUrl) => {
+                              handleMediaAdded(category.id, item.id, mediaUrl);
+                              // Auto-mark completed when photo is added via MediaCapture buttons
+                              if (!isCompleted) {
+                                handleItemToggle(category.id, item.id, true);
+                              }
+                            }}
                             reportId={reportId}
                             checklistItemId={key}
                             existingMedia={itemData?.media_urls || []}
