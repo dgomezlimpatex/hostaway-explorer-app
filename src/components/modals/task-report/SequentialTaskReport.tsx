@@ -185,23 +185,11 @@ export const SequentialTaskReport: React.FC<SequentialTaskReportProps> = ({
                   currentReport={currentReport}
                 />
                 
-                {!isTaskCompleted && (
+                {!isTaskCompleted && completionPercentage < 100 && (
                   <div className="pt-3 border-t">
-                    <Button 
-                      onClick={() => onComplete()}
-                      className="w-full h-12 text-sm font-semibold"
-                      size="lg"
-                      disabled={completionPercentage < 100}
-                    >
-                      <CheckCircle className="mr-2 h-5 w-5" />
-                      Finalizar Reporte
-                    </Button>
-                    
-                    {completionPercentage < 100 && (
-                      <p className="text-xs text-muted-foreground text-center mt-2">
-                        Completa todas las tareas obligatorias para finalizar
-                      </p>
-                    )}
+                    <p className="text-xs text-muted-foreground text-center">
+                      Completa todas las tareas obligatorias para finalizar
+                    </p>
                   </div>
                 )}
               </div>
