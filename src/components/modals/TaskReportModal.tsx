@@ -346,6 +346,12 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
     }
   }, [completionPercentage, currentStep, isChecklistCompleted, requiredValidation.isValid, hasStartedTask]);
 
+  // Auto-start task when modal opens (skip intermediate "Tarea no iniciada" screen)
+  useEffect(() => {
+    if (open && task && !hasStartedTask && !isLoadingReport && !existingReport && isTaskFromToday && currentCleanerId && !reportCreationAttempted.current) {
+      handleStartTask();
+    }
+  }, [open, task, hasStartedTask, isLoadingReport, existingReport, isTaskFromToday, currentCleanerId]);
 
   // Removed old auto-save logic - now handled by useOptimizedAutoSave hook
 
