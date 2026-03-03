@@ -34,6 +34,7 @@ export const ChecklistSection: React.FC<ChecklistSectionProps> = ({
   const [expandedItem, setExpandedItem] = useState<string | null>(null);
   const { uploadMediaAsync } = useTaskReports();
   const { toast } = useToast();
+  const latestReportIdRef = useRef<string | undefined>(reportId);
   // Hidden file input refs for auto-opening camera/gallery on photo-required tasks
   const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
@@ -53,6 +54,21 @@ export const ChecklistSection: React.FC<ChecklistSectionProps> = ({
       return merged;
     });
   }, [allCategoryIds]);
+
+  useEffect(() => {
+    latestReportIdRef.current = reportId;
+  }, [reportId]);
+
+  const waitForReportId = useCallback(async (maxRetries = 12, delayMs = 250): Promise<string | null> => {
+    if (latestReportIdRef.current) return latestReportIdRef.current;
+
+    for (let attempt = 0; attempt < maxRetries; attempt++) {
+      await new Promise(resolve => setTimeout(resolve, delayMs));
+      if (latestReportIdRef.current) return latestReportIdRef.current;
+    }
+
+    return null;
+  }, []);
 
   // Get additional tasks from task
   const additionalTasks = task?.additionalTasks || [];
@@ -383,34 +399,51 @@ export const ChecklistSection: React.FC<ChecklistSectionProps> = ({
                           accept="image/*,video/*"
                           onChange={async (e) => {
                             const file = e.target.files?.[0];
-                            if (file && reportId) {
-                              console.log('📸 Auto-capture file selected:', file.name, file.size);
-                              setExpandedItem(key);
-                              try {
-                                // Compress if needed
-                                let fileToUpload = file;
-                                if (shouldCompressImage(file)) {
-                                  try {
-                                    fileToUpload = await compressImage(file);
-                                  } catch { fileToUpload = file; }
-                                }
-                                const data = await uploadMediaAsync({
-                                  file: fileToUpload,
-                                  reportId,
-                                  checklistItemId: key,
-                                });
-                                console.log('✅ Auto-capture upload success:', data);
-                                handleMediaAdded(category.id, item.id, data.file_url);
-                                toast({ title: "Foto subida", description: "Evidencia guardada correctamente" });
-                              } catch (error) {
-                                console.error('❌ Auto-capture upload failed:', error);
-                                toast({ title: "Error al subir foto", description: "Inténtalo de nuevo", variant: "destructive" });
-                              }
-                            } else if (file && !reportId) {
-                              setExpandedItem(key);
-                              toast({ title: "Espera un momento", description: "El reporte se está creando...", variant: "destructive" });
+                            if (!file) {
+                              if (e.target) e.target.value = '';
+                              return;
                             }
-                            if (e.target) e.target.value = '';
+
+                            console.log('📸 Auto-capture file selected:', file.name, file.size);
+                            setExpandedItem(key);
+
+                            const resolvedReportId = reportId || await waitForReportId();
+                            if (!resolvedReportId) {
+                              toast({
+                                title: "No se pudo subir la foto",
+                                description: "El reporte aún no está listo. Espera 2-3 segundos e inténtalo de nuevo.",
+                                variant: "destructive"
+                              });
+                              if (e.target) e.target.value = '';
+                              return;
+                            }
+
+                            try {
+                              // Compress if needed
+                              let fileToUpload = file;
+                              if (shouldCompressImage(file)) {
+                                try {
+                                  fileToUpload = await compressImage(file);
+                                } catch {
+                                  fileToUpload = file;
+                                }
+                              }
+
+                              const data = await uploadMediaAsync({
+                                file: fileToUpload,
+                                reportId: resolvedReportId,
+                                checklistItemId: key,
+                              });
+
+                              console.log('✅ Auto-capture upload success:', data);
+                              handleMediaAdded(category.id, item.id, data.file_url);
+                              toast({ title: "Foto subida", description: "Evidencia guardada correctamente" });
+                            } catch (error) {
+                              console.error('❌ Auto-capture upload failed:', error);
+                              toast({ title: "Error al subir foto", description: "Inténtalo de nuevo", variant: "destructive" });
+                            } finally {
+                              if (e.target) e.target.value = '';
+                            }
                           }}
                           style={{ position: 'absolute', left: '-9999px', opacity: 0 }}
                           aria-hidden="true"
