@@ -1,15 +1,14 @@
 
 import React, { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
-import { Camera, FileText, CheckCircle, AlertTriangle, ListTodo } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
+import { Camera, FileText, CheckCircle, AlertTriangle, ListTodo, ChevronDown, ChevronUp, MessageSquare } from 'lucide-react';
 import { TaskChecklistTemplate, ChecklistCategory, ChecklistItem } from '@/types/taskReports';
 import { AdditionalTask, Task } from '@/types/calendar';
 import { MediaCapture } from './MediaCapture';
 import { cn } from '@/lib/utils';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 
 interface ChecklistSectionProps {
   template: TaskChecklistTemplate | undefined;
@@ -30,7 +29,8 @@ export const ChecklistSection: React.FC<ChecklistSectionProps> = ({
   task,
   onAdditionalTaskComplete,
 }) => {
-  const [selectedItem, setSelectedItem] = useState<string | null>(null);
+  const [expandedItem, setExpandedItem] = useState<string | null>(null);
+  const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set(['additional']));
 
   // Get additional tasks from task
   const additionalTasks = task?.additionalTasks || [];
@@ -72,7 +72,6 @@ export const ChecklistSection: React.FC<ChecklistSectionProps> = ({
   const handleMediaAdded = (categoryId: string, itemId: string, mediaUrl: string) => {
     if (isReadOnly) return;
     
-    console.log('ChecklistSection - adding media:', { categoryId, itemId, mediaUrl });
     const key = `${categoryId}.${itemId}`;
     const newChecklist = { ...checklist };
     
@@ -84,11 +83,9 @@ export const ChecklistSection: React.FC<ChecklistSectionProps> = ({
     const currentMediaUrls = newChecklist[key].media_urls || [];
     newChecklist[key].media_urls = [...currentMediaUrls, mediaUrl];
     
-    console.log('ChecklistSection - updated checklist item:', newChecklist[key]);
     onChecklistChange(newChecklist);
   };
 
-  // Handle additional task toggle
   const handleAdditionalTaskToggle = (subtask: AdditionalTask, completed: boolean) => {
     if (isReadOnly || !onAdditionalTaskComplete) return;
     
@@ -103,7 +100,6 @@ export const ChecklistSection: React.FC<ChecklistSectionProps> = ({
     );
   };
 
-  // Handle additional task notes
   const handleAdditionalTaskNotesChange = (subtaskId: string, notes: string) => {
     if (isReadOnly) return;
     
@@ -118,7 +114,6 @@ export const ChecklistSection: React.FC<ChecklistSectionProps> = ({
     onChecklistChange(newChecklist);
   };
 
-  // Handle additional task media
   const handleAdditionalTaskMediaAdded = (subtaskId: string, mediaUrl: string) => {
     if (isReadOnly) return;
     
@@ -135,249 +130,326 @@ export const ChecklistSection: React.FC<ChecklistSectionProps> = ({
     onChecklistChange(newChecklist);
   };
 
-  // Calculate total items including additional tasks
+  const toggleExpanded = (key: string) => {
+    setExpandedItem(prev => prev === key ? null : key);
+  };
+
+  const toggleCategory = (categoryId: string) => {
+    setExpandedCategories(prev => {
+      const next = new Set(prev);
+      if (next.has(categoryId)) next.delete(categoryId);
+      else next.add(categoryId);
+      return next;
+    });
+  };
+
+  // Calculate totals
   const totalItems = (template?.checklist_items.reduce((acc, cat) => acc + cat.items.length, 0) || 0) + additionalTasks.length;
-  const completedItems = Object.keys(checklist).filter(k => checklist[k]?.completed || k.startsWith('additional.')).length + additionalTasks.filter(t => t.completed).length;
+  const completedItems = Object.keys(checklist).filter(k => checklist[k]?.completed).length + additionalTasks.filter(t => t.completed).length;
 
   if (!template && additionalTasks.length === 0) {
     return (
       <div className="text-center py-8">
-        <FileText className="h-12 w-12 mx-auto text-gray-400 mb-4" />
-        <p className="text-gray-500">No hay plantilla de checklist disponible</p>
+        <FileText className="h-12 w-12 mx-auto text-muted-foreground/40 mb-4" />
+        <p className="text-muted-foreground">No hay plantilla de checklist disponible</p>
       </div>
     );
   }
 
+  // Count completed items per category
+  const getCategoryProgress = (category: ChecklistCategory) => {
+    const total = category.items.length;
+    const done = category.items.filter(item => {
+      const key = `${category.id}.${item.id}`;
+      return checklist[key]?.completed;
+    }).length;
+    return { total, done };
+  };
+
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold">
-          Checklist{template ? `: ${template.template_name}` : ''}
-          {isReadOnly && <Badge variant="secondary" className="ml-2">Solo Lectura</Badge>}
-        </h3>
-        <Badge variant="outline">
-          {completedItems} / {totalItems} completadas
-        </Badge>
+    <div className="space-y-2">
+      {/* Compact header */}
+      <div className="flex items-center justify-between px-1 pb-1">
+        <div className="flex items-center gap-2 min-w-0">
+          <h3 className="text-sm font-semibold truncate text-foreground">
+            {template?.template_name || 'Checklist'}
+          </h3>
+          {isReadOnly && <Badge variant="secondary" className="text-[10px] px-1.5 py-0">Lectura</Badge>}
+        </div>
+        <div className="flex items-center gap-1.5 flex-shrink-0">
+          <span className="text-xs font-bold text-primary">{completedItems}</span>
+          <span className="text-xs text-muted-foreground">/</span>
+          <span className="text-xs text-muted-foreground">{totalItems}</span>
+        </div>
       </div>
 
-      {/* Additional Tasks Section - First and Highlighted */}
+      {/* Progress bar */}
+      <div className="h-1.5 bg-muted rounded-full overflow-hidden mx-1">
+        <div 
+          className="h-full bg-gradient-to-r from-blue-500 to-green-500 rounded-full transition-all duration-500 ease-out"
+          style={{ width: `${totalItems > 0 ? (completedItems / totalItems) * 100 : 0}%` }}
+        />
+      </div>
+
+      {/* Additional Tasks Section - Highlighted at top */}
       {additionalTasks.length > 0 && (
-        <Card className="border-orange-300 bg-orange-50/50 shadow-md">
-          <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-md flex items-center gap-2 text-orange-700">
-                <AlertTriangle className="h-5 w-5" />
-                ⚠️ Tareas Adicionales
-              </CardTitle>
+        <div className="mx-0.5 rounded-xl border-2 border-orange-200 bg-orange-50/60 overflow-hidden">
+          <button
+            onClick={() => toggleCategory('additional')}
+            className="w-full flex items-center justify-between px-3 py-2.5 text-left"
+          >
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="h-4 w-4 text-orange-500" />
+              <span className="text-sm font-semibold text-orange-700">Tareas Adicionales</span>
+            </div>
+            <div className="flex items-center gap-2">
               <Badge 
                 variant={pendingAdditionalTasks > 0 ? "destructive" : "secondary"}
-                className={pendingAdditionalTasks === 0 ? "bg-green-100 text-green-700" : ""}
+                className={cn("text-[10px]", pendingAdditionalTasks === 0 && "bg-green-100 text-green-700 border-green-200")}
               >
-                {pendingAdditionalTasks > 0 
-                  ? `${pendingAdditionalTasks} pendiente${pendingAdditionalTasks !== 1 ? 's' : ''}`
-                  : 'Todas completadas'
-                }
+                {pendingAdditionalTasks > 0 ? `${pendingAdditionalTasks} pend.` : '✓'}
               </Badge>
+              {expandedCategories.has('additional') ? <ChevronUp className="h-4 w-4 text-orange-400" /> : <ChevronDown className="h-4 w-4 text-orange-400" />}
             </div>
-            <p className="text-sm text-orange-600 mt-1">
-              Estas tareas han sido añadidas específicamente para esta limpieza
-            </p>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {additionalTasks.map((subtask) => {
-              const key = `additional.${subtask.id}`;
-              const itemData = checklist[key];
-              const isCompleted = subtask.completed;
+          </button>
 
-              return (
-                <div 
-                  key={subtask.id} 
-                  className={cn(
-                    "border rounded-lg p-4 space-y-3 transition-colors",
-                    isCompleted 
-                      ? "bg-green-50 border-green-200" 
-                      : "bg-white border-orange-200"
-                  )}
-                >
-                  <div 
-                    className={cn(
-                      "flex items-start gap-3 cursor-pointer select-none",
-                      !isReadOnly && "active:bg-muted/50 rounded-md -m-1 p-1"
-                    )}
-                    onClick={() => {
-                      if (!isReadOnly) {
-                        handleAdditionalTaskToggle(subtask, !isCompleted);
-                      }
-                    }}
-                  >
-                    <Checkbox
-                      checked={isCompleted}
-                      onCheckedChange={(checked) => 
-                        handleAdditionalTaskToggle(subtask, checked as boolean)
-                      }
-                      className="mt-1 flex-shrink-0 h-5 w-5"
+          {expandedCategories.has('additional') && (
+            <div className="px-2 pb-2 space-y-1.5">
+              {additionalTasks.map((subtask) => {
+                const key = `additional.${subtask.id}`;
+                const itemData = checklist[key];
+                const isCompleted = subtask.completed;
+                const isExpanded = expandedItem === key;
+                const hasNotes = itemData?.notes || subtask.notes;
+                const hasMedia = (itemData?.media_urls?.length > 0) || (subtask.mediaUrls?.length > 0);
+
+                return (
+                  <div key={subtask.id} className="space-y-0">
+                    {/* Task button */}
+                    <button
+                      onClick={() => {
+                        if (!isReadOnly) {
+                          handleAdditionalTaskToggle(subtask, !isCompleted);
+                        }
+                      }}
                       disabled={isReadOnly}
-                      onClick={(e) => e.stopPropagation()}
-                    />
-                    <div className="flex-1 min-w-0">
-                      {/* Badges */}
-                      <div className="flex items-center flex-wrap gap-1 mb-2">
-                        <Badge variant="destructive" className="text-xs">Requerido</Badge>
-                        {subtask.photoRequired && (
-                          <Badge variant="secondary" className="text-xs">
-                            <Camera className="h-3 w-3 mr-1" />
-                            Foto
-                          </Badge>
-                        )}
-                        <Badge variant="outline" className="text-xs text-orange-600 border-orange-300">
-                          <ListTodo className="h-3 w-3 mr-1" />
-                          Subtarea
-                        </Badge>
-                      </div>
-                      
-                      {/* Task text */}
-                      <p className={cn(
-                        "font-medium leading-relaxed",
-                        isCompleted && "line-through text-gray-500"
-                      )}>
-                        {subtask.text}
-                      </p>
-
-                      {/* Added by info */}
-                      <p className="text-xs text-muted-foreground mt-1">
-                        Añadida por {subtask.addedByName || 'Admin'}
-                      </p>
-                      
-                      {isCompleted && (
-                        <div className="flex items-center text-green-600 text-sm mt-2">
-                          <CheckCircle className="h-4 w-4 mr-1" />
-                          Completado {subtask.completedByName && `por ${subtask.completedByName}`}
-                        </div>
+                      className={cn(
+                        "w-full text-left px-3 py-2.5 rounded-lg transition-all duration-200 flex items-start gap-2.5 touch-manipulation active:scale-[0.98]",
+                        isCompleted
+                          ? "bg-green-100/80 border border-green-200"
+                          : "bg-white border border-orange-200 shadow-sm active:bg-orange-50"
                       )}
-                    </div>
-                  </div>
+                    >
+                      {/* Status indicator */}
+                      <div className={cn(
+                        "w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 transition-colors",
+                        isCompleted ? "bg-green-500" : "border-2 border-orange-300"
+                      )}>
+                        {isCompleted && <CheckCircle className="h-3.5 w-3.5 text-white" />}
+                      </div>
 
-                  {/* Notes */}
-                  <div className="pl-8">
-                    <Textarea
-                      placeholder={isReadOnly ? "Sin notas adicionales" : "Notas adicionales (opcional)"}
-                      value={itemData?.notes || subtask.notes || ''}
-                      onChange={(e) => handleAdditionalTaskNotesChange(subtask.id, e.target.value)}
-                      className="min-h-[60px]"
-                      disabled={isReadOnly}
-                    />
-                  </div>
+                      <div className="flex-1 min-w-0">
+                        <p className={cn(
+                          "text-sm leading-snug",
+                          isCompleted ? "text-green-700 line-through" : "text-slate-800 font-medium"
+                        )}>
+                          {subtask.text}
+                        </p>
+                        <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                          {subtask.photoRequired && (
+                            <span className="inline-flex items-center text-[10px] text-orange-600 bg-orange-100 px-1.5 py-0.5 rounded-full">
+                              <Camera className="h-2.5 w-2.5 mr-0.5" />Foto
+                            </span>
+                          )}
+                          {hasNotes && <MessageSquare className="h-3 w-3 text-muted-foreground" />}
+                          {hasMedia && <Camera className="h-3 w-3 text-blue-500" />}
+                        </div>
+                      </div>
+                    </button>
 
-                  {/* Media capture */}
-                  {subtask.photoRequired && (
-                    <div className="pl-8">
-                      <MediaCapture
-                        onMediaCaptured={(mediaUrl) => handleAdditionalTaskMediaAdded(subtask.id, mediaUrl)}
-                        reportId={reportId}
-                        checklistItemId={key}
-                        existingMedia={itemData?.media_urls || subtask.mediaUrls || []}
-                        isReadOnly={isReadOnly}
-                      />
+                    {/* Expandable details - only on tap of expand icon */}
+                    <div className="flex justify-end px-1 -mt-1">
+                      <button
+                        onClick={(e) => { e.stopPropagation(); toggleExpanded(key); }}
+                        className="text-[10px] text-muted-foreground hover:text-foreground px-2 py-1"
+                      >
+                        {isExpanded ? 'Cerrar' : 'Detalles'}
+                      </button>
                     </div>
-                  )}
-                </div>
-              );
-            })}
-          </CardContent>
-        </Card>
+
+                    {isExpanded && (
+                      <div className="px-2 pb-2 space-y-2 animate-in slide-in-from-top-1 duration-200">
+                        <Textarea
+                          placeholder="Notas (opcional)"
+                          value={itemData?.notes || subtask.notes || ''}
+                          onChange={(e) => handleAdditionalTaskNotesChange(subtask.id, e.target.value)}
+                          className="min-h-[50px] text-sm resize-none"
+                          disabled={isReadOnly}
+                        />
+                        {subtask.photoRequired && (
+                          <MediaCapture
+                            onMediaCaptured={(mediaUrl) => handleAdditionalTaskMediaAdded(subtask.id, mediaUrl)}
+                            reportId={reportId}
+                            checklistItemId={key}
+                            existingMedia={itemData?.media_urls || subtask.mediaUrls || []}
+                            isReadOnly={isReadOnly}
+                          />
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
       )}
 
       {/* Regular checklist categories */}
-      {template?.checklist_items.map((category: ChecklistCategory) => (
-        <Card key={category.id}>
-          <CardHeader>
-            <CardTitle className="text-md">{category.category}</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {category.items.map((item: ChecklistItem) => {
-              const key = `${category.id}.${item.id}`;
-              const itemData = checklist[key];
-              const isCompleted = itemData?.completed || false;
+      {template?.checklist_items.map((category: ChecklistCategory) => {
+        const { total, done } = getCategoryProgress(category);
+        const isCategoryOpen = expandedCategories.has(category.id);
+        const allDone = done === total;
 
-              return (
-                <div key={item.id} className="border rounded-lg p-4 space-y-3">
-                  <div 
-                    className={cn(
-                      "flex items-start gap-3 cursor-pointer select-none",
-                      !isReadOnly && "active:bg-muted/50 rounded-md -m-1 p-1"
-                    )}
-                    onClick={() => {
-                      if (!isReadOnly) {
-                        handleItemToggle(category.id, item.id, !isCompleted);
-                      }
-                    }}
-                  >
-                    <Checkbox
-                      checked={isCompleted}
-                      onCheckedChange={(checked) => 
-                        handleItemToggle(category.id, item.id, checked as boolean)
-                      }
-                      className="mt-1 flex-shrink-0 h-5 w-5"
-                      disabled={isReadOnly}
-                      onClick={(e) => e.stopPropagation()}
-                    />
-                    <div className="flex-1 min-w-0">
-                      {/* Badges primero */}
-                      <div className="flex items-center flex-wrap gap-1 mb-2">
-                        {item.required && (
-                          <Badge variant="destructive" className="text-xs">Requerido</Badge>
+        return (
+          <div key={category.id} className="mx-0.5 rounded-xl border border-border/60 bg-card overflow-hidden">
+            {/* Category header - collapsible */}
+            <button
+              onClick={() => toggleCategory(category.id)}
+              className={cn(
+                "w-full flex items-center justify-between px-3 py-2.5 text-left transition-colors",
+                allDone && "bg-green-50/50"
+              )}
+            >
+              <span className={cn(
+                "text-sm font-semibold truncate",
+                allDone ? "text-green-700" : "text-foreground"
+              )}>
+                {category.category}
+              </span>
+              <div className="flex items-center gap-2 flex-shrink-0">
+                <span className={cn(
+                  "text-[11px] font-medium px-2 py-0.5 rounded-full",
+                  allDone 
+                    ? "bg-green-100 text-green-700" 
+                    : "bg-muted text-muted-foreground"
+                )}>
+                  {done}/{total}
+                </span>
+                {isCategoryOpen ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
+              </div>
+            </button>
+
+            {/* Items list */}
+            {isCategoryOpen && (
+              <div className="px-2 pb-2 space-y-1">
+                {category.items.map((item: ChecklistItem) => {
+                  const key = `${category.id}.${item.id}`;
+                  const itemData = checklist[key];
+                  const isCompleted = itemData?.completed || false;
+                  const isExpanded = expandedItem === key;
+                  const hasNotes = itemData?.notes;
+                  const hasMedia = itemData?.media_urls?.length > 0;
+
+                  return (
+                    <div key={item.id}>
+                      {/* Tappable task row */}
+                      <button
+                        onClick={() => {
+                          if (!isReadOnly) {
+                            handleItemToggle(category.id, item.id, !isCompleted);
+                          }
+                        }}
+                        disabled={isReadOnly}
+                        className={cn(
+                          "w-full text-left px-3 py-2.5 rounded-lg transition-all duration-200 flex items-start gap-2.5 touch-manipulation active:scale-[0.98]",
+                          isCompleted
+                            ? "bg-green-50 border border-green-100"
+                            : "bg-muted/30 border border-transparent hover:bg-muted/50 active:bg-muted/70"
                         )}
-                        {item.photo_required && (
-                          <Badge variant="secondary" className="text-xs">
-                            <Camera className="h-3 w-3 mr-1" />
-                            Foto
-                          </Badge>
-                        )}
-                      </div>
-                      
-                      {/* Texto de la tarea con más espacio */}
-                      <p className={`font-medium leading-relaxed ${isCompleted ? 'line-through text-gray-500' : ''}`}>
-                        {item.task}
-                      </p>
-                      
-                      {isCompleted && (
-                        <div className="flex items-center text-green-600 text-sm mt-2">
-                          <CheckCircle className="h-4 w-4 mr-1" />
-                          Completado
+                      >
+                        {/* Circular status indicator */}
+                        <div className={cn(
+                          "w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 transition-all duration-300",
+                          isCompleted 
+                            ? "bg-green-500 shadow-sm shadow-green-200" 
+                            : "border-2 border-slate-300"
+                        )}>
+                          {isCompleted && <CheckCircle className="h-3.5 w-3.5 text-white" />}
+                        </div>
+
+                        <div className="flex-1 min-w-0">
+                          <p className={cn(
+                            "text-sm leading-snug",
+                            isCompleted ? "text-green-700/70 line-through" : "text-foreground"
+                          )}>
+                            {item.task}
+                          </p>
+                          
+                          {/* Inline indicators */}
+                          {(item.required || item.photo_required || hasNotes || hasMedia) && (
+                            <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                              {item.required && !isCompleted && (
+                                <span className="inline-flex items-center text-[10px] text-red-600 bg-red-50 px-1.5 py-0.5 rounded-full font-medium">
+                                  Requerido
+                                </span>
+                              )}
+                              {item.photo_required && (
+                                <span className={cn(
+                                  "inline-flex items-center text-[10px] px-1.5 py-0.5 rounded-full",
+                                  hasMedia ? "text-blue-600 bg-blue-50" : "text-slate-500 bg-slate-100"
+                                )}>
+                                  <Camera className="h-2.5 w-2.5 mr-0.5" />
+                                  {hasMedia ? `${itemData.media_urls.length}` : 'Foto'}
+                                </span>
+                              )}
+                              {hasNotes && <MessageSquare className="h-3 w-3 text-muted-foreground" />}
+                            </div>
+                          )}
+                        </div>
+                      </button>
+
+                      {/* Expand button for notes/photos (only if needed) */}
+                      {(item.photo_required || hasNotes || hasMedia) && (
+                        <div className="flex justify-end px-1">
+                          <button
+                            onClick={(e) => { e.stopPropagation(); toggleExpanded(key); }}
+                            className="text-[10px] text-muted-foreground hover:text-foreground px-2 py-0.5"
+                          >
+                            {isExpanded ? 'Cerrar' : 'Detalles'}
+                          </button>
+                        </div>
+                      )}
+
+                      {/* Expandable details panel */}
+                      {isExpanded && (
+                        <div className="px-2 pb-2 space-y-2 animate-in slide-in-from-top-1 duration-200">
+                          <Textarea
+                            placeholder="Notas (opcional)"
+                            value={itemData?.notes || ''}
+                            onChange={(e) => handleNotesChange(category.id, item.id, e.target.value)}
+                            className="min-h-[50px] text-sm resize-none"
+                            disabled={isReadOnly}
+                          />
+                          {item.photo_required && (
+                            <MediaCapture
+                              onMediaCaptured={(mediaUrl) => handleMediaAdded(category.id, item.id, mediaUrl)}
+                              reportId={reportId}
+                              checklistItemId={key}
+                              existingMedia={itemData?.media_urls || []}
+                              isReadOnly={isReadOnly}
+                            />
+                          )}
                         </div>
                       )}
                     </div>
-                  </div>
-
-                  {/* Notas */}
-                  <div className="pl-8">
-                    <Textarea
-                      placeholder={isReadOnly ? "Sin notas adicionales" : "Notas adicionales (opcional)"}
-                      value={itemData?.notes || ''}
-                      onChange={(e) => handleNotesChange(category.id, item.id, e.target.value)}
-                      className="min-h-[60px]"
-                      disabled={isReadOnly}
-                    />
-                  </div>
-
-                  {/* Captura de media */}
-                  {item.photo_required && (
-                    <div className="pl-8">
-                      <MediaCapture
-                        onMediaCaptured={(mediaUrl) => handleMediaAdded(category.id, item.id, mediaUrl)}
-                        reportId={reportId}
-                        checklistItemId={key}
-                        existingMedia={itemData?.media_urls || []}
-                        isReadOnly={isReadOnly}
-                      />
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </CardContent>
-        </Card>
-      ))}
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 };
