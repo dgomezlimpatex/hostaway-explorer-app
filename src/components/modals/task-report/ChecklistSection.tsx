@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useRef, useMemo, useEffect } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -8,7 +8,6 @@ import { TaskChecklistTemplate, ChecklistCategory, ChecklistItem } from '@/types
 import { AdditionalTask, Task } from '@/types/calendar';
 import { MediaCapture } from './MediaCapture';
 import { cn } from '@/lib/utils';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 
 interface ChecklistSectionProps {
   template: TaskChecklistTemplate | undefined;
@@ -30,7 +29,25 @@ export const ChecklistSection: React.FC<ChecklistSectionProps> = ({
   onAdditionalTaskComplete,
 }) => {
   const [expandedItem, setExpandedItem] = useState<string | null>(null);
-  const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set(['additional']));
+  // Hidden file input refs for auto-opening camera/gallery on photo-required tasks
+  const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
+
+  // Initialize ALL categories as expanded by default
+  const allCategoryIds = useMemo(() => {
+    const ids = new Set<string>(['additional']);
+    template?.checklist_items.forEach(cat => ids.add(cat.id));
+    return ids;
+  }, [template]);
+  const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
+  
+  // Sync expanded categories when template loads
+  useEffect(() => {
+    setExpandedCategories(prev => {
+      const merged = new Set(prev);
+      allCategoryIds.forEach(id => merged.add(id));
+      return merged;
+    });
+  }, [allCategoryIds]);
 
   // Get additional tasks from task
   const additionalTasks = task?.additionalTasks || [];
@@ -353,11 +370,45 @@ export const ChecklistSection: React.FC<ChecklistSectionProps> = ({
 
                   return (
                     <div key={item.id}>
+                      {/* Hidden file input for auto-opening camera on photo-required tasks */}
+                      {item.photo_required && !isReadOnly && (
+                        <input
+                          ref={(el) => { fileInputRefs.current[key] = el; }}
+                          type="file"
+                          accept="image/*,video/*"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) {
+                              // Use the MediaCapture's upload flow via a synthetic approach
+                              // We'll trigger the expanded panel instead for proper upload handling
+                              setExpandedItem(key);
+                            }
+                            if (e.target) e.target.value = '';
+                          }}
+                          style={{ position: 'absolute', left: '-9999px', opacity: 0 }}
+                          aria-hidden="true"
+                        />
+                      )}
+
                       {/* Tappable task row */}
                       <button
                         onClick={() => {
-                          if (!isReadOnly) {
-                            handleItemToggle(category.id, item.id, !isCompleted);
+                          if (isReadOnly) return;
+                          
+                          if (!isCompleted) {
+                            // Mark as completed
+                            handleItemToggle(category.id, item.id, true);
+                            // If photo required and no photo yet, auto-open the details panel for photo capture
+                            if (item.photo_required && !hasMedia) {
+                              setExpandedItem(key);
+                              // Small delay to let state update, then trigger file input
+                              setTimeout(() => {
+                                fileInputRefs.current[key]?.click();
+                              }, 100);
+                            }
+                          } else {
+                            // Unmark
+                            handleItemToggle(category.id, item.id, false);
                           }
                         }}
                         disabled={isReadOnly}
@@ -409,37 +460,61 @@ export const ChecklistSection: React.FC<ChecklistSectionProps> = ({
                         </div>
                       </button>
 
-                      {/* Expand button for notes/photos (only if needed) */}
-                      {(item.photo_required || hasNotes || hasMedia) && (
-                        <div className="flex justify-end px-1">
-                          <button
-                            onClick={(e) => { e.stopPropagation(); toggleExpanded(key); }}
-                            className="text-[10px] text-muted-foreground hover:text-foreground px-2 py-0.5"
-                          >
-                            {isExpanded ? 'Cerrar' : 'Detalles'}
-                          </button>
+                      {/* Inline photo capture - shown when photo required and has media or expanded */}
+                      {item.photo_required && (hasMedia || isExpanded) && (
+                        <div className="px-2 py-1.5">
+                          <MediaCapture
+                            onMediaCaptured={(mediaUrl) => handleMediaAdded(category.id, item.id, mediaUrl)}
+                            reportId={reportId}
+                            checklistItemId={key}
+                            existingMedia={itemData?.media_urls || []}
+                            isReadOnly={isReadOnly}
+                          />
                         </div>
                       )}
 
-                      {/* Expandable details panel */}
-                      {isExpanded && (
-                        <div className="px-2 pb-2 space-y-2 animate-in slide-in-from-top-1 duration-200">
-                          <Textarea
-                            placeholder="Notas (opcional)"
-                            value={itemData?.notes || ''}
-                            onChange={(e) => handleNotesChange(category.id, item.id, e.target.value)}
-                            className="min-h-[50px] text-sm resize-none"
-                            disabled={isReadOnly}
-                          />
-                          {item.photo_required && (
-                            <MediaCapture
-                              onMediaCaptured={(mediaUrl) => handleMediaAdded(category.id, item.id, mediaUrl)}
-                              reportId={reportId}
-                              checklistItemId={key}
-                              existingMedia={itemData?.media_urls || []}
-                              isReadOnly={isReadOnly}
-                            />
-                          )}
+                      {/* Notes expand toggle - only if has notes already */}
+                      {(hasNotes || isExpanded) && (
+                        <div className="px-2 pb-1.5">
+                          {!isExpanded && hasNotes ? (
+                            <button
+                              onClick={(e) => { e.stopPropagation(); toggleExpanded(key); }}
+                              className="text-[10px] text-muted-foreground hover:text-foreground flex items-center gap-1"
+                            >
+                              <MessageSquare className="h-3 w-3" /> Ver notas
+                            </button>
+                          ) : isExpanded ? (
+                            <div className="space-y-1 animate-in slide-in-from-top-1 duration-200">
+                              <div className="flex justify-between items-center">
+                                <span className="text-[10px] text-muted-foreground">Notas</span>
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); toggleExpanded(key); }}
+                                  className="text-[10px] text-muted-foreground hover:text-foreground"
+                                >
+                                  Cerrar
+                                </button>
+                              </div>
+                              <Textarea
+                                placeholder="Notas (opcional)"
+                                value={itemData?.notes || ''}
+                                onChange={(e) => handleNotesChange(category.id, item.id, e.target.value)}
+                                className="min-h-[40px] text-sm resize-none"
+                                disabled={isReadOnly}
+                              />
+                            </div>
+                          ) : null}
+                        </div>
+                      )}
+
+                      {/* Add notes link when no notes exist and not expanded */}
+                      {!hasNotes && !isExpanded && !isReadOnly && (
+                        <div className="flex justify-end px-2">
+                          <button
+                            onClick={(e) => { e.stopPropagation(); toggleExpanded(key); }}
+                            className="text-[10px] text-muted-foreground/60 hover:text-muted-foreground px-1 py-0.5"
+                          >
+                            + nota
+                          </button>
                         </div>
                       )}
                     </div>
