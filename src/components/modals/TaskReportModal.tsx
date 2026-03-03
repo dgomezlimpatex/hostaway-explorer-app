@@ -470,9 +470,17 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
     });
 
     try {
-      if (currentReport && existingReport && currentReport.id === existingReport.id) {
+      // If we have a currentReport with an ID, always UPDATE (even if existingReport query hasn't loaded yet)
+      if (currentReport?.id) {
         const updated = await updateReportAsync({
           reportId: currentReport.id,
+          updates: reportData,
+        });
+        setCurrentReport(updated);
+      } else if (existingReport?.id) {
+        // Fallback: existingReport loaded but currentReport not set
+        const updated = await updateReportAsync({
+          reportId: existingReport.id,
           updates: reportData,
         });
         setCurrentReport(updated);
@@ -487,7 +495,7 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
       }
     } catch (error) {
       console.error('Error saving report:', error);
-      const errorMsg = error instanceof Error ? error.message : 'Error desconocido al guardar reporte';
+      const errorMsg = error instanceof Error ? error.message : (typeof error === 'object' && error !== null && 'message' in error) ? String((error as any).message) : 'Error desconocido al guardar reporte';
 
       addSaveError(
         'Error al guardar reporte',
