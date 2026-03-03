@@ -130,32 +130,35 @@ export const TaskReportFooter: React.FC<TaskReportFooterProps> = ({
           {/* Botones de guardar y completar - solo visible si ha empezado */}
           {hasStartedTask && !isTaskCompleted && (
             <>
-              <Button
-                variant="outline"
-                onClick={onSave}
-                disabled={isCreatingReport || isUpdatingReport}
-                size="sm"
-                className="text-xs px-3 h-8"
-              >
-                <Save className="h-3 w-3 mr-1" />
-                {isCreatingReport || isUpdatingReport ? 'Guardando...' : 'Guardar'}
-              </Button>
+              {/* Guardar solo en pasos que no sean summary */}
+              {currentStep !== 'summary' && (
+                <Button
+                  variant="outline"
+                  onClick={onSave}
+                  disabled={isCreatingReport || isUpdatingReport}
+                  size="sm"
+                  className="text-xs px-3 h-8"
+                >
+                  <Save className="h-3 w-3 mr-1" />
+                  {isCreatingReport || isUpdatingReport ? 'Guardando...' : 'Guardar'}
+                </Button>
+              )}
               
-              {/* Botón de completar - solo visible en la pantalla summary */}
+              {/* Botón de finalizar - solo visible en la pantalla summary */}
               {currentStep === 'summary' && (
                 <Button
                   onClick={handleComplete}
                   disabled={!canComplete || isCreatingReport || isUpdatingReport}
-                  className={`text-xs px-3 h-8 ${canComplete ? 'bg-green-600 hover:bg-green-700' : ''}`}
+                  className={`text-xs px-4 h-8 ${canComplete ? 'bg-green-600 hover:bg-green-700' : ''}`}
                   size="sm"
                   title={
                     !isTaskFromToday ? "Solo puedes completar tareas de hoy" :
                     !requiredValidation.isValid ? "Faltan tareas o fotos obligatorias" :
-                    "Completar reporte"
+                    "Finalizar tarea"
                   }
                 >
                   <CheckCircle className="h-3 w-3 mr-1" />
-                  Completar
+                  Finalizar Tarea
                 </Button>
               )}
             </>
