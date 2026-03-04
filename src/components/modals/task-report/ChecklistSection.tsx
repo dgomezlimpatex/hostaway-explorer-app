@@ -545,15 +545,15 @@ export const ChecklistSection: React.FC<ChecklistSectionProps> = ({
                           if (isReadOnly) return;
                           
                           if (!isCompleted) {
-                            // Mark as completed
-                            handleItemToggle(category.id, item.id, true);
-                            // If photo required and no photo yet, auto-open the details panel for photo capture
+                            // If photo required and no photo yet, only open file picker (don't mark complete yet)
                             if (item.photo_required && !hasMedia) {
                               setExpandedItem(key);
-                              // Small delay to let state update, then trigger file input
                               setTimeout(() => {
                                 fileInputRefs.current[key]?.click();
                               }, 100);
+                            } else {
+                              // Mark as completed (no photo needed or already has photo)
+                              handleItemToggle(category.id, item.id, true);
                             }
                           } else {
                             // Unmark
