@@ -33,7 +33,12 @@ export const PropertyPreferredCleaners: React.FC<PropertyPreferredCleanersProps>
 
   const assignedIds = preferred.map(p => p.cleaner_id);
   const availableCleaners = cleaners.filter(c => c.isActive && !assignedIds.includes(c.id));
-  const otherProperties = properties.filter(p => p.id !== propertyId);
+  
+  // Find current property's client, filter same-client properties, sort alphabetically
+  const currentProperty = properties.find(p => p.id === propertyId);
+  const sameClientProperties = properties
+    .filter(p => p.id !== propertyId && p.clienteId === currentProperty?.clienteId)
+    .sort((a, b) => a.nombre.localeCompare(b.nombre));
 
   const handleAdd = () => {
     if (!selectedCleaner) return;
@@ -95,7 +100,7 @@ export const PropertyPreferredCleaners: React.FC<PropertyPreferredCleanersProps>
               <SelectValue placeholder="Seleccionar apartamento..." />
             </SelectTrigger>
             <SelectContent>
-              {otherProperties.map(p => (
+              {sameClientProperties.map(p => (
                 <SelectItem key={p.id} value={p.id}>
                   {p.nombre} {p.codigo ? `(${p.codigo})` : ''}
                 </SelectItem>
