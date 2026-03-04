@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
 import { PropertyChecklistEditor } from './PropertyChecklistEditor';
 import { CopyChecklistFromProperty } from './CopyChecklistFromProperty';
@@ -10,7 +11,7 @@ import { usePropertyChecklistAssignment, useAssignChecklistToProperty, useRemove
 import { Property } from '@/types/property';
 import { ChecklistCategory } from '@/types/taskReports';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Trash2 } from 'lucide-react';
+import { Loader2, Trash2, Save } from 'lucide-react';
 
 interface AssignChecklistModalProps {
   property: Property | null;
@@ -25,6 +26,8 @@ export const AssignChecklistModal: React.FC<AssignChecklistModalProps> = ({
 }) => {
   const [categories, setCategories] = useState<ChecklistCategory[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
+  const [showSaveAsTemplate, setShowSaveAsTemplate] = useState(false);
+  const [templateName, setTemplateName] = useState('');
   
   const { data: assignment, isLoading: loadingAssignment } = usePropertyChecklistAssignment(property?.id || '');
   const { data: templates = [] } = useChecklistTemplates();
@@ -119,8 +122,36 @@ export const AssignChecklistModal: React.FC<AssignChecklistModalProps> = ({
     }
   };
 
+  const handleSaveAsTemplate = async () => {
+    if (!templateName.trim() || categories.length === 0) {
+      toast({
+        title: "Error",
+        description: "Introduce un nombre para la plantilla y asegúrate de que tiene tareas.",
+        variant: "destructive",
+      });
+      return;
+    }
+    try {
+      await createTemplate.mutateAsync({
+        template_name: templateName.trim(),
+        property_type: 'general',
+        checklist_items: categories,
+        is_active: true,
+      });
+      setShowSaveAsTemplate(false);
+      setTemplateName('');
+      toast({
+        title: "Plantilla guardada",
+        description: `"${templateName.trim()}" está disponible para usar en otras propiedades.`,
+      });
+    } catch (error) {
+      console.error('Error saving as template:', error);
+    }
+  };
+
   const isSaving = createTemplate.isPending || updateTemplate.isPending || assignChecklist.isPending;
   const hasExisting = !!assignment?.checklist_template_id;
+  const hasTasks = categories.some(c => c.items.length > 0);
 
   if (!property) return null;
 
@@ -152,11 +183,47 @@ export const AssignChecklistModal: React.FC<AssignChecklistModalProps> = ({
               categories={categories}
               onChange={setCategories}
             />
+
+            {/* Save as template */}
+            {hasTasks && (
+              <>
+                <Separator />
+                {showSaveAsTemplate ? (
+                  <div className="flex items-center gap-2">
+                    <Input
+                      value={templateName}
+                      onChange={(e) => setTemplateName(e.target.value)}
+                      placeholder="Nombre de la plantilla..."
+                      className="h-8"
+                      autoFocus
+                    />
+                    <Button size="sm" onClick={handleSaveAsTemplate} disabled={createTemplate.isPending}>
+                      <Save className="h-4 w-4 mr-1" />
+                      Guardar
+                    </Button>
+                    <Button size="sm" variant="ghost" onClick={() => { setShowSaveAsTemplate(false); setTemplateName(''); }}>
+                      Cancelar
+                    </Button>
+                  </div>
+                ) : (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowSaveAsTemplate(true)}
+                    className="w-full"
+                  >
+                    <Save className="h-4 w-4 mr-1" />
+                    Guardar como plantilla reutilizable
+                  </Button>
+                )}
+              </>
+            )}
           </div>
         )}
 
         <DialogFooter className="flex justify-between sm:justify-between gap-2">
-          <div>
+          <div className="flex gap-2">
             {hasExisting && (
               <Button
                 variant="destructive"
@@ -165,7 +232,7 @@ export const AssignChecklistModal: React.FC<AssignChecklistModalProps> = ({
                 disabled={removeChecklist.isPending}
               >
                 <Trash2 className="h-4 w-4 mr-1" />
-                Eliminar checklist
+                Eliminar
               </Button>
             )}
           </div>
