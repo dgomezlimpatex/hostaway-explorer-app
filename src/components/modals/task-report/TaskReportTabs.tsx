@@ -91,7 +91,7 @@ const DesktopTabsView: React.FC<{
         </TabsTrigger>
       </TabsList>
 
-      <div className="flex-1 overflow-auto">
+      <div className="flex-1 overflow-auto min-h-0">
         <TabsContent value="checklist" className="mt-0 h-full overflow-auto">
           {isLoadingTemplates ? (
             <div className="flex items-center justify-center py-8">
