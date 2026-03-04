@@ -764,10 +764,7 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
           </div>
         </DialogHeader>
 
-        <div 
-          className="flex-1 overflow-auto"
-          onScroll={handleContentScroll}
-        >
+        <div className="flex-1 overflow-hidden">
           <TaskReportTabs
             activeTab={activeTab}
             onTabChange={setActiveTab}
@@ -789,6 +786,8 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
             onComplete={handleComplete}
             currentReport={currentReport}
             onAdditionalTaskComplete={handleAdditionalTaskComplete}
+            isHeaderCollapsed={isMobile && isHeaderCollapsed}
+            onContentScroll={handleContentScroll}
           />
         </div>
 
