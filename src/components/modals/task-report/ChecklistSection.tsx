@@ -35,6 +35,9 @@ export const ChecklistSection: React.FC<ChecklistSectionProps> = ({
   const { uploadMediaAsync } = useTaskReports();
   const { toast } = useToast();
   const latestReportIdRef = useRef<string | undefined>(reportId);
+  // CRITICAL: Ref to always have the latest checklist for concurrent uploads
+  const checklistRef = useRef(checklist);
+  useEffect(() => { checklistRef.current = checklist; }, [checklist]);
   // Hidden file input refs for auto-opening camera/gallery on photo-required tasks
   const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
   // Refs for each task item DOM element (for scroll-to-incomplete)
@@ -80,18 +83,20 @@ export const ChecklistSection: React.FC<ChecklistSectionProps> = ({
     if (isReadOnly) return;
     
     const key = `${categoryId}.${itemId}`;
-    const newChecklist = { ...checklist };
+    const latest = checklistRef.current;
+    const newChecklist = { ...latest };
     
     if (completed) {
       newChecklist[key] = {
         completed: true,
-        notes: checklist[key]?.notes || '',
-        media_urls: checklist[key]?.media_urls || [],
+        notes: latest[key]?.notes || '',
+        media_urls: latest[key]?.media_urls || [],
       };
     } else {
       delete newChecklist[key];
     }
     
+    checklistRef.current = newChecklist;
     onChecklistChange(newChecklist);
   };
 
@@ -99,13 +104,15 @@ export const ChecklistSection: React.FC<ChecklistSectionProps> = ({
     if (isReadOnly) return;
     
     const key = `${categoryId}.${itemId}`;
-    const newChecklist = { ...checklist };
+    const latest = checklistRef.current;
+    const newChecklist = { ...latest };
     
     if (!newChecklist[key]) {
       newChecklist[key] = { completed: false, notes: '', media_urls: [] };
     }
     
     newChecklist[key].notes = notes;
+    checklistRef.current = newChecklist;
     onChecklistChange(newChecklist);
   };
 
@@ -113,16 +120,19 @@ export const ChecklistSection: React.FC<ChecklistSectionProps> = ({
     if (isReadOnly) return;
     
     const key = `${categoryId}.${itemId}`;
-    const newChecklist = { ...checklist };
+    // CRITICAL: Use ref to get latest state, prevents race condition with concurrent uploads
+    const latest = checklistRef.current;
+    const newChecklist = { ...latest };
     
     if (!newChecklist[key]) {
-      const currentCompleted = checklist[key]?.completed || false;
+      const currentCompleted = latest[key]?.completed || false;
       newChecklist[key] = { completed: currentCompleted, notes: '', media_urls: [] };
     }
     
     const currentMediaUrls = newChecklist[key].media_urls || [];
     newChecklist[key].media_urls = [...currentMediaUrls, mediaUrl];
     
+    checklistRef.current = newChecklist;
     onChecklistChange(newChecklist);
   };
 
@@ -130,7 +140,7 @@ export const ChecklistSection: React.FC<ChecklistSectionProps> = ({
     if (isReadOnly || !onAdditionalTaskComplete) return;
     
     const key = `additional.${subtask.id}`;
-    const itemData = checklist[key];
+    const itemData = checklistRef.current[key];
     
     onAdditionalTaskComplete(
       subtask.id, 
@@ -144,13 +154,15 @@ export const ChecklistSection: React.FC<ChecklistSectionProps> = ({
     if (isReadOnly) return;
     
     const key = `additional.${subtaskId}`;
-    const newChecklist = { ...checklist };
+    const latest = checklistRef.current;
+    const newChecklist = { ...latest };
     
     if (!newChecklist[key]) {
       newChecklist[key] = { notes: '', media_urls: [] };
     }
     
     newChecklist[key].notes = notes;
+    checklistRef.current = newChecklist;
     onChecklistChange(newChecklist);
   };
 
@@ -158,7 +170,8 @@ export const ChecklistSection: React.FC<ChecklistSectionProps> = ({
     if (isReadOnly) return;
     
     const key = `additional.${subtaskId}`;
-    const newChecklist = { ...checklist };
+    const latest = checklistRef.current;
+    const newChecklist = { ...latest };
     
     if (!newChecklist[key]) {
       newChecklist[key] = { notes: '', media_urls: [] };
@@ -167,6 +180,7 @@ export const ChecklistSection: React.FC<ChecklistSectionProps> = ({
     const currentMediaUrls = newChecklist[key].media_urls || [];
     newChecklist[key].media_urls = [...currentMediaUrls, mediaUrl];
     
+    checklistRef.current = newChecklist;
     onChecklistChange(newChecklist);
   };
 
