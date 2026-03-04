@@ -28,11 +28,11 @@ export const CopyChecklistFromProperty: React.FC<CopyChecklistFromPropertyProps>
     <div className="space-y-3">
       <div className="flex items-center gap-2">
         <Copy className="h-4 w-4 text-muted-foreground" />
-        <Label className="text-sm font-medium">Copiar checklist existente</Label>
+        <Label className="text-sm font-medium">Asignar checklist existente</Label>
       </div>
       <Select value={selectedValue} onValueChange={handleSelect}>
         <SelectTrigger>
-          <SelectValue placeholder="Seleccionar plantilla a copiar..." />
+          <SelectValue placeholder="Seleccionar plantilla para asignar..." />
         </SelectTrigger>
         <SelectContent>
           {templates.map((template) => {
