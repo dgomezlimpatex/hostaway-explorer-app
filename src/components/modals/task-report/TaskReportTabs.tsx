@@ -29,6 +29,8 @@ interface TaskReportTabsProps {
   onComplete: () => Promise<void>;
   currentReport?: TaskReport;
   onAdditionalTaskComplete?: (subtaskId: string, completed: boolean, notes?: string, mediaUrls?: string[]) => void;
+  isHeaderCollapsed?: boolean;
+  onContentScroll?: (e: React.UIEvent<HTMLDivElement>) => void;
 }
 
 // Componente para el placeholder de tarea no iniciada
@@ -144,6 +146,8 @@ export const TaskReportTabs: React.FC<TaskReportTabsProps> = ({
   onComplete,
   currentReport,
   onAdditionalTaskComplete,
+  isHeaderCollapsed,
+  onContentScroll,
 }) => {
   const { isMobile } = useDeviceType();
 
@@ -176,6 +180,8 @@ export const TaskReportTabs: React.FC<TaskReportTabsProps> = ({
           onComplete={onComplete}
           currentReport={currentReport}
           onAdditionalTaskComplete={onAdditionalTaskComplete}
+          isHeaderCollapsed={isHeaderCollapsed}
+          onContentScroll={onContentScroll}
         />
       ) : (
         <DesktopTabsView

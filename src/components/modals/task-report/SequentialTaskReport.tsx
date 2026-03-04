@@ -28,6 +28,8 @@ interface SequentialTaskReportProps {
   onComplete: () => Promise<void>;
   currentReport?: TaskReport;
   onAdditionalTaskComplete?: (subtaskId: string, completed: boolean, notes?: string, mediaUrls?: string[]) => void;
+  isHeaderCollapsed?: boolean;
+  onContentScroll?: (e: React.UIEvent<HTMLDivElement>) => void;
 }
 
 const TaskNotStartedPlaceholder: React.FC = () => (
@@ -55,6 +57,8 @@ export const SequentialTaskReport: React.FC<SequentialTaskReportProps> = ({
   onComplete,
   currentReport,
   onAdditionalTaskComplete,
+  isHeaderCollapsed = false,
+  onContentScroll,
 }) => {
   const { isMobile } = useDeviceType();
   const { addError } = useMobileErrorHandler();
@@ -104,8 +108,11 @@ export const SequentialTaskReport: React.FC<SequentialTaskReportProps> = ({
         <TaskNotStartedPlaceholder key="placeholder" />
       ) : (
         <div key="content" className="flex flex-col h-full max-h-[calc(100vh-180px)] overflow-hidden">
-          {/* Step indicators - compact pill style */}
-          <div className="flex-shrink-0 px-4 py-2.5 border-b border-border/40 bg-muted/10">
+          {/* Step indicators - compact pill style, collapses with header */}
+          <div className={cn(
+            "flex-shrink-0 px-4 border-b border-border/40 bg-muted/10 transition-all duration-300 ease-out overflow-hidden",
+            isHeaderCollapsed ? "py-0 max-h-0 opacity-0" : "py-2.5 max-h-16 opacity-100"
+          )}>
             <div className="flex items-center gap-1.5">
               {steps.map((step, index) => {
                 const StepIcon = step.icon;
@@ -146,7 +153,10 @@ export const SequentialTaskReport: React.FC<SequentialTaskReportProps> = ({
           </div>
 
           {/* Step Content */}
-          <div className="flex-1 overflow-y-auto overscroll-contain pb-20">
+          <div 
+            className="flex-1 overflow-y-auto overscroll-contain pb-20"
+            onScroll={onContentScroll}
+          >
             {currentStep === 'checklist' && (
               <div className="px-2 py-2">
                 {isLoadingTemplates ? (
