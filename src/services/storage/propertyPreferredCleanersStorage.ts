@@ -80,4 +80,11 @@ export const propertyPreferredCleanersStorage = {
 
     if (error) throw error;
   },
+
+  async copyFromProperty(sourcePropertyId: string, targetPropertyId: string): Promise<void> {
+    const sourceCleaners = await this.getByPropertyId(sourcePropertyId);
+    for (const cleaner of sourceCleaners) {
+      await this.assign(targetPropertyId, cleaner.cleaner_id, cleaner.priority, cleaner.notes || undefined);
+    }
+  },
 };
