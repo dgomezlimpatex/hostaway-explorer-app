@@ -43,6 +43,7 @@ const CleaningCalendar = () => {
     handleDragOver,
     handleDrop,
     availability,
+    setCurrentDate,
     setCurrentView,
     navigateDate,
     goToToday,
@@ -170,16 +171,8 @@ const CleaningCalendar = () => {
               currentDate={currentDate}
               onNavigateDate={navigateDate}
               onDateChange={(date) => {
-                // Usar navigateDate para ir directamente a la fecha seleccionada
                 console.log('Calendar - navigating to selected date:', date.toISOString().split('T')[0]);
-                const today = new Date();
-                const diffTime = date.getTime() - currentDate.getTime();
-                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-                
-                // Navegar el número exacto de días necesarios
-                for (let i = 0; i < Math.abs(diffDays); i++) {
-                  navigateDate(diffDays > 0 ? 'next' : 'prev');
-                }
+                setCurrentDate(date);
               }}
               handleTaskClick={handleTaskClick}
               todayTasks={todayTasks}
@@ -287,15 +280,8 @@ const CleaningCalendar = () => {
           currentDate={currentDate}
           onNavigateDate={navigateDate}
           onDateChange={(date) => {
-            // Usar navigateDate para ir directamente a la fecha seleccionada
             console.log('Calendar - navigating to selected date:', date.toISOString().split('T')[0]);
-            const diffTime = date.getTime() - currentDate.getTime();
-            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-            
-            // Navegar el número exacto de días necesarios
-            for (let i = 0; i < Math.abs(diffDays); i++) {
-              navigateDate(diffDays > 0 ? 'next' : 'prev');
-            }
+            setCurrentDate(date);
           }}
           handleTaskClick={handleTaskClick}
           todayTasks={todayTasks}
