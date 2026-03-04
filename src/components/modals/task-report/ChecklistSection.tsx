@@ -20,6 +20,7 @@ interface ChecklistSectionProps {
   isReadOnly?: boolean;
   task?: Task;
   onAdditionalTaskComplete?: (subtaskId: string, completed: boolean, notes?: string, mediaUrls?: string[]) => void;
+  onIncompleteInfo?: (info: { count: number; scrollToNext: () => void } | null) => void;
 }
 
 export const ChecklistSection: React.FC<ChecklistSectionProps> = ({
@@ -30,6 +31,7 @@ export const ChecklistSection: React.FC<ChecklistSectionProps> = ({
   isReadOnly = false,
   task,
   onAdditionalTaskComplete,
+  onIncompleteInfo,
 }) => {
   const [expandedItem, setExpandedItem] = useState<string | null>(null);
   const { uploadMediaAsync } = useTaskReports();
@@ -251,7 +253,17 @@ export const ChecklistSection: React.FC<ChecklistSectionProps> = ({
     }, 150);
   }, [getIncompleteItems]);
 
-  // Calculate totals
+  // Report incomplete info to parent
+  useEffect(() => {
+    if (!onIncompleteInfo) return;
+    const incomplete = getIncompleteItems();
+    if (incomplete.length === 0 || isReadOnly) {
+      onIncompleteInfo(null);
+    } else {
+      onIncompleteInfo({ count: incomplete.length, scrollToNext: scrollToNextIncomplete });
+    }
+  }, [getIncompleteItems, scrollToNextIncomplete, onIncompleteInfo, isReadOnly]);
+
   const totalItems = (template?.checklist_items.reduce((acc, cat) => acc + cat.items.length, 0) || 0) + additionalTasks.length;
   const completedItems = Object.keys(checklist).filter(k => checklist[k]?.completed).length + additionalTasks.filter(t => t.completed).length;
 
@@ -671,27 +683,7 @@ export const ChecklistSection: React.FC<ChecklistSectionProps> = ({
         );
       })}
 
-      {/* Floating "find incomplete" button */}
-      {(() => {
-        const incomplete = getIncompleteItems();
-        if (incomplete.length === 0 || isReadOnly) return null;
-        return (
-          <button
-            onClick={scrollToNextIncomplete}
-            className={cn(
-              "sticky bottom-2 mx-auto flex items-center gap-1.5 px-4 py-2 rounded-full",
-              "bg-primary text-primary-foreground shadow-lg shadow-primary/25",
-              "text-xs font-semibold touch-manipulation active:scale-95 transition-transform",
-              "animate-in fade-in slide-in-from-bottom-2 duration-300"
-            )}
-          >
-            <ArrowDown className="h-3.5 w-3.5" />
-            {incomplete.length === 1 
-              ? 'Falta 1 tarea' 
-              : `Faltan ${incomplete.length} tareas`}
-          </button>
-        );
-      })()}
+      {/* Incomplete info is now exposed to parent via onIncompleteInfo callback */}
     </div>
   );
 };

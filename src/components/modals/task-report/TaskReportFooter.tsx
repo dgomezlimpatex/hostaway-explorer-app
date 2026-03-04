@@ -76,36 +76,6 @@ export const TaskReportFooter: React.FC<TaskReportFooterProps> = ({
 
   return (
     <div className="border-t pt-2 space-y-2">
-      {/* Validation Messages - solo mostrar si hay errores */}
-      {hasStartedTask && !canComplete && !isTaskCompleted && (
-        <div className="bg-orange-50 border border-orange-200 rounded-lg p-2">
-          <div className="flex items-center space-x-2">
-            {!isTaskFromToday && (
-              <div className="text-xs text-orange-600 flex items-center">
-                <span className="mr-1">⚠️</span>
-                Solo tareas de hoy
-              </div>
-            )}
-            {isTaskFromToday && !requiredValidation.isValid && (
-              <div className="text-xs text-orange-600 space-y-1">
-                {requiredValidation.missingItems.length > 0 && (
-                  <div className="flex items-center">
-                    <span className="mr-1">•</span>
-                    Faltan {requiredValidation.missingItems.length} tareas obligatorias
-                  </div>
-                )}
-                {requiredValidation.missingPhotos.length > 0 && (
-                  <div className="flex items-center">
-                    <span className="mr-1">•</span>
-                    Faltan {requiredValidation.missingPhotos.length} fotos obligatorias
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
       {/* Action Buttons */}
       <div className="flex items-center justify-between">
         <Button variant="outline" onClick={onCancel} size="sm" className="text-xs px-3 h-8">

@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useState, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
-import { CheckSquare, CheckCircle, Clock, ArrowRight } from 'lucide-react';
+import { CheckSquare, CheckCircle, Clock, ArrowRight, ArrowDown } from 'lucide-react';
 import { Task } from '@/types/calendar';
 import { TaskChecklistTemplate, TaskMedia, TaskReport } from '@/types/taskReports';
 import { ChecklistSection } from './ChecklistSection';
@@ -62,6 +62,11 @@ export const SequentialTaskReport: React.FC<SequentialTaskReportProps> = ({
 }) => {
   const { isMobile } = useDeviceType();
   const { addError } = useMobileErrorHandler();
+  const [incompleteInfo, setIncompleteInfo] = useState<{ count: number; scrollToNext: () => void } | null>(null);
+
+  const handleIncompleteInfo = useCallback((info: { count: number; scrollToNext: () => void } | null) => {
+    setIncompleteInfo(info);
+  }, []);
 
   const steps = [
     { key: 'checklist', title: 'Checklist', icon: CheckSquare },
@@ -172,6 +177,7 @@ export const SequentialTaskReport: React.FC<SequentialTaskReportProps> = ({
                     isReadOnly={isTaskCompleted}
                     task={task}
                     onAdditionalTaskComplete={onAdditionalTaskComplete}
+                    onIncompleteInfo={handleIncompleteInfo}
                   />
                 )}
               </div>
@@ -209,6 +215,25 @@ export const SequentialTaskReport: React.FC<SequentialTaskReportProps> = ({
           {/* Fixed bottom navigation - only on checklist step */}
           {currentStep !== 'summary' && (
             <div className="fixed bottom-0 left-0 right-0 bg-background/95 backdrop-blur-sm border-t shadow-lg px-4 py-3 z-50 safe-area-pb">
+              {/* Compact "Faltan X tareas" button replacing the old validation block */}
+              {incompleteInfo && (
+                <div className="flex justify-center mb-2">
+                  <button
+                    onClick={incompleteInfo.scrollToNext}
+                    className={cn(
+                      "flex items-center gap-1.5 px-3 py-1.5 rounded-full",
+                      "bg-primary text-primary-foreground shadow-sm",
+                      "text-[11px] font-semibold touch-manipulation active:scale-95 transition-transform"
+                    )}
+                  >
+                    <ArrowDown className="h-3 w-3" />
+                    {incompleteInfo.count === 1 
+                      ? 'Falta 1 tarea' 
+                      : `Faltan ${incompleteInfo.count} tareas`}
+                  </button>
+                </div>
+              )}
+
               <div className="flex items-center gap-3 max-w-lg mx-auto">
                 <Button
                   onClick={handleNext}
@@ -225,12 +250,6 @@ export const SequentialTaskReport: React.FC<SequentialTaskReportProps> = ({
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </Button>
               </div>
-              
-              {!canProceedToNext() && (
-                <p className="text-[11px] text-center text-muted-foreground mt-1.5">
-                  Completa todas las tareas para continuar
-                </p>
-              )}
             </div>
           )}
         </div>
