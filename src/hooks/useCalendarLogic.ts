@@ -29,6 +29,7 @@ export const useCalendarLogic = () => {
     currentDate,
     currentView,
     isLoading,
+    setCurrentDate,
     setCurrentView,
     navigateDate,
     goToToday,
@@ -506,6 +507,7 @@ export const useCalendarLogic = () => {
     handleDrop,
     
     // Memoized actions
+    setCurrentDate,
     setCurrentView,
     navigateDate,
     goToToday,
