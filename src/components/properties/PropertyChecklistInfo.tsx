@@ -13,9 +13,9 @@ export const PropertyChecklistInfo = ({ propertyId }: PropertyChecklistInfoProps
 
   if (!checklistAssignment?.checklist_template_id) {
     return (
-      <div className="flex items-center gap-2 text-sm text-gray-500">
+      <div className="flex items-center gap-2 text-sm text-muted-foreground">
         <AlertCircle className="h-4 w-4" />
-        <span>Sin checklist asignada</span>
+        <span>Sin checklist</span>
       </div>
     );
   }
@@ -26,12 +26,16 @@ export const PropertyChecklistInfo = ({ propertyId }: PropertyChecklistInfoProps
 
   if (!assignedTemplate) {
     return (
-      <div className="flex items-center gap-2 text-sm text-gray-500">
+      <div className="flex items-center gap-2 text-sm text-muted-foreground">
         <AlertCircle className="h-4 w-4" />
         <span>Checklist no encontrada</span>
       </div>
     );
   }
+
+  const totalTasks = assignedTemplate.checklist_items.reduce(
+    (sum, cat) => sum + cat.items.length, 0
+  );
 
   return (
     <div className="flex items-center gap-2">
@@ -39,6 +43,9 @@ export const PropertyChecklistInfo = ({ propertyId }: PropertyChecklistInfoProps
       <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
         {assignedTemplate.template_name}
       </Badge>
+      <span className="text-xs text-muted-foreground">
+        {totalTasks} tarea{totalTasks !== 1 ? 's' : ''}
+      </span>
     </div>
   );
 };
