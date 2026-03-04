@@ -29,6 +29,8 @@ interface CalendarLayoutProps {
   isTimeSlotOccupied: (cleanerId: string, hour: number, minute: number) => boolean;
   assignmentsMap?: Record<string, string[]>;
   absenceStatus?: Record<string, WorkerAbsenceStatus>;
+  isDragging?: boolean;
+  preferredCleanerIds?: Set<string>;
 }
 
 export const CalendarLayout = ({
@@ -50,7 +52,9 @@ export const CalendarLayout = ({
   getTaskPosition,
   isTimeSlotOccupied,
   assignmentsMap,
-  absenceStatus
+  absenceStatus,
+  isDragging,
+  preferredCleanerIds
 }: CalendarLayoutProps) => {
   const { isMobile, isTablet } = useDeviceType();
 
@@ -105,6 +109,8 @@ export const CalendarLayout = ({
                 }
               }}
               absenceStatus={absenceStatus}
+              isDragging={isDragging}
+              preferredCleanerIds={preferredCleanerIds}
             />
 
             {/* Timeline Area - Con scroll horizontal independiente del vertical */}
@@ -127,6 +133,8 @@ export const CalendarLayout = ({
                   isTimeSlotOccupied={isTimeSlotOccupied}
                   assignmentsMap={assignmentsMap}
                   absenceStatus={absenceStatus}
+                  isDragging={isDragging}
+                  preferredCleanerIds={preferredCleanerIds}
                 />
               </div>
             </div>

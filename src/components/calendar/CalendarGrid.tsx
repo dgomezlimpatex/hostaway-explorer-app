@@ -27,6 +27,8 @@ interface CalendarGridProps {
   // Map of task_id -> array of cleaner_ids assigned via task_assignments
   assignmentsMap?: Record<string, string[]>;
   absenceStatus?: Record<string, WorkerAbsenceStatus>;
+  isDragging?: boolean;
+  preferredCleanerIds?: Set<string>;
 }
 
 // Helper to convert hex to rgba
@@ -55,7 +57,9 @@ const CleanerRow = memo(({
   getTaskPosition,
   isTimeSlotOccupied,
   cleaners,
-  absenceStatus
+  absenceStatus,
+  isPreferred,
+  isDimmed
 }: {
   cleaner: Cleaner;
   index: number;
@@ -73,6 +77,8 @@ const CleanerRow = memo(({
   isTimeSlotOccupied: (cleanerId: string, hour: number, minute: number) => boolean;
   cleaners: Cleaner[];
   absenceStatus?: WorkerAbsenceStatus;
+  isPreferred?: boolean;
+  isDimmed?: boolean;
 }) => {
   // Removed excessive availability logging
 
@@ -226,8 +232,10 @@ const CleanerRow = memo(({
    return (
      <div 
        className={cn(
-         "h-20 relative transition-colors flex border-b-2 border-border",
-         !isAbsent && (index % 2 === 0 ? "bg-background hover:bg-accent/50" : "bg-muted/30 hover:bg-accent/50")
+         "h-20 relative transition-all duration-200 flex border-b-2 border-border",
+         !isAbsent && !isPreferred && !isDimmed && (index % 2 === 0 ? "bg-background hover:bg-accent/50" : "bg-muted/30 hover:bg-accent/50"),
+         isPreferred && "bg-yellow-50/60 ring-1 ring-inset ring-yellow-300",
+         isDimmed && "opacity-40"
        )}
        style={isAbsent ? {
          backgroundColor: hexToRgba(absenceColor, 0.12),
@@ -261,7 +269,9 @@ export const CalendarGrid = memo(forwardRef<HTMLDivElement, CalendarGridProps>(
     getTaskPosition,
     isTimeSlotOccupied,
     assignmentsMap,
-    absenceStatus
+    absenceStatus,
+    isDragging,
+    preferredCleanerIds
    }, ref) => {
 
     // Memoize cleaner rows with tasks
@@ -309,10 +319,12 @@ export const CalendarGrid = memo(forwardRef<HTMLDivElement, CalendarGridProps>(
             isTimeSlotOccupied={isTimeSlotOccupied}
             cleaners={cleaners}
             absenceStatus={absenceStatus?.[cleaner.id]}
+            isPreferred={isDragging && preferredCleanerIds && preferredCleanerIds.size > 0 && preferredCleanerIds.has(cleaner.id)}
+            isDimmed={isDragging && preferredCleanerIds && preferredCleanerIds.size > 0 && !preferredCleanerIds.has(cleaner.id)}
           />
         );
       });
-    }, [cleaners, timeSlots, assignedTasks, availability, currentDate, dragState, onDragOver, onDrop, onDragStart, onDragEnd, onTaskClick, getTaskPosition, isTimeSlotOccupied, assignmentsMap, absenceStatus]);
+    }, [cleaners, timeSlots, assignedTasks, availability, currentDate, dragState, onDragOver, onDrop, onDragStart, onDragEnd, onTaskClick, getTaskPosition, isTimeSlotOccupied, assignmentsMap, absenceStatus, isDragging, preferredCleanerIds]);
 
      return (
        <div className="flex-1 relative">
