@@ -1,16 +1,9 @@
 
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
 import { 
   CheckCircle, 
   Clock, 
-  MapPin, 
-  User, 
-  AlertTriangle,
-  FileText,
-  Camera 
 } from 'lucide-react';
 import { Task } from '@/types/calendar';
 import { TaskChecklistTemplate, TaskReport } from '@/types/taskReports';
@@ -111,44 +104,6 @@ export const ReportSummary: React.FC<ReportSummaryProps> = ({
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center space-x-2">
-        <CheckCircle className="h-5 w-5" />
-        <h3 className="text-lg font-semibold">Resumen del Reporte</h3>
-      </div>
-
-      {/* Información de la tarea */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-md">Información de la Tarea</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <div className="grid grid-cols-2 gap-4">
-            <div className="flex items-center space-x-2">
-              <MapPin className="h-4 w-4 text-gray-500" />
-              <div>
-                <p className="font-medium">{task.property}</p>
-                <p className="text-sm text-gray-600">{task.address}</p>
-              </div>
-            </div>
-            
-            <div className="flex items-center space-x-2">
-              <Clock className="h-4 w-4 text-gray-500" />
-              <div>
-                <p className="font-medium">{task.date}</p>
-                <p className="text-sm text-gray-600">{task.startTime} - {task.endTime}</p>
-              </div>
-            </div>
-          </div>
-
-          {task.cleaner && (
-            <div className="flex items-center space-x-2">
-              <User className="h-4 w-4 text-gray-500" />
-              <span className="font-medium">{task.cleaner}</span>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
       {/* Tiempo real del servicio */}
       {currentReport && (
         <Card className="border-blue-200 bg-blue-50">
@@ -161,14 +116,14 @@ export const ReportSummary: React.FC<ReportSummaryProps> = ({
           <CardContent className="space-y-3">
             <div className="grid grid-cols-2 gap-4">
               <div className="text-center">
-                <p className="text-sm text-gray-600 mb-1">Hora de Inicio</p>
+                <p className="text-sm text-muted-foreground mb-1">Hora de Inicio</p>
                 <p className="text-lg font-semibold text-green-700">
                   {formatTime(currentReport.start_time)}
                 </p>
               </div>
               
               <div className="text-center">
-                <p className="text-sm text-gray-600 mb-1">
+                <p className="text-sm text-muted-foreground mb-1">
                   {currentReport.end_time ? 'Hora de Finalización' : 'Tiempo Transcurrido'}
                 </p>
                 <p className="text-lg font-semibold text-red-700">
@@ -178,7 +133,7 @@ export const ReportSummary: React.FC<ReportSummaryProps> = ({
             </div>
             
             <div className="text-center pt-2 border-t border-blue-200">
-              <p className="text-sm text-gray-600 mb-1">Duración del Servicio</p>
+              <p className="text-sm text-muted-foreground mb-1">Duración del Servicio</p>
               <p className="text-xl font-bold text-blue-700">
                 {calculateServiceDuration()}
               </p>
@@ -187,101 +142,17 @@ export const ReportSummary: React.FC<ReportSummaryProps> = ({
         </Card>
       )}
 
-      {/* Progreso del checklist */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-md">Progreso del Checklist</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex items-center justify-between">
-            <span className="text-sm font-medium">Completado</span>
-            <Badge className={status.color}>
-              {status.text}
-            </Badge>
-          </div>
-          
-          <Progress value={completionPercentage} className="w-full" />
-          
-          <div className="grid grid-cols-3 gap-4 text-center">
-            <div>
-              <p className="text-2xl font-bold text-blue-600">{completedItems}</p>
-              <p className="text-sm text-gray-600">Completadas</p>
-            </div>
-            <div>
-              <p className="text-2xl font-bold text-gray-600">{totalItems}</p>
-              <p className="text-sm text-gray-600">Total</p>
-            </div>
-            <div>
-              <p className="text-2xl font-bold text-green-600">{completionPercentage}%</p>
-              <p className="text-sm text-gray-600">Progreso</p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Estadísticas adicionales */}
-      <div className="grid grid-cols-2 gap-4">
-        <Card>
-          <CardContent className="pt-6">
-            <div className="text-center">
-              <Camera className="h-8 w-8 mx-auto mb-2 text-blue-500" />
-              <p className="text-2xl font-bold">{totalPhotos}</p>
-              <p className="text-sm text-gray-600">Fotos</p>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="pt-6">
-            <div className="text-center">
-              <FileText className="h-8 w-8 mx-auto mb-2 text-purple-500" />
-              <p className="text-2xl font-bold">{notes.length > 0 ? 1 : 0}</p>
-              <p className="text-sm text-gray-600">Notas</p>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Notas */}
-      {notes && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-md flex items-center">
-              <FileText className="h-4 w-4 mr-2 text-purple-500" />
-              Notas Generales
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-gray-700 whitespace-pre-wrap">{notes}</p>
-          </CardContent>
-        </Card>
-      )}
-
       {/* Estado final */}
-      <Card className="border-2 border-dashed">
+      <Card className="border-green-200 bg-green-50">
         <CardContent className="pt-6">
           <div className="text-center">
-            {completionPercentage >= 80 ? (
-              <>
-                <CheckCircle className="h-16 w-16 mx-auto mb-4 text-green-500" />
-                <h3 className="text-lg font-semibold text-green-700 mb-2">
-                  Reporte Listo para Completar
-                </h3>
-                <p className="text-sm text-gray-600">
-                  El reporte está completo y puede ser finalizado.
-                </p>
-              </>
-            ) : (
-              <>
-                <Clock className="h-16 w-16 mx-auto mb-4 text-yellow-500" />
-                <h3 className="text-lg font-semibold text-yellow-700 mb-2">
-                  Reporte en Progreso
-                </h3>
-                <p className="text-sm text-gray-600">
-                  Completa al menos el 80% del checklist para finalizar el reporte.
-                </p>
-              </>
-            )}
+            <CheckCircle className="h-14 w-14 mx-auto mb-3 text-green-500" />
+            <h3 className="text-lg font-semibold text-green-700 mb-1">
+              Reporte Finalizado
+            </h3>
+            <p className="text-sm text-muted-foreground">
+              Todas las tareas han sido completadas.
+            </p>
           </div>
         </CardContent>
       </Card>
