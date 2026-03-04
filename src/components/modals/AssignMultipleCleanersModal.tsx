@@ -12,12 +12,14 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { User, AlertTriangle, Users } from "lucide-react";
+import { User, AlertTriangle, Users, Star } from "lucide-react";
 import { Task } from "@/types/calendar";
 import { TaskAssignment } from "@/types/taskAssignments";
 import { useToast } from "@/hooks/use-toast";
 import { useCleaners } from "@/hooks/useCleaners";
 import { multipleTaskAssignmentService } from "@/services/storage/multipleTaskAssignmentService";
+import { usePreferredCleanersByPropertyName } from "@/hooks/usePropertyPreferredCleaners";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface AssignMultipleCleanersModalProps {
   task: Task | null;
@@ -38,6 +40,10 @@ export const AssignMultipleCleanersModal = ({
   const { toast } = useToast();
   const { cleaners, isLoading: isLoadingCleaners } = useCleaners();
   const queryClient = useQueryClient();
+  const { data: preferredData = [] } = usePreferredCleanersByPropertyName(task?.property);
+
+  const preferredIds = new Set(preferredData.map(p => p.cleaner_id));
+  const preferredNotesMap = new Map(preferredData.map(p => [p.cleaner_id, p.notes]));
 
   useEffect(() => {
     if (task && open) {
@@ -140,6 +146,8 @@ export const AssignMultipleCleanersModal = ({
   if (!task) return null;
 
   const activeCleaners = cleaners.filter(cleaner => cleaner.isActive);
+  const preferredCleaners = activeCleaners.filter(c => preferredIds.has(c.id));
+  const otherCleaners = activeCleaners.filter(c => !preferredIds.has(c.id));
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -190,30 +198,73 @@ export const AssignMultipleCleanersModal = ({
                 </AlertDescription>
               </Alert>
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-60 overflow-y-auto">
-                {activeCleaners.map((cleaner) => {
-                  const isSelected = selectedCleaners.includes(cleaner.id);
-                  return (
-                    <div
-                      key={cleaner.id}
-                      className={`flex items-center space-x-3 p-3 border rounded-lg cursor-pointer transition-colors ${
-                        isSelected 
-                          ? 'border-blue-300 bg-blue-50' 
-                          : 'border-gray-200 hover:border-gray-300'
-                      }`}
-                      onClick={() => handleCleanerToggle(cleaner.id)}
-                    >
-                      <Checkbox
-                        checked={isSelected}
-                        onChange={() => handleCleanerToggle(cleaner.id)}
-                      />
-                      <div className="flex items-center gap-2 flex-1">
-                        <User className="h-4 w-4 text-gray-500" />
-                        <span className="text-sm font-medium">{cleaner.name}</span>
-                      </div>
+              <div className="space-y-3 max-h-60 overflow-y-auto">
+                {/* Preferred cleaners section */}
+                {preferredCleaners.length > 0 && (
+                  <>
+                    <div className="flex items-center gap-1 px-1 text-xs font-semibold text-muted-foreground">
+                      <Star className="h-3 w-3 text-yellow-500" /> Preferidas
                     </div>
-                  );
-                })}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {preferredCleaners.map((cleaner) => {
+                        const isSelected = selectedCleaners.includes(cleaner.id);
+                        const note = preferredNotesMap.get(cleaner.id);
+                        return (
+                          <TooltipProvider key={cleaner.id}>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <div
+                                  className={`flex items-center space-x-3 p-3 border rounded-lg cursor-pointer transition-colors ${
+                                    isSelected
+                                      ? 'border-green-300 bg-green-50'
+                                      : 'border-yellow-200 bg-yellow-50/50 hover:border-yellow-300'
+                                  }`}
+                                  onClick={() => handleCleanerToggle(cleaner.id)}
+                                >
+                                  <Checkbox checked={isSelected} onChange={() => handleCleanerToggle(cleaner.id)} />
+                                  <div className="flex items-center gap-2 flex-1">
+                                    <Star className="h-3 w-3 text-yellow-500" />
+                                    <span className="text-sm font-medium">{cleaner.name}</span>
+                                  </div>
+                                </div>
+                              </TooltipTrigger>
+                              {note && <TooltipContent>{note}</TooltipContent>}
+                            </Tooltip>
+                          </TooltipProvider>
+                        );
+                      })}
+                    </div>
+                    {otherCleaners.length > 0 && (
+                      <div className="px-1 text-xs font-semibold text-muted-foreground">Otras</div>
+                    )}
+                  </>
+                )}
+                {/* Other cleaners */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {otherCleaners.map((cleaner) => {
+                    const isSelected = selectedCleaners.includes(cleaner.id);
+                    return (
+                      <div
+                        key={cleaner.id}
+                        className={`flex items-center space-x-3 p-3 border rounded-lg cursor-pointer transition-colors ${
+                          isSelected 
+                            ? 'border-blue-300 bg-blue-50' 
+                            : 'border-gray-200 hover:border-gray-300'
+                        }`}
+                        onClick={() => handleCleanerToggle(cleaner.id)}
+                      >
+                        <Checkbox
+                          checked={isSelected}
+                          onChange={() => handleCleanerToggle(cleaner.id)}
+                        />
+                        <div className="flex items-center gap-2 flex-1">
+                          <User className="h-4 w-4 text-gray-500" />
+                          <span className="text-sm font-medium">{cleaner.name}</span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             )}
           </div>
