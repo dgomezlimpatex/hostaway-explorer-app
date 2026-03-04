@@ -1,59 +1,77 @@
 
 
-# Auto-eliminar tareas "POSIBLE" (REQUESTED) al llegar la hora del check-in
+## Plan: Simplificar el sistema de checklist para administradores
 
-## Contexto
+### Problema identificado
 
-Las reservas con estado "REQUESTED" generan tareas con prefijo "POSIBLE -". Actualmente se quedan indefinidamente aunque nunca se confirmen. El objetivo es que, si al llegar la fecha y hora del check-in (17:00) la reserva sigue en estado "REQUESTED", se elimine la tarea asociada automáticamente.
+El flujo actual para administradores requiere **3 pasos separados** en diferentes páginas:
+1. Ir a la página de "Plantillas de Checklist" y crear una plantilla con categorías, items, flags de requerido/foto
+2. Ir a la lista de Propiedades
+3. Abrir un modal para asignar la plantilla a la propiedad
 
-## Que va a cambiar
+Esto es demasiado complejo. Además, no se puede copiar fácilmente una checklist de una propiedad a otra.
 
-Cada vez que se ejecuta la sincronización de Avantio (automática o manual), se ejecutara un paso adicional que:
+### Nuevo diseño propuesto
 
-1. Busca en la base de datos reservas con estado "REQUESTED" cuya fecha de llegada (arrival_date) + hora 17:00 ya haya pasado
-2. Elimina la tarea asociada (si existe)
-3. Actualiza la reserva para quitar el task_id (poniendolo a NULL)
-4. Registra la accion en las estadisticas del sync log
+**Principio: la checklist se gestiona directamente desde la propiedad.**
 
-## Detalles tecnicos
+#### 1. Eliminar la página separada de plantillas
 
-### Archivo: `supabase/functions/avantio-sync/sync-orchestrator.ts`
+- La página `/checklist-templates` deja de ser el punto principal de gestión
+- Las plantillas siguen existiendo en la base de datos (se reutilizan las tablas existentes), pero se gestionan **inline** desde la propiedad
 
-Se anadira un nuevo metodo `cleanupExpiredRequestedTasks()` que se ejecutara despues de `repairMissingTasks()` dentro de `performSync()`:
+#### 2. Nuevo flujo integrado en PropertyList
 
-```text
-performSync(token)
-  |
-  +-- Procesar reservas de la API
-  +-- repairMissingTasks()        (existente)
-  +-- cleanupExpiredRequestedTasks()  (NUEVO)
-```
+Cada propiedad mostrará:
+- Si tiene checklist: un resumen compacto (nombre + N tareas) con botones "Editar" y "Copiar a otra propiedad"
+- Si no tiene checklist: un botón "Crear Checklist" o "Copiar de otra propiedad"
 
-La logica del nuevo metodo:
+#### 3. Editor de checklist simplificado (modal)
 
-1. Calcular la fecha/hora actual en timezone Europe/Madrid
-2. Consultar `avantio_reservations` donde:
-   - `status` = 'REQUESTED' (case insensitive)
-   - `task_id` no es NULL
-   - `arrival_date` + 17:00 Europe/Madrid ya paso
-3. Para cada resultado:
-   - Eliminar la tarea con `deleteTask(task_id)`
-   - Actualizar la reserva: `task_id = NULL`
-   - Registrar en `stats.tasks_cancelled_details`
+Reemplazar el formulario actual (`ChecklistTemplateForm`) con un editor más directo:
+- **Sin selector de "tipo de propiedad"** (ya está asociada a la propiedad directamente)
+- **Lista plana de tareas** con opción de agrupar por categoría (pero no obligatorio)
+- Cada tarea: nombre + toggle "Foto requerida" + toggle "Obligatorio"
+- Drag-to-reorder (o flechas arriba/abajo para simplicidad)
+- Botón "Añadir tarea" siempre visible al final
 
-### Logica de hora
+#### 4. "Copiar checklist de otra propiedad"
 
-Se comparara con `arrival_date` a las 17:00 hora de Madrid. Ejemplo:
-- Reserva con `arrival_date = 2026-02-19` y hora actual = 19 Feb 17:01 Madrid -> se elimina la tarea
-- Reserva con `arrival_date = 2026-02-19` y hora actual = 19 Feb 16:59 Madrid -> no se toca
+Nuevo flujo donde el admin:
+1. Selecciona una propiedad origen (de un dropdown que muestra solo propiedades con checklist)
+2. Se copia la plantilla como una nueva plantilla asociada a la propiedad destino
+3. Puede editar la copia inmediatamente
 
-### Archivos a modificar
+### Cambios técnicos
 
-| Archivo | Cambio |
-|---------|--------|
-| `supabase/functions/avantio-sync/sync-orchestrator.ts` | Anadir metodo `cleanupExpiredRequestedTasks()` y llamarlo en `performSync()` |
+**Archivos a modificar:**
+- `src/components/properties/AssignChecklistModal.tsx` -- Reescribir como modal completo con editor inline + opción "copiar de propiedad"
+- `src/components/properties/PropertyChecklistInfo.tsx` -- Añadir botón "Editar" inline
+- `src/components/properties/PropertyList.tsx` -- Simplificar botón de checklist, eliminar modal separado de asignar
 
-### Despliegue
+**Archivos a crear:**
+- `src/components/properties/PropertyChecklistEditor.tsx` -- Editor simplificado de checklist integrado en modal
+- `src/components/properties/CopyChecklistFromProperty.tsx` -- Componente para seleccionar propiedad origen y copiar su checklist
 
-Se redesplegara la edge function `avantio-sync` para que el cambio entre en efecto en la proxima sincronizacion automatica.
+**Archivos existentes que se reutilizan sin cambios:**
+- `src/services/storage/checklistTemplatesStorage.ts` -- CRUD de plantillas (se reutiliza)
+- `src/services/storage/propertyChecklistStorage.ts` -- Asignaciones (se reutiliza)
+- `src/hooks/useChecklistTemplates.ts` -- Hooks de React Query (se reutilizan)
+- `src/hooks/usePropertyChecklists.ts` -- Hooks de asignación (se reutilizan)
+- `src/types/taskReports.ts` -- Tipos (se reutilizan)
+
+**Base de datos:** Sin cambios. Se reutilizan `task_checklists_templates` y `property_checklist_assignments`.
+
+**Flujo de datos:**
+1. Admin abre checklist de propiedad X
+2. Si no existe: se crea una nueva plantilla con `template_name = property.nombre` y se asigna automáticamente via `property_checklist_assignments`
+3. Si existe: se carga la plantilla asignada y se edita directamente
+4. Al "copiar de propiedad": se duplica la plantilla y se asigna a la propiedad destino
+
+### Lo que NO cambia
+
+- La experiencia del limpiador (ChecklistSection, SequentialTaskReport, etc.)
+- Las tablas de la base de datos
+- El sistema de reportes de tareas
+- La lógica de validación y autoguardado
 
