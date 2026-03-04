@@ -8,6 +8,7 @@ import { PropertyChecklistEditor } from './PropertyChecklistEditor';
 import { CopyChecklistFromProperty } from './CopyChecklistFromProperty';
 import { useChecklistTemplates, useCreateChecklistTemplate, useUpdateChecklistTemplate } from '@/hooks/useChecklistTemplates';
 import { usePropertyChecklistAssignment, useAssignChecklistToProperty, useRemoveChecklistFromProperty } from '@/hooks/usePropertyChecklists';
+import { supabase } from '@/integrations/supabase/client';
 import { Property } from '@/types/property';
 import { ChecklistCategory } from '@/types/taskReports';
 import { useToast } from '@/hooks/use-toast';
@@ -83,28 +84,45 @@ export const AssignChecklistModal: React.FC<AssignChecklistModalProps> = ({
     if (!property) return;
 
     try {
+      const propertyTemplatePayload = {
+        template_name: `Checklist - ${property.nombre}`,
+        property_type: property.nombre,
+        checklist_items: categories,
+        is_active: true,
+      };
+
       if (assignment?.checklist_template_id) {
-        // Update existing template
-        await updateTemplate.mutateAsync({
-          templateId: assignment.checklist_template_id,
-          updates: {
-            checklist_items: categories,
-            template_name: `Checklist - ${property.nombre}`,
-          },
-        });
+        const { count: activeAssignmentsCount, error: countError } = await supabase
+          .from('property_checklist_assignments')
+          .select('id', { count: 'exact', head: true })
+          .eq('checklist_template_id', assignment.checklist_template_id)
+          .eq('is_active', true);
+
+        if (countError) throw countError;
+
+        if ((activeAssignmentsCount ?? 0) > 1) {
+          const forkedTemplate = await createTemplate.mutateAsync(propertyTemplatePayload);
+          await assignChecklist.mutateAsync({
+            propertyId: property.id,
+            templateId: forkedTemplate.id,
+          });
+        } else {
+          await updateTemplate.mutateAsync({
+            templateId: assignment.checklist_template_id,
+            updates: {
+              checklist_items: categories,
+              template_name: `Checklist - ${property.nombre}`,
+            },
+          });
+        }
       } else {
-        // Create new template and assign
-        const newTemplate = await createTemplate.mutateAsync({
-          template_name: `Checklist - ${property.nombre}`,
-          property_type: property.nombre,
-          checklist_items: categories,
-          is_active: true,
-        });
+        const newTemplate = await createTemplate.mutateAsync(propertyTemplatePayload);
         await assignChecklist.mutateAsync({
           propertyId: property.id,
           templateId: newTemplate.id,
         });
       }
+
       onOpenChange(false);
     } catch (error) {
       console.error('Error saving checklist:', error);
