@@ -12,11 +12,13 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { User, AlertTriangle } from "lucide-react";
+import { User, AlertTriangle, Star } from "lucide-react";
 import { Task } from "@/types/calendar";
 import { useToast } from "@/hooks/use-toast";
 import { useCleaners } from "@/hooks/useCleaners";
 import { useTasks } from "@/hooks/useTasks";
+import { usePreferredCleanersByPropertyName } from "@/hooks/usePropertyPreferredCleaners";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface AssignCleanerModalProps {
   task: Task | null;
@@ -35,7 +37,10 @@ export const AssignCleanerModal = ({
   const { toast } = useToast();
   const { cleaners, isLoading: isLoadingCleaners } = useCleaners();
   const { tasks } = useTasks(task ? new Date(task.date) : new Date(), 'day');
+  const { data: preferredData = [] } = usePreferredCleanersByPropertyName(task?.property);
 
+  const preferredIds = new Set(preferredData.map(p => p.cleaner_id));
+  const preferredNotesMap = new Map(preferredData.map(p => [p.cleaner_id, p.notes]));
   if (!task) return null;
 
   // Check for time conflicts
@@ -114,7 +119,33 @@ export const AssignCleanerModal = ({
                 <SelectValue placeholder="Seleccionar limpiador" />
               </SelectTrigger>
               <SelectContent>
-                {cleaners.map((cleaner) => (
+                {/* Preferred cleaners first */}
+                {cleaners.filter(c => preferredIds.has(c.id)).length > 0 && (
+                  <>
+                    <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground flex items-center gap-1">
+                      <Star className="h-3 w-3 text-yellow-500" /> Preferidas
+                    </div>
+                    {cleaners.filter(c => preferredIds.has(c.id)).map((cleaner) => (
+                      <SelectItem key={cleaner.id} value={cleaner.id} disabled={!cleaner.isActive}>
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <div className="flex items-center gap-2">
+                                <Star className="h-3 w-3 text-yellow-500" />
+                                <span>{cleaner.name}</span>
+                              </div>
+                            </TooltipTrigger>
+                            {preferredNotesMap.get(cleaner.id) && (
+                              <TooltipContent>{preferredNotesMap.get(cleaner.id)}</TooltipContent>
+                            )}
+                          </Tooltip>
+                        </TooltipProvider>
+                      </SelectItem>
+                    ))}
+                    <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">Otras</div>
+                  </>
+                )}
+                {cleaners.filter(c => !preferredIds.has(c.id)).map((cleaner) => (
                   <SelectItem 
                     key={cleaner.id} 
                     value={cleaner.id}

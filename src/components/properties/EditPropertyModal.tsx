@@ -12,6 +12,7 @@ import { BasicInfoSection } from './forms/BasicInfoSection';
 import { CharacteristicsSection } from './forms/CharacteristicsSection';
 import { ServiceSection } from './forms/ServiceSection';
 import { TextileSection } from './forms/TextileSection';
+import { PropertyPreferredCleaners } from './PropertyPreferredCleaners';
 import { AmenitiesSection } from './forms/AmenitiesSection';
 import { NotesSection } from './forms/NotesSection';
 import { ClientSelectionSection } from './forms/ClientSelectionSection';
@@ -151,6 +152,8 @@ export const EditPropertyModal: React.FC<EditPropertyModalProps> = ({
             <NotesSection control={form.control} />
             
             <ClientSelectionSection control={form.control} />
+
+            <PropertyPreferredCleaners propertyId={property.id} />
 
             <div className="flex justify-end gap-3 pt-6 border-t">
               <Button

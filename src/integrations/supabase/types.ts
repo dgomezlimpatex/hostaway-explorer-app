@@ -2263,6 +2263,48 @@ export type Database = {
         }
         Relationships: []
       }
+      property_preferred_cleaners: {
+        Row: {
+          cleaner_id: string
+          created_at: string
+          id: string
+          notes: string | null
+          priority: number
+          property_id: string
+        }
+        Insert: {
+          cleaner_id: string
+          created_at?: string
+          id?: string
+          notes?: string | null
+          priority?: number
+          property_id: string
+        }
+        Update: {
+          cleaner_id?: string
+          created_at?: string
+          id?: string
+          notes?: string | null
+          priority?: number
+          property_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "property_preferred_cleaners_cleaner_id_fkey"
+            columns: ["cleaner_id"]
+            isOneToOne: false
+            referencedRelation: "cleaners"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "property_preferred_cleaners_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       recurring_task_executions: {
         Row: {
           created_at: string
