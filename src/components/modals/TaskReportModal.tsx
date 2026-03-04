@@ -74,6 +74,7 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
   const [isChecklistCompleted, setIsChecklistCompleted] = useState(false);
   const [isHeaderCollapsed, setIsHeaderCollapsed] = useState(false);
   const lastScrollTop = useRef(0);
+  const accumulatedUpScroll = useRef(0);
   
   // Ref to track if we've already tried to create a report for this task
   const reportCreationAttempted = useRef<string | null>(null);
@@ -722,14 +723,18 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
     const scrollTop = e.currentTarget.scrollTop;
     const scrollDelta = scrollTop - lastScrollTop.current;
     
-    // Only collapse/expand after scrolling more than 10px
-    if (Math.abs(scrollDelta) > 10) {
+    if (Math.abs(scrollDelta) > 5) {
       if (scrollDelta > 0 && scrollTop > 50) {
-        // Scrolling down - collapse header
+        // Scrolling down - collapse header, reset upward accumulator
         setIsHeaderCollapsed(true);
+        accumulatedUpScroll.current = 0;
       } else if (scrollDelta < 0) {
-        // Scrolling up - show header
-        setIsHeaderCollapsed(false);
+        // Scrolling up - accumulate before expanding
+        accumulatedUpScroll.current += Math.abs(scrollDelta);
+        if (accumulatedUpScroll.current > 80 || scrollTop < 30) {
+          setIsHeaderCollapsed(false);
+          accumulatedUpScroll.current = 0;
+        }
       }
       lastScrollTop.current = scrollTop;
     }
