@@ -9,6 +9,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { EditPropertyModal } from './EditPropertyModal';
 import { AssignChecklistModal } from './AssignChecklistModal';
 import { PropertyChecklistInfo } from './PropertyChecklistInfo';
+import { PropertyPreferredCleaners } from './PropertyPreferredCleaners';
 import { Property } from '@/types/property';
 import { Skeleton } from '@/components/ui/skeleton';
 import { 
@@ -25,7 +26,8 @@ import {
   ChevronRight,
   User,
   Building,
-  Copy
+  Copy,
+  Star
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -47,6 +49,7 @@ export const PropertyList = () => {
   const createProperty = useCreateProperty();
   const [editingProperty, setEditingProperty] = useState<Property | null>(null);
   const [assigningProperty, setAssigningProperty] = useState<Property | null>(null);
+  const [preferredCleanersPropertyId, setPreferredCleanersPropertyId] = useState<string | null>(null);
   const [openClients, setOpenClients] = useState<Set<string>>(new Set());
   const { toast } = useToast();
 
@@ -248,6 +251,17 @@ export const PropertyList = () => {
                                 <Button
                                   variant="outline"
                                   size="sm"
+                                  onClick={() => setPreferredCleanersPropertyId(
+                                    preferredCleanersPropertyId === property.id ? null : property.id
+                                  )}
+                                  title="Limpiadoras preferidas"
+                                  className={preferredCleanersPropertyId === property.id ? 'border-yellow-400 bg-yellow-50' : ''}
+                                >
+                                  <Star className="h-4 w-4 text-yellow-500" />
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
                                   onClick={() => handleDuplicate(property)}
                                   title="Duplicar propiedad"
                                 >
@@ -319,6 +333,12 @@ export const PropertyList = () => {
                                     <FileText className="h-4 w-4 text-gray-500 mt-0.5" />
                                     <p className="text-sm text-gray-700">{property.notas}</p>
                                   </div>
+                                </div>
+                              )}
+
+                              {preferredCleanersPropertyId === property.id && (
+                                <div className="pt-2 border-t border-gray-100">
+                                  <PropertyPreferredCleaners propertyId={property.id} />
                                 </div>
                               )}
                             </div>
