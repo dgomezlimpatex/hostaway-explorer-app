@@ -420,18 +420,23 @@ export const ChecklistSection: React.FC<ChecklistSectionProps> = ({
         const allDone = done === total;
 
         return (
-          <div key={category.id} className="mx-0.5 rounded-xl border border-border/60 bg-card overflow-hidden">
+          <div key={category.id} className={cn(
+            "mx-0.5 rounded-xl border overflow-hidden",
+            allDone 
+              ? "border-green-300 bg-green-100/80" 
+              : "border-border/60 bg-card"
+          )}>
             {/* Category header - collapsible */}
             <button
               onClick={() => toggleCategory(category.id)}
               className={cn(
                 "w-full flex items-center justify-between px-3 py-2.5 text-left transition-colors",
-                allDone && "bg-green-50/50"
+                allDone ? "bg-green-200/70" : ""
               )}
             >
               <span className={cn(
                 "text-sm font-semibold truncate",
-                allDone ? "text-green-700" : "text-foreground"
+                allDone ? "text-green-800" : "text-foreground"
               )}>
                 {category.category}
               </span>
@@ -439,12 +444,12 @@ export const ChecklistSection: React.FC<ChecklistSectionProps> = ({
                 <span className={cn(
                   "text-[11px] font-medium px-2 py-0.5 rounded-full",
                   allDone 
-                    ? "bg-green-100 text-green-700" 
+                    ? "bg-green-300/80 text-green-900" 
                     : "bg-muted text-muted-foreground"
                 )}>
                   {done}/{total}
                 </span>
-                {isCategoryOpen ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
+                {isCategoryOpen ? <ChevronUp className={cn("h-4 w-4", allDone ? "text-green-700" : "text-muted-foreground")} /> : <ChevronDown className={cn("h-4 w-4", allDone ? "text-green-700" : "text-muted-foreground")} />}
               </div>
             </button>
 
