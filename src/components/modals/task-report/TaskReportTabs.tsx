@@ -81,7 +81,7 @@ const DesktopTabsView: React.FC<{
   );
 
   return (
-    <Tabs value={activeTab} onValueChange={onTabChange} className="flex flex-col h-full">
+    <Tabs value={activeTab} onValueChange={onTabChange} className="flex flex-col h-full min-h-0">
       <TabsList className="grid w-full grid-cols-2 mb-4">
         <TabsTrigger value="checklist" className="text-xs">
           {getTabLabel('checklist', <CheckSquare className="h-4 w-4" />, 'Lista', 'Lista')}
@@ -91,8 +91,8 @@ const DesktopTabsView: React.FC<{
         </TabsTrigger>
       </TabsList>
 
-      <div className="flex-1 overflow-auto min-h-0">
-        <TabsContent value="checklist" className="mt-0 h-full overflow-auto">
+      <div className="flex-1 min-h-0 overflow-hidden">
+        <TabsContent value="checklist" className="mt-0 h-full min-h-0 overflow-y-auto custom-scrollbar pr-1">
           {isLoadingTemplates ? (
             <div className="flex items-center justify-center py-8">
               <Clock className="h-8 w-8 animate-spin text-gray-400" />
@@ -110,7 +110,7 @@ const DesktopTabsView: React.FC<{
           )}
         </TabsContent>
 
-        <TabsContent value="summary" className="mt-0 h-full overflow-auto">
+        <TabsContent value="summary" className="mt-0 h-full min-h-0 overflow-y-auto custom-scrollbar pr-1">
           <ReportSummary
             task={task}
             template={currentTemplate}

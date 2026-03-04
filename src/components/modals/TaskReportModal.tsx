@@ -712,9 +712,9 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
       return "w-full max-w-full h-full max-h-full m-0 rounded-none overflow-hidden flex flex-col";
     }
     if (isTablet) {
-      return "w-[95vw] max-w-3xl max-h-[85vh] overflow-hidden flex flex-col";
+      return "w-[95vw] max-w-3xl h-[85vh] max-h-[85vh] overflow-hidden flex flex-col";
     }
-    return "max-w-4xl max-h-[90vh] overflow-hidden flex flex-col";
+    return "max-w-4xl h-[90vh] max-h-[90vh] overflow-hidden flex flex-col";
   }, [isMobile, isTablet]);
 
   const handleContentScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
