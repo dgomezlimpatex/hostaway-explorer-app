@@ -613,8 +613,8 @@ export const ChecklistSection: React.FC<ChecklistSectionProps> = ({
                         </div>
                       )}
 
-                      {/* Notes expand toggle - only if has notes already */}
-                      {(hasNotes || isExpanded) && (
+                      {/* Notes expand toggle - only if has notes already (hidden for photo-required items) */}
+                      {!item.photo_required && (hasNotes || isExpanded) && (
                         <div className="px-2 pb-1.5">
                           {!isExpanded && hasNotes ? (
                             <button
@@ -646,8 +646,8 @@ export const ChecklistSection: React.FC<ChecklistSectionProps> = ({
                         </div>
                       )}
 
-                      {/* Add notes link when no notes exist and not expanded */}
-                      {!hasNotes && !isExpanded && !isReadOnly && (
+                      {/* Add notes link when no notes exist and not expanded (hidden for photo-required items) */}
+                      {!item.photo_required && !hasNotes && !isExpanded && !isReadOnly && (
                         <div className="flex justify-end px-2">
                           <button
                             onClick={(e) => { e.stopPropagation(); toggleExpanded(key); }}
