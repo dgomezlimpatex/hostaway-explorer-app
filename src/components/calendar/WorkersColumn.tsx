@@ -4,15 +4,18 @@ import { cn } from "@/lib/utils";
 import { WorkerAbsenceStatus } from "@/hooks/useWorkersAbsenceStatus";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { ABSENCE_TYPE_LABELS } from "@/types/workerAbsence";
+import { Star } from "lucide-react";
 
 interface WorkersColumnProps {
   cleaners: Cleaner[];
   onDragOver: (e: React.DragEvent) => void;
   onDrop: (e: React.DragEvent, cleanerId: string, cleaners: any[]) => void;
   absenceStatus?: Record<string, WorkerAbsenceStatus>;
+  isDragging?: boolean;
+  preferredCleanerIds?: Set<string>;
 }
 
-export const WorkersColumn = ({ cleaners, onDragOver, onDrop, absenceStatus }: WorkersColumnProps) => {
+export const WorkersColumn = ({ cleaners, onDragOver, onDrop, absenceStatus, isDragging, preferredCleanerIds }: WorkersColumnProps) => {
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -54,6 +57,8 @@ export const WorkersColumn = ({ cleaners, onDragOver, onDrop, absenceStatus }: W
           const isAbsent = status?.isAbsent;
           const hasMaintenance = status?.maintenanceCleanings && status.maintenanceCleanings.length > 0;
           const hasHourlyAbsence = status?.hourlyAbsences && status.hourlyAbsences.length > 0;
+          const isPreferred = isDragging && preferredCleanerIds && preferredCleanerIds.has(cleaner.id);
+          const isDimmed = isDragging && preferredCleanerIds && preferredCleanerIds.size > 0 && !preferredCleanerIds.has(cleaner.id);
 
           // Convert hex to rgba for proper opacity
           const getAbsenceBgColor = (hexColor: string) => {
@@ -68,8 +73,10 @@ export const WorkersColumn = ({ cleaners, onDragOver, onDrop, absenceStatus }: W
             <div 
               key={cleaner.id} 
               className={cn(
-                "h-20 border-b-2 border-gray-300 p-3 flex items-center transition-colors cursor-pointer relative",
-                !isAbsent && (index % 2 === 0 ? "bg-white hover:bg-gray-100" : "bg-gray-50 hover:bg-gray-100")
+                "h-20 border-b-2 border-gray-300 p-3 flex items-center transition-all duration-200 cursor-pointer relative",
+                !isAbsent && !isPreferred && !isDimmed && (index % 2 === 0 ? "bg-white hover:bg-gray-100" : "bg-gray-50 hover:bg-gray-100"),
+                isPreferred && "bg-yellow-50 ring-2 ring-yellow-400 ring-inset shadow-inner",
+                isDimmed && "opacity-40"
               )}
               style={isAbsent ? { 
                 backgroundColor: getAbsenceBgColor(status?.absenceColor || '#6B7280'),
@@ -128,7 +135,10 @@ export const WorkersColumn = ({ cleaners, onDragOver, onDrop, absenceStatus }: W
                   )}
                 </div>
                 <div className="min-w-0 flex-1">
-                  <div className="font-medium text-gray-900 text-sm truncate">{cleaner.name}</div>
+                  <div className="font-medium text-gray-900 text-sm truncate flex items-center gap-1">
+                    {isPreferred && <Star className="h-3 w-3 text-yellow-500 flex-shrink-0 fill-yellow-500" />}
+                    {cleaner.name}
+                  </div>
                   <div className="flex items-center gap-1">
                     {isAbsent ? (
                       <span 

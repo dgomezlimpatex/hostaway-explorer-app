@@ -14,6 +14,7 @@ import { getTaskPosition, isTimeSlotOccupied, detectTaskOverlaps } from "@/utils
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useWorkersAbsenceStatus } from "@/hooks/useWorkersAbsenceStatus";
+import { usePreferredCleanersByPropertyName } from "@/hooks/usePropertyPreferredCleaners";
 
 export interface CalendarContainerProps {
   tasks: Task[];
@@ -154,6 +155,16 @@ export const CalendarContainer = ({
   const cleanerIds = useMemo(() => cleaners.map(c => c.id), [cleaners]);
   const { data: absenceStatus } = useWorkersAbsenceStatus(cleanerIds, currentDate);
 
+  // Get preferred cleaners for the currently dragged task's property
+  const draggedPropertyName = dragState.draggedTask?.property;
+  const { data: draggedTaskPreferred = [] } = usePreferredCleanersByPropertyName(
+    dragState.isDragging ? draggedPropertyName : undefined
+  );
+  const preferredCleanerIdsForDrag = useMemo(() => 
+    dragState.isDragging ? new Set(draggedTaskPreferred.map(p => p.cleaner_id)) : new Set<string>(),
+    [draggedTaskPreferred, dragState.isDragging]
+  );
+
   // Detect overlapping tasks by cleaner
   const overlapsByCleanerMap = useMemo(() => {
     const map: Record<string, any[]> = {};
@@ -255,6 +266,8 @@ export const CalendarContainer = ({
             isTimeSlotOccupied={checkTimeSlotOccupied}
             assignmentsMap={assignmentsMap}
             absenceStatus={absenceStatus}
+            isDragging={dragState.isDragging}
+            preferredCleanerIds={preferredCleanerIdsForDrag}
           />
         </div>
       </div>
