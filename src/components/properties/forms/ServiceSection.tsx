@@ -154,6 +154,29 @@ export const ServiceSection = ({ control }: ServiceSectionProps) => {
 
       <FormField
         control={control}
+        name="excludeFromExport"
+        render={({ field }) => (
+          <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+            <div className="space-y-0.5">
+              <FormLabel className="text-base flex items-center gap-2">
+                📊 Excluir de exportación automática
+              </FormLabel>
+              <FormDescription>
+                Si está activado, esta propiedad NO se incluirá en los reportes automáticos a Google Sheets
+              </FormDescription>
+            </div>
+            <FormControl>
+              <Switch
+                checked={field.value || false}
+                onCheckedChange={field.onChange}
+              />
+            </FormControl>
+          </FormItem>
+        )}
+      />
+
+      <FormField
+        control={control}
         name="isActive"
         render={({ field }) => {
           const clientIsActive = selectedClient?.isActive !== false;

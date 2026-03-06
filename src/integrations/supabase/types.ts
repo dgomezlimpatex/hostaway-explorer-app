@@ -1903,6 +1903,7 @@ export type Database = {
           direccion: string
           duracion_servicio: number
           estropajos: number
+          exclude_from_export: boolean
           fecha_actualizacion: string
           fecha_creacion: string
           gel_ducha: number
@@ -1960,6 +1961,7 @@ export type Database = {
           direccion: string
           duracion_servicio?: number
           estropajos?: number
+          exclude_from_export?: boolean
           fecha_actualizacion?: string
           fecha_creacion?: string
           gel_ducha?: number
@@ -2017,6 +2019,7 @@ export type Database = {
           direccion?: string
           duracion_servicio?: number
           estropajos?: number
+          exclude_from_export?: boolean
           fecha_actualizacion?: string
           fecha_creacion?: string
           gel_ducha?: number

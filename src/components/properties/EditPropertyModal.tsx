@@ -66,6 +66,7 @@ export const EditPropertyModal: React.FC<EditPropertyModalProps> = ({
         clienteId: property.clienteId,
         linenControlEnabled: property.linenControlEnabled ?? null,
         isActive: property.isActive ?? null,
+        excludeFromExport: property.excludeFromExport ?? false,
     } : undefined,
   });
 
@@ -101,6 +102,7 @@ export const EditPropertyModal: React.FC<EditPropertyModalProps> = ({
         clienteId: property.clienteId,
         linenControlEnabled: property.linenControlEnabled ?? null,
         isActive: property.isActive ?? null,
+        excludeFromExport: property.excludeFromExport ?? false,
       });
     }
   }, [property, form]);
