@@ -194,6 +194,11 @@ Deno.serve(async (req) => {
       const taskCost = isExtraordinary ? (task.coste || 0) : (property?.coste_servicio || task.coste || 0);
       const taskDuration = isExtraordinary ? (task.duracion || 120) : (property?.duracion_servicio || task.duracion || 120);
 
+      // Split hours by number of workers
+      const cleanerNames = (task.cleaner || '').split(',').map((n: string) => n.trim()).filter(Boolean);
+      const workerCount = Math.max(cleanerNames.length, 1);
+      const hoursPerWorker = taskDuration / 60 / workerCount;
+
       // Incidents text
       const incidents = property ? `${property.nombre} (${property.codigo})` : (task.property || '');
 
