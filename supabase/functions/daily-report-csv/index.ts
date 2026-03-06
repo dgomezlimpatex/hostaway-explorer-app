@@ -13,7 +13,7 @@ const formatName = (name: string | null | undefined): string => {
 
 // Helper: format service type
 const formatServiceType = (type: string): string => {
-  if (type === 'mantenimiento-airbnb') return 'Mantenimiento AIRBNB';
+  if (type === 'limpieza-turistica') return 'Limpieza Turística';
   return type.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
 };
 
