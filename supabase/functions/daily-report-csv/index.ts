@@ -210,7 +210,7 @@ Deno.serve(async (req) => {
         formatServiceType(task.type),
         formatStatus(task.status),
         taskCost.toFixed(2).replace('.', ','),
-        (taskDuration / 60).toFixed(2).replace('.', ','),
+        hoursPerWorker.toFixed(2).replace('.', ','),
         formatName(task.cleaner) || 'Sin asignar',
         formatPaymentMethod(clientPaymentMethod),
         incidents,
