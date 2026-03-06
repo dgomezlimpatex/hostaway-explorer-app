@@ -32,7 +32,7 @@ export const BatchTaskForm = ({ batchData, onFieldChange }: BatchTaskFormProps) 
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="mantenimiento-airbnb">Mantenimiento Airbnb</SelectItem>
+            <SelectItem value="limpieza-turistica">Limpieza Turística</SelectItem>
             <SelectItem value="limpieza-mantenimiento">Limpieza y Mantenimiento</SelectItem>
             <SelectItem value="mantenimiento-cristaleria">Mantenimiento y Cristalería</SelectItem>
             <SelectItem value="limpieza-entrada-salida">Limpieza Entrada/Salida</SelectItem>

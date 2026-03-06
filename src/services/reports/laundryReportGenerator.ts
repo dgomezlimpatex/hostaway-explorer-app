@@ -42,8 +42,8 @@ export const generateLaundryReport = (tasks: any[], properties: any[], clients: 
 
       // Formatear el tipo de servicio
       const formatServiceType = (type: string) => {
-        if (type === 'mantenimiento-airbnb') {
-          return 'Mantenimiento AIRBNB';
+        if (type === 'limpieza-turistica') {
+          return 'Limpieza Turística';
         }
         // Capitalizar primera letra de cada palabra
         return type.split('-').map(word => 

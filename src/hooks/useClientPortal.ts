@@ -607,7 +607,7 @@ export const useCreateReservations = () => {
             date: reservation.checkOutDate,
             start_time: checkoutTime,
             end_time: endTime,
-            type: 'mantenimiento-airbnb',
+            type: 'limpieza-turistica',
             status: 'pending',
             notes: reservation.specialRequests || null,
             propiedad_id: property.id,

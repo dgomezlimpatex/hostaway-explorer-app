@@ -12,7 +12,7 @@ const ServiceTypeBadge = ({ type }: { type: string }) => {
     switch (type) {
       case 'limpieza-mantenimiento': return 'Limpieza y Mantenimiento';
       case 'mantenimiento-cristaleria': return 'Mantenimiento Cristalería';
-      case 'mantenimiento-airbnb': return 'Mantenimiento Airbnb';
+      case 'limpieza-turistica': return 'Limpieza Turística';
       case 'limpieza-puesta-punto': return 'Limpieza Puesta a Punto';
       case 'limpieza-final-obra': return 'Limpieza Final de Obra';
       case 'check-in': return 'Check-in';
@@ -26,7 +26,7 @@ const ServiceTypeBadge = ({ type }: { type: string }) => {
   const variants = {
     'limpieza-mantenimiento': 'bg-blue-100 text-blue-800',
     'mantenimiento-cristaleria': 'bg-green-100 text-green-800',
-    'mantenimiento-airbnb': 'bg-purple-100 text-purple-800',
+    'limpieza-turistica': 'bg-purple-100 text-purple-800',
     'limpieza-puesta-punto': 'bg-orange-100 text-orange-800',
     'limpieza-final-obra': 'bg-red-100 text-red-800',
     'check-in': 'bg-yellow-100 text-yellow-800',

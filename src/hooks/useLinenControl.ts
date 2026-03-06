@@ -125,7 +125,7 @@ export const useLinenControl = () => {
           status
         `)
         .eq('sede_id', activeSede.id)
-        .eq('type', 'mantenimiento-airbnb')
+        .eq('type', 'limpieza-turistica')
         .gte('date', today)
         .lte('date', nextWeek)
         .neq('status', 'cancelled')

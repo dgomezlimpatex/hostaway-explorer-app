@@ -12,7 +12,7 @@ export const clientSchema = z.object({
   tipoServicio: z.enum([
     'limpieza-mantenimiento',
     'mantenimiento-cristaleria', 
-    'mantenimiento-airbnb',
+    'limpieza-turistica',
     'limpieza-puesta-punto',
     'limpieza-final-obra',
     'check-in',

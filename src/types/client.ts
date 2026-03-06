@@ -16,7 +16,7 @@ export interface Client extends BaseEntity {
   ciudad: string;
   
   // Información de Servicio
-  tipoServicio: 'limpieza-mantenimiento' | 'mantenimiento-cristaleria' | 'mantenimiento-airbnb' | 'limpieza-puesta-punto' | 'limpieza-final-obra' | 'check-in' | 'desplazamiento' | 'limpieza-especial' | 'trabajo-extraordinario';
+  tipoServicio: 'limpieza-mantenimiento' | 'mantenimiento-cristaleria' | 'limpieza-turistica' | 'limpieza-puesta-punto' | 'limpieza-final-obra' | 'check-in' | 'desplazamiento' | 'limpieza-especial' | 'trabajo-extraordinario';
   metodoPago: 'transferencia' | 'efectivo' | 'bizum';
   supervisor: string;
   factura: boolean;
@@ -36,7 +36,7 @@ export interface CreateClientData {
   direccionFacturacion: string;
   codigoPostal: string;
   ciudad: string;
-  tipoServicio: 'limpieza-mantenimiento' | 'mantenimiento-cristaleria' | 'mantenimiento-airbnb' | 'limpieza-puesta-punto' | 'limpieza-final-obra' | 'check-in' | 'desplazamiento' | 'limpieza-especial' | 'trabajo-extraordinario';
+  tipoServicio: 'limpieza-mantenimiento' | 'mantenimiento-cristaleria' | 'limpieza-turistica' | 'limpieza-puesta-punto' | 'limpieza-final-obra' | 'check-in' | 'desplazamiento' | 'limpieza-especial' | 'trabajo-extraordinario';
   metodoPago: 'transferencia' | 'efectivo' | 'bizum';
   supervisor: string;
   factura: boolean;
