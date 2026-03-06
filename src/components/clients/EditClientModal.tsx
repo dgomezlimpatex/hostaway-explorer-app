@@ -241,8 +241,8 @@ export const EditClientModal = ({ client, trigger }: EditClientModalProps) => {
                             <Label htmlFor="edit-mantenimiento-cristaleria">Mantenimiento Cristalería</Label>
                           </div>
                           <div className="flex items-center space-x-2">
-                            <RadioGroupItem value="mantenimiento-airbnb" id="edit-mantenimiento-airbnb" />
-                            <Label htmlFor="edit-mantenimiento-airbnb">Mantenimiento Airbnb</Label>
+                            <RadioGroupItem value="limpieza-turistica" id="edit-limpieza-turistica" />
+                            <Label htmlFor="edit-limpieza-turistica">Limpieza Turística</Label>
                           </div>
                           <div className="flex items-center space-x-2">
                             <RadioGroupItem value="limpieza-puesta-punto" id="edit-limpieza-puesta-punto" />

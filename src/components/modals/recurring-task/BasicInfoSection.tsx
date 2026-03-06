@@ -14,7 +14,7 @@ export const BasicInfoSection = ({ formData, updateFormData }: BasicInfoSectionP
   const serviceTypes = [
     { value: 'limpieza-mantenimiento', label: 'Limpieza de Mantenimiento' },
     { value: 'mantenimiento-cristaleria', label: 'Mantenimiento de Cristalería' },
-    { value: 'mantenimiento-airbnb', label: 'Mantenimiento Airbnb' },
+    { value: 'limpieza-turistica', label: 'Limpieza Turística' },
     { value: 'limpieza-puesta-punto', label: 'Limpieza de Puesta a Punto' },
     { value: 'limpieza-final-obra', label: 'Limpieza Final de Obra' },
     { value: 'check-in', label: 'Check In' },

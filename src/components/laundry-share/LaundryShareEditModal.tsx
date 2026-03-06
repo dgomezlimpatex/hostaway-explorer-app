@@ -61,7 +61,7 @@ export const LaundryShareEditModal = ({
         `)
         .gte('date', shareLink.dateStart)
         .lte('date', shareLink.dateEnd)
-        .eq('type', 'mantenimiento-airbnb');
+        .eq('type', 'limpieza-turistica');
 
       // Filter by sede if the link has one
       if (shareLink.sedeId) {

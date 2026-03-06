@@ -105,7 +105,7 @@ serve(async (req) => {
           telefono: '+34900000000',
           direccion_facturacion: 'Calle Principal, 123, Madrid',
           cif_nif: 'B12345678',
-          tipo_servicio: 'mantenimiento-airbnb',
+          tipo_servicio: 'limpieza-turistica',
           metodo_pago: 'transferencia',
           supervisor: 'Administrador',
           factura: true,

@@ -173,7 +173,7 @@ export const fetchTasksForDates = async (
       )
     `)
     .in('date', dates)
-    .eq('type', 'mantenimiento-airbnb');
+    .eq('type', 'limpieza-turistica');
 
   if (sedeId) {
     query = query.eq('sede_id', sedeId);
