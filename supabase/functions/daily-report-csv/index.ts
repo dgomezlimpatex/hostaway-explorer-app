@@ -86,7 +86,7 @@ Deno.serve(async (req) => {
     // Determine date
     const today = dateParam || new Date().toISOString().split('T')[0];
 
-    // Query tasks for the date
+    // Query tasks for the date (exclude trabajo-extraordinario)
     let query = supabase
       .from('tasks')
       .select(`
@@ -95,7 +95,8 @@ Deno.serve(async (req) => {
         propiedad_id, cliente_id, sede_id,
         extraordinary_client_name, extraordinary_billing_address
       `)
-      .eq('date', today);
+      .eq('date', today)
+      .neq('type', 'trabajo-extraordinario');
 
     // Filter by sede if token is scoped
     if (tokenData.sede_id) {
@@ -136,7 +137,7 @@ Deno.serve(async (req) => {
     // Batch fetch properties, clients, sedes
     const [propertiesRes, clientsRes, sedesRes] = await Promise.all([
       propertyIds.length > 0
-        ? supabase.from('properties').select('id, nombre, codigo, direccion, cliente_id, coste_servicio, duracion_servicio, sede_id').in('id', propertyIds)
+        ? supabase.from('properties').select('id, nombre, codigo, direccion, cliente_id, coste_servicio, duracion_servicio, sede_id, exclude_from_export').in('id', propertyIds)
         : { data: [], error: null },
       clienteIds.length > 0
         ? supabase.from('clients').select('id, nombre, supervisor, metodo_pago').in('id', clienteIds)
@@ -149,6 +150,12 @@ Deno.serve(async (req) => {
     const propertiesMap = new Map((propertiesRes.data || []).map(p => [p.id, p]));
     const clientsMap = new Map((clientsRes.data || []).map(c => [c.id, c]));
     const sedesMap = new Map((sedesRes.data || []).map(s => [s.id, s]));
+
+    // Filter out tasks whose property has exclude_from_export = true
+    const excludedPropertyIds = new Set(
+      (propertiesRes.data || []).filter(p => p.exclude_from_export).map(p => p.id)
+    );
+    const filteredTasks = tasks.filter(t => !t.propiedad_id || !excludedPropertyIds.has(t.propiedad_id));
 
     // Also fetch clients for properties that have cliente_id
     const propClienteIds = [...new Set(
@@ -163,7 +170,7 @@ Deno.serve(async (req) => {
     const exportTimestamp = new Date().toISOString().replace('T', ' ').substring(0, 19);
 
     // Generate CSV rows (no headers - Apps Script will append)
-    const rows = tasks.map(task => {
+    const rows = filteredTasks.map(task => {
       const isExtraordinary = task.type === 'trabajo-extraordinario';
       const property = task.propiedad_id ? propertiesMap.get(task.propiedad_id) : null;
       const sede = task.sede_id ? sedesMap.get(task.sede_id) : null;
@@ -211,7 +218,7 @@ Deno.serve(async (req) => {
     // Log successful export
     await supabase.from('daily_report_export_logs').insert({
       export_date: today,
-      rows_exported: tasks.length,
+      rows_exported: filteredTasks.length,
       status: 'success',
       token_id: tokenData.id,
       sede_id: tokenData.sede_id,

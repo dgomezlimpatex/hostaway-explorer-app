@@ -56,6 +56,9 @@ export interface Property extends BaseEntity {
   // Active status (null = inherit from client)
   isActive: boolean | null;
   
+  // Export exclusion
+  excludeFromExport: boolean;
+  
   // Metadatos (mantenemos por compatibilidad, pero usamos los de BaseEntity)
   fechaCreacion: string;
   fechaActualizacion: string;
@@ -90,4 +93,5 @@ export interface CreatePropertyData {
   clienteId: string;
   linenControlEnabled?: boolean | null;
   isActive?: boolean | null;
+  excludeFromExport?: boolean;
 }

@@ -60,6 +60,7 @@ export const useTaskPreview = (task: Task | null) => {
         hostaway_internal_name: data.hostaway_internal_name,
         linenControlEnabled: data.linen_control_enabled,
         isActive: data.is_active,
+        excludeFromExport: data.exclude_from_export || false,
         fechaCreacion: data.fecha_creacion,
         fechaActualizacion: data.fecha_actualizacion,
       };
