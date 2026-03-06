@@ -123,7 +123,11 @@ export const generateTaskReport = (tasks: any[], properties: any[], clients: any
       taskStatus: task.status === 'completed' ? 'Completada' :
                  task.status === 'in-progress' ? 'En Progreso' : 'Pendiente',
       totalCost: taskCost,
-      serviceHours: taskDuration / 60, // Convertir minutos a horas
+      serviceHours: (() => {
+        const names = (task.cleaner || '').split(',').map((n: string) => n.trim()).filter(Boolean);
+        const workerCount = Math.max(names.length, 1);
+        return (taskDuration / 60) / workerCount;
+      })(), // Dividir horas entre número de trabajadores
       workTeam: formatNameToUppercase(task.cleaner) || 'Sin asignar', // Ya contiene los nombres separados por comas
       paymentMethod: paymentMethodSpanish,
       incidents: incidenciasText
