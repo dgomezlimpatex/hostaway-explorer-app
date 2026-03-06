@@ -214,8 +214,9 @@ Deno.serve(async (req) => {
       const taskCost = isExtraordinary ? (task.coste || 0) : (property?.coste_servicio || task.coste || 0);
       const taskDuration = isExtraordinary ? (task.duracion || 120) : (property?.duracion_servicio || task.duracion || 120);
 
-      // Split hours by number of workers
-      const cleanerNames = (task.cleaner || '').split(',').map((n: string) => n.trim()).filter(Boolean);
+      // Use task_assignments if available, fallback to tasks.cleaner
+      const resolvedCleanerStr = assignmentsMap.get(task.id) || task.cleaner || '';
+      const cleanerNames = resolvedCleanerStr.split(',').map((n: string) => n.trim()).filter(Boolean);
       const workerCount = Math.max(cleanerNames.length, 1);
       const hoursPerWorker = taskDuration / 60 / workerCount;
 
