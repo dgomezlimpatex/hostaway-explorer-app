@@ -129,6 +129,26 @@ Deno.serve(async (req) => {
       });
     }
 
+    // Fetch task_assignments for all tasks to get all worker names
+    const taskIds = tasks.map(t => t.id);
+    const { data: allAssignments } = await supabase
+      .from('task_assignments')
+      .select('task_id, cleaner_name')
+      .in('task_id', taskIds);
+
+    // Build a map: taskId -> comma-separated cleaner names
+    const assignmentsMap = new Map<string, string>();
+    if (allAssignments && allAssignments.length > 0) {
+      const grouped: Record<string, string[]> = {};
+      for (const a of allAssignments) {
+        if (!grouped[a.task_id]) grouped[a.task_id] = [];
+        grouped[a.task_id].push(a.cleaner_name);
+      }
+      for (const [tid, names] of Object.entries(grouped)) {
+        assignmentsMap.set(tid, names.join(', '));
+      }
+    }
+
     // Collect unique IDs for batch lookups
     const propertyIds = [...new Set(tasks.map(t => t.propiedad_id).filter(Boolean))];
     const clienteIds = [...new Set(tasks.map(t => t.cliente_id).filter(Boolean))];
