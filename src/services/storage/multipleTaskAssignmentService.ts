@@ -125,18 +125,21 @@ export class MultipleTaskAssignmentService {
       await Promise.allSettled(emailPromises);
     }
 
-    // Update the main task with primary cleaner info (first one from remaining assignments)
+    // Update the main task with ALL cleaner names (comma-separated) and primary cleaner_id
     if (cleanerIds.length > 0) {
-      const { data: primaryCleaner } = await supabase
+      const { data: allCleaners } = await supabase
         .from('cleaners')
-        .select('name')
-        .eq('id', cleanerIds[0])
-        .single();
+        .select('id, name')
+        .in('id', cleanerIds);
+
+      // Build comma-separated name list preserving the order of cleanerIds
+      const cleanerNamesMap = new Map((allCleaners || []).map(c => [c.id, c.name]));
+      const allNames = cleanerIds.map(id => cleanerNamesMap.get(id)).filter(Boolean).join(', ');
 
       await supabase
         .from('tasks')
         .update({
-          cleaner: primaryCleaner?.name || null,
+          cleaner: allNames || null,
           cleaner_id: cleanerIds[0]
         })
         .eq('id', actualTaskId);

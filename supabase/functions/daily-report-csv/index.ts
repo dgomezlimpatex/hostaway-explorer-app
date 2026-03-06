@@ -129,6 +129,26 @@ Deno.serve(async (req) => {
       });
     }
 
+    // Fetch task_assignments for all tasks to get all worker names
+    const taskIds = tasks.map(t => t.id);
+    const { data: allAssignments } = await supabase
+      .from('task_assignments')
+      .select('task_id, cleaner_name')
+      .in('task_id', taskIds);
+
+    // Build a map: taskId -> comma-separated cleaner names
+    const assignmentsMap = new Map<string, string>();
+    if (allAssignments && allAssignments.length > 0) {
+      const grouped: Record<string, string[]> = {};
+      for (const a of allAssignments) {
+        if (!grouped[a.task_id]) grouped[a.task_id] = [];
+        grouped[a.task_id].push(a.cleaner_name);
+      }
+      for (const [tid, names] of Object.entries(grouped)) {
+        assignmentsMap.set(tid, names.join(', '));
+      }
+    }
+
     // Collect unique IDs for batch lookups
     const propertyIds = [...new Set(tasks.map(t => t.propiedad_id).filter(Boolean))];
     const clienteIds = [...new Set(tasks.map(t => t.cliente_id).filter(Boolean))];
@@ -194,8 +214,9 @@ Deno.serve(async (req) => {
       const taskCost = isExtraordinary ? (task.coste || 0) : (property?.coste_servicio || task.coste || 0);
       const taskDuration = isExtraordinary ? (task.duracion || 120) : (property?.duracion_servicio || task.duracion || 120);
 
-      // Split hours by number of workers
-      const cleanerNames = (task.cleaner || '').split(',').map((n: string) => n.trim()).filter(Boolean);
+      // Use task_assignments if available, fallback to tasks.cleaner
+      const resolvedCleanerStr = assignmentsMap.get(task.id) || task.cleaner || '';
+      const cleanerNames = resolvedCleanerStr.split(',').map((n: string) => n.trim()).filter(Boolean);
       const workerCount = Math.max(cleanerNames.length, 1);
       const hoursPerWorker = taskDuration / 60 / workerCount;
 
@@ -211,7 +232,7 @@ Deno.serve(async (req) => {
         formatStatus(task.status),
         taskCost.toFixed(2).replace('.', ','),
         hoursPerWorker.toFixed(2).replace('.', ','),
-        formatName(task.cleaner) || 'Sin asignar',
+        formatName(resolvedCleanerStr) || 'Sin asignar',
         formatPaymentMethod(clientPaymentMethod),
         incidents,
         exportTimestamp,
