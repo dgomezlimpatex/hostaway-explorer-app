@@ -232,7 +232,7 @@ Deno.serve(async (req) => {
         formatStatus(task.status),
         taskCost.toFixed(2).replace('.', ','),
         hoursPerWorker.toFixed(2).replace('.', ','),
-        formatName(task.cleaner) || 'Sin asignar',
+        formatName(resolvedCleanerStr) || 'Sin asignar',
         formatPaymentMethod(clientPaymentMethod),
         incidents,
         exportTimestamp,
