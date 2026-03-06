@@ -157,7 +157,7 @@ Deno.serve(async (req) => {
     // Batch fetch properties, clients, sedes
     const [propertiesRes, clientsRes, sedesRes] = await Promise.all([
       propertyIds.length > 0
-        ? supabase.from('properties').select('id, nombre, codigo, direccion, cliente_id, coste_servicio, duracion_servicio, sede_id, exclude_from_export').in('id', propertyIds)
+        ? supabase.from('properties').select('id, nombre, codigo, direccion, cliente_id, coste_servicio, duracion_servicio, sede_id, exclude_from_export, numero_sabanas, numero_sabanas_pequenas, numero_sabanas_suite, numero_fundas_almohada, numero_toallas_grandes, numero_toallas_pequenas, numero_alfombrines, amenities_bano, amenities_cocina, cantidad_rollos_papel_higienico, cantidad_rollos_papel_cocina, kit_alimentario, champu, acondicionador, gel_ducha, jabon_liquido, ambientador_bano, bolsas_basura, detergente_lavavajillas, bayetas_cocina, estropajos, limpiacristales, desinfectante_bano, aceite, vinagre, sal, azucar').in('id', propertyIds)
         : { data: [], error: null },
       clienteIds.length > 0
         ? supabase.from('clients').select('id, nombre, supervisor, metodo_pago').in('id', clienteIds)
