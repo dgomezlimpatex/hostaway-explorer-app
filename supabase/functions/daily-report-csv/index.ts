@@ -243,6 +243,37 @@ Deno.serve(async (req) => {
         formatName(resolvedCleanerStr) || 'Sin asignar',
         formatPaymentMethod(clientPaymentMethod),
         incidents,
+        // Textiles
+        property?.numero_sabanas ?? 0,
+        property?.numero_sabanas_pequenas ?? 0,
+        property?.numero_sabanas_suite ?? 0,
+        property?.numero_fundas_almohada ?? 0,
+        property?.numero_toallas_grandes ?? 0,
+        property?.numero_toallas_pequenas ?? 0,
+        property?.numero_alfombrines ?? 0,
+        // Amenities
+        property?.amenities_bano ?? 0,
+        property?.amenities_cocina ?? 0,
+        // Consumibles
+        property?.cantidad_rollos_papel_higienico ?? 0,
+        property?.cantidad_rollos_papel_cocina ?? 0,
+        property?.kit_alimentario ?? 0,
+        // Productos limpieza/higiene
+        property?.champu ?? 0,
+        property?.acondicionador ?? 0,
+        property?.gel_ducha ?? 0,
+        property?.jabon_liquido ?? 0,
+        property?.ambientador_bano ?? 0,
+        property?.bolsas_basura ?? 0,
+        property?.detergente_lavavajillas ?? 0,
+        property?.bayetas_cocina ?? 0,
+        property?.estropajos ?? 0,
+        property?.limpiacristales ?? 0,
+        property?.desinfectante_bano ?? 0,
+        property?.aceite ?? 0,
+        property?.vinagre ?? 0,
+        property?.sal ?? 0,
+        property?.azucar ?? 0,
         exportTimestamp,
       ].map(escapeCSV).join(',');
     });
