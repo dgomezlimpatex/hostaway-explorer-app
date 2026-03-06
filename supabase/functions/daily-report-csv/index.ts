@@ -123,6 +123,14 @@ Deno.serve(async (req) => {
       const headers = ['Sede', 'Fecha del servicio', 'Supervisor', 'Cliente',
         'Tipo de servicio', 'Estado de la tarea', 'Coste total del servicio',
         'Horas del servicio', 'Equipo de trabajo', 'Método de pago', 'Incidencias',
+        'Sábanas', 'Sábanas Pequeñas', 'Sábanas Suite', 'Fundas Almohada',
+        'Toallas Grandes', 'Toallas Pequeñas', 'Alfombrines',
+        'Amenities Baño', 'Amenities Cocina',
+        'Papel Higiénico', 'Papel Cocina', 'Kit Alimentario',
+        'Champú', 'Acondicionador', 'Gel Ducha', 'Jabón Líquido',
+        'Ambientador Baño', 'Bolsas Basura', 'Detergente Lavavajillas',
+        'Bayetas Cocina', 'Estropajos', 'Limpiacristales', 'Desinfectante Baño',
+        'Aceite', 'Vinagre', 'Sal', 'Azúcar',
         'Fecha exportación'];
       return new Response(headers.map(h => escapeCSV(h)).join(',') + '\n', {
         headers: { ...corsHeaders, 'Content-Type': 'text/csv; charset=utf-8' },
