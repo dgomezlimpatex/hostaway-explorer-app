@@ -37,22 +37,22 @@ export default function WorkersPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="bg-white border-b border-gray-200 px-6 py-4">
+    <div className="min-h-screen bg-background">
+      <div className="bg-card border-b border-border px-6 py-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
             <Link to="/">
-              <Button variant="ghost" size="sm" className="hover:bg-gray-100">
+              <Button variant="ghost" size="sm">
                 <ArrowLeft className="h-4 w-4 mr-2" />
                 Volver al Menú
               </Button>
             </Link>
             <div>
-              <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+              <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
                 <Users className="h-6 w-6" />
                 Gestión de Trabajadores
               </h1>
-              <p className="text-gray-600">Administra tu equipo de limpieza y arrastra para reordenar</p>
+              <p className="text-muted-foreground">Administra tu equipo de limpieza y arrastra para reordenar</p>
             </div>
           </div>
           <div className="flex items-center gap-3">
