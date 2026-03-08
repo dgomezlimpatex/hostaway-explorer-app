@@ -44,18 +44,18 @@ export default function Reports() {
   const isTasksReport = filters.reportType === 'tasks';
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
-      <div className="max-w-7xl mx-auto space-y-6">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-3 sm:p-4">
+      <div className="max-w-7xl mx-auto space-y-4 sm:space-y-6">
         {/* Header */}
-        <div className="flex justify-between items-center">
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">📊 Sistema de Reportes</h1>
-            <p className="text-gray-600">Genera y exporta reportes detallados de tu negocio</p>
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">📊 Reportes</h1>
+            <p className="text-sm sm:text-base text-gray-600">Genera y exporta reportes de tu negocio</p>
           </div>
           <div className="flex gap-2">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button disabled={!reportData || isLoading}>
+                <Button disabled={!reportData || isLoading} className="flex-1 sm:flex-none">
                   📥 Exportar
                 </Button>
               </DropdownMenuTrigger>
@@ -64,12 +64,15 @@ export default function Reports() {
                   📄 Exportar CSV
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={handleExportExcel}>
-                  📊 Exportar Excel (hoja por día)
+                  📊 Exportar Excel
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
             <Link to="/">
-              <Button variant="outline">
+              <Button variant="outline" size="icon" className="sm:hidden">
+                🏠
+              </Button>
+              <Button variant="outline" className="hidden sm:inline-flex">
                 🏠 Volver al Menú
               </Button>
             </Link>
