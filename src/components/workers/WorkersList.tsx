@@ -11,9 +11,9 @@ import {
   TableHeader, 
   TableRow 
 } from "@/components/ui/table";
-import { Edit, User, GripVertical } from "lucide-react";
+import { Edit, User, GripVertical, UserX, UserCheck } from "lucide-react";
 import { Cleaner } from "@/types/calendar";
-import { useDeleteCleaner, useUpdateCleanersOrder } from "@/hooks/useCleaners";
+import { useDeleteCleaner, useUpdateCleanersOrder, useUpdateCleaner } from "@/hooks/useCleaners";
 import {
   AlertDialog,
   AlertDialogAction,
