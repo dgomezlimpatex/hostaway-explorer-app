@@ -39,6 +39,7 @@ export const WorkersList = ({ workers, isLoading, onEditWorker, onViewWorker }: 
   
   const deleteCleaner = useDeleteCleaner();
   const updateCleanersOrder = useUpdateCleanersOrder();
+  const updateCleaner = useUpdateCleaner();
 
   // Sincronizar workers locales cuando cambien los props
   React.useEffect(() => {
@@ -47,6 +48,13 @@ export const WorkersList = ({ workers, isLoading, onEditWorker, onViewWorker }: 
 
   const handleDelete = (workerId: string) => {
     deleteCleaner.mutate(workerId);
+  };
+
+  const handleToggleActive = (worker: Cleaner) => {
+    updateCleaner.mutate({
+      id: worker.id,
+      updates: { isActive: !worker.isActive }
+    });
   };
 
   const handleDragStart = (e: React.DragEvent, index: number) => {
