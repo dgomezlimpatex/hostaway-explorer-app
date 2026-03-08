@@ -144,13 +144,13 @@ export const WorkersList = ({ workers, isLoading, onEditWorker, onViewWorker }: 
                 onDragOver={(e) => handleDragOver(e, index)}
                 onDrop={(e) => handleDrop(e, index)}
                 onDragEnd={handleDragEnd}
-                className={`cursor-move hover:bg-gray-50 transition-colors ${
+                className={`cursor-move transition-colors ${
                   draggedIndex === index ? 'opacity-50' : ''
-                }`}
+                } ${!worker.isActive ? 'opacity-60 bg-muted/50' : 'hover:bg-muted/30'}`}
               >
                 <TableCell>
                   <div className="flex items-center justify-center">
-                    <GripVertical className="h-4 w-4 text-gray-400" />
+                    <GripVertical className="h-4 w-4 text-muted-foreground" />
                   </div>
                 </TableCell>
                 <TableCell>
@@ -162,17 +162,17 @@ export const WorkersList = ({ workers, isLoading, onEditWorker, onViewWorker }: 
                       </AvatarFallback>
                     </Avatar>
                     <div>
-                      <div className="font-medium">{worker.name}</div>
+                      <div className={`font-medium ${!worker.isActive ? 'text-muted-foreground' : ''}`}>{worker.name}</div>
                     </div>
                   </div>
                 </TableCell>
                 <TableCell>
                   <div className="space-y-1">
                     {worker.email && (
-                      <div className="text-sm text-gray-600">{worker.email}</div>
+                      <div className="text-sm text-muted-foreground">{worker.email}</div>
                     )}
                     {worker.telefono && (
-                      <div className="text-sm text-gray-600">{worker.telefono}</div>
+                      <div className="text-sm text-muted-foreground">{worker.telefono}</div>
                     )}
                   </div>
                 </TableCell>
@@ -190,7 +190,7 @@ export const WorkersList = ({ workers, isLoading, onEditWorker, onViewWorker }: 
                       className="flex items-center gap-1"
                     >
                       <User className="h-4 w-4" />
-                      Ver Detalles
+                      Ver
                     </Button>
                     <Button
                       variant="outline"
@@ -201,6 +201,27 @@ export const WorkersList = ({ workers, isLoading, onEditWorker, onViewWorker }: 
                       <Edit className="h-4 w-4" />
                       Editar
                     </Button>
+                    {worker.isActive ? (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleToggleActive(worker)}
+                        className="flex items-center gap-1 border-yellow-500 text-yellow-700 hover:bg-yellow-50"
+                      >
+                        <UserX className="h-4 w-4" />
+                        Desactivar
+                      </Button>
+                    ) : (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleToggleActive(worker)}
+                        className="flex items-center gap-1 border-green-500 text-green-700 hover:bg-green-50"
+                      >
+                        <UserCheck className="h-4 w-4" />
+                        Reactivar
+                      </Button>
+                    )}
                     <AlertDialog>
                       <AlertDialogTrigger asChild>
                         <Button variant="destructive" size="sm">
@@ -209,19 +230,21 @@ export const WorkersList = ({ workers, isLoading, onEditWorker, onViewWorker }: 
                       </AlertDialogTrigger>
                       <AlertDialogContent>
                         <AlertDialogHeader>
-                          <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
+                          <AlertDialogTitle>¿Estás seguro de eliminar?</AlertDialogTitle>
                           <AlertDialogDescription>
                             Esta acción no se puede deshacer. Se eliminará permanentemente 
-                            el trabajador "{worker.name}" y todos sus datos asociados.
+                            el trabajador "{worker.name}" y <strong>todas sus tareas asignadas quedarán sin asignar</strong>.
+                            <br /><br />
+                            💡 Si solo quieres que deje de aparecer en las asignaciones, usa <strong>"Desactivar"</strong> en su lugar. Así sus tareas permanecerán asignadas.
                           </AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>
                           <AlertDialogCancel>Cancelar</AlertDialogCancel>
                           <AlertDialogAction
                             onClick={() => handleDelete(worker.id)}
-                            className="bg-red-600 hover:bg-red-700"
+                            className="bg-destructive hover:bg-destructive/90"
                           >
-                            Eliminar
+                            Eliminar definitivamente
                           </AlertDialogAction>
                         </AlertDialogFooter>
                       </AlertDialogContent>
