@@ -80,8 +80,8 @@ export const ReportFiltersComponent = ({ filters, onFiltersChange }: ReportFilte
           </div>
 
           {/* Rango de Fechas */}
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Período</label>
+          <div className="space-y-1 sm:space-y-2">
+            <label className="text-xs sm:text-sm font-medium">Período</label>
             <Select 
               value={filters.dateRange} 
               onValueChange={(value) => onFiltersChange({ ...filters, dateRange: value as any })}
@@ -100,8 +100,8 @@ export const ReportFiltersComponent = ({ filters, onFiltersChange }: ReportFilte
           </div>
 
           {/* Cliente */}
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Cliente</label>
+          <div className="space-y-1 sm:space-y-2">
+            <label className="text-xs sm:text-sm font-medium">Cliente</label>
             <Select 
               value={filters.clientId || 'all'} 
               onValueChange={(value) => onFiltersChange({ ...filters, clientId: value === 'all' ? undefined : value })}
@@ -121,8 +121,8 @@ export const ReportFiltersComponent = ({ filters, onFiltersChange }: ReportFilte
           </div>
 
           {/* Trabajador */}
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Trabajador</label>
+          <div className="space-y-1 sm:space-y-2">
+            <label className="text-xs sm:text-sm font-medium">Trabajador</label>
             <Select 
               value={filters.cleanerId || 'all'} 
               onValueChange={(value) => onFiltersChange({ ...filters, cleanerId: value === 'all' ? undefined : value })}
