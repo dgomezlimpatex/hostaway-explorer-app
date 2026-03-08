@@ -1,50 +1,42 @@
 
 
-## Plan: Limpiadoras preferidas por propiedad
+## Analysis
 
-### Concepto
-Crear una tabla `property_preferred_cleaners` que vincule directamente propiedades con sus limpiadoras habituales. Al asignar una tarea, las preferidas aparecen primero y destacadas en el selector.
+The system already has the `is_active` field on cleaners and a toggle in the edit modal. The issue is that when a worker leaves, the user **deletes** them (which unassigns all tasks) instead of marking them inactive. 
 
-### Cambios necesarios
+The current behavior when deleting:
+- Unassigns all tasks (`cleaner = null, cleaner_id = null`)
+- Deletes task_assignments
+- Deletes the cleaner record
 
-**1. Base de datos** — Nueva tabla `property_preferred_cleaners`
-- Columnas: `id`, `property_id` (uuid, FK → properties), `cleaner_id` (uuid, FK → cleaners), `priority` (int, para ordenar), `notes` (text, opcional — "conoce bien el piso", etc.), `created_at`
-- RLS: admin/manager pueden gestionar; supervisores pueden leer
+What's needed: Make the "deactivate" flow more prominent and ensure inactive workers' tasks stay assigned, while hiding inactive workers from new assignment selectors.
 
-**2. Servicio de storage** — `propertyPreferredCleanersStorage.ts`
-- CRUD: `getByPropertyId(propertyId)`, `getByPropertyName(propertyName)`, `assign(propertyId, cleanerId, priority)`, `remove(id)`, `updatePriority(id, priority)`
+## Changes
 
-**3. Hook React** — `usePropertyPreferredCleaners.ts`
-- `usePreferredCleaners(propertyId)` para consultar las preferidas
-- `useAssignPreferredCleaner()` / `useRemovePreferredCleaner()` mutaciones
+### 1. Add "Deactivate" button to WorkersList (alongside Delete)
+Replace the single "Eliminar" button with two options:
+- **"Desactivar"** (yellow/warning) - sets `is_active = false`, keeps tasks assigned
+- **"Eliminar"** (red/destructive) - current behavior, with stronger warning that tasks will be unassigned
 
-**4. UI — Gestión en la ficha de propiedad**
-- Nueva sección en `EditPropertyModal` o junto al editor de checklist en `PropertiesPage`: "Limpiadoras preferidas"
-- Lista de las asignadas con opción de reordenar prioridad y eliminar
-- Botón "Añadir limpiadora" con selector de las disponibles
+The deactivate button should show only for active workers; for inactive workers, show a "Reactivar" button instead.
 
-**5. UI — Modal de asignación de tarea (`AssignCleanerModal` + `AssignMultipleCleanersModal`)**
-- Consultar las preferidas del `propertyId` de la tarea
-- Dividir la lista en dos secciones: "⭐ Preferidas" (arriba, con badge verde) y "Otras" (abajo)
-- Las preferidas aparecen ordenadas por prioridad
-- Si hay notas, mostrarlas como tooltip
+### 2. Update delete confirmation dialog
+Add clearer messaging: "Se desasignarán todas las tareas de este trabajador. Si solo quieres que deje de aparecer en las asignaciones, usa 'Desactivar' en su lugar."
 
-**6. Auto-asignación** (opcional, fase posterior)
-- En `assignmentAlgorithm.ts`, antes del algoritmo de saturación, consultar preferidas de la propiedad y priorizarlas
+### 3. Hide inactive workers from calendar column
+In `WorkersColumn.tsx`, the cleaners are already passed filtered. Check where the calendar gets its cleaners list - it likely already filters by `isActive`. If not, add the filter.
 
-### Flujo de uso
-1. Admin abre la ficha de "Apartamento Marina 3B" → sección "Preferidas" → añade María (P1) y Ana (P2)
-2. Cualquier manager crea una tarea para ese piso → al asignar, ve María y Ana destacadas arriba
-3. Si ninguna está disponible, sigue viendo el resto de limpiadoras normal
+### 4. Filter inactive from assignment selectors
+The `CleanerSection`, `AssignCleanerModal`, and `AssignMultipleCleanersModal` already filter `.filter(cleaner => cleaner.isActive)`. This is already handled.
 
-### Archivos a crear
-- Migración SQL para `property_preferred_cleaners`
-- `src/services/storage/propertyPreferredCleanersStorage.ts`
-- `src/hooks/usePropertyPreferredCleaners.ts`
-- `src/components/properties/PropertyPreferredCleaners.tsx`
+### 5. Visual distinction in WorkersPage
+The page already separates active/inactive workers. We just need to make sure inactive workers are visually distinct (greyed out row) and show both lists clearly.
 
-### Archivos a modificar
-- `src/components/modals/AssignCleanerModal.tsx` — separar lista en preferidas/otras
-- `src/components/modals/AssignMultipleCleanersModal.tsx` — idem
-- `src/components/properties/PropertiesPage.tsx` o `EditPropertyModal.tsx` — añadir sección de gestión
+## Files to modify
+
+1. **`src/components/workers/WorkersList.tsx`** - Add Desactivar/Reactivar buttons, update delete dialog text
+2. **`src/components/workers/WorkersPage.tsx`** - Ensure inactive workers section is clearly separated with a header
+3. **`src/hooks/useCleaners.ts`** - Add a `useDeactivateCleaner` hook (or reuse `useUpdateCleaner` with `isActive: false`)
+
+The approach is minimal: leverage the existing `isActive` field and `useUpdateCleaner` hook, just add UI buttons to make deactivation the primary action instead of deletion.
 
