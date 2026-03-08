@@ -3,7 +3,9 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { ReportFiltersComponent } from '@/components/reports/ReportFilters';
 import { TaskReportTable, BillingReportTable, SummaryReportCard, LaundryReportTable } from '@/components/reports/ReportTables';
+import { EditableTaskTable } from '@/components/reports/EditableTaskTable';
 import { useReports } from '@/hooks/useReports';
+import { useEditableReportData } from '@/hooks/reports/useEditableReportData';
 import { exportToCSV } from '@/services/csvExport';
 import { exportToExcel } from '@/services/excelExport';
 import { ReportFilters } from '@/types/filters';
@@ -24,19 +26,22 @@ export default function Reports() {
 
   const { data: reportData, isLoading } = useReports(filters);
 
+  // Editable data hook for tasks
+  const editableData = useEditableReportData(filters);
+
   const handleExportCSV = () => {
     if (!reportData) return;
-    
     const filename = `reporte_${filters.reportType}_${new Date().toISOString().split('T')[0]}`;
     exportToCSV(reportData, filename, filters.reportType);
   };
 
   const handleExportExcel = () => {
     if (!reportData) return;
-    
     const filename = `reporte_${filters.reportType}_${new Date().toISOString().split('T')[0]}`;
     exportToExcel(reportData, filename, filters.reportType, true);
   };
+
+  const isTasksReport = filters.reportType === 'tasks';
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
@@ -75,16 +80,24 @@ export default function Reports() {
         <ReportFiltersComponent filters={filters} onFiltersChange={setFilters} />
 
         {/* Contenido del Reporte */}
-        {isLoading ? (
+        {isTasksReport ? (
+          <EditableTaskTable
+            key="editable-tasks"
+            tasks={editableData.tasks}
+            isLoading={editableData.isLoading}
+            updateField={editableData.updateField}
+            isFieldDirty={editableData.isFieldDirty}
+            pendingCount={editableData.pendingCount}
+            isSaving={editableData.isSaving}
+            onSave={editableData.saveAllChanges}
+            onDiscard={editableData.discardChanges}
+          />
+        ) : isLoading ? (
           <div className="flex justify-center items-center p-8">
             <div className="text-lg">Generando reporte...</div>
           </div>
         ) : (
           <div className="space-y-6">
-            {filters.reportType === 'tasks' && reportData && Array.isArray(reportData) && (
-              <TaskReportTable data={reportData as any[]} />
-            )}
-            
             {filters.reportType === 'billing' && reportData && Array.isArray(reportData) && (
               <BillingReportTable data={reportData as any[]} />
             )}
