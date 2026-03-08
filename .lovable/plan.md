@@ -1,50 +1,45 @@
 
 
-## Plan: Limpiadoras preferidas por propiedad
+## Plan: Convertir la Página de Reportes en una Hoja Editable tipo Excel
 
-### Concepto
-Crear una tabla `property_preferred_cleaners` que vincule directamente propiedades con sus limpiadoras habituales. Al asignar una tarea, las preferidas aparecen primero y destacadas en el selector.
+### Objetivo
+Transformar la página de Reportes (`/reports`) en una tabla editable estilo hoja de cálculo donde puedas ver, editar y corregir datos de tareas (presentes y pasadas) antes de que se exporten al CSV que consume la app de tu jefe.
 
-### Cambios necesarios
+### Cambios principales
 
-**1. Base de datos** — Nueva tabla `property_preferred_cleaners`
-- Columnas: `id`, `property_id` (uuid, FK → properties), `cleaner_id` (uuid, FK → cleaners), `priority` (int, para ordenar), `notes` (text, opcional — "conoce bien el piso", etc.), `created_at`
-- RLS: admin/manager pueden gestionar; supervisores pueden leer
+#### 1. Nueva tabla editable (`src/components/reports/EditableTaskTable.tsx`)
+- Tabla con celdas editables al hacer clic (inline editing)
+- Columnas que coinciden con lo que exporta el CSV: Fecha, Propiedad, Dirección, Horario, Tipo, Estado, Trabajador, Cliente, Supervisor, Coste, Horas, Método de Pago
+- Cada celda se vuelve un input/select al hacer clic, y guarda al perder el foco o pulsar Enter
+- Indicador visual de celdas modificadas (borde o fondo diferente)
+- Botón "Guardar cambios" que persiste las ediciones a Supabase vía `taskStorageService.updateTask()`
 
-**2. Servicio de storage** — `propertyPreferredCleanersStorage.ts`
-- CRUD: `getByPropertyId(propertyId)`, `getByPropertyName(propertyName)`, `assign(propertyId, cleanerId, priority)`, `remove(id)`, `updatePriority(id, priority)`
+#### 2. Actualizar la página Reports (`src/pages/Reports.tsx`)
+- Cuando `reportType === 'tasks'`, renderizar `EditableTaskTable` en lugar de `TaskReportTable`
+- Mantener los filtros existentes (fecha, cliente, trabajador, sede)
+- Añadir al filtro de período la opción "Todo" para poder ver tareas pasadas
+- Los demás tipos de reporte (billing, summary, laundry) se mantienen como están
 
-**3. Hook React** — `usePropertyPreferredCleaners.ts`
-- `usePreferredCleaners(propertyId)` para consultar las preferidas
-- `useAssignPreferredCleaner()` / `useRemovePreferredCleaner()` mutaciones
+#### 3. Hook de datos editables (`src/hooks/reports/useEditableReportData.ts`)
+- Carga las tareas directamente desde la base de datos (no transformadas por el generator) para poder hacer el mapeo inverso al guardar
+- Proporciona función `updateTaskField(taskId, field, value)` que actualiza en Supabase
+- Gestiona estado local de cambios pendientes (dirty tracking)
 
-**4. UI — Gestión en la ficha de propiedad**
-- Nueva sección en `EditPropertyModal` o junto al editor de checklist en `PropertiesPage`: "Limpiadoras preferidas"
-- Lista de las asignadas con opción de reordenar prioridad y eliminar
-- Botón "Añadir limpiadora" con selector de las disponibles
+#### 4. Funcionalidades clave de la tabla
+- **Edición inline**: clic en celda para editar, Enter/Tab para confirmar, Esc para cancelar
+- **Selects para campos con opciones**: Estado (pendiente/en progreso/completada), Tipo de servicio, Método de pago
+- **Indicador de cambios sin guardar**: badge con contador de cambios pendientes
+- **Guardado masivo**: botón para guardar todos los cambios de una vez
+- **Scroll horizontal**: la tabla ocupa todo el ancho con scroll para ver todas las columnas
 
-**5. UI — Modal de asignación de tarea (`AssignCleanerModal` + `AssignMultipleCleanersModal`)**
-- Consultar las preferidas del `propertyId` de la tarea
-- Dividir la lista en dos secciones: "⭐ Preferidas" (arriba, con badge verde) y "Otras" (abajo)
-- Las preferidas aparecen ordenadas por prioridad
-- Si hay notas, mostrarlas como tooltip
+### Archivos a crear/modificar
+1. **Crear** `src/components/reports/EditableTaskTable.tsx` - Componente principal de tabla editable
+2. **Crear** `src/hooks/reports/useEditableReportData.ts` - Hook para carga y guardado de datos
+3. **Modificar** `src/pages/Reports.tsx` - Usar `EditableTaskTable` para el reporte de tareas
 
-**6. Auto-asignación** (opcional, fase posterior)
-- En `assignmentAlgorithm.ts`, antes del algoritmo de saturación, consultar preferidas de la propiedad y priorizarlas
-
-### Flujo de uso
-1. Admin abre la ficha de "Apartamento Marina 3B" → sección "Preferidas" → añade María (P1) y Ana (P2)
-2. Cualquier manager crea una tarea para ese piso → al asignar, ve María y Ana destacadas arriba
-3. Si ninguna está disponible, sigue viendo el resto de limpiadoras normal
-
-### Archivos a crear
-- Migración SQL para `property_preferred_cleaners`
-- `src/services/storage/propertyPreferredCleanersStorage.ts`
-- `src/hooks/usePropertyPreferredCleaners.ts`
-- `src/components/properties/PropertyPreferredCleaners.tsx`
-
-### Archivos a modificar
-- `src/components/modals/AssignCleanerModal.tsx` — separar lista en preferidas/otras
-- `src/components/modals/AssignMultipleCleanersModal.tsx` — idem
-- `src/components/properties/PropertiesPage.tsx` o `EditPropertyModal.tsx` — añadir sección de gestión
+### Detalle técnico
+- Las tareas se cargan con `taskStorageService.getTasksForReports()` que ya filtra por sede/fecha
+- Se enriquecen con datos de propiedades y clientes para mostrar nombres
+- Al guardar, se mapean los campos de vuelta al esquema de la tabla `tasks` y se llama a `updateTask()`
+- Los campos derivados (como nombre de cliente que viene de la propiedad) se resuelven buscando el cliente por nombre
 
