@@ -228,7 +228,12 @@ export const EditableTaskTable = ({
   onDiscard,
 }: EditableTaskTableProps) => {
   const isMobile = useIsMobile();
+  const { cleaners = [] } = useCleaners();
 
+  const cleanerOptions = useMemo(() => 
+    cleaners.filter(c => c.isActive).map(c => ({ value: c.name, label: c.name })),
+    [cleaners]
+  );
   return (
     <>
       <Card>
@@ -265,6 +270,7 @@ export const EditableTaskTable = ({
                   task={task}
                   updateField={updateField}
                   isFieldDirty={isFieldDirty}
+                  cleanerOptions={cleanerOptions}
                 />
               ))}
             </div>
@@ -314,7 +320,7 @@ export const EditableTaskTable = ({
                         <SelectCell value={task.status} options={STATUS_OPTIONS} onChange={(v) => updateField(task.id, 'status', v as any)} isDirty={isFieldDirty(task.id, 'status')} />
                       </TableCell>
                       <TableCell className="p-1">
-                        <EditableCell value={task.cleaner || ''} onChange={(v) => updateField(task.id, 'cleaner', v)} isDirty={isFieldDirty(task.id, 'cleaner')} />
+                        <SelectCell value={task.cleaner || ''} options={cleanerOptions} onChange={(v) => updateField(task.id, 'cleaner', v)} isDirty={isFieldDirty(task.id, 'cleaner')} />
                       </TableCell>
                       <TableCell className="p-1">
                         <EditableCell value={task.clientName || ''} onChange={(v) => updateField(task.id, 'client', v)} isDirty={isFieldDirty(task.id, 'client')} />
