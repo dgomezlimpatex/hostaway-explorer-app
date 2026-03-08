@@ -24,7 +24,7 @@ export const useEditableReportData = (filters: ReportFilters) => {
     return tasks.map((task) => {
       const property = properties?.find((p: any) => p.id === task.propertyId);
       const client = clients?.find((c: any) => c.id === task.clienteId) ||
-        (property ? clients?.find((c: any) => c.id === property.cliente_id) : null);
+        (property ? clients?.find((c: any) => c.id === property.clienteId) : null);
 
       return {
         ...task,
