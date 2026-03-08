@@ -37,22 +37,22 @@ export default function WorkersPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="bg-white border-b border-gray-200 px-6 py-4">
+    <div className="min-h-screen bg-background">
+      <div className="bg-card border-b border-border px-6 py-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
             <Link to="/">
-              <Button variant="ghost" size="sm" className="hover:bg-gray-100">
+              <Button variant="ghost" size="sm">
                 <ArrowLeft className="h-4 w-4 mr-2" />
                 Volver al Menú
               </Button>
             </Link>
             <div>
-              <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+              <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
                 <Users className="h-6 w-6" />
                 Gestión de Trabajadores
               </h1>
-              <p className="text-gray-600">Administra tu equipo de limpieza y arrastra para reordenar</p>
+              <p className="text-muted-foreground">Administra tu equipo de limpieza y arrastra para reordenar</p>
             </div>
           </div>
           <div className="flex items-center gap-3">
@@ -82,16 +82,16 @@ export default function WorkersPage() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-gray-600">Total Trabajadores</CardTitle>
+              <CardTitle className="text-sm font-medium text-muted-foreground">Total Trabajadores</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-gray-900">{cleaners.length}</div>
+              <div className="text-2xl font-bold text-foreground">{cleaners.length}</div>
             </CardContent>
           </Card>
           
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-gray-600">Trabajadores Activos</CardTitle>
+              <CardTitle className="text-sm font-medium text-muted-foreground">Trabajadores Activos</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-green-600">{activeWorkers.length}</div>
@@ -100,31 +100,48 @@ export default function WorkersPage() {
           
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-gray-600">Trabajadores Inactivos</CardTitle>
+              <CardTitle className="text-sm font-medium text-muted-foreground">Trabajadores Inactivos</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-red-600">{inactiveWorkers.length}</div>
+              <div className="text-2xl font-bold text-destructive">{inactiveWorkers.length}</div>
             </CardContent>
           </Card>
         </div>
 
-        {/* Workers List */}
+        {/* Active Workers List */}
         <Card>
           <CardHeader>
             <div className="flex items-center justify-between">
-              <CardTitle>Lista de Trabajadores ({filteredWorkers.length})</CardTitle>
-              <p className="text-sm text-gray-500">Arrastra las filas para reordenar</p>
+              <CardTitle>Trabajadores Activos ({activeWorkers.length})</CardTitle>
+              <p className="text-sm text-muted-foreground">Arrastra las filas para reordenar</p>
             </div>
           </CardHeader>
           <CardContent>
             <WorkersList 
-              workers={filteredWorkers} 
+              workers={activeWorkers} 
               isLoading={isLoading}
               onEditWorker={handleEditWorker}
               onViewWorker={handleViewWorker}
             />
           </CardContent>
         </Card>
+
+        {/* Inactive Workers List */}
+        {inactiveWorkers.length > 0 && (
+          <Card className="border-dashed">
+            <CardHeader>
+              <CardTitle className="text-muted-foreground">Trabajadores Inactivos ({inactiveWorkers.length})</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <WorkersList 
+                workers={inactiveWorkers} 
+                isLoading={isLoading}
+                onEditWorker={handleEditWorker}
+                onViewWorker={handleViewWorker}
+              />
+            </CardContent>
+          </Card>
+        )}
 
         {/* Modals */}
         <CreateWorkerModal 
