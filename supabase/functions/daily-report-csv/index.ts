@@ -123,11 +123,14 @@ Deno.serve(async (req) => {
       const headers = ['Sede', 'Fecha del servicio', 'Supervisor', 'Cliente',
         'Tipo de servicio', 'Estado de la tarea', 'Coste total del servicio',
         'Horas del servicio', 'Equipo de trabajo', 'Método de pago', 'Incidencias',
-        'Sábanas Matrimonio', 'Sábanas Pequeñas', 'Sábanas Suite', 'Fundas Almohada',
+        'Sábanas', 'Sábanas Pequeñas', 'Sábanas Suite', 'Fundas Almohada',
         'Toallas Grandes', 'Toallas Pequeñas', 'Alfombrines',
         'Amenities Baño', 'Amenities Cocina',
         'Papel Higiénico', 'Papel Cocina', 'Kit Alimentario',
-        'Paño', 'Bolsas Basura',
+        'Champú', 'Acondicionador', 'Gel Ducha', 'Jabón Líquido',
+        'Ambientador Baño', 'Bolsas Basura', 'Detergente Lavavajillas',
+        'Bayetas Cocina', 'Estropajos', 'Limpiacristales', 'Desinfectante Baño',
+        'Aceite', 'Vinagre', 'Sal', 'Azúcar',
         'Fecha exportación'];
       return new Response(headers.map(h => escapeCSV(h)).join(',') + '\n', {
         headers: { ...corsHeaders, 'Content-Type': 'text/csv; charset=utf-8' },
@@ -248,14 +251,29 @@ Deno.serve(async (req) => {
         property?.numero_toallas_grandes ?? 0,
         property?.numero_toallas_pequenas ?? 0,
         property?.numero_alfombrines ?? 0,
-        // Amenities y consumibles
+        // Amenities
         property?.amenities_bano ?? 0,
         property?.amenities_cocina ?? 0,
+        // Consumibles
         property?.cantidad_rollos_papel_higienico ?? 0,
         property?.cantidad_rollos_papel_cocina ?? 0,
         property?.kit_alimentario ?? 0,
-        property?.bayetas_cocina ?? 0,
+        // Productos limpieza/higiene
+        property?.champu ?? 0,
+        property?.acondicionador ?? 0,
+        property?.gel_ducha ?? 0,
+        property?.jabon_liquido ?? 0,
+        property?.ambientador_bano ?? 0,
         property?.bolsas_basura ?? 0,
+        property?.detergente_lavavajillas ?? 0,
+        property?.bayetas_cocina ?? 0,
+        property?.estropajos ?? 0,
+        property?.limpiacristales ?? 0,
+        property?.desinfectante_bano ?? 0,
+        property?.aceite ?? 0,
+        property?.vinagre ?? 0,
+        property?.sal ?? 0,
+        property?.azucar ?? 0,
         exportTimestamp,
       ].map(escapeCSV).join(',');
     });
