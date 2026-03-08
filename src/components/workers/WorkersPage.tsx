@@ -82,16 +82,16 @@ export default function WorkersPage() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-gray-600">Total Trabajadores</CardTitle>
+              <CardTitle className="text-sm font-medium text-muted-foreground">Total Trabajadores</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-gray-900">{cleaners.length}</div>
+              <div className="text-2xl font-bold text-foreground">{cleaners.length}</div>
             </CardContent>
           </Card>
           
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-gray-600">Trabajadores Activos</CardTitle>
+              <CardTitle className="text-sm font-medium text-muted-foreground">Trabajadores Activos</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-green-600">{activeWorkers.length}</div>
@@ -100,10 +100,10 @@ export default function WorkersPage() {
           
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-gray-600">Trabajadores Inactivos</CardTitle>
+              <CardTitle className="text-sm font-medium text-muted-foreground">Trabajadores Inactivos</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-red-600">{inactiveWorkers.length}</div>
+              <div className="text-2xl font-bold text-destructive">{inactiveWorkers.length}</div>
             </CardContent>
           </Card>
         </div>
