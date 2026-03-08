@@ -61,8 +61,8 @@ export const ReportFiltersComponent = ({ filters, onFiltersChange }: ReportFilte
           )}
 
           {/* Tipo de Reporte */}
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Tipo de Reporte</label>
+          <div className="space-y-1 sm:space-y-2">
+            <label className="text-xs sm:text-sm font-medium">Tipo</label>
             <Select 
               value={filters.reportType} 
               onValueChange={(value) => onFiltersChange({ ...filters, reportType: value as any })}
