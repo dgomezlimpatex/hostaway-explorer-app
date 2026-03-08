@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
@@ -10,6 +10,7 @@ import { EditableTask } from '@/hooks/reports/useEditableReportData';
 import { Task } from '@/types/calendar';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useCleaners } from '@/hooks/useCleaners';
 
 interface EditableCellProps {
   value: string;
@@ -139,11 +140,12 @@ interface EditableTaskTableProps {
 
 /* ─── Mobile Card for a single task ─── */
 const MobileTaskCard = ({
-  task, updateField, isFieldDirty
+  task, updateField, isFieldDirty, cleanerOptions
 }: {
   task: EditableTask;
   updateField: (taskId: string, field: keyof Task, value: any) => void;
   isFieldDirty: (taskId: string, field: string) => boolean;
+  cleanerOptions: { value: string; label: string }[];
 }) => {
   const [expanded, setExpanded] = useState(false);
 
@@ -200,7 +202,7 @@ const MobileTaskCard = ({
             <SelectCell label="Estado" value={task.status} options={STATUS_OPTIONS} onChange={(v) => updateField(task.id, 'status', v as any)} isDirty={isFieldDirty(task.id, 'status')} />
           </div>
           <div className="grid grid-cols-2 gap-3">
-            <EditableCell label="Trabajador" value={task.cleaner || ''} onChange={(v) => updateField(task.id, 'cleaner', v)} isDirty={isFieldDirty(task.id, 'cleaner')} />
+            <SelectCell label="Trabajador" value={task.cleaner || ''} options={cleanerOptions} onChange={(v) => updateField(task.id, 'cleaner', v)} isDirty={isFieldDirty(task.id, 'cleaner')} />
             <EditableCell label="Cliente" value={task.clientName || ''} onChange={(v) => updateField(task.id, 'client', v)} isDirty={isFieldDirty(task.id, 'client')} />
           </div>
           <EditableCell label="Supervisor" value={task.supervisor || ''} onChange={(v) => updateField(task.id, 'supervisor', v)} isDirty={isFieldDirty(task.id, 'supervisor')} />
