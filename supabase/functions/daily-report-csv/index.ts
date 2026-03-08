@@ -127,10 +127,7 @@ Deno.serve(async (req) => {
         'Toallas Grandes', 'Toallas Pequeñas', 'Alfombrines',
         'Amenities Baño', 'Amenities Cocina',
         'Papel Higiénico', 'Papel Cocina', 'Kit Alimentario',
-        'Champú', 'Acondicionador', 'Gel Ducha', 'Jabón Líquido',
-        'Ambientador Baño', 'Bolsas Basura', 'Detergente Lavavajillas',
-        'Bayetas Cocina', 'Estropajos', 'Limpiacristales', 'Desinfectante Baño',
-        'Aceite', 'Vinagre', 'Sal', 'Azúcar',
+        'Paño', 'Bolsas Basura',
         'Fecha exportación'];
       return new Response(headers.map(h => escapeCSV(h)).join(',') + '\n', {
         headers: { ...corsHeaders, 'Content-Type': 'text/csv; charset=utf-8' },
@@ -165,7 +162,7 @@ Deno.serve(async (req) => {
     // Batch fetch properties, clients, sedes
     const [propertiesRes, clientsRes, sedesRes] = await Promise.all([
       propertyIds.length > 0
-        ? supabase.from('properties').select('id, nombre, codigo, direccion, cliente_id, coste_servicio, duracion_servicio, sede_id, exclude_from_export, numero_sabanas, numero_sabanas_pequenas, numero_sabanas_suite, numero_fundas_almohada, numero_toallas_grandes, numero_toallas_pequenas, numero_alfombrines, amenities_bano, amenities_cocina, cantidad_rollos_papel_higienico, cantidad_rollos_papel_cocina, kit_alimentario, champu, acondicionador, gel_ducha, jabon_liquido, ambientador_bano, bolsas_basura, detergente_lavavajillas, bayetas_cocina, estropajos, limpiacristales, desinfectante_bano, aceite, vinagre, sal, azucar').in('id', propertyIds)
+        ? supabase.from('properties').select('id, nombre, codigo, direccion, cliente_id, coste_servicio, duracion_servicio, sede_id, exclude_from_export, numero_sabanas, numero_sabanas_pequenas, numero_sabanas_suite, numero_fundas_almohada, numero_toallas_grandes, numero_toallas_pequenas, numero_alfombrines, amenities_bano, amenities_cocina, cantidad_rollos_papel_higienico, cantidad_rollos_papel_cocina, kit_alimentario, bayetas_cocina, bolsas_basura').in('id', propertyIds)
         : { data: [], error: null },
       clienteIds.length > 0
         ? supabase.from('clients').select('id, nombre, supervisor, metodo_pago').in('id', clienteIds)
@@ -251,29 +248,14 @@ Deno.serve(async (req) => {
         property?.numero_toallas_grandes ?? 0,
         property?.numero_toallas_pequenas ?? 0,
         property?.numero_alfombrines ?? 0,
-        // Amenities
+        // Amenities/Consumibles
         property?.amenities_bano ?? 0,
         property?.amenities_cocina ?? 0,
-        // Consumibles
         property?.cantidad_rollos_papel_higienico ?? 0,
         property?.cantidad_rollos_papel_cocina ?? 0,
         property?.kit_alimentario ?? 0,
-        // Productos limpieza/higiene
-        property?.champu ?? 0,
-        property?.acondicionador ?? 0,
-        property?.gel_ducha ?? 0,
-        property?.jabon_liquido ?? 0,
-        property?.ambientador_bano ?? 0,
-        property?.bolsas_basura ?? 0,
-        property?.detergente_lavavajillas ?? 0,
         property?.bayetas_cocina ?? 0,
-        property?.estropajos ?? 0,
-        property?.limpiacristales ?? 0,
-        property?.desinfectante_bano ?? 0,
-        property?.aceite ?? 0,
-        property?.vinagre ?? 0,
-        property?.sal ?? 0,
-        property?.azucar ?? 0,
+        property?.bolsas_basura ?? 0,
         exportTimestamp,
       ].map(escapeCSV).join(',');
     });
