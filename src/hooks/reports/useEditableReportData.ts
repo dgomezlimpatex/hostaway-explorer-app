@@ -30,6 +30,8 @@ export const useEditableReportData = (filters: ReportFilters) => {
         ...task,
         clientName: client?.nombre || '',
         propertyName: task.property || property?.codigo || '',
+        // Auto-fill supervisor from client if not set on task
+        supervisor: task.supervisor || client?.supervisor || '',
       };
     });
   }, [reportData]);
