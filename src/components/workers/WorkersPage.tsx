@@ -108,23 +108,40 @@ export default function WorkersPage() {
           </Card>
         </div>
 
-        {/* Workers List */}
+        {/* Active Workers List */}
         <Card>
           <CardHeader>
             <div className="flex items-center justify-between">
-              <CardTitle>Lista de Trabajadores ({filteredWorkers.length})</CardTitle>
-              <p className="text-sm text-gray-500">Arrastra las filas para reordenar</p>
+              <CardTitle>Trabajadores Activos ({activeWorkers.length})</CardTitle>
+              <p className="text-sm text-muted-foreground">Arrastra las filas para reordenar</p>
             </div>
           </CardHeader>
           <CardContent>
             <WorkersList 
-              workers={filteredWorkers} 
+              workers={activeWorkers} 
               isLoading={isLoading}
               onEditWorker={handleEditWorker}
               onViewWorker={handleViewWorker}
             />
           </CardContent>
         </Card>
+
+        {/* Inactive Workers List */}
+        {inactiveWorkers.length > 0 && (
+          <Card className="border-dashed">
+            <CardHeader>
+              <CardTitle className="text-muted-foreground">Trabajadores Inactivos ({inactiveWorkers.length})</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <WorkersList 
+                workers={inactiveWorkers} 
+                isLoading={isLoading}
+                onEditWorker={handleEditWorker}
+                onViewWorker={handleViewWorker}
+              />
+            </CardContent>
+          </Card>
+        )}
 
         {/* Modals */}
         <CreateWorkerModal 
