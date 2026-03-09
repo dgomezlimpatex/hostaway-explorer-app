@@ -102,18 +102,6 @@ const reportsItems: NavigationItem[] = [
     permission: 'reports'
   },
   {
-    title: 'Dashboard de Reportes',
-    href: '/cleaning-reports',
-    icon: FileText,
-    permission: 'reports'
-  },
-  {
-    title: 'Análisis Operativo',
-    href: '/operational-analytics',
-    icon: TrendingUp,
-    permission: 'reports'
-  },
-  {
     title: 'Plantillas de Checklist',
     href: '/checklist-templates',
     icon: CheckCircle2,
