@@ -81,12 +81,6 @@ const managementItems: NavigationItem[] = [
     permission: 'properties'
   },
   {
-    title: 'Grupos de Propiedades',
-    href: '/property-groups',
-    icon: Layers,
-    permission: 'propertyGroups'
-  },
-  {
     title: 'Control de Mudas',
     href: '/control-mudas',
     icon: Bed,
