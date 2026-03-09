@@ -112,7 +112,7 @@ export const BasicInfoSection = ({ formData, updateFormData }: BasicInfoSectionP
             id="duracion"
             type="number"
             min="0"
-            step="0.5"
+            step="0.25"
             value={formData.duracion / 60}
             onChange={(e) => updateFormData('duracion', Math.round((parseFloat(e.target.value) || 0) * 60))}
           />
