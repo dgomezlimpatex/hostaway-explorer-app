@@ -92,6 +92,12 @@ const managementItems: NavigationItem[] = [
     icon: Shirt,
     permission: 'reports'
   },
+  {
+    title: 'Tareas Recurrentes',
+    href: '/recurring-tasks',
+    icon: RefreshCw,
+    permission: 'tasks'
+  },
 ];
 
 const reportsItems: NavigationItem[] = [
