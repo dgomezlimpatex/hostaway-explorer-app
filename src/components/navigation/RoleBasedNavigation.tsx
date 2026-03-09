@@ -96,19 +96,6 @@ export const RoleBasedNavigation = () => {
             />
           )}
 
-          {canAccessModule('propertyGroups') && (
-            <NavigationCard
-              to="/property-groups"
-              title="Grupos de Propiedades"
-              description="Organiza propiedades en grupos para mejor gestión"
-              icon={Layers}
-              gradientFrom="bg-gradient-to-br from-teal-500"
-              gradientTo="to-teal-600"
-              iconColor="text-white"
-              hoverBorderColor="hover:border-teal-300"
-            />
-          )}
-
           {canAccessModule('reports') && (
             <NavigationCard
               to="/reports"
@@ -122,31 +109,6 @@ export const RoleBasedNavigation = () => {
             />
           )}
 
-          {canAccessModule('reports') && (
-            <NavigationCard
-              to="/cleaning-reports"
-              title="Dashboard de Reportes"
-              description="Control completo de reportes y evidencias de limpieza"
-              icon={FileText}
-              gradientFrom="bg-gradient-to-br from-violet-500"
-              gradientTo="to-violet-600"
-              iconColor="text-white"
-              hoverBorderColor="hover:border-violet-300"
-            />
-          )}
-
-          {canAccessModule('hostaway') && (
-            <NavigationCard
-              to="/hostaway-sync-logs"
-              title="Hostaway Sync"
-              description="Revisa los logs de sincronización con Hostaway"
-              icon={Settings}
-              gradientFrom="bg-gradient-to-br from-gray-500"
-              gradientTo="to-gray-600"
-              iconColor="text-white"
-              hoverBorderColor="hover:border-gray-300"
-            />
-          )}
 
           {canAccessModule('reports') && (
             <NavigationCard

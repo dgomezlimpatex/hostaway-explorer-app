@@ -81,12 +81,6 @@ const managementItems: NavigationItem[] = [
     permission: 'properties'
   },
   {
-    title: 'Grupos de Propiedades',
-    href: '/property-groups',
-    icon: Layers,
-    permission: 'propertyGroups'
-  },
-  {
     title: 'Control de Mudas',
     href: '/control-mudas',
     icon: Bed,
@@ -105,18 +99,6 @@ const reportsItems: NavigationItem[] = [
     title: 'Reportes',
     href: '/reports',
     icon: BarChart3,
-    permission: 'reports'
-  },
-  {
-    title: 'Dashboard de Reportes',
-    href: '/cleaning-reports',
-    icon: FileText,
-    permission: 'reports'
-  },
-  {
-    title: 'Análisis Operativo',
-    href: '/operational-analytics',
-    icon: TrendingUp,
     permission: 'reports'
   },
   {
@@ -146,18 +128,6 @@ const adminItems: NavigationItem[] = [
     title: 'Gestión de Sedes',
     href: '/sede-management',
     icon: Building2,
-  },
-  {
-    title: 'Hostaway Sync',
-    href: '/hostaway-sync-logs',
-    icon: AlertTriangle,
-    permission: 'hostaway'
-  },
-  {
-    title: 'Sincronización Avantio',
-    href: '/avantio-automation',
-    icon: RefreshCw,
-    permission: 'hostaway'
   },
 ];
 
