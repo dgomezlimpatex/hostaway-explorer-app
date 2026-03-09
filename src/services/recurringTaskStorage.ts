@@ -127,6 +127,7 @@ export const recurringTaskStorage = {
         metodo_pago: taskData.metodoPago,
         supervisor: taskData.supervisor,
         cleaner: taskData.cleaner,
+        cleaner_id: taskData.cleanerId,
         frequency: taskData.frequency,
         interval_days: taskData.interval,
         days_of_week: taskData.daysOfWeek,
