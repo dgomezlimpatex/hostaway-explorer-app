@@ -3,37 +3,8 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.50.0";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
-
-interface RecurringTask {
-  id: string;
-  name: string;
-  description?: string;
-  clienteId?: string;
-  propiedadId?: string;
-  type: string;
-  startTime: string;
-  endTime: string;
-  checkOut: string;
-  checkIn: string;
-  duracion?: number;
-  coste?: number;
-  metodoPago?: string;
-  supervisor?: string;
-  cleaner?: string;
-  frequency: 'daily' | 'weekly' | 'monthly';
-  interval: number;
-  daysOfWeek?: number[];
-  dayOfMonth?: number;
-  startDate: string;
-  endDate?: string;
-  isActive: boolean;
-  nextExecution: string;
-  lastExecution?: string;
-  createdAt: string;
-  sede_id: string;
-}
 
 const handler = async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") {
@@ -48,13 +19,14 @@ const handler = async (req: Request): Promise<Response> => {
     
     console.log("🔄 Starting recurring tasks processing...");
     
-    // Get all active recurring tasks that are due for execution
-    const now = new Date().toISOString();
+    const today = new Date().toISOString().split('T')[0];
+    
+    // Get all active recurring tasks that are due for execution (using snake_case DB columns)
     const { data: recurringTasks, error: fetchError } = await supabase
       .from('recurring_tasks')
-      .select('*')
-      .eq('isActive', true)
-      .lte('nextExecution', now);
+      .select('*, properties:propiedad_id(nombre, direccion)')
+      .eq('is_active', true)
+      .lte('next_execution', today);
 
     if (fetchError) {
       console.error("❌ Error fetching recurring tasks:", fetchError);
@@ -66,7 +38,9 @@ const handler = async (req: Request): Promise<Response> => {
     if (!recurringTasks || recurringTasks.length === 0) {
       return new Response(JSON.stringify({ 
         message: "No recurring tasks to process",
-        processed: 0 
+        processed: 0,
+        generatedTasks: [],
+        updatedRecurringTasks: 0
       }), {
         status: 200,
         headers: { "Content-Type": "application/json", ...corsHeaders },
@@ -76,71 +50,95 @@ const handler = async (req: Request): Promise<Response> => {
     const generatedTasks: any[] = [];
     const updatedTasks: string[] = [];
 
-    for (const recurringTask of recurringTasks as RecurringTask[]) {
+    for (const rt of recurringTasks) {
       try {
-        console.log(`🔨 Processing task: ${recurringTask.name}`);
+        console.log(`🔨 Processing task: ${rt.name}`);
 
-        // Create the new task
+        // Resolve property name and address from the joined relation
+        const propertyName = rt.properties?.nombre || rt.name;
+        const propertyAddress = rt.properties?.direccion || '';
+
+        // Create the new task using correct snake_case column names for the tasks table
         const { data: newTask, error: createError } = await supabase
           .from('tasks')
           .insert({
-            name: recurringTask.name,
-            description: recurringTask.description,
-            clienteId: recurringTask.clienteId,
-            propiedadId: recurringTask.propiedadId,
-            type: recurringTask.type,
-            startTime: recurringTask.startTime,
-            endTime: recurringTask.endTime,
-            checkOut: recurringTask.checkOut,
-            checkIn: recurringTask.checkIn,
-            duracion: recurringTask.duracion,
-            coste: recurringTask.coste,
-            metodoPago: recurringTask.metodoPago,
-            supervisor: recurringTask.supervisor,
-            cleaner: recurringTask.cleaner,
-            sede_id: recurringTask.sede_id,
-            status: 'pending'
+            property: propertyName,
+            address: propertyAddress,
+            date: rt.next_execution,
+            start_time: rt.start_time,
+            end_time: rt.end_time,
+            type: rt.type,
+            status: 'pending',
+            check_out: rt.check_out,
+            check_in: rt.check_in,
+            cleaner: rt.cleaner,
+            cleaner_id: rt.cleaner_id,
+            cliente_id: rt.cliente_id,
+            propiedad_id: rt.propiedad_id,
+            duracion: rt.duracion,
+            coste: rt.coste,
+            metodo_pago: rt.metodo_pago,
+            supervisor: rt.supervisor,
+            sede_id: rt.sede_id,
+            background_color: '#3B82F6',
+            notes: `Generada automáticamente desde tarea recurrente: ${rt.name}`
           })
           .select()
           .single();
 
         if (createError) {
-          console.error(`❌ Error creating task for ${recurringTask.name}:`, createError);
+          console.error(`❌ Error creating task for ${rt.name}:`, createError);
+          
+          // Log execution error
+          await supabase.from('recurring_task_executions').insert({
+            recurring_task_id: rt.id,
+            execution_date: rt.next_execution,
+            success: false,
+            error_message: createError.message
+          });
           continue;
         }
 
-        generatedTasks.push(newTask);
+        generatedTasks.push({ id: newTask.id, name: propertyName });
+
+        // Log successful execution
+        await supabase.from('recurring_task_executions').insert({
+          recurring_task_id: rt.id,
+          execution_date: rt.next_execution,
+          success: true,
+          generated_task_id: newTask.id
+        });
 
         // Calculate next execution date
-        const nextExecution = calculateNextExecution(recurringTask);
+        const nextExecution = calculateNextExecution(rt);
         
         // Check if task should be deactivated (past end date)
-        const shouldDeactivate = recurringTask.endDate && 
-          new Date(nextExecution) > new Date(recurringTask.endDate);
+        const shouldDeactivate = rt.end_date && 
+          new Date(nextExecution) > new Date(rt.end_date);
 
-        // Update the recurring task
+        // Update the recurring task with snake_case columns
         const { error: updateError } = await supabase
           .from('recurring_tasks')
           .update({
-            lastExecution: now,
-            nextExecution: shouldDeactivate ? null : nextExecution,
-            isActive: !shouldDeactivate
+            last_execution: rt.next_execution,
+            next_execution: shouldDeactivate ? '2099-12-31' : nextExecution,
+            is_active: !shouldDeactivate
           })
-          .eq('id', recurringTask.id);
+          .eq('id', rt.id);
 
         if (updateError) {
-          console.error(`❌ Error updating recurring task ${recurringTask.name}:`, updateError);
+          console.error(`❌ Error updating recurring task ${rt.name}:`, updateError);
         } else {
-          updatedTasks.push(recurringTask.id);
-          console.log(`✅ Task ${recurringTask.name} processed successfully`);
+          updatedTasks.push(rt.id);
+          console.log(`✅ Task ${rt.name} processed successfully`);
           
           if (shouldDeactivate) {
-            console.log(`🔚 Task ${recurringTask.name} deactivated - reached end date`);
+            console.log(`🔚 Task ${rt.name} deactivated - reached end date`);
           }
         }
 
-      } catch (taskError) {
-        console.error(`❌ Error processing task ${recurringTask.name}:`, taskError);
+      } catch (taskError: any) {
+        console.error(`❌ Error processing task ${rt.name}:`, taskError);
       }
     }
 
@@ -149,7 +147,7 @@ const handler = async (req: Request): Promise<Response> => {
     return new Response(JSON.stringify({
       message: "Recurring tasks processed successfully",
       processed: generatedTasks.length,
-      generatedTasks: generatedTasks.map(t => ({ id: t.id, name: t.name })),
+      generatedTasks,
       updatedRecurringTasks: updatedTasks.length
     }), {
       status: 200,
@@ -168,48 +166,45 @@ const handler = async (req: Request): Promise<Response> => {
   }
 };
 
-function calculateNextExecution(task: RecurringTask): string {
-  const lastExecution = new Date(task.lastExecution || task.nextExecution);
-  const nextDate = new Date(lastExecution);
+function calculateNextExecution(task: any): string {
+  const lastDate = new Date(task.next_execution);
+  const nextDate = new Date(lastDate);
+  const interval = task.interval_days || 1;
 
   switch (task.frequency) {
     case 'daily':
-      nextDate.setDate(nextDate.getDate() + task.interval);
+      nextDate.setDate(nextDate.getDate() + interval);
       break;
       
     case 'weekly':
-      if (task.daysOfWeek && task.daysOfWeek.length > 0) {
-        // Find next occurrence of specified days
+      if (task.days_of_week && task.days_of_week.length > 0) {
         let daysAdded = 0;
-        const maxDays = 14; // Prevent infinite loop
+        const maxDays = 14;
         
         do {
           daysAdded++;
           nextDate.setDate(nextDate.getDate() + 1);
         } while (
-          !task.daysOfWeek.includes(nextDate.getDay()) && 
+          !task.days_of_week.includes(nextDate.getDay()) && 
           daysAdded < maxDays
         );
       } else {
-        nextDate.setDate(nextDate.getDate() + (7 * task.interval));
+        nextDate.setDate(nextDate.getDate() + (7 * interval));
       }
       break;
       
     case 'monthly':
-      if (task.dayOfMonth) {
-        nextDate.setMonth(nextDate.getMonth() + task.interval);
-        
-        // Handle end of month cases
+      nextDate.setMonth(nextDate.getMonth() + interval);
+      
+      if (task.day_of_month) {
         const lastDayOfMonth = new Date(nextDate.getFullYear(), nextDate.getMonth() + 1, 0).getDate();
-        const targetDay = Math.min(task.dayOfMonth, lastDayOfMonth);
+        const targetDay = Math.min(task.day_of_month, lastDayOfMonth);
         nextDate.setDate(targetDay);
-      } else {
-        nextDate.setMonth(nextDate.getMonth() + task.interval);
       }
       break;
   }
 
-  return nextDate.toISOString();
+  return nextDate.toISOString().split('T')[0];
 }
 
 serve(handler);
