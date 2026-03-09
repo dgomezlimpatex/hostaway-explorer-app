@@ -20,6 +20,19 @@ export const BasicInfoSection = ({ formData, updateFormData }: BasicInfoSectionP
     [cleaners]
   );
 
+  const handleCleanerChange = (cleanerId: string) => {
+    if (cleanerId === '_none') {
+      updateFormData('cleaner', '');
+      updateFormData('cleanerId', '');
+    } else {
+      const cleaner = activeCleaners.find(c => c.id === cleanerId);
+      if (cleaner) {
+        updateFormData('cleaner', cleaner.name);
+        updateFormData('cleanerId', cleaner.id);
+      }
+    }
+  };
+
   const serviceTypes = [
     { value: 'limpieza-mantenimiento', label: 'Limpieza de Mantenimiento' },
     { value: 'mantenimiento-cristaleria', label: 'Mantenimiento de Cristalería' },
@@ -76,8 +89,8 @@ export const BasicInfoSection = ({ formData, updateFormData }: BasicInfoSectionP
         <div>
           <Label htmlFor="cleaner">Trabajador</Label>
           <Select 
-            value={formData.cleaner || '_none'} 
-            onValueChange={(value) => updateFormData('cleaner', value === '_none' ? '' : value)}
+            value={formData.cleanerId || '_none'} 
+            onValueChange={handleCleanerChange}
           >
             <SelectTrigger>
               <SelectValue placeholder="Seleccionar trabajador" />
@@ -85,7 +98,7 @@ export const BasicInfoSection = ({ formData, updateFormData }: BasicInfoSectionP
             <SelectContent>
               <SelectItem value="_none">Sin asignar</SelectItem>
               {activeCleaners.map((cleaner) => (
-                <SelectItem key={cleaner.id} value={cleaner.name}>
+                <SelectItem key={cleaner.id} value={cleaner.id}>
                   {cleaner.name}
                 </SelectItem>
               ))}

@@ -19,6 +19,7 @@ export interface RecurringTaskFormData {
   metodoPago: string;
   supervisor: string;
   cleaner: string;
+  cleanerId: string;
   frequency: 'daily' | 'weekly' | 'monthly';
   interval: number;
   daysOfWeek: number[];
@@ -44,6 +45,7 @@ export const useRecurringTaskForm = () => {
     metodoPago: 'transferencia',
     supervisor: '',
     cleaner: '',
+    cleanerId: '',
     frequency: 'weekly',
     interval: 1,
     daysOfWeek: [1],
@@ -88,6 +90,7 @@ export const useRecurringTaskForm = () => {
       metodoPago: 'transferencia',
       supervisor: '',
       cleaner: '',
+      cleanerId: '',
       frequency: 'weekly',
       interval: 1,
       daysOfWeek: [1],
@@ -105,6 +108,7 @@ export const useRecurringTaskForm = () => {
       propiedadId: formData.propiedadId || undefined,
       endDate: formData.endDate || undefined,
       cleaner: formData.cleaner || undefined,
+      cleanerId: formData.cleanerId || undefined,
       lastExecution: undefined
     };
   };
