@@ -129,11 +129,6 @@ const adminItems: NavigationItem[] = [
     href: '/sede-management',
     icon: Building2,
   },
-    {
-    href: '/avantio-automation',
-    icon: RefreshCw,
-    permission: 'hostaway'
-  },
 ];
 
 export const DashboardSidebar = () => {
