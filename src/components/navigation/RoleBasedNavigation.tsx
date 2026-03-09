@@ -109,18 +109,6 @@ export const RoleBasedNavigation = () => {
             />
           )}
 
-          {canAccessModule('hostaway') && (
-            <NavigationCard
-              to="/hostaway-sync-logs"
-              title="Hostaway Sync"
-              description="Revisa los logs de sincronización con Hostaway"
-              icon={Settings}
-              gradientFrom="bg-gradient-to-br from-gray-500"
-              gradientTo="to-gray-600"
-              iconColor="text-white"
-              hoverBorderColor="hover:border-gray-300"
-            />
-          )}
 
           {canAccessModule('reports') && (
             <NavigationCard
