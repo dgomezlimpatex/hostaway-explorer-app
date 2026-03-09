@@ -229,6 +229,7 @@ export const recurringTaskStorage = {
       description: data.description,
       clienteId: data.cliente_id,
       propiedadId: data.propiedad_id,
+      cleanerId: data.cleaner_id,
       type: data.type,
       startTime: data.start_time,
       endTime: data.end_time,
