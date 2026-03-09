@@ -4,6 +4,7 @@ import { recurringTaskStorage } from '@/services/recurringTaskStorage';
 import { RecurringTask } from '@/types/recurring';
 import { toast } from '@/hooks/use-toast';
 import { useCacheInvalidation } from './useCacheInvalidation';
+import { supabase } from '@/integrations/supabase/client';
 
 export const useRecurringTasks = () => {
   return useQuery({
@@ -26,7 +27,58 @@ export const useCreateRecurringTask = () => {
 
   return useMutation({
     mutationFn: async (taskData: Omit<RecurringTask, 'id' | 'createdAt' | 'nextExecution'>) => {
-      return await recurringTaskStorage.create(taskData);
+      const result = await recurringTaskStorage.create(taskData);
+
+      // Send email notification to assigned cleaner
+      if (result.cleanerId) {
+        try {
+          // Fetch cleaner email
+          const { data: cleanerData } = await supabase
+            .from('cleaners')
+            .select('name, email')
+            .eq('id', result.cleanerId)
+            .single();
+
+          if (cleanerData?.email) {
+            // Fetch property info
+            let propertyName = result.name;
+            let propertyAddress = '';
+            if (result.propiedadId) {
+              const { data: propData } = await supabase
+                .from('properties')
+                .select('nombre, direccion')
+                .eq('id', result.propiedadId)
+                .single();
+              if (propData) {
+                propertyName = propData.nombre || result.name;
+                propertyAddress = propData.direccion || '';
+              }
+            }
+
+            await supabase.functions.invoke('send-recurring-task-email', {
+              body: {
+                cleanerEmail: cleanerData.email,
+                cleanerName: cleanerData.name || 'Trabajador',
+                taskData: {
+                  property: propertyName,
+                  address: propertyAddress,
+                  date: result.nextExecution,
+                  startTime: result.startTime,
+                  endTime: result.endTime,
+                  type: result.type,
+                  recurringTaskName: result.name,
+                },
+              },
+            });
+            console.log('📧 Email de tarea recurrente enviado a', cleanerData.email);
+          }
+        } catch (emailError) {
+          console.error('⚠️ Error enviando email de tarea recurrente:', emailError);
+          // Don't fail the creation if email fails
+        }
+      }
+
+      return result;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['recurring-tasks'] });

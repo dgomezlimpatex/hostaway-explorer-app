@@ -36,6 +36,7 @@ export const recurringTaskStorage = {
       description: row.description,
       clienteId: row.cliente_id,
       propiedadId: row.propiedad_id,
+      cleanerId: row.cleaner_id,
       type: row.type,
       startTime: row.start_time,
       endTime: row.end_time,
@@ -82,6 +83,7 @@ export const recurringTaskStorage = {
       description: data.description,
       clienteId: data.cliente_id,
       propiedadId: data.propiedad_id,
+      cleanerId: data.cleaner_id,
       type: data.type,
       startTime: data.start_time,
       endTime: data.end_time,
@@ -126,6 +128,7 @@ export const recurringTaskStorage = {
         metodo_pago: taskData.metodoPago,
         supervisor: taskData.supervisor,
         cleaner: taskData.cleaner,
+        cleaner_id: taskData.cleanerId,
         frequency: taskData.frequency,
         interval_days: taskData.interval,
         days_of_week: taskData.daysOfWeek,
@@ -151,6 +154,7 @@ export const recurringTaskStorage = {
       description: data.description,
       clienteId: data.cliente_id,
       propiedadId: data.propiedad_id,
+      cleanerId: data.cleaner_id,
       type: data.type,
       startTime: data.start_time,
       endTime: data.end_time,
@@ -181,6 +185,7 @@ export const recurringTaskStorage = {
     if (updates.description !== undefined) updateData.description = updates.description;
     if (updates.clienteId !== undefined) updateData.cliente_id = updates.clienteId;
     if (updates.propiedadId !== undefined) updateData.propiedad_id = updates.propiedadId;
+    if (updates.cleanerId !== undefined) updateData.cleaner_id = updates.cleanerId;
     if (updates.type !== undefined) updateData.type = updates.type;
     if (updates.startTime !== undefined) updateData.start_time = updates.startTime;
     if (updates.endTime !== undefined) updateData.end_time = updates.endTime;
@@ -224,6 +229,7 @@ export const recurringTaskStorage = {
       description: data.description,
       clienteId: data.cliente_id,
       propiedadId: data.propiedad_id,
+      cleanerId: data.cleaner_id,
       type: data.type,
       startTime: data.start_time,
       endTime: data.end_time,

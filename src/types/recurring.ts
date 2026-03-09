@@ -15,6 +15,7 @@ export interface RecurringTask {
   metodoPago?: string;
   supervisor?: string;
   cleaner?: string;
+  cleanerId?: string;
   
   // Configuración de recurrencia
   frequency: 'daily' | 'weekly' | 'monthly';
