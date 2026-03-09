@@ -114,7 +114,19 @@ export const BasicInfoSection = ({ formData, updateFormData }: BasicInfoSectionP
             min="0"
             step="0.25"
             value={formData.duracion / 60}
-            onChange={(e) => updateFormData('duracion', Math.round((parseFloat(e.target.value) || 0) * 60))}
+            onChange={(e) => {
+              const hours = parseFloat(e.target.value) || 0;
+              const minutes = Math.round(hours * 60);
+              updateFormData('duracion', minutes);
+              // Auto-calculate endTime
+              if (formData.startTime) {
+                const [h, m] = formData.startTime.split(':').map(Number);
+                const totalMin = h * 60 + m + minutes;
+                const endH = Math.floor(totalMin / 60) % 24;
+                const endM = totalMin % 60;
+                updateFormData('endTime', `${String(endH).padStart(2, '0')}:${String(endM).padStart(2, '0')}`);
+              }
+            }}
           />
         </div>
       </div>
