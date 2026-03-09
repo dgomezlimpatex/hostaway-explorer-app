@@ -46,6 +46,7 @@ export const EditRecurringTaskModal = ({ task, open, onOpenChange }: EditRecurri
       updateFormData('metodoPago', task.metodoPago || 'transferencia');
       updateFormData('supervisor', task.supervisor || '');
       updateFormData('cleaner', task.cleaner || '');
+      updateFormData('cleanerId', task.cleanerId || '');
       updateFormData('frequency', task.frequency);
       updateFormData('interval', task.interval);
       updateFormData('daysOfWeek', task.daysOfWeek || [1]);
