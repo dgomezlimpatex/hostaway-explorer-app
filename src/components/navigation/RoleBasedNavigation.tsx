@@ -96,22 +96,6 @@ export const RoleBasedNavigation = () => {
             />
           )}
 
-          {canAccessModule('propertyGroups') && (
-            <NavigationCard
-              to="/property-groups"
-              title="Grupos de Propiedades"
-              description="Organiza propiedades en grupos para mejor gestión"
-              icon={Layers}
-              gradientFrom="bg-gradient-to-br from-teal-500"
-              gradientTo="to-teal-600"
-              iconColor="text-white"
-              hoverBorderColor="hover:border-teal-300"
-            />
-          )}
-
-          {canAccessModule('reports') && (
-            <NavigationCard
-              to="/reports"
               title="Reportes"
               description="Visualiza estadísticas y reportes del negocio"
               icon={BarChart3}

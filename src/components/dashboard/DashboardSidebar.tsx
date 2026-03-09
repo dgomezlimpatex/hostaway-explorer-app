@@ -129,13 +129,6 @@ const adminItems: NavigationItem[] = [
     href: '/sede-management',
     icon: Building2,
   },
-  {
-    title: 'Hostaway Sync',
-    href: '/hostaway-sync-logs',
-    icon: AlertTriangle,
-    permission: 'hostaway'
-  },
-  {
     title: 'Sincronización Avantio',
     href: '/avantio-automation',
     icon: RefreshCw,
