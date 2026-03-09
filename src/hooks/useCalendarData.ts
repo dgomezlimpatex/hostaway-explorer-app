@@ -13,7 +13,10 @@ export const useCalendarData = () => {
     goToToday
   } = useCalendarNavigation();
 
-  const { cleaners, isInitialLoading: isInitialLoadingCleaners } = useCleaners();
+  const { cleaners: allCleaners, isInitialLoading: isInitialLoadingCleaners } = useCleaners();
+  
+  // Filter out inactive cleaners for calendar display
+  const cleaners = allCleaners.filter(c => c.isActive !== false);
   
   const {
     tasks,
