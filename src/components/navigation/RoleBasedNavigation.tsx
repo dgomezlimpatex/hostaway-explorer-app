@@ -43,18 +43,6 @@ export const RoleBasedNavigation = () => {
             />
           )}
 
-          {canAccessModule('tasks') && (
-            <NavigationCard
-              to="/tasks"
-              title="Tareas"
-              description="Administra todas las tareas de limpieza y su estado"
-              icon={ClipboardList}
-              gradientFrom="bg-gradient-to-br from-green-500"
-              gradientTo="to-green-600"
-              iconColor="text-white"
-              hoverBorderColor="hover:border-green-300"
-            />
-          )}
 
           {canAccessModule('tasks') && (
             <NavigationCard
