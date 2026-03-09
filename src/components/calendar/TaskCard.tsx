@@ -1,4 +1,4 @@
-import { Clock, GripVertical, ListTodo } from "lucide-react";
+import { Clock, GripVertical, ListTodo, RefreshCw } from "lucide-react";
 import { Task } from "@/hooks/useCalendarData";
 import { cn } from "@/lib/utils";
 import { useClientData } from "@/hooks/useClientData";
