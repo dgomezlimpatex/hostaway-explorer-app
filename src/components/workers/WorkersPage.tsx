@@ -85,29 +85,29 @@ export default function WorkersPage() {
         {/* Statistics */}
         <div className="grid grid-cols-3 gap-2 sm:gap-6">
           <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Total Trabajadores</CardTitle>
+            <CardHeader className="pb-1 sm:pb-2 px-3 sm:px-6 pt-3 sm:pt-6">
+              <CardTitle className="text-xs sm:text-sm font-medium text-muted-foreground">Total</CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-foreground">{cleaners.length}</div>
+            <CardContent className="px-3 sm:px-6 pb-3 sm:pb-6">
+              <div className="text-xl sm:text-2xl font-bold text-foreground">{cleaners.length}</div>
             </CardContent>
           </Card>
           
           <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Trabajadores Activos</CardTitle>
+            <CardHeader className="pb-1 sm:pb-2 px-3 sm:px-6 pt-3 sm:pt-6">
+              <CardTitle className="text-xs sm:text-sm font-medium text-muted-foreground">Activos</CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-green-600">{activeWorkers.length}</div>
+            <CardContent className="px-3 sm:px-6 pb-3 sm:pb-6">
+              <div className="text-xl sm:text-2xl font-bold text-green-600">{activeWorkers.length}</div>
             </CardContent>
           </Card>
           
           <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Trabajadores Inactivos</CardTitle>
+            <CardHeader className="pb-1 sm:pb-2 px-3 sm:px-6 pt-3 sm:pt-6">
+              <CardTitle className="text-xs sm:text-sm font-medium text-muted-foreground">Inactivos</CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-destructive">{inactiveWorkers.length}</div>
+            <CardContent className="px-3 sm:px-6 pb-3 sm:pb-6">
+              <div className="text-xl sm:text-2xl font-bold text-destructive">{inactiveWorkers.length}</div>
             </CardContent>
           </Card>
         </div>
