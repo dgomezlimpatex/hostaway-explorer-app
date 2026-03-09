@@ -1,4 +1,4 @@
-import { Clock, GripVertical, ListTodo } from "lucide-react";
+import { Clock, GripVertical, ListTodo, RefreshCw } from "lucide-react";
 import { Task } from "@/hooks/useCalendarData";
 import { cn } from "@/lib/utils";
 import { useClientData } from "@/hooks/useClientData";
@@ -95,16 +95,21 @@ export const TaskCard = ({
     return task.property;
   };
 
+  const isRecurring = task.isRecurringInstance;
+  const effectiveDraggable = draggable && !isRecurring;
+
   return (
     <div 
       className={cn(
-        getStatusColor(task.status), 
-        "rounded-lg p-2 text-white shadow-lg hover:shadow-xl transition-all duration-200 cursor-move group relative overflow-visible select-none",
+        isRecurring ? "bg-blue-400/70 hover:bg-blue-500/80 border-2 border-dashed border-blue-300" : getStatusColor(task.status), 
+        "rounded-lg p-2 text-white shadow-lg hover:shadow-xl transition-all duration-200 group relative overflow-visible select-none",
+        effectiveDraggable && "cursor-move",
+        !effectiveDraggable && "cursor-pointer",
         isDragging && "opacity-50 scale-95 rotate-3"
       )} 
       style={style} 
       onClick={onClick} 
-      draggable={draggable} 
+      draggable={effectiveDraggable} 
       onDragStart={handleDragStart} 
       onDragEnd={handleDragEnd} 
       onDragOver={handleDragOver}
@@ -112,8 +117,15 @@ export const TaskCard = ({
       {/* Subtask badge */}
       <SubtaskBadge task={task} />
 
+      {/* Recurring badge */}
+      {isRecurring && (
+        <div className="absolute -top-1 -left-1 z-20 flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-bold shadow-md bg-blue-600 text-white">
+          <RefreshCw className="h-3 w-3" />
+        </div>
+      )}
+
       {/* Drag handle */}
-      {draggable && (
+      {effectiveDraggable && (
         <div className="absolute top-1 right-1 opacity-0 group-hover:opacity-70 transition-opacity">
           <GripVertical className="h-3 w-3" />
         </div>
