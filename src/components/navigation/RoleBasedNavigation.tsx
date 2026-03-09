@@ -11,7 +11,8 @@ import {
   UserPlus,
   Layers,
   FileText,
-  Shirt
+  Shirt,
+  RefreshCw
 } from 'lucide-react';
 
 export const RoleBasedNavigation = () => {
@@ -93,6 +94,19 @@ export const RoleBasedNavigation = () => {
               gradientTo="to-red-600"
               iconColor="text-white"
               hoverBorderColor="hover:border-red-300"
+            />
+          )}
+
+          {canAccessModule('tasks') && (
+            <NavigationCard
+              to="/recurring-tasks"
+              title="Tareas Recurrentes"
+              description="Configura servicios que se repiten automáticamente"
+              icon={RefreshCw}
+              gradientFrom="bg-gradient-to-br from-teal-500"
+              gradientTo="to-teal-600"
+              iconColor="text-white"
+              hoverBorderColor="hover:border-teal-300"
             />
           )}
 

@@ -16,36 +16,35 @@ export const RecurringTasksPage = () => {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold">Tareas Recurrentes</h1>
-        <div className="flex gap-2">
+    <div className="space-y-4 md:space-y-6">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+        <h1 className="text-2xl md:text-3xl font-bold">Tareas Recurrentes</h1>
+        <div className="flex gap-2 w-full sm:w-auto">
           <Button 
             variant="outline"
+            size="sm"
             onClick={handleProcessTasks}
             disabled={processRecurringTasks.isPending}
+            className="flex-1 sm:flex-none"
           >
             {processRecurringTasks.isPending ? (
               <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
             ) : (
               <Play className="w-4 h-4 mr-2" />
             )}
-            Procesar Ahora
+            <span className="hidden sm:inline">Procesar Ahora</span>
+            <span className="sm:hidden">Procesar</span>
           </Button>
-          <Button onClick={() => setShowCreateModal(true)}>
+          <Button size="sm" onClick={() => setShowCreateModal(true)} className="flex-1 sm:flex-none">
             <Plus className="w-4 h-4 mr-2" />
-            Nueva Tarea Recurrente
+            <span className="hidden sm:inline">Nueva Tarea Recurrente</span>
+            <span className="sm:hidden">Nueva</span>
           </Button>
         </div>
       </div>
 
-      {/* Métricas */}
       <RecurringTasksMetrics />
-
-      {/* Vista previa de próximas ejecuciones */}
       <UpcomingTasksPreview />
-
-      {/* Lista de tareas recurrentes */}
       <RecurringTasksList />
 
       <CreateRecurringTaskModal 
