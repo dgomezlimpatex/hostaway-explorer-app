@@ -59,12 +59,6 @@ const generalItems: NavigationItem[] = [
     icon: Calendar,
     permission: 'calendar'
   },
-  {
-    title: 'Tareas',
-    href: '/tasks',
-    icon: ClipboardList,
-    permission: 'tasks'
-  },
 ];
 
 const managementItems: NavigationItem[] = [
