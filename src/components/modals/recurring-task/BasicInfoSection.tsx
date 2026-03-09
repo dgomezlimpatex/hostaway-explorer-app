@@ -107,13 +107,14 @@ export const BasicInfoSection = ({ formData, updateFormData }: BasicInfoSectionP
           />
         </div>
         <div>
-          <Label htmlFor="duracion">Duración (min)</Label>
+          <Label htmlFor="duracion">Duración (horas)</Label>
           <Input
             id="duracion"
             type="number"
             min="0"
-            value={formData.duracion}
-            onChange={(e) => updateFormData('duracion', parseInt(e.target.value) || 0)}
+            step="0.5"
+            value={formData.duracion / 60}
+            onChange={(e) => updateFormData('duracion', Math.round((parseFloat(e.target.value) || 0) * 60))}
           />
         </div>
       </div>
