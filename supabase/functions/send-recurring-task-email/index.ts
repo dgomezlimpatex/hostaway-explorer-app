@@ -19,7 +19,43 @@ interface RecurringTaskEmailRequest {
     endTime: string;
     type?: string;
     recurringTaskName: string;
+    frequency?: 'daily' | 'weekly' | 'monthly';
+    interval?: number;
+    daysOfWeek?: number[];
+    dayOfMonth?: number;
   };
+}
+
+const dayNames: Record<number, string> = {
+  0: 'Domingo',
+  1: 'Lunes',
+  2: 'Martes',
+  3: 'Miércoles',
+  4: 'Jueves',
+  5: 'Viernes',
+  6: 'Sábado',
+};
+
+function buildScheduleText(taskData: RecurringTaskEmailRequest['taskData']): string {
+  const { frequency, interval, daysOfWeek, dayOfMonth } = taskData;
+  if (!frequency) return '';
+
+  if (frequency === 'daily') {
+    return interval && interval > 1 ? `Cada ${interval} días` : 'Todos los días';
+  }
+
+  if (frequency === 'weekly') {
+    const days = (daysOfWeek || []).sort().map(d => dayNames[d] || '').filter(Boolean).join(', ');
+    const prefix = interval && interval > 1 ? `Cada ${interval} semanas` : 'Cada semana';
+    return days ? `${prefix}: ${days}` : prefix;
+  }
+
+  if (frequency === 'monthly') {
+    const prefix = interval && interval > 1 ? `Cada ${interval} meses` : 'Cada mes';
+    return dayOfMonth ? `${prefix}, el día ${dayOfMonth}` : prefix;
+  }
+
+  return '';
 }
 
 const handler = async (req: Request): Promise<Response> => {
@@ -61,6 +97,8 @@ const handler = async (req: Request): Promise<Response> => {
       'servicio-extraordinario': 'Servicio Extraordinario',
     };
     const typeLabel = taskData.type ? (typeLabels[taskData.type] || taskData.type) : '';
+
+    const scheduleText = buildScheduleText(taskData);
 
     const emailResponse = await resend.emails.send({
       from: "Sistema de Gestión <noreply@limpatexgestion.com>",
@@ -105,13 +143,19 @@ const handler = async (req: Request): Promise<Response> => {
                   <td style="padding: 10px 0; color: #1e293b;">${taskData.address}</td>
                 </tr>
                 ` : ''}
+                ${scheduleText ? `
                 <tr>
-                  <td style="padding: 10px 0; font-weight: 600; color: #475569;">📅 Fecha</td>
-                  <td style="padding: 10px 0; color: #1e293b; text-transform: capitalize;">${formattedDate}</td>
+                  <td style="padding: 10px 0; font-weight: 600; color: #475569; vertical-align: top;">📅 Días</td>
+                  <td style="padding: 10px 0; color: #1e293b; font-weight: 500;">${scheduleText}</td>
                 </tr>
+                ` : ''}
                 <tr>
                   <td style="padding: 10px 0; font-weight: 600; color: #475569;">⏰ Horario</td>
                   <td style="padding: 10px 0; color: #1e293b; font-weight: 500;">${taskData.startTime} - ${taskData.endTime}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 10px 0; font-weight: 600; color: #475569;">📆 Próxima fecha</td>
+                  <td style="padding: 10px 0; color: #1e293b; text-transform: capitalize;">${formattedDate}</td>
                 </tr>
                 ${typeLabel ? `
                 <tr>

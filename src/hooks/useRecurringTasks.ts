@@ -67,6 +67,10 @@ export const useCreateRecurringTask = () => {
                   endTime: result.endTime,
                   type: result.type,
                   recurringTaskName: result.name,
+                  frequency: result.frequency,
+                  interval: result.interval,
+                  daysOfWeek: result.daysOfWeek,
+                  dayOfMonth: result.dayOfMonth,
                 },
               },
             });
