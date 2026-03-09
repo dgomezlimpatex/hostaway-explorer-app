@@ -109,6 +109,58 @@ const handler = async (req: Request): Promise<Response> => {
           generated_task_id: newTask.id
         });
 
+        // Send email notification to assigned cleaner
+        if (rt.cleaner_id) {
+          try {
+            // Fetch cleaner email from DB
+            const { data: cleanerData } = await supabase
+              .from('cleaners')
+              .select('name, email')
+              .eq('id', rt.cleaner_id)
+              .single();
+
+            if (cleanerData?.email) {
+              const emailPayload = {
+                cleanerEmail: cleanerData.email,
+                cleanerName: cleanerData.name || 'Trabajador',
+                taskData: {
+                  property: propertyName,
+                  address: propertyAddress,
+                  date: rt.next_execution,
+                  startTime: rt.start_time,
+                  endTime: rt.end_time,
+                  type: rt.type,
+                  recurringTaskName: rt.name,
+                },
+              };
+
+              const emailRes = await fetch(
+                `${supabaseUrl}/functions/v1/send-recurring-task-email`,
+                {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${supabaseServiceKey}`,
+                  },
+                  body: JSON.stringify(emailPayload),
+                }
+              );
+
+              if (!emailRes.ok) {
+                const errText = await emailRes.text();
+                console.error(`⚠️ Email send failed for ${cleanerData.email}:`, errText);
+              } else {
+                console.log(`📧 Email sent to ${cleanerData.email} for task ${rt.name}`);
+              }
+            } else {
+              console.log(`⚠️ No email found for cleaner ${rt.cleaner_id}, skipping notification`);
+            }
+          } catch (emailError: any) {
+            console.error(`⚠️ Error sending email for task ${rt.name}:`, emailError.message);
+            // Don't fail the whole process if email fails
+          }
+        }
+
         // Calculate next execution date
         const nextExecution = calculateNextExecution(rt);
         
