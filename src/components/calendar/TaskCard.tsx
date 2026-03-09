@@ -117,8 +117,15 @@ export const TaskCard = ({
       {/* Subtask badge */}
       <SubtaskBadge task={task} />
 
+      {/* Recurring badge */}
+      {isRecurring && (
+        <div className="absolute -top-1 -left-1 z-20 flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-bold shadow-md bg-blue-600 text-white">
+          <RefreshCw className="h-3 w-3" />
+        </div>
+      )}
+
       {/* Drag handle */}
-      {draggable && (
+      {effectiveDraggable && (
         <div className="absolute top-1 right-1 opacity-0 group-hover:opacity-70 transition-opacity">
           <GripVertical className="h-3 w-3" />
         </div>
