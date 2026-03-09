@@ -153,6 +153,7 @@ export const recurringTaskStorage = {
       description: data.description,
       clienteId: data.cliente_id,
       propiedadId: data.propiedad_id,
+      cleanerId: data.cleaner_id,
       type: data.type,
       startTime: data.start_time,
       endTime: data.end_time,
@@ -183,6 +184,7 @@ export const recurringTaskStorage = {
     if (updates.description !== undefined) updateData.description = updates.description;
     if (updates.clienteId !== undefined) updateData.cliente_id = updates.clienteId;
     if (updates.propiedadId !== undefined) updateData.propiedad_id = updates.propiedadId;
+    if (updates.cleanerId !== undefined) updateData.cleaner_id = updates.cleanerId;
     if (updates.type !== undefined) updateData.type = updates.type;
     if (updates.startTime !== undefined) updateData.start_time = updates.startTime;
     if (updates.endTime !== undefined) updateData.end_time = updates.endTime;
