@@ -62,6 +62,9 @@ export interface Task extends BaseEntity {
   backgroundColor?: string;
   notes?: string;
   originalTaskId?: string; // Para tareas con asignaciones múltiples, guarda el ID original
+  // Recurring task fields
+  isRecurringInstance?: boolean; // True if this is a virtual (not yet generated) recurring task preview
+  recurringTaskId?: string; // ID of the parent recurring task
   // Extraordinary service billing fields
   extraordinaryClientName?: string;
   extraordinaryClientEmail?: string;
