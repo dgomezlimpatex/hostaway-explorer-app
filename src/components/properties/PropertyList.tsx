@@ -219,65 +219,44 @@ export const PropertyList = () => {
                           
                           return (
                           <Card key={property.id} className={`border-l-4 ${isEffectivelyActive ? 'border-l-green-500' : 'border-l-red-500 opacity-60'} hover:shadow-md transition-shadow`}>
-                          <CardHeader className="pb-3">
-                            <div className="flex justify-between items-start">
-                              <div>
-                                <CardTitle className="text-lg flex items-center gap-2">
-                                  {property.nombre}
+                          <CardHeader className="pb-3 px-3 sm:px-6">
+                            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-2">
+                              <div className="min-w-0">
+                                <CardTitle className="text-base sm:text-lg flex items-center gap-2 flex-wrap">
+                                  <span className="truncate">{property.nombre}</span>
                                   {!isEffectivelyActive && (
-                                    <Badge variant="destructive" className="text-xs">
+                                    <Badge variant="destructive" className="text-xs flex-shrink-0">
                                       {property.isActive === false ? 'Inactivo' : 'Heredado: Inactivo'}
                                     </Badge>
                                   )}
                                 </CardTitle>
-                                <CardDescription className="flex items-center gap-2 mt-1">
-                                  <Badge variant="secondary">{property.codigo}</Badge>
-                                  <div className="flex items-center gap-1 text-sm text-gray-500">
-                                    <MapPin className="h-3 w-3" />
-                                    {property.direccion}
+                                <CardDescription className="flex items-center gap-2 mt-1 flex-wrap">
+                                  <Badge variant="secondary" className="text-xs">{property.codigo}</Badge>
+                                  <div className="flex items-center gap-1 text-xs sm:text-sm text-gray-500 truncate">
+                                    <MapPin className="h-3 w-3 flex-shrink-0" />
+                                    <span className="truncate">{property.direccion}</span>
                                   </div>
                                 </CardDescription>
                               </div>
-                              <div className="flex gap-2">
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => setAssigningProperty(property)}
-                                  className="flex items-center gap-1"
-                                >
-                                  <CheckSquare className="h-4 w-4" />
-                                  Checklist
+                              <div className="flex gap-1.5 sm:gap-2 flex-shrink-0">
+                                <Button variant="outline" size="sm" onClick={() => setAssigningProperty(property)} className="h-7 sm:h-8 px-2 sm:px-3">
+                                  <CheckSquare className="h-3.5 w-3.5 sm:mr-1" />
+                                  <span className="hidden sm:inline text-xs">Checklist</span>
                                 </Button>
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => setPreferredCleanersPropertyId(
-                                    preferredCleanersPropertyId === property.id ? null : property.id
-                                  )}
-                                  title="Limpiadoras preferidas"
-                                  className={preferredCleanersPropertyId === property.id ? 'border-yellow-400 bg-yellow-50' : ''}
-                                >
-                                  <Star className="h-4 w-4 text-yellow-500" />
+                                <Button variant="outline" size="sm" onClick={() => setPreferredCleanersPropertyId(preferredCleanersPropertyId === property.id ? null : property.id)}
+                                  title="Limpiadoras preferidas" className={`h-7 sm:h-8 px-2 ${preferredCleanersPropertyId === property.id ? 'border-yellow-400 bg-yellow-50' : ''}`}>
+                                  <Star className="h-3.5 w-3.5 text-yellow-500" />
                                 </Button>
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => handleDuplicate(property)}
-                                  title="Duplicar propiedad"
-                                >
-                                  <Copy className="h-4 w-4" />
+                                <Button variant="outline" size="sm" onClick={() => handleDuplicate(property)} title="Duplicar" className="h-7 sm:h-8 px-2">
+                                  <Copy className="h-3.5 w-3.5" />
                                 </Button>
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => setEditingProperty(property)}
-                                >
-                                  <Edit className="h-4 w-4" />
+                                <Button variant="outline" size="sm" onClick={() => setEditingProperty(property)} className="h-7 sm:h-8 px-2">
+                                  <Edit className="h-3.5 w-3.5" />
                                 </Button>
                                 <AlertDialog>
                                   <AlertDialogTrigger asChild>
-                                    <Button variant="outline" size="sm">
-                                      <Trash2 className="h-4 w-4" />
+                                    <Button variant="outline" size="sm" className="h-7 sm:h-8 px-2">
+                                      <Trash2 className="h-3.5 w-3.5" />
                                     </Button>
                                   </AlertDialogTrigger>
                                   <AlertDialogContent>
@@ -302,7 +281,7 @@ export const PropertyList = () => {
                               </div>
                             </div>
                           </CardHeader>
-                          <CardContent>
+                          <CardContent className="px-3 sm:px-6">
                             <div className="space-y-3">
                               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                                 <div className="flex items-center gap-2">
