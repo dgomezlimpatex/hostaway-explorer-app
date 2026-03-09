@@ -95,16 +95,21 @@ export const TaskCard = ({
     return task.property;
   };
 
+  const isRecurring = task.isRecurringInstance;
+  const effectiveDraggable = draggable && !isRecurring;
+
   return (
     <div 
       className={cn(
-        getStatusColor(task.status), 
-        "rounded-lg p-2 text-white shadow-lg hover:shadow-xl transition-all duration-200 cursor-move group relative overflow-visible select-none",
+        isRecurring ? "bg-blue-400/70 hover:bg-blue-500/80 border-2 border-dashed border-blue-300" : getStatusColor(task.status), 
+        "rounded-lg p-2 text-white shadow-lg hover:shadow-xl transition-all duration-200 group relative overflow-visible select-none",
+        effectiveDraggable && "cursor-move",
+        !effectiveDraggable && "cursor-pointer",
         isDragging && "opacity-50 scale-95 rotate-3"
       )} 
       style={style} 
       onClick={onClick} 
-      draggable={draggable} 
+      draggable={effectiveDraggable} 
       onDragStart={handleDragStart} 
       onDragEnd={handleDragEnd} 
       onDragOver={handleDragOver}
