@@ -129,7 +129,7 @@ const adminItems: NavigationItem[] = [
     href: '/sede-management',
     icon: Building2,
   },
-    title: 'Sincronización Avantio',
+    {
     href: '/avantio-automation',
     icon: RefreshCw,
     permission: 'hostaway'

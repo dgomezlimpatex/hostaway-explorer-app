@@ -96,6 +96,9 @@ export const RoleBasedNavigation = () => {
             />
           )}
 
+          {canAccessModule('reports') && (
+            <NavigationCard
+              to="/reports"
               title="Reportes"
               description="Visualiza estadísticas y reportes del negocio"
               icon={BarChart3}
@@ -103,19 +106,6 @@ export const RoleBasedNavigation = () => {
               gradientTo="to-indigo-600"
               iconColor="text-white"
               hoverBorderColor="hover:border-indigo-300"
-            />
-          )}
-
-          {canAccessModule('reports') && (
-            <NavigationCard
-              to="/cleaning-reports"
-              title="Dashboard de Reportes"
-              description="Control completo de reportes y evidencias de limpieza"
-              icon={FileText}
-              gradientFrom="bg-gradient-to-br from-violet-500"
-              gradientTo="to-violet-600"
-              iconColor="text-white"
-              hoverBorderColor="hover:border-violet-300"
             />
           )}
 
