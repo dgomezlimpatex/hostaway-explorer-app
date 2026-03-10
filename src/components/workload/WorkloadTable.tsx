@@ -149,6 +149,13 @@ export const WorkloadTable = ({ workers, onAddAdjustment }: WorkloadTableProps) 
                           <span className="text-muted-foreground">Mantenimiento:</span>
                           <span className="font-medium">{w.maintenanceHours.toFixed(1)}h</span>
                         </div>
+                        {w.recurringHours > 0 && (
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-muted-foreground">🔄 Recurrentes:</span>
+                            <span className="font-medium">{w.recurringHours.toFixed(1)}h</span>
+                            <span className="text-xs text-muted-foreground">({w.recurringTaskCount})</span>
+                          </div>
+                        )}
                         {w.adjustmentHours !== 0 && (
                           <div className="flex items-center gap-1.5">
                             <Edit className="h-3.5 w-3.5 text-muted-foreground" />

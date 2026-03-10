@@ -160,6 +160,13 @@ export const WorkloadOverviewCard = ({
                 <div>Limpiezas mantenimiento:</div>
                 <div className="text-right">{summary.maintenanceHours.toFixed(1)}h (fijo semanal)</div>
                 
+                {summary.recurringHours > 0 && (
+                  <>
+                    <div>Tareas recurrentes:</div>
+                    <div className="text-right">{summary.recurringHours.toFixed(1)}h ({summary.recurringTaskCount} tareas)</div>
+                  </>
+                )}
+                
                 {summary.adjustmentHours !== 0 && (
                   <>
                     <div>Ajustes manuales:</div>
