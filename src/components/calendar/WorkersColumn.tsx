@@ -196,6 +196,12 @@ export const WorkersColumn = ({ cleaners, onDragOver, onDrop, absenceStatus, isD
                             <span>🧹 Mantenimiento:</span>
                             <span className="font-medium">{workload.maintenanceHours.toFixed(1)}h</span>
                           </div>
+                          {workload.recurringHours > 0 && (
+                            <div className="flex justify-between gap-4">
+                              <span>🔄 Recurrentes:</span>
+                              <span className="font-medium">{workload.recurringHours.toFixed(1)}h ({workload.recurringTaskCount} tareas)</span>
+                            </div>
+                          )}
                           {workload.adjustmentHours !== 0 && (
                             <div className="flex justify-between gap-4">
                               <span>📝 Ajustes:</span>

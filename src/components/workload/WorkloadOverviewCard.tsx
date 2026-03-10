@@ -103,6 +103,11 @@ export const WorkloadOverviewCard = ({
               <Wrench className="h-3 w-3" />
               Mant.: {summary.maintenanceHours.toFixed(1)}h
             </span>
+            {summary.recurringHours > 0 && (
+              <span className="flex items-center gap-1">
+                🔄 Recur.: {summary.recurringHours.toFixed(1)}h
+              </span>
+            )}
             {summary.adjustmentHours !== 0 && (
               <span className="flex items-center gap-1">
                 <Edit className="h-3 w-3" />
@@ -154,6 +159,13 @@ export const WorkloadOverviewCard = ({
                 
                 <div>Limpiezas mantenimiento:</div>
                 <div className="text-right">{summary.maintenanceHours.toFixed(1)}h (fijo semanal)</div>
+                
+                {summary.recurringHours > 0 && (
+                  <>
+                    <div>Tareas recurrentes:</div>
+                    <div className="text-right">{summary.recurringHours.toFixed(1)}h ({summary.recurringTaskCount} tareas)</div>
+                  </>
+                )}
                 
                 {summary.adjustmentHours !== 0 && (
                   <>
