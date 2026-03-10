@@ -143,7 +143,7 @@ export const PerformanceMonitor = memo(() => {
   }, [getPerformanceStats]);
 
   // Only show in development
-  if (process.env.NODE_ENV !== 'development') {
+  if (import.meta.env.MODE !== 'development') {
     return null;
   }
 

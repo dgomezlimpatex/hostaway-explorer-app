@@ -5,7 +5,7 @@
 class MediaCleanupService {
   private static instance: MediaCleanupService;
   private urlReferences = new Set<string>();
-  private timers = new Map<string, NodeJS.Timeout>();
+  private timers = new Map<string, ReturnType<typeof setTimeout>>();
 
   static getInstance(): MediaCleanupService {
     if (!MediaCleanupService.instance) {
