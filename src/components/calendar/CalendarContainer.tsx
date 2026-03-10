@@ -270,6 +270,7 @@ export const CalendarContainer = ({
             absenceStatus={absenceStatus}
             isDragging={dragState.isDragging}
             preferredCleanerIds={preferredCleanerIdsForDrag}
+            workloadMap={workloadMap}
           />
         </div>
       </div>
