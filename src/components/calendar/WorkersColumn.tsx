@@ -62,7 +62,7 @@ export const WorkersColumn = ({ cleaners, onDragOver, onDrop, absenceStatus, isD
   };
 
   return (
-    <div className="w-64 bg-gray-50 border-r border-gray-200 flex-shrink-0">
+    <div className="w-64 bg-gray-50 border-r border-gray-200 flex-shrink-0 overflow-hidden">
       {cleaners.map((cleaner, index) => {
         const status = absenceStatus?.[cleaner.id];
         const isAbsent = status?.isAbsent;
@@ -91,7 +91,7 @@ export const WorkersColumn = ({ cleaners, onDragOver, onDrop, absenceStatus, isD
             onDragLeave={handleDragLeave}
             onDrop={(e) => handleDrop(e, cleaner.id)}
           >
-            <div className="flex items-center gap-3 flex-1">
+            <div className="flex items-center gap-3 flex-1 min-w-0 overflow-hidden">
               <div className="relative">
                 <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center text-white font-medium">
                   {cleaner.name.split(' ').map(n => n[0]).join('').toUpperCase()}
@@ -136,7 +136,7 @@ export const WorkersColumn = ({ cleaners, onDragOver, onDrop, absenceStatus, isD
                   </TooltipProvider>
                 )}
               </div>
-              <div className="min-w-0 flex-1">
+              <div className="min-w-0 flex-1 overflow-hidden">
                 <div className="font-medium text-gray-900 text-sm flex items-center gap-1 min-w-0">
                   {isPreferred && <Star className="h-3 w-3 text-yellow-500 flex-shrink-0 fill-yellow-500" />}
                   <span className="truncate">{cleaner.name}</span>
