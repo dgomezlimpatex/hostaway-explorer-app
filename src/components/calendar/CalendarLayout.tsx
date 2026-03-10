@@ -4,6 +4,7 @@ import { WorkersColumn } from "./WorkersColumn";
 import { TimelineHeader } from "./TimelineHeader";
 import { CalendarGrid } from "./CalendarGrid";
 import { Task, Cleaner } from "@/types/calendar";
+import { WorkloadSummary } from "@/types/workload";
 import { CleanerAvailability } from "@/hooks/useCleanerAvailability";
 import { useDeviceType } from '@/hooks/use-mobile';
 import { cn } from "@/lib/utils";
