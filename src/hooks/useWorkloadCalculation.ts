@@ -39,6 +39,68 @@ const calculateMaintenanceHoursForPeriod = (
   return totalMinutes / 60;
 };
 
+// Calculate recurring task hours for a specific date range (only not-yet-generated instances)
+const calculateRecurringHoursForPeriod = (
+  recurringTasks: any[],
+  executedSet: Set<string>,
+  startDate: Date,
+  endDate: Date
+): { hours: number; count: number } => {
+  let totalMinutes = 0;
+  let count = 0;
+  
+  const daysInPeriod = eachDayOfInterval({ start: startDate, end: endDate });
+  
+  for (const rt of recurringTasks) {
+    if (!rt.is_active) continue;
+    
+    const rtStartDate = new Date(rt.start_date);
+    const rtEndDate = rt.end_date ? new Date(rt.end_date) : endDate;
+    
+    const durationMinutes = rt.duracion || (() => {
+      if (rt.start_time && rt.end_time) {
+        return Math.max(0, parseTimeToMinutes(rt.end_time) - parseTimeToMinutes(rt.start_time));
+      }
+      return 0;
+    })();
+    
+    for (const day of daysInPeriod) {
+      if (day < rtStartDate || day > rtEndDate) continue;
+      
+      const dateStr = format(day, 'yyyy-MM-dd');
+      
+      // Skip if already executed (those are in tasks table already)
+      if (executedSet.has(`${rt.id}_${dateStr}`)) continue;
+      
+      const dayOfWeek = getDay(day);
+      let shouldCount = false;
+      
+      switch (rt.frequency) {
+        case 'daily':
+          shouldCount = true;
+          break;
+        case 'weekly':
+          if (rt.days_of_week && rt.days_of_week.length > 0) {
+            shouldCount = rt.days_of_week.includes(dayOfWeek);
+          }
+          break;
+        case 'monthly':
+          if (rt.day_of_month) {
+            shouldCount = day.getDate() === rt.day_of_month;
+          }
+          break;
+      }
+      
+      if (shouldCount) {
+        totalMinutes += durationMinutes;
+        count++;
+      }
+    }
+  }
+  
+  return { hours: totalMinutes / 60, count };
+};
+
 // Determine workload status based on percentage
 const determineStatus = (percentage: number): WorkloadSummary['status'] => {
   if (percentage >= 90 && percentage <= 100) return 'on-track';
@@ -75,7 +137,7 @@ export const useWorkloadCalculation = (options: UseWorkloadCalculationOptions) =
       const cleanerIds = targetCleaners.map(c => c.id);
       
       // Fetch all data in parallel
-      const [tasksResult, maintenanceResult, adjustmentsResult] = await Promise.all([
+      const [tasksResult, maintenanceResult, adjustmentsResult, recurringResult] = await Promise.all([
         // Tasks: all assigned, not cancelled
         supabase
           .from('tasks')
@@ -99,13 +161,41 @@ export const useWorkloadCalculation = (options: UseWorkloadCalculationOptions) =
           .in('cleaner_id', cleanerIds)
           .gte('date', startDate)
           .lte('date', endDate),
+        
+        // Active recurring tasks assigned to these cleaners
+        supabase
+          .from('recurring_tasks')
+          .select('*')
+          .in('cleaner_id', cleanerIds)
+          .eq('is_active', true),
       ]);
 
       if (tasksResult.error) throw tasksResult.error;
       if (maintenanceResult.error) throw maintenanceResult.error;
       if (adjustmentsResult.error) throw adjustmentsResult.error;
+      if (recurringResult.error) throw recurringResult.error;
 
       const tasks = tasksResult.data || [];
+      const recurringTasks = recurringResult.data || [];
+      
+      // Fetch executed recurring task instances for this period
+      const recurringTaskIds = recurringTasks.map(rt => rt.id);
+      let executedSet = new Set<string>();
+      
+      if (recurringTaskIds.length > 0) {
+        const { data: executions } = await supabase
+          .from('recurring_task_executions')
+          .select('recurring_task_id, execution_date')
+          .in('recurring_task_id', recurringTaskIds)
+          .gte('execution_date', startDate)
+          .lte('execution_date', endDate)
+          .eq('success', true);
+        
+        if (executions) {
+          executions.forEach(e => executedSet.add(`${e.recurring_task_id}_${e.execution_date}`));
+        }
+      }
+
       const maintenanceCleanings: WorkerMaintenanceCleaning[] = (maintenanceResult.data || []).map(row => ({
         id: row.id,
         cleanerId: row.cleaner_id,
@@ -162,12 +252,18 @@ export const useWorkloadCalculation = (options: UseWorkloadCalculationOptions) =
         const cleanerMaintenance = maintenanceCleanings.filter(m => m.cleanerId === cleaner.id);
         const maintenanceHours = calculateMaintenanceHoursForPeriod(cleanerMaintenance, start, end);
 
+        // Calculate recurring task hours (not yet generated)
+        const cleanerRecurring = recurringTasks.filter(rt => rt.cleaner_id === cleaner.id);
+        const { hours: recurringHours, count: recurringTaskCount } = calculateRecurringHoursForPeriod(
+          cleanerRecurring, executedSet, start, end
+        );
+
         // Calculate adjustment hours
         const cleanerAdjustments = adjustments.filter(a => a.cleanerId === cleaner.id);
         const adjustmentHours = cleanerAdjustments.reduce((sum, adj) => sum + adj.hours, 0);
 
         // Calculate totals
-        const totalWorked = touristHours + maintenanceHours + adjustmentHours;
+        const totalWorked = touristHours + maintenanceHours + recurringHours + adjustmentHours;
         const remainingHours = Math.max(0, contractHoursForPeriod - totalWorked);
         const overtimeHours = Math.max(0, totalWorked - contractHoursForPeriod);
         const percentageComplete = contractHoursForPeriod > 0 
@@ -181,6 +277,8 @@ export const useWorkloadCalculation = (options: UseWorkloadCalculationOptions) =
           touristHours,
           touristTaskCount: cleanerTasks.length,
           maintenanceHours,
+          recurringHours,
+          recurringTaskCount,
           adjustmentHours,
           adjustments: cleanerAdjustments,
           totalWorked,
