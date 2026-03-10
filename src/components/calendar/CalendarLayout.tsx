@@ -4,6 +4,7 @@ import { WorkersColumn } from "./WorkersColumn";
 import { TimelineHeader } from "./TimelineHeader";
 import { CalendarGrid } from "./CalendarGrid";
 import { Task, Cleaner } from "@/types/calendar";
+import { WorkloadSummary } from "@/types/workload";
 import { CleanerAvailability } from "@/hooks/useCleanerAvailability";
 import { useDeviceType } from '@/hooks/use-mobile';
 import { cn } from "@/lib/utils";
@@ -31,6 +32,7 @@ interface CalendarLayoutProps {
   absenceStatus?: Record<string, WorkerAbsenceStatus>;
   isDragging?: boolean;
   preferredCleanerIds?: Set<string>;
+  workloadMap?: Record<string, WorkloadSummary>;
 }
 
 export const CalendarLayout = ({
@@ -54,7 +56,8 @@ export const CalendarLayout = ({
   assignmentsMap,
   absenceStatus,
   isDragging,
-  preferredCleanerIds
+  preferredCleanerIds,
+  workloadMap
 }: CalendarLayoutProps) => {
   const { isMobile, isTablet } = useDeviceType();
 
@@ -71,7 +74,7 @@ export const CalendarLayout = ({
         <div className={`flex flex-col ${getCalendarHeight()} overflow-hidden`}>
           {/* Headers Row */}
           <div className="flex flex-shrink-0">
-            <div className="w-64 h-16 bg-white border-b border-gray-200 flex items-center px-4 border-r border-gray-200">
+            <div className="w-64 h-16 bg-white border-b border-gray-200 flex items-center px-4 border-r border-gray-200 flex-shrink-0">
               <span className="font-semibold text-gray-700">Trabajadores</span>
             </div>
             {/* Time Header - Sincronizado con el scroll */}
@@ -111,6 +114,7 @@ export const CalendarLayout = ({
               absenceStatus={absenceStatus}
               isDragging={isDragging}
               preferredCleanerIds={preferredCleanerIds}
+              workloadMap={workloadMap}
             />
 
             {/* Timeline Area - Con scroll horizontal independiente del vertical */}

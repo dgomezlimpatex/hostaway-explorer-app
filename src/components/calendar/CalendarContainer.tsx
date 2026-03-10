@@ -15,6 +15,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useWorkersAbsenceStatus } from "@/hooks/useWorkersAbsenceStatus";
 import { usePreferredCleaners } from "@/hooks/usePropertyPreferredCleaners";
+import { useCalendarWorkload } from "@/hooks/useCalendarWorkload";
 
 export interface CalendarContainerProps {
   tasks: Task[];
@@ -155,6 +156,9 @@ export const CalendarContainer = ({
   const cleanerIds = useMemo(() => cleaners.map(c => c.id), [cleaners]);
   const { data: absenceStatus } = useWorkersAbsenceStatus(cleanerIds, currentDate);
 
+  // Workload data for all cleaners (current week)
+  const { workloadMap } = useCalendarWorkload();
+
   // Get preferred cleaners for the currently dragged task's property
   const draggedPropertyId = dragState.isDragging ? dragState.draggedTask?.propertyId : undefined;
   const { data: draggedTaskPreferred = [] } = usePreferredCleaners(draggedPropertyId);
@@ -266,6 +270,7 @@ export const CalendarContainer = ({
             absenceStatus={absenceStatus}
             isDragging={dragState.isDragging}
             preferredCleanerIds={preferredCleanerIdsForDrag}
+            workloadMap={workloadMap}
           />
         </div>
       </div>
