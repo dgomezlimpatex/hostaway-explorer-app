@@ -56,7 +56,8 @@ export const CalendarLayout = ({
   assignmentsMap,
   absenceStatus,
   isDragging,
-  preferredCleanerIds
+  preferredCleanerIds,
+  workloadMap
 }: CalendarLayoutProps) => {
   const { isMobile, isTablet } = useDeviceType();
 
