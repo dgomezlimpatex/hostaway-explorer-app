@@ -137,9 +137,9 @@ export const WorkersColumn = ({ cleaners, onDragOver, onDrop, absenceStatus, isD
                 )}
               </div>
               <div className="min-w-0 flex-1">
-                <div className="font-medium text-gray-900 text-sm truncate flex items-center gap-1">
+                <div className="font-medium text-gray-900 text-sm flex items-center gap-1 min-w-0">
                   {isPreferred && <Star className="h-3 w-3 text-yellow-500 flex-shrink-0 fill-yellow-500" />}
-                  {cleaner.name}
+                  <span className="truncate">{cleaner.name}</span>
                 </div>
                 <div className="flex items-center gap-1">
                   {isAbsent ? (
