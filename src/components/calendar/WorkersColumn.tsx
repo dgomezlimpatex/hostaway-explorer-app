@@ -91,7 +91,7 @@ export const WorkersColumn = ({ cleaners, onDragOver, onDrop, absenceStatus, isD
             onDragLeave={handleDragLeave}
             onDrop={(e) => handleDrop(e, cleaner.id)}
           >
-            <div className="flex items-center gap-3 flex-1">
+            <div className="flex items-center gap-3 flex-1 min-w-0 overflow-hidden">
               <div className="relative">
                 <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center text-white font-medium">
                   {cleaner.name.split(' ').map(n => n[0]).join('').toUpperCase()}
