@@ -156,6 +156,9 @@ export const CalendarContainer = ({
   const cleanerIds = useMemo(() => cleaners.map(c => c.id), [cleaners]);
   const { data: absenceStatus } = useWorkersAbsenceStatus(cleanerIds, currentDate);
 
+  // Workload data for all cleaners (current week)
+  const { workloadMap } = useCalendarWorkload();
+
   // Get preferred cleaners for the currently dragged task's property
   const draggedPropertyId = dragState.isDragging ? dragState.draggedTask?.propertyId : undefined;
   const { data: draggedTaskPreferred = [] } = usePreferredCleaners(draggedPropertyId);
