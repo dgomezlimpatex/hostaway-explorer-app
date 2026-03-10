@@ -136,7 +136,7 @@ export const WorkersColumn = ({ cleaners, onDragOver, onDrop, absenceStatus, isD
                   </TooltipProvider>
                 )}
               </div>
-              <div className="min-w-0 flex-1">
+              <div className="min-w-0 flex-1 overflow-hidden">
                 <div className="font-medium text-gray-900 text-sm flex items-center gap-1 min-w-0">
                   {isPreferred && <Star className="h-3 w-3 text-yellow-500 flex-shrink-0 fill-yellow-500" />}
                   <span className="truncate">{cleaner.name}</span>
