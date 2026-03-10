@@ -15,6 +15,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useWorkersAbsenceStatus } from "@/hooks/useWorkersAbsenceStatus";
 import { usePreferredCleaners } from "@/hooks/usePropertyPreferredCleaners";
+import { useCalendarWorkload } from "@/hooks/useCalendarWorkload";
 
 export interface CalendarContainerProps {
   tasks: Task[];
