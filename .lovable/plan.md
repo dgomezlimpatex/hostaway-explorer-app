@@ -1,50 +1,54 @@
 
 
-## Plan: Limpiadoras preferidas por propiedad
+## Problema
 
-### Concepto
-Crear una tabla `property_preferred_cleaners` que vincule directamente propiedades con sus limpiadoras habituales. Al asignar una tarea, las preferidas aparecen primero y destacadas en el selector.
+Desde el calendario no se puede ver cuántas horas lleva trabajadas cada limpiadora ni cuántas tiene de contrato. Hay que salir a otra pantalla para consultarlo.
 
-### Cambios necesarios
+## Solución propuesta: Mini barra de progreso de horas en la columna de trabajadoras
 
-**1. Base de datos** — Nueva tabla `property_preferred_cleaners`
-- Columnas: `id`, `property_id` (uuid, FK → properties), `cleaner_id` (uuid, FK → cleaners), `priority` (int, para ordenar), `notes` (text, opcional — "conoce bien el piso", etc.), `created_at`
-- RLS: admin/manager pueden gestionar; supervisores pueden leer
+Añadir directamente en cada fila de la columna izquierda (`WorkersColumn`) una **mini barra de progreso** que muestre visualmente las horas trabajadas vs las horas de contrato de la semana actual. Es la solución más práctica porque:
 
-**2. Servicio de storage** — `propertyPreferredCleanersStorage.ts`
-- CRUD: `getByPropertyId(propertyId)`, `getByPropertyName(propertyName)`, `assign(propertyId, cleanerId, priority)`, `remove(id)`, `updatePriority(id, priority)`
+- No requiere clics extra ni modales
+- Se ve de un vistazo mientras asignas tareas
+- No ocupa mucho espacio (cabe debajo del nombre)
+- Usa datos que ya existen (`useCurrentWeekWorkload`)
 
-**3. Hook React** — `usePropertyPreferredCleaners.ts`
-- `usePreferredCleaners(propertyId)` para consultar las preferidas
-- `useAssignPreferredCleaner()` / `useRemovePreferredCleaner()` mutaciones
+### Diseño visual por trabajadora
 
-**4. UI — Gestión en la ficha de propiedad**
-- Nueva sección en `EditPropertyModal` o junto al editor de checklist en `PropertiesPage`: "Limpiadoras preferidas"
-- Lista de las asignadas con opción de reordenar prioridad y eliminar
-- Botón "Añadir limpiadora" con selector de las disponibles
+```text
+┌─────────────────────────────────┐
+│  [AB]  Ana Belén                │
+│        Activo                   │
+│        ▓▓▓▓▓▓▓▓▓▓░░░░  24/32h  │
+└─────────────────────────────────┘
+```
 
-**5. UI — Modal de asignación de tarea (`AssignCleanerModal` + `AssignMultipleCleanersModal`)**
-- Consultar las preferidas del `propertyId` de la tarea
-- Dividir la lista en dos secciones: "⭐ Preferidas" (arriba, con badge verde) y "Otras" (abajo)
-- Las preferidas aparecen ordenadas por prioridad
-- Si hay notas, mostrarlas como tooltip
+- Barra verde si va bien, ámbar si hay déficit, roja si supera contrato
+- Texto compacto: `24/32h` (trabajadas/contrato)
+- Si no tiene contrato, mostrar solo horas trabajadas sin barra
 
-**6. Auto-asignación** (opcional, fase posterior)
-- En `assignmentAlgorithm.ts`, antes del algoritmo de saturación, consultar preferidas de la propiedad y priorizarlas
+### Tooltip ampliado (hover)
 
-### Flujo de uso
-1. Admin abre la ficha de "Apartamento Marina 3B" → sección "Preferidas" → añade María (P1) y Ana (P2)
-2. Cualquier manager crea una tarea para ese piso → al asignar, ve María y Ana destacadas arriba
-3. Si ninguna está disponible, sigue viendo el resto de limpiadoras normal
+Al pasar el ratón sobre la barra, mostrar desglose:
+- Horas turísticas
+- Horas mantenimiento
+- Ajustes manuales
+- Horas extra / déficit
 
-### Archivos a crear
-- Migración SQL para `property_preferred_cleaners`
-- `src/services/storage/propertyPreferredCleanersStorage.ts`
-- `src/hooks/usePropertyPreferredCleaners.ts`
-- `src/components/properties/PropertyPreferredCleaners.tsx`
+### Implementación técnica
+
+1. **Crear hook `useCalendarWorkload`** que llame a `useCurrentWeekWorkload()` una sola vez para todas las trabajadoras y devuelva un mapa `cleanerId → WorkloadSummary`
+
+2. **Modificar `WorkersColumn`** para recibir los datos de workload y renderizar la mini barra de progreso debajo del estado activo/inactivo
+
+3. **Modificar `CalendarLayout` y `CalendarContainer`** para pasar los datos de workload desde el hook hasta `WorkersColumn`
+
+4. **Ajustar altura de fila** de `h-20` a `h-24` para acomodar la barra extra sin comprimir el contenido
 
 ### Archivos a modificar
-- `src/components/modals/AssignCleanerModal.tsx` — separar lista en preferidas/otras
-- `src/components/modals/AssignMultipleCleanersModal.tsx` — idem
-- `src/components/properties/PropertiesPage.tsx` o `EditPropertyModal.tsx` — añadir sección de gestión
+
+- `src/components/calendar/WorkersColumn.tsx` — añadir barra de progreso + tooltip
+- `src/components/calendar/CalendarLayout.tsx` — pasar prop de workload
+- `src/components/calendar/CalendarContainer.tsx` — invocar hook y pasar datos
+- `src/components/calendar/CalendarGrid.tsx` — ajustar altura de fila para sincronizar
 
