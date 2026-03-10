@@ -6,8 +6,8 @@ const WARNING_TIMEOUT = 25 * 60 * 1000; // 25 minutes (5 minute warning)
 
 export const useSessionTimeout = () => {
   const { signOut, user } = useAuth();
-  const timeoutRef = useRef<NodeJS.Timeout>();
-  const warningTimeoutRef = useRef<NodeJS.Timeout>();
+  const timeoutRef = useRef<ReturnType<typeof setTimeout>>();
+  const warningTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
   const lastActivityRef = useRef<number>(Date.now());
 
   const resetTimer = () => {

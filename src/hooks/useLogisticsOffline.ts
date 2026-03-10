@@ -26,7 +26,7 @@ export const useLogisticsOffline = () => {
   const [isSync, setIsSync] = useState(false);
   const [pendingOperations, setPendingOperations] = useState<OfflineOperation[]>([]);
   const [cachedData, setCachedData] = useState<CacheData | null>(null);
-  const syncTimeoutRef = useRef<NodeJS.Timeout>();
+  const syncTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
 
   // Load cached data and pending operations on init
   useEffect(() => {
