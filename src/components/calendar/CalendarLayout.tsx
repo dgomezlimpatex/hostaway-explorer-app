@@ -114,6 +114,7 @@ export const CalendarLayout = ({
               absenceStatus={absenceStatus}
               isDragging={isDragging}
               preferredCleanerIds={preferredCleanerIds}
+              workloadMap={workloadMap}
             />
 
             {/* Timeline Area - Con scroll horizontal independiente del vertical */}
