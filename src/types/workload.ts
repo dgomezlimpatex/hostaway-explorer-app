@@ -42,12 +42,16 @@ export interface WorkloadSummary {
   // Maintenance hours (fixed weekly from worker_maintenance_cleanings)
   maintenanceHours: number;
   
+  // Recurring task hours (projected from active recurring tasks not yet generated)
+  recurringHours: number;
+  recurringTaskCount: number;
+  
   // Manual adjustments
   adjustmentHours: number; // Can be positive or negative
   adjustments: HourAdjustment[];
   
   // Totals
-  totalWorked: number; // tourist + maintenance + adjustments
+  totalWorked: number; // tourist + maintenance + recurring + adjustments
   remainingHours: number;
   overtimeHours: number;
   
