@@ -32,6 +32,7 @@ interface CalendarLayoutProps {
   absenceStatus?: Record<string, WorkerAbsenceStatus>;
   isDragging?: boolean;
   preferredCleanerIds?: Set<string>;
+  workloadMap?: Record<string, WorkloadSummary>;
 }
 
 export const CalendarLayout = ({
