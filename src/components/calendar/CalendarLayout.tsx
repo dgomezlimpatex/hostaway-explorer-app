@@ -97,50 +97,59 @@ export const CalendarLayout = ({
             </div>
           </div>
 
-          {/* Content Row - Con scroll sincronizado vertical y horizontal */}
-          <div className="flex flex-1 overflow-y-auto overflow-x-hidden" ref={bodyScrollRef} onScroll={onBodyScroll}>
-            {/* Workers Column - Se mueve con el scroll vertical */}
-            <WorkersColumn
-              cleaners={cleaners}
-              onDragOver={onDragOver}
-              onDrop={(e, cleanerId, cleanersArr) => {
-                e.preventDefault();
-                e.stopPropagation();
-                const taskId = e.dataTransfer.getData('text/plain');
-                if (taskId) {
-                  onDrop(e, cleanerId, cleanersArr);
-                }
-              }}
-              absenceStatus={absenceStatus}
-              isDragging={isDragging}
-              preferredCleanerIds={preferredCleanerIds}
-              workloadMap={workloadMap}
-            />
-
-            {/* Timeline Area - Con scroll horizontal independiente del vertical */}
-            <div className="flex-1 min-w-0">
-              <div className="overflow-x-auto" onScroll={onHeaderScroll}>
-                <CalendarGrid
+          {/* Content Row - Single scroll container for both axes */}
+          <div 
+            className="flex-1 overflow-auto" 
+            ref={bodyScrollRef} 
+            onScroll={(e) => {
+              // Sync horizontal scroll to header
+              if (headerScrollRef.current) {
+                headerScrollRef.current.scrollLeft = e.currentTarget.scrollLeft;
+              }
+            }}
+          >
+            <div className="flex" style={{ minWidth: 'max-content' }}>
+              {/* Workers Column - Sticky on left so it stays visible during horizontal scroll */}
+              <div className="sticky left-0 z-20">
+                <WorkersColumn
                   cleaners={cleaners}
-                  timeSlots={timeSlots}
-                  assignedTasks={assignedTasks}
-                  availability={availability}
-                  currentDate={currentDate}
-                  dragState={dragState}
-                  onScroll={() => {}}
                   onDragOver={onDragOver}
-                  onDrop={onDrop}
-                  onDragStart={onDragStart}
-                  onDragEnd={onDragEnd}
-                  onTaskClick={onTaskClick}
-                  getTaskPosition={getTaskPosition}
-                  isTimeSlotOccupied={isTimeSlotOccupied}
-                  assignmentsMap={assignmentsMap}
+                  onDrop={(e, cleanerId, cleanersArr) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const taskId = e.dataTransfer.getData('text/plain');
+                    if (taskId) {
+                      onDrop(e, cleanerId, cleanersArr);
+                    }
+                  }}
                   absenceStatus={absenceStatus}
                   isDragging={isDragging}
                   preferredCleanerIds={preferredCleanerIds}
+                  workloadMap={workloadMap}
                 />
               </div>
+
+              {/* Timeline Area */}
+              <CalendarGrid
+                cleaners={cleaners}
+                timeSlots={timeSlots}
+                assignedTasks={assignedTasks}
+                availability={availability}
+                currentDate={currentDate}
+                dragState={dragState}
+                onScroll={() => {}}
+                onDragOver={onDragOver}
+                onDrop={onDrop}
+                onDragStart={onDragStart}
+                onDragEnd={onDragEnd}
+                onTaskClick={onTaskClick}
+                getTaskPosition={getTaskPosition}
+                isTimeSlotOccupied={isTimeSlotOccupied}
+                assignmentsMap={assignmentsMap}
+                absenceStatus={absenceStatus}
+                isDragging={isDragging}
+                preferredCleanerIds={preferredCleanerIds}
+              />
             </div>
           </div>
         </div>
