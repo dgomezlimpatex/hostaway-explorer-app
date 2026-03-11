@@ -80,7 +80,7 @@ export const useRecurringTaskForm = () => {
       description: '',
       clienteId: '',
       propiedadId: '',
-      type: 'mantenimiento-airbnb',
+      type: 'limpieza-turistica',
       startTime: '09:00',
       endTime: '12:00',
       checkOut: '11:00',
