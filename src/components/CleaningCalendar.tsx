@@ -75,18 +75,18 @@ const CleaningCalendar = () => {
   const assignedTasks = tasks.filter(task => task.cleanerId && task.cleaner);
   const unassignedTasks = tasks.filter(task => !task.cleanerId && !task.cleaner);
 
-  // Memoized scroll handlers with useCallback
+  // Sync horizontal scroll from timeline body to header only
   const handleHeaderScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
-    if (bodyScrollRef.current) {
-      bodyScrollRef.current.scrollLeft = e.currentTarget.scrollLeft;
-    }
-  }, [bodyScrollRef]);
-
-  const handleBodyScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
-    if (headerScrollRef.current) {
-      headerScrollRef.current.scrollLeft = e.currentTarget.scrollLeft;
+    const scrollLeft = e.currentTarget.scrollLeft;
+    if (headerScrollRef.current && headerScrollRef.current.scrollLeft !== scrollLeft) {
+      headerScrollRef.current.scrollLeft = scrollLeft;
     }
   }, [headerScrollRef]);
+
+  // Vertical scroll only (avoid horizontal sync on body container to prevent left column shift)
+  const handleBodyScroll = useCallback((_e: React.UIEvent<HTMLDivElement>) => {
+    // no-op
+  }, []);
 
   // Wait for auth and sede initialization before showing calendar
   if (authGuardLoading || !sedeInitialized || sedeLoading) {
