@@ -43,7 +43,7 @@ export const ServiceInfoSection = ({ control }: ServiceInfoSectionProps) => {
                   </div>
                   <div className="flex items-center space-x-2">
                     <RadioGroupItem value="limpieza-turistica" id="limpieza-turistica" />
-                    <Label htmlFor="limpieza-turistica">Limpieza Turística</Label>
+                    <Label htmlFor="limpieza-turistica"><Label htmlFor="limpieza-turistica">Limpieza turística</Label></Label>
                   </div>
                   <div className="flex items-center space-x-2">
                     <RadioGroupItem value="limpieza-puesta-punto" id="limpieza-puesta-punto" />

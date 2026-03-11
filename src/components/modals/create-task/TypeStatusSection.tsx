@@ -22,7 +22,7 @@ export const TypeStatusSection = ({ formData, onFieldChange }: TypeStatusSection
           <SelectContent>
             <SelectItem value="limpieza-mantenimiento">Limpieza de Mantenimiento</SelectItem>
             <SelectItem value="mantenimiento-cristaleria">Mantenimiento de Cristalería</SelectItem>
-            <SelectItem value="limpieza-turistica">Limpieza Turística</SelectItem>
+            <SelectItem value="limpieza-turistica">Limpieza turística</SelectItem>
             <SelectItem value="limpieza-puesta-punto">Limpieza de Puesta a Punto</SelectItem>
             <SelectItem value="limpieza-final-obra">Limpieza Final de Obra</SelectItem>
             <SelectItem value="check-in">Check In</SelectItem>

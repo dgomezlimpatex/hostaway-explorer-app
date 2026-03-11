@@ -70,7 +70,7 @@ export const generateTaskReport = (tasks: any[], properties: any[], clients: any
     // Formatear el tipo de servicio
     const formatServiceType = (type: string) => {
       if (type === 'limpieza-turistica') {
-        return 'Limpieza Turística';
+        return 'Limpieza turística';
       }
       // Capitalizar primera letra de cada palabra
       return type.split('-').map(word => 
