@@ -88,8 +88,8 @@ const handler = async (req: Request): Promise<Response> => {
     });
 
     const typeLabels: Record<string, string> = {
-      'limpieza-airbnb': 'Limpieza Airbnb',
-      'mantenimiento-airbnb': 'Mantenimiento Airbnb',
+      'limpieza-turistica': 'Limpieza turística',
+      'mantenimiento-airbnb': 'Limpieza turística',
       'limpieza-general': 'Limpieza General',
       'limpieza-comunidades': 'Limpieza Comunidades',
       'limpieza-hotel': 'Limpieza Hotel',
