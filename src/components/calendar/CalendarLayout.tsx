@@ -98,7 +98,7 @@ export const CalendarLayout = ({
           </div>
 
           {/* Content Row - Con scroll sincronizado vertical y horizontal */}
-          <div className="flex flex-1 overflow-y-auto" ref={bodyScrollRef} onScroll={onBodyScroll}>
+          <div className="flex flex-1 overflow-y-auto overflow-x-hidden" ref={bodyScrollRef} onScroll={onBodyScroll}>
             {/* Workers Column - Se mueve con el scroll vertical */}
             <WorkersColumn
               cleaners={cleaners}
