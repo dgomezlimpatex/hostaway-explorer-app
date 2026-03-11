@@ -114,7 +114,7 @@ const TYPE_OPTIONS = [
   { value: 'deep-cleaning', label: 'Limpieza profunda' },
   { value: 'laundry-only', label: 'Solo lavandería' },
   { value: 'extraordinary', label: 'Extraordinario' },
-  { value: 'limpieza-turistica', label: 'Limpieza Turística' },
+  { value: 'limpieza-turistica', label: 'Limpieza turística' },
 ];
 
 const PAYMENT_OPTIONS = [

@@ -12,7 +12,7 @@ const ServiceTypeBadge = ({ type }: { type: string }) => {
     switch (type) {
       case 'limpieza-mantenimiento': return 'Limpieza y Mantenimiento';
       case 'mantenimiento-cristaleria': return 'Mantenimiento Cristalería';
-      case 'limpieza-turistica': return 'Limpieza Turística';
+      case 'limpieza-turistica': return 'Limpieza turística';
       case 'limpieza-puesta-punto': return 'Limpieza Puesta a Punto';
       case 'limpieza-final-obra': return 'Limpieza Final de Obra';
       case 'check-in': return 'Check-in';

@@ -242,7 +242,7 @@ export const EditClientModal = ({ client, trigger }: EditClientModalProps) => {
                           </div>
                           <div className="flex items-center space-x-2">
                             <RadioGroupItem value="limpieza-turistica" id="edit-limpieza-turistica" />
-                            <Label htmlFor="edit-limpieza-turistica">Limpieza Turística</Label>
+                            <Label htmlFor="edit-limpieza-turistica"><Label htmlFor="edit-limpieza-turistica">Limpieza turística</Label></Label>
                           </div>
                           <div className="flex items-center space-x-2">
                             <RadioGroupItem value="limpieza-puesta-punto" id="edit-limpieza-puesta-punto" />
