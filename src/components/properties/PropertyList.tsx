@@ -42,8 +42,12 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 
-export const PropertyList = () => {
-  const { data: properties = [], isLoading } = useProperties();
+interface PropertyListProps {
+  searchTerm?: string;
+}
+
+export const PropertyList = ({ searchTerm = '' }: PropertyListProps) => {
+  const { data: allProperties = [], isLoading } = useProperties();
   const { clients, getClientName } = useClientData();
   const deleteProperty = useDeleteProperty();
   const createProperty = useCreateProperty();
