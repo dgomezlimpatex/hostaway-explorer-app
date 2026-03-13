@@ -57,6 +57,19 @@ export const PropertyList = ({ searchTerm = '' }: PropertyListProps) => {
   const [openClients, setOpenClients] = useState<Set<string>>(new Set());
   const { toast } = useToast();
 
+  const normalizedSearch = searchTerm.toLowerCase().trim();
+  const properties = normalizedSearch
+    ? allProperties.filter((p) => {
+        const clientName = getClientName(p.clienteId)?.toLowerCase() || '';
+        return (
+          p.nombre.toLowerCase().includes(normalizedSearch) ||
+          p.codigo.toLowerCase().includes(normalizedSearch) ||
+          p.direccion.toLowerCase().includes(normalizedSearch) ||
+          clientName.includes(normalizedSearch)
+        );
+      })
+    : allProperties;
+
   const handleDelete = async (id: string) => {
     try {
       await deleteProperty.mutateAsync(id);
