@@ -42,8 +42,12 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 
-export const PropertyList = () => {
-  const { data: properties = [], isLoading } = useProperties();
+interface PropertyListProps {
+  searchTerm?: string;
+}
+
+export const PropertyList = ({ searchTerm = '' }: PropertyListProps) => {
+  const { data: allProperties = [], isLoading } = useProperties();
   const { clients, getClientName } = useClientData();
   const deleteProperty = useDeleteProperty();
   const createProperty = useCreateProperty();
@@ -52,6 +56,19 @@ export const PropertyList = () => {
   const [preferredCleanersPropertyId, setPreferredCleanersPropertyId] = useState<string | null>(null);
   const [openClients, setOpenClients] = useState<Set<string>>(new Set());
   const { toast } = useToast();
+
+  const normalizedSearch = searchTerm.toLowerCase().trim();
+  const properties = normalizedSearch
+    ? allProperties.filter((p) => {
+        const clientName = getClientName(p.clienteId)?.toLowerCase() || '';
+        return (
+          p.nombre.toLowerCase().includes(normalizedSearch) ||
+          p.codigo.toLowerCase().includes(normalizedSearch) ||
+          p.direccion.toLowerCase().includes(normalizedSearch) ||
+          clientName.includes(normalizedSearch)
+        );
+      })
+    : allProperties;
 
   const handleDelete = async (id: string) => {
     try {
