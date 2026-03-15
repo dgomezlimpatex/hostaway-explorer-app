@@ -19,6 +19,7 @@ interface TaskDetailsModalProps {
   onUpdateTask: (taskId: string, updates: Partial<Task>) => void;
   onDeleteTask: (taskId: string) => void;
   onUnassignTask?: (taskId: string) => void;
+  onCreateTask?: (taskData: Omit<Task, 'id'>) => Promise<void>;
   openInEditMode?: boolean;
 }
 export const TaskDetailsModal = ({
