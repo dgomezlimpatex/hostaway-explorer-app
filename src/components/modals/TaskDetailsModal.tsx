@@ -4,6 +4,7 @@ import { Task } from "@/types/calendar";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
+import { useQueryClient } from '@tanstack/react-query';
 import { TaskReportModal } from "./TaskReportModal";
 import { AssignMultipleCleanersModal } from "./AssignMultipleCleanersModal";
 import { TaskDetailsHeader } from "./task-details/TaskDetailsHeader";
