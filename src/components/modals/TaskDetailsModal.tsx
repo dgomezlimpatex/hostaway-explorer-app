@@ -68,33 +68,73 @@ export const TaskDetailsModal = ({
       return;
     }
 
+    // Handle virtual recurring task instances - materialize as a real task
+    if (isRecurringInstance && onCreateTask) {
+      try {
+        const recurringTaskId = (task as any).recurringTaskId;
+        
+        // Build task data from the recurring instance + edited form data
+        const { id, isRecurringInstance: _isRec, recurringTaskId: _rtId, originalTaskId, ...taskBase } = formData as any;
+        const newTaskData: Omit<Task, 'id'> = {
+          ...taskBase,
+          property: formData.property || task.property,
+          date: formData.date || task.date,
+          startTime: formData.startTime || task.startTime,
+          endTime: formData.endTime || task.endTime,
+          status: formData.status || 'pending',
+          type: formData.type || task.type,
+          notes: formData.notes || task.notes,
+        };
+        // Remove virtual fields
+        delete (newTaskData as any).isRecurringInstance;
+        delete (newTaskData as any).recurringTaskId;
+        delete (newTaskData as any).originalTaskId;
+
+        await onCreateTask(newTaskData);
+
+        // Record execution so the virtual instance disappears
+        if (recurringTaskId) {
+          await supabase.from('recurring_task_executions').insert({
+            recurring_task_id: recurringTaskId,
+            execution_date: formData.date || task.date,
+            success: true,
+          });
+          queryClient.invalidateQueries({ queryKey: ['recurring-task-executions'] });
+        }
+
+        setIsEditing(false);
+        onOpenChange(false);
+        toast({
+          title: "Tarea creada",
+          description: "Se ha creado una tarea individual a partir de la tarea recurrente con los horarios modificados.",
+        });
+        return;
+      } catch (error) {
+        console.error('❌ Error materializing recurring task:', error);
+        toast({
+          title: "Error",
+          description: "No se pudo crear la tarea individual.",
+          variant: "destructive"
+        });
+        return;
+      }
+    }
+
     // Verificar si hay cambios en el horario para enviar email de notificación
     const hasScheduleChanges = 
       task.date !== formData.date ||
       task.startTime !== formData.startTime ||
       task.endTime !== formData.endTime;
 
-    console.log('📧 Schedule changes detected:', hasScheduleChanges, {
-      originalDate: task.date,
-      newDate: formData.date,
-      originalStart: task.startTime,
-      newStart: formData.startTime,
-      originalEnd: task.endTime,
-      newEnd: formData.endTime
-    });
-
     // Si hay cambios de horario y la tarea está asignada, enviar email de notificación
     if (hasScheduleChanges && task.cleanerId && task.cleaner) {
       try {
-        console.log('🔄 Schedule changed, sending notification email to cleaner');
         await sendScheduleChangeEmail(task, formData);
       } catch (error) {
         console.error('❌ Error sending schedule change email:', error);
-        // No bloquear el guardado si falla el email
       }
     }
 
-    console.log('🔄 Calling onUpdateTask with:', task.originalTaskId || task.id, formData);
     onUpdateTask(task.originalTaskId || task.id, formData);
     setIsEditing(false);
     toast({
