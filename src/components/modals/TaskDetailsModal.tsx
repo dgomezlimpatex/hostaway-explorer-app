@@ -40,6 +40,8 @@ export const TaskDetailsModal = ({
   const [showAssignMultipleModal, setShowAssignMultipleModal] = useState(false);
   const { userRole } = useAuth();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const isRecurringInstance = !!(task as any)?.isRecurringInstance;
   
   useEffect(() => {
     if (task) {
