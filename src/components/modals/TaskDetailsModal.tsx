@@ -29,6 +29,7 @@ export const TaskDetailsModal = ({
   onUpdateTask,
   onDeleteTask,
   onUnassignTask,
+  onCreateTask,
   openInEditMode = false
 }: TaskDetailsModalProps) => {
   const [isEditing, setIsEditing] = useState(openInEditMode);
