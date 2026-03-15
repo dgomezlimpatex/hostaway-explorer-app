@@ -53,11 +53,15 @@ export const TaskDetailsHeader = ({ task, isEditing }: TaskDetailsHeaderProps) =
           <DialogDescription className="m-0">
             {isEditing ? 'Edita los detalles de la tarea' : 'Información completa de la tarea'}
           </DialogDescription>
-          {isEditing && (
+          {isEditing && (task as any)?.isRecurringInstance ? (
+            <Badge variant="secondary" className="bg-amber-100 text-amber-700 border-amber-200 text-xs">
+              ✏️ Editando solo esta ocurrencia
+            </Badge>
+          ) : isEditing ? (
             <Badge variant="secondary" className="bg-blue-100 text-blue-700 border-blue-200 text-xs">
               Modo Edición
             </Badge>
-          )}
+          ) : null}
         </div>
       </div>
       <div className="flex items-center gap-2">
