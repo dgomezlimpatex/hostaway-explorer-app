@@ -71,6 +71,7 @@ export const CalendarModals = ({
         onUpdateTask={onUpdateTask}
         onDeleteTask={onDeleteTask}
         onUnassignTask={onUnassignTask}
+        onCreateTask={onCreateTask}
       />
     </>
   );
