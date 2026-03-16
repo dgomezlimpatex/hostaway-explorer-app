@@ -1,0 +1,1 @@
+UPDATE tasks SET status = 'pending' WHERE id = '67f8ab29-f13d-46cd-829a-fa99e2131f81';
