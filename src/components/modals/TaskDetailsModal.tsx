@@ -201,7 +201,38 @@ export const TaskDetailsModal = ({
       throw error;
     }
   };
-  const handleDelete = () => {
+  const handleDelete = async () => {
+    // For virtual recurring instances, just record execution to hide this occurrence
+    if (isRecurringInstance) {
+      try {
+        const recurringTaskId = (task as any).recurringTaskId;
+        if (recurringTaskId) {
+          await supabase.from('recurring_task_executions').insert({
+            recurring_task_id: recurringTaskId,
+            execution_date: task.date,
+            success: true,
+          });
+          queryClient.invalidateQueries({ queryKey: ['recurring-task-executions'] });
+          queryClient.invalidateQueries({ queryKey: ['tasks'] });
+        }
+        onOpenChange(false);
+        setShowDeleteConfirm(false);
+        toast({
+          title: "Ocurrencia eliminada",
+          description: "Esta ocurrencia de la tarea recurrente ha sido eliminada. El resto de la serie no se ve afectada."
+        });
+        return;
+      } catch (error) {
+        console.error('❌ Error deleting recurring instance:', error);
+        toast({
+          title: "Error",
+          description: "No se pudo eliminar esta ocurrencia.",
+          variant: "destructive"
+        });
+        return;
+      }
+    }
+
     onDeleteTask(task.originalTaskId || task.id);
     onOpenChange(false);
     setShowDeleteConfirm(false);
@@ -210,7 +241,53 @@ export const TaskDetailsModal = ({
       description: "La tarea se ha eliminado correctamente."
     });
   };
-  const handleUnassign = () => {
+
+  const handleUnassign = async () => {
+    // For virtual recurring instances, materialize the task without cleaner
+    if (isRecurringInstance && onCreateTask) {
+      try {
+        const recurringTaskId = (task as any).recurringTaskId;
+        const { id, isRecurringInstance: _isRec, recurringTaskId: _rtId, originalTaskId, cleaner, cleanerId, ...taskBase } = task as any;
+        
+        const newTaskData: Omit<Task, 'id'> = {
+          ...taskBase,
+          cleaner: undefined,
+          cleanerId: undefined,
+          status: formData.status || 'pending',
+        };
+        delete (newTaskData as any).isRecurringInstance;
+        delete (newTaskData as any).recurringTaskId;
+        delete (newTaskData as any).originalTaskId;
+
+        await onCreateTask(newTaskData);
+
+        if (recurringTaskId) {
+          await supabase.from('recurring_task_executions').insert({
+            recurring_task_id: recurringTaskId,
+            execution_date: task.date,
+            success: true,
+          });
+          queryClient.invalidateQueries({ queryKey: ['recurring-task-executions'] });
+        }
+
+        onOpenChange(false);
+        setShowUnassignConfirm(false);
+        toast({
+          title: "Ocurrencia desasignada",
+          description: "Se ha creado una tarea individual sin asignar para esta fecha. El resto de la serie no se ve afectada."
+        });
+        return;
+      } catch (error) {
+        console.error('❌ Error unassigning recurring instance:', error);
+        toast({
+          title: "Error",
+          description: "No se pudo desasignar esta ocurrencia.",
+          variant: "destructive"
+        });
+        return;
+      }
+    }
+
     if (onUnassignTask && task.cleaner) {
       onUnassignTask(task.originalTaskId || task.id);
       onOpenChange(false);
