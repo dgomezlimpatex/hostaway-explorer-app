@@ -56,7 +56,18 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
   } = useTaskReports();
   const { completeSubtask } = useAdditionalTasks();
   const processAutomaticConsumption = useProcessAutomaticConsumption();
-  const realTaskId = task?.originalTaskId || task?.id || '';
+  const realTaskId = useMemo(() => {
+    const rawTaskId = task?.id || '';
+    if (!rawTaskId) return '';
+
+    // Solo normalizar IDs virtuales de asignación múltiple
+    if (rawTaskId.includes('_assignment_')) {
+      return rawTaskId.split('_assignment_')[0];
+    }
+
+    // Para tareas reales, usar SIEMPRE el id real de la tarea visible
+    return rawTaskId;
+  }, [task?.id]);
   const { data: existingReport, isLoading: isLoadingReport } = useTaskReport(realTaskId);
   const { data: templates, isLoading: isLoadingTemplates } = useChecklistTemplates();
   const { data: propertyChecklistAssignment } = usePropertyChecklistAssignment(task?.propertyId || '');
@@ -192,13 +203,13 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
 
   // NOTE: Modal close auto-save useEffect moved below where forceSave is defined
 
-  // Sync currentReport only when backend report exists; never clear local freshly-created report
+  // Sync currentReport only when backend report exists for THIS task
   useEffect(() => {
-    if (existingReport?.id) {
+    if (existingReport?.id && existingReport.task_id === realTaskId) {
       console.log('TaskReportModal - syncing current report with existing:', existingReport.id);
       setCurrentReport(prev => (prev?.id === existingReport.id ? prev : existingReport));
     }
-  }, [existingReport?.id]);
+  }, [existingReport?.id, existingReport?.task_id, realTaskId]);
 
   // Update reportMedia when taskMedia changes
   useEffect(() => {
@@ -326,31 +337,36 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
       // CRITICAL FIX: If we just completed, do NOT auto-save (it would overwrite 'completed' with 'in_progress')
       if (isCompletingRef.current) {
         console.log('🛡️ TaskReportModal: Skipping auto-save on close - report was just completed');
-        reportCreationAttempted.current = null;
-        setHasStartedTask(false);
-        return;
-      }
+      } else {
+        const hasChecklistContent = Object.keys(checklist).length > 0;
+        const hasNotesContent = notes && notes.trim().length > 0;
 
-      const hasChecklistContent = Object.keys(checklist).length > 0;
-      const hasNotesContent = notes && notes.trim().length > 0;
-      
-      if (hasChecklistContent || hasNotesContent) {
-        console.log('💾 TaskReportModal: Auto-saving on modal close', {
-          reportId: currentReport.id,
-          checklistItems: Object.keys(checklist).length,
-          hasNotes: hasNotesContent
-        });
-        
-        // Force save before closing
-        forceSave();
+        if (hasChecklistContent || hasNotesContent) {
+          console.log('💾 TaskReportModal: Auto-saving on modal close', {
+            reportId: currentReport.id,
+            checklistItems: Object.keys(checklist).length,
+            hasNotes: hasNotesContent
+          });
+
+          // Force save before closing
+          forceSave();
+        }
       }
-      
-      // Reset state after saving attempt
+    }
+
+    // CRITICAL: Always hard-reset local state when modal closes
+    if (!open) {
       reportCreationAttempted.current = null;
+      isCompletingRef.current = false;
       setHasStartedTask(false);
-    } else if (!open) {
-      reportCreationAttempted.current = null;
-      setHasStartedTask(false);
+      setCurrentReport(null);
+      setChecklist({});
+      setNotes('');
+      setReportMedia([]);
+      setCurrentStep('checklist');
+      setActiveTab('checklist');
+      setIsChecklistCompleted(false);
+      setIsHeaderCollapsed(false);
     }
   }, [open, hasStartedTask, currentReport, checklist, notes, forceSave]);
 
