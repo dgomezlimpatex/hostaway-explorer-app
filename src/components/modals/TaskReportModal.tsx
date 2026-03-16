@@ -56,7 +56,18 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
   } = useTaskReports();
   const { completeSubtask } = useAdditionalTasks();
   const processAutomaticConsumption = useProcessAutomaticConsumption();
-  const realTaskId = task?.originalTaskId || task?.id || '';
+  const realTaskId = useMemo(() => {
+    const rawTaskId = task?.id || '';
+    if (!rawTaskId) return '';
+
+    // Solo normalizar IDs virtuales de asignación múltiple
+    if (rawTaskId.includes('_assignment_')) {
+      return rawTaskId.split('_assignment_')[0];
+    }
+
+    // Para tareas reales, usar SIEMPRE el id real de la tarea visible
+    return rawTaskId;
+  }, [task?.id]);
   const { data: existingReport, isLoading: isLoadingReport } = useTaskReport(realTaskId);
   const { data: templates, isLoading: isLoadingTemplates } = useChecklistTemplates();
   const { data: propertyChecklistAssignment } = usePropertyChecklistAssignment(task?.propertyId || '');
