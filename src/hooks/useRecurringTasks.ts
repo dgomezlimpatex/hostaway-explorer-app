@@ -115,6 +115,7 @@ export const useUpdateRecurringTask = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['recurring-tasks'] });
+      queryClient.invalidateQueries({ queryKey: ['recurring-tasks-for-calendar'] });
       queryClient.invalidateQueries({ queryKey: ['recurring-task'] });
       invalidateTasks();
       toast({
@@ -145,6 +146,8 @@ export const useDeleteRecurringTask = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['recurring-tasks'] });
+      queryClient.invalidateQueries({ queryKey: ['recurring-tasks-for-calendar'] });
+      queryClient.invalidateQueries({ queryKey: ['recurring-task-executions'] });
       invalidateTasks();
       toast({
         title: "Tarea recurrente eliminada",

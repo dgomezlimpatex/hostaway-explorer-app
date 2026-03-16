@@ -119,10 +119,13 @@ export const useTaskReport = (taskId: string) => {
     ? taskId.split('_assignment_')[0] 
     : taskId;
 
+  // No intentar buscar reportes para tareas virtuales recurrentes (IDs no UUID)
+  const isVirtualRecurring = actualTaskId?.startsWith('recurring_');
+
   return useQuery({
     queryKey: ['task-report', actualTaskId],
     queryFn: () => taskReportsStorageService.getTaskReportByTaskId(actualTaskId),
-    enabled: !!actualTaskId && actualTaskId !== 'undefined',
+    enabled: !!actualTaskId && actualTaskId !== 'undefined' && !isVirtualRecurring,
   });
 };
 
