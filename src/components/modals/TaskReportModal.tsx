@@ -188,7 +188,7 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
         setCurrentTemplate(selectedTemplate);
       }
     }
-  }, [open, task, existingReport, isLoadingReport, templates, propertyChecklistAssignment, currentReport, hasStartedTask, realTaskId]);
+  }, [open, task, existingReport, isLoadingReport, templates, propertyChecklistAssignment, realTaskId]);
 
   // NOTE: Modal close auto-save useEffect moved below where forceSave is defined
 
