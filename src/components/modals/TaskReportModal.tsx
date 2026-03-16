@@ -337,31 +337,36 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
       // CRITICAL FIX: If we just completed, do NOT auto-save (it would overwrite 'completed' with 'in_progress')
       if (isCompletingRef.current) {
         console.log('🛡️ TaskReportModal: Skipping auto-save on close - report was just completed');
-        reportCreationAttempted.current = null;
-        setHasStartedTask(false);
-        return;
-      }
+      } else {
+        const hasChecklistContent = Object.keys(checklist).length > 0;
+        const hasNotesContent = notes && notes.trim().length > 0;
 
-      const hasChecklistContent = Object.keys(checklist).length > 0;
-      const hasNotesContent = notes && notes.trim().length > 0;
-      
-      if (hasChecklistContent || hasNotesContent) {
-        console.log('💾 TaskReportModal: Auto-saving on modal close', {
-          reportId: currentReport.id,
-          checklistItems: Object.keys(checklist).length,
-          hasNotes: hasNotesContent
-        });
-        
-        // Force save before closing
-        forceSave();
+        if (hasChecklistContent || hasNotesContent) {
+          console.log('💾 TaskReportModal: Auto-saving on modal close', {
+            reportId: currentReport.id,
+            checklistItems: Object.keys(checklist).length,
+            hasNotes: hasNotesContent
+          });
+
+          // Force save before closing
+          forceSave();
+        }
       }
-      
-      // Reset state after saving attempt
+    }
+
+    // CRITICAL: Always hard-reset local state when modal closes
+    if (!open) {
       reportCreationAttempted.current = null;
+      isCompletingRef.current = false;
       setHasStartedTask(false);
-    } else if (!open) {
-      reportCreationAttempted.current = null;
-      setHasStartedTask(false);
+      setCurrentReport(null);
+      setChecklist({});
+      setNotes('');
+      setReportMedia([]);
+      setCurrentStep('checklist');
+      setActiveTab('checklist');
+      setIsChecklistCompleted(false);
+      setIsHeaderCollapsed(false);
     }
   }, [open, hasStartedTask, currentReport, checklist, notes, forceSave]);
 
