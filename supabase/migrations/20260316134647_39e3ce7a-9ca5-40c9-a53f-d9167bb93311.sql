@@ -1,0 +1,1 @@
+DELETE FROM task_reports WHERE id = '9a5adf90-9c39-423f-bcf4-c30224a868a4';
