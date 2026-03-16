@@ -78,6 +78,7 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
   
   // Ref to track if we've already tried to create a report for this task
   const reportCreationAttempted = useRef<string | null>(null);
+  const previousTaskIdRef = useRef<string | null>(null);
   
   // CRITICAL FIX: Flag to prevent auto-save from overwriting completed status
   const isCompletingRef = useRef(false);
@@ -93,6 +94,27 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
     return currentCleaner?.id || null;
   }, [user?.id, cleaners]);
 
+  // CRITICAL: Force reset all state when the task changes (prevents data leak between tasks)
+  useEffect(() => {
+    if (realTaskId && realTaskId !== previousTaskIdRef.current) {
+      console.log('🔁 TaskReportModal - task changed, resetting state:', {
+        from: previousTaskIdRef.current,
+        to: realTaskId
+      });
+      previousTaskIdRef.current = realTaskId;
+      setCurrentReport(null);
+      setChecklist({});
+      setNotes('');
+      setReportMedia([]);
+      setHasStartedTask(false);
+      setCurrentStep('checklist');
+      setIsChecklistCompleted(false);
+      setIsHeaderCollapsed(false);
+      reportCreationAttempted.current = null;
+      isCompletingRef.current = false;
+    }
+  }, [realTaskId]);
+
   // Initialize report data when modal opens
   useEffect(() => {
     if (open && task) {
@@ -105,22 +127,25 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
       });
       
       if (existingReport) {
-        console.log('✅ TaskReportModal - loading existing report:', {
-          reportId: existingReport.id,
-          taskId: existingReport.task_id,
-          checklistData: existingReport.checklist_completed,
-          issuesCount: existingReport.issues_found?.length || 0,
-          notes: existingReport.notes?.substring(0, 50) || 'no notes'
-        });
-        
-        setCurrentReport(existingReport);
-        setChecklist(existingReport.checklist_completed || {});
-        setNotes(existingReport.notes || '');
-        setHasStartedTask(true);
-        reportCreationAttempted.current = realTaskId;
-      } else if (!isLoadingReport && !currentReport && !hasStartedTask) {
-        // Solo resetear si NO hay reporte cargado localmente y la tarea no ha empezado
-        // (evita volver a mostrar la pantalla intermedia durante cargas asíncronas)
+        // CRITICAL: Only load if the report belongs to THIS task
+        if (existingReport.task_id === realTaskId) {
+          console.log('✅ TaskReportModal - loading existing report:', {
+            reportId: existingReport.id,
+            taskId: existingReport.task_id,
+          });
+          
+          setCurrentReport(existingReport);
+          setChecklist(existingReport.checklist_completed || {});
+          setNotes(existingReport.notes || '');
+          setHasStartedTask(true);
+          reportCreationAttempted.current = realTaskId;
+        } else {
+          console.warn('⚠️ TaskReportModal - existing report belongs to different task, ignoring:', {
+            reportTaskId: existingReport.task_id,
+            currentTaskId: realTaskId
+          });
+        }
+      } else if (!isLoadingReport) {
         console.log('🔄 TaskReportModal - no existing report found, resetting state');
         setCurrentReport(null);
         setChecklist({});
@@ -129,7 +154,7 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
         setHasStartedTask(false);
         reportCreationAttempted.current = null;
       } else {
-        console.log('⏳ TaskReportModal - preserving local started state while data settles');
+        console.log('⏳ TaskReportModal - report still loading, waiting...');
       }
 
       // Find appropriate template - first check if property has assigned checklist
@@ -163,7 +188,7 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
         setCurrentTemplate(selectedTemplate);
       }
     }
-  }, [open, task, existingReport, isLoadingReport, templates, propertyChecklistAssignment, currentReport, hasStartedTask, realTaskId]);
+  }, [open, task, existingReport, isLoadingReport, templates, propertyChecklistAssignment, realTaskId]);
 
   // NOTE: Modal close auto-save useEffect moved below where forceSave is defined
 
