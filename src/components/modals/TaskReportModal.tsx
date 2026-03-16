@@ -78,6 +78,7 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
   
   // Ref to track if we've already tried to create a report for this task
   const reportCreationAttempted = useRef<string | null>(null);
+  const previousTaskIdRef = useRef<string | null>(null);
   
   // CRITICAL FIX: Flag to prevent auto-save from overwriting completed status
   const isCompletingRef = useRef(false);
