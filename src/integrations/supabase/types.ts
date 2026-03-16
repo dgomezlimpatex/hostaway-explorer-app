@@ -2317,6 +2317,7 @@ export type Database = {
           id: string
           recurring_task_id: string
           success: boolean
+          updated_at: string | null
         }
         Insert: {
           created_at?: string
@@ -2326,6 +2327,7 @@ export type Database = {
           id?: string
           recurring_task_id: string
           success?: boolean
+          updated_at?: string | null
         }
         Update: {
           created_at?: string
@@ -2335,6 +2337,7 @@ export type Database = {
           id?: string
           recurring_task_id?: string
           success?: boolean
+          updated_at?: string | null
         }
         Relationships: [
           {
