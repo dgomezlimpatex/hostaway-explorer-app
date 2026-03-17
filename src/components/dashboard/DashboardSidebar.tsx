@@ -136,6 +136,12 @@ const adminItems: NavigationItem[] = [
     href: '/sede-management',
     icon: Building2,
   },
+  {
+    title: 'Avantio Sync',
+    href: '/avantio-automation',
+    icon: Settings,
+    permission: 'hostaway'
+  },
 ];
 
 export const DashboardSidebar = () => {
