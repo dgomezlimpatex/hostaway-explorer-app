@@ -21,7 +21,8 @@ import {
   Receipt,
   TrendingUp,
   Search,
-  RefreshCw
+  RefreshCw,
+  Settings
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useRolePermissions } from '@/hooks/useRolePermissions';
@@ -134,6 +135,12 @@ const adminItems: NavigationItem[] = [
     title: 'Gestión de Sedes',
     href: '/sede-management',
     icon: Building2,
+  },
+  {
+    title: 'Avantio Sync',
+    href: '/avantio-automation',
+    icon: Settings,
+    permission: 'hostaway'
   },
 ];
 
