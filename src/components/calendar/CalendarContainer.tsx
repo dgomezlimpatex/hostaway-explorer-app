@@ -172,9 +172,13 @@ export const CalendarContainer = ({
     const map: Record<string, any[]> = {};
     
     cleaners.forEach(cleaner => {
-      const cleanerTasks = assignedTasks.filter(task => 
-        task.cleaner === cleaner.name || task.cleanerId === cleaner.id
-      );
+      const cleanerTasks = assignedTasks.filter(task => {
+        if (task.cleanerId === cleaner.id || task.cleaner === cleaner.name) return true;
+        if (task.cleaner && task.cleaner.includes(',') && 
+            task.cleaner.split(',').some((name: string) => name.trim() === cleaner.name)) return true;
+        if (Array.isArray(assignmentsMap?.[task.id]) && assignmentsMap![task.id].includes(cleaner.id)) return true;
+        return false;
+      });
       
       const overlaps: any[] = [];
       cleanerTasks.forEach(task => {

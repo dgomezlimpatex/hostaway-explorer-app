@@ -286,11 +286,18 @@ export const CalendarGrid = memo(forwardRef<HTMLDivElement, CalendarGridProps>(
       
       return cleaners.map((cleaner, index) => {
         // Filter tasks by cleaner_id (preferred), cleaner name (fallback),
-        // or via assignmentsMap (multiple assignees)
+        // or via assignmentsMap (multiple assignees), or cleaner name contains check
         const cleanerTasks = assignedTasks.filter(task => {
-          if (task.cleanerId === cleaner.id || task.cleaner === cleaner.name) return true;
+          // Direct cleaner_id match
+          if (task.cleanerId === cleaner.id) return true;
+          // Exact cleaner name match (single assignment)
+          if (task.cleaner === cleaner.name) return true;
+          // Check if cleaner name is in comma-separated list (multiple assignments)
+          if (task.cleaner && task.cleaner.includes(',') && 
+              task.cleaner.split(',').some((name: string) => name.trim() === cleaner.name)) return true;
           // Check multiple assignments map
-          return Array.isArray((assignmentsMap as any)?.[task.id]) && (assignmentsMap as any)[task.id].includes(cleaner.id);
+          if (Array.isArray(assignmentsMap?.[task.id]) && assignmentsMap![task.id].includes(cleaner.id)) return true;
+          return false;
         });
         
         console.log(`👷 Cleaner ${cleaner.name} tasks:`, {
