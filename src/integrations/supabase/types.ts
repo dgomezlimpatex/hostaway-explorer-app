@@ -3642,16 +3642,28 @@ export type Database = {
         }
         Returns: undefined
       }
-      manage_avantio_cron_job: {
-        Args: {
-          auth_header: string
-          cron_schedule: string
-          function_url: string
-          job_name: string
-          request_body: string
-        }
-        Returns: Json
-      }
+      manage_avantio_cron_job:
+        | {
+            Args: {
+              auth_header: string
+              cron_schedule: string
+              function_url: string
+              job_name: string
+              request_body: string
+            }
+            Returns: Json
+          }
+        | {
+            Args: {
+              auth_header: string
+              cron_schedule: string
+              function_url: string
+              job_name: string
+              job_timezone?: string
+              request_body: string
+            }
+            Returns: Json
+          }
       manage_hostaway_cron_job: {
         Args: {
           auth_header: string
