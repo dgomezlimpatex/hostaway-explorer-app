@@ -101,7 +101,8 @@ async function setupCronJobs(supabase: any, supabaseUrl: string, supabaseAnonKey
       cron_schedule: cronSchedule,
       function_url: functionUrl,
       auth_header: authHeader,
-      request_body: requestBody
+      request_body: requestBody,
+      job_timezone: schedule.timezone || 'Europe/Madrid'
     });
     
     if (error) {
