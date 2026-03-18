@@ -165,6 +165,9 @@ export class ReservationProcessor {
       });
 
       console.log(`✅ Nueva reserva creada exitosamente`);
+
+      // Check for one-night reservation with checkout tomorrow → send alert
+      await this.checkAndSendOneNightAlert(reservation, property);
     } catch (error) {
       const errorMsg = `Error creando nueva reserva ${reservation.id}: ${error.message}`;
       console.error(`❌ ${errorMsg}`);
