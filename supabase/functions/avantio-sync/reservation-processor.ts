@@ -533,4 +533,45 @@ export class ReservationProcessor {
       }, syncLogId);
     }
   }
+
+  /**
+   * Checks if a new reservation is a one-night stay with checkout tomorrow,
+   * and sends an alert email if so.
+   */
+  private async checkAndSendOneNightAlert(
+    reservation: AvantioReservation,
+    property: any
+  ): Promise<void> {
+    if (reservation.nights !== 1) return;
+
+    // Calculate tomorrow's date in Europe/Madrid timezone
+    const nowMadrid = new Date(new Date().toLocaleString('en-US', { timeZone: 'Europe/Madrid' }));
+    const tomorrowMadrid = new Date(nowMadrid);
+    tomorrowMadrid.setDate(tomorrowMadrid.getDate() + 1);
+    const tomorrowStr = `${tomorrowMadrid.getFullYear()}-${String(tomorrowMadrid.getMonth() + 1).padStart(2, '0')}-${String(tomorrowMadrid.getDate()).padStart(2, '0')}`;
+
+    if (reservation.departureDate !== tomorrowStr) return;
+
+    console.log(`⚡ Reserva de 1 noche detectada con checkout mañana (${tomorrowStr}): ${reservation.id} - ${property.nombre}`);
+
+    try {
+      await this.supabase.functions.invoke('send-one-night-alert', {
+        body: {
+          reservationId: reservation.id,
+          propertyName: property.nombre,
+          guestName: reservation.guestName,
+          arrivalDate: reservation.arrivalDate,
+          departureDate: reservation.departureDate,
+          accommodationId: reservation.accommodationId,
+          status: reservation.status,
+          adults: reservation.adults,
+          children: reservation.children || 0,
+          notes: reservation.notes || null,
+        }
+      });
+      console.log(`✅ Alerta de 1 noche enviada para reserva ${reservation.id}`);
+    } catch (alertError) {
+      console.error(`❌ Error enviando alerta de 1 noche para reserva ${reservation.id}:`, alertError);
+    }
+  }
 }
