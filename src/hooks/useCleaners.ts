@@ -163,8 +163,14 @@ export const useDeleteCleaner = () => {
 
   return useMutation({
     mutationFn: async (id: string) => {
-      // First, unassign all tasks from this cleaner before deleting
+      // First, get the cleaner's name to also unassign by name
       const { supabase } = await import('@/integrations/supabase/client');
+      
+      const { data: cleanerData } = await supabase
+        .from('cleaners')
+        .select('name')
+        .eq('id', id)
+        .single();
       
       // Update all tasks that have this cleaner_id to remove the assignment
       const { error: unassignError } = await supabase
@@ -177,8 +183,24 @@ export const useDeleteCleaner = () => {
         .eq('cleaner_id', id);
       
       if (unassignError) {
-        console.error('Error unassigning tasks from cleaner:', unassignError);
-        throw new Error('Error al desasignar tareas del trabajador');
+        console.error('Error unassigning tasks by cleaner_id:', unassignError);
+      }
+      
+      // Also unassign tasks that only have the cleaner name (no cleaner_id)
+      if (cleanerData?.name) {
+        const { error: unassignByNameError } = await supabase
+          .from('tasks')
+          .update({ 
+            cleaner: null, 
+            cleaner_id: null,
+            updated_at: new Date().toISOString()
+          })
+          .eq('cleaner', cleanerData.name)
+          .is('cleaner_id', null);
+        
+        if (unassignByNameError) {
+          console.error('Error unassigning tasks by cleaner name:', unassignByNameError);
+        }
       }
       
       // Also delete any task_assignments for this cleaner
@@ -189,7 +211,6 @@ export const useDeleteCleaner = () => {
       
       if (assignmentError) {
         console.error('Error deleting task assignments:', assignmentError);
-        // Don't throw here, continue with cleaner deletion
       }
       
       // Now delete the cleaner
