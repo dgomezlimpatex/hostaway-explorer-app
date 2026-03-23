@@ -62,6 +62,9 @@ export class SyncOrchestrator {
       }
     }
     
+    // DEDUP: Remove duplicate tasks for same property/date
+    await this.deduplicateTasks();
+    
     // REPAIR: Check for reservations in DB with NULL task_id that should have tasks
     await this.repairMissingTasks();
     
