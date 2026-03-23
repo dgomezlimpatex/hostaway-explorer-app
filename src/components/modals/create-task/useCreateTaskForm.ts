@@ -71,6 +71,14 @@ export const useCreateTaskForm = (currentDate: Date) => {
     }
   }, [selectedProperty, selectedClient]);
 
+  // Sync form date when currentDate changes (e.g., navigating in calendar)
+  useEffect(() => {
+    setFormData(prev => ({
+      ...prev,
+      date: currentDate.toISOString().split('T')[0]
+    }));
+  }, [currentDate]);
+
   // Recalcular hora de fin cuando cambia la hora de inicio o la duración
   useEffect(() => {
     if (formData.startTime && formData.duracion > 0) {
