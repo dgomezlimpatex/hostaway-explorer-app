@@ -142,7 +142,7 @@ export class SyncOrchestrator {
     }
   }
 
-
+  private async repairMissingTasks(): Promise<void> {
     console.log('🔧 Verificando reservas sin tarea asignada...');
     
     const today = new Date().toISOString().slice(0, 10);
