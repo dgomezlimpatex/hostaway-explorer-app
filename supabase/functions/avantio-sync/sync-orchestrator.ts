@@ -62,6 +62,9 @@ export class SyncOrchestrator {
       }
     }
     
+    // DEDUP: Remove duplicate tasks for same property/date
+    await this.deduplicateTasks();
+    
     // REPAIR: Check for reservations in DB with NULL task_id that should have tasks
     await this.repairMissingTasks();
     
@@ -69,6 +72,74 @@ export class SyncOrchestrator {
     await this.cleanupExpiredRequestedTasks();
     
     console.log('✅ Sincronización completada');
+  }
+
+  private async deduplicateTasks(): Promise<void> {
+    console.log('🔍 Buscando tareas duplicadas (misma propiedad y fecha)...');
+    
+    const today = new Date().toISOString().slice(0, 10);
+    
+    // Find Avantio tasks (green) with duplicates on same property+date
+    const { data: duplicates, error } = await this.supabase
+      .from('tasks')
+      .select('id, propiedad_id, date, property, cleaner_id')
+      .eq('background_color', '#10B981')
+      .gte('date', today)
+      .not('propiedad_id', 'is', null)
+      .order('created_at', { ascending: true });
+
+    if (error || !duplicates) {
+      console.log('❌ Error buscando duplicados:', error);
+      return;
+    }
+
+    // Group by propiedad_id + date
+    const groups = new Map<string, typeof duplicates>();
+    for (const task of duplicates) {
+      const key = `${task.propiedad_id}_${task.date}`;
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key)!.push(task);
+    }
+
+    let removedCount = 0;
+    for (const [key, tasks] of groups) {
+      if (tasks.length <= 1) continue;
+
+      // Keep the first one (or one with a cleaner assigned)
+      const sorted = tasks.sort((a, b) => {
+        if (a.cleaner_id && !b.cleaner_id) return -1;
+        if (!a.cleaner_id && b.cleaner_id) return 1;
+        return 0;
+      });
+      
+      const keepTask = sorted[0];
+      const removeTasks = sorted.slice(1);
+
+      console.log(`⚠️ Duplicados para ${keepTask.property} (${keepTask.date}): ${tasks.length} tareas. Manteniendo ${keepTask.id}`);
+
+      for (const removeTask of removeTasks) {
+        // Point any avantio_reservations referencing this task to the kept task
+        await this.supabase
+          .from('avantio_reservations')
+          .update({ task_id: keepTask.id })
+          .eq('task_id', removeTask.id);
+
+        // Delete the duplicate task
+        await this.supabase
+          .from('tasks')
+          .delete()
+          .eq('id', removeTask.id);
+
+        removedCount++;
+        console.log(`🗑️ Tarea duplicada eliminada: ${removeTask.id}`);
+      }
+    }
+
+    if (removedCount > 0) {
+      console.log(`✅ ${removedCount} tareas duplicadas eliminadas`);
+    } else {
+      console.log('✅ No hay tareas duplicadas');
+    }
   }
 
   private async repairMissingTasks(): Promise<void> {

@@ -169,6 +169,19 @@ export async function createTaskForReservation(reservation: AvantioReservation, 
   if (!validation.valid) {
     throw new Error(`Validación fallida: ${validation.errors.join(', ')}`);
   }
+
+  // DEDUPLICATION: Check if a task already exists for this property on this date
+  const { data: existingTasks } = await supabase
+    .from('tasks')
+    .select('id, property')
+    .eq('propiedad_id', property.id)
+    .eq('date', reservation.departureDate)
+    .neq('status', 'cancelled');
+
+  if (existingTasks && existingTasks.length > 0) {
+    console.log(`⚠️ Ya existe una tarea para ${property.nombre} en ${reservation.departureDate} (ID: ${existingTasks[0].id}). Reutilizando.`);
+    return existingTasks[0];
+  }
   
   const startTime = '11:00';
   const durationMinutes = property.duracion_servicio || 60;
