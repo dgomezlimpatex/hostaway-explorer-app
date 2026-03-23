@@ -237,27 +237,6 @@ export const ManagerDashboard = () => {
           <main className="flex-1 overflow-auto lg:pt-0 pt-0">
           <div className="p-6">
             <div className="max-w-6xl mx-auto space-y-6">
-              {/* Performance notice for large datasets */}
-              {(todayTasks.length > 20 || tasks.length > 100) && (
-                <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                  <div className="flex items-center gap-2">
-                    <span className="w-2 h-2 bg-blue-500 rounded-full"></span>
-                    <span className="text-sm text-blue-700">
-                      ⚡ Optimizaciones de rendimiento activas - {todayTasks.length} tareas hoy, {tasks.length} tareas totales
-                    </span>
-                  </div>
-                </div>
-              )}
-
-              {/* Hostaway Integration Widget - Lazy loaded */}
-              {canAccessModule('hostaway') && (
-                <div className="mb-6">
-                  <Suspense fallback={<ComponentLoader />}>
-                    <HostawayIntegrationWidget />
-                  </Suspense>
-                </div>
-              )}
-
               {/* Header */}
               <div className="mb-8 flex items-center justify-between">
                 <div>
@@ -297,13 +276,6 @@ export const ManagerDashboard = () => {
                   onNextPage={goToNextPage}
                 />
               </Suspense>
-
-              {/* Bottom Row - Direct import */}
-              <DashboardMetricsCards 
-                pendingIncidents={pendingIncidents}
-                unassignedTasksCount={unassignedTasks.length}
-                todayTasks={todayTasks}
-              />
 
               {/* Workload Control Widget */}
               {canAccessModule('workers') && (
