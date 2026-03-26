@@ -1,50 +1,36 @@
 
 
-## Plan: Limpiadoras preferidas por propiedad
+## Plan: Corrección del bug de eliminación de tareas compartidas entre reservas POSIBLE y CONFIRMADA
 
-### Concepto
-Crear una tabla `property_preferred_cleaners` que vincule directamente propiedades con sus limpiadoras habituales. Al asignar una tarea, las preferidas aparecen primero y destacadas en el selector.
+### Causa raíz
+
+Cuando Avantio envía múltiples reservas para la misma propiedad/fecha (algunas `REQUESTED`/POSIBLE, otras `CONFIRMED`), la **deduplicación** las fusiona en una sola tarea. Pero la **limpieza de REQUESTED expiradas** encuentra esa reserva POSIBLE y elimina la tarea compartida — aunque reservas CONFIRMADAS también dependan de ella.
+
+Resultado: la única tarea para esa propiedad/día se borra porque una de las reservas era POSIBLE.
+
+### Dos bugs a corregir
+
+**Bug 1: `cleanupExpiredRequestedTasks` no verifica reservas hermanas**
+
+Antes de eliminar una tarea, debe comprobar si otra reserva no-REQUESTED comparte el mismo `task_id`. Si existen reservas confirmadas, solo debe desvincular la reserva POSIBLE — nunca borrar la tarea.
+
+**Bug 2: `deduplicateTasks` no actualiza el nombre de la tarea**
+
+Cuando la deduplicación fusiona tareas y la que se mantiene tiene prefijo "POSIBLE -" pero hay reservas confirmadas vinculadas, debe quitarse ese prefijo.
 
 ### Cambios necesarios
 
-**1. Base de datos** — Nueva tabla `property_preferred_cleaners`
-- Columnas: `id`, `property_id` (uuid, FK → properties), `cleaner_id` (uuid, FK → cleaners), `priority` (int, para ordenar), `notes` (text, opcional — "conoce bien el piso", etc.), `created_at`
-- RLS: admin/manager pueden gestionar; supervisores pueden leer
+**Archivo a modificar:** `supabase/functions/avantio-sync/sync-orchestrator.ts`
 
-**2. Servicio de storage** — `propertyPreferredCleanersStorage.ts`
-- CRUD: `getByPropertyId(propertyId)`, `getByPropertyName(propertyName)`, `assign(propertyId, cleanerId, priority)`, `remove(id)`, `updatePriority(id, priority)`
+**1. Método `cleanupExpiredRequestedTasks`**
+- Antes de borrar una tarea de reserva REQUESTED expirada, consultar `avantio_reservations` para ver si OTRA reserva (no REQUESTED, no CANCELLED) comparte el mismo `task_id`
+- Si SÍ hay hermanas: solo poner `task_id = null` en la reserva REQUESTED, NO borrar la tarea. Además quitar el prefijo "POSIBLE -" del nombre de la tarea si lo tiene
+- Si NO hay hermanas: proceder con la eliminación como ahora
 
-**3. Hook React** — `usePropertyPreferredCleaners.ts`
-- `usePreferredCleaners(propertyId)` para consultar las preferidas
-- `useAssignPreferredCleaner()` / `useRemovePreferredCleaner()` mutaciones
+**2. Método `deduplicateTasks`**
+- Después de fusionar duplicados y redirigir reservas, verificar si la tarea mantenida tiene "POSIBLE -" en el nombre pero alguna de las reservas vinculadas es CONFIRMED
+- Si es así, actualizar el nombre quitando el prefijo
 
-**4. UI — Gestión en la ficha de propiedad**
-- Nueva sección en `EditPropertyModal` o junto al editor de checklist en `PropertiesPage`: "Limpiadoras preferidas"
-- Lista de las asignadas con opción de reordenar prioridad y eliminar
-- Botón "Añadir limpiadora" con selector de las disponibles
-
-**5. UI — Modal de asignación de tarea (`AssignCleanerModal` + `AssignMultipleCleanersModal`)**
-- Consultar las preferidas del `propertyId` de la tarea
-- Dividir la lista en dos secciones: "⭐ Preferidas" (arriba, con badge verde) y "Otras" (abajo)
-- Las preferidas aparecen ordenadas por prioridad
-- Si hay notas, mostrarlas como tooltip
-
-**6. Auto-asignación** (opcional, fase posterior)
-- En `assignmentAlgorithm.ts`, antes del algoritmo de saturación, consultar preferidas de la propiedad y priorizarlas
-
-### Flujo de uso
-1. Admin abre la ficha de "Apartamento Marina 3B" → sección "Preferidas" → añade María (P1) y Ana (P2)
-2. Cualquier manager crea una tarea para ese piso → al asignar, ve María y Ana destacadas arriba
-3. Si ninguna está disponible, sigue viendo el resto de limpiadoras normal
-
-### Archivos a crear
-- Migración SQL para `property_preferred_cleaners`
-- `src/services/storage/propertyPreferredCleanersStorage.ts`
-- `src/hooks/usePropertyPreferredCleaners.ts`
-- `src/components/properties/PropertyPreferredCleaners.tsx`
-
-### Archivos a modificar
-- `src/components/modals/AssignCleanerModal.tsx` — separar lista en preferidas/otras
-- `src/components/modals/AssignMultipleCleanersModal.tsx` — idem
-- `src/components/properties/PropertiesPage.tsx` o `EditPropertyModal.tsx` — añadir sección de gestión
+### Despliegue
+- Re-desplegar la edge function `avantio-sync` tras los cambios
 
