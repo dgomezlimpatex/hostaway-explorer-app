@@ -133,6 +133,26 @@ export class SyncOrchestrator {
         removedCount++;
         console.log(`🗑️ Tarea duplicada eliminada: ${removeTask.id}`);
       }
+
+      // After merging, check if the kept task has "POSIBLE - " prefix but confirmed reservations exist
+      const { data: linkedReservations } = await this.supabase
+        .from('avantio_reservations')
+        .select('status')
+        .eq('task_id', keepTask.id);
+
+      if (linkedReservations && keepTask.property?.includes('POSIBLE - ')) {
+        const hasConfirmed = linkedReservations.some(
+          r => !['REQUESTED', 'CANCELLED', 'UNAVAILABLE'].includes(r.status?.toUpperCase())
+        );
+        if (hasConfirmed) {
+          const newName = keepTask.property.replace('POSIBLE - ', '');
+          await this.supabase
+            .from('tasks')
+            .update({ property: newName })
+            .eq('id', keepTask.id);
+          console.log(`✏️ Prefijo POSIBLE eliminado de tarea fusionada ${keepTask.id}: ${newName}`);
+        }
+      }
     }
 
     if (removedCount > 0) {
@@ -264,7 +284,45 @@ export class SyncOrchestrator {
 
     for (const reservation of toCleanup) {
       try {
-        // Fetch task details to check if a cleaner is assigned
+        // CHECK: Are there sibling reservations (non-REQUESTED, non-CANCELLED) sharing this task?
+        const { data: siblings } = await this.supabase
+          .from('avantio_reservations')
+          .select('id, status')
+          .eq('task_id', reservation.task_id)
+          .neq('id', reservation.id)
+          .not('status', 'ilike', 'REQUESTED')
+          .not('status', 'ilike', 'CANCELLED')
+          .not('status', 'ilike', 'UNAVAILABLE');
+
+        if (siblings && siblings.length > 0) {
+          // Sibling confirmed reservations exist — do NOT delete the task
+          console.log(`⚠️ Tarea ${reservation.task_id} compartida con ${siblings.length} reservas activas. Solo desvinculando reserva POSIBLE ${reservation.avantio_reservation_id}`);
+
+          // Unlink only the REQUESTED reservation
+          await this.supabase
+            .from('avantio_reservations')
+            .update({ task_id: null })
+            .eq('id', reservation.id);
+
+          // Remove "POSIBLE - " prefix from task name if present
+          const { data: taskData } = await this.supabase
+            .from('tasks')
+            .select('property')
+            .eq('id', reservation.task_id)
+            .single();
+
+          if (taskData?.property?.includes('POSIBLE - ')) {
+            await this.supabase
+              .from('tasks')
+              .update({ property: taskData.property.replace('POSIBLE - ', '') })
+              .eq('id', reservation.task_id);
+            console.log(`✏️ Prefijo POSIBLE eliminado de tarea ${reservation.task_id}`);
+          }
+
+          continue; // Skip deletion
+        }
+
+        // No siblings — safe to delete the task
         const { data: taskData } = await this.supabase
           .from('tasks')
           .select('*, cleaners(id, name, email)')
