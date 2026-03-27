@@ -115,9 +115,11 @@ export const TaskReportHeader: React.FC<TaskReportHeaderProps> = ({
                 </span>
               </a>
             )}
-            {formattedTime && (
+            {(formattedTime || task.date) && (
               <span className="flex items-center gap-1 flex-shrink-0">
                 <Clock className="h-3 w-3" />
+                {task.date && new Date(task.date + 'T00:00:00').toLocaleDateString('es-ES', { day: '2-digit', month: 'short' })}
+                {formattedTime && task.date && ' · '}
                 {formattedTime}
               </span>
             )}
