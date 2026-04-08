@@ -1,0 +1,1 @@
+UPDATE public.recurring_tasks SET is_active = false WHERE id = '82bb4f21-c9c7-49e6-bf5b-6d0459d6ede1';
