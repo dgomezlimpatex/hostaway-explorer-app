@@ -599,9 +599,12 @@ export const useCreateReservations = () => {
         const endMinutes = totalMinutes % 60;
         const endTime = `${String(endHours).padStart(2, '0')}:${String(endMinutes).padStart(2, '0')}`;
         
-        const { data: task, error: taskError } = await supabase
+        const taskId = crypto.randomUUID();
+
+        const { error: taskError } = await supabase
           .from('tasks')
           .insert([{
+            id: taskId,
             property: property.nombre,
             address: property.direccion,
             date: reservation.checkOutDate,
@@ -615,9 +618,7 @@ export const useCreateReservations = () => {
             sede_id: property.sede_id,
             check_in: checkoutTime,
             check_out: checkoutTime,
-          }])
-          .select()
-          .single();
+          }]);
         
         if (taskError) throw taskError;
         
@@ -631,7 +632,7 @@ export const useCreateReservations = () => {
             check_out_date: reservation.checkOutDate,
             guest_count: reservation.guestCount || null,
             special_requests: reservation.specialRequests || null,
-            task_id: task.id,
+            task_id: taskId,
             status: 'active',
           })
           .select()
@@ -653,7 +654,7 @@ export const useCreateReservations = () => {
               checkOutDate: reservation.checkOutDate,
               guestCount: reservation.guestCount,
               specialRequests: reservation.specialRequests,
-              taskId: task.id,
+              taskId,
             },
           });
         
