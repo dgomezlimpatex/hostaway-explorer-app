@@ -62,19 +62,9 @@ export const QuickAddReservations = ({
   const createMutation = useCreateReservations();
 
   const updateRow = useCallback((id: string, updates: Partial<ReservationRow>) => {
-    setRows(prev => {
-      const newRows = prev.map(row => 
-        row.id === id ? { ...row, ...updates } : row
-      );
-      
-      // Auto-add new row if last row has property and dates
-      const lastRow = newRows[newRows.length - 1];
-      if (lastRow.propertyId && lastRow.checkInDate && lastRow.checkOutDate) {
-        return [...newRows, createEmptyRow()];
-      }
-      
-      return newRows;
-    });
+    setRows(prev => prev.map(row => 
+      row.id === id ? { ...row, ...updates } : row
+    ));
   }, []);
 
   const removeRow = useCallback((id: string) => {
