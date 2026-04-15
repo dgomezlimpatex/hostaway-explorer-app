@@ -30,6 +30,7 @@ interface ReservationsListProps {
 
 export const ReservationsList = ({
   clientId,
+  clientName,
   reservations,
   properties,
   isLoading,
