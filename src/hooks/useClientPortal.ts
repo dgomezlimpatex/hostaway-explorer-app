@@ -752,13 +752,20 @@ export const useUpdateReservation = () => {
           taskUpdates.sede_id = property.sede_id;
         }
         
-        const { error: taskUpdateError } = await supabase
+        const { data: updatedTasks, error: taskUpdateError } = await supabase
           .from('tasks')
           .update(taskUpdates)
-          .eq('id', current.task_id);
+          .eq('id', current.task_id)
+          .select('id, date')
+          .limit(1);
         
         if (taskUpdateError) {
           console.error('Error updating task from portal:', taskUpdateError);
+          throw taskUpdateError;
+        }
+
+        if (!updatedTasks || updatedTasks.length === 0) {
+          throw new Error('No se pudo actualizar la tarea vinculada en el calendario.');
         }
       }
       
