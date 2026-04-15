@@ -800,7 +800,7 @@ export const useUpdateReservation = () => {
         },
       }).catch(err => console.error('Notification error:', err));
       
-      return updated;
+      return { success: true };
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['client-reservations', variables.clientId] });
