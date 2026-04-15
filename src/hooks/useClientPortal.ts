@@ -680,26 +680,43 @@ export const useUpdateReservation = () => {
     mutationFn: async ({ 
       reservationId,
       clientId,
+      clientName,
       updates 
     }: { 
       reservationId: string;
       clientId: string;
+      clientName?: string;
       updates: Partial<CreateReservationData>;
     }) => {
-      // Get current reservation
+      // Get current reservation with full property details
       const { data: current, error: fetchError } = await supabase
         .from('client_reservations')
-        .select('*, properties(nombre, check_out_predeterminado, duracion_servicio)')
+        .select('*, properties(id, nombre, codigo, direccion, check_out_predeterminado, duracion_servicio, sede_id, cliente_id)')
         .eq('id', reservationId)
         .single();
       
       if (fetchError) throw fetchError;
       
+      const newPropertyId = updates.propertyId ?? current.property_id;
+      const propertyChanged = updates.propertyId && updates.propertyId !== current.property_id;
+      
+      // Get new property details if property changed
+      let property = current.properties as any;
+      if (propertyChanged) {
+        const { data: newProp, error: propErr } = await supabase
+          .from('properties')
+          .select('id, nombre, codigo, direccion, check_out_predeterminado, duracion_servicio, sede_id, cliente_id')
+          .eq('id', updates.propertyId!)
+          .single();
+        if (propErr) throw propErr;
+        property = newProp;
+      }
+      
       // Update reservation
       const { data: updated, error: updateError } = await supabase
         .from('client_reservations')
         .update({
-          property_id: updates.propertyId ?? current.property_id,
+          property_id: newPropertyId,
           check_in_date: updates.checkInDate ?? current.check_in_date,
           check_out_date: updates.checkOutDate ?? current.check_out_date,
           guest_count: updates.guestCount ?? current.guest_count,
@@ -711,25 +728,35 @@ export const useUpdateReservation = () => {
       
       if (updateError) throw updateError;
       
-      // If checkout date changed, update the task
-      if (updates.checkOutDate && updates.checkOutDate !== current.check_out_date && current.task_id) {
-        const property = current.properties as any;
+      // Always sync the task with the current reservation data
+      if (current.task_id) {
+        const newCheckOutDate = updates.checkOutDate ?? current.check_out_date;
         const checkoutTime = property?.check_out_predeterminado || '11:00';
+        const [hours, minutes] = checkoutTime.split(':').map(Number);
+        const duration = property?.duracion_servicio || 120;
+        const totalMinutes = hours * 60 + minutes + duration;
+        const endHours = Math.floor(totalMinutes / 60);
+        const endMinutes = totalMinutes % 60;
+        const endTime = `${String(endHours).padStart(2, '0')}:${String(endMinutes).padStart(2, '0')}`;
+
+        const taskUpdates: Record<string, any> = {
+          date: newCheckOutDate,
+          notes: updates.specialRequests ?? current.special_requests,
+          start_time: checkoutTime,
+          end_time: endTime,
+        };
+
+        if (propertyChanged) {
+          taskUpdates.property = property.nombre;
+          taskUpdates.address = property.direccion;
+          taskUpdates.propiedad_id = property.id;
+          taskUpdates.cliente_id = property.cliente_id;
+          taskUpdates.sede_id = property.sede_id;
+        }
         
         await supabase
           .from('tasks')
-          .update({
-            date: updates.checkOutDate,
-            notes: updates.specialRequests ?? current.special_requests,
-          })
-          .eq('id', current.task_id);
-      } else if (updates.specialRequests !== undefined && current.task_id) {
-        // Update notes on task
-        await supabase
-          .from('tasks')
-          .update({
-            notes: updates.specialRequests,
-          })
+          .update(taskUpdates)
           .eq('id', current.task_id);
       }
       
@@ -748,13 +775,28 @@ export const useUpdateReservation = () => {
             specialRequests: current.special_requests,
           },
           new_data: {
-            propertyId: updates.propertyId ?? current.property_id,
+            propertyId: newPropertyId,
             checkInDate: updates.checkInDate ?? current.check_in_date,
             checkOutDate: updates.checkOutDate ?? current.check_out_date,
             guestCount: updates.guestCount ?? current.guest_count,
             specialRequests: updates.specialRequests ?? current.special_requests,
           },
         });
+      
+      // Send notification email (fire and forget)
+      supabase.functions.invoke('send-portal-change-notification', {
+        body: {
+          action: 'updated',
+          clientName: clientName || 'Cliente',
+          propertyName: property?.nombre || 'Propiedad',
+          checkInDate: updates.checkInDate ?? current.check_in_date,
+          checkOutDate: updates.checkOutDate ?? current.check_out_date,
+          oldCheckInDate: current.check_in_date,
+          oldCheckOutDate: current.check_out_date,
+          guestCount: updates.guestCount ?? current.guest_count,
+          specialRequests: updates.specialRequests ?? current.special_requests,
+        },
+      }).catch(err => console.error('Notification error:', err));
       
       return updated;
     },
@@ -775,9 +817,11 @@ export const useCancelReservation = () => {
     mutationFn: async ({ 
       reservationId,
       clientId,
+      clientName,
     }: { 
       reservationId: string;
       clientId: string;
+      clientName?: string;
     }) => {
       // Get current reservation
       const { data: current, error: fetchError } = await supabase
@@ -787,6 +831,8 @@ export const useCancelReservation = () => {
         .single();
       
       if (fetchError) throw fetchError;
+      
+      const propertyName = (current.properties as any)?.nombre || 'Propiedad';
       
       // Update reservation status
       const { data: updated, error: updateError } = await supabase
@@ -815,7 +861,7 @@ export const useCancelReservation = () => {
           action: 'cancelled',
           old_data: {
             propertyId: current.property_id,
-            propertyName: (current.properties as any)?.nombre,
+            propertyName,
             checkInDate: current.check_in_date,
             checkOutDate: current.check_out_date,
             guestCount: current.guest_count,
@@ -823,6 +869,17 @@ export const useCancelReservation = () => {
             taskId: current.task_id,
           },
         });
+      
+      // Send notification email (fire and forget)
+      supabase.functions.invoke('send-portal-change-notification', {
+        body: {
+          action: 'cancelled',
+          clientName: clientName || 'Cliente',
+          propertyName,
+          checkInDate: current.check_in_date,
+          checkOutDate: current.check_out_date,
+        },
+      }).catch(err => console.error('Notification error:', err));
       
       return updated;
     },
