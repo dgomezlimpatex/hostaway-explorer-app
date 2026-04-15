@@ -34,6 +34,7 @@ export const EditReservationForm = ({
   reservation,
   properties,
   clientId,
+  clientName,
   onSuccess,
   onCancel,
 }: EditReservationFormProps) => {
