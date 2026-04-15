@@ -25,6 +25,7 @@ interface EditReservationFormProps {
   reservation: ClientReservation;
   properties: Property[];
   clientId: string;
+  clientName: string;
   onSuccess: () => void;
   onCancel: () => void;
 }
@@ -33,6 +34,7 @@ export const EditReservationForm = ({
   reservation,
   properties,
   clientId,
+  clientName,
   onSuccess,
   onCancel,
 }: EditReservationFormProps) => {
@@ -50,6 +52,7 @@ export const EditReservationForm = ({
       await updateMutation.mutateAsync({
         reservationId: reservation.id,
         clientId,
+        clientName,
         updates: {
           propertyId,
           checkInDate: format(checkInDate, 'yyyy-MM-dd'),

@@ -22,6 +22,7 @@ interface Property {
 
 interface ReservationsListProps {
   clientId: string;
+  clientName: string;
   reservations: ClientReservation[];
   properties: Property[];
   isLoading: boolean;
@@ -29,6 +30,7 @@ interface ReservationsListProps {
 
 export const ReservationsList = ({
   clientId,
+  clientName,
   reservations,
   properties,
   isLoading,
@@ -47,6 +49,7 @@ export const ReservationsList = ({
       await cancelMutation.mutateAsync({
         reservationId: cancellingReservation.id,
         clientId,
+        clientName,
       });
       toast({
         title: 'Reserva cancelada',
@@ -307,6 +310,7 @@ export const ReservationsList = ({
               reservation={editingReservation}
               properties={properties}
               clientId={clientId}
+              clientName={clientName}
               onSuccess={() => setEditingReservation(null)}
               onCancel={() => setEditingReservation(null)}
             />

@@ -92,6 +92,7 @@ export const ClientPortalDashboard = ({
           <TabsContent value="list">
             <ReservationsList
               clientId={clientId}
+              clientName={clientName}
               reservations={reservations}
               properties={properties}
               isLoading={loadingReservations}
