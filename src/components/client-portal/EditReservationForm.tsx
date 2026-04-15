@@ -25,6 +25,7 @@ interface EditReservationFormProps {
   reservation: ClientReservation;
   properties: Property[];
   clientId: string;
+  clientName: string;
   onSuccess: () => void;
   onCancel: () => void;
 }
