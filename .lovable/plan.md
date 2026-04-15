@@ -1,36 +1,31 @@
 
 
-## Plan: Corrección del bug de eliminación de tareas compartidas entre reservas POSIBLE y CONFIRMADA
+## Plan: Fix Laundry Delivery Links to Include All Collection Days
 
-### Causa raíz
+### Problem
+When creating a laundry link for Wednesday, only Wednesday's tasks appear. The schedule configuration says Wednesday should collect tasks from **Tuesday + Wednesday** (collection_days=[2,3]), but the system ignores this.
 
-Cuando Avantio envía múltiples reservas para la misma propiedad/fecha (algunas `REQUESTED`/POSIBLE, otras `CONFIRMED`), la **deduplicación** las fusiona en una sola tarea. Pero la **limpieza de REQUESTED expiradas** encuentra esa reserva POSIBLE y elimina la tarea compartida — aunque reservas CONFIRMADAS también dependan de ella.
+### Root Causes
 
-Resultado: la única tarea para esa propiedad/día se borra porque una de las reservas era POSIBLE.
+1. **`QuickDayLinksWidget`** creates links using only a single date (`fetchTasksForDates([dateStr])`), completely ignoring the delivery schedule configuration. It should look up which schedule matches the selected day, then fetch tasks for all its collection dates.
 
-### Dos bugs a corregir
+2. **Link date range too narrow**: The widget sets `dateStart` and `dateEnd` to the same single date, so even if tasks were fetched correctly, the public view's date filter (`gte/lte`) would exclude tasks from other days.
 
-**Bug 1: `cleanupExpiredRequestedTasks` no verifica reservas hermanas**
+### Changes
 
-Antes de eliminar una tarea, debe comprobar si otra reserva no-REQUESTED comparte el mismo `task_id`. Si existen reservas confirmadas, solo debe desvincular la reserva POSIBLE — nunca borrar la tarea.
+**File 1: `src/components/laundry-share/QuickDayLinksWidget.tsx`**
+- Import `useLaundryDeliverySchedule` and date utilities
+- In `handleCreateLink`, find the matching schedule for the given date's day-of-week
+- Calculate all collection dates based on the schedule's `collectionDays` array
+- Call `fetchTasksForDates` with ALL collection dates instead of just one
+- Set `dateStart`/`dateEnd` to span the full collection date range
+- Update the task count queries to also use the schedule's collection dates
 
-**Bug 2: `deduplicateTasks` no actualiza el nombre de la tarea**
+**File 2: No other files need changes** — The `LaundryScheduledLinkModal` already correctly uses `selectedOption.collectionDates` from `useDeliveryDayOptions`, so that path works. The issue is only in the QuickDayLinksWidget shortcut path.
 
-Cuando la deduplicación fusiona tareas y la que se mantiene tiene prefijo "POSIBLE -" pero hay reservas confirmadas vinculadas, debe quitarse ese prefijo.
-
-### Cambios necesarios
-
-**Archivo a modificar:** `supabase/functions/avantio-sync/sync-orchestrator.ts`
-
-**1. Método `cleanupExpiredRequestedTasks`**
-- Antes de borrar una tarea de reserva REQUESTED expirada, consultar `avantio_reservations` para ver si OTRA reserva (no REQUESTED, no CANCELLED) comparte el mismo `task_id`
-- Si SÍ hay hermanas: solo poner `task_id = null` en la reserva REQUESTED, NO borrar la tarea. Además quitar el prefijo "POSIBLE -" del nombre de la tarea si lo tiene
-- Si NO hay hermanas: proceder con la eliminación como ahora
-
-**2. Método `deduplicateTasks`**
-- Después de fusionar duplicados y redirigir reservas, verificar si la tarea mantenida tiene "POSIBLE -" en el nombre pero alguna de las reservas vinculadas es CONFIRMED
-- Si es así, actualizar el nombre quitando el prefijo
-
-### Despliegue
-- Re-desplegar la edge function `avantio-sync` tras los cambios
+### Technical Detail
+For Wednesday (day_of_week=3, collection_days=[2,3]):
+- Current: fetches tasks for `[2026-04-16]` only
+- Fixed: fetches tasks for `[2026-04-15, 2026-04-16]` (Tuesday + Wednesday)
+- Link created with `dateStart: 2026-04-15, dateEnd: 2026-04-16`
 
