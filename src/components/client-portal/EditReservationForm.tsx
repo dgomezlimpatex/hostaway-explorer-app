@@ -52,6 +52,7 @@ export const EditReservationForm = ({
       await updateMutation.mutateAsync({
         reservationId: reservation.id,
         clientId,
+        clientName,
         updates: {
           propertyId,
           checkInDate: format(checkInDate, 'yyyy-MM-dd'),
