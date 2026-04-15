@@ -310,6 +310,7 @@ export const ReservationsList = ({
               reservation={editingReservation}
               properties={properties}
               clientId={clientId}
+              clientName={clientName}
               onSuccess={() => setEditingReservation(null)}
               onCancel={() => setEditingReservation(null)}
             />
