@@ -713,7 +713,7 @@ export const useUpdateReservation = () => {
       }
       
       // Update reservation
-      const { data: updated, error: updateError } = await supabase
+      const { error: updateError } = await supabase
         .from('client_reservations')
         .update({
           property_id: newPropertyId,
@@ -722,9 +722,7 @@ export const useUpdateReservation = () => {
           guest_count: updates.guestCount ?? current.guest_count,
           special_requests: updates.specialRequests ?? current.special_requests,
         })
-        .eq('id', reservationId)
-        .select()
-        .single();
+        .eq('id', reservationId);
       
       if (updateError) throw updateError;
       
