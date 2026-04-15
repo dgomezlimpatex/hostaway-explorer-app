@@ -754,10 +754,14 @@ export const useUpdateReservation = () => {
           taskUpdates.sede_id = property.sede_id;
         }
         
-        await supabase
+        const { error: taskUpdateError } = await supabase
           .from('tasks')
           .update(taskUpdates)
           .eq('id', current.task_id);
+        
+        if (taskUpdateError) {
+          console.error('Error updating task from portal:', taskUpdateError);
+        }
       }
       
       // Log the action
