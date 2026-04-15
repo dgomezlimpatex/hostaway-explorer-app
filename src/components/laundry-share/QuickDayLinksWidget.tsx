@@ -1,16 +1,33 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Calendar, Plus, Copy, ExternalLink, Loader2 } from 'lucide-react';
-import { format, addDays } from 'date-fns';
+import { format, addDays, subDays, getDay } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { useSede } from '@/contexts/SedeContext';
 import { useLaundryShareLinks, LaundryShareLink } from '@/hooks/useLaundryShareLinks';
+import { useLaundryDeliverySchedule } from '@/hooks/useLaundrySchedule';
 import { copyShareLinkToClipboard, getShareLinkUrl, calculateExpirationDate } from '@/services/laundryShareService';
 import { fetchTasksForDates } from '@/services/laundryScheduleService';
 import { useToast } from '@/hooks/use-toast';
 import { useQuery } from '@tanstack/react-query';
+
+/**
+ * Given a delivery date and its schedule's collectionDays,
+ * return the actual calendar dates for collection.
+ * 
+ * collectionDays contains day-of-week numbers (0=Sun..6=Sat).
+ * We calculate how many days back each collection day is relative to the delivery day.
+ */
+const getCollectionDatesForDelivery = (deliveryDate: Date, collectionDays: number[]): Date[] => {
+  const deliveryDow = getDay(deliveryDate); // 0-6
+  return collectionDays.map(collDay => {
+    let diff = deliveryDow - collDay;
+    if (diff < 0) diff += 7;
+    return subDays(deliveryDate, diff);
+  }).sort((a, b) => a.getTime() - b.getTime());
+};
 
 interface QuickDayCardProps {
   label: string;
@@ -20,6 +37,7 @@ interface QuickDayCardProps {
   isCreating: boolean;
   taskCount: number;
   isLoadingTasks: boolean;
+  collectionDateLabels?: string;
 }
 
 const QuickDayCard = ({ 
@@ -29,7 +47,8 @@ const QuickDayCard = ({
   onCreateLink, 
   isCreating, 
   taskCount,
-  isLoadingTasks 
+  isLoadingTasks,
+  collectionDateLabels,
 }: QuickDayCardProps) => {
   const { toast } = useToast();
   const dayName = format(date, 'EEEE', { locale: es });
@@ -69,6 +88,11 @@ const QuickDayCard = ({
                 </Badge>
               </div>
               <p className="text-xs text-muted-foreground capitalize">{dateFormatted}</p>
+              {collectionDateLabels && (
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Recogida: {collectionDateLabels}
+                </p>
+              )}
               {!existingLink && (
                 <p className="text-xs text-muted-foreground mt-1">
                   {isLoadingTasks ? '...' : `${taskCount} servicios`}
@@ -121,6 +145,7 @@ export const QuickDayLinksWidget = () => {
   const { activeSede } = useSede();
   const { toast } = useToast();
   const { shareLinks, createShareLink, refetch } = useLaundryShareLinks();
+  const { schedules } = useLaundryDeliverySchedule();
   const [creatingFor, setCreatingFor] = useState<'today' | 'tomorrow' | null>(null);
 
   const today = new Date();
@@ -129,16 +154,41 @@ export const QuickDayLinksWidget = () => {
   const todayStr = format(today, 'yyyy-MM-dd');
   const tomorrowStr = format(tomorrow, 'yyyy-MM-dd');
 
-  // Fetch task counts for today and tomorrow
+  // Find matching schedule and collection dates for each day
+  const todayScheduleInfo = useMemo(() => {
+    const dow = getDay(today);
+    const schedule = schedules?.find(s => s.dayOfWeek === dow && s.isActive);
+    if (!schedule || schedule.collectionDays.length === 0) {
+      return { collectionDates: [todayStr], collectionDateStrs: [todayStr], label: undefined };
+    }
+    const dates = getCollectionDatesForDelivery(today, schedule.collectionDays);
+    const strs = dates.map(d => format(d, 'yyyy-MM-dd'));
+    const label = dates.map(d => format(d, 'EEE d', { locale: es })).join(', ');
+    return { collectionDates: dates, collectionDateStrs: strs, label, schedule };
+  }, [todayStr, schedules]);
+
+  const tomorrowScheduleInfo = useMemo(() => {
+    const dow = getDay(tomorrow);
+    const schedule = schedules?.find(s => s.dayOfWeek === dow && s.isActive);
+    if (!schedule || schedule.collectionDays.length === 0) {
+      return { collectionDates: [tomorrowStr], collectionDateStrs: [tomorrowStr], label: undefined };
+    }
+    const dates = getCollectionDatesForDelivery(tomorrow, schedule.collectionDays);
+    const strs = dates.map(d => format(d, 'yyyy-MM-dd'));
+    const label = dates.map(d => format(d, 'EEE d', { locale: es })).join(', ');
+    return { collectionDates: dates, collectionDateStrs: strs, label, schedule };
+  }, [tomorrowStr, schedules]);
+
+  // Fetch task counts using ALL collection dates
   const { data: todayTasks, isLoading: loadingToday } = useQuery({
-    queryKey: ['quick-day-tasks', todayStr, activeSede?.id],
-    queryFn: () => fetchTasksForDates([todayStr], activeSede?.id || ''),
+    queryKey: ['quick-day-tasks', todayStr, activeSede?.id, todayScheduleInfo.collectionDateStrs],
+    queryFn: () => fetchTasksForDates(todayScheduleInfo.collectionDateStrs, activeSede?.id || ''),
     enabled: !!activeSede?.id,
   });
 
   const { data: tomorrowTasks, isLoading: loadingTomorrow } = useQuery({
-    queryKey: ['quick-day-tasks', tomorrowStr, activeSede?.id],
-    queryFn: () => fetchTasksForDates([tomorrowStr], activeSede?.id || ''),
+    queryKey: ['quick-day-tasks', tomorrowStr, activeSede?.id, tomorrowScheduleInfo.collectionDateStrs],
+    queryFn: () => fetchTasksForDates(tomorrowScheduleInfo.collectionDateStrs, activeSede?.id || ''),
     enabled: !!activeSede?.id,
   });
 
@@ -147,11 +197,18 @@ export const QuickDayLinksWidget = () => {
   
   const todayLink = scheduledLinks.find(l => 
     l.dateStart === todayStr && l.dateEnd === todayStr
-  );
+  ) || scheduledLinks.find(l => {
+    // Also match links where the delivery date (dateEnd) is today
+    const strs = todayScheduleInfo.collectionDateStrs;
+    return l.dateStart === strs[0] && l.dateEnd === strs[strs.length - 1];
+  });
   
   const tomorrowLink = scheduledLinks.find(l => 
     l.dateStart === tomorrowStr && l.dateEnd === tomorrowStr
-  );
+  ) || scheduledLinks.find(l => {
+    const strs = tomorrowScheduleInfo.collectionDateStrs;
+    return l.dateStart === strs[0] && l.dateEnd === strs[strs.length - 1];
+  });
 
   const handleCreateLink = async (date: Date, dayType: 'today' | 'tomorrow') => {
     if (!activeSede?.id) return;
@@ -159,13 +216,13 @@ export const QuickDayLinksWidget = () => {
     setCreatingFor(dayType);
     
     try {
-      const dateStr = format(date, 'yyyy-MM-dd');
-      const tasks = await fetchTasksForDates([dateStr], activeSede.id);
+      const info = dayType === 'today' ? todayScheduleInfo : tomorrowScheduleInfo;
+      const tasks = await fetchTasksForDates(info.collectionDateStrs, activeSede.id);
       
       if (tasks.length === 0) {
         toast({
           title: 'Sin servicios',
-          description: 'No hay servicios programados para esta fecha',
+          description: 'No hay servicios programados para estas fechas',
           variant: 'destructive',
         });
         return;
@@ -173,10 +230,13 @@ export const QuickDayLinksWidget = () => {
 
       const taskIds = tasks.map(t => t.taskId);
       const expiresAt = calculateExpirationDate('week');
+      
+      const dateStart = info.collectionDateStrs[0];
+      const dateEnd = info.collectionDateStrs[info.collectionDateStrs.length - 1];
 
       await createShareLink.mutateAsync({
-        dateStart: dateStr,
-        dateEnd: dateStr,
+        dateStart,
+        dateEnd,
         taskIds: taskIds,
         allTaskIds: taskIds,
         isPermanent: false,
@@ -214,6 +274,7 @@ export const QuickDayLinksWidget = () => {
         isCreating={creatingFor === 'today'}
         taskCount={todayTasks?.length || 0}
         isLoadingTasks={loadingToday}
+        collectionDateLabels={todayScheduleInfo.label}
       />
       <QuickDayCard
         label="Mañana"
@@ -223,6 +284,7 @@ export const QuickDayLinksWidget = () => {
         isCreating={creatingFor === 'tomorrow'}
         taskCount={tomorrowTasks?.length || 0}
         isLoadingTasks={loadingTomorrow}
+        collectionDateLabels={tomorrowScheduleInfo.label}
       />
     </div>
   );
