@@ -49,6 +49,7 @@ export const ReservationsList = ({
       await cancelMutation.mutateAsync({
         reservationId: cancellingReservation.id,
         clientId,
+        clientName,
       });
       toast({
         title: 'Reserva cancelada',
