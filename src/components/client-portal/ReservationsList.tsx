@@ -22,6 +22,7 @@ interface Property {
 
 interface ReservationsListProps {
   clientId: string;
+  clientName: string;
   reservations: ClientReservation[];
   properties: Property[];
   isLoading: boolean;
