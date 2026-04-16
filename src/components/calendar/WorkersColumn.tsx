@@ -220,6 +220,13 @@ export const WorkersColumn = ({ cleaners, onDragOver, onDrop, absenceStatus, isD
                       </TooltipContent>
                     </Tooltip>
                   </TooltipProvider>
+                ) : (
+                  <div className="flex items-center gap-1 mt-0.5">
+                    <div className={`w-1.5 h-1.5 rounded-full ${cleaner.isActive ? 'bg-green-400' : 'bg-gray-400'}`} />
+                    <span className="text-[10px] text-gray-500">
+                      {cleaner.isActive ? 'Activo' : 'Inactivo'}
+                    </span>
+                  </div>
                 )}
               </div>
             </div>
