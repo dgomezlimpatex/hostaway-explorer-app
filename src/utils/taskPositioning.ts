@@ -100,7 +100,7 @@ export const getTaskPositionWithOverlap = (
   
   return { 
     left: `${leftPixels}px`, 
-    width: `${Math.max(widthPixels, 100)}px`,
+    width: `${Math.max(widthPixels, 80)}px`,
     top: `${topOffset}%`,
     height: `${heightAdjustment * 100}%`,
     hasOverlap: overlappingTasks.length > 0,
