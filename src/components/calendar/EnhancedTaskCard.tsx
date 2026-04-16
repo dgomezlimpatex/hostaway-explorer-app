@@ -17,7 +17,7 @@ const SubtaskBadge = ({ task }: { task: Task }) => {
   return (
     <div
       className={cn(
-        "absolute top-1 right-1 z-20 flex items-center gap-0.5 px-1 py-0.5 rounded-full text-[9px] font-bold shadow-sm",
+        "absolute top-1 right-7 z-20 flex items-center gap-0.5 px-1 py-0.5 rounded-full text-[9px] font-bold shadow-sm",
         allCompleted
           ? "bg-emerald-500 text-white"
           : "bg-rose-500 text-white animate-pulse"
