@@ -117,17 +117,14 @@ export const TimelineView = ({ weekDays, properties, reservations, colorMap }: T
                     {hasReservation && (
                       <TooltipProvider><Tooltip><TooltipTrigger asChild>
                         <div className="absolute inset-y-2 sm:inset-y-3 flex items-center cursor-default" style={{
-                          left: isCheckIn && isCheckOut ? '50%' : isCheckIn ? (newCheckInOnCheckoutDay ? '50%' : '0') : '0',
-                          right: isLastDayOfReservation ? '50%' : '0',
+                          left: isCheckIn && isCheckOut ? '50%' : '0',
+                          right: '0',
                           backgroundColor: color.bg,
                           borderTop: `2px solid ${color.border}`,
                           borderBottom: `2px solid ${color.border}`,
                           borderLeft: isCheckIn ? `3px solid ${color.text}` : 'none',
-                          borderRight: isLastDayOfReservation ? 'none' : 'none',
                           borderTopLeftRadius: isCheckIn ? '8px' : '0',
                           borderBottomLeftRadius: isCheckIn ? '8px' : '0',
-                          borderTopRightRadius: '0',
-                          borderBottomRightRadius: '0',
                           marginLeft: isCheckIn ? '2px' : '0',
                         }}>
                           {isCheckIn && (
