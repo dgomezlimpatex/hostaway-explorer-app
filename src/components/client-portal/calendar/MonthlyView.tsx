@@ -3,6 +3,7 @@ import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInte
 import { es } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { ArrowRightToLine, ArrowLeftFromLine } from 'lucide-react';
 import { ClientReservation } from '@/types/clientPortal';
 import { PropertyColor } from './propertyColors';
 
@@ -13,7 +14,7 @@ interface MonthlyViewProps {
   colorMap: Map<string, PropertyColor>;
 }
 
-const DAY_NAMES = ['lun', 'mar', 'mié', 'jue', 'vie', 'sáb', 'dom'];
+const DAY_NAMES = ['LUN', 'MAR', 'MIÉ', 'JUE', 'VIE', 'SÁB', 'DOM'];
 
 export const MonthlyView = ({ currentDate, reservations, properties, colorMap }: MonthlyViewProps) => {
   const calendarDays = useMemo(() => {
@@ -24,16 +25,6 @@ export const MonthlyView = ({ currentDate, reservations, properties, colorMap }:
     return eachDayOfInterval({ start: calStart, end: calEnd });
   }, [currentDate]);
 
-  const getReservationsForDay = (day: Date) => {
-    return reservations.filter(r => {
-      const checkIn = new Date(r.checkInDate); checkIn.setHours(0, 0, 0, 0);
-      const checkOut = new Date(r.checkOutDate); checkOut.setHours(0, 0, 0, 0);
-      const d = new Date(day); d.setHours(0, 0, 0, 0);
-      // Include check-in day through check-out day
-      return d >= checkIn && d <= checkOut;
-    });
-  };
-
   const weeks = useMemo(() => {
     const result: Date[][] = [];
     for (let i = 0; i < calendarDays.length; i += 7) {
@@ -41,6 +32,28 @@ export const MonthlyView = ({ currentDate, reservations, properties, colorMap }:
     }
     return result;
   }, [calendarDays]);
+
+  // For each property, for each day, determine: isStay, isCheckIn, isCheckOut
+  const getDayStatus = (day: Date, propertyId: string) => {
+    const cur = new Date(day); cur.setHours(0, 0, 0, 0);
+    const propReservations = reservations.filter(r => r.propertyId === propertyId);
+
+    const stayReservations = propReservations.filter(r => {
+      const ci = new Date(r.checkInDate); ci.setHours(0, 0, 0, 0);
+      const co = new Date(r.checkOutDate); co.setHours(0, 0, 0, 0);
+      return cur >= ci && cur < co;
+    });
+
+    const checkOutRes = propReservations.filter(r => isSameDay(new Date(r.checkOutDate), day));
+
+    return {
+      isStayDay: stayReservations.length > 0,
+      isCheckIn: stayReservations.some(r => isSameDay(new Date(r.checkInDate), day)),
+      isCheckOut: checkOutRes.length > 0,
+      stayReservations,
+      checkOutReservations: checkOutRes,
+    };
+  };
 
   return (
     <div className="overflow-x-auto -mx-3 sm:-mx-4 px-3 sm:px-4">
@@ -59,35 +72,30 @@ export const MonthlyView = ({ currentDate, reservations, properties, colorMap }:
           <div key={wi} className={cn("grid grid-cols-7 border-l border-r border-b border-border/30", wi === weeks.length - 1 && "rounded-b-xl overflow-hidden")}>
             {week.map(day => {
               const inMonth = isSameMonth(day, currentDate);
-              const dayReservations = getReservationsForDay(day);
 
-              // Group by property, max 3 visible dots
-              const byProperty = new Map<string, { reservation: ClientReservation; isCheckIn: boolean; isCheckOut: boolean }[]>();
-              dayReservations.forEach(r => {
-                if (!r.propertyId) return;
-                if (!byProperty.has(r.propertyId)) byProperty.set(r.propertyId, []);
-                byProperty.get(r.propertyId)!.push({
-                  reservation: r,
-                  isCheckIn: isSameDay(new Date(r.checkInDate), day),
-                  isCheckOut: isSameDay(new Date(r.checkOutDate), day),
-                });
+              // Collect all properties that have activity on this day
+              const activeProperties: { propId: string; status: ReturnType<typeof getDayStatus> }[] = [];
+              properties.forEach(p => {
+                const status = getDayStatus(day, p.id);
+                if (status.isStayDay || status.isCheckOut) {
+                  activeProperties.push({ propId: p.id, status });
+                }
               });
 
-              const propertyEntries = Array.from(byProperty.entries());
               const MAX_VISIBLE = 3;
 
               return (
                 <div
                   key={day.toISOString()}
                   className={cn(
-                    "border-l border-border/30 first:border-l-0 min-h-[52px] sm:min-h-[72px] p-0.5 sm:p-1 flex flex-col",
+                    "border-l border-border/30 first:border-l-0 min-h-[56px] sm:min-h-[80px] p-0.5 sm:p-1 flex flex-col",
                     !inMonth && "opacity-30",
                     isToday(day) && "bg-primary/5"
                   )}
                 >
                   {/* Day number */}
                   <div className={cn(
-                    "text-[11px] sm:text-sm font-semibold text-right pr-0.5 sm:pr-1",
+                    "text-[11px] sm:text-sm font-semibold text-right pr-0.5 sm:pr-1 mb-0.5",
                     isToday(day) ? "text-primary" : "text-foreground"
                   )}>
                     {isToday(day) ? (
@@ -97,59 +105,67 @@ export const MonthlyView = ({ currentDate, reservations, properties, colorMap }:
                     ) : format(day, 'd')}
                   </div>
 
-                  {/* Reservation indicators */}
-                  <div className="flex-1 flex flex-col gap-0.5 mt-0.5">
-                    {propertyEntries.slice(0, MAX_VISIBLE).map(([propId, items]) => {
+                  {/* Reservation bars - same style as timeline */}
+                  <div className="flex-1 flex flex-col gap-[2px]">
+                    {activeProperties.slice(0, MAX_VISIBLE).map(({ propId, status }) => {
                       const color = colorMap.get(propId);
                       if (!color) return null;
                       const prop = properties.find(p => p.id === propId);
-                      const item = items[0];
-                      const isCI = item.isCheckIn;
-                      const isCO = item.isCheckOut;
+                      const { isStayDay, isCheckIn, isCheckOut } = status;
 
                       return (
-                        <TooltipProvider key={propId}>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <div
-                                className="h-[6px] sm:h-2 rounded-sm cursor-default relative"
-                                style={{
-                                  backgroundColor: color.bg,
-                                  borderLeft: isCI ? `3px solid ${color.text}` : `1px solid ${color.border}`,
-                                  borderRight: isCO ? `3px solid ${color.text}` : `1px solid ${color.border}`,
-                                  borderTop: `1px solid ${color.border}`,
-                                  borderBottom: `1px solid ${color.border}`,
-                                  borderRadius: isCI && isCO ? '4px' : isCI ? '4px 0 0 4px' : isCO ? '0 4px 4px 0' : '0',
-                                  marginLeft: isCI ? '1px' : '0',
-                                  marginRight: isCO ? '1px' : '0',
-                                }}
-                              />
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              <div className="space-y-1">
-                                {items.map(({ reservation: r, isCheckIn, isCheckOut }) => (
-                                  <div key={r.id} className="text-xs">
-                                    <div className="flex items-center gap-1.5">
-                                      <div className="w-2 h-2 rounded-full" style={{ backgroundColor: color.text }} />
-                                      <span className="font-semibold">{prop?.codigo}</span>
-                                      <span className="text-muted-foreground">— {r.property?.nombre}</span>
-                                    </div>
-                                    <p className="text-muted-foreground ml-3.5">
-                                      {format(new Date(r.checkInDate), 'd MMM', { locale: es })} → {format(new Date(r.checkOutDate), 'd MMM', { locale: es })}
-                                      {isCheckIn && ' 🟢 Entrada'}
-                                      {isCheckOut && ' 🔴 Salida'}
-                                    </p>
-                                  </div>
-                                ))}
+                        <div key={propId} className="relative h-[7px] sm:h-[10px]">
+                          {/* CHECKOUT half-bar: left half */}
+                          {isCheckOut && (
+                            <TooltipProvider><Tooltip><TooltipTrigger asChild>
+                              <div className="absolute inset-y-0 left-0 cursor-default" style={{
+                                width: '50%',
+                                backgroundColor: color.bg,
+                                borderTop: `1.5px solid ${color.border}`,
+                                borderBottom: `1.5px solid ${color.border}`,
+                                borderRight: `2px solid ${color.text}`,
+                                borderTopRightRadius: '6px',
+                                borderBottomRightRadius: '6px',
+                              }} />
+                            </TooltipTrigger><TooltipContent className="bg-rose-50 border-rose-200">
+                              <p className="font-semibold text-rose-700 flex items-center gap-1.5 text-xs">
+                                <ArrowLeftFromLine className="h-3 w-3" />Salida — {prop?.codigo} — {format(day, 'd MMM', { locale: es })}
+                              </p>
+                            </TooltipContent></Tooltip></TooltipProvider>
+                          )}
+
+                          {/* STAY bar */}
+                          {isStayDay && (
+                            <TooltipProvider><Tooltip><TooltipTrigger asChild>
+                              <div className="absolute inset-y-0 cursor-default" style={{
+                                left: isCheckOut ? '50%' : '0',
+                                right: '0',
+                                backgroundColor: color.bg,
+                                borderTop: `1.5px solid ${color.border}`,
+                                borderBottom: `1.5px solid ${color.border}`,
+                                borderLeft: isCheckIn ? `2px solid ${color.text}` : 'none',
+                                borderTopLeftRadius: isCheckIn ? '6px' : '0',
+                                borderBottomLeftRadius: isCheckIn ? '6px' : '0',
+                                marginLeft: isCheckIn && !isCheckOut ? '1px' : '0',
+                              }} />
+                            </TooltipTrigger><TooltipContent>
+                              <div className="text-xs">
+                                <p className="font-medium">{prop?.codigo} — {prop?.nombre}</p>
+                                <p className="text-muted-foreground">
+                                  {status.stayReservations.map(r => (
+                                    <span key={r.id}>{format(new Date(r.checkInDate), 'd MMM', { locale: es })} → {format(new Date(r.checkOutDate), 'd MMM', { locale: es })}</span>
+                                  ))}
+                                  {isCheckIn && ' 🟢 Entrada'}
+                                </p>
                               </div>
-                            </TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
+                            </TooltipContent></Tooltip></TooltipProvider>
+                          )}
+                        </div>
                       );
                     })}
-                    {propertyEntries.length > MAX_VISIBLE && (
-                      <span className="text-[8px] sm:text-[10px] text-muted-foreground text-center">
-                        +{propertyEntries.length - MAX_VISIBLE}
+                    {activeProperties.length > MAX_VISIBLE && (
+                      <span className="text-[8px] sm:text-[10px] text-muted-foreground text-center leading-none">
+                        +{activeProperties.length - MAX_VISIBLE}
                       </span>
                     )}
                   </div>
