@@ -74,8 +74,8 @@ export const CalendarLayout = ({
         <div className={`flex flex-col ${getCalendarHeight()} overflow-hidden`}>
           {/* Headers Row */}
           <div className="flex flex-shrink-0">
-            <div className="w-64 h-16 bg-white border-b border-gray-200 flex items-center px-4 border-r border-gray-200 flex-shrink-0">
-              <span className="font-semibold text-gray-700">Trabajadores</span>
+            <div className="w-64 h-16 bg-muted/50 border-b border-border flex items-center px-4 border-r border-border flex-shrink-0">
+              <span className="text-xs font-bold tracking-widest text-muted-foreground uppercase">Equipo</span>
             </div>
             {/* Time Header - Sincronizado con el scroll */}
             <div 
