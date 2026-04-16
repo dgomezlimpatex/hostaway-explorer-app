@@ -1,6 +1,6 @@
 import React from "react";
 import { Task } from "@/types/calendar";
-import { Clock, ListTodo } from "lucide-react";
+import { Clock, ListTodo, Hourglass, Play, Check, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useClientData } from "@/hooks/useClientData";
@@ -53,6 +53,17 @@ export const EnhancedTaskCard = React.memo(({
   const isCompleted = task.status === 'completed';
   const isInProgress = task.status === 'in-progress';
   const isCancelled = (task.status as string) === 'cancelled';
+  const isPending = task.status === 'pending';
+
+  // Configuración del icono de estado
+  const statusConfig = isCompleted
+    ? { Icon: Check, bg: 'bg-emerald-500', label: 'Completada' }
+    : isInProgress
+    ? { Icon: Play, bg: 'bg-blue-500', label: 'En progreso' }
+    : isCancelled
+    ? { Icon: X, bg: 'bg-gray-500', label: 'Cancelada' }
+    : { Icon: Hourglass, bg: 'bg-orange-500', label: 'Pendiente' };
+  const StatusIcon = statusConfig.Icon;
 
   const formatTime = (time: string) => {
     if (time.includes(':')) {
@@ -101,8 +112,20 @@ export const EnhancedTaskCard = React.memo(({
               isDragging && "opacity-50 rotate-1 scale-95 shadow-2xl z-50"
             )}
           >
+            {/* Icono de estado destacado (esquina superior izquierda) */}
+            <div
+              className={cn(
+                "absolute -top-1 -left-1 z-20 flex items-center justify-center w-5 h-5 rounded-full shadow-md ring-2 ring-white",
+                statusConfig.bg,
+                isPending && "animate-pulse"
+              )}
+              aria-label={statusConfig.label}
+            >
+              <StatusIcon className="w-3 h-3 text-white" strokeWidth={3} />
+            </div>
+
             {/* Header con horas */}
-            <div className="flex items-center gap-1 mb-0.5 opacity-80">
+            <div className="flex items-center gap-1 mb-0.5 opacity-80 pl-4">
               <Clock className="w-3 h-3 flex-shrink-0" />
               <span className="text-[10px] font-medium whitespace-nowrap tabular-nums">
                 {formatTime(task.startTime)} – {formatTime(task.endTime)}
@@ -129,6 +152,9 @@ export const EnhancedTaskCard = React.memo(({
             <p className="font-medium">{displayPropertyName()}</p>
             <p className="text-xs text-muted-foreground">
               {formatTime(task.startTime)} - {formatTime(task.endTime)}
+            </p>
+            <p className="text-xs">
+              <span className="font-medium">Estado:</span> {statusConfig.label}
             </p>
             {clientName && <p className="text-xs">{clientName}</p>}
             {task.address && (
