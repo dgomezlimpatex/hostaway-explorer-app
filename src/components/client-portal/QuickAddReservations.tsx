@@ -252,7 +252,7 @@ export const QuickAddReservations = ({
                         mode="single"
                         selected={row.checkOutDate}
                         onSelect={(date) => handleDateSelect(row.id, date, 'checkOut')}
-                        defaultMonth={row.checkInDate || undefined}
+                        defaultMonth={row.checkOutDate || row.checkInDate || undefined}
                         disabled={(date) => {
                           const today = new Date();
                           today.setHours(0, 0, 0, 0);
