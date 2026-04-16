@@ -63,9 +63,9 @@ export const CalendarLayout = ({
 
   // Responsive calendar height based on device
   const getCalendarHeight = () => {
-    if (isMobile) return "h-[500px] md:h-[600px]";
-    if (isTablet) return "h-[600px] md:h-[700px]";
-    return "h-[700px]";
+    if (isMobile) return "h-[480px]";
+    if (isTablet) return "h-[560px]";
+    return "h-[600px]";
   };
 
   return (
@@ -74,19 +74,19 @@ export const CalendarLayout = ({
         <div className={`flex flex-col ${getCalendarHeight()} overflow-hidden`}>
           {/* Headers Row */}
           <div className="flex flex-shrink-0">
-            <div className="w-64 h-16 bg-muted/50 border-b border-border flex items-center px-4 border-r border-border flex-shrink-0">
-              <span className="text-xs font-bold tracking-widest text-muted-foreground uppercase">Equipo</span>
+            <div className="w-52 h-12 bg-muted/50 border-b border-border flex items-center px-3 border-r border-border flex-shrink-0">
+              <span className="text-[11px] font-bold tracking-widest text-muted-foreground uppercase">Equipo</span>
             </div>
             {/* Time Header - Sincronizado con el scroll */}
             <div 
               ref={headerScrollRef}
-              className="flex-1 h-16 bg-white border-b border-gray-200 overflow-hidden"
+              className="flex-1 h-12 bg-white border-b border-gray-200 overflow-hidden"
             >
-              <div className="flex h-full" style={{ minWidth: '1200px' }}>
+              <div className="flex h-full" style={{ minWidth: '1000px' }}>
                 {timeSlots.map((time) => (
                   <div 
                     key={time} 
-                    className={`min-w-[60px] h-16 flex items-center justify-center text-xs font-medium text-gray-600 border-r border-gray-100 ${
+                    className={`min-w-[50px] h-12 flex items-center justify-center text-[11px] font-medium text-gray-600 border-r border-gray-100 ${
                       time.endsWith(':00') ? 'bg-gray-50' : 'bg-white'
                     }`}
                   >
