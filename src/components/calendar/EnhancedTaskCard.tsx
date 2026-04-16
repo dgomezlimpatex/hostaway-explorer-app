@@ -4,22 +4,23 @@ import { Clock, ListTodo } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useClientData } from "@/hooks/useClientData";
+import { getClientColor } from "@/utils/clientColors";
 
 // Subtask badge component
 const SubtaskBadge = ({ task }: { task: Task }) => {
   const additionalTasks = task.additionalTasks || [];
   if (additionalTasks.length === 0) return null;
-  
+
   const pendingCount = additionalTasks.filter(t => !t.completed).length;
   const allCompleted = pendingCount === 0;
-  
+
   return (
-    <div 
+    <div
       className={cn(
         "absolute top-1 right-1 z-20 flex items-center gap-0.5 px-1 py-0.5 rounded-full text-[9px] font-bold shadow-sm",
-        allCompleted 
-          ? "bg-green-500 text-white" 
-          : "bg-red-500 text-white animate-pulse"
+        allCompleted
+          ? "bg-emerald-500 text-white"
+          : "bg-rose-500 text-white animate-pulse"
       )}
     >
       <ListTodo className="h-2.5 w-2.5" />
@@ -46,21 +47,13 @@ export const EnhancedTaskCard = React.memo(({
   style
 }: EnhancedTaskCardProps) => {
   const { getClientName } = useClientData();
+  const clientColor = getClientColor(task.clienteId);
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'completed':
-        return 'bg-emerald-100 border-emerald-300 dark:bg-emerald-900/20 dark:border-emerald-700';
-      case 'in-progress':
-        return 'bg-blue-100 border-blue-300 dark:bg-blue-900/20 dark:border-blue-700';
-      case 'cancelled':
-        return 'bg-red-100 border-red-300 dark:bg-red-900/20 dark:border-red-700';
-      default:
-        return 'bg-amber-100 border-amber-300 dark:bg-amber-900/20 dark:border-amber-700';
-    }
-  };
+  // Estados especiales que sobrescriben el color del cliente para ser legibles
+  const isCompleted = task.status === 'completed';
+  const isInProgress = task.status === 'in-progress';
+  const isCancelled = task.status === 'cancelled';
 
-  // Función para formatear tiempo de HH:MM:SS a HH:MM
   const formatTime = (time: string) => {
     if (time.includes(':')) {
       const parts = time.split(':');
@@ -76,10 +69,14 @@ export const EnhancedTaskCard = React.memo(({
   };
 
   const clientName = getClientName(task.clienteId || '');
+  const displayPropertyName = () => task.property;
 
-  // Formatear el nombre de la propiedad
-  const displayPropertyName = () => {
-    return task.property;
+  // Estilo dinámico: color del cliente como fondo + borde lateral
+  const cardStyle: React.CSSProperties = {
+    ...style,
+    backgroundColor: isCancelled ? undefined : clientColor.bg,
+    borderLeftColor: clientColor.border,
+    color: clientColor.text,
   };
 
   return (
@@ -91,40 +88,37 @@ export const EnhancedTaskCard = React.memo(({
             onClick={onClick}
             onDragStart={handleDragStart}
             onDragEnd={onDragEnd}
-            style={style}
+            style={cardStyle}
             className={cn(
-              "relative p-2 rounded-lg border-l-4 cursor-pointer transition-all duration-300",
-              "hover:shadow-lg hover:scale-[1.02] hover:-translate-y-0.5",
-              "focus:outline-none focus:ring-2 focus:ring-primary/50",
+              "relative px-2 py-1.5 rounded-lg border-l-[5px] cursor-pointer transition-all duration-200",
+              "hover:shadow-md hover:-translate-y-0.5",
+              "focus:outline-none focus:ring-2 focus:ring-primary/40",
               "transform-gpu overflow-hidden",
-              getStatusColor(task.status),
-              isDragging && "opacity-50 rotate-2 scale-95 shadow-2xl z-50"
+              // Estados sobre el color del cliente
+              isCompleted && "ring-2 ring-emerald-400/60 ring-offset-0",
+              isInProgress && "ring-2 ring-blue-400/70 ring-offset-0 animate-pulse",
+              isCancelled && "bg-muted text-muted-foreground line-through opacity-70",
+              isDragging && "opacity-50 rotate-1 scale-95 shadow-2xl z-50"
             )}
           >
             {/* Header con horas */}
-            <div className="flex items-center justify-between mb-1">
-              <div className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400">
-                <Clock className="w-3 h-3 flex-shrink-0" />
-                <span className="whitespace-nowrap">
-                  {formatTime(task.startTime)} - {formatTime(task.endTime)}
-                </span>
-              </div>
+            <div className="flex items-center gap-1 mb-0.5 opacity-80">
+              <Clock className="w-3 h-3 flex-shrink-0" />
+              <span className="text-[10px] font-medium whitespace-nowrap tabular-nums">
+                {formatTime(task.startTime)} – {formatTime(task.endTime)}
+              </span>
             </div>
 
             {/* Contenido principal */}
-            <div className="space-y-1">
-              {/* Código y nombre del piso - pegado a la izquierda */}
-              <h3 className="font-semibold text-sm truncate text-left text-zinc-950">
-                {displayPropertyName()}
-              </h3>
-              
-              {/* Nombre del cliente - pegado a la izquierda */}
-              {clientName && (
-                <p className="text-xs truncate text-left text-zinc-900">
-                  {clientName}
-                </p>
-              )}
-            </div>
+            <h3 className="font-bold text-[13px] leading-tight truncate text-left">
+              {displayPropertyName()}
+            </h3>
+
+            {clientName && (
+              <p className="text-[11px] leading-tight truncate text-left opacity-75 mt-0.5">
+                {clientName}
+              </p>
+            )}
 
             {/* Subtask badge */}
             <SubtaskBadge task={task} />
@@ -136,11 +130,7 @@ export const EnhancedTaskCard = React.memo(({
             <p className="text-xs text-muted-foreground">
               {formatTime(task.startTime)} - {formatTime(task.endTime)}
             </p>
-            {clientName && (
-              <p className="text-xs">
-                {clientName}
-              </p>
-            )}
+            {clientName && <p className="text-xs">{clientName}</p>}
             {task.address && (
               <p className="text-xs">
                 <span className="font-medium">Dirección:</span> {task.address}

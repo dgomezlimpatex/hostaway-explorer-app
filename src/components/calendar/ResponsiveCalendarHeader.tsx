@@ -1,17 +1,11 @@
-
 import { Button } from "@/components/ui/button";
-import { ChevronLeft, ChevronRight, Calendar, Plus, ArrowLeft, Users } from "lucide-react";
+import { ChevronLeft, ChevronRight, CalendarDays, Plus, ArrowLeft, Users, Sparkles } from "lucide-react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { ViewType } from "@/types/calendar";
 import { Link } from "react-router-dom";
 import { useDeviceType } from "@/hooks/use-mobile";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 
 interface ResponsiveCalendarHeaderProps {
   currentDate: Date;
@@ -34,19 +28,20 @@ export const ResponsiveCalendarHeader = ({
   onNewBatchTask,
   onNewExtraordinaryService
 }: ResponsiveCalendarHeaderProps) => {
-  const { isMobile, isTablet } = useDeviceType();
+  const { isMobile } = useDeviceType();
 
   const formatDate = () => {
     switch (currentView) {
       case 'day':
-        return format(currentDate, isMobile ? "d MMM yyyy" : "EEEE, d 'de' MMMM 'de' yyyy", { locale: es });
-      case 'three-day':
+        return format(currentDate, isMobile ? "EEE d MMM" : "EEEE, d 'de' MMMM 'de' yyyy", { locale: es });
+      case 'three-day': {
         const endDate = new Date(currentDate);
         endDate.setDate(endDate.getDate() + 2);
         if (isMobile) {
           return `${format(currentDate, "d MMM", { locale: es })} - ${format(endDate, "d MMM", { locale: es })}`;
         }
         return `${format(currentDate, "d 'de' MMM", { locale: es })} - ${format(endDate, "d 'de' MMM 'de' yyyy", { locale: es })}`;
+      }
       case 'week':
         return format(currentDate, isMobile ? "'Sem.' d MMM" : "'Semana del' d 'de' MMMM", { locale: es });
       default:
@@ -54,136 +49,137 @@ export const ResponsiveCalendarHeader = ({
     }
   };
 
+  const todayDayNumber = format(new Date(), 'd');
+
   return (
-    <div className="bg-card border-b border-border safe-area-top">
-      <div className="mobile-container py-3 md:py-6">
-        <div className="flex flex-col gap-3 md:gap-4">
-          {/* Header principal */}
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2 md:gap-3 min-w-0 flex-1">
-              {/* Botón de volver */}
-              <Link to="/">
-                <Button
-                  variant="outline"
-                  size={isMobile ? "sm" : "default"}
-                  className="flex items-center gap-1 md:gap-2 shrink-0"
-                >
-                  <ArrowLeft className="h-4 w-4" />
-                  {!isMobile && <span>Menú</span>}
-                </Button>
-              </Link>
+    <div className="rounded-2xl overflow-hidden shadow-lg border border-border/40">
+      {/* ===== TOP BAR: gradiente morado ===== */}
+      <div className="bg-gradient-to-r from-[hsl(258,70%,28%)] via-[hsl(262,65%,32%)] to-[hsl(268,60%,38%)] text-white px-3 md:px-6 py-3 md:py-4">
+        <div className="flex items-center justify-between gap-2 md:gap-4">
+          {/* Izquierda: back + logo + título + chip fecha hoy */}
+          <div className="flex items-center gap-2 md:gap-3 min-w-0 flex-1">
+            <Link to="/" className="shrink-0">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="text-white hover:bg-white/15 hover:text-white h-9 w-9 md:h-10 md:w-10 rounded-xl"
+                aria-label="Volver al menú"
+              >
+                <ArrowLeft className="h-5 w-5" />
+              </Button>
+            </Link>
 
-              {/* Título */}
-              <div className="flex items-center gap-2 min-w-0">
-                <Calendar className="h-5 w-5 md:h-6 md:w-6 text-primary shrink-0" />
-                <h1 className="text-lg md:text-2xl font-bold text-foreground truncate">
-                  {isMobile ? "Calendario" : "Calendario de Limpieza"}
-                </h1>
-              </div>
+            {/* Logo box */}
+            <div className="hidden sm:flex items-center justify-center w-9 h-9 md:w-10 md:h-10 rounded-xl bg-white/15 backdrop-blur-sm font-bold text-sm md:text-base shrink-0">
+              LX
             </div>
 
-            {/* Controles de la derecha */}
-            <div className="flex items-center gap-1 md:gap-2 shrink-0">
-              <Button
-                onClick={() => {
-                  console.log('🔴 ResponsiveCalendarHeader - Nueva Tarea button clicked!');
-                  onNewTask();
-                }}
-                size={isMobile ? "sm" : "default"}
-                className="gap-1 md:gap-2"
-              >
-                <Plus className="h-4 w-4" />
-                {!isMobile && <span>Nueva Tarea</span>}
-              </Button>
-              {onNewBatchTask && (
-                <Button
-                  onClick={() => {
-                    console.log('🔴 ResponsiveCalendarHeader - Tareas Múltiples button clicked!');
-                    onNewBatchTask();
-                  }}
-                  size={isMobile ? "sm" : "default"}
-                  variant="outline"
-                  className="gap-1 md:gap-2"
-                >
-                  <Users className="h-4 w-4" />
-                  {!isMobile && <span>Múltiples</span>}
-                </Button>
-              )}
-              {onNewExtraordinaryService && (
-                <Button
-                  onClick={() => {
-                    console.log('🔴 ResponsiveCalendarHeader - Servicio Extraordinario button clicked!');
-                    onNewExtraordinaryService();
-                  }}
-                  size={isMobile ? "sm" : "default"}
-                  variant="secondary"
-                  className="gap-1 md:gap-2"
-                >
-                  <Plus className="h-4 w-4" />
-                  {!isMobile && <span>Servicio Extra</span>}
-                </Button>
-              )}
+            {/* Chip "Hoy día N" */}
+            <div className="hidden md:flex items-center gap-2 px-2.5 py-1.5 rounded-xl bg-white/15 backdrop-blur-sm shrink-0">
+              <CalendarDays className="h-4 w-4" />
+              <span className="text-sm font-semibold">{todayDayNumber}</span>
+            </div>
+
+            {/* Título */}
+            <div className="min-w-0">
+              <h1 className="text-base md:text-xl font-bold truncate leading-tight">
+                {isMobile ? "Calendario" : "Calendario de Limpieza"}
+              </h1>
+              <p className="text-[11px] md:text-xs text-white/70 capitalize truncate">
+                {formatDate()}
+              </p>
             </div>
           </div>
 
-          {/* Fecha actual */}
-          <div className="text-center">
-            <h2 className="text-sm md:text-lg font-semibold text-muted-foreground capitalize">
+          {/* Derecha: acciones */}
+          <div className="flex items-center gap-1.5 md:gap-2 shrink-0">
+            {onNewBatchTask && (
+              <Button
+                onClick={onNewBatchTask}
+                size={isMobile ? "sm" : "default"}
+                className="gap-1.5 bg-white/15 hover:bg-white/25 text-white border-0 backdrop-blur-sm rounded-xl"
+              >
+                <Users className="h-4 w-4" />
+                {!isMobile && <span>Múltiples</span>}
+              </Button>
+            )}
+            <Button
+              onClick={onNewTask}
+              size={isMobile ? "sm" : "default"}
+              className="gap-1.5 bg-white/15 hover:bg-white/25 text-white border-0 backdrop-blur-sm rounded-xl"
+            >
+              <Plus className="h-4 w-4" />
+              {!isMobile && <span>Nueva Tarea</span>}
+            </Button>
+            {onNewExtraordinaryService && (
+              <Button
+                onClick={onNewExtraordinaryService}
+                size={isMobile ? "sm" : "default"}
+                className="gap-1.5 bg-emerald-500 hover:bg-emerald-600 text-white border-0 rounded-xl shadow-md"
+              >
+                <Sparkles className="h-4 w-4" />
+                {!isMobile && <span>Servicio Extra</span>}
+              </Button>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* ===== SUBHEADER: navegación + selector vista ===== */}
+      <div className="bg-card border-t border-border/40 px-3 md:px-6 py-2.5 md:py-3">
+        <div className="flex items-center justify-between gap-2 md:gap-4">
+          {/* Navegación centrada */}
+          <div className="flex items-center gap-1 md:gap-2 flex-1 justify-center md:justify-start">
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => onNavigateDate('prev')}
+              className="h-9 w-9 rounded-lg"
+              aria-label="Anterior"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onGoToToday}
+              className="px-4 h-9 rounded-lg font-medium"
+            >
+              Hoy
+            </Button>
+
+            <span className="hidden md:inline text-sm font-semibold text-foreground capitalize px-3">
               {formatDate()}
-            </h2>
+            </span>
+
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => onNavigateDate('next')}
+              className="h-9 w-9 rounded-lg"
+              aria-label="Siguiente"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
           </div>
 
-          {/* Navegación y controles */}
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            {/* Navegación de fecha */}
-            <div className="flex items-center justify-center gap-1 md:gap-2">
-              <Button
-                variant="outline"
-                size={isMobile ? "sm" : "default"}
-                onClick={() => onNavigateDate('prev')}
-                className="touch-button"
+          {/* Selector de vista (segmented control) */}
+          <div className="flex items-center bg-muted rounded-lg p-1 shrink-0">
+            {(['day', 'three-day', 'week'] as const).map((view) => (
+              <button
+                key={view}
+                onClick={() => onViewChange(view)}
+                className={cn(
+                  "px-2.5 md:px-4 py-1.5 text-xs md:text-sm font-medium rounded-md transition-all",
+                  currentView === view
+                    ? "bg-background text-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
               >
-                <ChevronLeft className="h-4 w-4" />
-                <span className="sr-only">Anterior</span>
-              </Button>
-
-              <Button
-                variant="outline"
-                size={isMobile ? "sm" : "default"}
-                onClick={onGoToToday}
-                className="px-3 md:px-4 touch-button"
-              >
-                Hoy
-              </Button>
-
-              <Button
-                variant="outline"
-                size={isMobile ? "sm" : "default"}
-                onClick={() => onNavigateDate('next')}
-                className="touch-button"
-              >
-                <ChevronRight className="h-4 w-4" />
-                <span className="sr-only">Siguiente</span>
-              </Button>
-            </div>
-
-            {/* Selectores de vista */}
-            <div className="flex items-center justify-center gap-1">
-              {(['day', 'three-day', 'week'] as const).map((view) => (
-                <Button
-                  key={view}
-                  variant={currentView === view ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => onViewChange(view)}
-                  className={cn(
-                    "text-xs px-2 md:px-3 py-2 transition-all duration-200 touch-button flex-1 sm:flex-initial",
-                    currentView === view && "transform scale-105"
-                  )}
-                >
-                  {view === 'day' ? 'Día' : view === 'three-day' ? (isMobile ? '3D' : '3 Días') : 'Semana'}
-                </Button>
-              ))}
-            </div>
+                {view === 'day' ? 'Día' : view === 'three-day' ? (isMobile ? '3D' : '3 Días') : 'Semana'}
+              </button>
+            ))}
           </div>
         </div>
       </div>
