@@ -33,10 +33,26 @@ export const MonthlyView = ({ currentDate, reservations, properties, colorMap }:
     return result;
   }, [calendarDays]);
 
+  const reservationsByProperty = useMemo(() => {
+    const map = new Map<string, ClientReservation[]>();
+
+    reservations.forEach((reservation) => {
+      const existing = map.get(reservation.propertyId) ?? [];
+      existing.push(reservation);
+      map.set(reservation.propertyId, existing);
+    });
+
+    return map;
+  }, [reservations]);
+
+  const propertiesById = useMemo(() => {
+    return new Map(properties.map((property) => [property.id, property]));
+  }, [properties]);
+
   // For each property, for each day, determine: isStay, isCheckIn, isCheckOut
   const getDayStatus = (day: Date, propertyId: string) => {
     const cur = new Date(day); cur.setHours(0, 0, 0, 0);
-    const propReservations = reservations.filter(r => r.propertyId === propertyId);
+    const propReservations = reservationsByProperty.get(propertyId) ?? [];
 
     const stayReservations = propReservations.filter(r => {
       const ci = new Date(r.checkInDate); ci.setHours(0, 0, 0, 0);
@@ -88,7 +104,7 @@ export const MonthlyView = ({ currentDate, reservations, properties, colorMap }:
                 <div
                   key={day.toISOString()}
                   className={cn(
-                    "border-l border-border/30 first:border-l-0 min-h-[56px] sm:min-h-[80px] p-0.5 sm:p-1 flex flex-col",
+                    "border-l border-border/30 first:border-l-0 min-h-[72px] sm:min-h-[108px] p-1 sm:p-1.5 flex flex-col",
                     !inMonth && "opacity-30",
                     isToday(day) && "bg-primary/5"
                   )}
@@ -106,27 +122,31 @@ export const MonthlyView = ({ currentDate, reservations, properties, colorMap }:
                   </div>
 
                   {/* Reservation bars - same style as timeline */}
-                  <div className="flex-1 flex flex-col gap-[2px]">
+                  <div className="flex-1 flex flex-col gap-1 sm:gap-1.5">
                     {activeProperties.slice(0, MAX_VISIBLE).map(({ propId, status }) => {
                       const color = colorMap.get(propId);
                       if (!color) return null;
-                      const prop = properties.find(p => p.id === propId);
+                      const prop = propertiesById.get(propId);
                       const { isStayDay, isCheckIn, isCheckOut } = status;
 
                       return (
-                        <div key={propId} className="relative h-[7px] sm:h-[10px]">
+                        <div key={propId} className="relative h-5 sm:h-6">
                           {/* CHECKOUT half-bar: left half */}
                           {isCheckOut && (
                             <TooltipProvider><Tooltip><TooltipTrigger asChild>
-                              <div className="absolute inset-y-0 left-0 cursor-default" style={{
+                              <div className="absolute inset-y-0 left-0 flex items-center justify-end cursor-default" style={{
                                 width: '50%',
                                 backgroundColor: color.bg,
-                                borderTop: `1.5px solid ${color.border}`,
-                                borderBottom: `1.5px solid ${color.border}`,
-                                borderRight: `2px solid ${color.text}`,
-                                borderTopRightRadius: '6px',
-                                borderBottomRightRadius: '6px',
-                              }} />
+                                borderTop: `2px solid ${color.border}`,
+                                borderBottom: `2px solid ${color.border}`,
+                                borderRight: `3px solid ${color.text}`,
+                                borderTopRightRadius: '8px',
+                                borderBottomRightRadius: '8px',
+                              }}>
+                                <div className="mr-0.5 sm:mr-1 flex h-4 w-4 sm:h-5 sm:w-5 items-center justify-center rounded-full bg-rose-500 text-white shadow-sm">
+                                  <ArrowLeftFromLine className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
+                                </div>
+                              </div>
                             </TooltipTrigger><TooltipContent className="bg-rose-50 border-rose-200">
                               <p className="font-semibold text-rose-700 flex items-center gap-1.5 text-xs">
                                 <ArrowLeftFromLine className="h-3 w-3" />Salida — {prop?.codigo} — {format(day, 'd MMM', { locale: es })}
@@ -137,17 +157,23 @@ export const MonthlyView = ({ currentDate, reservations, properties, colorMap }:
                           {/* STAY bar */}
                           {isStayDay && (
                             <TooltipProvider><Tooltip><TooltipTrigger asChild>
-                              <div className="absolute inset-y-0 cursor-default" style={{
+                              <div className="absolute inset-y-0 flex items-center cursor-default" style={{
                                 left: isCheckOut ? '50%' : '0',
                                 right: '0',
                                 backgroundColor: color.bg,
-                                borderTop: `1.5px solid ${color.border}`,
-                                borderBottom: `1.5px solid ${color.border}`,
-                                borderLeft: isCheckIn ? `2px solid ${color.text}` : 'none',
-                                borderTopLeftRadius: isCheckIn ? '6px' : '0',
-                                borderBottomLeftRadius: isCheckIn ? '6px' : '0',
-                                marginLeft: isCheckIn && !isCheckOut ? '1px' : '0',
-                              }} />
+                                borderTop: `2px solid ${color.border}`,
+                                borderBottom: `2px solid ${color.border}`,
+                                borderLeft: isCheckIn ? `3px solid ${color.text}` : 'none',
+                                borderTopLeftRadius: isCheckIn ? '8px' : '0',
+                                borderBottomLeftRadius: isCheckIn ? '8px' : '0',
+                                marginLeft: isCheckIn && !isCheckOut ? '2px' : '0',
+                              }}>
+                                {isCheckIn && (
+                                  <div className="ml-0.5 sm:ml-1 flex h-4 w-4 sm:h-5 sm:w-5 items-center justify-center rounded-full bg-emerald-500 text-white shadow-sm">
+                                    <ArrowRightToLine className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
+                                  </div>
+                                )}
+                              </div>
                             </TooltipTrigger><TooltipContent>
                               <div className="text-xs">
                                 <p className="font-medium">{prop?.codigo} — {prop?.nombre}</p>
@@ -164,7 +190,7 @@ export const MonthlyView = ({ currentDate, reservations, properties, colorMap }:
                       );
                     })}
                     {activeProperties.length > MAX_VISIBLE && (
-                      <span className="text-[8px] sm:text-[10px] text-muted-foreground text-center leading-none">
+                      <span className="text-[9px] sm:text-[10px] font-medium text-muted-foreground text-center leading-none">
                         +{activeProperties.length - MAX_VISIBLE}
                       </span>
                     )}
