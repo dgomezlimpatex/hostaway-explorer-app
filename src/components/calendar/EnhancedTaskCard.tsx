@@ -112,10 +112,10 @@ export const EnhancedTaskCard = React.memo(({
               isDragging && "opacity-50 rotate-1 scale-95 shadow-2xl z-50"
             )}
           >
-            {/* Icono de estado destacado (esquina superior izquierda) */}
+            {/* Icono de estado destacado (esquina superior derecha) */}
             <div
               className={cn(
-                "absolute -top-1 -left-1 z-20 flex items-center justify-center w-5 h-5 rounded-full shadow-md ring-2 ring-white",
+                "absolute top-1 right-1 z-20 flex items-center justify-center w-5 h-5 rounded-full shadow-md ring-2 ring-white",
                 statusConfig.bg,
                 isPending && "animate-pulse"
               )}
@@ -125,7 +125,7 @@ export const EnhancedTaskCard = React.memo(({
             </div>
 
             {/* Header con horas */}
-            <div className="flex items-center gap-1 mb-0.5 opacity-80 pl-4">
+            <div className="flex items-center gap-1 mb-0.5 opacity-80 pr-6">
               <Clock className="w-3 h-3 flex-shrink-0" />
               <span className="text-[10px] font-medium whitespace-nowrap tabular-nums">
                 {formatTime(task.startTime)} – {formatTime(task.endTime)}
