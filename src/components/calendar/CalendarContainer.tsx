@@ -237,7 +237,7 @@ export const CalendarContainer = ({
       )}
 
       {/* Main Layout with Unassigned Tasks on Left and Calendar on Right */}
-      <div className="flex gap-2 h-[600px] w-full">
+      <div className="flex gap-2 w-full">
         {/* Unassigned Tasks Column - Only show when there are unassigned tasks */}
         {unassignedTasks.length > 0 && (
           <div className="w-64 flex-shrink-0">
