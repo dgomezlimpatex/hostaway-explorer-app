@@ -146,49 +146,38 @@ export const WorkersColumn = ({ cleaners, onDragOver, onDrop, absenceStatus, isD
                 )}
               </div>
               <div className="min-w-0 flex-1 overflow-hidden">
-                <div className="font-medium text-gray-900 text-sm flex items-center gap-1 min-w-0">
+                <div className="font-medium text-gray-900 text-[12px] flex items-center gap-1 min-w-0 leading-tight">
                   {isPreferred && <Star className="h-3 w-3 text-yellow-500 flex-shrink-0 fill-yellow-500" />}
                   <span className="truncate">{cleaner.name}</span>
                 </div>
-                <div className="flex items-center gap-1">
-                  {isAbsent ? (
-                    <span 
-                      className="text-xs font-medium px-1.5 py-0.5 rounded"
-                      style={{ 
-                        backgroundColor: `${status?.absenceColor || '#6B7280'}20`,
-                        color: status?.absenceColor || '#6B7280'
-                      }}
-                    >
-                      {getAbsenceLabel(status)}
-                    </span>
-                  ) : (
-                    <>
-                      <div className={`w-2 h-2 rounded-full ${cleaner.isActive ? 'bg-green-400' : 'bg-gray-400'}`} />
-                      <span className="text-xs text-gray-500">
-                        {cleaner.isActive ? 'Activo' : 'Inactivo'}
-                      </span>
-                    </>
-                  )}
-                </div>
-                {/* Workload mini progress bar */}
-                {workload && (
+                {isAbsent ? (
+                  <span 
+                    className="inline-block text-[10px] font-medium px-1.5 py-0.5 rounded mt-0.5"
+                    style={{ 
+                      backgroundColor: `${status?.absenceColor || '#6B7280'}20`,
+                      color: status?.absenceColor || '#6B7280'
+                    }}
+                  >
+                    {getAbsenceLabel(status)}
+                  </span>
+                ) : workload ? (
                   <TooltipProvider>
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <div className="flex items-center gap-1.5 mt-1">
+                        <div className="flex items-center gap-1.5 mt-0.5">
                           {workload.contractHoursPerWeek > 0 ? (
                             <>
                               <Progress 
                                 value={Math.min(workload.percentageComplete, 100)} 
-                                className="h-1.5 flex-1 bg-gray-200"
+                                className="h-1 flex-1 bg-gray-200"
                                 indicatorClassName={getProgressBarColor(workload.status)}
                               />
-                              <span className="text-[10px] text-gray-500 whitespace-nowrap font-medium">
+                              <span className="text-[9px] text-gray-500 whitespace-nowrap font-medium">
                                 {workload.totalWorked.toFixed(1)}/{workload.contractHoursPerWeek}h
                               </span>
                             </>
                           ) : (
-                            <span className="text-[10px] text-gray-400">
+                            <span className="text-[9px] text-gray-400">
                               {workload.totalWorked.toFixed(1)}h (sin contrato)
                             </span>
                           )}
