@@ -226,6 +226,88 @@ const CleanerRow = memo(({
     });
   }, [cleanerTasks, cleaner.id, dragState.draggedTask?.id, onTaskClick, onDragStart, onDragEnd]);
 
+   // Maintenance & hourly absence continuous overlay blocks (one per period, not per slot)
+   const absenceBlocks = useMemo(() => {
+     const blocks: Array<{
+       key: string;
+       startTime: string;
+       endTime: string;
+       color: string;
+       label: string;
+       icon: string;
+       type: 'maintenance' | 'absence';
+     }> = [];
+
+     (absenceStatus?.maintenanceCleanings || []).forEach((m, i) => {
+       blocks.push({
+         key: `maint-${i}-${m.startTime}`,
+         startTime: m.startTime,
+         endTime: m.endTime,
+         color: MAINTENANCE_COLOR,
+         label: m.locationName || 'Mantenimiento',
+         icon: '🧹',
+         type: 'maintenance',
+       });
+     });
+
+     (absenceStatus?.hourlyAbsences || []).forEach((a, i) => {
+       const color = ABSENCE_TYPE_COLORS[a.type as keyof typeof ABSENCE_TYPE_COLORS] || '#8B5CF6';
+       blocks.push({
+         key: `abs-${i}-${a.startTime}`,
+         startTime: a.startTime,
+         endTime: a.endTime,
+         color,
+         label: a.type,
+         icon: '⏰',
+         type: 'absence',
+       });
+     });
+
+     const slotWidth = 50;
+     const minutesPerSlot = 30;
+     const dayStartMinutes = 6 * 60;
+
+     return blocks.map(b => {
+       const [sh, sm] = b.startTime.split(':').map(Number);
+       const [eh, em] = b.endTime.split(':').map(Number);
+       const startMin = sh * 60 + sm;
+       const endMin = eh * 60 + em;
+       const left = ((startMin - dayStartMinutes) / minutesPerSlot) * slotWidth;
+       const width = ((endMin - startMin) / minutesPerSlot) * slotWidth;
+
+       return (
+         <div
+           key={b.key}
+           className="absolute top-1 bottom-1 z-[5] rounded-md overflow-hidden flex items-center px-2 shadow-sm pointer-events-none"
+           style={{
+             left: `${left}px`,
+             width: `${Math.max(width, 40)}px`,
+             backgroundColor: `${b.color}25`,
+             borderLeft: `3px solid ${b.color}`,
+           }}
+           title={`${b.label}: ${b.startTime.slice(0,5)} - ${b.endTime.slice(0,5)}`}
+         >
+           {/* Diagonal pattern overlay */}
+           <div
+             className="absolute inset-0 opacity-40"
+             style={{
+               backgroundImage: `repeating-linear-gradient(45deg, transparent, transparent 6px, ${b.color}30 6px, ${b.color}30 12px)`,
+             }}
+           />
+           <div className="relative flex items-center gap-1.5 min-w-0">
+             <span className="text-xs flex-shrink-0">{b.icon}</span>
+             <span
+               className="text-[10px] font-semibold truncate"
+               style={{ color: b.color }}
+             >
+               {b.label}
+             </span>
+           </div>
+         </div>
+       );
+     });
+   }, [absenceStatus?.maintenanceCleanings, absenceStatus?.hourlyAbsences]);
+
    const isAbsent = absenceStatus?.isAbsent;
    const absenceColor = absenceStatus?.absenceColor || '#6B7280';
 
@@ -245,6 +327,7 @@ const CleanerRow = memo(({
        } : undefined}
      >
        {timeSlotElements}
+       {absenceBlocks}
        {taskElements}
      </div>
    );

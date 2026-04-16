@@ -87,35 +87,14 @@ export const TimeSlot = memo(({
         // Occupied slots
         showAsOccupied && !hourlyAbsence && "bg-gray-100"
       )}
-      style={hourlyAbsence ? {
-        backgroundColor: `${hourlyAbsence.color}20`,
-        borderColor: `${hourlyAbsence.color}40`
-      } : undefined}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
       data-time={timeString}
       data-cleaner-id={cleanerId}
-      title={hourlyAbsence 
-        ? hourlyAbsence.type === 'maintenance' && hourlyAbsence.locationName
-          ? `${hourlyAbsence.locationName}: ${hourlyAbsence.startTime} - ${hourlyAbsence.endTime}`
-          : `Ausencia: ${hourlyAbsence.startTime} - ${hourlyAbsence.endTime}` 
-        : !isAvailable 
-          ? "Trabajador no disponible en este horario" 
-          : undefined}
     >
       {children}
-      
-      {/* Hourly absence indicator */}
-      {hourlyAbsence && (
-        <div 
-          className="absolute inset-0 flex items-center justify-center opacity-40"
-          style={{ backgroundColor: hourlyAbsence.color }}
-        >
-          <div className="w-full h-[2px] bg-white/60 transform -rotate-12"></div>
-        </div>
-      )}
-      
+
       {/* Drop indicator - show when dragging over available slot */}
       {allowDrop && !hourlyAbsence && (
         <div className="absolute inset-0 border-2 border-dashed border-blue-400 bg-blue-50 opacity-0 transition-opacity duration-200 pointer-events-none drop-indicator" />
