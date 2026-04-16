@@ -312,15 +312,17 @@ export const QuickAddReservations = ({
           ))}
         </div>
 
-        {/* Add row button */}
-        <Button
-          variant="outline"
-          className="w-full"
-          onClick={() => setRows(prev => [...prev, createEmptyRow()])}
-        >
-          <Plus className="h-4 w-4 mr-2" />
-          Añadir otra reserva
-        </Button>
+        {/* Add row button - only show when all current rows are complete */}
+        {rows.every(row => row.propertyId && row.checkInDate && row.checkOutDate) && (
+          <Button
+            variant="outline"
+            className="w-full"
+            onClick={() => setRows(prev => [...prev, createEmptyRow()])}
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            Añadir otra reserva
+          </Button>
+        )}
 
         {/* Submit */}
         {validRows.length > 0 && (
