@@ -339,7 +339,7 @@ export const CalendarGrid = memo(forwardRef<HTMLDivElement, CalendarGridProps>(
          <div 
            ref={ref}
            className="relative z-10"
-           style={{ minWidth: '1200px' }}
+           style={{ minWidth: '1000px' }}
          >
            {cleanerRows}
          </div>
