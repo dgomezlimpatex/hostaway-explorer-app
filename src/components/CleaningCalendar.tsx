@@ -378,10 +378,12 @@ const CleaningCalendar = () => {
         />
 
         {/* Footer-resumen con totales y leyenda de clientes */}
-        <CalendarFooterSummary
-          tasks={tasks.filter(t => t.date === currentDate.toISOString().split('T')[0])}
-          cleaners={cleaners}
-        />
+        <div className="mt-4">
+          <CalendarFooterSummary
+            tasks={tasks.filter(t => t.date === currentDate.toISOString().split('T')[0])}
+            cleaners={cleaners}
+          />
+        </div>
       </div>
     </div>
   );
