@@ -62,7 +62,7 @@ export const WorkersColumn = ({ cleaners, onDragOver, onDrop, absenceStatus, isD
   };
 
   return (
-    <div className="w-64 bg-gray-50 border-r border-gray-200 flex-shrink-0 overflow-hidden">
+    <div className="w-52 bg-gray-50 border-r border-gray-200 flex-shrink-0 overflow-hidden">
       {cleaners.map((cleaner, index) => {
         const status = absenceStatus?.[cleaner.id];
         const isAbsent = status?.isAbsent;
@@ -76,14 +76,14 @@ export const WorkersColumn = ({ cleaners, onDragOver, onDrop, absenceStatus, isD
           <div 
             key={cleaner.id} 
             className={cn(
-              "h-24 border-b-2 border-gray-300 p-3 flex items-center transition-all duration-200 cursor-pointer relative",
+              "h-16 border-b border-gray-200 px-2 py-1.5 flex items-center transition-all duration-200 cursor-pointer relative",
               !isAbsent && !isPreferred && !isDimmed && (index % 2 === 0 ? "bg-white hover:bg-gray-100" : "bg-gray-50 hover:bg-gray-100"),
               isPreferred && "bg-yellow-50 ring-2 ring-yellow-400 ring-inset shadow-inner",
               isDimmed && "opacity-40"
             )}
             style={isAbsent ? { 
               backgroundColor: getAbsenceBgColor(status?.absenceColor || '#6B7280'),
-              borderLeftWidth: '5px',
+              borderLeftWidth: '4px',
               borderLeftColor: status?.absenceColor || '#6B7280',
               borderLeftStyle: 'solid'
             } : undefined}
@@ -91,16 +91,16 @@ export const WorkersColumn = ({ cleaners, onDragOver, onDrop, absenceStatus, isD
             onDragLeave={handleDragLeave}
             onDrop={(e) => handleDrop(e, cleaner.id)}
           >
-            {/* Línea de color personal de la trabajadora (estilo maqueta) */}
+            {/* Línea de color personal de la trabajadora */}
             <span
-              className="absolute left-0 top-2 bottom-2 w-1 rounded-r-full"
+              className="absolute left-0 top-1.5 bottom-1.5 w-0.5 rounded-r-full"
               style={{ backgroundColor: isAbsent ? (status?.absenceColor || '#6B7280') : `hsl(${(cleaner.name.charCodeAt(0) * 37) % 360}, 65%, 55%)` }}
               aria-hidden
             />
-            <div className="flex items-center gap-3 flex-1 min-w-0 overflow-hidden pl-1">
-              <div className="relative">
+            <div className="flex items-center gap-2 flex-1 min-w-0 overflow-hidden pl-1">
+              <div className="relative flex-shrink-0">
                 <div
-                  className="w-10 h-10 rounded-full flex items-center justify-center text-white font-semibold text-sm shadow-sm ring-2 ring-white"
+                  className="w-8 h-8 rounded-full flex items-center justify-center text-white font-semibold text-[11px] shadow-sm ring-2 ring-white"
                   style={{ backgroundColor: `hsl(${(cleaner.name.charCodeAt(0) * 37) % 360}, 60%, 50%)` }}
                 >
                   {cleaner.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
