@@ -376,6 +376,12 @@ const CleaningCalendar = () => {
           handleUnassignTask={handleUnassignTask}
           onNavigateDate={navigateDate}
         />
+
+        {/* Footer-resumen con totales y leyenda de clientes */}
+        <CalendarFooterSummary
+          tasks={tasks.filter(t => t.date === currentDate.toISOString().split('T')[0])}
+          cleaners={cleaners}
+        />
       </div>
     </div>
   );
