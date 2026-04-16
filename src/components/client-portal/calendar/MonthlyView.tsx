@@ -134,8 +134,9 @@ export const MonthlyView = ({ currentDate, reservations, properties, colorMap }:
                           {/* CHECKOUT half-bar: left half */}
                           {isCheckOut && (
                             <TooltipProvider><Tooltip><TooltipTrigger asChild>
-                              <div className="absolute inset-y-0 left-0 flex items-center justify-end cursor-default" style={{
-                                width: '50%',
+                              <div className="absolute inset-y-0 flex items-center justify-end cursor-default" style={{
+                                left: '-1px',
+                                width: 'calc(50% + 1px)',
                                 backgroundColor: color.bg,
                                 borderTop: `2px solid ${color.border}`,
                                 borderBottom: `2px solid ${color.border}`,
@@ -167,7 +168,7 @@ export const MonthlyView = ({ currentDate, reservations, properties, colorMap }:
                                 borderTopLeftRadius: isCheckIn ? '8px' : '0',
                                 borderBottomLeftRadius: isCheckIn ? '8px' : '0',
                                 marginLeft: isCheckIn && !isCheckOut ? '2px' : '0',
-                                marginRight: '-1px',
+                                marginRight: '-2px',
                               }}>
                                 {isCheckIn && (
                                   <div className="ml-0.5 sm:ml-1 flex h-4 w-4 sm:h-5 sm:w-5 items-center justify-center rounded-full bg-emerald-500 text-white shadow-sm">
