@@ -91,10 +91,19 @@ export const WorkersColumn = ({ cleaners, onDragOver, onDrop, absenceStatus, isD
             onDragLeave={handleDragLeave}
             onDrop={(e) => handleDrop(e, cleaner.id)}
           >
-            <div className="flex items-center gap-3 flex-1 min-w-0 overflow-hidden">
+            {/* Línea de color personal de la trabajadora (estilo maqueta) */}
+            <span
+              className="absolute left-0 top-2 bottom-2 w-1 rounded-r-full"
+              style={{ backgroundColor: isAbsent ? (status?.absenceColor || '#6B7280') : `hsl(${(cleaner.name.charCodeAt(0) * 37) % 360}, 65%, 55%)` }}
+              aria-hidden
+            />
+            <div className="flex items-center gap-3 flex-1 min-w-0 overflow-hidden pl-1">
               <div className="relative">
-                <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center text-white font-medium">
-                  {cleaner.name.split(' ').map(n => n[0]).join('').toUpperCase()}
+                <div
+                  className="w-10 h-10 rounded-full flex items-center justify-center text-white font-semibold text-sm shadow-sm ring-2 ring-white"
+                  style={{ backgroundColor: `hsl(${(cleaner.name.charCodeAt(0) * 37) % 360}, 60%, 50%)` }}
+                >
+                  {cleaner.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
                 </div>
                 {(isAbsent || hasMaintenance || hasHourlyAbsence) && (
                   <TooltipProvider>
