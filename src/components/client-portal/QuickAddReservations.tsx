@@ -216,8 +216,8 @@ export const QuickAddReservations = ({
                 </Select>
               </div>
 
-              {/* Dates row */}
-              <div className="grid grid-cols-2 gap-3">
+              {/* Dates stacked */}
+              <div className="space-y-3">
                 {/* Check-in */}
                 <div>
                   <label className="text-xs font-medium text-muted-foreground mb-1.5 block">
@@ -234,9 +234,9 @@ export const QuickAddReservations = ({
                       >
                         <CalendarIcon className="mr-2 h-4 w-4 shrink-0" />
                         {row.checkInDate ? (
-                          format(row.checkInDate, 'dd MMM', { locale: es })
+                          format(row.checkInDate, 'dd MMM yyyy', { locale: es })
                         ) : (
-                          <span>Fecha</span>
+                          <span>Selecciona fecha de entrada</span>
                         )}
                       </Button>
                     </PopoverTrigger>
@@ -277,9 +277,9 @@ export const QuickAddReservations = ({
                       >
                         <CalendarIcon className="mr-2 h-4 w-4 shrink-0" />
                         {row.checkOutDate ? (
-                          format(row.checkOutDate, 'dd MMM', { locale: es })
+                          format(row.checkOutDate, 'dd MMM yyyy', { locale: es })
                         ) : (
-                          <span>Fecha</span>
+                          <span>Selecciona fecha de salida</span>
                         )}
                       </Button>
                     </PopoverTrigger>
