@@ -726,17 +726,18 @@ export const useUpdateReservation = () => {
       
       if (updateError) throw updateError;
       
-      // Always sync the task with the current reservation data
-      if (current.task_id) {
-        const newCheckOutDate = updates.checkOutDate ?? current.check_out_date;
-        const checkoutTime = property?.check_out_predeterminado || '11:00';
-        const [hours, minutes] = checkoutTime.split(':').map(Number);
-        const duration = property?.duracion_servicio || 120;
-        const totalMinutes = hours * 60 + minutes + duration;
-        const endHours = Math.floor(totalMinutes / 60);
-        const endMinutes = totalMinutes % 60;
-        const endTime = `${String(endHours).padStart(2, '0')}:${String(endMinutes).padStart(2, '0')}`;
+      // Sync the task with the current reservation data
+      const newCheckOutDate = updates.checkOutDate ?? current.check_out_date;
+      const checkoutTime = property?.check_out_predeterminado || '11:00';
+      const [hours, minutes] = checkoutTime.split(':').map(Number);
+      const duration = property?.duracion_servicio || 120;
+      const totalMinutes = hours * 60 + minutes + duration;
+      const endHours = Math.floor(totalMinutes / 60);
+      const endMinutes = totalMinutes % 60;
+      const endTime = `${String(endHours).padStart(2, '0')}:${String(endMinutes).padStart(2, '0')}`;
 
+      if (current.task_id) {
+        // Update existing task
         const taskUpdates: Record<string, any> = {
           date: newCheckOutDate,
           notes: updates.specialRequests ?? current.special_requests,
@@ -767,6 +768,35 @@ export const useUpdateReservation = () => {
         if (!updatedTasks || updatedTasks.length === 0) {
           throw new Error('No se pudo actualizar la tarea vinculada en el calendario.');
         }
+      } else {
+        // Task was deleted externally — recreate it
+        const newTaskId = crypto.randomUUID();
+        const { error: taskCreateError } = await supabase
+          .from('tasks')
+          .insert([{
+            id: newTaskId,
+            property: property.nombre,
+            address: property.direccion,
+            date: newCheckOutDate,
+            start_time: checkoutTime,
+            end_time: endTime,
+            type: 'limpieza-turistica',
+            status: 'pending',
+            notes: updates.specialRequests ?? current.special_requests ?? null,
+            propiedad_id: property.id,
+            cliente_id: property.cliente_id,
+            sede_id: property.sede_id,
+            check_in: checkoutTime,
+            check_out: checkoutTime,
+          }]);
+        
+        if (taskCreateError) throw taskCreateError;
+        
+        // Link the new task to the reservation
+        await supabase
+          .from('client_reservations')
+          .update({ task_id: newTaskId })
+          .eq('id', reservationId);
       }
       
       // Log the action

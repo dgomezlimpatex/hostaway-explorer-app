@@ -154,7 +154,9 @@ export const ReservationsList = ({
               const checkInDate = new Date(reservation.checkInDate);
               const checkOutDate = new Date(reservation.checkOutDate);
               const isUpcoming = isFuture(checkInDate) || isToday(checkInDate);
+              const isStillActive = !isPast(checkOutDate);
               const isPastReservation = isPast(checkOutDate);
+              const hasOrphanedTask = !reservation.taskId && reservation.status === 'active' && isStillActive;
               const daysUntil = getDaysUntil(checkInDate);
               const nights = getNightsCount(checkInDate, checkOutDate);
               
@@ -164,7 +166,9 @@ export const ReservationsList = ({
                   className={`group relative transition-all duration-200 ${
                     isPastReservation 
                       ? 'bg-muted/30' 
-                      : 'hover:bg-accent/50'
+                      : hasOrphanedTask
+                        ? 'bg-amber-50 dark:bg-amber-950/20'
+                        : 'hover:bg-accent/50'
                   }`}
                 >
                   {/* Left accent bar */}
@@ -263,7 +267,7 @@ export const ReservationsList = ({
                     </div>
                     
                     {/* Actions */}
-                    {isUpcoming && (
+                    {isStillActive && reservation.status === 'active' && (
                       <div className="flex items-center gap-1 shrink-0">
                         <Button
                           variant="ghost"
