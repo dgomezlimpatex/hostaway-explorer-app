@@ -53,6 +53,17 @@ export const EnhancedTaskCard = React.memo(({
   const isCompleted = task.status === 'completed';
   const isInProgress = task.status === 'in-progress';
   const isCancelled = (task.status as string) === 'cancelled';
+  const isPending = task.status === 'pending';
+
+  // Configuración del icono de estado
+  const statusConfig = isCompleted
+    ? { Icon: Check, bg: 'bg-emerald-500', label: 'Completada' }
+    : isInProgress
+    ? { Icon: Play, bg: 'bg-blue-500', label: 'En progreso' }
+    : isCancelled
+    ? { Icon: X, bg: 'bg-gray-500', label: 'Cancelada' }
+    : { Icon: Hourglass, bg: 'bg-orange-500', label: 'Pendiente' };
+  const StatusIcon = statusConfig.Icon;
 
   const formatTime = (time: string) => {
     if (time.includes(':')) {
