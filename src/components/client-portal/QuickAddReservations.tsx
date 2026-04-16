@@ -169,16 +169,21 @@ export const QuickAddReservations = ({
           <div
             key={row.id}
             className={cn(
-              "rounded-xl border bg-card transition-all",
-              isRowComplete(row) && "border-primary/30 bg-primary/[0.02]"
+              "rounded-xl border-2 bg-card transition-all shadow-sm",
+              isRowComplete(row) ? "border-primary/30 bg-primary/[0.02]" : "border-muted"
             )}
           >
             {/* Card header with number and delete */}
-            {rows.length > 1 && (
-              <div className="flex items-center justify-between px-4 pt-3 pb-0">
-                <span className="text-xs font-medium text-muted-foreground">
+            <div className="flex items-center justify-between px-4 pt-3 pb-0">
+              <div className="flex items-center gap-2">
+                <span className="flex items-center justify-center w-6 h-6 rounded-full bg-primary/10 text-primary text-xs font-bold">
+                  {index + 1}
+                </span>
+                <span className="text-sm font-medium">
                   Reserva {index + 1}
                 </span>
+              </div>
+              {rows.length > 1 && (
                 <Button
                   variant="ghost"
                   size="sm"
@@ -187,8 +192,8 @@ export const QuickAddReservations = ({
                 >
                   <Trash2 className="h-3.5 w-3.5" />
                 </Button>
-              </div>
-            )}
+              )}
+            </div>
 
             <div className="p-4 space-y-4">
               {/* Property */}
