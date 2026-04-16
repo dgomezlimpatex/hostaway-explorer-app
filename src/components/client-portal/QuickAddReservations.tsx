@@ -216,8 +216,8 @@ export const QuickAddReservations = ({
                 </Select>
               </div>
 
-              {/* Dates row */}
-              <div className="grid grid-cols-2 gap-3">
+              {/* Dates stacked */}
+              <div className="space-y-3">
                 {/* Check-in */}
                 <div>
                   <label className="text-xs font-medium text-muted-foreground mb-1.5 block">
@@ -234,9 +234,9 @@ export const QuickAddReservations = ({
                       >
                         <CalendarIcon className="mr-2 h-4 w-4 shrink-0" />
                         {row.checkInDate ? (
-                          format(row.checkInDate, 'dd MMM', { locale: es })
+                          format(row.checkInDate, 'dd MMM yyyy', { locale: es })
                         ) : (
-                          <span>Fecha</span>
+                          <span>Selecciona fecha de entrada</span>
                         )}
                       </Button>
                     </PopoverTrigger>
@@ -277,9 +277,9 @@ export const QuickAddReservations = ({
                       >
                         <CalendarIcon className="mr-2 h-4 w-4 shrink-0" />
                         {row.checkOutDate ? (
-                          format(row.checkOutDate, 'dd MMM', { locale: es })
+                          format(row.checkOutDate, 'dd MMM yyyy', { locale: es })
                         ) : (
-                          <span>Fecha</span>
+                          <span>Selecciona fecha de salida</span>
                         )}
                       </Button>
                     </PopoverTrigger>
@@ -310,41 +310,39 @@ export const QuickAddReservations = ({
                 </div>
               )}
 
-              {/* Optional fields - only show after dates are set */}
-              {row.checkInDate && row.checkOutDate && (
-                <div className="space-y-3 pt-2 border-t border-dashed">
-                  <div>
-                    <label className="text-xs font-medium text-muted-foreground flex items-center gap-1.5 mb-1.5">
-                      <Users className="h-3 w-3" />
-                      Huéspedes
-                      <span className="text-muted-foreground/50 font-normal">(opcional)</span>
-                    </label>
-                    <Input
-                      type="number"
-                      min={1}
-                      placeholder="Número de huéspedes"
-                      className="h-10"
-                      value={row.guestCount || ''}
-                      onChange={(e) => updateRow(row.id, {
-                        guestCount: e.target.value ? parseInt(e.target.value) : undefined
-                      })}
-                    />
-                  </div>
-                  <div>
-                    <label className="text-xs font-medium text-muted-foreground flex items-center gap-1.5 mb-1.5">
-                      <MessageSquare className="h-3 w-3" />
-                      Peticiones especiales
-                    </label>
-                    <Textarea
-                      placeholder="Llaves en portería, hora de llegada..."
-                      value={row.specialRequests}
-                      onChange={(e) => updateRow(row.id, { specialRequests: e.target.value })}
-                      rows={2}
-                      className="resize-none"
-                    />
-                  </div>
+              {/* Optional fields - always visible */}
+              <div className="space-y-3 pt-2 border-t border-dashed">
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground flex items-center gap-1.5 mb-1.5">
+                    <Users className="h-3 w-3" />
+                    Huéspedes
+                    <span className="text-muted-foreground/50 font-normal">(opcional)</span>
+                  </label>
+                  <Input
+                    type="number"
+                    min={1}
+                    placeholder="Número de huéspedes"
+                    className="h-10"
+                    value={row.guestCount || ''}
+                    onChange={(e) => updateRow(row.id, {
+                      guestCount: e.target.value ? parseInt(e.target.value) : undefined
+                    })}
+                  />
                 </div>
-              )}
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground flex items-center gap-1.5 mb-1.5">
+                    <MessageSquare className="h-3 w-3" />
+                    Peticiones especiales
+                  </label>
+                  <Textarea
+                    placeholder="Llaves en portería, hora de llegada..."
+                    value={row.specialRequests}
+                    onChange={(e) => updateRow(row.id, { specialRequests: e.target.value })}
+                    rows={2}
+                    className="resize-none"
+                  />
+                </div>
+              </div>
             </div>
           </div>
         ))}
