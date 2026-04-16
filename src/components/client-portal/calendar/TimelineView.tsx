@@ -57,6 +57,7 @@ export const TimelineView = ({ weekDays, properties, reservations, colorMap }: T
               </div>
 
               {weekDays.map((day, dayIndex) => {
+                // Reservations active on this day (checkIn <= day < checkOut)
                 const dayReservations = propertyReservations.filter(r => {
                   const checkIn = new Date(r.checkInDate); checkIn.setHours(0,0,0,0);
                   const checkOut = new Date(r.checkOutDate); checkOut.setHours(0,0,0,0);
@@ -65,7 +66,12 @@ export const TimelineView = ({ weekDays, properties, reservations, colorMap }: T
                 });
                 const hasReservation = dayReservations.length > 0;
                 const isCheckIn = dayReservations.some(r => isSameDay(new Date(r.checkInDate), day));
-                const isCheckOut = propertyReservations.some(r => isSameDay(new Date(r.checkOutDate), day));
+                
+                // Check if this day is a checkout day for any reservation
+                const checkOutReservations = propertyReservations.filter(r => isSameDay(new Date(r.checkOutDate), day));
+                const isCheckOut = checkOutReservations.length > 0;
+                
+                // Check if the reservation bar should end on the next day (last full day)
                 const nextDay = dayIndex < weekDays.length - 1 ? weekDays[dayIndex + 1] : null;
                 const isLastDayOfReservation = nextDay && dayReservations.some(r => {
                   const co = new Date(r.checkOutDate); co.setHours(0,0,0,0);
@@ -73,18 +79,53 @@ export const TimelineView = ({ weekDays, properties, reservations, colorMap }: T
                   return co.getTime() === nd.getTime();
                 });
 
+                // Get the color for checkout half-bar (from the departing reservation)
+                const checkOutColor = isCheckOut ? (() => {
+                  const r = checkOutReservations[0];
+                  return colorMap.get(r.propertyId) || color;
+                })() : null;
+
+                // Also check if a new reservation checks in on this same checkout day
+                const newCheckInOnCheckoutDay = isCheckOut && propertyReservations.some(r => isSameDay(new Date(r.checkInDate), day));
+
                 return (
                   <div key={day.toISOString()} className={cn("border-l border-border/30 min-h-[48px] sm:min-h-[60px] flex items-center relative", isToday(day) && "bg-primary/5")}>
+                    {/* Checkout half-bar: covers left 50% of cell */}
+                    {isCheckOut && !hasReservation && (
+                      <TooltipProvider><Tooltip><TooltipTrigger asChild>
+                        <div className="absolute inset-y-2 sm:inset-y-3 cursor-default flex items-center justify-end" style={{
+                          left: '0',
+                          width: '50%',
+                          backgroundColor: checkOutColor?.bg,
+                          borderTop: `2px solid ${checkOutColor?.border}`,
+                          borderBottom: `2px solid ${checkOutColor?.border}`,
+                          borderRight: `3px solid ${checkOutColor?.text}`,
+                          borderTopRightRadius: '8px',
+                          borderBottomRightRadius: '8px',
+                          marginRight: '1px',
+                        }}>
+                          <div className="flex items-center justify-center bg-rose-500 text-white rounded-full w-4 h-4 sm:w-5 sm:h-5 mr-0.5 sm:mr-1 shadow-sm">
+                            <ArrowLeftFromLine className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
+                          </div>
+                        </div>
+                      </TooltipTrigger><TooltipContent className="bg-rose-50 border-rose-200">
+                        <p className="font-semibold text-rose-700 flex items-center gap-1.5"><ArrowLeftFromLine className="h-3.5 w-3.5" />Salida — {format(day, 'd MMM', { locale: es })}</p>
+                      </TooltipContent></Tooltip></TooltipProvider>
+                    )}
+
+                    {/* Active reservation bar */}
                     {hasReservation && (
                       <TooltipProvider><Tooltip><TooltipTrigger asChild>
-                        <div className="absolute inset-y-2 sm:inset-y-3 inset-x-0 flex items-center cursor-default" style={{
+                        <div className="absolute inset-y-2 sm:inset-y-3 flex items-center cursor-default" style={{
+                          left: isCheckIn && isCheckOut ? '50%' : '0',
+                          right: '0',
                           backgroundColor: color.bg,
-                          borderTop: `2px solid ${color.border}`, borderBottom: `2px solid ${color.border}`,
+                          borderTop: `2px solid ${color.border}`,
+                          borderBottom: `2px solid ${color.border}`,
                           borderLeft: isCheckIn ? `3px solid ${color.text}` : 'none',
-                          borderRight: isLastDayOfReservation ? `3px solid ${color.text}` : 'none',
-                          borderTopLeftRadius: isCheckIn ? '8px' : '0', borderBottomLeftRadius: isCheckIn ? '8px' : '0',
-                          borderTopRightRadius: isLastDayOfReservation ? '8px' : '0', borderBottomRightRadius: isLastDayOfReservation ? '8px' : '0',
-                          marginLeft: isCheckIn ? '3px' : '0', marginRight: isLastDayOfReservation ? '3px' : '0',
+                          borderTopLeftRadius: isCheckIn ? '8px' : '0',
+                          borderBottomLeftRadius: isCheckIn ? '8px' : '0',
+                          marginLeft: isCheckIn ? '2px' : '0',
                         }}>
                           {isCheckIn && (
                             <div className="flex items-center justify-center bg-emerald-500 text-white rounded-full w-4 h-4 sm:w-5 sm:h-5 ml-0.5 sm:ml-1 shadow-sm">
@@ -101,16 +142,23 @@ export const TimelineView = ({ weekDays, properties, reservations, colorMap }: T
                         ))}</div>
                       </TooltipContent></Tooltip></TooltipProvider>
                     )}
-                    {isCheckOut && (
-                      <TooltipProvider><Tooltip><TooltipTrigger asChild>
-                        <div className={cn("absolute inset-0 flex items-center", hasReservation ? "justify-end pr-0.5 sm:pr-1" : "justify-center")}>
-                          <div className="flex items-center justify-center bg-rose-500 text-white rounded-full w-4 h-4 sm:w-6 sm:h-6 shadow-sm z-10">
-                            <ArrowLeftFromLine className="h-2.5 w-2.5 sm:h-3.5 sm:w-3.5" />
-                          </div>
+
+                    {/* Checkout half-bar when there's also an active reservation (same day checkout+checkin) */}
+                    {isCheckOut && hasReservation && !isCheckIn && (
+                      <div className="absolute inset-y-2 sm:inset-y-3 cursor-default flex items-center justify-end" style={{
+                        left: '0',
+                        width: '50%',
+                        backgroundColor: checkOutColor?.bg,
+                        borderTop: `2px solid ${checkOutColor?.border}`,
+                        borderBottom: `2px solid ${checkOutColor?.border}`,
+                        borderRight: `3px solid ${checkOutColor?.text}`,
+                        borderTopRightRadius: '8px',
+                        borderBottomRightRadius: '8px',
+                      }}>
+                        <div className="flex items-center justify-center bg-rose-500 text-white rounded-full w-4 h-4 sm:w-5 sm:h-5 mr-0.5 shadow-sm">
+                          <ArrowLeftFromLine className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
                         </div>
-                      </TooltipTrigger><TooltipContent className="bg-rose-50 border-rose-200">
-                        <p className="font-semibold text-rose-700 flex items-center gap-1.5"><ArrowLeftFromLine className="h-3.5 w-3.5" />Salida</p>
-                      </TooltipContent></Tooltip></TooltipProvider>
+                      </div>
                     )}
                   </div>
                 );
