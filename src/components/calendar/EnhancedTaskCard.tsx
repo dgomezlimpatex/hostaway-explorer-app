@@ -52,7 +52,7 @@ export const EnhancedTaskCard = React.memo(({
   // Estados especiales que sobrescriben el color del cliente para ser legibles
   const isCompleted = task.status === 'completed';
   const isInProgress = task.status === 'in-progress';
-  const isCancelled = task.status === 'cancelled';
+  const isCancelled = (task.status as string) === 'cancelled';
 
   const formatTime = (time: string) => {
     if (time.includes(':')) {
