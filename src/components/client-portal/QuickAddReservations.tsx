@@ -1,14 +1,13 @@
 
 import { useState, useCallback } from 'react';
-import { format, addDays } from 'date-fns';
+import { format, addDays, differenceInCalendarDays } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { Plus, Trash2, Loader2, Calendar as CalendarIcon, Users, MessageSquare } from 'lucide-react';
+import { Plus, Trash2, Loader2, CalendarIcon, Users, MessageSquare, Home, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { useCreateReservations } from '@/hooks/useClientPortal';
 import { CreateReservationData } from '@/types/clientPortal';
@@ -29,7 +28,6 @@ interface ReservationRow {
   checkOutDate: Date | undefined;
   guestCount: number | undefined;
   specialRequests: string;
-  isExpanded: boolean;
   checkOutOpen: boolean;
 }
 
@@ -47,7 +45,6 @@ const createEmptyRow = (): ReservationRow => ({
   checkOutDate: undefined,
   guestCount: undefined,
   specialRequests: '',
-  isExpanded: true, // Always expanded by default
   checkOutOpen: false,
 });
 
@@ -62,7 +59,7 @@ export const QuickAddReservations = ({
   const createMutation = useCreateReservations();
 
   const updateRow = useCallback((id: string, updates: Partial<ReservationRow>) => {
-    setRows(prev => prev.map(row => 
+    setRows(prev => prev.map(row =>
       row.id === id ? { ...row, ...updates } : row
     ));
   }, []);
@@ -77,11 +74,8 @@ export const QuickAddReservations = ({
   const handleDateSelect = useCallback((rowId: string, date: Date | undefined, type: 'checkIn' | 'checkOut') => {
     setRows(prev => prev.map(row => {
       if (row.id !== rowId) return row;
-      
       if (type === 'checkIn') {
-        // If selecting check-in and no check-out, auto-set check-out to next day
         const checkOutDate = row.checkOutDate || (date ? addDays(date, 1) : undefined);
-        // Auto-open check-out calendar after selecting check-in
         return { ...row, checkInDate: date, checkOutDate, checkOutOpen: true };
       } else {
         return { ...row, checkOutDate: date, checkOutOpen: false };
@@ -89,7 +83,7 @@ export const QuickAddReservations = ({
     }));
   }, []);
 
-  const validRows = rows.filter(row => 
+  const validRows = rows.filter(row =>
     row.propertyId && row.checkInDate && row.checkOutDate
   );
 
@@ -130,85 +124,123 @@ export const QuickAddReservations = ({
 
   if (isLoading) {
     return (
-      <Card>
-        <CardContent className="py-12 text-center">
-          <Loader2 className="h-8 w-8 animate-spin mx-auto text-muted-foreground" />
-          <p className="mt-4 text-muted-foreground">Cargando propiedades...</p>
-        </CardContent>
-      </Card>
+      <div className="flex flex-col items-center justify-center py-16">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <p className="mt-4 text-muted-foreground text-sm">Cargando propiedades...</p>
+      </div>
     );
   }
 
   if (properties.length === 0) {
     return (
-      <Card>
-        <CardContent className="py-12 text-center">
-          <p className="text-muted-foreground">No tienes propiedades asignadas.</p>
-          <p className="text-sm text-muted-foreground mt-2">
-            Contacta con tu supervisor para añadir propiedades.
-          </p>
-        </CardContent>
-      </Card>
+      <div className="text-center py-16 px-4">
+        <Home className="h-10 w-10 mx-auto text-muted-foreground/40" />
+        <p className="text-muted-foreground mt-4">No tienes propiedades asignadas.</p>
+        <p className="text-sm text-muted-foreground/70 mt-1">
+          Contacta con tu supervisor para añadir propiedades.
+        </p>
+      </div>
     );
   }
 
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Plus className="h-5 w-5" />
-          Añadir Reservas
-        </CardTitle>
-        <CardDescription>
-          Añade varias reservas de forma rápida. Las limpiezas se crearán automáticamente.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        {/* Reservation rows */}
-        <div className="space-y-3">
-          {rows.map((row, index) => (
-            <div key={row.id} className="border rounded-lg p-3 space-y-3">
-              {/* Main row */}
-              <div className="grid grid-cols-1 sm:grid-cols-12 gap-2">
-                {/* Property selector */}
-                <div className="sm:col-span-4">
-                  <Select
-                    value={row.propertyId}
-                    onValueChange={(value) => updateRow(row.id, { propertyId: value })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecciona propiedad" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {properties.map(prop => (
-                        <SelectItem key={prop.id} value={prop.id}>
-                          {prop.codigo || prop.nombre}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+  const isRowComplete = (row: ReservationRow) =>
+    row.propertyId && row.checkInDate && row.checkOutDate;
 
-                {/* Check-in date */}
-                <div className="sm:col-span-3">
+  const getNights = (row: ReservationRow) => {
+    if (row.checkInDate && row.checkOutDate) {
+      return differenceInCalendarDays(row.checkOutDate, row.checkInDate);
+    }
+    return 0;
+  };
+
+  return (
+    <div className="space-y-4">
+      {/* Header */}
+      <div className="px-1">
+        <h2 className="text-lg font-semibold">Nueva reserva</h2>
+        <p className="text-sm text-muted-foreground">
+          Las limpiezas se crearán automáticamente.
+        </p>
+      </div>
+
+      {/* Reservation cards */}
+      <div className="space-y-4">
+        {rows.map((row, index) => (
+          <div
+            key={row.id}
+            className={cn(
+              "rounded-xl border bg-card transition-all",
+              isRowComplete(row) && "border-primary/30 bg-primary/[0.02]"
+            )}
+          >
+            {/* Card header with number and delete */}
+            {rows.length > 1 && (
+              <div className="flex items-center justify-between px-4 pt-3 pb-0">
+                <span className="text-xs font-medium text-muted-foreground">
+                  Reserva {index + 1}
+                </span>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => removeRow(row.id)}
+                  className="h-7 px-2 text-destructive hover:text-destructive hover:bg-destructive/10"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+            )}
+
+            <div className="p-4 space-y-4">
+              {/* Property */}
+              <div>
+                <label className="text-xs font-medium text-muted-foreground mb-1.5 block">
+                  Propiedad
+                </label>
+                <Select
+                  value={row.propertyId}
+                  onValueChange={(value) => updateRow(row.id, { propertyId: value })}
+                >
+                  <SelectTrigger className="h-11">
+                    <SelectValue placeholder="Selecciona propiedad" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {properties.map(prop => (
+                      <SelectItem key={prop.id} value={prop.id}>
+                        <span className="font-medium">{prop.codigo}</span>
+                        {prop.codigo !== prop.nombre && (
+                          <span className="text-muted-foreground ml-1.5">— {prop.nombre}</span>
+                        )}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Dates row */}
+              <div className="grid grid-cols-2 gap-3">
+                {/* Check-in */}
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground mb-1.5 block">
+                    Entrada
+                  </label>
                   <Popover>
                     <PopoverTrigger asChild>
                       <Button
                         variant="outline"
                         className={cn(
-                          "w-full justify-start text-left font-normal",
+                          "w-full h-11 justify-start text-left font-normal",
                           !row.checkInDate && "text-muted-foreground"
                         )}
                       >
-                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        <CalendarIcon className="mr-2 h-4 w-4 shrink-0" />
                         {row.checkInDate ? (
-                          format(row.checkInDate, 'dd/MM/yy', { locale: es })
+                          format(row.checkInDate, 'dd MMM', { locale: es })
                         ) : (
-                          <span>Entrada</span>
+                          <span>Fecha</span>
                         )}
                       </Button>
                     </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
+                    <PopoverContent className="w-auto p-0" align="center">
                       <Calendar
                         mode="single"
                         selected={row.checkInDate}
@@ -220,34 +252,38 @@ export const QuickAddReservations = ({
                           return date < today;
                         }}
                         initialFocus
+                        className="pointer-events-auto"
                       />
                     </PopoverContent>
                   </Popover>
                 </div>
 
-                {/* Check-out date */}
-                <div className="sm:col-span-3">
-                  <Popover 
-                    open={row.checkOutOpen} 
+                {/* Check-out */}
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground mb-1.5 block">
+                    Salida
+                  </label>
+                  <Popover
+                    open={row.checkOutOpen}
                     onOpenChange={(open) => updateRow(row.id, { checkOutOpen: open })}
                   >
                     <PopoverTrigger asChild>
                       <Button
                         variant="outline"
                         className={cn(
-                          "w-full justify-start text-left font-normal",
+                          "w-full h-11 justify-start text-left font-normal",
                           !row.checkOutDate && "text-muted-foreground"
                         )}
                       >
-                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        <CalendarIcon className="mr-2 h-4 w-4 shrink-0" />
                         {row.checkOutDate ? (
-                          format(row.checkOutDate, 'dd/MM/yy', { locale: es })
+                          format(row.checkOutDate, 'dd MMM', { locale: es })
                         ) : (
-                          <span>Salida</span>
+                          <span>Fecha</span>
                         )}
                       </Button>
                     </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
+                    <PopoverContent className="w-auto p-0" align="center">
                       <Calendar
                         mode="single"
                         selected={row.checkOutDate}
@@ -264,89 +300,88 @@ export const QuickAddReservations = ({
                     </PopoverContent>
                   </Popover>
                 </div>
-
-                {/* Actions */}
-                <div className="sm:col-span-2 flex items-center justify-end gap-1">
-                  {rows.length > 1 && (
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => removeRow(row.id)}
-                      className="h-9 w-9 text-destructive hover:text-destructive"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  )}
-                </div>
               </div>
 
-              {/* Always visible optional fields */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t">
-                <div>
-                  <label className="text-sm text-muted-foreground flex items-center gap-1 mb-1">
-                    <Users className="h-3 w-3" />
-                    Huéspedes <span className="text-muted-foreground/60">(opcional)</span>
-                  </label>
-                  <Input
-                    type="number"
-                    min={1}
-                    placeholder="Número"
-                    value={row.guestCount || ''}
-                    onChange={(e) => updateRow(row.id, { 
-                      guestCount: e.target.value ? parseInt(e.target.value) : undefined 
-                    })}
-                  />
+              {/* Nights badge */}
+              {getNights(row) > 0 && (
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <ArrowRight className="h-3 w-3" />
+                  <span>{getNights(row)} noche{getNights(row) > 1 ? 's' : ''}</span>
                 </div>
-                <div className="sm:col-span-1">
-                  <label className="text-sm text-muted-foreground flex items-center gap-1 mb-1">
-                    <MessageSquare className="h-3 w-3" />
-                    Peticiones especiales
-                  </label>
-                  <Textarea
-                    placeholder="Llaves en portería, hora llegada..."
-                    value={row.specialRequests}
-                    onChange={(e) => updateRow(row.id, { specialRequests: e.target.value })}
-                    rows={2}
-                  />
+              )}
+
+              {/* Optional fields - only show after dates are set */}
+              {row.checkInDate && row.checkOutDate && (
+                <div className="space-y-3 pt-2 border-t border-dashed">
+                  <div>
+                    <label className="text-xs font-medium text-muted-foreground flex items-center gap-1.5 mb-1.5">
+                      <Users className="h-3 w-3" />
+                      Huéspedes
+                      <span className="text-muted-foreground/50 font-normal">(opcional)</span>
+                    </label>
+                    <Input
+                      type="number"
+                      min={1}
+                      placeholder="Número de huéspedes"
+                      className="h-10"
+                      value={row.guestCount || ''}
+                      onChange={(e) => updateRow(row.id, {
+                        guestCount: e.target.value ? parseInt(e.target.value) : undefined
+                      })}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-muted-foreground flex items-center gap-1.5 mb-1.5">
+                      <MessageSquare className="h-3 w-3" />
+                      Peticiones especiales
+                    </label>
+                    <Textarea
+                      placeholder="Llaves en portería, hora de llegada..."
+                      value={row.specialRequests}
+                      onChange={(e) => updateRow(row.id, { specialRequests: e.target.value })}
+                      rows={2}
+                      className="resize-none"
+                    />
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
-          ))}
-        </div>
+          </div>
+        ))}
+      </div>
 
-        {/* Add row button - only show when all current rows are complete */}
-        {rows.every(row => row.propertyId && row.checkInDate && row.checkOutDate) && (
-          <Button
-            variant="outline"
-            className="w-full"
-            onClick={() => setRows(prev => [...prev, createEmptyRow()])}
-          >
-            <Plus className="h-4 w-4 mr-2" />
-            Añadir otra reserva
-          </Button>
-        )}
+      {/* Add another reservation */}
+      {rows.every(row => isRowComplete(row)) && (
+        <Button
+          variant="outline"
+          className="w-full h-11 border-dashed"
+          onClick={() => setRows(prev => [...prev, createEmptyRow()])}
+        >
+          <Plus className="h-4 w-4 mr-2" />
+          Añadir otra reserva
+        </Button>
+      )}
 
-        {/* Submit */}
-        {validRows.length > 0 && (
-          <Button
-            onClick={handleSubmit}
-            disabled={createMutation.isPending}
-            className="w-full"
-            size="lg"
-          >
-            {createMutation.isPending ? (
-              <>
-                <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                Guardando...
-              </>
-            ) : (
-              <>
-                Guardar {validRows.length} reserva{validRows.length > 1 ? 's' : ''}
-              </>
-            )}
-          </Button>
-        )}
-      </CardContent>
-    </Card>
+      {/* Submit */}
+      {validRows.length > 0 && (
+        <Button
+          onClick={handleSubmit}
+          disabled={createMutation.isPending}
+          className="w-full h-12 text-base font-medium"
+          size="lg"
+        >
+          {createMutation.isPending ? (
+            <>
+              <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              Guardando...
+            </>
+          ) : (
+            <>
+              Guardar {validRows.length} reserva{validRows.length > 1 ? 's' : ''}
+            </>
+          )}
+        </Button>
+      )}
+    </div>
   );
 };
