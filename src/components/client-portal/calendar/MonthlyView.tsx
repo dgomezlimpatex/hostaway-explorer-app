@@ -171,7 +171,6 @@ export const MonthlyView = ({ currentDate, reservations, properties, colorMap }:
                                 marginRight: '-2px',
                               }}>
                                 {isCheckIn && (
-                                  <div className="ml-0.5 sm:ml-1 flex h-4 w-4 sm:h-5 sm:w-5 items-center justify-center rounded-full bg-emerald-500 text-white shadow-sm">
                                   <div className="ml-0.5 flex h-3.5 w-3.5 sm:h-4 sm:w-4 items-center justify-center rounded-full bg-emerald-500 text-white shadow-sm">
                                     <ArrowRightToLine className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
                                   </div>
