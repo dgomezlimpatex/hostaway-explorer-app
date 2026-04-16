@@ -56,8 +56,8 @@ export const getTaskPositionWithOverlap = (
   const startMinutes = timeToMinutes(startTime);
   const endMinutes = timeToMinutes(endTime);
   
-  // Each time slot is now 60px wide and represents 30 minutes
-  const slotWidth = 60;
+  // Each time slot is now 50px wide and represents 30 minutes
+  const slotWidth = 50;
   const minutesPerSlot = 30;
   const dayStartMinutes = 6 * 60; // 6:00 AM
   
