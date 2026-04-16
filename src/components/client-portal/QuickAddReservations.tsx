@@ -310,41 +310,39 @@ export const QuickAddReservations = ({
                 </div>
               )}
 
-              {/* Optional fields - only show after dates are set */}
-              {row.checkInDate && row.checkOutDate && (
-                <div className="space-y-3 pt-2 border-t border-dashed">
-                  <div>
-                    <label className="text-xs font-medium text-muted-foreground flex items-center gap-1.5 mb-1.5">
-                      <Users className="h-3 w-3" />
-                      Huéspedes
-                      <span className="text-muted-foreground/50 font-normal">(opcional)</span>
-                    </label>
-                    <Input
-                      type="number"
-                      min={1}
-                      placeholder="Número de huéspedes"
-                      className="h-10"
-                      value={row.guestCount || ''}
-                      onChange={(e) => updateRow(row.id, {
-                        guestCount: e.target.value ? parseInt(e.target.value) : undefined
-                      })}
-                    />
-                  </div>
-                  <div>
-                    <label className="text-xs font-medium text-muted-foreground flex items-center gap-1.5 mb-1.5">
-                      <MessageSquare className="h-3 w-3" />
-                      Peticiones especiales
-                    </label>
-                    <Textarea
-                      placeholder="Llaves en portería, hora de llegada..."
-                      value={row.specialRequests}
-                      onChange={(e) => updateRow(row.id, { specialRequests: e.target.value })}
-                      rows={2}
-                      className="resize-none"
-                    />
-                  </div>
+              {/* Optional fields - always visible */}
+              <div className="space-y-3 pt-2 border-t border-dashed">
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground flex items-center gap-1.5 mb-1.5">
+                    <Users className="h-3 w-3" />
+                    Huéspedes
+                    <span className="text-muted-foreground/50 font-normal">(opcional)</span>
+                  </label>
+                  <Input
+                    type="number"
+                    min={1}
+                    placeholder="Número de huéspedes"
+                    className="h-10"
+                    value={row.guestCount || ''}
+                    onChange={(e) => updateRow(row.id, {
+                      guestCount: e.target.value ? parseInt(e.target.value) : undefined
+                    })}
+                  />
                 </div>
-              )}
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground flex items-center gap-1.5 mb-1.5">
+                    <MessageSquare className="h-3 w-3" />
+                    Peticiones especiales
+                  </label>
+                  <Textarea
+                    placeholder="Llaves en portería, hora de llegada..."
+                    value={row.specialRequests}
+                    onChange={(e) => updateRow(row.id, { specialRequests: e.target.value })}
+                    rows={2}
+                    className="resize-none"
+                  />
+                </div>
+              </div>
             </div>
           </div>
         ))}
