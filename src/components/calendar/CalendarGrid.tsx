@@ -232,14 +232,14 @@ const CleanerRow = memo(({
    return (
      <div 
        className={cn(
-         "h-24 relative transition-all duration-200 flex border-b-2 border-border",
+         "h-16 relative transition-all duration-200 flex border-b border-border",
          !isAbsent && !isPreferred && !isDimmed && (index % 2 === 0 ? "bg-background hover:bg-accent/50" : "bg-muted/30 hover:bg-accent/50"),
          isPreferred && "bg-yellow-50/60 ring-1 ring-inset ring-yellow-300",
          isDimmed && "opacity-40"
        )}
        style={isAbsent ? {
          backgroundColor: hexToRgba(absenceColor, 0.12),
-         borderLeftWidth: '5px',
+         borderLeftWidth: '4px',
          borderLeftColor: absenceColor,
          borderLeftStyle: 'solid'
        } : undefined}
