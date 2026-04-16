@@ -6,6 +6,7 @@ import { CleanerMobileCalendar } from "./calendar/CleanerMobileCalendar";
 import { CleanerDesktopCalendar } from "./calendar/CleanerDesktopCalendar";
 import { ManagerMobileCalendar } from "./calendar/ManagerMobileCalendar";
 import { CalendarModalsWithSuspense } from "./calendar/LazyCalendarComponents";
+import { CalendarFooterSummary } from "./calendar/CalendarFooterSummary";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { useCalendarLogic } from "@/hooks/useCalendarLogic";
 import { useCalendarNavigation } from "@/hooks/useCalendarNavigation";
