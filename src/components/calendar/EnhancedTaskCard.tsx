@@ -1,6 +1,6 @@
 import React from "react";
 import { Task } from "@/types/calendar";
-import { Clock, ListTodo } from "lucide-react";
+import { Clock, ListTodo, Hourglass, Play, Check, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useClientData } from "@/hooks/useClientData";
