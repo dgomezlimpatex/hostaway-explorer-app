@@ -62,7 +62,7 @@ export const WorkersColumn = ({ cleaners, onDragOver, onDrop, absenceStatus, isD
   };
 
   return (
-    <div className="w-64 bg-gray-50 border-r border-gray-200 flex-shrink-0 overflow-hidden">
+    <div className="w-52 bg-gray-50 border-r border-gray-200 flex-shrink-0 overflow-hidden">
       {cleaners.map((cleaner, index) => {
         const status = absenceStatus?.[cleaner.id];
         const isAbsent = status?.isAbsent;
@@ -76,14 +76,14 @@ export const WorkersColumn = ({ cleaners, onDragOver, onDrop, absenceStatus, isD
           <div 
             key={cleaner.id} 
             className={cn(
-              "h-24 border-b-2 border-gray-300 p-3 flex items-center transition-all duration-200 cursor-pointer relative",
+              "h-16 border-b border-gray-200 px-2 py-1.5 flex items-center transition-all duration-200 cursor-pointer relative",
               !isAbsent && !isPreferred && !isDimmed && (index % 2 === 0 ? "bg-white hover:bg-gray-100" : "bg-gray-50 hover:bg-gray-100"),
               isPreferred && "bg-yellow-50 ring-2 ring-yellow-400 ring-inset shadow-inner",
               isDimmed && "opacity-40"
             )}
             style={isAbsent ? { 
               backgroundColor: getAbsenceBgColor(status?.absenceColor || '#6B7280'),
-              borderLeftWidth: '5px',
+              borderLeftWidth: '4px',
               borderLeftColor: status?.absenceColor || '#6B7280',
               borderLeftStyle: 'solid'
             } : undefined}
@@ -91,16 +91,16 @@ export const WorkersColumn = ({ cleaners, onDragOver, onDrop, absenceStatus, isD
             onDragLeave={handleDragLeave}
             onDrop={(e) => handleDrop(e, cleaner.id)}
           >
-            {/* Línea de color personal de la trabajadora (estilo maqueta) */}
+            {/* Línea de color personal de la trabajadora */}
             <span
-              className="absolute left-0 top-2 bottom-2 w-1 rounded-r-full"
+              className="absolute left-0 top-1.5 bottom-1.5 w-0.5 rounded-r-full"
               style={{ backgroundColor: isAbsent ? (status?.absenceColor || '#6B7280') : `hsl(${(cleaner.name.charCodeAt(0) * 37) % 360}, 65%, 55%)` }}
               aria-hidden
             />
-            <div className="flex items-center gap-3 flex-1 min-w-0 overflow-hidden pl-1">
-              <div className="relative">
+            <div className="flex items-center gap-2 flex-1 min-w-0 overflow-hidden pl-1">
+              <div className="relative flex-shrink-0">
                 <div
-                  className="w-10 h-10 rounded-full flex items-center justify-center text-white font-semibold text-sm shadow-sm ring-2 ring-white"
+                  className="w-8 h-8 rounded-full flex items-center justify-center text-white font-semibold text-[11px] shadow-sm ring-2 ring-white"
                   style={{ backgroundColor: `hsl(${(cleaner.name.charCodeAt(0) * 37) % 360}, 60%, 50%)` }}
                 >
                   {cleaner.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
@@ -146,49 +146,38 @@ export const WorkersColumn = ({ cleaners, onDragOver, onDrop, absenceStatus, isD
                 )}
               </div>
               <div className="min-w-0 flex-1 overflow-hidden">
-                <div className="font-medium text-gray-900 text-sm flex items-center gap-1 min-w-0">
+                <div className="font-medium text-gray-900 text-[12px] flex items-center gap-1 min-w-0 leading-tight">
                   {isPreferred && <Star className="h-3 w-3 text-yellow-500 flex-shrink-0 fill-yellow-500" />}
                   <span className="truncate">{cleaner.name}</span>
                 </div>
-                <div className="flex items-center gap-1">
-                  {isAbsent ? (
-                    <span 
-                      className="text-xs font-medium px-1.5 py-0.5 rounded"
-                      style={{ 
-                        backgroundColor: `${status?.absenceColor || '#6B7280'}20`,
-                        color: status?.absenceColor || '#6B7280'
-                      }}
-                    >
-                      {getAbsenceLabel(status)}
-                    </span>
-                  ) : (
-                    <>
-                      <div className={`w-2 h-2 rounded-full ${cleaner.isActive ? 'bg-green-400' : 'bg-gray-400'}`} />
-                      <span className="text-xs text-gray-500">
-                        {cleaner.isActive ? 'Activo' : 'Inactivo'}
-                      </span>
-                    </>
-                  )}
-                </div>
-                {/* Workload mini progress bar */}
-                {workload && (
+                {isAbsent ? (
+                  <span 
+                    className="inline-block text-[10px] font-medium px-1.5 py-0.5 rounded mt-0.5"
+                    style={{ 
+                      backgroundColor: `${status?.absenceColor || '#6B7280'}20`,
+                      color: status?.absenceColor || '#6B7280'
+                    }}
+                  >
+                    {getAbsenceLabel(status)}
+                  </span>
+                ) : workload ? (
                   <TooltipProvider>
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <div className="flex items-center gap-1.5 mt-1">
+                        <div className="flex items-center gap-1.5 mt-0.5">
                           {workload.contractHoursPerWeek > 0 ? (
                             <>
                               <Progress 
                                 value={Math.min(workload.percentageComplete, 100)} 
-                                className="h-1.5 flex-1 bg-gray-200"
+                                className="h-1 flex-1 bg-gray-200"
                                 indicatorClassName={getProgressBarColor(workload.status)}
                               />
-                              <span className="text-[10px] text-gray-500 whitespace-nowrap font-medium">
+                              <span className="text-[9px] text-gray-500 whitespace-nowrap font-medium">
                                 {workload.totalWorked.toFixed(1)}/{workload.contractHoursPerWeek}h
                               </span>
                             </>
                           ) : (
-                            <span className="text-[10px] text-gray-400">
+                            <span className="text-[9px] text-gray-400">
                               {workload.totalWorked.toFixed(1)}h (sin contrato)
                             </span>
                           )}
@@ -231,6 +220,13 @@ export const WorkersColumn = ({ cleaners, onDragOver, onDrop, absenceStatus, isD
                       </TooltipContent>
                     </Tooltip>
                   </TooltipProvider>
+                ) : (
+                  <div className="flex items-center gap-1 mt-0.5">
+                    <div className={`w-1.5 h-1.5 rounded-full ${cleaner.isActive ? 'bg-green-400' : 'bg-gray-400'}`} />
+                    <span className="text-[10px] text-gray-500">
+                      {cleaner.isActive ? 'Activo' : 'Inactivo'}
+                    </span>
+                  </div>
                 )}
               </div>
             </div>

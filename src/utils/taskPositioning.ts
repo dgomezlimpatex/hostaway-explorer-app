@@ -56,8 +56,8 @@ export const getTaskPositionWithOverlap = (
   const startMinutes = timeToMinutes(startTime);
   const endMinutes = timeToMinutes(endTime);
   
-  // Each time slot is now 60px wide and represents 30 minutes
-  const slotWidth = 60;
+  // Each time slot is now 50px wide and represents 30 minutes
+  const slotWidth = 50;
   const minutesPerSlot = 30;
   const dayStartMinutes = 6 * 60; // 6:00 AM
   
@@ -100,7 +100,7 @@ export const getTaskPositionWithOverlap = (
   
   return { 
     left: `${leftPixels}px`, 
-    width: `${Math.max(widthPixels, 100)}px`,
+    width: `${Math.max(widthPixels, 80)}px`,
     top: `${topOffset}%`,
     height: `${heightAdjustment * 100}%`,
     hasOverlap: overlappingTasks.length > 0,
@@ -113,8 +113,8 @@ export const getTaskPosition = (startTime: string, endTime: string) => {
   const startMinutes = timeToMinutes(startTime);
   const endMinutes = timeToMinutes(endTime);
   
-  // Each time slot is now 60px wide and represents 30 minutes
-  const slotWidth = 60; // pixels (reduced from 75px)
+  // Each time slot is now 50px wide and represents 30 minutes
+  const slotWidth = 50; // pixels (reduced from 60px)
   const minutesPerSlot = 30; // minutes
   const dayStartMinutes = 6 * 60; // 6:00 AM
   
@@ -127,7 +127,7 @@ export const getTaskPosition = (startTime: string, endTime: string) => {
   
   return { 
     left: `${leftPixels}px`, 
-    width: `${Math.max(widthPixels, 100)}px` // Minimum width of 100px (reduced from 120px)
+    width: `${Math.max(widthPixels, 80)}px` // Minimum width of 80px (reduced from 100px)
   };
 };
 

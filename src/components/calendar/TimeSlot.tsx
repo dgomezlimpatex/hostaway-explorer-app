@@ -79,7 +79,7 @@ export const TimeSlot = memo(({
   return (
     <div
       className={cn(
-        "relative min-w-[60px] w-[60px] h-20 border-r border-gray-200 transition-colors flex-shrink-0",
+        "relative min-w-[50px] w-[50px] h-16 border-r border-gray-200 transition-colors flex-shrink-0",
         // Available slots
         isAvailable && !hourlyAbsence && allowDrop && "hover:bg-blue-50 cursor-pointer",
         // Unavailable slots - show with different styling
