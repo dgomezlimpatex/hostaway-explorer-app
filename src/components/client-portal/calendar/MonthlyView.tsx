@@ -104,25 +104,25 @@ export const MonthlyView = ({ currentDate, reservations, properties, colorMap }:
                 <div
                   key={day.toISOString()}
                   className={cn(
-                    "border-l border-border/30 first:border-l-0 min-h-[72px] sm:min-h-[108px] py-1 sm:py-1.5 flex flex-col",
+                    "border-l border-border/30 first:border-l-0 min-h-[56px] sm:min-h-[80px] py-0.5 sm:py-1 flex flex-col",
                     !inMonth && "opacity-30",
                     isToday(day) && "bg-primary/5"
                   )}
                 >
                   {/* Day number */}
                   <div className={cn(
-                    "text-[11px] sm:text-sm font-semibold text-right px-1 sm:px-1.5 mb-0.5",
+                    "text-[11px] sm:text-xs font-semibold text-right px-1 sm:px-1.5 mb-0.5 h-5 sm:h-5 flex items-center justify-end",
                     isToday(day) ? "text-primary" : "text-foreground"
                   )}>
                     {isToday(day) ? (
-                      <span className="inline-flex items-center justify-center w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-primary text-primary-foreground text-[10px] sm:text-xs">
+                      <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-primary text-primary-foreground text-[10px] sm:text-xs">
                         {format(day, 'd')}
                       </span>
                     ) : format(day, 'd')}
                   </div>
 
                   {/* Reservation bars - same style as timeline */}
-                  <div className="flex-1 flex flex-col gap-1 sm:gap-1.5">
+                  <div className="flex-1 flex flex-col gap-0.5 sm:gap-1">
                     {activeProperties.slice(0, MAX_VISIBLE).map(({ propId, status }) => {
                       const color = colorMap.get(propId);
                       if (!color) return null;
@@ -130,7 +130,7 @@ export const MonthlyView = ({ currentDate, reservations, properties, colorMap }:
                       const { isStayDay, isCheckIn, isCheckOut } = status;
 
                       return (
-                        <div key={propId} className="relative h-5 sm:h-6 mx-0">
+                        <div key={propId} className="relative h-4 sm:h-5 mx-0">
                           {/* CHECKOUT half-bar: left half */}
                           {isCheckOut && (
                             <TooltipProvider><Tooltip><TooltipTrigger asChild>
@@ -144,7 +144,7 @@ export const MonthlyView = ({ currentDate, reservations, properties, colorMap }:
                                 borderTopRightRadius: '8px',
                                 borderBottomRightRadius: '8px',
                               }}>
-                                <div className="mr-0.5 sm:mr-1 flex h-4 w-4 sm:h-5 sm:w-5 items-center justify-center rounded-full bg-rose-500 text-white shadow-sm">
+                                <div className="mr-0.5 flex h-3.5 w-3.5 sm:h-4 sm:w-4 items-center justify-center rounded-full bg-rose-500 text-white shadow-sm">
                                   <ArrowLeftFromLine className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
                                 </div>
                               </div>
@@ -172,6 +172,7 @@ export const MonthlyView = ({ currentDate, reservations, properties, colorMap }:
                               }}>
                                 {isCheckIn && (
                                   <div className="ml-0.5 sm:ml-1 flex h-4 w-4 sm:h-5 sm:w-5 items-center justify-center rounded-full bg-emerald-500 text-white shadow-sm">
+                                  <div className="ml-0.5 flex h-3.5 w-3.5 sm:h-4 sm:w-4 items-center justify-center rounded-full bg-emerald-500 text-white shadow-sm">
                                     <ArrowRightToLine className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
                                   </div>
                                 )}
