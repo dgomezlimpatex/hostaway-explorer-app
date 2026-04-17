@@ -321,7 +321,7 @@ const CleaningCalendar = () => {
   });
   
   return (
-    <div className="min-h-screen bg-background text-foreground transition-colors duration-300 relative">
+    <div className="h-screen flex flex-col bg-background text-foreground transition-colors duration-300 relative overflow-hidden">
       {/* Subtle loading indicator during refetches */}
       {isRefetching && (
         <div className="fixed top-4 right-4 z-50 flex items-center gap-2 bg-background/90 backdrop-blur-sm border rounded-lg px-3 py-2 shadow-md">
@@ -329,7 +329,7 @@ const CleaningCalendar = () => {
           <span className="text-sm text-muted-foreground">Actualizando...</span>
         </div>
       )}
-      <div className="space-y-4 px-2 py-4 max-w-full">        
+      <div className="flex-1 flex flex-col gap-3 px-2 py-3 max-w-full overflow-hidden">        
         {/* Enhanced Responsive Header */}
         <ResponsiveCalendarHeader
           currentDate={currentDate}
@@ -342,43 +342,45 @@ const CleaningCalendar = () => {
           onNewExtraordinaryService={handleNewExtraordinaryService}
         />
 
-        {/* Calendar Container */}
-        <CalendarContainer
-          tasks={tasks}
-          cleaners={cleaners}
-          currentDate={currentDate}
-          timeSlots={timeSlots}
-          availability={availability}
-          headerScrollRef={headerScrollRef}
-          bodyScrollRef={bodyScrollRef}
-          isCreateModalOpen={isCreateModalOpen}
-          setIsCreateModalOpen={setIsCreateModalOpen}
-          isBatchCreateModalOpen={isBatchCreateModalOpen}
-          setIsBatchCreateModalOpen={setIsBatchCreateModalOpen}
-          isExtraordinaryServiceModalOpen={isExtraordinaryServiceModalOpen}
-          setIsExtraordinaryServiceModalOpen={setIsExtraordinaryServiceModalOpen}
-          selectedTask={selectedTask}
-          isTaskModalOpen={isTaskModalOpen}
-          setIsTaskModalOpen={setIsTaskModalOpen}
-          dragState={dragState}
-          handleDragStart={handleDragStart}
-          handleDragEnd={handleDragEnd}
-          handleDragOver={handleDragOver}
-          handleDrop={handleDrop}
-          handleHeaderScroll={handleHeaderScroll}
-          handleBodyScroll={handleBodyScroll}
-          handleTaskClick={handleTaskClick}
-          handleCreateTask={handleCreateTask}
-          handleBatchCreateTasks={handleBatchCreateTasks}
-          handleCreateExtraordinaryService={handleCreateExtraordinaryService}
-          handleUpdateTask={handleUpdateTask}
-          handleDeleteTask={handleDeleteTask}
-          handleUnassignTask={handleUnassignTask}
-          onNavigateDate={navigateDate}
-        />
+        {/* Calendar Container - takes available space */}
+        <div className="flex-1 flex flex-col min-h-0">
+          <CalendarContainer
+            tasks={tasks}
+            cleaners={cleaners}
+            currentDate={currentDate}
+            timeSlots={timeSlots}
+            availability={availability}
+            headerScrollRef={headerScrollRef}
+            bodyScrollRef={bodyScrollRef}
+            isCreateModalOpen={isCreateModalOpen}
+            setIsCreateModalOpen={setIsCreateModalOpen}
+            isBatchCreateModalOpen={isBatchCreateModalOpen}
+            setIsBatchCreateModalOpen={setIsBatchCreateModalOpen}
+            isExtraordinaryServiceModalOpen={isExtraordinaryServiceModalOpen}
+            setIsExtraordinaryServiceModalOpen={setIsExtraordinaryServiceModalOpen}
+            selectedTask={selectedTask}
+            isTaskModalOpen={isTaskModalOpen}
+            setIsTaskModalOpen={setIsTaskModalOpen}
+            dragState={dragState}
+            handleDragStart={handleDragStart}
+            handleDragEnd={handleDragEnd}
+            handleDragOver={handleDragOver}
+            handleDrop={handleDrop}
+            handleHeaderScroll={handleHeaderScroll}
+            handleBodyScroll={handleBodyScroll}
+            handleTaskClick={handleTaskClick}
+            handleCreateTask={handleCreateTask}
+            handleBatchCreateTasks={handleBatchCreateTasks}
+            handleCreateExtraordinaryService={handleCreateExtraordinaryService}
+            handleUpdateTask={handleUpdateTask}
+            handleDeleteTask={handleDeleteTask}
+            handleUnassignTask={handleUnassignTask}
+            onNavigateDate={navigateDate}
+          />
+        </div>
 
         {/* Footer-resumen con totales y leyenda de clientes */}
-        <div className="mt-4">
+        <div className="flex-shrink-0">
           <CalendarFooterSummary
             tasks={tasks.filter(t => t.date === currentDate.toISOString().split('T')[0])}
             cleaners={cleaners}

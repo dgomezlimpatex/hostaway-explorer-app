@@ -222,7 +222,7 @@ export const CalendarContainer = ({
     <>
       {/* Overlap Alerts - Show at the top */}
       {Object.keys(overlapsByCleanerMap).length > 0 && (
-        <div className="mb-4 space-y-2">
+        <div className="mb-2 space-y-2 flex-shrink-0">
           {Object.entries(overlapsByCleanerMap).map(([cleanerId, overlaps]) => {
             const cleaner = cleaners.find(c => c.id === cleanerId);
             return cleaner ? (
@@ -237,10 +237,10 @@ export const CalendarContainer = ({
       )}
 
       {/* Main Layout with Unassigned Tasks on Left and Calendar on Right */}
-      <div className="flex gap-2 w-full">
+      <div className="flex gap-2 w-full flex-1 min-h-0">
         {/* Unassigned Tasks Column - Only show when there are unassigned tasks */}
         {unassignedTasks.length > 0 && (
-          <div className="w-64 flex-shrink-0">
+          <div className="w-64 flex-shrink-0 overflow-auto">
             <UnassignedTasksWithSuspense
               tasks={unassignedTasks}
               onTaskClick={handleTaskClick}
@@ -251,7 +251,7 @@ export const CalendarContainer = ({
         )}
 
         {/* Main Calendar */}
-        <div className="flex-1 min-w-0">
+        <div className="flex-1 min-w-0 flex flex-col">
           <CalendarLayout
             cleaners={cleaners}
             timeSlots={timeSlots}

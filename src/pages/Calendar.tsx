@@ -3,7 +3,7 @@ import CleaningCalendar from '@/components/CleaningCalendar';
 
 const Calendar = () => {
   return (
-    <div className="min-h-screen bg-background transition-colors duration-300">
+    <div className="h-screen bg-background transition-colors duration-300 overflow-hidden">
       <CleaningCalendar />
     </div>
   );
