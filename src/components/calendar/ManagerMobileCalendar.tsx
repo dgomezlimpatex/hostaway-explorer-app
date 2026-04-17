@@ -55,7 +55,7 @@ export const ManagerMobileCalendar: React.FC<ManagerMobileCalendarProps> = ({
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="h-full flex flex-col bg-background overflow-hidden">
       {/* Header with date navigation */}
       <div className="sticky top-0 z-10 bg-background border-b p-4">
         {/* Home button */}
@@ -135,7 +135,7 @@ export const ManagerMobileCalendar: React.FC<ManagerMobileCalendarProps> = ({
         </div>
       </div>
 
-      <div className="p-4 space-y-4">
+      <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {/* Unassigned tasks section */}
         {unassignedTasks.length > 0 && (
           <Card className="border-orange-200 bg-orange-50">
