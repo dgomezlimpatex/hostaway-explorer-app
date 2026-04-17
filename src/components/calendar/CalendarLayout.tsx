@@ -61,17 +61,10 @@ export const CalendarLayout = ({
 }: CalendarLayoutProps) => {
   const { isMobile, isTablet } = useDeviceType();
 
-  // Responsive calendar height based on device - fills available viewport space
-  const getCalendarHeight = () => {
-    if (isMobile) return "h-[calc(100vh-280px)] min-h-[400px]";
-    if (isTablet) return "h-[calc(100vh-260px)] min-h-[480px]";
-    return "h-[calc(100vh-240px)] min-h-[520px]";
-  };
-
   return (
-    <Card className="border-0 shadow-xl overflow-hidden bg-card animate-fade-in flex-1 flex flex-col">
-      <CardContent className="p-0 flex-1 flex flex-col">
-        <div className={`flex flex-col ${getCalendarHeight()} overflow-hidden`}>
+    <Card className="border-0 shadow-xl overflow-hidden bg-card animate-fade-in flex-1 flex flex-col min-h-0">
+      <CardContent className="p-0 flex-1 flex flex-col min-h-0">
+        <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
           {/* Headers Row */}
           <div className="flex flex-shrink-0">
             <div className="w-52 h-12 bg-muted/50 border-b border-border flex items-center px-3 border-r border-border flex-shrink-0">
