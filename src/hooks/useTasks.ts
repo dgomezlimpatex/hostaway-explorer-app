@@ -213,85 +213,122 @@ export const useTasks = (currentDate: Date, currentView: ViewType) => {
       const cleaner = cleaners.find(c => c.id === cleanerId);
       if (!cleaner) return;
 
-      // Actualización optimista inmediata en TODAS las queries relevantes
-      const currentDateStr = new Date().toISOString().split('T')[0];
-      
       // Cancelar queries en vuelo
       await queryClient.cancelQueries({ queryKey: ['tasks'] });
       
-      // Actualizar múltiples vistas y fechas
-      const dates = [currentDateStr];
-      const tomorrow = new Date();
-      tomorrow.setDate(tomorrow.getDate() + 1);
-      dates.push(tomorrow.toISOString().split('T')[0]);
-      
-      dates.forEach(date => {
-        ['day', 'three-day', 'week'].forEach(view => {
-          const queryKey = ['tasks', date, view, sedeId];
-          queryClient.setQueryData(queryKey, (oldData: Task[] = []) => {
-            return oldData.map(task => 
-              task.id === taskId 
-                ? { ...task, cleanerId, cleaner: cleaner.name }
-                : task
-            );
-          });
-        });
-      });
-
-      // También actualizar la query general de tasks si existe
-      queryClient.setQueryData(['tasks'], (oldData: Task[] = []) => {
-        return oldData.map(task => 
-          task.id === taskId 
-            ? { ...task, cleanerId, cleaner: cleaner.name }
-            : task
-        );
-      });
+      // Optimistic update across ALL cached task queries
+      queryClient.setQueriesData(
+        { predicate: (q) => Array.isArray(q.queryKey) && q.queryKey[0] === 'tasks' },
+        (oldData: Task[] | undefined) => {
+          if (!Array.isArray(oldData)) return oldData;
+          return oldData.map(task =>
+            task.id === taskId ? { ...task, cleanerId, cleaner: cleaner.name } : task
+          );
+        }
+      );
 
       logger.log('✅ Optimistic update applied for task assignment');
     },
     onSuccess: (data, variables) => {
       logger.log('Task assigned successfully:', data);
       
-      // Invalidación agresiva de TODAS las queries relacionadas con tasks
+      // Silent invalidation: marca las queries como stale pero NO refetch agresivo
+      // El próximo render natural recogerá los datos frescos
       queryClient.invalidateQueries({ 
-        predicate: (query) => {
-          return Array.isArray(query.queryKey) && 
-                 query.queryKey[0] === 'tasks';
-        }
-      });
-      
-      // Forzar refetch inmediato
-      queryClient.refetchQueries({ 
-        predicate: (query) => {
-          return Array.isArray(query.queryKey) && 
-                 query.queryKey[0] === 'tasks';
-        }
+        predicate: (query) => Array.isArray(query.queryKey) && query.queryKey[0] === 'tasks',
+        refetchType: 'none',
       });
       
       const cleaner = variables.cleaners.find(c => c.id === variables.cleanerId);
       toast({
         title: "Tarea asignada",
-        description: `Se ha asignado la tarea a ${cleaner?.name} y se le ha enviado una notificación por email.`,
+        description: `Se ha asignado la tarea a ${cleaner?.name}.`,
       });
-      
-      logger.log('⚡ Forced aggressive task assignment cache invalidation and refetch');
     },
     onError: (error: any, variables) => {
       logger.error('Error assigning task:', error);
       
-      // Revertir actualización optimista
-      const currentDateStr = new Date().toISOString().split('T')[0];
-      
-      ['day', 'three-day', 'week'].forEach(view => {
-        queryClient.invalidateQueries({ 
-          queryKey: ['tasks', currentDateStr, view, sedeId] 
-        });
+      // Revertir actualización optimista forzando refetch
+      queryClient.invalidateQueries({
+        predicate: (q) => Array.isArray(q.queryKey) && q.queryKey[0] === 'tasks',
       });
       
       toast({
         title: "Error",
         description: error.message || "No se pudo asignar la tarea.",
         variant: "destructive",
+      });
+    },
+  });
+
+  /**
+   * Combined mutation: assigns + updates schedule in a SINGLE database round-trip.
+   * Used by drag-and-drop in calendar to minimize latency.
+   */
+  const assignTaskWithScheduleMutation = useMutation({
+    mutationFn: async ({
+      taskId,
+      cleanerId,
+      cleanerName,
+      startTime,
+      endTime,
+    }: {
+      taskId: string;
+      cleanerId: string;
+      cleanerName: string;
+      startTime?: string;
+      endTime?: string;
+    }) => {
+      return await taskAssignmentService.assignTaskWithSchedule(
+        taskId,
+        cleanerName,
+        cleanerId,
+        startTime,
+        endTime
+      );
+    },
+    onMutate: async ({ taskId, cleanerId, cleanerName, startTime, endTime }) => {
+      // Cancel in-flight queries
+      await queryClient.cancelQueries({ queryKey: ['tasks'] });
+
+      // Optimistic update across ALL task queries
+      queryClient.setQueriesData(
+        { predicate: (q) => Array.isArray(q.queryKey) && q.queryKey[0] === 'tasks' },
+        (oldData: Task[] | undefined) => {
+          if (!Array.isArray(oldData)) return oldData;
+          return oldData.map(task =>
+            task.id === taskId
+              ? {
+                  ...task,
+                  cleanerId,
+                  cleaner: cleanerName,
+                  ...(startTime ? { startTime } : {}),
+                  ...(endTime ? { endTime } : {}),
+                }
+              : task
+          );
+        }
+      );
+
+      logger.log('⚡ Optimistic update (assign+schedule) applied');
+    },
+    onSuccess: () => {
+      // Silent invalidation only
+      queryClient.invalidateQueries({
+        predicate: (q) => Array.isArray(q.queryKey) && q.queryKey[0] === 'tasks',
+        refetchType: 'none',
+      });
+    },
+    onError: (error: any) => {
+      logger.error('Error in assignTaskWithSchedule:', error);
+      // Revert by forcing refetch
+      queryClient.invalidateQueries({
+        predicate: (q) => Array.isArray(q.queryKey) && q.queryKey[0] === 'tasks',
+      });
+      toast({
+        title: 'Error',
+        description: error.message || 'No se pudo asignar la tarea.',
+        variant: 'destructive',
       });
     },
   });

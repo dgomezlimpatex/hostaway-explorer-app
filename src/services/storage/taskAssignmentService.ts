@@ -18,21 +18,81 @@ export class TaskAssignmentService {
     // Update the task first
     const updatedTask = await taskStorageService.updateTask(taskId, updateData);
 
-    // If we have cleaner ID, send email notification
+    // If we have cleaner ID, send email notification (fire-and-forget)
     if (cleanerId) {
-      try {
-        await this.sendTaskAssignmentEmail(updatedTask, cleanerId);
-        console.log('Task assignment email sent successfully');
-      } catch (error) {
-        console.error('Failed to send assignment email:', error);
-        // Don't fail the assignment if email fails, but log the error
-        // In production, you might want to add this to a retry queue
-      }
+      this.sendTaskAssignmentEmail(updatedTask, cleanerId)
+        .then(() => console.log('Task assignment email sent successfully'))
+        .catch(error => console.error('Failed to send assignment email:', error));
     } else {
       console.log('No cleanerId provided, skipping email notification');
     }
 
     return updatedTask;
+  }
+
+  /**
+   * Optimized: Combines schedule update + assignment in a SINGLE database UPDATE.
+   * Email is sent in background (fire-and-forget) so UI is not blocked.
+   */
+  async assignTaskWithSchedule(
+    taskId: string,
+    cleanerName: string,
+    cleanerId: string,
+    startTime?: string,
+    endTime?: string
+  ): Promise<Task> {
+    console.log('assignTaskWithSchedule called:', { taskId, cleanerName, cleanerId, startTime, endTime });
+
+    const updatePayload: any = {
+      cleaner: cleanerName,
+      cleaner_id: cleanerId,
+    };
+    if (startTime) updatePayload.start_time = startTime;
+    if (endTime) updatePayload.end_time = endTime;
+
+    const { data: updated, error } = await supabase
+      .from('tasks')
+      .update(updatePayload)
+      .eq('id', taskId)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error in assignTaskWithSchedule:', error);
+      throw new Error(`Could not assign task: ${error.message}`);
+    }
+
+    // Map DB row -> Task
+    const task: Task = {
+      id: updated.id,
+      created_at: updated.created_at,
+      updated_at: updated.updated_at,
+      property: updated.property,
+      address: updated.address,
+      startTime: updated.start_time,
+      endTime: updated.end_time,
+      type: updated.type,
+      status: updated.status as 'pending' | 'in-progress' | 'completed',
+      checkOut: updated.check_out,
+      checkIn: updated.check_in,
+      cleaner: updated.cleaner,
+      backgroundColor: updated.background_color,
+      date: updated.date,
+      clienteId: updated.cliente_id,
+      propertyId: updated.propiedad_id,
+      duration: updated.duracion,
+      cost: updated.coste,
+      paymentMethod: updated.metodo_pago,
+      supervisor: updated.supervisor,
+      cleanerId: updated.cleaner_id,
+    };
+
+    // Fire-and-forget assignment email (does not block UI)
+    this.sendTaskAssignmentEmail(task, cleanerId)
+      .then(() => console.log('✅ Assignment email sent (background)'))
+      .catch(err => console.error('⚠️ Assignment email failed (non-blocking):', err));
+
+    return task;
   }
 
   async unassignTask(taskId: string): Promise<Task> {
