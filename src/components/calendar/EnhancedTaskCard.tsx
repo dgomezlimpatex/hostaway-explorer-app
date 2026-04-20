@@ -87,7 +87,7 @@ export const EnhancedTaskCard = React.memo(({
 }: EnhancedTaskCardProps) => {
   const { getClientName } = useClientData();
   const clientColor = getClientColor(task.clienteId);
-  const { resizeTask, moveTaskToDate, setTaskDuration } = useTaskQuickActions();
+  const { resizeTask, moveTaskToDate, addTaskDuration } = useTaskQuickActions();
 
   // Resize state
   const [resizing, setResizing] = useState(false);
