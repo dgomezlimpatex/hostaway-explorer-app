@@ -157,7 +157,7 @@ const UnavailableCleanerCard = ({
           </div>
         )}
         {hasTasksToday && (
-          <div className="flex items-center gap-1 mt-1 text-[11px] text-amber-600 dark:text-amber-400">
+          <div className="flex items-center gap-1 mt-1 text-[11px] text-destructive">
             <AlertTriangle className="h-3 w-3" />
             <span>Tiene tareas asignadas</span>
           </div>
