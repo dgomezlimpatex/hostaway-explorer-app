@@ -591,6 +591,7 @@ const LaundryShareManagement = () => {
                   onOpen={() => openExternalLink(link.token)}
                   onDelete={() => handleDeleteClick(link)}
                   onApplyChanges={(ids) => handleApplyChanges(link.id, ids)}
+                  onAutoMergeNewTasks={(ids, existing) => handleAutoMergeNewTasks(link.id, ids, existing)}
                 />
               ))}
             </div>
