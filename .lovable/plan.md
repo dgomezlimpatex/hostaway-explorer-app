@@ -1,70 +1,66 @@
 
 
-## Objetivo
-En la vista calendario admin (desktop), ocultar de la cuadrícula principal a las trabajadoras NO disponibles en el día visualizado (baja, vacaciones, día libre, festivo, personal, día fijo libre semanal) y agruparlas en un panel desplegable colapsable en la zona superior, mostrando nombre + motivo.
+## Diagnóstico del problema
 
-## Comportamiento
+Cuando arrastras una tarea sin asignar a una trabajadora, se ejecuta esta cadena en `handleTaskAssign` ANTES de mostrar la tarea en su nueva posición:
 
-**Detección de no disponibilidad** (para el día/rango visible):
-- Ausencia de día completo del tipo: `vacation`, `sick`, `day_off`, `holiday`, `personal` (de `worker_absences` con `start_time = null`).
-- Día fijo libre semanal (de `worker_fixed_days_off` que coincida con el día de la semana visualizado).
-- NO se ocultan: `external_work` (trabajo externo, sigue disponible para tareas internas si procede) ni ausencias parciales por horas (esas siguen visibles en la grid con su bloqueo horario actual).
+1. **3 consultas a Supabase en serie** (bloqueantes):
+   - `worker_fixed_days_off` (día libre fijo)
+   - `worker_absences` (ausencias)
+   - `worker_maintenance_cleanings` (mantenimientos)
+2. Detección de overlaps + chequeo de availability
+3. **`updateTask` esperado con `await`** (cambia hora) → escribe en BD + emite email de cambio de horario
+4. **`assignTask` esperado con `await`** → escribe en BD + emite email de asignación
+5. Recién entonces el cache se actualiza optimistamente
 
-**Vistas afectadas**: solo vista `day` del calendario admin desktop. En vistas `three-day` y `week`, se considera "no disponible" si lo está los 3/7 días completos; si solo lo está parcialmente, permanece en la grid (su fila ya muestra el tintado actual).
+Además, el `assignTaskMutation.mutate` se llama dos veces (update + assign) lo que duplica round-trips de red, invalidaciones y refetch agresivos (`refetchQueries` de TODAS las queries de tasks).
 
-**UI del panel**:
-- Ubicación: justo debajo de `CalendarHeader`, encima del `CalendarContainer`.
-- Estado por defecto: **colapsado**.
-- Cabecera siempre visible (clicable):
-  - Icono `UserX` + texto: "Trabajadoras no disponibles · [N]"
-  - Chip con desglose por motivo: 🏖️ 2 · 🤒 1 · 📅 3
-  - Chevron (▼/▲) que rota al expandir.
-  - Si N=0: panel oculto completamente (no se renderiza).
-- Contenido expandido:
-  - Lista en grid responsive (2-4 columnas según ancho).
-  - Cada item: avatar/inicial + nombre + badge coloreado con icono y etiqueta del motivo (usando `ABSENCE_TYPE_CONFIG`) + rango horario si aplica + nota si existe.
-  - Animación suave de expand/collapse.
-- Persistencia del estado abierto/cerrado en `localStorage` (`calendar.unavailableWorkersExpanded`).
+**Resultado**: 3-7 segundos de espera visible antes de que la tarea “salte” a su sitio.
 
-## Arquitectura técnica
+## Solución (sin cambiar funcionalidad)
 
-**Nuevo componente**: `src/components/calendar/UnavailableWorkersPanel.tsx`
-- Props: `cleaners: Cleaner[]`, `currentDate: Date`, `currentView: ViewType`.
-- Internamente usa `useWorkersAbsenceStatus` (ya existente en `CalendarContainer`) y consulta `worker_fixed_days_off` vía nuevo hook `useWorkersFixedDaysOff` (o se añade al hook de absence status existente si ya lo trae).
-- Calcula `unavailableCleaners: { cleaner, reason, absenceType, timeRange?, notes? }[]` con `useMemo`.
-- Usa `Collapsible` de shadcn (`@/components/ui/collapsible`) para el desplegable.
+### 1. Optimistic UI inmediato al soltar
+Antes de cualquier validación o llamada a BD, aplicar un `setQueryData` optimista en React Query con la nueva `cleanerId/cleaner/startTime/endTime`. La tarea aparece **al instante** en su nueva posición. Si algo falla después, se revierte.
 
-**Filtrado en la grid**:
-- En `CalendarContainer.tsx`, derivar `visibleCleaners = cleaners.filter(c => !unavailableIds.has(c.id))` y pasarlo a `CalendarLayout` en lugar de `cleaners`.
-- Las tareas que estuvieran asignadas a una trabajadora oculta siguen mostrándose en `UnassignedTasksWithSuspense` si quedan sin asignar, o se mantienen pero con aviso (en este caso simplemente se ocultan junto a su fila — si tiene tareas asignadas la mostramos igualmente con badge de aviso, ver siguiente punto).
+### 2. Validaciones en paralelo (no en serie)
+Las 3 consultas a Supabase (`fixed_days_off`, `absences`, `maintenance_cleanings`) se lanzan con `Promise.all` en lugar de `await` secuencial → de ~600ms a ~200ms.
 
-**Caso especial — trabajadora oculta con tareas asignadas ese día**:
-- Si una trabajadora marcada como no disponible tiene tareas asignadas ese día (ej: olvido de reasignación), NO se oculta. Permanece visible en la grid con su tintado actual + se muestra también en el panel con badge "⚠️ Tiene tareas asignadas". Esto evita "perder" tareas visualmente.
+### 3. Validaciones desde caché cuando sea posible
+- Las **ausencias** y **días libres fijos** ya están cargados por `useWorkersAbsenceStatus` y `useUnavailableCleaners` en el calendario. Reutilizar esos datos vía React Query cache (`queryClient.getQueryData`) en vez de re-consultar BD en cada drop.
+- Solo consultar `worker_maintenance_cleanings` si no está cacheado (precargarlo al montar el calendario).
 
-## Diagrama
+### 4. Fusionar `updateTask + assignTask` en una sola operación
+Crear una nueva mutación `assignTaskWithSchedule` que haga **un único UPDATE** a la tabla `tasks` con `cleaner_id`, `cleaner`, `start_time`, `end_time` en una sola llamada. Esto:
+- Reduce 2 round-trips → 1
+- Una sola invalidación de cache
+- Un solo email (envío en background, no bloqueante para la UI)
 
-```text
-┌─────────────────────────────────────────────────┐
-│  CalendarHeader (fecha, vista, botones)         │
-├─────────────────────────────────────────────────┤
-│ ▼ Trabajadoras no disponibles · 4   🏖️2 🤒1 📅1 │ ← colapsable
-│   ┌─────────┐ ┌─────────┐ ┌─────────┐           │
-│   │ María   │ │ Ana     │ │ Lucía   │           │
-│   │ 🏖️ Vac. │ │ 🤒 Baja │ │ 📅 Libre│           │
-│   └─────────┘ └─────────┘ └─────────┘           │
-├─────────────────────────────────────────────────┤
-│  CalendarContainer (grid sin esas trabajadoras) │
-└─────────────────────────────────────────────────┘
-```
+### 5. Email en background (fire-and-forget)
+El envío de email vía Edge Function se dispara con `.then()` sin `await` desde el cliente. La UI no espera al email. Si falla, log silencioso (no toast de error porque la asignación sí funcionó).
+
+### 6. Eliminar `refetchQueries` agresivo
+En `assignTaskMutation.onSuccess` actualmente hace `invalidateQueries` + `refetchQueries` de TODAS las queries `['tasks', ...]`. Eso provoca un refetch pesado justo después del optimistic update. Cambiarlo por una invalidación silenciosa (`invalidateQueries` con `refetchType: 'none'`) y dejar que el siguiente render natural recoja los datos.
 
 ## Archivos a modificar
-1. **Crear** `src/components/calendar/UnavailableWorkersPanel.tsx`
-2. **Modificar** `src/components/CleaningCalendar.tsx` — montar el panel entre header y container (solo desktop manager/admin).
-3. **Modificar** `src/components/calendar/CalendarContainer.tsx` — filtrar `cleaners` antes de pasar a `CalendarLayout`, exponer un set de IDs a ocultar (calculado a partir del mismo hook de absences + fixed days off).
-4. **Posible refactor menor**: extraer el cálculo de "no disponibilidad de día completo" a un hook reutilizable `useUnavailableCleaners(cleaners, currentDate, currentView)` para compartir entre el panel y el container y evitar doble fetch.
 
-## Notas
-- No afecta a vista mobile ni a vista cleaner.
-- No afecta a la lógica de drag & drop ni de validación al asignar (esas siguen funcionando contra los datos reales).
-- Festivos (`holiday`) que aplican a todas las trabajadoras agruparían a todas — comportamiento correcto.
+1. **`src/hooks/useCalendarLogic.ts`** — `handleTaskAssign`:
+   - Validaciones en paralelo con `Promise.all`.
+   - Reutilizar caché de ausencias/días fijos.
+   - Llamar a la nueva mutación combinada en lugar de `updateTask` + `assignTask`.
+   - Optimistic update inmediato al inicio.
+
+2. **`src/hooks/useTasks.ts`**:
+   - Añadir mutación `assignTaskWithScheduleMutation` que combine update de horario + asignación en un solo UPDATE.
+   - Dejar de hacer `refetchQueries` agresivo en `assignTaskMutation.onSuccess` (cambiar a invalidación silenciosa).
+
+3. **`src/services/storage/taskAssignmentService.ts`**:
+   - Nuevo método `assignTaskWithSchedule(taskId, cleanerName, cleanerId, startTime, endTime)` que hace un único UPDATE.
+   - Email enviado en background sin `await`.
+
+## Resultado esperado
+
+- **Drop visual instantáneo** (<50ms) gracias al optimistic update.
+- **Confirmación con BD en ~300-500ms** en lugar de 3-7s.
+- **Sin cambios funcionales**: validaciones de absences, fixed days off, maintenance, overlaps y disponibilidad siguen aplicándose con los mismos prompts de confirmación.
+- **Emails siguen enviándose** pero sin bloquear la UI.
 
