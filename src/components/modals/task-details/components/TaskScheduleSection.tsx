@@ -194,7 +194,7 @@ export const TaskScheduleSection = ({
         </div>
 
         {/* Duración inline */}
-        <div className="flex items-center gap-1.5 ml-auto">
+        <div className="flex items-center gap-1.5 ml-6">
           <Hourglass className="h-3.5 w-3.5 text-amber-500" />
           <Input
             type="text"
