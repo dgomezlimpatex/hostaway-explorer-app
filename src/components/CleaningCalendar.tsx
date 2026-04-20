@@ -2,6 +2,7 @@
 import React, { useCallback, useRef, useEffect } from "react";
 import { ResponsiveCalendarHeader } from "./calendar/ResponsiveCalendarHeader";
 import { CalendarContainer } from "./calendar/CalendarContainer";
+import { UnavailableWorkersPanel } from "./calendar/UnavailableWorkersPanel";
 import { CleanerMobileCalendar } from "./calendar/CleanerMobileCalendar";
 import { CleanerDesktopCalendar } from "./calendar/CleanerDesktopCalendar";
 import { ManagerMobileCalendar } from "./calendar/ManagerMobileCalendar";
@@ -340,6 +341,14 @@ const CleaningCalendar = () => {
           onNewTask={handleNewTask}
           onNewBatchTask={handleNewBatchTask}
           onNewExtraordinaryService={handleNewExtraordinaryService}
+        />
+
+        {/* Panel desplegable de trabajadoras no disponibles */}
+        <UnavailableWorkersPanel
+          cleaners={cleaners}
+          currentDate={currentDate}
+          currentView={currentView}
+          tasks={tasks}
         />
 
         {/* Calendar Container - takes available space */}

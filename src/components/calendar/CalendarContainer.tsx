@@ -16,6 +16,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useWorkersAbsenceStatus } from "@/hooks/useWorkersAbsenceStatus";
 import { usePreferredCleaners } from "@/hooks/usePropertyPreferredCleaners";
 import { useCalendarWorkload } from "@/hooks/useCalendarWorkload";
+import { useUnavailableCleaners } from "@/hooks/useUnavailableCleaners";
 
 export interface CalendarContainerProps {
   tasks: Task[];
@@ -159,6 +160,28 @@ export const CalendarContainer = ({
   // Workload data for all cleaners (viewed week)
   const { workloadMap } = useCalendarWorkload(currentDate);
 
+  // Cleaners fully unavailable today (full-day absence or fixed day off)
+  const { unavailableIds } = useUnavailableCleaners(cleaners, currentDate, 'day');
+
+  // Cleaner IDs that have tasks assigned today — these stay visible even if "unavailable"
+  const cleanersWithTasksTodayIds = useMemo(() => {
+    const ids = new Set<string>();
+    assignedTasks.forEach(t => {
+      if (t.cleanerId) ids.add(t.cleanerId);
+      if (t.cleaner) {
+        const match = cleaners.find(c => c.name === t.cleaner);
+        if (match) ids.add(match.id);
+      }
+    });
+    return ids;
+  }, [assignedTasks, cleaners]);
+
+  // Final visible cleaners: hide unavailable ones unless they still have tasks assigned
+  const visibleCleaners = useMemo(
+    () => cleaners.filter(c => !unavailableIds.has(c.id) || cleanersWithTasksTodayIds.has(c.id)),
+    [cleaners, unavailableIds, cleanersWithTasksTodayIds]
+  );
+
   // Get preferred cleaners for the currently dragged task's property
   const draggedPropertyId = dragState.isDragging ? dragState.draggedTask?.propertyId : undefined;
   const { data: draggedTaskPreferred = [] } = usePreferredCleaners(draggedPropertyId);
@@ -253,7 +276,7 @@ export const CalendarContainer = ({
         {/* Main Calendar */}
         <div className="flex-1 min-w-0 flex flex-col">
           <CalendarLayout
-            cleaners={cleaners}
+            cleaners={visibleCleaners}
             timeSlots={timeSlots}
             assignedTasks={assignedTasks}
             availability={availability}
