@@ -52,15 +52,13 @@ export const TaskDetailsModal = ({
     if (task) setFormData(task);
   }, [task]);
 
-  if (!task) return null;
-
   // Local state update only (used for typing)
-  const handleFieldChange = (field: string, value: string) => {
+  const handleFieldChange = useCallback((field: string, value: string) => {
     setFormData(prev => {
       const newData = { ...prev, [field]: value };
 
       // Keep duration coherent: changing startTime keeps duration → recompute endTime
-      if (field === 'startTime' && value) {
+      if (field === 'startTime' && value && task) {
         try {
           const normalize = (t: string) => (t.includes(':') ? t.substring(0, 5) : t);
           const cur = task.startTime;
@@ -86,7 +84,7 @@ export const TaskDetailsModal = ({
       }
       return newData;
     });
-  };
+  }, [task]);
 
   // Persist field on blur (autosave). Recurring instances are not autosaved.
   const handleFieldBlur = useCallback(
@@ -117,6 +115,8 @@ export const TaskDetailsModal = ({
     },
     [canEdit, isRecurringInstance, saveField]
   );
+
+  if (!task) return null;
 
   const handleDelete = async () => {
     if (isRecurringInstance) {
