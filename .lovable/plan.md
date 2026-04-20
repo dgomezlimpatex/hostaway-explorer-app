@@ -1,66 +1,103 @@
 
 
-## Diagnóstico del problema
+## Plan: Optimización de edición de tareas
 
-Cuando arrastras una tarea sin asignar a una trabajadora, se ejecuta esta cadena en `handleTaskAssign` ANTES de mostrar la tarea en su nueva posición:
+Tres frentes complementarios para reducir la fricción al editar tareas (fecha, hora, duración).
 
-1. **3 consultas a Supabase en serie** (bloqueantes):
-   - `worker_fixed_days_off` (día libre fijo)
-   - `worker_absences` (ausencias)
-   - `worker_maintenance_cleanings` (mantenimientos)
-2. Detección de overlaps + chequeo de availability
-3. **`updateTask` esperado con `await`** (cambia hora) → escribe en BD + emite email de cambio de horario
-4. **`assignTask` esperado con `await`** → escribe en BD + emite email de asignación
-5. Recién entonces el cache se actualiza optimistamente
+---
 
-Además, el `assignTaskMutation.mutate` se llama dos veces (update + assign) lo que duplica round-trips de red, invalidaciones y refetch agresivos (`refetchQueries` de TODAS las queries de tasks).
+### 1. Edición inline con autosave inmediato
 
-**Resultado**: 3-7 segundos de espera visible antes de que la tarea “salte” a su sitio.
+Eliminar el modo "Editar/Guardar/Cancelar" del modal de detalles. Los campos clave (fecha, hora inicio, duración, estado, notas, asignación) son **siempre editables** y se guardan automáticamente al salir del campo (`onBlur`).
 
-## Solución (sin cambiar funcionalidad)
+**Cambios visuales en el modal**:
+- Quitar botones "Editar / Guardar / Cancelar" del footer.
+- Cada campo editable muestra indicador sutil al guardar:
+  - Mientras guarda: spinner pequeño junto al campo.
+  - Tras guardar: ✓ verde 1.5s y desaparece.
+  - Si error: borde rojo + toast con detalle, valor revertido.
+- Eliminar el toast actual "Tarea actualizada" en cada cambio (queda el indicador inline, menos ruidoso).
+- Mantener confirmaciones de Eliminar y Desasignar como están.
 
-### 1. Optimistic UI inmediato al soltar
-Antes de cualquier validación o llamada a BD, aplicar un `setQueryData` optimista en React Query con la nueva `cleanerId/cleaner/startTime/endTime`. La tarea aparece **al instante** en su nueva posición. Si algo falla después, se revierte.
+**Comportamiento técnico**:
+- Optimistic update vía `queryClient.setQueriesData` (igual que ya hicimos para drag&drop).
+- Llamada a Supabase no bloqueante.
+- Si cambia hora de inicio → recalcula hora fin manteniendo duración (lógica ya existente).
+- Si la tarea está asignada y cambia horario/fecha, el email de notificación al limpiador se dispara en background (fire-and-forget), sin bloquear UI.
 
-### 2. Validaciones en paralelo (no en serie)
-Las 3 consultas a Supabase (`fixed_days_off`, `absences`, `maintenance_cleanings`) se lanzan con `Promise.all` en lugar de `await` secuencial → de ~600ms a ~200ms.
+---
 
-### 3. Validaciones desde caché cuando sea posible
-- Las **ausencias** y **días libres fijos** ya están cargados por `useWorkersAbsenceStatus` y `useUnavailableCleaners` en el calendario. Reutilizar esos datos vía React Query cache (`queryClient.getQueryData`) en vez de re-consultar BD en cada drop.
-- Solo consultar `worker_maintenance_cleanings` si no está cacheado (precargarlo al montar el calendario).
+### 2. Campo Duración + atajos rápidos
 
-### 4. Fusionar `updateTask + assignTask` en una sola operación
-Crear una nueva mutación `assignTaskWithSchedule` que haga **un único UPDATE** a la tabla `tasks` con `cleaner_id`, `cleaner`, `start_time`, `end_time` en una sola llamada. Esto:
-- Reduce 2 round-trips → 1
-- Una sola invalidación de cache
-- Un solo email (envío en background, no bloqueante para la UI)
+**Nuevo input de Duración** en `TaskScheduleSection.tsx`:
+- Visible junto a hora inicio/fin.
+- Formato: "Xh Ymin" con stepper de 15 min (ya usado en otras partes según memoria).
+- Cambiar duración → recalcula hora fin automáticamente.
+- Cambiar hora fin → recalcula duración automáticamente.
+- Cambiar hora inicio → mantiene duración, ajusta hora fin (lógica actual).
 
-### 5. Email en background (fire-and-forget)
-El envío de email vía Edge Function se dispara con `.then()` sin `await` desde el cliente. La UI no espera al email. Si falla, log silencioso (no toast de error porque la asignación sí funcionó).
+**Botones de atajos rápidos** debajo de los inputs de fecha/hora:
 
-### 6. Eliminar `refetchQueries` agresivo
-En `assignTaskMutation.onSuccess` actualmente hace `invalidateQueries` + `refetchQueries` de TODAS las queries `['tasks', ...]`. Eso provoca un refetch pesado justo después del optimistic update. Cambiarlo por una invalidación silenciosa (`invalidateQueries` con `refetchType: 'none'`) y dejar que el siguiente render natural recoja los datos.
+```
+Fecha:  [📅 27/04/2026]  [Hoy] [Mañana] [-1 día] [+1 día]
+Hora:   [11:00] → [13:45]   Duración: [2h 45min]
+Atajos: [-30m] [-15m] [+15m] [+30m] [+1h]   (modifican duración)
+```
 
-## Archivos a modificar
+- Atajos de fecha: avanzan/retroceden 1 día desde la fecha actual del campo.
+- Atajos de duración: suman/restan tiempo a la duración actual.
+- Cada clic dispara autosave inmediato.
 
-1. **`src/hooks/useCalendarLogic.ts`** — `handleTaskAssign`:
-   - Validaciones en paralelo con `Promise.all`.
-   - Reutilizar caché de ausencias/días fijos.
-   - Llamar a la nueva mutación combinada en lugar de `updateTask` + `assignTask`.
-   - Optimistic update inmediato al inicio.
+---
 
-2. **`src/hooks/useTasks.ts`**:
-   - Añadir mutación `assignTaskWithScheduleMutation` que combine update de horario + asignación en un solo UPDATE.
-   - Dejar de hacer `refetchQueries` agresivo en `assignTaskMutation.onSuccess` (cambiar a invalidación silenciosa).
+### 3. Drag para mover y redimensionar en el calendario
 
-3. **`src/services/storage/taskAssignmentService.ts`**:
-   - Nuevo método `assignTaskWithSchedule(taskId, cleanerName, cleanerId, startTime, endTime)` que hace un único UPDATE.
-   - Email enviado en background sin `await`.
+En la vista calendario admin (desktop), permitir editar tareas sin abrir el modal:
+
+**Mover en vertical** (cambiar hora):
+- Ya existe drag horizontal entre limpiadoras. Añadir snap a slots de 15 min al soltar.
+- Si solo cambia la hora (mismo limpiador), no se reabre el flujo de validación de asignación, solo se actualiza `start_time`/`end_time` con la misma lógica optimista.
+
+**Redimensionar duración**:
+- Añadir "handle" de 6px en el borde inferior del `EnhancedTaskCard` (cursor `ns-resize`).
+- Arrastrar hacia abajo/arriba ajusta `end_time` con snap a 15 min.
+- Visual: durante el drag se muestra overlay con la nueva duración ("2h 30min").
+- Al soltar: optimistic update + UPDATE en Supabase (un único query).
+- Si la nueva duración solapa con otra tarea del mismo limpiador, se muestra el aviso de overlap actual.
+
+**Menú contextual (clic derecho)** sobre una tarea del calendario:
+- Mover a → [Hoy / Mañana / +1 semana]
+- Cambiar duración → [1h / 1h 30 / 2h / 2h 30 / 3h]
+- Duplicar tarea
+- Asignar a → submenu con limpiadoras
+- Desasignar
+- Editar detalles (abre modal completo)
+- Eliminar
+
+Implementado con `ContextMenu` de shadcn (ya disponible).
+
+---
+
+## Archivos a tocar
+
+| Archivo | Cambio |
+|---|---|
+| `src/components/modals/TaskDetailsModal.tsx` | Quitar modo edición, autosave por campo |
+| `src/components/modals/task-details/TaskDetailsActions.tsx` | Quitar botones Editar/Guardar/Cancelar |
+| `src/components/modals/task-details/components/TaskScheduleSection.tsx` | Edición inline siempre activa + campo Duración + atajos |
+| `src/hooks/useInlineFieldSave.ts` (nuevo) | Hook reutilizable: estado saving/saved/error + autosave con optimistic update |
+| `src/components/calendar/EnhancedTaskCard.tsx` | Handle de resize inferior + ContextMenu |
+| `src/components/calendar/CalendarGrid.tsx` | Snap de 15 min en drop, manejo de resize |
+| `src/hooks/useCalendarLogic.ts` | Nuevo `handleTaskResize(taskId, newEndTime)` y `handleTaskReschedule(taskId, newStart)` sin reasignar |
+
+## No se toca
+- Validaciones de disponibilidad, overlaps, ausencias y mantenimientos: misma lógica.
+- Vista mobile / vista cleaner: sin cambios.
+- Lógica de tareas recurrentes virtuales: respeta el flujo actual de "materializar al editar".
+- Permisos: cleaners siguen sin poder editar.
 
 ## Resultado esperado
-
-- **Drop visual instantáneo** (<50ms) gracias al optimistic update.
-- **Confirmación con BD en ~300-500ms** en lugar de 3-7s.
-- **Sin cambios funcionales**: validaciones de absences, fixed days off, maintenance, overlaps y disponibilidad siguen aplicándose con los mismos prompts de confirmación.
-- **Emails siguen enviándose** pero sin bloquear la UI.
+- Editar fecha/hora/duración pasa de **6-7 clics** (Editar → cambiar → Guardar → cerrar) a **1-2 clics** (cambiar → click fuera, o un atajo).
+- Mover tareas pequeñas en el día: arrastrar directamente, sin abrir modal.
+- Cambios reflejados al instante (optimistic update <50ms) y persistidos en background.
 
