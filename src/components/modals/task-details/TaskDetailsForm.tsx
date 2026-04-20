@@ -89,7 +89,7 @@ export const TaskDetailsForm = ({
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <TaskDetailsHeader
         task={task}
         canEdit={canEdit}
@@ -99,6 +99,8 @@ export const TaskDetailsForm = ({
         onFieldBlur={onFieldBlur}
         statusByField={statusByField}
       />
+
+      <div className="h-px bg-border/60" />
 
       {canEdit ? (
         <TaskScheduleSection
@@ -111,7 +113,6 @@ export const TaskDetailsForm = ({
           statusByField={statusByField}
         />
       ) : (
-        // Read-only schedule for cleaners
         <TaskScheduleSection
           task={task}
           formData={{ ...formData, date: task.date, startTime: task.startTime, endTime: task.endTime }}
@@ -120,22 +121,19 @@ export const TaskDetailsForm = ({
         />
       )}
 
-      <PropertyDetailsSection propertyData={propertyData} />
-
-      <AmenitiesSection propertyData={propertyData} />
-
-      {userRole !== 'cleaner' && <ClientInfoSection clientData={clientData} />}
-
-      <ExtraordinaryServiceBillingSection task={task} />
-
       {canEdit && (
-        <TaskStatusSection
-          formData={formData}
-          onFieldChange={onFieldChange}
-          onFieldBlur={onFieldBlur}
-          statusByField={statusByField}
-        />
+        <>
+          <div className="h-px bg-border/60" />
+          <TaskStatusSection
+            formData={formData}
+            onFieldChange={onFieldChange}
+            onFieldBlur={onFieldBlur}
+            statusByField={statusByField}
+          />
+        </>
       )}
+
+      <div className="h-px bg-border/60" />
 
       <TaskNotesSection
         task={task}
@@ -145,6 +143,16 @@ export const TaskDetailsForm = ({
         onFieldBlur={onFieldBlur}
         statusByField={statusByField}
       />
+
+      <div className="h-px bg-border/60" />
+
+      <PropertyDetailsSection propertyData={propertyData} />
+
+      <AmenitiesSection propertyData={propertyData} />
+
+      {userRole !== 'cleaner' && <ClientInfoSection clientData={clientData} />}
+
+      <ExtraordinaryServiceBillingSection task={task} />
 
       <PropertyNotesSection propertyData={propertyData} />
 
