@@ -276,7 +276,7 @@ export const CalendarContainer = ({
         {/* Main Calendar */}
         <div className="flex-1 min-w-0 flex flex-col">
           <CalendarLayout
-            cleaners={cleaners}
+            cleaners={visibleCleaners}
             timeSlots={timeSlots}
             assignedTasks={assignedTasks}
             availability={availability}
