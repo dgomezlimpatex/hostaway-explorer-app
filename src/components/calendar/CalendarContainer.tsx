@@ -1,9 +1,12 @@
 
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { 
   UnassignedTasksWithSuspense, 
   CalendarModalsWithSuspense 
 } from "./LazyCalendarComponents";
+import { taskStorageService } from "@/services/taskStorage";
+import { useToast } from "@/hooks/use-toast";
+import { useQueryClient } from "@tanstack/react-query";
 import { CalendarLayout } from "./CalendarLayout";
 import { DragPreview } from "./DragPreview";
 import { StatusLegend } from "./StatusLegend";
