@@ -469,13 +469,14 @@ export const useTasks = (currentDate: Date, currentView: ViewType) => {
     deleteTask: deleteTaskMutation.mutate,
     deleteAllTasks: deleteAllTasksMutation.mutate,
     assignTask: assignTaskMutation.mutate,
+    assignTaskWithSchedule: assignTaskWithScheduleMutation.mutate,
     unassignTask: unassignTaskMutation.mutate,
     isUpdatingTask: updateTaskMutation.isPending,
     isCreatingTask: createTaskMutation.isPending,
     isBatchCreating: batchCreateTasksMutation.isPending,
     isDeletingTask: deleteTaskMutation.isPending,
     isDeletingAllTasks: deleteAllTasksMutation.isPending,
-    isAssigningTask: assignTaskMutation.isPending,
+    isAssigningTask: assignTaskMutation.isPending || assignTaskWithScheduleMutation.isPending,
     isUnassigningTask: unassignTaskMutation.isPending,
   };
 };
