@@ -131,6 +131,38 @@ export const useLaundryShareLinks = () => {
     },
   });
 
+  // Apply current task changes to a share link (refresh snapshot to current state)
+  const applyTaskChanges = useMutation({
+    mutationFn: async ({ linkId, currentTaskIds }: { linkId: string; currentTaskIds: string[] }) => {
+      const { error } = await supabase
+        .from('laundry_share_links')
+        .update({
+          snapshot_task_ids: currentTaskIds,
+          original_task_ids: currentTaskIds,
+        })
+        .eq('id', linkId);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['laundry-share-links'] });
+      queryClient.invalidateQueries({ queryKey: ['share-link-changes'] });
+      queryClient.invalidateQueries({ queryKey: ['share-link-properties'] });
+      toast({
+        title: 'Cambios aplicados',
+        description: 'El enlace se ha actualizado con las tareas actuales',
+      });
+    },
+    onError: (error) => {
+      console.error('Error applying changes:', error);
+      toast({
+        title: 'Error',
+        description: 'No se pudieron aplicar los cambios',
+        variant: 'destructive',
+      });
+    },
+  });
+
   // Deactivate a share link
   const deactivateShareLink = useMutation({
     mutationFn: async (linkId: string) => {
@@ -165,6 +197,7 @@ export const useLaundryShareLinks = () => {
     refetch,
     createShareLink,
     deactivateShareLink,
+    applyTaskChanges,
   };
 };
 

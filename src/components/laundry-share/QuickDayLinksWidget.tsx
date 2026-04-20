@@ -1,7 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Calendar, Plus, Copy, ExternalLink, Loader2 } from 'lucide-react';
 import { format, addDays, subDays, getDay } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -12,6 +10,7 @@ import { copyShareLinkToClipboard, getShareLinkUrl, calculateExpirationDate } fr
 import { fetchTasksForDates } from '@/services/laundryScheduleService';
 import { useToast } from '@/hooks/use-toast';
 import { useQuery } from '@tanstack/react-query';
+import { cn } from '@/lib/utils';
 
 /**
  * Given a delivery date and its schedule's collectionDays,
@@ -34,25 +33,33 @@ interface QuickDayCardProps {
   date: Date;
   existingLink?: LaundryShareLink;
   onCreateLink: () => Promise<void>;
+  onLinkCreated?: (linkId: string) => void;
   isCreating: boolean;
   taskCount: number;
   isLoadingTasks: boolean;
   collectionDateLabels?: string;
+  accentColor: 'blue' | 'violet';
 }
 
-const QuickDayCard = ({ 
-  label, 
-  date, 
-  existingLink, 
-  onCreateLink, 
-  isCreating, 
+const QuickDayCard = ({
+  label,
+  date,
+  existingLink,
+  onCreateLink,
+  isCreating,
   taskCount,
   isLoadingTasks,
   collectionDateLabels,
+  accentColor,
 }: QuickDayCardProps) => {
   const { toast } = useToast();
-  const dayName = format(date, 'EEEE', { locale: es });
-  const dateFormatted = format(date, "d 'de' MMMM", { locale: es });
+  const dayName = format(date, 'EEE', { locale: es });
+  const dateFormatted = format(date, "d MMM", { locale: es });
+
+  const accentClasses = {
+    blue: 'text-blue-600 dark:text-blue-400',
+    violet: 'text-violet-600 dark:text-violet-400',
+  };
 
   const handleCopy = async () => {
     if (existingLink) {
@@ -61,6 +68,14 @@ const QuickDayCard = ({
         toast({
           title: 'Enlace copiado',
           description: 'Ya puedes compartirlo por WhatsApp',
+          action: (
+            <button
+              onClick={() => window.open(getShareLinkUrl(existingLink.token, true), '_blank')}
+              className="text-xs font-medium underline"
+            >
+              Abrir
+            </button>
+          ),
         });
       }
     }
@@ -73,71 +88,65 @@ const QuickDayCard = ({
   };
 
   return (
-    <Card className="flex-1 bg-gradient-to-br from-muted/50 to-transparent border-muted-foreground/10 hover:border-primary/20 transition-all">
-      <CardContent className="p-4">
-        <div className="flex items-start gap-3">
-          <div className="p-2.5 rounded-lg bg-primary/10 shrink-0">
-            <Calendar className="h-5 w-5 text-primary" />
-          </div>
-          <div className="flex-1 min-w-0 space-y-2">
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="font-semibold text-sm">{label}</span>
-                <Badge variant="secondary" className="text-xs capitalize">
-                  {dayName}
-                </Badge>
-              </div>
-              <p className="text-xs text-muted-foreground capitalize">{dateFormatted}</p>
-              {collectionDateLabels && (
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  Recogida: {collectionDateLabels}
-                </p>
-              )}
-              {!existingLink && (
-                <p className="text-xs text-muted-foreground mt-1">
-                  {isLoadingTasks ? '...' : `${taskCount} servicios`}
-                </p>
-              )}
-            </div>
-            
-            {existingLink ? (
-              <div className="flex items-center gap-2">
-                <Button 
-                  variant="secondary" 
-                  size="sm" 
-                  className="flex-1"
-                  onClick={handleCopy}
-                >
-                  <Copy className="h-3.5 w-3.5 mr-1.5" />
-                  Copiar
-                </Button>
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  onClick={handleOpen}
-                >
-                  <ExternalLink className="h-3.5 w-3.5" />
-                </Button>
-              </div>
-            ) : (
-              <Button 
-                size="sm" 
-                className="w-full"
-                onClick={onCreateLink}
-                disabled={isCreating || taskCount === 0}
-              >
-                {isCreating ? (
-                  <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
-                ) : (
-                  <Plus className="h-3.5 w-3.5 mr-1.5" />
-                )}
-                Crear enlace
-              </Button>
+    <div className="flex-1 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors px-3 py-2.5">
+      <div className="flex items-center gap-3">
+        <Calendar className={cn('h-4 w-4 shrink-0', accentClasses[accentColor])} />
+        <div className="flex-1 min-w-0">
+          <div className="flex items-baseline gap-1.5 flex-wrap">
+            <span className="text-sm font-semibold">{label}</span>
+            <span className="text-xs text-muted-foreground capitalize">· {dayName} {dateFormatted}</span>
+            {!existingLink && !isLoadingTasks && taskCount > 0 && (
+              <span className="text-xs text-muted-foreground">· {taskCount} servicios</span>
+            )}
+            {!existingLink && !isLoadingTasks && taskCount === 0 && (
+              <span className="text-xs text-muted-foreground">· sin servicios</span>
             )}
           </div>
+          {collectionDateLabels && (
+            <p className="text-[11px] text-muted-foreground/80 truncate">
+              Recogida: {collectionDateLabels}
+            </p>
+          )}
         </div>
-      </CardContent>
-    </Card>
+
+        {existingLink ? (
+          <div className="flex items-center gap-1 shrink-0">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8 px-2.5 text-xs"
+              onClick={handleCopy}
+            >
+              <Copy className="h-3.5 w-3.5 mr-1" />
+              Copiar
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8"
+              onClick={handleOpen}
+            >
+              <ExternalLink className="h-3.5 w-3.5" />
+            </Button>
+          </div>
+        ) : (
+          <Button
+            variant="ghost"
+            size="sm"
+            className={cn('h-8 px-2.5 text-xs shrink-0', accentClasses[accentColor])}
+            onClick={onCreateLink}
+            disabled={isCreating || taskCount === 0}
+          >
+            {isCreating ? (
+              <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />
+            ) : (
+              <Plus className="h-3.5 w-3.5 mr-1" />
+            )}
+            Crear
+          </Button>
+        )}
+      </div>
+    </div>
   );
 };
 
@@ -265,7 +274,7 @@ export const QuickDayLinksWidget = () => {
   };
 
   return (
-    <div className="flex flex-col sm:flex-row gap-3">
+    <div className="flex flex-col sm:flex-row gap-2">
       <QuickDayCard
         label="Hoy"
         date={today}
@@ -275,6 +284,7 @@ export const QuickDayLinksWidget = () => {
         taskCount={todayTasks?.length || 0}
         isLoadingTasks={loadingToday}
         collectionDateLabels={todayScheduleInfo.label}
+        accentColor="blue"
       />
       <QuickDayCard
         label="Mañana"
@@ -285,6 +295,7 @@ export const QuickDayLinksWidget = () => {
         taskCount={tomorrowTasks?.length || 0}
         isLoadingTasks={loadingTomorrow}
         collectionDateLabels={tomorrowScheduleInfo.label}
+        accentColor="violet"
       />
     </div>
   );
