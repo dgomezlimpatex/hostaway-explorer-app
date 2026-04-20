@@ -87,7 +87,7 @@ export const EnhancedTaskCard = React.memo(({
 }: EnhancedTaskCardProps) => {
   const { getClientName } = useClientData();
   const clientColor = getClientColor(task.clienteId);
-  const { resizeTask, moveTaskToDate, setTaskDuration } = useTaskQuickActions();
+  const { resizeTask, moveTaskToDate, addTaskDuration } = useTaskQuickActions();
 
   // Resize state
   const [resizing, setResizing] = useState(false);
@@ -364,9 +364,15 @@ export const EnhancedTaskCard = React.memo(({
             Duración
           </ContextMenuSubTrigger>
           <ContextMenuSubContent>
-            {[60, 90, 120, 150, 180, 240].map(min => (
-              <ContextMenuItem key={min} onClick={() => setTaskDuration(task.id, min)}>
-                {formatDuration(min)}
+            {[15, 30, 45, 60, 90, 120].map(min => (
+              <ContextMenuItem key={min} onClick={() => addTaskDuration(task.id, min)}>
+                +{formatDuration(min)}
+              </ContextMenuItem>
+            ))}
+            <ContextMenuSeparator />
+            {[-15, -30, -60].map(min => (
+              <ContextMenuItem key={min} onClick={() => addTaskDuration(task.id, min)}>
+                −{formatDuration(Math.abs(min))}
               </ContextMenuItem>
             ))}
           </ContextMenuSubContent>
