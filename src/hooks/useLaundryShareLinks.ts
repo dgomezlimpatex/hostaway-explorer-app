@@ -131,27 +131,54 @@ export const useLaundryShareLinks = () => {
     },
   });
 
-  // Apply current task changes to a share link (refresh snapshot to current state)
+  // Apply current task changes to a share link
+  // mode 'replace' (default): rewrite snapshot to match current tasks exactly (removes deleted ones)
+  // mode 'merge': only ADD new tasks to snapshot, keep existing ones (preserves manual edits)
+  // silent: skip toast notification (used for auto-merge in background)
   const applyTaskChanges = useMutation({
-    mutationFn: async ({ linkId, currentTaskIds }: { linkId: string; currentTaskIds: string[] }) => {
+    mutationFn: async ({ 
+      linkId, 
+      currentTaskIds, 
+      existingSnapshotIds,
+      mode = 'replace',
+      silent = false,
+    }: { 
+      linkId: string; 
+      currentTaskIds: string[]; 
+      existingSnapshotIds?: string[];
+      mode?: 'replace' | 'merge';
+      silent?: boolean;
+    }) => {
+      let nextSnapshot = currentTaskIds;
+      
+      if (mode === 'merge' && existingSnapshotIds) {
+        // Add new tasks to snapshot without removing existing ones
+        const set = new Set(existingSnapshotIds);
+        currentTaskIds.forEach(id => set.add(id));
+        nextSnapshot = Array.from(set);
+      }
+      
       const { error } = await supabase
         .from('laundry_share_links')
         .update({
-          snapshot_task_ids: currentTaskIds,
-          original_task_ids: currentTaskIds,
+          snapshot_task_ids: nextSnapshot,
+          original_task_ids: currentTaskIds, // Always update baseline to current
         })
         .eq('id', linkId);
 
       if (error) throw error;
+      return { silent };
     },
-    onSuccess: () => {
+    onSuccess: ({ silent }) => {
       queryClient.invalidateQueries({ queryKey: ['laundry-share-links'] });
       queryClient.invalidateQueries({ queryKey: ['share-link-changes'] });
       queryClient.invalidateQueries({ queryKey: ['share-link-properties'] });
-      toast({
-        title: 'Cambios aplicados',
-        description: 'El enlace se ha actualizado con las tareas actuales',
-      });
+      if (!silent) {
+        toast({
+          title: 'Cambios aplicados',
+          description: 'El enlace se ha actualizado con las tareas actuales',
+        });
+      }
     },
     onError: (error) => {
       console.error('Error applying changes:', error);
