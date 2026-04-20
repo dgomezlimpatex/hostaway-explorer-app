@@ -125,7 +125,7 @@ export const TaskScheduleSection = ({
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-base">
-          <Clock className="h-5 w-5 text-purple-600" />
+          <Clock className="h-5 w-5 text-primary" />
           Horarios
         </CardTitle>
       </CardHeader>

@@ -10,21 +10,30 @@ import { TaskStatusSection } from "./components/TaskStatusSection";
 import { PropertyNotesSection } from "./components/PropertyNotesSection";
 import { TaskNotesSection } from "./components/TaskNotesSection";
 import { ExtraordinaryServiceBillingSection } from "./components/ExtraordinaryServiceBillingSection";
-import { InventoryTaskIntegration } from "@/components/inventory/InventoryTaskIntegration";
 import { AdditionalTasksSection } from "./AdditionalTasksSection";
 import { useAuth } from "@/hooks/useAuth";
 import { useAdditionalTasks } from "@/hooks/useAdditionalTasks";
+import { FieldSaveStatus } from "@/hooks/useInlineFieldSave";
+
 interface TaskDetailsFormProps {
   task: Task;
-  isEditing: boolean;
+  /** When true, all editable fields are interactive (admin/manager). */
+  canEdit: boolean;
   formData: Partial<Task>;
   onFieldChange: (field: string, value: string) => void;
+  onFieldBlur?: (field: string, value: string) => void;
+  onScheduleSave?: (updates: Partial<Task>) => void;
+  statusByField?: Record<string, FieldSaveStatus>;
 }
+
 export const TaskDetailsForm = ({
   task,
-  isEditing,
+  canEdit,
   formData,
-  onFieldChange
+  onFieldChange,
+  onFieldBlur,
+  onScheduleSave,
+  statusByField,
 }: TaskDetailsFormProps) => {
   const { userRole } = useAuth();
   const { addSubtask, removeSubtask } = useAdditionalTasks();
@@ -44,13 +53,9 @@ export const TaskDetailsForm = ({
     const fetchPropertyAndClientInfo = async () => {
       if (task.propertyId) {
         try {
-          // Fetch complete property information
           const { data: property } = await supabase
             .from('properties')
-            .select(`
-              *,
-              clients!inner(*)
-            `)
+            .select(`*, clients!inner(*)`)
             .eq('id', task.propertyId)
             .maybeSingle();
 
@@ -71,14 +76,13 @@ export const TaskDetailsForm = ({
     fetchPropertyAndClientInfo();
   }, [task.propertyId]);
 
-
   if (loading) {
     return (
       <div className="space-y-4">
         <div className="animate-pulse space-y-4">
-          <div className="h-20 bg-gray-200 rounded-lg"></div>
-          <div className="h-32 bg-gray-200 rounded-lg"></div>
-          <div className="h-24 bg-gray-200 rounded-lg"></div>
+          <div className="h-20 bg-muted rounded-lg"></div>
+          <div className="h-32 bg-muted rounded-lg"></div>
+          <div className="h-24 bg-muted rounded-lg"></div>
         </div>
       </div>
     );
@@ -88,52 +92,67 @@ export const TaskDetailsForm = ({
     <div className="space-y-6">
       <TaskDetailsHeader
         task={task}
-        isEditing={isEditing}
+        canEdit={canEdit}
         formData={formData}
         propertyData={propertyData}
         onFieldChange={onFieldChange}
+        onFieldBlur={onFieldBlur}
+        statusByField={statusByField}
       />
 
-      <TaskScheduleSection
-        task={task}
-        isEditing={isEditing}
-        formData={formData}
-        propertyData={propertyData}
-        onFieldChange={onFieldChange}
-      />
+      {canEdit ? (
+        <TaskScheduleSection
+          task={task}
+          formData={formData}
+          propertyData={propertyData}
+          onFieldChange={onFieldChange}
+          onFieldBlur={onFieldBlur}
+          onScheduleSave={onScheduleSave}
+          statusByField={statusByField}
+        />
+      ) : (
+        // Read-only schedule for cleaners
+        <TaskScheduleSection
+          task={task}
+          formData={{ ...formData, date: task.date, startTime: task.startTime, endTime: task.endTime }}
+          propertyData={propertyData}
+          onFieldChange={() => {}}
+        />
+      )}
 
       <PropertyDetailsSection propertyData={propertyData} />
 
       <AmenitiesSection propertyData={propertyData} />
 
-      {/* Ocultar información del cliente para cleaners */}
       {userRole !== 'cleaner' && <ClientInfoSection clientData={clientData} />}
 
-      {/* Mostrar información de facturación solo para servicios extraordinarios y admin/managers */}
       <ExtraordinaryServiceBillingSection task={task} />
 
-      {isEditing && (
-        <TaskStatusSection 
+      {canEdit && (
+        <TaskStatusSection
           formData={formData}
           onFieldChange={onFieldChange}
+          onFieldBlur={onFieldBlur}
+          statusByField={statusByField}
         />
       )}
 
       <TaskNotesSection
         task={task}
-        isEditing={isEditing}
+        canEdit={canEdit}
         formData={formData}
         onFieldChange={onFieldChange}
+        onFieldBlur={onFieldBlur}
+        statusByField={statusByField}
       />
 
       <PropertyNotesSection propertyData={propertyData} />
 
-      {/* Additional Subtasks Section - visible for admin/manager */}
       <AdditionalTasksSection
         task={task}
         onAddSubtask={handleAddSubtask}
         onRemoveSubtask={handleRemoveSubtask}
-        isEditing={isEditing}
+        isEditing={canEdit}
       />
     </div>
   );
