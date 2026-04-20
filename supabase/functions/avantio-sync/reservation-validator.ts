@@ -12,6 +12,12 @@ export function shouldCreateTaskForReservation(reservation: AvantioReservation):
     return false;
   }
   
+  // REQUESTED = solicitud tentativa no confirmada. No genera tarea ni alerta.
+  // Solo se crean tareas para reservas confirmadas (CONFIRMED, BOOKED, etc.)
+  if (statusUpper === 'REQUESTED' || statusUpper === 'PENDING' || statusUpper === 'TENTATIVE') {
+    return false;
+  }
+  
   // If has cancellation date, don't create task
   if (reservation.cancellationDate) {
     return false;

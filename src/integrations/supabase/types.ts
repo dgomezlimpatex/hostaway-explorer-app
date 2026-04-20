@@ -170,6 +170,50 @@ export type Database = {
           },
         ]
       }
+      avantio_alert_log: {
+        Row: {
+          accommodation_id: string | null
+          alert_type: string
+          email_id: string | null
+          id: string
+          metadata: Json | null
+          property_id: string | null
+          reference_date: string
+          reservation_id: string | null
+          sent_at: string
+        }
+        Insert: {
+          accommodation_id?: string | null
+          alert_type: string
+          email_id?: string | null
+          id?: string
+          metadata?: Json | null
+          property_id?: string | null
+          reference_date: string
+          reservation_id?: string | null
+          sent_at?: string
+        }
+        Update: {
+          accommodation_id?: string | null
+          alert_type?: string
+          email_id?: string | null
+          id?: string
+          metadata?: Json | null
+          property_id?: string | null
+          reference_date?: string
+          reservation_id?: string | null
+          sent_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "avantio_alert_log_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       avantio_reservations: {
         Row: {
           accommodation_id: string | null
