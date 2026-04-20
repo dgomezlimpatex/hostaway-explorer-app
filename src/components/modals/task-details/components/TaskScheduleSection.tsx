@@ -1,12 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Clock, CalendarIcon, Loader2, Check, AlertCircle, Hourglass } from 'lucide-react';
+import { CalendarIcon, Loader2, Check, AlertCircle, Hourglass, Clock } from 'lucide-react';
 import { format } from 'date-fns';
+import { es } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { Task } from '@/types/calendar';
 import { FieldSaveStatus } from '@/hooks/useInlineFieldSave';
@@ -45,21 +44,20 @@ const computeDurationMin = (start?: string, end?: string) => {
 const formatDurationHours = (mins: number) => {
   if (mins <= 0) return '0 h';
   const hours = mins / 60;
-  // Mostrar sin decimales si es entero, con un decimal si no
   const formatted = Number.isInteger(hours) ? hours.toString() : hours.toFixed(2).replace(/\.?0+$/, '');
   return `${formatted.replace('.', ',')} h`;
 };
 
 const FieldStatus = ({ status }: { status?: FieldSaveStatus }) => {
   if (!status || status === 'idle') return null;
-  if (status === 'saving') return <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" aria-label="Guardando" />;
-  if (status === 'saved') return <Check className="h-3.5 w-3.5 text-emerald-600" aria-label="Guardado" />;
-  if (status === 'error') return <AlertCircle className="h-3.5 w-3.5 text-destructive" aria-label="Error" />;
+  if (status === 'saving') return <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" aria-label="Guardando" />;
+  if (status === 'saved') return <Check className="h-3 w-3 text-emerald-600" aria-label="Guardado" />;
+  if (status === 'error') return <AlertCircle className="h-3 w-3 text-destructive" aria-label="Error" />;
   return null;
 };
 
 export const TaskScheduleSection = ({
-  task,
+  task: _task,
   formData,
   propertyData: _propertyData,
   onFieldChange,
@@ -72,7 +70,6 @@ export const TaskScheduleSection = ({
   const currentDuration = computeDurationMin(startTime, endTime);
   const currentHours = currentDuration / 60;
 
-  // Local duration state in HOURS (decimal) — autosave on blur
   const [durationInput, setDurationInput] = useState<string>(
     Number.isInteger(currentHours) ? currentHours.toString() : currentHours.toFixed(2).replace(/\.?0+$/, '')
   );
@@ -82,7 +79,6 @@ export const TaskScheduleSection = ({
     );
   }, [currentHours]);
 
-  // Apply duration in minutes → recompute endTime from startTime
   const applyDuration = (mins: number) => {
     if (!startTime || mins <= 0) return;
     const newEnd = fromMinutes(toMinutes(startTime) + mins);
@@ -112,137 +108,135 @@ export const TaskScheduleSection = ({
   };
 
   const handleDurationBlur = () => {
-    // Aceptar coma o punto como separador decimal
     const normalized = durationInput.replace(',', '.').trim();
     const hoursParsed = parseFloat(normalized);
     if (!isNaN(hoursParsed) && hoursParsed > 0) {
-      // Snap a 15 min (0.25 h)
       const minutes = Math.max(15, Math.round((hoursParsed * 60) / 15) * 15);
       if (minutes !== currentDuration) {
         applyDuration(minutes);
         return;
       }
     }
-    // Reset al valor actual si entrada inválida
     setDurationInput(
       Number.isInteger(currentHours) ? currentHours.toString() : currentHours.toFixed(2).replace(/\.?0+$/, '')
     );
   };
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-base">
-          <Clock className="h-5 w-5 text-primary" />
-          Horarios
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
-        <div className="space-y-4">
-          {/* Fecha */}
-          <div className="space-y-2">
-            <Label className="text-sm font-medium text-foreground flex items-center gap-2">
-              Fecha
-              <FieldStatus status={statusByField?.date} />
-            </Label>
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  className={cn(
-                    'justify-start text-left font-normal min-w-[200px]',
-                    !formData.date && 'text-muted-foreground'
-                  )}
-                >
-                  <CalendarIcon className="mr-2 h-4 w-4" />
-                  {formData.date ? format(new Date(formData.date), 'PPP') : <span>Selecciona fecha</span>}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0 bg-popover" align="start">
-                <Calendar
-                  mode="single"
-                  selected={formData.date ? new Date(formData.date) : undefined}
-                  onSelect={d => d && setDateTo(d)}
-                  initialFocus
-                  className={cn('p-3 pointer-events-auto')}
-                />
-              </PopoverContent>
-            </Popover>
-          </div>
+    <section className="space-y-3">
+      <div className="flex items-center gap-2">
+        <Clock className="h-4 w-4 text-blue-500" />
+        <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Horarios</h3>
+      </div>
 
-          {/* Horarios + duración */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div className="space-y-2">
-              <Label className="text-sm font-medium text-foreground flex items-center gap-2">
-                Inicio
-                <FieldStatus status={statusByField?.startTime} />
-              </Label>
-              <Input
-                type="time"
-                step={900}
-                value={formData.startTime || ''}
-                onChange={e => onFieldChange('startTime', e.target.value)}
-                onBlur={handleStartBlur}
-              />
-            </div>
+      {/* Fecha */}
+      <div className="flex items-center gap-3">
+        <span className="text-xs text-muted-foreground w-16 flex-shrink-0">Fecha</span>
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button
+              variant="ghost"
+              size="sm"
+              className={cn(
+                'justify-start text-left font-normal h-8 px-2 -ml-2',
+                'hover:bg-muted/60 transition-colors',
+                !formData.date && 'text-muted-foreground'
+              )}
+            >
+              <CalendarIcon className="mr-2 h-3.5 w-3.5 text-violet-500" />
+              {formData.date ? format(new Date(formData.date), "EEEE d 'de' MMMM, yyyy", { locale: es }) : 'Selecciona fecha'}
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-auto p-0 bg-popover" align="start">
+            <Calendar
+              mode="single"
+              selected={formData.date ? new Date(formData.date) : undefined}
+              onSelect={d => d && setDateTo(d)}
+              initialFocus
+              className={cn('p-3 pointer-events-auto')}
+            />
+          </PopoverContent>
+        </Popover>
+        <FieldStatus status={statusByField?.date} />
+      </div>
 
-            <div className="space-y-2">
-              <Label className="text-sm font-medium text-foreground flex items-center gap-2">
-                Fin
-                <FieldStatus status={statusByField?.endTime} />
-              </Label>
-              <Input
-                type="time"
-                step={900}
-                value={formData.endTime || ''}
-                onChange={e => onFieldChange('endTime', e.target.value)}
-                onBlur={handleEndBlur}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label className="text-sm font-medium text-foreground flex items-center gap-2">
-                <Hourglass className="h-3.5 w-3.5" />
-                Duración
-              </Label>
-              <div className="flex items-center gap-1.5">
-                <Input
-                  type="text"
-                  inputMode="decimal"
-                  value={durationInput}
-                  onChange={e => setDurationInput(e.target.value)}
-                  onBlur={handleDurationBlur}
-                  className="w-20"
-                  placeholder="0"
-                />
-                <span className="text-sm text-muted-foreground whitespace-nowrap">
-                  h · {formatDurationHours(currentDuration)}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          {/* Atajos rápidos de duración */}
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="text-xs text-muted-foreground mr-1">Atajos:</span>
-            <Button type="button" variant="outline" size="sm" onClick={() => adjustDuration(-30)} className="h-7 px-2 text-xs">
-              −30m
-            </Button>
-            <Button type="button" variant="outline" size="sm" onClick={() => adjustDuration(-15)} className="h-7 px-2 text-xs">
-              −15m
-            </Button>
-            <Button type="button" variant="outline" size="sm" onClick={() => adjustDuration(15)} className="h-7 px-2 text-xs">
-              +15m
-            </Button>
-            <Button type="button" variant="outline" size="sm" onClick={() => adjustDuration(30)} className="h-7 px-2 text-xs">
-              +30m
-            </Button>
-            <Button type="button" variant="outline" size="sm" onClick={() => adjustDuration(60)} className="h-7 px-2 text-xs">
-              +1h
-            </Button>
-          </div>
+      {/* Horario: Inicio - Fin - Duración en línea */}
+      <div className="flex items-center gap-3 flex-wrap">
+        <span className="text-xs text-muted-foreground w-16 flex-shrink-0">Horario</span>
+        <div className="flex items-center gap-2">
+          <Input
+            type="time"
+            step={900}
+            value={formData.startTime || ''}
+            onChange={e => onFieldChange('startTime', e.target.value)}
+            onBlur={handleStartBlur}
+            className={cn(
+              'h-8 w-24 px-2 border-0 shadow-none bg-muted/40',
+              'hover:bg-muted/70 focus-visible:ring-1 focus-visible:ring-primary/30',
+              'font-mono text-sm transition-colors'
+            )}
+          />
+          <FieldStatus status={statusByField?.startTime} />
+          <span className="text-muted-foreground text-xs">→</span>
+          <Input
+            type="time"
+            step={900}
+            value={formData.endTime || ''}
+            onChange={e => onFieldChange('endTime', e.target.value)}
+            onBlur={handleEndBlur}
+            className={cn(
+              'h-8 w-24 px-2 border-0 shadow-none bg-muted/40',
+              'hover:bg-muted/70 focus-visible:ring-1 focus-visible:ring-primary/30',
+              'font-mono text-sm transition-colors'
+            )}
+          />
+          <FieldStatus status={statusByField?.endTime} />
         </div>
-      </CardContent>
-    </Card>
+
+        {/* Duración inline */}
+        <div className="flex items-center gap-1.5 ml-auto">
+          <Hourglass className="h-3.5 w-3.5 text-amber-500" />
+          <Input
+            type="text"
+            inputMode="decimal"
+            value={durationInput}
+            onChange={e => setDurationInput(e.target.value)}
+            onBlur={handleDurationBlur}
+            className={cn(
+              'h-8 w-14 px-2 text-center border-0 shadow-none bg-muted/40',
+              'hover:bg-muted/70 focus-visible:ring-1 focus-visible:ring-primary/30',
+              'font-mono text-sm transition-colors'
+            )}
+            placeholder="0"
+          />
+          <span className="text-xs text-muted-foreground font-medium">h</span>
+        </div>
+      </div>
+
+      {/* Atajos rápidos de duración */}
+      <div className="flex items-center gap-1.5 pl-[76px] flex-wrap">
+        {[
+          { label: '−30m', delta: -30 },
+          { label: '−15m', delta: -15 },
+          { label: '+15m', delta: 15 },
+          { label: '+30m', delta: 30 },
+          { label: '+1h', delta: 60 },
+        ].map(s => (
+          <button
+            key={s.label}
+            type="button"
+            onClick={() => adjustDuration(s.delta)}
+            className={cn(
+              'h-6 px-2 text-[11px] font-medium rounded-md',
+              'text-muted-foreground hover:text-foreground',
+              'bg-transparent hover:bg-muted/60 transition-colors',
+              'border border-transparent hover:border-border'
+            )}
+          >
+            {s.label}
+          </button>
+        ))}
+      </div>
+    </section>
   );
 };

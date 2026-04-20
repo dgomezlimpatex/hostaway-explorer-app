@@ -1,10 +1,9 @@
 import React from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Calendar, Loader2, Check, AlertCircle } from 'lucide-react';
+import { CircleDot, Loader2, Check, AlertCircle } from 'lucide-react';
 import { Task } from '@/types/calendar';
 import { FieldSaveStatus } from '@/hooks/useInlineFieldSave';
+import { cn } from '@/lib/utils';
 
 interface TaskStatusSectionProps {
   formData: Partial<Task>;
@@ -13,7 +12,7 @@ interface TaskStatusSectionProps {
   statusByField?: Record<string, FieldSaveStatus>;
 }
 
-const StatusIcon = ({ status }: { status?: FieldSaveStatus }) => {
+const FieldStatus = ({ status }: { status?: FieldSaveStatus }) => {
   if (!status || status === 'idle') return null;
   if (status === 'saving') return <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />;
   if (status === 'saved') return <Check className="h-3 w-3 text-emerald-600" />;
@@ -23,38 +22,37 @@ const StatusIcon = ({ status }: { status?: FieldSaveStatus }) => {
 
 export const TaskStatusSection = ({ formData, onFieldChange, onFieldBlur, statusByField }: TaskStatusSectionProps) => {
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-base">
-          <Calendar className="h-5 w-5 text-muted-foreground" />
-          Estado de la Tarea
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
-        <div className="space-y-2">
-          <Label className="text-sm font-medium text-foreground flex items-center gap-2">
-            Estado
-            <StatusIcon status={statusByField?.status} />
-          </Label>
-          <Select
-            value={formData.status}
-            onValueChange={value => {
-              onFieldChange('status', value);
-              // Selects don't have blur — save immediately
-              onFieldBlur?.('status', value);
-            }}
+    <section className="space-y-2">
+      <div className="flex items-center gap-2">
+        <CircleDot className="h-4 w-4 text-purple-500" />
+        <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Estado</h3>
+      </div>
+
+      <div className="flex items-center gap-3">
+        <span className="text-xs text-muted-foreground w-16 flex-shrink-0">Estado</span>
+        <Select
+          value={formData.status}
+          onValueChange={value => {
+            onFieldChange('status', value);
+            onFieldBlur?.('status', value);
+          }}
+        >
+          <SelectTrigger
+            className={cn(
+              'h-8 w-auto min-w-[160px] px-2 border-0 shadow-none bg-muted/40',
+              'hover:bg-muted/70 focus:ring-1 focus:ring-primary/30 transition-colors'
+            )}
           >
-            <SelectTrigger>
-              <SelectValue placeholder="Seleccionar estado" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="pending">Pendiente</SelectItem>
-              <SelectItem value="in-progress">En Progreso</SelectItem>
-              <SelectItem value="completed">Completado</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-      </CardContent>
-    </Card>
+            <SelectValue placeholder="Seleccionar estado" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="pending">Pendiente</SelectItem>
+            <SelectItem value="in-progress">En progreso</SelectItem>
+            <SelectItem value="completed">Completado</SelectItem>
+          </SelectContent>
+        </Select>
+        <FieldStatus status={statusByField?.status} />
+      </div>
+    </section>
   );
 };
