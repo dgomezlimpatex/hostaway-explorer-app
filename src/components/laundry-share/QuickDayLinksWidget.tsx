@@ -274,7 +274,7 @@ export const QuickDayLinksWidget = () => {
   };
 
   return (
-    <div className="flex flex-col sm:flex-row gap-3">
+    <div className="flex flex-col sm:flex-row gap-2">
       <QuickDayCard
         label="Hoy"
         date={today}
@@ -284,6 +284,7 @@ export const QuickDayLinksWidget = () => {
         taskCount={todayTasks?.length || 0}
         isLoadingTasks={loadingToday}
         collectionDateLabels={todayScheduleInfo.label}
+        accentColor="blue"
       />
       <QuickDayCard
         label="Mañana"
@@ -294,6 +295,7 @@ export const QuickDayLinksWidget = () => {
         taskCount={tomorrowTasks?.length || 0}
         isLoadingTasks={loadingTomorrow}
         collectionDateLabels={tomorrowScheduleInfo.label}
+        accentColor="violet"
       />
     </div>
   );
