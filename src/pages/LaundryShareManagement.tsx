@@ -432,6 +432,20 @@ const LaundryShareManagement = () => {
     await applyTaskChanges.mutateAsync({ linkId, currentTaskIds });
   };
 
+  // Auto-merge: silently add new tasks to snapshot without removing existing ones
+  const handleAutoMergeNewTasks = useCallback(
+    async (linkId: string, currentTaskIds: string[], existingSnapshotIds: string[]) => {
+      await applyTaskChanges.mutateAsync({
+        linkId,
+        currentTaskIds,
+        existingSnapshotIds,
+        mode: 'merge',
+        silent: true,
+      });
+    },
+    [applyTaskChanges]
+  );
+
   const handleCleanExpired = async () => {
     const ids = expiredLinks.map(l => l.id);
     await Promise.all(ids.map(id => deactivateShareLink.mutateAsync(id)));
