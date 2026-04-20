@@ -537,12 +537,25 @@ export class ReservationProcessor {
   /**
    * Checks if a new reservation is a one-night stay with checkout tomorrow,
    * and sends an alert email if so.
+   * 
+   * SISTEMA ANTI-SPAM:
+   * 1. Ignora estados no confirmados (REQUESTED, PENDING, TENTATIVE)
+   * 2. Deduplicación dura: solo 1 alerta por (propiedad + fecha checkout)
+   *    usando la tabla avantio_alert_log con índice único.
    */
   private async checkAndSendOneNightAlert(
     reservation: AvantioReservation,
     property: any
   ): Promise<void> {
     if (reservation.nights !== 1) return;
+
+    // FILTRO 1: Solo reservas confirmadas disparan alertas
+    const statusUpper = reservation.status.toUpperCase();
+    const NON_CONFIRMED_STATUSES = ['REQUESTED', 'PENDING', 'TENTATIVE', 'CANCELLED', 'CANCELED', 'UNAVAILABLE', 'UNAVALIABLE'];
+    if (NON_CONFIRMED_STATUSES.includes(statusUpper)) {
+      console.log(`⏭️ Alerta omitida para reserva ${reservation.id}: estado no confirmado (${reservation.status})`);
+      return;
+    }
 
     // Calculate tomorrow's date in Europe/Madrid timezone
     const nowMadrid = new Date(new Date().toLocaleString('en-US', { timeZone: 'Europe/Madrid' }));
@@ -552,10 +565,41 @@ export class ReservationProcessor {
 
     if (reservation.departureDate !== tomorrowStr) return;
 
+    // FILTRO 2: Deduplicación atómica. Insertar primero en avantio_alert_log.
+    // Si ya existe una alerta para (one_night, property, checkout_date), el INSERT falla
+    // por el índice único y NO se envía email duplicado.
+    const { data: alertRecord, error: dedupError } = await this.supabase
+      .from('avantio_alert_log')
+      .insert({
+        alert_type: 'one_night',
+        property_id: property.id,
+        accommodation_id: reservation.accommodationId,
+        reference_date: reservation.departureDate,
+        reservation_id: reservation.id,
+        metadata: {
+          guest_name: reservation.guestName,
+          status: reservation.status,
+          arrival_date: reservation.arrivalDate,
+        }
+      })
+      .select()
+      .single();
+
+    if (dedupError) {
+      // Código 23505 = unique_violation → ya se envió esta alerta hoy
+      if (dedupError.code === '23505') {
+        console.log(`🔇 Alerta duplicada bloqueada (ya enviada): ${property.nombre} → checkout ${tomorrowStr}`);
+        return;
+      }
+      console.error(`⚠️ Error en deduplicación de alertas:`, dedupError);
+      // En caso de error de DB, NO enviamos para evitar spam si la tabla falla
+      return;
+    }
+
     console.log(`⚡ Reserva de 1 noche detectada con checkout mañana (${tomorrowStr}): ${reservation.id} - ${property.nombre}`);
 
     try {
-      await this.supabase.functions.invoke('send-one-night-alert', {
+      const { data: emailResp } = await this.supabase.functions.invoke('send-one-night-alert', {
         body: {
           reservationId: reservation.id,
           propertyName: property.nombre,
@@ -569,9 +613,22 @@ export class ReservationProcessor {
           notes: reservation.notes || null,
         }
       });
+      
+      // Guardar el email_id devuelto por Resend
+      if (emailResp?.emailId && alertRecord?.id) {
+        await this.supabase
+          .from('avantio_alert_log')
+          .update({ email_id: emailResp.emailId })
+          .eq('id', alertRecord.id);
+      }
+      
       console.log(`✅ Alerta de 1 noche enviada para reserva ${reservation.id}`);
     } catch (alertError) {
       console.error(`❌ Error enviando alerta de 1 noche para reserva ${reservation.id}:`, alertError);
+      // Rollback: si el email falló, borrar el log para permitir reintento
+      if (alertRecord?.id) {
+        await this.supabase.from('avantio_alert_log').delete().eq('id', alertRecord.id);
+      }
     }
   }
 }
