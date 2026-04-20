@@ -1,9 +1,12 @@
 
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { 
   UnassignedTasksWithSuspense, 
   CalendarModalsWithSuspense 
 } from "./LazyCalendarComponents";
+import { taskStorageService } from "@/services/taskStorage";
+import { useToast } from "@/hooks/use-toast";
+import { useQueryClient } from "@tanstack/react-query";
 import { CalendarLayout } from "./CalendarLayout";
 import { DragPreview } from "./DragPreview";
 import { StatusLegend } from "./StatusLegend";
@@ -240,6 +243,69 @@ export const CalendarContainer = ({
       dragState.draggedTask?.id // Pasar el ID de la tarea que se está arrastrando
     );
   };
+
+  // Quick actions from EnhancedTaskCard context menu (decoupled via window events)
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  useEffect(() => {
+    const findTask = (id: string) => tasks.find(t => t.id === id);
+
+    const optimisticRemove = (id: string) => {
+      queryClient.setQueriesData(
+        { predicate: q => Array.isArray(q.queryKey) && q.queryKey[0] === 'tasks' },
+        (old: Task[] | undefined) => Array.isArray(old) ? old.filter(t => t.id !== id) : old
+      );
+    };
+
+    const handleDuplicate = async (e: Event) => {
+      const { taskId } = (e as CustomEvent).detail || {};
+      const t = findTask(taskId);
+      if (!t) return;
+      try {
+        const { id, created_at, updated_at, ...rest } = t as any;
+        await taskStorageService.createTask({
+          ...rest,
+          status: 'pending',
+        });
+        queryClient.invalidateQueries({
+          predicate: q => Array.isArray(q.queryKey) && q.queryKey[0] === 'tasks',
+        });
+        toast({ title: 'Tarea duplicada', description: 'Se ha creado una copia.' });
+      } catch (err: any) {
+        toast({ title: 'Error', description: err?.message || 'No se pudo duplicar.', variant: 'destructive' });
+      }
+    };
+
+    const handleUnassign = async (e: Event) => {
+      const { taskId } = (e as CustomEvent).detail || {};
+      try {
+        await handleUnassignTask(taskId);
+      } catch {/* handled inside */}
+    };
+
+    const handleDelete = async (e: Event) => {
+      const { taskId } = (e as CustomEvent).detail || {};
+      if (!window.confirm('¿Eliminar esta tarea? Esta acción no se puede deshacer.')) return;
+      optimisticRemove(taskId);
+      try {
+        await handleDeleteTask(taskId);
+      } catch {
+        queryClient.invalidateQueries({
+          predicate: q => Array.isArray(q.queryKey) && q.queryKey[0] === 'tasks',
+        });
+      }
+    };
+
+    window.addEventListener('task:duplicate', handleDuplicate);
+    window.addEventListener('task:unassign', handleUnassign);
+    window.addEventListener('task:delete', handleDelete);
+    return () => {
+      window.removeEventListener('task:duplicate', handleDuplicate);
+      window.removeEventListener('task:unassign', handleUnassign);
+      window.removeEventListener('task:delete', handleDelete);
+    };
+  }, [tasks, queryClient, toast, handleUnassignTask, handleDeleteTask]);
 
   return (
     <>
