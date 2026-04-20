@@ -372,7 +372,7 @@ export const EnhancedTaskCard = React.memo(({
             <ContextMenuSeparator />
             {[-15, -30, -60].map(min => (
               <ContextMenuItem key={min} onClick={() => addTaskDuration(task.id, min)}>
-                {formatDuration(min)}
+                −{formatDuration(Math.abs(min))}
               </ContextMenuItem>
             ))}
           </ContextMenuSubContent>
