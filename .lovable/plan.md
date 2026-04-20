@@ -1,103 +1,87 @@
 
 
-## Plan: Optimización de edición de tareas
+## Rediseño: Enlaces de Lavandería
 
-Tres frentes complementarios para reducir la fricción al editar tareas (fecha, hora, duración).
-
----
-
-### 1. Edición inline con autosave inmediato
-
-Eliminar el modo "Editar/Guardar/Cancelar" del modal de detalles. Los campos clave (fecha, hora inicio, duración, estado, notas, asignación) son **siempre editables** y se guardan automáticamente al salir del campo (`onBlur`).
-
-**Cambios visuales en el modal**:
-- Quitar botones "Editar / Guardar / Cancelar" del footer.
-- Cada campo editable muestra indicador sutil al guardar:
-  - Mientras guarda: spinner pequeño junto al campo.
-  - Tras guardar: ✓ verde 1.5s y desaparece.
-  - Si error: borde rojo + toast con detalle, valor revertido.
-- Eliminar el toast actual "Tarea actualizada" en cada cambio (queda el indicador inline, menos ruidoso).
-- Mantener confirmaciones de Eliminar y Desasignar como están.
-
-**Comportamiento técnico**:
-- Optimistic update vía `queryClient.setQueriesData` (igual que ya hicimos para drag&drop).
-- Llamada a Supabase no bloqueante.
-- Si cambia hora de inicio → recalcula hora fin manteniendo duración (lógica ya existente).
-- Si la tarea está asignada y cambia horario/fecha, el email de notificación al limpiador se dispara en background (fire-and-forget), sin bloquear UI.
+Página actual funciona pero se siente desconectada del resto del producto: tarjetas con gradientes, badges grandes, jerarquía visual confusa entre "Hoy/Mañana", "Generar enlace" y "Enlaces activos". Vamos a alinearla con la estética minimalista del calendario y modal de tareas (Notion-like, divisores sutiles, color-accents puntuales) y a mejorar la utilidad operativa.
 
 ---
 
-### 2. Campo Duración + atajos rápidos
+### Parte 1 — Rediseño visual (alineado con calendario/modal de tareas)
 
-**Nuevo input de Duración** en `TaskScheduleSection.tsx`:
-- Visible junto a hora inicio/fin.
-- Formato: "Xh Ymin" con stepper de 15 min (ya usado en otras partes según memoria).
-- Cambiar duración → recalcula hora fin automáticamente.
-- Cambiar hora fin → recalcula duración automáticamente.
-- Cambiar hora inicio → mantiene duración, ajusta hora fin (lógica actual).
+**Header (tipo calendario)**
+- Quitar `bg-gradient-to-b` de fondo. Fondo plano `bg-background`.
+- Header sticky compacto: back arrow + título `text-xl font-semibold` + sede en gris pequeño + botón engranaje a la derecha.
+- Divisor `h-px bg-border/60` debajo, igual que en el modal de tareas.
 
-**Botones de atajos rápidos** debajo de los inputs de fecha/hora:
+**Quick Day Cards (Hoy / Mañana)**
+- Eliminar gradiente y borde de color. Usar el patrón "Section" del modal: fondo `bg-muted/30`, sin sombra, hover sutil.
+- Icono de calendario más pequeño (`h-4 w-4`) en color acento (azul para Hoy, violeta para Mañana) en lugar del recuadro grande.
+- Reorganizar info en una línea: `Hoy · lun 20 abr` + chip "3 servicios" + acción principal a la derecha.
+- Si ya existe enlace: mostrar solo "Copiar" como acción primaria + abrir externo como icono. Sin botón outline duplicado.
 
-```
-Fecha:  [📅 27/04/2026]  [Hoy] [Mañana] [-1 día] [+1 día]
-Hora:   [11:00] → [13:45]   Duración: [2h 45min]
-Atajos: [-30m] [-15m] [+15m] [+30m] [+1h]   (modifican duración)
-```
+**Botón "Generar Enlace de Reparto"**
+- Reducir tamaño (de `size="lg"` a default). Pasarlo a `variant="outline"` con icono `+` para no competir con las acciones de Hoy/Mañana, que son el flujo principal del 90% del tiempo.
 
-- Atajos de fecha: avanzan/retroceden 1 día desde la fecha actual del campo.
-- Atajos de duración: suman/restan tiempo a la duración actual.
-- Cada clic dispara autosave inmediato.
+**Sección "Enlaces Activos"**
+- Header tipo modal: icono pequeño coloreado + label uppercase tracking-wider (igual a `Stat` del task modal).
+- `LinkCard`: eliminar borde primary en hover y sombra grande. Pasar a fila tipo lista con divisores internos:
+  - Línea 1: fecha + chip expiración + chip "Cambios detectados" (warning compact).
+  - Línea 2: badges de propiedades (mismo estilo).
+  - Línea 3: barra de progreso fina (h-1) + stats inline (16 · 1 prep · 1 entreg · 6%).
+  - Footer: URL truncada + icono copy + icono delete (sin botón sólido "Copiar", basta el icono pequeño consistente).
+- Acciones (editar/abrir) siempre visibles en pequeño en lugar de aparecer al hover (en desktop hover funciona; en táctil el opacity-0 esconde funcionalidad).
 
----
+**Enlaces expirados**
+- Sin cambios estructurales, solo respetar nuevo estilo de divisores.
 
-### 3. Drag para mover y redimensionar en el calendario
-
-En la vista calendario admin (desktop), permitir editar tareas sin abrir el modal:
-
-**Mover en vertical** (cambiar hora):
-- Ya existe drag horizontal entre limpiadoras. Añadir snap a slots de 15 min al soltar.
-- Si solo cambia la hora (mismo limpiador), no se reabre el flujo de validación de asignación, solo se actualiza `start_time`/`end_time` con la misma lógica optimista.
-
-**Redimensionar duración**:
-- Añadir "handle" de 6px en el borde inferior del `EnhancedTaskCard` (cursor `ns-resize`).
-- Arrastrar hacia abajo/arriba ajusta `end_time` con snap a 15 min.
-- Visual: durante el drag se muestra overlay con la nueva duración ("2h 30min").
-- Al soltar: optimistic update + UPDATE en Supabase (un único query).
-- Si la nueva duración solapa con otra tarea del mismo limpiador, se muestra el aviso de overlap actual.
-
-**Menú contextual (clic derecho)** sobre una tarea del calendario:
-- Mover a → [Hoy / Mañana / +1 semana]
-- Cambiar duración → [1h / 1h 30 / 2h / 2h 30 / 3h]
-- Duplicar tarea
-- Asignar a → submenu con limpiadoras
-- Desasignar
-- Editar detalles (abre modal completo)
-- Eliminar
-
-Implementado con `ContextMenu` de shadcn (ya disponible).
+**Paleta de acentos por sección** (consistente con modal de tareas):
+- Azul: Hoy / progreso preparación
+- Violeta: Mañana
+- Verde esmeralda: entregado / completado
+- Ámbar: cambios detectados
+- Rojo destructivo: solo en delete (icono pequeño)
 
 ---
 
-## Archivos a tocar
+### Parte 2 — Mejoras funcionales
 
-| Archivo | Cambio |
-|---|---|
-| `src/components/modals/TaskDetailsModal.tsx` | Quitar modo edición, autosave por campo |
-| `src/components/modals/task-details/TaskDetailsActions.tsx` | Quitar botones Editar/Guardar/Cancelar |
-| `src/components/modals/task-details/components/TaskScheduleSection.tsx` | Edición inline siempre activa + campo Duración + atajos |
-| `src/hooks/useInlineFieldSave.ts` (nuevo) | Hook reutilizable: estado saving/saved/error + autosave con optimistic update |
-| `src/components/calendar/EnhancedTaskCard.tsx` | Handle de resize inferior + ContextMenu |
-| `src/components/calendar/CalendarGrid.tsx` | Snap de 15 min en drop, manejo de resize |
-| `src/hooks/useCalendarLogic.ts` | Nuevo `handleTaskResize(taskId, newEndTime)` y `handleTaskReschedule(taskId, newStart)` sin reasignar |
+**a) Indicador de "salud" del enlace en cabecera**
+Pequeño dot de estado al lado de cada `LinkCard`: verde si 100% entregado, azul si en preparación, gris si sin actividad, ámbar si hay cambios pendientes. Permite ver el estado de un vistazo sin leer la barra.
 
-## No se toca
-- Validaciones de disponibilidad, overlaps, ausencias y mantenimientos: misma lógica.
-- Vista mobile / vista cleaner: sin cambios.
-- Lógica de tareas recurrentes virtuales: respeta el flujo actual de "materializar al editar".
-- Permisos: cleaners siguen sin poder editar.
+**b) Acción rápida "Recrear con cambios"**
+Cuando aparece "Cambios detectados", añadir botón inline "Aplicar cambios" que actualiza `snapshot_task_ids` con las tareas actuales sin tener que abrir el modal de edición. Reduce 3 clics a 1.
 
-## Resultado esperado
-- Editar fecha/hora/duración pasa de **6-7 clics** (Editar → cambiar → Guardar → cerrar) a **1-2 clics** (cambiar → click fuera, o un atajo).
-- Mover tareas pequeñas en el día: arrastrar directamente, sin abrir modal.
-- Cambios reflejados al instante (optimistic update <50ms) y persistidos en background.
+**c) Filtro/búsqueda en enlaces activos**
+Si hay >5 enlaces, input de búsqueda por fecha/propiedad. Útil cuando se acumulan enlaces de varias semanas.
+
+**d) Estado vacío más útil**
+Cuando no hay enlaces activos pero sí hay servicios pendientes para hoy/mañana, mostrar CTA directo a crear el de hoy en vez del mensaje genérico actual.
+
+**e) Toast con acción "Abrir"**
+Al copiar un enlace, el toast incluye botón "Abrir" para validar que se generó bien, ahorrando un viaje extra.
+
+**f) Persistencia visual del último enlace creado**
+El enlace recién generado se destaca durante 5s con un ring sutil para que el usuario vea claramente cuál acaba de crear (especialmente útil cuando ya hay varios).
+
+**g) Mover el botón engranaje a un menú "..."**
+Engranaje aislado se ve desconectado. Pasarlo a dropdown con: Configurar horarios · Ver expirados · Limpiar todos los expirados.
+
+---
+
+### Archivos a modificar
+
+- `src/pages/LaundryShareManagement.tsx` — header, sección activos, footer cards, dropdown ajustes, búsqueda, estado vacío contextual.
+- `src/components/laundry-share/QuickDayLinksWidget.tsx` — `QuickDayCard` rediseñado, layout horizontal compacto.
+- `src/hooks/useLaundryShareLinks.ts` — añadir mutation `applyTaskChanges(linkId)` para acción "Aplicar cambios" sin abrir modal.
+
+Sin cambios en backend, esquema DB, ni en la vista pública (`/lavanderia/:token`).
+
+---
+
+### Resultado esperado
+
+- Misma estética que calendario y modal de tareas: limpia, jerárquica, sin gradientes innecesarios.
+- El flujo más usado (crear/copiar enlace de hoy o mañana) queda visible y a 1 clic.
+- "Cambios detectados" deja de ser un aviso pasivo y se convierte en acción directa.
+- Vista compacta: en una pantalla caben más enlaces activos sin scroll.
 
