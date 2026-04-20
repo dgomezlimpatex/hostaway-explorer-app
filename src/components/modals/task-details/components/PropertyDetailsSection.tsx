@@ -1,72 +1,85 @@
 import React from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Bed, Bath, Clock } from 'lucide-react';
+import { Bed, Bath, Sofa, Clock, Wallet } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 
 interface PropertyDetailsSectionProps {
   propertyData: any;
 }
 
+interface StatProps {
+  icon: React.ReactNode;
+  label: string;
+  value: string | number;
+  iconColor: string;
+}
+
+const Stat = ({ icon, label, value, iconColor }: StatProps) => (
+  <div className="flex flex-col items-start gap-1 p-3 rounded-md bg-muted/30 hover:bg-muted/50 transition-colors">
+    <div className={`${iconColor}`}>{icon}</div>
+    <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">{label}</span>
+    <span className="text-base font-semibold text-foreground">{value}</span>
+  </div>
+);
+
 export const PropertyDetailsSection = ({ propertyData }: PropertyDetailsSectionProps) => {
   const { userRole } = useAuth();
   if (!propertyData) return null;
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-base">
-          <Bed className="h-5 w-5 text-green-600" />
-          Características de la Propiedad
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-          <div className="flex flex-col items-center p-3 bg-green-50 rounded-lg border border-green-200">
-            <Bed className="h-6 w-6 text-green-600 mb-1" />
-            <span className="text-sm text-gray-600">Camas Grandes</span>
-            <span className="text-lg font-semibold text-green-800">{propertyData.numero_camas || 0}</span>
-          </div>
+    <section className="space-y-2">
+      <div className="flex items-center gap-2">
+        <Bed className="h-4 w-4 text-emerald-500" />
+        <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          Características
+        </h3>
+      </div>
 
-          <div className="flex flex-col items-center p-3 bg-emerald-50 rounded-lg border border-emerald-200">
-            <Bed className="h-5 w-5 text-emerald-600 mb-1" />
-            <span className="text-sm text-gray-600">Camas Pequeñas</span>
-            <span className="text-lg font-semibold text-emerald-800">{propertyData.numero_camas_pequenas || propertyData.numeroCamasPequenas || 0}</span>
-          </div>
-
-          <div className="flex flex-col items-center p-3 bg-purple-50 rounded-lg border border-purple-200">
-            <Bed className="h-5 w-5 text-purple-600 mb-1" />
-            <span className="text-sm text-gray-600">Camas Suite</span>
-            <span className="text-lg font-semibold text-purple-800">{propertyData.numero_camas_suite || propertyData.numeroCamasSuite || 0}</span>
-          </div>
-
-          <div className="flex flex-col items-center p-3 bg-pink-50 rounded-lg border border-pink-200">
-            <span className="text-xl mb-1">🛋️</span>
-            <span className="text-sm text-gray-600">Sofás Cama</span>
-            <span className="text-lg font-semibold text-pink-800">{propertyData.numero_sofas_cama || propertyData.numeroSofasCama || 0}</span>
-          </div>
-          
-          <div className="flex flex-col items-center p-3 bg-blue-50 rounded-lg border border-blue-200">
-            <Bath className="h-6 w-6 text-blue-600 mb-1" />
-            <span className="text-sm text-gray-600">Baños</span>
-            <span className="text-lg font-semibold text-blue-800">{propertyData.numero_banos}</span>
-          </div>
-          
-          <div className="flex flex-col items-center p-3 bg-indigo-50 rounded-lg border border-indigo-200">
-            <Clock className="h-6 w-6 text-indigo-600 mb-1" />
-            <span className="text-sm text-gray-600">Duración</span>
-            <span className="text-lg font-semibold text-indigo-800">{propertyData.duracion_servicio}min</span>
-          </div>
-          
-          {/* Ocultar coste para cleaners */}
-          {userRole !== 'cleaner' && (
-            <div className="flex flex-col items-center p-3 bg-amber-50 rounded-lg border border-amber-200">
-              <span className="text-xl mb-1">💰</span>
-              <span className="text-sm text-gray-600">Coste</span>
-              <span className="text-lg font-semibold text-amber-800">{propertyData.coste_servicio}€</span>
-            </div>
-          )}
-        </div>
-      </CardContent>
-    </Card>
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
+        <Stat
+          icon={<Bed className="h-4 w-4" />}
+          label="Camas grandes"
+          value={propertyData.numero_camas || 0}
+          iconColor="text-emerald-500"
+        />
+        <Stat
+          icon={<Bed className="h-4 w-4" />}
+          label="Camas peq."
+          value={propertyData.numero_camas_pequenas || propertyData.numeroCamasPequenas || 0}
+          iconColor="text-teal-500"
+        />
+        <Stat
+          icon={<Bed className="h-4 w-4" />}
+          label="Camas suite"
+          value={propertyData.numero_camas_suite || propertyData.numeroCamasSuite || 0}
+          iconColor="text-violet-500"
+        />
+        <Stat
+          icon={<Sofa className="h-4 w-4" />}
+          label="Sofás cama"
+          value={propertyData.numero_sofas_cama || propertyData.numeroSofasCama || 0}
+          iconColor="text-rose-400"
+        />
+        <Stat
+          icon={<Bath className="h-4 w-4" />}
+          label="Baños"
+          value={propertyData.numero_banos || 0}
+          iconColor="text-blue-500"
+        />
+        <Stat
+          icon={<Clock className="h-4 w-4" />}
+          label="Duración"
+          value={`${propertyData.duracion_servicio} min`}
+          iconColor="text-indigo-500"
+        />
+        {userRole !== 'cleaner' && (
+          <Stat
+            icon={<Wallet className="h-4 w-4" />}
+            label="Coste"
+            value={`${propertyData.coste_servicio} €`}
+            iconColor="text-amber-500"
+          />
+        )}
+      </div>
+    </section>
   );
 };

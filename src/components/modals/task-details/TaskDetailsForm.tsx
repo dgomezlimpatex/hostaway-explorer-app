@@ -148,13 +148,25 @@ export const TaskDetailsForm = ({
 
       <PropertyDetailsSection propertyData={propertyData} />
 
+      <div className="h-px bg-border/60" />
+
       <AmenitiesSection propertyData={propertyData} />
 
-      {userRole !== 'cleaner' && <ClientInfoSection clientData={clientData} />}
+      {userRole !== 'cleaner' && clientData && (
+        <>
+          <div className="h-px bg-border/60" />
+          <ClientInfoSection clientData={clientData} />
+        </>
+      )}
 
       <ExtraordinaryServiceBillingSection task={task} />
 
-      <PropertyNotesSection propertyData={propertyData} />
+      {propertyData?.notas && (
+        <>
+          <div className="h-px bg-border/60" />
+          <PropertyNotesSection propertyData={propertyData} />
+        </>
+      )}
 
       <AdditionalTasksSection
         task={task}
