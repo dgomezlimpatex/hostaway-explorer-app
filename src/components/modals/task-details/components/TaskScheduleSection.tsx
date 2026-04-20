@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Clock, CalendarIcon, Loader2, Check, AlertCircle, Hourglass } from 'lucide-react';
-import { format, addDays } from 'date-fns';
+import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { Task } from '@/types/calendar';
 import { FieldSaveStatus } from '@/hooks/useInlineFieldSave';
@@ -42,13 +42,12 @@ const computeDurationMin = (start?: string, end?: string) => {
   if (d < 0) d += 24 * 60;
   return d;
 };
-const formatDuration = (mins: number) => {
-  if (mins <= 0) return '0min';
-  const h = Math.floor(mins / 60);
-  const m = mins % 60;
-  if (h === 0) return `${m}min`;
-  if (m === 0) return `${h}h`;
-  return `${h}h ${m}min`;
+const formatDurationHours = (mins: number) => {
+  if (mins <= 0) return '0 h';
+  const hours = mins / 60;
+  // Mostrar sin decimales si es entero, con un decimal si no
+  const formatted = Number.isInteger(hours) ? hours.toString() : hours.toFixed(2).replace(/\.?0+$/, '');
+  return `${formatted.replace('.', ',')} h`;
 };
 
 const FieldStatus = ({ status }: { status?: FieldSaveStatus }) => {
@@ -62,7 +61,7 @@ const FieldStatus = ({ status }: { status?: FieldSaveStatus }) => {
 export const TaskScheduleSection = ({
   task,
   formData,
-  propertyData,
+  propertyData: _propertyData,
   onFieldChange,
   onFieldBlur,
   onScheduleSave,
@@ -71,14 +70,19 @@ export const TaskScheduleSection = ({
   const startTime = normalizeTime(formData.startTime);
   const endTime = normalizeTime(formData.endTime);
   const currentDuration = computeDurationMin(startTime, endTime);
+  const currentHours = currentDuration / 60;
 
-  // Local duration state (lets the user type freely; autosave on blur)
-  const [durationInput, setDurationInput] = useState<string>(currentDuration.toString());
+  // Local duration state in HOURS (decimal) — autosave on blur
+  const [durationInput, setDurationInput] = useState<string>(
+    Number.isInteger(currentHours) ? currentHours.toString() : currentHours.toFixed(2).replace(/\.?0+$/, '')
+  );
   useEffect(() => {
-    setDurationInput(currentDuration.toString());
-  }, [currentDuration]);
+    setDurationInput(
+      Number.isInteger(currentHours) ? currentHours.toString() : currentHours.toFixed(2).replace(/\.?0+$/, '')
+    );
+  }, [currentHours]);
 
-  // Apply duration → recompute endTime from startTime
+  // Apply duration in minutes → recompute endTime from startTime
   const applyDuration = (mins: number) => {
     if (!startTime || mins <= 0) return;
     const newEnd = fromMinutes(toMinutes(startTime) + mins);
@@ -99,11 +103,6 @@ export const TaskScheduleSection = ({
     else onFieldBlur?.('date', dateStr);
   };
 
-  const shiftDate = (deltaDays: number) => {
-    const base = formData.date ? new Date(formData.date) : new Date(task.date);
-    setDateTo(addDays(base, deltaDays));
-  };
-
   const handleStartBlur = () => {
     if (formData.startTime) onFieldBlur?.('startTime', formData.startTime);
     if (formData.endTime) onFieldBlur?.('endTime', formData.endTime);
@@ -113,12 +112,21 @@ export const TaskScheduleSection = ({
   };
 
   const handleDurationBlur = () => {
-    const parsed = parseInt(durationInput, 10);
-    if (!isNaN(parsed) && parsed > 0 && parsed !== currentDuration) {
-      applyDuration(parsed);
-    } else {
-      setDurationInput(currentDuration.toString());
+    // Aceptar coma o punto como separador decimal
+    const normalized = durationInput.replace(',', '.').trim();
+    const hoursParsed = parseFloat(normalized);
+    if (!isNaN(hoursParsed) && hoursParsed > 0) {
+      // Snap a 15 min (0.25 h)
+      const minutes = Math.max(15, Math.round((hoursParsed * 60) / 15) * 15);
+      if (minutes !== currentDuration) {
+        applyDuration(minutes);
+        return;
+      }
     }
+    // Reset al valor actual si entrada inválida
+    setDurationInput(
+      Number.isInteger(currentHours) ? currentHours.toString() : currentHours.toFixed(2).replace(/\.?0+$/, '')
+    );
   };
 
   return (
@@ -137,46 +145,29 @@ export const TaskScheduleSection = ({
               Fecha
               <FieldStatus status={statusByField?.date} />
             </Label>
-            <div className="flex flex-wrap items-center gap-2">
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className={cn(
-                      'justify-start text-left font-normal min-w-[180px]',
-                      !formData.date && 'text-muted-foreground'
-                    )}
-                  >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {formData.date ? format(new Date(formData.date), 'PPP') : <span>Selecciona fecha</span>}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0 bg-popover" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={formData.date ? new Date(formData.date) : undefined}
-                    onSelect={d => d && setDateTo(d)}
-                    initialFocus
-                    className={cn('p-3 pointer-events-auto')}
-                  />
-                </PopoverContent>
-              </Popover>
-              <Button type="button" variant="ghost" size="sm" onClick={() => setDateTo(new Date())}>
-                Hoy
-              </Button>
-              <Button type="button" variant="ghost" size="sm" onClick={() => setDateTo(addDays(new Date(), 1))}>
-                Mañana
-              </Button>
-              <Button type="button" variant="ghost" size="sm" onClick={() => shiftDate(-1)}>
-                −1 día
-              </Button>
-              <Button type="button" variant="ghost" size="sm" onClick={() => shiftDate(1)}>
-                +1 día
-              </Button>
-              <Button type="button" variant="ghost" size="sm" onClick={() => shiftDate(7)}>
-                +1 sem
-              </Button>
-            </div>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  className={cn(
+                    'justify-start text-left font-normal min-w-[200px]',
+                    !formData.date && 'text-muted-foreground'
+                  )}
+                >
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {formData.date ? format(new Date(formData.date), 'PPP') : <span>Selecciona fecha</span>}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0 bg-popover" align="start">
+                <Calendar
+                  mode="single"
+                  selected={formData.date ? new Date(formData.date) : undefined}
+                  onSelect={d => d && setDateTo(d)}
+                  initialFocus
+                  className={cn('p-3 pointer-events-auto')}
+                />
+              </PopoverContent>
+            </Popover>
           </div>
 
           {/* Horarios + duración */}
@@ -214,18 +205,18 @@ export const TaskScheduleSection = ({
                 <Hourglass className="h-3.5 w-3.5" />
                 Duración
               </Label>
-              <div className="flex items-center gap-1">
+              <div className="flex items-center gap-1.5">
                 <Input
-                  type="number"
-                  min={15}
-                  step={15}
+                  type="text"
+                  inputMode="decimal"
                   value={durationInput}
                   onChange={e => setDurationInput(e.target.value)}
                   onBlur={handleDurationBlur}
                   className="w-20"
+                  placeholder="0"
                 />
                 <span className="text-sm text-muted-foreground whitespace-nowrap">
-                  min · {formatDuration(currentDuration)}
+                  h · {formatDurationHours(currentDuration)}
                 </span>
               </div>
             </div>
@@ -249,37 +240,7 @@ export const TaskScheduleSection = ({
             <Button type="button" variant="outline" size="sm" onClick={() => adjustDuration(60)} className="h-7 px-2 text-xs">
               +1h
             </Button>
-            <span className="text-xs text-muted-foreground ml-2">Presets:</span>
-            <Button type="button" variant="ghost" size="sm" onClick={() => applyDuration(60)} className="h-7 px-2 text-xs">
-              1h
-            </Button>
-            <Button type="button" variant="ghost" size="sm" onClick={() => applyDuration(90)} className="h-7 px-2 text-xs">
-              1h30
-            </Button>
-            <Button type="button" variant="ghost" size="sm" onClick={() => applyDuration(120)} className="h-7 px-2 text-xs">
-              2h
-            </Button>
-            <Button type="button" variant="ghost" size="sm" onClick={() => applyDuration(180)} className="h-7 px-2 text-xs">
-              3h
-            </Button>
           </div>
-
-          {propertyData && (
-            <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label className="text-sm font-medium text-muted-foreground">Check-in predeterminado</Label>
-                <div className="p-2 bg-muted rounded-md border text-sm">
-                  {propertyData.check_in_predeterminado}
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label className="text-sm font-medium text-muted-foreground">Check-out predeterminado</Label>
-                <div className="p-2 bg-muted rounded-md border text-sm">
-                  {propertyData.check_out_predeterminado}
-                </div>
-              </div>
-            </div>
-          )}
         </div>
       </CardContent>
     </Card>
