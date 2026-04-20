@@ -227,10 +227,48 @@ export const useTaskQuickActions = () => {
     [findTask, optimisticPatch, invalidateTasks, toast]
   );
 
+  /** Add (or subtract) minutes to the current task duration. */
+  const addTaskDuration = useCallback(
+    async (taskId: string, deltaMinutes: number) => {
+      const task = findTask(taskId);
+      if (!task) return;
+
+      const startMin = toMinutes(task.startTime);
+      const currentDuration =
+        task.duration ?? toMinutes(task.endTime) - startMin;
+      const newDuration = Math.max(SNAP_MIN, currentDuration + deltaMinutes);
+      const endMin = startMin + newDuration;
+      const newEnd = fromMinutes(endMin);
+
+      if (newEnd === task.endTime) return;
+
+      optimisticPatch(taskId, { endTime: newEnd, duration: newDuration });
+
+      try {
+        await taskStorageService.updateTaskSchedule(
+          taskId,
+          { endTime: newEnd, duration: newDuration },
+          task
+        );
+        invalidateTasks(false);
+      } catch (err: any) {
+        logger.error('addTaskDuration failed:', err);
+        invalidateTasks(true);
+        toast({
+          title: 'No se pudo cambiar la duración',
+          description: err?.message || 'Error ajustando la duración.',
+          variant: 'destructive',
+        });
+      }
+    },
+    [findTask, optimisticPatch, invalidateTasks, toast]
+  );
+
   return {
     resizeTask,
     rescheduleTask,
     moveTaskToDate,
     setTaskDuration,
+    addTaskDuration,
   };
 };
