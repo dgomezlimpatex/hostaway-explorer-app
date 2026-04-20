@@ -77,6 +77,7 @@ export const useCalendarData = () => {
     deleteTask,
     deleteAllTasks,
     assignTask: assignTaskMutation,
+    assignTaskWithSchedule: assignTaskWithScheduleMutation,
     unassignTask: unassignTaskMutation,
     isUpdatingTask,
     isCreatingTask,
@@ -165,6 +166,17 @@ export const useCalendarData = () => {
     assignTaskMutation({ taskId, cleanerId, cleaners: cleanersArray });
   };
 
+  // Optimized: assign + reschedule in a single round-trip
+  const assignTaskWithSchedule = (params: {
+    taskId: string;
+    cleanerId: string;
+    cleanerName: string;
+    startTime?: string;
+    endTime?: string;
+  }) => {
+    assignTaskWithScheduleMutation(params);
+  };
+
   return {
     // Data
     tasks,
@@ -182,6 +194,7 @@ export const useCalendarData = () => {
     goToToday,
     updateTask,
     assignTask,
+    assignTaskWithSchedule,
     unassignTask: unassignTaskMutation,
     createTask,
     deleteTask,
