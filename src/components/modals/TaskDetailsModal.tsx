@@ -212,16 +212,16 @@ export const TaskDetailsModal = ({
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="w-[95vw] max-w-[95vw] sm:max-w-[640px] h-[90vh] sm:mx-auto mx-0 px-[25px] my-0 py-[6px] flex flex-col">
-          <DialogHeader className="flex-shrink-0 pb-1">
-            {isRecurringInstance && (
+        <DialogContent className="w-[95vw] max-w-[95vw] sm:max-w-[640px] h-[90vh] sm:mx-auto mx-0 px-0 my-0 py-0 flex flex-col gap-0 overflow-hidden">
+          {isRecurringInstance && (
+            <DialogHeader className="flex-shrink-0 px-6 pt-4 pb-2">
               <div className="text-xs text-muted-foreground italic">
                 Tarea recurrente — guarda los cambios desde el botón de la sección recurrente para materializarla.
               </div>
-            )}
-          </DialogHeader>
+            </DialogHeader>
+          )}
 
-          <div className="flex-1 overflow-y-auto py-4">
+          <div className="flex-1 overflow-y-auto px-6 py-5">
             <TaskDetailsForm
               task={task}
               canEdit={canEdit}
@@ -233,7 +233,7 @@ export const TaskDetailsModal = ({
             />
           </div>
 
-          <DialogFooter className="flex-shrink-0 border-t pt-2">
+          <DialogFooter className="flex-shrink-0 border-t bg-muted/20 px-6 py-3">
             <TaskDetailsActions
               task={task}
               onDelete={canEdit ? () => setShowDeleteConfirm(true) : undefined}
