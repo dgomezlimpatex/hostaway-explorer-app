@@ -180,6 +180,7 @@ const LinkCard = ({
   onOpen, 
   onDelete,
   onApplyChanges,
+  onAutoMergeNewTasks,
 }: { 
   link: LaundryShareLink;
   highlight?: boolean;
@@ -188,16 +189,34 @@ const LinkCard = ({
   onOpen: () => void;
   onDelete: () => void;
   onApplyChanges: (currentTaskIds: string[]) => void;
+  onAutoMergeNewTasks: (currentTaskIds: string[], existingSnapshotIds: string[]) => Promise<void>;
 }) => {
   const { data: changes } = useTaskChanges(link);
   const { stats } = useLaundryTracking(link.id);
   const total = link.snapshotTaskIds?.length || 0;
   const preparedCount = stats.prepared + stats.delivered;
   const deliveredPercent = total > 0 ? Math.round((stats.delivered / total) * 100) : 0;
-  const hasChanges = changes && (changes.newTasks.length > 0 || changes.removedTasks.length > 0);
+  const hasNewTasks = !!changes && changes.newTasks.length > 0;
+  const hasRemovedTasks = !!changes && changes.removedTasks.length > 0;
+
+  // Auto-merge new tasks into snapshot in background (preserves manual edits)
+  const autoMergedRef = useRef<string>('');
+  useEffect(() => {
+    if (!hasNewTasks || !changes) return;
+    // Use a stable signature to avoid loops
+    const signature = `${link.id}:${changes.newTasks.sort().join(',')}`;
+    if (autoMergedRef.current === signature) return;
+    autoMergedRef.current = signature;
+
+    (async () => {
+      const sedeIds = link.filters?.sedeIds || (link.filters?.sedeId ? [link.filters.sedeId] : undefined);
+      const currentIds = await fetchLaundryTasksForDateRange(link.dateStart, link.dateEnd, sedeIds);
+      await onAutoMergeNewTasks(currentIds, link.snapshotTaskIds);
+    })();
+  }, [hasNewTasks, changes, link.id, link.dateStart, link.dateEnd, link.filters, link.snapshotTaskIds, onAutoMergeNewTasks]);
 
   const [applying, setApplying] = useState(false);
-  const handleApply = async () => {
+  const handleApplyRemoved = async () => {
     if (!changes) return;
     setApplying(true);
     try {
@@ -235,17 +254,18 @@ const LinkCard = ({
               {formatExpirationStatus(link.expiresAt, link.isPermanent)}
             </span>
           )}
-          {hasChanges && (
+          {hasRemovedTasks && (
             <button
-              onClick={handleApply}
+              onClick={handleApplyRemoved}
               disabled={applying}
               className="ml-auto inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 text-[11px] font-medium hover:bg-amber-500/20 transition-colors"
+              title="Hay tareas que ya no existen. Pulsa para sincronizar."
             >
               {applying ? <Loader2 className="h-3 w-3 animate-spin" /> : <AlertTriangle className="h-3 w-3" />}
-              {applying ? 'Aplicando' : 'Aplicar cambios'}
+              {applying ? 'Sincronizando' : `${changes!.removedTasks.length} eliminada${changes!.removedTasks.length > 1 ? 's' : ''}`}
             </button>
           )}
-          <div className={cn('flex items-center gap-0.5', !hasChanges && 'ml-auto')}>
+          <div className={cn('flex items-center gap-0.5', !hasRemovedTasks && 'ml-auto')}>
             <TooltipProvider delayDuration={100}>
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -253,7 +273,7 @@ const LinkCard = ({
                     <Pencil className="h-3.5 w-3.5" />
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent>Editar</TooltipContent>
+                <TooltipContent>Editar tareas incluidas</TooltipContent>
               </Tooltip>
               <Tooltip>
                 <TooltipTrigger asChild>
