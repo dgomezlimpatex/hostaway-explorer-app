@@ -180,8 +180,6 @@ export const ReservationsCalendar = ({ bookings, isLoading }: ReservationsCalend
             colorMap={colorMap}
           />
         )}
-
-        <CalendarLegend properties={uniqueProperties} colorMap={colorMap} />
       </CardContent>
     </Card>
   );
