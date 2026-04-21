@@ -966,6 +966,106 @@ export type Database = {
           },
         ]
       }
+      forecast_alerts_log: {
+        Row: {
+          alert_date: string
+          alert_type: string
+          created_at: string
+          deficit_hours: number | null
+          deficit_workers: number | null
+          dismissed_at: string | null
+          dismissed_by: string | null
+          id: string
+          metadata: Json | null
+          recipient_email: string
+          sede_id: string | null
+          sent_at: string
+        }
+        Insert: {
+          alert_date: string
+          alert_type: string
+          created_at?: string
+          deficit_hours?: number | null
+          deficit_workers?: number | null
+          dismissed_at?: string | null
+          dismissed_by?: string | null
+          id?: string
+          metadata?: Json | null
+          recipient_email: string
+          sede_id?: string | null
+          sent_at?: string
+        }
+        Update: {
+          alert_date?: string
+          alert_type?: string
+          created_at?: string
+          deficit_hours?: number | null
+          deficit_workers?: number | null
+          dismissed_at?: string | null
+          dismissed_by?: string | null
+          id?: string
+          metadata?: Json | null
+          recipient_email?: string
+          sede_id?: string | null
+          sent_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "forecast_alerts_log_sede_id_fkey"
+            columns: ["sede_id"]
+            isOneToOne: false
+            referencedRelation: "sedes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      forecast_subscribers: {
+        Row: {
+          created_at: string
+          daily_digest: boolean
+          email: string
+          id: string
+          instant_red_alerts: boolean
+          is_active: boolean
+          min_days_advance: number
+          sede_id: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          daily_digest?: boolean
+          email: string
+          id?: string
+          instant_red_alerts?: boolean
+          is_active?: boolean
+          min_days_advance?: number
+          sede_id?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          daily_digest?: boolean
+          email?: string
+          id?: string
+          instant_red_alerts?: boolean
+          is_active?: boolean
+          min_days_advance?: number
+          sede_id?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "forecast_subscribers_sede_id_fkey"
+            columns: ["sede_id"]
+            isOneToOne: false
+            referencedRelation: "sedes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       hostaway_reservations: {
         Row: {
           adults: number | null
@@ -2721,6 +2821,47 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      staffing_targets: {
+        Row: {
+          created_at: string
+          day_of_week: number
+          id: string
+          min_hours: number
+          min_workers: number
+          notes: string | null
+          sede_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          day_of_week: number
+          id?: string
+          min_hours?: number
+          min_workers?: number
+          notes?: string | null
+          sede_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          day_of_week?: number
+          id?: string
+          min_hours?: number
+          min_workers?: number
+          notes?: string | null
+          sede_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "staffing_targets_sede_id_fkey"
+            columns: ["sede_id"]
+            isOneToOne: false
+            referencedRelation: "sedes"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       task_assignments: {
         Row: {
