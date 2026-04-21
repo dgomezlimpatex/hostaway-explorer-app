@@ -12,10 +12,10 @@ Deno.serve(async (req) => {
   }
 
   try {
-    console.log('🚀 Iniciando sincronización con Avantio...');
-    
+    console.log('🚀 Iniciando sincronización con Avantio (modo background)...');
+
     const avantioApiToken = Deno.env.get('AVANTIO_API_TOKEN');
-    
+
     if (!avantioApiToken) {
       console.log('⚠️ AVANTIO_API_TOKEN no configurado');
       return new Response(
@@ -32,37 +32,42 @@ Deno.serve(async (req) => {
 
     const orchestrator = new SyncOrchestrator(supabaseUrl, supabaseServiceKey);
 
-    try {
-      await orchestrator.initializeSyncLog();
-      await orchestrator.performSync(avantioApiToken);
-      await orchestrator.finalizeSyncLog(true);
+    // Initialize sync log SYNCHRONOUSLY so we can return its ID immediately
+    await orchestrator.initializeSyncLog();
+    const syncLogId = orchestrator.getSyncLogId();
 
-      console.log('✅ Sincronización Avantio completada exitosamente');
+    // Run the heavy work in the background — function returns immediately
+    // EdgeRuntime.waitUntil keeps the worker alive until the promise settles
+    // without blocking the HTTP response (avoids wall-clock + CPU limits on the request).
+    // @ts-ignore - EdgeRuntime is available in Supabase Edge Functions runtime
+    EdgeRuntime.waitUntil((async () => {
+      try {
+        await orchestrator.performSync(avantioApiToken);
+        await orchestrator.finalizeSyncLog(true);
+        console.log('✅ Sincronización Avantio completada exitosamente (background)');
+      } catch (error) {
+        console.error('❌ Error durante la sincronización (background):', error);
+        try {
+          await orchestrator.finalizeSyncLog(false, error as Error);
+        } catch (finalizeError) {
+          console.error('❌ Error finalizando log:', finalizeError);
+        }
+      }
+    })());
 
-      const stats = orchestrator.getStats();
-      const now = new Date();
-      const startDate = now.toISOString().split('T')[0];
-      const endDate = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-
-      const response = ResponseBuilder.buildSuccessResponse(
-        stats, startDate, endDate, stats.reservations_processed
-      );
-
-      return new Response(JSON.stringify(response), {
+    // Return 202 Accepted with sync_log_id so the client can poll for status
+    return new Response(
+      JSON.stringify({
+        success: true,
+        status: 'running',
+        message: 'Sincronización iniciada en segundo plano. Consulta avantio_sync_logs para ver el progreso.',
+        sync_log_id: syncLogId
+      }),
+      {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 200
-      });
-
-    } catch (error) {
-      console.error('❌ Error durante la sincronización:', error);
-      await orchestrator.finalizeSyncLog(false, error);
-
-      const response = ResponseBuilder.buildErrorResponse(error, orchestrator.getStats());
-      return new Response(JSON.stringify(response), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 500
-      });
-    }
+        status: 202
+      }
+    );
 
   } catch (error) {
     console.error('❌ Error crítico:', error);
