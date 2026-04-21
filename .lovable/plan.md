@@ -1,176 +1,126 @@
 
 
-# Previsión de Personal — 3 Fases Completas
+# Plan: Portal del Cliente — Tareas externas, fotos del reporte, panel admin de portales y control granular de fotos
 
-Sistema para anticipar días pico (domingos, festivos) usando Avantio + reservas internas + capacidad real de plantilla. Determinista, transparente, accionable.
-
----
-
-## Fase A — Termómetro de Demanda (núcleo visual)
-
-**Objetivo**: ver de un vistazo los próximos 30-45 días y detectar días en rojo con semanas de antelación.
-
-### Backend
-- Tabla nueva `staffing_targets`:
-  - `day_of_week` (0-6) · `min_workers` · `min_hours` · `notes` · `sede_id` · timestamps
-  - RLS: admin/manager pueden CRUD, lectura para autenticados
-  - Seed inicial: domingo = 6 personas / 36h, resto = 2 personas / 12h (editable)
-- Limpieza datos basura previa: query para detectar reservas con valores anómalos (>100 checkouts/día) y marcarlas para revisión manual antes de entrar en cálculo.
-
-### Cálculo (cliente, hook `useStaffingForecast`)
-Por cada día del rango:
-```text
-checkouts_avantio    = avantio_reservations.departure_date = día (status confirmado)
-checkouts_internos   = client_reservations.check_out_date = día
-carga_horas          = Σ (checkout × properties.duracion_servicio)
-capacidad_horas      = Σ (cleaner_availability del día) − ausencias confirmadas
-cobertura            = capacidad / carga
-estado               = verde (>110%) / amarillo (90-110%) / rojo (<90%)
-deficit_horas        = max(0, carga − capacidad)
-deficit_personas     = ceil(deficit_horas / 6)   (turno medio 6h)
-```
-
-### UI
-- Página nueva `/forecast` accesible desde sidebar (icono `TrendingUp`).
-- **Heatmap 6 semanas**: grid 7×6, celdas con color según estado, número de checkouts grande, mini barra de cobertura.
-- **Toggle vistas**: heatmap / lista compacta / gráfico líneas (carga vs capacidad).
-- **Filtros**: rango de días (30/45/60), sede, incluir/excluir festivos.
-- Click en celda → `DayDeficitDrawer`.
-
-### Componentes
-- `src/pages/StaffingForecast.tsx`
-- `src/components/forecast/HeatmapWeek.tsx`
-- `src/components/forecast/ForecastSummaryStats.tsx` (cards: días verdes, amarillos, rojos, peor día)
-- `src/components/forecast/StaffingTargetsConfig.tsx` (modal de settings)
-- `src/hooks/useStaffingForecast.ts`
-- `src/hooks/useStaffingTargets.ts`
+Combina las mejoras del portal del cliente con dos nuevas capacidades: panel admin para acceder a cualquier portal sin PIN, y **control por cliente** para activar/desactivar la visibilidad de fotos del reporte.
 
 ---
 
-## Fase B — Recomendaciones Accionables
+## Parte 1 — Tareas externas en calendario y listado del cliente
 
-**Objetivo**: convertir la alerta visual en decisiones rápidas. Cada día rojo lleva al "qué hacer ahora".
+**Para el cliente:** verá en su listado y calendario **todas** las limpiezas asociadas a sus propiedades (Avantio, Hostaway, recurrentes, batch, manuales). Las externas aparecen mezcladas, marcadas con badge "Sincronizada" y un icono de candado, **solo lectura** (sin botones Editar/Cancelar).
 
-### `DayDeficitDrawer` (drill-down de un día)
-Layout estilo modal de tareas, secciones con divisores sutiles:
-
-1. **Resumen del día** — fecha, checkouts esperados, horas necesarias vs disponibles, déficit en personas/horas.
-2. **Lista de checkouts** — agrupados por propiedad, con duración estimada y estado de asignación (asignado / sin asignar).
-3. **Plantilla actual** — trabajadoras del día con horas previstas, contrato, % completado de horas semanales.
-4. **Sugerencias automáticas** (núcleo de la fase):
-   - **Candidatas para reforzar** — ranking por:
-     - Horas de contrato disponibles esta semana (más sobra → más arriba)
-     - Histórico de domingos trabajados últimos 90 días (familiaridad)
-     - Preferida en propiedades del día (preferred cleaners)
-     - Sin ausencia confirmada
-   - Cada candidata muestra: nombre, horas pendientes de contrato, días libres negociables, botón "Proponer turno".
-5. **Acciones rápidas**:
-   - "Crear turno extra" (genera draft de tarea/asignación)
-   - "Sugerir cambio de día libre" (a trabajadora con día fijo en domingo)
-   - "Marcar día como cubierto manualmente" (override sin acción)
-
-### Patrones aprendidos (panel inferior del drawer)
-Stats simples sobre los últimos 8 domingos (o festivos similares):
-- Media de checkouts vs el día actual (¿es excepcional o normal?)
-- Plantilla típica usada
-- Tasa de cobertura histórica
-- Aviso si el día actual está >20% por encima de la media → "Día atípicamente alto"
-
-### Componentes
-- `src/components/forecast/DayDeficitDrawer.tsx`
-- `src/components/forecast/CandidateWorkerCard.tsx`
-- `src/components/forecast/HistoricalPatternPanel.tsx`
-- `src/hooks/useStaffingCandidates.ts` (lógica de ranking)
-- `src/hooks/useHistoricalDayPattern.ts`
+**Por dentro:**
+- Nuevo hook `useClientPortalBookings(clientId)` que mezcla `client_reservations` (manuales) con `tasks` filtradas por `cliente_id`, excluyendo las que ya están vinculadas a una `client_reservation` (evita duplicados).
+- Las RLS de `tasks` ya permiten lectura anónima vía portal activo, **sin cambios DB**.
+- Tipo unificado `PortalBooking` con `source: 'manual' | 'external'` e `isEditable`.
+- Las tareas externas no tienen `check_in_date`: se pintan como un único día de limpieza usando `task.date`.
 
 ---
 
-## Fase C — Anticipación Proactiva (notificaciones + persistencia)
+## Parte 2 — Fotos del reporte visibles para el cliente (con control granular)
 
-**Objetivo**: dejar de depender de que alguien abra la página. El sistema avisa solo.
+**Para el cliente:** cada reserva/tarea pasa a ser clickable → modal de detalle con cabecera (propiedad, fecha, estado de limpieza). Si la tarea está **completada** Y el cliente tiene la opción de fotos activada → galería de fotos (grid + lightbox). Si no → mensaje amable "El reporte estará disponible cuando el equipo termine la limpieza".
 
-### Backend
-- Tabla nueva `forecast_alerts_log`:
-  - `alert_date` (día en alerta) · `alert_type` (red/yellow) · `deficit_hours` · `deficit_workers` · `sent_at` · `recipient_email` · `sede_id` · `dismissed_at` · timestamps
-  - Único `(alert_date, alert_type, recipient_email)` para evitar duplicados (patrón `avantio_alert_log`)
-- Tabla nueva `forecast_subscribers`:
-  - `user_id` · `email` · `daily_digest` (bool) · `instant_red_alerts` (bool) · `min_days_advance` (int, default 7) · `sede_id`
-  - Permite a admins/managers suscribirse y configurar a su gusto.
+**Control por cliente (NUEVO):**
+- Nueva columna `photos_visible_to_client BOOLEAN DEFAULT false` en la tabla `clients`.
+- **Por defecto desactivado** para todos los clientes existentes y nuevos: hay que activarlo manualmente cliente a cliente.
+- Toggle visible en dos sitios:
+  - **Modal de edición de cliente** (`EditClientModal`): switch "Permitir al cliente ver fotos del reporte" con texto explicativo.
+  - **Panel admin de portales** (Parte 3): columna con switch para activar/desactivar rápidamente sin abrir el cliente.
+- Si está desactivado, el cliente sigue viendo el modal de detalle de la tarea (estado, fecha, propiedad) pero **sin la sección de galería** — ni siquiera aparece el placeholder de fotos.
 
-### Edge Function `daily-staffing-forecast`
-- Cron diario a las 07:30 (Madrid)
-- Recalcula próximos 30 días
-- Detecta nuevos días rojos no notificados
-- Para cada suscriptor: si hay alertas dentro de su `min_days_advance`, envía email único con:
-  - Tabla resumen de días en alerta
-  - Para cada día: déficit, top 3 candidatas sugeridas, link directo al `DayDeficitDrawer`
-- Inserta en `forecast_alerts_log` para no repetir
-- Soporta dismiss: si admin marca "no avisar más" sobre un día, no se reenvía
-
-### Sincronización en tiempo real
-- Cuando `avantio-sync` detecta cambios significativos (>10% más checkouts en un día):
-  - Recalcula ese día puntual
-  - Si pasa de verde a amarillo/rojo → email instantáneo a quien tenga `instant_red_alerts = true`
-
-### Aviso inline en calendario
-- Badge sutil en cabecera de día del calendario principal cuando ese día está en rojo (icono `AlertTriangle` ámbar/rojo)
-- Click → abre el `DayDeficitDrawer` directamente
-- Hook `useDayForecastBadge(date)` para reutilizar en calendario, dashboard, etc.
-
-### Settings
-- `src/pages/ForecastSettings.tsx` (o sección en Settings existentes):
-  - Configurar `staffing_targets` por día semana
-  - Gestionar suscriptores y sus preferencias
-  - Ver log de alertas enviadas (últimas 30)
-  - Botón "Probar email ahora" para validar configuración
+**Por dentro:**
+- Migración: añadir `photos_visible_to_client` a `clients` (default `false`).
+- 2 políticas RLS nuevas (lectura anónima):
+  - `task_reports` SELECT anon: la task pertenece a un cliente con portal activo Y `overall_status = 'completed'` Y `clients.photos_visible_to_client = true`.
+  - `task_media` SELECT anon: condicionado al mismo criterio vía `task_report_id`.
+- Bucket `task-reports-media` ya es público → URLs accesibles, sin cambios de Storage.
+- Nuevo hook `useClientPortalTaskReport(taskId)` que devuelve `{ status: 'not_ready' | 'photos_disabled' | 'ready', media }`.
+- Componente nuevo `ReservationDetailModal.tsx` con galería + lightbox condicional.
+- `clientMappers.ts` y `ClientFormSchema.ts` añaden el campo nuevo.
 
 ---
 
-## Aspectos técnicos transversales
+## Parte 3 — Panel admin "Portales de clientes" (NUEVO)
 
-- **Timezone**: todo en `Europe/Madrid` (regla del proyecto).
-- **Sede**: cálculos respetan `activeSede` del contexto.
-- **Performance**: cálculos client-side cacheados con React Query (`staleTime: 5min`); recálculo automático tras sincronización Avantio.
-- **Datos basura Avantio**: filtro defensivo en `useStaffingForecast` que descarta días con >100 checkouts (umbral configurable) + warning visible para revisión manual.
-- **Festivos**: integración con tabla existente o lista hardcodeada España + Comunidad Valenciana, marcados en heatmap con icono pequeño.
+**Para el admin:** nueva entrada en el sidebar **"Portales de clientes"** (sección Administración, sólo admin/manager) con tabla de todos los clientes:
 
-## Archivos nuevos (resumen)
+- Nombre del cliente
+- Estado del portal: ✅ Activo / ⚠️ Sin crear / ⏸️ Desactivado
+- PIN (oculto, botón 👁 para mostrar)
+- URL del portal (botón 📋 copiar, botón 🔗 abrir)
+- **Fotos visibles**: switch on/off (columna `photos_visible_to_client`)
+- Última fecha de acceso del cliente
+- Botón **"Acceder al portal"** → abre el portal en nueva pestaña **autenticado automáticamente** sin pedir PIN.
+- Botón rápido para crear acceso si el cliente no tiene portal.
 
-```text
-src/pages/
-  StaffingForecast.tsx
-  ForecastSettings.tsx
-src/components/forecast/
-  HeatmapWeek.tsx
-  ForecastSummaryStats.tsx
-  StaffingTargetsConfig.tsx
-  DayDeficitDrawer.tsx
-  CandidateWorkerCard.tsx
-  HistoricalPatternPanel.tsx
-  ForecastDayBadge.tsx
-src/hooks/
-  useStaffingForecast.ts
-  useStaffingTargets.ts
-  useStaffingCandidates.ts
-  useHistoricalDayPattern.ts
-  useDayForecastBadge.ts
-supabase/functions/
-  daily-staffing-forecast/index.ts
-```
+**Filtros y búsqueda:** buscador por nombre, filtro por estado (Activo / Inactivo / Sin crear), filtro por fotos (Habilitadas / Deshabilitadas).
 
-## Cambios DB (3 tablas nuevas)
+**Acceso sin PIN para admins (cómo funciona):**
+- Reutiliza `portal_token` + `short_code` ya existentes.
+- Botón "Acceder al portal" abre `/portal/{slug}-{shortCode}?admin_bypass={token_temporal}`.
+- `token_temporal` lo genera la nueva edge function `admin-portal-bypass` que:
+  - Valida que el usuario esté autenticado y tenga rol `admin` o `manager`.
+  - Devuelve un JWT corto (15 min) firmado con `PORTAL_BYPASS_SECRET`.
+- En `ClientPortal.tsx`, si detecta `?admin_bypass=...`, lo valida contra `verify-portal-bypass` y crea sesión sin PIN.
+- Queda registrado en logs (`accessed_by_admin`) para auditoría.
 
-- `staffing_targets`
-- `forecast_alerts_log`
-- `forecast_subscribers`
+---
 
-Cero modificaciones a tablas existentes.
+## Cambios concretos
 
-## Orden de implementación
+**Base de datos (migración nueva)**
+- `ALTER TABLE clients ADD COLUMN photos_visible_to_client BOOLEAN NOT NULL DEFAULT false`.
+- Política RLS `task_reports` SELECT anon (portal activo + completado + fotos habilitadas).
+- Política RLS `task_media` SELECT anon (vía task_report válido).
+- (Opcional) columna `last_admin_access_at` en `client_portal_access` para distinguir accesos admin vs cliente.
 
-1. **Fase A primero** (resuelve 80% del problema con visibilidad).
-2. **Fase B** una vez la A esté en uso y el usuario valide el cálculo.
-3. **Fase C** al final (requiere A+B funcionando para que los emails lleven a algo útil).
+**Secret nuevo**
+- `PORTAL_BYPASS_SECRET` (firma del JWT temporal de bypass).
 
-Si lo apruebas, en la siguiente iteración ejecuto las 3 fases seguidas.
+**Edge functions nuevas**
+- `admin-portal-bypass` — genera JWT corto tras validar rol admin/manager.
+- `verify-portal-bypass` — valida JWT y devuelve datos de sesión.
+
+**Frontend — ficheros nuevos**
+- `src/components/client-portal/ReservationDetailModal.tsx` — modal detalle + galería condicional + lightbox.
+- `src/pages/ClientPortalsAdmin.tsx` — página admin con tabla, filtros y acciones.
+- `src/components/admin/ClientPortalsTable.tsx` — tabla reutilizable con switch de fotos y botón "Acceder".
+- `src/hooks/useAdminPortalBypass.ts` — llama a la edge function y abre la URL impersonada.
+
+**Frontend — ficheros modificados**
+- `src/types/client.ts` → añadir `photosVisibleToClient: boolean`.
+- `src/types/clientPortal.ts` → nuevo tipo `PortalBooking`.
+- `src/services/storage/mappers/clientMappers.ts` → mapear `photos_visible_to_client` ↔ `photosVisibleToClient`.
+- `src/components/clients/forms/ClientFormSchema.ts` → añadir campo opcional al schema.
+- `src/components/clients/forms/ServiceInfoSection.tsx` (o nuevo `PortalSettingsSection`) → switch "Permitir ver fotos del reporte".
+- `src/hooks/useClientPortal.ts` → `useClientPortalBookings`, `useClientPortalTaskReport`, soporte `admin_bypass` en `useAuthenticatePortal`, mutación `useToggleClientPhotosVisibility`.
+- `src/components/client-portal/ReservationsList.tsx` → bookings unificadas, badge "Sincronizada", fila clickable.
+- `src/components/client-portal/ReservationsCalendar.tsx` y subviews → bookings unificadas, estilo distinto para externas.
+- `src/components/client-portal/ClientPortalDashboard.tsx` → usar `useClientPortalBookings`.
+- `src/pages/ClientPortal.tsx` → detectar `?admin_bypass=...` y crear sesión sin PIN.
+- `src/components/dashboard/DashboardSidebar.tsx` y `MobileDashboardSidebar.tsx` → entrada "Portales de clientes" (admin/manager).
+- `src/App.tsx` → ruta `/admin/client-portals` dentro de `AppLayout`.
+
+**Sin cambios** en: storage buckets, sincronización Avantio/Hostaway, flujo de la limpiadora, PINs existentes.
+
+---
+
+## Notas UX
+
+- El switch de fotos por cliente se llama **"Permitir al cliente ver fotos del reporte"** con texto secundario: *"Si está desactivado, el cliente verá los detalles de la limpieza pero no las fotografías"*.
+- Por defecto todos los clientes (existentes y nuevos) tendrán fotos **desactivadas** → activación explícita y consciente por parte del admin.
+- Diferenciación visual manual vs sincronizada con badge sutil + candado.
+- Si no hay reporte aún o las fotos están desactivadas → placeholder amable, no error.
+- En el panel admin, marcar visualmente accesos por bypass admin (icono "👤 admin") en logs.
+
+---
+
+## Orden sugerido de implementación
+
+1. **Migración DB** (campo `photos_visible_to_client` + políticas RLS).
+2. **Parte 1** (tareas externas) — desbloquea visibilidad inmediata.
+3. **Parte 2** (fotos + modal detalle + control granular en EditClientModal).
+4. **Parte 3** (panel admin + edge functions de bypass + switch de fotos en tabla).
 
