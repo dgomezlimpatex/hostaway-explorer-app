@@ -157,11 +157,16 @@ export async function fetchAllAvantioReservations(token: string): Promise<Avanti
     currency: string;
   }
 
+  // Estados que generan necesidad de limpieza (excluimos REQUESTED, PENDING, CANCELLED, etc.)
+  // Solo nos interesan reservas confirmadas que producirán un check-out real
+  const VALID_STATUSES = new Set(['BOOKED', 'CONFIRMED', 'CHECKED_IN', 'CHECKED_OUT', 'COMPLETED']);
+
   const rawItems: RawItem[] = [];
   let nextUrl: string | null = `${API_BASE_URL}/bookings?limit=${PAGE_SIZE}&sort=arrivalDate&order=asc&departureFrom=${fromDate}&departureTo=${toDate}`;
   let pages = 0;
   let outOfRangeStreak = 0;
   let totalDiscarded = 0;
+  let totalSkippedByStatus = 0;
 
   console.log(`🔎 URL inicial: ${nextUrl}`);
 
