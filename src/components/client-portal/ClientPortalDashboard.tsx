@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from 'react';
-import { Building2, LogOut, Plus, Calendar, List, RefreshCw, Lock } from 'lucide-react';
+import { Building2, LogOut, Plus, Calendar, List, Lock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
