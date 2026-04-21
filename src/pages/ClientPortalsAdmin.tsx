@@ -140,6 +140,7 @@ const ClientPortalsAdmin = () => {
                     <TableHead>PIN</TableHead>
                     <TableHead>Enlace</TableHead>
                     <TableHead className="text-center">Fotos</TableHead>
+                    <TableHead className="text-center">Crear reservas</TableHead>
                     <TableHead>Último acceso</TableHead>
                     <TableHead className="text-right">Acciones</TableHead>
                   </TableRow>
