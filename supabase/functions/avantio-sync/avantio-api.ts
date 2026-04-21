@@ -193,6 +193,7 @@ export async function fetchAllAvantioReservations(token: string): Promise<Avanti
 
     let pageInRange = 0;
     let pageOutOfRange = 0;
+    let pageSkippedByStatus = 0;
 
     for (const item of list) {
       if (!item?.id) continue;
@@ -208,6 +209,15 @@ export async function fetchAllAvantioReservations(token: string): Promise<Avanti
         totalDiscarded++;
         continue;
       }
+
+      // CRITICAL: Skip reservations that don't generate cleaning needs (REQUESTED, PENDING, etc.)
+      const status = norm(item.status || '').toUpperCase();
+      if (!VALID_STATUSES.has(status)) {
+        pageSkippedByStatus++;
+        totalSkippedByStatus++;
+        continue;
+      }
+
       pageInRange++;
 
       rawItems.push({
@@ -222,7 +232,7 @@ export async function fetchAllAvantioReservations(token: string): Promise<Avanti
       });
     }
 
-    console.log(`   ↳ En rango: ${pageInRange} | Fuera de rango: ${pageOutOfRange}`);
+    console.log(`   ↳ Válidas: ${pageInRange} | Fuera rango: ${pageOutOfRange} | Estado descartado: ${pageSkippedByStatus}`);
 
     // EARLY EXIT: si toda la página vino fuera de rango y tenemos resultados ordenados por arrivalDate asc,
     // significa que ya hemos pasado el rango útil → no tiene sentido seguir paginando
