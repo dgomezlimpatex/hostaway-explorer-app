@@ -220,65 +220,64 @@ export const ManagerDashboard = () => {
 
 
   return (
-    <div className="lg:pt-0 pt-0">
+    <>
       <div className="p-6">
-            <div className="max-w-6xl mx-auto space-y-6">
-              {/* Header */}
-              <div className="mb-8 flex items-center justify-between">
-                <div>
-                  <h1 className="text-3xl font-bold text-gray-900 mb-2">
-                    Dashboard de Gestión
-                  </h1>
-                  <p className="text-gray-600">
-                    {format(new Date(), "EEEE, d 'de' MMMM 'de' yyyy", { locale: es })}
-                  </p>
-                </div>
-                {/* Selector de sede en el dashboard */}
-                <div className="flex items-center gap-4">
-                  <SedeSelector />
-                </div>
-              </div>
-
-              {/* Main Metrics Row - Lazy loaded */}
-              <Suspense fallback={<ComponentLoader />}>
-                <DashboardStatsCards 
-                  monthlyMetrics={monthlyMetrics}
-                  onOpenCreateModal={handleOpenCreateModal}
-                  onOpenBatchModal={handleOpenBatchModal}
-                  onOpenExtraordinaryServiceModal={handleOpenExtraordinaryServiceModal}
-                />
-              </Suspense>
-
-              {/* Central Section - Today's Tasks - Lazy loaded */}
-              <Suspense fallback={<ComponentLoader />}>
-                <TodayTasksSection 
-                  todayTasks={todayTasks}
-                  paginatedTodayTasks={paginatedTodayTasks}
-                  currentTaskPage={currentTaskPage}
-                  totalTaskPages={totalTaskPages}
-                  TASKS_PER_PAGE={TASKS_PER_PAGE}
-                  onTaskClick={handleTaskClick}
-                  onPreviousPage={goToPreviousPage}
-                  onNextPage={goToNextPage}
-                />
-              </Suspense>
-
-              {/* Workload Control Widget */}
-              {canAccessModule('workers') && (
-                <Suspense fallback={<ComponentLoader />}>
-                  <WorkloadWidget />
-                </Suspense>
-              )}
-
-              {/* Linen Control Widget */}
-              {canAccessModule('reports') && (
-                <Suspense fallback={<ComponentLoader />}>
-                  <LinenControlWidget />
-                </Suspense>
-              )}
+        <div className="max-w-6xl mx-auto space-y-6">
+          {/* Header */}
+          <div className="mb-8 flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold text-foreground mb-2">
+                Dashboard de Gestión
+              </h1>
+              <p className="text-muted-foreground">
+                {format(new Date(), "EEEE, d 'de' MMMM 'de' yyyy", { locale: es })}
+              </p>
+            </div>
+            {/* Selector de sede en el dashboard */}
+            <div className="flex items-center gap-4">
+              <SedeSelector />
             </div>
           </div>
+
+          {/* Main Metrics Row - Lazy loaded */}
+          <Suspense fallback={<ComponentLoader />}>
+            <DashboardStatsCards 
+              monthlyMetrics={monthlyMetrics}
+              onOpenCreateModal={handleOpenCreateModal}
+              onOpenBatchModal={handleOpenBatchModal}
+              onOpenExtraordinaryServiceModal={handleOpenExtraordinaryServiceModal}
+            />
+          </Suspense>
+
+          {/* Central Section - Today's Tasks - Lazy loaded */}
+          <Suspense fallback={<ComponentLoader />}>
+            <TodayTasksSection 
+              todayTasks={todayTasks}
+              paginatedTodayTasks={paginatedTodayTasks}
+              currentTaskPage={currentTaskPage}
+              totalTaskPages={totalTaskPages}
+              TASKS_PER_PAGE={TASKS_PER_PAGE}
+              onTaskClick={handleTaskClick}
+              onPreviousPage={goToPreviousPage}
+              onNextPage={goToNextPage}
+            />
+          </Suspense>
+
+          {/* Workload Control Widget */}
+          {canAccessModule('workers') && (
+            <Suspense fallback={<ComponentLoader />}>
+              <WorkloadWidget />
+            </Suspense>
+          )}
+
+          {/* Linen Control Widget */}
+          {canAccessModule('reports') && (
+            <Suspense fallback={<ComponentLoader />}>
+              <LinenControlWidget />
+            </Suspense>
+          )}
         </div>
+      </div>
       
       {/* Modales - Direct imports */}
       <CreateTaskModal
