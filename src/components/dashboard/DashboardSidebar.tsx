@@ -115,6 +115,12 @@ const reportsItems: NavigationItem[] = [
     permission: 'workers'
   },
   {
+    title: 'Alertas de previsión',
+    href: '/forecast/settings',
+    icon: AlertTriangle,
+    permission: 'workers'
+  },
+  {
     title: 'Plantillas de Checklist',
     href: '/checklist-templates',
     icon: CheckCircle2,
