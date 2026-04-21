@@ -15,6 +15,66 @@ let cacheById: Map<string, any> = new Map();
 let cacheByName: Map<string, any> = new Map();
 let cacheByCode: Map<string, any> = new Map();
 
+// In-memory cache of existing avantio_reservations, keyed by avantio_reservation_id.
+// Avoids one SELECT query per reservation processed.
+let reservationsCache: Map<string, any> = new Map();
+
+// In-memory cache of existing tasks for the sync window, keyed by `${propiedad_id}_${date}`.
+// Avoids one SELECT query per new task creation (deduplication check).
+let tasksCache: Map<string, any> = new Map();
+
+export async function preloadReservationsAndTasksCache(fromDate: string, toDate: string) {
+  console.log('🗄️ Precargando caché de reservas y tareas...');
+  reservationsCache.clear();
+  tasksCache.clear();
+
+  // Load all avantio_reservations whose departure_date falls in or near the sync window
+  // Use a slightly wider window to catch reservations that may have moved dates.
+  const { data: reservations, error: rErr } = await supabase
+    .from('avantio_reservations')
+    .select('*, tasks(*)')
+    .gte('departure_date', fromDate)
+    .lte('departure_date', toDate);
+
+  if (rErr) {
+    console.error('❌ Error precargando reservas:', rErr);
+  } else if (reservations) {
+    for (const r of reservations) {
+      reservationsCache.set(String(r.avantio_reservation_id), r);
+    }
+  }
+
+  // Load all green (Avantio) tasks in the sync window for dedup
+  const { data: tasks, error: tErr } = await supabase
+    .from('tasks')
+    .select('id, propiedad_id, date, property')
+    .eq('background_color', '#10B981')
+    .gte('date', fromDate)
+    .lte('date', toDate)
+    .neq('status', 'cancelled');
+
+  if (tErr) {
+    console.error('❌ Error precargando tareas:', tErr);
+  } else if (tasks) {
+    for (const t of tasks) {
+      if (t.propiedad_id && t.date) {
+        tasksCache.set(`${t.propiedad_id}_${t.date}`, t);
+      }
+    }
+  }
+
+  console.log(`✅ Caché reservas/tareas: ${reservationsCache.size} reservas, ${tasksCache.size} tareas`);
+}
+
+export function clearReservationsAndTasksCache() {
+  reservationsCache.clear();
+  tasksCache.clear();
+}
+
+export function getCachedReservation(avantioReservationId: string) {
+  return reservationsCache.get(String(avantioReservationId)) || null;
+}
+
 /**
  * Preload all Turquoise properties into memory.
  * MUST be called once at the start of each sync to avoid CPU exhaustion.
