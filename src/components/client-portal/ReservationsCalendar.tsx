@@ -76,7 +76,9 @@ export const ReservationsCalendar = ({ bookings, isLoading }: ReservationsCalend
         });
       }
     });
-    return Array.from(props.values());
+    return Array.from(props.values()).sort((a, b) =>
+      (a.codigo || a.nombre).localeCompare(b.codigo || b.nombre, 'es', { numeric: true, sensitivity: 'base' })
+    );
   }, [reservations]);
 
   const colorMap = useMemo(
