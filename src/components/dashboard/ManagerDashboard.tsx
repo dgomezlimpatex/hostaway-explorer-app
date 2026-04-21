@@ -1,7 +1,4 @@
 import React, { useState, useMemo, useCallback, Suspense, lazy } from 'react';
-import { SidebarProvider } from '@/components/ui/sidebar';
-import { DashboardSidebar } from './DashboardSidebar';
-import { MobileDashboardHeader } from './MobileDashboardHeader';
 import { SedeSelector } from '@/components/sede/SedeSelector';
 import { useOptimizedTasks } from '@/hooks/useOptimizedTasks';
 import { useOptimizedCleaningReports } from '@/hooks/useOptimizedCleaningReports';
@@ -9,7 +6,7 @@ import { useRolePermissions } from '@/hooks/useRolePermissions';
 import { useTasksPageActions } from '@/hooks/tasks/useTasksPageActions';
 import { format, startOfMonth, endOfMonth, isAfter, isBefore, subMonths } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { useIsMobile } from '@/hooks/use-mobile';
+
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { CreateTaskModal } from '@/components/modals/CreateTaskModal';
 import { BatchCreateTaskModal } from '@/components/modals/BatchCreateTaskModal';
@@ -38,7 +35,7 @@ export const ManagerDashboard = () => {
   const [isTaskDetailsOpen, setIsTaskDetailsOpen] = useState(false);
   const [isExtraordinaryServiceModalOpen, setIsExtraordinaryServiceModalOpen] = useState(false);
   const { canAccessModule } = useRolePermissions();
-  const isMobile = useIsMobile();
+  
   
   // Hook para manejar las acciones de tareas con la fecha correcta
   const {
@@ -223,76 +220,62 @@ export const ManagerDashboard = () => {
 
 
   return (
-    <SidebarProvider>
-      <div className="min-h-screen w-full bg-gray-50">
-        {/* Header móvil */}
-        <MobileDashboardHeader />
-        
-        <div className="flex min-h-screen w-full">
-          {/* Sidebar desktop - oculto en móvil */}
-          {!isMobile && (
-            <DashboardSidebar />
-          )}
-          
-          <main className="flex-1 overflow-auto lg:pt-0 pt-0">
-          <div className="p-6">
-            <div className="max-w-6xl mx-auto space-y-6">
-              {/* Header */}
-              <div className="mb-8 flex items-center justify-between">
-                <div>
-                  <h1 className="text-3xl font-bold text-gray-900 mb-2">
-                    Dashboard de Gestión
-                  </h1>
-                  <p className="text-gray-600">
-                    {format(new Date(), "EEEE, d 'de' MMMM 'de' yyyy", { locale: es })}
-                  </p>
-                </div>
-                {/* Selector de sede en el dashboard */}
-                <div className="flex items-center gap-4">
-                  <SedeSelector />
-                </div>
-              </div>
-
-              {/* Main Metrics Row - Lazy loaded */}
-              <Suspense fallback={<ComponentLoader />}>
-                <DashboardStatsCards 
-                  monthlyMetrics={monthlyMetrics}
-                  onOpenCreateModal={handleOpenCreateModal}
-                  onOpenBatchModal={handleOpenBatchModal}
-                  onOpenExtraordinaryServiceModal={handleOpenExtraordinaryServiceModal}
-                />
-              </Suspense>
-
-              {/* Central Section - Today's Tasks - Lazy loaded */}
-              <Suspense fallback={<ComponentLoader />}>
-                <TodayTasksSection 
-                  todayTasks={todayTasks}
-                  paginatedTodayTasks={paginatedTodayTasks}
-                  currentTaskPage={currentTaskPage}
-                  totalTaskPages={totalTaskPages}
-                  TASKS_PER_PAGE={TASKS_PER_PAGE}
-                  onTaskClick={handleTaskClick}
-                  onPreviousPage={goToPreviousPage}
-                  onNextPage={goToNextPage}
-                />
-              </Suspense>
-
-              {/* Workload Control Widget */}
-              {canAccessModule('workers') && (
-                <Suspense fallback={<ComponentLoader />}>
-                  <WorkloadWidget />
-                </Suspense>
-              )}
-
-              {/* Linen Control Widget */}
-              {canAccessModule('reports') && (
-                <Suspense fallback={<ComponentLoader />}>
-                  <LinenControlWidget />
-                </Suspense>
-              )}
+    <>
+      <div className="p-6">
+        <div className="max-w-6xl mx-auto space-y-6">
+          {/* Header */}
+          <div className="mb-8 flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold text-foreground mb-2">
+                Dashboard de Gestión
+              </h1>
+              <p className="text-muted-foreground">
+                {format(new Date(), "EEEE, d 'de' MMMM 'de' yyyy", { locale: es })}
+              </p>
+            </div>
+            {/* Selector de sede en el dashboard */}
+            <div className="flex items-center gap-4">
+              <SedeSelector />
             </div>
           </div>
-          </main>
+
+          {/* Main Metrics Row - Lazy loaded */}
+          <Suspense fallback={<ComponentLoader />}>
+            <DashboardStatsCards 
+              monthlyMetrics={monthlyMetrics}
+              onOpenCreateModal={handleOpenCreateModal}
+              onOpenBatchModal={handleOpenBatchModal}
+              onOpenExtraordinaryServiceModal={handleOpenExtraordinaryServiceModal}
+            />
+          </Suspense>
+
+          {/* Central Section - Today's Tasks - Lazy loaded */}
+          <Suspense fallback={<ComponentLoader />}>
+            <TodayTasksSection 
+              todayTasks={todayTasks}
+              paginatedTodayTasks={paginatedTodayTasks}
+              currentTaskPage={currentTaskPage}
+              totalTaskPages={totalTaskPages}
+              TASKS_PER_PAGE={TASKS_PER_PAGE}
+              onTaskClick={handleTaskClick}
+              onPreviousPage={goToPreviousPage}
+              onNextPage={goToNextPage}
+            />
+          </Suspense>
+
+          {/* Workload Control Widget */}
+          {canAccessModule('workers') && (
+            <Suspense fallback={<ComponentLoader />}>
+              <WorkloadWidget />
+            </Suspense>
+          )}
+
+          {/* Linen Control Widget */}
+          {canAccessModule('reports') && (
+            <Suspense fallback={<ComponentLoader />}>
+              <LinenControlWidget />
+            </Suspense>
+          )}
         </div>
       </div>
       
@@ -327,6 +310,6 @@ export const ManagerDashboard = () => {
         onCreateService={handleCreateExtraordinaryService}
         currentDate={selectedDate}
       />
-    </SidebarProvider>
+    </>
   );
 };

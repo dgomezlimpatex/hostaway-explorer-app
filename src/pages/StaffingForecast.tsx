@@ -9,26 +9,15 @@ import { Card } from '@/components/ui/card';
 import { TrendingUp, RefreshCw, AlertTriangle, Bell } from 'lucide-react';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Link } from 'react-router-dom';
-import { SidebarProvider } from '@/components/ui/sidebar';
-import { DashboardSidebar } from '@/components/dashboard/DashboardSidebar';
-import { MobileDashboardHeader } from '@/components/dashboard/MobileDashboardHeader';
-import { useIsMobile } from '@/hooks/use-mobile';
 
 const StaffingForecast = () => {
   const [rangeDays, setRangeDays] = useState<number>(45);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   
   const { data, isLoading, refetch, isFetching } = useStaffingForecast(rangeDays);
-  const isMobile = useIsMobile();
 
   return (
-    <SidebarProvider>
-      <div className="min-h-screen w-full bg-background">
-        <MobileDashboardHeader />
-        <div className="flex min-h-screen w-full">
-          {!isMobile && <DashboardSidebar />}
-          <main className="flex-1 overflow-auto">
-            <div className="max-w-7xl mx-auto p-4 md:p-6 space-y-5">
+    <div className="max-w-7xl mx-auto p-4 md:p-6 space-y-5">
         {/* Header */}
         <div className="flex items-start justify-between gap-3 flex-wrap">
           <div>
@@ -115,18 +104,13 @@ const StaffingForecast = () => {
           )}
         </Card>
 
-        <p className="text-xs text-muted-foreground text-center">
+      <p className="text-xs text-muted-foreground text-center">
           Los cálculos se basan en reservas confirmadas, disponibilidad declarada y ausencias registradas. 
           Click en un día para ver el detalle y candidatas para reforzar.
         </p>
-            </div>
-          </main>
-        </div>
 
-        <DayDeficitDrawer date={selectedDate} onClose={() => setSelectedDate(null)} />
-        
-      </div>
-    </SidebarProvider>
+      <DayDeficitDrawer date={selectedDate} onClose={() => setSelectedDate(null)} />
+    </div>
   );
 };
 
