@@ -948,7 +948,13 @@ export const useClientPortalBookings = (clientId: string | undefined) => {
     queryFn: async (): Promise<PortalBooking[]> => {
       if (!clientId) return [];
 
-      // 1) Manual reservations (with property)
+      // Cutoff: only show reservations/tasks from the last 30 days onwards (incl. future)
+      const cutoffDate = new Date();
+      cutoffDate.setDate(cutoffDate.getDate() - 30);
+      cutoffDate.setHours(0, 0, 0, 0);
+      const cutoffIso = cutoffDate.toISOString().slice(0, 10);
+
+      // 1) Manual reservations (with property) — last 30 days + future
       const { data: reservations, error: rErr } = await supabase
         .from('client_reservations')
         .select(`
@@ -959,6 +965,7 @@ export const useClientPortalBookings = (clientId: string | undefined) => {
         `)
         .eq('client_id', clientId)
         .neq('status', 'cancelled')
+        .gte('check_out_date', cutoffIso)
         .order('check_in_date', { ascending: true });
 
       if (rErr) throw rErr;
@@ -969,7 +976,7 @@ export const useClientPortalBookings = (clientId: string | undefined) => {
           .filter((id): id is string => !!id)
       );
 
-      // 2) External tasks for this client (excluding cancelled)
+      // 2) External tasks for this client (excluding cancelled) — last 30 days + future
       // Paginate to bypass Supabase's 1000-row default limit
       const PAGE_SIZE = 1000;
       let allTasks: any[] = [];
@@ -988,6 +995,7 @@ export const useClientPortalBookings = (clientId: string | undefined) => {
           `)
           .eq('cliente_id', clientId)
           .neq('status', 'cancelled')
+          .gte('date', cutoffIso)
           .order('date', { ascending: false })
           .range(from, from + PAGE_SIZE - 1);
 
