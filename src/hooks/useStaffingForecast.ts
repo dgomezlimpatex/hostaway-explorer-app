@@ -29,6 +29,11 @@ export interface ForecastDay {
   minHoursTarget: number;
   isAnomaly: boolean;
   isHoliday: boolean;
+  // Horas REALES de tareas creadas en el día
+  horasTareasTotal: number;       // suma duración de TODAS las tareas
+  horasTareasAsignadas: number;   // suma duración de tareas con cleaner_id
+  tareasTotal: number;
+  tareasAsignadas: number;
 }
 
 export interface StaffingForecast {
