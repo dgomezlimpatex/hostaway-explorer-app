@@ -127,7 +127,7 @@ export const ReservationDetailModal = ({
                   value={`${booking.guestCount}`}
                 />
               )}
-              {booking.specialRequests && (
+              {booking.specialRequests && !isExternal && (
                 <InfoRow
                   icon={<MessageSquare className="h-4 w-4" />}
                   label="Notas"
