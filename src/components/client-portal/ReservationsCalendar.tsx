@@ -20,12 +20,14 @@ interface ReservationsCalendarProps {
 // timeline/monthly views can render external tasks (single-day cleanings)
 // alongside manual reservations without a deeper refactor.
 const bookingToReservation = (b: PortalBooking): ClientReservation => {
-  // For external tasks, treat the cleaning day itself as a 1-day stay
-  // (checkIn = cleaningDate, checkOut = next day) so the existing
-  // "stay + checkout" rendering shows a checkout marker on the cleaning day.
-  let checkIn = b.checkInDate ?? b.cleaningDate;
-  let checkOut = b.checkOutDate ?? b.cleaningDate;
-  if (b.source === 'external') {
+  // Prefer the REAL stay dates when available (manual reservations always have
+  // them; external/Avantio/Hostaway bookings get them enriched via RPC in
+  // useClientPortalBookings). Only fall back to a fake "1-night stay" centered
+  // on the cleaning day when no real dates exist (e.g. recurring/manual tasks
+  // not linked to any reservation).
+  let checkIn = b.checkInDate ?? null;
+  let checkOut = b.checkOutDate ?? null;
+  if (!checkIn || !checkOut) {
     const cleaning = new Date(b.cleaningDate);
     const dayBefore = new Date(cleaning);
     dayBefore.setDate(dayBefore.getDate() - 1);
