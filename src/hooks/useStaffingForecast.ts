@@ -29,6 +29,11 @@ export interface ForecastDay {
   minHoursTarget: number;
   isAnomaly: boolean;
   isHoliday: boolean;
+  // Horas REALES de tareas creadas en el día
+  horasTareasTotal: number;       // suma duración de TODAS las tareas
+  horasTareasAsignadas: number;   // suma duración de tareas con cleaner_id
+  tareasTotal: number;
+  tareasAsignadas: number;
 }
 
 export interface StaffingForecast {
@@ -128,7 +133,33 @@ export const useStaffingForecast = (rangeDays: number = 45) => {
         : { data: [], error: null };
       if (absErr) throw absErr;
 
-      // Helper: mins entre HH:MM:SS
+      // 5) Tareas reales creadas en el rango (por día)
+      let tasksQ = supabase
+        .from('tasks')
+        .select('date, duracion, cleaner_id, status, sede_id')
+        .gte('date', rangeStart)
+        .lte('date', rangeEnd)
+        .neq('status', 'cancelled');
+      if (sedeId) tasksQ = tasksQ.eq('sede_id', sedeId);
+      const { data: tasks, error: tasksErr } = await tasksQ;
+      if (tasksErr) throw tasksErr;
+
+      // Agrupar por fecha
+      const tasksByDate = new Map<string, { total: number; asignadas: number; horasTotal: number; horasAsignadas: number }>();
+      (tasks ?? []).forEach((t: any) => {
+        const key = t.date as string;
+        const horas = (Number(t.duracion) || DEFAULT_DURATION_HOURS * 60) / 60;
+        const cur = tasksByDate.get(key) ?? { total: 0, asignadas: 0, horasTotal: 0, horasAsignadas: 0 };
+        cur.total += 1;
+        cur.horasTotal += horas;
+        if (t.cleaner_id) {
+          cur.asignadas += 1;
+          cur.horasAsignadas += horas;
+        }
+        tasksByDate.set(key, cur);
+      });
+
+
       const hoursBetween = (start: string | null, end: string | null) => {
         if (!start || !end) return 0;
         const [sh, sm] = start.split(':').map(Number);
@@ -196,6 +227,8 @@ export const useStaffingForecast = (rangeDays: number = 45) => {
         const deficitHoras = Math.max(0, cargaHoras - capacidadHoras);
         const deficitPersonas = Math.ceil(deficitHoras / TURNO_MEDIO_HORAS);
 
+        const tStat = tasksByDate.get(dateStr) ?? { total: 0, asignadas: 0, horasTotal: 0, horasAsignadas: 0 };
+
         days.push({
           date: dateStr,
           dayOfWeek: dow,
@@ -212,6 +245,10 @@ export const useStaffingForecast = (rangeDays: number = 45) => {
           workersAbsent: absentToday.size,
           minWorkersTarget: target.min_workers,
           minHoursTarget: target.min_hours,
+          horasTareasTotal: Math.round(tStat.horasTotal * 10) / 10,
+          horasTareasAsignadas: Math.round(tStat.horasAsignadas * 10) / 10,
+          tareasTotal: tStat.total,
+          tareasAsignadas: tStat.asignadas,
           isAnomaly,
           isHoliday: HOLIDAYS.has(dateStr),
         });
