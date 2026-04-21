@@ -187,10 +187,10 @@ function App() {
                       <RoleProtectedRoute requiredModule="propertyGroups"><PropertyGroups /></RoleProtectedRoute>
                     } />
                     <Route path="/checklist-templates" element={
-                      <RoleProtectedRoute requiredModule="tasks"><ChecklistTemplates /></RoleProtectedRoute>
+                      <RoleProtectedRoute requiredModule="tasks" requiredAction="canCreate"><ChecklistTemplates /></RoleProtectedRoute>
                     } />
                     <Route path="/recurring-tasks" element={
-                      <RoleProtectedRoute requiredModule="tasks"><RecurringTasksPage /></RoleProtectedRoute>
+                      <RoleProtectedRoute requiredModule="tasks" requiredAction="canCreate"><RecurringTasksPage /></RoleProtectedRoute>
                     } />
                     <Route path="/reports" element={
                       <RoleProtectedRoute requiredModule="reports"><Reports /></RoleProtectedRoute>

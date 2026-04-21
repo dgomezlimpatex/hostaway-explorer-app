@@ -97,7 +97,7 @@ const managementItems: NavigationItem[] = [
     title: 'Tareas Recurrentes',
     href: '/recurring-tasks',
     icon: RefreshCw,
-    permission: 'tasks'
+    permission: 'admin-only'
   },
 ];
 
@@ -124,7 +124,7 @@ const reportsItems: NavigationItem[] = [
     title: 'Plantillas de Checklist',
     href: '/checklist-templates',
     icon: CheckCircle2,
-    permission: 'tasks'
+    permission: 'admin-only'
   },
 ];
 
@@ -189,6 +189,7 @@ export const DashboardSidebar = () => {
       case 'hostaway': return canAccessModule('hostaway');
       case 'inventory': return canAccessModule('inventory');
       case 'logistics': return canAccessModule('logistics');
+      case 'admin-only': return isAdminOrManager();
       default: return true;
     }
   };
