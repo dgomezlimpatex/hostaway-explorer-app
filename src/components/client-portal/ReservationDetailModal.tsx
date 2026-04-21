@@ -7,7 +7,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import {
   Calendar, MapPin, Users, MessageSquare, Camera, Loader2, Lock,
-  CheckCircle2, Clock, ImageOff, X,
+  CheckCircle2, Clock, ImageOff, X, ChevronLeft, ChevronRight,
 } from 'lucide-react';
 import { PortalBooking } from '@/types/clientPortal';
 import { useClientPortalTaskReport } from '@/hooks/useClientPortal';
