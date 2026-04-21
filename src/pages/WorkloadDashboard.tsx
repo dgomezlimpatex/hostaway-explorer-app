@@ -202,10 +202,12 @@ const WorkloadDashboard = () => {
                             {w.cleanerName}
                           </Badge>
                         ))}
-                </div>
-              )}
-            </div>
-          </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+        </div>
+      </div>
 
       <HourAdjustmentModal
         open={isAdjustmentModalOpen}
