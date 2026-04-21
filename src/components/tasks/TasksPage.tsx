@@ -9,6 +9,7 @@ import { BatchCreateTaskModal } from '@/components/modals/BatchCreateTaskModal';
 import { AssignMultipleCleanersModal } from '@/components/modals/AssignMultipleCleanersModal';
 import { useTasksPageState } from '@/hooks/tasks/useTasksPageState';
 import { useTasksPageActions } from '@/hooks/tasks/useTasksPageActions';
+import { useRolePermissions } from '@/hooks/useRolePermissions';
 import { Task } from '@/types/calendar';
 
 const TasksPage = memo(() => {

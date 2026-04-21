@@ -97,7 +97,7 @@ export const RoleBasedNavigation = () => {
             />
           )}
 
-          {canAccessModule('tasks') && (
+          {isAdminOrManager() && (
             <NavigationCard
               to="/recurring-tasks"
               title="Tareas Recurrentes"
