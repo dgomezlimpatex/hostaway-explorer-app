@@ -239,7 +239,7 @@ export async function fetchAllAvantioReservations(token: string): Promise<Avanti
     console.log(`⚠️ Alcanzado límite máximo de ${MAX_PAGES} páginas`);
   }
 
-  console.log(`📊 Fase 1 completada: ${rawItems.length} reservas válidas (descartadas ${totalDiscarded} fuera de rango, ${totalSkippedByStatus} por estado no operativo, ${pages} páginas)`);
+  console.log(`📊 Fase 1 completada: ${rawItems.length} reservas en rango (descartadas ${totalDiscarded} fuera de rango, ${pages} páginas)`);
 
 
   // Phase 2: Resolve accommodation names (one detail call per unique accommodationId)
