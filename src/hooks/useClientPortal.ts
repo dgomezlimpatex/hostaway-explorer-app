@@ -948,9 +948,9 @@ export const useClientPortalBookings = (clientId: string | undefined) => {
     queryFn: async (): Promise<PortalBooking[]> => {
       if (!clientId) return [];
 
-      // Cutoff: only show reservations/tasks from the last 30 days onwards (incl. future)
+      // Cutoff: only show reservations/tasks from the last 7 days onwards (incl. future)
       const cutoffDate = new Date();
-      cutoffDate.setDate(cutoffDate.getDate() - 30);
+      cutoffDate.setDate(cutoffDate.getDate() - 7);
       cutoffDate.setHours(0, 0, 0, 0);
       const cutoffIso = cutoffDate.toISOString().slice(0, 10);
 
