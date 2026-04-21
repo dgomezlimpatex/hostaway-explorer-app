@@ -125,7 +125,7 @@ export const ClientPortalDashboard = ({
               bookings={bookings}
               properties={properties}
               isLoading={loadingBookings}
-              canEdit={canCreateReservations}
+              
             />
           </TabsContent>
 
