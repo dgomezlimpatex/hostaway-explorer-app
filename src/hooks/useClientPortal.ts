@@ -954,7 +954,19 @@ export const useClientPortalBookings = (clientId: string | undefined) => {
       cutoffDate.setHours(0, 0, 0, 0);
       const cutoffIso = cutoffDate.toISOString().slice(0, 10);
 
-      // 1) Manual reservations (with property) — last 30 days + future
+      // 0) Active property IDs for this client (exclude deactivated properties)
+      const { data: activeProps, error: pErr } = await supabase
+        .from('properties')
+        .select('id')
+        .eq('cliente_id', clientId)
+        .or('is_active.eq.true,is_active.is.null');
+      if (pErr) throw pErr;
+      const activePropertyIds = (activeProps ?? []).map((p: any) => p.id);
+
+      // If client has no active properties, no bookings should be shown
+      if (activePropertyIds.length === 0) return [];
+
+      // 1) Manual reservations (with property) — last 30 days + future, active properties only
       const { data: reservations, error: rErr } = await supabase
         .from('client_reservations')
         .select(`
@@ -966,6 +978,7 @@ export const useClientPortalBookings = (clientId: string | undefined) => {
         .eq('client_id', clientId)
         .neq('status', 'cancelled')
         .gte('check_out_date', cutoffIso)
+        .in('property_id', activePropertyIds)
         .order('check_in_date', { ascending: true });
 
       if (rErr) throw rErr;
@@ -976,7 +989,7 @@ export const useClientPortalBookings = (clientId: string | undefined) => {
           .filter((id): id is string => !!id)
       );
 
-      // 2) External tasks for this client (excluding cancelled) — last 30 days + future
+      // 2) External tasks for this client (excluding cancelled) — last 30 days + future, active properties only
       // Paginate to bypass Supabase's 1000-row default limit
       const PAGE_SIZE = 1000;
       let allTasks: any[] = [];
@@ -996,6 +1009,7 @@ export const useClientPortalBookings = (clientId: string | undefined) => {
           .eq('cliente_id', clientId)
           .neq('status', 'cancelled')
           .gte('date', cutoffIso)
+          .in('propiedad_id', activePropertyIds)
           .order('date', { ascending: false })
           .range(from, from + PAGE_SIZE - 1);
 
