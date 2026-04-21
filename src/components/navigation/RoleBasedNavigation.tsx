@@ -45,7 +45,7 @@ export const RoleBasedNavigation = () => {
           )}
 
 
-          {canAccessModule('tasks') && (
+          {isAdminOrManager() && (
             <NavigationCard
               to="/checklist-templates"
               title="Plantillas de Checklist"
