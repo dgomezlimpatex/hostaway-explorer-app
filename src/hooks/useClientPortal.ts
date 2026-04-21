@@ -970,20 +970,34 @@ export const useClientPortalBookings = (clientId: string | undefined) => {
       );
 
       // 2) External tasks for this client (excluding cancelled)
-      const { data: tasks, error: tErr } = await supabase
-        .from('tasks')
-        .select(`
-          id, date, start_time, end_time, status, type, notes,
-          property, address, propiedad_id, cliente_id,
-          properties:propiedad_id (
-            id, nombre, codigo, direccion, check_out_predeterminado
-          )
-        `)
-        .eq('cliente_id', clientId)
-        .neq('status', 'cancelled')
-        .order('date', { ascending: true });
+      // Paginate to bypass Supabase's 1000-row default limit
+      const PAGE_SIZE = 1000;
+      let allTasks: any[] = [];
+      let from = 0;
+      // Safety cap: 20k rows max (~years of data)
+      const MAX_ROWS = 20000;
+      while (from < MAX_ROWS) {
+        const { data: pageTasks, error: tErr } = await supabase
+          .from('tasks')
+          .select(`
+            id, date, start_time, end_time, status, type, notes,
+            property, address, propiedad_id, cliente_id,
+            properties:propiedad_id (
+              id, nombre, codigo, direccion, check_out_predeterminado
+            )
+          `)
+          .eq('cliente_id', clientId)
+          .neq('status', 'cancelled')
+          .order('date', { ascending: false })
+          .range(from, from + PAGE_SIZE - 1);
 
-      if (tErr) throw tErr;
+        if (tErr) throw tErr;
+        if (!pageTasks || pageTasks.length === 0) break;
+        allTasks = allTasks.concat(pageTasks);
+        if (pageTasks.length < PAGE_SIZE) break;
+        from += PAGE_SIZE;
+      }
+      const tasks = allTasks;
 
       const manualBookings: PortalBooking[] = (reservations ?? []).map((r: any) => ({
         id: `res-${r.id}`,
