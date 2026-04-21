@@ -2,7 +2,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.50.0";
 import { SyncStats } from './types.ts';
 import { fetchAllAvantioReservations } from './avantio-api.ts';
 import { ReservationProcessor } from './reservation-processor.ts';
-import { createSyncLog, updateSyncLog } from './database-operations.ts';
+import { createSyncLog, updateSyncLog, preloadPropertiesCache, clearPropertiesCache } from './database-operations.ts';
 
 export class SyncOrchestrator {
   private supabase;
