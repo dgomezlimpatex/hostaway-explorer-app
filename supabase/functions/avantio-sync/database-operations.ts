@@ -8,6 +8,59 @@ const supabase = createClient(supabaseUrl, supabaseServiceKey);
 // Client ID for Turquoise Apartments SL
 const TURQUOISE_CLIENT_ID = '669948a6-e5c3-4a73-a151-6ccca5c82adf';
 
+// In-memory cache of all Turquoise properties, populated once per sync.
+// Eliminates thousands of redundant SELECT queries during reservation processing.
+let propertiesCache: any[] | null = null;
+let cacheById: Map<string, any> = new Map();
+let cacheByName: Map<string, any> = new Map();
+let cacheByCode: Map<string, any> = new Map();
+
+/**
+ * Preload all Turquoise properties into memory.
+ * MUST be called once at the start of each sync to avoid CPU exhaustion.
+ */
+export async function preloadPropertiesCache() {
+  console.log('🗄️ Precargando caché de propiedades...');
+  const { data, error } = await supabase
+    .from('properties')
+    .select('*')
+    .eq('cliente_id', TURQUOISE_CLIENT_ID);
+
+  if (error) {
+    console.error('❌ Error precargando propiedades:', error);
+    throw error;
+  }
+
+  propertiesCache = data || [];
+  cacheById.clear();
+  cacheByName.clear();
+  cacheByCode.clear();
+
+  for (const prop of propertiesCache) {
+    if (prop.avantio_accommodation_id) {
+      cacheById.set(String(prop.avantio_accommodation_id), prop);
+    }
+    if (prop.nombre) {
+      cacheByName.set(prop.nombre.toLowerCase().trim(), prop);
+    }
+    if (prop.codigo) {
+      cacheByCode.set(prop.codigo.toLowerCase().trim(), prop);
+    }
+  }
+
+  console.log(`✅ Caché cargado: ${propertiesCache.length} propiedades (${cacheById.size} con avantio_id, ${cacheByCode.size} con código)`);
+}
+
+/**
+ * Clear the cache (called at end of sync to free memory).
+ */
+export function clearPropertiesCache() {
+  propertiesCache = null;
+  cacheById.clear();
+  cacheByName.clear();
+  cacheByCode.clear();
+}
+
 /**
  * Helper: search property by codigo and auto-save avantio_accommodation_id
  */
