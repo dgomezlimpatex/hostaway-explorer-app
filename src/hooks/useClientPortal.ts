@@ -1227,6 +1227,73 @@ export const useClientPortalTaskReport = (taskId: string | null | undefined, cli
   });
 };
 
+// ============= PORTAL: client settings (read-only for portal users) =============
+
+/**
+ * Returns the public-facing client settings that affect what the portal user can do.
+ */
+export const useClientPortalSettings = (clientId: string | undefined) => {
+  return useQuery({
+    queryKey: ['client-portal-settings', clientId],
+    queryFn: async () => {
+      if (!clientId) return null;
+      const { data, error } = await supabase
+        .from('clients')
+        .select('id, allow_reservation_creation')
+        .eq('id', clientId)
+        .maybeSingle();
+      if (error) throw error;
+      if (!data) return null;
+      return {
+        clientId: data.id,
+        allowReservationCreation: data.allow_reservation_creation !== false,
+      };
+    },
+    enabled: !!clientId,
+    staleTime: 60 * 1000,
+  });
+};
+
+// ============= ADMIN: reservation creation toggle =============
+
+export const useToggleClientReservationCreation = () => {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: async ({ clientId, enabled }: { clientId: string; enabled: boolean }) => {
+      const { data, error } = await supabase
+        .from('clients')
+        .update({ allow_reservation_creation: enabled })
+        .eq('id', clientId)
+        .select('id, allow_reservation_creation')
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['clients'] });
+      queryClient.invalidateQueries({ queryKey: ['client', variables.clientId] });
+      queryClient.invalidateQueries({ queryKey: ['admin-client-portals'] });
+      queryClient.invalidateQueries({ queryKey: ['client-portal-settings', variables.clientId] });
+      toast({
+        title: variables.enabled ? 'Reservas habilitadas' : 'Reservas deshabilitadas',
+        description: variables.enabled
+          ? 'El cliente podrá crear reservas desde el portal.'
+          : 'El cliente solo podrá consultar reservas existentes.',
+      });
+    },
+    onError: (err) => {
+      console.error('Toggle reservation creation error:', err);
+      toast({
+        title: 'Error',
+        description: 'No se pudo actualizar el permiso de creación de reservas.',
+        variant: 'destructive',
+      });
+    },
+  });
+};
+
 // ============= ADMIN: photos visibility toggle =============
 
 export const useToggleClientPhotosVisibility = () => {
