@@ -58,17 +58,21 @@ const HOLIDAYS = new Set<string>([
   '2026-10-09','2026-10-12','2026-11-01','2026-12-06','2026-12-08','2026-12-25',
 ]);
 
+/**
+ * Estado basado en cobertura de ASIGNACIÓN de tareas reales:
+ *  - green: todas (o casi todas) las tareas tienen cleaner asignada
+ *  - yellow: queda un porcentaje pequeño sin asignar
+ *  - red:    queda un porcentaje grande sin asignar
+ *  - idle:   no hay tareas creadas para ese día
+ */
 const computeStatus = (
-  cargaHoras: number,
-  capacidadHoras: number,
-  workersAvailable: number,
-  minWorkers: number
+  horasTareasTotal: number,
+  horasTareasAsignadas: number
 ): ForecastStatus => {
-  if (cargaHoras === 0) return 'idle';
-  const cobertura = capacidadHoras / cargaHoras;
-  const workersOk = workersAvailable >= minWorkers;
-  if (cobertura >= 1.1 && workersOk) return 'green';
-  if (cobertura >= 0.9 && workersOk) return 'yellow';
+  if (horasTareasTotal === 0) return 'idle';
+  const ratio = horasTareasAsignadas / horasTareasTotal;
+  if (ratio >= 0.99) return 'green';
+  if (ratio >= 0.8) return 'yellow';
   return 'red';
 };
 
@@ -223,11 +227,11 @@ export const useStaffingForecast = (rangeDays: number = 45) => {
         const checkoutsTotal = checkoutsAvantio.length + checkoutsInternos.length;
         const isAnomaly = checkoutsTotal > ANOMALY_THRESHOLD_CHECKOUTS;
         const cobertura = cargaHoras > 0 ? capacidadHoras / cargaHoras : 0;
-        const estado = computeStatus(cargaHoras, capacidadHoras, workersAvailable, target.min_workers);
         const deficitHoras = Math.max(0, cargaHoras - capacidadHoras);
         const deficitPersonas = Math.ceil(deficitHoras / TURNO_MEDIO_HORAS);
 
         const tStat = tasksByDate.get(dateStr) ?? { total: 0, asignadas: 0, horasTotal: 0, horasAsignadas: 0 };
+        const estado = computeStatus(tStat.horasTotal, tStat.horasAsignadas);
 
         days.push({
           date: dateStr,
