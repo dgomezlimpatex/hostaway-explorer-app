@@ -157,11 +157,16 @@ export async function fetchAllAvantioReservations(token: string): Promise<Avanti
     currency: string;
   }
 
+  // Estados que generan necesidad de limpieza (excluimos REQUESTED, PENDING, CANCELLED, etc.)
+  // Solo nos interesan reservas confirmadas que producirán un check-out real
+  const VALID_STATUSES = new Set(['BOOKED', 'CONFIRMED', 'CHECKED_IN', 'CHECKED_OUT', 'COMPLETED']);
+
   const rawItems: RawItem[] = [];
   let nextUrl: string | null = `${API_BASE_URL}/bookings?limit=${PAGE_SIZE}&sort=arrivalDate&order=asc&departureFrom=${fromDate}&departureTo=${toDate}`;
   let pages = 0;
   let outOfRangeStreak = 0;
   let totalDiscarded = 0;
+  let totalSkippedByStatus = 0;
 
   console.log(`🔎 URL inicial: ${nextUrl}`);
 
@@ -188,6 +193,7 @@ export async function fetchAllAvantioReservations(token: string): Promise<Avanti
 
     let pageInRange = 0;
     let pageOutOfRange = 0;
+    let pageSkippedByStatus = 0;
 
     for (const item of list) {
       if (!item?.id) continue;
@@ -203,6 +209,15 @@ export async function fetchAllAvantioReservations(token: string): Promise<Avanti
         totalDiscarded++;
         continue;
       }
+
+      // CRITICAL: Skip reservations that don't generate cleaning needs (REQUESTED, PENDING, etc.)
+      const status = norm(item.status || '').toUpperCase();
+      if (!VALID_STATUSES.has(status)) {
+        pageSkippedByStatus++;
+        totalSkippedByStatus++;
+        continue;
+      }
+
       pageInRange++;
 
       rawItems.push({
@@ -217,7 +232,7 @@ export async function fetchAllAvantioReservations(token: string): Promise<Avanti
       });
     }
 
-    console.log(`   ↳ En rango: ${pageInRange} | Fuera de rango: ${pageOutOfRange}`);
+    console.log(`   ↳ Válidas: ${pageInRange} | Fuera rango: ${pageOutOfRange} | Estado descartado: ${pageSkippedByStatus}`);
 
     // EARLY EXIT: si toda la página vino fuera de rango y tenemos resultados ordenados por arrivalDate asc,
     // significa que ya hemos pasado el rango útil → no tiene sentido seguir paginando
@@ -238,7 +253,7 @@ export async function fetchAllAvantioReservations(token: string): Promise<Avanti
     console.log(`⚠️ Alcanzado límite máximo de ${MAX_PAGES} páginas`);
   }
 
-  console.log(`📊 Fase 1 completada: ${rawItems.length} reservas en rango (descartadas ${totalDiscarded} fuera de rango, ${pages} páginas)`);
+  console.log(`📊 Fase 1 completada: ${rawItems.length} reservas válidas (descartadas ${totalDiscarded} fuera de rango, ${totalSkippedByStatus} por estado no operativo, ${pages} páginas)`);
 
 
   // Phase 2: Resolve accommodation names (one detail call per unique accommodationId)
