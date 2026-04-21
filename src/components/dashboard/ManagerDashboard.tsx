@@ -6,7 +6,7 @@ import { useRolePermissions } from '@/hooks/useRolePermissions';
 import { useTasksPageActions } from '@/hooks/tasks/useTasksPageActions';
 import { format, startOfMonth, endOfMonth, isAfter, isBefore, subMonths } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { useIsMobile } from '@/hooks/use-mobile';
+
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { CreateTaskModal } from '@/components/modals/CreateTaskModal';
 import { BatchCreateTaskModal } from '@/components/modals/BatchCreateTaskModal';
@@ -35,7 +35,7 @@ export const ManagerDashboard = () => {
   const [isTaskDetailsOpen, setIsTaskDetailsOpen] = useState(false);
   const [isExtraordinaryServiceModalOpen, setIsExtraordinaryServiceModalOpen] = useState(false);
   const { canAccessModule } = useRolePermissions();
-  const isMobile = useIsMobile();
+  
   
   // Hook para manejar las acciones de tareas con la fecha correcta
   const {
