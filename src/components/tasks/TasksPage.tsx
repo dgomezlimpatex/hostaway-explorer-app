@@ -13,6 +13,8 @@ import { useRolePermissions } from '@/hooks/useRolePermissions';
 import { Task } from '@/types/calendar';
 
 const TasksPage = memo(() => {
+  const { isCleaner } = useRolePermissions();
+  const cleanerView = isCleaner();
   const [selectedTaskForReport, setSelectedTaskForReport] = useState<Task | null>(null);
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
   const [selectedTaskForGroupedReport, setSelectedTaskForGroupedReport] = useState<Task | null>(null);
