@@ -222,7 +222,9 @@ export const ReservationDetailModal = ({
       {lightboxIndex !== null && photos[lightboxIndex] && createPortal(
         <div
           className="fixed inset-0 z-[200] bg-black/90 flex items-center justify-center p-4"
-          onClick={() => setLightboxIndex(null)}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setLightboxIndex(null);
+          }}
           onTouchStart={(e) => {
             (e.currentTarget as any)._touchStartX = e.touches[0].clientX;
           }}
