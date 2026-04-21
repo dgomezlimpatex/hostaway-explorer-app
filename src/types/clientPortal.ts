@@ -6,8 +6,10 @@ export interface ClientPortalAccess {
   clientId: string;
   accessPin: string;
   portalToken: string;
+  shortCode?: string;
   isActive: boolean;
   lastAccessAt: string | null;
+  lastAdminAccessAt?: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -58,4 +60,31 @@ export interface PortalSession {
   portalToken: string;
   shortCode?: string;
   authenticatedAt: number;
+  isAdminBypass?: boolean;
+}
+
+// Unified booking type that mixes manual portal reservations and external tasks
+// (Avantio / Hostaway / recurring / batch / manual tasks).
+export interface PortalBooking {
+  id: string;
+  source: 'manual' | 'external';
+  isEditable: boolean;
+  // For both: cleaning date (= checkout for manual, task.date for external)
+  cleaningDate: string;
+  // Only manual reservations have these
+  checkInDate: string | null;
+  checkOutDate: string | null;
+  guestCount: number | null;
+  specialRequests: string | null;
+  status: 'active' | 'cancelled' | 'completed' | 'pending' | 'in_progress';
+  taskId: string | null;
+  taskStatus?: 'pending' | 'in_progress' | 'completed' | 'cancelled' | string | null;
+  reservationId: string | null;
+  property?: {
+    id: string;
+    nombre: string;
+    codigo: string;
+    direccion: string;
+    checkOutPredeterminado?: string;
+  };
 }

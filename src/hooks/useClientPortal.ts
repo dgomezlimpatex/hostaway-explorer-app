@@ -6,7 +6,8 @@ import {
   ClientReservation, 
   ClientReservationLog,
   CreateReservationData,
-  PortalSession 
+  PortalSession,
+  PortalBooking,
 } from '@/types/clientPortal';
 import { useToast } from '@/hooks/use-toast';
 
@@ -930,3 +931,276 @@ export const useCancelReservation = () => {
     },
   });
 };
+
+// ============= UNIFIED PORTAL BOOKINGS (manual + external tasks) =============
+
+/**
+ * Returns a unified list of "bookings" for the client portal:
+ *  - Manual reservations created from the portal (with full check-in/out info, editable)
+ *  - External tasks linked to the client (Avantio / Hostaway / recurring / batch / manual tasks)
+ *    that are NOT already linked to a manual reservation (avoid duplicates).
+ * External tasks are read-only.
+ */
+export const useClientPortalBookings = (clientId: string | undefined) => {
+  return useQuery({
+    queryKey: ['client-portal-bookings', clientId],
+    queryFn: async (): Promise<PortalBooking[]> => {
+      if (!clientId) return [];
+
+      // 1) Manual reservations (with property)
+      const { data: reservations, error: rErr } = await supabase
+        .from('client_reservations')
+        .select(`
+          *,
+          properties (
+            id, nombre, codigo, direccion, check_out_predeterminado
+          )
+        `)
+        .eq('client_id', clientId)
+        .neq('status', 'cancelled')
+        .order('check_in_date', { ascending: true });
+
+      if (rErr) throw rErr;
+
+      const reservationTaskIds = new Set(
+        (reservations ?? [])
+          .map(r => r.task_id)
+          .filter((id): id is string => !!id)
+      );
+
+      // 2) External tasks for this client (excluding cancelled)
+      const { data: tasks, error: tErr } = await supabase
+        .from('tasks')
+        .select(`
+          id, date, start_time, end_time, status, type, notes,
+          property, address, propiedad_id, cliente_id,
+          properties:propiedad_id (
+            id, nombre, codigo, direccion, check_out_predeterminado
+          )
+        `)
+        .eq('cliente_id', clientId)
+        .neq('status', 'cancelled')
+        .order('date', { ascending: true });
+
+      if (tErr) throw tErr;
+
+      const manualBookings: PortalBooking[] = (reservations ?? []).map((r: any) => ({
+        id: `res-${r.id}`,
+        source: 'manual',
+        isEditable: true,
+        cleaningDate: r.check_out_date,
+        checkInDate: r.check_in_date,
+        checkOutDate: r.check_out_date,
+        guestCount: r.guest_count,
+        specialRequests: r.special_requests,
+        status: r.status,
+        taskId: r.task_id,
+        reservationId: r.id,
+        property: r.properties ? {
+          id: r.properties.id,
+          nombre: r.properties.nombre,
+          codigo: r.properties.codigo,
+          direccion: r.properties.direccion,
+          checkOutPredeterminado: r.properties.check_out_predeterminado,
+        } : undefined,
+      }));
+
+      const externalBookings: PortalBooking[] = (tasks ?? [])
+        .filter((t: any) => !reservationTaskIds.has(t.id))
+        .map((t: any) => ({
+          id: `task-${t.id}`,
+          source: 'external',
+          isEditable: false,
+          cleaningDate: t.date,
+          checkInDate: null,
+          checkOutDate: null,
+          guestCount: null,
+          specialRequests: t.notes ?? null,
+          status: t.status,
+          taskStatus: t.status,
+          taskId: t.id,
+          reservationId: null,
+          property: t.properties ? {
+            id: t.properties.id,
+            nombre: t.properties.nombre,
+            codigo: t.properties.codigo,
+            direccion: t.properties.direccion,
+            checkOutPredeterminado: t.properties.check_out_predeterminado,
+          } : (t.property ? {
+            id: t.propiedad_id ?? '',
+            nombre: t.property,
+            codigo: '',
+            direccion: t.address ?? '',
+          } : undefined),
+        }));
+
+      // Attach taskStatus to manual bookings as well, by fetching their tasks if linked
+      const manualTaskIds = manualBookings
+        .map(b => b.taskId)
+        .filter((id): id is string => !!id);
+
+      if (manualTaskIds.length > 0) {
+        const { data: linkedTasks } = await supabase
+          .from('tasks')
+          .select('id, status')
+          .in('id', manualTaskIds);
+        const statusById = new Map((linkedTasks ?? []).map((t: any) => [t.id, t.status]));
+        manualBookings.forEach(b => {
+          if (b.taskId) b.taskStatus = statusById.get(b.taskId) ?? null;
+        });
+      }
+
+      return [...manualBookings, ...externalBookings].sort(
+        (a, b) => new Date(a.cleaningDate).getTime() - new Date(b.cleaningDate).getTime()
+      );
+    },
+    enabled: !!clientId,
+  });
+};
+
+/**
+ * Fetch the (latest) task report + media for a given task, respecting the
+ * client's photos_visible_to_client flag. RLS on the server enforces this too.
+ * Returns:
+ *  - status: 'not_ready' | 'photos_disabled' | 'ready'
+ *  - media: TaskMedia[] (only when ready)
+ */
+export const useClientPortalTaskReport = (taskId: string | null | undefined, clientId?: string) => {
+  return useQuery({
+    queryKey: ['client-portal-task-report', taskId, clientId],
+    queryFn: async () => {
+      if (!taskId) return { status: 'not_ready' as const, media: [] };
+
+      // Check client-level photos_visible flag
+      let photosEnabled = false;
+      if (clientId) {
+        const { data: client } = await supabase
+          .from('clients')
+          .select('photos_visible_to_client')
+          .eq('id', clientId)
+          .maybeSingle();
+        photosEnabled = !!client?.photos_visible_to_client;
+      }
+
+      if (!photosEnabled) {
+        return { status: 'photos_disabled' as const, media: [] };
+      }
+
+      // Fetch the latest completed report for this task
+      const { data: report, error: repErr } = await supabase
+        .from('task_reports')
+        .select('id, overall_status, end_time, notes')
+        .eq('task_id', taskId)
+        .eq('overall_status', 'completed')
+        .order('updated_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (repErr) throw repErr;
+      if (!report) return { status: 'not_ready' as const, media: [] };
+
+      const { data: media, error: medErr } = await supabase
+        .from('task_media')
+        .select('id, file_url, media_type, description, timestamp, checklist_item_id')
+        .eq('task_report_id', report.id)
+        .order('timestamp', { ascending: true });
+
+      if (medErr) throw medErr;
+
+      return {
+        status: 'ready' as const,
+        media: media ?? [],
+        report,
+      };
+    },
+    enabled: !!taskId,
+    staleTime: 60 * 1000,
+  });
+};
+
+// ============= ADMIN: photos visibility toggle =============
+
+export const useToggleClientPhotosVisibility = () => {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: async ({ clientId, enabled }: { clientId: string; enabled: boolean }) => {
+      const { data, error } = await supabase
+        .from('clients')
+        .update({ photos_visible_to_client: enabled })
+        .eq('id', clientId)
+        .select('id, photos_visible_to_client')
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['clients'] });
+      queryClient.invalidateQueries({ queryKey: ['client', variables.clientId] });
+      queryClient.invalidateQueries({ queryKey: ['admin-client-portals'] });
+      toast({
+        title: variables.enabled ? 'Fotos habilitadas' : 'Fotos deshabilitadas',
+        description: variables.enabled
+          ? 'El cliente podrá ver las fotos del reporte.'
+          : 'El cliente ya no verá las fotos del reporte.',
+      });
+    },
+    onError: (err) => {
+      console.error('Toggle photos visibility error:', err);
+      toast({
+        title: 'Error',
+        description: 'No se pudo actualizar la visibilidad de fotos.',
+        variant: 'destructive',
+      });
+    },
+  });
+};
+
+// ============= ADMIN: portals overview =============
+
+/**
+ * Returns ALL clients with their portal access state (if any) and photo flag,
+ * for the admin "Portales de clientes" panel.
+ */
+export const useAdminClientPortals = () => {
+  return useQuery({
+    queryKey: ['admin-client-portals'],
+    queryFn: async () => {
+      const { data: clients, error: cErr } = await supabase
+        .from('clients')
+        .select('id, nombre, is_active, photos_visible_to_client')
+        .order('nombre', { ascending: true });
+      if (cErr) throw cErr;
+
+      const { data: accesses, error: aErr } = await supabase
+        .from('client_portal_access')
+        .select('id, client_id, access_pin, portal_token, short_code, is_active, last_access_at, last_admin_access_at, created_at, updated_at');
+      if (aErr) throw aErr;
+
+      const accessByClient = new Map((accesses ?? []).map(a => [a.client_id, a]));
+
+      return (clients ?? []).map(c => {
+        const a = accessByClient.get(c.id);
+        return {
+          clientId: c.id,
+          clientName: c.nombre,
+          clientActive: c.is_active,
+          photosVisibleToClient: !!c.photos_visible_to_client,
+          access: a ? {
+            id: a.id,
+            accessPin: a.access_pin,
+            portalToken: a.portal_token,
+            shortCode: a.short_code,
+            isActive: a.is_active,
+            lastAccessAt: a.last_access_at,
+            lastAdminAccessAt: a.last_admin_access_at,
+            createdAt: a.created_at,
+            updatedAt: a.updated_at,
+          } : null,
+        };
+      });
+    },
+  });
+};
+

@@ -52,6 +52,7 @@ export const EditClientModal = ({ client, trigger }: EditClientModalProps) => {
       supervisor: client.supervisor,
       factura: client.factura,
       linenControlEnabled: client.linenControlEnabled || false,
+      photosVisibleToClient: client.photosVisibleToClient || false,
       isActive: client.isActive !== false,
     },
   });
@@ -386,6 +387,29 @@ export const EditClientModal = ({ client, trigger }: EditClientModalProps) => {
                         </FormLabel>
                         <p className="text-xs text-muted-foreground">
                           Si está desactivado, no aparecerá en selectores
+                        </p>
+                      </div>
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="photosVisibleToClient"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-start space-x-3 space-y-0 md:col-span-2 p-3 rounded-lg border bg-muted/30">
+                      <FormControl>
+                        <Checkbox
+                          checked={field.value || false}
+                          onCheckedChange={field.onChange}
+                        />
+                      </FormControl>
+                      <div className="space-y-1 leading-none">
+                        <FormLabel className="flex items-center gap-2">
+                          📸 Permitir al cliente ver fotos del reporte
+                        </FormLabel>
+                        <p className="text-xs text-muted-foreground">
+                          Si está desactivado, el cliente verá los detalles de la limpieza pero no las fotografías
                         </p>
                       </div>
                     </FormItem>
