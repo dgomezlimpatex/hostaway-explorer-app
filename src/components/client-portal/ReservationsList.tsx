@@ -183,15 +183,15 @@ export const ReservationsList = ({
   return (
     <>
       <Card className="border-0 shadow-lg overflow-hidden">
-        <CardHeader className="bg-gradient-to-r from-primary/5 via-primary/10 to-primary/5 border-b">
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle className="text-xl">Mis Reservas</CardTitle>
-              <CardDescription className="mt-1">
+        <CardHeader className="bg-gradient-to-r from-primary/5 via-primary/10 to-primary/5 border-b p-4 sm:p-6">
+          <div className="flex items-center justify-between gap-3">
+            <div className="min-w-0">
+              <CardTitle className="text-lg sm:text-xl">Mis Reservas</CardTitle>
+              <CardDescription className="mt-1 text-xs sm:text-sm">
                 {bookings.length} reserva{bookings.length !== 1 ? 's' : ''} en total
               </CardDescription>
             </div>
-            <div className="hidden sm:flex items-center gap-2 text-sm text-muted-foreground">
+            <div className="hidden sm:flex items-center gap-2 text-sm text-muted-foreground shrink-0">
               <div className="flex items-center gap-1.5">
                 <span className="w-2 h-2 rounded-full bg-green-500" />
                 <span>Próximas</span>
@@ -214,16 +214,16 @@ export const ReservationsList = ({
 
               return (
                 <AccordionItem key={groupKey} value={groupKey} className="border-0">
-                  <AccordionTrigger className="px-4 py-3 hover:bg-accent/30 hover:no-underline">
-                    <div className="flex items-center gap-3 flex-1 min-w-0 text-left">
-                      <div className="w-10 h-10 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
-                        <Building2 className="h-5 w-5" />
+                  <AccordionTrigger className="px-3 sm:px-4 py-3 hover:bg-accent/30 hover:no-underline gap-2">
+                    <div className="flex items-center gap-2.5 sm:gap-3 flex-1 min-w-0 text-left">
+                      <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                        <Building2 className="h-4 w-4 sm:h-5 sm:w-5" />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <div className="font-semibold text-foreground truncate">
+                        <div className="font-semibold text-sm sm:text-base text-foreground truncate">
                           {group.propertyCode ? `${group.propertyCode} · ${group.propertyName}` : group.propertyName}
                         </div>
-                        <div className="text-xs text-muted-foreground mt-0.5 flex items-center gap-2 flex-wrap">
+                        <div className="text-[11px] sm:text-xs text-muted-foreground mt-0.5 flex items-center gap-1.5 flex-wrap">
                           <span>{group.bookings.length} tarea{group.bookings.length !== 1 ? 's' : ''}</span>
                           {upcomingCount > 0 && (
                             <Badge variant="outline" className="h-5 px-1.5 text-[10px] bg-green-500/10 text-green-700 border-green-200">
@@ -270,7 +270,7 @@ export const ReservationsList = ({
                               }`} />
                             )}
 
-                            <div className="flex items-center gap-3 p-3 pl-5">
+                            <div className="flex items-center gap-2.5 sm:gap-3 p-3 pl-4 sm:pl-5">
                               <div className={`hidden sm:flex w-10 h-10 rounded-lg items-center justify-center shrink-0 ${
                                 isPastBooking
                                   ? 'bg-muted text-muted-foreground'
@@ -282,21 +282,21 @@ export const ReservationsList = ({
                               </div>
 
                               <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-2 flex-wrap mb-1">
-                                  <div className={`flex items-center gap-1.5 text-sm font-medium ${
+                                <div className="flex items-center gap-1.5 flex-wrap mb-1">
+                                  <div className={`flex items-center gap-1 text-xs sm:text-sm font-medium ${
                                     isPastBooking ? 'text-muted-foreground' : 'text-foreground'
                                   }`}>
-                                    <Calendar className="h-3.5 w-3.5" />
+                                    <Calendar className="h-3.5 w-3.5 shrink-0" />
                                     {isExternal ? (
-                                      <span>{format(cleaningDate, "EEE d MMM yyyy", { locale: es })}</span>
+                                      <span className="truncate">{format(cleaningDate, "EEE d MMM yyyy", { locale: es })}</span>
                                     ) : (
                                       <>
                                         <span>{format(checkInDate, 'd MMM', { locale: es })}</span>
-                                        <ChevronRight className="h-3 w-3" />
+                                        <ChevronRight className="h-3 w-3 shrink-0" />
                                         <span>{format(checkOutDate, 'd MMM yyyy', { locale: es })}</span>
                                         {nights !== null && (
-                                          <span className="text-muted-foreground/60 ml-1 text-xs">
-                                            ({nights} noche{nights > 1 ? 's' : ''})
+                                          <span className="text-muted-foreground/60 ml-1 text-[10px] sm:text-xs">
+                                            ({nights}n)
                                           </span>
                                         )}
                                       </>
@@ -304,48 +304,48 @@ export const ReservationsList = ({
                                   </div>
 
                                   {isExternal && (
-                                    <Badge variant="outline" className="text-[10px] gap-1 bg-muted/50">
+                                    <Badge variant="outline" className="text-[10px] gap-1 bg-muted/50 h-5 px-1.5">
                                       <Lock className="h-2.5 w-2.5" />
-                                      Sincronizada
+                                      Sync
                                     </Badge>
                                   )}
                                   {isToday(cleaningDate) && (
-                                    <Badge className="bg-green-500/15 text-green-700 border-green-200 hover:bg-green-500/20">
+                                    <Badge className="bg-green-500/15 text-green-700 border-green-200 hover:bg-green-500/20 h-5 px-1.5 text-[10px]">
                                       Hoy
                                     </Badge>
                                   )}
                                   {!isPastBooking && !isToday(cleaningDate) && daysUntil <= 3 && daysUntil > 0 && (
-                                    <Badge variant="outline" className="bg-amber-500/10 text-amber-700 border-amber-200">
-                                      En {daysUntil} día{daysUntil > 1 ? 's' : ''}
+                                    <Badge variant="outline" className="bg-amber-500/10 text-amber-700 border-amber-200 h-5 px-1.5 text-[10px]">
+                                      En {daysUntil}d
                                     </Badge>
                                   )}
                                   {isPastBooking && (
-                                    <Badge variant="secondary" className="opacity-70 text-[10px]">
+                                    <Badge variant="secondary" className="opacity-70 text-[10px] h-5 px-1.5">
                                       Completada
                                     </Badge>
                                   )}
                                 </div>
 
-                                <div className="flex items-center gap-3 flex-wrap">
+                                <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
                                   {booking.guestCount && (
-                                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                                    <div className="flex items-center gap-1 text-[11px] sm:text-xs text-muted-foreground">
                                       <Users className="h-3 w-3" />
-                                      <span>{booking.guestCount} huéspedes</span>
+                                      <span>{booking.guestCount} huésp.</span>
                                     </div>
                                   )}
                                   {booking.specialRequests && (
-                                    <div className={`flex items-center gap-1.5 text-xs ${
+                                    <div className={`flex items-center gap-1 text-[11px] sm:text-xs ${
                                       isPastBooking ? 'text-muted-foreground/60' : 'text-amber-600'
                                     }`}>
-                                      <MessageSquare className="h-3 w-3" />
-                                      <span className="truncate max-w-[200px]">{booking.specialRequests}</span>
+                                      <MessageSquare className="h-3 w-3 shrink-0" />
+                                      <span className="truncate max-w-[140px] sm:max-w-[200px]">{booking.specialRequests}</span>
                                     </div>
                                   )}
                                 </div>
                               </div>
 
                               {booking.isEditable && isStillActive && booking.status === 'active' && (
-                                <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
+                                <div className="flex items-center gap-0.5 shrink-0" onClick={(e) => e.stopPropagation()}>
                                   <Button
                                     variant="ghost"
                                     size="icon"
