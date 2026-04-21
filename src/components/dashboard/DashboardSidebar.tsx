@@ -149,6 +149,11 @@ const adminItems: NavigationItem[] = [
     icon: Building2,
   },
   {
+    title: 'Portales de clientes',
+    href: '/admin/client-portals',
+    icon: Layers,
+  },
+  {
     title: 'Avantio Sync',
     href: '/avantio-automation',
     icon: Settings,

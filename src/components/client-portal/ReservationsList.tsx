@@ -2,16 +2,20 @@
 import { useState } from 'react';
 import { format, isPast, isToday, isFuture } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { Calendar, MapPin, Users, Edit2, Trash2, Loader2, MessageSquare, ChevronRight, Home } from 'lucide-react';
+import {
+  Calendar, MapPin, Users, Edit2, Trash2, Loader2, MessageSquare,
+  ChevronRight, Home, Lock, RefreshCw,
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { ClientReservation } from '@/types/clientPortal';
+import { ClientReservation, PortalBooking } from '@/types/clientPortal';
 import { useCancelReservation, useUpdateReservation } from '@/hooks/useClientPortal';
 import { useToast } from '@/hooks/use-toast';
 import { EditReservationForm } from './EditReservationForm';
+import { ReservationDetailModal } from './ReservationDetailModal';
 
 interface Property {
   id: string;
@@ -23,31 +27,53 @@ interface Property {
 interface ReservationsListProps {
   clientId: string;
   clientName: string;
-  reservations: ClientReservation[];
+  bookings: PortalBooking[];
   properties: Property[];
   isLoading: boolean;
 }
 
+// Convert a PortalBooking back to a ClientReservation for the EditReservationForm (manual only)
+const bookingToReservation = (b: PortalBooking): ClientReservation => ({
+  id: b.reservationId!,
+  clientId: '',
+  propertyId: b.property?.id ?? '',
+  checkInDate: b.checkInDate ?? b.cleaningDate,
+  checkOutDate: b.checkOutDate ?? b.cleaningDate,
+  guestCount: b.guestCount,
+  specialRequests: b.specialRequests,
+  taskId: b.taskId,
+  status: b.status as 'active' | 'cancelled' | 'completed',
+  createdAt: '',
+  updatedAt: '',
+  property: b.property ? {
+    id: b.property.id,
+    nombre: b.property.nombre,
+    codigo: b.property.codigo,
+    direccion: b.property.direccion,
+    checkOutPredeterminado: b.property.checkOutPredeterminado ?? '11:00',
+  } : undefined,
+});
+
 export const ReservationsList = ({
   clientId,
   clientName,
-  reservations,
+  bookings,
   properties,
   isLoading,
 }: ReservationsListProps) => {
-  const [editingReservation, setEditingReservation] = useState<ClientReservation | null>(null);
-  const [cancellingReservation, setCancellingReservation] = useState<ClientReservation | null>(null);
+  const [editingBooking, setEditingBooking] = useState<PortalBooking | null>(null);
+  const [cancellingBooking, setCancellingBooking] = useState<PortalBooking | null>(null);
+  const [detailBooking, setDetailBooking] = useState<PortalBooking | null>(null);
   const { toast } = useToast();
   
   const cancelMutation = useCancelReservation();
-  const updateMutation = useUpdateReservation();
 
   const handleCancel = async () => {
-    if (!cancellingReservation) return;
+    if (!cancellingBooking?.reservationId) return;
     
     try {
       await cancelMutation.mutateAsync({
-        reservationId: cancellingReservation.id,
+        reservationId: cancellingBooking.reservationId,
         clientId,
         clientName,
       });
@@ -55,7 +81,7 @@ export const ReservationsList = ({
         title: 'Reserva cancelada',
         description: 'La reserva y su limpieza asociada han sido eliminadas.',
       });
-      setCancellingReservation(null);
+      setCancellingBooking(null);
     } catch (error) {
       toast({
         title: 'Error',
@@ -65,20 +91,18 @@ export const ReservationsList = ({
     }
   };
 
-  // Sort reservations: upcoming first, then past
-  const sortedReservations = [...reservations].sort((a, b) => {
-    const dateA = new Date(a.checkInDate);
-    const dateB = new Date(b.checkInDate);
+  // Sort bookings: upcoming first, then past
+  const sortedBookings = [...bookings].sort((a, b) => {
+    const dateA = new Date(a.cleaningDate);
+    const dateB = new Date(b.cleaningDate);
     const now = new Date();
     
-    // Future/today before past
     const aIsFuture = dateA >= now;
     const bIsFuture = dateB >= now;
     
     if (aIsFuture && !bIsFuture) return -1;
     if (!aIsFuture && bIsFuture) return 1;
     
-    // Within same category, sort by date
     return aIsFuture ? dateA.getTime() - dateB.getTime() : dateB.getTime() - dateA.getTime();
   });
 
@@ -95,7 +119,7 @@ export const ReservationsList = ({
     );
   }
 
-  if (reservations.length === 0) {
+  if (bookings.length === 0) {
     return (
       <Card className="border-0 shadow-lg bg-gradient-to-br from-card to-muted/30">
         <CardContent className="py-16 text-center">
@@ -111,7 +135,6 @@ export const ReservationsList = ({
     );
   }
 
-  // Calculate days until check-in
   const getDaysUntil = (date: Date) => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -120,7 +143,6 @@ export const ReservationsList = ({
     return Math.ceil((target.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
   };
 
-  // Get nights count
   const getNightsCount = (checkIn: Date, checkOut: Date) => {
     return Math.ceil((checkOut.getTime() - checkIn.getTime()) / (1000 * 60 * 60 * 24));
   };
@@ -133,7 +155,7 @@ export const ReservationsList = ({
             <div>
               <CardTitle className="text-xl">Mis Reservas</CardTitle>
               <CardDescription className="mt-1">
-                {reservations.length} reserva{reservations.length !== 1 ? 's' : ''} en total
+                {bookings.length} reserva{bookings.length !== 1 ? 's' : ''} en total
               </CardDescription>
             </div>
             <div className="hidden sm:flex items-center gap-2 text-sm text-muted-foreground">
@@ -150,31 +172,30 @@ export const ReservationsList = ({
         </CardHeader>
         <CardContent className="p-0">
           <div className="divide-y divide-border/50">
-            {sortedReservations.map((reservation, index) => {
-              const checkInDate = new Date(reservation.checkInDate);
-              const checkOutDate = new Date(reservation.checkOutDate);
-              const isUpcoming = isFuture(checkInDate) || isToday(checkInDate);
+            {sortedBookings.map((booking) => {
+              const cleaningDate = new Date(booking.cleaningDate);
+              const checkInDate = booking.checkInDate ? new Date(booking.checkInDate) : cleaningDate;
+              const checkOutDate = booking.checkOutDate ? new Date(booking.checkOutDate) : cleaningDate;
+              const isExternal = booking.source === 'external';
+              const isUpcoming = isFuture(cleaningDate) || isToday(cleaningDate);
               const isStillActive = !isPast(checkOutDate);
-              const isPastReservation = isPast(checkOutDate);
-              const hasOrphanedTask = !reservation.taskId && reservation.status === 'active' && isStillActive;
-              const daysUntil = getDaysUntil(checkInDate);
-              const nights = getNightsCount(checkInDate, checkOutDate);
+              const isPastBooking = isPast(checkOutDate);
+              const daysUntil = getDaysUntil(cleaningDate);
+              const nights = !isExternal ? getNightsCount(checkInDate, checkOutDate) : null;
               
               return (
                 <div
-                  key={reservation.id}
-                  className={`group relative transition-all duration-200 ${
-                    isPastReservation 
-                      ? 'bg-muted/30' 
-                      : hasOrphanedTask
-                        ? 'bg-amber-50 dark:bg-amber-950/20'
-                        : 'hover:bg-accent/50'
+                  key={booking.id}
+                  onClick={() => setDetailBooking(booking)}
+                  className={`group relative transition-all duration-200 cursor-pointer ${
+                    isPastBooking 
+                      ? 'bg-muted/30 hover:bg-muted/50' 
+                      : 'hover:bg-accent/50'
                   }`}
                 >
-                  {/* Left accent bar */}
                   {isUpcoming && (
                     <div className={`absolute left-0 top-0 bottom-0 w-1 ${
-                      isToday(checkInDate) 
+                      isToday(cleaningDate) 
                         ? 'bg-green-500' 
                         : daysUntil <= 3 
                           ? 'bg-amber-500' 
@@ -183,97 +204,112 @@ export const ReservationsList = ({
                   )}
                   
                   <div className="flex items-center gap-4 p-4 pl-5">
-                    {/* Property Icon */}
                     <div className={`hidden sm:flex w-12 h-12 rounded-xl items-center justify-center shrink-0 ${
-                      isPastReservation 
+                      isPastBooking 
                         ? 'bg-muted text-muted-foreground' 
-                        : 'bg-primary/10 text-primary'
+                        : isExternal
+                          ? 'bg-muted/60 text-muted-foreground'
+                          : 'bg-primary/10 text-primary'
                     }`}>
-                      <Home className="h-5 w-5" />
+                      {isExternal ? <RefreshCw className="h-5 w-5" /> : <Home className="h-5 w-5" />}
                     </div>
                     
-                    {/* Main Content */}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap mb-1">
                         <h3 className={`font-semibold text-base ${
-                          isPastReservation ? 'text-muted-foreground' : 'text-foreground'
+                          isPastBooking ? 'text-muted-foreground' : 'text-foreground'
                         }`}>
-                          {reservation.property?.codigo || reservation.property?.nombre || 'Propiedad'}
+                          {booking.property?.codigo || booking.property?.nombre || 'Propiedad'}
                         </h3>
+
+                        {isExternal && (
+                          <Badge variant="outline" className="text-[10px] gap-1 bg-muted/50">
+                            <Lock className="h-2.5 w-2.5" />
+                            Sincronizada
+                          </Badge>
+                        )}
                         
-                        {isToday(checkInDate) && (
+                        {isToday(cleaningDate) && (
                           <Badge className="bg-green-500/15 text-green-700 border-green-200 hover:bg-green-500/20">
                             Hoy
                           </Badge>
                         )}
-                        {!isPastReservation && !isToday(checkInDate) && daysUntil <= 3 && daysUntil > 0 && (
+                        {!isPastBooking && !isToday(cleaningDate) && daysUntil <= 3 && daysUntil > 0 && (
                           <Badge variant="outline" className="bg-amber-500/10 text-amber-700 border-amber-200">
                             En {daysUntil} día{daysUntil > 1 ? 's' : ''}
                           </Badge>
                         )}
-                        {isPastReservation && (
+                        {isPastBooking && (
                           <Badge variant="secondary" className="opacity-70">
                             Completada
                           </Badge>
                         )}
                       </div>
                       
-                      {/* Date info */}
                       <div className="flex items-center gap-4 flex-wrap text-sm">
                         <div className={`flex items-center gap-1.5 ${
-                          isPastReservation ? 'text-muted-foreground/70' : 'text-muted-foreground'
+                          isPastBooking ? 'text-muted-foreground/70' : 'text-muted-foreground'
                         }`}>
                           <Calendar className="h-3.5 w-3.5" />
-                          <span className="font-medium">
-                            {format(checkInDate, 'd MMM', { locale: es })}
-                          </span>
-                          <ChevronRight className="h-3 w-3" />
-                          <span className="font-medium">
-                            {format(checkOutDate, 'd MMM yyyy', { locale: es })}
-                          </span>
-                          <span className="text-muted-foreground/60 ml-1">
-                            ({nights} noche{nights > 1 ? 's' : ''})
-                          </span>
+                          {isExternal ? (
+                            <span className="font-medium">
+                              Limpieza: {format(cleaningDate, "d MMM yyyy", { locale: es })}
+                            </span>
+                          ) : (
+                            <>
+                              <span className="font-medium">
+                                {format(checkInDate, 'd MMM', { locale: es })}
+                              </span>
+                              <ChevronRight className="h-3 w-3" />
+                              <span className="font-medium">
+                                {format(checkOutDate, 'd MMM yyyy', { locale: es })}
+                              </span>
+                              {nights !== null && (
+                                <span className="text-muted-foreground/60 ml-1">
+                                  ({nights} noche{nights > 1 ? 's' : ''})
+                                </span>
+                              )}
+                            </>
+                          )}
                         </div>
                       </div>
                       
-                      {/* Additional info row */}
                       <div className="flex items-center gap-4 flex-wrap mt-2">
-                        {reservation.property?.direccion && (
+                        {booking.property?.direccion && (
                           <div className={`flex items-center gap-1.5 text-xs ${
-                            isPastReservation ? 'text-muted-foreground/60' : 'text-muted-foreground'
+                            isPastBooking ? 'text-muted-foreground/60' : 'text-muted-foreground'
                           }`}>
                             <MapPin className="h-3 w-3" />
-                            <span className="truncate max-w-[200px]">{reservation.property.direccion}</span>
+                            <span className="truncate max-w-[200px]">{booking.property.direccion}</span>
                           </div>
                         )}
-                        {reservation.guestCount && (
+                        {booking.guestCount && (
                           <div className={`flex items-center gap-1.5 text-xs ${
-                            isPastReservation ? 'text-muted-foreground/60' : 'text-muted-foreground'
+                            isPastBooking ? 'text-muted-foreground/60' : 'text-muted-foreground'
                           }`}>
                             <Users className="h-3 w-3" />
-                            <span>{reservation.guestCount} huéspedes</span>
+                            <span>{booking.guestCount} huéspedes</span>
                           </div>
                         )}
-                        {reservation.specialRequests && (
+                        {booking.specialRequests && (
                           <div className={`flex items-center gap-1.5 text-xs ${
-                            isPastReservation ? 'text-muted-foreground/60' : 'text-amber-600'
+                            isPastBooking ? 'text-muted-foreground/60' : 'text-amber-600'
                           }`}>
                             <MessageSquare className="h-3 w-3" />
-                            <span className="truncate max-w-[150px]">{reservation.specialRequests}</span>
+                            <span className="truncate max-w-[150px]">{booking.specialRequests}</span>
                           </div>
                         )}
                       </div>
                     </div>
                     
-                    {/* Actions */}
-                    {isStillActive && reservation.status === 'active' && (
-                      <div className="flex items-center gap-1 shrink-0">
+                    {/* Actions: only for editable (manual) bookings still active */}
+                    {booking.isEditable && isStillActive && booking.status === 'active' && (
+                      <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
                         <Button
                           variant="ghost"
                           size="icon"
                           className="h-9 w-9 text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors"
-                          onClick={() => setEditingReservation(reservation)}
+                          onClick={() => setEditingBooking(booking)}
                         >
                           <Edit2 className="h-4 w-4" />
                         </Button>
@@ -281,17 +317,14 @@ export const ReservationsList = ({
                           variant="ghost"
                           size="icon"
                           className="h-9 w-9 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
-                          onClick={() => setCancellingReservation(reservation)}
+                          onClick={() => setCancellingBooking(booking)}
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>
                       </div>
                     )}
                     
-                    {/* Chevron for past reservations */}
-                    {isPastReservation && (
-                      <ChevronRight className="h-5 w-5 text-muted-foreground/30 shrink-0" />
-                    )}
+                    <ChevronRight className="h-5 w-5 text-muted-foreground/30 shrink-0" />
                   </div>
                 </div>
               );
@@ -300,8 +333,16 @@ export const ReservationsList = ({
         </CardContent>
       </Card>
 
-      {/* Edit dialog */}
-      <Dialog open={!!editingReservation} onOpenChange={() => setEditingReservation(null)}>
+      {/* Detail modal (always available, for both manual and external) */}
+      <ReservationDetailModal
+        booking={detailBooking}
+        clientId={clientId}
+        open={!!detailBooking}
+        onOpenChange={(open) => !open && setDetailBooking(null)}
+      />
+
+      {/* Edit dialog (manual only) */}
+      <Dialog open={!!editingBooking} onOpenChange={() => setEditingBooking(null)}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Editar Reserva</DialogTitle>
@@ -309,21 +350,21 @@ export const ReservationsList = ({
               Modifica los detalles de la reserva. La limpieza se actualizará automáticamente.
             </DialogDescription>
           </DialogHeader>
-          {editingReservation && (
+          {editingBooking && (
             <EditReservationForm
-              reservation={editingReservation}
+              reservation={bookingToReservation(editingBooking)}
               properties={properties}
               clientId={clientId}
               clientName={clientName}
-              onSuccess={() => setEditingReservation(null)}
-              onCancel={() => setEditingReservation(null)}
+              onSuccess={() => setEditingBooking(null)}
+              onCancel={() => setEditingBooking(null)}
             />
           )}
         </DialogContent>
       </Dialog>
 
       {/* Cancel confirmation */}
-      <AlertDialog open={!!cancellingReservation} onOpenChange={() => setCancellingReservation(null)}>
+      <AlertDialog open={!!cancellingBooking} onOpenChange={() => setCancellingBooking(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>¿Cancelar reserva?</AlertDialogTitle>
