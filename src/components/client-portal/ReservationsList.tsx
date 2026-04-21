@@ -270,7 +270,7 @@ export const ReservationsList = ({
                               }`} />
                             )}
 
-                            <div className="flex items-center gap-3 p-3 pl-5">
+                            <div className="flex items-center gap-2.5 sm:gap-3 p-3 pl-4 sm:pl-5">
                               <div className={`hidden sm:flex w-10 h-10 rounded-lg items-center justify-center shrink-0 ${
                                 isPastBooking
                                   ? 'bg-muted text-muted-foreground'
@@ -282,21 +282,21 @@ export const ReservationsList = ({
                               </div>
 
                               <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-2 flex-wrap mb-1">
-                                  <div className={`flex items-center gap-1.5 text-sm font-medium ${
+                                <div className="flex items-center gap-1.5 flex-wrap mb-1">
+                                  <div className={`flex items-center gap-1 text-xs sm:text-sm font-medium ${
                                     isPastBooking ? 'text-muted-foreground' : 'text-foreground'
                                   }`}>
-                                    <Calendar className="h-3.5 w-3.5" />
+                                    <Calendar className="h-3.5 w-3.5 shrink-0" />
                                     {isExternal ? (
-                                      <span>{format(cleaningDate, "EEE d MMM yyyy", { locale: es })}</span>
+                                      <span className="truncate">{format(cleaningDate, "EEE d MMM yyyy", { locale: es })}</span>
                                     ) : (
                                       <>
                                         <span>{format(checkInDate, 'd MMM', { locale: es })}</span>
-                                        <ChevronRight className="h-3 w-3" />
+                                        <ChevronRight className="h-3 w-3 shrink-0" />
                                         <span>{format(checkOutDate, 'd MMM yyyy', { locale: es })}</span>
                                         {nights !== null && (
-                                          <span className="text-muted-foreground/60 ml-1 text-xs">
-                                            ({nights} noche{nights > 1 ? 's' : ''})
+                                          <span className="text-muted-foreground/60 ml-1 text-[10px] sm:text-xs">
+                                            ({nights}n)
                                           </span>
                                         )}
                                       </>
@@ -304,48 +304,48 @@ export const ReservationsList = ({
                                   </div>
 
                                   {isExternal && (
-                                    <Badge variant="outline" className="text-[10px] gap-1 bg-muted/50">
+                                    <Badge variant="outline" className="text-[10px] gap-1 bg-muted/50 h-5 px-1.5">
                                       <Lock className="h-2.5 w-2.5" />
-                                      Sincronizada
+                                      Sync
                                     </Badge>
                                   )}
                                   {isToday(cleaningDate) && (
-                                    <Badge className="bg-green-500/15 text-green-700 border-green-200 hover:bg-green-500/20">
+                                    <Badge className="bg-green-500/15 text-green-700 border-green-200 hover:bg-green-500/20 h-5 px-1.5 text-[10px]">
                                       Hoy
                                     </Badge>
                                   )}
                                   {!isPastBooking && !isToday(cleaningDate) && daysUntil <= 3 && daysUntil > 0 && (
-                                    <Badge variant="outline" className="bg-amber-500/10 text-amber-700 border-amber-200">
-                                      En {daysUntil} día{daysUntil > 1 ? 's' : ''}
+                                    <Badge variant="outline" className="bg-amber-500/10 text-amber-700 border-amber-200 h-5 px-1.5 text-[10px]">
+                                      En {daysUntil}d
                                     </Badge>
                                   )}
                                   {isPastBooking && (
-                                    <Badge variant="secondary" className="opacity-70 text-[10px]">
+                                    <Badge variant="secondary" className="opacity-70 text-[10px] h-5 px-1.5">
                                       Completada
                                     </Badge>
                                   )}
                                 </div>
 
-                                <div className="flex items-center gap-3 flex-wrap">
+                                <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
                                   {booking.guestCount && (
-                                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                                    <div className="flex items-center gap-1 text-[11px] sm:text-xs text-muted-foreground">
                                       <Users className="h-3 w-3" />
-                                      <span>{booking.guestCount} huéspedes</span>
+                                      <span>{booking.guestCount} huésp.</span>
                                     </div>
                                   )}
                                   {booking.specialRequests && (
-                                    <div className={`flex items-center gap-1.5 text-xs ${
+                                    <div className={`flex items-center gap-1 text-[11px] sm:text-xs ${
                                       isPastBooking ? 'text-muted-foreground/60' : 'text-amber-600'
                                     }`}>
-                                      <MessageSquare className="h-3 w-3" />
-                                      <span className="truncate max-w-[200px]">{booking.specialRequests}</span>
+                                      <MessageSquare className="h-3 w-3 shrink-0" />
+                                      <span className="truncate max-w-[140px] sm:max-w-[200px]">{booking.specialRequests}</span>
                                     </div>
                                   )}
                                 </div>
                               </div>
 
                               {booking.isEditable && isStillActive && booking.status === 'active' && (
-                                <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
+                                <div className="flex items-center gap-0.5 shrink-0" onClick={(e) => e.stopPropagation()}>
                                   <Button
                                     variant="ghost"
                                     size="icon"
