@@ -28,11 +28,10 @@ export class ReservationProcessor {
     totalReservations: number,
     syncLogId?: string | null
   ): Promise<void> {
-    console.log(`\n🔄 PROCESANDO RESERVA ${reservation.id} (${reservationIndex + 1}/${totalReservations})`);
-    console.log(`   - Alojamiento: ${reservation.accommodationName || 'N/A'} (ID: ${reservation.accommodationId})`);
-    console.log(`   - Estado: ${reservation.status}`);
-    console.log(`   - Check-out: ${reservation.departureDate}`);
-    console.log(`   - Huésped: ${reservation.guestName}`);
+    // Reduced logging: only log every 100th reservation or when significant
+    if (reservationIndex % 100 === 0 || reservationIndex === totalReservations - 1) {
+      console.log(`🔄 Procesando ${reservationIndex + 1}/${totalReservations}...`);
+    }
 
     // Find property (exact match, Turquoise only)
     const property = await findPropertyByAvantioId(
@@ -43,7 +42,6 @@ export class ReservationProcessor {
     
     if (!property) {
       const errorMsg = `Propiedad no encontrada: nombre="${reservation.accommodationName || 'N/A'}", código="${reservation.accommodationInternalName || 'N/A'}", ID=${reservation.accommodationId}`;
-      console.warn(`⚠️ ${errorMsg}`);
       stats.errors.push(errorMsg);
       
       await logSyncError('property_not_found', errorMsg, {
@@ -57,7 +55,7 @@ export class ReservationProcessor {
       return;
     }
 
-    console.log(`✅ Propiedad encontrada: ${property.nombre}`);
+    
 
     const statusUpper = reservation.status.toUpperCase();
     const isCancelled = statusUpper === 'CANCELLED' || 
@@ -164,7 +162,7 @@ export class ReservationProcessor {
         action: 'created'
       });
 
-      console.log(`✅ Nueva reserva creada exitosamente`);
+      
 
       // Check for one-night reservation with checkout tomorrow → send alert
       await this.checkAndSendOneNightAlert(reservation, property);
@@ -370,7 +368,7 @@ export class ReservationProcessor {
         action: 'updated'
       });
 
-      console.log(`✅ Reserva actualizada${propertyChanged ? ' (cambio de apartamento)' : ''}`);
+      
     } catch (error) {
       const errorMsg = `Error actualizando reserva ${reservation.id}: ${error.message}`;
       console.error(`❌ ${errorMsg}`);
@@ -480,7 +478,7 @@ export class ReservationProcessor {
         action: 'cancelled'
       });
 
-      console.log(`✅ Reserva cancelada procesada`);
+      
     } catch (error) {
       const errorMsg = `Error procesando cancelación ${reservation.id}: ${error.message}`;
       console.error(`❌ ${errorMsg}`);
@@ -522,7 +520,7 @@ export class ReservationProcessor {
       await insertReservation(reservationData);
       stats.cancelled_reservations++;
       
-      console.log(`✅ Reserva cancelada creada (sin tarea)`);
+      
     } catch (error) {
       const errorMsg = `Error creando reserva cancelada ${reservation.id}: ${error.message}`;
       console.error(`❌ ${errorMsg}`);

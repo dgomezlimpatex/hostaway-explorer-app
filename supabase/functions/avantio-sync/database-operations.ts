@@ -15,6 +15,66 @@ let cacheById: Map<string, any> = new Map();
 let cacheByName: Map<string, any> = new Map();
 let cacheByCode: Map<string, any> = new Map();
 
+// In-memory cache of existing avantio_reservations, keyed by avantio_reservation_id.
+// Avoids one SELECT query per reservation processed.
+let reservationsCache: Map<string, any> = new Map();
+
+// In-memory cache of existing tasks for the sync window, keyed by `${propiedad_id}_${date}`.
+// Avoids one SELECT query per new task creation (deduplication check).
+let tasksCache: Map<string, any> = new Map();
+
+export async function preloadReservationsAndTasksCache(fromDate: string, toDate: string) {
+  console.log('🗄️ Precargando caché de reservas y tareas...');
+  reservationsCache.clear();
+  tasksCache.clear();
+
+  // Load all avantio_reservations whose departure_date falls in or near the sync window
+  // Use a slightly wider window to catch reservations that may have moved dates.
+  const { data: reservations, error: rErr } = await supabase
+    .from('avantio_reservations')
+    .select('*, tasks(*)')
+    .gte('departure_date', fromDate)
+    .lte('departure_date', toDate);
+
+  if (rErr) {
+    console.error('❌ Error precargando reservas:', rErr);
+  } else if (reservations) {
+    for (const r of reservations) {
+      reservationsCache.set(String(r.avantio_reservation_id), r);
+    }
+  }
+
+  // Load all green (Avantio) tasks in the sync window for dedup
+  const { data: tasks, error: tErr } = await supabase
+    .from('tasks')
+    .select('id, propiedad_id, date, property')
+    .eq('background_color', '#10B981')
+    .gte('date', fromDate)
+    .lte('date', toDate)
+    .neq('status', 'cancelled');
+
+  if (tErr) {
+    console.error('❌ Error precargando tareas:', tErr);
+  } else if (tasks) {
+    for (const t of tasks) {
+      if (t.propiedad_id && t.date) {
+        tasksCache.set(`${t.propiedad_id}_${t.date}`, t);
+      }
+    }
+  }
+
+  console.log(`✅ Caché reservas/tareas: ${reservationsCache.size} reservas, ${tasksCache.size} tareas`);
+}
+
+export function clearReservationsAndTasksCache() {
+  reservationsCache.clear();
+  tasksCache.clear();
+}
+
+export function getCachedReservation(avantioReservationId: string) {
+  return reservationsCache.get(String(avantioReservationId)) || null;
+}
+
 /**
  * Preload all Turquoise properties into memory.
  * MUST be called once at the start of each sync to avoid CPU exhaustion.
@@ -193,26 +253,13 @@ export async function updateTaskPropertyName(taskId: string, propertyName: strin
 }
 
 export async function createTaskForReservation(reservation: AvantioReservation, property: any) {
-  console.log(`📋 Creando tarea para reserva ${reservation.id} en propiedad ${property.nombre}`);
-  
-  const validation = await validatePropertyAndClient(property.id, property.cliente_id);
-  if (!validation.valid) {
-    throw new Error(`Validación fallida: ${validation.errors.join(', ')}`);
+  // DEDUPLICATION: Check in-memory cache first (set populated by preloadReservationsAndTasksCache)
+  const cacheKey = `${property.id}_${reservation.departureDate}`;
+  const cachedTask = tasksCache.get(cacheKey);
+  if (cachedTask) {
+    return cachedTask;
   }
 
-  // DEDUPLICATION: Check if a task already exists for this property on this date
-  const { data: existingTasks } = await supabase
-    .from('tasks')
-    .select('id, property')
-    .eq('propiedad_id', property.id)
-    .eq('date', reservation.departureDate)
-    .neq('status', 'cancelled');
-
-  if (existingTasks && existingTasks.length > 0) {
-    console.log(`⚠️ Ya existe una tarea para ${property.nombre} en ${reservation.departureDate} (ID: ${existingTasks[0].id}). Reutilizando.`);
-    return existingTasks[0];
-  }
-  
   const startTime = '11:00';
   const durationMinutes = property.duracion_servicio || 60;
   const endHour = 11 + Math.floor(durationMinutes / 60);
@@ -252,14 +299,20 @@ export async function createTaskForReservation(reservation: AvantioReservation, 
     throw error;
   }
 
-  console.log(`✅ Tarea creada: ${task.id} para fecha ${task.date}`);
+  // Add to cache so subsequent reservations for the same property/date reuse it
+  tasksCache.set(cacheKey, task);
   return task;
 }
 
 /**
- * Get existing reservation by Avantio ID
+ * Get existing reservation by Avantio ID.
+ * Uses in-memory cache populated by preloadReservationsAndTasksCache to avoid per-reservation queries.
  */
 export async function getExistingReservation(reservationId: string) {
+  const cached = reservationsCache.get(String(reservationId));
+  if (cached !== undefined) return cached;
+
+  // Fallback to DB query if not in cache (shouldn't happen for in-window data)
   const { data: existingReservation } = await supabase
     .from('avantio_reservations')
     .select('*, tasks(*)')
@@ -270,32 +323,18 @@ export async function getExistingReservation(reservationId: string) {
 }
 
 /**
- * Insert new reservation
+ * Insert new reservation (validation skipped — property already verified via cache lookup)
  */
 export async function insertReservation(reservationData: any) {
-  if (reservationData.property_id && reservationData.cliente_id) {
-    const validation = await validatePropertyAndClient(reservationData.property_id, reservationData.cliente_id);
-    if (!validation.valid) {
-      throw new Error(`Validación de integridad fallida: ${validation.errors.join(', ')}`);
-    }
-  }
-  
   return await supabase
     .from('avantio_reservations')
     .insert(reservationData);
 }
 
 /**
- * Update existing reservation
+ * Update existing reservation (validation skipped — property already verified via cache lookup)
  */
 export async function updateReservation(reservationId: string, reservationData: any) {
-  if (reservationData.property_id && reservationData.cliente_id) {
-    const validation = await validatePropertyAndClient(reservationData.property_id, reservationData.cliente_id);
-    if (!validation.valid) {
-      throw new Error(`Validación de integridad fallida: ${validation.errors.join(', ')}`);
-    }
-  }
-  
   return await supabase
     .from('avantio_reservations')
     .update(reservationData)

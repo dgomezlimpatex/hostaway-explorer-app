@@ -2,7 +2,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.50.0";
 import { SyncStats } from './types.ts';
 import { fetchAllAvantioReservations } from './avantio-api.ts';
 import { ReservationProcessor } from './reservation-processor.ts';
-import { createSyncLog, updateSyncLog, preloadPropertiesCache, clearPropertiesCache } from './database-operations.ts';
+import { createSyncLog, updateSyncLog, preloadPropertiesCache, clearPropertiesCache, preloadReservationsAndTasksCache, clearReservationsAndTasksCache } from './database-operations.ts';
 
 export class SyncOrchestrator {
   private supabase;
@@ -50,7 +50,17 @@ export class SyncOrchestrator {
 
       console.log(`📊 Total de reservas a procesar: ${reservations.length}`);
 
-      // Process each reservation
+      // Compute window for caching reservations & tasks (min arrival → max departure)
+      const today = new Date().toISOString().slice(0, 10);
+      let minDate = today;
+      let maxDate = today;
+      for (const r of reservations) {
+        if (r.departureDate && r.departureDate > maxDate) maxDate = r.departureDate;
+        if (r.arrivalDate && r.arrivalDate < minDate) minDate = r.arrivalDate;
+      }
+      await preloadReservationsAndTasksCache(minDate, maxDate);
+
+      // Process each reservation, yielding CPU every 50 to avoid CPU time limit
       for (let i = 0; i < reservations.length; i++) {
         try {
           await this.processor.processReservation(
@@ -63,6 +73,10 @@ export class SyncOrchestrator {
         } catch (error) {
           console.error(`❌ Error procesando reserva ${reservations[i].id}:`, error);
           this.stats.errors.push(`Error en reserva ${reservations[i].id}: ${error.message}`);
+        }
+        // Yield event loop every 50 reservations to prevent CPU starvation
+        if (i % 50 === 49) {
+          await new Promise(resolve => setTimeout(resolve, 0));
         }
       }
 
@@ -79,6 +93,7 @@ export class SyncOrchestrator {
     } finally {
       // Always free memory
       clearPropertiesCache();
+      clearReservationsAndTasksCache();
     }
   }
 
