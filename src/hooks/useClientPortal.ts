@@ -580,6 +580,17 @@ export const useCreateReservations = () => {
       clientId: string; 
       reservations: CreateReservationData[] 
     }) => {
+      // Defense-in-depth: re-check the client allows reservation creation
+      const { data: clientRow, error: clientErr } = await supabase
+        .from('clients')
+        .select('allow_reservation_creation')
+        .eq('id', clientId)
+        .maybeSingle();
+      if (clientErr) throw clientErr;
+      if (clientRow && clientRow.allow_reservation_creation === false) {
+        throw new Error('La creación de reservas está deshabilitada para este cliente.');
+      }
+
       const results = [];
       
       for (const reservation of reservations) {
