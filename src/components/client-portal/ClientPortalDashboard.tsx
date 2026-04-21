@@ -41,7 +41,20 @@ export const ClientPortalDashboard = ({
   const { data: properties = [], isLoading: loadingProperties } = useClientProperties(clientId);
   const { data: bookings = [], isLoading: loadingBookings, refetch } = useClientPortalBookings(clientId);
 
-  const upcomingBookings = bookings.filter(b => {
+  // Show only past bookings + upcoming bookings within the next 7 days in the list & header counters.
+  // The calendar tab keeps the full dataset.
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const sevenDaysAhead = new Date(today);
+  sevenDaysAhead.setDate(sevenDaysAhead.getDate() + 7);
+
+  const listBookings = bookings.filter(b => {
+    const date = new Date(b.cleaningDate);
+    date.setHours(0, 0, 0, 0);
+    return date < today || date <= sevenDaysAhead;
+  });
+
+  const upcomingBookings = listBookings.filter(b => {
     const date = new Date(b.checkOutDate ?? b.cleaningDate);
     return date >= new Date() && b.status !== 'cancelled';
   });
@@ -116,7 +129,7 @@ export const ClientPortalDashboard = ({
             <ReservationsList
               clientId={clientId}
               clientName={clientName}
-              bookings={bookings}
+              bookings={listBookings}
               properties={properties}
               isLoading={loadingBookings}
               
