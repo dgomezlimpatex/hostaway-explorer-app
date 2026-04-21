@@ -25,9 +25,11 @@ export const ClientPortalDashboard = ({
   onLogout,
 }: ClientPortalDashboardProps) => {
   const { data: settings } = useClientPortalSettings(clientId);
-  const canCreateReservations = settings?.allowReservationCreation !== false;
+  // Strict default: only allow creation when explicitly enabled (true).
+  // While loading or if unreadable, hide the "Añadir" tab to avoid leaking the option.
+  const canCreateReservations = settings?.allowReservationCreation === true;
 
-  const [activeTab, setActiveTab] = useState(canCreateReservations ? 'add' : 'list');
+  const [activeTab, setActiveTab] = useState<string>('list');
 
   // If settings load and creation is disabled while user is on "add" tab, switch to list
   useEffect(() => {
