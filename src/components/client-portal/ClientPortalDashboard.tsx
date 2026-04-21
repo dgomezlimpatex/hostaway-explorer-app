@@ -129,7 +129,7 @@ export const ClientPortalDashboard = ({
             <ReservationsList
               clientId={clientId}
               clientName={clientName}
-              bookings={bookings}
+              bookings={listBookings}
               properties={properties}
               isLoading={loadingBookings}
               
