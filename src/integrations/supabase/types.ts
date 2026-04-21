@@ -3802,6 +3802,10 @@ export type Database = {
       delete_hostaway_cron_job: { Args: { job_name: string }; Returns: Json }
       generate_random_pin: { Args: never; Returns: string }
       generate_short_code: { Args: never; Returns: string }
+      get_client_photos_visibility: {
+        Args: { _client_id: string }
+        Returns: boolean
+      }
       get_current_user_role: {
         Args: never
         Returns: Database["public"]["Enums"]["app_role"]
