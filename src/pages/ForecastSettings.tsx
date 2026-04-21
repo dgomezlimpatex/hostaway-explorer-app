@@ -6,14 +6,14 @@ import {
   useForecastSubscriptions,
   useForecastAlertsLog,
 } from '@/hooks/useForecastSubscriptions';
-import { StaffingTargetsConfig } from '@/components/forecast/StaffingTargetsConfig';
+
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
-import { Bell, Settings as SettingsIcon, Send, Mail, History } from 'lucide-react';
+import { Bell, Send, Mail, History } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { format } from 'date-fns';
@@ -30,7 +30,7 @@ const ForecastSettings = () => {
   const { data: alertsLog } = useForecastAlertsLog(30);
   const upsert = useUpsertForecastSubscription();
 
-  const [targetsOpen, setTargetsOpen] = useState(false);
+  
   const [email, setEmail] = useState(mySub?.email ?? user?.email ?? '');
   const [dailyDigest, setDailyDigest] = useState(mySub?.daily_digest ?? true);
   const [instantRed, setInstantRed] = useState(mySub?.instant_red_alerts ?? true);
@@ -94,7 +94,7 @@ const ForecastSettings = () => {
             Ajustes de previsión
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Configura tus alertas de plantilla y los objetivos mínimos por día de la semana.
+            Configura tus alertas de plantilla.
           </p>
         </div>
 
@@ -171,24 +171,6 @@ const ForecastSettings = () => {
           </div>
         </Card>
 
-        {/* Objetivos */}
-        <Card className="p-5 space-y-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <SettingsIcon className="h-4 w-4 text-primary" />
-              <div>
-                <h2 className="font-semibold">Objetivos mínimos de plantilla</h2>
-                <p className="text-xs text-muted-foreground">
-                  Personas y horas mínimas por día de la semana.
-                </p>
-              </div>
-            </div>
-            <Button variant="outline" size="sm" onClick={() => setTargetsOpen(true)}>
-              Configurar
-            </Button>
-          </div>
-        </Card>
-
         {/* Suscriptores en mi sede */}
         <Card className="p-5 space-y-3">
           <h2 className="font-semibold flex items-center gap-2">
@@ -247,7 +229,7 @@ const ForecastSettings = () => {
           </main>
         </div>
 
-        <StaffingTargetsConfig open={targetsOpen} onOpenChange={setTargetsOpen} />
+        
       </div>
     </SidebarProvider>
   );
