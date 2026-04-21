@@ -127,7 +127,7 @@ const TasksPage = memo(() => {
         onRefetch={refetch}
       />
 
-      {!showPastTasks && (
+      {!showPastTasks && !cleanerView && (
         <>
           <CreateTaskModal 
             open={isCreateModalOpen} 
