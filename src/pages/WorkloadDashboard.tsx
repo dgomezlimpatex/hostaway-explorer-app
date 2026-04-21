@@ -1,7 +1,4 @@
 import React, { useState } from 'react';
-import { SidebarProvider } from '@/components/ui/sidebar';
-import { DashboardSidebar } from '@/components/dashboard/DashboardSidebar';
-import { MobileDashboardHeader } from '@/components/dashboard/MobileDashboardHeader';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -101,16 +98,9 @@ const WorkloadDashboard = () => {
   const onTrackWorkers = workersWithContracts.filter(w => w.status === 'on-track');
 
   return (
-    <SidebarProvider>
-      <div className="min-h-screen w-full bg-gray-50">
-        <MobileDashboardHeader />
-        
-        <div className="flex min-h-screen w-full">
-          {!isMobile && <DashboardSidebar />}
-          
-          <main className="flex-1 overflow-auto">
-            <div className="p-4 sm:p-6">
-              <div className="max-w-6xl mx-auto space-y-4">
+    <>
+      <div className="p-4 sm:p-6">
+        <div className="max-w-6xl mx-auto space-y-4">
                 {/* Header + Controls in one row */}
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                   <h1 className="text-2xl font-bold flex items-center gap-2">
@@ -212,22 +202,17 @@ const WorkloadDashboard = () => {
                             {w.cleanerName}
                           </Badge>
                         ))}
-                      </div>
-                    </CardContent>
-                  </Card>
-                )}
-              </div>
+                </div>
+              )}
             </div>
-          </main>
-        </div>
-      </div>
+          </div>
 
       <HourAdjustmentModal
         open={isAdjustmentModalOpen}
         onOpenChange={setIsAdjustmentModalOpen}
         preselectedCleanerId={selectedCleanerIdForAdjustment}
       />
-    </SidebarProvider>
+    </>
   );
 };
 

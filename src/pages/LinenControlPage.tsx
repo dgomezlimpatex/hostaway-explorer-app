@@ -1,7 +1,4 @@
 import React, { useState, useMemo } from 'react';
-import { SidebarProvider } from '@/components/ui/sidebar';
-import { DashboardSidebar } from '@/components/dashboard/DashboardSidebar';
-import { MobileDashboardHeader } from '@/components/dashboard/MobileDashboardHeader';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useLinenControl, LinenStatus, PropertyLinenStatus } from '@/hooks/useLinenControl';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -106,16 +103,8 @@ const LinenControlPage = () => {
   };
 
   return (
-    <SidebarProvider>
-      <div className="min-h-screen w-full bg-background">
-        <MobileDashboardHeader />
-        
-        <div className="flex min-h-screen w-full">
-          {!isMobile && <DashboardSidebar />}
-          
-          <main className="flex-1 overflow-auto">
-            <div className="p-6">
-              <div className="max-w-7xl mx-auto space-y-6">
+    <div className="p-6">
+      <div className="max-w-7xl mx-auto space-y-6">
                 {/* Header */}
                 <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                   <div>
@@ -347,16 +336,12 @@ const LinenControlPage = () => {
                             </div>
                           );
                         })}
-                      </div>
-                    </CardContent>
-                  </Card>
-                )}
-              </div>
-            </div>
-          </main>
-        </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
       </div>
-    </SidebarProvider>
+    </div>
   );
 };
 
