@@ -113,14 +113,6 @@ export const ClientPortalDashboard = ({
           )}
 
           <TabsContent value="list">
-            {!canCreateReservations && (
-              <div className="mb-4 flex items-start gap-2.5 rounded-lg border border-border bg-muted/40 p-3 text-sm text-muted-foreground">
-                <Lock className="h-4 w-4 mt-0.5 shrink-0" />
-                <p>
-                  La creación de reservas desde el portal está deshabilitada. Para añadir nuevas reservas, contacta con tu gestor.
-                </p>
-              </div>
-            )}
             <ReservationsList
               clientId={clientId}
               clientName={clientName}
