@@ -33,12 +33,18 @@ export const ReservationDetailModal = ({
     clientId,
   );
 
+  // Reset lightbox when switching bookings or closing modal
+  useEffect(() => {
+    setLightboxIndex(null);
+  }, [booking?.id, open]);
+
   if (!booking) return null;
 
   const cleaningDate = new Date(booking.cleaningDate);
   const isCompleted = booking.taskStatus === 'completed' || reportData?.status === 'ready';
   const isExternal = booking.source === 'external';
   const photos = (reportData?.media ?? []).filter(m => m.media_type === 'photo');
+  const photosDisabled = reportData?.status === 'photos_disabled';
 
   const renderStatusBadge = () => {
     if (booking.taskStatus === 'completed') {
@@ -131,65 +137,62 @@ export const ReservationDetailModal = ({
               )}
             </div>
 
-            {/* Photo gallery section */}
-            <div className="border-t pt-4">
-              <h3 className="text-sm font-semibold flex items-center gap-2 mb-3">
-                <Camera className="h-4 w-4" />
-                Reporte de la limpieza
-              </h3>
+            {/* Photo gallery section - hide entirely if photos disabled for this client */}
+            {!photosDisabled && (
+              <div className="border-t pt-4">
+                <h3 className="text-sm font-semibold flex items-center gap-2 mb-3">
+                  <Camera className="h-4 w-4" />
+                  Reporte de la limpieza
+                </h3>
 
-              {isLoading && (
-                <div className="py-8 text-center text-muted-foreground">
-                  <Loader2 className="h-5 w-5 animate-spin mx-auto mb-2" />
-                  <p className="text-sm">Cargando reporte...</p>
-                </div>
-              )}
+                {isLoading && (
+                  <div className="py-8 text-center text-muted-foreground">
+                    <Loader2 className="h-5 w-5 animate-spin mx-auto mb-2" />
+                    <p className="text-sm">Cargando reporte...</p>
+                  </div>
+                )}
 
-              {!isLoading && reportData?.status === 'photos_disabled' && (
-                // Hide photos block entirely when photos are disabled per plan UX
-                null
-              )}
+                {!isLoading && reportData?.status === 'not_ready' && (
+                  <div className="py-6 text-center bg-muted/30 rounded-lg border border-dashed">
+                    <ImageOff className="h-8 w-8 mx-auto mb-2 text-muted-foreground/60" />
+                    <p className="text-sm text-muted-foreground">
+                      {isCompleted
+                        ? 'El reporte fotográfico aún no está disponible.'
+                        : 'El reporte estará disponible cuando el equipo termine la limpieza.'}
+                    </p>
+                  </div>
+                )}
 
-              {!isLoading && reportData?.status === 'not_ready' && (
-                <div className="py-6 text-center bg-muted/30 rounded-lg border border-dashed">
-                  <ImageOff className="h-8 w-8 mx-auto mb-2 text-muted-foreground/60" />
-                  <p className="text-sm text-muted-foreground">
-                    {isCompleted
-                      ? 'El reporte fotográfico aún no está disponible.'
-                      : 'El reporte estará disponible cuando el equipo termine la limpieza.'}
-                  </p>
-                </div>
-              )}
+                {!isLoading && reportData?.status === 'ready' && photos.length === 0 && (
+                  <div className="py-6 text-center bg-muted/30 rounded-lg border border-dashed">
+                    <ImageOff className="h-8 w-8 mx-auto mb-2 text-muted-foreground/60" />
+                    <p className="text-sm text-muted-foreground">
+                      El equipo ha completado la limpieza pero no se han subido fotos.
+                    </p>
+                  </div>
+                )}
 
-              {!isLoading && reportData?.status === 'ready' && photos.length === 0 && (
-                <div className="py-6 text-center bg-muted/30 rounded-lg border border-dashed">
-                  <ImageOff className="h-8 w-8 mx-auto mb-2 text-muted-foreground/60" />
-                  <p className="text-sm text-muted-foreground">
-                    El equipo ha completado la limpieza pero no se han subido fotos.
-                  </p>
-                </div>
-              )}
-
-              {!isLoading && reportData?.status === 'ready' && photos.length > 0 && (
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
-                  {photos.map((photo, i) => (
-                    <button
-                      key={photo.id}
-                      type="button"
-                      onClick={() => setLightboxIndex(i)}
-                      className="group relative aspect-square overflow-hidden rounded-lg border bg-muted hover:ring-2 hover:ring-primary transition-all"
-                    >
-                      <img
-                        src={photo.file_url}
-                        alt={photo.description || `Foto ${i + 1}`}
-                        loading="lazy"
-                        className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform"
-                      />
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
+                {!isLoading && reportData?.status === 'ready' && photos.length > 0 && (
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+                    {photos.map((photo, i) => (
+                      <button
+                        key={photo.id}
+                        type="button"
+                        onClick={() => setLightboxIndex(i)}
+                        className="group relative aspect-square overflow-hidden rounded-lg border bg-muted hover:ring-2 hover:ring-primary transition-all"
+                      >
+                        <img
+                          src={photo.file_url}
+                          alt={photo.description || `Foto ${i + 1}`}
+                          loading="lazy"
+                          className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform"
+                        />
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </DialogContent>
       </Dialog>

@@ -43,6 +43,7 @@ export const useClientPortalAccess = (clientId: string | undefined) => {
         shortCode: data.short_code,
         isActive: data.is_active,
         lastAccessAt: data.last_access_at,
+        lastAdminAccessAt: data.last_admin_access_at,
         createdAt: data.created_at,
         updatedAt: data.updated_at,
       };
