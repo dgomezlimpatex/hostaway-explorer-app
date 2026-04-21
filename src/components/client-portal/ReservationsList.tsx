@@ -257,7 +257,9 @@ export const ReservationsList = ({
                             key={booking.id}
                             onClick={() => setDetailBooking(booking)}
                             className={`group relative transition-all duration-200 cursor-pointer ${
-                              isPastBooking ? 'hover:bg-muted/50' : 'hover:bg-accent/50'
+                              isPastBooking
+                                ? 'bg-emerald-50 hover:bg-emerald-100/80 dark:bg-emerald-950/20 dark:hover:bg-emerald-950/30'
+                                : 'hover:bg-accent/50'
                             }`}
                           >
                             {isUpcoming && (
