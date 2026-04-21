@@ -1,9 +1,13 @@
 
-import { useState } from 'react';
-import { Building2, LogOut, Plus, Calendar, List, RefreshCw } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Building2, LogOut, Plus, Calendar, List, RefreshCw, Lock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { useClientPortalBookings, useClientProperties } from '@/hooks/useClientPortal';
+import {
+  useClientPortalBookings,
+  useClientProperties,
+  useClientPortalSettings,
+} from '@/hooks/useClientPortal';
 import { QuickAddReservations } from './QuickAddReservations';
 import { ReservationsList } from './ReservationsList';
 import { ReservationsCalendar } from './ReservationsCalendar';
@@ -20,8 +24,18 @@ export const ClientPortalDashboard = ({
   clientName,
   onLogout,
 }: ClientPortalDashboardProps) => {
-  const [activeTab, setActiveTab] = useState('add');
-  
+  const { data: settings } = useClientPortalSettings(clientId);
+  const canCreateReservations = settings?.allowReservationCreation !== false;
+
+  const [activeTab, setActiveTab] = useState(canCreateReservations ? 'add' : 'list');
+
+  // If settings load and creation is disabled while user is on "add" tab, switch to list
+  useEffect(() => {
+    if (!canCreateReservations && activeTab === 'add') {
+      setActiveTab('list');
+    }
+  }, [canCreateReservations, activeTab]);
+
   const { data: properties = [], isLoading: loadingProperties } = useClientProperties(clientId);
   const { data: bookings = [], isLoading: loadingBookings, refetch } = useClientPortalBookings(clientId);
 
@@ -29,6 +43,9 @@ export const ClientPortalDashboard = ({
     const date = new Date(b.checkOutDate ?? b.cleaningDate);
     return date >= new Date() && b.status !== 'cancelled';
   });
+
+  const tabsCount = canCreateReservations ? 3 : 2;
+  const gridColsClass = canCreateReservations ? 'grid-cols-3' : 'grid-cols-2';
 
   return (
     <div className="min-h-screen bg-background">
@@ -62,11 +79,13 @@ export const ClientPortalDashboard = ({
       {/* Main content */}
       <main className="container max-w-4xl mx-auto px-3 sm:px-4 py-4 sm:py-6">
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-3 mb-4 sm:mb-6 h-auto">
-            <TabsTrigger value="add" className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2 py-2 text-xs sm:text-sm">
-              <Plus className="h-4 w-4" />
-              <span>Añadir</span>
-            </TabsTrigger>
+          <TabsList className={`grid w-full ${gridColsClass} mb-4 sm:mb-6 h-auto`} key={`tabs-${tabsCount}`}>
+            {canCreateReservations && (
+              <TabsTrigger value="add" className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2 py-2 text-xs sm:text-sm">
+                <Plus className="h-4 w-4" />
+                <span>Añadir</span>
+              </TabsTrigger>
+            )}
             <TabsTrigger value="list" className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2 py-2 text-xs sm:text-sm">
               <List className="h-4 w-4" />
               <span>Reservas</span>
@@ -77,25 +96,36 @@ export const ClientPortalDashboard = ({
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="add">
-            <QuickAddReservations
-              clientId={clientId}
-              properties={properties}
-              isLoading={loadingProperties}
-              onSuccess={() => {
-                refetch();
-                setActiveTab('list');
-              }}
-            />
-          </TabsContent>
+          {canCreateReservations && (
+            <TabsContent value="add">
+              <QuickAddReservations
+                clientId={clientId}
+                properties={properties}
+                isLoading={loadingProperties}
+                onSuccess={() => {
+                  refetch();
+                  setActiveTab('list');
+                }}
+              />
+            </TabsContent>
+          )}
 
           <TabsContent value="list">
+            {!canCreateReservations && (
+              <div className="mb-4 flex items-start gap-2.5 rounded-lg border border-border bg-muted/40 p-3 text-sm text-muted-foreground">
+                <Lock className="h-4 w-4 mt-0.5 shrink-0" />
+                <p>
+                  La creación de reservas desde el portal está deshabilitada. Para añadir nuevas reservas, contacta con tu gestor.
+                </p>
+              </div>
+            )}
             <ReservationsList
               clientId={clientId}
               clientName={clientName}
               bookings={bookings}
               properties={properties}
               isLoading={loadingBookings}
+              
             />
           </TabsContent>
 

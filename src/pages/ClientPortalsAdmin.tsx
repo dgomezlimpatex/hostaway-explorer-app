@@ -12,10 +12,12 @@ import {
 } from '@/components/ui/select';
 import {
   Search, Eye, EyeOff, Copy, ExternalLink, Link2, LogIn, Loader2, Camera, CameraOff,
+  CalendarPlus, CalendarOff,
 } from 'lucide-react';
 import {
   useAdminClientPortals,
   useToggleClientPhotosVisibility,
+  useToggleClientReservationCreation,
   useCreatePortalAccess,
 } from '@/hooks/useClientPortal';
 import { useAdminPortalBypass } from '@/hooks/useAdminPortalBypass';
@@ -36,6 +38,7 @@ type PhotosFilter = 'all' | 'enabled' | 'disabled';
 const ClientPortalsAdmin = () => {
   const { data: rows = [], isLoading } = useAdminClientPortals();
   const togglePhotos = useToggleClientPhotosVisibility();
+  const toggleReservations = useToggleClientReservationCreation();
   const createAccess = useCreatePortalAccess();
   const bypass = useAdminPortalBypass();
   const { toast } = useToast();
@@ -137,6 +140,7 @@ const ClientPortalsAdmin = () => {
                     <TableHead>PIN</TableHead>
                     <TableHead>Enlace</TableHead>
                     <TableHead className="text-center">Fotos</TableHead>
+                    <TableHead className="text-center">Crear reservas</TableHead>
                     <TableHead>Último acceso</TableHead>
                     <TableHead className="text-right">Acciones</TableHead>
                   </TableRow>
@@ -203,6 +207,19 @@ const ClientPortalsAdmin = () => {
                             />
                           </div>
                         </TableCell>
+                        <TableCell className="text-center">
+                          <div className="flex items-center justify-center gap-2">
+                            {row.allowReservationCreation
+                              ? <CalendarPlus className="h-4 w-4 text-emerald-600" />
+                              : <CalendarOff className="h-4 w-4 text-muted-foreground" />}
+                            <Switch
+                              checked={row.allowReservationCreation}
+                              onCheckedChange={(checked) =>
+                                toggleReservations.mutate({ clientId: row.clientId, enabled: checked })}
+                              disabled={toggleReservations.isPending}
+                            />
+                          </div>
+                        </TableCell>
                         <TableCell className="text-xs text-muted-foreground">
                           {a?.lastAccessAt
                             ? new Date(a.lastAccessAt).toLocaleDateString('es-ES')
@@ -235,7 +252,7 @@ const ClientPortalsAdmin = () => {
                   })}
                   {filtered.length === 0 && (
                     <TableRow>
-                      <TableCell colSpan={7} className="text-center py-8 text-muted-foreground text-sm">
+                      <TableCell colSpan={8} className="text-center py-8 text-muted-foreground text-sm">
                         No hay clientes que coincidan con los filtros.
                       </TableCell>
                     </TableRow>

@@ -849,6 +849,7 @@ export type Database = {
       }
       clients: {
         Row: {
+          allow_reservation_creation: boolean
           cif_nif: string
           ciudad: string
           codigo_postal: string
@@ -871,6 +872,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          allow_reservation_creation?: boolean
           cif_nif: string
           ciudad: string
           codigo_postal: string
@@ -893,6 +895,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          allow_reservation_creation?: boolean
           cif_nif?: string
           ciudad?: string
           codigo_postal?: string
