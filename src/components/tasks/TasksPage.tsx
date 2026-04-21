@@ -9,9 +9,12 @@ import { BatchCreateTaskModal } from '@/components/modals/BatchCreateTaskModal';
 import { AssignMultipleCleanersModal } from '@/components/modals/AssignMultipleCleanersModal';
 import { useTasksPageState } from '@/hooks/tasks/useTasksPageState';
 import { useTasksPageActions } from '@/hooks/tasks/useTasksPageActions';
+import { useRolePermissions } from '@/hooks/useRolePermissions';
 import { Task } from '@/types/calendar';
 
 const TasksPage = memo(() => {
+  const { isCleaner } = useRolePermissions();
+  const cleanerView = isCleaner();
   const [selectedTaskForReport, setSelectedTaskForReport] = useState<Task | null>(null);
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
   const [selectedTaskForGroupedReport, setSelectedTaskForGroupedReport] = useState<Task | null>(null);
@@ -124,7 +127,7 @@ const TasksPage = memo(() => {
         onRefetch={refetch}
       />
 
-      {!showPastTasks && (
+      {!showPastTasks && !cleanerView && (
         <>
           <CreateTaskModal 
             open={isCreateModalOpen} 
