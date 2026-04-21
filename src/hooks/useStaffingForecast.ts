@@ -227,6 +227,8 @@ export const useStaffingForecast = (rangeDays: number = 45) => {
         const deficitHoras = Math.max(0, cargaHoras - capacidadHoras);
         const deficitPersonas = Math.ceil(deficitHoras / TURNO_MEDIO_HORAS);
 
+        const tStat = tasksByDate.get(dateStr) ?? { total: 0, asignadas: 0, horasTotal: 0, horasAsignadas: 0 };
+
         days.push({
           date: dateStr,
           dayOfWeek: dow,
@@ -243,6 +245,10 @@ export const useStaffingForecast = (rangeDays: number = 45) => {
           workersAbsent: absentToday.size,
           minWorkersTarget: target.min_workers,
           minHoursTarget: target.min_hours,
+          horasTareasTotal: Math.round(tStat.horasTotal * 10) / 10,
+          horasTareasAsignadas: Math.round(tStat.horasAsignadas * 10) / 10,
+          tareasTotal: tStat.total,
+          tareasAsignadas: tStat.asignadas,
           isAnomaly,
           isHoliday: HOLIDAYS.has(dateStr),
         });
