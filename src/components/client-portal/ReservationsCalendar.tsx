@@ -4,7 +4,7 @@ import { es } from 'date-fns/locale';
 import { ChevronLeft, ChevronRight, Loader2, Calendar, LayoutList } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ClientReservation } from '@/types/clientPortal';
+import { ClientReservation, PortalBooking } from '@/types/clientPortal';
 import { cn } from '@/lib/utils';
 import { buildPropertyColorMap } from './calendar/propertyColors';
 import { TimelineView } from './calendar/TimelineView';
@@ -12,15 +12,58 @@ import { MonthlyView } from './calendar/MonthlyView';
 import { CalendarLegend } from './calendar/CalendarLegend';
 
 interface ReservationsCalendarProps {
-  reservations: ClientReservation[];
+  bookings: PortalBooking[];
   isLoading: boolean;
 }
 
+// Map a PortalBooking → ClientReservation-shaped record so the existing
+// timeline/monthly views can render external tasks (single-day cleanings)
+// alongside manual reservations without a deeper refactor.
+const bookingToReservation = (b: PortalBooking): ClientReservation => {
+  // For external tasks, treat the cleaning day itself as a 1-day stay
+  // (checkIn = cleaningDate, checkOut = next day) so the existing
+  // "stay + checkout" rendering shows a checkout marker on the cleaning day.
+  let checkIn = b.checkInDate ?? b.cleaningDate;
+  let checkOut = b.checkOutDate ?? b.cleaningDate;
+  if (b.source === 'external') {
+    const cleaning = new Date(b.cleaningDate);
+    const dayBefore = new Date(cleaning);
+    dayBefore.setDate(dayBefore.getDate() - 1);
+    checkIn = dayBefore.toISOString().slice(0, 10);
+    checkOut = b.cleaningDate;
+  }
+  return {
+    id: b.id,
+    clientId: '',
+    propertyId: b.property?.id ?? '',
+    checkInDate: checkIn,
+    checkOutDate: checkOut,
+    guestCount: b.guestCount,
+    specialRequests: b.specialRequests,
+    taskId: b.taskId,
+    status: 'active',
+    createdAt: '',
+    updatedAt: '',
+    property: b.property ? {
+      id: b.property.id,
+      nombre: b.property.nombre,
+      codigo: b.property.codigo,
+      direccion: b.property.direccion,
+      checkOutPredeterminado: b.property.checkOutPredeterminado ?? '11:00',
+    } : undefined,
+  };
+};
+
 type ViewMode = 'timeline' | 'month';
 
-export const ReservationsCalendar = ({ reservations, isLoading }: ReservationsCalendarProps) => {
+export const ReservationsCalendar = ({ bookings, isLoading }: ReservationsCalendarProps) => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [viewMode, setViewMode] = useState<ViewMode>('timeline');
+
+  const reservations = useMemo(
+    () => bookings.filter(b => b.property?.id).map(bookingToReservation),
+    [bookings],
+  );
 
   const uniqueProperties = useMemo(() => {
     const props = new Map<string, { id: string; codigo: string; nombre: string }>();

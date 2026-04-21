@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { Building2, LogOut, Plus, Calendar, List, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { useClientReservations, useClientProperties } from '@/hooks/useClientPortal';
+import { useClientPortalBookings, useClientProperties } from '@/hooks/useClientPortal';
 import { QuickAddReservations } from './QuickAddReservations';
 import { ReservationsList } from './ReservationsList';
 import { ReservationsCalendar } from './ReservationsCalendar';
@@ -23,11 +23,11 @@ export const ClientPortalDashboard = ({
   const [activeTab, setActiveTab] = useState('add');
   
   const { data: properties = [], isLoading: loadingProperties } = useClientProperties(clientId);
-  const { data: reservations = [], isLoading: loadingReservations, refetch } = useClientReservations(clientId);
+  const { data: bookings = [], isLoading: loadingBookings, refetch } = useClientPortalBookings(clientId);
 
-  const upcomingReservations = reservations.filter(r => {
-    const checkoutDate = new Date(r.checkOutDate);
-    return checkoutDate >= new Date() && r.status === 'active';
+  const upcomingBookings = bookings.filter(b => {
+    const date = new Date(b.checkOutDate ?? b.cleaningDate);
+    return date >= new Date() && b.status !== 'cancelled';
   });
 
   return (
@@ -43,7 +43,7 @@ export const ClientPortalDashboard = ({
               <div>
                 <h1 className="font-semibold text-lg">{clientName}</h1>
                 <p className="text-sm text-muted-foreground">
-                  {upcomingReservations.length} reservas próximas
+                  {upcomingBookings.length} reservas próximas
                 </p>
               </div>
             </div>
@@ -93,16 +93,16 @@ export const ClientPortalDashboard = ({
             <ReservationsList
               clientId={clientId}
               clientName={clientName}
-              reservations={reservations}
+              bookings={bookings}
               properties={properties}
-              isLoading={loadingReservations}
+              isLoading={loadingBookings}
             />
           </TabsContent>
 
           <TabsContent value="calendar">
             <ReservationsCalendar
-              reservations={reservations}
-              isLoading={loadingReservations}
+              bookings={bookings}
+              isLoading={loadingBookings}
             />
           </TabsContent>
         </Tabs>

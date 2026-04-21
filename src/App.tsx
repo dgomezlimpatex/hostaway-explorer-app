@@ -55,6 +55,7 @@ const ClientBilling = React.lazy(() => import("./pages/ClientBilling"));
 const OperationalAnalytics = React.lazy(() => import("./pages/OperationalAnalytics"));
 const ClientPortal = React.lazy(() => import("./pages/ClientPortal"));
 const ClientReservationsAdmin = React.lazy(() => import("./pages/ClientReservationsAdmin"));
+const ClientPortalsAdmin = React.lazy(() => import("./pages/ClientPortalsAdmin"));
 const WorkloadDashboard = React.lazy(() => import("./pages/WorkloadDashboard"));
 const StaffingForecast = React.lazy(() => import("./pages/StaffingForecast"));
 const ForecastSettings = React.lazy(() => import("./pages/ForecastSettings"));
@@ -175,6 +176,9 @@ function App() {
                     } />
                     <Route path="/client-reservations" element={
                       <RoleProtectedRoute requiredModule="clients"><ClientReservationsAdmin /></RoleProtectedRoute>
+                    } />
+                    <Route path="/admin/client-portals" element={
+                      <RoleProtectedRoute requiredModule="clients"><ClientPortalsAdmin /></RoleProtectedRoute>
                     } />
                     <Route path="/workers" element={
                       <RoleProtectedRoute requiredModule="workers"><Workers /></RoleProtectedRoute>

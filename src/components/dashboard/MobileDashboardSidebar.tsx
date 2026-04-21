@@ -131,6 +131,11 @@ const adminItems: NavigationItem[] = [
     icon: Building2,
   },
   {
+    title: 'Portales de clientes',
+    href: '/admin/client-portals',
+    icon: Layers,
+  },
+  {
     title: 'Hostaway Sync',
     href: '/hostaway-sync-logs',
     icon: AlertTriangle,

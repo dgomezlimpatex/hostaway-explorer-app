@@ -22,7 +22,8 @@ import {
   TrendingUp,
   Search,
   RefreshCw,
-  Settings
+  Settings,
+  Layers
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useRolePermissions } from '@/hooks/useRolePermissions';
@@ -147,6 +148,11 @@ const adminItems: NavigationItem[] = [
     title: 'Gestión de Sedes',
     href: '/sede-management',
     icon: Building2,
+  },
+  {
+    title: 'Portales de clientes',
+    href: '/admin/client-portals',
+    icon: Layers,
   },
   {
     title: 'Avantio Sync',
