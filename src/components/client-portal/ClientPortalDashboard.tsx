@@ -43,15 +43,19 @@ export const ClientPortalDashboard = ({
 
   // Show only past bookings + upcoming bookings within the next 7 days in the list & header counters.
   // The calendar tab keeps the full dataset.
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const sevenDaysAhead = new Date(today);
-  sevenDaysAhead.setDate(sevenDaysAhead.getDate() + 7);
+  const todayMs = (() => {
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    return d.getTime();
+  })();
+  const sevenDaysAheadMs = todayMs + 7 * 24 * 60 * 60 * 1000;
 
   const listBookings = bookings.filter(b => {
-    const date = new Date(b.cleaningDate);
-    date.setHours(0, 0, 0, 0);
-    return date < today || date <= sevenDaysAhead;
+    // Normalize to local midnight to avoid timezone drift from ISO strings
+    const raw = new Date(b.cleaningDate);
+    const localMidnight = new Date(raw.getFullYear(), raw.getMonth(), raw.getDate()).getTime();
+    // Past OR within next 7 days (inclusive)
+    return localMidnight < todayMs || localMidnight <= sevenDaysAheadMs;
   });
 
   const upcomingBookings = listBookings.filter(b => {
