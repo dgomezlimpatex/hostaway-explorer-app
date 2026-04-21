@@ -221,14 +221,17 @@ export const ReservationDetailModal = ({
       {/* Lightbox - rendered via portal to escape Dialog's overlay/pointer-events */}
       {lightboxIndex !== null && photos[lightboxIndex] && createPortal(
         <div
-          className="fixed inset-0 z-[200] bg-black/90 flex items-center justify-center p-4"
-          onClick={(e) => {
-            if (e.target === e.currentTarget) setLightboxIndex(null);
-          }}
+          className="fixed inset-0 z-[200] flex items-center justify-center bg-foreground/95 p-4 pointer-events-auto"
+          role="dialog"
+          aria-modal="true"
+          onPointerDown={(e) => e.stopPropagation()}
+          onClick={(e) => e.stopPropagation()}
           onTouchStart={(e) => {
+            e.stopPropagation();
             (e.currentTarget as any)._touchStartX = e.touches[0].clientX;
           }}
           onTouchEnd={(e) => {
+            e.stopPropagation();
             const startX = (e.currentTarget as any)._touchStartX as number | undefined;
             if (startX == null) return;
             const dx = e.changedTouches[0].clientX - startX;
@@ -239,47 +242,48 @@ export const ReservationDetailModal = ({
         >
           <button
             type="button"
-            className="absolute top-4 right-4 text-white p-2 rounded-full hover:bg-white/10 z-10"
+            className="absolute top-4 right-4 z-20 rounded-full bg-background/15 p-2 text-background hover:bg-background/25"
+            onPointerDown={(e) => e.stopPropagation()}
             onClick={(e) => { e.stopPropagation(); setLightboxIndex(null); }}
             aria-label="Cerrar"
           >
             <X className="h-6 w-6" />
           </button>
 
-          {photos.length > 1 && (
-            <>
-              <button
-                type="button"
-                className="absolute left-2 sm:left-4 top-1/2 -translate-y-1/2 text-white p-2 sm:p-3 rounded-full bg-black/40 hover:bg-black/60 z-10"
-                onClick={(e) => { e.stopPropagation(); showPrev(); }}
-                aria-label="Foto anterior"
-              >
-                <ChevronLeft className="h-6 w-6 sm:h-7 sm:w-7" />
-              </button>
-              <button
-                type="button"
-                className="absolute right-2 sm:right-4 top-1/2 -translate-y-1/2 text-white p-2 sm:p-3 rounded-full bg-black/40 hover:bg-black/60 z-10"
-                onClick={(e) => { e.stopPropagation(); showNext(); }}
-                aria-label="Foto siguiente"
-              >
-                <ChevronRight className="h-6 w-6 sm:h-7 sm:w-7" />
-              </button>
-            </>
-          )}
+          <div className="relative flex max-h-full max-w-full items-center justify-center">
+            <img
+              src={photos[lightboxIndex].file_url}
+              alt={photos[lightboxIndex].description || `Foto ${lightboxIndex + 1}`}
+              className="max-h-[calc(100vh-2rem)] max-w-[calc(100vw-2rem)] select-none rounded-lg object-contain"
+              draggable={false}
+            />
 
-          <img
-            src={photos[lightboxIndex].file_url}
-            alt={photos[lightboxIndex].description || `Foto ${lightboxIndex + 1}`}
-            className="max-h-full max-w-full object-contain rounded-lg select-none"
-            onClick={(e) => e.stopPropagation()}
-            draggable={false}
-          />
-
-          {photos.length > 1 && (
-            <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-2 text-white text-sm bg-black/50 px-3 py-1.5 rounded-full">
-              {lightboxIndex + 1} / {photos.length}
-            </div>
-          )}
+            {photos.length > 1 && (
+              <>
+                <button
+                  type="button"
+                  className="absolute left-3 top-1/2 z-20 -translate-y-1/2 rounded-full bg-foreground/55 p-3 text-background shadow-lg hover:bg-foreground/75"
+                  onPointerDown={(e) => e.stopPropagation()}
+                  onClick={(e) => { e.stopPropagation(); showPrev(); }}
+                  aria-label="Foto anterior"
+                >
+                  <ChevronLeft className="h-7 w-7" />
+                </button>
+                <button
+                  type="button"
+                  className="absolute right-3 top-1/2 z-20 -translate-y-1/2 rounded-full bg-foreground/55 p-3 text-background shadow-lg hover:bg-foreground/75"
+                  onPointerDown={(e) => e.stopPropagation()}
+                  onClick={(e) => { e.stopPropagation(); showNext(); }}
+                  aria-label="Foto siguiente"
+                >
+                  <ChevronRight className="h-7 w-7" />
+                </button>
+                <div className="absolute bottom-3 left-1/2 z-20 -translate-x-1/2 rounded-full bg-foreground/55 px-3 py-1.5 text-sm text-background">
+                  {lightboxIndex + 1} / {photos.length}
+                </div>
+              </>
+            )}
+          </div>
         </div>,
         document.body
       )}
