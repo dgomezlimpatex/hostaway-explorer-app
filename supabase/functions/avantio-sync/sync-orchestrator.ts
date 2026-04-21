@@ -40,38 +40,46 @@ export class SyncOrchestrator {
 
   async performSync(token: string): Promise<void> {
     console.log('🚀 Iniciando sincronización con Avantio PMS v1...');
-    
-    // Fetch all reservations using real API (pagination + detail included)
-    const reservations = await fetchAllAvantioReservations(token);
-    
-    console.log(`📊 Total de reservas a procesar: ${reservations.length}`);
-    
-    // Process each reservation
-    for (let i = 0; i < reservations.length; i++) {
-      try {
-        await this.processor.processReservation(
-          reservations[i],
-          this.stats,
-          i,
-          reservations.length,
-          this.syncLogId
-        );
-      } catch (error) {
-        console.error(`❌ Error procesando reserva ${reservations[i].id}:`, error);
-        this.stats.errors.push(`Error en reserva ${reservations[i].id}: ${error.message}`);
+
+    // CRITICAL: Preload all properties into in-memory cache (1 query instead of thousands)
+    await preloadPropertiesCache();
+
+    try {
+      // Fetch all reservations using real API (pagination + detail included)
+      const reservations = await fetchAllAvantioReservations(token);
+
+      console.log(`📊 Total de reservas a procesar: ${reservations.length}`);
+
+      // Process each reservation
+      for (let i = 0; i < reservations.length; i++) {
+        try {
+          await this.processor.processReservation(
+            reservations[i],
+            this.stats,
+            i,
+            reservations.length,
+            this.syncLogId
+          );
+        } catch (error) {
+          console.error(`❌ Error procesando reserva ${reservations[i].id}:`, error);
+          this.stats.errors.push(`Error en reserva ${reservations[i].id}: ${error.message}`);
+        }
       }
+
+      // DEDUP: Remove duplicate tasks for same property/date
+      await this.deduplicateTasks();
+
+      // REPAIR: Check for reservations in DB with NULL task_id that should have tasks
+      await this.repairMissingTasks();
+
+      // CLEANUP: Remove tasks for REQUESTED reservations past check-in time
+      await this.cleanupExpiredRequestedTasks();
+
+      console.log('✅ Sincronización completada');
+    } finally {
+      // Always free memory
+      clearPropertiesCache();
     }
-    
-    // DEDUP: Remove duplicate tasks for same property/date
-    await this.deduplicateTasks();
-    
-    // REPAIR: Check for reservations in DB with NULL task_id that should have tasks
-    await this.repairMissingTasks();
-    
-    // CLEANUP: Remove tasks for REQUESTED reservations past check-in time
-    await this.cleanupExpiredRequestedTasks();
-    
-    console.log('✅ Sincronización completada');
   }
 
   private async deduplicateTasks(): Promise<void> {
