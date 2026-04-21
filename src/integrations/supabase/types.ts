@@ -3810,6 +3810,17 @@ export type Database = {
         Args: never
         Returns: Database["public"]["Enums"]["app_role"]
       }
+      get_portal_reservation_dates_by_task_ids: {
+        Args: { _task_ids: string[] }
+        Returns: {
+          adults: number
+          arrival_date: string
+          children: number
+          departure_date: string
+          source: string
+          task_id: string
+        }[]
+      }
       get_user_accessible_sedes: { Args: never; Returns: string[] }
       get_user_role: {
         Args: { _user_id: string }
