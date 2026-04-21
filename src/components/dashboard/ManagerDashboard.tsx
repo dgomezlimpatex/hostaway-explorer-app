@@ -278,9 +278,7 @@ export const ManagerDashboard = () => {
               )}
             </div>
           </div>
-          </main>
         </div>
-      </div>
       
       {/* Modales - Direct imports */}
       <CreateTaskModal
@@ -313,6 +311,6 @@ export const ManagerDashboard = () => {
         onCreateService={handleCreateExtraordinaryService}
         currentDate={selectedDate}
       />
-    </SidebarProvider>
+    </>
   );
 };
