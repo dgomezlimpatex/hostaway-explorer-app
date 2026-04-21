@@ -119,17 +119,12 @@ export const ReservationsList = ({
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    // Sort each group: today first, then past descending, then future ascending at the bottom
+    // Sort each group chronologically: oldest (past) first → newest (future) last
     for (const g of groups.values()) {
       g.bookings.sort((a, b) => {
-        const dA = new Date(a.cleaningDate);
-        const dB = new Date(b.cleaningDate);
-        const aFuture = dA > today;
-        const bFuture = dB > today;
-        if (aFuture && !bFuture) return 1;
-        if (!aFuture && bFuture) return -1;
-        // Both past/today OR both future → newest first
-        return dB.getTime() - dA.getTime();
+        const dA = new Date(a.cleaningDate).getTime();
+        const dB = new Date(b.cleaningDate).getTime();
+        return dA - dB;
       });
     }
 
