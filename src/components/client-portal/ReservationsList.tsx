@@ -1,11 +1,12 @@
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { format, isPast, isToday, isFuture } from 'date-fns';
 import { es } from 'date-fns/locale';
 import {
   Calendar, MapPin, Users, Edit2, Trash2, Loader2, MessageSquare,
-  ChevronRight, Home, Lock, RefreshCw,
+  ChevronRight, Home, Lock, RefreshCw, Building2,
 } from 'lucide-react';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
