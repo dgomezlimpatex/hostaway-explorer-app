@@ -4,7 +4,8 @@ const API_BASE_URL = 'https://api.avantio.pro/pms/v1';
 const MAX_RETRIES = 3;
 const TIMEOUT_MS = 30000;
 const FUTURE_DAYS = 30;
-const MAX_PAGES = 20;
+const MAX_PAGES = 100;
+const PAGE_SIZE = 200;
 
 function formatDateSimple(dateString: string | undefined | null): string {
   if (!dateString) return '';
@@ -157,7 +158,7 @@ export async function fetchAllAvantioReservations(token: string): Promise<Avanti
   }
 
   const rawItems: RawItem[] = [];
-  let nextUrl: string | null = `${API_BASE_URL}/bookings?limit=50&sort=creationDate&order=desc&departureFrom=${fromDate}&departureTo=${toDate}`;
+  let nextUrl: string | null = `${API_BASE_URL}/bookings?limit=${PAGE_SIZE}&sort=arrivalDate&order=asc&departureFrom=${fromDate}&departureTo=${toDate}`;
   let pages = 0;
 
   while (nextUrl && pages < MAX_PAGES) {
