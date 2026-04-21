@@ -956,6 +956,11 @@ export const useCancelReservation = () => {
 export const useClientPortalBookings = (clientId: string | undefined) => {
   return useQuery({
     queryKey: ['client-portal-bookings', clientId],
+    // Auto-refresh: cada 60s en background, al volver el foco y al recuperar conexión
+    refetchInterval: 60_000,
+    refetchOnWindowFocus: true,
+    refetchOnReconnect: true,
+    refetchIntervalInBackground: false,
     queryFn: async (): Promise<PortalBooking[]> => {
       if (!clientId) return [];
 
