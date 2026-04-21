@@ -62,106 +62,83 @@ export function clearPropertiesCache() {
 }
 
 /**
- * Helper: search property by codigo and auto-save avantio_accommodation_id
- */
-async function findByCode(code: string, accommodationId?: string, accommodationName?: string) {
-  const { data, error } = await supabase
-    .from('properties')
-    .select('*')
-    .eq('cliente_id', TURQUOISE_CLIENT_ID)
-    .ilike('codigo', code);
-  
-  if (!error && data && data.length === 1) {
-    const prop = data[0];
-    console.log(`✅ Propiedad encontrada por código "${code}": ${prop.nombre}`);
-    if (accommodationId && !prop.avantio_accommodation_id) {
-      await supabase
-        .from('properties')
-        .update({ avantio_accommodation_id: accommodationId, avantio_accommodation_name: accommodationName })
-        .eq('id', prop.id);
-      console.log(`📝 avantio_accommodation_id actualizado para ${prop.nombre}`);
-    }
-    return prop;
-  }
-  return null;
-}
-
-/**
- * Find property by exact match - only Turquoise properties
+ * Find property by exact match using IN-MEMORY CACHE.
  * Order: avantio_accommodation_id > exact name > exact code > name as code > strip C prefix
+ *
+ * NOTE: Cache must be preloaded with preloadPropertiesCache() before calling this.
+ * Background updates of avantio_accommodation_id are fire-and-forget to avoid CPU stalls.
  */
 export async function findPropertyByAvantioId(
-  accommodationId: string, 
+  accommodationId: string,
   accommodationName?: string,
   accommodationInternalName?: string
 ) {
-  console.log(`🔍 Buscando propiedad: ID="${accommodationId}", nombre="${accommodationName || 'N/A'}", código="${accommodationInternalName || 'N/A'}"`);
-  
+  if (!propertiesCache) {
+    console.warn('⚠️ Caché no precargado, recargando...');
+    await preloadPropertiesCache();
+  }
+
   // 1. Search by avantio_accommodation_id (exact)
   if (accommodationId) {
-    const { data: property, error } = await supabase
-      .from('properties')
-      .select('*')
-      .eq('avantio_accommodation_id', accommodationId)
-      .eq('cliente_id', TURQUOISE_CLIENT_ID)
-      .maybeSingle();
-    
-    if (!error && property) {
-      console.log(`✅ Propiedad encontrada por avantio_accommodation_id: ${property.nombre}`);
-      return property;
-    }
+    const prop = cacheById.get(String(accommodationId));
+    if (prop) return prop;
   }
-  
-  // 2. Search by exact name (case-insensitive, Turquoise only)
+
+  // Helper: persist avantio_accommodation_id in background (fire-and-forget)
+  const persistAvantioId = (prop: any, accId: string, accName?: string) => {
+    if (!accId || prop.avantio_accommodation_id) return;
+    // Update cache immediately
+    prop.avantio_accommodation_id = accId;
+    cacheById.set(String(accId), prop);
+    // Persist to DB in background (non-blocking)
+    supabase
+      .from('properties')
+      .update({ avantio_accommodation_id: accId, avantio_accommodation_name: accName || prop.nombre })
+      .eq('id', prop.id)
+      .then(() => {})
+      .catch((err) => console.error(`❌ Error persistiendo avantio_id para ${prop.nombre}:`, err));
+  };
+
+  // 2. Search by exact name (case-insensitive)
   if (accommodationName) {
-    const { data: propertiesByName, error: nameError } = await supabase
-      .from('properties')
-      .select('*')
-      .eq('cliente_id', TURQUOISE_CLIENT_ID)
-      .ilike('nombre', accommodationName);
-    
-    if (!nameError && propertiesByName && propertiesByName.length === 1) {
-      const foundProperty = propertiesByName[0];
-      console.log(`✅ Propiedad encontrada por nombre exacto: ${foundProperty.nombre}`);
-      
-      // Auto-save avantio_accommodation_id for future lookups
-      if (accommodationId && !foundProperty.avantio_accommodation_id) {
-        await supabase
-          .from('properties')
-          .update({ 
-            avantio_accommodation_id: accommodationId,
-            avantio_accommodation_name: accommodationName 
-          })
-          .eq('id', foundProperty.id);
-        console.log(`📝 avantio_accommodation_id actualizado para ${foundProperty.nombre}`);
-      }
-      
-      return foundProperty;
+    const prop = cacheByName.get(accommodationName.toLowerCase().trim());
+    if (prop) {
+      persistAvantioId(prop, accommodationId, accommodationName);
+      return prop;
     }
   }
-  
-  // 3. Search by exact code (internalName = codigo, Turquoise only)
+
+  // 3. Search by exact code
   if (accommodationInternalName) {
-    const found = await findByCode(accommodationInternalName, accommodationId, accommodationName);
-    if (found) return found;
+    const prop = cacheByCode.get(accommodationInternalName.toLowerCase().trim());
+    if (prop) {
+      persistAvantioId(prop, accommodationId, accommodationName);
+      return prop;
+    }
   }
 
   // 4. Try matching accommodationName directly as codigo
   if (accommodationName) {
-    const found = await findByCode(accommodationName, accommodationId, accommodationName);
-    if (found) return found;
+    const prop = cacheByCode.get(accommodationName.toLowerCase().trim());
+    if (prop) {
+      persistAvantioId(prop, accommodationId, accommodationName);
+      return prop;
+    }
   }
 
   // 5. Try stripping C prefix (CMD18.5 -> MD18.5)
   if (accommodationName) {
-    const strippedCode = accommodationName.replace(/^C/, '');
-    if (strippedCode !== accommodationName) {
-      const found = await findByCode(strippedCode, accommodationId, accommodationName);
-      if (found) return found;
+    const stripped = accommodationName.replace(/^C/, '').toLowerCase().trim();
+    if (stripped !== accommodationName.toLowerCase().trim()) {
+      const prop = cacheByCode.get(stripped);
+      if (prop) {
+        persistAvantioId(prop, accommodationId, accommodationName);
+        return prop;
+      }
     }
   }
-  
-  console.log(`❌ No se encontró propiedad: ID="${accommodationId}", nombre="${accommodationName || 'N/A'}", código="${accommodationInternalName || 'N/A'}"`);
+
+  console.log(`❌ Propiedad no encontrada: ID="${accommodationId}", nombre="${accommodationName || 'N/A'}", código="${accommodationInternalName || 'N/A'}"`);
   return null;
 }
 
