@@ -17,6 +17,7 @@ export const mapClientFromDB = (row: any): Client => ({
   supervisor: row.supervisor,
   factura: row.factura,
   linenControlEnabled: row.linen_control_enabled,
+  photosVisibleToClient: row.photos_visible_to_client ?? false,
   isActive: row.is_active ?? true,
   fechaCreacion: row.fecha_creacion,
   fechaActualizacion: row.fecha_actualizacion
@@ -37,6 +38,7 @@ export const mapClientToDB = (client: Partial<CreateClientData>): any => {
   if (client.supervisor !== undefined) updateData.supervisor = client.supervisor;
   if (client.factura !== undefined) updateData.factura = client.factura;
   if (client.linenControlEnabled !== undefined) updateData.linen_control_enabled = client.linenControlEnabled;
+  if (client.photosVisibleToClient !== undefined) updateData.photos_visible_to_client = client.photosVisibleToClient;
   if (client.isActive !== undefined) updateData.is_active = client.isActive;
 
   return updateData;
