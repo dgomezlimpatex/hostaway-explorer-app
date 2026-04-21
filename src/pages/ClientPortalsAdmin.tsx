@@ -207,6 +207,19 @@ const ClientPortalsAdmin = () => {
                             />
                           </div>
                         </TableCell>
+                        <TableCell className="text-center">
+                          <div className="flex items-center justify-center gap-2">
+                            {row.allowReservationCreation
+                              ? <CalendarPlus className="h-4 w-4 text-emerald-600" />
+                              : <CalendarOff className="h-4 w-4 text-muted-foreground" />}
+                            <Switch
+                              checked={row.allowReservationCreation}
+                              onCheckedChange={(checked) =>
+                                toggleReservations.mutate({ clientId: row.clientId, enabled: checked })}
+                              disabled={toggleReservations.isPending}
+                            />
+                          </div>
+                        </TableCell>
                         <TableCell className="text-xs text-muted-foreground">
                           {a?.lastAccessAt
                             ? new Date(a.lastAccessAt).toLocaleDateString('es-ES')
