@@ -160,6 +160,10 @@ export async function fetchAllAvantioReservations(token: string): Promise<Avanti
   const rawItems: RawItem[] = [];
   let nextUrl: string | null = `${API_BASE_URL}/bookings?limit=${PAGE_SIZE}&sort=arrivalDate&order=asc&departureFrom=${fromDate}&departureTo=${toDate}`;
   let pages = 0;
+  let outOfRangeStreak = 0;
+  let totalDiscarded = 0;
+
+  console.log(`🔎 URL inicial: ${nextUrl}`);
 
   while (nextUrl && pages < MAX_PAGES) {
     pages++;
@@ -173,19 +177,33 @@ export async function fetchAllAvantioReservations(token: string): Promise<Avanti
 
     if (pages === 1) {
       console.log(`📋 Primer item keys: ${JSON.stringify(Object.keys(list[0]))}`);
+      console.log(`📋 Meta de la respuesta: ${JSON.stringify(pageObj.meta || pageObj._meta || pageObj.pagination || {}).slice(0, 500)}`);
+      console.log(`📋 Primeras 3 fechas devueltas:`);
+      list.slice(0, 3).forEach((it: any, i: number) => {
+        console.log(`   ${i + 1}. id=${it?.id}, arrival=${it?.dates?.arrival}, departure=${it?.dates?.departure}`);
+      });
     }
 
-    console.log(`📄 Página ${pages}: ${list.length} reservas`);
+    console.log(`📄 Página ${pages}: ${list.length} reservas recibidas`);
+
+    let pageInRange = 0;
+    let pageOutOfRange = 0;
 
     for (const item of list) {
       if (!item?.id) continue;
 
       const checkOut = formatDateSimple(item?.dates?.departure || item?.dates?.checkOut || '');
       const checkIn = formatDateSimple(item?.dates?.arrival || item?.dates?.checkIn || '');
-      
+
       if (!checkOut) continue;
-      // Double-check range (API should filter but be safe)
-      if (checkOut < fromDate || checkOut > toDate) continue;
+
+      // Skip if out of requested range (Avantio API may not be filtering correctly)
+      if (checkOut < fromDate || checkOut > toDate) {
+        pageOutOfRange++;
+        totalDiscarded++;
+        continue;
+      }
+      pageInRange++;
 
       rawItems.push({
         id: String(item.id),
@@ -199,6 +217,20 @@ export async function fetchAllAvantioReservations(token: string): Promise<Avanti
       });
     }
 
+    console.log(`   ↳ En rango: ${pageInRange} | Fuera de rango: ${pageOutOfRange}`);
+
+    // EARLY EXIT: si toda la página vino fuera de rango y tenemos resultados ordenados por arrivalDate asc,
+    // significa que ya hemos pasado el rango útil → no tiene sentido seguir paginando
+    if (pageInRange === 0 && pageOutOfRange > 0) {
+      outOfRangeStreak++;
+      if (outOfRangeStreak >= 2) {
+        console.log(`🛑 Corte anticipado: 2 páginas consecutivas fuera de rango. Avantio no está respetando el filtro departureFrom/To.`);
+        break;
+      }
+    } else {
+      outOfRangeStreak = 0;
+    }
+
     nextUrl = pageObj?._links?.next || null;
   }
 
@@ -206,7 +238,8 @@ export async function fetchAllAvantioReservations(token: string): Promise<Avanti
     console.log(`⚠️ Alcanzado límite máximo de ${MAX_PAGES} páginas`);
   }
 
-  console.log(`📊 Fase 1 completada: ${rawItems.length} reservas en rango (${pages} páginas)`);
+  console.log(`📊 Fase 1 completada: ${rawItems.length} reservas en rango (descartadas ${totalDiscarded} fuera de rango, ${pages} páginas)`);
+
 
   // Phase 2: Resolve accommodation names (one detail call per unique accommodationId)
   const uniqueAccommodationIds = new Set(rawItems.map(r => r.accommodationId).filter(Boolean));
