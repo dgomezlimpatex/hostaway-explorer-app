@@ -218,10 +218,10 @@ export const ReservationDetailModal = ({
         </DialogContent>
       </Dialog>
 
-      {/* Lightbox */}
-      {lightboxIndex !== null && photos[lightboxIndex] && (
+      {/* Lightbox - rendered via portal to escape Dialog's overlay/pointer-events */}
+      {lightboxIndex !== null && photos[lightboxIndex] && createPortal(
         <div
-          className="fixed inset-0 z-[100] bg-black/90 flex items-center justify-center p-4"
+          className="fixed inset-0 z-[200] bg-black/90 flex items-center justify-center p-4"
           onClick={() => setLightboxIndex(null)}
           onTouchStart={(e) => {
             (e.currentTarget as any)._touchStartX = e.touches[0].clientX;
@@ -278,7 +278,8 @@ export const ReservationDetailModal = ({
               {lightboxIndex + 1} / {photos.length}
             </div>
           )}
-        </div>
+        </div>,
+        document.body
       )}
     </>
   );
