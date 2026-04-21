@@ -92,20 +92,52 @@ export const ReservationsList = ({
     }
   };
 
-  // Sort bookings: upcoming first, then past
-  const sortedBookings = [...bookings].sort((a, b) => {
-    const dateA = new Date(a.cleaningDate);
-    const dateB = new Date(b.cleaningDate);
-    const now = new Date();
-    
-    const aIsFuture = dateA >= now;
-    const bIsFuture = dateB >= now;
-    
-    if (aIsFuture && !bIsFuture) return -1;
-    if (!aIsFuture && bIsFuture) return 1;
-    
-    return aIsFuture ? dateA.getTime() - dateB.getTime() : dateB.getTime() - dateA.getTime();
-  });
+  // Group bookings by property; within each group sort by cleaningDate DESC (today → past → future at bottom)
+  const groupedByProperty = useMemo(() => {
+    const groups = new Map<string, {
+      propertyId: string;
+      propertyName: string;
+      propertyCode: string;
+      propertyAddress: string;
+      bookings: PortalBooking[];
+    }>();
+
+    for (const b of bookings) {
+      const key = b.property?.id || b.property?.codigo || b.property?.nombre || '__sin_propiedad__';
+      if (!groups.has(key)) {
+        groups.set(key, {
+          propertyId: b.property?.id ?? '',
+          propertyName: b.property?.nombre ?? 'Sin propiedad',
+          propertyCode: b.property?.codigo ?? '',
+          propertyAddress: b.property?.direccion ?? '',
+          bookings: [],
+        });
+      }
+      groups.get(key)!.bookings.push(b);
+    }
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    // Sort each group: today first, then past descending, then future ascending at the bottom
+    for (const g of groups.values()) {
+      g.bookings.sort((a, b) => {
+        const dA = new Date(a.cleaningDate);
+        const dB = new Date(b.cleaningDate);
+        const aFuture = dA > today;
+        const bFuture = dB > today;
+        if (aFuture && !bFuture) return 1;
+        if (!aFuture && bFuture) return -1;
+        // Both past/today OR both future → newest first
+        return dB.getTime() - dA.getTime();
+      });
+    }
+
+    // Sort groups alphabetically by code/name
+    return Array.from(groups.values()).sort((a, b) =>
+      (a.propertyCode || a.propertyName).localeCompare(b.propertyCode || b.propertyName, 'es', { sensitivity: 'base' })
+    );
+  }, [bookings]);
 
   if (isLoading) {
     return (
