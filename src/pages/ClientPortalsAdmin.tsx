@@ -12,10 +12,12 @@ import {
 } from '@/components/ui/select';
 import {
   Search, Eye, EyeOff, Copy, ExternalLink, Link2, LogIn, Loader2, Camera, CameraOff,
+  CalendarPlus, CalendarOff,
 } from 'lucide-react';
 import {
   useAdminClientPortals,
   useToggleClientPhotosVisibility,
+  useToggleClientReservationCreation,
   useCreatePortalAccess,
 } from '@/hooks/useClientPortal';
 import { useAdminPortalBypass } from '@/hooks/useAdminPortalBypass';
