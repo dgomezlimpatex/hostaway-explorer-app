@@ -699,6 +699,7 @@ export type Database = {
           id: string
           is_active: boolean
           last_access_at: string | null
+          last_admin_access_at: string | null
           portal_token: string
           short_code: string
           updated_at: string
@@ -710,6 +711,7 @@ export type Database = {
           id?: string
           is_active?: boolean
           last_access_at?: string | null
+          last_admin_access_at?: string | null
           portal_token?: string
           short_code?: string
           updated_at?: string
@@ -721,6 +723,7 @@ export type Database = {
           id?: string
           is_active?: boolean
           last_access_at?: string | null
+          last_admin_access_at?: string | null
           portal_token?: string
           short_code?: string
           updated_at?: string
@@ -860,6 +863,7 @@ export type Database = {
           linen_control_enabled: boolean
           metodo_pago: string
           nombre: string
+          photos_visible_to_client: boolean
           sede_id: string
           supervisor: string
           telefono: string
@@ -881,6 +885,7 @@ export type Database = {
           linen_control_enabled?: boolean
           metodo_pago: string
           nombre: string
+          photos_visible_to_client?: boolean
           sede_id: string
           supervisor: string
           telefono: string
@@ -902,6 +907,7 @@ export type Database = {
           linen_control_enabled?: boolean
           metodo_pago?: string
           nombre?: string
+          photos_visible_to_client?: boolean
           sede_id?: string
           supervisor?: string
           telefono?: string
