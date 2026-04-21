@@ -38,6 +38,7 @@ type PhotosFilter = 'all' | 'enabled' | 'disabled';
 const ClientPortalsAdmin = () => {
   const { data: rows = [], isLoading } = useAdminClientPortals();
   const togglePhotos = useToggleClientPhotosVisibility();
+  const toggleReservations = useToggleClientReservationCreation();
   const createAccess = useCreatePortalAccess();
   const bypass = useAdminPortalBypass();
   const { toast } = useToast();
