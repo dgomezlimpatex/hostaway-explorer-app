@@ -7,7 +7,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import {
   Calendar, MapPin, Users, MessageSquare, Camera, Loader2, Lock,
-  CheckCircle2, Clock, ImageOff, X,
+  CheckCircle2, Clock, ImageOff, X, ChevronLeft, ChevronRight,
 } from 'lucide-react';
 import { PortalBooking } from '@/types/clientPortal';
 import { useClientPortalTaskReport } from '@/hooks/useClientPortal';
@@ -33,18 +33,38 @@ export const ReservationDetailModal = ({
     clientId,
   );
 
+  const photos = (reportData?.media ?? []).filter(m => m.media_type === 'photo');
+
   // Reset lightbox when switching bookings or closing modal
   useEffect(() => {
     setLightboxIndex(null);
   }, [booking?.id, open]);
+
+  // Keyboard navigation in lightbox
+  useEffect(() => {
+    if (lightboxIndex === null) return;
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === 'ArrowRight') {
+        setLightboxIndex(i => (i === null ? null : (i + 1) % photos.length));
+      } else if (e.key === 'ArrowLeft') {
+        setLightboxIndex(i => (i === null ? null : (i - 1 + photos.length) % photos.length));
+      } else if (e.key === 'Escape') {
+        setLightboxIndex(null);
+      }
+    };
+    window.addEventListener('keydown', handleKey);
+    return () => window.removeEventListener('keydown', handleKey);
+  }, [lightboxIndex, photos.length]);
 
   if (!booking) return null;
 
   const cleaningDate = new Date(booking.cleaningDate);
   const isCompleted = booking.taskStatus === 'completed' || reportData?.status === 'ready';
   const isExternal = booking.source === 'external';
-  const photos = (reportData?.media ?? []).filter(m => m.media_type === 'photo');
   const photosDisabled = reportData?.status === 'photos_disabled';
+
+  const showPrev = () => setLightboxIndex(i => (i === null ? null : (i - 1 + photos.length) % photos.length));
+  const showNext = () => setLightboxIndex(i => (i === null ? null : (i + 1) % photos.length));
 
   const renderStatusBadge = () => {
     if (booking.taskStatus === 'completed') {
@@ -202,21 +222,56 @@ export const ReservationDetailModal = ({
         <div
           className="fixed inset-0 z-[100] bg-black/90 flex items-center justify-center p-4"
           onClick={() => setLightboxIndex(null)}
+          onTouchStart={(e) => {
+            (e.currentTarget as any)._touchStartX = e.touches[0].clientX;
+          }}
+          onTouchEnd={(e) => {
+            const startX = (e.currentTarget as any)._touchStartX as number | undefined;
+            if (startX == null) return;
+            const dx = e.changedTouches[0].clientX - startX;
+            if (Math.abs(dx) > 50) {
+              if (dx < 0) showNext(); else showPrev();
+            }
+          }}
         >
           <button
             type="button"
-            className="absolute top-4 right-4 text-white p-2 rounded-full hover:bg-white/10"
+            className="absolute top-4 right-4 text-white p-2 rounded-full hover:bg-white/10 z-10"
             onClick={(e) => { e.stopPropagation(); setLightboxIndex(null); }}
             aria-label="Cerrar"
           >
             <X className="h-6 w-6" />
           </button>
+
+          {photos.length > 1 && (
+            <>
+              <button
+                type="button"
+                className="absolute left-2 sm:left-4 top-1/2 -translate-y-1/2 text-white p-2 sm:p-3 rounded-full bg-black/40 hover:bg-black/60 z-10"
+                onClick={(e) => { e.stopPropagation(); showPrev(); }}
+                aria-label="Foto anterior"
+              >
+                <ChevronLeft className="h-6 w-6 sm:h-7 sm:w-7" />
+              </button>
+              <button
+                type="button"
+                className="absolute right-2 sm:right-4 top-1/2 -translate-y-1/2 text-white p-2 sm:p-3 rounded-full bg-black/40 hover:bg-black/60 z-10"
+                onClick={(e) => { e.stopPropagation(); showNext(); }}
+                aria-label="Foto siguiente"
+              >
+                <ChevronRight className="h-6 w-6 sm:h-7 sm:w-7" />
+              </button>
+            </>
+          )}
+
           <img
             src={photos[lightboxIndex].file_url}
             alt={photos[lightboxIndex].description || `Foto ${lightboxIndex + 1}`}
-            className="max-h-full max-w-full object-contain rounded-lg"
+            className="max-h-full max-w-full object-contain rounded-lg select-none"
             onClick={(e) => e.stopPropagation()}
+            draggable={false}
           />
+
           {photos.length > 1 && (
             <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-2 text-white text-sm bg-black/50 px-3 py-1.5 rounded-full">
               {lightboxIndex + 1} / {photos.length}
