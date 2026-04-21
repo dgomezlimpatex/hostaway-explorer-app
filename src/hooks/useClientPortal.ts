@@ -1108,6 +1108,43 @@ export const useClientPortalBookings = (clientId: string | undefined) => {
           };
         });
 
+      // Enrich external bookings with REAL arrival/departure dates from
+      // avantio_reservations / hostaway_reservations (via SECURITY DEFINER RPC).
+      // Without this, the calendar falls back to a fake "1-night stay" centered
+      // on the cleaning day, which misrepresents multi-night stays.
+      const externalTaskIds = externalBookings
+        .map(b => b.taskId)
+        .filter((id): id is string => !!id);
+
+      if (externalTaskIds.length > 0) {
+        const { data: realDates, error: realDatesError } = await supabase
+          .rpc('get_portal_reservation_dates_by_task_ids', { _task_ids: externalTaskIds });
+
+        if (!realDatesError && realDates) {
+          const datesByTaskId = new Map<string, { arrival_date: string; departure_date: string; adults: number | null; children: number | null }>();
+          for (const row of realDates as any[]) {
+            if (row.task_id && !datesByTaskId.has(row.task_id)) {
+              datesByTaskId.set(row.task_id, {
+                arrival_date: row.arrival_date,
+                departure_date: row.departure_date,
+                adults: row.adults,
+                children: row.children,
+              });
+            }
+          }
+          externalBookings.forEach(b => {
+            if (!b.taskId) return;
+            const real = datesByTaskId.get(b.taskId);
+            if (real) {
+              b.checkInDate = real.arrival_date;
+              b.checkOutDate = real.departure_date;
+              const totalGuests = (real.adults ?? 0) + (real.children ?? 0);
+              b.guestCount = totalGuests > 0 ? totalGuests : null;
+            }
+          });
+        }
+      }
+
       // Attach taskStatus to manual bookings as well, by fetching their tasks if linked
       const manualTaskIds = manualBookings
         .map(b => b.taskId)
