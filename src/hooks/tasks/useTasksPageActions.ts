@@ -2,6 +2,7 @@ import { useState, useCallback } from 'react';
 import { Task } from '@/types/calendar';
 import { useTasks } from '@/hooks/useTasks';
 import { useToast } from '@/hooks/use-toast';
+import { useRolePermissions } from '@/hooks/useRolePermissions';
 
 export const useTasksPageActions = (currentDate: Date = new Date()) => {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -11,35 +12,43 @@ export const useTasksPageActions = (currentDate: Date = new Date()) => {
   const [isBatchCreating, setIsBatchCreating] = useState(false);
 
   const { toast } = useToast();
-  
-  // Usar el hook useTasks para tener la invalidación del cache con la fecha correcta
+  const { hasPermission } = useRolePermissions();
+  const canCreateTasks = hasPermission('tasks', 'canCreate');
+
   const { createTask, batchCreateTasks } = useTasks(currentDate, 'day');
 
-  // Memoize handlers to prevent unnecessary re-renders
   const handleCreateTask = useCallback(async (taskData: any) => {
+    if (!canCreateTasks) {
+      console.warn('🚫 useTasksPageActions - handleCreateTask blocked: user lacks canCreate permission');
+      toast({
+        title: 'Acción no permitida',
+        description: 'No tienes permisos para crear tareas.',
+        variant: 'destructive',
+      });
+      return;
+    }
     console.log('🔵 useTasksPageActions - handleCreateTask called with:', taskData);
     createTask(taskData);
-  }, [createTask]);
+  }, [createTask, canCreateTasks, toast]);
 
-  // Optimized batch create using Edge Function
   const handleBatchCreateTasks = useCallback(async (tasksData: any[]) => {
-    console.log('🔵 useTasksPageActions - handleBatchCreateTasks called with:', tasksData.length, 'tasks');
-    
-    setIsBatchCreating(true);
-    
-    try {
-      const result = await batchCreateTasks({ 
-        tasks: tasksData, 
-        sendEmails: true 
+    if (!canCreateTasks) {
+      console.warn('🚫 useTasksPageActions - handleBatchCreateTasks blocked: user lacks canCreate permission');
+      toast({
+        title: 'Acción no permitida',
+        description: 'No tienes permisos para crear tareas.',
+        variant: 'destructive',
       });
-      
-      console.log('✅ Batch create result:', result);
-      
+      return;
+    }
+    console.log('🔵 useTasksPageActions - handleBatchCreateTasks called with:', tasksData.length, 'tasks');
+    setIsBatchCreating(true);
+    try {
+      const result = await batchCreateTasks({ tasks: tasksData, sendEmails: true });
       toast({
         title: "Tareas creadas",
         description: `Se han creado ${result.created} tareas${result.emailsSent > 0 ? ` y enviado ${result.emailsSent} emails` : ''}.`,
       });
-      
       return result;
     } catch (error: any) {
       console.error('❌ Batch create failed:', error);
@@ -52,7 +61,7 @@ export const useTasksPageActions = (currentDate: Date = new Date()) => {
     } finally {
       setIsBatchCreating(false);
     }
-  }, [batchCreateTasks, toast]);
+  }, [batchCreateTasks, toast, canCreateTasks]);
 
   const handleShowHistory = useCallback((task: Task) => {
     setSelectedTaskForHistory(task);
@@ -60,15 +69,16 @@ export const useTasksPageActions = (currentDate: Date = new Date()) => {
   }, []);
 
   const handleOpenCreateModal = useCallback(() => {
+    if (!canCreateTasks) return;
     setIsCreateModalOpen(true);
-  }, []);
+  }, [canCreateTasks]);
 
   const handleOpenBatchModal = useCallback(() => {
+    if (!canCreateTasks) return;
     setIsBatchCreateModalOpen(true);
-  }, []);
+  }, [canCreateTasks]);
 
   return {
-    // Modal states
     isCreateModalOpen,
     setIsCreateModalOpen,
     isBatchCreateModalOpen,
@@ -76,11 +86,7 @@ export const useTasksPageActions = (currentDate: Date = new Date()) => {
     selectedTaskForHistory,
     isHistoryModalOpen,
     setIsHistoryModalOpen,
-    
-    // Loading states
     isBatchCreating,
-    
-    // Actions
     handleCreateTask,
     handleBatchCreateTasks,
     handleShowHistory,
