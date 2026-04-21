@@ -1,11 +1,12 @@
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { format, isPast, isToday, isFuture } from 'date-fns';
 import { es } from 'date-fns/locale';
 import {
   Calendar, MapPin, Users, Edit2, Trash2, Loader2, MessageSquare,
-  ChevronRight, Home, Lock, RefreshCw,
+  ChevronRight, Home, Lock, RefreshCw, Building2,
 } from 'lucide-react';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -91,20 +92,52 @@ export const ReservationsList = ({
     }
   };
 
-  // Sort bookings: upcoming first, then past
-  const sortedBookings = [...bookings].sort((a, b) => {
-    const dateA = new Date(a.cleaningDate);
-    const dateB = new Date(b.cleaningDate);
-    const now = new Date();
-    
-    const aIsFuture = dateA >= now;
-    const bIsFuture = dateB >= now;
-    
-    if (aIsFuture && !bIsFuture) return -1;
-    if (!aIsFuture && bIsFuture) return 1;
-    
-    return aIsFuture ? dateA.getTime() - dateB.getTime() : dateB.getTime() - dateA.getTime();
-  });
+  // Group bookings by property; within each group sort by cleaningDate DESC (today → past → future at bottom)
+  const groupedByProperty = useMemo(() => {
+    const groups = new Map<string, {
+      propertyId: string;
+      propertyName: string;
+      propertyCode: string;
+      propertyAddress: string;
+      bookings: PortalBooking[];
+    }>();
+
+    for (const b of bookings) {
+      const key = b.property?.id || b.property?.codigo || b.property?.nombre || '__sin_propiedad__';
+      if (!groups.has(key)) {
+        groups.set(key, {
+          propertyId: b.property?.id ?? '',
+          propertyName: b.property?.nombre ?? 'Sin propiedad',
+          propertyCode: b.property?.codigo ?? '',
+          propertyAddress: b.property?.direccion ?? '',
+          bookings: [],
+        });
+      }
+      groups.get(key)!.bookings.push(b);
+    }
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    // Sort each group: today first, then past descending, then future ascending at the bottom
+    for (const g of groups.values()) {
+      g.bookings.sort((a, b) => {
+        const dA = new Date(a.cleaningDate);
+        const dB = new Date(b.cleaningDate);
+        const aFuture = dA > today;
+        const bFuture = dB > today;
+        if (aFuture && !bFuture) return 1;
+        if (!aFuture && bFuture) return -1;
+        // Both past/today OR both future → newest first
+        return dB.getTime() - dA.getTime();
+      });
+    }
+
+    // Sort groups alphabetically by code/name
+    return Array.from(groups.values()).sort((a, b) =>
+      (a.propertyCode || a.propertyName).localeCompare(b.propertyCode || b.propertyName, 'es', { sensitivity: 'base' })
+    );
+  }, [bookings]);
 
   if (isLoading) {
     return (
@@ -171,165 +204,178 @@ export const ReservationsList = ({
           </div>
         </CardHeader>
         <CardContent className="p-0">
-          <div className="divide-y divide-border/50">
-            {sortedBookings.map((booking) => {
-              const cleaningDate = new Date(booking.cleaningDate);
-              const checkInDate = booking.checkInDate ? new Date(booking.checkInDate) : cleaningDate;
-              const checkOutDate = booking.checkOutDate ? new Date(booking.checkOutDate) : cleaningDate;
-              const isExternal = booking.source === 'external';
-              const isUpcoming = isFuture(cleaningDate) || isToday(cleaningDate);
-              const isStillActive = !isPast(checkOutDate);
-              const isPastBooking = isPast(checkOutDate);
-              const daysUntil = getDaysUntil(cleaningDate);
-              const nights = !isExternal ? getNightsCount(checkInDate, checkOutDate) : null;
-              
-              return (
-                <div
-                  key={booking.id}
-                  onClick={() => setDetailBooking(booking)}
-                  className={`group relative transition-all duration-200 cursor-pointer ${
-                    isPastBooking 
-                      ? 'bg-muted/30 hover:bg-muted/50' 
-                      : 'hover:bg-accent/50'
-                  }`}
-                >
-                  {isUpcoming && (
-                    <div className={`absolute left-0 top-0 bottom-0 w-1 ${
-                      isToday(cleaningDate) 
-                        ? 'bg-green-500' 
-                        : daysUntil <= 3 
-                          ? 'bg-amber-500' 
-                          : 'bg-primary'
-                    }`} />
-                  )}
-                  
-                  <div className="flex items-center gap-4 p-4 pl-5">
-                    <div className={`hidden sm:flex w-12 h-12 rounded-xl items-center justify-center shrink-0 ${
-                      isPastBooking 
-                        ? 'bg-muted text-muted-foreground' 
-                        : isExternal
-                          ? 'bg-muted/60 text-muted-foreground'
-                          : 'bg-primary/10 text-primary'
-                    }`}>
-                      {isExternal ? <RefreshCw className="h-5 w-5" /> : <Home className="h-5 w-5" />}
-                    </div>
-                    
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap mb-1">
-                        <h3 className={`font-semibold text-base ${
-                          isPastBooking ? 'text-muted-foreground' : 'text-foreground'
-                        }`}>
-                          {booking.property?.codigo || booking.property?.nombre || 'Propiedad'}
-                        </h3>
+          <Accordion type="multiple" className="divide-y divide-border/50">
+            {groupedByProperty.map((group) => {
+              const today = new Date();
+              today.setHours(0, 0, 0, 0);
+              const upcomingCount = group.bookings.filter(b => new Date(b.cleaningDate) >= today).length;
+              const pastCount = group.bookings.length - upcomingCount;
+              const groupKey = group.propertyId || group.propertyCode || group.propertyName;
 
-                        {isExternal && (
-                          <Badge variant="outline" className="text-[10px] gap-1 bg-muted/50">
-                            <Lock className="h-2.5 w-2.5" />
-                            Sincronizada
-                          </Badge>
-                        )}
-                        
-                        {isToday(cleaningDate) && (
-                          <Badge className="bg-green-500/15 text-green-700 border-green-200 hover:bg-green-500/20">
-                            Hoy
-                          </Badge>
-                        )}
-                        {!isPastBooking && !isToday(cleaningDate) && daysUntil <= 3 && daysUntil > 0 && (
-                          <Badge variant="outline" className="bg-amber-500/10 text-amber-700 border-amber-200">
-                            En {daysUntil} día{daysUntil > 1 ? 's' : ''}
-                          </Badge>
-                        )}
-                        {isPastBooking && (
-                          <Badge variant="secondary" className="opacity-70">
-                            Completada
-                          </Badge>
-                        )}
+              return (
+                <AccordionItem key={groupKey} value={groupKey} className="border-0">
+                  <AccordionTrigger className="px-4 py-3 hover:bg-accent/30 hover:no-underline">
+                    <div className="flex items-center gap-3 flex-1 min-w-0 text-left">
+                      <div className="w-10 h-10 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                        <Building2 className="h-5 w-5" />
                       </div>
-                      
-                      <div className="flex items-center gap-4 flex-wrap text-sm">
-                        <div className={`flex items-center gap-1.5 ${
-                          isPastBooking ? 'text-muted-foreground/70' : 'text-muted-foreground'
-                        }`}>
-                          <Calendar className="h-3.5 w-3.5" />
-                          {isExternal ? (
-                            <span className="font-medium">
-                              Limpieza: {format(cleaningDate, "d MMM yyyy", { locale: es })}
-                            </span>
-                          ) : (
-                            <>
-                              <span className="font-medium">
-                                {format(checkInDate, 'd MMM', { locale: es })}
-                              </span>
-                              <ChevronRight className="h-3 w-3" />
-                              <span className="font-medium">
-                                {format(checkOutDate, 'd MMM yyyy', { locale: es })}
-                              </span>
-                              {nights !== null && (
-                                <span className="text-muted-foreground/60 ml-1">
-                                  ({nights} noche{nights > 1 ? 's' : ''})
-                                </span>
-                              )}
-                            </>
+                      <div className="flex-1 min-w-0">
+                        <div className="font-semibold text-foreground truncate">
+                          {group.propertyCode ? `${group.propertyCode} · ${group.propertyName}` : group.propertyName}
+                        </div>
+                        <div className="text-xs text-muted-foreground mt-0.5 flex items-center gap-2 flex-wrap">
+                          <span>{group.bookings.length} tarea{group.bookings.length !== 1 ? 's' : ''}</span>
+                          {upcomingCount > 0 && (
+                            <Badge variant="outline" className="h-5 px-1.5 text-[10px] bg-green-500/10 text-green-700 border-green-200">
+                              {upcomingCount} próxima{upcomingCount !== 1 ? 's' : ''}
+                            </Badge>
+                          )}
+                          {pastCount > 0 && (
+                            <Badge variant="secondary" className="h-5 px-1.5 text-[10px] opacity-70">
+                              {pastCount} pasada{pastCount !== 1 ? 's' : ''}
+                            </Badge>
                           )}
                         </div>
                       </div>
-                      
-                      <div className="flex items-center gap-4 flex-wrap mt-2">
-                        {booking.property?.direccion && (
-                          <div className={`flex items-center gap-1.5 text-xs ${
-                            isPastBooking ? 'text-muted-foreground/60' : 'text-muted-foreground'
-                          }`}>
-                            <MapPin className="h-3 w-3" />
-                            <span className="truncate max-w-[200px]">{booking.property.direccion}</span>
-                          </div>
-                        )}
-                        {booking.guestCount && (
-                          <div className={`flex items-center gap-1.5 text-xs ${
-                            isPastBooking ? 'text-muted-foreground/60' : 'text-muted-foreground'
-                          }`}>
-                            <Users className="h-3 w-3" />
-                            <span>{booking.guestCount} huéspedes</span>
-                          </div>
-                        )}
-                        {booking.specialRequests && (
-                          <div className={`flex items-center gap-1.5 text-xs ${
-                            isPastBooking ? 'text-muted-foreground/60' : 'text-amber-600'
-                          }`}>
-                            <MessageSquare className="h-3 w-3" />
-                            <span className="truncate max-w-[150px]">{booking.specialRequests}</span>
-                          </div>
-                        )}
-                      </div>
                     </div>
-                    
-                    {/* Actions: only for editable (manual) bookings still active */}
-                    {booking.isEditable && isStillActive && booking.status === 'active' && (
-                      <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-9 w-9 text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors"
-                          onClick={() => setEditingBooking(booking)}
-                        >
-                          <Edit2 className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-9 w-9 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
-                          onClick={() => setCancellingBooking(booking)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    )}
-                    
-                    <ChevronRight className="h-5 w-5 text-muted-foreground/30 shrink-0" />
-                  </div>
-                </div>
+                  </AccordionTrigger>
+                  <AccordionContent className="pb-0">
+                    <div className="divide-y divide-border/40 bg-muted/10">
+                      {group.bookings.map((booking) => {
+                        const cleaningDate = new Date(booking.cleaningDate);
+                        const checkInDate = booking.checkInDate ? new Date(booking.checkInDate) : cleaningDate;
+                        const checkOutDate = booking.checkOutDate ? new Date(booking.checkOutDate) : cleaningDate;
+                        const isExternal = booking.source === 'external';
+                        const isUpcoming = isFuture(cleaningDate) || isToday(cleaningDate);
+                        const isStillActive = !isPast(checkOutDate);
+                        const isPastBooking = isPast(checkOutDate);
+                        const daysUntil = getDaysUntil(cleaningDate);
+                        const nights = !isExternal ? getNightsCount(checkInDate, checkOutDate) : null;
+
+                        return (
+                          <div
+                            key={booking.id}
+                            onClick={() => setDetailBooking(booking)}
+                            className={`group relative transition-all duration-200 cursor-pointer ${
+                              isPastBooking ? 'hover:bg-muted/50' : 'hover:bg-accent/50'
+                            }`}
+                          >
+                            {isUpcoming && (
+                              <div className={`absolute left-0 top-0 bottom-0 w-1 ${
+                                isToday(cleaningDate)
+                                  ? 'bg-green-500'
+                                  : daysUntil <= 3
+                                    ? 'bg-amber-500'
+                                    : 'bg-primary'
+                              }`} />
+                            )}
+
+                            <div className="flex items-center gap-3 p-3 pl-5">
+                              <div className={`hidden sm:flex w-10 h-10 rounded-lg items-center justify-center shrink-0 ${
+                                isPastBooking
+                                  ? 'bg-muted text-muted-foreground'
+                                  : isExternal
+                                    ? 'bg-muted/60 text-muted-foreground'
+                                    : 'bg-primary/10 text-primary'
+                              }`}>
+                                {isExternal ? <RefreshCw className="h-4 w-4" /> : <Home className="h-4 w-4" />}
+                              </div>
+
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2 flex-wrap mb-1">
+                                  <div className={`flex items-center gap-1.5 text-sm font-medium ${
+                                    isPastBooking ? 'text-muted-foreground' : 'text-foreground'
+                                  }`}>
+                                    <Calendar className="h-3.5 w-3.5" />
+                                    {isExternal ? (
+                                      <span>{format(cleaningDate, "EEE d MMM yyyy", { locale: es })}</span>
+                                    ) : (
+                                      <>
+                                        <span>{format(checkInDate, 'd MMM', { locale: es })}</span>
+                                        <ChevronRight className="h-3 w-3" />
+                                        <span>{format(checkOutDate, 'd MMM yyyy', { locale: es })}</span>
+                                        {nights !== null && (
+                                          <span className="text-muted-foreground/60 ml-1 text-xs">
+                                            ({nights} noche{nights > 1 ? 's' : ''})
+                                          </span>
+                                        )}
+                                      </>
+                                    )}
+                                  </div>
+
+                                  {isExternal && (
+                                    <Badge variant="outline" className="text-[10px] gap-1 bg-muted/50">
+                                      <Lock className="h-2.5 w-2.5" />
+                                      Sincronizada
+                                    </Badge>
+                                  )}
+                                  {isToday(cleaningDate) && (
+                                    <Badge className="bg-green-500/15 text-green-700 border-green-200 hover:bg-green-500/20">
+                                      Hoy
+                                    </Badge>
+                                  )}
+                                  {!isPastBooking && !isToday(cleaningDate) && daysUntil <= 3 && daysUntil > 0 && (
+                                    <Badge variant="outline" className="bg-amber-500/10 text-amber-700 border-amber-200">
+                                      En {daysUntil} día{daysUntil > 1 ? 's' : ''}
+                                    </Badge>
+                                  )}
+                                  {isPastBooking && (
+                                    <Badge variant="secondary" className="opacity-70 text-[10px]">
+                                      Completada
+                                    </Badge>
+                                  )}
+                                </div>
+
+                                <div className="flex items-center gap-3 flex-wrap">
+                                  {booking.guestCount && (
+                                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                                      <Users className="h-3 w-3" />
+                                      <span>{booking.guestCount} huéspedes</span>
+                                    </div>
+                                  )}
+                                  {booking.specialRequests && (
+                                    <div className={`flex items-center gap-1.5 text-xs ${
+                                      isPastBooking ? 'text-muted-foreground/60' : 'text-amber-600'
+                                    }`}>
+                                      <MessageSquare className="h-3 w-3" />
+                                      <span className="truncate max-w-[200px]">{booking.specialRequests}</span>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+
+                              {booking.isEditable && isStillActive && booking.status === 'active' && (
+                                <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-8 w-8 text-muted-foreground hover:text-primary hover:bg-primary/10"
+                                    onClick={() => setEditingBooking(booking)}
+                                  >
+                                    <Edit2 className="h-3.5 w-3.5" />
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                                    onClick={() => setCancellingBooking(booking)}
+                                  >
+                                    <Trash2 className="h-3.5 w-3.5" />
+                                  </Button>
+                                </div>
+                              )}
+
+                              <ChevronRight className="h-4 w-4 text-muted-foreground/30 shrink-0" />
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </AccordionContent>
+                </AccordionItem>
               );
             })}
-          </div>
+          </Accordion>
         </CardContent>
       </Card>
 
