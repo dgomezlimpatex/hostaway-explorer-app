@@ -1248,20 +1248,20 @@ export const useClientPortalSettings = (clientId: string | undefined) => {
     queryKey: ['client-portal-settings', clientId],
     queryFn: async () => {
       if (!clientId) return null;
+      // Use SECURITY DEFINER RPC so anonymous portal users can read this single flag
+      // without exposing the rest of the clients table via RLS.
       const { data, error } = await supabase
-        .from('clients')
-        .select('id, allow_reservation_creation')
-        .eq('id', clientId)
-        .maybeSingle();
+        .rpc('get_client_portal_settings', { _client_id: clientId });
       if (error) throw error;
-      if (!data) return null;
+      const row = Array.isArray(data) ? data[0] : data;
+      if (!row) return null;
       return {
-        clientId: data.id,
-        allowReservationCreation: data.allow_reservation_creation !== false,
+        clientId: row.client_id,
+        allowReservationCreation: row.allow_reservation_creation !== false,
       };
     },
     enabled: !!clientId,
-    staleTime: 60 * 1000,
+    staleTime: 30 * 1000,
   });
 };
 

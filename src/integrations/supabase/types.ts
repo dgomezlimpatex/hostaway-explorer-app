@@ -3809,6 +3809,13 @@ export type Database = {
         Args: { _client_id: string }
         Returns: boolean
       }
+      get_client_portal_settings: {
+        Args: { _client_id: string }
+        Returns: {
+          allow_reservation_creation: boolean
+          client_id: string
+        }[]
+      }
       get_current_user_role: {
         Args: never
         Returns: Database["public"]["Enums"]["app_role"]
