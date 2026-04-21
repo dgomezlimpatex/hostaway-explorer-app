@@ -33,18 +33,38 @@ export const ReservationDetailModal = ({
     clientId,
   );
 
+  const photos = (reportData?.media ?? []).filter(m => m.media_type === 'photo');
+
   // Reset lightbox when switching bookings or closing modal
   useEffect(() => {
     setLightboxIndex(null);
   }, [booking?.id, open]);
+
+  // Keyboard navigation in lightbox
+  useEffect(() => {
+    if (lightboxIndex === null) return;
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === 'ArrowRight') {
+        setLightboxIndex(i => (i === null ? null : (i + 1) % photos.length));
+      } else if (e.key === 'ArrowLeft') {
+        setLightboxIndex(i => (i === null ? null : (i - 1 + photos.length) % photos.length));
+      } else if (e.key === 'Escape') {
+        setLightboxIndex(null);
+      }
+    };
+    window.addEventListener('keydown', handleKey);
+    return () => window.removeEventListener('keydown', handleKey);
+  }, [lightboxIndex, photos.length]);
 
   if (!booking) return null;
 
   const cleaningDate = new Date(booking.cleaningDate);
   const isCompleted = booking.taskStatus === 'completed' || reportData?.status === 'ready';
   const isExternal = booking.source === 'external';
-  const photos = (reportData?.media ?? []).filter(m => m.media_type === 'photo');
   const photosDisabled = reportData?.status === 'photos_disabled';
+
+  const showPrev = () => setLightboxIndex(i => (i === null ? null : (i - 1 + photos.length) % photos.length));
+  const showNext = () => setLightboxIndex(i => (i === null ? null : (i + 1) % photos.length));
 
   const renderStatusBadge = () => {
     if (booking.taskStatus === 'completed') {
