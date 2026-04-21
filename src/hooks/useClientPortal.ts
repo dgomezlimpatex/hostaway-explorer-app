@@ -1069,17 +1069,15 @@ export const useClientPortalTaskReport = (taskId: string | null | undefined, cli
   return useQuery({
     queryKey: ['client-portal-task-report', taskId, clientId],
     queryFn: async () => {
-      if (!taskId) return { status: 'not_ready' as const, media: [] };
+      if (!taskId || !clientId) return { status: 'not_ready' as const, media: [] };
 
-      // Check client-level photos_visible flag
-      let photosEnabled = false;
-      if (clientId) {
-        const { data: client } = await supabase
-          .from('clients')
-          .select('photos_visible_to_client')
-          .eq('id', clientId)
-          .maybeSingle();
-        photosEnabled = !!client?.photos_visible_to_client;
+      // Check client-level photos_visible flag via secure RPC (works for anon portal)
+      const { data: photosEnabled, error: flagErr } = await supabase
+        .rpc('get_client_photos_visibility', { _client_id: clientId });
+
+      if (flagErr) {
+        console.error('Error fetching photo visibility flag:', flagErr);
+        return { status: 'photos_disabled' as const, media: [] };
       }
 
       if (!photosEnabled) {
@@ -1113,7 +1111,7 @@ export const useClientPortalTaskReport = (taskId: string | null | undefined, cli
         report,
       };
     },
-    enabled: !!taskId,
+    enabled: !!taskId && !!clientId,
     staleTime: 60 * 1000,
   });
 };
