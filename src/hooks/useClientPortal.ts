@@ -1042,35 +1042,71 @@ export const useClientPortalBookings = (clientId: string | undefined) => {
         } : undefined,
       }));
 
+      // Strip internal prefixes (e.g. "(EXTENSION)", "POSIBLE - ", "[POSIBLE - ]")
+      // and any leading "<CODIGO> " duplicate from the raw task.property text,
+      // so the client portal always shows the original property name.
+      const cleanRawPropertyName = (raw: string | null | undefined, codigo?: string): string => {
+        if (!raw) return '';
+        let name = String(raw).trim();
+        // Remove known internal prefixes (case-insensitive, repeatable)
+        const prefixPatterns: RegExp[] = [
+          /^\[\s*POSIBLE\s*-\s*\]\s*/i,
+          /^POSIBLE\s*-\s*/i,
+          /^\(\s*EXTENSION\s*\)\s*/i,
+          /^EXTENSION\s*[:\-]?\s*/i,
+        ];
+        let changed = true;
+        while (changed) {
+          changed = false;
+          for (const re of prefixPatterns) {
+            if (re.test(name)) {
+              name = name.replace(re, '').trim();
+              changed = true;
+            }
+          }
+        }
+        // Remove a leading duplicated property code (e.g. "MD18.1A Main Street...")
+        if (codigo) {
+          const escaped = codigo.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+          name = name.replace(new RegExp('^' + escaped + '\\s*[\\-·•]?\\s*', 'i'), '').trim();
+        }
+        return name;
+      };
+
       const externalBookings: PortalBooking[] = (tasks ?? [])
         .filter((t: any) => !reservationTaskIds.has(t.id))
-        .map((t: any) => ({
-          id: `task-${t.id}`,
-          source: 'external',
-          isEditable: false,
-          cleaningDate: t.date,
-          checkInDate: null,
-          checkOutDate: null,
-          guestCount: null,
-          // Internal task notes are NEVER exposed to the client portal
-          specialRequests: null,
-          status: t.status,
-          taskStatus: t.status,
-          taskId: t.id,
-          reservationId: null,
-          property: t.properties ? {
-            id: t.properties.id,
-            nombre: t.properties.nombre,
-            codigo: t.properties.codigo,
-            direccion: t.properties.direccion,
-            checkOutPredeterminado: t.properties.check_out_predeterminado,
-          } : (t.property ? {
-            id: t.propiedad_id ?? '',
-            nombre: t.property,
-            codigo: '',
-            direccion: t.address ?? '',
-          } : undefined),
-        }));
+        .map((t: any) => {
+          const joined = t.properties;
+          const codigo = joined?.codigo ?? '';
+          const cleanedFromRaw = cleanRawPropertyName(t.property, codigo);
+          return {
+            id: `task-${t.id}`,
+            source: 'external',
+            isEditable: false,
+            cleaningDate: t.date,
+            checkInDate: null,
+            checkOutDate: null,
+            guestCount: null,
+            // Internal task notes are NEVER exposed to the client portal
+            specialRequests: null,
+            status: t.status,
+            taskStatus: t.status,
+            taskId: t.id,
+            reservationId: null,
+            property: joined ? {
+              id: joined.id,
+              nombre: joined.nombre, // always the original/clean property name
+              codigo: joined.codigo,
+              direccion: joined.direccion,
+              checkOutPredeterminado: joined.check_out_predeterminado,
+            } : (t.property ? {
+              id: t.propiedad_id ?? '',
+              nombre: cleanedFromRaw || t.property,
+              codigo: '',
+              direccion: t.address ?? '',
+            } : undefined),
+          };
+        });
 
       // Attach taskStatus to manual bookings as well, by fetching their tasks if linked
       const manualTaskIds = manualBookings
