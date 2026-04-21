@@ -3822,6 +3822,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_task_visible_to_client_portal: {
+        Args: { _task_id: string }
+        Returns: boolean
+      }
       list_avantio_cron_jobs: { Args: never; Returns: Json }
       list_hostaway_cron_jobs: { Args: never; Returns: Json }
       log_security_event: {
