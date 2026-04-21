@@ -189,6 +189,7 @@ export const DashboardSidebar = () => {
       case 'hostaway': return canAccessModule('hostaway');
       case 'inventory': return canAccessModule('inventory');
       case 'logistics': return canAccessModule('logistics');
+      case 'admin-only': return isAdminOrManager();
       default: return true;
     }
   };
