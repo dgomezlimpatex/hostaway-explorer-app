@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { useIsMobile } from '@/hooks/use-mobile';
+
 import { useLinenControl, LinenStatus, PropertyLinenStatus } from '@/hooks/useLinenControl';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -39,7 +39,7 @@ const statusConfig: Record<LinenStatus, { label: string; color: string; icon: Re
 };
 
 const LinenControlPage = () => {
-  const isMobile = useIsMobile();
+  
   const { propertyStatuses, stats, isLoading } = useLinenControl();
   
   const [searchTerm, setSearchTerm] = useState('');

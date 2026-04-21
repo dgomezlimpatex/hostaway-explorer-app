@@ -17,7 +17,7 @@ import { useWorkloadCalculation } from '@/hooks/useWorkloadCalculation';
 import { WorkloadTable } from '@/components/workload/WorkloadTable';
 import { HourAdjustmentModal } from '@/components/workload/HourAdjustmentModal';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
-import { useIsMobile } from '@/hooks/use-mobile';
+
 import { 
   format, 
   startOfWeek, 
@@ -32,7 +32,7 @@ import {
 import { es } from 'date-fns/locale';
 
 const WorkloadDashboard = () => {
-  const isMobile = useIsMobile();
+  
   const [viewType, setViewType] = useState<'weekly' | 'monthly'>('weekly');
   const [currentDate, setCurrentDate] = useState(new Date());
   const [isAdjustmentModalOpen, setIsAdjustmentModalOpen] = useState(false);
