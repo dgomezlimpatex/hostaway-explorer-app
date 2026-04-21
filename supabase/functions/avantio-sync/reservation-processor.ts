@@ -55,7 +55,7 @@ export class ReservationProcessor {
       return;
     }
 
-    console.log(`✅ Propiedad encontrada: ${property.nombre}`);
+    
 
     const statusUpper = reservation.status.toUpperCase();
     const isCancelled = statusUpper === 'CANCELLED' || 
@@ -162,7 +162,7 @@ export class ReservationProcessor {
         action: 'created'
       });
 
-      console.log(`✅ Nueva reserva creada exitosamente`);
+      
 
       // Check for one-night reservation with checkout tomorrow → send alert
       await this.checkAndSendOneNightAlert(reservation, property);
@@ -368,7 +368,7 @@ export class ReservationProcessor {
         action: 'updated'
       });
 
-      console.log(`✅ Reserva actualizada${propertyChanged ? ' (cambio de apartamento)' : ''}`);
+      
     } catch (error) {
       const errorMsg = `Error actualizando reserva ${reservation.id}: ${error.message}`;
       console.error(`❌ ${errorMsg}`);
@@ -478,7 +478,7 @@ export class ReservationProcessor {
         action: 'cancelled'
       });
 
-      console.log(`✅ Reserva cancelada procesada`);
+      
     } catch (error) {
       const errorMsg = `Error procesando cancelación ${reservation.id}: ${error.message}`;
       console.error(`❌ ${errorMsg}`);
@@ -520,7 +520,7 @@ export class ReservationProcessor {
       await insertReservation(reservationData);
       stats.cancelled_reservations++;
       
-      console.log(`✅ Reserva cancelada creada (sin tarea)`);
+      
     } catch (error) {
       const errorMsg = `Error creando reserva cancelada ${reservation.id}: ${error.message}`;
       console.error(`❌ ${errorMsg}`);
