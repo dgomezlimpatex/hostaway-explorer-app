@@ -1,7 +1,4 @@
 import React, { useState, useMemo, useCallback, Suspense, lazy } from 'react';
-import { SidebarProvider } from '@/components/ui/sidebar';
-import { DashboardSidebar } from './DashboardSidebar';
-import { MobileDashboardHeader } from './MobileDashboardHeader';
 import { SedeSelector } from '@/components/sede/SedeSelector';
 import { useOptimizedTasks } from '@/hooks/useOptimizedTasks';
 import { useOptimizedCleaningReports } from '@/hooks/useOptimizedCleaningReports';
@@ -223,19 +220,8 @@ export const ManagerDashboard = () => {
 
 
   return (
-    <SidebarProvider>
-      <div className="min-h-screen w-full bg-gray-50">
-        {/* Header móvil */}
-        <MobileDashboardHeader />
-        
-        <div className="flex min-h-screen w-full">
-          {/* Sidebar desktop - oculto en móvil */}
-          {!isMobile && (
-            <DashboardSidebar />
-          )}
-          
-          <main className="flex-1 overflow-auto lg:pt-0 pt-0">
-          <div className="p-6">
+    <div className="lg:pt-0 pt-0">
+      <div className="p-6">
             <div className="max-w-6xl mx-auto space-y-6">
               {/* Header */}
               <div className="mb-8 flex items-center justify-between">
