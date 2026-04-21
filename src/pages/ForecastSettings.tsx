@@ -18,10 +18,6 @@ import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { SidebarProvider } from '@/components/ui/sidebar';
-import { DashboardSidebar } from '@/components/dashboard/DashboardSidebar';
-import { MobileDashboardHeader } from '@/components/dashboard/MobileDashboardHeader';
-import { useIsMobile } from '@/hooks/use-mobile';
 
 const ForecastSettings = () => {
   const { user } = useAuth();
@@ -37,7 +33,6 @@ const ForecastSettings = () => {
   const [minDays, setMinDays] = useState(mySub?.min_days_advance ?? 7);
   const [isActive, setIsActive] = useState(mySub?.is_active ?? true);
   const [testing, setTesting] = useState(false);
-  const isMobile = useIsMobile();
 
   // Sincronizar al cargar
   if (mySub && email !== mySub.email && email === (user?.email ?? '')) {
@@ -81,13 +76,7 @@ const ForecastSettings = () => {
   };
 
   return (
-    <SidebarProvider>
-      <div className="min-h-screen w-full bg-background">
-        <MobileDashboardHeader />
-        <div className="flex min-h-screen w-full">
-          {!isMobile && <DashboardSidebar />}
-          <main className="flex-1 overflow-auto">
-            <div className="max-w-4xl mx-auto p-4 md:p-6 space-y-5">
+    <div className="max-w-4xl mx-auto p-4 md:p-6 space-y-5">
         <div>
           <h1 className="text-2xl font-semibold flex items-center gap-2">
             <Bell className="h-6 w-6 text-primary" />
@@ -225,13 +214,7 @@ const ForecastSettings = () => {
             </ul>
           )}
         </Card>
-            </div>
-          </main>
-        </div>
-
-        
-      </div>
-    </SidebarProvider>
+    </div>
   );
 };
 
