@@ -34,24 +34,24 @@ export const ClientPortalDashboard = ({
     <div className="min-h-screen bg-background">
       {/* Header */}
       <header className="sticky top-0 z-10 bg-background border-b">
-        <div className="container max-w-4xl mx-auto px-4 py-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
-                <Building2 className="h-5 w-5 text-primary" />
+        <div className="container max-w-4xl mx-auto px-3 sm:px-4 py-2.5 sm:py-3">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2.5 sm:gap-3 min-w-0 flex-1">
+              <div className="w-9 h-9 sm:w-10 sm:h-10 bg-primary/10 rounded-full flex items-center justify-center shrink-0">
+                <Building2 className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
               </div>
-              <div>
-                <h1 className="font-semibold text-lg">{clientName}</h1>
-                <p className="text-sm text-muted-foreground">
+              <div className="min-w-0 flex-1">
+                <h1 className="font-semibold text-base sm:text-lg truncate">{clientName}</h1>
+                <p className="text-xs sm:text-sm text-muted-foreground truncate">
                   {upcomingBookings.length} reservas próximas
                 </p>
               </div>
             </div>
-            <div className="flex items-center gap-2">
-              <Button variant="ghost" size="icon" onClick={() => refetch()}>
+            <div className="flex items-center gap-1 shrink-0">
+              <Button variant="ghost" size="icon" className="h-9 w-9" onClick={() => refetch()}>
                 <RefreshCw className="h-4 w-4" />
               </Button>
-              <Button variant="ghost" size="icon" onClick={onLogout}>
+              <Button variant="ghost" size="icon" className="h-9 w-9" onClick={onLogout}>
                 <LogOut className="h-4 w-4" />
               </Button>
             </div>
@@ -60,20 +60,20 @@ export const ClientPortalDashboard = ({
       </header>
 
       {/* Main content */}
-      <main className="container max-w-4xl mx-auto px-4 py-6">
+      <main className="container max-w-4xl mx-auto px-3 sm:px-4 py-4 sm:py-6">
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-3 mb-6">
-            <TabsTrigger value="add" className="flex items-center gap-2">
+          <TabsList className="grid w-full grid-cols-3 mb-4 sm:mb-6 h-auto">
+            <TabsTrigger value="add" className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2 py-2 text-xs sm:text-sm">
               <Plus className="h-4 w-4" />
-              <span className="hidden sm:inline">Añadir</span>
+              <span>Añadir</span>
             </TabsTrigger>
-            <TabsTrigger value="list" className="flex items-center gap-2">
+            <TabsTrigger value="list" className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2 py-2 text-xs sm:text-sm">
               <List className="h-4 w-4" />
-              <span className="hidden sm:inline">Reservas</span>
+              <span>Reservas</span>
             </TabsTrigger>
-            <TabsTrigger value="calendar" className="flex items-center gap-2">
+            <TabsTrigger value="calendar" className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2 py-2 text-xs sm:text-sm">
               <Calendar className="h-4 w-4" />
-              <span className="hidden sm:inline">Calendario</span>
+              <span>Calendario</span>
             </TabsTrigger>
           </TabsList>
 
