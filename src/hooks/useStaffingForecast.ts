@@ -227,11 +227,11 @@ export const useStaffingForecast = (rangeDays: number = 45) => {
         const checkoutsTotal = checkoutsAvantio.length + checkoutsInternos.length;
         const isAnomaly = checkoutsTotal > ANOMALY_THRESHOLD_CHECKOUTS;
         const cobertura = cargaHoras > 0 ? capacidadHoras / cargaHoras : 0;
-        const estado = computeStatus(cargaHoras, capacidadHoras, workersAvailable, target.min_workers);
         const deficitHoras = Math.max(0, cargaHoras - capacidadHoras);
         const deficitPersonas = Math.ceil(deficitHoras / TURNO_MEDIO_HORAS);
 
         const tStat = tasksByDate.get(dateStr) ?? { total: 0, asignadas: 0, horasTotal: 0, horasAsignadas: 0 };
+        const estado = computeStatus(tStat.horasTotal, tStat.horasAsignadas);
 
         days.push({
           date: dateStr,
