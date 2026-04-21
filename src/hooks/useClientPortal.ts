@@ -1030,7 +1030,8 @@ export const useClientPortalBookings = (clientId: string | undefined) => {
           checkInDate: null,
           checkOutDate: null,
           guestCount: null,
-          specialRequests: t.notes ?? null,
+          // Internal task notes are NEVER exposed to the client portal
+          specialRequests: null,
           status: t.status,
           taskStatus: t.status,
           taskId: t.id,
