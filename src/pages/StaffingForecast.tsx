@@ -3,10 +3,10 @@ import { useStaffingForecast } from '@/hooks/useStaffingForecast';
 import { HeatmapWeek } from '@/components/forecast/HeatmapWeek';
 import { ForecastSummaryStats } from '@/components/forecast/ForecastSummaryStats';
 import { DayDeficitDrawer } from '@/components/forecast/DayDeficitDrawer';
-import { StaffingTargetsConfig } from '@/components/forecast/StaffingTargetsConfig';
+
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { TrendingUp, Settings, RefreshCw, AlertTriangle, Bell } from 'lucide-react';
+import { TrendingUp, RefreshCw, AlertTriangle, Bell } from 'lucide-react';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Link } from 'react-router-dom';
 import { SidebarProvider } from '@/components/ui/sidebar';
@@ -17,7 +17,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 const StaffingForecast = () => {
   const [rangeDays, setRangeDays] = useState<number>(45);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
-  const [configOpen, setConfigOpen] = useState(false);
+  
   const { data, isLoading, refetch, isFetching } = useStaffingForecast(rangeDays);
   const isMobile = useIsMobile();
 
@@ -50,9 +50,6 @@ const StaffingForecast = () => {
             </Tabs>
             <Button variant="outline" size="icon" onClick={() => refetch()} disabled={isFetching}>
               <RefreshCw className={`h-4 w-4 ${isFetching ? 'animate-spin' : ''}`} />
-            </Button>
-            <Button variant="outline" size="sm" onClick={() => setConfigOpen(true)}>
-              <Settings className="h-4 w-4 mr-1" /> Objetivos
             </Button>
             <Button variant="outline" size="sm" asChild>
               <Link to="/forecast/settings">
@@ -127,7 +124,7 @@ const StaffingForecast = () => {
         </div>
 
         <DayDeficitDrawer date={selectedDate} onClose={() => setSelectedDate(null)} />
-        <StaffingTargetsConfig open={configOpen} onOpenChange={setConfigOpen} />
+        
       </div>
     </SidebarProvider>
   );
