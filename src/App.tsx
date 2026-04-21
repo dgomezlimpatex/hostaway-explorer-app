@@ -1,5 +1,5 @@
 
-import React, { Suspense, useTransition } from "react";
+import React, { Suspense } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -11,6 +11,7 @@ import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { RoleProtectedRoute } from "@/components/auth/RoleProtectedRoute";
 import { useSessionTimeout } from "@/hooks/useSessionTimeout";
 import { LazyLoadErrorBoundary } from "@/components/common/LazyLoadErrorBoundary";
+import { AppLayout } from "@/components/layout/AppLayout";
 
 // Lazy load pages for better First Contentful Paint
 const Index = React.lazy(() => import("./pages/Index"));
@@ -58,22 +59,20 @@ const WorkloadDashboard = React.lazy(() => import("./pages/WorkloadDashboard"));
 const StaffingForecast = React.lazy(() => import("./pages/StaffingForecast"));
 const ForecastSettings = React.lazy(() => import("./pages/ForecastSettings"));
 
-// Helper component to wrap lazy routes with error boundary and transition
-const LazyRoute = ({ children }: { children: React.ReactNode }) => {
-  const [isPending, startTransition] = useTransition();
-  
-  return (
-    <LazyLoadErrorBoundary>
-      <Suspense fallback={
+// Suspense fallback for routes loaded WITHOUT the persistent layout (auth, public, calendar)
+const FullPageSuspense = ({ children }: { children: React.ReactNode }) => (
+  <LazyLoadErrorBoundary>
+    <Suspense
+      fallback={
         <div className="flex items-center justify-center min-h-screen">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
         </div>
-      }>
-        {children}
-      </Suspense>
-    </LazyLoadErrorBoundary>
-  );
-};
+      }
+    >
+      {children}
+    </Suspense>
+  </LazyLoadErrorBoundary>
+);
 
 const queryClient = new QueryClient();
 
@@ -93,376 +92,161 @@ function App() {
               <Toaster />
               <Sonner />
               <BrowserRouter>
-            <Routes>
-              <Route path="/auth" element={
-                <LazyRoute>
-                  <Auth />
-                </LazyRoute>
-              } />
-              <Route path="/forgot-password" element={
-                <LazyRoute>
-                  <ForgotPassword />
-                </LazyRoute>
-              } />
-              <Route path="/reset-password" element={
-                <LazyRoute>
-                  <ResetPassword />
-                </LazyRoute>
-              } />
-              {/* Ruta pública para aceptar invitaciones */}
-              <Route path="/accept-invitation" element={
-                <LazyRoute>
-                  <AcceptInvitation />
-                </LazyRoute>
-              } />
-              {/* Ruta pública para vista de lavandería (repartidores sin cuenta) */}
-              <Route path="/lavanderia/:token" element={
-                <LazyRoute>
-                  <PublicLaundryView />
-                </LazyRoute>
-              } />
-              {/* Nueva ruta para vista programada de lavandería */}
-              <Route path="/reparto/:token" element={
-                <LazyRoute>
-                  <PublicLaundryScheduledView />
-                </LazyRoute>
-              } />
-              {/* Portal de reservas para clientes (ruta pública) */}
-              {/* Nuevo formato: /portal/nombre-cliente-abc12def (nombre + código corto) */}
-              <Route path="/portal/:identifier" element={
-                <LazyRoute>
-                  <ClientPortal />
-                </LazyRoute>
-              } />
-              <Route path="/" element={
-                <ProtectedRoute>
-                  <LazyRoute>
-                    <Index />
-                  </LazyRoute>
-                </ProtectedRoute>
-              } />
-              <Route path="/user-management" element={
-                <ProtectedRoute>
-                  <RoleProtectedRoute requiredModule="users">
-                    <LazyRoute>
-                      <UserManagement />
-                    </LazyRoute>
-                  </RoleProtectedRoute>
-                </ProtectedRoute>
-              } />
-              <Route path="/sede-management" element={
-                <ProtectedRoute>
-                  <RoleProtectedRoute requiredModule="admin">
-                    <LazyRoute>
-                      <SedeManagement />
-                    </LazyRoute>
-                  </RoleProtectedRoute>
-                </ProtectedRoute>
-              } />
-              <Route path="/admin/security" element={
-                <ProtectedRoute>
-                  <RoleProtectedRoute requiredModule="admin">
-                    <LazyRoute>
-                      <SecurityManagement />
-                    </LazyRoute>
-                  </RoleProtectedRoute>
-                </ProtectedRoute>
-              } />
-              <Route path="/calendar" element={
-                <ProtectedRoute>
-                  <RoleProtectedRoute requiredModule="calendar">
-                    <LazyRoute>
-                      <Calendar />
-                    </LazyRoute>
-                  </RoleProtectedRoute>
-                </ProtectedRoute>
-              } />
-              <Route path="/tasks" element={
-                <ProtectedRoute>
-                  <RoleProtectedRoute requiredModule="tasks">
-                    <LazyRoute>
-                      <Tasks />
-                    </LazyRoute>
-                  </RoleProtectedRoute>
-                </ProtectedRoute>
-              } />
-              <Route path="/clients" element={
-                <ProtectedRoute>
-                  <RoleProtectedRoute requiredModule="clients">
-                    <LazyRoute>
-                      <Clients />
-                    </LazyRoute>
-                  </RoleProtectedRoute>
-                </ProtectedRoute>
-              } />
-              <Route path="/properties" element={
-                <ProtectedRoute>
-                  <RoleProtectedRoute requiredModule="properties">
-                    <LazyRoute>
-                      <Properties />
-                    </LazyRoute>
-                  </RoleProtectedRoute>
-                </ProtectedRoute>
-              } />
-              <Route path="/client-reservations" element={
-                <ProtectedRoute>
-                  <RoleProtectedRoute requiredModule="clients">
-                    <LazyRoute>
-                      <ClientReservationsAdmin />
-                    </LazyRoute>
-                  </RoleProtectedRoute>
-                </ProtectedRoute>
-              } />
-              <Route path="/workers" element={
-                <ProtectedRoute>
-                  <RoleProtectedRoute requiredModule="workers">
-                    <LazyRoute>
-                      <Workers />
-                    </LazyRoute>
-                  </RoleProtectedRoute>
-                </ProtectedRoute>
-              } />
-              <Route path="/property-groups" element={
-                <ProtectedRoute>
-                  <RoleProtectedRoute requiredModule="propertyGroups">
-                    <LazyRoute>
-                      <PropertyGroups />
-                    </LazyRoute>
-                  </RoleProtectedRoute>
-                </ProtectedRoute>
-              } />
-              <Route path="/checklist-templates" element={
-                <ProtectedRoute>
-                  <RoleProtectedRoute requiredModule="tasks">
-                    <LazyRoute>
-                      <ChecklistTemplates />
-                    </LazyRoute>
-                  </RoleProtectedRoute>
-                </ProtectedRoute>
-              } />
-              <Route path="/recurring-tasks" element={
-                <ProtectedRoute>
-                  <RoleProtectedRoute requiredModule="tasks">
-                    <LazyRoute>
-                      <RecurringTasksPage />
-                    </LazyRoute>
-                  </RoleProtectedRoute>
-                </ProtectedRoute>
-              } />
-              <Route path="/reports" element={
-                <ProtectedRoute>
-                  <RoleProtectedRoute requiredModule="reports">
-                    <LazyRoute>
-                      <Reports />
-                    </LazyRoute>
-                  </RoleProtectedRoute>
-                </ProtectedRoute>
-              } />
-              <Route path="/hostaway-sync-logs" element={
-                <ProtectedRoute>
-                  <RoleProtectedRoute requiredModule="hostaway">
-                    <LazyRoute>
-                      <HostawaySyncLogs />
-                    </LazyRoute>
-                  </RoleProtectedRoute>
-                </ProtectedRoute>
-              } />
-              <Route path="/hostaway-automation" element={
-                <ProtectedRoute>
-                  <RoleProtectedRoute requiredModule="hostaway">
-                    <LazyRoute>
-                      <HostawayAutomation />
-                    </LazyRoute>
-                  </RoleProtectedRoute>
-                </ProtectedRoute>
-              } />
-              <Route path="/avantio-automation" element={
-                <ProtectedRoute>
-                  <RoleProtectedRoute requiredModule="hostaway">
-                    <LazyRoute>
-                      <AvantioAutomation />
-                    </LazyRoute>
-                  </RoleProtectedRoute>
-                </ProtectedRoute>
-              } />
-              <Route path="/cleaning-reports" element={
-                <ProtectedRoute>
-                  <RoleProtectedRoute requiredModule="reports">
-                    <LazyRoute>
-                      <CleaningReports />
-                    </LazyRoute>
-                  </RoleProtectedRoute>
-                </ProtectedRoute>
-              } />
-              <Route path="/inventory" element={
-                <ProtectedRoute>
-                  <RoleProtectedRoute requiredModule="inventory">
-                    <LazyRoute>
-                      <InventoryDashboard />
-                    </LazyRoute>
-                  </RoleProtectedRoute>
-                </ProtectedRoute>
-              } />
-              <Route path="/inventory/stock" element={
-                <ProtectedRoute>
-                  <RoleProtectedRoute requiredModule="inventory">
-                    <LazyRoute>
-                      <InventoryStock />
-                    </LazyRoute>
-                  </RoleProtectedRoute>
-                </ProtectedRoute>
-              } />
-              <Route path="/inventory/movements" element={
-                <ProtectedRoute>
-                  <RoleProtectedRoute requiredModule="inventory">
-                    <LazyRoute>
-                      <InventoryMovements />
-                    </LazyRoute>
-                  </RoleProtectedRoute>
-                </ProtectedRoute>
-              } />
-              <Route path="/inventory/config" element={
-                <ProtectedRoute>
-                  <RoleProtectedRoute requiredModule="inventory">
-                    <LazyRoute>
-                      <InventoryConfig />
-                    </LazyRoute>
-                  </RoleProtectedRoute>
-                </ProtectedRoute>
-              } />
-              <Route path="/inventory/reports" element={
-                <ProtectedRoute>
-                  <RoleProtectedRoute requiredModule="inventory">
-                    <LazyRoute>
-                      <InventoryReports />
-                    </LazyRoute>
-                  </RoleProtectedRoute>
-                </ProtectedRoute>
-              } />
-              <Route path="/logistics/dashboard" element={
-                <ProtectedRoute>
-                  <RoleProtectedRoute requiredModule="logistics">
-                    <LazyRoute>
-                      <LogisticsDashboard />
-                    </LazyRoute>
-                  </RoleProtectedRoute>
-                </ProtectedRoute>
-              } />
-              <Route path="/logistics/reports" element={
-                <ProtectedRoute>
-                  <RoleProtectedRoute requiredModule="logistics">
-                    <LazyRoute>
-                      <LogisticsReports />
-                    </LazyRoute>
-                  </RoleProtectedRoute>
-                </ProtectedRoute>
-              } />
-              <Route path="/logistics/picklists" element={
-                <ProtectedRoute>
-                  <RoleProtectedRoute requiredModule="logistics">
-                    <LazyRoute>
-                      <LogisticsPicklists />
-                    </LazyRoute>
-                  </RoleProtectedRoute>
-                </ProtectedRoute>
-              } />
-              <Route path="/logistics/picklists/:id" element={
-                <ProtectedRoute>
-                  <RoleProtectedRoute requiredModule="logistics">
-                    <LazyRoute>
-                      <LogisticsPicklistDetails />
-                    </LazyRoute>
-                  </RoleProtectedRoute>
-                </ProtectedRoute>
-              } />
-              <Route path="/logistics/picklists/:id/edit" element={
-                <ProtectedRoute>
-                  <RoleProtectedRoute requiredModule="logistics">
-                    <LazyRoute>
-                      <LogisticsPicklistEdit />
-                    </LazyRoute>
-                  </RoleProtectedRoute>
-                </ProtectedRoute>
-              } />
-              <Route path="/logistics/deliveries" element={
-                <ProtectedRoute>
-                  <RoleProtectedRoute requiredModule="logistics">
-                    <LazyRoute>
-                      <LogisticsDeliveries />
-                    </LazyRoute>
-                  </RoleProtectedRoute>
-                </ProtectedRoute>
-              } />
-              <Route path="/lavanderia/gestion" element={
-                <ProtectedRoute>
-                  <RoleProtectedRoute requiredModule="reports">
-                    <LazyRoute>
-                      <LaundryShareManagement />
-                    </LazyRoute>
-                  </RoleProtectedRoute>
-                </ProtectedRoute>
-              } />
-              <Route path="/control-mudas" element={
-                <ProtectedRoute>
-                  <RoleProtectedRoute requiredModule="reports">
-                    <LazyRoute>
-                      <LinenControlPage />
-                    </LazyRoute>
-                  </RoleProtectedRoute>
-                </ProtectedRoute>
-              } />
-              <Route path="/client-billing" element={
-                <ProtectedRoute>
-                  <RoleProtectedRoute requiredModule="reports">
-                    <LazyRoute>
-                      <ClientBilling />
-                    </LazyRoute>
-                  </RoleProtectedRoute>
-                </ProtectedRoute>
-              } />
-              <Route path="/operational-analytics" element={
-                <ProtectedRoute>
-                  <RoleProtectedRoute requiredModule="reports">
-                    <LazyRoute>
-                      <OperationalAnalytics />
-                    </LazyRoute>
-                  </RoleProtectedRoute>
-                </ProtectedRoute>
-              } />
-              <Route path="/workload" element={
-                <ProtectedRoute>
-                  <RoleProtectedRoute requiredModule="workers">
-                    <LazyRoute>
-                      <WorkloadDashboard />
-                    </LazyRoute>
-                  </RoleProtectedRoute>
-                </ProtectedRoute>
-              } />
-              <Route path="/forecast" element={
-                <ProtectedRoute>
-                  <RoleProtectedRoute requiredModule="workers">
-                    <LazyRoute>
-                      <StaffingForecast />
-                    </LazyRoute>
-                  </RoleProtectedRoute>
-                </ProtectedRoute>
-              } />
-              <Route path="/forecast/settings" element={
-                <ProtectedRoute>
-                  <RoleProtectedRoute requiredModule="workers">
-                    <LazyRoute>
-                      <ForecastSettings />
-                    </LazyRoute>
-                  </RoleProtectedRoute>
-                </ProtectedRoute>
-              } />
-              <Route path="*" element={
-                <LazyRoute>
-                  <NotFound />
-                </LazyRoute>
-              } />
-            </Routes>
-          </BrowserRouter>
+                <Routes>
+                  {/* Rutas públicas / auth (sin sidebar) */}
+                  <Route path="/auth" element={<FullPageSuspense><Auth /></FullPageSuspense>} />
+                  <Route path="/forgot-password" element={<FullPageSuspense><ForgotPassword /></FullPageSuspense>} />
+                  <Route path="/reset-password" element={<FullPageSuspense><ResetPassword /></FullPageSuspense>} />
+                  <Route path="/accept-invitation" element={<FullPageSuspense><AcceptInvitation /></FullPageSuspense>} />
+                  <Route path="/lavanderia/:token" element={<FullPageSuspense><PublicLaundryView /></FullPageSuspense>} />
+                  <Route path="/reparto/:token" element={<FullPageSuspense><PublicLaundryScheduledView /></FullPageSuspense>} />
+                  <Route path="/portal/:identifier" element={<FullPageSuspense><ClientPortal /></FullPageSuspense>} />
+
+                  {/* Calendario: pantalla completa, SIN sidebar persistente */}
+                  <Route path="/calendar" element={
+                    <ProtectedRoute>
+                      <RoleProtectedRoute requiredModule="calendar">
+                        <FullPageSuspense><Calendar /></FullPageSuspense>
+                      </RoleProtectedRoute>
+                    </ProtectedRoute>
+                  } />
+
+                  {/* Inventario: tiene su propio layout interno */}
+                  <Route path="/inventory" element={
+                    <ProtectedRoute>
+                      <RoleProtectedRoute requiredModule="inventory">
+                        <FullPageSuspense><InventoryDashboard /></FullPageSuspense>
+                      </RoleProtectedRoute>
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/inventory/stock" element={
+                    <ProtectedRoute>
+                      <RoleProtectedRoute requiredModule="inventory">
+                        <FullPageSuspense><InventoryStock /></FullPageSuspense>
+                      </RoleProtectedRoute>
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/inventory/movements" element={
+                    <ProtectedRoute>
+                      <RoleProtectedRoute requiredModule="inventory">
+                        <FullPageSuspense><InventoryMovements /></FullPageSuspense>
+                      </RoleProtectedRoute>
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/inventory/config" element={
+                    <ProtectedRoute>
+                      <RoleProtectedRoute requiredModule="inventory">
+                        <FullPageSuspense><InventoryConfig /></FullPageSuspense>
+                      </RoleProtectedRoute>
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/inventory/reports" element={
+                    <ProtectedRoute>
+                      <RoleProtectedRoute requiredModule="inventory">
+                        <FullPageSuspense><InventoryReports /></FullPageSuspense>
+                      </RoleProtectedRoute>
+                    </ProtectedRoute>
+                  } />
+
+                  {/* Layout persistente con sidebar - todas las páginas admin */}
+                  <Route element={
+                    <ProtectedRoute>
+                      <AppLayout />
+                    </ProtectedRoute>
+                  }>
+                    <Route path="/" element={<Index />} />
+                    <Route path="/user-management" element={
+                      <RoleProtectedRoute requiredModule="users"><UserManagement /></RoleProtectedRoute>
+                    } />
+                    <Route path="/sede-management" element={
+                      <RoleProtectedRoute requiredModule="admin"><SedeManagement /></RoleProtectedRoute>
+                    } />
+                    <Route path="/admin/security" element={
+                      <RoleProtectedRoute requiredModule="admin"><SecurityManagement /></RoleProtectedRoute>
+                    } />
+                    <Route path="/tasks" element={
+                      <RoleProtectedRoute requiredModule="tasks"><Tasks /></RoleProtectedRoute>
+                    } />
+                    <Route path="/clients" element={
+                      <RoleProtectedRoute requiredModule="clients"><Clients /></RoleProtectedRoute>
+                    } />
+                    <Route path="/properties" element={
+                      <RoleProtectedRoute requiredModule="properties"><Properties /></RoleProtectedRoute>
+                    } />
+                    <Route path="/client-reservations" element={
+                      <RoleProtectedRoute requiredModule="clients"><ClientReservationsAdmin /></RoleProtectedRoute>
+                    } />
+                    <Route path="/workers" element={
+                      <RoleProtectedRoute requiredModule="workers"><Workers /></RoleProtectedRoute>
+                    } />
+                    <Route path="/property-groups" element={
+                      <RoleProtectedRoute requiredModule="propertyGroups"><PropertyGroups /></RoleProtectedRoute>
+                    } />
+                    <Route path="/checklist-templates" element={
+                      <RoleProtectedRoute requiredModule="tasks"><ChecklistTemplates /></RoleProtectedRoute>
+                    } />
+                    <Route path="/recurring-tasks" element={
+                      <RoleProtectedRoute requiredModule="tasks"><RecurringTasksPage /></RoleProtectedRoute>
+                    } />
+                    <Route path="/reports" element={
+                      <RoleProtectedRoute requiredModule="reports"><Reports /></RoleProtectedRoute>
+                    } />
+                    <Route path="/hostaway-sync-logs" element={
+                      <RoleProtectedRoute requiredModule="hostaway"><HostawaySyncLogs /></RoleProtectedRoute>
+                    } />
+                    <Route path="/hostaway-automation" element={
+                      <RoleProtectedRoute requiredModule="hostaway"><HostawayAutomation /></RoleProtectedRoute>
+                    } />
+                    <Route path="/avantio-automation" element={
+                      <RoleProtectedRoute requiredModule="hostaway"><AvantioAutomation /></RoleProtectedRoute>
+                    } />
+                    <Route path="/cleaning-reports" element={
+                      <RoleProtectedRoute requiredModule="reports"><CleaningReports /></RoleProtectedRoute>
+                    } />
+                    <Route path="/logistics/dashboard" element={
+                      <RoleProtectedRoute requiredModule="logistics"><LogisticsDashboard /></RoleProtectedRoute>
+                    } />
+                    <Route path="/logistics/reports" element={
+                      <RoleProtectedRoute requiredModule="logistics"><LogisticsReports /></RoleProtectedRoute>
+                    } />
+                    <Route path="/logistics/picklists" element={
+                      <RoleProtectedRoute requiredModule="logistics"><LogisticsPicklists /></RoleProtectedRoute>
+                    } />
+                    <Route path="/logistics/picklists/:id" element={
+                      <RoleProtectedRoute requiredModule="logistics"><LogisticsPicklistDetails /></RoleProtectedRoute>
+                    } />
+                    <Route path="/logistics/picklists/:id/edit" element={
+                      <RoleProtectedRoute requiredModule="logistics"><LogisticsPicklistEdit /></RoleProtectedRoute>
+                    } />
+                    <Route path="/logistics/deliveries" element={
+                      <RoleProtectedRoute requiredModule="logistics"><LogisticsDeliveries /></RoleProtectedRoute>
+                    } />
+                    <Route path="/lavanderia/gestion" element={
+                      <RoleProtectedRoute requiredModule="reports"><LaundryShareManagement /></RoleProtectedRoute>
+                    } />
+                    <Route path="/control-mudas" element={
+                      <RoleProtectedRoute requiredModule="reports"><LinenControlPage /></RoleProtectedRoute>
+                    } />
+                    <Route path="/client-billing" element={
+                      <RoleProtectedRoute requiredModule="reports"><ClientBilling /></RoleProtectedRoute>
+                    } />
+                    <Route path="/operational-analytics" element={
+                      <RoleProtectedRoute requiredModule="reports"><OperationalAnalytics /></RoleProtectedRoute>
+                    } />
+                    <Route path="/workload" element={
+                      <RoleProtectedRoute requiredModule="workers"><WorkloadDashboard /></RoleProtectedRoute>
+                    } />
+                    <Route path="/forecast" element={
+                      <RoleProtectedRoute requiredModule="workers"><StaffingForecast /></RoleProtectedRoute>
+                    } />
+                    <Route path="/forecast/settings" element={
+                      <RoleProtectedRoute requiredModule="workers"><ForecastSettings /></RoleProtectedRoute>
+                    } />
+                  </Route>
+
+                  <Route path="*" element={<FullPageSuspense><NotFound /></FullPageSuspense>} />
+                </Routes>
+              </BrowserRouter>
             </SecurityWrapper>
           </SedeContextProvider>
         </AuthProvider>
