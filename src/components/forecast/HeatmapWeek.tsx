@@ -95,7 +95,7 @@ export const HeatmapWeek = ({ days, onDayClick }: Props) => {
                 <div className="text-2xl font-semibold leading-tight">{day.checkoutsTotal}</div>
                 <div className="text-[10px] text-muted-foreground">checkouts</div>
               </div>
-              {day.cargaHoras > 0 && (
+              {day.horasTareasTotal > 0 && (
                 <div className="space-y-0.5">
                   <div className="h-1 bg-muted rounded-full overflow-hidden">
                     <div
@@ -103,13 +103,19 @@ export const HeatmapWeek = ({ days, onDayClick }: Props) => {
                         'h-full transition-all',
                         day.estado === 'red' && 'bg-destructive',
                         day.estado === 'yellow' && 'bg-amber-500',
-                        day.estado === 'green' && 'bg-emerald-500'
+                        day.estado === 'green' && 'bg-emerald-500',
+                        day.estado === 'idle' && 'bg-muted-foreground/40'
                       )}
-                      style={{ width: `${Math.min(100, day.cobertura * 100)}%` }}
+                      style={{
+                        width: `${Math.min(
+                          100,
+                          (day.horasTareasAsignadas / day.horasTareasTotal) * 100
+                        )}%`,
+                      }}
                     />
                   </div>
                   <div className="text-[10px] text-muted-foreground">
-                    {day.capacidadHoras}h / {day.cargaHoras}h
+                    {day.horasTareasAsignadas}h / {day.horasTareasTotal}h
                   </div>
                 </div>
               )}
