@@ -9,7 +9,7 @@ export interface ClientPortalAccess {
   shortCode?: string;
   isActive: boolean;
   lastAccessAt: string | null;
-  lastAdminAccessAt?: string | null;
+  lastAdminAccessAt: string | null;
   createdAt: string;
   updatedAt: string;
 }
