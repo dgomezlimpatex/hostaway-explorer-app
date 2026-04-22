@@ -66,6 +66,7 @@ export const TaskScheduleSection = ({
   onFieldBlur,
   onScheduleSave,
   statusByField,
+  readOnly = false,
 }: TaskScheduleSectionProps) => {
   const startTime = normalizeTime(formData.startTime);
   const endTime = normalizeTime(formData.endTime);
