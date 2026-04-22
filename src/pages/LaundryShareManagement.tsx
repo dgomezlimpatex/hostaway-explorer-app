@@ -432,13 +432,21 @@ const LaundryShareManagement = () => {
     await applyTaskChanges.mutateAsync({ linkId, currentTaskIds });
   };
 
-  // Auto-merge: silently add new tasks to snapshot without removing existing ones
+  // Auto-merge: silently add new tasks to snapshot without removing existing ones.
+  // Receives `originalTaskIds` so the merge only re-adds tasks that didn't exist
+  // in the previous baseline — preserving any manual exclusion the admin made.
   const handleAutoMergeNewTasks = useCallback(
-    async (linkId: string, currentTaskIds: string[], existingSnapshotIds: string[]) => {
+    async (
+      linkId: string,
+      currentTaskIds: string[],
+      existingSnapshotIds: string[],
+      originalTaskIds: string[],
+    ) => {
       await applyTaskChanges.mutateAsync({
         linkId,
         currentTaskIds,
         existingSnapshotIds,
+        originalTaskIds,
         mode: 'merge',
         silent: true,
       });
