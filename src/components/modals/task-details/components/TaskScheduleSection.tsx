@@ -19,6 +19,8 @@ interface TaskScheduleSectionProps {
   /** Save schedule + duration in one shot (used by quick-action buttons). */
   onScheduleSave?: (updates: Partial<Task>) => void;
   statusByField?: Record<string, FieldSaveStatus>;
+  /** When true, fields are displayed but cannot be edited. */
+  readOnly?: boolean;
 }
 
 // Helpers
@@ -64,6 +66,7 @@ export const TaskScheduleSection = ({
   onFieldBlur,
   onScheduleSave,
   statusByField,
+  readOnly = false,
 }: TaskScheduleSectionProps) => {
   const startTime = normalizeTime(formData.startTime);
   const endTime = normalizeTime(formData.endTime);
@@ -137,25 +140,29 @@ export const TaskScheduleSection = ({
             <Button
               variant="ghost"
               size="sm"
+              disabled={readOnly}
               className={cn(
                 'justify-start text-left font-normal h-8 px-2 -ml-2',
                 'hover:bg-muted/60 transition-colors',
-                !formData.date && 'text-muted-foreground'
+                !formData.date && 'text-muted-foreground',
+                readOnly && 'opacity-100 cursor-default hover:bg-transparent disabled:opacity-100'
               )}
             >
               <CalendarIcon className="mr-2 h-3.5 w-3.5 text-violet-500" />
               {formData.date ? format(new Date(formData.date), "EEEE d 'de' MMMM, yyyy", { locale: es }) : 'Selecciona fecha'}
             </Button>
           </PopoverTrigger>
-          <PopoverContent className="w-auto p-0 bg-popover" align="start">
-            <Calendar
-              mode="single"
-              selected={formData.date ? new Date(formData.date) : undefined}
-              onSelect={d => d && setDateTo(d)}
-              initialFocus
-              className={cn('p-3 pointer-events-auto')}
-            />
-          </PopoverContent>
+          {!readOnly && (
+            <PopoverContent className="w-auto p-0 bg-popover" align="start">
+              <Calendar
+                mode="single"
+                selected={formData.date ? new Date(formData.date) : undefined}
+                onSelect={d => d && setDateTo(d)}
+                initialFocus
+                className={cn('p-3 pointer-events-auto')}
+              />
+            </PopoverContent>
+          )}
         </Popover>
         <FieldStatus status={statusByField?.date} />
       </div>
@@ -170,10 +177,13 @@ export const TaskScheduleSection = ({
             value={formData.startTime || ''}
             onChange={e => onFieldChange('startTime', e.target.value)}
             onBlur={handleStartBlur}
+            readOnly={readOnly}
+            disabled={readOnly}
             className={cn(
               'h-8 w-24 px-2 border-0 shadow-none bg-muted/40',
               'hover:bg-muted/70 focus-visible:ring-1 focus-visible:ring-primary/30',
-              'font-mono text-sm transition-colors'
+              'font-mono text-sm transition-colors',
+              readOnly && 'disabled:opacity-100 cursor-default'
             )}
           />
           <FieldStatus status={statusByField?.startTime} />
@@ -184,10 +194,13 @@ export const TaskScheduleSection = ({
             value={formData.endTime || ''}
             onChange={e => onFieldChange('endTime', e.target.value)}
             onBlur={handleEndBlur}
+            readOnly={readOnly}
+            disabled={readOnly}
             className={cn(
               'h-8 w-24 px-2 border-0 shadow-none bg-muted/40',
               'hover:bg-muted/70 focus-visible:ring-1 focus-visible:ring-primary/30',
-              'font-mono text-sm transition-colors'
+              'font-mono text-sm transition-colors',
+              readOnly && 'disabled:opacity-100 cursor-default'
             )}
           />
           <FieldStatus status={statusByField?.endTime} />
@@ -203,10 +216,13 @@ export const TaskScheduleSection = ({
             value={durationInput}
             onChange={e => setDurationInput(e.target.value)}
             onBlur={handleDurationBlur}
+            readOnly={readOnly}
+            disabled={readOnly}
             className={cn(
               'h-8 w-14 px-2 text-center border-0 shadow-none bg-muted/40',
               'hover:bg-muted/70 focus-visible:ring-1 focus-visible:ring-primary/30',
-              'font-mono text-sm transition-colors'
+              'font-mono text-sm transition-colors',
+              readOnly && 'disabled:opacity-100 cursor-default'
             )}
             placeholder="0"
           />
@@ -215,29 +231,31 @@ export const TaskScheduleSection = ({
       </div>
 
       {/* Atajos rápidos de duración */}
-      <div className="flex items-center gap-1.5 pl-[76px] flex-wrap">
-        {[
-          { label: '−30m', delta: -30 },
-          { label: '−15m', delta: -15 },
-          { label: '+15m', delta: 15 },
-          { label: '+30m', delta: 30 },
-          { label: '+1h', delta: 60 },
-        ].map(s => (
-          <button
-            key={s.label}
-            type="button"
-            onClick={() => adjustDuration(s.delta)}
-            className={cn(
-              'h-6 px-2 text-[11px] font-medium rounded-md',
-              'text-muted-foreground hover:text-foreground',
-              'bg-transparent hover:bg-muted/60 transition-colors',
-              'border border-transparent hover:border-border'
-            )}
-          >
-            {s.label}
-          </button>
-        ))}
-      </div>
+      {!readOnly && (
+        <div className="flex items-center gap-1.5 pl-[76px] flex-wrap">
+          {[
+            { label: '−30m', delta: -30 },
+            { label: '−15m', delta: -15 },
+            { label: '+15m', delta: 15 },
+            { label: '+30m', delta: 30 },
+            { label: '+1h', delta: 60 },
+          ].map(s => (
+            <button
+              key={s.label}
+              type="button"
+              onClick={() => adjustDuration(s.delta)}
+              className={cn(
+                'h-6 px-2 text-[11px] font-medium rounded-md',
+                'text-muted-foreground hover:text-foreground',
+                'bg-transparent hover:bg-muted/60 transition-colors',
+                'border border-transparent hover:border-border'
+              )}
+            >
+              {s.label}
+            </button>
+          ))}
+        </div>
+      )}
     </section>
   );
 };
