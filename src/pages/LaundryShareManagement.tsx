@@ -189,7 +189,11 @@ const LinkCard = ({
   onOpen: () => void;
   onDelete: () => void;
   onApplyChanges: (currentTaskIds: string[]) => void;
-  onAutoMergeNewTasks: (currentTaskIds: string[], existingSnapshotIds: string[]) => Promise<void>;
+  onAutoMergeNewTasks: (
+    currentTaskIds: string[],
+    existingSnapshotIds: string[],
+    originalTaskIds: string[],
+  ) => Promise<void>;
 }) => {
   const { data: changes } = useTaskChanges(link);
   const { stats } = useLaundryTracking(link.id);
@@ -211,9 +215,9 @@ const LinkCard = ({
     (async () => {
       const sedeIds = link.filters?.sedeIds || (link.filters?.sedeId ? [link.filters.sedeId] : undefined);
       const currentIds = await fetchLaundryTasksForDateRange(link.dateStart, link.dateEnd, sedeIds);
-      await onAutoMergeNewTasks(currentIds, link.snapshotTaskIds);
+      await onAutoMergeNewTasks(currentIds, link.snapshotTaskIds, link.originalTaskIds);
     })();
-  }, [hasNewTasks, changes, link.id, link.dateStart, link.dateEnd, link.filters, link.snapshotTaskIds, onAutoMergeNewTasks]);
+  }, [hasNewTasks, changes, link.id, link.dateStart, link.dateEnd, link.filters, link.snapshotTaskIds, link.originalTaskIds, onAutoMergeNewTasks]);
 
   const [applying, setApplying] = useState(false);
   const handleApplyRemoved = async () => {
@@ -432,13 +436,21 @@ const LaundryShareManagement = () => {
     await applyTaskChanges.mutateAsync({ linkId, currentTaskIds });
   };
 
-  // Auto-merge: silently add new tasks to snapshot without removing existing ones
+  // Auto-merge: silently add new tasks to snapshot without removing existing ones.
+  // Receives `originalTaskIds` so the merge only re-adds tasks that didn't exist
+  // in the previous baseline — preserving any manual exclusion the admin made.
   const handleAutoMergeNewTasks = useCallback(
-    async (linkId: string, currentTaskIds: string[], existingSnapshotIds: string[]) => {
+    async (
+      linkId: string,
+      currentTaskIds: string[],
+      existingSnapshotIds: string[],
+      originalTaskIds: string[],
+    ) => {
       await applyTaskChanges.mutateAsync({
         linkId,
         currentTaskIds,
         existingSnapshotIds,
+        originalTaskIds,
         mode: 'merge',
         silent: true,
       });
@@ -591,7 +603,7 @@ const LaundryShareManagement = () => {
                   onOpen={() => openExternalLink(link.token)}
                   onDelete={() => handleDeleteClick(link)}
                   onApplyChanges={(ids) => handleApplyChanges(link.id, ids)}
-                  onAutoMergeNewTasks={(ids, existing) => handleAutoMergeNewTasks(link.id, ids, existing)}
+                  onAutoMergeNewTasks={(ids, existing, original) => handleAutoMergeNewTasks(link.id, ids, existing, original)}
                 />
               ))}
             </div>

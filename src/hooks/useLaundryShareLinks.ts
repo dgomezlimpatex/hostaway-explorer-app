@@ -133,28 +133,39 @@ export const useLaundryShareLinks = () => {
 
   // Apply current task changes to a share link
   // mode 'replace' (default): rewrite snapshot to match current tasks exactly (removes deleted ones)
-  // mode 'merge': only ADD new tasks to snapshot, keep existing ones (preserves manual edits)
+  // mode 'merge': only ADD genuinely NEW tasks (current \ original) to the snapshot,
+  //               preserving manual exclusions made by an admin in the edit modal.
   // silent: skip toast notification (used for auto-merge in background)
   const applyTaskChanges = useMutation({
     mutationFn: async ({ 
       linkId, 
       currentTaskIds, 
       existingSnapshotIds,
+      originalTaskIds,
       mode = 'replace',
       silent = false,
     }: { 
       linkId: string; 
       currentTaskIds: string[]; 
       existingSnapshotIds?: string[];
+      originalTaskIds?: string[];
       mode?: 'replace' | 'merge';
       silent?: boolean;
     }) => {
       let nextSnapshot = currentTaskIds;
       
       if (mode === 'merge' && existingSnapshotIds) {
-        // Add new tasks to snapshot without removing existing ones
+        // Only add tasks that didn't exist in the previous baseline (genuinely new).
+        // This preserves any manual exclusion the admin did via the edit modal:
+        // tasks excluded manually are in `originalTaskIds` but NOT in
+        // `existingSnapshotIds`, so they will NOT be re-added.
+        const originalSet = new Set(originalTaskIds || existingSnapshotIds);
         const set = new Set(existingSnapshotIds);
-        currentTaskIds.forEach(id => set.add(id));
+        currentTaskIds.forEach(id => {
+          if (!originalSet.has(id)) {
+            set.add(id);
+          }
+        });
         nextSnapshot = Array.from(set);
       }
       

@@ -125,10 +125,23 @@ export const LaundryShareEditModal = ({
   const updateShareLink = useMutation({
     mutationFn: async (includedTaskIds: string[]) => {
       if (!shareLink) throw new Error('No share link');
+      if (!tasks) throw new Error('No tasks loaded');
+
+      // We also reset the baseline (`original_task_ids`) to match the current
+      // full task list. This prevents the background auto-merge in
+      // LaundryShareManagement from re-adding tasks the admin just excluded:
+      // those tasks would otherwise be considered "already known" only via
+      // `original_task_ids`, but the merge logic now skips anything present
+      // in the baseline. So updating both fields together makes the manual
+      // exclusion permanent until the admin explicitly re-includes tasks.
+      const allCurrentTaskIds = tasks.map(t => t.id);
 
       const { error } = await supabase
         .from('laundry_share_links')
-        .update({ snapshot_task_ids: includedTaskIds })
+        .update({
+          snapshot_task_ids: includedTaskIds,
+          original_task_ids: allCurrentTaskIds,
+        })
         .eq('id', shareLink.id);
 
       if (error) throw error;
@@ -136,6 +149,7 @@ export const LaundryShareEditModal = ({
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['laundry-share-links'] });
       queryClient.invalidateQueries({ queryKey: ['share-link-properties'] });
+      queryClient.invalidateQueries({ queryKey: ['share-link-changes'] });
       toast({
         title: 'Enlace actualizado',
         description: 'Las tareas del enlace han sido actualizadas',
