@@ -44,7 +44,7 @@ export const TaskDetailsModal = ({
   const queryClient = useQueryClient();
   const isRecurringInstance = !!(task as any)?.isRecurringInstance;
   const realTaskId = task?.originalTaskId || task?.id || '';
-  const canEdit = userRole !== 'cleaner' && !isRecurringInstance;
+  const canEdit = (userRole === 'admin' || userRole === 'manager') && !isRecurringInstance;
 
   const { saveField, statusByField } = useInlineFieldSave({ taskId: realTaskId });
 
