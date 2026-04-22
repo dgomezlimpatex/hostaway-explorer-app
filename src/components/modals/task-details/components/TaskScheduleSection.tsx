@@ -19,6 +19,8 @@ interface TaskScheduleSectionProps {
   /** Save schedule + duration in one shot (used by quick-action buttons). */
   onScheduleSave?: (updates: Partial<Task>) => void;
   statusByField?: Record<string, FieldSaveStatus>;
+  /** When true, fields are displayed but cannot be edited. */
+  readOnly?: boolean;
 }
 
 // Helpers
