@@ -10,6 +10,7 @@ import {
   PortalBooking,
 } from '@/types/clientPortal';
 import { useToast } from '@/hooks/use-toast';
+import { buildReservationLogActor } from '@/lib/clientReservationLog';
 
 // Generate random 6-digit PIN
 export const generateRandomPin = (): string => {
@@ -575,15 +576,17 @@ export const useCreateReservations = () => {
   return useMutation({
     mutationFn: async ({ 
       clientId, 
+      clientName,
       reservations 
     }: { 
       clientId: string; 
+      clientName?: string;
       reservations: CreateReservationData[] 
     }) => {
       // Defense-in-depth: re-check the client allows reservation creation
       const { data: clientRow, error: clientErr } = await supabase
         .from('clients')
-        .select('allow_reservation_creation')
+        .select('allow_reservation_creation, nombre')
         .eq('id', clientId)
         .maybeSingle();
       if (clientErr) throw clientErr;
@@ -591,6 +594,9 @@ export const useCreateReservations = () => {
         throw new Error('La creación de reservas está deshabilitada para este cliente.');
       }
 
+      const actor = await buildReservationLogActor(
+        clientName || (clientRow as any)?.nombre || undefined,
+      );
       const results = [];
       
       for (const reservation of reservations) {
@@ -653,13 +659,16 @@ export const useCreateReservations = () => {
         
         if (resError) throw resError;
         
-        // 4. Log the action
+        // 4. Log the action (incluye actor: cliente vía PIN o admin/manager interno)
         await supabase
           .from('client_reservation_logs')
           .insert({
             reservation_id: reservationData.id,
             client_id: clientId,
             action: 'created',
+            property_id: property.id,
+            property_name: property.nombre,
+            ...actor,
             new_data: {
               propertyId: reservation.propertyId,
               propertyName: property.nombre,
@@ -812,15 +821,20 @@ export const useUpdateReservation = () => {
           .eq('id', reservationId);
       }
       
-      // Log the action
+      // Log the action (incluye actor)
+      const updateActor = await buildReservationLogActor(clientName);
       await supabase
         .from('client_reservation_logs')
         .insert({
           reservation_id: reservationId,
           client_id: clientId,
           action: 'updated',
+          property_id: property?.id ?? newPropertyId,
+          property_name: property?.nombre ?? null,
+          ...updateActor,
           old_data: {
             propertyId: current.property_id,
+            propertyName: (current.properties as any)?.nombre ?? null,
             checkInDate: current.check_in_date,
             checkOutDate: current.check_out_date,
             guestCount: current.guest_count,
@@ -828,6 +842,7 @@ export const useUpdateReservation = () => {
           },
           new_data: {
             propertyId: newPropertyId,
+            propertyName: property?.nombre ?? null,
             checkInDate: updates.checkInDate ?? current.check_in_date,
             checkOutDate: updates.checkOutDate ?? current.check_out_date,
             guestCount: updates.guestCount ?? current.guest_count,
@@ -904,13 +919,17 @@ export const useCancelReservation = () => {
           .eq('id', current.task_id);
       }
       
-      // Log the action
+      // Log the action (incluye actor)
+      const cancelActor = await buildReservationLogActor(clientName);
       await supabase
         .from('client_reservation_logs')
         .insert({
           reservation_id: reservationId,
           client_id: clientId,
           action: 'cancelled',
+          property_id: current.property_id,
+          property_name: propertyName,
+          ...cancelActor,
           old_data: {
             propertyId: current.property_id,
             propertyName,
@@ -1397,3 +1416,66 @@ export const useAdminClientPortals = () => {
   });
 };
 
+// ============= ADMIN: HISTORIAL AUDITADO POR CLIENTE =============
+
+export interface ClientReservationHistoryEntry {
+  id: string;
+  reservationId: string | null;
+  clientId: string;
+  clientName: string | null;
+  propertyId: string | null;
+  propertyName: string | null;
+  propertyCode: string | null;
+  action: 'created' | 'updated' | 'cancelled' | string;
+  actorType: 'client' | 'admin' | 'manager' | 'system' | null;
+  actorUserId: string | null;
+  actorName: string | null;
+  actorEmail: string | null;
+  oldData: Record<string, any> | null;
+  newData: Record<string, any> | null;
+  notes: string | null;
+  createdAt: string;
+}
+
+/**
+ * Devuelve el histórico de cambios sobre las reservas de un cliente del portal.
+ * Solo accesible para admins y managers — protegido por la RPC en la BD.
+ */
+export const useClientReservationHistory = (
+  clientId: string | undefined,
+  options?: { limit?: number; enabled?: boolean },
+) => {
+  const limit = options?.limit ?? 200;
+  return useQuery({
+    queryKey: ['client-reservation-history', clientId, limit],
+    enabled: !!clientId && options?.enabled !== false,
+    refetchOnWindowFocus: true,
+    queryFn: async (): Promise<ClientReservationHistoryEntry[]> => {
+      if (!clientId) return [];
+      const { data, error } = await supabase.rpc('get_client_reservation_history', {
+        _client_id: clientId,
+        _limit: limit,
+        _offset: 0,
+      });
+      if (error) throw error;
+      return ((data ?? []) as any[]).map((row) => ({
+        id: row.id,
+        reservationId: row.reservation_id,
+        clientId: row.client_id,
+        clientName: row.client_name,
+        propertyId: row.property_id,
+        propertyName: row.property_name,
+        propertyCode: row.property_code,
+        action: row.action,
+        actorType: row.actor_type,
+        actorUserId: row.actor_user_id,
+        actorName: row.actor_name,
+        actorEmail: row.actor_email,
+        oldData: row.old_data,
+        newData: row.new_data,
+        notes: row.notes,
+        createdAt: row.created_at,
+      }));
+    },
+  });
+};

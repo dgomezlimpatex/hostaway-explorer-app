@@ -12,7 +12,7 @@ import {
 } from '@/components/ui/select';
 import {
   Search, Eye, EyeOff, Copy, ExternalLink, Link2, LogIn, Loader2, Camera, CameraOff,
-  CalendarPlus, CalendarOff,
+  CalendarPlus, CalendarOff, History,
 } from 'lucide-react';
 import {
   useAdminClientPortals,
@@ -21,6 +21,7 @@ import {
   useCreatePortalAccess,
 } from '@/hooks/useClientPortal';
 import { useAdminPortalBypass } from '@/hooks/useAdminPortalBypass';
+import { ClientReservationHistoryModal } from '@/components/client-portal/ClientReservationHistoryModal';
 import { useToast } from '@/hooks/use-toast';
 
 const createClientSlug = (name: string): string =>
@@ -47,6 +48,7 @@ const ClientPortalsAdmin = () => {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [photosFilter, setPhotosFilter] = useState<PhotosFilter>('all');
   const [shownPins, setShownPins] = useState<Set<string>>(new Set());
+  const [historyTarget, setHistoryTarget] = useState<{ id: string; name: string } | null>(null);
 
   const filtered = useMemo(() => {
     return rows.filter(r => {
@@ -226,26 +228,37 @@ const ClientPortalsAdmin = () => {
                             : '—'}
                         </TableCell>
                         <TableCell className="text-right">
-                          {!a ? (
+                          <div className="flex items-center justify-end gap-1">
                             <Button
                               size="sm"
-                              variant="outline"
-                              onClick={() => createAccess.mutate(row.clientId)}
-                              disabled={createAccess.isPending}
+                              variant="ghost"
+                              onClick={() => setHistoryTarget({ id: row.clientId, name: row.clientName })}
+                              title="Ver historial de cambios del portal"
                             >
-                              <Link2 className="h-3.5 w-3.5 mr-1" />
-                              Crear acceso
+                              <History className="h-3.5 w-3.5 mr-1" />
+                              Historial
                             </Button>
-                          ) : (
-                            <Button
-                              size="sm"
-                              onClick={() => bypass.mutate({ clientId: row.clientId, clientName: row.clientName })}
-                              disabled={bypass.isPending || !a.isActive}
-                            >
-                              <LogIn className="h-3.5 w-3.5 mr-1" />
-                              Acceder
-                            </Button>
-                          )}
+                            {!a ? (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => createAccess.mutate(row.clientId)}
+                                disabled={createAccess.isPending}
+                              >
+                                <Link2 className="h-3.5 w-3.5 mr-1" />
+                                Crear acceso
+                              </Button>
+                            ) : (
+                              <Button
+                                size="sm"
+                                onClick={() => bypass.mutate({ clientId: row.clientId, clientName: row.clientName })}
+                                disabled={bypass.isPending || !a.isActive}
+                              >
+                                <LogIn className="h-3.5 w-3.5 mr-1" />
+                                Acceder
+                              </Button>
+                            )}
+                          </div>
                         </TableCell>
                       </TableRow>
                     );
@@ -263,6 +276,13 @@ const ClientPortalsAdmin = () => {
           )}
         </CardContent>
       </Card>
+
+      <ClientReservationHistoryModal
+        open={!!historyTarget}
+        onOpenChange={(open) => !open && setHistoryTarget(null)}
+        clientId={historyTarget?.id ?? null}
+        clientName={historyTarget?.name ?? null}
+      />
     </div>
   );
 };

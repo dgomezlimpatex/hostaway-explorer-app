@@ -741,29 +741,50 @@ export type Database = {
       client_reservation_logs: {
         Row: {
           action: string
+          actor_email: string | null
+          actor_name: string | null
+          actor_type: string | null
+          actor_user_id: string | null
           client_id: string
           created_at: string
           id: string
           new_data: Json | null
+          notes: string | null
           old_data: Json | null
+          property_id: string | null
+          property_name: string | null
           reservation_id: string | null
         }
         Insert: {
           action: string
+          actor_email?: string | null
+          actor_name?: string | null
+          actor_type?: string | null
+          actor_user_id?: string | null
           client_id: string
           created_at?: string
           id?: string
           new_data?: Json | null
+          notes?: string | null
           old_data?: Json | null
+          property_id?: string | null
+          property_name?: string | null
           reservation_id?: string | null
         }
         Update: {
           action?: string
+          actor_email?: string | null
+          actor_name?: string | null
+          actor_type?: string | null
+          actor_user_id?: string | null
           client_id?: string
           created_at?: string
           id?: string
           new_data?: Json | null
+          notes?: string | null
           old_data?: Json | null
+          property_id?: string | null
+          property_name?: string | null
           reservation_id?: string | null
         }
         Relationships: [
@@ -3814,6 +3835,27 @@ export type Database = {
         Returns: {
           allow_reservation_creation: boolean
           client_id: string
+        }[]
+      }
+      get_client_reservation_history: {
+        Args: { _client_id: string; _limit?: number; _offset?: number }
+        Returns: {
+          action: string
+          actor_email: string
+          actor_name: string
+          actor_type: string
+          actor_user_id: string
+          client_id: string
+          client_name: string
+          created_at: string
+          id: string
+          new_data: Json
+          notes: string
+          old_data: Json
+          property_code: string
+          property_id: string
+          property_name: string
+          reservation_id: string
         }[]
       }
       get_current_user_role: {
