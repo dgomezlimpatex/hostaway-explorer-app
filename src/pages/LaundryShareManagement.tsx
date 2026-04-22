@@ -189,7 +189,11 @@ const LinkCard = ({
   onOpen: () => void;
   onDelete: () => void;
   onApplyChanges: (currentTaskIds: string[]) => void;
-  onAutoMergeNewTasks: (currentTaskIds: string[], existingSnapshotIds: string[]) => Promise<void>;
+  onAutoMergeNewTasks: (
+    currentTaskIds: string[],
+    existingSnapshotIds: string[],
+    originalTaskIds: string[],
+  ) => Promise<void>;
 }) => {
   const { data: changes } = useTaskChanges(link);
   const { stats } = useLaundryTracking(link.id);
@@ -211,9 +215,9 @@ const LinkCard = ({
     (async () => {
       const sedeIds = link.filters?.sedeIds || (link.filters?.sedeId ? [link.filters.sedeId] : undefined);
       const currentIds = await fetchLaundryTasksForDateRange(link.dateStart, link.dateEnd, sedeIds);
-      await onAutoMergeNewTasks(currentIds, link.snapshotTaskIds);
+      await onAutoMergeNewTasks(currentIds, link.snapshotTaskIds, link.originalTaskIds);
     })();
-  }, [hasNewTasks, changes, link.id, link.dateStart, link.dateEnd, link.filters, link.snapshotTaskIds, onAutoMergeNewTasks]);
+  }, [hasNewTasks, changes, link.id, link.dateStart, link.dateEnd, link.filters, link.snapshotTaskIds, link.originalTaskIds, onAutoMergeNewTasks]);
 
   const [applying, setApplying] = useState(false);
   const handleApplyRemoved = async () => {
