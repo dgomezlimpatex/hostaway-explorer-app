@@ -30,6 +30,7 @@ export const TaskCardActions: React.FC<TaskCardActionsProps> = ({
   showActions = true,
 }) => {
   const { userRole } = useAuth();
+  const canManageTasks = userRole === 'admin' || userRole === 'manager';
 
   const handleEdit = () => {
     console.log('🔍 TaskCardActions handleEdit clicked');
@@ -64,8 +65,8 @@ export const TaskCardActions: React.FC<TaskCardActionsProps> = ({
 
   return (
     <div className="pt-4 mt-4 border-t border-gray-100 space-y-3">
-      {/* Show edit, delete, and assign buttons only for non-cleaner roles */}
-      {userRole !== 'cleaner' && (
+      {/* Edit, delete, and assign buttons only for admin/manager */}
+      {canManageTasks && (
         <div className="flex items-center gap-2 flex-wrap">
           <Button
             variant="outline"

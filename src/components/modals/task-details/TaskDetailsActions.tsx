@@ -26,6 +26,7 @@ export const TaskDetailsActions = ({
   const { userRole } = useAuth();
   const { data: existingReport } = useTaskReport(task.id);
   const { cleaners } = useCleaners();
+  const canManageTasks = userRole === 'admin' || userRole === 'manager';
   const canCreateReport = userRole === 'cleaner' && task?.cleanerId;
   const canViewReport = ['admin', 'manager', 'supervisor'].includes(userRole || '') || (userRole === 'cleaner' && !!task?.cleanerId);
 
@@ -59,7 +60,7 @@ export const TaskDetailsActions = ({
   return (
     <div className="flex flex-wrap items-center gap-2 w-full">
       {/* Eliminar */}
-      {userRole !== 'cleaner' && onDelete && (
+      {canManageTasks && onDelete && (
         <Button variant="destructive" size="sm" onClick={onDelete} className="flex items-center gap-1 text-xs px-2 h-8">
           <Trash2 className="h-3 w-3" />
           <span className="hidden xs:inline">Eliminar</span>
@@ -67,7 +68,7 @@ export const TaskDetailsActions = ({
       )}
 
       {/* Asignar individual */}
-      {onAssign && userRole !== 'cleaner' && (
+      {onAssign && canManageTasks && (
         <Select onValueChange={(value) => {
           const [cleanerId, cleanerName] = value.split('|');
           onAssign(cleanerId, cleanerName);
@@ -87,7 +88,7 @@ export const TaskDetailsActions = ({
       )}
 
       {/* Asignar múltiples */}
-      {onAssignMultiple && userRole !== 'cleaner' && (
+      {onAssignMultiple && canManageTasks && (
         <Button
           variant="outline"
           size="sm"
@@ -100,7 +101,7 @@ export const TaskDetailsActions = ({
       )}
 
       {/* Desasignar */}
-      {task.cleaner && onUnassign && userRole !== 'cleaner' && (
+      {task.cleaner && onUnassign && canManageTasks && (
         <Button variant="outline" size="sm" onClick={onUnassign} className="flex items-center gap-1 text-xs px-2 h-8">
           <UserX className="h-3 w-3" />
           <span className="hidden xs:inline">Desasignar</span>

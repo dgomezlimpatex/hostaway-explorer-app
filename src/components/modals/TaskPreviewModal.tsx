@@ -80,8 +80,8 @@ export const TaskPreviewModal: React.FC<TaskPreviewModalProps> = ({
   const today = new Date();
   const taskDate = new Date(task.date + 'T00:00:00');
   const isTaskFromToday = taskDate.toDateString() === today.toDateString();
-  const canEditTask = ['admin', 'manager', 'supervisor'].includes(userRole || '');
-  const canAssignCleaner = ['admin', 'manager', 'supervisor'].includes(userRole || '');
+  const canEditTask = ['admin', 'manager'].includes(userRole || '');
+  const canAssignCleaner = ['admin', 'manager'].includes(userRole || '');
   const hasReport = !!existingReport;
 
   const googleMapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(task.address)}`;
