@@ -919,13 +919,17 @@ export const useCancelReservation = () => {
           .eq('id', current.task_id);
       }
       
-      // Log the action
+      // Log the action (incluye actor)
+      const cancelActor = await buildReservationLogActor(clientName);
       await supabase
         .from('client_reservation_logs')
         .insert({
           reservation_id: reservationId,
           client_id: clientId,
           action: 'cancelled',
+          property_id: current.property_id,
+          property_name: propertyName,
+          ...cancelActor,
           old_data: {
             propertyId: current.property_id,
             propertyName,
