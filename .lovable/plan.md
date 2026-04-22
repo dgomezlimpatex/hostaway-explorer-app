@@ -1,73 +1,57 @@
 
 
-# Plan: corregir fechas de entrada/salida en el calendario del portal del cliente para reservas de Avantio/Hostaway
+## Problema detectado
 
-## Problema
+Cuando un admin abre el modal "Editar Tareas del Enlace" desde móvil y desmarca propiedades para excluirlas del reparto, los cambios se guardan correctamente en `snapshot_task_ids`. **Sin embargo, las propiedades vuelven a aparecer al poco tiempo** (al refrescarse el listado o al entrar otro usuario).
 
-En el calendario del portal del cliente, las reservas que provienen de Avantio (Turquoise) y Hostaway aparecen siempre como una "estancia de 1 noche" con entrada el día anterior a la limpieza y salida el mismo día de la limpieza. Esto es incorrecto: las fechas reales (`arrival_date` y `departure_date`) ya están en la base de datos en `avantio_reservations` y `hostaway_reservations`, pero el portal no las usa.
+## Causa raíz
 
-**Ejemplos confirmados en la BD:**
-- **MR16.1** (reserva Avantio 31488920): real 22-abr → 25-abr. Portal muestra: 24-abr → 25-abr. ❌
-- **CMD18.5A**: real ~22-abr → 23-abr (la tarea de limpieza es del 23). Portal muestra: 22-abr → 23-abr. ❌
+Hay dos mecanismos que están deshaciendo la exclusión manual:
 
-**Causa raíz:** en `useClientPortalBookings` (`src/hooks/useClientPortal.ts`), las "tareas externas" se mapean con `checkInDate: null` y `checkOutDate: null`. Después, en `bookingToReservation` (`ReservationsCalendar.tsx`), al detectar `source === 'external'` se inventa una estancia ficticia `[día_limpieza − 1, día_limpieza]`.
+1. **El "auto-merge" silencioso de tareas nuevas** (en `LaundryShareManagement.tsx` → `LinkCard`):
+   - Cuando detecta que existe alguna reserva nueva en el rango de fechas (cualquiera, no necesariamente recién creada), dispara `applyTaskChanges` en modo `merge`.
+   - El modo `merge` (en `useLaundryShareLinks.ts`) hace la **unión completa** de `existingSnapshotIds + currentTaskIds`. Esto **vuelve a meter en el snapshot todas las tareas excluidas manualmente**, porque `currentTaskIds` contiene también las que el admin acababa de quitar.
+   - Además, el merge sobrescribe `original_task_ids = currentTaskIds`, perdiendo el baseline real.
 
-## Solución
+2. **El modal de edición no actualiza `original_task_ids`** al guardar (`LaundryShareEditModal.tsx` línea 131):
+   - Solo modifica `snapshot_task_ids`.
+   - Como `original_task_ids` sigue conteniendo todas las tareas originales, el sistema no marca a las tareas excluidas como "ya conocidas". En el siguiente ciclo, al unirse con `currentTaskIds`, vuelven al snapshot.
 
-Enriquecer cada tarea externa con las fechas reales de la reserva original (Avantio o Hostaway) cuando exista vinculación por `task_id`. Como las RLS actuales no permiten al `anon` leer esas tablas, exponer una RPC `SECURITY DEFINER` que devuelva sólo lo estrictamente necesario para el calendario (sin datos personales).
+Resultado: cualquier exclusión manual queda revertida en segundos por el auto-merge.
 
-## Cambios
+## Solución propuesta
 
-### 1. Base de datos (migración)
-Crear función RPC pública para que el portal anónimo obtenga las fechas reales:
+### Cambio 1 — `useLaundryShareLinks.ts` (modo `merge` correcto)
 
-```sql
-CREATE OR REPLACE FUNCTION public.get_portal_reservation_dates_by_task_ids(_task_ids uuid[])
-RETURNS TABLE (
-  task_id uuid,
-  arrival_date date,
-  departure_date date,
-  adults int,
-  children int,
-  source text
-)
-LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$
-  SELECT task_id, arrival_date, departure_date, adults, children, 'avantio'
-  FROM avantio_reservations
-  WHERE task_id = ANY(_task_ids) AND status NOT IN ('cancelled','CANCELLED')
-  UNION ALL
-  SELECT task_id, arrival_date, departure_date, adults, children, 'hostaway'
-  FROM hostaway_reservations
-  WHERE task_id = ANY(_task_ids) AND status <> 'cancelled';
-$$;
-GRANT EXECUTE ON FUNCTION public.get_portal_reservation_dates_by_task_ids(uuid[]) TO anon, authenticated;
+El merge debe añadir **únicamente las tareas verdaderamente nuevas** (las que no estaban en `originalTaskIds`), no la totalidad de `currentTaskIds`. La firma de la mutación pasará a aceptar también `originalTaskIds`:
+
+```text
+nextSnapshot = existingSnapshotIds ∪ (currentTaskIds \ originalTaskIds)
 ```
 
-No se exponen nombre del huésped, email, importes ni notas — sólo fechas y nº de huéspedes (que ya se muestra en el portal para reservas manuales).
+Así se preservan las exclusiones manuales y solo se incorporan las reservas que aparecieron después de la última edición.
 
-### 2. Frontend: `src/hooks/useClientPortal.ts`
-En `useClientPortalBookings`, después de construir `externalBookings`:
+### Cambio 2 — `LaundryShareManagement.tsx` (auto-merge bien parametrizado)
 
-1. Recolectar los `task_id` de todas las tareas externas.
-2. Llamar `supabase.rpc('get_portal_reservation_dates_by_task_ids', { _task_ids })`.
-3. Construir un `Map<taskId, {arrival_date, departure_date, adults, children}>`.
-4. Sustituir `checkInDate`/`checkOutDate`/`guestCount` de cada `externalBooking` por los valores reales cuando estén disponibles. Si no hay match (tarea manual no vinculada a Avantio/Hostaway), se mantiene el comportamiento actual.
+`handleAutoMergeNewTasks` y la llamada desde `LinkCard` pasarán `link.originalTaskIds` para que el merge sepa qué es "nuevo" de verdad.
 
-### 3. Frontend: `src/components/client-portal/ReservationsCalendar.tsx`
-Modificar `bookingToReservation` para que el "fallback de 1 noche" solo se active cuando `checkInDate`/`checkOutDate` siguen siendo `null` (tarea externa sin reserva vinculada, ej. recurrentes o tareas manuales). Si tiene fechas reales, se usan tal cual.
+### Cambio 3 — `LaundryShareEditModal.tsx` (guardar baseline al editar)
 
-## Sección técnica
+Al guardar la edición manual, además de actualizar `snapshot_task_ids` se actualizará `original_task_ids` con el listado actual completo de tareas del rango. Esto reinicia el baseline: a partir de ese momento, las tareas excluidas dejan de considerarse "nuevas" y el auto-merge no las re-añade.
 
-- **Tablas tocadas:** ninguna estructura nueva. Solo una nueva función RPC `SECURITY DEFINER`.
-- **Seguridad:** la RPC sólo devuelve fechas y número de adultos/niños indexados por `task_id`. No filtra por cliente, pero los `task_id` ya están filtrados aguas arriba a las tareas del cliente autenticado en el portal.
-- **Performance:** una sola llamada RPC adicional por carga del portal (batch con todos los task_ids).
-- **Cancelaciones:** se filtran reservas canceladas en la propia RPC para evitar mostrar fechas obsoletas.
-- **Compatibilidad:** las reservas manuales del portal (`source: 'manual'`) no se ven afectadas; siguen usando `check_in_date`/`check_out_date` de `client_reservations`.
+### Cambio 4 — Invalidación de caché
 
-## Verificación tras el cambio
+Tras guardar, invalidar también `share-link-changes` para que el badge de "Cambios pendientes" y el auto-merge usen el nuevo baseline inmediatamente.
 
-Comprobar en el calendario que:
-- MR16.1 muestra estancia 22-abr → 25-abr (3 noches) en lugar de 1 noche.
-- CMD18.5A muestra la estancia real completa.
-- Las tareas recurrentes/manuales sin reserva vinculada siguen apareciendo como bloque de 1 día (comportamiento actual).
+## Archivos que se modificarán
+
+- `src/hooks/useLaundryShareLinks.ts` — corregir lógica del modo `merge` y aceptar `originalTaskIds` como parámetro.
+- `src/pages/LaundryShareManagement.tsx` — propagar `originalTaskIds` al `applyTaskChanges` desde `handleAutoMergeNewTasks` / `LinkCard`.
+- `src/components/laundry-share/LaundryShareEditModal.tsx` — actualizar `original_task_ids` además de `snapshot_task_ids` al guardar, e invalidar la query `share-link-changes`.
+
+## Resultado esperado
+
+- Cuando el admin desmarca propiedades en el modal y guarda, esas propiedades **dejan de aparecer permanentemente** en la vista pública del repartidor.
+- Las reservas verdaderamente nuevas (creadas después de la edición) se siguen añadiendo automáticamente al enlace, sin tocar las exclusiones manuales.
+- No se requiere ningún cambio en base de datos ni en las edge functions.
 
