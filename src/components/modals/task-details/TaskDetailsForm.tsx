@@ -118,6 +118,7 @@ export const TaskDetailsForm = ({
           formData={{ ...formData, date: task.date, startTime: task.startTime, endTime: task.endTime }}
           propertyData={propertyData}
           onFieldChange={() => {}}
+          readOnly
         />
       )}
 
