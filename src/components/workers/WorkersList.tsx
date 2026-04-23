@@ -27,6 +27,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { DeactivateWorkerDialog } from "./DeactivateWorkerDialog";
 
 interface WorkersListProps {
   workers: Cleaner[];
@@ -38,6 +39,7 @@ interface WorkersListProps {
 export const WorkersList = ({ workers, isLoading, onEditWorker, onViewWorker }: WorkersListProps) => {
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   const [localWorkers, setLocalWorkers] = useState<Cleaner[]>(workers);
+  const [workerToDeactivate, setWorkerToDeactivate] = useState<Cleaner | null>(null);
   const isMobile = useIsMobile();
   
   const deleteCleaner = useDeleteCleaner();
@@ -53,9 +55,15 @@ export const WorkersList = ({ workers, isLoading, onEditWorker, onViewWorker }: 
   };
 
   const handleToggleActive = (worker: Cleaner) => {
+    if (worker.isActive) {
+      // Desactivar: abrir diálogo con conteo de tareas y opción de desasignar
+      setWorkerToDeactivate(worker);
+      return;
+    }
+    // Reactivar: directo
     updateCleaner.mutate({
       id: worker.id,
-      updates: { isActive: !worker.isActive }
+      updates: { isActive: true }
     });
   };
 
@@ -122,6 +130,7 @@ export const WorkersList = ({ workers, isLoading, onEditWorker, onViewWorker }: 
   // Mobile: card-based layout
   if (isMobile) {
     return (
+      <>
       <div className="space-y-2">
         {localWorkers.map((worker) => (
           <Card 
@@ -194,11 +203,18 @@ export const WorkersList = ({ workers, isLoading, onEditWorker, onViewWorker }: 
           </Card>
         ))}
       </div>
+      <DeactivateWorkerDialog
+        worker={workerToDeactivate}
+        open={!!workerToDeactivate}
+        onOpenChange={(o) => { if (!o) setWorkerToDeactivate(null); }}
+      />
+      </>
     );
   }
 
   // Desktop: table layout
   return (
+    <>
     <div className="rounded-md border">
       <Table>
         <TableHeader>
@@ -307,5 +323,11 @@ export const WorkersList = ({ workers, isLoading, onEditWorker, onViewWorker }: 
         </TableBody>
       </Table>
     </div>
+    <DeactivateWorkerDialog
+      worker={workerToDeactivate}
+      open={!!workerToDeactivate}
+      onOpenChange={(o) => { if (!o) setWorkerToDeactivate(null); }}
+    />
+    </>
   );
 };
