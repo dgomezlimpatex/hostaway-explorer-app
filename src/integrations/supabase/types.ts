@@ -738,6 +738,63 @@ export type Database = {
           },
         ]
       }
+      client_portal_access_logs: {
+        Row: {
+          access_type: string
+          actor_email: string | null
+          actor_name: string | null
+          actor_user_id: string | null
+          client_id: string
+          created_at: string
+          id: string
+          ip_address: string | null
+          metadata: Json | null
+          portal_access_id: string | null
+          user_agent: string | null
+        }
+        Insert: {
+          access_type: string
+          actor_email?: string | null
+          actor_name?: string | null
+          actor_user_id?: string | null
+          client_id: string
+          created_at?: string
+          id?: string
+          ip_address?: string | null
+          metadata?: Json | null
+          portal_access_id?: string | null
+          user_agent?: string | null
+        }
+        Update: {
+          access_type?: string
+          actor_email?: string | null
+          actor_name?: string | null
+          actor_user_id?: string | null
+          client_id?: string
+          created_at?: string
+          id?: string
+          ip_address?: string | null
+          metadata?: Json | null
+          portal_access_id?: string | null
+          user_agent?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_portal_access_logs_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_portal_access_logs_portal_access_id_fkey"
+            columns: ["portal_access_id"]
+            isOneToOne: false
+            referencedRelation: "client_portal_access"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       client_reservation_logs: {
         Row: {
           action: string
@@ -3830,6 +3887,22 @@ export type Database = {
         Args: { _client_id: string }
         Returns: boolean
       }
+      get_client_portal_access_history: {
+        Args: { _client_id: string; _limit?: number; _offset?: number }
+        Returns: {
+          access_type: string
+          actor_email: string
+          actor_name: string
+          actor_user_id: string
+          client_id: string
+          created_at: string
+          id: string
+          ip_address: string
+          metadata: Json
+          portal_access_id: string
+          user_agent: string
+        }[]
+      }
       get_client_portal_settings: {
         Args: { _client_id: string }
         Returns: {
@@ -3891,6 +3964,19 @@ export type Database = {
       }
       list_avantio_cron_jobs: { Args: never; Returns: Json }
       list_hostaway_cron_jobs: { Args: never; Returns: Json }
+      log_client_portal_access: {
+        Args: {
+          _access_type: string
+          _actor_email?: string
+          _actor_name?: string
+          _actor_user_id?: string
+          _client_id: string
+          _metadata?: Json
+          _portal_access_id: string
+          _user_agent?: string
+        }
+        Returns: string
+      }
       log_security_event: {
         Args: { event_data?: Json; event_type: string; target_user_id?: string }
         Returns: undefined
