@@ -214,6 +214,7 @@ export const WorkersList = ({ workers, isLoading, onEditWorker, onViewWorker }: 
 
   // Desktop: table layout
   return (
+    <>
     <div className="rounded-md border">
       <Table>
         <TableHeader>
@@ -322,5 +323,11 @@ export const WorkersList = ({ workers, isLoading, onEditWorker, onViewWorker }: 
         </TableBody>
       </Table>
     </div>
+    <DeactivateWorkerDialog
+      worker={workerToDeactivate}
+      open={!!workerToDeactivate}
+      onOpenChange={(o) => { if (!o) setWorkerToDeactivate(null); }}
+    />
+    </>
   );
 };
