@@ -130,6 +130,7 @@ export const WorkersList = ({ workers, isLoading, onEditWorker, onViewWorker }: 
   // Mobile: card-based layout
   if (isMobile) {
     return (
+      <>
       <div className="space-y-2">
         {localWorkers.map((worker) => (
           <Card 
@@ -202,6 +203,12 @@ export const WorkersList = ({ workers, isLoading, onEditWorker, onViewWorker }: 
           </Card>
         ))}
       </div>
+      <DeactivateWorkerDialog
+        worker={workerToDeactivate}
+        open={!!workerToDeactivate}
+        onOpenChange={(o) => { if (!o) setWorkerToDeactivate(null); }}
+      />
+      </>
     );
   }
 
