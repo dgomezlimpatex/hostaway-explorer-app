@@ -11,13 +11,17 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import {
   Loader2, CalendarPlus, Pencil, CalendarX, Search, History,
   User as UserIcon, Shield, Cog, Home as HomeIcon, ArrowRight, Clock,
+  LogIn, KeyRound, Smartphone,
 } from 'lucide-react';
 import {
   useClientReservationHistory,
+  useClientPortalAccessHistory,
   ClientReservationHistoryEntry,
+  ClientPortalAccessLogEntry,
 } from '@/hooks/useClientPortal';
 
 interface ClientReservationHistoryModalProps {
@@ -29,6 +33,7 @@ interface ClientReservationHistoryModalProps {
 
 type ActionFilter = 'all' | 'created' | 'updated' | 'cancelled';
 type ActorFilter = 'all' | 'client' | 'internal' | 'system';
+type AccessTypeFilter = 'all' | 'client_pin' | 'admin_bypass';
 
 const actionMeta: Record<string, { label: string; icon: typeof CalendarPlus; className: string }> = {
   created: {
@@ -71,9 +76,21 @@ const actorMeta: Record<string, { label: string; icon: typeof UserIcon; classNam
   },
 };
 
+const accessTypeMeta: Record<string, { label: string; icon: typeof LogIn; className: string }> = {
+  client_pin: {
+    label: 'Cliente (PIN)',
+    icon: KeyRound,
+    className: 'bg-amber-500/15 text-amber-700 border-amber-200',
+  },
+  admin_bypass: {
+    label: 'Admin / Manager',
+    icon: Shield,
+    className: 'bg-violet-500/15 text-violet-700 border-violet-200',
+  },
+};
+
 const formatDateValue = (value: unknown): string => {
   if (!value || typeof value !== 'string') return '—';
-  // Acepta fechas ISO (YYYY-MM-DD) y timestamps.
   try {
     const d = value.length === 10 ? new Date(value + 'T00:00:00') : new Date(value);
     if (isNaN(d.getTime())) return String(value);
@@ -138,7 +155,6 @@ const renderEntryDetails = (entry: ClientReservationHistoryEntry): React.ReactNo
     );
   }
 
-  // updated
   const diffs = [
     diffField('Propiedad', oldD.propertyName, newD.propertyName),
     diffField('Check-in', oldD.checkInDate, newD.checkInDate, true),
@@ -153,8 +169,8 @@ const renderEntryDetails = (entry: ClientReservationHistoryEntry): React.ReactNo
   return <div className="space-y-1">{diffs}</div>;
 };
 
-const groupByDay = (entries: ClientReservationHistoryEntry[]) => {
-  const groups = new Map<string, ClientReservationHistoryEntry[]>();
+const groupByDay = <T extends { createdAt: string }>(entries: T[]) => {
+  const groups = new Map<string, T[]>();
   for (const e of entries) {
     const day = format(new Date(e.createdAt), 'yyyy-MM-dd');
     if (!groups.has(day)) groups.set(day, []);
@@ -163,12 +179,9 @@ const groupByDay = (entries: ClientReservationHistoryEntry[]) => {
   return Array.from(groups.entries()).sort(([a], [b]) => (a > b ? -1 : 1));
 };
 
-export const ClientReservationHistoryModal = ({
-  open,
-  onOpenChange,
-  clientId,
-  clientName,
-}: ClientReservationHistoryModalProps) => {
+// ============= TAB: CHANGES =============
+
+const ChangesTab = ({ clientId, open }: { clientId: string | null; open: boolean }) => {
   const { data: entries = [], isLoading, error } = useClientReservationHistory(
     clientId ?? undefined,
     { enabled: open && !!clientId },
@@ -207,146 +220,342 @@ export const ClientReservationHistoryModal = ({
   const grouped = useMemo(() => groupByDay(filtered), [filtered]);
 
   return (
+    <>
+      <div className="px-6 py-3 border-b grid grid-cols-1 md:grid-cols-3 gap-2">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Buscar propiedad, persona..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pl-9"
+          />
+        </div>
+        <Select value={actionFilter} onValueChange={(v) => setActionFilter(v as ActionFilter)}>
+          <SelectTrigger><SelectValue placeholder="Tipo de acción" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todas las acciones</SelectItem>
+            <SelectItem value="created">Añadidas</SelectItem>
+            <SelectItem value="updated">Editadas</SelectItem>
+            <SelectItem value="cancelled">Canceladas</SelectItem>
+          </SelectContent>
+        </Select>
+        <Select value={actorFilter} onValueChange={(v) => setActorFilter(v as ActorFilter)}>
+          <SelectTrigger><SelectValue placeholder="Origen del cambio" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todos los orígenes</SelectItem>
+            <SelectItem value="client">Cliente (portal)</SelectItem>
+            <SelectItem value="internal">Equipo interno</SelectItem>
+            <SelectItem value="system">Sistema</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      <ScrollArea className="flex-1 min-h-[300px]">
+        <div className="px-6 py-4">
+          {isLoading ? (
+            <div className="py-12 text-center">
+              <Loader2 className="h-6 w-6 animate-spin mx-auto text-muted-foreground" />
+            </div>
+          ) : error ? (
+            <div className="py-12 text-center text-sm text-rose-600">
+              No se pudo cargar el historial: {(error as Error).message}
+            </div>
+          ) : grouped.length === 0 ? (
+            <div className="py-12 text-center text-sm text-muted-foreground">
+              {entries.length === 0
+                ? 'Aún no hay cambios registrados para este cliente.'
+                : 'Ningún registro coincide con los filtros aplicados.'}
+            </div>
+          ) : (
+            <div className="space-y-6">
+              {grouped.map(([day, dayEntries]) => (
+                <div key={day}>
+                  <div className="sticky top-0 bg-background/95 backdrop-blur z-10 py-1 mb-2">
+                    <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                      {format(new Date(day + 'T00:00:00'), "EEEE, d 'de' MMMM yyyy", { locale: es })}
+                    </h3>
+                  </div>
+                  <ol className="relative border-l border-border ml-2 space-y-3">
+                    {dayEntries.map((entry) => {
+                      const aMeta = actionMeta[entry.action] ?? actionMeta.updated;
+                      const ActionIcon = aMeta.icon;
+                      const aType = entry.actorType ?? 'system';
+                      const acMeta = actorMeta[aType] ?? actorMeta.system;
+                      const ActorIcon = acMeta.icon;
+                      return (
+                        <li key={entry.id} className="ml-4">
+                          <span className="absolute -left-[7px] flex h-3.5 w-3.5 items-center justify-center rounded-full bg-background ring-4 ring-background">
+                            <span className={`h-2 w-2 rounded-full ${aMeta.className.split(' ')[0]}`} />
+                          </span>
+                          <div className="rounded-lg border bg-card p-3 shadow-sm">
+                            <div className="flex flex-wrap items-center gap-2 mb-2">
+                              <Badge variant="outline" className={aMeta.className}>
+                                <ActionIcon className="h-3 w-3 mr-1" />
+                                {aMeta.label}
+                              </Badge>
+                              <Badge variant="outline" className={acMeta.className}>
+                                <ActorIcon className="h-3 w-3 mr-1" />
+                                {acMeta.label}
+                              </Badge>
+                              <span className="ml-auto text-xs text-muted-foreground flex items-center gap-1">
+                                <Clock className="h-3 w-3" />
+                                {format(new Date(entry.createdAt), 'HH:mm')}
+                                <span className="text-muted-foreground/70">
+                                  · {formatDistanceToNow(new Date(entry.createdAt), { addSuffix: true, locale: es })}
+                                </span>
+                              </span>
+                            </div>
+
+                            {(entry.propertyName || entry.propertyCode) && (
+                              <div className="flex items-center gap-2 text-sm font-medium mb-1">
+                                <HomeIcon className="h-3.5 w-3.5 text-muted-foreground" />
+                                {entry.propertyName ?? '—'}
+                                {entry.propertyCode && (
+                                  <span className="text-xs text-muted-foreground font-mono">
+                                    ({entry.propertyCode})
+                                  </span>
+                                )}
+                              </div>
+                            )}
+
+                            <div className="text-xs text-muted-foreground mb-2">
+                              Por <span className="font-medium text-foreground">
+                                {entry.actorName ?? 'Sistema (sin registro de actor)'}
+                              </span>
+                              {entry.actorEmail && (
+                                <span className="ml-1 text-muted-foreground/70">
+                                  ({entry.actorEmail})
+                                </span>
+                              )}
+                            </div>
+
+                            {renderEntryDetails(entry)}
+                          </div>
+                        </li>
+                      );
+                    })}
+                  </ol>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </ScrollArea>
+
+      <div className="px-6 py-3 border-t bg-muted/30 flex items-center justify-between text-xs text-muted-foreground">
+        <span>
+          {filtered.length} {filtered.length === 1 ? 'movimiento' : 'movimientos'}
+          {entries.length !== filtered.length && ` (de ${entries.length})`}
+        </span>
+      </div>
+    </>
+  );
+};
+
+// ============= TAB: ACCESS LOGS =============
+
+const summarizeUserAgent = (ua: string | null): string => {
+  if (!ua) return 'Dispositivo desconocido';
+  const lower = ua.toLowerCase();
+  let device = 'Escritorio';
+  if (/iphone|ipad|ipod/.test(lower)) device = 'iOS';
+  else if (/android/.test(lower)) device = 'Android';
+  else if (/mobile/.test(lower)) device = 'Móvil';
+
+  let browser = 'Navegador';
+  if (/edg\//.test(lower)) browser = 'Edge';
+  else if (/chrome\//.test(lower)) browser = 'Chrome';
+  else if (/firefox\//.test(lower)) browser = 'Firefox';
+  else if (/safari\//.test(lower)) browser = 'Safari';
+
+  return `${browser} · ${device}`;
+};
+
+const AccessTab = ({ clientId, open }: { clientId: string | null; open: boolean }) => {
+  const { data: entries = [], isLoading, error } = useClientPortalAccessHistory(
+    clientId ?? undefined,
+    { enabled: open && !!clientId },
+  );
+
+  const [search, setSearch] = useState('');
+  const [typeFilter, setTypeFilter] = useState<AccessTypeFilter>('all');
+
+  const filtered = useMemo(() => {
+    return entries.filter((e) => {
+      if (typeFilter !== 'all' && e.accessType !== typeFilter) return false;
+      if (search) {
+        const haystack = [e.actorName, e.actorEmail, e.userAgent, e.ipAddress]
+          .filter(Boolean)
+          .join(' ')
+          .toLowerCase();
+        if (!haystack.includes(search.toLowerCase())) return false;
+      }
+      return true;
+    });
+  }, [entries, typeFilter, search]);
+
+  const grouped = useMemo(() => groupByDay(filtered), [filtered]);
+
+  return (
+    <>
+      <div className="px-6 py-3 border-b grid grid-cols-1 md:grid-cols-2 gap-2">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Buscar persona, dispositivo o IP..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pl-9"
+          />
+        </div>
+        <Select value={typeFilter} onValueChange={(v) => setTypeFilter(v as AccessTypeFilter)}>
+          <SelectTrigger><SelectValue placeholder="Tipo de acceso" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todos los accesos</SelectItem>
+            <SelectItem value="client_pin">Cliente con PIN</SelectItem>
+            <SelectItem value="admin_bypass">Admin / Manager</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      <ScrollArea className="flex-1 min-h-[300px]">
+        <div className="px-6 py-4">
+          {isLoading ? (
+            <div className="py-12 text-center">
+              <Loader2 className="h-6 w-6 animate-spin mx-auto text-muted-foreground" />
+            </div>
+          ) : error ? (
+            <div className="py-12 text-center text-sm text-rose-600">
+              No se pudo cargar el historial de accesos: {(error as Error).message}
+            </div>
+          ) : grouped.length === 0 ? (
+            <div className="py-12 text-center text-sm text-muted-foreground">
+              {entries.length === 0
+                ? 'Aún no se han registrado accesos al portal de este cliente.'
+                : 'Ningún acceso coincide con los filtros aplicados.'}
+            </div>
+          ) : (
+            <div className="space-y-6">
+              {grouped.map(([day, dayEntries]) => (
+                <div key={day}>
+                  <div className="sticky top-0 bg-background/95 backdrop-blur z-10 py-1 mb-2">
+                    <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                      {format(new Date(day + 'T00:00:00'), "EEEE, d 'de' MMMM yyyy", { locale: es })}
+                    </h3>
+                  </div>
+                  <ol className="relative border-l border-border ml-2 space-y-3">
+                    {dayEntries.map((entry) => {
+                      const meta = accessTypeMeta[entry.accessType] ?? accessTypeMeta.client_pin;
+                      const Icon = meta.icon;
+                      return (
+                        <li key={entry.id} className="ml-4">
+                          <span className="absolute -left-[7px] flex h-3.5 w-3.5 items-center justify-center rounded-full bg-background ring-4 ring-background">
+                            <span className={`h-2 w-2 rounded-full ${meta.className.split(' ')[0]}`} />
+                          </span>
+                          <div className="rounded-lg border bg-card p-3 shadow-sm">
+                            <div className="flex flex-wrap items-center gap-2 mb-2">
+                              <Badge variant="outline" className={meta.className}>
+                                <Icon className="h-3 w-3 mr-1" />
+                                {meta.label}
+                              </Badge>
+                              <span className="ml-auto text-xs text-muted-foreground flex items-center gap-1">
+                                <Clock className="h-3 w-3" />
+                                {format(new Date(entry.createdAt), 'HH:mm:ss')}
+                                <span className="text-muted-foreground/70">
+                                  · {formatDistanceToNow(new Date(entry.createdAt), { addSuffix: true, locale: es })}
+                                </span>
+                              </span>
+                            </div>
+
+                            <div className="text-sm font-medium flex items-center gap-2">
+                              <UserIcon className="h-3.5 w-3.5 text-muted-foreground" />
+                              {entry.actorName ?? (entry.accessType === 'client_pin' ? 'Cliente' : 'Usuario interno')}
+                              {entry.actorEmail && (
+                                <span className="text-xs text-muted-foreground font-normal">
+                                  ({entry.actorEmail})
+                                </span>
+                              )}
+                            </div>
+
+                            <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                              <span className="flex items-center gap-1">
+                                <Smartphone className="h-3 w-3" />
+                                {summarizeUserAgent(entry.userAgent)}
+                              </span>
+                              {entry.ipAddress && (
+                                <span className="font-mono">IP: {entry.ipAddress}</span>
+                              )}
+                            </div>
+                          </div>
+                        </li>
+                      );
+                    })}
+                  </ol>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </ScrollArea>
+
+      <div className="px-6 py-3 border-t bg-muted/30 flex items-center justify-between text-xs text-muted-foreground">
+        <span>
+          {filtered.length} {filtered.length === 1 ? 'acceso' : 'accesos'}
+          {entries.length !== filtered.length && ` (de ${entries.length})`}
+        </span>
+      </div>
+    </>
+  );
+};
+
+// ============= MODAL =============
+
+export const ClientReservationHistoryModal = ({
+  open,
+  onOpenChange,
+  clientId,
+  clientName,
+}: ClientReservationHistoryModalProps) => {
+  const [tab, setTab] = useState<'changes' | 'access'>('changes');
+
+  return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-3xl max-h-[90vh] flex flex-col p-0 gap-0">
         <DialogHeader className="px-6 pt-6 pb-3 border-b">
           <DialogTitle className="flex items-center gap-2">
             <History className="h-5 w-5" />
-            Historial de cambios — {clientName ?? 'Cliente'}
+            Historial — {clientName ?? 'Cliente'}
           </DialogTitle>
           <DialogDescription>
-            Registro auditado de todas las reservas creadas, editadas o canceladas en el portal de
-            este cliente. Solo visible para administradores.
+            Auditoría completa del portal de este cliente: cambios sobre reservas y accesos al
+            portal. Solo visible para administradores.
           </DialogDescription>
         </DialogHeader>
 
-        <div className="px-6 py-3 border-b grid grid-cols-1 md:grid-cols-3 gap-2">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Buscar propiedad, persona..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="pl-9"
-            />
+        <Tabs value={tab} onValueChange={(v) => setTab(v as 'changes' | 'access')} className="flex-1 flex flex-col min-h-0">
+          <div className="px-6 pt-3 border-b">
+            <TabsList className="grid w-full grid-cols-2 max-w-md">
+              <TabsTrigger value="changes" className="flex items-center gap-2">
+                <Pencil className="h-3.5 w-3.5" />
+                Cambios en reservas
+              </TabsTrigger>
+              <TabsTrigger value="access" className="flex items-center gap-2">
+                <LogIn className="h-3.5 w-3.5" />
+                Accesos al portal
+              </TabsTrigger>
+            </TabsList>
           </div>
-          <Select value={actionFilter} onValueChange={(v) => setActionFilter(v as ActionFilter)}>
-            <SelectTrigger><SelectValue placeholder="Tipo de acción" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todas las acciones</SelectItem>
-              <SelectItem value="created">Añadidas</SelectItem>
-              <SelectItem value="updated">Editadas</SelectItem>
-              <SelectItem value="cancelled">Canceladas</SelectItem>
-            </SelectContent>
-          </Select>
-          <Select value={actorFilter} onValueChange={(v) => setActorFilter(v as ActorFilter)}>
-            <SelectTrigger><SelectValue placeholder="Origen del cambio" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todos los orígenes</SelectItem>
-              <SelectItem value="client">Cliente (portal)</SelectItem>
-              <SelectItem value="internal">Equipo interno</SelectItem>
-              <SelectItem value="system">Sistema</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
 
-        <ScrollArea className="flex-1 min-h-[300px]">
-          <div className="px-6 py-4">
-            {isLoading ? (
-              <div className="py-12 text-center">
-                <Loader2 className="h-6 w-6 animate-spin mx-auto text-muted-foreground" />
-              </div>
-            ) : error ? (
-              <div className="py-12 text-center text-sm text-rose-600">
-                No se pudo cargar el historial: {(error as Error).message}
-              </div>
-            ) : grouped.length === 0 ? (
-              <div className="py-12 text-center text-sm text-muted-foreground">
-                {entries.length === 0
-                  ? 'Aún no hay cambios registrados para este cliente.'
-                  : 'Ningún registro coincide con los filtros aplicados.'}
-              </div>
-            ) : (
-              <div className="space-y-6">
-                {grouped.map(([day, dayEntries]) => (
-                  <div key={day}>
-                    <div className="sticky top-0 bg-background/95 backdrop-blur z-10 py-1 mb-2">
-                      <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                        {format(new Date(day + 'T00:00:00'), "EEEE, d 'de' MMMM yyyy", { locale: es })}
-                      </h3>
-                    </div>
-                    <ol className="relative border-l border-border ml-2 space-y-3">
-                      {dayEntries.map((entry) => {
-                        const aMeta = actionMeta[entry.action] ?? actionMeta.updated;
-                        const ActionIcon = aMeta.icon;
-                        const aType = entry.actorType ?? 'system';
-                        const acMeta = actorMeta[aType] ?? actorMeta.system;
-                        const ActorIcon = acMeta.icon;
-                        return (
-                          <li key={entry.id} className="ml-4">
-                            <span className="absolute -left-[7px] flex h-3.5 w-3.5 items-center justify-center rounded-full bg-background ring-4 ring-background">
-                              <span className={`h-2 w-2 rounded-full ${aMeta.className.replace('bg-', 'bg-').split(' ')[0]}`} />
-                            </span>
-                            <div className="rounded-lg border bg-card p-3 shadow-sm">
-                              <div className="flex flex-wrap items-center gap-2 mb-2">
-                                <Badge variant="outline" className={aMeta.className}>
-                                  <ActionIcon className="h-3 w-3 mr-1" />
-                                  {aMeta.label}
-                                </Badge>
-                                <Badge variant="outline" className={acMeta.className}>
-                                  <ActorIcon className="h-3 w-3 mr-1" />
-                                  {acMeta.label}
-                                </Badge>
-                                <span className="ml-auto text-xs text-muted-foreground flex items-center gap-1">
-                                  <Clock className="h-3 w-3" />
-                                  {format(new Date(entry.createdAt), 'HH:mm')}
-                                  <span className="text-muted-foreground/70">
-                                    · {formatDistanceToNow(new Date(entry.createdAt), { addSuffix: true, locale: es })}
-                                  </span>
-                                </span>
-                              </div>
+          <TabsContent value="changes" className="flex-1 flex flex-col min-h-0 mt-0 data-[state=inactive]:hidden">
+            <ChangesTab clientId={clientId} open={open && tab === 'changes'} />
+          </TabsContent>
+          <TabsContent value="access" className="flex-1 flex flex-col min-h-0 mt-0 data-[state=inactive]:hidden">
+            <AccessTab clientId={clientId} open={open && tab === 'access'} />
+          </TabsContent>
+        </Tabs>
 
-                              {(entry.propertyName || entry.propertyCode) && (
-                                <div className="flex items-center gap-2 text-sm font-medium mb-1">
-                                  <HomeIcon className="h-3.5 w-3.5 text-muted-foreground" />
-                                  {entry.propertyName ?? '—'}
-                                  {entry.propertyCode && (
-                                    <span className="text-xs text-muted-foreground font-mono">
-                                      ({entry.propertyCode})
-                                    </span>
-                                  )}
-                                </div>
-                              )}
-
-                              <div className="text-xs text-muted-foreground mb-2">
-                                Por <span className="font-medium text-foreground">
-                                  {entry.actorName ?? 'Sistema (sin registro de actor)'}
-                                </span>
-                                {entry.actorEmail && (
-                                  <span className="ml-1 text-muted-foreground/70">
-                                    ({entry.actorEmail})
-                                  </span>
-                                )}
-                              </div>
-
-                              {renderEntryDetails(entry)}
-                            </div>
-                          </li>
-                        );
-                      })}
-                    </ol>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </ScrollArea>
-
-        <div className="px-6 py-3 border-t bg-muted/30 flex items-center justify-between text-xs text-muted-foreground">
-          <span>
-            {filtered.length} {filtered.length === 1 ? 'movimiento' : 'movimientos'}
-            {entries.length !== filtered.length && ` (de ${entries.length})`}
-          </span>
+        <div className="px-6 py-2 border-t bg-muted/10 flex justify-end">
           <Button variant="ghost" size="sm" onClick={() => onOpenChange(false)}>
             Cerrar
           </Button>
