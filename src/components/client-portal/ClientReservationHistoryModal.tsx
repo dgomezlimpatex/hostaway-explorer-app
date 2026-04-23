@@ -320,7 +320,7 @@ export const ClientReservationHistoryModal = ({
 
                               <div className="text-xs text-muted-foreground mb-2">
                                 Por <span className="font-medium text-foreground">
-                                  {entry.actorName ?? 'Desconocido'}
+                                  {entry.actorName ?? 'Sistema (sin registro de actor)'}
                                 </span>
                                 {entry.actorEmail && (
                                   <span className="ml-1 text-muted-foreground/70">
