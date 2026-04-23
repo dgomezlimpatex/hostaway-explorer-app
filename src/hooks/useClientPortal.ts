@@ -1381,6 +1381,7 @@ export const useAdminClientPortals = () => {
       const { data: clients, error: cErr } = await supabase
         .from('clients')
         .select('id, nombre, is_active, photos_visible_to_client, allow_reservation_creation')
+        .neq('is_active', false)
         .order('nombre', { ascending: true });
       if (cErr) throw cErr;
 
