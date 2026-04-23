@@ -479,7 +479,23 @@ export const useAuthenticatePortal = () => {
         .from('client_portal_access')
         .update({ last_access_at: new Date().toISOString() })
         .eq('id', data.id);
-      
+
+      // Audit: log this access (non-blocking)
+      try {
+        await supabase.rpc('log_client_portal_access', {
+          _client_id: data.client_id,
+          _portal_access_id: data.id,
+          _access_type: 'client_pin',
+          _actor_user_id: null,
+          _actor_name: (data.clients as any)?.nombre || 'Cliente',
+          _actor_email: null,
+          _user_agent: typeof navigator !== 'undefined' ? navigator.userAgent : null,
+          _metadata: { source: 'portal_pin_login' },
+        });
+      } catch (logErr) {
+        console.error('Failed to log client portal access:', logErr);
+      }
+
       return {
         clientId: data.client_id,
         clientName: (data.clients as any)?.nombre || 'Cliente',
@@ -1475,6 +1491,60 @@ export const useClientReservationHistory = (
         oldData: row.old_data,
         newData: row.new_data,
         notes: row.notes,
+        createdAt: row.created_at,
+      }));
+    },
+  });
+};
+
+// ============= PORTAL ACCESS HISTORY (LOGINS) =============
+
+export interface ClientPortalAccessLogEntry {
+  id: string;
+  clientId: string;
+  portalAccessId: string | null;
+  accessType: 'client_pin' | 'admin_bypass' | string;
+  actorUserId: string | null;
+  actorName: string | null;
+  actorEmail: string | null;
+  userAgent: string | null;
+  ipAddress: string | null;
+  metadata: Record<string, any> | null;
+  createdAt: string;
+}
+
+/**
+ * Devuelve el histórico de accesos al portal de un cliente (logins por PIN
+ * de cliente y bypass de administrador). Solo accesible para admin/manager.
+ */
+export const useClientPortalAccessHistory = (
+  clientId: string | undefined,
+  options?: { limit?: number; enabled?: boolean },
+) => {
+  const limit = options?.limit ?? 200;
+  return useQuery({
+    queryKey: ['client-portal-access-history', clientId, limit],
+    enabled: !!clientId && options?.enabled !== false,
+    refetchOnWindowFocus: true,
+    queryFn: async (): Promise<ClientPortalAccessLogEntry[]> => {
+      if (!clientId) return [];
+      const { data, error } = await supabase.rpc('get_client_portal_access_history', {
+        _client_id: clientId,
+        _limit: limit,
+        _offset: 0,
+      });
+      if (error) throw error;
+      return ((data ?? []) as any[]).map((row) => ({
+        id: row.id,
+        clientId: row.client_id,
+        portalAccessId: row.portal_access_id,
+        accessType: row.access_type,
+        actorUserId: row.actor_user_id,
+        actorName: row.actor_name,
+        actorEmail: row.actor_email,
+        userAgent: row.user_agent,
+        ipAddress: row.ip_address,
+        metadata: row.metadata,
         createdAt: row.created_at,
       }));
     },

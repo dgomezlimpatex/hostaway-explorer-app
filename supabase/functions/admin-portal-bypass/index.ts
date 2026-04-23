@@ -109,6 +109,36 @@ serve(async (req) => {
       .update({ last_admin_access_at: new Date().toISOString() })
       .eq('id', access.id);
 
+    // Fetch actor profile for log enrichment
+    let actorName: string | null = null;
+    let actorEmail: string | null = null;
+    try {
+      const { data: profile } = await admin
+        .from('profiles')
+        .select('full_name, email')
+        .eq('id', userId)
+        .maybeSingle();
+      actorName = (profile as any)?.full_name ?? null;
+      actorEmail = (profile as any)?.email ?? null;
+    } catch (_e) { /* non-blocking */ }
+
+    // Audit log entry
+    try {
+      await admin.from('client_portal_access_logs').insert({
+        client_id: clientId,
+        portal_access_id: access.id,
+        access_type: 'admin_bypass',
+        actor_user_id: userId,
+        actor_name: actorName,
+        actor_email: actorEmail,
+        user_agent: req.headers.get('user-agent') ?? null,
+        ip_address: req.headers.get('x-forwarded-for') ?? req.headers.get('cf-connecting-ip') ?? null,
+        metadata: { source: 'admin-portal-bypass' },
+      });
+    } catch (logErr) {
+      console.error('Failed to write portal access log:', logErr);
+    }
+
     return json({
       bypassToken,
       shortCode: access.short_code,
