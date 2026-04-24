@@ -60,7 +60,7 @@ export class SyncOrchestrator {
       }
       await preloadReservationsAndTasksCache(minDate, maxDate);
 
-      // Process each reservation, yielding CPU every 50 to avoid CPU time limit
+      // Process each reservation sequentially (matches stable behaviour pre-2026-04-24)
       for (let i = 0; i < reservations.length; i++) {
         try {
           await this.processor.processReservation(
@@ -73,25 +73,6 @@ export class SyncOrchestrator {
         } catch (error) {
           console.error(`❌ Error procesando reserva ${reservations[i].id}:`, error);
           this.stats.errors.push(`Error en reserva ${reservations[i].id}: ${error.message}`);
-        }
-        // Yield event loop every 50 reservations to prevent CPU starvation
-        if (i % 50 === 49) {
-          await new Promise(resolve => setTimeout(resolve, 0));
-        }
-        // Persistir progreso cada 200 reservas: si el worker muere, el log refleja el avance
-        // y el watchdog puede cerrarlo en lugar de quedar en "running" sin información.
-        if (i % 200 === 199 && this.syncLogId) {
-          try {
-            await updateSyncLog(this.syncLogId, {
-              reservations_processed: this.stats.reservations_processed,
-              new_reservations: this.stats.new_reservations,
-              updated_reservations: this.stats.updated_reservations,
-              cancelled_reservations: this.stats.cancelled_reservations,
-              tasks_created: this.stats.tasks_created,
-              tasks_cancelled: this.stats.tasks_cancelled,
-              tasks_modified: this.stats.tasks_modified,
-            });
-          } catch (_) { /* ignore checkpoint errors */ }
         }
       }
 
