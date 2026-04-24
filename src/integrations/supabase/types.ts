@@ -3861,6 +3861,7 @@ export type Database = {
         Returns: boolean
       }
       cleanup_expired_invitations: { Args: never; Returns: undefined }
+      close_stale_avantio_syncs: { Args: never; Returns: undefined }
       create_user_invitation_secure:
         | {
             Args: {
