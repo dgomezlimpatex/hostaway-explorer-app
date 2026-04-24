@@ -421,12 +421,14 @@ export async function updateTaskDate(taskId: string, newDate: string) {
 /**
  * Create sync log
  */
-export async function createSyncLog() {
+export async function createSyncLog(triggerMeta?: { triggered_by?: string; schedule_name?: string }) {
   const { data: syncLog, error: logError } = await supabase
     .from('avantio_sync_logs')
     .insert({
       sync_started_at: new Date().toISOString(),
-      status: 'running'
+      status: 'running',
+      triggered_by: triggerMeta?.triggered_by ?? 'manual',
+      schedule_name: triggerMeta?.schedule_name ?? null,
     })
     .select()
     .single();
