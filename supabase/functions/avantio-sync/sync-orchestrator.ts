@@ -78,6 +78,21 @@ export class SyncOrchestrator {
         if (i % 50 === 49) {
           await new Promise(resolve => setTimeout(resolve, 0));
         }
+        // Persistir progreso cada 200 reservas: si el worker muere, el log refleja el avance
+        // y el watchdog puede cerrarlo en lugar de quedar en "running" sin información.
+        if (i % 200 === 199 && this.syncLogId) {
+          try {
+            await updateSyncLog(this.syncLogId, {
+              reservations_processed: this.stats.reservations_processed,
+              new_reservations: this.stats.new_reservations,
+              updated_reservations: this.stats.updated_reservations,
+              cancelled_reservations: this.stats.cancelled_reservations,
+              tasks_created: this.stats.tasks_created,
+              tasks_cancelled: this.stats.tasks_cancelled,
+              tasks_modified: this.stats.tasks_modified,
+            });
+          } catch (_) { /* ignore checkpoint errors */ }
+        }
       }
 
       // DEDUP: Remove duplicate tasks for same property/date
