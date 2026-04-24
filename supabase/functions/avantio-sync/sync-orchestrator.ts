@@ -186,25 +186,38 @@ export class SyncOrchestrator {
     
     const today = new Date().toISOString().slice(0, 10);
     
-    const { data: orphanedReservations, error } = await this.supabase
-      .from('avantio_reservations')
-      .select('*, properties!avantio_reservations_property_id_fkey(*)')
-      .is('task_id', null)
-      .not('status', 'in', '("cancelled","CANCELLED","UNAVAILABLE")')
-      .gte('departure_date', today)
-      .not('property_id', 'is', null);
+    // CRITICAL: Excluir REQUESTED (POSIBLE) — esas reservas no deben crear tarea por diseño
+    // y antes inflaban la lista a 1000+ entradas inútiles agotando CPU.
+    // Paginar para no quedar topados al límite de 1000 de Supabase.
+    const PAGE = 500;
+    let from = 0;
+    const orphanedReservations: any[] = [];
+    while (true) {
+      const { data: page, error } = await this.supabase
+        .from('avantio_reservations')
+        .select('*, properties!avantio_reservations_property_id_fkey(*)')
+        .is('task_id', null)
+        .not('status', 'in', '("cancelled","CANCELLED","UNAVAILABLE","REQUESTED","PENDING","TENTATIVE")')
+        .gte('departure_date', today)
+        .not('property_id', 'is', null)
+        .range(from, from + PAGE - 1);
 
-    if (error) {
-      console.error('❌ Error buscando reservas huérfanas:', error);
-      return;
+      if (error) {
+        console.error('❌ Error buscando reservas huérfanas:', error);
+        break;
+      }
+      if (!page || page.length === 0) break;
+      orphanedReservations.push(...page);
+      if (page.length < PAGE) break;
+      from += PAGE;
     }
 
-    if (!orphanedReservations || orphanedReservations.length === 0) {
+    if (orphanedReservations.length === 0) {
       console.log('✅ No hay reservas sin tarea');
       return;
     }
 
-    console.log(`⚠️ Encontradas ${orphanedReservations.length} reservas sin tarea. Reparando...`);
+    console.log(`⚠️ Encontradas ${orphanedReservations.length} reservas confirmadas sin tarea. Reparando...`);
 
     for (const reservation of orphanedReservations) {
       if (!reservation.properties) continue;
