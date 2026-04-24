@@ -28,10 +28,7 @@ export class ReservationProcessor {
     totalReservations: number,
     syncLogId?: string | null
   ): Promise<void> {
-    // Reduced logging: only log every 100th reservation or when significant
-    if (reservationIndex % 100 === 0 || reservationIndex === totalReservations - 1) {
-      console.log(`🔄 Procesando ${reservationIndex + 1}/${totalReservations}...`);
-    }
+    // Logging silenciado para reducir consumo de CPU en runs grandes (>2000 reservas)
 
     // Find property (exact match, Turquoise only)
     const property = await findPropertyByAvantioId(

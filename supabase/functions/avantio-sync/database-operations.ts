@@ -28,20 +28,31 @@ export async function preloadReservationsAndTasksCache(fromDate: string, toDate:
   reservationsCache.clear();
   tasksCache.clear();
 
-  // Load all avantio_reservations whose departure_date falls in or near the sync window
-  // Use a slightly wider window to catch reservations that may have moved dates.
-  const { data: reservations, error: rErr } = await supabase
-    .from('avantio_reservations')
-    .select('*, tasks(*)')
-    .gte('departure_date', fromDate)
-    .lte('departure_date', toDate);
+  // Load ALL avantio_reservations in window with pagination (Supabase default limit is 1000).
+  // CRITICAL: without pagination, missing rows fall back to per-reservation DB queries → CPU exhaustion.
+  const PAGE = 1000;
+  let from = 0;
+  let totalLoaded = 0;
+  while (true) {
+    const { data: page, error: rErr } = await supabase
+      .from('avantio_reservations')
+      .select('*, tasks(*)')
+      .gte('departure_date', fromDate)
+      .lte('departure_date', toDate)
+      .range(from, from + PAGE - 1);
 
-  if (rErr) {
-    console.error('❌ Error precargando reservas:', rErr);
-  } else if (reservations) {
-    for (const r of reservations) {
+    if (rErr) {
+      console.error('❌ Error precargando reservas:', rErr);
+      break;
+    }
+    if (!page || page.length === 0) break;
+
+    for (const r of page) {
       reservationsCache.set(String(r.avantio_reservation_id), r);
     }
+    totalLoaded += page.length;
+    if (page.length < PAGE) break;
+    from += PAGE;
   }
 
   // Load all green (Avantio) tasks in the sync window for dedup
@@ -63,7 +74,7 @@ export async function preloadReservationsAndTasksCache(fromDate: string, toDate:
     }
   }
 
-  console.log(`✅ Caché reservas/tareas: ${reservationsCache.size} reservas, ${tasksCache.size} tareas`);
+  console.log(`✅ Caché reservas/tareas: ${totalLoaded} reservas, ${tasksCache.size} tareas`);
 }
 
 export function clearReservationsAndTasksCache() {
