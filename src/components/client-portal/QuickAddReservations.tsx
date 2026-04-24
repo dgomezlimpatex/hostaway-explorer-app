@@ -251,11 +251,6 @@ export const QuickAddReservations = ({
                         selected={row.checkInDate}
                         onSelect={(date) => handleDateSelect(row.id, date, 'checkIn')}
                         defaultMonth={row.checkInDate || undefined}
-                        disabled={(date) => {
-                          const today = new Date();
-                          today.setHours(0, 0, 0, 0);
-                          return date < today;
-                        }}
                         initialFocus
                         className="pointer-events-auto"
                       />
@@ -295,9 +290,7 @@ export const QuickAddReservations = ({
                         onSelect={(date) => handleDateSelect(row.id, date, 'checkOut')}
                         defaultMonth={row.checkOutDate || row.checkInDate || undefined}
                         disabled={(date) => {
-                          const today = new Date();
-                          today.setHours(0, 0, 0, 0);
-                          return date < today || (row.checkInDate ? date <= row.checkInDate : false);
+                          return row.checkInDate ? date <= row.checkInDate : false;
                         }}
                         initialFocus
                         className="pointer-events-auto"

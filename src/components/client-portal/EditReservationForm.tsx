@@ -120,7 +120,6 @@ export const EditReservationForm = ({
                     }
                   }
                 }}
-                disabled={(date) => date < new Date()}
                 initialFocus
               />
             </PopoverContent>
