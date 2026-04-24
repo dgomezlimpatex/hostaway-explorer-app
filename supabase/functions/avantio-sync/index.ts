@@ -1,3 +1,4 @@
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.50.0";
 import { SyncOrchestrator } from './sync-orchestrator.ts';
 import { ResponseBuilder } from './response-builder.ts';
 
@@ -30,10 +31,51 @@ Deno.serve(async (req) => {
     const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
 
+    // Parse trigger metadata from request body (cron sends triggered_by/schedule_name)
+    let triggerMeta: { triggered_by?: string; schedule_name?: string; schedule_id?: string; source?: string } = {};
+    try {
+      if (req.headers.get('content-type')?.includes('application/json')) {
+        const body = await req.json();
+        if (body && typeof body === 'object') triggerMeta = body;
+      }
+    } catch (_) {
+      // ignore body parse errors
+    }
+
+    // CONCURRENCY GUARD: refuse if there's already a running sync started <30 min ago.
+    // Prevents cron + manual triggers from stacking and competing for CPU.
+    const guardClient = createClient(supabaseUrl, supabaseServiceKey);
+    const thirtyMinAgo = new Date(Date.now() - 30 * 60 * 1000).toISOString();
+    const { data: runningSyncs } = await guardClient
+      .from('avantio_sync_logs')
+      .select('id, sync_started_at, triggered_by')
+      .eq('status', 'running')
+      .gte('sync_started_at', thirtyMinAgo)
+      .order('sync_started_at', { ascending: false })
+      .limit(1);
+
+    if (runningSyncs && runningSyncs.length > 0) {
+      const existing = runningSyncs[0];
+      console.log(`⏸️ Sync rechazado: ya hay una sincronización en curso (id=${existing.id})`);
+      return new Response(
+        JSON.stringify({
+          success: false,
+          status: 'skipped',
+          message: 'Ya hay una sincronización Avantio en curso. Espera a que termine antes de lanzar otra.',
+          running_sync_id: existing.id,
+          running_since: existing.sync_started_at,
+        }),
+        {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 409
+        }
+      );
+    }
+
     const orchestrator = new SyncOrchestrator(supabaseUrl, supabaseServiceKey);
 
     // Initialize sync log SYNCHRONOUSLY so we can return its ID immediately
-    await orchestrator.initializeSyncLog();
+    await orchestrator.initializeSyncLog(triggerMeta);
     const syncLogId = orchestrator.getSyncLogId();
 
     // Run the heavy work in the background — function returns immediately

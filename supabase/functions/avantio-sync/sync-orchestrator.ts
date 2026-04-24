@@ -28,10 +28,10 @@ export class SyncOrchestrator {
     this.processor = new ReservationProcessor(supabaseUrl, supabaseServiceKey);
   }
 
-  async initializeSyncLog(): Promise<void> {
-    const syncLog = await createSyncLog();
+  async initializeSyncLog(triggerMeta?: { triggered_by?: string; schedule_name?: string }): Promise<void> {
+    const syncLog = await createSyncLog(triggerMeta);
     this.syncLogId = syncLog.id;
-    console.log(`📝 Log de sincronización iniciado: ${this.syncLogId}`);
+    console.log(`📝 Log de sincronización iniciado: ${this.syncLogId} (trigger=${triggerMeta?.triggered_by || 'manual'})`);
   }
 
   getSyncLogId(): string | null {
