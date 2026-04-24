@@ -280,20 +280,30 @@ export class SyncOrchestrator {
     const currentHour = nowMadrid.getHours();
     const currentMinute = nowMadrid.getMinutes();
 
-    // Query: REQUESTED reservations with a task, arrival_date <= today
-    const { data: expiredRequested, error } = await this.supabase
-      .from('avantio_reservations')
-      .select('*, properties!avantio_reservations_property_id_fkey(*)')
-      .ilike('status', 'REQUESTED')
-      .not('task_id', 'is', null)
-      .lte('arrival_date', todayStr);
+    // Query: REQUESTED reservations with a task, arrival_date <= today (paginado)
+    const PAGE = 500;
+    let from = 0;
+    const expiredRequested: any[] = [];
+    while (true) {
+      const { data: page, error } = await this.supabase
+        .from('avantio_reservations')
+        .select('*, properties!avantio_reservations_property_id_fkey(*)')
+        .ilike('status', 'REQUESTED')
+        .not('task_id', 'is', null)
+        .lte('arrival_date', todayStr)
+        .range(from, from + PAGE - 1);
 
-    if (error) {
-      console.error('❌ Error buscando reservas REQUESTED expiradas:', error);
-      return;
+      if (error) {
+        console.error('❌ Error buscando reservas REQUESTED expiradas:', error);
+        break;
+      }
+      if (!page || page.length === 0) break;
+      expiredRequested.push(...page);
+      if (page.length < PAGE) break;
+      from += PAGE;
     }
 
-    if (!expiredRequested || expiredRequested.length === 0) {
+    if (expiredRequested.length === 0) {
       console.log('✅ No hay tareas POSIBLE expiradas');
       return;
     }
