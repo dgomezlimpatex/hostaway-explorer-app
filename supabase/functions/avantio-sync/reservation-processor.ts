@@ -388,10 +388,8 @@ export class ReservationProcessor {
     syncLogId?: string | null
   ): Promise<void> {
     try {
-      console.log(`🚫 Procesando cancelación de reserva ${reservation.id}`);
-
+      // Logging silenciado: alta cardinalidad provocaba CPU Time exceeded.
       if (existingReservation.task_id) {
-        console.log(`🗑️ Eliminando tarea asociada: ${existingReservation.task_id}`);
         
         try {
           // Fetch task details to check if a cleaner is assigned
