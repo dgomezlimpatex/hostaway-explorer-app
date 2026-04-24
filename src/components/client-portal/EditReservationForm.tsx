@@ -121,7 +121,6 @@ export const EditReservationForm = ({
                   }
                 }}
                 initialFocus
-                initialFocus
               />
             </PopoverContent>
           </Popover>
