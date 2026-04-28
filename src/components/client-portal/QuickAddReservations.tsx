@@ -252,6 +252,8 @@ export const QuickAddReservations = ({
                         onSelect={(date) => handleDateSelect(row.id, date, 'checkIn')}
                         defaultMonth={row.checkInDate || undefined}
                         initialFocus
+                        locale={es}
+                        weekStartsOn={1}
                         className="pointer-events-auto"
                       />
                     </PopoverContent>
@@ -293,6 +295,8 @@ export const QuickAddReservations = ({
                           return row.checkInDate ? date <= row.checkInDate : false;
                         }}
                         initialFocus
+                        locale={es}
+                        weekStartsOn={1}
                         className="pointer-events-auto"
                       />
                     </PopoverContent>
