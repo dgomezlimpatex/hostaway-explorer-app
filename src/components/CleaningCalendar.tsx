@@ -1,5 +1,6 @@
 
 import React, { useCallback, useRef, useEffect } from "react";
+import { formatMadridDate } from "@/utils/date";
 import { ResponsiveCalendarHeader } from "./calendar/ResponsiveCalendarHeader";
 import { CalendarContainer } from "./calendar/CalendarContainer";
 import { UnavailableWorkersPanel } from "./calendar/UnavailableWorkersPanel";
@@ -143,12 +144,12 @@ const CleaningCalendar = () => {
       console.log('Rendering mobile cleaner view');
       
       // Calculate current day and tomorrow's tasks for the cleaner
-      const currentDateStr = currentDate.toISOString().split('T')[0];
+      const currentDateStr = formatMadridDate(currentDate);
       
       // Calculate tomorrow's date
       const tomorrowDate = new Date(currentDate);
       tomorrowDate.setDate(currentDate.getDate() + 1);
-      const tomorrowDateStr = tomorrowDate.toISOString().split('T')[0];
+      const tomorrowDateStr = formatMadridDate(tomorrowDate);
       
       // Filter tasks for current date and tomorrow - cleaner can navigate to see future tasks
       const todayTasks = tasks.filter(task => task.date === currentDateStr);
@@ -173,7 +174,7 @@ const CleaningCalendar = () => {
               currentDate={currentDate}
               onNavigateDate={navigateDate}
               onDateChange={(date) => {
-                console.log('Calendar - navigating to selected date:', date.toISOString().split('T')[0]);
+                console.log('Calendar - navigating to selected date:', formatMadridDate(date));
                 setCurrentDate(date);
               }}
               handleTaskClick={handleTaskClick}
@@ -256,12 +257,12 @@ const CleaningCalendar = () => {
     console.log('🖥️ CleaningCalendar: Rendering desktop cleaner view');
     
     // Calculate today's and tomorrow's tasks for the cleaner
-    const currentDateStr = currentDate.toISOString().split('T')[0];
+    const currentDateStr = formatMadridDate(currentDate);
     
     // Calculate tomorrow's date more simply
     const tomorrowDate = new Date(currentDate);
     tomorrowDate.setDate(currentDate.getDate() + 1);
-    const tomorrowDateStr = tomorrowDate.toISOString().split('T')[0];
+    const tomorrowDateStr = formatMadridDate(tomorrowDate);
     
     const todayTasks = tasks.filter(task => task.date === currentDateStr);
     const tomorrowTasks = tasks.filter(task => task.date === tomorrowDateStr);
@@ -282,7 +283,7 @@ const CleaningCalendar = () => {
           currentDate={currentDate}
           onNavigateDate={navigateDate}
           onDateChange={(date) => {
-            console.log('Calendar - navigating to selected date:', date.toISOString().split('T')[0]);
+            console.log('Calendar - navigating to selected date:', formatMadridDate(date));
             setCurrentDate(date);
           }}
           handleTaskClick={handleTaskClick}
@@ -318,7 +319,7 @@ const CleaningCalendar = () => {
     userRole,
     tasksLength: tasks.length,
     cleanersLength: cleaners.length,
-    currentDateStr: currentDate.toISOString().split('T')[0]
+    currentDateStr: formatMadridDate(currentDate)
   });
   
   return (
@@ -391,7 +392,7 @@ const CleaningCalendar = () => {
         {/* Footer-resumen con totales y leyenda de clientes */}
         <div className="flex-shrink-0">
           <CalendarFooterSummary
-            tasks={tasks.filter(t => t.date === currentDate.toISOString().split('T')[0])}
+            tasks={tasks.filter(t => t.date === formatMadridDate(currentDate))}
             cleaners={cleaners}
           />
         </div>

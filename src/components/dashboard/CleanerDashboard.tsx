@@ -8,6 +8,7 @@ import { useTasks } from '@/hooks/useTasks';
 import { useAuth } from '@/hooks/useAuth';
 import { useCleaners } from '@/hooks/useCleaners';
 import { useMemo } from 'react';
+import { formatMadridDate } from '@/utils/date';
 
 interface CleanerDashboardProps {
   userFullName?: string | null;
@@ -27,7 +28,7 @@ export const CleanerDashboard = ({ userFullName, userEmail }: CleanerDashboardPr
 
   const todayTasks = useMemo(() => {
     if (!tasks || !currentCleaner) return [];
-    const todayStr = today.toISOString().split('T')[0];
+    const todayStr = formatMadridDate(today);
     return tasks
       .filter(t => t.date === todayStr && t.cleanerId === currentCleaner.id)
       .sort((a, b) => a.startTime.localeCompare(b.startTime));
