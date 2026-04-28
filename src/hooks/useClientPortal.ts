@@ -795,8 +795,7 @@ export const useUpdateReservation = () => {
           .from('tasks')
           .update(taskUpdates)
           .eq('id', current.task_id)
-          .select('id, date')
-          .limit(1);
+          .select('id, date');
         
         if (taskUpdateError) {
           console.error('Error updating task from portal:', taskUpdateError);
