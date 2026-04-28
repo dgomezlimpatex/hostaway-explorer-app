@@ -706,6 +706,7 @@ export const useCreateReservations = () => {
       queryClient.invalidateQueries({ queryKey: ['all-client-reservations'] });
       queryClient.invalidateQueries({ queryKey: ['client-reservation-logs'] });
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      queryClient.invalidateQueries({ queryKey: ['client-portal-bookings', variables.clientId] });
     },
   });
 };
@@ -887,6 +888,7 @@ export const useUpdateReservation = () => {
       queryClient.invalidateQueries({ queryKey: ['all-client-reservations'] });
       queryClient.invalidateQueries({ queryKey: ['client-reservation-logs'] });
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      queryClient.invalidateQueries({ queryKey: ['client-portal-bookings', variables.clientId] });
     },
   });
 };
@@ -974,6 +976,7 @@ export const useCancelReservation = () => {
       queryClient.invalidateQueries({ queryKey: ['all-client-reservations'] });
       queryClient.invalidateQueries({ queryKey: ['client-reservation-logs'] });
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      queryClient.invalidateQueries({ queryKey: ['client-portal-bookings', variables.clientId] });
     },
   });
 };
