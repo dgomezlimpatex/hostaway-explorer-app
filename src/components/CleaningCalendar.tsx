@@ -392,7 +392,7 @@ const CleaningCalendar = () => {
         {/* Footer-resumen con totales y leyenda de clientes */}
         <div className="flex-shrink-0">
           <CalendarFooterSummary
-            tasks={tasks.filter(t => t.date === currentDate.toISOString().split('T')[0])}
+            tasks={tasks.filter(t => t.date === formatMadridDate(currentDate))}
             cleaners={cleaners}
           />
         </div>
