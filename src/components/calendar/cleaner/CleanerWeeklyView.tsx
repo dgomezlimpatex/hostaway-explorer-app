@@ -1,6 +1,7 @@
 import React, { memo, useMemo } from 'react';
 import { Task } from '@/types/calendar';
 import { cn } from '@/lib/utils';
+import { formatMadridDate } from '@/utils/date';
 
 interface CleanerWeeklyViewProps {
   currentDate: Date;
