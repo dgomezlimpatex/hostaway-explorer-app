@@ -68,6 +68,11 @@ const CleanerWeeklyViewComponent: React.FC<CleanerWeeklyViewProps> = ({
           return (
             <button
               key={index}
+              type="button"
+              autoComplete="off"
+              autoCorrect="off"
+              autoCapitalize="off"
+              spellCheck={false}
               onClick={() => onSelectDate(day)}
               className={cn(
                 "flex flex-col items-center py-2 px-1 rounded-xl transition-all duration-200",
