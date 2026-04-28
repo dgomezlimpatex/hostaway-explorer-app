@@ -66,10 +66,11 @@ export const EditReservationForm = ({
         description: 'Los cambios se han guardado correctamente.',
       });
       onSuccess();
-    } catch (error) {
+    } catch (error: any) {
+      console.error('[EditReservationForm] Error updating reservation:', error);
       toast({
         title: 'Error',
-        description: 'No se pudo actualizar la reserva.',
+        description: error?.message || 'No se pudo actualizar la reserva.',
         variant: 'destructive',
       });
     }
