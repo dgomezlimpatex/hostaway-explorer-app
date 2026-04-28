@@ -8,6 +8,7 @@ import { useTasks } from '@/hooks/useTasks';
 import { useAuth } from '@/hooks/useAuth';
 import { useCleaners } from '@/hooks/useCleaners';
 import { useMemo } from 'react';
+import { formatMadridDate } from '@/utils/date';
 
 interface CleanerDashboardProps {
   userFullName?: string | null;
