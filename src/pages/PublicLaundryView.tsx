@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { formatDateRange } from '@/services/laundryShareService';
+import { isNotCountCleaner } from '@/utils/laundryExclusions';
 import { Toaster } from '@/components/ui/toaster';
 
 type FilterStatus = 'all' | 'pending' | 'prepared' | 'delivered';
@@ -106,7 +107,10 @@ const PublicLaundryView = () => {
     const snapshotSet = new Set(shareLink.snapshotTaskIds);
 
     // Filter to only include tasks that are in the snapshot (manager-approved tasks)
-    const includedTasks = tasksData.filter(task => snapshotSet.has(task.id));
+    // y excluir las asignadas a NOT COUNT (no se realizan, no requieren mudas)
+    const includedTasks = tasksData.filter(
+      task => snapshotSet.has(task.id) && !isNotCountCleaner(task.cleaner)
+    );
 
     const mappedTasks = includedTasks.map(task => {
       const prop = task.properties as any;
