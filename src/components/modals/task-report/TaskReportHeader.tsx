@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { DialogDescription, DialogTitle } from '@/components/ui/dialog';
-import { MapPin, Clock, CheckCircle, Loader2 } from 'lucide-react';
+import { MapPin, Clock, CheckCircle, Loader2, StickyNote } from 'lucide-react';
 import { Task } from '@/types/calendar';
 import { cn } from '@/lib/utils';
 
