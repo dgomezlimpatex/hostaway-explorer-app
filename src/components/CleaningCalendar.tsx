@@ -1,5 +1,6 @@
 
 import React, { useCallback, useRef, useEffect } from "react";
+import { formatMadridDate } from "@/utils/date";
 import { ResponsiveCalendarHeader } from "./calendar/ResponsiveCalendarHeader";
 import { CalendarContainer } from "./calendar/CalendarContainer";
 import { UnavailableWorkersPanel } from "./calendar/UnavailableWorkersPanel";
