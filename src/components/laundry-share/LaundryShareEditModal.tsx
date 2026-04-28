@@ -10,6 +10,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { LaundryShareLink } from '@/hooks/useLaundryShareLinks';
+import { isNotCountCleaner } from '@/utils/laundryExclusions';
 
 interface LaundryShareEditModalProps {
   open: boolean;
@@ -50,6 +51,7 @@ export const LaundryShareEditModal = ({
           date,
           check_out,
           sede_id,
+          cleaner,
           properties (
             codigo,
             linen_control_enabled,
@@ -73,7 +75,10 @@ export const LaundryShareEditModal = ({
       if (error) throw error;
 
       // Filter by linen control enabled (property setting takes precedence, otherwise inherit from client)
+      // y excluir tareas asignadas a NOT COUNT (no se realizan, no requieren mudas)
       const filteredData = (data || []).filter(task => {
+        if (isNotCountCleaner((task as any).cleaner)) return false;
+
         const property = task.properties as any;
         if (!property) return false;
         
