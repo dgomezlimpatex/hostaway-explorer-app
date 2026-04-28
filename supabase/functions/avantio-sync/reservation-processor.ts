@@ -550,13 +550,19 @@ export class ReservationProcessor {
       return;
     }
 
-    // Calculate tomorrow's date in Europe/Madrid timezone
+    // Ventana temporal: alertar de cualquier reserva de 1 noche cuyo checkout
+    // caiga entre HOY y HOY+30 días (zona horaria Europe/Madrid).
     const nowMadrid = new Date(new Date().toLocaleString('en-US', { timeZone: 'Europe/Madrid' }));
-    const tomorrowMadrid = new Date(nowMadrid);
-    tomorrowMadrid.setDate(tomorrowMadrid.getDate() + 1);
-    const tomorrowStr = `${tomorrowMadrid.getFullYear()}-${String(tomorrowMadrid.getMonth() + 1).padStart(2, '0')}-${String(tomorrowMadrid.getDate()).padStart(2, '0')}`;
+    const todayMadrid = new Date(nowMadrid.getFullYear(), nowMadrid.getMonth(), nowMadrid.getDate());
+    const maxDateMadrid = new Date(todayMadrid);
+    maxDateMadrid.setDate(maxDateMadrid.getDate() + 30);
 
-    if (reservation.departureDate !== tomorrowStr) return;
+    const fmt = (d: Date) =>
+      `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    const todayStr = fmt(todayMadrid);
+    const maxStr = fmt(maxDateMadrid);
+
+    if (reservation.departureDate < todayStr || reservation.departureDate > maxStr) return;
 
     // FILTRO 2: Deduplicación atómica. Insertar primero en avantio_alert_log.
     // Si ya existe una alerta para (one_night, property, checkout_date), el INSERT falla
@@ -589,7 +595,7 @@ export class ReservationProcessor {
       return;
     }
 
-    console.log(`⚡ Reserva de 1 noche detectada con checkout mañana (${tomorrowStr}): ${reservation.id} - ${property.nombre}`);
+    console.log(`⚡ Reserva de 1 noche detectada con checkout ${reservation.departureDate}: ${reservation.id} - ${property.nombre}`);
 
     try {
       const { data: emailResp } = await this.supabase.functions.invoke('send-one-night-alert', {
