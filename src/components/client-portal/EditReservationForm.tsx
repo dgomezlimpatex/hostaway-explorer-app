@@ -121,6 +121,8 @@ export const EditReservationForm = ({
                   }
                 }}
                 initialFocus
+                locale={es}
+                weekStartsOn={1}
               />
             </PopoverContent>
           </Popover>
@@ -145,6 +147,8 @@ export const EditReservationForm = ({
                 onSelect={(date) => date && setCheckOutDate(date)}
                 disabled={(date) => date <= checkInDate}
                 initialFocus
+                locale={es}
+                weekStartsOn={1}
               />
             </PopoverContent>
           </Popover>
