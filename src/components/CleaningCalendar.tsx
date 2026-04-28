@@ -174,7 +174,7 @@ const CleaningCalendar = () => {
               currentDate={currentDate}
               onNavigateDate={navigateDate}
               onDateChange={(date) => {
-                console.log('Calendar - navigating to selected date:', date.toISOString().split('T')[0]);
+                console.log('Calendar - navigating to selected date:', formatMadridDate(date));
                 setCurrentDate(date);
               }}
               handleTaskClick={handleTaskClick}
