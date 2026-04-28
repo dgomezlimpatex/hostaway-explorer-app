@@ -60,7 +60,7 @@ serve(async (req) => {
           <tr>
             <td style="background:linear-gradient(135deg,#e65100,#ff6d00);padding:24px 32px;text-align:center;">
               <h1 style="color:#ffffff;margin:0;font-size:22px;">⚡ Reserva de 1 Noche</h1>
-              <p style="color:rgba(255,255,255,0.9);margin:6px 0 0;font-size:14px;">Checkout mañana — Acción requerida</p>
+              <p style="color:rgba(255,255,255,0.9);margin:6px 0 0;font-size:14px;">Checkout próximo — Acción requerida</p>
             </td>
           </tr>
           
@@ -68,7 +68,7 @@ serve(async (req) => {
           <tr>
             <td style="padding:28px 32px;">
               <p style="color:#333;font-size:15px;margin:0 0 20px;">
-                Se ha detectado una <strong>nueva reserva de una sola noche</strong> con salida <strong>mañana</strong>. Revisa los detalles:
+                Se ha detectado una <strong>nueva reserva de una sola noche</strong>. Revisa los detalles:
               </p>
               
               <!-- Details Card -->
@@ -137,7 +137,11 @@ serve(async (req) => {
 
     const emailResponse = await resend.emails.send({
       from: "Limpatex Alertas <alertas@limpatexgestion.com>",
-      to: ["dgomezlimpatex@gmail.com"],
+      to: [
+        "dgomezlimpatex@gmail.com",
+        "Danielfernandezlimpatex@gmail.com",
+        "Vicentelimpatex@gmail.com",
+      ],
       subject: `⚡ Reserva 1 noche — ${body.propertyName} — Checkout ${formatSpanishDate(body.departureDate)}`,
       html,
     });
