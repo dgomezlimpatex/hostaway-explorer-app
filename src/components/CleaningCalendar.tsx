@@ -257,12 +257,12 @@ const CleaningCalendar = () => {
     console.log('🖥️ CleaningCalendar: Rendering desktop cleaner view');
     
     // Calculate today's and tomorrow's tasks for the cleaner
-    const currentDateStr = currentDate.toISOString().split('T')[0];
+    const currentDateStr = formatMadridDate(currentDate);
     
     // Calculate tomorrow's date more simply
     const tomorrowDate = new Date(currentDate);
     tomorrowDate.setDate(currentDate.getDate() + 1);
-    const tomorrowDateStr = tomorrowDate.toISOString().split('T')[0];
+    const tomorrowDateStr = formatMadridDate(tomorrowDate);
     
     const todayTasks = tasks.filter(task => task.date === currentDateStr);
     const tomorrowTasks = tasks.filter(task => task.date === tomorrowDateStr);
