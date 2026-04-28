@@ -1,4 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
+import { isNotCountCleaner } from '@/utils/laundryExclusions';
 
 // Get the base URL for share links
 export const getShareLinkUrl = (token: string, scheduled: boolean = false): string => {
@@ -64,6 +65,7 @@ export const fetchLaundryTasksForDateRange = async (
     .select(`
       id,
       propiedad_id,
+      cleaner,
       properties:propiedad_id (
         id,
         linen_control_enabled,
@@ -94,6 +96,9 @@ export const fetchLaundryTasksForDateRange = async (
   // Filter tasks based on linen control AND active settings
   // Property setting takes precedence, otherwise inherit from client
   const filteredTasks = (data || []).filter(task => {
+    // Excluir tareas asignadas a NOT COUNT (limpiezas que no se realizan)
+    if (isNotCountCleaner((task as any).cleaner)) return false;
+
     const property = task.properties as any;
     if (!property) return false;
     
