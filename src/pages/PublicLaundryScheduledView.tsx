@@ -7,6 +7,7 @@ import { Loader2, AlertCircle, Package, Truck, CheckCircle2, RefreshCw, Building
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { formatDateRange } from '@/services/laundryShareService';
+import { isNotCountCleaner } from '@/utils/laundryExclusions';
 import { groupApartmentsByBuilding, LaundryApartment, BuildingGroup } from '@/services/laundryScheduleService';
 import { BuildingCollectionGroup } from '@/components/laundry-share/BuildingCollectionGroup';
 import { BuildingDeliveryGroup } from '@/components/laundry-share/BuildingDeliveryGroup';
@@ -111,7 +112,7 @@ const PublicLaundryScheduledView = () => {
       if (error) throw error;
       
       return (data || [])
-        .filter(task => shareLink.snapshotTaskIds.includes(task.id))
+        .filter(task => shareLink.snapshotTaskIds.includes(task.id) && !isNotCountCleaner(task.cleaner))
         .sort((a, b) => {
           const codeA = (a.properties as any)?.codigo || a.property || '';
           const codeB = (b.properties as any)?.codigo || b.property || '';
