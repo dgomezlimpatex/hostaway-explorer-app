@@ -33,7 +33,7 @@ const CleanerWeeklyViewComponent: React.FC<CleanerWeeklyViewProps> = ({
 
   // Get tasks for a specific date
   const getTasksForDate = (date: Date) => {
-    const dateStr = date.toISOString().split('T')[0];
+    const dateStr = formatMadridDate(date);
     return tasks.filter(task => task.date === dateStr);
   };
 
