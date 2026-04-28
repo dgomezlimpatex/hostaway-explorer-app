@@ -144,12 +144,12 @@ const CleaningCalendar = () => {
       console.log('Rendering mobile cleaner view');
       
       // Calculate current day and tomorrow's tasks for the cleaner
-      const currentDateStr = currentDate.toISOString().split('T')[0];
+      const currentDateStr = formatMadridDate(currentDate);
       
       // Calculate tomorrow's date
       const tomorrowDate = new Date(currentDate);
       tomorrowDate.setDate(currentDate.getDate() + 1);
-      const tomorrowDateStr = tomorrowDate.toISOString().split('T')[0];
+      const tomorrowDateStr = formatMadridDate(tomorrowDate);
       
       // Filter tasks for current date and tomorrow - cleaner can navigate to see future tasks
       const todayTasks = tasks.filter(task => task.date === currentDateStr);
