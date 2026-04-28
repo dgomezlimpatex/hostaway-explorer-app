@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useSede } from '@/contexts/SedeContext';
 import { useMemo, useEffect } from 'react';
 import { format } from 'date-fns';
+import { excludeNotCountTasks } from '@/utils/laundryExclusions';
 
 export type LinenStatus = 'clean' | 'needs-linen' | 'overdue';
 
@@ -133,7 +134,8 @@ export const useLinenControl = () => {
         .order('start_time', { ascending: true });
 
       if (error) throw error;
-      return data || [];
+      // Excluir tareas asignadas a NOT COUNT (no se realizan, no requieren mudas)
+      return excludeNotCountTasks(data || []);
     },
     enabled: isInitialized && !!activeSede?.id,
   });
