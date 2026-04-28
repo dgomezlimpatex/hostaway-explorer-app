@@ -1,51 +1,46 @@
 
-# Ampliación del sistema de alertas de reservas de 1 noche
+# Bug "incógnita" en el calendario de las limpiadoras — corrección de zona horaria
 
-## Cambios solicitados
+## Diagnóstico
 
-1. **Más destinatarios**: además de `dgomezlimpatex@gmail.com`, enviar también a:
-   - `Danielfernandezlimpatex@gmail.com`
-   - `Vicentelimpatex@gmail.com`
-2. **Ventana temporal ampliada**: alertar de cualquier reserva de 1 noche cuyo **checkout caiga en los próximos 30 días** (hoy incluido), no solo mañana.
+Las limpiadoras ven "incógnita" / día siguiente vacío (sin tareas, sin info correcta) por un **bug de zona horaria en la app**, no en sus móviles.
 
-## Qué se va a modificar
+En todo el flujo de calendario de la limpiadora se está usando `date.toISOString().split('T')[0]` para convertir una fecha JS a `YYYY-MM-DD`. El problema:
 
-### 1. `supabase/functions/avantio-sync/reservation-processor.ts` — método `checkAndSendOneNightAlert`
+- `toISOString()` siempre devuelve la fecha en **UTC**.
+- En España, una fecha como **martes 29/04 a las 00:30 hora de Madrid** equivale a **lunes 28/04 a las 22:30 UTC**.
+- Por tanto `toISOString().split('T')[0]` devuelve **"2026-04-28"** en vez de **"2026-04-29"**.
+- Resultado: cuando la limpiadora navega al "día siguiente", la app filtra tareas con la fecha equivocada → no encuentra nada → la vista queda en blanco / con datos extraños ("incógnita").
 
-- Mantener los filtros existentes:
-  - `reservation.nights === 1`
-  - Estado confirmado (excluir `REQUESTED`, `PENDING`, `TENTATIVE`, `CANCELLED`, etc.)
-- **Cambiar el filtro de fecha**: en vez de comparar `departureDate === mañana`, comprobar que `departureDate` está dentro del rango `[hoy, hoy + 30 días]` en zona horaria Europe/Madrid.
-- Mantener la **deduplicación dura** existente vía `avantio_alert_log` con clave única `(alert_type='one_night', property_id, reference_date=departureDate)` — esto sigue garantizando 1 sola alerta por propiedad+checkout aunque la reserva se vea en varios syncs durante 30 días.
-- Ajustar el log: "Reserva de 1 noche detectada con checkout en X días".
+Esto es exactamente la regla que ya tenemos documentada (Core memory: usar siempre `formatMadridDate` para fechas, nunca `toISOString`). Hay sitios donde se aplicó pero el flujo de la limpiadora se dejó atrás.
 
-### 2. `supabase/functions/send-one-night-alert/index.ts` — destinatarios y asunto
+## Sitios afectados (a corregir)
 
-- Cambiar el array `to` de Resend para incluir los **3 destinatarios**:
-  ```
-  ['dgomezlimpatex@gmail.com',
-   'Danielfernandezlimpatex@gmail.com',
-   'Vicentelimpatex@gmail.com']
-  ```
-- Mantener el contenido HTML actual (tarjeta naranja con propiedad, huésped, fechas, etc.).
-- Pequeño ajuste opcional en el subtítulo del header: "Checkout próximo — Acción requerida" en lugar de "Checkout mañana", ya que ahora puede ser cualquier día dentro del rango de 30 días. La fecha exacta sigue apareciendo destacada en el cuerpo y en el asunto.
+Reemplazar `date.toISOString().split('T')[0]` por `formatMadridDate(date)` en los puntos del flujo de la limpiadora:
 
-### 3. Despliegue
+1. **`src/components/calendar/cleaner/CleanerWeeklyView.tsx`** (línea 35) — el filtro de tareas por día en la franja semanal. Este es el bug principal: hace que el día seleccionado/los puntos por día se calculen en UTC.
+2. **`src/components/CleaningCalendar.tsx`** (líneas 146 y 151) — cálculo de `currentDateStr` y `tomorrowDateStr` para `todayTasks` / `tomorrowTasks` que se pasan al móvil de la limpiadora. Aquí está la causa de que "Mañana: X tareas" salga mal y de que al pulsar otro día no se vean las tareas reales.
+3. **`src/components/CleaningCalendar.tsx`** (líneas 259, 264, 321, 394) — los mismos cálculos en otra rama del render (vista mobile manager / filtros generales).
+4. **`src/components/dashboard/CleanerDashboard.tsx`** (línea 30) — `todayStr` para las "Tareas de Hoy" en el panel inicial; con el bug, en horario nocturno o en el cambio de día puede mostrar el día incorrecto.
 
-Desplegar ambas Edge Functions tras los cambios:
-- `avantio-sync`
-- `send-one-night-alert`
+En todos los casos: importar `formatMadridDate` desde `@/utils/date` y sustituir.
+
+No se modifica nada más fuera de este flujo (ni vista admin ni reports), para mantener el cambio acotado a lo que las limpiadoras están viendo mal.
+
+## Por qué se manifiesta especialmente "el día siguiente de trabajo"
+
+Cuando la limpiadora abre la app a primera hora o por la noche, JS construye fechas locales (Europe/Madrid). Al pulsar "siguiente día" se hace `setDate(+1)` y luego `toISOString()` → al pasar a UTC se resta 1-2 horas, y en muchos momentos del día eso "tira" la fecha al día anterior. Por eso para el día actual a veces se ve bien, pero el día siguiente falla con frecuencia.
 
 ## Lo que NO cambia
 
-- Sigue ejecutándose dentro del cron de sync de Avantio (4 veces al día).
-- Sigue ignorando reservas no confirmadas.
-- Sigue usando `avantio_alert_log` con su índice único → no habrá emails duplicados aunque la misma reserva se procese muchas veces durante 30 días.
-- Si el envío de email falla, sigue habiendo rollback del log para permitir reintento.
-- El remitente sigue siendo `Limpatex Alertas <alertas@limpatexgestion.com>`.
+- Ningún flujo de creación, asignación ni reporte de tareas.
+- Ninguna vista de administrador.
+- No se tocan los botones del calendario (las correcciones previas de `type="button"` se mantienen).
 
-## Consideración sobre el volumen
+## Resultado esperado
 
-Al ampliar la ventana de 1 día a 30 días, **la primera ejecución tras desplegar** podría enviar más alertas de golpe (todas las reservas de 1 noche confirmadas en los próximos 30 días que aún no estén en `avantio_alert_log`). Después se estabiliza: solo se enviarán emails cuando aparezcan **nuevas** reservas de 1 noche en el rango.
+- Al seleccionar cualquier día (hoy o futuro) en la franja semanal, las tareas asignadas para ese día aparecen correctamente.
+- El contador "Mañana: X tareas" coincide con la realidad.
+- Desaparece la confusión visual que las limpiadoras describen como "incógnita".
 
-¿Confirmas que procedemos así?
+¿Procedo con el fix?
