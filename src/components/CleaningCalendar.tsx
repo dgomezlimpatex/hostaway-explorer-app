@@ -319,7 +319,7 @@ const CleaningCalendar = () => {
     userRole,
     tasksLength: tasks.length,
     cleanersLength: cleaners.length,
-    currentDateStr: currentDate.toISOString().split('T')[0]
+    currentDateStr: formatMadridDate(currentDate)
   });
   
   return (
