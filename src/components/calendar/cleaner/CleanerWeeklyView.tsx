@@ -69,8 +69,6 @@ const CleanerWeeklyViewComponent: React.FC<CleanerWeeklyViewProps> = ({
             <button
               key={index}
               type="button"
-              autoComplete="off"
-              autoCorrect="off"
               autoCapitalize="off"
               spellCheck={false}
               onClick={() => onSelectDate(day)}
