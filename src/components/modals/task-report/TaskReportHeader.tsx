@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { DialogDescription, DialogTitle } from '@/components/ui/dialog';
-import { MapPin, Clock, CheckCircle, Loader2 } from 'lucide-react';
+import { MapPin, Clock, CheckCircle, Loader2, StickyNote } from 'lucide-react';
 import { Task } from '@/types/calendar';
 import { cn } from '@/lib/utils';
 
@@ -165,6 +165,21 @@ export const TaskReportHeader: React.FC<TaskReportHeaderProps> = ({
             <Loader2 className="h-3 w-3 text-muted-foreground animate-spin flex-shrink-0" />
           )}
         </div>
+
+        {/* Property notes / instructions */}
+        {task.notes && task.notes.trim().length > 0 && (
+          <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 flex gap-2">
+            <StickyNote className="h-4 w-4 text-amber-600 flex-shrink-0 mt-0.5" />
+            <div className="min-w-0 flex-1">
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-amber-700 mb-0.5">
+                Notas del piso
+              </p>
+              <p className="text-xs text-amber-900 whitespace-pre-wrap leading-relaxed">
+                {task.notes}
+              </p>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
