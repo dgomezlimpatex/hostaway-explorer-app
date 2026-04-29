@@ -350,16 +350,21 @@ export const QuickAddReservations = ({
         ))}
       </div>
 
-      {/* Add another reservation */}
-      {rows.every(row => isRowComplete(row)) && (
-        <Button
-          variant="outline"
-          className="w-full h-11 border-dashed"
-          onClick={() => setRows(prev => [...prev, createEmptyRow()])}
-        >
-          <Plus className="h-4 w-4 mr-2" />
-          Añadir otra reserva
-        </Button>
+      {/* Add another reservation — siempre disponible, sin límite */}
+      <Button
+        variant="outline"
+        className="w-full h-11 border-dashed"
+        onClick={() => setRows(prev => [...prev, createEmptyRow()])}
+      >
+        <Plus className="h-4 w-4 mr-2" />
+        Añadir otra reserva
+      </Button>
+
+      {/* Contador de filas completas */}
+      {rows.length > 1 && (
+        <p className="text-xs text-center text-muted-foreground">
+          {validRows.length} de {rows.length} reserva{rows.length > 1 ? 's' : ''} completa{validRows.length === 1 ? '' : 's'}
+        </p>
       )}
 
       {/* Submit */}
