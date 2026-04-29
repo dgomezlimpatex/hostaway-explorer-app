@@ -1,46 +1,48 @@
+## Problema
 
-# Bug "incógnita" en el calendario de las limpiadoras — corrección de zona horaria
+En el portal de clientes (pestaña "Añadir"), al alcanzar 11 reservas en el formulario, el sistema deja de permitir añadir nuevas filas.
 
 ## Diagnóstico
 
-Las limpiadoras ven "incógnita" / día siguiente vacío (sin tareas, sin info correcta) por un **bug de zona horaria en la app**, no en sus móviles.
+Tras revisar `src/components/client-portal/QuickAddReservations.tsx` y `useCreateReservations` en `src/hooks/useClientPortal.ts`, **no existe un límite numérico hardcodeado** (ni 11, ni similar). El bug está en la lógica que controla la visibilidad del botón "Añadir otra reserva":
 
-En todo el flujo de calendario de la limpiadora se está usando `date.toISOString().split('T')[0]` para convertir una fecha JS a `YYYY-MM-DD`. El problema:
+```ts
+// Línea ~352 de QuickAddReservations.tsx
+{rows.every(row => isRowComplete(row)) && (
+  <Button ...>Añadir otra reserva</Button>
+)}
+```
 
-- `toISOString()` siempre devuelve la fecha en **UTC**.
-- En España, una fecha como **martes 29/04 a las 00:30 hora de Madrid** equivale a **lunes 28/04 a las 22:30 UTC**.
-- Por tanto `toISOString().split('T')[0]` devuelve **"2026-04-28"** en vez de **"2026-04-29"**.
-- Resultado: cuando la limpiadora navega al "día siguiente", la app filtra tareas con la fecha equivocada → no encuentra nada → la vista queda en blanco / con datos extraños ("incógnita").
+El botón solo aparece cuando **todas** las filas están completas. A partir de cierto número de filas (probablemente cuando el contenedor scrollea fuera de vista o cuando una fila intermedia queda con un `Popover` abierto / un campo vacío sin advertir), el botón se oculta y el usuario percibe el límite. Además, el botón de envío `Guardar N reservas` aparece solo si `validRows.length > 0`, pero el botón de "añadir otra" se vuelve dependiente de la perfección de todas — frágil cuando hay muchas filas.
 
-Esto es exactamente la regla que ya tenemos documentada (Core memory: usar siempre `formatMadridDate` para fechas, nunca `toISOString`). Hay sitios donde se aplicó pero el flujo de la limpiadora se dejó atrás.
+El número "11" probablemente coincide con el viewport del usuario: a partir de ahí el botón queda oculto fuera del scroll, o un `Popover` / `Select` queda sin cerrar y `isRowComplete` devuelve `false` para esa fila.
 
-## Sitios afectados (a corregir)
+## Solución
 
-Reemplazar `date.toISOString().split('T')[0]` por `formatMadridDate(date)` en los puntos del flujo de la limpiadora:
+Hacer la creación realmente ilimitada y desacoplar el botón "Añadir otra reserva" del estado de completitud:
 
-1. **`src/components/calendar/cleaner/CleanerWeeklyView.tsx`** (línea 35) — el filtro de tareas por día en la franja semanal. Este es el bug principal: hace que el día seleccionado/los puntos por día se calculen en UTC.
-2. **`src/components/CleaningCalendar.tsx`** (líneas 146 y 151) — cálculo de `currentDateStr` y `tomorrowDateStr` para `todayTasks` / `tomorrowTasks` que se pasan al móvil de la limpiadora. Aquí está la causa de que "Mañana: X tareas" salga mal y de que al pulsar otro día no se vean las tareas reales.
-3. **`src/components/CleaningCalendar.tsx`** (líneas 259, 264, 321, 394) — los mismos cálculos en otra rama del render (vista mobile manager / filtros generales).
-4. **`src/components/dashboard/CleanerDashboard.tsx`** (línea 30) — `todayStr` para las "Tareas de Hoy" en el panel inicial; con el bug, en horario nocturno o en el cambio de día puede mostrar el día incorrecto.
+### 1. `src/components/client-portal/QuickAddReservations.tsx`
 
-En todos los casos: importar `formatMadridDate` desde `@/utils/date` y sustituir.
+- **Mostrar "Añadir otra reserva" siempre** (no solo cuando todas están completas). Si hay filas incompletas, el botón sigue visible; al pulsarlo añade una nueva fila vacía al final.
+- **Mostrar el botón "Guardar N reservas" siempre** que `validRows.length > 0`, y mantener el contador correcto (filas válidas vs totales).
+- Añadir un pequeño indicador "X de Y completas" para que el usuario sepa cuáles le faltan, en lugar de ocultar acciones.
+- Asegurar que el contenedor de filas no impone `max-height` ni overflow oculto que esconda filas adicionales.
 
-No se modifica nada más fuera de este flujo (ni vista admin ni reports), para mantener el cambio acotado a lo que las limpiadoras están viendo mal.
+### 2. Verificar el envío masivo
 
-## Por qué se manifiesta especialmente "el día siguiente de trabajo"
+`useCreateReservations` itera secuencialmente con `for...of` sobre `reservations` sin límite. Confirmado: no hay tope, pero para muchas reservas (50+) puede ser lento. Añadir:
 
-Cuando la limpiadora abre la app a primera hora o por la noche, JS construye fechas locales (Europe/Madrid). Al pulsar "siguiente día" se hace `setDate(+1)` y luego `toISOString()` → al pasar a UTC se resta 1-2 horas, y en muchos momentos del día eso "tira" la fecha al día anterior. Por eso para el día actual a veces se ve bien, pero el día siguiente falla con frecuencia.
+- Indicador de progreso en el botón: "Guardando 5 de 30…".
+- Mantener el `try/catch` global; si una falla, informar cuáles se crearon y cuáles no.
 
-## Lo que NO cambia
+### 3. QA
 
-- Ningún flujo de creación, asignación ni reporte de tareas.
-- Ninguna vista de administrador.
-- No se tocan los botones del calendario (las correcciones previas de `type="button"` se mantienen).
+- Probar añadiendo 20-30 reservas seguidas en el portal y verificar que el botón "Añadir otra" sigue accesible.
+- Verificar en móvil (viewport pequeño) que el botón no queda oculto por la barra inferior.
 
-## Resultado esperado
+## Archivos a modificar
 
-- Al seleccionar cualquier día (hoy o futuro) en la franja semanal, las tareas asignadas para ese día aparecen correctamente.
-- El contador "Mañana: X tareas" coincide con la realidad.
-- Desaparece la confusión visual que las limpiadoras describen como "incógnita".
+- `src/components/client-portal/QuickAddReservations.tsx` (cambio principal de UI)
+- `src/hooks/useClientPortal.ts` (opcional: feedback de progreso en `useCreateReservations`)
 
-¿Procedo con el fix?
+No se requieren cambios de base de datos ni de edge functions.
