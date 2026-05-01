@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from 'react';
-import { Building2, LogOut, Plus, Calendar, List, Lock } from 'lucide-react';
+import { Building2, LogOut, Plus, Calendar, List, Lock, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
@@ -11,6 +11,7 @@ import {
 import { QuickAddReservations } from './QuickAddReservations';
 import { ReservationsList } from './ReservationsList';
 import { ReservationsCalendar } from './ReservationsCalendar';
+import { ExtraordinaryRequestsTab } from './ExtraordinaryRequestsTab';
 import { Toaster } from '@/components/ui/toaster';
 
 interface ClientPortalDashboardProps {
