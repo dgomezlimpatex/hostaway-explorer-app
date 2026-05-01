@@ -691,6 +691,106 @@ export type Database = {
           },
         ]
       }
+      client_extraordinary_requests: {
+        Row: {
+          client_id: string
+          cost_snapshot: number
+          created_at: string
+          guest_name: string | null
+          id: string
+          notes: string | null
+          property_id: string
+          request_type_id: string | null
+          request_type_label_snapshot: string
+          reservation_id: string | null
+          sede_id: string
+          service_date: string
+          service_time: string | null
+          status: string
+          task_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          client_id: string
+          cost_snapshot?: number
+          created_at?: string
+          guest_name?: string | null
+          id?: string
+          notes?: string | null
+          property_id: string
+          request_type_id?: string | null
+          request_type_label_snapshot: string
+          reservation_id?: string | null
+          sede_id: string
+          service_date: string
+          service_time?: string | null
+          status?: string
+          task_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          client_id?: string
+          cost_snapshot?: number
+          created_at?: string
+          guest_name?: string | null
+          id?: string
+          notes?: string | null
+          property_id?: string
+          request_type_id?: string | null
+          request_type_label_snapshot?: string
+          reservation_id?: string | null
+          sede_id?: string
+          service_date?: string
+          service_time?: string | null
+          status?: string
+          task_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_extraordinary_requests_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_extraordinary_requests_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_extraordinary_requests_request_type_id_fkey"
+            columns: ["request_type_id"]
+            isOneToOne: false
+            referencedRelation: "extraordinary_request_types"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_extraordinary_requests_reservation_id_fkey"
+            columns: ["reservation_id"]
+            isOneToOne: false
+            referencedRelation: "client_reservations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_extraordinary_requests_sede_id_fkey"
+            columns: ["sede_id"]
+            isOneToOne: false
+            referencedRelation: "sedes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_extraordinary_requests_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       client_portal_access: {
         Row: {
           access_pin: string
@@ -927,6 +1027,7 @@ export type Database = {
       }
       clients: {
         Row: {
+          allow_extraordinary_requests: boolean
           allow_reservation_creation: boolean
           cif_nif: string
           ciudad: string
@@ -950,6 +1051,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          allow_extraordinary_requests?: boolean
           allow_reservation_creation?: boolean
           cif_nif: string
           ciudad: string
@@ -973,6 +1075,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          allow_extraordinary_requests?: boolean
           allow_reservation_creation?: boolean
           cif_nif?: string
           ciudad?: string
@@ -1049,6 +1152,62 @@ export type Database = {
             columns: ["token_id"]
             isOneToOne: false
             referencedRelation: "report_export_tokens"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      extraordinary_request_types: {
+        Row: {
+          code: string
+          created_at: string
+          default_cost: number
+          default_duration_minutes: number
+          description: string | null
+          icon: string | null
+          id: string
+          is_active: boolean
+          label: string
+          requires_time: boolean
+          sede_id: string | null
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          default_cost?: number
+          default_duration_minutes?: number
+          description?: string | null
+          icon?: string | null
+          id?: string
+          is_active?: boolean
+          label: string
+          requires_time?: boolean
+          sede_id?: string | null
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          default_cost?: number
+          default_duration_minutes?: number
+          description?: string | null
+          icon?: string | null
+          id?: string
+          is_active?: boolean
+          label?: string
+          requires_time?: boolean
+          sede_id?: string | null
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "extraordinary_request_types_sede_id_fkey"
+            columns: ["sede_id"]
+            isOneToOne: false
+            referencedRelation: "sedes"
             referencedColumns: ["id"]
           },
         ]
@@ -3850,6 +4009,10 @@ export type Database = {
         Args: { input_user_id: string; invitation_token: string }
         Returns: Database["public"]["Enums"]["app_role"]
       }
+      cancel_extraordinary_request: {
+        Args: { _request_id: string }
+        Returns: undefined
+      }
       check_rate_limit: {
         Args: {
           block_minutes?: number
@@ -3862,6 +4025,19 @@ export type Database = {
       }
       cleanup_expired_invitations: { Args: never; Returns: undefined }
       close_stale_avantio_syncs: { Args: never; Returns: undefined }
+      create_extraordinary_request_with_task: {
+        Args: {
+          _client_id: string
+          _guest_name?: string
+          _notes?: string
+          _property_id: string
+          _request_type_id: string
+          _reservation_id?: string
+          _service_date: string
+          _service_time?: string
+        }
+        Returns: Json
+      }
       create_user_invitation_secure:
         | {
             Args: {
