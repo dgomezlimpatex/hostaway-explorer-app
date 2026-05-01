@@ -119,6 +119,12 @@ export const ClientPortalDashboard = ({
               <Calendar className="h-4 w-4" />
               <span>Calendario</span>
             </TabsTrigger>
+            {canCreateExtraordinary && (
+              <TabsTrigger value="extra" className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2 py-2 text-xs sm:text-sm">
+                <Sparkles className="h-4 w-4" />
+                <span>Extras</span>
+              </TabsTrigger>
+            )}
           </TabsList>
 
           {canCreateReservations && (
@@ -152,6 +158,12 @@ export const ClientPortalDashboard = ({
               isLoading={loadingBookings}
             />
           </TabsContent>
+
+          {canCreateExtraordinary && (
+            <TabsContent value="extra">
+              <ExtraordinaryRequestsTab clientId={clientId} properties={properties} />
+            </TabsContent>
+          )}
         </Tabs>
       </main>
       
