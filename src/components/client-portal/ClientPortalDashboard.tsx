@@ -29,6 +29,7 @@ export const ClientPortalDashboard = ({
   // Strict default: only allow creation when explicitly enabled (true).
   // While loading or if unreadable, hide the "Añadir" tab to avoid leaking the option.
   const canCreateReservations = settings?.allowReservationCreation === true;
+  const canCreateExtraordinary = settings?.allowExtraordinaryRequests === true;
 
   const [activeTab, setActiveTab] = useState<string>('list');
 
@@ -37,7 +38,10 @@ export const ClientPortalDashboard = ({
     if (!canCreateReservations && activeTab === 'add') {
       setActiveTab('list');
     }
-  }, [canCreateReservations, activeTab]);
+    if (!canCreateExtraordinary && activeTab === 'extra') {
+      setActiveTab('list');
+    }
+  }, [canCreateReservations, canCreateExtraordinary, activeTab]);
 
   const { data: properties = [], isLoading: loadingProperties } = useClientProperties(clientId);
   const { data: bookings = [], isLoading: loadingBookings, refetch } = useClientPortalBookings(clientId);
@@ -64,8 +68,12 @@ export const ClientPortalDashboard = ({
     return date >= new Date() && b.status !== 'cancelled';
   });
 
-  const tabsCount = canCreateReservations ? 3 : 2;
-  const gridColsClass = canCreateReservations ? 'grid-cols-3' : 'grid-cols-2';
+  const extraTabs = (canCreateReservations ? 1 : 0) + (canCreateExtraordinary ? 1 : 0);
+  const tabsCount = 2 + extraTabs;
+  const gridColsClass =
+    tabsCount === 4 ? 'grid-cols-4'
+    : tabsCount === 3 ? 'grid-cols-3'
+    : 'grid-cols-2';
 
   return (
     <div className="min-h-screen bg-background">
