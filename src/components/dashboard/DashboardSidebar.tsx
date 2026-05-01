@@ -154,6 +154,11 @@ const adminItems: NavigationItem[] = [
     icon: Layers,
   },
   {
+    title: 'Servicios extraordinarios',
+    href: '/admin/extraordinary-types',
+    icon: Layers,
+  },
+  {
     title: 'Avantio Sync',
     href: '/avantio-automation',
     icon: Settings,

@@ -136,6 +136,11 @@ const adminItems: NavigationItem[] = [
     icon: Layers,
   },
   {
+    title: 'Servicios extraordinarios',
+    href: '/admin/extraordinary-types',
+    icon: Layers,
+  },
+  {
     title: 'Hostaway Sync',
     href: '/hostaway-sync-logs',
     icon: AlertTriangle,
