@@ -4083,6 +4083,7 @@ export type Database = {
       get_client_portal_settings: {
         Args: { _client_id: string }
         Returns: {
+          allow_extraordinary_requests: boolean
           allow_reservation_creation: boolean
           client_id: string
         }[]
