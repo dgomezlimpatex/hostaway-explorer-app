@@ -12,7 +12,7 @@ import {
 } from '@/components/ui/select';
 import {
   Search, Eye, EyeOff, Copy, ExternalLink, Link2, LogIn, Loader2, Camera, CameraOff,
-  CalendarPlus, CalendarOff, History,
+  CalendarPlus, CalendarOff, History, Sparkles,
 } from 'lucide-react';
 import {
   useAdminClientPortals,
@@ -20,6 +20,7 @@ import {
   useToggleClientReservationCreation,
   useCreatePortalAccess,
 } from '@/hooks/useClientPortal';
+import { useToggleClientExtraordinaryRequests } from '@/hooks/useExtraordinaryRequests';
 import { useAdminPortalBypass } from '@/hooks/useAdminPortalBypass';
 import { ClientReservationHistoryModal } from '@/components/client-portal/ClientReservationHistoryModal';
 import { useToast } from '@/hooks/use-toast';
@@ -40,6 +41,7 @@ const ClientPortalsAdmin = () => {
   const { data: rows = [], isLoading } = useAdminClientPortals();
   const togglePhotos = useToggleClientPhotosVisibility();
   const toggleReservations = useToggleClientReservationCreation();
+  const toggleExtraordinary = useToggleClientExtraordinaryRequests();
   const createAccess = useCreatePortalAccess();
   const bypass = useAdminPortalBypass();
   const { toast } = useToast();
@@ -143,6 +145,7 @@ const ClientPortalsAdmin = () => {
                     <TableHead>Enlace</TableHead>
                     <TableHead className="text-center">Fotos</TableHead>
                     <TableHead className="text-center">Crear reservas</TableHead>
+                    <TableHead className="text-center">Servicios extra</TableHead>
                     <TableHead>Último acceso</TableHead>
                     <TableHead className="text-right">Acciones</TableHead>
                   </TableRow>
@@ -219,6 +222,17 @@ const ClientPortalsAdmin = () => {
                               onCheckedChange={(checked) =>
                                 toggleReservations.mutate({ clientId: row.clientId, enabled: checked })}
                               disabled={toggleReservations.isPending}
+                            />
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <div className="flex items-center justify-center gap-2">
+                            <Sparkles className={row.allowExtraordinaryRequests ? 'h-4 w-4 text-emerald-600' : 'h-4 w-4 text-muted-foreground'} />
+                            <Switch
+                              checked={row.allowExtraordinaryRequests}
+                              onCheckedChange={(checked) =>
+                                toggleExtraordinary.mutate({ clientId: row.clientId, enabled: checked })}
+                              disabled={toggleExtraordinary.isPending}
                             />
                           </div>
                         </TableCell>

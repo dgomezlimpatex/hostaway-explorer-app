@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from 'react';
-import { Building2, LogOut, Plus, Calendar, List, Lock } from 'lucide-react';
+import { Building2, LogOut, Plus, Calendar, List, Lock, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
@@ -11,6 +11,7 @@ import {
 import { QuickAddReservations } from './QuickAddReservations';
 import { ReservationsList } from './ReservationsList';
 import { ReservationsCalendar } from './ReservationsCalendar';
+import { ExtraordinaryRequestsTab } from './ExtraordinaryRequestsTab';
 import { Toaster } from '@/components/ui/toaster';
 
 interface ClientPortalDashboardProps {
@@ -28,6 +29,7 @@ export const ClientPortalDashboard = ({
   // Strict default: only allow creation when explicitly enabled (true).
   // While loading or if unreadable, hide the "Añadir" tab to avoid leaking the option.
   const canCreateReservations = settings?.allowReservationCreation === true;
+  const canCreateExtraordinary = settings?.allowExtraordinaryRequests === true;
 
   const [activeTab, setActiveTab] = useState<string>('list');
 
@@ -36,7 +38,10 @@ export const ClientPortalDashboard = ({
     if (!canCreateReservations && activeTab === 'add') {
       setActiveTab('list');
     }
-  }, [canCreateReservations, activeTab]);
+    if (!canCreateExtraordinary && activeTab === 'extra') {
+      setActiveTab('list');
+    }
+  }, [canCreateReservations, canCreateExtraordinary, activeTab]);
 
   const { data: properties = [], isLoading: loadingProperties } = useClientProperties(clientId);
   const { data: bookings = [], isLoading: loadingBookings, refetch } = useClientPortalBookings(clientId);
@@ -63,8 +68,12 @@ export const ClientPortalDashboard = ({
     return date >= new Date() && b.status !== 'cancelled';
   });
 
-  const tabsCount = canCreateReservations ? 3 : 2;
-  const gridColsClass = canCreateReservations ? 'grid-cols-3' : 'grid-cols-2';
+  const extraTabs = (canCreateReservations ? 1 : 0) + (canCreateExtraordinary ? 1 : 0);
+  const tabsCount = 2 + extraTabs;
+  const gridColsClass =
+    tabsCount === 4 ? 'grid-cols-4'
+    : tabsCount === 3 ? 'grid-cols-3'
+    : 'grid-cols-2';
 
   return (
     <div className="min-h-screen bg-background">
@@ -110,6 +119,12 @@ export const ClientPortalDashboard = ({
               <Calendar className="h-4 w-4" />
               <span>Calendario</span>
             </TabsTrigger>
+            {canCreateExtraordinary && (
+              <TabsTrigger value="extra" className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2 py-2 text-xs sm:text-sm">
+                <Sparkles className="h-4 w-4" />
+                <span>Extras</span>
+              </TabsTrigger>
+            )}
           </TabsList>
 
           {canCreateReservations && (
@@ -143,6 +158,12 @@ export const ClientPortalDashboard = ({
               isLoading={loadingBookings}
             />
           </TabsContent>
+
+          {canCreateExtraordinary && (
+            <TabsContent value="extra">
+              <ExtraordinaryRequestsTab clientId={clientId} properties={properties} />
+            </TabsContent>
+          )}
         </Tabs>
       </main>
       
