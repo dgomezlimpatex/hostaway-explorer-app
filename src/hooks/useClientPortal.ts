@@ -1399,7 +1399,7 @@ export const useAdminClientPortals = () => {
     queryFn: async () => {
       const { data: clients, error: cErr } = await supabase
         .from('clients')
-        .select('id, nombre, is_active, photos_visible_to_client, allow_reservation_creation')
+        .select('id, nombre, is_active, photos_visible_to_client, allow_reservation_creation, allow_extraordinary_requests')
         .neq('is_active', false)
         .order('nombre', { ascending: true });
       if (cErr) throw cErr;
@@ -1419,6 +1419,7 @@ export const useAdminClientPortals = () => {
           clientActive: c.is_active,
           photosVisibleToClient: !!c.photos_visible_to_client,
           allowReservationCreation: c.allow_reservation_creation !== false,
+          allowExtraordinaryRequests: (c as any).allow_extraordinary_requests === true,
           access: a ? {
             id: a.id,
             accessPin: a.access_pin,
