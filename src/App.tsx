@@ -56,6 +56,7 @@ const OperationalAnalytics = React.lazy(() => import("./pages/OperationalAnalyti
 const ClientPortal = React.lazy(() => import("./pages/ClientPortal"));
 const ClientReservationsAdmin = React.lazy(() => import("./pages/ClientReservationsAdmin"));
 const ClientPortalsAdmin = React.lazy(() => import("./pages/ClientPortalsAdmin"));
+const ExtraordinaryRequestTypesAdmin = React.lazy(() => import("./pages/ExtraordinaryRequestTypesAdmin"));
 const WorkloadDashboard = React.lazy(() => import("./pages/WorkloadDashboard"));
 const StaffingForecast = React.lazy(() => import("./pages/StaffingForecast"));
 const ForecastSettings = React.lazy(() => import("./pages/ForecastSettings"));
@@ -179,6 +180,9 @@ function App() {
                     } />
                     <Route path="/admin/client-portals" element={
                       <RoleProtectedRoute requiredModule="clients"><ClientPortalsAdmin /></RoleProtectedRoute>
+                    } />
+                    <Route path="/admin/extraordinary-types" element={
+                      <RoleProtectedRoute requiredModule="clients"><ExtraordinaryRequestTypesAdmin /></RoleProtectedRoute>
                     } />
                     <Route path="/workers" element={
                       <RoleProtectedRoute requiredModule="workers"><Workers /></RoleProtectedRoute>
