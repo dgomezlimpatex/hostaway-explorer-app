@@ -83,6 +83,15 @@ const CleaningCalendar = () => {
   // Admin search (filters tasks/cleaners shown in calendar)
   const [searchTerm, setSearchTerm] = useState('');
   const isAdminSearchEnabled = userRole !== 'cleaner';
+  const { data: clientsList = [] } = useClients();
+
+  const clientNameById = useMemo(() => {
+    const map = new Map<string, string>();
+    clientsList.forEach((c: any) => {
+      if (c?.id && c?.nombre) map.set(c.id, c.nombre);
+    });
+    return map;
+  }, [clientsList]);
 
   const matchingCleanerIds = useMemo(() => {
     const term = searchTerm.trim();
@@ -99,10 +108,10 @@ const CleaningCalendar = () => {
     if (!term || !isAdminSearchEnabled) return tasks;
     return tasks.filter(t => {
       const cleanerHit = t.cleanerId ? matchingCleanerIds?.has(t.cleanerId) : false;
-      const fieldHit = taskMatches(t, term);
+      const fieldHit = taskMatches(t, term, clientNameById);
       return cleanerHit || fieldHit;
     });
-  }, [tasks, searchTerm, matchingCleanerIds, isAdminSearchEnabled]);
+  }, [tasks, searchTerm, matchingCleanerIds, isAdminSearchEnabled, clientNameById]);
 
   const filteredCleaners = useMemo(() => {
     const term = searchTerm.trim();
