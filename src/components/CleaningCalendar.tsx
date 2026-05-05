@@ -80,8 +80,10 @@ const CleaningCalendar = () => {
   const assignedTasks = tasks.filter(task => task.cleanerId && task.cleaner);
   const unassignedTasks = tasks.filter(task => !task.cleanerId && !task.cleaner);
 
-  // Admin search (filters tasks/cleaners shown in calendar)
+  // Admin filters (filters tasks/cleaners shown in calendar)
   const [searchTerm, setSearchTerm] = useState('');
+  const [selectedClientFilter, setSelectedClientFilter] = useState<string>('all');
+  const [selectedCleanerFilter, setSelectedCleanerFilter] = useState<string>('all');
   const isAdminSearchEnabled = userRole !== 'cleaner';
   const { data: clientsList = [] } = useClients();
 
@@ -92,6 +94,19 @@ const CleaningCalendar = () => {
     });
     return map;
   }, [clientsList]);
+
+  const clientFilterOptions = useMemo(() => {
+    return clientsList
+      .filter((c: any) => c?.isActive !== false)
+      .map((c: any) => ({ id: c.id, name: c.nombre }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [clientsList]);
+
+  const cleanerFilterOptions = useMemo(() => {
+    return [...cleaners]
+      .map(c => ({ id: c.id, name: c.name }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [cleaners]);
 
   const matchingCleanerIds = useMemo(() => {
     const term = searchTerm.trim();
@@ -104,32 +119,58 @@ const CleaningCalendar = () => {
   }, [searchTerm, cleaners]);
 
   const filteredTasks = useMemo(() => {
+    if (!isAdminSearchEnabled) return tasks;
     const term = searchTerm.trim();
-    if (!term || !isAdminSearchEnabled) return tasks;
+    const hasClientFilter = selectedClientFilter !== 'all';
+    const hasCleanerFilter = selectedCleanerFilter !== 'all';
+    const hasSearch = !!term;
+
+    if (!hasClientFilter && !hasCleanerFilter && !hasSearch) return tasks;
+
     return tasks.filter(t => {
-      // Las tareas sin asignar siempre se muestran
-      if (!t.cleanerId) return true;
-      const cleanerHit = matchingCleanerIds?.has(t.cleanerId) ?? false;
-      const fieldHit = taskMatches(t, term, clientNameById);
-      return cleanerHit || fieldHit;
+      // Filtro por cliente (no se aplica a sin asignar si no es el filtro principal)
+      if (hasClientFilter && t.clienteId !== selectedClientFilter) return false;
+
+      // Filtro por empleado: las sin asignar siempre pasan
+      if (hasCleanerFilter && t.cleanerId && t.cleanerId !== selectedCleanerFilter) return false;
+
+      // Búsqueda libre: las sin asignar siempre se muestran
+      if (hasSearch) {
+        if (!t.cleanerId) return true;
+        const cleanerHit = matchingCleanerIds?.has(t.cleanerId) ?? false;
+        const fieldHit = taskMatches(t, term, clientNameById);
+        if (!cleanerHit && !fieldHit) return false;
+      }
+
+      return true;
     });
-  }, [tasks, searchTerm, matchingCleanerIds, isAdminSearchEnabled, clientNameById]);
+  }, [tasks, searchTerm, matchingCleanerIds, isAdminSearchEnabled, clientNameById, selectedClientFilter, selectedCleanerFilter]);
 
   const filteredCleaners = useMemo(() => {
+    if (!isAdminSearchEnabled) return cleaners;
     const term = searchTerm.trim();
-    if (!term || !isAdminSearchEnabled) return cleaners;
+    const hasCleanerFilter = selectedCleanerFilter !== 'all';
+    const hasClientFilter = selectedClientFilter !== 'all';
+    const hasSearch = !!term;
+
+    if (hasCleanerFilter) {
+      return cleaners.filter(c => c.id === selectedCleanerFilter);
+    }
+    if (!hasSearch && !hasClientFilter) return cleaners;
+
     const cleanersWithTasks = new Set(
       filteredTasks.map(t => t.cleanerId).filter(Boolean) as string[]
     );
     return cleaners.filter(c =>
       (matchingCleanerIds?.has(c.id) ?? false) || cleanersWithTasks.has(c.id)
     );
-  }, [cleaners, searchTerm, matchingCleanerIds, filteredTasks, isAdminSearchEnabled]);
+  }, [cleaners, searchTerm, matchingCleanerIds, filteredTasks, isAdminSearchEnabled, selectedCleanerFilter, selectedClientFilter]);
 
   const searchResultsLabel = useMemo(() => {
-    if (!searchTerm.trim()) return undefined;
+    const hasAnyFilter = !!searchTerm.trim() || selectedClientFilter !== 'all' || selectedCleanerFilter !== 'all';
+    if (!hasAnyFilter) return undefined;
     return `${filteredTasks.length} tareas · ${filteredCleaners.length} empleados`;
-  }, [searchTerm, filteredTasks.length, filteredCleaners.length]);
+  }, [searchTerm, selectedClientFilter, selectedCleanerFilter, filteredTasks.length, filteredCleaners.length]);
 
   // Sync horizontal scroll from timeline body to header only
   const handleHeaderScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
