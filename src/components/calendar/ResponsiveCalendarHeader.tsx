@@ -191,6 +191,36 @@ export const ResponsiveCalendarHeader = ({
             ))}
           </div>
         </div>
+
+        {/* Buscador (solo admin) */}
+        {showSearch && onSearchChange && (
+          <div className="mt-2.5 flex items-center gap-2">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+              <Input
+                value={searchTerm}
+                onChange={(e) => onSearchChange(e.target.value)}
+                placeholder="Buscar empleado, propiedad, cliente o dirección..."
+                className="pl-9 pr-9 h-9 rounded-lg"
+              />
+              {searchTerm && (
+                <button
+                  onClick={() => onSearchChange('')}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 h-6 w-6 inline-flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted"
+                  aria-label="Limpiar búsqueda"
+                  type="button"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              )}
+            </div>
+            {searchTerm && searchResultsLabel && (
+              <span className="text-xs text-muted-foreground whitespace-nowrap hidden sm:inline">
+                {searchResultsLabel}
+              </span>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
