@@ -1,5 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ChevronLeft, ChevronRight, CalendarDays, Plus, ArrowLeft, Users, Sparkles, Search, X } from "lucide-react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
