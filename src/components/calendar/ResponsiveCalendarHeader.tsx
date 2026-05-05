@@ -31,7 +31,11 @@ export const ResponsiveCalendarHeader = ({
   onViewChange,
   onNewTask,
   onNewBatchTask,
-  onNewExtraordinaryService
+  onNewExtraordinaryService,
+  searchTerm = '',
+  onSearchChange,
+  showSearch = false,
+  searchResultsLabel,
 }: ResponsiveCalendarHeaderProps) => {
   const { isMobile } = useDeviceType();
 
