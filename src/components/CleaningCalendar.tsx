@@ -400,8 +400,8 @@ const CleaningCalendar = () => {
         {/* Calendar Container - takes available space */}
         <div className="flex-1 flex flex-col min-h-0">
           <CalendarContainer
-            tasks={tasks}
-            cleaners={cleaners}
+            tasks={filteredTasks}
+            cleaners={filteredCleaners}
             currentDate={currentDate}
             timeSlots={timeSlots}
             availability={availability}
