@@ -107,7 +107,9 @@ const CleaningCalendar = () => {
     const term = searchTerm.trim();
     if (!term || !isAdminSearchEnabled) return tasks;
     return tasks.filter(t => {
-      const cleanerHit = t.cleanerId ? matchingCleanerIds?.has(t.cleanerId) : false;
+      // Las tareas sin asignar siempre se muestran
+      if (!t.cleanerId) return true;
+      const cleanerHit = matchingCleanerIds?.has(t.cleanerId) ?? false;
       const fieldHit = taskMatches(t, term, clientNameById);
       return cleanerHit || fieldHit;
     });
