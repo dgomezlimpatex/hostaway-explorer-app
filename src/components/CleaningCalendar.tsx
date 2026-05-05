@@ -437,8 +437,8 @@ const CleaningCalendar = () => {
         {/* Footer-resumen con totales y leyenda de clientes */}
         <div className="flex-shrink-0">
           <CalendarFooterSummary
-            tasks={tasks.filter(t => t.date === formatMadridDate(currentDate))}
-            cleaners={cleaners}
+            tasks={filteredTasks.filter(t => t.date === formatMadridDate(currentDate))}
+            cleaners={filteredCleaners}
           />
         </div>
       </div>
