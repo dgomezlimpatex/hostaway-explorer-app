@@ -208,32 +208,26 @@ export const ResponsiveCalendarHeader = ({
         {/* Filtros (solo admin): desplegables cliente/empleado + buscador pequeño */}
         {showSearch && onSearchChange && (
           <div className="mt-2.5 flex flex-wrap items-center gap-2">
-            {onClientFilterChange && (
-              <Select value={selectedClientFilter} onValueChange={onClientFilterChange}>
-                <SelectTrigger className="h-9 w-full sm:w-48 rounded-lg text-sm">
-                  <SelectValue placeholder="Cliente" />
-                </SelectTrigger>
-                <SelectContent className="max-h-72">
-                  <SelectItem value="all">Todos los clientes</SelectItem>
-                  {clientFilterOptions.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+            {onClientFiltersChange && (
+              <MultiSelectFilter
+                options={clientFilterOptions}
+                selected={selectedClientFilters}
+                onChange={onClientFiltersChange}
+                placeholder="clientes"
+                allLabel="Todos los clientes"
+                className="w-full sm:w-48"
+              />
             )}
 
-            {onCleanerFilterChange && (
-              <Select value={selectedCleanerFilter} onValueChange={onCleanerFilterChange}>
-                <SelectTrigger className="h-9 w-full sm:w-48 rounded-lg text-sm">
-                  <SelectValue placeholder="Empleado" />
-                </SelectTrigger>
-                <SelectContent className="max-h-72">
-                  <SelectItem value="all">Todos los empleados</SelectItem>
-                  {cleanerFilterOptions.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+            {onCleanerFiltersChange && (
+              <MultiSelectFilter
+                options={cleanerFilterOptions}
+                selected={selectedCleanerFilters}
+                onChange={onCleanerFiltersChange}
+                placeholder="empleados"
+                allLabel="Todos los empleados"
+                className="w-full sm:w-48"
+              />
             )}
 
             <div className="relative w-full sm:w-56">
