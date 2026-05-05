@@ -1,6 +1,7 @@
 
 import React, { useCallback, useRef, useEffect, useState, useMemo } from "react";
 import { taskMatches, cleanerNameMatches } from "./calendar/utils/calendarSearch";
+import { useClients } from "@/hooks/useClients";
 import { formatMadridDate } from "@/utils/date";
 import { ResponsiveCalendarHeader } from "./calendar/ResponsiveCalendarHeader";
 import { CalendarContainer } from "./calendar/CalendarContainer";
