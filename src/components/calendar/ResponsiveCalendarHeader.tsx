@@ -1,6 +1,5 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ChevronLeft, ChevronRight, CalendarDays, Plus, ArrowLeft, Users, Sparkles, Search, X } from "lucide-react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
@@ -8,6 +7,7 @@ import { cn } from "@/lib/utils";
 import { ViewType } from "@/types/calendar";
 import { Link } from "react-router-dom";
 import { useDeviceType } from "@/hooks/use-mobile";
+import { MultiSelectFilter } from "./MultiSelectFilter";
 
 interface ResponsiveCalendarHeaderProps {
   currentDate: Date;
@@ -24,10 +24,10 @@ interface ResponsiveCalendarHeaderProps {
   searchResultsLabel?: string;
   clientFilterOptions?: Array<{ id: string; name: string }>;
   cleanerFilterOptions?: Array<{ id: string; name: string }>;
-  selectedClientFilter?: string;
-  selectedCleanerFilter?: string;
-  onClientFilterChange?: (value: string) => void;
-  onCleanerFilterChange?: (value: string) => void;
+  selectedClientFilters?: string[];
+  selectedCleanerFilters?: string[];
+  onClientFiltersChange?: (value: string[]) => void;
+  onCleanerFiltersChange?: (value: string[]) => void;
 }
 
 export const ResponsiveCalendarHeader = ({
@@ -45,10 +45,10 @@ export const ResponsiveCalendarHeader = ({
   searchResultsLabel,
   clientFilterOptions = [],
   cleanerFilterOptions = [],
-  selectedClientFilter = 'all',
-  selectedCleanerFilter = 'all',
-  onClientFilterChange,
-  onCleanerFilterChange,
+  selectedClientFilters = [],
+  selectedCleanerFilters = [],
+  onClientFiltersChange,
+  onCleanerFiltersChange,
 }: ResponsiveCalendarHeaderProps) => {
   const { isMobile } = useDeviceType();
 
@@ -208,32 +208,26 @@ export const ResponsiveCalendarHeader = ({
         {/* Filtros (solo admin): desplegables cliente/empleado + buscador pequeño */}
         {showSearch && onSearchChange && (
           <div className="mt-2.5 flex flex-wrap items-center gap-2">
-            {onClientFilterChange && (
-              <Select value={selectedClientFilter} onValueChange={onClientFilterChange}>
-                <SelectTrigger className="h-9 w-full sm:w-48 rounded-lg text-sm">
-                  <SelectValue placeholder="Cliente" />
-                </SelectTrigger>
-                <SelectContent className="max-h-72">
-                  <SelectItem value="all">Todos los clientes</SelectItem>
-                  {clientFilterOptions.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+            {onClientFiltersChange && (
+              <MultiSelectFilter
+                options={clientFilterOptions}
+                selected={selectedClientFilters}
+                onChange={onClientFiltersChange}
+                placeholder="clientes"
+                allLabel="Todos los clientes"
+                className="w-full sm:w-48"
+              />
             )}
 
-            {onCleanerFilterChange && (
-              <Select value={selectedCleanerFilter} onValueChange={onCleanerFilterChange}>
-                <SelectTrigger className="h-9 w-full sm:w-48 rounded-lg text-sm">
-                  <SelectValue placeholder="Empleado" />
-                </SelectTrigger>
-                <SelectContent className="max-h-72">
-                  <SelectItem value="all">Todos los empleados</SelectItem>
-                  {cleanerFilterOptions.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+            {onCleanerFiltersChange && (
+              <MultiSelectFilter
+                options={cleanerFilterOptions}
+                selected={selectedCleanerFilters}
+                onChange={onCleanerFiltersChange}
+                placeholder="empleados"
+                allLabel="Todos los empleados"
+                className="w-full sm:w-48"
+              />
             )}
 
             <div className="relative w-full sm:w-56">

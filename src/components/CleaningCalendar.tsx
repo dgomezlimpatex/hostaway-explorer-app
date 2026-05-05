@@ -82,8 +82,8 @@ const CleaningCalendar = () => {
 
   // Admin filters (filters tasks/cleaners shown in calendar)
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedClientFilter, setSelectedClientFilter] = useState<string>('all');
-  const [selectedCleanerFilter, setSelectedCleanerFilter] = useState<string>('all');
+  const [selectedClientFilters, setSelectedClientFilters] = useState<string[]>([]);
+  const [selectedCleanerFilters, setSelectedCleanerFilters] = useState<string[]>([]);
   const isAdminSearchEnabled = userRole !== 'cleaner';
   const { data: clientsList = [] } = useClients();
 
@@ -118,21 +118,24 @@ const CleaningCalendar = () => {
     return ids;
   }, [searchTerm, cleaners]);
 
+  const clientFilterSet = useMemo(() => new Set(selectedClientFilters), [selectedClientFilters]);
+  const cleanerFilterSet = useMemo(() => new Set(selectedCleanerFilters), [selectedCleanerFilters]);
+
   const filteredTasks = useMemo(() => {
     if (!isAdminSearchEnabled) return tasks;
     const term = searchTerm.trim();
-    const hasClientFilter = selectedClientFilter !== 'all';
-    const hasCleanerFilter = selectedCleanerFilter !== 'all';
+    const hasClientFilter = clientFilterSet.size > 0;
+    const hasCleanerFilter = cleanerFilterSet.size > 0;
     const hasSearch = !!term;
 
     if (!hasClientFilter && !hasCleanerFilter && !hasSearch) return tasks;
 
     return tasks.filter(t => {
-      // Filtro por cliente (no se aplica a sin asignar si no es el filtro principal)
-      if (hasClientFilter && t.clienteId !== selectedClientFilter) return false;
+      // Filtro por cliente
+      if (hasClientFilter && (!t.clienteId || !clientFilterSet.has(t.clienteId))) return false;
 
       // Filtro por empleado: las sin asignar siempre pasan
-      if (hasCleanerFilter && t.cleanerId && t.cleanerId !== selectedCleanerFilter) return false;
+      if (hasCleanerFilter && t.cleanerId && !cleanerFilterSet.has(t.cleanerId)) return false;
 
       // Búsqueda libre: las sin asignar siempre se muestran
       if (hasSearch) {
@@ -144,17 +147,17 @@ const CleaningCalendar = () => {
 
       return true;
     });
-  }, [tasks, searchTerm, matchingCleanerIds, isAdminSearchEnabled, clientNameById, selectedClientFilter, selectedCleanerFilter]);
+  }, [tasks, searchTerm, matchingCleanerIds, isAdminSearchEnabled, clientNameById, clientFilterSet, cleanerFilterSet]);
 
   const filteredCleaners = useMemo(() => {
     if (!isAdminSearchEnabled) return cleaners;
     const term = searchTerm.trim();
-    const hasCleanerFilter = selectedCleanerFilter !== 'all';
-    const hasClientFilter = selectedClientFilter !== 'all';
+    const hasCleanerFilter = cleanerFilterSet.size > 0;
+    const hasClientFilter = clientFilterSet.size > 0;
     const hasSearch = !!term;
 
     if (hasCleanerFilter) {
-      return cleaners.filter(c => c.id === selectedCleanerFilter);
+      return cleaners.filter(c => cleanerFilterSet.has(c.id));
     }
     if (!hasSearch && !hasClientFilter) return cleaners;
 
@@ -164,13 +167,13 @@ const CleaningCalendar = () => {
     return cleaners.filter(c =>
       (matchingCleanerIds?.has(c.id) ?? false) || cleanersWithTasks.has(c.id)
     );
-  }, [cleaners, searchTerm, matchingCleanerIds, filteredTasks, isAdminSearchEnabled, selectedCleanerFilter, selectedClientFilter]);
+  }, [cleaners, searchTerm, matchingCleanerIds, filteredTasks, isAdminSearchEnabled, cleanerFilterSet, clientFilterSet]);
 
   const searchResultsLabel = useMemo(() => {
-    const hasAnyFilter = !!searchTerm.trim() || selectedClientFilter !== 'all' || selectedCleanerFilter !== 'all';
+    const hasAnyFilter = !!searchTerm.trim() || clientFilterSet.size > 0 || cleanerFilterSet.size > 0;
     if (!hasAnyFilter) return undefined;
     return `${filteredTasks.length} tareas · ${filteredCleaners.length} empleados`;
-  }, [searchTerm, selectedClientFilter, selectedCleanerFilter, filteredTasks.length, filteredCleaners.length]);
+  }, [searchTerm, clientFilterSet, cleanerFilterSet, filteredTasks.length, filteredCleaners.length]);
 
   // Sync horizontal scroll from timeline body to header only
   const handleHeaderScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
@@ -442,10 +445,10 @@ const CleaningCalendar = () => {
           searchResultsLabel={searchResultsLabel}
           clientFilterOptions={clientFilterOptions}
           cleanerFilterOptions={cleanerFilterOptions}
-          selectedClientFilter={selectedClientFilter}
-          selectedCleanerFilter={selectedCleanerFilter}
-          onClientFilterChange={setSelectedClientFilter}
-          onCleanerFilterChange={setSelectedCleanerFilter}
+          selectedClientFilters={selectedClientFilters}
+          selectedCleanerFilters={selectedCleanerFilters}
+          onClientFiltersChange={setSelectedClientFilters}
+          onCleanerFiltersChange={setSelectedCleanerFilters}
         />
 
         {/* Panel desplegable de trabajadoras no disponibles */}
