@@ -1,6 +1,5 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ChevronLeft, ChevronRight, CalendarDays, Plus, ArrowLeft, Users, Sparkles, Search, X } from "lucide-react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
@@ -8,6 +7,7 @@ import { cn } from "@/lib/utils";
 import { ViewType } from "@/types/calendar";
 import { Link } from "react-router-dom";
 import { useDeviceType } from "@/hooks/use-mobile";
+import { MultiSelectFilter } from "./MultiSelectFilter";
 
 interface ResponsiveCalendarHeaderProps {
   currentDate: Date;
@@ -24,10 +24,10 @@ interface ResponsiveCalendarHeaderProps {
   searchResultsLabel?: string;
   clientFilterOptions?: Array<{ id: string; name: string }>;
   cleanerFilterOptions?: Array<{ id: string; name: string }>;
-  selectedClientFilter?: string;
-  selectedCleanerFilter?: string;
-  onClientFilterChange?: (value: string) => void;
-  onCleanerFilterChange?: (value: string) => void;
+  selectedClientFilters?: string[];
+  selectedCleanerFilters?: string[];
+  onClientFiltersChange?: (value: string[]) => void;
+  onCleanerFiltersChange?: (value: string[]) => void;
 }
 
 export const ResponsiveCalendarHeader = ({
@@ -45,10 +45,10 @@ export const ResponsiveCalendarHeader = ({
   searchResultsLabel,
   clientFilterOptions = [],
   cleanerFilterOptions = [],
-  selectedClientFilter = 'all',
-  selectedCleanerFilter = 'all',
-  onClientFilterChange,
-  onCleanerFilterChange,
+  selectedClientFilters = [],
+  selectedCleanerFilters = [],
+  onClientFiltersChange,
+  onCleanerFiltersChange,
 }: ResponsiveCalendarHeaderProps) => {
   const { isMobile } = useDeviceType();
 
