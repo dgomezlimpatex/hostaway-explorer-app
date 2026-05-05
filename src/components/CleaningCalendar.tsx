@@ -440,6 +440,12 @@ const CleaningCalendar = () => {
           searchTerm={searchTerm}
           onSearchChange={setSearchTerm}
           searchResultsLabel={searchResultsLabel}
+          clientFilterOptions={clientFilterOptions}
+          cleanerFilterOptions={cleanerFilterOptions}
+          selectedClientFilter={selectedClientFilter}
+          selectedCleanerFilter={selectedCleanerFilter}
+          onClientFilterChange={setSelectedClientFilter}
+          onCleanerFilterChange={setSelectedCleanerFilter}
         />
 
         {/* Panel desplegable de trabajadoras no disponibles */}
