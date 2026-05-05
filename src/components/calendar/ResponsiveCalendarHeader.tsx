@@ -22,6 +22,12 @@ interface ResponsiveCalendarHeaderProps {
   onSearchChange?: (term: string) => void;
   showSearch?: boolean;
   searchResultsLabel?: string;
+  clientFilterOptions?: Array<{ id: string; name: string }>;
+  cleanerFilterOptions?: Array<{ id: string; name: string }>;
+  selectedClientFilter?: string;
+  selectedCleanerFilter?: string;
+  onClientFilterChange?: (value: string) => void;
+  onCleanerFilterChange?: (value: string) => void;
 }
 
 export const ResponsiveCalendarHeader = ({
