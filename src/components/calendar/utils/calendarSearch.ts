@@ -7,14 +7,20 @@ const normalize = (s: string | null | undefined): string =>
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "");
 
-export const taskMatches = (task: Task, term: string): boolean => {
+export const taskMatches = (
+  task: Task,
+  term: string,
+  clientNameById?: Map<string, string>
+): boolean => {
   if (!term) return true;
   const t = normalize(term);
+  const clientName = task.clienteId ? clientNameById?.get(task.clienteId) : undefined;
   const haystack = [
     task.property,
     task.propertyCode,
     task.address,
     task.client,
+    clientName,
     task.type,
     task.cleaner,
   ]
