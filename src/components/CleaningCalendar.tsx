@@ -1,5 +1,6 @@
 
-import React, { useCallback, useRef, useEffect } from "react";
+import React, { useCallback, useRef, useEffect, useState, useMemo } from "react";
+import { taskMatches, cleanerNameMatches } from "./calendar/utils/calendarSearch";
 import { formatMadridDate } from "@/utils/date";
 import { ResponsiveCalendarHeader } from "./calendar/ResponsiveCalendarHeader";
 import { CalendarContainer } from "./calendar/CalendarContainer";
@@ -77,6 +78,46 @@ const CleaningCalendar = () => {
   // Separate tasks into assigned and unassigned
   const assignedTasks = tasks.filter(task => task.cleanerId && task.cleaner);
   const unassignedTasks = tasks.filter(task => !task.cleanerId && !task.cleaner);
+
+  // Admin search (filters tasks/cleaners shown in calendar)
+  const [searchTerm, setSearchTerm] = useState('');
+  const isAdminSearchEnabled = userRole !== 'cleaner';
+
+  const matchingCleanerIds = useMemo(() => {
+    const term = searchTerm.trim();
+    if (!term) return null;
+    const ids = new Set<string>();
+    cleaners.forEach(c => {
+      if (cleanerNameMatches(c.name, term)) ids.add(c.id);
+    });
+    return ids;
+  }, [searchTerm, cleaners]);
+
+  const filteredTasks = useMemo(() => {
+    const term = searchTerm.trim();
+    if (!term || !isAdminSearchEnabled) return tasks;
+    return tasks.filter(t => {
+      const cleanerHit = t.cleanerId ? matchingCleanerIds?.has(t.cleanerId) : false;
+      const fieldHit = taskMatches(t, term);
+      return cleanerHit || fieldHit;
+    });
+  }, [tasks, searchTerm, matchingCleanerIds, isAdminSearchEnabled]);
+
+  const filteredCleaners = useMemo(() => {
+    const term = searchTerm.trim();
+    if (!term || !isAdminSearchEnabled) return cleaners;
+    const cleanersWithTasks = new Set(
+      filteredTasks.map(t => t.cleanerId).filter(Boolean) as string[]
+    );
+    return cleaners.filter(c =>
+      (matchingCleanerIds?.has(c.id) ?? false) || cleanersWithTasks.has(c.id)
+    );
+  }, [cleaners, searchTerm, matchingCleanerIds, filteredTasks, isAdminSearchEnabled]);
+
+  const searchResultsLabel = useMemo(() => {
+    if (!searchTerm.trim()) return undefined;
+    return `${filteredTasks.length} tareas · ${filteredCleaners.length} empleados`;
+  }, [searchTerm, filteredTasks.length, filteredCleaners.length]);
 
   // Sync horizontal scroll from timeline body to header only
   const handleHeaderScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
@@ -342,6 +383,10 @@ const CleaningCalendar = () => {
           onNewTask={handleNewTask}
           onNewBatchTask={handleNewBatchTask}
           onNewExtraordinaryService={handleNewExtraordinaryService}
+          showSearch={isAdminSearchEnabled}
+          searchTerm={searchTerm}
+          onSearchChange={setSearchTerm}
+          searchResultsLabel={searchResultsLabel}
         />
 
         {/* Panel desplegable de trabajadoras no disponibles */}
@@ -355,8 +400,8 @@ const CleaningCalendar = () => {
         {/* Calendar Container - takes available space */}
         <div className="flex-1 flex flex-col min-h-0">
           <CalendarContainer
-            tasks={tasks}
-            cleaners={cleaners}
+            tasks={filteredTasks}
+            cleaners={filteredCleaners}
             currentDate={currentDate}
             timeSlots={timeSlots}
             availability={availability}
@@ -392,8 +437,8 @@ const CleaningCalendar = () => {
         {/* Footer-resumen con totales y leyenda de clientes */}
         <div className="flex-shrink-0">
           <CalendarFooterSummary
-            tasks={tasks.filter(t => t.date === formatMadridDate(currentDate))}
-            cleaners={cleaners}
+            tasks={filteredTasks.filter(t => t.date === formatMadridDate(currentDate))}
+            cleaners={filteredCleaners}
           />
         </div>
       </div>

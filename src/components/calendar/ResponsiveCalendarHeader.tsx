@@ -1,5 +1,6 @@
 import { Button } from "@/components/ui/button";
-import { ChevronLeft, ChevronRight, CalendarDays, Plus, ArrowLeft, Users, Sparkles } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { ChevronLeft, ChevronRight, CalendarDays, Plus, ArrowLeft, Users, Sparkles, Search, X } from "lucide-react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { cn } from "@/lib/utils";
@@ -16,6 +17,10 @@ interface ResponsiveCalendarHeaderProps {
   onNewTask: () => void;
   onNewBatchTask?: () => void;
   onNewExtraordinaryService?: () => void;
+  searchTerm?: string;
+  onSearchChange?: (term: string) => void;
+  showSearch?: boolean;
+  searchResultsLabel?: string;
 }
 
 export const ResponsiveCalendarHeader = ({
@@ -26,7 +31,11 @@ export const ResponsiveCalendarHeader = ({
   onViewChange,
   onNewTask,
   onNewBatchTask,
-  onNewExtraordinaryService
+  onNewExtraordinaryService,
+  searchTerm = '',
+  onSearchChange,
+  showSearch = false,
+  searchResultsLabel,
 }: ResponsiveCalendarHeaderProps) => {
   const { isMobile } = useDeviceType();
 
@@ -182,6 +191,36 @@ export const ResponsiveCalendarHeader = ({
             ))}
           </div>
         </div>
+
+        {/* Buscador (solo admin) */}
+        {showSearch && onSearchChange && (
+          <div className="mt-2.5 flex items-center gap-2">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+              <Input
+                value={searchTerm}
+                onChange={(e) => onSearchChange(e.target.value)}
+                placeholder="Buscar empleado, propiedad, cliente o dirección..."
+                className="pl-9 pr-9 h-9 rounded-lg"
+              />
+              {searchTerm && (
+                <button
+                  onClick={() => onSearchChange('')}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 h-6 w-6 inline-flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted"
+                  aria-label="Limpiar búsqueda"
+                  type="button"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              )}
+            </div>
+            {searchTerm && searchResultsLabel && (
+              <span className="text-xs text-muted-foreground whitespace-nowrap hidden sm:inline">
+                {searchResultsLabel}
+              </span>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
