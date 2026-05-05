@@ -383,6 +383,10 @@ const CleaningCalendar = () => {
           onNewTask={handleNewTask}
           onNewBatchTask={handleNewBatchTask}
           onNewExtraordinaryService={handleNewExtraordinaryService}
+          showSearch={isAdminSearchEnabled}
+          searchTerm={searchTerm}
+          onSearchChange={setSearchTerm}
+          searchResultsLabel={searchResultsLabel}
         />
 
         {/* Panel desplegable de trabajadoras no disponibles */}
