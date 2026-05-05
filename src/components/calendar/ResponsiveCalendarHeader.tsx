@@ -1,5 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ChevronLeft, ChevronRight, CalendarDays, Plus, ArrowLeft, Users, Sparkles, Search, X } from "lucide-react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
@@ -21,6 +22,12 @@ interface ResponsiveCalendarHeaderProps {
   onSearchChange?: (term: string) => void;
   showSearch?: boolean;
   searchResultsLabel?: string;
+  clientFilterOptions?: Array<{ id: string; name: string }>;
+  cleanerFilterOptions?: Array<{ id: string; name: string }>;
+  selectedClientFilter?: string;
+  selectedCleanerFilter?: string;
+  onClientFilterChange?: (value: string) => void;
+  onCleanerFilterChange?: (value: string) => void;
 }
 
 export const ResponsiveCalendarHeader = ({
@@ -36,6 +43,12 @@ export const ResponsiveCalendarHeader = ({
   onSearchChange,
   showSearch = false,
   searchResultsLabel,
+  clientFilterOptions = [],
+  cleanerFilterOptions = [],
+  selectedClientFilter = 'all',
+  selectedCleanerFilter = 'all',
+  onClientFilterChange,
+  onCleanerFilterChange,
 }: ResponsiveCalendarHeaderProps) => {
   const { isMobile } = useDeviceType();
 
@@ -192,30 +205,59 @@ export const ResponsiveCalendarHeader = ({
           </div>
         </div>
 
-        {/* Buscador (solo admin) */}
+        {/* Filtros (solo admin): desplegables cliente/empleado + buscador pequeño */}
         {showSearch && onSearchChange && (
-          <div className="mt-2.5 flex items-center gap-2">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+          <div className="mt-2.5 flex flex-wrap items-center gap-2">
+            {onClientFilterChange && (
+              <Select value={selectedClientFilter} onValueChange={onClientFilterChange}>
+                <SelectTrigger className="h-9 w-full sm:w-48 rounded-lg text-sm">
+                  <SelectValue placeholder="Cliente" />
+                </SelectTrigger>
+                <SelectContent className="max-h-72">
+                  <SelectItem value="all">Todos los clientes</SelectItem>
+                  {clientFilterOptions.map((c) => (
+                    <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+
+            {onCleanerFilterChange && (
+              <Select value={selectedCleanerFilter} onValueChange={onCleanerFilterChange}>
+                <SelectTrigger className="h-9 w-full sm:w-48 rounded-lg text-sm">
+                  <SelectValue placeholder="Empleado" />
+                </SelectTrigger>
+                <SelectContent className="max-h-72">
+                  <SelectItem value="all">Todos los empleados</SelectItem>
+                  {cleanerFilterOptions.map((c) => (
+                    <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+
+            <div className="relative w-full sm:w-56">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
               <Input
                 value={searchTerm}
                 onChange={(e) => onSearchChange(e.target.value)}
-                placeholder="Buscar empleado, propiedad, cliente o dirección..."
-                className="pl-9 pr-9 h-9 rounded-lg"
+                placeholder="Buscar..."
+                className="pl-8 pr-8 h-9 rounded-lg text-sm"
               />
               {searchTerm && (
                 <button
                   onClick={() => onSearchChange('')}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 h-6 w-6 inline-flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted"
+                  className="absolute right-1.5 top-1/2 -translate-y-1/2 h-6 w-6 inline-flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted"
                   aria-label="Limpiar búsqueda"
                   type="button"
                 >
-                  <X className="h-4 w-4" />
+                  <X className="h-3.5 w-3.5" />
                 </button>
               )}
             </div>
-            {searchTerm && searchResultsLabel && (
-              <span className="text-xs text-muted-foreground whitespace-nowrap hidden sm:inline">
+
+            {searchResultsLabel && (
+              <span className="text-xs text-muted-foreground whitespace-nowrap hidden md:inline">
                 {searchResultsLabel}
               </span>
             )}
