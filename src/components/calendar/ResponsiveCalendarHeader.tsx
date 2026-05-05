@@ -43,6 +43,12 @@ export const ResponsiveCalendarHeader = ({
   onSearchChange,
   showSearch = false,
   searchResultsLabel,
+  clientFilterOptions = [],
+  cleanerFilterOptions = [],
+  selectedClientFilter = 'all',
+  selectedCleanerFilter = 'all',
+  onClientFilterChange,
+  onCleanerFilterChange,
 }: ResponsiveCalendarHeaderProps) => {
   const { isMobile } = useDeviceType();
 
