@@ -1,5 +1,6 @@
 import { Button } from "@/components/ui/button";
-import { ChevronLeft, ChevronRight, CalendarDays, Plus, ArrowLeft, Users, Sparkles } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { ChevronLeft, ChevronRight, CalendarDays, Plus, ArrowLeft, Users, Sparkles, Search, X } from "lucide-react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { cn } from "@/lib/utils";
@@ -16,6 +17,10 @@ interface ResponsiveCalendarHeaderProps {
   onNewTask: () => void;
   onNewBatchTask?: () => void;
   onNewExtraordinaryService?: () => void;
+  searchTerm?: string;
+  onSearchChange?: (term: string) => void;
+  showSearch?: boolean;
+  searchResultsLabel?: string;
 }
 
 export const ResponsiveCalendarHeader = ({
