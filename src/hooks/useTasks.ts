@@ -45,7 +45,7 @@ export const useTasks = (currentDate: Date, currentView: ViewType) => {
       logger.log('updateTaskMutation - updating task:', { taskId, updates });
       
       // Actualización optimista inmediata
-      const currentDateStr = new Date().toISOString().split('T')[0];
+      const currentDateStr = formatMadridDate(new Date());
       
       // Actualizar caché optimistamente
       const affectedDates = [updates.date, currentDateStr].filter(Boolean) as string[];
@@ -79,7 +79,7 @@ export const useTasks = (currentDate: Date, currentView: ViewType) => {
     },
     onSuccess: (data, variables) => {
       // Invalidación específica solo en las fechas afectadas
-      const currentDateStr = new Date().toISOString().split('T')[0];
+      const currentDateStr = formatMadridDate(new Date());
       const affectedDates = [variables.updates.date, currentDateStr].filter(Boolean);
       
       affectedDates.forEach(date => {
@@ -94,7 +94,7 @@ export const useTasks = (currentDate: Date, currentView: ViewType) => {
     },
     onError: (error, variables) => {
       // Revertir actualizaciones optimistas
-      const currentDateStr = new Date().toISOString().split('T')[0];
+      const currentDateStr = formatMadridDate(new Date());
       const affectedDates = [variables.updates.date, currentDateStr].filter(Boolean);
       
       affectedDates.forEach(date => {
