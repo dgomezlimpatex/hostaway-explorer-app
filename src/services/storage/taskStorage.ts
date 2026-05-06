@@ -214,7 +214,7 @@ export class TaskStorageService extends BaseStorageService<Task, TaskCreateData>
     if (!dateTo) {
       const defaultTo = new Date(today);
       defaultTo.setDate(defaultTo.getDate() + 45);
-      dateTo = defaultTo.toISOString().split('T')[0];
+      dateTo = formatMadridDate(defaultTo);
     }
     
     console.log('📦 TaskStorage.getTasks - date range:', { dateFrom, dateTo });
