@@ -208,7 +208,7 @@ export class TaskStorageService extends BaseStorageService<Task, TaskCreateData>
     if (!dateFrom) {
       const defaultFrom = new Date(today);
       defaultFrom.setDate(defaultFrom.getDate() - 45);
-      dateFrom = defaultFrom.toISOString().split('T')[0];
+      dateFrom = formatMadridDate(defaultFrom);
     }
     
     if (!dateTo) {
