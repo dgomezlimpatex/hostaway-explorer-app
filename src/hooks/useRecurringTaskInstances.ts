@@ -4,6 +4,7 @@ import { Task } from '@/types/calendar';
 import { useSede } from '@/contexts/SedeContext';
 import { useAuth } from '@/hooks/useAuth';
 import { useMemo } from 'react';
+import { formatMadridDate } from '@/utils/date';
 
 interface UseRecurringTaskInstancesProps {
   dateFrom: string;
