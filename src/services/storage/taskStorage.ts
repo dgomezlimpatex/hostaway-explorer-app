@@ -2,6 +2,7 @@ import { Task } from '@/types/calendar';
 import { BaseStorageService } from './baseStorage';
 import { supabase } from '@/integrations/supabase/client';
 import { InventoryMovementType, InventoryAlertType } from '@/types/inventory';
+import { formatMadridDate } from '@/utils/date';
 
 interface TaskCreateData extends Omit<Task, 'id' | 'created_at' | 'updated_at'> {}
 
