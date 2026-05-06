@@ -189,7 +189,7 @@ export const useOptimizedTasks = ({
     
     [tomorrow, nextWeek].forEach(date => {
       queryClient.prefetchQuery({
-        queryKey: ['tasks', date.toISOString().split('T')[0], currentView, sedeId],
+        queryKey: ['tasks', formatMadridDate(date), currentView, sedeId],
         queryFn: async () => {
           const allTasks = queryClient.getQueryData(['tasks', 'all', sedeId]) as Task[] || 
                           await taskStorageService.getTasks({ sedeId: activeSede?.id });

@@ -2,6 +2,7 @@ import { Task } from '@/types/calendar';
 import { BaseStorageService } from './baseStorage';
 import { supabase } from '@/integrations/supabase/client';
 import { InventoryMovementType, InventoryAlertType } from '@/types/inventory';
+import { formatMadridDate } from '@/utils/date';
 
 interface TaskCreateData extends Omit<Task, 'id' | 'created_at' | 'updated_at'> {}
 
@@ -80,7 +81,7 @@ export class TaskStorageService extends BaseStorageService<Task, TaskCreateData>
     const effectiveSedeId = sedeId || this.getSedeIdFromStorage();
     
     // Get today's date for filtering - only fetch from today onwards
-    const today = new Date().toISOString().split('T')[0];
+    const today = formatMadridDate(new Date());
     
     // Query tasks where cleaner is assigned via task_assignments table
     let query = supabase
@@ -207,13 +208,13 @@ export class TaskStorageService extends BaseStorageService<Task, TaskCreateData>
     if (!dateFrom) {
       const defaultFrom = new Date(today);
       defaultFrom.setDate(defaultFrom.getDate() - 45);
-      dateFrom = defaultFrom.toISOString().split('T')[0];
+      dateFrom = formatMadridDate(defaultFrom);
     }
     
     if (!dateTo) {
       const defaultTo = new Date(today);
       defaultTo.setDate(defaultTo.getDate() + 45);
-      dateTo = defaultTo.toISOString().split('T')[0];
+      dateTo = formatMadridDate(defaultTo);
     }
     
     console.log('📦 TaskStorage.getTasks - date range:', { dateFrom, dateTo });
