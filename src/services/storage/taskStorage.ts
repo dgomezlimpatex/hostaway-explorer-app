@@ -81,7 +81,7 @@ export class TaskStorageService extends BaseStorageService<Task, TaskCreateData>
     const effectiveSedeId = sedeId || this.getSedeIdFromStorage();
     
     // Get today's date for filtering - only fetch from today onwards
-    const today = new Date().toISOString().split('T')[0];
+    const today = formatMadridDate(new Date());
     
     // Query tasks where cleaner is assigned via task_assignments table
     let query = supabase
