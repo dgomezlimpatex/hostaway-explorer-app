@@ -9,6 +9,7 @@ import { useCacheInvalidation } from './useCacheInvalidation';
 import { useSedeContext } from './useSedeContext';
 import { useSede } from '@/contexts/SedeContext';
 import { logger } from '@/utils/logger';
+import { formatMadridDate } from '@/utils/date';
 
 export const useTasks = (currentDate: Date, currentView: ViewType) => {
   const queryClient = useQueryClient();
