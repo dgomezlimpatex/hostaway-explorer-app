@@ -674,7 +674,32 @@ export const useCreateReservations = () => {
           .single();
         
         if (resError) throw resError;
-        
+
+        // 3b. Si la reserva es de 1 sola noche, disparar alerta por email
+        try {
+          const checkIn = new Date(reservation.checkInDate + 'T00:00:00');
+          const checkOut = new Date(reservation.checkOutDate + 'T00:00:00');
+          const nights = Math.round((checkOut.getTime() - checkIn.getTime()) / (1000 * 60 * 60 * 24));
+          if (nights === 1) {
+            supabase.functions.invoke('send-one-night-alert', {
+              body: {
+                reservationId: reservationData.id,
+                propertyName: property.nombre,
+                guestName: actor.actor_name || 'Cliente (portal)',
+                arrivalDate: reservation.checkInDate,
+                departureDate: reservation.checkOutDate,
+                accommodationId: property.codigo || property.id,
+                status: `Portal cliente (${actor.actor_type})`,
+                adults: reservation.guestCount || 0,
+                children: 0,
+                notes: reservation.specialRequests || null,
+              },
+            }).catch((err) => console.error('Error enviando alerta 1 noche (portal):', err));
+          }
+        } catch (alertErr) {
+          console.error('Error preparando alerta 1 noche (portal):', alertErr);
+        }
+
         // 4. Log the action (incluye actor: cliente vía PIN o admin/manager interno)
         await supabase
           .from('client_reservation_logs')
