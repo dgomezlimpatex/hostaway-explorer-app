@@ -1,36 +1,44 @@
-## Buscador en el calendario (vista admin)
+## Diagnóstico
 
-Añadir un campo de búsqueda en el header del calendario que filtre lo que se muestra por **empleado** y por **tarea / cliente / propiedad**.
+Entre las 00:00 y las ~02:00 hora de Madrid, la fecha en UTC todavía corresponde al **día anterior** (porque Madrid va UTC+1/+2). Varios sitios del código calculan "hoy" con `new Date().toISOString().split('T')[0]`, lo que devuelve la fecha **en UTC**, no en Madrid. Esto provoca dos problemas en esa franja:
 
-### Comportamiento
+1. **`src/hooks/useCalendarNavigation.ts` (`getMadridDate`)**  
+   Usa `new Date(now.toLocaleString("en-US", {timeZone:"Europe/Madrid"}))`. Esta construcción es frágil: el string que devuelve `toLocaleString` se vuelve a parsear en la zona horaria **local del navegador**, no en Madrid. En equipos/navegadores cuya TZ no coincide con Madrid (o con DST recién cambiado), `currentDate` queda apuntando a un momento incorrecto y `formatMadridDate(currentDate)` devuelve un día equivocado → el filtro `task.date === currentDateStr` no encuentra nada y la vista se vacía.
 
-- Input visible solo para administradores (no aparece para `cleaner`).
-- Búsqueda en tiempo real (debounce 200ms), case-insensitive, sin acentos.
-- Si el término coincide con el **nombre de un empleado** → la cuadrícula muestra solo la fila de ese empleado (más "Sin asignar" si tiene tareas que también matchean, opcional: ocultarla).
-- Si el término coincide con **propiedad, código, dirección, cliente o tipo de tarea** → se ocultan las tareas que no coincidan; las filas de empleados sin tareas visibles se colapsan (se ocultan).
-- Si matchea ambos (ej. "maria sevilla") → intersección: empleado Maria + tareas que mencionen Sevilla.
-- Botón "X" para limpiar. Contador discreto: "12 tareas · 3 empleados".
-- El filtro NO afecta al fetch (sigue cargando la ventana ±14/21 días); solo filtra en cliente para mantener velocidad.
+2. **`src/services/storage/taskStorage.ts` línea 83 (`getTasksForCleaner`)** y **`src/hooks/useTasks.ts` líneas 47, 81, 96**  
+   Calculan "hoy" con `toISOString` (UTC). Entre 00:00–02:00 Madrid = día anterior en UTC, por lo que las claves de caché que se invalidan corresponden a un día distinto del que realmente se está mostrando, dejando datos obsoletos en pantalla.
 
-### Cambios técnicos
+3. **`src/hooks/useOptimizedTasks.ts` línea 192 (prefetch)**  
+   Usa también `date.toISOString().split('T')[0]` para las queryKeys de prefetch, mientras que la query principal usa `formatMadridDate`. A medianoche las claves no coinciden y se pierde el cache hit.
 
-1. **`src/components/calendar/ResponsiveCalendarHeader.tsx`**
-   - Añadir props opcionales: `searchTerm`, `onSearchChange`, `showSearch` (default false).
-   - Insertar un `Input` con icono `Search` en el subheader (entre navegación y selector de vista). En móvil, ocupar fila propia debajo.
+4. **`src/hooks/useRecurringTaskInstances.ts`**  
+   `date.toISOString().split('T')[0]` al generar instancias virtuales recurrentes. En la franja crítica, el `dateStr` virtual se desplaza un día respecto a las claves del calendario.
 
-2. **`src/components/CleaningCalendar.tsx`**
-   - Añadir state `searchTerm` y pasar `searchTerm` / `onSearchChange` al header (solo si `userRole !== 'cleaner'`).
-   - Crear `filteredTasks` y `filteredCleaners` con la lógica descrita y pasarlos a `CalendarContainer` y `CalendarFooterSummary` en lugar de `tasks` / `cleaners`.
-   - También filtrar `unassignedTasks` por término de tarea/cliente/propiedad.
+El cron `process-recurring-tasks-daily` se ejecuta a las 06:00 UTC (08:00 Madrid), por lo que entre las 00:00 y las 08:00 Madrid las tareas recurrentes del nuevo día las debe pintar el front desde `useRecurringTaskInstances`. Si el desfase de zona horaria descrito arriba está activo, esas instancias también se "esconden".
 
-3. **Helper de matching** (inline o en `src/components/calendar/utils/calendarSearch.ts` nuevo):
-   - `normalize(str)` → lowercase + sin diacríticos.
-   - `taskMatches(task, term)`: comprueba `property`, `propertyCode`, `address`, `client`, `type`, `cleaner`.
-   - `cleanerMatches(cleaner, term)`: comprueba `name`.
-   - Lógica combinada: si algún cleaner matchea por nombre, restringir filas a esos cleaners; las tareas mostradas en cada fila además deben matchear (si el término también matchea propiedad/cliente).
+## Cambios
 
-### Out of scope
+### 1. `src/utils/date.ts`
+Añadir un helper `getTodayMadrid(): Date` que devuelva un `Date` que, formateado con `formatMadridDate`, dé el día actual de Madrid de manera robusta (construyéndolo desde las partes Y-M-D que devuelve `Intl.DateTimeFormat` en `Europe/Madrid`, en lugar de re-parsear strings).
 
-- No se toca la vista de cleaner (móvil/desktop), ni el calendario público.
-- No se persiste el término entre sesiones.
-- No se añaden filtros avanzados (estado, fecha) — ya existen en `/tasks`.
+### 2. `src/hooks/useCalendarNavigation.ts`
+Reemplazar `getMadridDate` por el nuevo `getTodayMadrid` de `@/utils/date`. Eliminar el `new Date(toLocaleString(...))` frágil. Loggear con `formatMadridDate` en lugar de `toISOString`.
+
+### 3. `src/hooks/useTasks.ts`
+Sustituir las tres ocurrencias de `new Date().toISOString().split('T')[0]` (líneas 47, 81, 96) por `formatMadridDate(new Date())`.
+
+### 4. `src/services/storage/taskStorage.ts`
+- Línea 83 (`getTasksForCleaner`): usar `formatMadridDate(new Date())`.
+- Líneas 210 y 216 (defaults de `dateFrom`/`dateTo`): usar `formatMadridDate(...)` para coherencia.
+
+### 5. `src/hooks/useOptimizedTasks.ts`
+Línea 192 (prefetch queryKey): usar `formatMadridDate(date)` en vez de `date.toISOString().split('T')[0]` para que las claves coincidan con la query principal.
+
+### 6. `src/hooks/useRecurringTaskInstances.ts`
+Reemplazar `date.toISOString().split('T')[0]` por `formatMadridDate(date)` al generar `dateStr` para las instancias virtuales (y en `executedSet`).
+
+## Resultado esperado
+
+- A las 00:20 (o cualquier hora) el calendario seguirá mostrando las tareas del día actual de Madrid sin vaciarse.
+- Las claves de caché, los rangos de fetch y las instancias virtuales recurrentes serán todas consistentes con la zona horaria `Europe/Madrid`.
+- No se cambia el comportamiento durante el resto del día; solo se elimina el desfase de TZ.
