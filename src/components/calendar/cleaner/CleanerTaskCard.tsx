@@ -164,10 +164,21 @@ const CleanerTaskCardComponent: React.FC<CleanerTaskCardProps> = ({
             
             {/* End time */}
             <div className="text-right">
-              <div className="text-2xl font-bold">{task.endTime}</div>
+              <div className="text-2xl font-bold">{displayEndTime}</div>
               <div className="text-white/80 text-sm font-medium">Fin</div>
             </div>
           </div>
+
+          {/* Multi-worker split badge */}
+          {assignedCount > 1 && (
+            <div
+              className="inline-flex items-center gap-1.5 bg-white/20 backdrop-blur-sm px-3 py-1 rounded-full text-xs font-semibold text-white"
+              title={`Compartida con ${assignedCount} personas. Total: ${task.startTime}–${task.endTime}`}
+            >
+              <span>÷{assignedCount}</span>
+              <span className="opacity-90">Compartida ({assignedCount} personas)</span>
+            </div>
+          )}
           
           {/* Address if available */}
           {task.address && (
