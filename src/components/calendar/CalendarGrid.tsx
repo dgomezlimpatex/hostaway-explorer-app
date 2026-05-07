@@ -59,7 +59,8 @@ const CleanerRow = memo(({
   cleaners,
   absenceStatus,
   isPreferred,
-  isDimmed
+  isDimmed,
+  cleanerAssignmentsMap
 }: {
   cleaner: Cleaner;
   index: number;
@@ -79,6 +80,7 @@ const CleanerRow = memo(({
   absenceStatus?: WorkerAbsenceStatus;
   isPreferred?: boolean;
   isDimmed?: boolean;
+  cleanerAssignmentsMap?: Record<string, string[]>;
 }) => {
   // Removed excessive availability logging
 
@@ -177,21 +179,54 @@ const CleanerRow = memo(({
 
   // Memoize task elements for this cleaner with overlap detection
   const taskElements = useMemo(() => {
-    return cleanerTasks.map((task) => {
-      // Use enhanced positioning that detects overlaps
+    // Helper: count assigned cleaners for a task (multi-worker split)
+    const getAssignedCount = (task: Task, mapEntry?: string[]): number => {
+      if (Array.isArray(mapEntry) && mapEntry.length > 0) return mapEntry.length;
+      if (task.cleaner && task.cleaner.includes(',')) {
+        return task.cleaner.split(',').map(s => s.trim()).filter(Boolean).length;
+      }
+      return 1;
+    };
+
+    const minutesToHHMM = (mins: number) => {
+      const h = Math.floor(mins / 60);
+      const m = mins % 60;
+      return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
+    };
+
+    // Build per-task display tasks with possibly shortened endTime
+    const displayTasks: Array<{ original: Task; display: Task; count: number }> = cleanerTasks.map((task) => {
+      const count = getAssignedCount(task, cleanerAssignmentsMap?.[task.id]);
+      if (count <= 1) return { original: task, display: task, count };
+      const startMin = timeToMinutes(task.startTime);
+      const endMin = timeToMinutes(task.endTime);
+      const totalDur = Math.max(0, endMin - startMin);
+      const perWorker = Math.max(15, Math.round(totalDur / count));
+      const displayEnd = minutesToHHMM(startMin + perWorker);
+      return {
+        original: task,
+        display: { ...task, endTime: displayEnd },
+        count,
+      };
+    });
+
+    const displayTasksOnly = displayTasks.map(d => d.display);
+
+    return displayTasks.map(({ original, display, count }) => {
       const position = getTaskPositionWithOverlap(
-        task.startTime, 
-        task.endTime,
-        task,
-        cleanerTasks, // All tasks for this cleaner
+        display.startTime,
+        display.endTime,
+        display,
+        displayTasksOnly,
         cleaner.id,
-        [cleaner] // Single cleaner for this row
+        [cleaner]
       );
-      const isBeingDragged = dragState.draggedTask?.id === task.id;
-      
+      const isBeingDragged = dragState.draggedTask?.id === original.id;
+      const isSplit = count > 1;
+
       return (
         <div
-          key={task.id}
+          key={original.id}
           className={cn(
             "absolute z-10 transition-all duration-200",
             isBeingDragged && "opacity-30",
@@ -204,27 +239,38 @@ const CleanerRow = memo(({
             height: position.height,
             zIndex: position.zIndex
           }}
-          title={position.hasOverlap ? 
-            `⚠️ Conflicto de horario - Se superpone con ${position.overlapCount} tarea(s)` : 
-            undefined
+          title={
+            isSplit
+              ? `Dividido entre ${count} personas: ${display.startTime}–${display.endTime} por persona (total ${original.startTime}–${original.endTime})`
+              : position.hasOverlap
+                ? `⚠️ Conflicto de horario - Se superpone con ${position.overlapCount} tarea(s)`
+                : undefined
           }
         >
           <EnhancedTaskCard
-            task={task}
-            onClick={() => onTaskClick(task)}
+            task={display}
+            onClick={() => onTaskClick(original)}
             isDragging={isBeingDragged}
-            onDragStart={onDragStart}
+            onDragStart={(e, _t) => onDragStart(e, original)}
             onDragEnd={onDragEnd}
-            style={{ 
+            style={{
               height: '100%',
               backgroundColor: position.hasOverlap ? 'rgba(239, 68, 68, 0.1)' : undefined,
               border: position.hasOverlap ? '1px solid rgba(239, 68, 68, 0.3)' : undefined
             }}
           />
+          {isSplit && (
+            <div
+              className="absolute top-0.5 right-0.5 z-20 px-1.5 py-0.5 rounded-full bg-background/90 border border-border text-[9px] font-bold text-foreground shadow-sm pointer-events-none"
+              title={`Dividido entre ${count} personas`}
+            >
+              ÷{count}
+            </div>
+          )}
         </div>
       );
     });
-  }, [cleanerTasks, cleaner.id, dragState.draggedTask?.id, onTaskClick, onDragStart, onDragEnd]);
+  }, [cleanerTasks, cleaner.id, dragState.draggedTask?.id, onTaskClick, onDragStart, onDragEnd, cleanerAssignmentsMap]);
 
    // Maintenance & hourly absence continuous overlay blocks (one per period, not per slot)
    const absenceBlocks = useMemo(() => {
@@ -411,6 +457,7 @@ export const CalendarGrid = memo(forwardRef<HTMLDivElement, CalendarGridProps>(
             absenceStatus={absenceStatus?.[cleaner.id]}
             isPreferred={isDragging && preferredCleanerIds && preferredCleanerIds.size > 0 && preferredCleanerIds.has(cleaner.id)}
             isDimmed={isDragging && preferredCleanerIds && preferredCleanerIds.size > 0 && !preferredCleanerIds.has(cleaner.id)}
+            cleanerAssignmentsMap={assignmentsMap}
           />
         );
       });
