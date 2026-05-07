@@ -457,6 +457,7 @@ export const CalendarGrid = memo(forwardRef<HTMLDivElement, CalendarGridProps>(
             absenceStatus={absenceStatus?.[cleaner.id]}
             isPreferred={isDragging && preferredCleanerIds && preferredCleanerIds.size > 0 && preferredCleanerIds.has(cleaner.id)}
             isDimmed={isDragging && preferredCleanerIds && preferredCleanerIds.size > 0 && !preferredCleanerIds.has(cleaner.id)}
+            cleanerAssignmentsMap={assignmentsMap}
           />
         );
       });
