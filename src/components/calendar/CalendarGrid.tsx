@@ -59,7 +59,8 @@ const CleanerRow = memo(({
   cleaners,
   absenceStatus,
   isPreferred,
-  isDimmed
+  isDimmed,
+  cleanerAssignmentsMap
 }: {
   cleaner: Cleaner;
   index: number;
@@ -79,6 +80,7 @@ const CleanerRow = memo(({
   absenceStatus?: WorkerAbsenceStatus;
   isPreferred?: boolean;
   isDimmed?: boolean;
+  cleanerAssignmentsMap?: Record<string, string[]>;
 }) => {
   // Removed excessive availability logging
 
