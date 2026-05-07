@@ -35,10 +35,33 @@ const CleanerTaskCardComponent: React.FC<CleanerTaskCardProps> = ({
   task,
   onClick
 }) => {
-  // Calculate duration
+  // Detect multi-worker assignment from comma-separated cleaner names
+  const assignedCount = React.useMemo(() => {
+    if (task.cleaner && task.cleaner.includes(',')) {
+      return task.cleaner.split(',').map(s => s.trim()).filter(Boolean).length;
+    }
+    return 1;
+  }, [task.cleaner]);
+
+  // Compute displayed end time: if multi-worker, divide duration evenly
+  const displayEndTime = React.useMemo(() => {
+    if (assignedCount <= 1) return task.endTime;
+    const [sh, sm] = task.startTime.split(':').map(Number);
+    const [eh, em] = task.endTime.split(':').map(Number);
+    const startMin = sh * 60 + sm;
+    const endMin = eh * 60 + em;
+    const totalDur = Math.max(0, endMin - startMin);
+    const perWorker = Math.max(15, Math.round(totalDur / assignedCount));
+    const newEnd = startMin + perWorker;
+    const h = Math.floor(newEnd / 60);
+    const m = newEnd % 60;
+    return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
+  }, [task.startTime, task.endTime, assignedCount]);
+
+  // Calculate duration based on displayed times
   const calculateDuration = () => {
     const [startHour, startMinute] = task.startTime.split(':').map(Number);
-    const [endHour, endMinute] = task.endTime.split(':').map(Number);
+    const [endHour, endMinute] = displayEndTime.split(':').map(Number);
     const startMinutes = startHour * 60 + startMinute;
     const endMinutes = endHour * 60 + endMinute;
     const durationMinutes = endMinutes - startMinutes;
@@ -141,10 +164,21 @@ const CleanerTaskCardComponent: React.FC<CleanerTaskCardProps> = ({
             
             {/* End time */}
             <div className="text-right">
-              <div className="text-2xl font-bold">{task.endTime}</div>
+              <div className="text-2xl font-bold">{displayEndTime}</div>
               <div className="text-white/80 text-sm font-medium">Fin</div>
             </div>
           </div>
+
+          {/* Multi-worker split badge */}
+          {assignedCount > 1 && (
+            <div
+              className="inline-flex items-center gap-1.5 bg-white/20 backdrop-blur-sm px-3 py-1 rounded-full text-xs font-semibold text-white"
+              title={`Compartida con ${assignedCount} personas. Total: ${task.startTime}–${task.endTime}`}
+            >
+              <span>÷{assignedCount}</span>
+              <span className="opacity-90">Compartida ({assignedCount} personas)</span>
+            </div>
+          )}
           
           {/* Address if available */}
           {task.address && (
