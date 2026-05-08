@@ -197,7 +197,7 @@ export const TaskScheduleSection = ({
             type="time"
             step={900}
             value={formData.startTime || ''}
-            onChange={e => onFieldChange('startTime', e.target.value)}
+            onChange={e => handleStartChange(e.target.value)}
             onBlur={handleStartBlur}
             readOnly={readOnly}
             disabled={readOnly}
