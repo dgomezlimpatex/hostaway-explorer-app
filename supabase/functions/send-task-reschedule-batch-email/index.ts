@@ -19,10 +19,19 @@ interface ChangeItem {
   newEndTime: string;
 }
 
+interface InsertedTask {
+  property: string;
+  address?: string;
+  type?: string;
+  startTime: string;
+  endTime: string;
+}
+
 interface BatchEmailRequest {
   cleanerEmail: string;
   cleanerName: string;
   date: string; // yyyy-MM-dd
+  insertedTask?: InsertedTask;
   changes: ChangeItem[];
 }
 
