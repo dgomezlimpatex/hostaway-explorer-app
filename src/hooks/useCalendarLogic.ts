@@ -6,7 +6,7 @@ import { useAllCleanersAvailability } from "@/hooks/useAllCleanersAvailability";
 import { useToast } from "@/hooks/use-toast";
 import { Task } from "@/types/calendar";
 import { isCleanerAvailableAtTime } from "@/utils/availabilityUtils";
-import { detectTaskOverlaps } from "@/utils/taskPositioning";
+
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 import { ABSENCE_TYPE_LABELS } from "@/types/workerAbsence";
