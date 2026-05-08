@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
@@ -76,15 +76,22 @@ export const TaskScheduleSection = ({
   const [durationInput, setDurationInput] = useState<string>(
     Number.isInteger(currentHours) ? currentHours.toString() : currentHours.toFixed(2).replace(/\.?0+$/, '')
   );
+
+  // Lock the last known duration so editing startTime shifts endTime instead of changing duration.
+  const lockedDurationMinRef = useRef<number>(currentDuration > 0 ? currentDuration : 0);
   useEffect(() => {
-    setDurationInput(
-      Number.isInteger(currentHours) ? currentHours.toString() : currentHours.toFixed(2).replace(/\.?0+$/, '')
-    );
-  }, [currentHours]);
+    if (currentDuration > 0) {
+      lockedDurationMinRef.current = currentDuration;
+      setDurationInput(
+        Number.isInteger(currentHours) ? currentHours.toString() : currentHours.toFixed(2).replace(/\.?0+$/, '')
+      );
+    }
+  }, [currentDuration, currentHours]);
 
   const applyDuration = (mins: number) => {
     if (!startTime || mins <= 0) return;
     const newEnd = fromMinutes(toMinutes(startTime) + mins);
+    lockedDurationMinRef.current = mins;
     onFieldChange('endTime', newEnd);
     if (onScheduleSave) onScheduleSave({ endTime: newEnd });
     else onFieldBlur?.('endTime', newEnd);
@@ -102,12 +109,27 @@ export const TaskScheduleSection = ({
     else onFieldBlur?.('date', dateStr);
   };
 
+  const handleStartChange = (value: string) => {
+    onFieldChange('startTime', value);
+    // Preserve duration: shift endTime so duration stays constant.
+    const lockedMin = lockedDurationMinRef.current;
+    if (value && lockedMin > 0) {
+      const newEnd = fromMinutes(toMinutes(normalizeTime(value)) + lockedMin);
+      onFieldChange('endTime', newEnd);
+    }
+  };
+
   const handleStartBlur = () => {
     if (formData.startTime) onFieldBlur?.('startTime', formData.startTime);
     if (formData.endTime) onFieldBlur?.('endTime', formData.endTime);
   };
   const handleEndBlur = () => {
-    if (formData.endTime) onFieldBlur?.('endTime', formData.endTime);
+    if (formData.endTime) {
+      // User explicitly changed endTime → update locked duration accordingly.
+      const newDur = computeDurationMin(startTime, formData.endTime);
+      if (newDur > 0) lockedDurationMinRef.current = newDur;
+      onFieldBlur?.('endTime', formData.endTime);
+    }
   };
 
   const handleDurationBlur = () => {
@@ -175,7 +197,7 @@ export const TaskScheduleSection = ({
             type="time"
             step={900}
             value={formData.startTime || ''}
-            onChange={e => onFieldChange('startTime', e.target.value)}
+            onChange={e => handleStartChange(e.target.value)}
             onBlur={handleStartBlur}
             readOnly={readOnly}
             disabled={readOnly}
