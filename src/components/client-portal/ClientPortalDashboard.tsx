@@ -53,14 +53,15 @@ export const ClientPortalDashboard = ({
     d.setHours(0, 0, 0, 0);
     return d.getTime();
   })();
-  const sevenDaysAheadMs = todayMs + 7 * 24 * 60 * 60 * 1000;
+  const sevenDaysAgoMs = todayMs - 7 * 24 * 60 * 60 * 1000;
+  const thirtyDaysAheadMs = todayMs + 30 * 24 * 60 * 60 * 1000;
 
   const listBookings = bookings.filter(b => {
     // Normalize to local midnight to avoid timezone drift from ISO strings
     const raw = new Date(b.cleaningDate);
     const localMidnight = new Date(raw.getFullYear(), raw.getMonth(), raw.getDate()).getTime();
-    // Past OR within next 7 days (inclusive)
-    return localMidnight < todayMs || localMidnight <= sevenDaysAheadMs;
+    // Past 7 days OR upcoming within next 30 days (inclusive)
+    return localMidnight >= sevenDaysAgoMs && localMidnight <= thirtyDaysAheadMs;
   });
 
   const upcomingBookings = listBookings.filter(b => {
