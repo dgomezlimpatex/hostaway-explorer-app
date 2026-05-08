@@ -317,6 +317,13 @@ export const useCalendarLogic = () => {
                 cleanerEmail,
                 cleanerName,
                 date: task.date,
+                insertedTask: {
+                  property: task.property,
+                  address: (task as any).address,
+                  type: (task as any).type,
+                  startTime: startTime,
+                  endTime: endTime,
+                },
                 changes: displaced,
               },
             })

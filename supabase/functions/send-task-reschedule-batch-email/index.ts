@@ -19,10 +19,19 @@ interface ChangeItem {
   newEndTime: string;
 }
 
+interface InsertedTask {
+  property: string;
+  address?: string;
+  type?: string;
+  startTime: string;
+  endTime: string;
+}
+
 interface BatchEmailRequest {
   cleanerEmail: string;
   cleanerName: string;
   date: string; // yyyy-MM-dd
+  insertedTask?: InsertedTask;
   changes: ChangeItem[];
 }
 
@@ -36,7 +45,7 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
-    const { cleanerEmail, cleanerName, date, changes }: BatchEmailRequest = await req.json();
+    const { cleanerEmail, cleanerName, date, insertedTask, changes }: BatchEmailRequest = await req.json();
 
     if (!cleanerEmail || !changes || changes.length === 0) {
       return new Response(JSON.stringify({ error: "Missing data" }), {
@@ -81,11 +90,25 @@ const handler = async (req: Request): Promise<Response> => {
             <h2 style="color: #f59e0b; margin-bottom: 16px;">🔄 Reorganización de tu horario</h2>
             <p style="font-size: 16px; margin-bottom: 8px;">Hola <strong>${cleanerName}</strong>,</p>
             <p style="margin-bottom: 20px; color:#374151;">
-              Se ha insertado una nueva tarea en tu agenda del <strong>${formattedDate}</strong> y, como consecuencia,
+              Se ha producido un cambio en tu agenda del <strong>${formattedDate}</strong>.
+              ${insertedTask ? `Se ha insertado una nueva tarea y, como consecuencia, ` : ""}
               ${changes.length === 1 ? "una de tus tareas se ha desplazado" : `${changes.length} de tus tareas se han desplazado`} a un horario posterior.
-              Aquí tienes el detalle:
+              Aquí tienes el detalle de <strong>todas las tareas afectadas</strong>:
             </p>
 
+            ${insertedTask ? `
+            <div style="background-color: #eff6ff; padding: 15px; border-radius: 8px; margin-bottom: 16px; border-left: 4px solid #3b82f6;">
+              <h4 style="color: #1e40af; margin-top: 0; margin-bottom: 8px;">➕ Nueva tarea asignada</h4>
+              <div style="color:#1e3a8a;">
+                <strong>${insertedTask.property}</strong>
+                ${insertedTask.address ? `<div style="font-size:12px;color:#1e40af;">${insertedTask.address}</div>` : ""}
+                ${insertedTask.type ? `<div style="font-size:11px;color:#1e40af;font-style:italic;">${insertedTask.type}</div>` : ""}
+                <div style="margin-top:6px;font-weight:bold;">🕒 ${insertedTask.startTime} - ${insertedTask.endTime}</div>
+              </div>
+            </div>
+            ` : ""}
+
+            <h4 style="color:#374151;margin-bottom:8px;">🔁 Tareas desplazadas (${changes.length})</h4>
             <table style="width:100%; border-collapse: collapse; margin-bottom: 20px;">
               <thead>
                 <tr style="background-color: #f3f4f6;">
