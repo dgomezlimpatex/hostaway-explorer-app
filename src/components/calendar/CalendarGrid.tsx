@@ -224,12 +224,16 @@ const CleanerRow = memo(({
       const isBeingDragged = dragState.draggedTask?.id === original.id;
       const isSplit = count > 1;
 
+      const isAnyDragging = !!dragState.draggedTask;
       return (
         <div
           key={original.id}
           className={cn(
             "absolute z-10 transition-all duration-200",
             isBeingDragged && "opacity-30",
+            // Let drag events pass through to the underlying TimeSlot so the
+            // user can drop a task on top of an existing one (cascade insert).
+            isAnyDragging && !isBeingDragged && "pointer-events-none",
             position.hasOverlap && "border-2 border-red-400 border-dashed shadow-lg"
           )}
           style={{
