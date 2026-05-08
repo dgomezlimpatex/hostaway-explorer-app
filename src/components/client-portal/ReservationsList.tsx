@@ -383,7 +383,7 @@ export const ReservationsList = ({
                           <div className="flex items-center gap-2 px-3 sm:px-4 py-3 bg-muted/40 border-y border-border/40">
                             <span className="w-2.5 h-2.5 rounded-full bg-green-500 shrink-0" />
                             <span className="text-sm sm:text-base font-bold uppercase tracking-wider text-foreground">
-                              Próximas
+                              Tareas futuras
                             </span>
                             <Badge variant="outline" className="h-5 px-2 text-xs bg-green-500/10 text-green-700 border-green-200">
                               {upcomingCount}
@@ -411,7 +411,7 @@ export const ReservationsList = ({
                           >
                             <span className="w-2.5 h-2.5 rounded-full bg-muted-foreground/40 shrink-0" />
                             <span className="text-sm sm:text-base font-bold uppercase tracking-wider text-foreground">
-                              Pasadas
+                              Tareas pasadas
                             </span>
                             <Badge variant="secondary" className="h-5 px-2 text-xs opacity-70">
                               {pastCount}
