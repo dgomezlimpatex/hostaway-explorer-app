@@ -12,13 +12,18 @@ import { format } from "date-fns";
 import { ABSENCE_TYPE_LABELS } from "@/types/workerAbsence";
 
 // Helper function to check time overlap
+const toMin = (time: string) => {
+  const [h, m] = time.split(':').map(Number);
+  return h * 60 + m;
+};
+const fromMin = (mins: number) => {
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+  return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
+};
 const timeRangesOverlap = (start1: string, end1: string, start2: string, end2: string): boolean => {
-  const toMinutes = (time: string) => {
-    const [h, m] = time.split(':').map(Number);
-    return h * 60 + m;
-  };
-  const s1 = toMinutes(start1), e1 = toMinutes(end1);
-  const s2 = toMinutes(start2), e2 = toMinutes(end2);
+  const s1 = toMin(start1), e1 = toMin(end1);
+  const s2 = toMin(start2), e2 = toMin(end2);
   return s1 < e2 && e1 > s2;
 };
 
