@@ -209,43 +209,69 @@ export const useCalendarLogic = () => {
       }
     }
 
-    // Check for overlapping tasks
-    const overlappingTasks = detectTaskOverlaps(
-      cleanerId,
-      startTime,
-      endTime,
-      tasks.filter(t => t.date === task.date), // Only check tasks on the same date
-      cleaners,
-      taskId // Exclude the current task being moved
-    );
+    // Compute cascade: shift forward any task of the same cleaner on the same day
+    // that overlaps with the dropped task or with the chain of shifted tasks.
+    const cleanerObjForCascade = cleaners.find((c: any) => c.id === cleanerId);
+    const cleanerNameForCascade = cleanerObjForCascade?.name || '';
 
-    if (overlappingTasks.length > 0) {
-      const overlapInfo = overlappingTasks.map(t => `${t.property} (${t.startTime}-${t.endTime})`).join(', ');
-      
-      // Show warning but allow user to proceed
-      const confirmed = window.confirm(
-        `⚠️ CONFLICTO DE HORARIO DETECTADO\n\n` +
-        `La tarea se superpone con:\n${overlapInfo}\n\n` +
-        `¿Deseas continuar de todas formas? Las tareas se mostrarán apiladas.`
-      );
-      
-      if (!confirmed) {
+    const sameDayCleanerTasks = tasks
+      .filter(t =>
+        t.id !== taskId &&
+        t.date === task.date &&
+        ((t as any).cleanerId === cleanerId || t.cleaner === cleanerNameForCascade)
+      )
+      .sort((a, b) => toMin(a.startTime) - toMin(b.startTime));
+
+    const displaced: Array<{
+      taskId: string;
+      property: string;
+      address?: string;
+      type?: string;
+      oldStartTime: string;
+      oldEndTime: string;
+      newStartTime: string;
+      newEndTime: string;
+    }> = [];
+
+    let cursorEnd = toMin(endTime);
+    const MAX_END = 23 * 60 + 59;
+
+    for (const b of sameDayCleanerTasks) {
+      const bStart = toMin(b.startTime);
+      const bEnd = toMin(b.endTime);
+      if (bStart >= cursorEnd) {
+        break; // no further overlap, stop cascade
+      }
+      const dur = Math.max(bEnd - bStart, 0);
+      const newStart = cursorEnd;
+      const newEnd = newStart + dur;
+      if (newEnd > MAX_END) {
+        toast({
+          title: "No se puede reorganizar",
+          description: `Mover la tarea desplazaría "${b.property}" más allá de las 23:59.`,
+          variant: "destructive",
+        });
         return;
       }
-      
-      toast({
-        title: "⚠️ Conflicto de horario",
-        description: `La tarea se superpone con ${overlappingTasks.length} tarea(s). Se mostrarán apiladas.`,
-        variant: "destructive",
+      displaced.push({
+        taskId: b.id,
+        property: b.property,
+        address: (b as any).address,
+        type: (b as any).type,
+        oldStartTime: b.startTime,
+        oldEndTime: b.endTime,
+        newStartTime: fromMin(newStart),
+        newEndTime: fromMin(newEnd),
       });
+      cursorEnd = newEnd;
     }
 
-    // Check availability
+    // Check availability for the dropped task itself
     const availabilityCheck = isCleanerAvailableAtTime(
-      cleanerId, 
-      taskDate, 
-      startTime, 
-      endTime, 
+      cleanerId,
+      taskDate,
+      startTime,
+      endTime,
       availability
     );
 
@@ -271,11 +297,42 @@ export const useCalendarLogic = () => {
         endTime: timeSlot ? endTime : undefined,
       });
 
+      // Apply cascading reschedules to the displaced tasks
+      if (displaced.length > 0) {
+        await Promise.all(
+          displaced.map(d =>
+            supabase
+              .from('tasks')
+              .update({ start_time: d.newStartTime, end_time: d.newEndTime })
+              .eq('id', d.taskId)
+          )
+        );
+
+        // Send a single consolidated email to the cleaner
+        const cleanerEmail = (cleanerObj as any)?.email;
+        if (cleanerEmail) {
+          supabase.functions
+            .invoke('send-task-reschedule-batch-email', {
+              body: {
+                cleanerEmail,
+                cleanerName,
+                date: task.date,
+                changes: displaced,
+              },
+            })
+            .catch(err => console.error('Error sending batch reschedule email:', err));
+        } else {
+          console.log('Cleaner has no email, skipping batch reschedule email');
+        }
+      }
+
       toast({
         title: "Tarea asignada",
-        description: timeSlot 
-          ? `La tarea se ha asignado correctamente para las ${timeSlot}.`
-          : "La tarea se ha asignado correctamente.",
+        description: displaced.length > 0
+          ? `Tarea asignada. ${displaced.length} tarea(s) desplazada(s) automáticamente.`
+          : (timeSlot
+            ? `La tarea se ha asignado correctamente para las ${timeSlot}.`
+            : "La tarea se ha asignado correctamente."),
       });
     } catch (error) {
       console.error('Error assigning task:', error);
