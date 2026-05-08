@@ -380,12 +380,12 @@ export const ReservationsList = ({
                     <div className="bg-muted/10">
                       {upcomingCount > 0 && (
                         <>
-                          <div className="flex items-center gap-2 px-3 sm:px-4 py-2 bg-muted/40 border-y border-border/40">
-                            <span className="w-2 h-2 rounded-full bg-green-500 shrink-0" />
-                            <span className="text-[10px] sm:text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                          <div className="flex items-center gap-2 px-3 sm:px-4 py-3 bg-muted/40 border-y border-border/40">
+                            <span className="w-2.5 h-2.5 rounded-full bg-green-500 shrink-0" />
+                            <span className="text-sm sm:text-base font-bold uppercase tracking-wider text-foreground">
                               Próximas
                             </span>
-                            <Badge variant="outline" className="h-4 px-1.5 text-[10px] bg-green-500/10 text-green-700 border-green-200">
+                            <Badge variant="outline" className="h-5 px-2 text-xs bg-green-500/10 text-green-700 border-green-200">
                               {upcomingCount}
                             </Badge>
                           </div>
@@ -407,17 +407,17 @@ export const ReservationsList = ({
                                 return next;
                               });
                             }}
-                            className="w-full flex items-center gap-2 px-3 sm:px-4 py-2 bg-muted/40 border-y border-border/40 hover:bg-muted/60 transition-colors text-left"
+                            className="w-full flex items-center gap-2 px-3 sm:px-4 py-3 bg-muted/40 border-y border-border/40 hover:bg-muted/60 transition-colors text-left"
                           >
-                            <span className="w-2 h-2 rounded-full bg-muted-foreground/40 shrink-0" />
-                            <span className="text-[10px] sm:text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                            <span className="w-2.5 h-2.5 rounded-full bg-muted-foreground/40 shrink-0" />
+                            <span className="text-sm sm:text-base font-bold uppercase tracking-wider text-foreground">
                               Pasadas
                             </span>
-                            <Badge variant="secondary" className="h-4 px-1.5 text-[10px] opacity-70">
+                            <Badge variant="secondary" className="h-5 px-2 text-xs opacity-70">
                               {pastCount}
                             </Badge>
                             <ChevronRight
-                              className={`h-3.5 w-3.5 ml-auto text-muted-foreground transition-transform ${
+                              className={`h-4 w-4 ml-auto text-muted-foreground transition-transform ${
                                 isPastExpanded ? 'rotate-90' : ''
                               }`}
                             />
