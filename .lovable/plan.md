@@ -1,55 +1,81 @@
-## Separar visualmente pasadas y próximas dentro de cada propiedad
+## Objetivo
 
-En el portal de clientes (pestaña **Reservas**), dentro de cada propiedad las reservas aparecen mezcladas en una sola lista cronológica. La distinción actual (fondo verde-pálido para pasadas, barra lateral de color para próximas) es sutil. Vamos a crear dos secciones claramente separadas.
+En el calendario de administrador, al arrastrar una tarea sobre un horario donde ya hay otra(s) asignada(s) a la misma trabajadora, la nueva se coloca ahí y las que se solapan se desplazan automáticamente hacia adelante. La trabajadora recibe **un único email** notificando todos los cambios de horario aplicados en la operación.
 
-### Cambios en `src/components/client-portal/ReservationsList.tsx`
+## Comportamiento al soltar (drag & drop)
 
-Dentro del `AccordionContent` de cada propiedad, en lugar de un único listado, renderizar **dos sub-secciones**:
+- Sueltas la tarea A en `cleanerId` + `timeSlot` → A se asigna ahí con su duración original.
+- Para esa trabajadora, ese mismo día, recorrer las tareas existentes ordenadas por `startTime`:
+  - Si una tarea B empieza antes del fin de la tarea anterior en cascada (arrancando con A), se desplaza: `newStart = cursorEnd`, `newEnd = newStart + duración(B)`. Cursor avanza a `newEnd`.
+  - Si B empieza igual o después del cursor, se detiene la cascada (las posteriores no se tocan).
+- Tareas anteriores al horario de A: **no se tocan**.
+- Si algún desplazamiento llevaría más allá de las 23:59 → abortar toda la operación con toast de error (sin cambios parciales).
+- Validaciones existentes (ausencias, día libre, mantenimiento, disponibilidad) siguen aplicándose para A. Para los desplazamientos en cadena no se vuelve a pedir confirmación (es la intención del admin).
+- Se elimina el `confirm()` actual de "tareas apiladas" cuando el solape es solo con tareas de la misma trabajadora (ahora se resuelve desplazando).
 
-```text
-┌─ PESPA6.9 · PLAZA DE ESPAÑA ANTON ────────────────┐
-│                                                    │
-│  ▸ PRÓXIMAS (5)                                    │
-│  ───────────────────────────                       │
-│  • 2 may → 9 may   [En 1d]                         │
-│  • 13 may → 18 may                                 │
-│  • 20 may → 24 may                                 │
-│  • 24 may → 31 may                                 │
-│  • 31 may → 7 jun                                  │
-│                                                    │
-│  ▾ PASADAS (1)              [colapsable]           │
-│  ───────────────────────────                       │
-│  • vie 1 may  [Completada]                         │
-└────────────────────────────────────────────────────┘
-```
+## Notificación por email a la trabajadora
 
-### Detalles de implementación
+Una sola operación de drop puede mover varias tareas. En lugar de disparar un email por cada `update`, se envía **un email consolidado** a la trabajadora afectada cuando hay 1 o más desplazamientos.
 
-1. **Particionar `group.bookings`** en dos arrays:
-   - `upcoming`: `cleaningDate >= hoy`, ordenado ascendente (más cercana primero).
-   - `past`: `cleaningDate < hoy`, ordenado descendente (la más reciente arriba).
+### Nueva edge function: `send-task-reschedule-batch-email`
 
-2. **Render con cabeceras de sección** (no nuevos accordions anidados, para mantener simpleza):
-   - Cabecera sticky-style: fondo `bg-muted/40`, texto pequeño en mayúsculas, badge con el contador.
-     - Próximas → punto verde + "PRÓXIMAS · N"
-     - Pasadas → punto gris + "PASADAS · N"
-   - Mostrar primero **Próximas**, luego **Pasadas**.
+- Input:
+  ```ts
+  {
+    cleanerEmail: string,
+    cleanerName: string,
+    date: string, // yyyy-MM-dd
+    changes: Array<{
+      taskId: string,
+      property: string,
+      address?: string,
+      type?: string,
+      oldStartTime: string,
+      oldEndTime: string,
+      newStartTime: string,
+      newEndTime: string,
+    }>
+  }
+  ```
+- Asunto: `🔄 Reorganización de tu horario – {fecha}`
+- Cuerpo: saludo personalizado + tabla con cada tarea (Propiedad | Antes | Ahora) + nota explicando que se ha insertado/movido una tarea y se han recolocado las siguientes en cadena.
+- Estilo y plantilla HTML siguiendo el patrón de las otras funciones de email del proyecto (ver `send-task-schedule-change-email/index.ts`).
+- CORS estándar, manejo de errores con log.
+- Despliegue automático tras crearla (regla del proyecto: edge functions se despliegan al editarlas).
 
-3. **Pasadas colapsadas por defecto**: usar un `<details>` o un toggle local con `useState` por grupo (`Set<string>` de propertyIds expandidos). Por defecto cerrado para reducir ruido visual; el usuario lo abre con un click. Esto encaja con el feedback "más sencillo de diferenciar".
+### Cuándo se dispara
 
-4. **Si una sección está vacía**, no renderizarla (ej. propiedad sin pasadas no muestra la cabecera "Pasadas").
+Solo se envía cuando la operación produce ≥1 desplazamiento de tareas existentes. Si A simplemente se asigna a un hueco vacío (sin desplazar a nadie), se mantiene el flujo actual (`send-task-assignment-email` para A).
 
-5. **Mantener sin cambios** el render de cada tarjeta de booking (la barra lateral de color y badges actuales se conservan, ahora redundantes pero refuerzan la identidad de cada item).
+Para la propia tarea A se sigue usando el flujo existente:
+- Si A pasaba de "sin asignar" → asignada: `send-task-assignment-email`.
+- Si A ya estaba asignada y solo cambia horario/trabajadora: `send-task-schedule-change-email` (comportamiento actual).
 
-6. **Quitar el fondo verde de las pasadas** (`bg-emerald-50…`) ya que ahora la separación es por sección — volver a `hover:bg-accent/50` para todas las filas y dejar solo el texto en `text-muted-foreground` para las pasadas.
+El email batch añade **información sobre las tareas desplazadas**, que hoy no recibe ningún aviso.
 
-### Alcance
+## Detalles técnicos
 
-- Solo `ReservationsList.tsx`. Sin cambios en datos, hooks, ni en `ClientPortalDashboard.tsx`.
-- No afecta a la pestaña "Calendario" ni al contador del header.
+Archivo principal: `src/hooks/useCalendarLogic.ts`, función `handleTaskAssign` (línea ~70).
 
-### Pregunta
+1. Calcular `startTime`/`endTime` de A (ya existe).
+2. Antes del bloque actual de `detectTaskOverlaps` + `confirm()`:
+   - Filtrar tareas `task.date === A.date` y `cleanerId === destino`, excluir A.
+   - Ordenar por `startTime`.
+   - Construir lista `displaced[]` con cascada: para cada B, si `B.startMin < cursorEnd` → calcular `newStart`, `newEnd`, push y avanzar cursor; si no, break.
+   - Si algún `newEnd > 23:59` → toast de error y `return`.
+3. Aplicar updates en BD:
+   - Asignación de A vía el flujo existente (`assign + reschedule` de la línea ~260).
+   - `Promise.all` con `update` de cada B (solo `start_time`, `end_time`) sobre `tasks` (Madrid time, sin tocar `cleaner_id`).
+4. Construir `changes[]` con datos de cada B (propiedad, dirección, antes/después) y llamar a `send-task-reschedule-batch-email` (fire-and-forget con `try/catch`, sin bloquear UI).
+5. Mostrar toast: `Tarea asignada. N tarea(s) desplazada(s) automáticamente.`
 
-¿Prefieres que las **pasadas** estén:
-- (a) **Colapsadas por defecto** dentro de cada propiedad (mi recomendación, máximo foco en lo próximo), o
-- (b) **Expandidas siempre**, simplemente separadas por la cabecera de sección?
+### Helpers
+- Reutilizar `timeToMinutes` de `src/utils/taskPositioning.ts`. Añadir `minutesToTime` local si no existe.
+- Email del cleaner: obtener desde la lista `cleaners` ya cargada (mismo patrón que `taskAssignmentService`).
+
+## Fuera de alcance
+
+- Compactar huecos de tareas anteriores.
+- Swap directo (intercambio de horarios).
+- Cambios en vista mobile / vista de trabajadora.
+- Avisos por email a la trabajadora original cuando A se mueve entre trabajadoras (ya cubierto por flujos existentes).
