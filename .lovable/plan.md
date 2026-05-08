@@ -1,29 +1,40 @@
-# Dividir duración también en la vista del trabajador
+## Cambio en filtro de reservas del portal de clientes
 
-## Comportamiento
+Modificar `src/components/client-portal/ClientPortalDashboard.tsx` (líneas ~55-67) para separar el rango de pasado y futuro:
 
-En la tarjeta de tarea del trabajador (móvil + desktop), si la tarea está asignada a varios limpiadores, se mostrará:
-- **Hora inicio** original
-- **Hora fin** ajustada a `inicio + (duración_total / N)`
-- **Duración** = duración por persona (4h en el caso de Prioral 12h ÷ 3)
-- Pequeña etiqueta `÷N` indicando que la tarea está compartida
+- **Pasado**: mantener 7 días hacia atrás (actualmente no hay límite hacia atrás → añadir uno).
+- **Futuro**: ampliar de 7 a **30 días** hacia adelante.
 
-Ejemplo Prioral (09:00–21:00, 3 personas): cada trabajador verá `09:00 → 13:00 · 4h · ÷3`.
+### Detalles técnicos
 
-## Cambios técnicos
+Reemplazar la lógica actual:
 
-**`src/components/calendar/cleaner/CleanerTaskCard.tsx`** (única edición):
+```ts
+const sevenDaysAheadMs = todayMs + 7 * 24 * 60 * 60 * 1000;
+const listBookings = bookings.filter(b => {
+  ...
+  return localMidnight < todayMs || localMidnight <= sevenDaysAheadMs;
+});
+```
 
-1. Calcular `assignedCount` desde `task.cleaner` (separado por comas). Los datos llegan así porque `taskStorage.mapTaskFromDB` une los nombres con `, ` cuando hay varias asignaciones.
-2. Si `assignedCount > 1`:
-   - Calcular `displayEndTime = startTime + (duración_total / N)`.
-   - Pasar ese valor donde se renderiza `task.endTime` y a `calculateDuration`.
-3. Añadir un badge pequeño `÷N` (estilo coherente con la tarjeta) y tooltip que indique la duración total real (`Total: 09:00–21:00`).
+Por:
 
-No se tocan datos en BD, ni el flujo de inicio del checklist, ni la sección de finalización (que ya muestra la duración real trabajada según memoria `task-report-summary-minimalism`).
+```ts
+const sevenDaysAgoMs = todayMs - 7 * 24 * 60 * 60 * 1000;
+const thirtyDaysAheadMs = todayMs + 30 * 24 * 60 * 60 * 1000;
+const listBookings = bookings.filter(b => {
+  const raw = new Date(b.cleaningDate);
+  const localMidnight = new Date(raw.getFullYear(), raw.getMonth(), raw.getDate()).getTime();
+  return localMidnight >= sevenDaysAgoMs && localMidnight <= thirtyDaysAheadMs;
+});
+```
 
-## Resultado esperado por escenario (Prioral 12h, 3 personas)
+### Alcance
 
-- **Gestor (calendario)**: ya implementado — bloque de 4h por trabajador con badge `÷3`.
-- **Trabajador (móvil/desktop)**: tarjeta muestra `09:00–13:00 · 4h · ÷3`.
-- **Reportes**: sin cambios — siguen dividiendo automáticamente (4h por persona, suma 12h).
+- Solo afecta a la pestaña **"Reservas"** (lista) y al contador del header (`upcomingBookings`).
+- La pestaña **"Calendario"** sigue mostrando el dataset completo sin cambios.
+- Sin cambios en backend, hooks ni queries.
+
+### Pregunta de confirmación
+
+¿Quieres que la interpretación de "tareas pasadas a 7 días" sea exactamente **7 días hacia atrás desde hoy** (lo que propongo), o prefieres mantener **todas las pasadas sin límite** y solo ampliar el futuro a 30 días?
