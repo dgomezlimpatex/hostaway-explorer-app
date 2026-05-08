@@ -179,9 +179,16 @@ export const useInvitationFlow = () => {
 
     try {
       console.log('Attempting to sign up user with email:', email);
-      
+
+      // Normalizar nombre: mayúsculas y sin tildes/diacríticos
+      const normalizedFullName = fullName
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toUpperCase()
+        .trim();
+
       // Intentar registro sin confirmación de email
-      const { error } = await signUp(email!, password, fullName);
+      const { error } = await signUp(email!, password, normalizedFullName);
       
       if (error) {
         console.error('Sign up error:', error);
