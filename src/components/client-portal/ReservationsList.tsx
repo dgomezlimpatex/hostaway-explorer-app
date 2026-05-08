@@ -65,6 +65,7 @@ export const ReservationsList = ({
   const [editingBooking, setEditingBooking] = useState<PortalBooking | null>(null);
   const [cancellingBooking, setCancellingBooking] = useState<PortalBooking | null>(null);
   const [detailBooking, setDetailBooking] = useState<PortalBooking | null>(null);
+  const [expandedPast, setExpandedPast] = useState<Set<string>>(new Set());
   const { toast } = useToast();
   
   const cancelMutation = useCancelReservation();
