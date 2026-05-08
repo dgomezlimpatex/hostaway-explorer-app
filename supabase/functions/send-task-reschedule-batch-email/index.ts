@@ -45,7 +45,7 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
-    const { cleanerEmail, cleanerName, date, changes }: BatchEmailRequest = await req.json();
+    const { cleanerEmail, cleanerName, date, insertedTask, changes }: BatchEmailRequest = await req.json();
 
     if (!cleanerEmail || !changes || changes.length === 0) {
       return new Response(JSON.stringify({ error: "Missing data" }), {
