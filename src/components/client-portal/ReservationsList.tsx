@@ -65,6 +65,7 @@ export const ReservationsList = ({
   const [editingBooking, setEditingBooking] = useState<PortalBooking | null>(null);
   const [cancellingBooking, setCancellingBooking] = useState<PortalBooking | null>(null);
   const [detailBooking, setDetailBooking] = useState<PortalBooking | null>(null);
+  const [expandedPast, setExpandedPast] = useState<Set<string>>(new Set());
   const { toast } = useToast();
   
   const cancelMutation = useCancelReservation();
@@ -203,9 +204,150 @@ export const ReservationsList = ({
             {groupedByProperty.map((group) => {
               const today = new Date();
               today.setHours(0, 0, 0, 0);
-              const upcomingCount = group.bookings.filter(b => new Date(b.cleaningDate) >= today).length;
-              const pastCount = group.bookings.length - upcomingCount;
+
+              const upcoming: PortalBooking[] = [];
+              const past: PortalBooking[] = [];
+              for (const b of group.bookings) {
+                const d = new Date(b.cleaningDate);
+                d.setHours(0, 0, 0, 0);
+                if (d.getTime() >= today.getTime()) upcoming.push(b);
+                else past.push(b);
+              }
+              upcoming.sort((a, b) => new Date(a.cleaningDate).getTime() - new Date(b.cleaningDate).getTime());
+              past.sort((a, b) => new Date(b.cleaningDate).getTime() - new Date(a.cleaningDate).getTime());
+
+              const upcomingCount = upcoming.length;
+              const pastCount = past.length;
               const groupKey = group.propertyId || group.propertyCode || group.propertyName;
+              const isPastExpanded = expandedPast.has(groupKey);
+
+              const renderBookingRow = (booking: PortalBooking) => {
+                const cleaningDate = new Date(booking.cleaningDate);
+                const checkInDate = booking.checkInDate ? new Date(booking.checkInDate) : cleaningDate;
+                const checkOutDate = booking.checkOutDate ? new Date(booking.checkOutDate) : cleaningDate;
+                const isExternal = booking.source === 'external';
+                const isUpcoming = isFuture(cleaningDate) || isToday(cleaningDate);
+                const isStillActive = !isPast(checkOutDate);
+                const isPastBooking = isPast(checkOutDate);
+                const daysUntil = getDaysUntil(cleaningDate);
+                const nights = !isExternal ? getNightsCount(checkInDate, checkOutDate) : null;
+
+                return (
+                  <div
+                    key={booking.id}
+                    onClick={() => setDetailBooking(booking)}
+                    className="group relative transition-all duration-200 cursor-pointer hover:bg-accent/50"
+                  >
+                    {isUpcoming && (
+                      <div className={`absolute left-0 top-0 bottom-0 w-1 ${
+                        isToday(cleaningDate)
+                          ? 'bg-green-500'
+                          : daysUntil <= 3
+                            ? 'bg-amber-500'
+                            : 'bg-primary'
+                      }`} />
+                    )}
+
+                    <div className="flex items-center gap-2.5 sm:gap-3 p-3 pl-4 sm:pl-5">
+                      <div className={`hidden sm:flex w-10 h-10 rounded-lg items-center justify-center shrink-0 ${
+                        isPastBooking
+                          ? 'bg-muted text-muted-foreground'
+                          : isExternal
+                            ? 'bg-muted/60 text-muted-foreground'
+                            : 'bg-primary/10 text-primary'
+                      }`}>
+                        {isExternal ? <RefreshCw className="h-4 w-4" /> : <Home className="h-4 w-4" />}
+                      </div>
+
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1.5 flex-wrap mb-1">
+                          <div className={`flex items-center gap-1 text-xs sm:text-sm font-medium ${
+                            isPastBooking ? 'text-muted-foreground' : 'text-foreground'
+                          }`}>
+                            <Calendar className="h-3.5 w-3.5 shrink-0" />
+                            {isExternal ? (
+                              <span className="truncate">{format(cleaningDate, "EEE d MMM yyyy", { locale: es })}</span>
+                            ) : (
+                              <>
+                                <span>{format(checkInDate, 'd MMM', { locale: es })}</span>
+                                <ChevronRight className="h-3 w-3 shrink-0" />
+                                <span>{format(checkOutDate, 'd MMM yyyy', { locale: es })}</span>
+                                {nights !== null && (
+                                  <span className="text-muted-foreground/60 ml-1 text-[10px] sm:text-xs">
+                                    ({nights}n)
+                                  </span>
+                                )}
+                              </>
+                            )}
+                          </div>
+
+                          {isExternal && (
+                            <Badge variant="outline" className="text-[10px] gap-1 bg-muted/50 h-5 px-1.5">
+                              <Lock className="h-2.5 w-2.5" />
+                              Sync
+                            </Badge>
+                          )}
+                          {isToday(cleaningDate) && (
+                            <Badge className="bg-green-500/15 text-green-700 border-green-200 hover:bg-green-500/20 h-5 px-1.5 text-[10px]">
+                              Hoy
+                            </Badge>
+                          )}
+                          {!isPastBooking && !isToday(cleaningDate) && daysUntil <= 3 && daysUntil > 0 && (
+                            <Badge variant="outline" className="bg-amber-500/10 text-amber-700 border-amber-200 h-5 px-1.5 text-[10px]">
+                              En {daysUntil}d
+                            </Badge>
+                          )}
+                          {isPastBooking && (
+                            <Badge variant="secondary" className="opacity-70 text-[10px] h-5 px-1.5">
+                              Completada
+                            </Badge>
+                          )}
+                        </div>
+
+                        <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
+                          {booking.guestCount && (
+                            <div className="flex items-center gap-1 text-[11px] sm:text-xs text-muted-foreground">
+                              <Users className="h-3 w-3" />
+                              <span>{booking.guestCount} huésp.</span>
+                            </div>
+                          )}
+                          {booking.specialRequests && (
+                            <div className={`flex items-center gap-1 text-[11px] sm:text-xs ${
+                              isPastBooking ? 'text-muted-foreground/60' : 'text-amber-600'
+                            }`}>
+                              <MessageSquare className="h-3 w-3 shrink-0" />
+                              <span className="truncate max-w-[140px] sm:max-w-[200px]">{booking.specialRequests}</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {booking.isEditable && isStillActive && booking.status === 'active' && (
+                        <div className="flex items-center gap-0.5 shrink-0" onClick={(e) => e.stopPropagation()}>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-muted-foreground hover:text-primary hover:bg-primary/10"
+                            onClick={() => setEditingBooking(booking)}
+                          >
+                            <Edit2 className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                            onClick={() => setCancellingBooking(booking)}
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
+                      )}
+
+                      <ChevronRight className="h-4 w-4 text-muted-foreground/30 shrink-0" />
+                    </div>
+                  </div>
+                );
+              };
 
               return (
                 <AccordionItem key={groupKey} value={groupKey} className="border-0">
@@ -235,138 +377,58 @@ export const ReservationsList = ({
                     </div>
                   </AccordionTrigger>
                   <AccordionContent className="pb-0">
-                    <div className="divide-y divide-border/40 bg-muted/10">
-                      {group.bookings.map((booking) => {
-                        const cleaningDate = new Date(booking.cleaningDate);
-                        const checkInDate = booking.checkInDate ? new Date(booking.checkInDate) : cleaningDate;
-                        const checkOutDate = booking.checkOutDate ? new Date(booking.checkOutDate) : cleaningDate;
-                        const isExternal = booking.source === 'external';
-                        const isUpcoming = isFuture(cleaningDate) || isToday(cleaningDate);
-                        const isStillActive = !isPast(checkOutDate);
-                        const isPastBooking = isPast(checkOutDate);
-                        const daysUntil = getDaysUntil(cleaningDate);
-                        const nights = !isExternal ? getNightsCount(checkInDate, checkOutDate) : null;
-
-                        return (
-                          <div
-                            key={booking.id}
-                            onClick={() => setDetailBooking(booking)}
-                            className={`group relative transition-all duration-200 cursor-pointer ${
-                              isPastBooking
-                                ? 'bg-emerald-50 hover:bg-emerald-100/80 dark:bg-emerald-950/20 dark:hover:bg-emerald-950/30'
-                                : 'hover:bg-accent/50'
-                            }`}
-                          >
-                            {isUpcoming && (
-                              <div className={`absolute left-0 top-0 bottom-0 w-1 ${
-                                isToday(cleaningDate)
-                                  ? 'bg-green-500'
-                                  : daysUntil <= 3
-                                    ? 'bg-amber-500'
-                                    : 'bg-primary'
-                              }`} />
-                            )}
-
-                            <div className="flex items-center gap-2.5 sm:gap-3 p-3 pl-4 sm:pl-5">
-                              <div className={`hidden sm:flex w-10 h-10 rounded-lg items-center justify-center shrink-0 ${
-                                isPastBooking
-                                  ? 'bg-muted text-muted-foreground'
-                                  : isExternal
-                                    ? 'bg-muted/60 text-muted-foreground'
-                                    : 'bg-primary/10 text-primary'
-                              }`}>
-                                {isExternal ? <RefreshCw className="h-4 w-4" /> : <Home className="h-4 w-4" />}
-                              </div>
-
-                              <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-1.5 flex-wrap mb-1">
-                                  <div className={`flex items-center gap-1 text-xs sm:text-sm font-medium ${
-                                    isPastBooking ? 'text-muted-foreground' : 'text-foreground'
-                                  }`}>
-                                    <Calendar className="h-3.5 w-3.5 shrink-0" />
-                                    {isExternal ? (
-                                      <span className="truncate">{format(cleaningDate, "EEE d MMM yyyy", { locale: es })}</span>
-                                    ) : (
-                                      <>
-                                        <span>{format(checkInDate, 'd MMM', { locale: es })}</span>
-                                        <ChevronRight className="h-3 w-3 shrink-0" />
-                                        <span>{format(checkOutDate, 'd MMM yyyy', { locale: es })}</span>
-                                        {nights !== null && (
-                                          <span className="text-muted-foreground/60 ml-1 text-[10px] sm:text-xs">
-                                            ({nights}n)
-                                          </span>
-                                        )}
-                                      </>
-                                    )}
-                                  </div>
-
-                                  {isExternal && (
-                                    <Badge variant="outline" className="text-[10px] gap-1 bg-muted/50 h-5 px-1.5">
-                                      <Lock className="h-2.5 w-2.5" />
-                                      Sync
-                                    </Badge>
-                                  )}
-                                  {isToday(cleaningDate) && (
-                                    <Badge className="bg-green-500/15 text-green-700 border-green-200 hover:bg-green-500/20 h-5 px-1.5 text-[10px]">
-                                      Hoy
-                                    </Badge>
-                                  )}
-                                  {!isPastBooking && !isToday(cleaningDate) && daysUntil <= 3 && daysUntil > 0 && (
-                                    <Badge variant="outline" className="bg-amber-500/10 text-amber-700 border-amber-200 h-5 px-1.5 text-[10px]">
-                                      En {daysUntil}d
-                                    </Badge>
-                                  )}
-                                  {isPastBooking && (
-                                    <Badge variant="secondary" className="opacity-70 text-[10px] h-5 px-1.5">
-                                      Completada
-                                    </Badge>
-                                  )}
-                                </div>
-
-                                <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
-                                  {booking.guestCount && (
-                                    <div className="flex items-center gap-1 text-[11px] sm:text-xs text-muted-foreground">
-                                      <Users className="h-3 w-3" />
-                                      <span>{booking.guestCount} huésp.</span>
-                                    </div>
-                                  )}
-                                  {booking.specialRequests && (
-                                    <div className={`flex items-center gap-1 text-[11px] sm:text-xs ${
-                                      isPastBooking ? 'text-muted-foreground/60' : 'text-amber-600'
-                                    }`}>
-                                      <MessageSquare className="h-3 w-3 shrink-0" />
-                                      <span className="truncate max-w-[140px] sm:max-w-[200px]">{booking.specialRequests}</span>
-                                    </div>
-                                  )}
-                                </div>
-                              </div>
-
-                              {booking.isEditable && isStillActive && booking.status === 'active' && (
-                                <div className="flex items-center gap-0.5 shrink-0" onClick={(e) => e.stopPropagation()}>
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-8 w-8 text-muted-foreground hover:text-primary hover:bg-primary/10"
-                                    onClick={() => setEditingBooking(booking)}
-                                  >
-                                    <Edit2 className="h-3.5 w-3.5" />
-                                  </Button>
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-                                    onClick={() => setCancellingBooking(booking)}
-                                  >
-                                    <Trash2 className="h-3.5 w-3.5" />
-                                  </Button>
-                                </div>
-                              )}
-
-                              <ChevronRight className="h-4 w-4 text-muted-foreground/30 shrink-0" />
-                            </div>
+                    <div className="bg-muted/10">
+                      {upcomingCount > 0 && (
+                        <>
+                          <div className="flex items-center gap-2 px-3 sm:px-4 py-2 bg-muted/40 border-y border-border/40">
+                            <span className="w-2 h-2 rounded-full bg-green-500 shrink-0" />
+                            <span className="text-[10px] sm:text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                              Próximas
+                            </span>
+                            <Badge variant="outline" className="h-4 px-1.5 text-[10px] bg-green-500/10 text-green-700 border-green-200">
+                              {upcomingCount}
+                            </Badge>
                           </div>
-                        );
-                      })}
+                          <div className="divide-y divide-border/40">
+                            {upcoming.map(renderBookingRow)}
+                          </div>
+                        </>
+                      )}
+
+                      {pastCount > 0 && (
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setExpandedPast(prev => {
+                                const next = new Set(prev);
+                                if (next.has(groupKey)) next.delete(groupKey);
+                                else next.add(groupKey);
+                                return next;
+                              });
+                            }}
+                            className="w-full flex items-center gap-2 px-3 sm:px-4 py-2 bg-muted/40 border-y border-border/40 hover:bg-muted/60 transition-colors text-left"
+                          >
+                            <span className="w-2 h-2 rounded-full bg-muted-foreground/40 shrink-0" />
+                            <span className="text-[10px] sm:text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                              Pasadas
+                            </span>
+                            <Badge variant="secondary" className="h-4 px-1.5 text-[10px] opacity-70">
+                              {pastCount}
+                            </Badge>
+                            <ChevronRight
+                              className={`h-3.5 w-3.5 ml-auto text-muted-foreground transition-transform ${
+                                isPastExpanded ? 'rotate-90' : ''
+                              }`}
+                            />
+                          </button>
+                          {isPastExpanded && (
+                            <div className="divide-y divide-border/40">
+                              {past.map(renderBookingRow)}
+                            </div>
+                          )}
+                        </>
+                      )}
                     </div>
                   </AccordionContent>
                 </AccordionItem>
