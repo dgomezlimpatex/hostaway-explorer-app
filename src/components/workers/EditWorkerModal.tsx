@@ -71,25 +71,32 @@ export const EditWorkerModal = ({ worker, open, onOpenChange }: EditWorkerModalP
 
   if (!worker) return null;
 
+  const isLinked = !!worker.externalId;
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
           <DialogTitle>Editar Trabajador</DialogTitle>
           <DialogDescription>
-            Modifica la información del trabajador.
+            {isLinked
+              ? 'Este trabajador está vinculado a REGISTRO. Algunos campos son solo lectura y se sincronizan automáticamente.'
+              : 'Modifica la información del trabajador.'}
           </DialogDescription>
         </DialogHeader>
         
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="name">Nombre completo *</Label>
+            <Label htmlFor="name" className="flex items-center gap-1">
+              Nombre completo * {isLinked && <span title="Sincronizado desde REGISTRO">🔒</span>}
+            </Label>
             <Input
               id="name"
               value={formData.name}
               onChange={(e) => handleChange('name', e.target.value)}
               placeholder="Nombre del trabajador"
               required
+              disabled={isLinked}
             />
           </div>
 
