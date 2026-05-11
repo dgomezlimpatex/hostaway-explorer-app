@@ -179,33 +179,39 @@ export const WorkersList = ({ workers, isLoading, onEditWorker, onViewWorker }: 
                     <UserCheck className="h-3 w-3" />
                   </Button>
                 )}
-                <AlertDialog>
-                  <AlertDialogTrigger asChild>
-                    <Button variant="destructive" size="sm" className="h-7 text-xs">
-                      Eliminar
-                    </Button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>¿Estás seguro de eliminar?</AlertDialogTitle>
-                      <AlertDialogDescription>
-                        Esta acción no se puede deshacer. Se eliminará permanentemente 
-                        el trabajador "{worker.name}" y <strong>todas sus tareas asignadas quedarán sin asignar</strong>.
-                        <br /><br />
-                        💡 Si solo quieres que deje de aparecer en las asignaciones, usa <strong>"Desactivar"</strong> en su lugar.
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                      <AlertDialogAction
-                        onClick={() => handleDelete(worker.id)}
-                        className="bg-destructive hover:bg-destructive/90"
-                      >
-                        Eliminar definitivamente
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
+                {worker.externalId ? (
+                  <Button variant="destructive" size="sm" className="h-7 text-xs" disabled title="Gestionado desde REGISTRO. Usa Desactivar.">
+                    Eliminar
+                  </Button>
+                ) : (
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button variant="destructive" size="sm" className="h-7 text-xs">
+                        Eliminar
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>¿Estás seguro de eliminar?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          Esta acción no se puede deshacer. Se eliminará permanentemente 
+                          el trabajador "{worker.name}" y <strong>todas sus tareas asignadas quedarán sin asignar</strong>.
+                          <br /><br />
+                          💡 Si solo quieres que deje de aparecer en las asignaciones, usa <strong>"Desactivar"</strong> en su lugar.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                        <AlertDialogAction
+                          onClick={() => handleDelete(worker.id)}
+                          className="bg-destructive hover:bg-destructive/90"
+                        >
+                          Eliminar definitivamente
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                )}
               </div>
             </CardContent>
           </Card>
@@ -309,31 +315,37 @@ export const WorkersList = ({ workers, isLoading, onEditWorker, onViewWorker }: 
                       <UserCheck className="h-4 w-4" />Reactivar
                     </Button>
                   )}
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                      <Button variant="destructive" size="sm">Eliminar</Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>¿Estás seguro de eliminar?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                          Esta acción no se puede deshacer. Se eliminará permanentemente 
-                          el trabajador "{worker.name}" y <strong>todas sus tareas asignadas quedarán sin asignar</strong>.
-                          <br /><br />
-                          💡 Si solo quieres que deje de aparecer en las asignaciones, usa <strong>"Desactivar"</strong> en su lugar.
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                        <AlertDialogAction
-                          onClick={() => handleDelete(worker.id)}
-                          className="bg-destructive hover:bg-destructive/90"
-                        >
-                          Eliminar definitivamente
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
+                  {worker.externalId ? (
+                    <Button variant="destructive" size="sm" disabled title="Gestionado desde REGISTRO. Usa Desactivar.">
+                      Eliminar
+                    </Button>
+                  ) : (
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button variant="destructive" size="sm">Eliminar</Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>¿Estás seguro de eliminar?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            Esta acción no se puede deshacer. Se eliminará permanentemente 
+                            el trabajador "{worker.name}" y <strong>todas sus tareas asignadas quedarán sin asignar</strong>.
+                            <br /><br />
+                            💡 Si solo quieres que deje de aparecer en las asignaciones, usa <strong>"Desactivar"</strong> en su lugar.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                          <AlertDialogAction
+                            onClick={() => handleDelete(worker.id)}
+                            className="bg-destructive hover:bg-destructive/90"
+                          >
+                            Eliminar definitivamente
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  )}
                 </div>
               </TableCell>
             </TableRow>

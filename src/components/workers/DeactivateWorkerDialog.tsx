@@ -68,6 +68,12 @@ export const DeactivateWorkerDialog: React.FC<DeactivateWorkerDialogProps> = ({
                 pero se conservará su historial.
               </p>
 
+              {worker?.externalId && (
+                <div className="rounded-md border border-emerald-200 bg-emerald-50 p-3 text-emerald-900 text-xs">
+                  🔗 Este trabajador está vinculado a REGISTRO. Si en REGISTRO sigue activo,
+                  la próxima sincronización podría reactivarlo. Para una baja definitiva, dale de baja en REGISTRO.
+                </div>
+              )}
               {loadingTasks ? (
                 <div className="flex items-center gap-2 text-muted-foreground">
                   <Loader2 className="h-4 w-4 animate-spin" />
