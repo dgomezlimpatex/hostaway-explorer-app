@@ -22,7 +22,8 @@ import {
   TrendingUp,
   Search,
   RefreshCw,
-  Settings
+  Settings,
+  Link2
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useRolePermissions } from '@/hooks/useRolePermissions';
