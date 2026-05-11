@@ -809,7 +809,6 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
   // FIXED: All hooks are now above this conditional return
   if (!task) return null;
 
-  const canBypassDateLock = userRole === 'admin' || userRole === 'manager';
   const effectiveIsTaskFromToday = isTaskFromToday || canBypassDateLock;
   const canComplete = effectiveIsTaskFromToday && requiredValidation.isValid;
 
