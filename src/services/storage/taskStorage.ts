@@ -141,6 +141,31 @@ export class TaskStorageService extends BaseStorageService<Task, TaskCreateData>
       }
     });
     
+    // The inner join above only returns the assignment row matching this cleaner.
+    // For multi-worker tasks we need ALL assignments so the UI can split duration
+    // per worker correctly. Fetch the full assignment list for these task ids.
+    const taskIds = Array.from(taskMap.keys());
+    if (taskIds.length > 0) {
+      const { data: allAssignments, error: assignErr } = await supabase
+        .from('task_assignments')
+        .select('id, task_id, cleaner_id, cleaner_name')
+        .in('task_id', taskIds);
+      if (!assignErr && allAssignments) {
+        const byTask = new Map<string, any[]>();
+        allAssignments.forEach(a => {
+          const arr = byTask.get(a.task_id) || [];
+          arr.push(a);
+          byTask.set(a.task_id, arr);
+        });
+        taskMap.forEach((task, id) => {
+          const full = byTask.get(id);
+          if (full && full.length > 0) {
+            task.task_assignments = full;
+          }
+        });
+      }
+    }
+    
     // Map to Task objects
     return Array.from(taskMap.values()).map(task => this.mapTaskFromDB(task));
   }
