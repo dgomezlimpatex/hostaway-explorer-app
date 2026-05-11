@@ -60,6 +60,7 @@ const ExtraordinaryRequestTypesAdmin = React.lazy(() => import("./pages/Extraord
 const WorkloadDashboard = React.lazy(() => import("./pages/WorkloadDashboard"));
 const StaffingForecast = React.lazy(() => import("./pages/StaffingForecast"));
 const ForecastSettings = React.lazy(() => import("./pages/ForecastSettings"));
+const Integraciones = React.lazy(() => import("./pages/Integraciones"));
 
 // Suspense fallback for routes loaded WITHOUT the persistent layout (auth, public, calendar)
 const FullPageSuspense = ({ children }: { children: React.ReactNode }) => (
