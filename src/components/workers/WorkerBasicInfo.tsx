@@ -260,6 +260,59 @@ export const WorkerBasicInfo = ({ worker }: WorkerBasicInfoProps) => {
           </div>
         </CardContent>
       </Card>
+
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <CardTitle className="flex items-center gap-2">
+            Datos REGISTRO
+            {worker.externalId ? (
+              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 px-2 py-0.5 text-xs font-medium">
+                🔗 Vinculado
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 dark:bg-amber-950/50 text-amber-700 dark:text-amber-300 px-2 py-0.5 text-xs font-medium">
+                Solo local
+              </span>
+            )}
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {!worker.externalId && (
+            <p className="text-sm text-muted-foreground">
+              Este trabajador no está vinculado a REGISTRO. Para sincronizar sus datos (DNI, PIN, categoría, etc.), ve a <strong>Integraciones · REGISTRO</strong> y vincúlalo desde la vista previa.
+            </p>
+          )}
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label>DNI</Label>
+              <Input value={worker.dni || '—'} readOnly />
+            </div>
+            <div>
+              <Label>PIN</Label>
+              <Input value={worker.pin || '—'} readOnly />
+            </div>
+            <div>
+              <Label>Categoría profesional</Label>
+              <Input value={worker.category || '—'} readOnly />
+            </div>
+            <div>
+              <Label>Delegación</Label>
+              <Input value={worker.delegationName || '—'} readOnly />
+            </div>
+            <div>
+              <Label>Oficina</Label>
+              <Input value={worker.officeName || '—'} readOnly />
+            </div>
+            <div>
+              <Label>ID externo (REGISTRO)</Label>
+              <Input value={worker.externalId || '—'} readOnly className="font-mono text-xs" />
+            </div>
+          </div>
+          <p className="text-xs text-muted-foreground italic">
+            Estos campos se sincronizan automáticamente desde REGISTRO. Para modificarlos, edítalos en REGISTRO y vuelve a sincronizar.
+          </p>
+        </CardContent>
+      </Card>
     </div>
   );
 };

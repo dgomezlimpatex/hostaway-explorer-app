@@ -14,6 +14,15 @@ export interface Cleaner extends BaseEntity {
   startDate?: string;
   emergencyContactName?: string;
   emergencyContactPhone?: string;
+  // Datos sincronizados desde REGISTRO
+  externalId?: string;
+  firstName?: string;
+  lastName?: string;
+  dni?: string;
+  pin?: string;
+  category?: string;
+  delegationName?: string;
+  officeName?: string;
 }
 
 export interface TimeSlot {
