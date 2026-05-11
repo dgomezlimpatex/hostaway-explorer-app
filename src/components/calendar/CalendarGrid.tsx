@@ -219,7 +219,8 @@ const CleanerRow = memo(({
         display,
         displayTasksOnly,
         cleaner.id,
-        [cleaner]
+        [cleaner],
+        cleanerAssignmentsMap
       );
       const isBeingDragged = dragState.draggedTask?.id === original.id;
       const isSplit = count > 1;
