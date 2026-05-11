@@ -250,6 +250,9 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
     return taskDate.toDateString() === today.toDateString();
   }, [task]);
 
+  // Admin/manager can finalize tasks regardless of date
+  const canBypassDateLock = userRole === 'admin' || userRole === 'manager';
+
   // Detectar si la tarea está completada
   const reportStatus = currentReport?.overall_status || 'pending';
   const isTaskCompleted = task?.status === 'completed' || reportStatus === 'completed';
@@ -603,7 +606,7 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
     // CRITICAL FIX: Set flag IMMEDIATELY to prevent auto-save from overwriting
     isCompletingRef.current = true;
 
-    if (!isTaskFromToday) {
+    if (!isTaskFromToday && !canBypassDateLock) {
       isCompletingRef.current = false;
       toast({
         title: "Error",
@@ -806,7 +809,8 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
   // FIXED: All hooks are now above this conditional return
   if (!task) return null;
 
-  const canComplete = isTaskFromToday && requiredValidation.isValid;
+  const effectiveIsTaskFromToday = isTaskFromToday || canBypassDateLock;
+  const canComplete = effectiveIsTaskFromToday && requiredValidation.isValid;
 
 
   return (
@@ -876,7 +880,7 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
               isUpdatingReport={isUpdatingReport}
               completionPercentage={completionPercentage}
               requiredValidation={requiredValidation}
-              isTaskFromToday={isTaskFromToday}
+              isTaskFromToday={effectiveIsTaskFromToday}
               isTaskCompleted={isTaskCompleted}
               hasStartedTask={hasStartedTask}
               currentStep={currentStep}
