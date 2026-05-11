@@ -186,8 +186,10 @@ export const WorkerBasicInfo = ({ worker }: WorkerBasicInfoProps) => {
               )}
             </div>
             <div>
-              <Label>Fecha de Inicio</Label>
-              {isEditing ? (
+              <Label className="flex items-center gap-1">
+                Fecha de Inicio {worker.externalId && <span title="Sincronizado desde REGISTRO">🔒</span>}
+              </Label>
+              {isEditing && !worker.externalId ? (
                 <Popover>
                   <PopoverTrigger asChild>
                     <Button
