@@ -219,9 +219,13 @@ export const CalendarContainer = ({
         );
         
         if (taskOverlaps.length > 0) {
-          overlaps.push(...taskOverlaps.filter(overlap => 
-            !overlaps.some(existing => existing.id === overlap.id)
-          ));
+          overlaps.push(...taskOverlaps
+            .filter(overlap => !overlaps.some(existing => existing.id === overlap.id))
+            .map(overlap => ({
+              ...overlap,
+              endTime: getEffectiveTaskEndTime(overlap, assignmentsMap),
+            }))
+          );
         }
       });
       
