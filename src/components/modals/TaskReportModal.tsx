@@ -99,11 +99,33 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
   const { data: taskMedia = [], isLoading: isLoadingMedia } = useTaskMedia(currentReport?.id || '');
 
   // Get current cleaner ID
+  // - For cleaners: use their own cleaner profile
+  // - For admins/managers/supervisors: fall back to the cleaner assigned to this task,
+  //   or to the cleaner that owns the existing report, so they can complete reports on behalf of cleaners.
   const currentCleanerId = useMemo(() => {
-    if (!user?.id || !cleaners) return null;
-    const currentCleaner = cleaners.find(cleaner => cleaner.user_id === user.id);
-    return currentCleaner?.id || null;
-  }, [user?.id, cleaners]);
+    if (!user?.id) return null;
+
+    // Try to find the user's own cleaner profile (works for cleaners)
+    const ownCleaner = cleaners?.find(cleaner => cleaner.user_id === user.id);
+    if (ownCleaner?.id) return ownCleaner.id;
+
+    // Fallback for admins/managers/supervisors: use the task's assigned cleaner
+    const isPrivileged = userRole === 'admin' || userRole === 'manager' || userRole === 'supervisor';
+    if (isPrivileged) {
+      // Prefer the cleaner already linked to the existing report (if any)
+      if (existingReport?.cleaner_id) return existingReport.cleaner_id;
+      // Otherwise use the cleaner assigned to the task
+      if (task?.cleanerId) return task.cleanerId;
+      // Last resort: try matching the task's cleaner name
+      if (task?.cleaner && cleaners) {
+        const firstName = task.cleaner.split(',')[0]?.trim();
+        const matched = cleaners.find(c => c.name === firstName);
+        if (matched?.id) return matched.id;
+      }
+    }
+
+    return null;
+  }, [user?.id, userRole, cleaners, existingReport?.cleaner_id, task?.cleanerId, task?.cleaner]);
 
   // CRITICAL: Force reset all state when the task changes (prevents data leak between tasks)
   useEffect(() => {
