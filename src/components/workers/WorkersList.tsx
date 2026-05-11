@@ -212,6 +212,7 @@ export const WorkersList = ({ workers, isLoading, onEditWorker, onViewWorker }: 
                     </AlertDialogContent>
                   </AlertDialog>
                 )}
+              </div>
             </CardContent>
           </Card>
         ))}
