@@ -124,6 +124,26 @@ export const EditWorkerModal = ({ worker, open, onOpenChange }: EditWorkerModalP
             />
           </div>
 
+          {(worker.externalId || worker.dni || worker.pin || worker.category) && (
+            <div className="space-y-2 rounded-md border border-emerald-200 dark:border-emerald-900 bg-emerald-50/50 dark:bg-emerald-950/20 p-3">
+              <div className="flex items-center justify-between">
+                <Label className="text-emerald-700 dark:text-emerald-300 font-semibold">
+                  🔗 Datos sincronizados desde REGISTRO
+                </Label>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Estos campos se sincronizan automáticamente. Para editarlos, modifícalos en REGISTRO.
+              </p>
+              <div className="grid grid-cols-2 gap-2 text-sm">
+                {worker.dni && <div><span className="text-muted-foreground">DNI:</span> <strong>{worker.dni}</strong></div>}
+                {worker.pin && <div><span className="text-muted-foreground">PIN:</span> <strong>{worker.pin}</strong></div>}
+                {worker.category && <div className="col-span-2"><span className="text-muted-foreground">Categoría:</span> <strong>{worker.category}</strong></div>}
+                {worker.delegationName && <div><span className="text-muted-foreground">Delegación:</span> <strong>{worker.delegationName}</strong></div>}
+                {worker.officeName && <div><span className="text-muted-foreground">Oficina:</span> <strong>{worker.officeName}</strong></div>}
+              </div>
+            </div>
+          )}
+
           <div className="flex items-center space-x-2">
             <Switch
               id="isActive"
