@@ -227,8 +227,8 @@ export const ReservationsList = ({
                 const checkOutDate = booking.checkOutDate ? new Date(booking.checkOutDate) : cleaningDate;
                 const isExternal = booking.source === 'external';
                 const isUpcoming = isFuture(cleaningDate) || isToday(cleaningDate);
-                const isStillActive = !isPast(checkOutDate);
-                const isPastBooking = isPast(checkOutDate);
+                const isStillActive = !isPast(checkOutDate) || isToday(checkOutDate) || isToday(cleaningDate);
+                const isPastBooking = isPast(checkOutDate) && !isToday(checkOutDate) && !isToday(cleaningDate);
                 const daysUntil = getDaysUntil(cleaningDate);
                 const nights = !isExternal ? getNightsCount(checkInDate, checkOutDate) : null;
 
