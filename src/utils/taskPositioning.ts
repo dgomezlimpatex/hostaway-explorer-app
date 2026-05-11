@@ -49,7 +49,8 @@ export const detectTaskOverlaps = (
   existingTasks: any[],
   cleaners: any[],
   excludeTaskId?: string,
-  assignmentsMap?: Record<string, string[]>
+  assignmentsMap?: Record<string, string[]>,
+  useEffectiveEndTime = true
 ) => {
   const cleanerName = cleaners.find(c => c.id === cleanerId)?.name;
   const newStartMinutes = timeToMinutes(newTaskStartTime);
@@ -67,7 +68,7 @@ export const detectTaskOverlaps = (
     }
     
     const taskStartMinutes = timeToMinutes(task.startTime);
-    const taskEndMinutes = timeToMinutes(getEffectiveTaskEndTime(task, assignmentsMap));
+    const taskEndMinutes = timeToMinutes(useEffectiveEndTime ? getEffectiveTaskEndTime(task, assignmentsMap) : task.endTime);
     
     // Check for overlap: tasks overlap if start of one is before end of other
     return (newStartMinutes < taskEndMinutes) && (newEndMinutes > taskStartMinutes);
@@ -114,7 +115,8 @@ export const getTaskPositionWithOverlap = (
     allTasks,
     cleaners,
     task.id,
-    assignmentsMap
+    assignmentsMap,
+    false
   );
   
   // If there are overlaps, calculate stacking position
