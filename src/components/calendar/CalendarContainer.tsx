@@ -13,7 +13,7 @@ import { StatusLegend } from "./StatusLegend";
 import { OverlapAlert } from "./OverlapAlert";
 import { Task, Cleaner } from "@/types/calendar";
 import { CleanerAvailability } from "@/hooks/useCleanerAvailability";
-import { getTaskPosition, isTimeSlotOccupied, detectTaskOverlaps } from "@/utils/taskPositioning";
+import { getTaskPosition, isTimeSlotOccupied, detectTaskOverlaps, getEffectiveTaskEndTime } from "@/utils/taskPositioning";
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useWorkersAbsenceStatus } from "@/hooks/useWorkersAbsenceStatus";
@@ -211,16 +211,21 @@ export const CalendarContainer = ({
         const taskOverlaps = detectTaskOverlaps(
           cleaner.id,
           task.startTime,
-          task.endTime,
+          getEffectiveTaskEndTime(task, assignmentsMap),
           cleanerTasks,
           cleaners,
-          task.id
+          task.id,
+          assignmentsMap
         );
         
         if (taskOverlaps.length > 0) {
-          overlaps.push(...taskOverlaps.filter(overlap => 
-            !overlaps.some(existing => existing.id === overlap.id)
-          ));
+          overlaps.push(...taskOverlaps
+            .filter(overlap => !overlaps.some(existing => existing.id === overlap.id))
+            .map(overlap => ({
+              ...overlap,
+              endTime: getEffectiveTaskEndTime(overlap, assignmentsMap),
+            }))
+          );
         }
       });
       
@@ -230,7 +235,7 @@ export const CalendarContainer = ({
     });
     
     return map;
-  }, [assignedTasks, cleaners]);
+  }, [assignedTasks, cleaners, assignmentsMap]);
 
   // Memoized time slot occupation check wrapper que excluye la tarea que se está arrastrando
   const checkTimeSlotOccupied = (cleanerId: string, hour: number, minute: number) => {
@@ -240,7 +245,8 @@ export const CalendarContainer = ({
       minute, 
       assignedTasks, 
       cleaners, 
-      dragState.draggedTask?.id // Pasar el ID de la tarea que se está arrastrando
+      dragState.draggedTask?.id, // Pasar el ID de la tarea que se está arrastrando
+      assignmentsMap
     );
   };
 
