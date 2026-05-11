@@ -153,6 +153,12 @@ const adminItems: NavigationItem[] = [
     icon: Settings,
     permission: 'hostaway'
   },
+  {
+    title: 'Integraciones · REGISTRO',
+    href: '/integraciones',
+    icon: Link2,
+    permission: 'admin-only'
+  },
 ];
 
 interface MobileDashboardSidebarProps {
