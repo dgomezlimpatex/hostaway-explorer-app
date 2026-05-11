@@ -146,7 +146,15 @@ export const WorkersList = ({ workers, isLoading, onEditWorker, onViewWorker }: 
                   </AvatarFallback>
                 </Avatar>
                 <div className="flex-1 min-w-0" onClick={() => onViewWorker(worker)}>
-                  <div className="font-medium text-sm truncate">{worker.name}</div>
+                  <div className="font-medium text-sm truncate flex items-center gap-1.5">
+                    {worker.name}
+                    {worker.externalId && (
+                      <span title="Vinculado a REGISTRO" className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-100 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 font-medium">🔗</span>
+                    )}
+                  </div>
+                  {worker.category && (
+                    <div className="text-[11px] text-muted-foreground truncate">{worker.category}</div>
+                  )}
                   {worker.telefono && (
                     <div className="text-xs text-muted-foreground truncate">{worker.telefono}</div>
                   )}
