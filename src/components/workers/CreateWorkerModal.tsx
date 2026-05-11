@@ -111,6 +111,12 @@ export const CreateWorkerModal = ({ open, onOpenChange }: CreateWorkerModalProps
           </Alert>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-4">
+            <Alert className="border-amber-300 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-900">
+              <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+              <AlertDescription className="text-sm text-amber-800 dark:text-amber-200">
+                <strong>Recomendado:</strong> crea el trabajador primero en REGISTRO y luego sincronízalo desde <strong>Integraciones · REGISTRO</strong>. Los trabajadores creados manualmente aquí no tendrán DNI, PIN ni categoría hasta que los vincules.
+              </AlertDescription>
+            </Alert>
             <div className="space-y-2">
               <Label htmlFor="sede">Sede *</Label>
               <Select value={selectedSedeId} onValueChange={setSelectedSedeId} required>
