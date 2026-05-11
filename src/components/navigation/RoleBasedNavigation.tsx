@@ -12,7 +12,8 @@ import {
   Layers,
   FileText,
   Shirt,
-  RefreshCw
+  RefreshCw,
+  Link2
 } from 'lucide-react';
 
 export const RoleBasedNavigation = () => {
