@@ -603,7 +603,7 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
     // CRITICAL FIX: Set flag IMMEDIATELY to prevent auto-save from overwriting
     isCompletingRef.current = true;
 
-    if (!isTaskFromToday) {
+    if (!isTaskFromToday && !canBypassDateLock) {
       isCompletingRef.current = false;
       toast({
         title: "Error",
