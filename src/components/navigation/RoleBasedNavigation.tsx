@@ -12,7 +12,8 @@ import {
   Layers,
   FileText,
   Shirt,
-  RefreshCw
+  RefreshCw,
+  Link2
 } from 'lucide-react';
 
 export const RoleBasedNavigation = () => {
@@ -148,6 +149,19 @@ export const RoleBasedNavigation = () => {
               gradientTo="to-emerald-600"
               iconColor="text-white"
               hoverBorderColor="hover:border-emerald-300"
+            />
+          )}
+
+          {isAdminOrManager() && (
+            <NavigationCard
+              to="/integraciones"
+              title="Integraciones · REGISTRO"
+              description="Sincroniza empleados desde REGISTRO sin perder tareas asignadas"
+              icon={Link2}
+              gradientFrom="bg-gradient-to-br from-violet-500"
+              gradientTo="to-violet-600"
+              iconColor="text-white"
+              hoverBorderColor="hover:border-violet-300"
             />
           )}
         </div>
