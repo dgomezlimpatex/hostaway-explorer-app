@@ -250,6 +250,9 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
     return taskDate.toDateString() === today.toDateString();
   }, [task]);
 
+  // Admin/manager can finalize tasks regardless of date
+  const canBypassDateLock = userRole === 'admin' || userRole === 'manager';
+
   // Detectar si la tarea está completada
   const reportStatus = currentReport?.overall_status || 'pending';
   const isTaskCompleted = task?.status === 'completed' || reportStatus === 'completed';
