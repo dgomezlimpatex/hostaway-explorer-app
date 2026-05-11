@@ -251,6 +251,9 @@ function App() {
                     <Route path="/forecast/settings" element={
                       <RoleProtectedRoute requiredModule="workers"><ForecastSettings /></RoleProtectedRoute>
                     } />
+                    <Route path="/integraciones" element={
+                      <RoleProtectedRoute requiredModule="admin"><Integraciones /></RoleProtectedRoute>
+                    } />
                   </Route>
 
                   <Route path="*" element={<FullPageSuspense><NotFound /></FullPageSuspense>} />
