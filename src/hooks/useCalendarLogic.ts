@@ -236,13 +236,34 @@ export const useCalendarLogic = () => {
     let cursorEnd = toMin(endTime);
     const MAX_END = 23 * 60 + 59;
 
+    // Helper: count assigned workers (multi-worker tasks split duration evenly)
+    const getAssignedCount = (t: any): number => {
+      if (Array.isArray(t.assignments) && t.assignments.length > 0) return t.assignments.length;
+      if (typeof t.cleaner === 'string' && t.cleaner.includes(',')) {
+        return t.cleaner.split(',').map((s: string) => s.trim()).filter(Boolean).length;
+      }
+      return 1;
+    };
+
     for (const b of sameDayCleanerTasks) {
       const bStart = toMin(b.startTime);
       const bEnd = toMin(b.endTime);
+      // Effective per-worker end for cascade: if multi-worker, divide duration
+      const bAssigned = getAssignedCount(b);
+      const fullDur = Math.max(bEnd - bStart, 0);
+      const effectiveDur = bAssigned > 1 ? Math.max(15, Math.round(fullDur / bAssigned)) : fullDur;
+      const bEffectiveEnd = bStart + effectiveDur;
+
       if (bStart >= cursorEnd) {
         break; // no further overlap, stop cascade
       }
-      const dur = Math.max(bEnd - bStart, 0);
+      // If the existing task's effective (per-worker) end is already before our cursor,
+      // it doesn't actually conflict with the dropped task — skip it.
+      if (bEffectiveEnd <= cursorEnd && bStart < cursorEnd) {
+        // overlap is only against the unused portion of a multi-worker block; skip
+        continue;
+      }
+      const dur = effectiveDur;
       const newStart = cursorEnd;
       const newEnd = newStart + dur;
       if (newEnd > MAX_END) {
