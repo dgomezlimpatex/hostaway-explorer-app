@@ -190,8 +190,11 @@ export const EditWorkerModal = ({ worker, open, onOpenChange }: EditWorkerModalP
               id="isActive"
               checked={formData.isActive}
               onCheckedChange={(checked) => handleChange('isActive', checked)}
+              disabled={isLinked}
             />
-            <Label htmlFor="isActive">Trabajador activo</Label>
+            <Label htmlFor="isActive" className="flex items-center gap-1">
+              Trabajador activo {isLinked && <span title="Gestionado desde REGISTRO">🔒</span>}
+            </Label>
           </div>
 
           <DialogFooter>
