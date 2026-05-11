@@ -21,6 +21,14 @@ const getAssignedCount = (task: any, assignmentsMap?: Record<string, string[]>):
   return 1;
 };
 
+const isTaskAssignedToCleaner = (task: any, cleanerId: string, cleanerName?: string, assignmentsMap?: Record<string, string[]>): boolean => {
+  return task.cleanerId === cleanerId ||
+    task.cleaner === cleanerName ||
+    (typeof task.cleaner === 'string' && task.cleaner.includes(',') &&
+      task.cleaner.split(',').some((name: string) => name.trim() === cleanerName)) ||
+    (Array.isArray(assignmentsMap?.[task.id]) && assignmentsMap![task.id].includes(cleanerId));
+};
+
 export const getEffectiveTaskEndTime = (task: any, assignmentsMap?: Record<string, string[]>): string => {
   const assignedCount = getAssignedCount(task, assignmentsMap);
   if (assignedCount <= 1) return task.endTime;
@@ -53,8 +61,8 @@ export const detectTaskOverlaps = (
       return false;
     }
     
-    // Only check tasks for the same cleaner
-    if (task.cleaner !== cleanerName && task.cleanerId !== cleanerId) {
+    // Only check tasks assigned to the same cleaner, including multi-worker assignments
+    if (!isTaskAssignedToCleaner(task, cleanerId, cleanerName, assignmentsMap)) {
       return false;
     }
     
@@ -184,12 +192,7 @@ export const isTimeSlotOccupied = (
     
     // Un slot está ocupado si la tarea cubre este intervalo de tiempo
     // y pertenece al mismo limpiador
-    const assignedToCleaner =
-      task.cleanerId === cleanerId ||
-      task.cleaner === cleanerName ||
-      (typeof task.cleaner === 'string' && task.cleaner.includes(',') &&
-        task.cleaner.split(',').some((name: string) => name.trim() === cleanerName)) ||
-      (Array.isArray(assignmentsMap?.[task.id]) && assignmentsMap![task.id].includes(cleanerId));
+    const assignedToCleaner = isTaskAssignedToCleaner(task, cleanerId, cleanerName, assignmentsMap);
 
     return assignedToCleaner &&
            slotMinutes >= taskStartMinutes && 
