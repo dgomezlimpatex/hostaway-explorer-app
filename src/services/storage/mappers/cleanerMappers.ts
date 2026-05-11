@@ -18,7 +18,15 @@ export const mapCleanerFromDB = (row: any): Cleaner => ({
   contractType: row.contract_type,
   startDate: row.start_date,
   emergencyContactName: row.emergency_contact_name,
-  emergencyContactPhone: row.emergency_contact_phone
+  emergencyContactPhone: row.emergency_contact_phone,
+  externalId: row.external_id,
+  firstName: row.first_name,
+  lastName: row.last_name,
+  dni: row.dni,
+  pin: row.pin,
+  category: row.category,
+  delegationName: row.delegation_name,
+  officeName: row.office_name
 });
 
 export const mapCleanerToDB = (cleaner: Partial<CreateCleanerData>): any => {
