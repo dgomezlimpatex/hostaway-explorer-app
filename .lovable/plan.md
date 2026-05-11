@@ -1,89 +1,56 @@
+# Paso 6 — Endurecimiento de formularios de trabajador
 
-# Importar empleados desde REGISTRO sin perder tareas (v2)
+Objetivo: cuando un trabajador tenga `external_id` (vinculado a REGISTRO), proteger los campos que gestiona REGISTRO para que no se puedan editar ni borrar accidentalmente desde GESTIÓN. El resto sigue editable.
 
-## Cambio clave respecto a la v1
+## Reglas
 
-Los nombres de las trabajadoras en GESTIÓN **coinciden con los de REGISTRO**, pero los emails **NO siempre coinciden** (los de GESTIÓN se han ido completando a mano para turismo y son el dato fiable de contacto).
+**Campos solo lectura** (cuando `externalId` existe):
+- `name`, `first_name`, `last_name`
+- `dni`, `pin`
+- `category`
+- `delegation_name`, `office_name`
+- `start_date`
+- `is_active` (se gestiona desde REGISTRO; ver excepción abajo)
 
-Consecuencias para el plan:
+**Campos editables en GESTIÓN** (siempre):
+- `email`, `telefono`
+- `sede_id`, `avatar`, `sortOrder`
+- `contractHoursPerWeek`, `hourlyRate`, `contractType`
+- Contacto de emergencia
+- Asignaciones, disponibilidad, ausencias, vacaciones
 
-1. **El match principal NO se hace por email.** Se hace por **nombre normalizado** (trim, lower, sin acentos, espacios colapsados) en el Paso 4 de vinculación asistida.
-2. **El email de GESTIÓN nunca se sobreescribe.** Aunque REGISTRO mande un email distinto o vacío, en GESTIÓN se conserva el actual. Lo mismo aplica a `telefono`.
-3. **El email de REGISTRO se ignora durante la sincronización** (no se guarda como sombra en otra columna; mantenemos una sola fuente de verdad para email = GESTIÓN).
+**Botón Eliminar**: deshabilitado con tooltip "Gestionado desde REGISTRO. Si quieres ocultarlo, usa Desactivar".
 
-Todo lo demás del plan v1 sigue en pie.
+**Excepción `is_active`**: lo dejamos solo lectura en el formulario, pero el botón "Desactivar/Reactivar" de la lista sigue funcionando. Razón: si REGISTRO marca `is_active=true` y tú desactivas en GESTIÓN, en la próxima sync REGISTRO sobreescribirá. Lo aceptamos como comportamiento correcto (REGISTRO manda) y mostramos un aviso al desactivar trabajadores vinculados.
 
-## Garantías que NO cambian
+## Cambios por archivo
 
-- Nunca se borra un cleaner. Nunca se reemplaza su `id`. Nunca se actualiza la tabla `tasks` durante la sincronización. → tus tareas asignadas no se pierden bajo ningún supuesto.
-- `tasks.cleaner_id` con `ON DELETE SET NULL` ya blindado.
-- Sincronización solo desactiva (`is_active=false`), nunca borra.
+1. **`src/components/workers/EditWorkerModal.tsx`**
+   - Detectar `worker.externalId`.
+   - Si existe: marcar inputs de campos REGISTRO como `disabled` + añadir tooltip "Sincronizado desde REGISTRO".
+   - Mostrar banner informativo arriba (ya existe el bloque verde — añadir texto explicando que esos campos son solo lectura).
 
-## Pasos (resumen)
+2. **`src/components/workers/WorkerBasicInfo.tsx`**
+   - Si recibe un worker con `externalId`, marcar los mismos campos como readonly visualmente (icono 🔒 al lado del label).
 
-### Paso 0 — Backup y contadores
-- Export CSV de `cleaners` y `tasks` desde Supabase Dashboard.
-- Apuntar: nº cleaners activos, nº tareas con `cleaner_id`, nº tareas por cleaner.
+3. **`src/components/workers/WorkersList.tsx`** (mobile + desktop)
+   - Botón Eliminar: si `worker.externalId`, renderizar deshabilitado con tooltip "Gestionado desde REGISTRO".
+   - Botón Desactivar: añadir aviso en `DeactivateWorkerDialog` cuando el trabajador esté vinculado ("La próxima sincronización con REGISTRO podría reactivarlo si allí sigue activo").
 
-### Paso 1 — Secret
-Añadir `EMPLOYEES_API_TOKEN`. Cero código.
+4. **`src/components/workers/DeactivateWorkerDialog.tsx`**
+   - Añadir aviso condicional cuando `worker.externalId` exista.
 
-### Paso 2 — Migración aditiva
-Solo añadir columnas nullables a `cleaners` (`external_id`, `first_name`, `last_name`, `dni`, `pin`, `category`, `delegation_name`, `office_name`) y crear tabla `employee_sync_log`. **No se toca** `name`, `email`, `telefono`, `sede_id`, `id`. Reversible con `DROP COLUMN`.
+## Lo que NO se toca
 
-### Paso 3 — Edge function en dry-run
-Función `sync-employees-from-registro` desplegada con `dry_run: true` por defecto. Solo lee REGISTRO y devuelve un informe sin escribir.
+- Edge function `sync-employees-from-registro`: ya respeta los campos correctos, no necesita cambios.
+- Base de datos: cero migraciones.
+- `tasks`: nada cambia.
 
-### Paso 4 — Vinculación asistida (UI en `/integraciones`)
-Tabla con propuestas de match. **Algoritmo de match** en este orden:
+## Verificación
 
-1. **Match exacto por nombre normalizado** (trim + lower + sin acentos + espacios colapsados) → propuesta verde, marcada para vincular automáticamente.
-2. **Match por nombre similar** (Levenshtein ≤ 2 o coincidencia de `first_name + last_name`) → propuesta amarilla, requiere confirmación tuya.
-3. **Sin match** → propuesta de crear cleaner nuevo en GESTIÓN.
-4. Email de REGISTRO se muestra como referencia visual, **no se usa para matchear** ni se copia a GESTIÓN.
+- Abrir un trabajador vinculado (badge 🔗 REGISTRO): comprobar que name/DNI/PIN/categoría/delegación/oficina están grises y no editables.
+- Abrir un trabajador NO vinculado: todo editable como antes.
+- Botón Eliminar deshabilitado solo en vinculados.
+- Editar email/teléfono/sede en un vinculado: debe guardar correctamente.
 
-UI:
-```text
-REGISTRO                            GESTIÓN                       Match     Acción
-─────────────────────────────────  ────────────────────────────  ───────   ──────────────────
-KIANAY (kianay@registro.com)       KIANAY (kianay@personal.com)  ✅ nombre [Vincular] [Ignorar]
-JOSE LUIS (jl@registro.com)        JOSÉ LUIS (jose@personal.com) ⚠️ ~      [Vincular] [Ignorar]
-MARIA NUEVA (maria@registro.com)   —                             ➕ nuevo  [Crear]    [Ignorar]
-```
-
-Al pulsar **Vincular** → solo se rellena `external_id` en el cleaner existente. Email/teléfono/sede/avatar/horas/etc. **intactos**. Cero cambios en `tasks`.
-
-Decisiones se registran en `employee_sync_log.errors` (con tipo `link_decision`) y son auditables.
-
-### Paso 5 — Primera sincronización real
-Botón "Sincronizar ahora" ya en modo escritura, con estas reglas en la edge function:
-
-- **Solo procesa cleaners con `external_id` ya vinculado** (los del Paso 4).
-- **Campos que SÍ se actualizan** desde REGISTRO: `name` (cuando cambia), `first_name`, `last_name`, `dni`, `pin`, `category`, `delegation_name`, `office_name`, `is_active`, `start_date` (= `hire_date`).
-- **Campos que NUNCA se tocan**: `email`, `telefono`, `sede_id`, `avatar`, `sort_order`, `contract_hours_per_week`, `hourly_rate`, `contract_type`, contactos de emergencia, `id`, `user_id`.
-- **Tabla `tasks`: nunca se toca.**
-- Si un cleaner con `external_id` no aparece en la respuesta de REGISTRO → no se hace nada (no se desactiva por omisión).
-- Si REGISTRO devuelve `is_active=false` → en GESTIÓN se hace `is_active=false`. Las tareas históricas y futuras se conservan.
-
-Verificación post-sync:
-- Repetir contadores del Paso 0 → tareas por cleaner deben ser idénticas.
-- Revisión visual del calendario.
-- Comprobar manualmente que **emails y teléfonos en GESTIÓN no han cambiado** (te paso una query rápida).
-
-### Paso 6 — Endurecimiento de formularios
-Si `external_id IS NOT NULL`, en el modal de cleaner:
-- **Solo lectura**: `name`, `first_name`, `last_name`, `dni`, `pin`, `category`, `delegation_name`, `office_name`, `start_date`, `is_active`.
-- **Editables en GESTIÓN**: `email`, `telefono`, `sede_id`, `avatar`, `sortOrder`, `contractHoursPerWeek`, `hourlyRate`, `contractType`, contacto emergencia, asignaciones, disponibilidad, ausencias.
-- Botón eliminar deshabilitado con tooltip "Gestionado desde REGISTRO".
-
-### Paso 7 — Cron diario 04:00 Madrid
-Solo cuando llevemos 2-3 días de syncs manuales sin incidencias.
-
-## Lo que empiezo ahora mismo
-
-1. Pedirte el secret `EMPLOYEES_API_TOKEN` (con el valor `re_QPwaQ16L_MLpZRnzA9sGW7CG6Kn74hzQo`).
-2. Migración aditiva (Paso 2).
-3. Edge function en dry-run (Paso 3).
-4. Página `/integraciones` con la tabla de vinculación (Paso 4).
-
-Y paramos antes de la primera escritura real (Paso 5) para que tú revises los matches uno a uno.
+¿Procedo a implementar?
