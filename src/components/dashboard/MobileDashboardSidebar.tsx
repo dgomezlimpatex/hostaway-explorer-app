@@ -18,7 +18,8 @@ import {
   Truck,
   Receipt,
   TrendingUp,
-  Settings
+  Settings,
+  Link2
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useRolePermissions } from '@/hooks/useRolePermissions';
@@ -151,6 +152,12 @@ const adminItems: NavigationItem[] = [
     href: '/avantio-automation',
     icon: Settings,
     permission: 'hostaway'
+  },
+  {
+    title: 'Integraciones · REGISTRO',
+    href: '/integraciones',
+    icon: Link2,
+    permission: 'admin-only'
   },
 ];
 
