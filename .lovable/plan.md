@@ -1,81 +1,89 @@
-## Objetivo
 
-En el calendario de administrador, al arrastrar una tarea sobre un horario donde ya hay otra(s) asignada(s) a la misma trabajadora, la nueva se coloca ahí y las que se solapan se desplazan automáticamente hacia adelante. La trabajadora recibe **un único email** notificando todos los cambios de horario aplicados en la operación.
+# Importar empleados desde REGISTRO sin perder tareas (v2)
 
-## Comportamiento al soltar (drag & drop)
+## Cambio clave respecto a la v1
 
-- Sueltas la tarea A en `cleanerId` + `timeSlot` → A se asigna ahí con su duración original.
-- Para esa trabajadora, ese mismo día, recorrer las tareas existentes ordenadas por `startTime`:
-  - Si una tarea B empieza antes del fin de la tarea anterior en cascada (arrancando con A), se desplaza: `newStart = cursorEnd`, `newEnd = newStart + duración(B)`. Cursor avanza a `newEnd`.
-  - Si B empieza igual o después del cursor, se detiene la cascada (las posteriores no se tocan).
-- Tareas anteriores al horario de A: **no se tocan**.
-- Si algún desplazamiento llevaría más allá de las 23:59 → abortar toda la operación con toast de error (sin cambios parciales).
-- Validaciones existentes (ausencias, día libre, mantenimiento, disponibilidad) siguen aplicándose para A. Para los desplazamientos en cadena no se vuelve a pedir confirmación (es la intención del admin).
-- Se elimina el `confirm()` actual de "tareas apiladas" cuando el solape es solo con tareas de la misma trabajadora (ahora se resuelve desplazando).
+Los nombres de las trabajadoras en GESTIÓN **coinciden con los de REGISTRO**, pero los emails **NO siempre coinciden** (los de GESTIÓN se han ido completando a mano para turismo y son el dato fiable de contacto).
 
-## Notificación por email a la trabajadora
+Consecuencias para el plan:
 
-Una sola operación de drop puede mover varias tareas. En lugar de disparar un email por cada `update`, se envía **un email consolidado** a la trabajadora afectada cuando hay 1 o más desplazamientos.
+1. **El match principal NO se hace por email.** Se hace por **nombre normalizado** (trim, lower, sin acentos, espacios colapsados) en el Paso 4 de vinculación asistida.
+2. **El email de GESTIÓN nunca se sobreescribe.** Aunque REGISTRO mande un email distinto o vacío, en GESTIÓN se conserva el actual. Lo mismo aplica a `telefono`.
+3. **El email de REGISTRO se ignora durante la sincronización** (no se guarda como sombra en otra columna; mantenemos una sola fuente de verdad para email = GESTIÓN).
 
-### Nueva edge function: `send-task-reschedule-batch-email`
+Todo lo demás del plan v1 sigue en pie.
 
-- Input:
-  ```ts
-  {
-    cleanerEmail: string,
-    cleanerName: string,
-    date: string, // yyyy-MM-dd
-    changes: Array<{
-      taskId: string,
-      property: string,
-      address?: string,
-      type?: string,
-      oldStartTime: string,
-      oldEndTime: string,
-      newStartTime: string,
-      newEndTime: string,
-    }>
-  }
-  ```
-- Asunto: `🔄 Reorganización de tu horario – {fecha}`
-- Cuerpo: saludo personalizado + tabla con cada tarea (Propiedad | Antes | Ahora) + nota explicando que se ha insertado/movido una tarea y se han recolocado las siguientes en cadena.
-- Estilo y plantilla HTML siguiendo el patrón de las otras funciones de email del proyecto (ver `send-task-schedule-change-email/index.ts`).
-- CORS estándar, manejo de errores con log.
-- Despliegue automático tras crearla (regla del proyecto: edge functions se despliegan al editarlas).
+## Garantías que NO cambian
 
-### Cuándo se dispara
+- Nunca se borra un cleaner. Nunca se reemplaza su `id`. Nunca se actualiza la tabla `tasks` durante la sincronización. → tus tareas asignadas no se pierden bajo ningún supuesto.
+- `tasks.cleaner_id` con `ON DELETE SET NULL` ya blindado.
+- Sincronización solo desactiva (`is_active=false`), nunca borra.
 
-Solo se envía cuando la operación produce ≥1 desplazamiento de tareas existentes. Si A simplemente se asigna a un hueco vacío (sin desplazar a nadie), se mantiene el flujo actual (`send-task-assignment-email` para A).
+## Pasos (resumen)
 
-Para la propia tarea A se sigue usando el flujo existente:
-- Si A pasaba de "sin asignar" → asignada: `send-task-assignment-email`.
-- Si A ya estaba asignada y solo cambia horario/trabajadora: `send-task-schedule-change-email` (comportamiento actual).
+### Paso 0 — Backup y contadores
+- Export CSV de `cleaners` y `tasks` desde Supabase Dashboard.
+- Apuntar: nº cleaners activos, nº tareas con `cleaner_id`, nº tareas por cleaner.
 
-El email batch añade **información sobre las tareas desplazadas**, que hoy no recibe ningún aviso.
+### Paso 1 — Secret
+Añadir `EMPLOYEES_API_TOKEN`. Cero código.
 
-## Detalles técnicos
+### Paso 2 — Migración aditiva
+Solo añadir columnas nullables a `cleaners` (`external_id`, `first_name`, `last_name`, `dni`, `pin`, `category`, `delegation_name`, `office_name`) y crear tabla `employee_sync_log`. **No se toca** `name`, `email`, `telefono`, `sede_id`, `id`. Reversible con `DROP COLUMN`.
 
-Archivo principal: `src/hooks/useCalendarLogic.ts`, función `handleTaskAssign` (línea ~70).
+### Paso 3 — Edge function en dry-run
+Función `sync-employees-from-registro` desplegada con `dry_run: true` por defecto. Solo lee REGISTRO y devuelve un informe sin escribir.
 
-1. Calcular `startTime`/`endTime` de A (ya existe).
-2. Antes del bloque actual de `detectTaskOverlaps` + `confirm()`:
-   - Filtrar tareas `task.date === A.date` y `cleanerId === destino`, excluir A.
-   - Ordenar por `startTime`.
-   - Construir lista `displaced[]` con cascada: para cada B, si `B.startMin < cursorEnd` → calcular `newStart`, `newEnd`, push y avanzar cursor; si no, break.
-   - Si algún `newEnd > 23:59` → toast de error y `return`.
-3. Aplicar updates en BD:
-   - Asignación de A vía el flujo existente (`assign + reschedule` de la línea ~260).
-   - `Promise.all` con `update` de cada B (solo `start_time`, `end_time`) sobre `tasks` (Madrid time, sin tocar `cleaner_id`).
-4. Construir `changes[]` con datos de cada B (propiedad, dirección, antes/después) y llamar a `send-task-reschedule-batch-email` (fire-and-forget con `try/catch`, sin bloquear UI).
-5. Mostrar toast: `Tarea asignada. N tarea(s) desplazada(s) automáticamente.`
+### Paso 4 — Vinculación asistida (UI en `/integraciones`)
+Tabla con propuestas de match. **Algoritmo de match** en este orden:
 
-### Helpers
-- Reutilizar `timeToMinutes` de `src/utils/taskPositioning.ts`. Añadir `minutesToTime` local si no existe.
-- Email del cleaner: obtener desde la lista `cleaners` ya cargada (mismo patrón que `taskAssignmentService`).
+1. **Match exacto por nombre normalizado** (trim + lower + sin acentos + espacios colapsados) → propuesta verde, marcada para vincular automáticamente.
+2. **Match por nombre similar** (Levenshtein ≤ 2 o coincidencia de `first_name + last_name`) → propuesta amarilla, requiere confirmación tuya.
+3. **Sin match** → propuesta de crear cleaner nuevo en GESTIÓN.
+4. Email de REGISTRO se muestra como referencia visual, **no se usa para matchear** ni se copia a GESTIÓN.
 
-## Fuera de alcance
+UI:
+```text
+REGISTRO                            GESTIÓN                       Match     Acción
+─────────────────────────────────  ────────────────────────────  ───────   ──────────────────
+KIANAY (kianay@registro.com)       KIANAY (kianay@personal.com)  ✅ nombre [Vincular] [Ignorar]
+JOSE LUIS (jl@registro.com)        JOSÉ LUIS (jose@personal.com) ⚠️ ~      [Vincular] [Ignorar]
+MARIA NUEVA (maria@registro.com)   —                             ➕ nuevo  [Crear]    [Ignorar]
+```
 
-- Compactar huecos de tareas anteriores.
-- Swap directo (intercambio de horarios).
-- Cambios en vista mobile / vista de trabajadora.
-- Avisos por email a la trabajadora original cuando A se mueve entre trabajadoras (ya cubierto por flujos existentes).
+Al pulsar **Vincular** → solo se rellena `external_id` en el cleaner existente. Email/teléfono/sede/avatar/horas/etc. **intactos**. Cero cambios en `tasks`.
+
+Decisiones se registran en `employee_sync_log.errors` (con tipo `link_decision`) y son auditables.
+
+### Paso 5 — Primera sincronización real
+Botón "Sincronizar ahora" ya en modo escritura, con estas reglas en la edge function:
+
+- **Solo procesa cleaners con `external_id` ya vinculado** (los del Paso 4).
+- **Campos que SÍ se actualizan** desde REGISTRO: `name` (cuando cambia), `first_name`, `last_name`, `dni`, `pin`, `category`, `delegation_name`, `office_name`, `is_active`, `start_date` (= `hire_date`).
+- **Campos que NUNCA se tocan**: `email`, `telefono`, `sede_id`, `avatar`, `sort_order`, `contract_hours_per_week`, `hourly_rate`, `contract_type`, contactos de emergencia, `id`, `user_id`.
+- **Tabla `tasks`: nunca se toca.**
+- Si un cleaner con `external_id` no aparece en la respuesta de REGISTRO → no se hace nada (no se desactiva por omisión).
+- Si REGISTRO devuelve `is_active=false` → en GESTIÓN se hace `is_active=false`. Las tareas históricas y futuras se conservan.
+
+Verificación post-sync:
+- Repetir contadores del Paso 0 → tareas por cleaner deben ser idénticas.
+- Revisión visual del calendario.
+- Comprobar manualmente que **emails y teléfonos en GESTIÓN no han cambiado** (te paso una query rápida).
+
+### Paso 6 — Endurecimiento de formularios
+Si `external_id IS NOT NULL`, en el modal de cleaner:
+- **Solo lectura**: `name`, `first_name`, `last_name`, `dni`, `pin`, `category`, `delegation_name`, `office_name`, `start_date`, `is_active`.
+- **Editables en GESTIÓN**: `email`, `telefono`, `sede_id`, `avatar`, `sortOrder`, `contractHoursPerWeek`, `hourlyRate`, `contractType`, contacto emergencia, asignaciones, disponibilidad, ausencias.
+- Botón eliminar deshabilitado con tooltip "Gestionado desde REGISTRO".
+
+### Paso 7 — Cron diario 04:00 Madrid
+Solo cuando llevemos 2-3 días de syncs manuales sin incidencias.
+
+## Lo que empiezo ahora mismo
+
+1. Pedirte el secret `EMPLOYEES_API_TOKEN` (con el valor `re_QPwaQ16L_MLpZRnzA9sGW7CG6Kn74hzQo`).
+2. Migración aditiva (Paso 2).
+3. Edge function en dry-run (Paso 3).
+4. Página `/integraciones` con la tabla de vinculación (Paso 4).
+
+Y paramos antes de la primera escritura real (Paso 5) para que tú revises los matches uno a uno.
