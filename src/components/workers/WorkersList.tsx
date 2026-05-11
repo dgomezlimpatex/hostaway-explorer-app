@@ -261,7 +261,17 @@ export const WorkersList = ({ workers, isLoading, onEditWorker, onViewWorker }: 
                     </AvatarFallback>
                   </Avatar>
                   <div>
-                    <div className={`font-medium ${!worker.isActive ? 'text-muted-foreground' : ''}`}>{worker.name}</div>
+                    <div className={`font-medium flex items-center gap-2 ${!worker.isActive ? 'text-muted-foreground' : ''}`}>
+                      {worker.name}
+                      {worker.externalId && (
+                        <span title="Vinculado a REGISTRO" className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-100 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 font-medium">
+                          🔗 REGISTRO
+                        </span>
+                      )}
+                    </div>
+                    {worker.category && (
+                      <div className="text-xs text-muted-foreground">{worker.category}</div>
+                    )}
                   </div>
                 </div>
               </TableCell>
