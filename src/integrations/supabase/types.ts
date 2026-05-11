@@ -626,16 +626,24 @@ export type Database = {
       cleaners: {
         Row: {
           avatar: string | null
+          category: string | null
           contract_hours_per_week: number | null
           contract_type: string | null
           created_at: string
+          delegation_name: string | null
+          dni: string | null
           email: string | null
           emergency_contact_name: string | null
           emergency_contact_phone: string | null
+          external_id: string | null
+          first_name: string | null
           hourly_rate: number | null
           id: string
           is_active: boolean
+          last_name: string | null
           name: string
+          office_name: string | null
+          pin: string | null
           sede_id: string
           sort_order: number | null
           start_date: string | null
@@ -645,16 +653,24 @@ export type Database = {
         }
         Insert: {
           avatar?: string | null
+          category?: string | null
           contract_hours_per_week?: number | null
           contract_type?: string | null
           created_at?: string
+          delegation_name?: string | null
+          dni?: string | null
           email?: string | null
           emergency_contact_name?: string | null
           emergency_contact_phone?: string | null
+          external_id?: string | null
+          first_name?: string | null
           hourly_rate?: number | null
           id?: string
           is_active?: boolean
+          last_name?: string | null
           name: string
+          office_name?: string | null
+          pin?: string | null
           sede_id: string
           sort_order?: number | null
           start_date?: string | null
@@ -664,16 +680,24 @@ export type Database = {
         }
         Update: {
           avatar?: string | null
+          category?: string | null
           contract_hours_per_week?: number | null
           contract_type?: string | null
           created_at?: string
+          delegation_name?: string | null
+          dni?: string | null
           email?: string | null
           emergency_contact_name?: string | null
           emergency_contact_phone?: string | null
+          external_id?: string | null
+          first_name?: string | null
           hourly_rate?: number | null
           id?: string
           is_active?: boolean
+          last_name?: string | null
           name?: string
+          office_name?: string | null
+          pin?: string | null
           sede_id?: string
           sort_order?: number | null
           start_date?: string | null
@@ -1155,6 +1179,60 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      employee_sync_log: {
+        Row: {
+          created: number
+          deactivated: number
+          dry_run: boolean
+          duration_ms: number | null
+          errors: Json
+          fetched: number
+          id: string
+          include_inactive: boolean
+          linked: number
+          run_at: string
+          since_param: string | null
+          success: boolean
+          triggered_by: string
+          triggered_by_user: string | null
+          updated: number
+        }
+        Insert: {
+          created?: number
+          deactivated?: number
+          dry_run?: boolean
+          duration_ms?: number | null
+          errors?: Json
+          fetched?: number
+          id?: string
+          include_inactive?: boolean
+          linked?: number
+          run_at?: string
+          since_param?: string | null
+          success?: boolean
+          triggered_by?: string
+          triggered_by_user?: string | null
+          updated?: number
+        }
+        Update: {
+          created?: number
+          deactivated?: number
+          dry_run?: boolean
+          duration_ms?: number | null
+          errors?: Json
+          fetched?: number
+          id?: string
+          include_inactive?: boolean
+          linked?: number
+          run_at?: string
+          since_param?: string | null
+          success?: boolean
+          triggered_by?: string
+          triggered_by_user?: string | null
+          updated?: number
+        }
+        Relationships: []
       }
       extraordinary_request_types: {
         Row: {
