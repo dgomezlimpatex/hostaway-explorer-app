@@ -83,7 +83,8 @@ export const getTaskPositionWithOverlap = (
   task: any,
   allTasks: any[],
   cleanerId: string,
-  cleaners: any[]
+  cleaners: any[],
+  assignmentsMap?: Record<string, string[]>
 ) => {
   const timeToMinutes = (time: string) => {
     const [hours, minutes] = time.split(':').map(Number);
@@ -112,7 +113,8 @@ export const getTaskPositionWithOverlap = (
     endTime,
     allTasks,
     cleaners,
-    task.id
+    task.id,
+    assignmentsMap
   );
   
   // If there are overlaps, calculate stacking position
