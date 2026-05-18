@@ -178,6 +178,12 @@ export const ClientPortalDashboard = ({
               <ExtraordinaryRequestsTab clientId={clientId} properties={properties} />
             </TabsContent>
           )}
+
+          {canViewIncidents && (
+            <TabsContent value="incidents">
+              <IncidentsTab clientId={clientId} />
+            </TabsContent>
+          )}
         </Tabs>
       </main>
       
