@@ -27,7 +27,7 @@ export const ReportIncidentDialog: React.FC<ReportIncidentDialogProps> = ({
   propertyName,
 }) => {
   const { userRole } = useAuth();
-  const isPrivileged = userRole === 'admin' || userRole === 'manager';
+  const isPrivileged = userRole === 'admin';
   const { data: categories = [], isLoading: loadingCats } = useIncidentCategories();
   const createIncident = useCreateIncident();
 
