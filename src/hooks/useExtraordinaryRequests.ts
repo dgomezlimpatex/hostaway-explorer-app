@@ -268,3 +268,33 @@ export const useToggleClientExtraordinaryRequests = () => {
     },
   });
 };
+
+// ============= Toggle de incidencias por cliente (admin) =============
+
+export const useToggleClientIncidents = () => {
+  const qc = useQueryClient();
+  const { toast } = useToast();
+  return useMutation({
+    mutationFn: async ({ clientId, enabled }: { clientId: string; enabled: boolean }) => {
+      const { error } = await supabase
+        .from('clients')
+        .update({ allow_incidents: enabled } as any)
+        .eq('id', clientId);
+      if (error) throw error;
+    },
+    onSuccess: (_, vars) => {
+      qc.invalidateQueries({ queryKey: ['admin-client-portals'] });
+      qc.invalidateQueries({ queryKey: ['client-portal-settings', vars.clientId] });
+      toast({
+        title: vars.enabled ? 'Incidencias habilitadas' : 'Incidencias deshabilitadas',
+        description: vars.enabled
+          ? 'Las limpiadoras podrán reportar incidencias y el cliente las verá en su portal.'
+          : 'El cliente ya no verá la pestaña de incidencias.',
+      });
+    },
+    onError: (err: any) => {
+      toast({ title: 'Error', description: err.message ?? 'No se pudo actualizar.', variant: 'destructive' });
+    },
+  });
+};
+

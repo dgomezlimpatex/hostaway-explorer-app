@@ -715,6 +715,221 @@ export type Database = {
           },
         ]
       }
+      cleaning_incident_events: {
+        Row: {
+          actor_name: string | null
+          actor_role: string | null
+          actor_user_id: string | null
+          created_at: string
+          event_type: string
+          from_status: Database["public"]["Enums"]["incident_status"] | null
+          id: string
+          incident_id: string
+          metadata: Json
+          note: string | null
+          to_status: Database["public"]["Enums"]["incident_status"] | null
+        }
+        Insert: {
+          actor_name?: string | null
+          actor_role?: string | null
+          actor_user_id?: string | null
+          created_at?: string
+          event_type: string
+          from_status?: Database["public"]["Enums"]["incident_status"] | null
+          id?: string
+          incident_id: string
+          metadata?: Json
+          note?: string | null
+          to_status?: Database["public"]["Enums"]["incident_status"] | null
+        }
+        Update: {
+          actor_name?: string | null
+          actor_role?: string | null
+          actor_user_id?: string | null
+          created_at?: string
+          event_type?: string
+          from_status?: Database["public"]["Enums"]["incident_status"] | null
+          id?: string
+          incident_id?: string
+          metadata?: Json
+          note?: string | null
+          to_status?: Database["public"]["Enums"]["incident_status"] | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cleaning_incident_events_incident_id_fkey"
+            columns: ["incident_id"]
+            isOneToOne: false
+            referencedRelation: "cleaning_incidents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cleaning_incident_media: {
+        Row: {
+          created_at: string
+          id: string
+          incident_id: string
+          kind: string
+          uploaded_by: string | null
+          uploaded_by_role: string | null
+          url: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          incident_id: string
+          kind?: string
+          uploaded_by?: string | null
+          uploaded_by_role?: string | null
+          url: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          incident_id?: string
+          kind?: string
+          uploaded_by?: string | null
+          uploaded_by_role?: string | null
+          url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cleaning_incident_media_incident_id_fkey"
+            columns: ["incident_id"]
+            isOneToOne: false
+            referencedRelation: "cleaning_incidents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cleaning_incidents: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          category_id: string | null
+          client_discard_reason: string | null
+          client_id: string
+          created_at: string
+          description: string
+          discard_limpatex_reason: string | null
+          discarded_by_limpatex_at: string | null
+          discarded_by_limpatex_by: string | null
+          id: string
+          location: string | null
+          migrated_from_report_id: string | null
+          property_id: string | null
+          reporter_cleaner_id: string | null
+          reporter_kind: string
+          reporter_user_id: string | null
+          resolution_note: string | null
+          resolved_at: string | null
+          resolved_by: string | null
+          sede_id: string
+          status: Database["public"]["Enums"]["incident_status"]
+          task_id: string | null
+          updated_at: string
+          visibility: Database["public"]["Enums"]["incident_visibility"]
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          category_id?: string | null
+          client_discard_reason?: string | null
+          client_id: string
+          created_at?: string
+          description: string
+          discard_limpatex_reason?: string | null
+          discarded_by_limpatex_at?: string | null
+          discarded_by_limpatex_by?: string | null
+          id?: string
+          location?: string | null
+          migrated_from_report_id?: string | null
+          property_id?: string | null
+          reporter_cleaner_id?: string | null
+          reporter_kind: string
+          reporter_user_id?: string | null
+          resolution_note?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          sede_id: string
+          status?: Database["public"]["Enums"]["incident_status"]
+          task_id?: string | null
+          updated_at?: string
+          visibility?: Database["public"]["Enums"]["incident_visibility"]
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          category_id?: string | null
+          client_discard_reason?: string | null
+          client_id?: string
+          created_at?: string
+          description?: string
+          discard_limpatex_reason?: string | null
+          discarded_by_limpatex_at?: string | null
+          discarded_by_limpatex_by?: string | null
+          id?: string
+          location?: string | null
+          migrated_from_report_id?: string | null
+          property_id?: string | null
+          reporter_cleaner_id?: string | null
+          reporter_kind?: string
+          reporter_user_id?: string | null
+          resolution_note?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          sede_id?: string
+          status?: Database["public"]["Enums"]["incident_status"]
+          task_id?: string | null
+          updated_at?: string
+          visibility?: Database["public"]["Enums"]["incident_visibility"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cleaning_incidents_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "incident_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cleaning_incidents_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cleaning_incidents_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cleaning_incidents_reporter_cleaner_id_fkey"
+            columns: ["reporter_cleaner_id"]
+            isOneToOne: false
+            referencedRelation: "cleaners"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cleaning_incidents_sede_id_fkey"
+            columns: ["sede_id"]
+            isOneToOne: false
+            referencedRelation: "sedes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cleaning_incidents_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       client_extraordinary_requests: {
         Row: {
           client_id: string
@@ -1052,6 +1267,7 @@ export type Database = {
       clients: {
         Row: {
           allow_extraordinary_requests: boolean
+          allow_incidents: boolean
           allow_reservation_creation: boolean
           cif_nif: string
           ciudad: string
@@ -1076,6 +1292,7 @@ export type Database = {
         }
         Insert: {
           allow_extraordinary_requests?: boolean
+          allow_incidents?: boolean
           allow_reservation_creation?: boolean
           cif_nif: string
           ciudad: string
@@ -1100,6 +1317,7 @@ export type Database = {
         }
         Update: {
           allow_extraordinary_requests?: boolean
+          allow_incidents?: boolean
           allow_reservation_creation?: boolean
           cif_nif?: string
           ciudad?: string
@@ -1632,6 +1850,36 @@ export type Database = {
           minute?: number
           name?: string
           timezone?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      incident_categories: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          label: string
+          slug: string
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          label: string
+          slug: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          label?: string
+          slug?: string
+          sort_order?: number
           updated_at?: string
         }
         Relationships: []
@@ -4162,6 +4410,7 @@ export type Database = {
         Args: { _client_id: string }
         Returns: {
           allow_extraordinary_requests: boolean
+          allow_incidents: boolean
           allow_reservation_creation: boolean
           client_id: string
         }[]
@@ -4317,6 +4566,14 @@ export type Database = {
         | "cleaner"
         | "client"
         | "logistics"
+      incident_status:
+        | "pending_limpatex"
+        | "discarded_limpatex"
+        | "open"
+        | "in_progress"
+        | "resolved"
+        | "discarded"
+      incident_visibility: "public" | "internal"
       inventory_alert_type: "stock_bajo" | "stock_critico"
       inventory_movement_type:
         | "entrada"
@@ -4474,6 +4731,15 @@ export const Constants = {
         "client",
         "logistics",
       ],
+      incident_status: [
+        "pending_limpatex",
+        "discarded_limpatex",
+        "open",
+        "in_progress",
+        "resolved",
+        "discarded",
+      ],
+      incident_visibility: ["public", "internal"],
       inventory_alert_type: ["stock_bajo", "stock_critico"],
       inventory_movement_type: [
         "entrada",
