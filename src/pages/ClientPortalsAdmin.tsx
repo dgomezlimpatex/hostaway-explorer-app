@@ -12,7 +12,7 @@ import {
 } from '@/components/ui/select';
 import {
   Search, Eye, EyeOff, Copy, ExternalLink, Link2, LogIn, Loader2, Camera, CameraOff,
-  CalendarPlus, CalendarOff, History, Sparkles,
+  CalendarPlus, CalendarOff, History, Sparkles, AlertTriangle,
 } from 'lucide-react';
 import {
   useAdminClientPortals,
