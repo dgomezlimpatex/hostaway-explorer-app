@@ -181,6 +181,13 @@ export const SequentialTaskReport: React.FC<SequentialTaskReportProps> = ({
                     onIncompleteInfo={handleIncompleteInfo}
                   />
                 )}
+                <div className="pt-3">
+                  <IncidentReportTrigger
+                    task={task}
+                    hasStartedTask={hasStartedTask}
+                    isTaskCompleted={isTaskCompleted}
+                  />
+                </div>
               </div>
             )}
 
