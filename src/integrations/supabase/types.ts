@@ -4350,6 +4350,10 @@ export type Database = {
         Returns: boolean
       }
       cleanup_expired_invitations: { Args: never; Returns: undefined }
+      client_update_incident_status: {
+        Args: { _incident_id: string; _note?: string; _to_status: string }
+        Returns: undefined
+      }
       close_stale_avantio_syncs: { Args: never; Returns: undefined }
       create_extraordinary_request_with_task: {
         Args: {
