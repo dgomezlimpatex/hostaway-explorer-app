@@ -48,7 +48,7 @@ export const IncidentReportTrigger: React.FC<Props> = ({
       <ReportIncidentDialog
         open={open}
         onOpenChange={setOpen}
-        taskId={task.id}
+        taskId={realTaskId}
         propertyName={task.property}
       />
     </>
