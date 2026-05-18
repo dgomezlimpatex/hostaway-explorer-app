@@ -23,6 +23,9 @@ export const IncidentReportTrigger: React.FC<Props> = ({
 }) => {
   const [open, setOpen] = useState(false);
   const { data: allowed } = useClientAllowIncidents(task.clienteId);
+  const realTaskId = task.id?.includes('_assignment_')
+    ? task.id.split('_assignment_')[0]
+    : task.id;
 
   if (!allowed) return null;
   if (!hasStartedTask || isTaskCompleted) return null;
