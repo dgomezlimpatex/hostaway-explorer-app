@@ -20,7 +20,7 @@ import {
   useToggleClientReservationCreation,
   useCreatePortalAccess,
 } from '@/hooks/useClientPortal';
-import { useToggleClientExtraordinaryRequests } from '@/hooks/useExtraordinaryRequests';
+import { useToggleClientExtraordinaryRequests, useToggleClientIncidents } from '@/hooks/useExtraordinaryRequests';
 import { useAdminPortalBypass } from '@/hooks/useAdminPortalBypass';
 import { ClientReservationHistoryModal } from '@/components/client-portal/ClientReservationHistoryModal';
 import { useToast } from '@/hooks/use-toast';
