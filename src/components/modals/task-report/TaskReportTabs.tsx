@@ -85,6 +85,13 @@ const DesktopTabsView: React.FC<{
 
   return (
     <Tabs value={activeTab} onValueChange={onTabChange} className="flex flex-col h-full min-h-0">
+      <div className="mb-3">
+        <IncidentReportTrigger
+          task={task}
+          hasStartedTask={hasStartedTask}
+          isTaskCompleted={isTaskCompleted}
+        />
+      </div>
       <TabsList className="grid w-full grid-cols-2 mb-4">
         <TabsTrigger value="checklist" className="text-xs">
           {getTabLabel('checklist', <CheckSquare className="h-4 w-4" />, 'Lista', 'Lista')}
