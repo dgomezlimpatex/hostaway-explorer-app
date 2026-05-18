@@ -56,6 +56,7 @@ const DesktopTabsView: React.FC<{
   notes: string;
   completionPercentage: number;
   isTaskCompleted: boolean;
+  hasStartedTask: boolean;
   currentReport?: TaskReport;
   onAdditionalTaskComplete?: (subtaskId: string, completed: boolean, notes?: string, mediaUrls?: string[]) => void;
 }> = ({
