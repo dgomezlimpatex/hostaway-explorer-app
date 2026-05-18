@@ -207,6 +207,7 @@ export const TaskReportTabs: React.FC<TaskReportTabsProps> = ({
           notes={notes}
           completionPercentage={completionPercentage}
           isTaskCompleted={isTaskCompleted}
+          hasStartedTask={hasStartedTask}
           currentReport={currentReport}
           onAdditionalTaskComplete={onAdditionalTaskComplete}
         />
