@@ -7,6 +7,7 @@ import { ChecklistSection } from './ChecklistSection';
 import { ReportSummary } from './ReportSummary';
 import { useDeviceType } from '@/hooks/use-mobile';
 import { useMobileErrorHandler } from '@/hooks/useMobileErrorHandler';
+import { IncidentReportTrigger } from '@/components/incidents/IncidentReportTrigger';
 import { cn } from '@/lib/utils';
 
 interface SequentialTaskReportProps {
@@ -180,6 +181,13 @@ export const SequentialTaskReport: React.FC<SequentialTaskReportProps> = ({
                     onIncompleteInfo={handleIncompleteInfo}
                   />
                 )}
+                <div className="pt-3">
+                  <IncidentReportTrigger
+                    task={task}
+                    hasStartedTask={hasStartedTask}
+                    isTaskCompleted={isTaskCompleted}
+                  />
+                </div>
               </div>
             )}
 

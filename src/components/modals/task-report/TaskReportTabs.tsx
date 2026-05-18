@@ -6,6 +6,7 @@ import { TaskChecklistTemplate, TaskMedia, TaskReport } from '@/types/taskReport
 import { ChecklistSection } from './ChecklistSection';
 import { ReportSummary } from './ReportSummary';
 import { SequentialTaskReport } from './SequentialTaskReport';
+import { IncidentReportTrigger } from '@/components/incidents/IncidentReportTrigger';
 import { useDeviceType } from '@/hooks/use-mobile';
 
 interface TaskReportTabsProps {
@@ -55,6 +56,7 @@ const DesktopTabsView: React.FC<{
   notes: string;
   completionPercentage: number;
   isTaskCompleted: boolean;
+  hasStartedTask: boolean;
   currentReport?: TaskReport;
   onAdditionalTaskComplete?: (subtaskId: string, completed: boolean, notes?: string, mediaUrls?: string[]) => void;
 }> = ({
@@ -69,6 +71,7 @@ const DesktopTabsView: React.FC<{
   notes,
   completionPercentage,
   isTaskCompleted,
+  hasStartedTask,
   currentReport,
   onAdditionalTaskComplete,
 }) => {
@@ -82,6 +85,13 @@ const DesktopTabsView: React.FC<{
 
   return (
     <Tabs value={activeTab} onValueChange={onTabChange} className="flex flex-col h-full min-h-0">
+      <div className="mb-3">
+        <IncidentReportTrigger
+          task={task}
+          hasStartedTask={hasStartedTask}
+          isTaskCompleted={isTaskCompleted}
+        />
+      </div>
       <TabsList className="grid w-full grid-cols-2 mb-4">
         <TabsTrigger value="checklist" className="text-xs">
           {getTabLabel('checklist', <CheckSquare className="h-4 w-4" />, 'Lista', 'Lista')}
@@ -197,6 +207,7 @@ export const TaskReportTabs: React.FC<TaskReportTabsProps> = ({
           notes={notes}
           completionPercentage={completionPercentage}
           isTaskCompleted={isTaskCompleted}
+          hasStartedTask={hasStartedTask}
           currentReport={currentReport}
           onAdditionalTaskComplete={onAdditionalTaskComplete}
         />
