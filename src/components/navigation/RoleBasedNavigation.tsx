@@ -13,7 +13,8 @@ import {
   FileText,
   Shirt,
   RefreshCw,
-  Link2
+  Link2,
+  AlertTriangle
 } from 'lucide-react';
 
 export const RoleBasedNavigation = () => {
