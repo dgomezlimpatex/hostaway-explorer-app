@@ -31,6 +31,7 @@ export const ClientPortalDashboard = ({
   // While loading or if unreadable, hide the "Añadir" tab to avoid leaking the option.
   const canCreateReservations = settings?.allowReservationCreation === true;
   const canCreateExtraordinary = settings?.allowExtraordinaryRequests === true;
+  const canViewIncidents = (settings as any)?.allowIncidents === true;
 
   const [activeTab, setActiveTab] = useState<string>('list');
 
@@ -42,7 +43,10 @@ export const ClientPortalDashboard = ({
     if (!canCreateExtraordinary && activeTab === 'extra') {
       setActiveTab('list');
     }
-  }, [canCreateReservations, canCreateExtraordinary, activeTab]);
+    if (!canViewIncidents && activeTab === 'incidents') {
+      setActiveTab('list');
+    }
+  }, [canCreateReservations, canCreateExtraordinary, canViewIncidents, activeTab]);
 
   const { data: properties = [], isLoading: loadingProperties } = useClientProperties(clientId);
   const { data: bookings = [], isLoading: loadingBookings, refetch } = useClientPortalBookings(clientId);
@@ -58,10 +62,8 @@ export const ClientPortalDashboard = ({
   const thirtyDaysAheadMs = todayMs + 30 * 24 * 60 * 60 * 1000;
 
   const listBookings = bookings.filter(b => {
-    // Normalize to local midnight to avoid timezone drift from ISO strings
     const raw = new Date(b.cleaningDate);
     const localMidnight = new Date(raw.getFullYear(), raw.getMonth(), raw.getDate()).getTime();
-    // Past 7 days OR upcoming within next 30 days (inclusive)
     return localMidnight >= sevenDaysAgoMs && localMidnight <= thirtyDaysAheadMs;
   });
 
@@ -70,10 +72,14 @@ export const ClientPortalDashboard = ({
     return date >= new Date() && b.status !== 'cancelled';
   });
 
-  const extraTabs = (canCreateReservations ? 1 : 0) + (canCreateExtraordinary ? 1 : 0);
+  const extraTabs =
+    (canCreateReservations ? 1 : 0) +
+    (canCreateExtraordinary ? 1 : 0) +
+    (canViewIncidents ? 1 : 0);
   const tabsCount = 2 + extraTabs;
   const gridColsClass =
-    tabsCount === 4 ? 'grid-cols-4'
+    tabsCount === 5 ? 'grid-cols-5'
+    : tabsCount === 4 ? 'grid-cols-4'
     : tabsCount === 3 ? 'grid-cols-3'
     : 'grid-cols-2';
 
