@@ -6,6 +6,7 @@ import { TaskChecklistTemplate, TaskMedia, TaskReport } from '@/types/taskReport
 import { ChecklistSection } from './ChecklistSection';
 import { ReportSummary } from './ReportSummary';
 import { SequentialTaskReport } from './SequentialTaskReport';
+import { IncidentReportTrigger } from '@/components/incidents/IncidentReportTrigger';
 import { useDeviceType } from '@/hooks/use-mobile';
 
 interface TaskReportTabsProps {
