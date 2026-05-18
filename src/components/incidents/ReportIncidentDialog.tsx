@@ -272,9 +272,6 @@ export const ReportIncidentDialog: React.FC<ReportIncidentDialogProps> = ({
                 </label>
               )}
 
-              <p className="text-xs text-muted-foreground pt-1">
-                La incidencia quedará <strong>oculta al cliente</strong> hasta que Limpatex la apruebe.
-              </p>
             </div>
           )}
         </div>
