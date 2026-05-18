@@ -1446,6 +1446,7 @@ export const useAdminClientPortals = () => {
           photosVisibleToClient: !!c.photos_visible_to_client,
           allowReservationCreation: c.allow_reservation_creation !== false,
           allowExtraordinaryRequests: (c as any).allow_extraordinary_requests === true,
+          allowIncidents: (c as any).allow_incidents === true,
           access: a ? {
             id: a.id,
             accessPin: a.access_pin,
