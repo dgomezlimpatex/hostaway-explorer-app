@@ -238,6 +238,17 @@ const ClientPortalsAdmin = () => {
                             />
                           </div>
                         </TableCell>
+                        <TableCell className="text-center">
+                          <div className="flex items-center justify-center gap-2">
+                            <AlertTriangle className={row.allowIncidents ? 'h-4 w-4 text-emerald-600' : 'h-4 w-4 text-muted-foreground'} />
+                            <Switch
+                              checked={row.allowIncidents}
+                              onCheckedChange={(checked) =>
+                                toggleIncidents.mutate({ clientId: row.clientId, enabled: checked })}
+                              disabled={toggleIncidents.isPending}
+                            />
+                          </div>
+                        </TableCell>
                         <TableCell className="text-xs text-muted-foreground">
                           {a?.lastAccessAt
                             ? new Date(a.lastAccessAt).toLocaleDateString('es-ES')
