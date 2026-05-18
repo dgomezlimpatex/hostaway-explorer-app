@@ -1326,6 +1326,7 @@ export const useClientPortalSettings = (clientId: string | undefined) => {
         clientId: row.client_id,
         allowReservationCreation: row.allow_reservation_creation !== false,
         allowExtraordinaryRequests: row.allow_extraordinary_requests === true,
+        allowIncidents: (row as any).allow_incidents === true,
       };
     },
     enabled: !!clientId,
@@ -1424,7 +1425,7 @@ export const useAdminClientPortals = () => {
     queryFn: async () => {
       const { data: clients, error: cErr } = await supabase
         .from('clients')
-        .select('id, nombre, is_active, photos_visible_to_client, allow_reservation_creation, allow_extraordinary_requests')
+        .select('id, nombre, is_active, photos_visible_to_client, allow_reservation_creation, allow_extraordinary_requests, allow_incidents')
         .neq('is_active', false)
         .order('nombre', { ascending: true });
       if (cErr) throw cErr;
@@ -1445,6 +1446,7 @@ export const useAdminClientPortals = () => {
           photosVisibleToClient: !!c.photos_visible_to_client,
           allowReservationCreation: c.allow_reservation_creation !== false,
           allowExtraordinaryRequests: (c as any).allow_extraordinary_requests === true,
+          allowIncidents: (c as any).allow_incidents === true,
           access: a ? {
             id: a.id,
             accessPin: a.access_pin,
