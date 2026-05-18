@@ -125,6 +125,19 @@ export const RoleBasedNavigation = () => {
             />
           )}
 
+          {canAccessModule('reports') && (
+            <NavigationCard
+              to="/cleaning-reports"
+              title="Reportes de Limpieza"
+              description="Revisa partes de limpieza e incidencias pendientes de aprobar"
+              icon={AlertTriangle}
+              gradientFrom="bg-gradient-to-br from-amber-500"
+              gradientTo="to-orange-600"
+              iconColor="text-white"
+              hoverBorderColor="hover:border-amber-300"
+            />
+          )}
+
 
           {canAccessModule('reports') && (
             <NavigationCard
