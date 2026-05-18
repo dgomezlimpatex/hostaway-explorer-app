@@ -4535,6 +4535,18 @@ export type Database = {
         }
         Returns: undefined
       }
+      report_cleaning_incident: {
+        Args: {
+          _category_id: string
+          _create_as_open?: boolean
+          _description: string
+          _location?: string
+          _media_urls: string[]
+          _task_id: string
+          _visibility?: Database["public"]["Enums"]["incident_visibility"]
+        }
+        Returns: string
+      }
       reset_rate_limit: {
         Args: { reset_action_type: string; reset_identifier: string }
         Returns: undefined
