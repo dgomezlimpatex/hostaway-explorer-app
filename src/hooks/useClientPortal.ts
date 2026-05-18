@@ -1326,6 +1326,7 @@ export const useClientPortalSettings = (clientId: string | undefined) => {
         clientId: row.client_id,
         allowReservationCreation: row.allow_reservation_creation !== false,
         allowExtraordinaryRequests: row.allow_extraordinary_requests === true,
+        allowIncidents: (row as any).allow_incidents === true,
       };
     },
     enabled: !!clientId,
