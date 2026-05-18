@@ -133,6 +133,12 @@ export const ClientPortalDashboard = ({
                 <span>Extras</span>
               </TabsTrigger>
             )}
+            {canViewIncidents && (
+              <TabsTrigger value="incidents" className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2 py-2 text-xs sm:text-sm">
+                <AlertTriangle className="h-4 w-4" />
+                <span>Incidencias</span>
+              </TabsTrigger>
+            )}
           </TabsList>
 
           {canCreateReservations && (
