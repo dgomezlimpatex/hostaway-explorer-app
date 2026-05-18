@@ -71,6 +71,7 @@ const DesktopTabsView: React.FC<{
   notes,
   completionPercentage,
   isTaskCompleted,
+  hasStartedTask,
   currentReport,
   onAdditionalTaskComplete,
 }) => {
