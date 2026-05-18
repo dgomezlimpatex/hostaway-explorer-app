@@ -147,6 +147,7 @@ const ClientPortalsAdmin = () => {
                     <TableHead className="text-center">Fotos</TableHead>
                     <TableHead className="text-center">Crear reservas</TableHead>
                     <TableHead className="text-center">Servicios extra</TableHead>
+                    <TableHead className="text-center">Incidencias</TableHead>
                     <TableHead>Último acceso</TableHead>
                     <TableHead className="text-right">Acciones</TableHead>
                   </TableRow>
