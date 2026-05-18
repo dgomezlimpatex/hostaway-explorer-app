@@ -42,6 +42,7 @@ const ClientPortalsAdmin = () => {
   const togglePhotos = useToggleClientPhotosVisibility();
   const toggleReservations = useToggleClientReservationCreation();
   const toggleExtraordinary = useToggleClientExtraordinaryRequests();
+  const toggleIncidents = useToggleClientIncidents();
   const createAccess = useCreatePortalAccess();
   const bypass = useAdminPortalBypass();
   const { toast } = useToast();
