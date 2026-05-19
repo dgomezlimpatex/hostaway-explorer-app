@@ -2,7 +2,7 @@
 // upserts it, creates/updates the linked cleaning tasks per room (checkout + daily stay),
 // and logs warnings/errors.
 
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.50.0";
+import { createClient } from "npm:@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -317,7 +317,7 @@ Deno.serve(async (req) => {
 
       const { data: prop } = await supabase
         .from("properties")
-        .select("nombre, direccion, sede_id")
+        .select("nombre, direccion, sede_id, check_in_predeterminado, check_out_predeterminado")
         .eq("id", m.propiedad_id)
         .single();
 
@@ -337,6 +337,8 @@ Deno.serve(async (req) => {
         date: item.date,
         start_time: startTime,
         end_time: endTime,
+        check_in: prop?.check_in_predeterminado ?? "15:00",
+        check_out: prop?.check_out_predeterminado ?? "11:00",
         type: m.task_type,
         status: "pending",
         duracion: m.default_duration_min,
