@@ -2299,6 +2299,231 @@ export type Database = {
           },
         ]
       }
+      lh_reservation_tasks: {
+        Row: {
+          created_at: string
+          id: string
+          reservation_id: string
+          service_kind: string
+          status: string
+          task_date: string
+          task_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          reservation_id: string
+          service_kind: string
+          status?: string
+          task_date: string
+          task_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          reservation_id?: string
+          service_kind?: string
+          status?: string
+          task_date?: string
+          task_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lh_reservation_tasks_reservation_id_fkey"
+            columns: ["reservation_id"]
+            isOneToOne: false
+            referencedRelation: "lh_reservations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lh_reservation_tasks_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lh_reservations: {
+        Row: {
+          adults: number | null
+          channel: string | null
+          check_in: string
+          check_out: string
+          children: number | null
+          created_at: string
+          external_id: string
+          guest_name: string | null
+          id: string
+          infants: number | null
+          reference: string | null
+          room: string
+          sede_id: string | null
+          source_system: string
+          status: string
+          synced_at: string | null
+          total: string | null
+          updated_at: string
+          uuid: string | null
+        }
+        Insert: {
+          adults?: number | null
+          channel?: string | null
+          check_in: string
+          check_out: string
+          children?: number | null
+          created_at?: string
+          external_id: string
+          guest_name?: string | null
+          id?: string
+          infants?: number | null
+          reference?: string | null
+          room: string
+          sede_id?: string | null
+          source_system?: string
+          status?: string
+          synced_at?: string | null
+          total?: string | null
+          updated_at?: string
+          uuid?: string | null
+        }
+        Update: {
+          adults?: number | null
+          channel?: string | null
+          check_in?: string
+          check_out?: string
+          children?: number | null
+          created_at?: string
+          external_id?: string
+          guest_name?: string | null
+          id?: string
+          infants?: number | null
+          reference?: string | null
+          room?: string
+          sede_id?: string | null
+          source_system?: string
+          status?: string
+          synced_at?: string | null
+          total?: string | null
+          updated_at?: string
+          uuid?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lh_reservations_sede_id_fkey"
+            columns: ["sede_id"]
+            isOneToOne: false
+            referencedRelation: "sedes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lh_room_mapping: {
+        Row: {
+          cliente_id: string
+          created_at: string
+          default_cost: number
+          default_duration_min: number
+          default_start_time: string
+          id: string
+          is_active: boolean
+          lh_room: string
+          propiedad_id: string
+          sede_id: string
+          service_kind: string
+          task_type: string
+          updated_at: string
+        }
+        Insert: {
+          cliente_id: string
+          created_at?: string
+          default_cost?: number
+          default_duration_min?: number
+          default_start_time?: string
+          id?: string
+          is_active?: boolean
+          lh_room: string
+          propiedad_id: string
+          sede_id: string
+          service_kind: string
+          task_type?: string
+          updated_at?: string
+        }
+        Update: {
+          cliente_id?: string
+          created_at?: string
+          default_cost?: number
+          default_duration_min?: number
+          default_start_time?: string
+          id?: string
+          is_active?: boolean
+          lh_room?: string
+          propiedad_id?: string
+          sede_id?: string
+          service_kind?: string
+          task_type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lh_room_mapping_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lh_room_mapping_propiedad_id_fkey"
+            columns: ["propiedad_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lh_room_mapping_sede_id_fkey"
+            columns: ["sede_id"]
+            isOneToOne: false
+            referencedRelation: "sedes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lh_sync_logs: {
+        Row: {
+          created_at: string
+          error_message: string | null
+          external_id: string | null
+          id: string
+          payload: Json | null
+          result: Json | null
+          status_code: number | null
+          success: boolean
+        }
+        Insert: {
+          created_at?: string
+          error_message?: string | null
+          external_id?: string | null
+          id?: string
+          payload?: Json | null
+          result?: Json | null
+          status_code?: number | null
+          success?: boolean
+        }
+        Update: {
+          created_at?: string
+          error_message?: string | null
+          external_id?: string | null
+          id?: string
+          payload?: Json | null
+          result?: Json | null
+          status_code?: number | null
+          success?: boolean
+        }
+        Relationships: []
+      }
       logistics_deliveries: {
         Row: {
           completed_at: string | null
