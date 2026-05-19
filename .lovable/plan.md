@@ -1,256 +1,121 @@
-# Módulo de incidencias en limpiezas
 
-**Quién manda:** la limpiadora **reporta** durante la limpieza, Limpatex **aprueba o descarta** (filtro de calidad), y el cliente **gestiona** el ciclo de vida una vez aprobada. Limpatex también puede **crear** incidencias en tareas asignadas a sus limpiadoras.
+# Integración Little Hotelier → Limpatex (After Surf)
 
-**Activación por cliente:** el módulo de incidencias es **opcional por cliente**. Se activa/desactiva desde el panel de Portales de Clientes (admin Limpatex), igual que ya se hace con "Reservas" y "Solicitudes extraordinarias".
+Adaptamos la propuesta de Claude a los patrones reales de la app (sedes, RLS por sede, `tasks`, mapeo property↔habitación, emails consolidados). Lo más particular: este hotel necesita **dos tipos de limpieza por reserva**: la de **salida** (check-out) y las **diarias durante la estancia**, cada una con precio/duración/propiedad propia.
 
----
+## 1. Modelo de datos
 
-## 0. Activación del módulo por cliente
+### Tabla `lh_reservations` (espejo de la reserva)
+- Campos: `external_id` (único), `uuid`, `reference`, `channel`, `check_in`, `check_out`, `room` (texto LH, ej. "Habitación 2"), `guest_name`, `adults`, `children`, `infants`, `status`, `total`, `synced_at`, `sede_id`, `created_at`, `updated_at`.
+- Índices: `check_in`, `check_out`, `status`, `room`, `sede_id`.
+- RLS:
+  - SELECT: usuarios con acceso a la sede (mismo patrón que `hostaway_reservations`).
+  - INSERT/UPDATE/DELETE: sólo `service_role` (la Edge Function).
 
-- Nuevo toggle **"Permitir incidencias"** en la ficha de cada cliente dentro de **Portales de Clientes** (admin Limpatex).
-- Por defecto: **desactivado**.
-- Cuando está **desactivado** para un cliente:
-  - Las limpiadoras **no ven** el botón "Reportar incidencia" en tareas de ese cliente.
-  - Admin/Manager Limpatex **no pueden crear** incidencias en tareas de ese cliente.
-  - El cliente **no ve** la pestaña "Incidencias" en su portal.
-  - Las incidencias antiguas migradas siguen existiendo internamente, pero no son visibles en el portal hasta que se active el toggle.
-- Cuando está **activado**: aplica todo el flujo descrito en las secciones siguientes.
+### Tabla `lh_room_mapping` (la pieza clave del caso After Surf)
+Una fila por **habitación de LH × tipo de servicio**, con la idea que sugeriste de duplicar propiedades (una para salida y otra para estancia):
 
----
+| Columna | Uso |
+|---|---|
+| `id`, `created_at`, `updated_at` | std |
+| `sede_id` | sede dueña |
+| `lh_room` | texto exacto que llega de LH (`"Habitación 2"`) |
+| `service_kind` | `'checkout'` o `'stay'` |
+| `cliente_id` | FK clients (After Surf) |
+| `propiedad_id` | FK properties (puede ser distinta para checkout vs stay) |
+| `task_type` | ej. `limpieza-turistica` o `limpieza-hotel-estancia` |
+| `default_start_time` | hora por defecto (ej. 11:00 salida, 10:00 estancia) |
+| `default_duration_min` | en minutos, 15-min steps |
+| `default_cost` | coste por tarea |
+| `is_active` | booleano |
 
-## 1. Flujo de la limpiadora (quien reporta)
+- Unique `(lh_room, service_kind, sede_id)`.
+- RLS estándar admin/manager edita, otros ven.
+- Permite que cada habitación tenga **dos propiedades distintas** (una "Hab. 2 — Salida", otra "Hab. 2 — Estancia") con precios/tiempos diferentes, sin tocar la lógica del resto de la app.
 
-### ¿Cuándo puede reportar?
-- **Únicamente durante la ejecución de una tarea** (estado *en progreso*).
-- Una vez finalizada la tarea, **no se puede reportar nada más**.
-- Solo si el cliente de esa tarea tiene el módulo activado.
+### Tabla `lh_alert_log` (anti-spam para alertas opcionales)
+Igual patrón que `avantio_alert_log`.
 
-### ¿Cómo lo hace?
-Botón **"Reportar incidencia"** visible en la pantalla de checklist móvil.
+### Nuevo `task_type` opcional
+Si decides separar reportes: añadir `limpieza-hotel-estancia` al enum de tipos. Si prefieres reutilizar `limpieza-turistica` y diferenciar por propiedad, se puede.
 
-Formulario **paso a paso, basado en desplegables**, mobile-first:
+## 2. Edge Function `little-hotelier-sync`
 
-| Paso | Campo | Obligatorio | Notas |
-|---|---|---|---|
-| 1 | **Categoría** (desplegable) | Sí | Opciones **personalizadas** gestionables por admin Limpatex. Catálogo inicial: Roturas, Material faltante, Avería, Otros |
-| 2 | **Ubicación** dentro de la propiedad | No | Texto libre corto (ej. "Salón", "Baño principal") |
-| 3 | **Descripción** | Sí | Texto libre |
-| 4 | **Fotos / vídeo** | Sí (**mínimo 2**) | Reutiliza el sistema de subida existente |
+Recibe el POST que ya manda tu script Python (formato del PROMPT que enviaste). Estructura modular como `hostaway-sync/`:
 
-> Toda incidencia reportada nace **Oculta para el cliente** y queda pendiente de aprobación de Limpatex.
-
-### Registro
-- Asociada a **tarea + propiedad + limpiadora + cliente**.
-- Estado inicial: **Pendiente Limpatex** (no visible para el cliente).
-- Aparece en la bandeja de Limpatex "Pendientes de aprobar".
-
-### Notas
-- Una tarea puede tener varias incidencias.
-- La limpiadora puede editar/eliminar las suyas **mientras la tarea siga en progreso**.
-- Una vez finalizada la tarea, pierde acceso a tocarla.
-
----
-
-## 2. Flujo de Limpatex (filtro de calidad y creación)
-
-### 2.1 Aprobar / Descartar
-Toda incidencia reportada aparece en una **bandeja "Pendientes de aprobar"** en el panel de Limpatex.
-
-- **Aprobar** → pasa a **Abierta**, visible para el cliente en su portal.
-- **Descartar** → archivada con motivo. Nunca llega al cliente. Auditoría interna.
-- **Editar antes de aprobar** → corregir categoría, descripción, ubicación, añadir fotos.
-
-### 2.2 Crear incidencias propias
-Admin/Manager Limpatex puede crear incidencias directamente sobre una tarea asignada a una limpiadora (mismo formulario), siempre que el cliente tenga el módulo activado. Estas incidencias pueden:
-- Publicarse directamente al cliente (estado **Abierta**), o
-- Quedarse internas (no visibles para el cliente, solo seguimiento Limpatex).
-
-### Permisos
-- Aprobar / Descartar / Crear: **Admin** y **Manager** Limpatex.
-- Supervisor: solo ve, no aprueba ni crea.
-
----
-
-## 3. Flujo del cliente (gestiona, una vez aprobada)
-
-Solo si el cliente tiene el módulo activado. Solo ve incidencias aprobadas por Limpatex.
-
-### Dónde lo ve
-- Nueva pestaña **"Incidencias"** en el portal del cliente, junto a Reservas y Solicitudes extraordinarias.
-- Badge con número de incidencias abiertas.
-
-### Vista principal
-- Agrupadas por propiedad (acordeones).
-- Cada incidencia: fecha de la limpieza, categoría, estado actual, foto miniatura.
-
-### Filtros
-- Propiedad, estado, rango de fechas, categoría.
-- Por defecto: abiertas + en gestión de los últimos 90 días.
-
-### Detalle
-- Descripción completa + galería de fotos/vídeo.
-- Línea de tiempo de cambios de estado (quién, cuándo, nota).
-- **Acciones del cliente:**
-  - Cambiar estado: Abierta → En gestión → Resuelta / Descartada / Reabrir.
-  - Nota al cambiar estado (**obligatoria al resolver o descartar**).
-  - Adjuntar fotos/documentos propios (presupuestos, partes del seguro, etc.).
-  - Asignar **responsable interno** (texto libre).
-  - **Solicitar acción extraordinaria a Limpatex** (atajo que pre-rellena el formulario existente).
-
-> **No hay comentarios libres.** Solo notas asociadas a cambios de estado + adjuntos.
-
-### Quién puede gestionar
-- **Cualquier usuario del portal** con acceso a esa propiedad.
-- Cada acción queda registrada con nombre del usuario.
-
-### Lo que el cliente NO ve
-- Incidencias pendientes o descartadas por Limpatex.
-- Incidencias marcadas como Internas.
-
----
-
-## 4. Ciclo de vida
-
-```text
-                  [ Pendiente Limpatex ]
-                          │
-              ┌───────────┴───────────┐
-              │ Limpatex aprueba      │ Limpatex descarta
-              ▼                       ▼
-        [ Abierta ]              [ Descartada Limpatex ]
-              │                  (no llega al cliente)
-   cliente    │
-              ▼
-       [ En gestión ]  ── cliente ──▶  [ Resuelta ]
-              │                              │
-              │                              └── cliente puede Reabrir → Abierta
-              │
-              └── cliente ──▶  [ Descartada ]
+```
+supabase/functions/little-hotelier-sync/
+  index.ts                  // HTTP entrypoint + CORS + auth
+  types.ts
+  reservation-upsert.ts     // upsert en lh_reservations
+  task-generator.ts         // genera tareas checkout + diarias
+  task-reconciler.ts        // aplica cambios/cancelaciones
+  email-summary.ts          // email consolidado de cambios
 ```
 
-| Estado | Quién lo activa |
-|---|---|
-| Pendiente Limpatex | Automático al reportar |
-| Descartada Limpatex | Admin/Manager Limpatex |
-| Abierta | Admin/Manager Limpatex al aprobar o crear visible |
-| En gestión | Cliente |
-| Resuelta | Cliente (nota obligatoria) |
-| Descartada | Cliente (motivo obligatorio) |
-| Reabierta | Cliente → vuelve a Abierta |
+Comportamiento por petición (1 reserva):
 
-### Reglas
-- Tras aprobar, **solo el cliente** cambia estados. Limpatex no cierra/reabre.
-- Cada cambio queda registrado: quién, cuándo, nota.
-- Admin Limpatex puede **eliminar** (auditado): duplicados, abuso, error grave.
-- Una incidencia puede quedarse en *Abierta* indefinidamente. **Sin recordatorios ni escalado por tiempo.**
+1. **Auth**: header `Authorization: Bearer <LH_SYNC_API_KEY>` (secret nuevo).
+2. **Validar** `external_id`, `check_in`, `check_out`, `room`. Devolver 400 si falta.
+3. **Upsert** en `lh_reservations` con `onConflict: external_id`. Detectar diff vs versión previa (fechas / status / room).
+4. **Mapeo**: leer `lh_room_mapping` por `lh_room`. Si no hay fila para `checkout` y/o `stay` con `is_active=true`, se omite ese tipo y se registra warning para que un admin lo configure.
+5. **Generar tareas**:
+   - **Salida** (`service_kind='checkout'`): 1 tarea el día `check_out`, hora/duración/coste del mapping. Una sola.
+   - **Estancia** (`service_kind='stay'`): N tareas, una por día entre `check_in + 1 día` y `check_out - 1 día` (ambos inclusive). Si `check_out - check_in <= 1`, no genera ninguna.
+   - Las tareas se crean con: `cliente_id`, `propiedad_id`, `sede_id`, `type`, `start_time`/`end_time` derivados, `duracion`, `coste`, `notes` con prefijo `[LH ${reference}] ${guest_name}`.
+   - Idempotencia: vincular cada tarea creada en una tabla `lh_reservation_tasks (reservation_id, task_id, service_kind, task_date)` con unique `(reservation_id, service_kind, task_date)` → evita duplicados en reintentos / re-envíos.
+6. **Reconciliación** (cuando la reserva ya existía):
+   - Si `status` pasa a `cancelled`/`no_show`: marcar las tareas vinculadas no completadas como `cancelled` y borrar las futuras pendientes (mismo criterio que hostaway). Tareas ya completadas se respetan.
+   - Si cambian fechas/room: comparar tareas esperadas vs existentes, crear las nuevas necesarias, cancelar las que sobran, y registrar cambios para el email resumen.
+7. **Email consolidado** (al estilo `send-task-reschedule-batch-email`): si hubo cambios, encolar un email a admins con: reserva, qué tareas se crearon, cuáles se cancelaron, cuáles se modificaron.
+8. **Respuesta**: `{ success, reservation_id, tasks_created, tasks_cancelled, tasks_modified, warnings }`.
 
----
+Secrets a añadir vía la tool:
+- `LH_SYNC_API_KEY` (Bearer que valida el endpoint).
 
-## 5. Notificaciones
+## 3. UI nueva
 
-**Cero emails al cliente.** Todo en portal/panel.
+### Página `/integraciones/little-hotelier` (sólo admin/manager)
+Pestañas:
 
-- **Limpiadora reporta** → bandeja "Pendientes" + email/badge a admin/manager Limpatex.
-- **Limpatex aprueba** → aparece en portal cliente (sin email).
-- **Limpatex descarta** → solo panel interno.
-- **Cliente cambia estado** → email/badge a admins Limpatex.
+1. **Reservas LH**: tabla con filtros (rango fechas, status, room, search). Muestra `reference`, huésped, room, check-in/out, noches, status, canal, total, número de tareas vinculadas. Click en fila → detalle con timeline de tareas creadas/canceladas.
+2. **Mapeo habitaciones**: CRUD sobre `lh_room_mapping`. Muestra cada `lh_room` con sus dos filas (checkout / stay). Botón "Detectar nuevas habitaciones" que lista los `lh_room` distintos vistos en reservas que aún no tienen mapping para `service_kind`. Permite crear filas eligiendo cliente/propiedad/tipo/hora/duración/coste.
+3. **Logs**: últimos POST recibidos (timestamp, external_id, resultado, warnings) — útil para depurar el script Python. Se guardan en una `lh_sync_logs` simple (ttl 30 días).
 
----
+### Navegación
+Añadir card en `RoleBasedNavigation.tsx` dentro del bloque `canAccessModule('reports'|'integrations')` (donde ya están Hostaway/Avantio). Icono `Hotel` de lucide. Ruta nueva en `App.tsx`.
 
-## 6. Visibilidad interna en Limpatex
+### Hooks
+- `useLHReservations(filters)` con React Query.
+- `useLHRoomMappings()` + mutaciones de CRUD.
+- Reutilizar componentes shadcn (`Table`, `Badge`, `Dialog`, `Form`).
 
-Reutilizar la pestaña **"Incidencias"** existente en Reportes de Limpieza.
+## 4. Reglas operativas confirmadas
 
-### Vistas
-- **Pendientes de aprobar** (prioridad visual).
-- **Bandeja activa**: aprobadas, ordenadas por antigüedad.
-- Por propiedad / por limpiadora / por cliente.
-- Históricas (resueltas, descartadas por cliente y por Limpatex).
+- Limpieza de estancia: **1/día entre `check_in+1` y `check_out-1`**, hora y duración por mapping.
+- Limpieza de salida: **1 el día de check_out**, con propiedad/precio propios.
+- Cancelación/cambio de fechas → ajuste automático + email resumen al admin.
+- Todo respeta sede activa, RLS, formato Madrid (`formatMadridDate`) y duraciones en steps de 15 min.
 
-### Acciones Limpatex
-- Ver todo (incl. pendientes, descartadas, internas).
-- Aprobar / Descartar pendientes.
-- Crear incidencias propias en tareas de limpiadoras.
-- Editar contenido antes de aprobar.
-- Cambiar visibilidad Pública ↔ Interna.
-- Adjuntar fotos/documentos.
-- Vincular con Solicitud extraordinaria.
-- Gestionar catálogo de categorías.
-- Eliminar (admin, auditado).
-- ❌ NO cambiar estado tras aprobar.
+## 5. Pasos para tu lado (no es código)
 
-### Métricas en dashboard admin
-- Pendientes de aprobar (urgente).
-- Ratio aprobadas vs descartadas (último mes).
-- Abiertas / en gestión / resueltas por cliente.
-- Tiempo medio de resolución del cliente.
-- Top 5 propiedades / categorías.
-- Ratio incidencias / limpiezas.
-- **Clientes con módulo activo vs total.**
+- Crear/duplicar en la app las propiedades de After Surf: por cada habitación, dos propiedades (`After Surf — Hab. 2 (Salida)`, `After Surf — Hab. 2 (Estancia)`) con sus precios/tiempos.
+- Entrar en la nueva página y rellenar el mapping para cada habitación (checkout + stay).
+- En el `.env` del script Python configurar:
+  - `APP_URL = https://qyipyygojlfhdghnraus.supabase.co/functions/v1/little-hotelier-sync`
+  - `APP_API_KEY = <LH_SYNC_API_KEY>` (el secret que generaremos).
 
-### Permisos resumidos
+## 6. Detalles técnicos (resumen)
 
-| Acción | Limpiadora | Cliente | Manager Limpatex | Admin Limpatex |
-|---|---|---|---|---|
-| Activar/desactivar módulo por cliente | No | No | No | **Sí** |
-| Reportar (tarea propia, en progreso, cliente activado) | Sí | No | No | No |
-| Crear incidencia en tarea de limpiadora | — | No | Sí | Sí |
-| Aprobar / Descartar pendientes | No | No | Sí | Sí |
-| Editar antes de aprobar | Sí (suya, en progreso) | No | Sí | Sí |
-| Cambiar estado tras aprobar | No | **Sí** | No | No |
-| Cambiar visibilidad pública/interna | No | No | Sí | Sí |
-| Gestionar catálogo de categorías | No | No | No | Sí |
-| Eliminar | No | No | No | Sí (auditado) |
+- Migraciones: `lh_reservations`, `lh_room_mapping`, `lh_reservation_tasks`, `lh_sync_logs`, `lh_alert_log`, índices, RLS, trigger `updated_at` reusando `update_updated_at_column`. FK de `lh_reservation_tasks.task_id` → `tasks(id) ON DELETE SET NULL` (regla del proyecto).
+- Edge Function: `verify_jwt=false` (acceso por Bearer propio), CORS estándar, validación con Zod, `service_role` interno.
+- Emails: usar el mismo patrón de `send-task-reschedule-batch-email` para no inventar infra nueva.
+- Tipos TS: regenerar `src/integrations/supabase/types.ts` se hace solo tras la migración.
 
----
+## 7. Fuera de alcance (de momento)
 
-## 7. Catálogo de categorías personalizadas
+- No reemplazamos Avantio/Hostaway.
+- No conectamos a la API de Little Hotelier desde Supabase: la fuente sigue siendo tu script Python que hace POST.
+- No tocamos la lógica existente de otras integraciones.
 
-- Tabla `incident_categories` gestionada desde admin Limpatex.
-- Catálogo inicial: **Roturas, Material faltante, Avería, Otros**.
-- Añadir, renombrar, activar/desactivar. Las desactivadas no aparecen en el desplegable de nuevas, pero sí en incidencias antiguas.
-
----
-
-## 8. Migración de datos
-
-- Migración definitiva de `issues_found` (JSON en `task_reports`) a `cleaning_incidents`.
-- Tras la migración, `issues_found` deja de usarse.
-- Se **descarta el campo gravedad**.
-- Categorías antiguas que no encajen → **Otros**.
-- Las incidencias migradas entran en estado **Abierta**.
-- Solo serán visibles en el portal del cliente cuando este tenga el módulo activado.
-
----
-
-## Fases de implementación
-
-**Fase 1 — Modelo de datos y activación**
-- Tablas: `cleaning_incidents`, `cleaning_incident_events`, `incident_categories`.
-- Campo `allow_incidents` en `clients` (toggle por cliente).
-- Migración definitiva de `issues_found`. Sin `severity`. Sin comentarios.
-
-**Fase 2 — Activación en Portales de Clientes**
-- Toggle "Permitir incidencias" en la ficha del cliente (admin Limpatex). Por defecto desactivado.
-
-**Fase 3 — Cara limpiadora**
-- Botón "Reportar incidencia" en checklist móvil (solo tarea en progreso + cliente activado).
-- Formulario por pasos: categoría → ubicación → descripción → fotos (mín. 2).
-- Toda incidencia nace **Pendiente Limpatex**.
-
-**Fase 4 — Cara Limpatex (aprobación, creación, catálogo)**
-- Bandeja "Pendientes de aprobar" con Aprobar / Descartar / Editar.
-- Botón "Crear incidencia" desde ficha de tarea (admin/manager).
-- Gestión del catálogo de categorías.
-
-**Fase 5 — Cara cliente**
-- Pestaña "Incidencias" en portal cliente (solo si activada).
-- Listado, detalle, cambio de estado, adjuntos del cliente.
-- Sin comentarios libres.
-
-**Fase 6 — Notificaciones internas**
-- Emails/badges a Limpatex: reporte nuevo (pendiente), cambio de estado del cliente. Sin emails al cliente.
-
-**Fase 7 — Métricas**
-- KPIs en dashboard admin.
+Tras tu OK, lo implemento en este orden: migración → mapping UI mínima → edge function con generación de tareas → email resumen → página de reservas/logs → enlace en navegación.
