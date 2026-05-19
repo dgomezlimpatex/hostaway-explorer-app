@@ -245,7 +245,21 @@ function ReservationsTab() {
                         {r.reference ?? r.external_id}
                       </TableCell>
                       <TableCell>{r.channel ?? "—"}</TableCell>
-                      <TableCell>{r.room}</TableCell>
+                      <TableCell>
+                        {r.needs_room_assignment ? (
+                          <Badge className="bg-amber-100 text-amber-900" title="Sin habitación asignada en Little Hotelier">
+                            Sin asignar
+                          </Badge>
+                        ) : (r.rooms && r.rooms.length > 0) ? (
+                          <div className="flex flex-wrap gap-1">
+                            {r.rooms.map((rm) => (
+                              <Badge key={rm} variant="outline" className="font-normal">{rm}</Badge>
+                            ))}
+                          </div>
+                        ) : (
+                          <span className="text-muted-foreground">{r.room}</span>
+                        )}
+                      </TableCell>
                       <TableCell>{r.check_in}</TableCell>
                       <TableCell>{r.check_out}</TableCell>
                       <TableCell className="text-right">{nights}</TableCell>
