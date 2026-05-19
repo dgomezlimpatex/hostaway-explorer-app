@@ -1,1 +1,4 @@
 project_id = "qyipyygojlfhdghnraus"
+
+[functions.little-hotelier-sync]
+verify_jwt = false
