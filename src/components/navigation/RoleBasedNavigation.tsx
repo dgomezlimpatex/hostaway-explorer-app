@@ -179,6 +179,19 @@ export const RoleBasedNavigation = () => {
               hoverBorderColor="hover:border-violet-300"
             />
           )}
+
+          {isAdminOrManager() && (
+            <NavigationCard
+              to="/little-hotelier"
+              title="Little Hotelier"
+              description="Reservas y mapeo de habitaciones para el hotel After Surf"
+              icon={Hotel}
+              gradientFrom="bg-gradient-to-br from-amber-500"
+              gradientTo="to-amber-600"
+              iconColor="text-white"
+              hoverBorderColor="hover:border-amber-300"
+            />
+          )}
         </div>
       </div>
     </div>
