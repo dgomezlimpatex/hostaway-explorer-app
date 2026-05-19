@@ -56,6 +56,8 @@ interface LHReservation {
   check_in: string;
   check_out: string;
   room: string;
+  rooms: string[] | null;
+  needs_room_assignment: boolean | null;
   guest_name: string | null;
   adults: number | null;
   children: number | null;
@@ -243,7 +245,21 @@ function ReservationsTab() {
                         {r.reference ?? r.external_id}
                       </TableCell>
                       <TableCell>{r.channel ?? "—"}</TableCell>
-                      <TableCell>{r.room}</TableCell>
+                      <TableCell>
+                        {r.needs_room_assignment ? (
+                          <Badge className="bg-amber-100 text-amber-900" title="Sin habitación asignada en Little Hotelier">
+                            Sin asignar
+                          </Badge>
+                        ) : (r.rooms && r.rooms.length > 0) ? (
+                          <div className="flex flex-wrap gap-1">
+                            {r.rooms.map((rm) => (
+                              <Badge key={rm} variant="outline" className="font-normal">{rm}</Badge>
+                            ))}
+                          </div>
+                        ) : (
+                          <span className="text-muted-foreground">{r.room}</span>
+                        )}
+                      </TableCell>
                       <TableCell>{r.check_in}</TableCell>
                       <TableCell>{r.check_out}</TableCell>
                       <TableCell className="text-right">{nights}</TableCell>
@@ -324,9 +340,13 @@ function MappingsTab() {
     queryFn: async () => {
       const { data } = await supabase
         .from("lh_reservations" as any)
-        .select("room");
+        .select("rooms");
       const rooms = new Set<string>();
-      (data ?? []).forEach((r: any) => rooms.add(r.room));
+      (data ?? []).forEach((r: any) => {
+        (r.rooms ?? []).forEach((name: string) => {
+          if (name && name.trim() && name !== "-") rooms.add(name.trim());
+        });
+      });
       return Array.from(rooms).sort();
     },
   });

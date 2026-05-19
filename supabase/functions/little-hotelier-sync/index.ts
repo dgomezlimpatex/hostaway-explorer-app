@@ -1,6 +1,6 @@
 // Little Hotelier sync — receives one reservation per POST from the Python script,
-// upserts it, creates/updates the linked cleaning tasks (checkout + daily stay cleanings),
-// and emails admins a summary when changes happen.
+// upserts it, creates/updates the linked cleaning tasks per room (checkout + daily stay),
+// and logs warnings/errors.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.50.0";
 
@@ -18,9 +18,10 @@ interface ReservationPayload {
   uuid?: string | null;
   reference?: string | null;
   channel?: string | null;
-  check_in: string; // YYYY-MM-DD
-  check_out: string; // YYYY-MM-DD
-  room: string;
+  check_in: string;
+  check_out: string;
+  room?: string | null;          // legacy single room
+  rooms?: string[] | null;        // new: array of rooms
   guest_name?: string | null;
   adults?: number | null;
   children?: number | null;
@@ -63,6 +64,58 @@ function isCancelledStatus(status: string | null | undefined): boolean {
   return s === "cancelled" || s === "canceled" || s === "no_show";
 }
 
+/**
+ * Normalizes the incoming room data into a clean array of real room names.
+ * Returns { rooms: [], needsAssignment, displayRoom, warnings }.
+ *
+ * - Filters out "-", empty strings.
+ * - Detects old concatenated format ("Habitación 5Habitación 2(+1 Más)") and
+ *   marks it as needs_room_assignment (we cannot reliably split it).
+ * - Trims & dedupes.
+ */
+function normalizeRooms(payload: ReservationPayload): {
+  rooms: string[];
+  needsAssignment: boolean;
+  displayRoom: string;
+  warnings: string[];
+} {
+  const warnings: string[] = [];
+  let candidates: string[] = [];
+
+  if (Array.isArray(payload.rooms) && payload.rooms.length > 0) {
+    candidates = payload.rooms.map((r) => (r ?? "").toString().trim());
+  } else if (payload.room) {
+    const raw = payload.room.toString().trim();
+    // Detect concatenated multi-room legacy format
+    const concatenated =
+      /Habitaci[oó]n.*Habitaci[oó]n/i.test(raw) || /\(\+.*M[aá]s\)/i.test(raw);
+    if (concatenated) {
+      warnings.push(
+        `Reserva con varias habitaciones recibida en formato antiguo ("${raw}"). Actualiza el script Python para enviar 'rooms' como array.`,
+      );
+      return {
+        rooms: [],
+        needsAssignment: true,
+        displayRoom: raw,
+        warnings,
+      };
+    }
+    candidates = [raw];
+  }
+
+  const clean = Array.from(
+    new Set(
+      candidates
+        .map((r) => r.trim())
+        .filter((r) => r.length > 0 && r !== "-"),
+    ),
+  );
+
+  const needsAssignment = clean.length === 0;
+  const displayRoom = clean.length > 0 ? clean.join(", ") : "-";
+  return { rooms: clean, needsAssignment, displayRoom, warnings };
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -76,7 +129,6 @@ Deno.serve(async (req) => {
   const expectedKey = Deno.env.get("LH_SYNC_API_KEY");
   const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-  // Auth via shared bearer token
   const authHeader = req.headers.get("Authorization") || "";
   if (!expectedKey || authHeader !== `Bearer ${expectedKey}`) {
     return json({ error: "Unauthorized" }, 401);
@@ -89,8 +141,7 @@ Deno.serve(async (req) => {
     return json({ error: "Invalid JSON body" }, 400);
   }
 
-  // Minimal validation
-  if (!payload.external_id || !payload.check_in || !payload.check_out || !payload.room) {
+  if (!payload.external_id || !payload.check_in || !payload.check_out) {
     await supabase.from("lh_sync_logs").insert({
       external_id: payload?.external_id ?? null,
       status_code: 400,
@@ -99,21 +150,25 @@ Deno.serve(async (req) => {
       error_message: "Missing required fields",
     });
     return json(
-      { error: "Faltan campos obligatorios: external_id, check_in, check_out, room" },
+      { error: "Faltan campos obligatorios: external_id, check_in, check_out" },
       400,
     );
   }
 
-  const warnings: string[] = [];
+  const { rooms, needsAssignment, displayRoom, warnings: roomWarnings } =
+    normalizeRooms(payload);
+  const warnings: string[] = [...roomWarnings];
+
   const changes = {
     reservation_created: false,
     reservation_updated: false,
-    tasks_created: [] as Array<{ kind: ServiceKind; date: string; task_id: string }>,
-    tasks_cancelled: [] as Array<{ kind: ServiceKind; date: string; task_id: string }>,
+    needs_room_assignment: needsAssignment,
+    rooms_processed: rooms,
+    tasks_created: [] as Array<{ room: string; kind: ServiceKind; date: string; task_id: string }>,
+    tasks_cancelled: [] as Array<{ room: string; kind: ServiceKind; date: string; task_id: string }>,
   };
 
   try {
-    // 1) Fetch existing reservation (to detect diffs)
     const { data: existing } = await supabase
       .from("lh_reservations")
       .select("*")
@@ -122,7 +177,6 @@ Deno.serve(async (req) => {
 
     const status = (payload.status ?? "confirmed").toLowerCase();
 
-    // 2) Upsert reservation
     const upsertData = {
       external_id: payload.external_id,
       uuid: payload.uuid ?? null,
@@ -130,7 +184,9 @@ Deno.serve(async (req) => {
       channel: payload.channel ?? null,
       check_in: payload.check_in,
       check_out: payload.check_out,
-      room: payload.room,
+      room: displayRoom,
+      rooms,
+      needs_room_assignment: needsAssignment,
       guest_name: payload.guest_name ?? null,
       adults: payload.adults ?? 0,
       children: payload.children ?? 0,
@@ -155,16 +211,27 @@ Deno.serve(async (req) => {
     else if (
       existing.check_in !== reservation.check_in ||
       existing.check_out !== reservation.check_out ||
-      existing.room !== reservation.room ||
+      JSON.stringify(existing.rooms ?? []) !== JSON.stringify(rooms) ||
       existing.status !== reservation.status
     ) {
       changes.reservation_updated = true;
     }
 
-    // 3) Compute desired task plan from mappings
+    // Existing links — keyed by lh_room|service_kind|task_date
+    const { data: existingLinks } = await supabase
+      .from("lh_reservation_tasks")
+      .select("*")
+      .eq("reservation_id", reservation.id);
+
+    const linkMap = new Map<string, any>();
+    (existingLinks ?? []).forEach((l: any) =>
+      linkMap.set(`${l.lh_room}|${l.service_kind}|${l.task_date}`, l),
+    );
+
     type Mapping = {
       id: string;
       sede_id: string;
+      lh_room: string;
       service_kind: ServiceKind;
       cliente_id: string;
       propiedad_id: string;
@@ -175,75 +242,79 @@ Deno.serve(async (req) => {
       is_active: boolean;
     };
 
-    const { data: mappings } = await supabase
-      .from("lh_room_mapping")
-      .select("*")
-      .eq("lh_room", reservation.room)
-      .eq("is_active", true);
-
-    const mapByKind = new Map<ServiceKind, Mapping>();
-    (mappings ?? []).forEach((m: any) => mapByKind.set(m.service_kind as ServiceKind, m));
-
-    // Make sure reservation has sede_id (take it from any mapping)
-    if (!reservation.sede_id) {
-      const anyMapping = mappings?.[0];
-      if (anyMapping?.sede_id) {
-        await supabase
-          .from("lh_reservations")
-          .update({ sede_id: anyMapping.sede_id })
-          .eq("id", reservation.id);
-        reservation.sede_id = anyMapping.sede_id;
-      }
-    }
-
-    if (!mapByKind.has("checkout")) {
-      warnings.push(`Sin mapeo 'checkout' para habitación "${reservation.room}"`);
-    }
-    if (!mapByKind.has("stay")) {
-      warnings.push(`Sin mapeo 'stay' para habitación "${reservation.room}"`);
-    }
-
-    // Build desired (kind, date) set
-    const desired = new Map<string, { kind: ServiceKind; date: string }>();
     const cancelled = isCancelledStatus(reservation.status);
+    const desired = new Map<
+      string,
+      { room: string; kind: ServiceKind; date: string; mapping: Mapping }
+    >();
 
-    if (!cancelled) {
-      if (mapByKind.has("checkout")) {
-        const key = `checkout|${reservation.check_out}`;
-        desired.set(key, { kind: "checkout", date: reservation.check_out });
+    if (!cancelled && rooms.length > 0) {
+      // Fetch active mappings for all rooms in one go
+      const { data: allMappings } = await supabase
+        .from("lh_room_mapping")
+        .select("*")
+        .in("lh_room", rooms)
+        .eq("is_active", true);
+
+      const mappingByKey = new Map<string, Mapping>();
+      (allMappings ?? []).forEach((m: any) =>
+        mappingByKey.set(`${m.lh_room}|${m.service_kind}`, m),
+      );
+
+      // Ensure reservation.sede_id is set
+      if (!reservation.sede_id && (allMappings?.length ?? 0) > 0) {
+        const anySede = (allMappings as any[])[0].sede_id;
+        if (anySede) {
+          await supabase
+            .from("lh_reservations")
+            .update({ sede_id: anySede })
+            .eq("id", reservation.id);
+          reservation.sede_id = anySede;
+        }
       }
-      if (mapByKind.has("stay")) {
-        const nights = diffDays(reservation.check_in, reservation.check_out);
-        // stay cleanings: check_in+1 .. check_out-1 (inclusive)
-        for (let i = 1; i <= nights - 1; i++) {
-          const d = addDays(reservation.check_in, i);
-          desired.set(`stay|${d}`, { kind: "stay", date: d });
+
+      const nights = diffDays(reservation.check_in, reservation.check_out);
+
+      for (const room of rooms) {
+        const checkoutMap = mappingByKey.get(`${room}|checkout`);
+        const stayMap = mappingByKey.get(`${room}|stay`);
+
+        if (!checkoutMap) {
+          warnings.push(`Sin mapeo 'checkout' para habitación "${room}"`);
+        } else {
+          desired.set(`${room}|checkout|${reservation.check_out}`, {
+            room,
+            kind: "checkout",
+            date: reservation.check_out,
+            mapping: checkoutMap as Mapping,
+          });
+        }
+
+        if (!stayMap) {
+          warnings.push(`Sin mapeo 'stay' para habitación "${room}"`);
+        } else {
+          for (let i = 1; i <= nights - 1; i++) {
+            const d = addDays(reservation.check_in, i);
+            desired.set(`${room}|stay|${d}`, {
+              room,
+              kind: "stay",
+              date: d,
+              mapping: stayMap as Mapping,
+            });
+          }
         }
       }
     }
 
-    // 4) Load existing links for this reservation
-    const { data: existingLinks } = await supabase
-      .from("lh_reservation_tasks")
-      .select("*")
-      .eq("reservation_id", reservation.id);
-
-    const linkMap = new Map<string, any>();
-    (existingLinks ?? []).forEach((l: any) =>
-      linkMap.set(`${l.service_kind}|${l.task_date}`, l),
-    );
-
-    // 5) Create missing tasks
-    const today = new Date().toISOString().slice(0, 10);
+    // Create missing tasks
     for (const [key, item] of desired.entries()) {
       const link = linkMap.get(key);
       if (link && link.status === "active" && link.task_id) continue;
 
-      const m = mapByKind.get(item.kind)!;
+      const m = item.mapping;
       const startTime = m.default_start_time.slice(0, 5);
       const endTime = minutesToEnd(startTime, m.default_duration_min);
 
-      // Property details for nombre/direccion
       const { data: prop } = await supabase
         .from("properties")
         .select("nombre, direccion, sede_id")
@@ -252,6 +323,7 @@ Deno.serve(async (req) => {
 
       const notes = [
         `[LH ${reservation.reference ?? reservation.external_id}]`,
+        `Hab. ${item.room}`,
         item.kind === "checkout" ? "Limpieza de salida" : "Limpieza de estancia",
         reservation.guest_name ? `Huésped: ${reservation.guest_name}` : null,
         reservation.channel ? `Canal: ${reservation.channel}` : null,
@@ -260,7 +332,7 @@ Deno.serve(async (req) => {
         .join(" · ");
 
       const taskData: any = {
-        property: prop?.nombre ?? reservation.room,
+        property: prop?.nombre ?? item.room,
         address: prop?.direccion ?? "",
         date: item.date,
         start_time: startTime,
@@ -286,51 +358,46 @@ Deno.serve(async (req) => {
 
       if (taskErr || !task) {
         warnings.push(
-          `No se pudo crear tarea ${item.kind} ${item.date}: ${taskErr?.message ?? "desconocido"}`,
+          `No se pudo crear tarea ${item.kind} ${item.date} (${item.room}): ${taskErr?.message ?? "desconocido"}`,
         );
         continue;
       }
 
-      // Upsert link
       await supabase.from("lh_reservation_tasks").upsert(
         {
           reservation_id: reservation.id,
           task_id: task.id,
+          lh_room: item.room,
           service_kind: item.kind,
           task_date: item.date,
           status: "active",
         },
-        { onConflict: "reservation_id,service_kind,task_date" },
+        { onConflict: "reservation_id,lh_room,service_kind,task_date" },
       );
 
-      changes.tasks_created.push({ kind: item.kind, date: item.date, task_id: task.id });
+      changes.tasks_created.push({
+        room: item.room,
+        kind: item.kind,
+        date: item.date,
+        task_id: task.id,
+      });
     }
 
-    // 6) Cancel tasks that are no longer desired (or whole reservation cancelled).
-    //    Skip past tasks that may already have been done / are out of our concern window.
+    // Cancel tasks that are no longer desired (or whole reservation cancelled / room removed)
+    const today = new Date().toISOString().slice(0, 10);
     for (const link of existingLinks ?? []) {
-      const key = `${link.service_kind}|${link.task_date}`;
-      const stillWanted = desired.has(key);
-      if (stillWanted || link.status !== "active" || !link.task_id) continue;
+      const key = `${link.lh_room}|${link.service_kind}|${link.task_date}`;
+      if (desired.has(key)) continue;
+      if (link.status !== "active" || !link.task_id) continue;
+      if (link.task_date < today) continue;
 
-      // Only cancel future or today's pending tasks
-      if (link.task_date < today) {
-        continue;
-      }
-
-      // Check task status before cancelling
       const { data: t } = await supabase
         .from("tasks")
         .select("status")
         .eq("id", link.task_id)
         .maybeSingle();
+      if (t && t.status === "completed") continue;
 
-      if (t && t.status === "completed") {
-        // leave completed tasks intact
-        continue;
-      }
-
-      // Delete the task (consistent with hostaway flow)
       await supabase.from("tasks").delete().eq("id", link.task_id);
       await supabase
         .from("lh_reservation_tasks")
@@ -338,13 +405,13 @@ Deno.serve(async (req) => {
         .eq("id", link.id);
 
       changes.tasks_cancelled.push({
+        room: link.lh_room,
         kind: link.service_kind,
         date: link.task_date,
         task_id: link.task_id,
       });
     }
 
-    // 7) Log + respond
     const result = {
       reservation_id: reservation.id,
       external_id: reservation.external_id,

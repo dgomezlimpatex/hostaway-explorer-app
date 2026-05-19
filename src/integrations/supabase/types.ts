@@ -2303,6 +2303,7 @@ export type Database = {
         Row: {
           created_at: string
           id: string
+          lh_room: string
           reservation_id: string
           service_kind: string
           status: string
@@ -2313,6 +2314,7 @@ export type Database = {
         Insert: {
           created_at?: string
           id?: string
+          lh_room?: string
           reservation_id: string
           service_kind: string
           status?: string
@@ -2323,6 +2325,7 @@ export type Database = {
         Update: {
           created_at?: string
           id?: string
+          lh_room?: string
           reservation_id?: string
           service_kind?: string
           status?: string
@@ -2359,8 +2362,10 @@ export type Database = {
           guest_name: string | null
           id: string
           infants: number | null
+          needs_room_assignment: boolean
           reference: string | null
           room: string
+          rooms: string[]
           sede_id: string | null
           source_system: string
           status: string
@@ -2380,8 +2385,10 @@ export type Database = {
           guest_name?: string | null
           id?: string
           infants?: number | null
+          needs_room_assignment?: boolean
           reference?: string | null
           room: string
+          rooms?: string[]
           sede_id?: string | null
           source_system?: string
           status?: string
@@ -2401,8 +2408,10 @@ export type Database = {
           guest_name?: string | null
           id?: string
           infants?: number | null
+          needs_room_assignment?: boolean
           reference?: string | null
           room?: string
+          rooms?: string[]
           sede_id?: string | null
           source_system?: string
           status?: string
