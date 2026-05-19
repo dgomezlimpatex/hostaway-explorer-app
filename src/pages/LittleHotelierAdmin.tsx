@@ -56,6 +56,8 @@ interface LHReservation {
   check_in: string;
   check_out: string;
   room: string;
+  rooms: string[] | null;
+  needs_room_assignment: boolean | null;
   guest_name: string | null;
   adults: number | null;
   children: number | null;
