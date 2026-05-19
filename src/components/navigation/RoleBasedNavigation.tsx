@@ -14,7 +14,8 @@ import {
   Shirt,
   RefreshCw,
   Link2,
-  AlertTriangle
+  AlertTriangle,
+  Hotel
 } from 'lucide-react';
 
 export const RoleBasedNavigation = () => {
