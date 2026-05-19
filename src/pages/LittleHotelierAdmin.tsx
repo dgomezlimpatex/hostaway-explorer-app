@@ -340,9 +340,13 @@ function MappingsTab() {
     queryFn: async () => {
       const { data } = await supabase
         .from("lh_reservations" as any)
-        .select("room");
+        .select("rooms");
       const rooms = new Set<string>();
-      (data ?? []).forEach((r: any) => rooms.add(r.room));
+      (data ?? []).forEach((r: any) => {
+        (r.rooms ?? []).forEach((name: string) => {
+          if (name && name.trim() && name !== "-") rooms.add(name.trim());
+        });
+      });
       return Array.from(rooms).sort();
     },
   });
