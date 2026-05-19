@@ -255,6 +255,9 @@ function App() {
                     <Route path="/integraciones" element={
                       <RoleProtectedRoute requiredModule="admin"><Integraciones /></RoleProtectedRoute>
                     } />
+                    <Route path="/little-hotelier" element={
+                      <RoleProtectedRoute requiredModule="admin"><LittleHotelierAdmin /></RoleProtectedRoute>
+                    } />
                   </Route>
 
                   <Route path="*" element={<FullPageSuspense><NotFound /></FullPageSuspense>} />
