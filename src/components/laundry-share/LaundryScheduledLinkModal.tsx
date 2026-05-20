@@ -258,9 +258,16 @@ export const LaundryScheduledLinkModal = ({
                 </div>
               )}
 
+              {existingLinkForDay(deliveryDate) && (
+                <div className="rounded-lg border border-amber-200 bg-amber-50 dark:bg-amber-500/10 dark:border-amber-500/30 p-3 text-xs text-amber-800 dark:text-amber-300">
+                  Ya existe un enlace activo para este día. Solo se permite un enlace por día — edita o desactiva el existente.
+                </div>
+              )}
+
               <p className="text-xs text-muted-foreground">
                 El enlace estará activo durante {DEFAULT_EXPIRATION_DAYS} días.
               </p>
+
             </>
           ) : (
             /* Generated link display */
