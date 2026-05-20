@@ -507,12 +507,19 @@ const LaundryShareManagement = () => {
   const allActive = shareLinks?.filter(l => !isShareLinkExpired(l.expiresAt)) || [];
   const expiredLinks = shareLinks?.filter(l => isShareLinkExpired(l.expiresAt)) || [];
 
+  // Split active into today vs past (by dateStart)
+  const todayStr = useMemo(() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  }, []);
+
   // Search filter on active links
   const activeLinks = useMemo(() => {
     if (!search.trim()) return allActive;
     const q = search.toLowerCase();
     return allActive.filter(l => 
       formatDateRange(l.dateStart, l.dateEnd).toLowerCase().includes(q) ||
+
       l.token.toLowerCase().includes(q)
     );
   }, [allActive, search]);
