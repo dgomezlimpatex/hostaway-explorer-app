@@ -161,6 +161,47 @@ export const LaundryScheduledLinkModal = ({
         <div className="space-y-5 py-4">
           {!generatedLink ? (
             <>
+              {/* Delivery schedule */}
+              <div className="rounded-lg border border-border bg-card p-3">
+                <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground mb-2">
+                  Días de reparto
+                </p>
+                <div className="flex flex-wrap gap-1.5">
+                  {[
+                    { label: 'Lun', short: 'L', dow: 1, active: true },
+                    { label: 'Mar', short: 'M', dow: 2, active: false },
+                    { label: 'Mié', short: 'X', dow: 3, active: true },
+                    { label: 'Jue', short: 'J', dow: 4, active: false },
+                    { label: 'Vie', short: 'V', dow: 5, active: true },
+                    { label: 'Sáb', short: 'S', dow: 6, active: false },
+                    { label: 'Dom', short: 'D', dow: 0, active: true },
+                  ].map((day) => {
+                    const isSelected = parsedDate?.getDay() === day.dow;
+                    return (
+                      <div
+                        key={day.label}
+                        className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border transition-all ${
+                          day.active
+                            ? isSelected
+                              ? 'bg-primary text-primary-foreground border-primary ring-2 ring-primary/30'
+                              : 'bg-primary/10 text-primary border-primary/20'
+                            : 'bg-muted/40 text-muted-foreground/60 border-transparent line-through'
+                        }`}
+                      >
+                        <span className={`w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-bold ${
+                          day.active
+                            ? isSelected
+                              ? 'bg-primary-foreground/20 text-primary-foreground'
+                              : 'bg-primary text-primary-foreground'
+                            : 'bg-muted text-muted-foreground/70'
+                        }`}>{day.short}</span>
+                        {day.label}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
               {/* Date picker */}
               <div className="space-y-2">
                 <Label htmlFor="delivery-date">Fecha de reparto</Label>
@@ -171,6 +212,7 @@ export const LaundryScheduledLinkModal = ({
                   onChange={(e) => setDeliveryDate(e.target.value)}
                 />
               </div>
+
 
               {/* Preview */}
               {parsedDate && (
