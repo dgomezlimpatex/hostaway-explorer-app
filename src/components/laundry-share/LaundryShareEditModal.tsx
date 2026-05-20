@@ -11,6 +11,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { LaundryShareLink } from '@/hooks/useLaundryShareLinks';
 import { isNotCountCleaner } from '@/utils/laundryExclusions';
+import { fetchLaundryTasksForDateRange } from '@/services/laundryShareService';
 
 interface LaundryShareEditModalProps {
   open: boolean;
