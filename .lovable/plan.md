@@ -1,68 +1,70 @@
-
-# Reservas multi-habitación y sin habitación en Little Hotelier
+# Corregir días incorrectos en tareas recurrentes
 
 ## Diagnóstico
 
-Las "habitaciones sin mapear" no son habitaciones reales. Son dos casos que hoy llegan al endpoint en el campo `room`:
+Revisé los datos en BD: la tarea recurrente **"Zonas Comunes Marina30"** está configurada con `days_of_week = [1, 3, 5]` (L, X, V) y `start_date = 2026-03-27` (Viernes — día válido). Sin embargo, las ejecuciones registradas en `recurring_task_executions` empezaron en **2026-03-29 que es DOMINGO (DOW=0)**, un día que no está en la selección.
 
-1. **Multi-habitación concatenada**: cuando una reserva ocupa varias habitaciones, el script Python las concatena en un solo string:
-   - `"Habitación 5Habitación 2(+1 Más)"` (3 hab.)
-   - `"Habitación 6Habitación 4(+1 Más)"`
-   - `"Habitación doble sin vistas 3 1Habitación 4(+1 Más)"`
-   
-   El `(+N Más)` indica que el script ni siquiera muestra los nombres a partir del tercero — la info está perdida en origen.
+Las siguientes ejecuciones sí cuadran (Lun 3-30, Mié 4-1, Vie 4-3, Lun 4-6, Mié 4-8…), porque la edge function `process-recurring-tasks` sí calcula bien el "siguiente" día desde el último. El problema está **únicamente en el cálculo de la PRIMERA ejecución** que hace `recurringTaskStorage.ts` al crear la tarea.
 
-2. **Habitación sin asignar** (`room = "-"`): reservas confirmadas vía Booking.com / canales que aún no tienen habitación asignada en Little Hotelier. Sin habitación no se puede saber a qué propiedad mapear.
+## Bugs detectados en `src/services/recurringTaskStorage.ts`
 
-Ambos casos están bien clasificados (no son mapeos faltantes), pero el detector los muestra como ruido y nunca generarán tareas. Hay que arreglarlos en origen.
+**Bug 1 — `calculateNextExecution` devuelve `startDate` sin validar el día de la semana.**
+Si la fecha de inicio cae en un día que no está marcado (ej. usuario elige L/X/V pero startDate=Jueves), guarda Jueves como `next_execution` y la primera tarea se genera ese día equivocado.
 
-## Solución
+**Bug 2 — Cuando `startDate <= hoy`, usa `hoy` como base e ignora `startDate`.**
+Esto desplaza el cálculo y, combinado con el bug 3, produce días raros como el Domingo observado.
 
-### 1. Cambiar el contrato del endpoint para aceptar varias habitaciones
-En la Edge Function `little-hotelier-sync` aceptar **dos formatos** en el payload, manteniendo compatibilidad:
-- Nuevo: `rooms: ["Habitación 5", "Habitación 2", "Habitación 7"]` (array).
-- Antiguo: `room: "Habitación 2"` (string) → se normaliza a array de 1.
+**Bug 3 — La rama "siguiente semana" de `calculateNextExecutionFromData` tiene aritmética incorrecta para `firstDay = 0` (Domingo).**
+`daysUntilNextWeek = 7 - currentDay` aterriza ya en domingo, y luego suma `firstDay` extra. Si el primer día ordenado es 0 (Domingo seleccionado), suma 0 y queda bien; pero la lógica `firstDay === 0 ? 0 : firstDay` es frágil y rompe si el array incluye 0 mezclado con otros días (porque al ordenar `[0,3,5]`, `firstDay = 0` pero realmente queremos saltar al siguiente día válido más cercano, no a domingo de la próxima semana). Hay que reemplazar el cálculo por un bucle que avance día a día hasta encontrar uno válido (igual que ya hace la edge function), eliminando la rama "next week".
 
-En `lh_reservations` añadir columna `rooms text[]` (además de seguir guardando `room` como string legible para UI). Generar tareas iterando por cada habitación: por cada una buscar su mapping `checkout` + `stay` y crear las tareas correspondientes. La idempotencia ya usa `(reservation_id, service_kind, task_date)` — la extenderemos a `(reservation_id, lh_room, service_kind, task_date)` para no colisionar entre habitaciones de la misma reserva.
+## Cambios
 
-### 2. Actualizar el script Python (lado del usuario)
-El script tiene que dejar de concatenar y mandar el array completo de habitaciones reales tal y como las devuelve la API de Little Hotelier. Te pasaré el snippet exacto a cambiar — es 1 línea en el bloque donde hoy construye el string `room`.
+### 1. `src/services/recurringTaskStorage.ts`
+- Reemplazar `calculateNextExecution` y la parte `case 'weekly'` de `calculateNextExecutionFromData` por una sola función robusta:
+  - Calcular la fecha base = `max(startDate, hoy)`.
+  - Si `frequency === 'weekly'` y hay `daysOfWeek`: avanzar día a día (hasta 14 iteraciones) hasta encontrar un día cuyo `getDay()` esté en el array. **Incluir el propio día base** si ya coincide (para no perder la primera ocurrencia cuando startDate es un día válido en el futuro).
+  - Si `frequency === 'daily'`: usar `max(startDate, hoy)`.
+  - Si `frequency === 'monthly'` con `dayOfMonth`: avanzar al primer mes cuyo día sea ≥ base; clamp al último día del mes si es 30/31 en meses cortos.
+- Mantener el comportamiento de `endDate` (devolver `2099-12-31` si se supera).
+- Usar comparaciones de fecha en formato `YYYY-MM-DD` (string) para evitar saltos por zona horaria (parseando como UTC y usando `getUTCDay()`), alineándolo con el resto del proyecto que opera en `Europe/Madrid` pero almacena fechas como `date` sin hora.
 
-### 3. Tratar `room = "-"` como caso especial
-- No registrar la reserva como "sin mapear" en el detector.
-- Marcar la reserva con un flag `needs_room_assignment = true` en `lh_reservations`.
-- Mostrar en la pestaña "Reservas" un badge ámbar "Sin habitación asignada" con tooltip explicando que hay que asignarla en Little Hotelier.
-- Opcional (pregunta más abajo): enviar email de alerta al admin la primera vez que se ve, con anti-spam estilo `avantio_alert_log`.
-- Cuando una sync posterior traiga la habitación ya asignada, se generan las tareas automáticamente y el flag se limpia.
+### 2. `supabase/functions/process-recurring-tasks/index.ts`
+La lógica de "siguiente ejecución tras una ya hecha" ya es correcta (bucle día a día), así que **no hay que tocar la edge function**. Solo se añadirá un log adicional con el día de la semana calculado para facilitar futura depuración.
 
-### 4. Limpiar el detector de "Habitaciones sin mapear"
-Filtrar del listado:
-- Valores que contengan `(+` o que matcheen más de un `"Habitación"` (formato concatenado antiguo, hasta que repases la sync).
-- Valor `"-"` y vacío.
-
-Así sólo aparecerán habitaciones reales pendientes de mapear (ahora mismo, sólo la 3 según comentas).
-
-### 5. Reprocesar lo ya guardado
-Tras desplegar:
-- Re-ejecutar tu script Python con el cambio → cada reserva multi-habitación llegará como array y generará todas las tareas.
-- Las reservas con `"-"` quedarán en estado "pendiente de habitación" hasta que las asignes en Little Hotelier y la próxima sync las recoja.
+### 3. Datos existentes
+Tras el fix:
+- La tarea "Zonas Comunes Marina30" ya está `is_active=false`, así que no hace falta arreglar nada en BD.
+- Cualquier tarea recurrente nueva que se cree usará el cálculo correcto.
 
 ## Detalles técnicos
 
-- Migración: `ALTER TABLE lh_reservations ADD COLUMN rooms text[], ADD COLUMN needs_room_assignment boolean DEFAULT false;` + backfill desde `room`.
-- Migración: `ALTER TABLE lh_reservation_tasks ADD COLUMN lh_room text;` + recrear unique a `(reservation_id, lh_room, service_kind, task_date)`.
-- Edge function: helper `normalizeRooms(payload)` que devuelve `string[]` filtrando `"-"`, vacíos y patrones `(+N Más)` (loggea warning si detecta el formato viejo concatenado).
-- UI:
-  - Pestaña Reservas: columna "Habitaciones" muestra chips por cada room; badge "Sin habitación" cuando `needs_room_assignment`.
-  - Pestaña Mapeo → "Detectar nuevas habitaciones": query a `lh_reservations.rooms` (unnest) excluyendo las que ya tengan mapping. Ya no aparecerán los strings concatenados ni `"-"`.
+Función nueva (resumen):
 
-## Pregunta para ti
+```ts
+function findNextValidDate(
+  base: Date,         // UTC midnight
+  daysOfWeek: number[],
+  inclusive: boolean  // true = incluye el día base si coincide
+): Date {
+  const valid = new Set(daysOfWeek);
+  const d = new Date(base);
+  if (inclusive && valid.has(d.getUTCDay())) return d;
+  for (let i = 0; i < 14; i++) {
+    d.setUTCDate(d.getUTCDate() + 1);
+    if (valid.has(d.getUTCDay())) return d;
+  }
+  return d; // fallback
+}
+```
 
-¿Quieres alerta por email cuando llegue una reserva con `room = "-"` (sin habitación asignada en LH), o basta con el badge en la UI? Es el único punto donde aún no he decidido por ti.
+## Verificación
 
-## Tras tu OK
+Tras el cambio, crearé mentalmente los siguientes casos contra `calculateNextExecution` y los verificaré con `console.log` puntuales si hace falta:
 
-1. Migración (rooms[], needs_room_assignment, índice).
-2. Edge function: aceptar `rooms[]`, generar tareas por habitación.
-3. UI: chips + badge + filtro del detector.
-4. Te paso el cambio exacto para el script Python.
+| startDate | hoy | days_of_week | nextExecution esperado |
+|---|---|---|---|
+| Vie 27-mar | Vie 27-mar | [1,3,5] | Vie 27-mar (mismo día válido) |
+| Jue 26-mar | Jue 26-mar | [1,3,5] | Vie 27-mar |
+| Lun 20-abr (futuro) | hoy | [3,5] | Mié 22-abr (no devolver lunes) |
+| Dom selección [0] | Vie | [0] | Domingo siguiente |
+| [0,3,5] | Sáb | [0,3,5] | Domingo |
