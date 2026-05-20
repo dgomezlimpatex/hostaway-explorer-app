@@ -564,6 +564,42 @@ const LaundryShareManagement = () => {
       </div>
 
       <div className="container mx-auto py-6 px-4 max-w-4xl space-y-6">
+
+        {/* Delivery schedule */}
+        <div className="rounded-2xl border border-border bg-card p-5">
+          <div className="flex items-center justify-between mb-3">
+            <div>
+              <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Días de reparto</p>
+              <p className="text-xs text-muted-foreground mt-0.5">Calendario actual de entregas</p>
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {[
+              { label: 'Lunes', short: 'L', active: true },
+              { label: 'Martes', short: 'M', active: false },
+              { label: 'Miércoles', short: 'X', active: true },
+              { label: 'Jueves', short: 'J', active: false },
+              { label: 'Viernes', short: 'V', active: true },
+              { label: 'Sábado', short: 'S', active: false },
+              { label: 'Domingo', short: 'D', active: true },
+            ].map((day) => (
+              <div
+                key={day.label}
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold border ${
+                  day.active
+                    ? 'bg-primary/10 text-primary border-primary/20'
+                    : 'bg-muted/40 text-muted-foreground/60 border-transparent line-through'
+                }`}
+              >
+                <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${
+                  day.active ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground/70'
+                }`}>{day.short}</span>
+                {day.label}
+              </div>
+            ))}
+          </div>
+        </div>
+
         
 
         {/* Generate scheduled link — primary CTA */}
