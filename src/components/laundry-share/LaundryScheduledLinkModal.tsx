@@ -307,8 +307,9 @@ export const LaundryScheduledLinkModal = ({
               </Button>
               <Button
                 onClick={handleGenerate}
-                disabled={isGenerating || !deliveryDate || previewData.count === 0}
+                disabled={isGenerating || !deliveryDate || previewData.count === 0 || !!existingLinkForDay(deliveryDate)}
               >
+
                 {isGenerating ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
