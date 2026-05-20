@@ -93,6 +93,17 @@ export const LaundryScheduledLinkModal = ({
       return;
     }
 
+    // Block creation if a link already covers this day
+    if (existingLinkForDay(deliveryDate)) {
+      toast({
+        title: 'Ya existe un enlace para este día',
+        description: 'Solo se permite un enlace por día. Edita o desactiva el existente.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+
     setIsGenerating(true);
     try {
       const tasks = await fetchTasksForDates([deliveryDate], activeSede.id);
