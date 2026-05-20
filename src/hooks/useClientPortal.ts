@@ -10,6 +10,7 @@ import {
   PortalBooking,
 } from '@/types/clientPortal';
 import { useToast } from '@/hooks/use-toast';
+import { useSede } from '@/contexts/SedeContext';
 import { buildReservationLogActor } from '@/lib/clientReservationLog';
 
 // Generate random 6-digit PIN
