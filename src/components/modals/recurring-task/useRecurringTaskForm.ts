@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { RecurringTask } from '@/types/recurring';
 import { Client } from '@/types/client';
 import { Property } from '@/types/property';
@@ -55,26 +55,26 @@ export const useRecurringTaskForm = () => {
     isActive: true
   });
 
-  const updateFormData = (field: keyof RecurringTaskFormData, value: any) => {
+  const updateFormData = useCallback((field: keyof RecurringTaskFormData, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));
-  };
+  }, []);
 
-  const handleClientChange = (client: Client | null) => {
+  const handleClientChange = useCallback((client: Client | null) => {
     setFormData(prev => ({ 
       ...prev, 
       clienteId: client?.id || '',
       propiedadId: '' // Reset property when client changes
     }));
-  };
+  }, []);
 
-  const handlePropertyChange = (property: Property | null) => {
+  const handlePropertyChange = useCallback((property: Property | null) => {
     setFormData(prev => ({ 
       ...prev, 
       propiedadId: property?.id || ''
     }));
-  };
+  }, []);
 
-  const resetForm = () => {
+  const resetForm = useCallback(() => {
     setFormData({
       name: '',
       description: '',
@@ -99,9 +99,9 @@ export const useRecurringTaskForm = () => {
       endDate: '',
       isActive: true
     });
-  };
+  }, []);
 
-  const getTaskData = (): Omit<RecurringTask, 'id' | 'createdAt' | 'nextExecution'> => {
+  const getTaskData = useCallback((): Omit<RecurringTask, 'id' | 'createdAt' | 'nextExecution'> => {
     return {
       ...formData,
       clienteId: formData.clienteId || undefined,
@@ -111,7 +111,7 @@ export const useRecurringTaskForm = () => {
       cleanerId: formData.cleanerId || undefined,
       lastExecution: undefined
     };
-  };
+  }, [formData]);
 
   return {
     formData,
