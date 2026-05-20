@@ -10,6 +10,7 @@ import {
   PortalBooking,
 } from '@/types/clientPortal';
 import { useToast } from '@/hooks/use-toast';
+import { useSede } from '@/contexts/SedeContext';
 import { buildReservationLogActor } from '@/lib/clientReservationLog';
 
 // Generate random 6-digit PIN
@@ -1420,22 +1421,33 @@ export const useToggleClientPhotosVisibility = () => {
  * for the admin "Portales de clientes" panel.
  */
 export const useAdminClientPortals = () => {
+  const { activeSede } = useSede();
+  const activeSedeId = activeSede?.id ?? null;
   return useQuery({
-    queryKey: ['admin-client-portals'],
+    queryKey: ['admin-client-portals', activeSedeId],
+    enabled: !!activeSedeId,
     queryFn: async () => {
-      const { data: clients, error: cErr } = await supabase
+      let query = supabase
         .from('clients')
-        .select('id, nombre, is_active, photos_visible_to_client, allow_reservation_creation, allow_extraordinary_requests, allow_incidents')
+        .select('id, nombre, is_active, photos_visible_to_client, allow_reservation_creation, allow_extraordinary_requests, allow_incidents, sede_id')
         .neq('is_active', false)
         .order('nombre', { ascending: true });
+      if (activeSedeId) query = query.eq('sede_id', activeSedeId);
+      const { data: clients, error: cErr } = await query;
       if (cErr) throw cErr;
 
-      const { data: accesses, error: aErr } = await supabase
-        .from('client_portal_access')
-        .select('id, client_id, access_pin, portal_token, short_code, is_active, last_access_at, last_admin_access_at, created_at, updated_at');
-      if (aErr) throw aErr;
+      const clientIds = (clients ?? []).map(c => c.id);
+      let accesses: any[] = [];
+      if (clientIds.length) {
+        const { data, error: aErr } = await supabase
+          .from('client_portal_access')
+          .select('id, client_id, access_pin, portal_token, short_code, is_active, last_access_at, last_admin_access_at, created_at, updated_at')
+          .in('client_id', clientIds);
+        if (aErr) throw aErr;
+        accesses = data ?? [];
+      }
 
-      const accessByClient = new Map((accesses ?? []).map(a => [a.client_id, a]));
+      const accessByClient = new Map(accesses.map(a => [a.client_id, a]));
 
       return (clients ?? []).map(c => {
         const a = accessByClient.get(c.id);
