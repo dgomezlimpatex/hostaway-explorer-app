@@ -384,15 +384,35 @@ export const recurringTaskStorage = {
   }
 };
 
-// Helper function to calculate next execution date
-function calculateNextExecution(taskData: Partial<RecurringTask>): string {
-  const today = new Date();
-  const startDate = new Date(taskData.startDate || today.toISOString().split('T')[0]);
-  
-  if (startDate > today) {
-    return startDate.toISOString().split('T')[0];
-  }
+// Parse a YYYY-MM-DD string as UTC midnight (avoids timezone shifts)
+function parseDateUTC(s: string): Date {
+  const [y, m, d] = s.split('-').map(Number);
+  return new Date(Date.UTC(y, (m || 1) - 1, d || 1));
+}
 
+function toISODate(d: Date): string {
+  return d.toISOString().split('T')[0];
+}
+
+function todayUTC(): Date {
+  return parseDateUTC(new Date().toISOString().split('T')[0]);
+}
+
+// Find next date (>= base) whose UTC weekday is in the allowed set.
+// If inclusive is true, the base date itself is a candidate.
+function findNextValidWeekday(base: Date, daysOfWeek: number[], inclusive: boolean): Date {
+  const valid = new Set(daysOfWeek);
+  const d = new Date(base.getTime());
+  if (inclusive && valid.has(d.getUTCDay())) return d;
+  for (let i = 0; i < 14; i++) {
+    d.setUTCDate(d.getUTCDate() + 1);
+    if (valid.has(d.getUTCDay())) return d;
+  }
+  return d;
+}
+
+// Helper function to calculate next execution date (used on creation)
+function calculateNextExecution(taskData: Partial<RecurringTask>): string {
   return calculateNextExecutionFromData({
     frequency: taskData.frequency!,
     interval: taskData.interval!,
@@ -400,7 +420,7 @@ function calculateNextExecution(taskData: Partial<RecurringTask>): string {
     dayOfMonth: taskData.dayOfMonth,
     startDate: taskData.startDate!,
     endDate: taskData.endDate,
-    lastExecution: today.toISOString().split('T')[0]
+    lastExecution: undefined,
   });
 }
 
@@ -411,72 +431,75 @@ function calculateNextExecutionFromData(data: {
   dayOfMonth?: number | null;
   startDate: string;
   endDate?: string | null;
-  lastExecution: string;
+  lastExecution?: string | null;
 }): string {
-  const lastDate = new Date(data.lastExecution);
-  let nextDate = new Date(lastDate);
+  const today = todayUTC();
+  const startDate = parseDateUTC(data.startDate);
+  const isFirstRun = !data.lastExecution;
 
-  switch (data.frequency) {
-    case 'daily':
-      nextDate.setDate(nextDate.getDate() + data.interval);
-      break;
-      
-    case 'weekly':
-      if (data.daysOfWeek && data.daysOfWeek.length > 0) {
-        // Find the next occurrence of any of the specified days
-        const sortedDays = [...data.daysOfWeek].sort((a, b) => a - b);
-        const currentDay = nextDate.getDay();
-        
-        // Try to find next day in the same week
-        let foundInSameWeek = false;
-        for (const targetDay of sortedDays) {
-          if (targetDay > currentDay) {
-            const daysToAdd = targetDay - currentDay;
-            nextDate.setDate(nextDate.getDate() + daysToAdd);
-            foundInSameWeek = true;
-            break;
+  let nextDate: Date;
+
+  if (isFirstRun) {
+    // Base = max(startDate, today). First occurrence may be the base itself.
+    const base = startDate.getTime() > today.getTime() ? startDate : today;
+    nextDate = new Date(base.getTime());
+
+    switch (data.frequency) {
+      case 'daily':
+        // Use base as-is
+        break;
+      case 'weekly':
+        if (data.daysOfWeek && data.daysOfWeek.length > 0) {
+          nextDate = findNextValidWeekday(base, data.daysOfWeek, true);
+        }
+        break;
+      case 'monthly':
+        if (data.dayOfMonth) {
+          const y = base.getUTCFullYear();
+          const m = base.getUTCMonth();
+          const lastDay = new Date(Date.UTC(y, m + 1, 0)).getUTCDate();
+          const targetDay = Math.min(data.dayOfMonth, lastDay);
+          let candidate = new Date(Date.UTC(y, m, targetDay));
+          if (candidate.getTime() < base.getTime()) {
+            const lastNext = new Date(Date.UTC(y, m + 2, 0)).getUTCDate();
+            candidate = new Date(Date.UTC(y, m + 1, Math.min(data.dayOfMonth, lastNext)));
           }
+          nextDate = candidate;
         }
-        
-        // If no day found in current week, go to next week(s) and use first day
-        if (!foundInSameWeek) {
-          const firstDay = sortedDays[0];
-          const daysUntilNextWeek = 7 - currentDay;
-          const daysToFirstDayOfWeek = firstDay === 0 ? 0 : firstDay; // Sunday is 0
-          const totalDays = daysUntilNextWeek + daysToFirstDayOfWeek + ((data.interval - 1) * 7);
-          nextDate.setDate(nextDate.getDate() + totalDays);
-        }
-      } else {
-        // Fallback to simple weekly increment
-        nextDate.setDate(nextDate.getDate() + (data.interval * 7));
-      }
-      break;
-      
-    case 'monthly':
-      nextDate.setMonth(nextDate.getMonth() + data.interval);
-      
-      if (data.dayOfMonth) {
-        const targetDay = data.dayOfMonth;
-        const lastDayOfMonth = new Date(nextDate.getFullYear(), nextDate.getMonth() + 1, 0).getDate();
-        
-        // Handle end-of-month cases (e.g., day 31 in February)
-        if (targetDay > lastDayOfMonth) {
-          nextDate.setDate(lastDayOfMonth);
+        break;
+    }
+  } else {
+    // Subsequent execution: advance from lastExecution
+    const lastDate = parseDateUTC(data.lastExecution!);
+    nextDate = new Date(lastDate.getTime());
+
+    switch (data.frequency) {
+      case 'daily':
+        nextDate.setUTCDate(nextDate.getUTCDate() + (data.interval || 1));
+        break;
+      case 'weekly':
+        if (data.daysOfWeek && data.daysOfWeek.length > 0) {
+          nextDate = findNextValidWeekday(lastDate, data.daysOfWeek, false);
         } else {
-          nextDate.setDate(targetDay);
+          nextDate.setUTCDate(nextDate.getUTCDate() + 7 * (data.interval || 1));
         }
-      }
-      break;
+        break;
+      case 'monthly':
+        nextDate.setUTCMonth(nextDate.getUTCMonth() + (data.interval || 1));
+        if (data.dayOfMonth) {
+          const lastDay = new Date(Date.UTC(nextDate.getUTCFullYear(), nextDate.getUTCMonth() + 1, 0)).getUTCDate();
+          nextDate.setUTCDate(Math.min(data.dayOfMonth, lastDay));
+        }
+        break;
+    }
   }
 
-  // Check if next execution exceeds end date
   if (data.endDate) {
-    const endDate = new Date(data.endDate);
-    if (nextDate > endDate) {
-      // Return a date far in the future to indicate task should be deactivated
+    const endDate = parseDateUTC(data.endDate);
+    if (nextDate.getTime() > endDate.getTime()) {
       return '2099-12-31';
     }
   }
 
-  return nextDate.toISOString().split('T')[0];
+  return toISODate(nextDate);
 }
