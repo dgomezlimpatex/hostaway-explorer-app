@@ -11,6 +11,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { LaundryShareLink } from '@/hooks/useLaundryShareLinks';
 import { isNotCountCleaner } from '@/utils/laundryExclusions';
+import { fetchLaundryTasksForDateRange } from '@/services/laundryShareService';
 
 interface LaundryShareEditModalProps {
   open: boolean;
@@ -132,14 +133,24 @@ export const LaundryShareEditModal = ({
       if (!shareLink) throw new Error('No share link');
       if (!tasks) throw new Error('No tasks loaded');
 
-      // We also reset the baseline (`original_task_ids`) to match the current
-      // full task list. This prevents the background auto-merge in
-      // LaundryShareManagement from re-adding tasks the admin just excluded:
-      // those tasks would otherwise be considered "already known" only via
-      // `original_task_ids`, but the merge logic now skips anything present
-      // in the baseline. So updating both fields together makes the manual
-      // exclusion permanent until the admin explicitly re-includes tasks.
-      const allCurrentTaskIds = tasks.map(t => t.id);
+      // Use the SAME source as the background auto-merge (`fetchLaundryTasksForDateRange`)
+      // so that the baseline (`original_task_ids`) we store includes every task that the
+      // auto-merge could later see. Otherwise tasks visible to the auto-merge but not to
+      // the modal would be detected as "new" and re-added to the snapshot, undoing the
+      // admin's manual exclusion.
+      const sedeIds = shareLink.filters?.sedeIds
+        || (shareLink.filters?.sedeId ? [shareLink.filters.sedeId] : undefined)
+        || (shareLink.sedeId ? [shareLink.sedeId] : undefined);
+      const autoMergeTaskIds = await fetchLaundryTasksForDateRange(
+        shareLink.dateStart,
+        shareLink.dateEnd,
+        sedeIds,
+      );
+
+      // Baseline = union of what modal sees + what auto-merge would see, so neither
+      // source can re-introduce tasks the admin explicitly removed.
+      const modalTaskIds = tasks.map(t => t.id);
+      const allCurrentTaskIds = Array.from(new Set([...modalTaskIds, ...autoMergeTaskIds]));
 
       const { error } = await supabase
         .from('laundry_share_links')
