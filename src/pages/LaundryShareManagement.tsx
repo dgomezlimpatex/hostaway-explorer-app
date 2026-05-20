@@ -682,20 +682,82 @@ const LaundryShareManagement = () => {
               <RefreshCw className="h-5 w-5 animate-spin text-muted-foreground" />
             </div>
           ) : activeLinks.length > 0 ? (
-            <div className="space-y-2">
-              {activeLinks.map((link) => (
-                <LinkCard
-                  key={link.id}
-                  link={link}
-                  highlight={highlightedId === link.id}
-                  onEdit={() => handleEditClick(link)}
-                  onCopy={() => handleCopyLink(link.token)}
-                  onOpen={() => openExternalLink(link.token)}
-                  onDelete={() => handleDeleteClick(link)}
-                  onApplyChanges={(ids) => handleApplyChanges(link.id, ids)}
-                  onAutoMergeNewTasks={(ids, existing, original) => handleAutoMergeNewTasks(link.id, ids, existing, original)}
-                />
-              ))}
+            <div className="space-y-5">
+              {/* Today */}
+              {todayLinks.length > 0 && (
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2 px-1">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-primary">Hoy</span>
+                    <div className="h-px flex-1 bg-border" />
+                  </div>
+                  {todayLinks.map((link) => (
+                    <LinkCard
+                      key={link.id}
+                      link={link}
+                      highlight={highlightedId === link.id}
+                      defaultOpen
+                      onEdit={() => handleEditClick(link)}
+                      onCopy={() => handleCopyLink(link.token)}
+                      onOpen={() => openExternalLink(link.token)}
+                      onDelete={() => handleDeleteClick(link)}
+                      onApplyChanges={(ids) => handleApplyChanges(link.id, ids)}
+                      onAutoMergeNewTasks={(ids, existing, original) => handleAutoMergeNewTasks(link.id, ids, existing, original)}
+                    />
+                  ))}
+                </div>
+              )}
+
+              {/* Upcoming */}
+              {upcomingLinks.length > 0 && (
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2 px-1">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Próximos · {upcomingLinks.length}</span>
+                    <div className="h-px flex-1 bg-border" />
+                  </div>
+                  {upcomingLinks.map((link) => (
+                    <LinkCard
+                      key={link.id}
+                      link={link}
+                      highlight={highlightedId === link.id}
+                      onEdit={() => handleEditClick(link)}
+                      onCopy={() => handleCopyLink(link.token)}
+                      onOpen={() => openExternalLink(link.token)}
+                      onDelete={() => handleDeleteClick(link)}
+                      onApplyChanges={(ids) => handleApplyChanges(link.id, ids)}
+                      onAutoMergeNewTasks={(ids, existing, original) => handleAutoMergeNewTasks(link.id, ids, existing, original)}
+                    />
+                  ))}
+                </div>
+              )}
+
+              {/* Past */}
+              {pastLinks.length > 0 && (
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2 px-1">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Pasados · {pastLinks.length}</span>
+                    <div className="h-px flex-1 bg-border" />
+                  </div>
+                  {pastLinks.map((link) => (
+                    <LinkCard
+                      key={link.id}
+                      link={link}
+                      highlight={highlightedId === link.id}
+                      onEdit={() => handleEditClick(link)}
+                      onCopy={() => handleCopyLink(link.token)}
+                      onOpen={() => openExternalLink(link.token)}
+                      onDelete={() => handleDeleteClick(link)}
+                      onApplyChanges={(ids) => handleApplyChanges(link.id, ids)}
+                      onAutoMergeNewTasks={(ids, existing, original) => handleAutoMergeNewTasks(link.id, ids, existing, original)}
+                    />
+                  ))}
+                </div>
+              )}
+
+              {todayLinks.length === 0 && upcomingLinks.length === 0 && pastLinks.length === 0 && (
+                <div className="rounded-lg border border-dashed py-8 text-center">
+                  <p className="text-sm text-muted-foreground">Sin enlaces activos en los filtros</p>
+                </div>
+              )}
             </div>
           ) : search ? (
             <div className="rounded-lg border border-dashed py-8 text-center">
@@ -708,11 +770,12 @@ const LaundryShareManagement = () => {
               </div>
               <p className="text-sm font-medium mb-0.5">Sin enlaces activos</p>
               <p className="text-xs text-muted-foreground">
-                Usa los accesos rápidos de Hoy o Mañana para crear tu primer enlace
+                Genera tu primer enlace de reparto desde el botón superior
               </p>
             </div>
           )}
         </div>
+
 
         {/* Expired Links (collapsible) */}
         {expiredLinks.length > 0 && (
