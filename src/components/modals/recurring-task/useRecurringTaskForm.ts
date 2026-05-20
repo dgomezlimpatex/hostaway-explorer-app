@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { RecurringTask } from '@/types/recurring';
 import { Client } from '@/types/client';
 import { Property } from '@/types/property';
