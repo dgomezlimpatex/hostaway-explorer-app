@@ -524,7 +524,22 @@ const LaundryShareManagement = () => {
     );
   }, [allActive, search]);
 
+  // Today's link covers today, past = older than today (dateStart < today)
+  const todayLinks = useMemo(
+    () => activeLinks.filter(l => l.dateStart <= todayStr && l.dateEnd >= todayStr),
+    [activeLinks, todayStr]
+  );
+  const pastLinks = useMemo(
+    () => activeLinks.filter(l => l.dateEnd < todayStr),
+    [activeLinks, todayStr]
+  );
+  const upcomingLinks = useMemo(
+    () => activeLinks.filter(l => l.dateStart > todayStr),
+    [activeLinks, todayStr]
+  );
+
   const showSearch = allActive.length > 5;
+
 
   return (
     <div className="min-h-screen bg-muted/30">
