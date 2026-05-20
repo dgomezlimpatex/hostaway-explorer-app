@@ -14,7 +14,7 @@ import {
   RefreshCw,
   Pencil,
   AlertTriangle,
-  Share2,
+  Share2 as _Share2,
   ArrowLeft,
   LinkIcon,
   Sparkles,
