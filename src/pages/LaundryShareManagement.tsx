@@ -232,132 +232,156 @@ const LinkCard = ({
     }
   };
 
+  const preparedOnlyPercent = total > 0 ? Math.round((stats.prepared / total) * 100) : 0;
+  const isCompleted = total > 0 && stats.delivered === total;
+
   return (
     <div 
       className={cn(
-        'rounded-lg border bg-card transition-all',
-        highlight && 'ring-2 ring-blue-500/50 border-blue-500/30',
+        'bg-card border border-border rounded-2xl shadow-sm overflow-hidden group transition-all hover:shadow-md',
+        highlight && 'ring-2 ring-primary/40 border-primary/40',
       )}
     >
       {/* Body */}
-      <div className="p-3 space-y-2.5">
-        {/* Line 1: date + status chips + actions */}
-        <div className="flex items-center gap-2">
-          <HealthDot link={link} changes={changes} />
-          <h3 className="font-medium text-sm truncate">
-            {formatDateRange(link.dateStart, link.dateEnd)}
-          </h3>
-          {link.isPermanent ? (
-            <Badge className="bg-primary/10 text-primary border-0 text-[10px] py-0 px-1.5 h-5 font-medium">
-              <Sparkles className="h-2.5 w-2.5 mr-0.5" />
-              Permanente
-            </Badge>
-          ) : (
-            <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground">
-              <Clock className="h-3 w-3" />
-              {formatExpirationStatus(link.expiresAt, link.isPermanent)}
-            </span>
-          )}
-          {hasRemovedTasks && (
-            <button
-              onClick={handleApplyRemoved}
-              disabled={applying}
-              className="ml-auto inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 text-[11px] font-medium hover:bg-amber-500/20 transition-colors"
-              title="Hay tareas que ya no existen. Pulsa para sincronizar."
-            >
-              {applying ? <Loader2 className="h-3 w-3 animate-spin" /> : <AlertTriangle className="h-3 w-3" />}
-              {applying ? 'Sincronizando' : `${changes!.removedTasks.length} eliminada${changes!.removedTasks.length > 1 ? 's' : ''}`}
-            </button>
-          )}
-          <div className={cn('flex items-center gap-0.5', !hasRemovedTasks && 'ml-auto')}>
-            <TooltipProvider delayDuration={100}>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button variant="ghost" size="icon" className="h-7 w-7 min-h-0 min-w-0" onClick={onEdit}>
-                    <Pencil className="h-3.5 w-3.5" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>Editar tareas incluidas</TooltipContent>
-              </Tooltip>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button variant="ghost" size="icon" className="h-7 w-7 min-h-0 min-w-0" onClick={onOpen}>
-                    <ExternalLink className="h-3.5 w-3.5" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>Abrir</TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
+      <div className="p-5">
+        {/* Header row */}
+        <div className="flex justify-between items-start gap-3 mb-4">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 mb-1.5">
+              <HealthDot link={link} changes={changes} />
+              <h3 className="font-bold text-foreground text-base leading-tight truncate">
+                {formatDateRange(link.dateStart, link.dateEnd)}
+              </h3>
+            </div>
+            {link.isPermanent ? (
+              <span className="inline-flex items-center gap-1.5 text-[11px] font-medium bg-primary/10 text-primary px-2 py-1 rounded-md w-fit">
+                <Sparkles className="h-3 w-3" />
+                Enlace permanente
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground bg-muted/60 px-2 py-1 rounded-md w-fit">
+                <Clock className="h-3 w-3" />
+                {formatExpirationStatus(link.expiresAt, link.isPermanent)}
+              </span>
+            )}
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            {hasRemovedTasks && (
+              <button
+                onClick={handleApplyRemoved}
+                disabled={applying}
+                className="px-2.5 py-1.5 bg-amber-50 text-amber-700 rounded-lg text-[11px] font-bold border border-amber-100 flex items-center gap-1.5 hover:bg-amber-100 transition-colors dark:bg-amber-500/10 dark:text-amber-300 dark:border-amber-500/20"
+                title="Hay tareas que ya no existen. Pulsa para sincronizar."
+              >
+                {applying ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <AlertTriangle className="h-3.5 w-3.5" />
+                )}
+                {applying ? 'Sincronizando' : `${changes!.removedTasks.length} eliminada${changes!.removedTasks.length > 1 ? 's' : ''}`}
+              </button>
+            )}
+            <div className="flex items-center bg-muted/40 p-0.5 rounded-lg border border-border/60">
+              <TooltipProvider delayDuration={100}>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button variant="ghost" size="icon" className="h-7 w-7 min-h-0 min-w-0 rounded-md hover:bg-background" onClick={onEdit}>
+                      <Pencil className="h-3.5 w-3.5" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Editar tareas incluidas</TooltipContent>
+                </Tooltip>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button variant="ghost" size="icon" className="h-7 w-7 min-h-0 min-w-0 rounded-md hover:bg-background" onClick={onOpen}>
+                      <ExternalLink className="h-3.5 w-3.5" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Abrir</TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </div>
           </div>
         </div>
 
-        {/* Line 2: properties */}
-        <ShareLinkProperties 
-          dateStart={link.dateStart} 
-          dateEnd={link.dateEnd} 
-          snapshotTaskIds={link.snapshotTaskIds}
-        />
+        {/* Properties */}
+        <div className="mb-5">
+          <ShareLinkProperties 
+            dateStart={link.dateStart} 
+            dateEnd={link.dateEnd} 
+            snapshotTaskIds={link.snapshotTaskIds}
+          />
+        </div>
 
-        {/* Line 3: progress + stats */}
+        {/* Progress */}
         {total > 0 && (
-          <div className="space-y-1.5">
-            <Progress 
-              value={deliveredPercent} 
-              className="h-1 bg-muted"
-              indicatorClassName={cn(
-                'bg-gradient-to-r from-blue-500 to-emerald-500',
-                deliveredPercent === 100 && 'from-emerald-500 to-emerald-500',
-              )}
-            />
-            <div className="flex items-center gap-3 text-[11px] text-muted-foreground">
-              <span className="font-medium text-foreground">{total}</span>
-              <span className="text-blue-600 dark:text-blue-400">{preparedCount} prep.</span>
-              <span className="text-emerald-600 dark:text-emerald-400">{stats.delivered} entreg.</span>
+          <div className="space-y-2.5">
+            <div className="flex justify-between items-end text-xs">
+              <div className="flex gap-4 font-medium">
+                <span className="text-muted-foreground">
+                  Total <strong className="text-foreground font-bold">{total}</strong>
+                </span>
+                <span className="text-blue-600 dark:text-blue-400">{preparedCount} prep.</span>
+                <span className="text-emerald-600 dark:text-emerald-400">{stats.delivered} entreg.</span>
+              </div>
               <span className={cn(
-                'ml-auto font-semibold',
-                deliveredPercent === 100 ? 'text-emerald-600 dark:text-emerald-400' : 'text-foreground',
+                'font-extrabold',
+                isCompleted ? 'text-emerald-600 dark:text-emerald-400' : 'text-foreground',
               )}>
                 {deliveredPercent}%
               </span>
+            </div>
+            <div className="w-full h-2 bg-muted rounded-full overflow-hidden flex">
+              <div 
+                className="bg-blue-500 h-full transition-all" 
+                style={{ width: `${preparedOnlyPercent}%` }}
+              />
+              <div 
+                className="bg-emerald-500 h-full border-l border-background transition-all"
+                style={{ width: `${deliveredPercent}%` }}
+              />
             </div>
           </div>
         )}
       </div>
 
       {/* Footer: URL + actions */}
-      <div className="flex items-center gap-1 px-3 py-2 border-t bg-muted/20">
+      <div className="px-5 py-3 bg-muted/30 border-t border-border/60 flex items-center justify-between gap-3">
         <button 
           onClick={onCopy}
-          className="flex-1 flex items-center gap-1.5 px-2 py-1 rounded hover:bg-muted/60 transition-colors text-left min-w-0"
+          className="flex items-center gap-2 truncate flex-1 min-w-0 group/link text-left"
         >
-          <LinkIcon className="h-3 w-3 text-muted-foreground shrink-0" />
-          <span className="text-[11px] font-mono text-muted-foreground truncate">
+          <LinkIcon className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+          <span className="text-[11px] font-mono text-muted-foreground truncate group-hover/link:text-primary transition-colors">
             {getShareLinkUrl(link.token).replace('https://', '')}
           </span>
         </button>
-        <TooltipProvider delayDuration={100}>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-7 w-7 min-h-0 min-w-0" onClick={onCopy}>
-                <Copy className="h-3.5 w-3.5" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>Copiar enlace</TooltipContent>
-          </Tooltip>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button 
-                variant="ghost" 
-                size="icon" 
-                className="h-7 w-7 min-h-0 min-w-0 text-destructive hover:text-destructive hover:bg-destructive/10"
-                onClick={onDelete}
-              >
-                <Trash2 className="h-3.5 w-3.5" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>Desactivar</TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
+        <div className="flex items-center gap-1.5 shrink-0">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={onCopy}
+            className="h-7 px-3 text-[11px] font-bold rounded-lg hover:border-primary/40 hover:text-primary"
+          >
+            <Copy className="h-3 w-3 mr-1" />
+            Copiar
+          </Button>
+          <TooltipProvider delayDuration={100}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="h-7 w-7 min-h-0 min-w-0 text-muted-foreground hover:text-destructive"
+                  onClick={onDelete}
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Desactivar</TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        </div>
       </div>
     </div>
   );
