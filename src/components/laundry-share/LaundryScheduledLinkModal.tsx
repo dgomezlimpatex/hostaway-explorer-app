@@ -5,6 +5,7 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Copy, Check, Loader2, Calendar, Truck, Package, ExternalLink } from 'lucide-react';
 import { useLaundryShareLinks } from '@/hooks/useLaundryShareLinks';
+import { isShareLinkExpired } from '@/services/laundryShareService';
 import { copyShareLinkToClipboard, getShareLinkUrl } from '@/services/laundryShareService';
 import { fetchTasksForDates } from '@/services/laundryScheduleService';
 import { useToast } from '@/hooks/use-toast';
@@ -28,7 +29,16 @@ export const LaundryScheduledLinkModal = ({
 }: LaundryScheduledLinkModalProps) => {
   const { toast } = useToast();
   const { activeSede } = useSede();
-  const { createShareLink } = useLaundryShareLinks();
+  const { shareLinks, createShareLink } = useLaundryShareLinks();
+
+  // Find existing active link covering the selected day
+  const existingLinkForDay = (date: string) =>
+    (shareLinks || []).find(
+      (l) =>
+        !isShareLinkExpired(l.expiresAt) &&
+        l.dateStart <= date &&
+        l.dateEnd >= date
+    );
 
   const [deliveryDate, setDeliveryDate] = useState<string>(() =>
     format(preselectedDate || new Date(), 'yyyy-MM-dd')
@@ -82,6 +92,17 @@ export const LaundryScheduledLinkModal = ({
       });
       return;
     }
+
+    // Block creation if a link already covers this day
+    if (existingLinkForDay(deliveryDate)) {
+      toast({
+        title: 'Ya existe un enlace para este día',
+        description: 'Solo se permite un enlace por día. Edita o desactiva el existente.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
 
     setIsGenerating(true);
     try {
@@ -237,9 +258,16 @@ export const LaundryScheduledLinkModal = ({
                 </div>
               )}
 
+              {existingLinkForDay(deliveryDate) && (
+                <div className="rounded-lg border border-amber-200 bg-amber-50 dark:bg-amber-500/10 dark:border-amber-500/30 p-3 text-xs text-amber-800 dark:text-amber-300">
+                  Ya existe un enlace activo para este día. Solo se permite un enlace por día — edita o desactiva el existente.
+                </div>
+              )}
+
               <p className="text-xs text-muted-foreground">
                 El enlace estará activo durante {DEFAULT_EXPIRATION_DAYS} días.
               </p>
+
             </>
           ) : (
             /* Generated link display */
@@ -279,8 +307,9 @@ export const LaundryScheduledLinkModal = ({
               </Button>
               <Button
                 onClick={handleGenerate}
-                disabled={isGenerating || !deliveryDate || previewData.count === 0}
+                disabled={isGenerating || !deliveryDate || previewData.count === 0 || !!existingLinkForDay(deliveryDate)}
               >
+
                 {isGenerating ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
