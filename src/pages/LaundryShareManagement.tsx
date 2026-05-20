@@ -514,30 +514,32 @@ const LaundryShareManagement = () => {
   const showSearch = allActive.length > 5;
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-muted/30">
       {/* Sticky header */}
-      <div className="sticky top-0 z-30 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
-        <div className="container mx-auto px-4 max-w-3xl">
-          <div className="flex items-center gap-3 py-3">
-            <Button 
-              variant="ghost" 
-              size="icon"
-              onClick={() => navigate('/')}
-              className="shrink-0 h-9 w-9 min-h-0 min-w-0"
-            >
-              <ArrowLeft className="h-4 w-4" />
-            </Button>
-            <div className="flex-1 min-w-0">
-              <h1 className="text-xl font-semibold truncate leading-tight">Enlaces de Lavandería</h1>
-              <p className="text-xs text-muted-foreground truncate">
-                {activeSede?.nombre || 'Todas las sedes'}
-              </p>
+      <div className="sticky top-0 z-30 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 border-b border-border/60">
+        <div className="container mx-auto px-4 max-w-4xl">
+          <div className="flex items-center justify-between gap-3 py-4">
+            <div className="flex items-center gap-3 min-w-0">
+              <button
+                onClick={() => navigate('/')}
+                className="p-2.5 bg-card hover:bg-muted rounded-xl transition-all border border-border shadow-sm shrink-0 group"
+              >
+                <ArrowLeft className="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors" />
+              </button>
+              <div className="min-w-0">
+                <h1 className="text-xl md:text-2xl font-bold text-foreground leading-tight tracking-tight truncate">
+                  Enlaces de Lavandería
+                </h1>
+                <p className="text-xs md:text-sm text-muted-foreground font-medium truncate">
+                  {activeSede?.nombre || 'Todas las sedes'} · Centro Operativo
+                </p>
+              </div>
             </div>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-9 w-9 min-h-0 min-w-0 shrink-0">
-                  <MoreHorizontal className="h-4 w-4" />
-                </Button>
+                <button className="p-2.5 bg-card hover:bg-muted rounded-xl border border-border shadow-sm text-muted-foreground hover:text-foreground transition-all shrink-0">
+                  <MoreHorizontal className="w-4 h-4" />
+                </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-52">
                 <DropdownMenuItem onClick={() => setConfigModalOpen(true)}>
@@ -560,47 +562,46 @@ const LaundryShareManagement = () => {
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
-          <div className="h-px bg-border/60" />
         </div>
       </div>
 
-      <div className="container mx-auto py-5 px-4 max-w-3xl space-y-5">
+      <div className="container mx-auto py-6 px-4 max-w-4xl space-y-6">
         
         {/* Quick day cards */}
         <QuickDayLinksWidget />
 
-        {/* Generate scheduled link — secondary action */}
-        <Button 
+        {/* Generate scheduled link — primary CTA */}
+        <button 
           onClick={() => setScheduledModalOpen(true)} 
-          variant="outline"
-          size="sm"
-          className="w-full"
+          className="group w-full py-5 border-2 border-dashed border-border rounded-2xl flex items-center justify-center gap-3 text-muted-foreground font-bold hover:border-primary/50 hover:text-primary hover:bg-primary/5 transition-all"
         >
-          <Plus className="h-3.5 w-3.5 mr-1.5" />
-          Generar enlace de reparto personalizado
-        </Button>
+          <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center group-hover:bg-primary/10 transition-colors">
+            <Plus className="w-5 h-5" strokeWidth={2.5} />
+          </div>
+          Generar nuevo enlace de reparto
+        </button>
 
         {/* Active Links */}
-        <div className="space-y-2.5">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Share2 className="h-3.5 w-3.5 text-blue-500" />
-              <h2 className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                Enlaces activos
-              </h2>
-              {allActive.length > 0 && (
-                <span className="text-[11px] text-muted-foreground">· {allActive.length}</span>
-              )}
+        <div className="space-y-4">
+          <div className="flex items-center justify-between border-b border-border pb-3">
+            <div className="flex items-center gap-2.5">
+              <div className="w-2 h-2 rounded-full bg-primary" />
+              <span className="text-xs font-bold uppercase tracking-[0.1em] text-muted-foreground">
+                Enlaces Activos
+                {allActive.length > 0 && (
+                  <span className="ml-1 text-foreground">· {allActive.length}</span>
+                )}
+              </span>
             </div>
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              className="h-7 w-7 min-h-0 min-w-0"
+            <button
               onClick={() => refetch()}
+              className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground hover:text-primary transition-colors"
             >
-              <RefreshCw className="h-3.5 w-3.5" />
-            </Button>
+              <RefreshCw className="w-3.5 h-3.5" />
+              Actualizar
+            </button>
           </div>
+
 
           {showSearch && (
             <div className="relative">
