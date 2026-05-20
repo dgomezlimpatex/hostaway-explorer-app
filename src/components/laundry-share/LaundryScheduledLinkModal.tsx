@@ -29,7 +29,16 @@ export const LaundryScheduledLinkModal = ({
 }: LaundryScheduledLinkModalProps) => {
   const { toast } = useToast();
   const { activeSede } = useSede();
-  const { createShareLink } = useLaundryShareLinks();
+  const { shareLinks, createShareLink } = useLaundryShareLinks();
+
+  // Find existing active link covering the selected day
+  const existingLinkForDay = (date: string) =>
+    (shareLinks || []).find(
+      (l) =>
+        !isShareLinkExpired(l.expiresAt) &&
+        l.dateStart <= date &&
+        l.dateEnd >= date
+    );
 
   const [deliveryDate, setDeliveryDate] = useState<string>(() =>
     format(preselectedDate || new Date(), 'yyyy-MM-dd')
