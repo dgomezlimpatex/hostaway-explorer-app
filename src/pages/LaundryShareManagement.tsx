@@ -106,16 +106,19 @@ const ShareLinkProperties = ({
   if (!properties || properties.length === 0) return null;
 
   return (
-    <div className="flex flex-wrap gap-1">
+    <div className="flex flex-wrap gap-1.5">
       {properties.slice(0, 8).map((code, i) => (
-        <Badge key={i} variant="outline" className="text-[10px] font-normal py-0 px-1.5 h-5 bg-background">
+        <span
+          key={i}
+          className="px-2 py-0.5 bg-muted text-muted-foreground text-[10px] font-bold rounded uppercase tracking-wider"
+        >
           {code}
-        </Badge>
+        </span>
       ))}
       {properties.length > 8 && (
-        <Badge variant="outline" className="text-[10px] font-normal py-0 px-1.5 h-5 bg-muted">
-          +{properties.length - 8}
-        </Badge>
+        <span className="px-2 py-0.5 border border-border text-muted-foreground/70 text-[10px] font-bold rounded uppercase tracking-wider">
+          +{properties.length - 8} más
+        </span>
       )}
     </div>
   );
