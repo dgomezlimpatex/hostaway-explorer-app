@@ -1,18 +1,15 @@
-import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Copy, Check, Link, Loader2, Calendar, Truck, Package, ExternalLink } from 'lucide-react';
+import { Copy, Check, Loader2, Calendar, Truck, Package, ExternalLink } from 'lucide-react';
 import { useLaundryShareLinks } from '@/hooks/useLaundryShareLinks';
-import { useDeliveryDayOptions, DeliveryDayOption } from '@/hooks/useLaundrySchedule';
-import { copyShareLinkToClipboard, getShareLinkUrl, calculateExpirationDate } from '@/services/laundryShareService';
+import { copyShareLinkToClipboard, getShareLinkUrl } from '@/services/laundryShareService';
 import { fetchTasksForDates } from '@/services/laundryScheduleService';
 import { useToast } from '@/hooks/use-toast';
 import { useSede } from '@/contexts/SedeContext';
-import { format, addDays, startOfWeek } from 'date-fns';
+import { format, addDays } from 'date-fns';
 import { es } from 'date-fns/locale';
 
 interface LaundryScheduledLinkModalProps {
@@ -21,7 +18,8 @@ interface LaundryScheduledLinkModalProps {
   preselectedDate?: Date;
 }
 
-type ExpirationOption = 'day' | 'week' | 'month' | 'permanent';
+// Default link duration (días)
+const DEFAULT_EXPIRATION_DAYS = 30;
 
 export const LaundryScheduledLinkModal = ({
   open,
@@ -31,20 +29,16 @@ export const LaundryScheduledLinkModal = ({
   const { toast } = useToast();
   const { activeSede } = useSede();
   const { createShareLink } = useLaundryShareLinks();
-  const [weekOffset, setWeekOffset] = useState(0);
-  const { options: deliveryOptions, isLoading: optionsLoading } = useDeliveryDayOptions(weekOffset);
-  
-  const [selectedDayIndex, setSelectedDayIndex] = useState<number>(0);
-  const [expiration, setExpiration] = useState<ExpirationOption>('week');
+
+  const [deliveryDate, setDeliveryDate] = useState<string>(() =>
+    format(preselectedDate || new Date(), 'yyyy-MM-dd')
+  );
   const [generatedLink, setGeneratedLink] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [previewData, setPreviewData] = useState<{ count: number; loading: boolean }>({ count: 0, loading: false });
-  
-  // Track last fetched key to prevent duplicate calls
+
   const lastFetchKey = useRef<string>('');
-  // Track if we've initialized the selection for this modal opening
-  const hasInitialized = useRef(false);
 
   // Reset state when modal opens
   useEffect(() => {
@@ -53,55 +47,22 @@ export const LaundryScheduledLinkModal = ({
       setCopied(false);
       setPreviewData({ count: 0, loading: false });
       lastFetchKey.current = '';
-      hasInitialized.current = false;
-      
-      // Only reset selection if no preselected date
-      if (!preselectedDate) {
-        setSelectedDayIndex(0);
-        setWeekOffset(0);
-      }
+      setDeliveryDate(format(preselectedDate || new Date(), 'yyyy-MM-dd'));
     }
   }, [open, preselectedDate]);
 
-  // Handle preselected date matching - only once when options load
+  // Load preview count when date changes
   useEffect(() => {
-    if (!open || hasInitialized.current || deliveryOptions.length === 0) return;
-    
-    if (preselectedDate) {
-      const targetDateStr = format(preselectedDate, 'yyyy-MM-dd');
-      const matchingIndex = deliveryOptions.findIndex(opt => 
-        format(opt.deliveryDate, 'yyyy-MM-dd') === targetDateStr
-      );
-      if (matchingIndex >= 0) {
-        setSelectedDayIndex(matchingIndex);
-      }
-    }
-    hasInitialized.current = true;
-  }, [open, preselectedDate, deliveryOptions]);
+    if (!deliveryDate || !activeSede?.id || !open) return;
 
-  // Get selected delivery option
-  const selectedOption = deliveryOptions[selectedDayIndex];
-
-  // Load preview data when selection changes - use stable dependencies
-  useEffect(() => {
-    if (!selectedOption || !activeSede?.id || !open) return;
-    
-    // Create a stable key to check if we need to refetch
-    const collectionDatesStr = selectedOption.collectionDates.map(d => format(d, 'yyyy-MM-dd')).join(',');
-    const fetchKey = `${collectionDatesStr}-${activeSede.id}`;
-    
-    // Skip if we already fetched this data
+    const fetchKey = `${deliveryDate}-${activeSede.id}`;
     if (fetchKey === lastFetchKey.current) return;
     lastFetchKey.current = fetchKey;
 
     const loadPreview = async () => {
       setPreviewData({ count: 0, loading: true });
-      
       try {
-        const dates = collectionDatesStr.split(',');
-        console.log('LaundryScheduledLinkModal: Fetching tasks for dates:', dates, 'sedeId:', activeSede.id);
-        const tasks = await fetchTasksForDates(dates, activeSede.id);
-        console.log('LaundryScheduledLinkModal: Found tasks:', tasks.length, tasks.map(t => ({ id: t.taskId, date: t.date, code: t.propertyCode })));
+        const tasks = await fetchTasksForDates([deliveryDate], activeSede.id);
         setPreviewData({ count: tasks.length, loading: false });
       } catch (error) {
         console.error('Error loading preview:', error);
@@ -110,64 +71,49 @@ export const LaundryScheduledLinkModal = ({
     };
 
     loadPreview();
-  }, [selectedDayIndex, weekOffset, activeSede?.id, open, deliveryOptions.length]);
-
-  // Week options
-  const weekOptions = useMemo(() => {
-    const today = new Date();
-    return [
-      { value: 0, label: 'Esta semana' },
-      { value: 1, label: 'Próxima semana' },
-      { value: 2, label: `Semana del ${format(addDays(startOfWeek(today, { weekStartsOn: 1 }), 14), 'd MMM', { locale: es })}` },
-    ];
-  }, []);
+  }, [deliveryDate, activeSede?.id, open]);
 
   const handleGenerate = async () => {
-    if (!activeSede?.id || !selectedOption) {
+    if (!activeSede?.id || !deliveryDate) {
       toast({
         title: 'Error',
-        description: 'No hay día de reparto seleccionado',
+        description: 'No hay fecha de reparto seleccionada',
         variant: 'destructive',
       });
       return;
     }
-    
+
     setIsGenerating(true);
     try {
-      const dates = selectedOption.collectionDates.map(d => format(d, 'yyyy-MM-dd'));
-      const tasks = await fetchTasksForDates(dates, activeSede.id);
+      const tasks = await fetchTasksForDates([deliveryDate], activeSede.id);
       const taskIds = tasks.map(t => t.taskId);
-      
+
       if (taskIds.length === 0) {
         toast({
           title: 'Sin tareas',
-          description: 'No hay tareas de lavandería para las fechas seleccionadas',
+          description: 'No hay tareas de lavandería para la fecha seleccionada',
           variant: 'destructive',
         });
         setIsGenerating(false);
         return;
       }
 
-      const expiresAt = calculateExpirationDate(expiration);
-      const dateStart = format(selectedOption.collectionDates[0], 'yyyy-MM-dd');
-      const dateEnd = format(selectedOption.collectionDates[selectedOption.collectionDates.length - 1], 'yyyy-MM-dd');
-      
+      const expiresAt = addDays(new Date(), DEFAULT_EXPIRATION_DAYS).toISOString();
+
       const result = await createShareLink.mutateAsync({
-        dateStart,
-        dateEnd,
+        dateStart: deliveryDate,
+        dateEnd: deliveryDate,
         expiresAt,
-        isPermanent: expiration === 'permanent',
+        isPermanent: false,
         taskIds,
         allTaskIds: taskIds,
         sedeId: activeSede.id,
         linkType: 'scheduled',
-        filters: { 
-          deliveryDay: selectedOption.schedule.dayOfWeek,
-          collectionDates: dates,
+        filters: {
+          collectionDates: [deliveryDate],
         },
       });
 
-      // Use the scheduled route for scheduled links
       const url = getShareLinkUrl(result.token, true);
       setGeneratedLink(url);
     } catch (error) {
@@ -179,10 +125,8 @@ export const LaundryScheduledLinkModal = ({
 
   const handleCopy = async () => {
     if (!generatedLink) return;
-    
     const token = generatedLink.split('/').pop() || '';
     const success = await copyShareLinkToClipboard(token, true);
-    
     if (success) {
       setCopied(true);
       toast({
@@ -199,9 +143,11 @@ export const LaundryScheduledLinkModal = ({
     onOpenChange(false);
   };
 
+  const parsedDate = deliveryDate ? new Date(deliveryDate + 'T00:00:00') : null;
+
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Truck className="h-5 w-5" />
@@ -215,78 +161,24 @@ export const LaundryScheduledLinkModal = ({
         <div className="space-y-5 py-4">
           {!generatedLink ? (
             <>
-              {/* Week selector */}
+              {/* Date picker */}
               <div className="space-y-2">
-                <Label>Semana</Label>
-                <Select 
-                  value={weekOffset.toString()} 
-                  onValueChange={(v) => {
-                    setWeekOffset(parseInt(v));
-                    setSelectedDayIndex(0);
-                  }}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {weekOptions.map(opt => (
-                      <SelectItem key={opt.value} value={opt.value.toString()}>
-                        {opt.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Delivery day selector */}
-              <div className="space-y-3">
-                <Label>Día de reparto</Label>
-                {optionsLoading ? (
-                  <div className="flex items-center gap-2 text-muted-foreground">
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    Cargando días...
-                  </div>
-                ) : deliveryOptions.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">
-                    No hay días de reparto configurados
-                  </p>
-                ) : (
-                  <RadioGroup
-                    value={selectedDayIndex.toString()}
-                    onValueChange={(v) => setSelectedDayIndex(parseInt(v))}
-                    className="grid gap-2"
-                  >
-                    {deliveryOptions.map((option, index) => (
-                      <div
-                        key={index}
-                        className="flex items-center space-x-3 rounded-lg border p-3 cursor-pointer hover:bg-muted/50 transition-colors"
-                        onClick={() => setSelectedDayIndex(index)}
-                      >
-                        <RadioGroupItem value={index.toString()} id={`day-${index}`} />
-                        <div className="flex-1">
-                          <Label 
-                            htmlFor={`day-${index}`} 
-                            className="font-medium cursor-pointer"
-                          >
-                            {option.label}
-                          </Label>
-                          <p className="text-sm text-muted-foreground">
-                            {option.description}
-                          </p>
-                        </div>
-                      </div>
-                    ))}
-                  </RadioGroup>
-                )}
+                <Label htmlFor="delivery-date">Fecha de reparto</Label>
+                <Input
+                  id="delivery-date"
+                  type="date"
+                  value={deliveryDate}
+                  onChange={(e) => setDeliveryDate(e.target.value)}
+                />
               </div>
 
               {/* Preview */}
-              {selectedOption && (
+              {parsedDate && (
                 <div className="rounded-lg bg-muted p-4 space-y-2">
                   <div className="flex items-center gap-2">
                     <Calendar className="h-4 w-4 text-primary" />
-                    <span className="font-medium">
-                      Reparto: {format(selectedOption.deliveryDate, "EEEE d 'de' MMMM", { locale: es })}
+                    <span className="font-medium capitalize">
+                      {format(parsedDate, "EEEE d 'de' MMMM yyyy", { locale: es })}
                     </span>
                   </div>
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -303,40 +195,9 @@ export const LaundryScheduledLinkModal = ({
                 </div>
               )}
 
-              {/* Expiration options */}
-              <div className="space-y-3">
-                <Label>Duración del enlace</Label>
-                <RadioGroup
-                  value={expiration}
-                  onValueChange={(value) => setExpiration(value as ExpirationOption)}
-                  className="grid grid-cols-2 gap-2"
-                >
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="day" id="exp-day" />
-                    <Label htmlFor="exp-day" className="font-normal cursor-pointer">
-                      24 horas
-                    </Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="week" id="exp-week" />
-                    <Label htmlFor="exp-week" className="font-normal cursor-pointer">
-                      1 semana
-                    </Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="month" id="exp-month" />
-                    <Label htmlFor="exp-month" className="font-normal cursor-pointer">
-                      1 mes
-                    </Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="permanent" id="exp-permanent" />
-                    <Label htmlFor="exp-permanent" className="font-normal cursor-pointer">
-                      Permanente
-                    </Label>
-                  </div>
-                </RadioGroup>
-              </div>
+              <p className="text-xs text-muted-foreground">
+                El enlace estará activo durante {DEFAULT_EXPIRATION_DAYS} días.
+              </p>
             </>
           ) : (
             /* Generated link display */
@@ -374,9 +235,9 @@ export const LaundryScheduledLinkModal = ({
               <Button variant="outline" onClick={handleClose}>
                 Cancelar
               </Button>
-              <Button 
-                onClick={handleGenerate} 
-                disabled={isGenerating || !selectedOption || previewData.count === 0}
+              <Button
+                onClick={handleGenerate}
+                disabled={isGenerating || !deliveryDate || previewData.count === 0}
               >
                 {isGenerating ? (
                   <>
@@ -393,8 +254,8 @@ export const LaundryScheduledLinkModal = ({
               <Button variant="outline" onClick={handleClose}>
                 Cerrar
               </Button>
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 onClick={() => generatedLink && window.open(generatedLink, '_blank')}
               >
                 <ExternalLink className="mr-2 h-4 w-4" />
