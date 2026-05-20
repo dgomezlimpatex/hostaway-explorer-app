@@ -30,7 +30,7 @@ import { useLaundryTracking } from '@/hooks/useLaundryTracking';
 import { LaundryShareEditModal } from '@/components/laundry-share/LaundryShareEditModal';
 import { LaundryScheduledLinkModal } from '@/components/laundry-share/LaundryScheduledLinkModal';
 import { LaundryScheduleConfigModal } from '@/components/laundry-share/LaundryScheduleConfigModal';
-import { QuickDayLinksWidget } from '@/components/laundry-share/QuickDayLinksWidget';
+
 import { 
   copyShareLinkToClipboard, 
   getShareLinkUrl, 
