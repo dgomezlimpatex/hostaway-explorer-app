@@ -565,8 +565,6 @@ const LaundryShareManagement = () => {
 
       <div className="container mx-auto py-6 px-4 max-w-4xl space-y-6">
         
-        {/* Quick day cards */}
-        <QuickDayLinksWidget />
 
         {/* Generate scheduled link — primary CTA */}
         <button 
