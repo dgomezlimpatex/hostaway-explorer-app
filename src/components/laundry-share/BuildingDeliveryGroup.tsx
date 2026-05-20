@@ -112,29 +112,38 @@ export const BuildingDeliveryGroup = ({
                 const isDelivered = status === 'delivered';
                 const { textiles, amenities } = apt;
 
-                // Build items list with full names
+                // Build items list with full names - ordered as requested
                 const allItems: string[] = [];
-                
-                // Textiles
+
+                // 1º Bolsas de basura
+                if (amenities.trashBags > 0) allItems.push(`${amenities.trashBags} bolsas basura`);
+                // 2º Amenities de baño
+                if (amenities.bathroomAmenities > 0) allItems.push(`${amenities.bathroomAmenities} amenities baño`);
+                // 3º Amenities de cocina
+                if (amenities.kitchenAmenities > 0) allItems.push(`${amenities.kitchenAmenities} amenities cocina`);
+                // 4º Amenities alimentarios (kit alimentario)
+                if (amenities.foodKit > 0) allItems.push(`${amenities.foodKit} kit alimentario`);
+                // 5º Fundas de almohada
+                if (textiles.pillowCases > 0) allItems.push(`${textiles.pillowCases} fundas almohada`);
+                // 6º Alfombrines de ducha
+                if (textiles.bathMats > 0) allItems.push(`${textiles.bathMats} alfombrines`);
+                // 7º Toallas pequeñas
+                if (textiles.towelsSmall > 0) allItems.push(`${textiles.towelsSmall} toallas pequeñas`);
+                // 8º Sábanas (grandes, pequeñas, suite)
                 if (textiles.sheets > 0) allItems.push(`${textiles.sheets} sábanas`);
                 if (textiles.sheetsSmall > 0) allItems.push(`${textiles.sheetsSmall} sábanas pequeñas`);
                 if (textiles.sheetsSuite > 0) allItems.push(`${textiles.sheetsSuite} sábanas suite`);
-                if (textiles.pillowCases > 0) allItems.push(`${textiles.pillowCases} fundas almohada`);
+                // 9º Toallas grandes
                 if (textiles.towelsLarge > 0) allItems.push(`${textiles.towelsLarge} toallas grandes`);
-                if (textiles.towelsSmall > 0) allItems.push(`${textiles.towelsSmall} toallas pequeñas`);
-                if (textiles.bathMats > 0) allItems.push(`${textiles.bathMats} alfombrines`);
-                
-                // Amenities
+
+                // Otros amenities (no incluidos en el orden solicitado)
                 if (amenities.toiletPaper > 0) allItems.push(`${amenities.toiletPaper} papel higiénico`);
                 if (amenities.kitchenPaper > 0) allItems.push(`${amenities.kitchenPaper} papel cocina`);
                 if (amenities.shampoo > 0) allItems.push(`${amenities.shampoo} champú`);
                 if (amenities.conditioner > 0) allItems.push(`${amenities.conditioner} acondicionador`);
                 if (amenities.showerGel > 0) allItems.push(`${amenities.showerGel} gel ducha`);
                 if (amenities.liquidSoap > 0) allItems.push(`${amenities.liquidSoap} jabón líquido`);
-                if (amenities.bathroomAmenities > 0) allItems.push(`${amenities.bathroomAmenities} amenities baño`);
-                if (amenities.kitchenAmenities > 0) allItems.push(`${amenities.kitchenAmenities} amenities cocina`);
                 if (amenities.bathroomAirFreshener > 0) allItems.push(`${amenities.bathroomAirFreshener} ambientador baño`);
-                if (amenities.trashBags > 0) allItems.push(`${amenities.trashBags} bolsas basura`);
                 if (amenities.dishwasherDetergent > 0) allItems.push(`${amenities.dishwasherDetergent} detergente lavavajillas`);
                 if (amenities.kitchenCloths > 0) allItems.push(`${amenities.kitchenCloths} bayetas cocina`);
                 if (amenities.sponges > 0) allItems.push(`${amenities.sponges} estropajos`);
@@ -144,7 +153,6 @@ export const BuildingDeliveryGroup = ({
                 if (amenities.vinegar > 0) allItems.push(`${amenities.vinegar} vinagre`);
                 if (amenities.salt > 0) allItems.push(`${amenities.salt} sal`);
                 if (amenities.sugar > 0) allItems.push(`${amenities.sugar} azúcar`);
-                if (amenities.foodKit > 0) allItems.push(`${amenities.foodKit} kit alimentario`);
 
                 return (
                   <div
@@ -188,12 +196,17 @@ export const BuildingDeliveryGroup = ({
                           )}
                         </div>
                         {allItems.length > 0 && (
-                          <p className={cn(
-                            'text-sm text-muted-foreground mt-1',
+                          <ul className={cn(
+                            'mt-2 space-y-0.5 text-sm text-muted-foreground',
                             isDelivered && 'line-through'
                           )}>
-                            {allItems.join(' · ')}
-                          </p>
+                            {allItems.map((item, idx) => (
+                              <li key={idx} className="flex items-center gap-2">
+                                <span className="h-1 w-1 rounded-full bg-current opacity-60 flex-shrink-0" />
+                                <span>{item}</span>
+                              </li>
+                            ))}
+                          </ul>
                         )}
                       </div>
                       <div className="flex flex-col gap-1 shrink-0">
