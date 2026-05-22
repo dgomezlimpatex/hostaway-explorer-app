@@ -1,37 +1,32 @@
-## Diagnóstico
+# Problema
 
-La tarea recurrente **no se borra de la base de datos**. Se sigue mostrando como "instancia virtual" generada en el cliente a partir de la fila en `recurring_tasks`.
+El modal "Generar Enlace de Reparto" (`LaundryScheduledLinkModal`) tras los últimos cambios solo coge las tareas del propio día de reparto. Ignora la configuración de recogida (p. ej., el reparto de hoy viernes debía incluir las tareas de ayer jueves).
 
-El problema está en `src/hooks/useCalendarData.ts` (líneas ~141-159), donde se filtran las instancias virtuales para no duplicar tareas reales. La clave de deduplicación actual es:
+Causa: el modal llama a `fetchTasksForDates([deliveryDate], …)` y guarda `dateStart = dateEnd = deliveryDate`, sin consultar la configuración de `laundry_delivery_schedule` (que sí define los `collectionDays` previos).
 
-```text
-propertyId + date + startTime         → oculta la recurrente
-cleanerId + date + startTime          → oculta la recurrente
-```
+# Solución
 
-Cuando creas una **tarea nueva en la misma propiedad y mismo día** (y comparten `startTime`, p.ej. ambas a las 11:00), aunque sea para **otra trabajadora**, la clave `propertyId_date_startTime` coincide y la recurrente desaparece del calendario.
+En `src/components/laundry-share/LaundryScheduledLinkModal.tsx`:
 
-La protección real contra duplicados ya la garantiza la tabla `recurring_task_executions` (consultada en `useRecurringTaskInstances`), que registra las fechas en que el cron generó la tarea. La regla extra por `propertyId+startTime` es un fallback agresivo que provoca falsos positivos.
+1. Usar el hook `useLaundryDeliverySchedule` para obtener la configuración del día de reparto seleccionado (matching por `dayOfWeek` del `parsedDate`).
+2. Calcular las fechas reales de recogida con `calculateCollectionDates(parsedDate, schedule)` (ya existente en `useLaundrySchedule.ts`). Si no hay schedule configurado para ese día, fallback al propio `deliveryDate`.
+3. Construir la lista completa de fechas = `[...collectionDates, deliveryDate]` (sin duplicados, formato `yyyy-MM-dd`).
+4. Pasar esa lista a `fetchTasksForDates(...)` tanto en el preview como al generar el enlace.
+5. Al crear el enlace, guardar:
+   - `dateStart` = mínima fecha de la lista (la más antigua de recogida).
+   - `dateEnd` = `deliveryDate`.
+   - `filters.collectionDates` = lista completa (igual que ahora pero con todas las fechas).
+6. Mostrar en el preview las fechas de recogida (texto pequeño tipo "Incluye servicios de: jue 22 + vie 23") para que el admin vea exactamente qué días se incluirán.
+7. Mantener la validación de "un enlace por día" usando `deliveryDate` (no cambia).
 
-## Cambio propuesto
+Con esto `PublicLaundryScheduledView` (que filtra por `dateStart..dateEnd` + `snapshotTaskIds`) ya recibe el rango correcto y todas las tareas del jueves entrarán.
 
-En `src/hooks/useCalendarData.ts`, endurecer la dedup para que **solo** oculte la instancia virtual cuando hay una tarea real que claramente es la materialización de esa recurrente:
+# Verificación
 
-- Clave nueva: `recurringTaskId + date` derivada de las notas autogeneradas (`"Generada automáticamente desde tarea recurrente: <name>"`) o, de forma más simple y robusta, exigir coincidencia de **propertyId + date + startTime + cleanerId**.
-- Eliminar la clave amplia por `propertyId + date + startTime` sin cleaner.
-- Eliminar también la clave amplia por `cleanerId + date + startTime` sin propiedad (también puede ocultar la recurrente si la trabajadora tiene otra tarea distinta a esa misma hora).
+- Hoy viernes: abrir modal → debe mostrar contador con jueves+viernes, generar enlace y verificar que la vista pública lista las tareas del jueves.
+- Día sin configuración previa: debe seguir funcionando con solo el día de reparto.
+- Editar/desactivar: sin cambios.
 
-Resultado: dos tareas distintas en la misma propiedad y día, asignadas a trabajadoras diferentes, coexisten en el calendario. La dedup real frente al cron sigue funcionando vía `recurring_task_executions`.
+# Archivos a modificar
 
-## Archivo a tocar
-
-- `src/hooks/useCalendarData.ts` — solo la lógica de construcción de `existingKeys` y el filtro de `newVirtualTasks` dentro del `useMemo` de `tasks`.
-
-No requiere migraciones, ni cambios en edge functions, ni en otras vistas.
-
-## Verificación
-
-1. Crear/confirmar una tarea recurrente asignada a trabajadora A en una propiedad para hoy.
-2. Crear desde el calendario una tarea nueva en esa misma propiedad y mismo día asignada a trabajadora B (con cualquier hora, incluida la misma).
-3. Confirmar que ambas tarjetas siguen visibles en el calendario, cada una en su fila.
-4. Verificar que cuando el cron genere la tarea recurrente real (misma `recurring_task_id` + fecha), la instancia virtual sí deja de mostrarse (sin duplicado).
+- `src/components/laundry-share/LaundryScheduledLinkModal.tsx` (única edición).
