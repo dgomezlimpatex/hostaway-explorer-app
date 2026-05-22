@@ -221,10 +221,10 @@ export const calculateCollectionDates = (
   const collectionDates: Date[] = [];
   
   schedule.collectionDays.forEach(collectionDay => {
-    // Find the most recent occurrence of this day before delivery
-    let daysBack = (getDay(deliveryDate) - collectionDay + 7) % 7;
-    if (daysBack === 0) daysBack = 7; // Same day means previous week
-    
+    // Find the most recent occurrence of this day on or before delivery
+    // daysBack = 0 means the collection day is the same as the delivery day (valid)
+    const daysBack = (getDay(deliveryDate) - collectionDay + 7) % 7;
+
     const collectionDate = subDays(deliveryDate, daysBack);
     collectionDates.push(collectionDate);
   });
