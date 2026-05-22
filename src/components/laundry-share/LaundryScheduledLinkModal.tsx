@@ -188,7 +188,8 @@ export const LaundryScheduledLinkModal = ({
     onOpenChange(false);
   };
 
-  const parsedDate = deliveryDate ? new Date(deliveryDate + 'T00:00:00') : null;
+
+
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
