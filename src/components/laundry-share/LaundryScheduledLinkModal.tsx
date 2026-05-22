@@ -52,6 +52,22 @@ export const LaundryScheduledLinkModal = ({
 
   const lastFetchKey = useRef<string>('');
 
+  const parsedDate = deliveryDate ? new Date(deliveryDate + 'T00:00:00') : null;
+
+  // Compute all dates to include in the link based on schedule config
+  // for the delivery day-of-week. Falls back to just the delivery date.
+  const fetchDates = useMemo<string[]>(() => {
+    if (!parsedDate) return [];
+    const dow = parsedDate.getDay();
+    const schedule = (schedules || []).find(s => s.dayOfWeek === dow);
+    const dates = new Set<string>([deliveryDate]);
+    if (schedule && schedule.collectionDays?.length) {
+      const collectionDates = calculateCollectionDates(parsedDate, schedule);
+      collectionDates.forEach(d => dates.add(format(d, 'yyyy-MM-dd')));
+    }
+    return Array.from(dates).sort();
+  }, [deliveryDate, schedules, parsedDate]);
+
   // Reset state when modal opens
   useEffect(() => {
     if (open) {
@@ -65,16 +81,16 @@ export const LaundryScheduledLinkModal = ({
 
   // Load preview count when date changes
   useEffect(() => {
-    if (!deliveryDate || !activeSede?.id || !open) return;
+    if (!deliveryDate || !activeSede?.id || !open || fetchDates.length === 0) return;
 
-    const fetchKey = `${deliveryDate}-${activeSede.id}`;
+    const fetchKey = `${fetchDates.join(',')}-${activeSede.id}`;
     if (fetchKey === lastFetchKey.current) return;
     lastFetchKey.current = fetchKey;
 
     const loadPreview = async () => {
       setPreviewData({ count: 0, loading: true });
       try {
-        const tasks = await fetchTasksForDates([deliveryDate], activeSede.id);
+        const tasks = await fetchTasksForDates(fetchDates, activeSede.id);
         setPreviewData({ count: tasks.length, loading: false });
       } catch (error) {
         console.error('Error loading preview:', error);
@@ -83,7 +99,7 @@ export const LaundryScheduledLinkModal = ({
     };
 
     loadPreview();
-  }, [deliveryDate, activeSede?.id, open]);
+  }, [deliveryDate, activeSede?.id, open, fetchDates]);
 
   const handleGenerate = async () => {
     if (!activeSede?.id || !deliveryDate) {
