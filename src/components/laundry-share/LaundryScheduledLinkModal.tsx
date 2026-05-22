@@ -124,13 +124,13 @@ export const LaundryScheduledLinkModal = ({
 
     setIsGenerating(true);
     try {
-      const tasks = await fetchTasksForDates([deliveryDate], activeSede.id);
+      const tasks = await fetchTasksForDates(fetchDates, activeSede.id);
       const taskIds = tasks.map(t => t.taskId);
 
       if (taskIds.length === 0) {
         toast({
           title: 'Sin tareas',
-          description: 'No hay tareas de lavandería para la fecha seleccionada',
+          description: 'No hay tareas de lavandería para las fechas seleccionadas',
           variant: 'destructive',
         });
         setIsGenerating(false);
@@ -139,9 +139,14 @@ export const LaundryScheduledLinkModal = ({
 
       const expiresAt = addDays(new Date(), DEFAULT_EXPIRATION_DAYS).toISOString();
 
+      const dateStart = fetchDates[0];
+      const dateEnd = fetchDates[fetchDates.length - 1] > deliveryDate
+        ? fetchDates[fetchDates.length - 1]
+        : deliveryDate;
+
       const result = await createShareLink.mutateAsync({
-        dateStart: deliveryDate,
-        dateEnd: deliveryDate,
+        dateStart,
+        dateEnd,
         expiresAt,
         isPermanent: false,
         taskIds,
@@ -149,7 +154,8 @@ export const LaundryScheduledLinkModal = ({
         sedeId: activeSede.id,
         linkType: 'scheduled',
         filters: {
-          collectionDates: [deliveryDate],
+          collectionDates: fetchDates,
+          deliveryDate,
         },
       });
 
