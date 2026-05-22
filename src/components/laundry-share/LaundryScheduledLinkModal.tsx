@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -12,6 +12,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useSede } from '@/contexts/SedeContext';
 import { format, addDays } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { useLaundryDeliverySchedule, calculateCollectionDates } from '@/hooks/useLaundrySchedule';
 
 interface LaundryScheduledLinkModalProps {
   open: boolean;
@@ -30,6 +31,7 @@ export const LaundryScheduledLinkModal = ({
   const { toast } = useToast();
   const { activeSede } = useSede();
   const { shareLinks, createShareLink } = useLaundryShareLinks();
+  const { schedules } = useLaundryDeliverySchedule();
 
   // Find existing active link covering the selected day
   const existingLinkForDay = (date: string) =>
@@ -50,6 +52,22 @@ export const LaundryScheduledLinkModal = ({
 
   const lastFetchKey = useRef<string>('');
 
+  const parsedDate = deliveryDate ? new Date(deliveryDate + 'T00:00:00') : null;
+
+  // Compute all dates to include in the link based on schedule config
+  // for the delivery day-of-week. Falls back to just the delivery date.
+  const fetchDates = useMemo<string[]>(() => {
+    if (!parsedDate) return [];
+    const dow = parsedDate.getDay();
+    const schedule = (schedules || []).find(s => s.dayOfWeek === dow);
+    const dates = new Set<string>([deliveryDate]);
+    if (schedule && schedule.collectionDays?.length) {
+      const collectionDates = calculateCollectionDates(parsedDate, schedule);
+      collectionDates.forEach(d => dates.add(format(d, 'yyyy-MM-dd')));
+    }
+    return Array.from(dates).sort();
+  }, [deliveryDate, schedules, parsedDate]);
+
   // Reset state when modal opens
   useEffect(() => {
     if (open) {
@@ -63,16 +81,16 @@ export const LaundryScheduledLinkModal = ({
 
   // Load preview count when date changes
   useEffect(() => {
-    if (!deliveryDate || !activeSede?.id || !open) return;
+    if (!deliveryDate || !activeSede?.id || !open || fetchDates.length === 0) return;
 
-    const fetchKey = `${deliveryDate}-${activeSede.id}`;
+    const fetchKey = `${fetchDates.join(',')}-${activeSede.id}`;
     if (fetchKey === lastFetchKey.current) return;
     lastFetchKey.current = fetchKey;
 
     const loadPreview = async () => {
       setPreviewData({ count: 0, loading: true });
       try {
-        const tasks = await fetchTasksForDates([deliveryDate], activeSede.id);
+        const tasks = await fetchTasksForDates(fetchDates, activeSede.id);
         setPreviewData({ count: tasks.length, loading: false });
       } catch (error) {
         console.error('Error loading preview:', error);
@@ -81,7 +99,7 @@ export const LaundryScheduledLinkModal = ({
     };
 
     loadPreview();
-  }, [deliveryDate, activeSede?.id, open]);
+  }, [deliveryDate, activeSede?.id, open, fetchDates]);
 
   const handleGenerate = async () => {
     if (!activeSede?.id || !deliveryDate) {
@@ -106,13 +124,13 @@ export const LaundryScheduledLinkModal = ({
 
     setIsGenerating(true);
     try {
-      const tasks = await fetchTasksForDates([deliveryDate], activeSede.id);
+      const tasks = await fetchTasksForDates(fetchDates, activeSede.id);
       const taskIds = tasks.map(t => t.taskId);
 
       if (taskIds.length === 0) {
         toast({
           title: 'Sin tareas',
-          description: 'No hay tareas de lavandería para la fecha seleccionada',
+          description: 'No hay tareas de lavandería para las fechas seleccionadas',
           variant: 'destructive',
         });
         setIsGenerating(false);
@@ -121,9 +139,14 @@ export const LaundryScheduledLinkModal = ({
 
       const expiresAt = addDays(new Date(), DEFAULT_EXPIRATION_DAYS).toISOString();
 
+      const dateStart = fetchDates[0];
+      const dateEnd = fetchDates[fetchDates.length - 1] > deliveryDate
+        ? fetchDates[fetchDates.length - 1]
+        : deliveryDate;
+
       const result = await createShareLink.mutateAsync({
-        dateStart: deliveryDate,
-        dateEnd: deliveryDate,
+        dateStart,
+        dateEnd,
         expiresAt,
         isPermanent: false,
         taskIds,
@@ -131,7 +154,8 @@ export const LaundryScheduledLinkModal = ({
         sedeId: activeSede.id,
         linkType: 'scheduled',
         filters: {
-          collectionDates: [deliveryDate],
+          collectionDates: fetchDates,
+          deliveryDate,
         },
       });
 
@@ -164,7 +188,8 @@ export const LaundryScheduledLinkModal = ({
     onOpenChange(false);
   };
 
-  const parsedDate = deliveryDate ? new Date(deliveryDate + 'T00:00:00') : null;
+
+
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
@@ -244,6 +269,14 @@ export const LaundryScheduledLinkModal = ({
                       {format(parsedDate, "EEEE d 'de' MMMM yyyy", { locale: es })}
                     </span>
                   </div>
+                  {fetchDates.length > 1 && (
+                    <div className="text-xs text-muted-foreground capitalize">
+                      Incluye servicios de:{' '}
+                      {fetchDates
+                        .map(d => format(new Date(d + 'T00:00:00'), "EEE d MMM", { locale: es }))
+                        .join(' + ')}
+                    </div>
+                  )}
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
                     <Package className="h-4 w-4" />
                     {previewData.loading ? (
