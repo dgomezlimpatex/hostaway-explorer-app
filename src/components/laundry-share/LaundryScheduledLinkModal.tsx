@@ -269,6 +269,14 @@ export const LaundryScheduledLinkModal = ({
                       {format(parsedDate, "EEEE d 'de' MMMM yyyy", { locale: es })}
                     </span>
                   </div>
+                  {fetchDates.length > 1 && (
+                    <div className="text-xs text-muted-foreground capitalize">
+                      Incluye servicios de:{' '}
+                      {fetchDates
+                        .map(d => format(new Date(d + 'T00:00:00'), "EEE d MMM", { locale: es }))
+                        .join(' + ')}
+                    </div>
+                  )}
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
                     <Package className="h-4 w-4" />
                     {previewData.loading ? (
