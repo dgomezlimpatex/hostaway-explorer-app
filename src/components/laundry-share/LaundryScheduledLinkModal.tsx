@@ -31,6 +31,7 @@ export const LaundryScheduledLinkModal = ({
   const { toast } = useToast();
   const { activeSede } = useSede();
   const { shareLinks, createShareLink } = useLaundryShareLinks();
+  const { schedules } = useLaundryDeliverySchedule();
 
   // Find existing active link covering the selected day
   const existingLinkForDay = (date: string) =>
