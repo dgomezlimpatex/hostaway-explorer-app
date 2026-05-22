@@ -138,24 +138,23 @@ export const useCalendarData = () => {
     
     if (filteredVirtual.length === 0) return realTasks;
     
-    // Build dedup keys from real tasks using multiple strategies
+    // Build dedup keys: only consider a real task as the materialization of a
+    // recurring instance when propertyId + date + startTime + cleanerId all match.
+    // The authoritative dedup against the cron is handled via
+    // recurring_task_executions inside useRecurringTaskInstances; this is just a
+    // safety net for cases where the execution row is missing.
     const existingKeys = new Set<string>();
     for (const t of realTasks) {
-      // Key by propertyId + date + startTime (most reliable)
-      if (t.propertyId) {
-        existingKeys.add(`${t.date}_${t.propertyId}_${t.startTime}`);
-      }
-      // Also key by cleanerId + date + startTime for cases where property names vary
-      if (t.cleanerId) {
-        existingKeys.add(`cleaner_${t.date}_${t.cleanerId}_${t.startTime}`);
+      if (t.propertyId && t.cleanerId) {
+        existingKeys.add(`${t.date}_${t.propertyId}_${t.startTime}_${t.cleanerId}`);
       }
     }
-    
+
     // Filter out virtual tasks that already have a corresponding real task
     const newVirtualTasks = filteredVirtual.filter(vt => {
-      const propKey = `${vt.date}_${vt.propertyId}_${vt.startTime}`;
-      const cleanerKey = `cleaner_${vt.date}_${vt.cleanerId}_${vt.startTime}`;
-      return !existingKeys.has(propKey) && !existingKeys.has(cleanerKey);
+      if (!vt.propertyId || !vt.cleanerId) return true;
+      const key = `${vt.date}_${vt.propertyId}_${vt.startTime}_${vt.cleanerId}`;
+      return !existingKeys.has(key);
     });
     
     return [...realTasks, ...newVirtualTasks];
