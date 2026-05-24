@@ -199,6 +199,44 @@ export const TaskDetailsModal = ({
   };
 
   const handleAssign = async (cleanerId: string, cleanerName: string) => {
+    // For a virtual recurring instance: materialize as a real task with the new cleaner
+    // and mark this occurrence as executed so the virtual one disappears.
+    if (isRecurringInstance && onCreateTask) {
+      try {
+        const recurringTaskId = (task as any).recurringTaskId;
+        const { id, isRecurringInstance: _isRec, recurringTaskId: _rtId, originalTaskId, ...taskBase } = task as any;
+        const newTaskData: Omit<Task, 'id'> = {
+          ...taskBase,
+          cleaner: cleanerName,
+          cleanerId,
+          status: 'pending',
+        };
+        delete (newTaskData as any).isRecurringInstance;
+        delete (newTaskData as any).recurringTaskId;
+        delete (newTaskData as any).originalTaskId;
+
+        await onCreateTask(newTaskData);
+
+        if (recurringTaskId) {
+          await supabase.from('recurring_task_executions').insert({
+            recurring_task_id: recurringTaskId,
+            execution_date: task.date,
+            success: true,
+          });
+          queryClient.invalidateQueries({ queryKey: ['recurring-task-executions'] });
+          queryClient.invalidateQueries({ queryKey: ['tasks'] });
+        }
+
+        toast({ title: "Tarea reasignada", description: `Esta ocurrencia se ha asignado a ${cleanerName}.` });
+        onOpenChange(false);
+        return;
+      } catch (error) {
+        console.error('Error reassigning recurring instance:', error);
+        toast({ title: "Error", description: "No se pudo reasignar esta ocurrencia.", variant: "destructive" });
+        return;
+      }
+    }
+
     try {
       await taskAssignmentService.assignTask(realTaskId, cleanerName, cleanerId);
       onUpdateTask(realTaskId, { cleaner: cleanerName, cleanerId });
