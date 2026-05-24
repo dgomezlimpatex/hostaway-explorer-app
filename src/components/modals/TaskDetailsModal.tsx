@@ -199,6 +199,44 @@ export const TaskDetailsModal = ({
   };
 
   const handleAssign = async (cleanerId: string, cleanerName: string) => {
+    // For a virtual recurring instance: materialize as a real task with the new cleaner
+    // and mark this occurrence as executed so the virtual one disappears.
+    if (isRecurringInstance && onCreateTask) {
+      try {
+        const recurringTaskId = (task as any).recurringTaskId;
+        const { id, isRecurringInstance: _isRec, recurringTaskId: _rtId, originalTaskId, ...taskBase } = task as any;
+        const newTaskData: Omit<Task, 'id'> = {
+          ...taskBase,
+          cleaner: cleanerName,
+          cleanerId,
+          status: 'pending',
+        };
+        delete (newTaskData as any).isRecurringInstance;
+        delete (newTaskData as any).recurringTaskId;
+        delete (newTaskData as any).originalTaskId;
+
+        await onCreateTask(newTaskData);
+
+        if (recurringTaskId) {
+          await supabase.from('recurring_task_executions').insert({
+            recurring_task_id: recurringTaskId,
+            execution_date: task.date,
+            success: true,
+          });
+          queryClient.invalidateQueries({ queryKey: ['recurring-task-executions'] });
+          queryClient.invalidateQueries({ queryKey: ['tasks'] });
+        }
+
+        toast({ title: "Tarea reasignada", description: `Esta ocurrencia se ha asignado a ${cleanerName}.` });
+        onOpenChange(false);
+        return;
+      } catch (error) {
+        console.error('Error reassigning recurring instance:', error);
+        toast({ title: "Error", description: "No se pudo reasignar esta ocurrencia.", variant: "destructive" });
+        return;
+      }
+    }
+
     try {
       await taskAssignmentService.assignTask(realTaskId, cleanerName, cleanerId);
       onUpdateTask(realTaskId, { cleaner: cleanerName, cleanerId });
@@ -216,7 +254,7 @@ export const TaskDetailsModal = ({
           {isRecurringInstance && (
             <DialogHeader className="flex-shrink-0 px-6 pt-4 pb-2">
               <div className="text-xs text-muted-foreground italic">
-                Tarea recurrente — guarda los cambios desde el botón de la sección recurrente para materializarla.
+                Tarea recurrente — puedes reasignarla a otra trabajadora o eliminar esta ocurrencia.
               </div>
             </DialogHeader>
           )}
@@ -236,9 +274,9 @@ export const TaskDetailsModal = ({
           <DialogFooter className="flex-shrink-0 border-t bg-muted/20 px-6 py-3">
             <TaskDetailsActions
               task={task}
-              onDelete={canEdit ? () => setShowDeleteConfirm(true) : undefined}
-              onUnassign={canEdit && onUnassignTask ? () => setShowUnassignConfirm(true) : undefined}
-              onAssign={canEdit ? handleAssign : undefined}
+              onDelete={(canEdit || isRecurringInstance) ? () => setShowDeleteConfirm(true) : undefined}
+              onUnassign={(canEdit || isRecurringInstance) && (onUnassignTask || isRecurringInstance) ? () => setShowUnassignConfirm(true) : undefined}
+              onAssign={(canEdit || isRecurringInstance) ? handleAssign : undefined}
               onAssignMultiple={canEdit ? () => setShowAssignMultipleModal(true) : undefined}
               onOpenReport={() => setShowReportModal(true)}
             />
