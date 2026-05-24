@@ -254,7 +254,7 @@ export const TaskDetailsModal = ({
           {isRecurringInstance && (
             <DialogHeader className="flex-shrink-0 px-6 pt-4 pb-2">
               <div className="text-xs text-muted-foreground italic">
-                Tarea recurrente — guarda los cambios desde el botón de la sección recurrente para materializarla.
+                Tarea recurrente — puedes reasignarla a otra trabajadora o eliminar esta ocurrencia.
               </div>
             </DialogHeader>
           )}
@@ -274,9 +274,9 @@ export const TaskDetailsModal = ({
           <DialogFooter className="flex-shrink-0 border-t bg-muted/20 px-6 py-3">
             <TaskDetailsActions
               task={task}
-              onDelete={canEdit ? () => setShowDeleteConfirm(true) : undefined}
-              onUnassign={canEdit && onUnassignTask ? () => setShowUnassignConfirm(true) : undefined}
-              onAssign={canEdit ? handleAssign : undefined}
+              onDelete={(canEdit || isRecurringInstance) ? () => setShowDeleteConfirm(true) : undefined}
+              onUnassign={(canEdit || isRecurringInstance) && (onUnassignTask || isRecurringInstance) ? () => setShowUnassignConfirm(true) : undefined}
+              onAssign={(canEdit || isRecurringInstance) ? handleAssign : undefined}
               onAssignMultiple={canEdit ? () => setShowAssignMultipleModal(true) : undefined}
               onOpenReport={() => setShowReportModal(true)}
             />
