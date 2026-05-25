@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { Sparkles, X, Check, Clock, MapPin, User, Search, Filter, Loader2 } from 'lucide-react';
+import { Sparkles, X, Check, Clock, MapPin, User, Search, Filter, Loader2, Layers } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
