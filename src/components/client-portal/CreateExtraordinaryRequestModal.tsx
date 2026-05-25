@@ -241,8 +241,8 @@ export const CreateExtraordinaryRequestModal = ({ open, onOpenChange, clientId, 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
           <Button onClick={handleSubmit} disabled={!canSubmit}>
-            {create.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-            Confirmar solicitud
+            {isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+            {isEdit ? 'Guardar cambios' : 'Confirmar solicitud'}
           </Button>
         </DialogFooter>
       </DialogContent>
