@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { Plus, Sparkles, X, Check, Clock, MapPin } from 'lucide-react';
+import { Plus, Sparkles, X, Check, Clock, MapPin, Pencil } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
@@ -9,6 +9,7 @@ import {
   useClientExtraordinaryRequests,
   useCancelExtraordinaryRequest,
 } from '@/hooks/useExtraordinaryRequests';
+import type { ClientExtraordinaryRequest } from '@/types/extraordinaryRequest';
 import { CreateExtraordinaryRequestModal } from './CreateExtraordinaryRequestModal';
 
 interface Property {
