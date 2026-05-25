@@ -130,7 +130,7 @@ export const ClientPortalDashboard = ({
             {canCreateExtraordinary && (
               <TabsTrigger value="extra" className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2 py-2 text-xs sm:text-sm">
                 <Sparkles className="h-4 w-4" />
-                <span>Extras</span>
+                <span>Servicios Extraordinarios</span>
               </TabsTrigger>
             )}
             {canViewIncidents && (
