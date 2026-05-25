@@ -379,7 +379,7 @@ Deno.serve(async (req) => {
         errors,
       });
 
-      return new Response(JSON.stringify({ ok: true, linked, created, errors }), {
+      return new Response(JSON.stringify({ ok: true, linked, created, invitations_sent, invitation_details, errors }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
     }
