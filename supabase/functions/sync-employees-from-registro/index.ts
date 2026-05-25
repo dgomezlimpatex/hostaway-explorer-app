@@ -452,7 +452,64 @@ Deno.serve(async (req) => {
       }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
-    return new Response(JSON.stringify({ error: 'mode inválido. Usa preview|link|sync' }), {
+    // ============== INVITE_PENDING ==============
+    // Reenvía invitaciones a cleaners con email pero sin user_id ni invitación pendiente
+    if (mode === 'invite_pending') {
+      const { data: pendingCleaners, error: pErr } = await admin
+        .from('cleaners')
+        .select('id, name, email, sede_id, external_id')
+        .is('user_id', null)
+        .not('email', 'is', null)
+        .eq('is_active', true);
+      if (pErr) throw pErr;
+
+      let invitations_sent = 0;
+      const details: Array<{ cleaner_id: string; email: string | null; outcome: string; error?: string }> = [];
+      const appUrl = req.headers.get('origin') || 'https://limpatexgestion.lovable.app';
+
+      for (const c of pendingCleaners || []) {
+        const emailLower = (c.email || '').trim().toLowerCase();
+        if (!emailLower) { details.push({ cleaner_id: c.id, email: null, outcome: 'no_email' }); continue; }
+        if (!c.sede_id) { details.push({ cleaner_id: c.id, email: emailLower, outcome: 'no_sede' }); continue; }
+        try {
+          const { data: existingProfile } = await admin
+            .from('profiles').select('id').eq('email', emailLower).maybeSingle();
+          if (existingProfile) { details.push({ cleaner_id: c.id, email: emailLower, outcome: 'already_user' }); continue; }
+
+          const { data: pending } = await admin
+            .from('user_invitations').select('id')
+            .eq('email', emailLower).eq('status', 'pending')
+            .gt('expires_at', new Date().toISOString()).maybeSingle();
+          if (pending) { details.push({ cleaner_id: c.id, email: emailLower, outcome: 'already_pending' }); continue; }
+
+          const token = crypto.randomUUID();
+          const expiresAt = new Date(Date.now() + 48 * 3600 * 1000).toISOString();
+          const { error: invErr } = await admin.from('user_invitations').insert({
+            invitation_token: token, email: emailLower, role: 'cleaner',
+            invited_by: userId, expires_at: expiresAt, status: 'pending', sede_id: c.sede_id,
+          });
+          if (invErr) throw invErr;
+
+          const { error: emailErr } = await admin.functions.invoke('send-invitation-email', {
+            body: { email: emailLower, inviterName: 'Sincronización REGISTRO', role: 'cleaner', token, appUrl },
+          });
+          if (emailErr) {
+            details.push({ cleaner_id: c.id, email: emailLower, outcome: 'created_email_failed', error: emailErr.message });
+          } else {
+            invitations_sent++;
+            details.push({ cleaner_id: c.id, email: emailLower, outcome: 'invited' });
+          }
+        } catch (e: any) {
+          details.push({ cleaner_id: c.id, email: emailLower, outcome: 'error', error: e.message });
+        }
+      }
+
+      return new Response(JSON.stringify({ ok: true, invitations_sent, details }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    return new Response(JSON.stringify({ error: 'mode inválido. Usa preview|link|sync|invite_pending' }), {
       status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });
 
