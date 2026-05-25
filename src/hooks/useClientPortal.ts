@@ -347,148 +347,89 @@ export const extractShortCodeFromIdentifier = (identifier: string): string => {
   return identifier;
 };
 
-// Verify portal by short_code and get client info
+// Verify portal by short_code and get client info (via SECURITY DEFINER RPC)
 export const useVerifyPortalShortCode = (identifier: string | undefined) => {
   return useQuery({
     queryKey: ['portal-verify-shortcode', identifier],
     queryFn: async () => {
       if (!identifier) return null;
-      
+
       const shortCode = extractShortCodeFromIdentifier(identifier);
-      
+
       const { data, error } = await supabase
-        .from('client_portal_access')
-        .select(`
-          *,
-          clients (
-            id,
-            nombre
-          )
-        `)
-        .eq('short_code', shortCode)
-        .eq('is_active', true)
-        .maybeSingle();
-      
+        .rpc('portal_lookup_by_short_code', { _short_code: shortCode });
+
       if (error) throw error;
-      if (!data) return null;
-      
+      const row = Array.isArray(data) ? data[0] : data;
+      if (!row) return null;
+
       return {
         portalAccess: {
-          id: data.id,
-          clientId: data.client_id,
-          accessPin: data.access_pin,
-          portalToken: data.portal_token,
-          shortCode: data.short_code,
-          isActive: data.is_active,
+          id: '',
+          clientId: row.client_id,
+          accessPin: '',
+          portalToken: '',
+          shortCode: row.short_code,
+          isActive: row.is_active,
         },
-        clientName: (data.clients as any)?.nombre || 'Cliente',
+        clientName: row.client_name || 'Cliente',
       };
     },
     enabled: !!identifier,
   });
 };
 
-// Legacy: Verify portal token (for backward compatibility)
+// Legacy: Verify portal token (for backward compatibility) via RPC
 export const useVerifyPortalToken = (token: string | undefined) => {
   return useQuery({
     queryKey: ['portal-verify-token', token],
     queryFn: async () => {
       if (!token) return null;
-      
+
       const { data, error } = await supabase
-        .from('client_portal_access')
-        .select(`
-          *,
-          clients (
-            id,
-            nombre
-          )
-        `)
-        .eq('portal_token', token)
-        .eq('is_active', true)
-        .maybeSingle();
-      
+        .rpc('portal_lookup_by_token', { _portal_token: token });
+
       if (error) throw error;
-      if (!data) return null;
-      
+      const row = Array.isArray(data) ? data[0] : data;
+      if (!row) return null;
+
       return {
         portalAccess: {
-          id: data.id,
-          clientId: data.client_id,
-          accessPin: data.access_pin,
-          portalToken: data.portal_token,
-          shortCode: data.short_code,
-          isActive: data.is_active,
+          id: '',
+          clientId: row.client_id,
+          accessPin: '',
+          portalToken: token,
+          shortCode: row.short_code,
+          isActive: row.is_active,
         },
-        clientName: (data.clients as any)?.nombre || 'Cliente',
+        clientName: row.client_name || 'Cliente',
       };
     },
     enabled: !!token,
   });
 };
 
-// Authenticate with PIN (supports both short_code and legacy token)
+// Authenticate with PIN (supports short_code and legacy token) via RPC
 export const useAuthenticatePortal = () => {
-  const queryClient = useQueryClient();
-  
   return useMutation({
     mutationFn: async ({ identifier, pin }: { identifier: string; pin: string }) => {
-      const shortCode = extractShortCodeFromIdentifier(identifier);
-      
-      // Try short_code first
-      let { data, error } = await supabase
-        .from('client_portal_access')
-        .select(`
-          *,
-          clients (
-            id,
-            nombre
-          )
-        `)
-        .eq('short_code', shortCode)
-        .eq('access_pin', pin)
-        .eq('is_active', true)
-        .maybeSingle();
-      
-      // Fallback to legacy portal_token if not found
-      if (!data && !error) {
-        const legacyResult = await supabase
-          .from('client_portal_access')
-          .select(`
-            *,
-            clients (
-              id,
-              nombre
-            )
-          `)
-          .eq('portal_token', identifier)
-          .eq('access_pin', pin)
-          .eq('is_active', true)
-          .maybeSingle();
-        
-        data = legacyResult.data;
-        error = legacyResult.error;
-      }
-      
+      const { data, error } = await supabase
+        .rpc('portal_authenticate_with_pin', { _identifier: identifier, _pin: pin });
+
       if (error) throw error;
-      if (!data) {
+      const row = Array.isArray(data) ? data[0] : data;
+      if (!row) {
         throw new Error('PIN incorrecto');
       }
-      
-      // Update last access
-      await supabase
-        .from('client_portal_access')
-        .update({ last_access_at: new Date().toISOString() })
-        .eq('id', data.id);
 
       // Audit: log this access (non-blocking)
       try {
         await supabase.rpc('log_client_portal_access', {
-          _client_id: data.client_id,
-          _portal_access_id: data.id,
+          _client_id: row.client_id,
+          _portal_access_id: null,
           _access_type: 'client_pin',
           _actor_user_id: null,
-          _actor_name: (data.clients as any)?.nombre || 'Cliente',
+          _actor_name: row.client_name || 'Cliente',
           _actor_email: null,
           _user_agent: typeof navigator !== 'undefined' ? navigator.userAgent : null,
           _metadata: { source: 'portal_pin_login' },
@@ -498,10 +439,10 @@ export const useAuthenticatePortal = () => {
       }
 
       return {
-        clientId: data.client_id,
-        clientName: (data.clients as any)?.nombre || 'Cliente',
-        portalToken: data.portal_token,
-        shortCode: data.short_code,
+        clientId: row.client_id,
+        clientName: row.client_name || 'Cliente',
+        portalToken: row.portal_token,
+        shortCode: row.short_code,
       };
     },
   });
