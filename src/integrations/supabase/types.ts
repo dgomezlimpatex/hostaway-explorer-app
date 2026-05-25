@@ -4820,6 +4820,16 @@ export type Database = {
         Args: { cleaner_updates: Json[] }
         Returns: undefined
       }
+      update_extraordinary_request: {
+        Args: {
+          _guest_name?: string
+          _notes?: string
+          _request_id: string
+          _service_date: string
+          _service_time?: string
+        }
+        Returns: Json
+      }
       user_can_access_task: { Args: { task_sede_id: string }; Returns: boolean }
       user_has_role: {
         Args: { check_role: Database["public"]["Enums"]["app_role"] }
