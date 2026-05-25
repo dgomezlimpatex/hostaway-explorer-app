@@ -187,6 +187,9 @@ function App() {
                     <Route path="/admin/extraordinary-types" element={
                       <RoleProtectedRoute requiredModule="clients"><ExtraordinaryRequestTypesAdmin /></RoleProtectedRoute>
                     } />
+                    <Route path="/admin/extraordinary-requests" element={
+                      <RoleProtectedRoute requiredModule="clients"><ExtraordinaryRequestsAdmin /></RoleProtectedRoute>
+                    } />
                     <Route path="/workers" element={
                       <RoleProtectedRoute requiredModule="workers"><Workers /></RoleProtectedRoute>
                     } />
