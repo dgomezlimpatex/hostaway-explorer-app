@@ -32,8 +32,12 @@ const statusConfig: Record<string, { label: string; className: string; icon: any
 
 export const ExtraordinaryRequestsTab = ({ clientId, properties }: ExtraordinaryRequestsTabProps) => {
   const [open, setOpen] = useState(false);
+  const [editRequest, setEditRequest] = useState<ClientExtraordinaryRequest | null>(null);
   const { data: requests = [], isLoading } = useClientExtraordinaryRequests(clientId);
   const cancelMutation = useCancelExtraordinaryRequest();
+
+  const openCreate = () => { setEditRequest(null); setOpen(true); };
+  const openEdit = (r: ClientExtraordinaryRequest) => { setEditRequest(r); setOpen(true); };
 
   return (
     <div className="space-y-4">
