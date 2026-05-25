@@ -218,12 +218,25 @@ const Integraciones = () => {
               <RefreshCw className={`h-4 w-4 mr-2 ${syncMutation.isPending ? 'animate-spin' : ''}`} />
               3. Sincronizar vinculados
             </Button>
+            <Button
+              variant="outline"
+              onClick={() => invitePendingMutation.mutate()}
+              disabled={invitePendingMutation.isPending}
+            >
+              <RefreshCw className={`h-4 w-4 mr-2 ${invitePendingMutation.isPending ? 'animate-spin' : ''}`} />
+              Reinvitar pendientes
+            </Button>
           </div>
 
-          <p className="text-sm text-muted-foreground">
-            <strong>Flujo:</strong> 1) Vista previa → 2) Revisa la tabla y aplica vinculaciones → 3) Sincroniza para refrescar datos de los ya vinculados.
-            La sincronización solo afecta empleados con vinculación previa y nunca toca tus tareas.
-          </p>
+          <div className="text-sm text-muted-foreground space-y-1">
+            <p>
+              <strong>Flujo:</strong> 1) Vista previa → 2) Revisa la tabla y aplica vinculaciones → 3) Sincroniza para refrescar datos de los ya vinculados.
+            </p>
+            <p>
+              Al aplicar vinculaciones, los empleados con email <strong>recibirán automáticamente</strong> una invitación para crear su contraseña.
+              Usa <strong>"Reinvitar pendientes"</strong> para reenviar a cleaners que aún no han aceptado.
+            </p>
+          </div>
         </CardContent>
       </Card>
 
