@@ -23,7 +23,8 @@ import {
   Search,
   RefreshCw,
   Settings,
-  Link2
+  Link2,
+  Sparkles
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useRolePermissions } from '@/hooks/useRolePermissions';
