@@ -40,7 +40,7 @@ export const ExtraordinaryRequestsTab = ({ clientId, properties }: Extraordinary
         <div>
           <h2 className="text-lg font-semibold flex items-center gap-2">
             <Sparkles className="h-5 w-5 text-primary" />
-            Servicios extra
+            Servicios Extraordinarios
           </h2>
           <p className="text-xs sm:text-sm text-muted-foreground">
             Solicita servicios especiales para tus huéspedes
@@ -58,11 +58,11 @@ export const ExtraordinaryRequestsTab = ({ clientId, properties }: Extraordinary
         <Card className="p-8 text-center border-dashed">
           <Sparkles className="h-10 w-10 mx-auto text-muted-foreground mb-3 opacity-50" />
           <p className="text-sm text-muted-foreground">
-            Aún no has solicitado ningún servicio extra.
+            Aún no has solicitado ningún servicio extraordinario.
           </p>
           <Button variant="outline" size="sm" className="mt-4" onClick={() => setOpen(true)}>
             <Plus className="h-4 w-4 mr-1" />
-            Solicitar primer servicio
+            Crear nueva tarea extraordinaria
           </Button>
         </Card>
       ) : (
