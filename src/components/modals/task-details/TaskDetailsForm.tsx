@@ -145,13 +145,14 @@ export const TaskDetailsForm = ({
         statusByField={statusByField}
       />
 
-      <div className="h-px bg-border/60" />
-
-      <PropertyDetailsSection propertyData={propertyData} />
-
-      <div className="h-px bg-border/60" />
-
-      <AmenitiesSection propertyData={propertyData} />
+      {task.type !== 'trabajo-extraordinario' && (
+        <>
+          <div className="h-px bg-border/60" />
+          <PropertyDetailsSection propertyData={propertyData} />
+          <div className="h-px bg-border/60" />
+          <AmenitiesSection propertyData={propertyData} />
+        </>
+      )}
 
       {userRole !== 'cleaner' && clientData && (
         <>
