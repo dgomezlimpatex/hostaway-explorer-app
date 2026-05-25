@@ -78,17 +78,24 @@ const ExtraordinaryRequestsAdmin = () => {
 
   return (
     <div className="container mx-auto p-4 sm:p-6 max-w-7xl space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex items-start justify-between gap-3 flex-wrap">
         <div>
           <h1 className="text-xl sm:text-2xl font-semibold flex items-center gap-2">
             <Sparkles className="h-5 w-5 text-primary" />
-            Solicitudes extraordinarias
+            Tareas Extraordinarias
           </h1>
           <p className="text-sm text-muted-foreground">
             Histórico de todas las solicitudes creadas desde los portales de cliente.
           </p>
         </div>
+        <Button asChild variant="outline">
+          <Link to="/admin/extraordinary-types">
+            <Layers className="h-4 w-4 mr-2" />
+            Tipos de servicios
+          </Link>
+        </Button>
       </div>
+
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <Card><CardContent className="p-3"><div className="text-xs text-muted-foreground">Total</div><div className="text-2xl font-bold">{counts.total}</div></CardContent></Card>
