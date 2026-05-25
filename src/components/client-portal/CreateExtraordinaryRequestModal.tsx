@@ -144,9 +144,10 @@ export const CreateExtraordinaryRequestModal = ({ open, onOpenChange, clientId, 
                   return (
                     <Card
                       key={t.id}
-                      onClick={() => setTypeId(t.id)}
+                      onClick={() => { if (!isEdit) setTypeId(t.id); }}
                       className={cn(
-                        'p-3 cursor-pointer transition-all hover:border-primary/50',
+                        'p-3 transition-all',
+                        isEdit ? 'cursor-not-allowed opacity-60' : 'cursor-pointer hover:border-primary/50',
                         selected && 'border-primary ring-2 ring-primary/20 bg-primary/5'
                       )}
                     >
