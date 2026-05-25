@@ -120,14 +120,32 @@ const Integraciones = () => {
       return data;
     },
     onSuccess: (data) => {
+      const invMsg = data.invitations_sent > 0 ? ` · ${data.invitations_sent} invitaciones enviadas por email` : '';
       toast({
         title: 'Vinculación aplicada',
-        description: `Vinculados: ${data.linked} · Creados: ${data.created} · Errores: ${data.errors?.length || 0}`,
+        description: `Vinculados: ${data.linked} · Creados: ${data.created} · Errores: ${data.errors?.length || 0}${invMsg}`,
       });
       setPreview(null);
       setDecisions({});
       refetchLogs();
       queryClient.invalidateQueries({ queryKey: ['cleaners'] });
+    },
+    onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
+  });
+
+  const invitePendingMutation = useMutation({
+    mutationFn: async () => {
+      const { data, error } = await supabase.functions.invoke('sync-employees-from-registro', {
+        body: { mode: 'invite_pending' },
+      });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (data) => {
+      toast({
+        title: 'Invitaciones reenviadas',
+        description: `Se han enviado ${data.invitations_sent} invitaciones por email.`,
+      });
     },
     onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
   });
@@ -200,12 +218,25 @@ const Integraciones = () => {
               <RefreshCw className={`h-4 w-4 mr-2 ${syncMutation.isPending ? 'animate-spin' : ''}`} />
               3. Sincronizar vinculados
             </Button>
+            <Button
+              variant="outline"
+              onClick={() => invitePendingMutation.mutate()}
+              disabled={invitePendingMutation.isPending}
+            >
+              <RefreshCw className={`h-4 w-4 mr-2 ${invitePendingMutation.isPending ? 'animate-spin' : ''}`} />
+              Reinvitar pendientes
+            </Button>
           </div>
 
-          <p className="text-sm text-muted-foreground">
-            <strong>Flujo:</strong> 1) Vista previa → 2) Revisa la tabla y aplica vinculaciones → 3) Sincroniza para refrescar datos de los ya vinculados.
-            La sincronización solo afecta empleados con vinculación previa y nunca toca tus tareas.
-          </p>
+          <div className="text-sm text-muted-foreground space-y-1">
+            <p>
+              <strong>Flujo:</strong> 1) Vista previa → 2) Revisa la tabla y aplica vinculaciones → 3) Sincroniza para refrescar datos de los ya vinculados.
+            </p>
+            <p>
+              Al aplicar vinculaciones, los empleados con email <strong>recibirán automáticamente</strong> una invitación para crear su contraseña.
+              Usa <strong>"Reinvitar pendientes"</strong> para reenviar a cleaners que aún no han aceptado.
+            </p>
+          </div>
         </CardContent>
       </Card>
 

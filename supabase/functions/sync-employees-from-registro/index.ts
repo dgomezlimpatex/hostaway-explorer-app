@@ -236,7 +236,85 @@ Deno.serve(async (req) => {
       }> = body.links || [];
 
       let linked = 0, created = 0;
+      let invitations_sent = 0;
       const errors: any[] = [];
+      const invitation_details: Array<{ external_id: string; email: string | null; outcome: string; error?: string }> = [];
+
+      // Helper: tras crear/vincular cleaner, intentar invitar al email
+      async function maybeInviteEmail(externalId: string, email: string | null | undefined, sedeId: string | null) {
+        if (!email || !email.trim()) {
+          invitation_details.push({ external_id: externalId, email: null, outcome: 'no_email' });
+          return;
+        }
+        const emailLower = email.trim().toLowerCase();
+        try {
+          // ¿Ya existe usuario en auth.users con ese email?
+          // Usamos admin.listUsers con filter (paginar puede ser caro; mejor consulta directa a profiles)
+          const { data: existingProfile } = await admin
+            .from('profiles')
+            .select('id')
+            .eq('email', emailLower)
+            .maybeSingle();
+          if (existingProfile) {
+            invitation_details.push({ external_id: externalId, email: emailLower, outcome: 'already_user' });
+            return;
+          }
+
+          // ¿Ya hay invitación pendiente?
+          const { data: pending } = await admin
+            .from('user_invitations')
+            .select('id')
+            .eq('email', emailLower)
+            .eq('status', 'pending')
+            .gt('expires_at', new Date().toISOString())
+            .maybeSingle();
+          if (pending) {
+            invitation_details.push({ external_id: externalId, email: emailLower, outcome: 'already_pending' });
+            return;
+          }
+
+          if (!sedeId) {
+            invitation_details.push({ external_id: externalId, email: emailLower, outcome: 'no_sede' });
+            return;
+          }
+
+          // Crear invitación (insert directo con service role; el cleaner ya está en su sede)
+          const token = crypto.randomUUID();
+          const expiresAt = new Date(Date.now() + 48 * 3600 * 1000).toISOString();
+          const { error: invErr } = await admin
+            .from('user_invitations')
+            .insert({
+              invitation_token: token,
+              email: emailLower,
+              role: 'cleaner',
+              invited_by: userId,
+              expires_at: expiresAt,
+              status: 'pending',
+              sede_id: sedeId,
+            });
+          if (invErr) throw invErr;
+
+          // Disparar email
+          const appUrl = req.headers.get('origin') || 'https://limpatexgestion.lovable.app';
+          const { error: emailErr } = await admin.functions.invoke('send-invitation-email', {
+            body: {
+              email: emailLower,
+              inviterName: 'Sincronización REGISTRO',
+              role: 'cleaner',
+              token,
+              appUrl,
+            },
+          });
+          if (emailErr) {
+            invitation_details.push({ external_id: externalId, email: emailLower, outcome: 'created_email_failed', error: emailErr.message });
+          } else {
+            invitations_sent++;
+            invitation_details.push({ external_id: externalId, email: emailLower, outcome: 'invited' });
+          }
+        } catch (e: any) {
+          invitation_details.push({ external_id: externalId, email: emailLower, outcome: 'invite_error', error: e.message });
+        }
+      }
 
       for (const l of links) {
         try {
@@ -250,6 +328,8 @@ Deno.serve(async (req) => {
               name: fullName,
               first_name: s.first_name || null,
               last_name: s.last_name || null,
+              email: s.email || null,
+              telefono: s.phone || null,
               dni: s.dni || null,
               pin: s.pin || null,
               category: s.category || null,
@@ -262,6 +342,7 @@ Deno.serve(async (req) => {
             });
             if (error) throw error;
             created++;
+            await maybeInviteEmail(l.external_id, s.email ?? null, l.sede_id);
           } else {
             if (!l.cleaner_id) throw new Error('cleaner_id requerido para vincular');
             const { error } = await admin
@@ -270,6 +351,16 @@ Deno.serve(async (req) => {
               .eq('id', l.cleaner_id);
             if (error) throw error;
             linked++;
+
+            // Tras vincular, consultar email/sede del cleaner para intentar invitar
+            const { data: c } = await admin
+              .from('cleaners')
+              .select('email, sede_id, user_id')
+              .eq('id', l.cleaner_id)
+              .maybeSingle();
+            if (c && !c.user_id) {
+              await maybeInviteEmail(l.external_id, c.email, c.sede_id);
+            }
           }
         } catch (e: any) {
           errors.push({ external_id: l.external_id, error: e.message });
@@ -288,7 +379,7 @@ Deno.serve(async (req) => {
         errors,
       });
 
-      return new Response(JSON.stringify({ ok: true, linked, created, errors }), {
+      return new Response(JSON.stringify({ ok: true, linked, created, invitations_sent, invitation_details, errors }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
     }
@@ -361,7 +452,64 @@ Deno.serve(async (req) => {
       }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
-    return new Response(JSON.stringify({ error: 'mode inválido. Usa preview|link|sync' }), {
+    // ============== INVITE_PENDING ==============
+    // Reenvía invitaciones a cleaners con email pero sin user_id ni invitación pendiente
+    if (mode === 'invite_pending') {
+      const { data: pendingCleaners, error: pErr } = await admin
+        .from('cleaners')
+        .select('id, name, email, sede_id, external_id')
+        .is('user_id', null)
+        .not('email', 'is', null)
+        .eq('is_active', true);
+      if (pErr) throw pErr;
+
+      let invitations_sent = 0;
+      const details: Array<{ cleaner_id: string; email: string | null; outcome: string; error?: string }> = [];
+      const appUrl = req.headers.get('origin') || 'https://limpatexgestion.lovable.app';
+
+      for (const c of pendingCleaners || []) {
+        const emailLower = (c.email || '').trim().toLowerCase();
+        if (!emailLower) { details.push({ cleaner_id: c.id, email: null, outcome: 'no_email' }); continue; }
+        if (!c.sede_id) { details.push({ cleaner_id: c.id, email: emailLower, outcome: 'no_sede' }); continue; }
+        try {
+          const { data: existingProfile } = await admin
+            .from('profiles').select('id').eq('email', emailLower).maybeSingle();
+          if (existingProfile) { details.push({ cleaner_id: c.id, email: emailLower, outcome: 'already_user' }); continue; }
+
+          const { data: pending } = await admin
+            .from('user_invitations').select('id')
+            .eq('email', emailLower).eq('status', 'pending')
+            .gt('expires_at', new Date().toISOString()).maybeSingle();
+          if (pending) { details.push({ cleaner_id: c.id, email: emailLower, outcome: 'already_pending' }); continue; }
+
+          const token = crypto.randomUUID();
+          const expiresAt = new Date(Date.now() + 48 * 3600 * 1000).toISOString();
+          const { error: invErr } = await admin.from('user_invitations').insert({
+            invitation_token: token, email: emailLower, role: 'cleaner',
+            invited_by: userId, expires_at: expiresAt, status: 'pending', sede_id: c.sede_id,
+          });
+          if (invErr) throw invErr;
+
+          const { error: emailErr } = await admin.functions.invoke('send-invitation-email', {
+            body: { email: emailLower, inviterName: 'Sincronización REGISTRO', role: 'cleaner', token, appUrl },
+          });
+          if (emailErr) {
+            details.push({ cleaner_id: c.id, email: emailLower, outcome: 'created_email_failed', error: emailErr.message });
+          } else {
+            invitations_sent++;
+            details.push({ cleaner_id: c.id, email: emailLower, outcome: 'invited' });
+          }
+        } catch (e: any) {
+          details.push({ cleaner_id: c.id, email: emailLower, outcome: 'error', error: e.message });
+        }
+      }
+
+      return new Response(JSON.stringify({ ok: true, invitations_sent, details }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    return new Response(JSON.stringify({ error: 'mode inválido. Usa preview|link|sync|invite_pending' }), {
       status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });
 

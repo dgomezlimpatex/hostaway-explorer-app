@@ -114,7 +114,7 @@ export const CreateWorkerModal = ({ open, onOpenChange }: CreateWorkerModalProps
             <Alert className="border-amber-300 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-900">
               <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
               <AlertDescription className="text-sm text-amber-800 dark:text-amber-200">
-                <strong>Recomendado:</strong> crea el trabajador primero en REGISTRO y luego sincronízalo desde <strong>Integraciones · REGISTRO</strong>. Los trabajadores creados manualmente aquí no tendrán DNI, PIN ni categoría hasta que los vincules.
+                <strong>Solo para casos excepcionales.</strong> Lo normal es dar de alta al trabajador en <strong>REGISTRO</strong> (la app de gestión) y luego ir a <strong>Integraciones · REGISTRO</strong>: al vincularlo se crea aquí automáticamente con DNI, PIN y categoría, y se le envía la invitación por email para que cree su contraseña. Los trabajadores creados a mano aquí <strong>no tendrán DNI, PIN ni categoría</strong> y tampoco recibirán invitación automática.
               </AlertDescription>
             </Alert>
             <div className="space-y-2">
