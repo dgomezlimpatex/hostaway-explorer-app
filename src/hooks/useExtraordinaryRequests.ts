@@ -224,6 +224,40 @@ export const useCreateExtraordinaryRequest = () => {
   });
 };
 
+export interface UpdateExtraordinaryRequestInput {
+  requestId: string;
+  clientId: string;
+  serviceDate: string;
+  serviceTime?: string | null;
+  guestName?: string | null;
+  notes?: string | null;
+}
+
+export const useUpdateExtraordinaryRequest = () => {
+  const qc = useQueryClient();
+  const { toast } = useToast();
+  return useMutation({
+    mutationFn: async (input: UpdateExtraordinaryRequestInput) => {
+      const { error } = await supabase.rpc('update_extraordinary_request', {
+        _request_id: input.requestId,
+        _service_date: input.serviceDate,
+        _service_time: input.serviceTime ?? null,
+        _guest_name: input.guestName ?? null,
+        _notes: input.notes ?? null,
+      });
+      if (error) throw error;
+    },
+    onSuccess: (_, vars) => {
+      qc.invalidateQueries({ queryKey: ['client-extraordinary-requests', vars.clientId] });
+      qc.invalidateQueries({ queryKey: ['extraordinary-requests'] });
+      toast({ title: 'Solicitud actualizada' });
+    },
+    onError: (err: any) => {
+      toast({ title: 'Error', description: err.message ?? 'No se pudo actualizar.', variant: 'destructive' });
+    },
+  });
+};
+
 export const useCancelExtraordinaryRequest = () => {
   const qc = useQueryClient();
   const { toast } = useToast();
