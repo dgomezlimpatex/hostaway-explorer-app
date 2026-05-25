@@ -120,7 +120,7 @@ export const CreateExtraordinaryRequestModal = ({ open, onOpenChange, clientId, 
           {/* Propiedad */}
           <div>
             <Label className="text-sm">Propiedad *</Label>
-            <Select value={propertyId} onValueChange={setPropertyId}>
+            <Select value={propertyId} onValueChange={setPropertyId} disabled={isEdit}>
               <SelectTrigger className="mt-1.5">
                 <SelectValue placeholder="Selecciona una propiedad" />
               </SelectTrigger>
