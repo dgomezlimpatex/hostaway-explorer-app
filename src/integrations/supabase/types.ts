@@ -4765,6 +4765,33 @@ export type Database = {
         }
         Returns: Json
       }
+      portal_authenticate_with_pin: {
+        Args: { _identifier: string; _pin: string }
+        Returns: {
+          client_id: string
+          client_name: string
+          portal_token: string
+          short_code: string
+        }[]
+      }
+      portal_lookup_by_short_code: {
+        Args: { _short_code: string }
+        Returns: {
+          client_id: string
+          client_name: string
+          is_active: boolean
+          short_code: string
+        }[]
+      }
+      portal_lookup_by_token: {
+        Args: { _portal_token: string }
+        Returns: {
+          client_id: string
+          client_name: string
+          is_active: boolean
+          short_code: string
+        }[]
+      }
       process_automatic_inventory_consumption: {
         Args: {
           property_id_param: string
