@@ -51,7 +51,7 @@ export const ExtraordinaryRequestsTab = ({ clientId, properties }: Extraordinary
             Solicita servicios especiales para tus huéspedes
           </p>
         </div>
-        <Button size="sm" onClick={() => setOpen(true)}>
+        <Button size="sm" onClick={openCreate}>
           <Plus className="h-4 w-4 mr-1" />
           Nueva
         </Button>
@@ -65,7 +65,7 @@ export const ExtraordinaryRequestsTab = ({ clientId, properties }: Extraordinary
           <p className="text-sm text-muted-foreground">
             Aún no has solicitado ningún servicio extraordinario.
           </p>
-          <Button variant="outline" size="sm" className="mt-4" onClick={() => setOpen(true)}>
+          <Button variant="outline" size="sm" className="mt-4" onClick={openCreate}>
             <Plus className="h-4 w-4 mr-1" />
             Crear nueva tarea extraordinaria
           </Button>
@@ -106,22 +106,33 @@ export const ExtraordinaryRequestsTab = ({ clientId, properties }: Extraordinary
                       <p className="text-xs text-muted-foreground mt-1 italic">"{r.notes}"</p>
                     )}
                   </div>
-                  <div className="text-right shrink-0">
+                  <div className="text-right shrink-0 flex flex-col items-end gap-1">
                     <div className="text-base sm:text-lg font-bold text-emerald-600">
                       {r.costSnapshot.toFixed(2)} €
                     </div>
                     {r.status === 'active' && (
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="h-7 text-xs text-rose-600 hover:text-rose-700"
-                        disabled={cancelMutation.isPending}
-                        onClick={() => {
-                          if (confirm('¿Cancelar esta solicitud?')) cancelMutation.mutate(r.id);
-                        }}
-                      >
-                        Cancelar
-                      </Button>
+                      <div className="flex items-center gap-1">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-7 text-xs"
+                          onClick={() => openEdit(r)}
+                        >
+                          <Pencil className="h-3.5 w-3.5 mr-1" />
+                          Editar
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-7 text-xs text-rose-600 hover:text-rose-700"
+                          disabled={cancelMutation.isPending}
+                          onClick={() => {
+                            if (confirm('¿Cancelar esta solicitud?')) cancelMutation.mutate(r.id);
+                          }}
+                        >
+                          Cancelar
+                        </Button>
+                      </div>
                     )}
                   </div>
                 </div>
@@ -133,9 +144,10 @@ export const ExtraordinaryRequestsTab = ({ clientId, properties }: Extraordinary
 
       <CreateExtraordinaryRequestModal
         open={open}
-        onOpenChange={setOpen}
+        onOpenChange={(v) => { setOpen(v); if (!v) setEditRequest(null); }}
         clientId={clientId}
         properties={properties}
+        editRequest={editRequest}
       />
     </div>
   );
