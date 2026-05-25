@@ -49,25 +49,54 @@ export const CreateExtraordinaryRequestModal = ({ open, onOpenChange, clientId, 
 
   const selectedType = useMemo(() => types.find(t => t.id === typeId), [types, typeId]);
 
+  // Hydrate state when editing
+  useEffect(() => {
+    if (!open) return;
+    if (editRequest) {
+      setPropertyId(editRequest.propertyId);
+      setTypeId(editRequest.requestTypeId ?? '');
+      setDate(new Date(editRequest.serviceDate + 'T00:00:00'));
+      setTime(editRequest.serviceTime ? editRequest.serviceTime.slice(0, 5) : '');
+      setGuestName(editRequest.guestName ?? '');
+      setNotes(editRequest.notes ?? '');
+      setAccepted(true);
+    } else {
+      setPropertyId(''); setTypeId(''); setDate(undefined); setTime('');
+      setGuestName(''); setNotes(''); setAccepted(false);
+    }
+  }, [open, editRequest]);
+
   const reset = () => {
     setPropertyId(''); setTypeId(''); setDate(undefined); setTime('');
     setGuestName(''); setNotes(''); setAccepted(false);
   };
 
-  const canSubmit = propertyId && typeId && date && (!selectedType?.requiresTime || time) && accepted && !create.isPending;
+  const isPending = create.isPending || update.isPending;
+  const canSubmit = propertyId && typeId && date && (!selectedType?.requiresTime || time) && accepted && !isPending;
 
   const handleSubmit = async () => {
     if (!canSubmit || !date || !selectedType) return;
     try {
-      await create.mutateAsync({
-        clientId,
-        propertyId,
-        requestTypeId: typeId,
-        serviceDate: format(date, 'yyyy-MM-dd'),
-        serviceTime: selectedType.requiresTime ? (time || null) : (time || null),
-        guestName: guestName || null,
-        notes: notes || null,
-      });
+      if (isEdit && editRequest) {
+        await update.mutateAsync({
+          requestId: editRequest.id,
+          clientId,
+          serviceDate: format(date, 'yyyy-MM-dd'),
+          serviceTime: selectedType.requiresTime ? (time || null) : (time || null),
+          guestName: guestName || null,
+          notes: notes || null,
+        });
+      } else {
+        await create.mutateAsync({
+          clientId,
+          propertyId,
+          requestTypeId: typeId,
+          serviceDate: format(date, 'yyyy-MM-dd'),
+          serviceTime: selectedType.requiresTime ? (time || null) : (time || null),
+          guestName: guestName || null,
+          notes: notes || null,
+        });
+      }
       reset();
       onOpenChange(false);
     } catch {
@@ -79,9 +108,11 @@ export const CreateExtraordinaryRequestModal = ({ open, onOpenChange, clientId, 
     <Dialog open={open} onOpenChange={(v) => { if (!v) reset(); onOpenChange(v); }}>
       <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Nueva solicitud extraordinaria</DialogTitle>
+          <DialogTitle>{isEdit ? 'Editar solicitud extraordinaria' : 'Nueva solicitud extraordinaria'}</DialogTitle>
           <DialogDescription>
-            Solicita un servicio especial para tu huésped. Se añadirá automáticamente a nuestro calendario.
+            {isEdit
+              ? 'Actualiza la fecha, hora o detalles de tu solicitud. El tipo de servicio y la propiedad no se pueden cambiar.'
+              : 'Solicita un servicio especial para tu huésped. Se añadirá automáticamente a nuestro calendario.'}
           </DialogDescription>
         </DialogHeader>
 
