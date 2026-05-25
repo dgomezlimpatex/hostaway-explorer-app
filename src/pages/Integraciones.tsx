@@ -120,14 +120,32 @@ const Integraciones = () => {
       return data;
     },
     onSuccess: (data) => {
+      const invMsg = data.invitations_sent > 0 ? ` · ${data.invitations_sent} invitaciones enviadas por email` : '';
       toast({
         title: 'Vinculación aplicada',
-        description: `Vinculados: ${data.linked} · Creados: ${data.created} · Errores: ${data.errors?.length || 0}`,
+        description: `Vinculados: ${data.linked} · Creados: ${data.created} · Errores: ${data.errors?.length || 0}${invMsg}`,
       });
       setPreview(null);
       setDecisions({});
       refetchLogs();
       queryClient.invalidateQueries({ queryKey: ['cleaners'] });
+    },
+    onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
+  });
+
+  const invitePendingMutation = useMutation({
+    mutationFn: async () => {
+      const { data, error } = await supabase.functions.invoke('sync-employees-from-registro', {
+        body: { mode: 'invite_pending' },
+      });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (data) => {
+      toast({
+        title: 'Invitaciones reenviadas',
+        description: `Se han enviado ${data.invitations_sent} invitaciones por email.`,
+      });
     },
     onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
   });
