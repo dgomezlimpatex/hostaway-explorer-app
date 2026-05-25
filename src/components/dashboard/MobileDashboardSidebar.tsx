@@ -138,7 +138,12 @@ const adminItems: NavigationItem[] = [
     icon: Layers,
   },
   {
-    title: 'Servicios extraordinarios',
+    title: 'Solicitudes extraordinarias',
+    href: '/admin/extraordinary-requests',
+    icon: Sparkles,
+  },
+  {
+    title: 'Tipos de servicio extra',
     href: '/admin/extraordinary-types',
     icon: Layers,
   },
