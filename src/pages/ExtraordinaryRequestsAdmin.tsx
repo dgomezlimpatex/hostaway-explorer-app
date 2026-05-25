@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { Sparkles, X, Check, Clock, MapPin, User, Search, Filter, Loader2 } from 'lucide-react';
+import { Sparkles, X, Check, Clock, MapPin, User, Search, Filter, Loader2, Layers } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -77,17 +78,24 @@ const ExtraordinaryRequestsAdmin = () => {
 
   return (
     <div className="container mx-auto p-4 sm:p-6 max-w-7xl space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex items-start justify-between gap-3 flex-wrap">
         <div>
           <h1 className="text-xl sm:text-2xl font-semibold flex items-center gap-2">
             <Sparkles className="h-5 w-5 text-primary" />
-            Solicitudes extraordinarias
+            Tareas Extraordinarias
           </h1>
           <p className="text-sm text-muted-foreground">
             Histórico de todas las solicitudes creadas desde los portales de cliente.
           </p>
         </div>
+        <Button asChild variant="outline">
+          <Link to="/admin/extraordinary-types">
+            <Layers className="h-4 w-4 mr-2" />
+            Tipos de servicios
+          </Link>
+        </Button>
       </div>
+
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <Card><CardContent className="p-3"><div className="text-xs text-muted-foreground">Total</div><div className="text-2xl font-bold">{counts.total}</div></CardContent></Card>
