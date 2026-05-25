@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { CalendarIcon, Loader2, CheckCircle2 } from 'lucide-react';
@@ -18,7 +18,9 @@ import { cn } from '@/lib/utils';
 import {
   useActiveExtraordinaryRequestTypes,
   useCreateExtraordinaryRequest,
+  useUpdateExtraordinaryRequest,
 } from '@/hooks/useExtraordinaryRequests';
+import type { ClientExtraordinaryRequest } from '@/types/extraordinaryRequest';
 
 interface Property { id: string; nombre: string; codigo: string; direccion: string; }
 
@@ -27,11 +29,14 @@ interface Props {
   onOpenChange: (open: boolean) => void;
   clientId: string;
   properties: Property[];
+  editRequest?: ClientExtraordinaryRequest | null;
 }
 
-export const CreateExtraordinaryRequestModal = ({ open, onOpenChange, clientId, properties }: Props) => {
+export const CreateExtraordinaryRequestModal = ({ open, onOpenChange, clientId, properties, editRequest }: Props) => {
+  const isEdit = !!editRequest;
   const { data: types = [], isLoading: loadingTypes } = useActiveExtraordinaryRequestTypes();
   const create = useCreateExtraordinaryRequest();
+  const update = useUpdateExtraordinaryRequest();
 
   const [propertyId, setPropertyId] = useState<string>('');
   const [typeId, setTypeId] = useState<string>('');
