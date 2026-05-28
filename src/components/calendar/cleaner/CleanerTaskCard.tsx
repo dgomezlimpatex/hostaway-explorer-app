@@ -66,7 +66,8 @@ const CleanerTaskCardComponent: React.FC<CleanerTaskCardProps> = ({
     const [endHour, endMinute] = displayEndTime.split(':').map(Number);
     const startMinutes = startHour * 60 + startMinute;
     const endMinutes = endHour * 60 + endMinute;
-    const durationMinutes = endMinutes - startMinutes;
+    let durationMinutes = endMinutes - startMinutes;
+    if (durationMinutes <= 0) durationMinutes += 24 * 60;
     
     if (durationMinutes >= 60) {
       const hours = Math.floor(durationMinutes / 60);
