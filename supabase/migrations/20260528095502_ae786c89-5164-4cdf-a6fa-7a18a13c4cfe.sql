@@ -1,0 +1,1 @@
+DELETE FROM public.tasks WHERE id = '36f1f1d9-b8bf-414f-bf29-d519b43782de';
