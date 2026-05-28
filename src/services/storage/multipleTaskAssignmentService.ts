@@ -47,7 +47,7 @@ export class MultipleTaskAssignmentService {
 
     if (error) throw new Error(`Error setting task assignments: ${error.message}`);
 
-    const result = (data || {}) as SetAssignmentsResult;
+    const result = (data || {}) as unknown as SetAssignmentsResult;
     const added = result.added || [];
     const removed = result.removed || [];
 
