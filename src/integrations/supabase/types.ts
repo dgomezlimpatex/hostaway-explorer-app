@@ -4816,6 +4816,10 @@ export type Database = {
         Args: { reset_action_type: string; reset_identifier: string }
         Returns: undefined
       }
+      set_task_assignments: {
+        Args: { _cleaner_ids: string[]; _task_id: string }
+        Returns: Json
+      }
       update_cleaners_order: {
         Args: { cleaner_updates: Json[] }
         Returns: undefined
