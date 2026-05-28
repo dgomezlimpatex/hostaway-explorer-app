@@ -1,78 +1,151 @@
+# Rediseño de asignación múltiple de trabajadores
 
-# Automatizar el alta de trabajadores (REGISTRO → invitación → cleaner vinculado)
+## Por qué falla hoy
 
-## Objetivo
+Revisé `multipleTaskAssignmentService.ts` y `AssignMultipleCleanersModal.tsx`. El problema raíz no es solo un bug puntual, es que la operación "guardar asignaciones" hace 6-12 llamadas separadas sin transacción:
 
-Que el flujo sea uno solo: cuando sincronizamos un empleado desde REGISTRO, la app envía sola la invitación por email; y cuando el trabajador la acepta, queda enlazado al cleaner ya existente (sin duplicados).
+1. Para cada persona a quitar → `removeCleanerFromTask()` que hace SELECT cleaner + SELECT task + DELETE + SELECT remaining + UPDATE `tasks.cleaner` + INVOKE email.
+2. Luego INSERT de los nuevos + INVOKE emails.
+3. Finalmente otro UPDATE de `tasks.cleaner` con la lista final.
 
-## Flujo nuevo
+Consecuencias:
+- Cada `removeCleanerFromTask` actualiza `tasks.cleaner` con el "primer asignado restante", y luego la función contenedora lo sobrescribe otra vez. Si una de esas llamadas falla a medias, queda inconsistente.
+- `task.cleaner` (texto separado por comas) y `task_assignments` (tabla) pueden divergir → la próxima vez que abres el modal solo ves los de la tabla, pero el calendario sigue mostrando los del string.
+- Por eso al "limpiar todo y volver a asignar" sí funciona: estás forzando un estado limpio.
+- Los emails de des-asignación se disparan dentro del loop, antes de saber si toda la operación tuvo éxito → spam de "te han desasignado" aunque luego el guardado falle.
+
+## Solución
+
+### 1. Backend: una RPC atómica que reemplaza todo el flujo
+
+Nueva función SQL `set_task_assignments(_task_id uuid, _cleaner_ids uuid[])` que en una sola transacción:
+
+- Lee asignaciones actuales.
+- Calcula diff: `added`, `removed`, `kept`.
+- `DELETE` solo los `removed`.
+- `INSERT` solo los `added` (respeta `UNIQUE(task_id, cleaner_id)`).
+- Recalcula `tasks.cleaner` (nombres en el orden de `_cleaner_ids`) y `tasks.cleaner_id` (primero de la lista, o NULL).
+- Devuelve `{ added: [{id,name,email}], removed: [{id,name,email}], final: [{id,name}] }` para que el frontend sepa a quién notificar.
+
+`SECURITY DEFINER` con search_path `public`, GRANT EXECUTE a `authenticated`.
+
+### 2. Frontend: servicio reducido + emails desacoplados
+
+`multipleTaskAssignmentService` se simplifica a:
+
+- `getTaskAssignments(taskId)` — igual que ahora.
+- `setTaskAssignments(taskId, cleanerIds)` — llama la RPC, recibe el diff, dispara emails (asignación a los `added`, desasignación a los `removed`) en `Promise.allSettled`. Si un email falla no rompe la operación.
+
+Se eliminan `assignMultipleCleaners`, `removeCleanerFromTask`, `clearTaskAssignments` (esta última pasa a ser `setTaskAssignments(id, [])`).
+
+### 3. Frontend: modal rediseñado
+
+Reemplazo de `AssignMultipleCleanersModal` con un flujo más claro:
 
 ```text
-REGISTRO (alta del empleado por tu jefe)
-        │
-        ▼
-Integraciones · REGISTRO  →  preview / link
-        │  (crea o vincula el cleaner con external_id, sede, DNI, PIN…)
-        │
-        ▼
-[NUEVO] Si el empleado tiene email y aún no es usuario:
-        crea automáticamente la invitación con rol 'cleaner' + sede
-        y dispara send-invitation-email
-        │
-        ▼
-El trabajador recibe email → acepta → fija contraseña
-        │
-        ▼
-[FIX] accept_invitation enlaza por email al cleaner existente
-        (rellena user_id en lugar de crear otro cleaner)
+┌─ Asignar trabajadores ───────────────────────────────┐
+│ Tarea: Peruleiro · 28 may · 12:00–16:00              │
+│                                                       │
+│ Actualmente asignados                                 │
+│  [Laura ×] [Vicente ×] [Rhaquel ×]                    │
+│  → 1h 20min por persona                               │
+│                                                       │
+│ Añadir / quitar                                       │
+│  ⭐ Preferidos                                         │
+│   [✓] Laura    [ ] Pedro    [✓] Vicente               │
+│  Otros                                                │
+│   [✓] Rhaquel  [ ] Kianay   [ ] Cristian              │
+│                                                       │
+│ Cambios pendientes                                    │
+│  + Pedro                                              │
+│  − Rhaquel                                            │
+│                                                       │
+│ [Cancelar]              [Guardar 2 cambios]           │
+└───────────────────────────────────────────────────────┘
 ```
 
-## Cambios concretos
+Detalles:
+- Las "fichas" arriba permiten quitar a alguien con un clic (≡ desmarcar abajo). Sincronizadas con el checklist.
+- Bloque "Cambios pendientes" calculado en cliente (`added`/`removed` vs estado inicial). Solo se muestra si hay cambios.
+- "Guardar" deshabilitado si no hay cambios; texto dinámico ("Guardar 2 cambios" / "Vaciar asignaciones" si queda lista vacía).
+- "Guardar" llama `setTaskAssignments`, invalida queries de `tasks`, muestra toast con resumen ("Añadido: Pedro · Quitado: Rhaquel") y cierra.
+- Si la operación falla, ningún cambio se aplica (RPC atómica) y el modal se queda abierto con el estado original.
+- Mensaje informativo de "duración por persona" recalculado al vuelo según el número de seleccionados (reutiliza la lógica que ya arreglamos para tareas que cruzan medianoche).
 
-### 1. Edge function `sync-employees-from-registro`
-En el modo `link` (y opcionalmente `sync` para empleados que aún no tienen invitación):
+### 4. Limpieza
 
-- Tras crear/vincular cada cleaner, si el empleado de REGISTRO tiene email válido:
-  - Comprobar si ya existe `auth.users` con ese email → si existe, no hacer nada.
-  - Comprobar si hay invitación pendiente para ese email → si la hay, no duplicar.
-  - Si no hay nada, llamar a `create_user_invitation_secure(email, 'cleaner', sede_id)` y a continuación invocar `send-invitation-email`.
-- Devolver en la respuesta un contador `invitations_sent` y un detalle por empleado (`invited` / `already_user` / `already_pending` / `no_email`) para mostrarlo en la UI de Integraciones.
-
-### 2. Función SQL `accept_invitation` (migración)
-Cambiar el bloque de `IF invitation_record.role = 'cleaner'`:
-
-- Antes de insertar, buscar `cleaners` por `LOWER(email) = LOWER(user_email)` AND `user_id IS NULL`.
-- Si existe → `UPDATE` ese cleaner: fijar `user_id = input_user_id`, `is_active = true` y `sede_id` solo si estaba NULL (no pisar la sede de REGISTRO).
-- Si no existe → `INSERT` como ahora (caso usuario invitado a mano sin cleaner previo).
-
-Esto elimina los duplicados: el cleaner que vino de REGISTRO se reutiliza.
-
-### 3. UI Integraciones · REGISTRO
-- En la pantalla de resultado del `link`, añadir un resumen: "Se han enviado X invitaciones por email" + lista de empleados sin email (para que el usuario sepa a quién hay que pedirle email).
-- Botón "Reenviar invitaciones pendientes" que vuelve a llamar a la función para los cleaners sincronizados que aún no tienen `user_id`.
-
-### 4. UI Gestión de Trabajadores (`CreateWorkerModal`)
-- Mantener el botón "Nuevo Trabajador" pero reforzar el aviso ámbar: "Solo úsalo para casos excepcionales. Lo normal es sincronizar desde Integraciones · REGISTRO".
-- Sin cambios funcionales aquí.
+- Eliminar los métodos obsoletos del servicio.
+- Donde `TaskDetailsModal` y `TasksPage` invocaban `assignMultipleCleaners` / `clearTaskAssignments`, pasan a `setTaskAssignments`.
+- Mantener `task.cleaner` y `cleaner_id` actualizados solo por la RPC (única fuente de verdad: `task_assignments`).
 
 ## Detalles técnicos
 
-- La función `create_user_invitation_secure` ya valida rol, sede obligatoria para cleaner, rate-limit y duplicados, así que la edge function solo tiene que llamarla.
-- `send-invitation-email` ya existe y se invoca con `{ email, inviterName, role, token, appUrl }`. El `inviterName` puede ser "Sincronización REGISTRO".
-- El cambio en `accept_invitation` es la pieza clave para que **no se dupliquen** cleaners cuando el trabajador acepta — usamos email (case-insensitive) como puente.
-- No tocamos `auth.users` directamente ni el trigger `handle_new_cleaner` (sigue creando `user_sede_access` cuando se rellena el `user_id`).
+**SQL — set_task_assignments (resumen):**
+```sql
+CREATE OR REPLACE FUNCTION public.set_task_assignments(
+  _task_id uuid,
+  _cleaner_ids uuid[]
+) RETURNS jsonb
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = 'public'
+AS $$
+DECLARE
+  v_current uuid[];
+  v_added uuid[];
+  v_removed uuid[];
+  v_names text;
+  v_primary uuid;
+BEGIN
+  SELECT coalesce(array_agg(cleaner_id), '{}') INTO v_current
+    FROM task_assignments WHERE task_id = _task_id;
 
-## Casos límite
+  SELECT array(SELECT unnest(_cleaner_ids) EXCEPT SELECT unnest(v_current)) INTO v_added;
+  SELECT array(SELECT unnest(v_current)   EXCEPT SELECT unnest(_cleaner_ids)) INTO v_removed;
 
-| Situación | Resultado |
-|---|---|
-| Empleado de REGISTRO sin email | Se sincroniza el cleaner; se reporta en la UI para pedir email |
-| Email ya existe en `auth.users` pero sin cleaner | No se reinvita; aparece en la lista para vincular a mano |
-| Cleaner manual antiguo con mismo email que el de REGISTRO | Al aceptar la invitación se enlaza por email al cleaner existente; no se duplica |
-| Re-sync del mismo empleado | Se respeta la invitación previa (ya pendiente o aceptada) |
+  DELETE FROM task_assignments
+    WHERE task_id = _task_id AND cleaner_id = ANY(v_removed);
 
-## Qué NO toca
+  INSERT INTO task_assignments (task_id, cleaner_id, cleaner_name, assigned_by)
+    SELECT _task_id, c.id, c.name, auth.uid()
+    FROM cleaners c WHERE c.id = ANY(v_added);
 
-- No cambia el modo `sync` para datos ya vinculados (sigue sin tocar email, teléfono, sede).
-- No modifica RLS ni tablas existentes salvo la función `accept_invitation`.
-- No automatiza el alta en REGISTRO (eso lo sigue haciendo tu jefe).
+  -- Recalcular nombres en el orden recibido
+  SELECT string_agg(c.name, ', ' ORDER BY arr.ord)
+    INTO v_names
+    FROM unnest(_cleaner_ids) WITH ORDINALITY AS arr(id, ord)
+    JOIN cleaners c ON c.id = arr.id;
+
+  v_primary := _cleaner_ids[1];
+
+  UPDATE tasks
+    SET cleaner = NULLIF(v_names,''),
+        cleaner_id = v_primary,
+        updated_at = now()
+    WHERE id = _task_id;
+
+  RETURN jsonb_build_object(
+    'added',   (SELECT coalesce(jsonb_agg(jsonb_build_object('id',c.id,'name',c.name,'email',c.email)),'[]'::jsonb)
+                FROM cleaners c WHERE c.id = ANY(v_added)),
+    'removed', (SELECT coalesce(jsonb_agg(jsonb_build_object('id',c.id,'name',c.name,'email',c.email)),'[]'::jsonb)
+                FROM cleaners c WHERE c.id = ANY(v_removed))
+  );
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.set_task_assignments(uuid, uuid[]) TO authenticated;
+```
+
+(Las constraints existentes `UNIQUE(task_id, cleaner_id)` y `FK ON DELETE CASCADE` ya cubren la integridad.)
+
+**Archivos afectados:**
+- Nueva migración con la RPC.
+- `src/services/storage/multipleTaskAssignmentService.ts` — simplificado.
+- `src/components/modals/AssignMultipleCleanersModal.tsx` — rediseñado con diff visual.
+- `src/components/tasks/TasksPage.tsx` y `src/components/modals/TaskDetailsModal.tsx` — solo cambian el nombre del método llamado.
+- Sin cambios en `task_assignments` (esquema ya es correcto).
+- Sin cambios en las edge functions de email (se siguen usando `send-task-assignment-email` y `send-task-unassignment-email`).
+
+## Fuera de alcance
+
+- No se toca la lógica de cómo se reparte la duración entre N trabajadores (ya arreglada).
+- No se cambia el comportamiento de los emails individuales (solo a quién se envían).
+- No se toca el flujo de auto-asignación masiva (`BulkAutoAssignButton`).
