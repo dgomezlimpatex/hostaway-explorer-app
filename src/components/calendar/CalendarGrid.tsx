@@ -199,10 +199,12 @@ const CleanerRow = memo(({
       const count = getAssignedCount(task, cleanerAssignmentsMap?.[task.id]);
       if (count <= 1) return { original: task, display: task, count };
       const startMin = timeToMinutes(task.startTime);
-      const endMin = timeToMinutes(task.endTime);
+      let endMin = timeToMinutes(task.endTime);
+      // Handle tasks crossing midnight (e.g. 16:00 → 04:00)
+      if (endMin <= startMin) endMin += 24 * 60;
       const totalDur = Math.max(0, endMin - startMin);
       const perWorker = Math.max(15, Math.round(totalDur / count));
-      const displayEnd = minutesToHHMM(startMin + perWorker);
+      const displayEnd = minutesToHHMM((startMin + perWorker) % (24 * 60));
       return {
         original: task,
         display: { ...task, endTime: displayEnd },
