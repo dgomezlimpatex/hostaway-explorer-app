@@ -34,11 +34,13 @@ export const getEffectiveTaskEndTime = (task: any, assignmentsMap?: Record<strin
   if (assignedCount <= 1) return task.endTime;
 
   const startMinutes = timeToMinutes(task.startTime);
-  const endMinutes = timeToMinutes(task.endTime);
+  let endMinutes = timeToMinutes(task.endTime);
+  // Handle tasks crossing midnight (e.g. 16:00 → 04:00)
+  if (endMinutes <= startMinutes) endMinutes += 24 * 60;
   const fullDuration = Math.max(endMinutes - startMinutes, 0);
   const perWorkerDuration = Math.max(15, Math.round(fullDuration / assignedCount));
 
-  return minutesToTime(startMinutes + perWorkerDuration);
+  return minutesToTime((startMinutes + perWorkerDuration) % (24 * 60));
 };
 
 // Detect overlapping tasks for a specific cleaner

@@ -49,10 +49,12 @@ const CleanerTaskCardComponent: React.FC<CleanerTaskCardProps> = ({
     const [sh, sm] = task.startTime.split(':').map(Number);
     const [eh, em] = task.endTime.split(':').map(Number);
     const startMin = sh * 60 + sm;
-    const endMin = eh * 60 + em;
+    let endMin = eh * 60 + em;
+    // Handle tasks crossing midnight (e.g. 16:00 → 04:00)
+    if (endMin <= startMin) endMin += 24 * 60;
     const totalDur = Math.max(0, endMin - startMin);
     const perWorker = Math.max(15, Math.round(totalDur / assignedCount));
-    const newEnd = startMin + perWorker;
+    const newEnd = (startMin + perWorker) % (24 * 60);
     const h = Math.floor(newEnd / 60);
     const m = newEnd % 60;
     return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
@@ -64,7 +66,8 @@ const CleanerTaskCardComponent: React.FC<CleanerTaskCardProps> = ({
     const [endHour, endMinute] = displayEndTime.split(':').map(Number);
     const startMinutes = startHour * 60 + startMinute;
     const endMinutes = endHour * 60 + endMinute;
-    const durationMinutes = endMinutes - startMinutes;
+    let durationMinutes = endMinutes - startMinutes;
+    if (durationMinutes <= 0) durationMinutes += 24 * 60;
     
     if (durationMinutes >= 60) {
       const hours = Math.floor(durationMinutes / 60);
