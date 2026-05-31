@@ -259,6 +259,7 @@ export const MobileDashboardSidebar = ({ onNavigate }: MobileDashboardSidebarPro
       {renderNavigationSection('Gestión', managementItems)}
       {renderNavigationSection('Reportes', reportsItems)}
       {renderNavigationSection('Facturación', billingItems)}
+      {isAdminOrManager() && renderNavigationSection('Sincronizaciones', syncItems)}
       
       {/* Administración - Solo para admin/manager */}
       {isAdminOrManager() && renderNavigationSection('Administración', adminItems)}
