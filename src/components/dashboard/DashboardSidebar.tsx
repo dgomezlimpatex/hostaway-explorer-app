@@ -358,7 +358,7 @@ export const DashboardSidebar = () => {
           {renderNavigationSection('Gestión', managementItems)}
           {renderNavigationSection('Reportes', reportsItems)}
           {renderNavigationSection('Facturación', billingItems)}
-          
+          {isAdminOrManager() && renderSyncSection('Sincronizaciones', syncItems)}
           {/* Administración - Solo para admin/manager */}
           {isAdminOrManager() && renderNavigationSection('Administración', adminItems)}
         </div>
