@@ -20,7 +20,8 @@ import {
   TrendingUp,
   Settings,
   Link2,
-  Sparkles
+  Sparkles,
+  Hotel
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useRolePermissions } from '@/hooks/useRolePermissions';
