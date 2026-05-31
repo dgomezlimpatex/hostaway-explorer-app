@@ -145,6 +145,27 @@ const billingItems: NavigationItem[] = [
   },
 ];
 
+const syncItems: NavigationItem[] = [
+  {
+    title: 'Avantio',
+    href: '/avantio-automation',
+    icon: Settings,
+    permission: 'hostaway'
+  },
+  {
+    title: 'Little Hotelier',
+    href: '/little-hotelier',
+    icon: Hotel,
+    permission: 'admin-only'
+  },
+  {
+    title: 'Hostaway Sync',
+    href: '/hostaway-sync-logs',
+    icon: AlertTriangle,
+    permission: 'hostaway'
+  },
+];
+
 const adminItems: NavigationItem[] = [
   {
     title: 'Gestión de Usuarios',
@@ -165,13 +186,6 @@ const adminItems: NavigationItem[] = [
     title: 'Tareas Extraordinarias',
     href: '/admin/extraordinary-requests',
     icon: Sparkles,
-  },
-
-  {
-    title: 'Avantio Sync',
-    href: '/avantio-automation',
-    icon: Settings,
-    permission: 'hostaway'
   },
   {
     title: 'Integraciones · REGISTRO',
