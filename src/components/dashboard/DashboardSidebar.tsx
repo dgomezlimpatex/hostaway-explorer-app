@@ -24,12 +24,15 @@ import {
   RefreshCw,
   Settings,
   Link2,
-  Sparkles
+  Sparkles,
+  Hotel,
+  ChevronRight,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useRolePermissions } from '@/hooks/useRolePermissions';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import {
   Sidebar,
   SidebarContent,
@@ -40,6 +43,9 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarMenuSub,
+  SidebarMenuSubButton,
+  SidebarMenuSubItem,
   useSidebar,
 } from '@/components/ui/sidebar';
 
@@ -139,6 +145,27 @@ const billingItems: NavigationItem[] = [
   },
 ];
 
+const syncItems: NavigationItem[] = [
+  {
+    title: 'Avantio',
+    href: '/avantio-automation',
+    icon: Settings,
+    permission: 'hostaway'
+  },
+  {
+    title: 'Little Hotelier',
+    href: '/little-hotelier',
+    icon: Hotel,
+    permission: 'admin-only'
+  },
+  {
+    title: 'Hostaway Sync',
+    href: '/hostaway-sync-logs',
+    icon: AlertTriangle,
+    permission: 'hostaway'
+  },
+];
+
 const adminItems: NavigationItem[] = [
   {
     title: 'Gestión de Usuarios',
@@ -159,13 +186,6 @@ const adminItems: NavigationItem[] = [
     title: 'Tareas Extraordinarias',
     href: '/admin/extraordinary-requests',
     icon: Sparkles,
-  },
-
-  {
-    title: 'Avantio Sync',
-    href: '/avantio-automation',
-    icon: Settings,
-    permission: 'hostaway'
   },
   {
     title: 'Integraciones · REGISTRO',
@@ -250,6 +270,52 @@ export const DashboardSidebar = () => {
     );
   };
 
+  const renderSyncSection = (title: string, items: NavigationItem[]) => {
+    const filteredItems = filterItemsByPermission(items);
+    if (filteredItems.length === 0) return null;
+
+    const isAnyActive = filteredItems.some(item => isActive(item.href));
+
+    return (
+      <SidebarGroup>
+        <SidebarGroupLabel className="text-xs font-medium text-gray-500 uppercase tracking-wider">
+          {title}
+        </SidebarGroupLabel>
+        <SidebarGroupContent>
+          <SidebarMenu>
+            <Collapsible defaultOpen={isAnyActive} className="group/collapsible">
+              <SidebarMenuItem>
+                <CollapsibleTrigger asChild>
+                  <SidebarMenuButton>
+                    <RefreshCw className="h-5 w-5 text-gray-400" />
+                    {!isCollapsed && <span>Sincronizaciones</span>}
+                    {!isCollapsed && (
+                      <ChevronRight className="ml-auto transition-transform group-data-[state=open]/collapsible:rotate-90 h-4 w-4 text-gray-400" />
+                    )}
+                  </SidebarMenuButton>
+                </CollapsibleTrigger>
+                <CollapsibleContent>
+                  <SidebarMenuSub>
+                    {filteredItems.map((item) => (
+                      <SidebarMenuSubItem key={item.href}>
+                        <SidebarMenuSubButton asChild isActive={isActive(item.href)}>
+                          <NavLink to={item.href}>
+                            <item.icon className="h-4 w-4" />
+                            <span>{item.title}</span>
+                          </NavLink>
+                        </SidebarMenuSubButton>
+                      </SidebarMenuSubItem>
+                    ))}
+                  </SidebarMenuSub>
+                </CollapsibleContent>
+              </SidebarMenuItem>
+            </Collapsible>
+          </SidebarMenu>
+        </SidebarGroupContent>
+      </SidebarGroup>
+    );
+  };
+
   return (
     <Sidebar className={isCollapsed ? "w-14" : "w-64"} collapsible="icon">
       <SidebarContent className="flex flex-col h-full">
@@ -292,7 +358,7 @@ export const DashboardSidebar = () => {
           {renderNavigationSection('Gestión', managementItems)}
           {renderNavigationSection('Reportes', reportsItems)}
           {renderNavigationSection('Facturación', billingItems)}
-          
+          {isAdminOrManager() && renderSyncSection('Sincronizaciones', syncItems)}
           {/* Administración - Solo para admin/manager */}
           {isAdminOrManager() && renderNavigationSection('Administración', adminItems)}
         </div>

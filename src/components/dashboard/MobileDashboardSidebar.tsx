@@ -20,7 +20,8 @@ import {
   TrendingUp,
   Settings,
   Link2,
-  Sparkles
+  Sparkles,
+  Hotel
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useRolePermissions } from '@/hooks/useRolePermissions';
@@ -121,6 +122,27 @@ const billingItems: NavigationItem[] = [
   },
 ];
 
+const syncItems: NavigationItem[] = [
+  {
+    title: 'Avantio',
+    href: '/avantio-automation',
+    icon: Settings,
+    permission: 'hostaway'
+  },
+  {
+    title: 'Little Hotelier',
+    href: '/little-hotelier',
+    icon: Hotel,
+    permission: 'admin-only'
+  },
+  {
+    title: 'Hostaway Sync',
+    href: '/hostaway-sync-logs',
+    icon: AlertTriangle,
+    permission: 'hostaway'
+  },
+];
+
 const adminItems: NavigationItem[] = [
   {
     title: 'Gestión de Usuarios',
@@ -141,19 +163,6 @@ const adminItems: NavigationItem[] = [
     title: 'Tareas Extraordinarias',
     href: '/admin/extraordinary-requests',
     icon: Sparkles,
-  },
-
-  {
-    title: 'Hostaway Sync',
-    href: '/hostaway-sync-logs',
-    icon: AlertTriangle,
-    permission: 'hostaway'
-  },
-  {
-    title: 'Avantio Sync',
-    href: '/avantio-automation',
-    icon: Settings,
-    permission: 'hostaway'
   },
   {
     title: 'Integraciones · REGISTRO',
@@ -250,6 +259,7 @@ export const MobileDashboardSidebar = ({ onNavigate }: MobileDashboardSidebarPro
       {renderNavigationSection('Gestión', managementItems)}
       {renderNavigationSection('Reportes', reportsItems)}
       {renderNavigationSection('Facturación', billingItems)}
+      {isAdminOrManager() && renderNavigationSection('Sincronizaciones', syncItems)}
       
       {/* Administración - Solo para admin/manager */}
       {isAdminOrManager() && renderNavigationSection('Administración', adminItems)}
