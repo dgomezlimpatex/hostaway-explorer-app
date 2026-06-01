@@ -1,5 +1,6 @@
 
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { AlertTriangle, ChevronDown, ChevronRight, X } from "lucide-react";
 import { 
   UnassignedTasksWithSuspense, 
   CalendarModalsWithSuspense 
@@ -315,21 +316,12 @@ export const CalendarContainer = ({
 
   return (
     <>
-      {/* Overlap Alerts - Show at the top */}
-      {Object.keys(overlapsByCleanerMap).length > 0 && (
-        <div className="mb-2 space-y-2 flex-shrink-0">
-          {Object.entries(overlapsByCleanerMap).map(([cleanerId, overlaps]) => {
-            const cleaner = cleaners.find(c => c.id === cleanerId);
-            return cleaner ? (
-              <OverlapAlert
-                key={cleanerId}
-                overlappingTasks={overlaps}
-                cleanerName={cleaner.name}
-              />
-            ) : null;
-          })}
-        </div>
-      )}
+      {/* Overlap Alerts - Compact collapsible banner */}
+      <OverlapAlertsBanner
+        overlapsByCleanerMap={overlapsByCleanerMap}
+        cleaners={cleaners}
+      />
+
 
       {/* Main Layout with Unassigned Tasks on Left and Calendar on Right */}
       <div className="flex gap-2 w-full flex-1 min-h-0">
