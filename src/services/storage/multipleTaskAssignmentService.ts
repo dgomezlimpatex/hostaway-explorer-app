@@ -75,14 +75,53 @@ export class MultipleTaskAssignmentService {
       return;
     }
 
-    const taskData = {
-      property: task.property,
-      address: task.address,
-      date: task.date,
-      startTime: task.start_time,
-      endTime: task.end_time,
-      type: task.type || 'Limpieza general',
-      notes: task.supervisor ? `Supervisor: ${task.supervisor}` : undefined,
+    // Compute per-worker time window. When multiple workers are assigned,
+    // the total scheduled duration is split evenly among them, so each
+    // worker's email reflects the real hours they will actually work.
+    const { data: currentAssignments } = await supabase
+      .from('task_assignments')
+      .select('cleaner_id')
+      .eq('task_id', taskId);
+
+    const assignedIds: string[] = (currentAssignments || []).map((a: any) => a.cleaner_id);
+    const workerCount = Math.max(assignedIds.length, 1);
+
+    const toMin = (t: string) => {
+      const [h, m] = (t || '00:00').split(':').map(Number);
+      return (h || 0) * 60 + (m || 0);
+    };
+    const toTime = (mins: number) => {
+      const h = Math.floor(mins / 60);
+      const m = mins % 60;
+      return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
+    };
+
+    const startMin = toMin(task.start_time);
+    const endMin = toMin(task.end_time);
+    const totalMin = Math.max(endMin - startMin, 0);
+    const perWorkerMin = Math.round(totalMin / workerCount);
+
+    const buildTaskData = (cleanerId?: string) => {
+      let startTime = task.start_time;
+      let endTime = task.end_time;
+      if (cleanerId && workerCount > 1) {
+        const idx = assignedIds.indexOf(cleanerId);
+        if (idx >= 0) {
+          const s = startMin + idx * perWorkerMin;
+          const e = idx === workerCount - 1 ? endMin : s + perWorkerMin;
+          startTime = toTime(s);
+          endTime = toTime(e);
+        }
+      }
+      return {
+        property: task.property,
+        address: task.address,
+        date: task.date,
+        startTime,
+        endTime,
+        type: task.type || 'Limpieza general',
+        notes: task.supervisor ? `Supervisor: ${task.supervisor}` : undefined,
+      };
     };
 
     const sends: Promise<unknown>[] = [];
@@ -92,7 +131,7 @@ export class MultipleTaskAssignmentService {
       sends.push(
         supabase.functions
           .invoke('send-task-assignment-email', {
-            body: { taskId: task.id, cleanerEmail: c.email, cleanerName: c.name, taskData },
+            body: { taskId: task.id, cleanerEmail: c.email, cleanerName: c.name, taskData: buildTaskData(c.id) },
           })
           .catch((e) => console.error('assignment email failed', c.email, e))
       );
@@ -107,7 +146,7 @@ export class MultipleTaskAssignmentService {
               taskId: task.id,
               cleanerEmail: c.email,
               cleanerName: c.name,
-              taskData,
+              taskData: buildTaskData(c.id),
               reason: 'unassigned',
             },
           })
