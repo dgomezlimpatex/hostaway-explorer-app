@@ -400,3 +400,68 @@ export const CalendarContainer = ({
     </>
   );
 };
+
+interface OverlapAlertsBannerProps {
+  overlapsByCleanerMap: Record<string, any[]>;
+  cleaners: Cleaner[];
+}
+
+const OverlapAlertsBanner: React.FC<OverlapAlertsBannerProps> = ({
+  overlapsByCleanerMap,
+  cleanerEntries: _ignored,
+  cleaners,
+} as any) => {
+  const [expanded, setExpanded] = useState(false);
+  const [dismissed, setDismissed] = useState(false);
+
+  const entries = Object.entries(overlapsByCleanerMap);
+  if (entries.length === 0 || dismissed) return null;
+
+  const totalOverlaps = entries.reduce((acc, [, arr]) => acc + arr.length, 0);
+
+  return (
+    <div className="mb-1 flex-shrink-0 border border-red-200 bg-red-50/60 dark:bg-red-950/20 dark:border-red-900/50 rounded-md text-xs">
+      <div className="flex items-center gap-2 px-2 py-1">
+        <button
+          type="button"
+          onClick={() => setExpanded((v) => !v)}
+          className="flex items-center gap-1.5 flex-1 min-w-0 text-left text-red-800 dark:text-red-200 hover:opacity-80"
+        >
+          {expanded ? (
+            <ChevronDown className="h-3 w-3 flex-shrink-0" />
+          ) : (
+            <ChevronRight className="h-3 w-3 flex-shrink-0" />
+          )}
+          <AlertTriangle className="h-3 w-3 flex-shrink-0" />
+          <span className="font-medium truncate">
+            {entries.length} {entries.length === 1 ? 'conflicto' : 'conflictos'} de horario
+            {' '}({totalOverlaps} tareas)
+          </span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setDismissed(true)}
+          className="text-red-600/70 hover:text-red-700 dark:text-red-400/70 dark:hover:text-red-300 flex-shrink-0"
+          aria-label="Ocultar avisos"
+        >
+          <X className="h-3 w-3" />
+        </button>
+      </div>
+      {expanded && (
+        <div className="px-2 pb-2 space-y-1">
+          {entries.map(([cleanerId, overlaps]) => {
+            const cleaner = cleaners.find((c) => c.id === cleanerId);
+            return cleaner ? (
+              <OverlapAlert
+                key={cleanerId}
+                overlappingTasks={overlaps}
+                cleanerName={cleaner.name}
+              />
+            ) : null;
+          })}
+        </div>
+      )}
+    </div>
+  );
+};
+
