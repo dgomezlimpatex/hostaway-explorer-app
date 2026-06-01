@@ -408,9 +408,8 @@ interface OverlapAlertsBannerProps {
 
 const OverlapAlertsBanner: React.FC<OverlapAlertsBannerProps> = ({
   overlapsByCleanerMap,
-  cleanerEntries: _ignored,
   cleaners,
-} as any) => {
+}) => {
   const [expanded, setExpanded] = useState(false);
   const [dismissed, setDismissed] = useState(false);
 
