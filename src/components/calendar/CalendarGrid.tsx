@@ -179,7 +179,7 @@ const CleanerRow = memo(({
 
   // Memoize task elements for this cleaner with overlap detection
   const taskElements = useMemo(() => {
-    // Helper: count assigned cleaners for a task (multi-worker split)
+    // Helper: count assigned cleaners for a task (for badge / metadata only)
     const getAssignedCount = (task: Task, mapEntry?: string[]): number => {
       if (Array.isArray(mapEntry) && mapEntry.length > 0) return mapEntry.length;
       if (task.cleaner && task.cleaner.includes(',')) {
@@ -188,31 +188,16 @@ const CleanerRow = memo(({
       return 1;
     };
 
-    const minutesToHHMM = (mins: number) => {
-      const h = Math.floor(mins / 60);
-      const m = mins % 60;
-      return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
-    };
-
-    // Build per-task display tasks with possibly shortened endTime
+    // Render the full scheduled window (startTime → endTime) for every task,
+    // regardless of how many workers are assigned. The previous per-worker
+    // "split" made multi-worker tasks appear artificially short on the calendar.
     const displayTasks: Array<{ original: Task; display: Task; count: number }> = cleanerTasks.map((task) => {
       const count = getAssignedCount(task, cleanerAssignmentsMap?.[task.id]);
-      if (count <= 1) return { original: task, display: task, count };
-      const startMin = timeToMinutes(task.startTime);
-      let endMin = timeToMinutes(task.endTime);
-      // Handle tasks crossing midnight (e.g. 16:00 → 04:00)
-      if (endMin <= startMin) endMin += 24 * 60;
-      const totalDur = Math.max(0, endMin - startMin);
-      const perWorker = Math.max(15, Math.round(totalDur / count));
-      const displayEnd = minutesToHHMM((startMin + perWorker) % (24 * 60));
-      return {
-        original: task,
-        display: { ...task, endTime: displayEnd },
-        count,
-      };
+      return { original: task, display: task, count };
     });
 
     const displayTasksOnly = displayTasks.map(d => d.display);
+
 
     return displayTasks.map(({ original, display, count }) => {
       const position = getTaskPositionWithOverlap(

@@ -29,19 +29,14 @@ const isTaskAssignedToCleaner = (task: any, cleanerId: string, cleanerName?: str
     (Array.isArray(assignmentsMap?.[task.id]) && assignmentsMap![task.id].includes(cleanerId));
 };
 
-export const getEffectiveTaskEndTime = (task: any, assignmentsMap?: Record<string, string[]>): string => {
-  const assignedCount = getAssignedCount(task, assignmentsMap);
-  if (assignedCount <= 1) return task.endTime;
-
-  const startMinutes = timeToMinutes(task.startTime);
-  let endMinutes = timeToMinutes(task.endTime);
-  // Handle tasks crossing midnight (e.g. 16:00 → 04:00)
-  if (endMinutes <= startMinutes) endMinutes += 24 * 60;
-  const fullDuration = Math.max(endMinutes - startMinutes, 0);
-  const perWorkerDuration = Math.max(15, Math.round(fullDuration / assignedCount));
-
-  return minutesToTime((startMinutes + perWorkerDuration) % (24 * 60));
+export const getEffectiveTaskEndTime = (task: any, _assignmentsMap?: Record<string, string[]>): string => {
+  // The block in the calendar always represents the full scheduled window of
+  // the task (start → end), regardless of how many workers are assigned.
+  // Dividing by worker count produced misleading short blocks for multi-worker
+  // tasks, so we return the real endTime here.
+  return task.endTime;
 };
+
 
 // Detect overlapping tasks for a specific cleaner
 export const detectTaskOverlaps = (
