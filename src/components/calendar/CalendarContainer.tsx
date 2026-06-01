@@ -410,7 +410,7 @@ const OverlapAlertsBanner: React.FC<OverlapAlertsBannerProps> = ({
   overlapsByCleanerMap,
   cleaners,
 }) => {
-  const [expanded, setExpanded] = useState(false);
+  const [expanded, setExpanded] = useState(true);
   const [dismissed, setDismissed] = useState(false);
 
   const entries = Object.entries(overlapsByCleanerMap);
@@ -419,20 +419,20 @@ const OverlapAlertsBanner: React.FC<OverlapAlertsBannerProps> = ({
   const totalOverlaps = entries.reduce((acc, [, arr]) => acc + arr.length, 0);
 
   return (
-    <div className="mb-1 flex-shrink-0 border border-red-200 bg-red-50/60 dark:bg-red-950/20 dark:border-red-900/50 rounded-md text-xs">
-      <div className="flex items-center gap-2 px-2 py-1">
+    <div className="mb-2 flex-shrink-0 border border-red-200 bg-red-50/60 dark:bg-red-950/20 dark:border-red-900/50 rounded-md text-sm">
+      <div className="flex items-center gap-2 px-3 py-2">
         <button
           type="button"
           onClick={() => setExpanded((v) => !v)}
-          className="flex items-center gap-1.5 flex-1 min-w-0 text-left text-red-800 dark:text-red-200 hover:opacity-80"
+          className="flex items-center gap-2 flex-1 min-w-0 text-left text-red-800 dark:text-red-200 hover:opacity-80"
         >
           {expanded ? (
-            <ChevronDown className="h-3 w-3 flex-shrink-0" />
+            <ChevronDown className="h-4 w-4 flex-shrink-0" />
           ) : (
-            <ChevronRight className="h-3 w-3 flex-shrink-0" />
+            <ChevronRight className="h-4 w-4 flex-shrink-0" />
           )}
-          <AlertTriangle className="h-3 w-3 flex-shrink-0" />
-          <span className="font-medium truncate">
+          <AlertTriangle className="h-4 w-4 flex-shrink-0" />
+          <span className="font-semibold truncate">
             {entries.length} {entries.length === 1 ? 'conflicto' : 'conflictos'} de horario
             {' '}({totalOverlaps} tareas)
           </span>
@@ -443,11 +443,11 @@ const OverlapAlertsBanner: React.FC<OverlapAlertsBannerProps> = ({
           className="text-red-600/70 hover:text-red-700 dark:text-red-400/70 dark:hover:text-red-300 flex-shrink-0"
           aria-label="Ocultar avisos"
         >
-          <X className="h-3 w-3" />
+          <X className="h-4 w-4" />
         </button>
       </div>
       {expanded && (
-        <div className="px-2 pb-2 space-y-1">
+        <div className="px-3 pb-3 space-y-1.5">
           {entries.map(([cleanerId, overlaps]) => {
             const cleaner = cleaners.find((c) => c.id === cleanerId);
             return cleaner ? (
