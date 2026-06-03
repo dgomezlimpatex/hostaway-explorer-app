@@ -5,7 +5,7 @@ import { EnhancedTaskCard } from "./EnhancedTaskCard";
 import { Task, Cleaner } from "@/types/calendar";
 import { CleanerAvailability } from "@/hooks/useCleanerAvailability";
 import { getCleanerAvailabilityForDay, timeToMinutes, isCleanerAvailableAtTime } from "@/utils/availabilityUtils";
-import { getTaskPositionWithOverlap } from "@/utils/taskPositioning";
+import { getTaskPositionWithOverlap, getEffectiveTaskEndTime } from "@/utils/taskPositioning";
 import { WorkerAbsenceStatus } from "@/hooks/useWorkersAbsenceStatus";
 import { ABSENCE_TYPE_COLORS, MAINTENANCE_COLOR } from "@/types/workerAbsence";
 
@@ -188,12 +188,14 @@ const CleanerRow = memo(({
       return 1;
     };
 
-    // Render the full scheduled window (startTime → endTime) for every task,
-    // regardless of how many workers are assigned. The previous per-worker
-    // "split" made multi-worker tasks appear artificially short on the calendar.
+    // For multi-worker tasks, render the per-worker portion (start → start +
+    // total/N) so each worker's block on the calendar reflects the real hours
+    // they will work in parallel.
     const displayTasks: Array<{ original: Task; display: Task; count: number }> = cleanerTasks.map((task) => {
       const count = getAssignedCount(task, cleanerAssignmentsMap?.[task.id]);
-      return { original: task, display: task, count };
+      const effectiveEnd = getEffectiveTaskEndTime(task, cleanerAssignmentsMap);
+      const display = count > 1 ? { ...task, endTime: effectiveEnd } : task;
+      return { original: task, display, count };
     });
 
     const displayTasksOnly = displayTasks.map(d => d.display);

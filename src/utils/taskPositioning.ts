@@ -29,12 +29,21 @@ const isTaskAssignedToCleaner = (task: any, cleanerId: string, cleanerName?: str
     (Array.isArray(assignmentsMap?.[task.id]) && assignmentsMap![task.id].includes(cleanerId));
 };
 
-export const getEffectiveTaskEndTime = (task: any, _assignmentsMap?: Record<string, string[]>): string => {
-  // The block in the calendar always represents the full scheduled window of
-  // the task (start → end), regardless of how many workers are assigned.
-  // Dividing by worker count produced misleading short blocks for multi-worker
-  // tasks, so we return the real endTime here.
-  return task.endTime;
+export const getEffectiveTaskEndTime = (task: any, assignmentsMap?: Record<string, string[]>): string => {
+  // For multi-worker tasks every worker actually works only a fraction of the
+  // total scheduled window (all in parallel, same start). The visible block on
+  // the calendar — and the slots considered "occupied" — should reflect that
+  // shorter per-worker duration, not the full window.
+  const count = getAssignedCount(task, assignmentsMap);
+  if (count <= 1) return task.endTime;
+
+  const startMin = timeToMinutes(task.startTime);
+  let endMin = timeToMinutes(task.endTime);
+  if (endMin <= startMin) endMin += 24 * 60; // crosses midnight
+  const totalMin = Math.max(0, endMin - startMin);
+  const perWorker = Math.max(15, Math.round(totalMin / count));
+  const newEnd = (startMin + perWorker) % (24 * 60);
+  return minutesToTime(newEnd);
 };
 
 
