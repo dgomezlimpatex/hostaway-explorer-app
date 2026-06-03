@@ -101,17 +101,14 @@ export class MultipleTaskAssignmentService {
     const totalMin = Math.max(endMin - startMin, 0);
     const perWorkerMin = Math.round(totalMin / workerCount);
 
-    const buildTaskData = (cleanerId?: string) => {
+    const buildTaskData = (_cleanerId?: string) => {
       let startTime = task.start_time;
       let endTime = task.end_time;
-      if (cleanerId && workerCount > 1) {
-        const idx = assignedIds.indexOf(cleanerId);
-        if (idx >= 0) {
-          const s = startMin + idx * perWorkerMin;
-          const e = idx === workerCount - 1 ? endMin : s + perWorkerMin;
-          startTime = toTime(s);
-          endTime = toTime(e);
-        }
+      if (workerCount > 1) {
+        // All workers start at the same time and work in parallel; each one
+        // covers only `totalDuration / N` of the scheduled window.
+        const e = startMin + perWorkerMin;
+        endTime = toTime(e);
       }
       return {
         property: task.property,
