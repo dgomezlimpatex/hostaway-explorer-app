@@ -1,62 +1,50 @@
-## Diagnóstico
 
-He reproducido el error insertando como `anon` en `tasks` con la propiedad y cliente de María Montserrat:
+# Asignación múltiple: dividir horas en TODOS los puntos de la app
 
-```
-{"code":"42501","message":"new row violates row-level security policy for table \"tasks\""}
-```
+## Problema
 
-**Causa raíz**: la migración del 25 de mayo (`20260525103048_…sql`) eliminó la política `Anonymous can verify portal token` sobre `public.client_portal_access` y la sustituyó por funciones RPC `SECURITY DEFINER`. A partir de ese momento `anon` ya **no puede leer ninguna fila de `client_portal_access`**.
+Cuando una tarea con horario total (ej. BRIBES 11:00 → 23:00 = 12h) se asigna a varios trabajadores (ej. 3), cada persona debería trabajar **4h en paralelo** (todas 11:00 → 15:00). Hoy:
 
-El problema es que muchas RLS de otras tablas (tasks, properties, client_reservations, client_reservation_logs, cleaning_incidents…) siguen evaluando:
+- **Calendario de admin**: muestra el bloque completo (11:00 → 23:00, 12h) en cada trabajador → mal.
+- **Email de aviso**: muestra horarios **escalonados** (worker 1: 11–15, worker 2: 15–19, worker 3: 19–23) → mal. Deben ser todos 11–15.
+- **Calendario del trabajador (móvil)**: ya divide correctamente.
+- **Reporte automático**: ya divide la duración correctamente.
 
-```sql
-EXISTS (SELECT 1 FROM client_portal_access cpa
-        WHERE cpa.client_id = X AND cpa.is_active = true)
-```
+## Regla de negocio (definitiva)
 
-Como esa lectura se hace bajo el rol del usuario (anon), RLS filtra todas las filas y el `EXISTS` devuelve `false`. Resultado: cualquier `INSERT`/`UPDATE`/`SELECT` desde el portal de cliente que dependa de esa comprobación es rechazado. Por eso fallan las reservas de junio (y, en general, cualquier creación desde el portal a partir del 25 de mayo: los últimos `created` por `client` son de ese día).
+Cuando una tarea tiene N trabajadores asignados (N > 1):
+- **Mismo inicio** para todos (`startTime` de la tarea).
+- **Duración por persona** = duración total / N.
+- **Fin por persona** = `startTime + (duración total / N)`.
+- Todos trabajan en paralelo, no escalonados.
 
-Tablas/políticas afectadas (todas las que mencionan `client_portal_access` en su expresión):
+## Cambios
 
-- `public.tasks` — view / insert / update / delete del portal
-- `public.client_reservations` — view / insert / update del portal
-- `public.client_reservation_logs` — insert del portal
-- `public.properties` — view del portal
-- `public.cleaning_incidents`, `cleaning_incident_media`, `cleaning_incident_events` — view del portal
-- `public.client_extraordinary_requests` — view del portal
+### 1. Calendario de admin — mostrar bloque dividido
+`src/utils/taskPositioning.ts` → `getEffectiveTaskEndTime`: si hay >1 trabajador, devolver `startTime + totalDuration / N` en lugar del `endTime` original.
 
-## Solución
+`src/components/calendar/CalendarGrid.tsx` (`taskElements`): usar el `endTime` efectivo para `getTaskPositionWithOverlap`, de forma que el bloque renderizado tenga el ancho correcto (4h, no 12h). El bloque sigue siendo el mismo para todos los trabajadores asignados, simplemente más corto.
 
-Crear una función `SECURITY DEFINER` que evalúe la comprobación sin pasar por RLS y reescribir las políticas para usarla.
+Mantener el badge "+N trabajadores" y la información de asignación múltiple.
 
-### 1. Nueva migración
+### 2. Emails de asignación — horarios paralelos, no escalonados
+`src/services/storage/multipleTaskAssignmentService.ts` → `buildTaskData`: eliminar el cálculo escalonado (`s = startMin + idx * perWorkerMin`). Para todos los trabajadores, devolver:
+- `startTime`: el `startTime` original de la tarea.
+- `endTime`: `startTime + perWorkerMin`.
 
-```sql
-CREATE OR REPLACE FUNCTION public.has_active_portal_access(_client_id uuid)
-RETURNS boolean
-LANGUAGE sql
-STABLE
-SECURITY DEFINER
-SET search_path = public
-AS $$
-  SELECT EXISTS (
-    SELECT 1 FROM public.client_portal_access
-    WHERE client_id = _client_id AND is_active = true
-  );
-$$;
+Así el email a Vicente (y a los otros 2) mostraría 11:00 – 15:00 en lugar de 19:00 – 23:00.
 
-GRANT EXECUTE ON FUNCTION public.has_active_portal_access(uuid) TO anon, authenticated;
-```
-
-Luego, para cada política listada arriba, hacer `DROP POLICY … ; CREATE POLICY …` reemplazando el `EXISTS (...)` por `public.has_active_portal_access(<columna_cliente>)`. El comportamiento es idéntico, pero la función corre como owner y ve la fila aunque `anon` no tenga `SELECT` sobre `client_portal_access`.
-
-### 2. Verificación
-
-Tras aplicar la migración, repetir el `curl` anónimo contra `/rest/v1/tasks` con el payload del portal y confirmar `201 Created`. Después probar el flujo real desde el portal de María Montserrat creando la reserva 30 may → 5 jun.
+### 3. Verificación
+- Cleaner mobile (`CleanerTaskCard`): ya lo hace bien, no tocar.
+- Reporte (`taskReportGenerator`): ya divide duración, no tocar.
+- Detección de solapamientos (`detectTaskOverlaps`, `isTimeSlotOccupied`): seguirán usando `getEffectiveTaskEndTime`, así que al dividir el bloque dejarán libres los slots posteriores en el calendario del admin, lo cual es coherente (la persona realmente está libre de 15:00 en adelante).
 
 ## Fuera de alcance
+- No se cambia cómo se reparte el trabajo (siempre paralelo, mismo inicio). Si más adelante quieres turnos escalonados, sería otra feature.
+- No se toca la lógica de creación/edición de tareas ni la base de datos.
 
-- No se toca el flujo de PIN/short-code ni las funciones RPC añadidas el 25 de mayo (siguen siendo el camino oficial para autenticar al cliente).
-- No se vuelve a dar `SELECT` directo sobre `client_portal_access` a `anon` (la decisión de quitarlo se mantiene).
-- No se modifica nada del frontend; el bug es 100% de RLS.
+## Prueba
+Recrear el caso BRIBES con 3 trabajadores asignados a 11:00–23:00 y verificar:
+1. En el calendario admin cada trabajador muestra un bloque 11:00–15:00 (4h).
+2. El email recibido por cada uno indica "Horario: 11:00 – 15:00".
+3. La vista del trabajador y el reporte siguen mostrando 4h.
