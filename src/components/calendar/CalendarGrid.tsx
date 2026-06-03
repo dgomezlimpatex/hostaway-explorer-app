@@ -5,7 +5,7 @@ import { EnhancedTaskCard } from "./EnhancedTaskCard";
 import { Task, Cleaner } from "@/types/calendar";
 import { CleanerAvailability } from "@/hooks/useCleanerAvailability";
 import { getCleanerAvailabilityForDay, timeToMinutes, isCleanerAvailableAtTime } from "@/utils/availabilityUtils";
-import { getTaskPositionWithOverlap } from "@/utils/taskPositioning";
+import { getTaskPositionWithOverlap, getEffectiveTaskEndTime } from "@/utils/taskPositioning";
 import { WorkerAbsenceStatus } from "@/hooks/useWorkersAbsenceStatus";
 import { ABSENCE_TYPE_COLORS, MAINTENANCE_COLOR } from "@/types/workerAbsence";
 
