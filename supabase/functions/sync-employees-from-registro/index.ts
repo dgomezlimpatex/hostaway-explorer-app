@@ -59,6 +59,24 @@ function levenshtein(a: string, b: string): number {
   return dp[m][n];
 }
 
+function publicRegistroEmployee(e: RegistroEmployee, fallbackName?: string) {
+  return {
+    id: e.id,
+    name: fallbackName || e.name || `${e.first_name || ''} ${e.last_name || ''}`.trim(),
+    first_name: e.first_name ?? null,
+    last_name: e.last_name ?? null,
+    email: e.email ?? null,
+    phone: e.phone ?? null,
+    dni: e.dni ?? null,
+    pin: e.pin ?? null,
+    category: e.category ?? null,
+    delegation_name: e.delegation_name ?? null,
+    office_name: e.office_name ?? null,
+    is_active: e.is_active ?? null,
+    hire_date: e.hire_date ?? null,
+  };
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
 
@@ -103,7 +121,7 @@ Deno.serve(async (req) => {
     }
 
     const body = await req.json().catch(() => ({}));
-    const mode: 'preview' | 'link' | 'sync' = body.mode || 'preview';
+    const mode: 'preview' | 'link' | 'sync' | 'invite_pending' = body.mode || 'preview';
     const includeInactive: boolean = !!body.include_inactive;
     const since: string | undefined = body.since;
 
@@ -145,7 +163,7 @@ Deno.serve(async (req) => {
         if (e.id && linkedExternalIds.has(e.id)) {
           const linked = cleaners.find(c => c.external_id === e.id)!;
           return {
-            registro: { id: e.id, name: eName, email: e.email, is_active: e.is_active },
+            registro: publicRegistroEmployee(e, eName),
             match_type: 'already_linked',
             cleaner: { id: linked.id, name: linked.name, email: linked.email },
             confidence: 1,
@@ -157,7 +175,7 @@ Deno.serve(async (req) => {
         const exact = candidates.find(c => normalizeName(c.name) === nNorm);
         if (exact) {
           return {
-            registro: { id: e.id, name: eName, email: e.email, is_active: e.is_active },
+            registro: publicRegistroEmployee(e, eName),
             match_type: 'exact_name',
             cleaner: { id: exact.id, name: exact.name, email: exact.email },
             confidence: 1,
@@ -172,7 +190,7 @@ Deno.serve(async (req) => {
         }
         if (best) {
           return {
-            registro: { id: e.id, name: eName, email: e.email, is_active: e.is_active },
+            registro: publicRegistroEmployee(e, eName),
             match_type: 'fuzzy_name',
             cleaner: { id: best.c.id, name: best.c.name, email: best.c.email },
             confidence: 1 - best.d * 0.2,
@@ -181,7 +199,7 @@ Deno.serve(async (req) => {
         }
 
         return {
-          registro: { id: e.id, name: eName, email: e.email, is_active: e.is_active },
+          registro: publicRegistroEmployee(e, eName),
           match_type: 'no_match',
           cleaner: null,
           confidence: 0,
