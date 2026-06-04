@@ -27,6 +27,7 @@ import {
   Sparkles,
   Hotel,
   ChevronRight,
+  Package,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useRolePermissions } from '@/hooks/useRolePermissions';
@@ -100,6 +101,12 @@ const managementItems: NavigationItem[] = [
     href: '/lavanderia/gestion',
     icon: Shirt,
     permission: 'reports'
+  },
+  {
+    title: 'Inventario',
+    href: '/inventory',
+    icon: Package,
+    permission: 'inventory'
   },
   {
     title: 'Tareas Recurrentes',

@@ -19,6 +19,69 @@ interface BuildingDeliveryGroupProps {
   isUpdating: boolean;
 }
 
+const formatDeliveryItem = (quantity: number, name: string) => `${quantity} ${name}`.toUpperCase();
+
+const normalizeItemName = (value: string) =>
+  value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase();
+
+const hasKitchenClothStockItem = (items: LaundryApartment['stockConsumables']) =>
+  items.some((item) => {
+    const name = normalizeItemName(item.name);
+    return name.includes('cocina') && (name.includes('pano') || name.includes('bayeta'));
+  });
+
+const buildApartmentItems = (apt: LaundryApartment): string[] => {
+  const { textiles, amenities } = apt;
+  const items: string[] = [];
+  const kitchenClothsQuantity = amenities.kitchenCloths > 0 ? amenities.kitchenCloths : 1;
+
+  if (apt.stockConsumables.length > 0) {
+    apt.stockConsumables.forEach((item) => {
+      items.push(formatDeliveryItem(item.quantity, item.name));
+    });
+    if (!hasKitchenClothStockItem(apt.stockConsumables)) {
+      items.push(formatDeliveryItem(kitchenClothsQuantity, 'PAÑOS DE COCINA'));
+    }
+  } else {
+    if (amenities.trashBags > 0) items.push(formatDeliveryItem(amenities.trashBags, 'BOLSAS BASURA'));
+    if (amenities.bathroomAmenities > 0) items.push(formatDeliveryItem(amenities.bathroomAmenities, 'AMENITIES BAÑO'));
+    if (amenities.kitchenAmenities > 0) items.push(formatDeliveryItem(amenities.kitchenAmenities, 'AMENITIES COCINA'));
+    if (amenities.foodKit > 0) items.push(formatDeliveryItem(amenities.foodKit, 'KIT ALIMENTARIO'));
+  }
+
+  if (textiles.pillowCases > 0) items.push(formatDeliveryItem(textiles.pillowCases, 'FUNDAS ALMOHADA'));
+  if (textiles.bathMats > 0) items.push(formatDeliveryItem(textiles.bathMats, 'ALFOMBRINES'));
+  if (textiles.towelsSmall > 0) items.push(formatDeliveryItem(textiles.towelsSmall, 'TOALLAS PEQUEÑAS'));
+  if (textiles.sheets > 0) items.push(formatDeliveryItem(textiles.sheets, 'SÁBANAS'));
+  if (textiles.sheetsSmall > 0) items.push(formatDeliveryItem(textiles.sheetsSmall, 'SÁBANAS PEQUEÑAS'));
+  if (textiles.sheetsSuite > 0) items.push(formatDeliveryItem(textiles.sheetsSuite, 'SÁBANAS SUITE'));
+  if (textiles.towelsLarge > 0) items.push(formatDeliveryItem(textiles.towelsLarge, 'TOALLAS GRANDES'));
+
+  if (apt.stockConsumables.length === 0) {
+    if (amenities.toiletPaper > 0) items.push(formatDeliveryItem(amenities.toiletPaper, 'PAPEL HIGIÉNICO'));
+    if (amenities.kitchenPaper > 0) items.push(formatDeliveryItem(amenities.kitchenPaper, 'PAPEL COCINA'));
+    if (amenities.shampoo > 0) items.push(formatDeliveryItem(amenities.shampoo, 'CHAMPÚ'));
+    if (amenities.conditioner > 0) items.push(formatDeliveryItem(amenities.conditioner, 'ACONDICIONADOR'));
+    if (amenities.showerGel > 0) items.push(formatDeliveryItem(amenities.showerGel, 'GEL DUCHA'));
+    if (amenities.liquidSoap > 0) items.push(formatDeliveryItem(amenities.liquidSoap, 'JABÓN LÍQUIDO'));
+    if (amenities.bathroomAirFreshener > 0) items.push(formatDeliveryItem(amenities.bathroomAirFreshener, 'AMBIENTADOR BAÑO'));
+    if (amenities.dishwasherDetergent > 0) items.push(formatDeliveryItem(amenities.dishwasherDetergent, 'DETERGENTE LAVAVAJILLAS'));
+    items.push(formatDeliveryItem(kitchenClothsQuantity, 'PAÑOS DE COCINA'));
+    if (amenities.sponges > 0) items.push(formatDeliveryItem(amenities.sponges, 'ESTROPAJOS'));
+    if (amenities.glassCleaner > 0) items.push(formatDeliveryItem(amenities.glassCleaner, 'LIMPIACRISTALES'));
+    if (amenities.bathroomDisinfectant > 0) items.push(formatDeliveryItem(amenities.bathroomDisinfectant, 'DESINFECTANTE BAÑO'));
+    if (amenities.oil > 0) items.push(formatDeliveryItem(amenities.oil, 'ACEITE'));
+    if (amenities.vinegar > 0) items.push(formatDeliveryItem(amenities.vinegar, 'VINAGRE'));
+    if (amenities.salt > 0) items.push(formatDeliveryItem(amenities.salt, 'SAL'));
+    if (amenities.sugar > 0) items.push(formatDeliveryItem(amenities.sugar, 'AZÚCAR'));
+  }
+
+  return items;
+};
+
 export const BuildingDeliveryGroup = ({
   building,
   trackingMap,
@@ -30,18 +93,12 @@ export const BuildingDeliveryGroup = ({
 }: BuildingDeliveryGroupProps) => {
   const [isOpen, setIsOpen] = useState(true);
 
-  // Calculate stats for this building
   const stats = building.apartments.reduce(
     (acc, apt) => {
-      const tracking = trackingMap.get(apt.taskId);
-      const status = tracking?.deliveryStatus || 'pending';
-      if (status === 'delivered') {
-        acc.delivered++;
-      } else if (status === 'prepared') {
-        acc.prepared++;
-      } else {
-        acc.pending++;
-      }
+      const status = trackingMap.get(apt.taskId)?.deliveryStatus || 'pending';
+      if (status === 'delivered') acc.delivered += 1;
+      else if (status === 'prepared') acc.prepared += 1;
+      else acc.pending += 1;
       return acc;
     },
     { delivered: 0, prepared: 0, pending: 0 }
@@ -49,24 +106,15 @@ export const BuildingDeliveryGroup = ({
 
   const allDelivered = stats.pending === 0 && stats.prepared === 0;
   const pendingPrepareTaskIds = building.apartments
-    .filter(apt => {
-      const tracking = trackingMap.get(apt.taskId);
-      return !tracking || tracking.deliveryStatus === 'pending';
-    })
-    .map(apt => apt.taskId);
-  
+    .filter((apt) => !trackingMap.get(apt.taskId) || trackingMap.get(apt.taskId)?.deliveryStatus === 'pending')
+    .map((apt) => apt.taskId);
+
   const pendingDeliverTaskIds = building.apartments
-    .filter(apt => {
-      const tracking = trackingMap.get(apt.taskId);
-      return tracking?.deliveryStatus === 'prepared';
-    })
-    .map(apt => apt.taskId);
+    .filter((apt) => trackingMap.get(apt.taskId)?.deliveryStatus === 'prepared')
+    .map((apt) => apt.taskId);
 
   return (
-    <Card className={cn(
-      'transition-all',
-      allDelivered && 'bg-green-50 dark:bg-green-950/20 border-green-200'
-    )}>
+    <Card className={cn('transition-all', allDelivered && 'bg-green-50 dark:bg-green-950/20 border-green-200')}>
       <Collapsible open={isOpen} onOpenChange={setIsOpen}>
         <CollapsibleTrigger asChild>
           <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors py-3">
@@ -78,89 +126,39 @@ export const BuildingDeliveryGroup = ({
                   <ChevronRight className="h-4 w-4 text-muted-foreground" />
                 )}
                 <Building2 className="h-5 w-5 text-primary" />
-                <CardTitle className="text-base font-semibold">
-                  {building.buildingCode}
-                </CardTitle>
+                <CardTitle className="text-base font-semibold">{building.buildingCode}</CardTitle>
                 <Badge variant="secondary" className="ml-2">
                   {building.totalApartments} aptos
                 </Badge>
               </div>
-              <div className="flex items-center gap-2">
-                {allDelivered ? (
-                  <Badge className="bg-green-600">
-                    <CheckCircle2 className="h-3 w-3 mr-1" />
-                    Entregado
-                  </Badge>
-                ) : (
-                  <Badge variant="outline">
-                    {stats.delivered}/{building.totalApartments}
-                  </Badge>
-                )}
-              </div>
+              {allDelivered ? (
+                <Badge className="bg-green-600">
+                  <CheckCircle2 className="h-3 w-3 mr-1" />
+                  Entregado
+                </Badge>
+              ) : (
+                <Badge variant="outline">{stats.delivered}/{building.totalApartments}</Badge>
+              )}
             </div>
           </CardHeader>
         </CollapsibleTrigger>
 
         <CollapsibleContent>
           <CardContent className="pt-0 pb-3">
-            {/* Apartment list with textile details */}
             <div className="space-y-2">
-              {building.apartments.map(apt => {
-                const tracking = trackingMap.get(apt.taskId);
-                const status = tracking?.deliveryStatus || 'pending';
+              {building.apartments.map((apt) => {
+                const status = trackingMap.get(apt.taskId)?.deliveryStatus || 'pending';
                 const isPrepared = status === 'prepared';
                 const isDelivered = status === 'delivered';
-                const { textiles, amenities } = apt;
-
-                // Build items list with full names - ordered as requested
-                const allItems: string[] = [];
-
-                // 1º Bolsas de basura
-                if (amenities.trashBags > 0) allItems.push(`${amenities.trashBags} bolsas basura`);
-                // 2º Amenities de baño
-                if (amenities.bathroomAmenities > 0) allItems.push(`${amenities.bathroomAmenities} amenities baño`);
-                // 3º Amenities de cocina
-                if (amenities.kitchenAmenities > 0) allItems.push(`${amenities.kitchenAmenities} amenities cocina`);
-                // 4º Amenities alimentarios (kit alimentario)
-                if (amenities.foodKit > 0) allItems.push(`${amenities.foodKit} kit alimentario`);
-                // 5º Fundas de almohada
-                if (textiles.pillowCases > 0) allItems.push(`${textiles.pillowCases} fundas almohada`);
-                // 6º Alfombrines de ducha
-                if (textiles.bathMats > 0) allItems.push(`${textiles.bathMats} alfombrines`);
-                // 7º Toallas pequeñas
-                if (textiles.towelsSmall > 0) allItems.push(`${textiles.towelsSmall} toallas pequeñas`);
-                // 8º Sábanas (grandes, pequeñas, suite)
-                if (textiles.sheets > 0) allItems.push(`${textiles.sheets} sábanas`);
-                if (textiles.sheetsSmall > 0) allItems.push(`${textiles.sheetsSmall} sábanas pequeñas`);
-                if (textiles.sheetsSuite > 0) allItems.push(`${textiles.sheetsSuite} sábanas suite`);
-                // 9º Toallas grandes
-                if (textiles.towelsLarge > 0) allItems.push(`${textiles.towelsLarge} toallas grandes`);
-
-                // Otros amenities (no incluidos en el orden solicitado)
-                if (amenities.toiletPaper > 0) allItems.push(`${amenities.toiletPaper} papel higiénico`);
-                if (amenities.kitchenPaper > 0) allItems.push(`${amenities.kitchenPaper} papel cocina`);
-                if (amenities.shampoo > 0) allItems.push(`${amenities.shampoo} champú`);
-                if (amenities.conditioner > 0) allItems.push(`${amenities.conditioner} acondicionador`);
-                if (amenities.showerGel > 0) allItems.push(`${amenities.showerGel} gel ducha`);
-                if (amenities.liquidSoap > 0) allItems.push(`${amenities.liquidSoap} jabón líquido`);
-                if (amenities.bathroomAirFreshener > 0) allItems.push(`${amenities.bathroomAirFreshener} ambientador baño`);
-                if (amenities.dishwasherDetergent > 0) allItems.push(`${amenities.dishwasherDetergent} detergente lavavajillas`);
-                if (amenities.kitchenCloths > 0) allItems.push(`${amenities.kitchenCloths} bayetas cocina`);
-                if (amenities.sponges > 0) allItems.push(`${amenities.sponges} estropajos`);
-                if (amenities.glassCleaner > 0) allItems.push(`${amenities.glassCleaner} limpiacristales`);
-                if (amenities.bathroomDisinfectant > 0) allItems.push(`${amenities.bathroomDisinfectant} desinfectante baño`);
-                if (amenities.oil > 0) allItems.push(`${amenities.oil} aceite`);
-                if (amenities.vinegar > 0) allItems.push(`${amenities.vinegar} vinagre`);
-                if (amenities.salt > 0) allItems.push(`${amenities.salt} sal`);
-                if (amenities.sugar > 0) allItems.push(`${amenities.sugar} azúcar`);
+                const allItems = buildApartmentItems(apt);
 
                 return (
                   <div
                     key={apt.taskId}
                     className={cn(
                       'p-3 rounded-md transition-colors',
-                      isDelivered 
-                        ? 'bg-green-100 dark:bg-green-900/30' 
+                      isDelivered
+                        ? 'bg-green-100 dark:bg-green-900/30'
                         : isPrepared
                           ? 'bg-blue-100 dark:bg-blue-900/30'
                           : 'bg-muted/30 hover:bg-muted/50'
@@ -169,24 +167,16 @@ export const BuildingDeliveryGroup = ({
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
-                          <span className={cn(
-                            'font-semibold',
-                            isDelivered && 'line-through text-muted-foreground'
-                          )}>
+                          <span className={cn('font-semibold', isDelivered && 'line-through text-muted-foreground')}>
                             {apt.propertyCode}
                           </span>
-                          {isDelivered && (
-                            <CheckCircle2 className="h-4 w-4 text-green-600" />
-                          )}
-                          {isPrepared && (
-                            <PackageCheck className="h-4 w-4 text-blue-600" />
-                          )}
+                          {isDelivered && <CheckCircle2 className="h-4 w-4 text-green-600" />}
+                          {isPrepared && <PackageCheck className="h-4 w-4 text-blue-600" />}
                         </div>
-                        {/* Service date and cleaner info */}
                         <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-muted-foreground mt-0.5">
                           <span className="flex items-center gap-1">
                             <Calendar className="h-3 w-3" />
-                            {format(parseISO(apt.date), "EEE d MMM", { locale: es })}
+                            {format(parseISO(apt.date), 'EEE d MMM', { locale: es })}
                           </span>
                           {apt.cleaner && (
                             <span className="flex items-center gap-1">
@@ -196,12 +186,9 @@ export const BuildingDeliveryGroup = ({
                           )}
                         </div>
                         {allItems.length > 0 && (
-                          <ul className={cn(
-                            'mt-2 space-y-0.5 text-sm text-muted-foreground',
-                            isDelivered && 'line-through'
-                          )}>
-                            {allItems.map((item, idx) => (
-                              <li key={idx} className="flex items-center gap-2">
+                          <ul className={cn('mt-2 space-y-0.5 text-sm text-muted-foreground', isDelivered && 'line-through')}>
+                            {allItems.map((item) => (
+                              <li key={item} className="flex items-center gap-2">
                                 <span className="h-1 w-1 rounded-full bg-current opacity-60 flex-shrink-0" />
                                 <span>{item}</span>
                               </li>
@@ -241,7 +228,6 @@ export const BuildingDeliveryGroup = ({
               })}
             </div>
 
-            {/* Prepare all button */}
             {pendingPrepareTaskIds.length > 0 && (
               <Button
                 variant="outline"
@@ -255,7 +241,6 @@ export const BuildingDeliveryGroup = ({
               </Button>
             )}
 
-            {/* Deliver all button */}
             {pendingDeliverTaskIds.length > 0 && (
               <Button
                 variant="default"

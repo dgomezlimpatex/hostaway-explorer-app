@@ -1,6 +1,7 @@
 
 import { Property, CreatePropertyData } from '@/types/property';
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- property rows are mapped from Supabase's generated schema plus legacy columns.
 export const mapPropertyFromDB = (row: any): Property => ({
   id: row.id,
   created_at: row.created_at,
@@ -29,6 +30,8 @@ export const mapPropertyFromDB = (row: any): Property => ({
   amenitiesCocina: row.amenities_cocina || 0,
   cantidadRollosPapelHigienico: row.cantidad_rollos_papel_higienico || 0,
   cantidadRollosPapelCocina: row.cantidad_rollos_papel_cocina || 0,
+  bayetasCocina: row.bayetas_cocina || 0,
+  bolsasBasura: row.bolsas_basura || 0,
   notas: row.notas || '',
   clienteId: row.cliente_id,
   hostaway_listing_id: row.hostaway_listing_id,
@@ -40,7 +43,9 @@ export const mapPropertyFromDB = (row: any): Property => ({
   fechaActualizacion: row.fecha_actualizacion
 });
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- BaseStorage accepts table-specific payloads with DB column names.
 export const mapPropertyToDB = (property: Partial<CreatePropertyData>): any => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Built incrementally to avoid writing undefined fields to Supabase.
   const updateData: any = {};
   
   if (property.codigo !== undefined) updateData.codigo = property.codigo;
@@ -67,6 +72,8 @@ export const mapPropertyToDB = (property: Partial<CreatePropertyData>): any => {
   if (property.amenitiesCocina !== undefined) updateData.amenities_cocina = property.amenitiesCocina;
   if (property.cantidadRollosPapelHigienico !== undefined) updateData.cantidad_rollos_papel_higienico = property.cantidadRollosPapelHigienico;
   if (property.cantidadRollosPapelCocina !== undefined) updateData.cantidad_rollos_papel_cocina = property.cantidadRollosPapelCocina;
+  if (property.bayetasCocina !== undefined) updateData.bayetas_cocina = property.bayetasCocina;
+  if (property.bolsasBasura !== undefined) updateData.bolsas_basura = property.bolsasBasura;
   if (property.notas !== undefined) updateData.notas = property.notas;
   if (property.clienteId !== undefined) updateData.cliente_id = property.clienteId;
   if (property.linenControlEnabled !== undefined) updateData.linen_control_enabled = property.linenControlEnabled;

@@ -11,11 +11,12 @@ import { useUpdateProperty } from '@/hooks/useProperties';
 import { BasicInfoSection } from './forms/BasicInfoSection';
 import { CharacteristicsSection } from './forms/CharacteristicsSection';
 import { ServiceSection } from './forms/ServiceSection';
-import { TextileSection } from './forms/TextileSection';
+import { StockConsumptionSection } from './forms/StockConsumptionSection';
 import { PropertyPreferredCleaners } from './PropertyPreferredCleaners';
-import { AmenitiesSection } from './forms/AmenitiesSection';
 import { NotesSection } from './forms/NotesSection';
 import { ClientSelectionSection } from './forms/ClientSelectionSection';
+import { useSavePropertyStockConsumptionRules, useStockProducts } from '@/hooks/useStock';
+import { deriveLegacyStockFields } from './forms/propertyStockConsumption';
 import { 
   Home,
   Save,
@@ -34,6 +35,8 @@ export const EditPropertyModal: React.FC<EditPropertyModalProps> = ({
   onOpenChange,
 }) => {
   const updateProperty = useUpdateProperty();
+  const saveConsumptionRules = useSavePropertyStockConsumptionRules();
+  const { data: stockProducts = [] } = useStockProducts();
 
   const form = useForm<PropertyFormData>({
     resolver: zodResolver(propertySchema),
@@ -62,6 +65,9 @@ export const EditPropertyModal: React.FC<EditPropertyModalProps> = ({
         amenitiesCocina: property.amenitiesCocina || 0,
         cantidadRollosPapelHigienico: property.cantidadRollosPapelHigienico || 0,
         cantidadRollosPapelCocina: property.cantidadRollosPapelCocina || 0,
+        bayetasCocina: property.bayetasCocina || 0,
+        bolsasBasura: property.bolsasBasura || 0,
+        stockConsumptions: {},
         notas: property.notas || '',
         clienteId: property.clienteId,
         linenControlEnabled: property.linenControlEnabled ?? null,
@@ -98,6 +104,9 @@ export const EditPropertyModal: React.FC<EditPropertyModalProps> = ({
         amenitiesCocina: property.amenitiesCocina || 0,
         cantidadRollosPapelHigienico: property.cantidadRollosPapelHigienico || 0,
         cantidadRollosPapelCocina: property.cantidadRollosPapelCocina || 0,
+        bayetasCocina: property.bayetasCocina || 0,
+        bolsasBasura: property.bolsasBasura || 0,
+        stockConsumptions: {},
         notas: property.notas || '',
         clienteId: property.clienteId,
         linenControlEnabled: property.linenControlEnabled ?? null,
@@ -111,9 +120,21 @@ export const EditPropertyModal: React.FC<EditPropertyModalProps> = ({
     if (!property) return;
 
     try {
+      const stockConsumptions = data.stockConsumptions || {};
+      const legacyStockFields = deriveLegacyStockFields(stockProducts, stockConsumptions);
       await updateProperty.mutateAsync({
         id: property.id,
-        updates: data
+        updates: {
+          ...data,
+          ...legacyStockFields,
+        }
+      });
+      await saveConsumptionRules.mutateAsync({
+        propertyId: property.id,
+        rules: stockProducts.map((product) => ({
+          product_id: product.id,
+          quantity_per_cleaning: stockConsumptions[product.id] || 0,
+        })),
       });
       onOpenChange(false);
     } catch (error) {
@@ -147,9 +168,7 @@ export const EditPropertyModal: React.FC<EditPropertyModalProps> = ({
             
             <ServiceSection control={form.control} />
             
-            <TextileSection control={form.control} />
-            
-            <AmenitiesSection control={form.control} />
+            <StockConsumptionSection control={form.control} setValue={form.setValue} property={property} />
             
             <NotesSection control={form.control} />
             
@@ -169,11 +188,11 @@ export const EditPropertyModal: React.FC<EditPropertyModalProps> = ({
               </Button>
               <Button
                 type="submit"
-                disabled={updateProperty.isPending}
+                disabled={updateProperty.isPending || saveConsumptionRules.isPending}
                 className="flex items-center gap-2"
               >
                 <Save className="h-4 w-4" />
-                {updateProperty.isPending ? 'Guardando...' : 'Guardar Cambios'}
+                {updateProperty.isPending || saveConsumptionRules.isPending ? 'Guardando...' : 'Guardar Cambios'}
               </Button>
             </div>
           </form>

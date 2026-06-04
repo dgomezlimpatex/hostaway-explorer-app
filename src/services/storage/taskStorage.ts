@@ -4,6 +4,17 @@ import { supabase } from '@/integrations/supabase/client';
 import { InventoryMovementType, InventoryAlertType } from '@/types/inventory';
 import { formatMadridDate } from '@/utils/date';
 
+type StockRpcClient = {
+  rpc: (
+    fn: 'process_stock_consumption_for_task',
+    args: {
+      task_id_param: string;
+      property_id_param: string;
+      user_id_param: string;
+    }
+  ) => Promise<{ data: unknown; error: Error | null }>;
+};
+
 interface TaskCreateData extends Omit<Task, 'id' | 'created_at' | 'updated_at'> {}
 
 const taskStorageConfig = {
@@ -353,8 +364,6 @@ export class TaskStorageService extends BaseStorageService<Task, TaskCreateData>
     if (updates.status === 'completed' && result.propertyId) {
       try {
         // Importar dinámicamente para evitar dependencias circulares
-        const { inventoryStorage } = await import('@/services/storage/inventoryStorage');
-        
         // Obtener el usuario actual
         const { data: { user } } = await supabase.auth.getUser();
         
@@ -373,6 +382,20 @@ export class TaskStorageService extends BaseStorageService<Task, TaskCreateData>
 
   private async processAutomaticConsumption(taskId: string, propertyId: string, userId: string) {
     try {
+      const stockRpc = supabase as unknown as StockRpcClient;
+      const { data, error } = await stockRpc.rpc('process_stock_consumption_for_task', {
+        task_id_param: taskId,
+        property_id_param: propertyId,
+        user_id_param: userId,
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      console.log('Consumo automatico de stock procesado:', data);
+      return;
+
       const { inventoryStorage } = await import('@/services/storage/inventoryStorage');
       
       // Obtener configuraciones de consumo para la propiedad

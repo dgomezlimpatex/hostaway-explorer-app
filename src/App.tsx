@@ -37,6 +37,9 @@ const InventoryStock = React.lazy(() => import("./pages/InventoryStock"));
 const InventoryMovements = React.lazy(() => import("./pages/InventoryMovements"));
 const InventoryConfig = React.lazy(() => import("./pages/InventoryConfig"));
 const InventoryReports = React.lazy(() => import("./pages/InventoryReports"));
+const InventoryWarehouses = React.lazy(() => import("./pages/InventoryWarehouses"));
+const InventoryLaundry = React.lazy(() => import("./pages/InventoryLaundry"));
+const InventoryAmenities = React.lazy(() => import("./pages/InventoryAmenities"));
 const NotFound = React.lazy(() => import("./pages/NotFound"));
 const LogisticsPicklists = React.lazy(() => import("./pages/LogisticsPicklists"));
 const LogisticsPicklistDetails = React.lazy(() => import("./pages/LogisticsPicklistDetails"));
@@ -128,6 +131,27 @@ function App() {
                     <ProtectedRoute>
                       <RoleProtectedRoute requiredModule="inventory">
                         <FullPageSuspense><InventoryStock /></FullPageSuspense>
+                      </RoleProtectedRoute>
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/inventory/laundry" element={
+                    <ProtectedRoute>
+                      <RoleProtectedRoute requiredModule="inventory">
+                        <FullPageSuspense><InventoryLaundry /></FullPageSuspense>
+                      </RoleProtectedRoute>
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/inventory/amenities" element={
+                    <ProtectedRoute>
+                      <RoleProtectedRoute requiredModule="inventory">
+                        <FullPageSuspense><InventoryAmenities /></FullPageSuspense>
+                      </RoleProtectedRoute>
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/inventory/warehouses" element={
+                    <ProtectedRoute>
+                      <RoleProtectedRoute requiredModule="inventory">
+                        <FullPageSuspense><InventoryWarehouses /></FullPageSuspense>
                       </RoleProtectedRoute>
                     </ProtectedRoute>
                   } />

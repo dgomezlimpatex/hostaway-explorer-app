@@ -8,11 +8,60 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { formatDateRange } from '@/services/laundryShareService';
 import { isNotCountCleaner } from '@/utils/laundryExclusions';
-import { groupApartmentsByBuilding, LaundryApartment, BuildingGroup } from '@/services/laundryScheduleService';
+import {
+  fetchPublicLaundryStockConsumptions,
+  groupApartmentsByBuilding,
+  LaundryApartment,
+  BuildingGroup,
+} from '@/services/laundryScheduleService';
 import { BuildingCollectionGroup } from '@/components/laundry-share/BuildingCollectionGroup';
 import { BuildingDeliveryGroup } from '@/components/laundry-share/BuildingDeliveryGroup';
 import { Toaster } from '@/components/ui/toaster';
 import { useToast } from '@/hooks/use-toast';
+
+type PublicLaundryScheduledProperty = {
+  id?: string | null;
+  codigo?: string | null;
+  nombre?: string | null;
+  numero_sabanas?: number | null;
+  numero_sabanas_pequenas?: number | null;
+  numero_sabanas_suite?: number | null;
+  numero_fundas_almohada?: number | null;
+  numero_toallas_grandes?: number | null;
+  numero_toallas_pequenas?: number | null;
+  numero_alfombrines?: number | null;
+  papel_higienico?: number | null;
+  papel_cocina?: number | null;
+  champu?: number | null;
+  acondicionador?: number | null;
+  gel_ducha?: number | null;
+  jabon_liquido?: number | null;
+  amenities_bano?: number | null;
+  amenities_cocina?: number | null;
+  ambientador_bano?: number | null;
+  bolsas_basura?: number | null;
+  detergente_lavavajillas?: number | null;
+  bayetas_cocina?: number | null;
+  estropajos?: number | null;
+  limpiacristales?: number | null;
+  desinfectante_bano?: number | null;
+  aceite?: number | null;
+  vinagre?: number | null;
+  sal?: number | null;
+  azucar?: number | null;
+  kit_alimentario?: number | null;
+};
+
+type LaundryTrackingPayload = {
+  collection_status?: 'collected' | 'pending';
+  collected_at?: string;
+  collected_by_name?: string;
+  status?: 'pending' | 'prepared' | 'delivered';
+  prepared_at?: string;
+  prepared_by_name?: string;
+  delivered_at?: string;
+  delivered_by_name?: string;
+};
 
 const PublicLaundryScheduledView = () => {
   const { token } = useParams<{ token: string }>();
@@ -114,12 +163,18 @@ const PublicLaundryScheduledView = () => {
       return (data || [])
         .filter(task => shareLink.snapshotTaskIds.includes(task.id) && !isNotCountCleaner(task.cleaner))
         .sort((a, b) => {
-          const codeA = (a.properties as any)?.codigo || a.property || '';
-          const codeB = (b.properties as any)?.codigo || b.property || '';
+          const codeA = (a.properties as PublicLaundryScheduledProperty | null)?.codigo || a.property || '';
+          const codeB = (b.properties as PublicLaundryScheduledProperty | null)?.codigo || b.property || '';
           return codeA.localeCompare(codeB, 'es', { numeric: true });
         });
     },
     enabled: !!shareLink,
+  });
+
+  const { data: stockConsumablesByTask = {}, refetch: refetchStockConsumables } = useQuery({
+    queryKey: ['public-laundry-scheduled-stock-consumables', token, shareLink?.id],
+    queryFn: () => fetchPublicLaundryStockConsumptions(token!),
+    enabled: !!token && !!shareLink,
   });
 
   // Map to LaundryApartment format
@@ -127,7 +182,7 @@ const PublicLaundryScheduledView = () => {
     if (!tasksData) return [];
 
     return tasksData.map(task => {
-      const prop = task.properties as any;
+      const prop = task.properties as PublicLaundryScheduledProperty | null;
       const tracking = trackingMap.get(task.id);
 
       return {
@@ -170,11 +225,12 @@ const PublicLaundryScheduledView = () => {
           sugar: prop?.azucar || 0,
           foodKit: prop?.kit_alimentario || 0,
         },
+        stockConsumables: stockConsumablesByTask[task.id] || [],
         collectionStatus: (tracking?.collectionStatus as 'pending' | 'collected') || 'pending',
         deliveryStatus: (tracking?.deliveryStatus as 'pending' | 'prepared' | 'delivered') || 'pending',
       };
     });
-  }, [tasksData, trackingMap]);
+  }, [tasksData, trackingMap, stockConsumablesByTask]);
 
   // Group by building
   const buildingGroups = useMemo(() => 
@@ -220,7 +276,7 @@ const PublicLaundryScheduledView = () => {
         .single();
 
       if (existing) {
-        const updateData: any = {};
+        const updateData: LaundryTrackingPayload = {};
         if (params.collectionStatus) {
           updateData.collection_status = params.collectionStatus;
           updateData.collected_at = now;
@@ -244,7 +300,7 @@ const PublicLaundryScheduledView = () => {
 
         if (error) throw error;
       } else {
-        const insertData: any = {
+        const insertData: LaundryTrackingPayload & { share_link_id: string; task_id: string } = {
           share_link_id: shareLink.id,
           task_id: params.taskId,
           status: params.deliveryStatus || 'pending',
@@ -322,6 +378,7 @@ const PublicLaundryScheduledView = () => {
   const handleRefresh = () => {
     refetchTasks();
     refetchTracking();
+    refetchStockConsumables();
   };
 
   // Loading state

@@ -1,60 +1,89 @@
 import { useState } from 'react';
-import { Package } from 'lucide-react';
-import { useInventoryStock } from '@/hooks/useInventory';
-import { InventoryLayout } from '@/components/inventory/InventoryLayout';
-import { InventoryStockTable } from '@/components/inventory/InventoryStockTable';
-import { CreateProductDialog } from '@/components/inventory/CreateProductDialog';
-import { StockAdjustmentDialog } from '@/components/inventory/StockAdjustmentDialog';
-import type { InventoryStockWithProduct } from '@/types/inventory';
+import { StockAdjustmentDialog } from '@/components/stock/StockAdjustmentDialog';
+import { StockCategoryManager } from '@/components/stock/StockCategoryManager';
+import { StockLayout } from '@/components/stock/StockLayout';
+import { StockLevelTable } from '@/components/stock/StockLevelTable';
+import { StockProductDialog } from '@/components/stock/StockProductDialog';
+import { StockTransferDialog } from '@/components/stock/StockTransferDialog';
+import { useSelectedStockWarehouse, useStockLevels } from '@/hooks/useStock';
+import type { StockItemKind, StockLevel, StockProduct } from '@/types/stock';
 
-export default function InventoryStock() {
-  const [showCreateProduct, setShowCreateProduct] = useState(false);
-  const [showStockAdjustment, setShowStockAdjustment] = useState(false);
-  const [selectedStockItem, setSelectedStockItem] = useState<InventoryStockWithProduct | null>(null);
+interface InventoryStockProps {
+  kind?: StockItemKind;
+  title?: string;
+  description?: string;
+}
 
-  const { data: stock = [], isLoading } = useInventoryStock();
+export default function InventoryStock({
+  kind,
+  title = 'Stock global',
+  description = 'Consulta y ajusta stock por producto y almacen.',
+}: InventoryStockProps) {
+  const { queryWarehouseId } = useSelectedStockWarehouse();
+  const { data: levels = [], isLoading } = useStockLevels(queryWarehouseId, kind);
+  const [productDialogOpen, setProductDialogOpen] = useState(false);
+  const [adjustmentDialogOpen, setAdjustmentDialogOpen] = useState(false);
+  const [transferDialogOpen, setTransferDialogOpen] = useState(false);
+  const [selectedLevel, setSelectedLevel] = useState<StockLevel | null>(null);
+  const [selectedProduct, setSelectedProduct] = useState<StockProduct | null>(null);
 
-  const handleEditStock = (stockItem: InventoryStockWithProduct) => {
-    setSelectedStockItem(stockItem);
-    setShowStockAdjustment(true);
+  const handleAdjustStock = (level: StockLevel) => {
+    setSelectedLevel(level);
+    setAdjustmentDialogOpen(true);
   };
 
-  const handleAdjustStock = (stockItem: InventoryStockWithProduct) => {
-    setSelectedStockItem(stockItem);
-    setShowStockAdjustment(true);
+  const handleTransferStock = (level: StockLevel) => {
+    setSelectedLevel(level);
+    setTransferDialogOpen(true);
   };
 
   const handleCreateProduct = () => {
-    setShowCreateProduct(true);
+    setSelectedProduct(null);
+    setProductDialogOpen(true);
+  };
+
+  const handleEditProduct = (level: StockLevel) => {
+    if (!level.product) return;
+    setSelectedProduct(level.product);
+    setProductDialogOpen(true);
   };
 
   return (
-    <InventoryLayout>
-      <div className="space-y-6">
-        <div className="flex items-center gap-2">
-          <Package className="h-6 w-6" />
-          <h1 className="text-2xl font-bold">Stock de Inventario</h1>
-        </div>
-        
-        <InventoryStockTable
-          stock={stock}
-          isLoading={isLoading}
-          onEditStock={handleEditStock}
-          onCreateProduct={handleCreateProduct}
-          onAdjustStock={handleAdjustStock}
-        />
+    <StockLayout
+      title={title}
+      description={description}
+      actions={kind ? <StockCategoryManager kind={kind} /> : undefined}
+    >
+      <StockLevelTable
+        levels={levels}
+        isLoading={isLoading}
+        onCreateProduct={handleCreateProduct}
+        onEditProduct={handleEditProduct}
+        onAdjustStock={handleAdjustStock}
+        onTransferStock={handleTransferStock}
+      />
 
-        <CreateProductDialog
-          open={showCreateProduct}
-          onOpenChange={setShowCreateProduct}
-        />
+      <StockProductDialog
+        open={productDialogOpen}
+        onOpenChange={(open) => {
+          setProductDialogOpen(open);
+          if (!open) setSelectedProduct(null);
+        }}
+        kind={kind}
+        product={selectedProduct}
+      />
 
-        <StockAdjustmentDialog
-          open={showStockAdjustment}
-          onOpenChange={setShowStockAdjustment}
-          stockItem={selectedStockItem}
-        />
-      </div>
-    </InventoryLayout>
+      <StockAdjustmentDialog
+        open={adjustmentDialogOpen}
+        onOpenChange={setAdjustmentDialogOpen}
+        level={selectedLevel}
+      />
+
+      <StockTransferDialog
+        open={transferDialogOpen}
+        onOpenChange={setTransferDialogOpen}
+        level={selectedLevel}
+      />
+    </StockLayout>
   );
 }

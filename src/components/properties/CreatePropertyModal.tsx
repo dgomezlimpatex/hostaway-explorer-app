@@ -13,16 +13,19 @@ import { propertySchema, PropertyFormData } from './forms/PropertyFormSchema';
 import { BasicInfoSection } from './forms/BasicInfoSection';
 import { CharacteristicsSection } from './forms/CharacteristicsSection';
 import { ServiceSection } from './forms/ServiceSection';
-import { TextileSection } from './forms/TextileSection';
-import { AmenitiesSection } from './forms/AmenitiesSection';
+import { StockConsumptionSection } from './forms/StockConsumptionSection';
 import { NotesSection } from './forms/NotesSection';
 import { ClientSelectionSection } from './forms/ClientSelectionSection';
 import { CreatePropertyData } from '@/types/property';
+import { useSavePropertyStockConsumptionRules, useStockProducts } from '@/hooks/useStock';
+import { deriveLegacyStockFields } from './forms/propertyStockConsumption';
 
 export const CreatePropertyModal = () => {
   const [open, setOpen] = useState(false);
   const { activeSede, isActiveSedeSet } = useSede();
   const createProperty = useCreateProperty();
+  const saveConsumptionRules = useSavePropertyStockConsumptionRules();
+  const { data: stockProducts = [] } = useStockProducts();
 
   const form = useForm<PropertyFormData>({
     resolver: zodResolver(propertySchema),
@@ -51,6 +54,9 @@ export const CreatePropertyModal = () => {
       amenitiesCocina: 0,
       cantidadRollosPapelHigienico: 0,
       cantidadRollosPapelCocina: 0,
+      bayetasCocina: 0,
+      bolsasBasura: 0,
+      stockConsumptions: {},
       notas: '',
       clienteId: '',
       linenControlEnabled: null,
@@ -58,10 +64,13 @@ export const CreatePropertyModal = () => {
     },
   });
 
-  const onSubmit = (data: PropertyFormData) => {
+  const onSubmit = async (data: PropertyFormData) => {
     if (!isActiveSedeSet()) {
       return;
     }
+
+    const stockConsumptions = data.stockConsumptions || {};
+    const legacyStockFields = deriveLegacyStockFields(stockProducts, stockConsumptions);
 
     // Explicitly cast to CreatePropertyData to ensure type safety
     const propertyData: CreatePropertyData = {
@@ -77,30 +86,36 @@ export const CreatePropertyModal = () => {
       costeServicio: data.costeServicio,
       checkInPredeterminado: data.checkInPredeterminado,
       checkOutPredeterminado: data.checkOutPredeterminado,
-      numeroSabanas: data.numeroSabanas,
-      numeroSabanasRequenas: data.numeroSabanasRequenas,
-      numeroSabanasSuite: data.numeroSabanasSuite,
-      numeroToallasGrandes: data.numeroToallasGrandes,
-      numeroTotallasPequenas: data.numeroTotallasPequenas,
-      numeroAlfombrines: data.numeroAlfombrines,
-      numeroFundasAlmohada: data.numeroFundasAlmohada,
-      kitAlimentario: data.kitAlimentario,
-      amenitiesBano: data.amenitiesBano,
-      amenitiesCocina: data.amenitiesCocina,
-      cantidadRollosPapelHigienico: data.cantidadRollosPapelHigienico,
-      cantidadRollosPapelCocina: data.cantidadRollosPapelCocina,
+      numeroSabanas: legacyStockFields.numeroSabanas ?? data.numeroSabanas,
+      numeroSabanasRequenas: legacyStockFields.numeroSabanasRequenas ?? data.numeroSabanasRequenas,
+      numeroSabanasSuite: legacyStockFields.numeroSabanasSuite ?? data.numeroSabanasSuite,
+      numeroToallasGrandes: legacyStockFields.numeroToallasGrandes ?? data.numeroToallasGrandes,
+      numeroTotallasPequenas: legacyStockFields.numeroTotallasPequenas ?? data.numeroTotallasPequenas,
+      numeroAlfombrines: legacyStockFields.numeroAlfombrines ?? data.numeroAlfombrines,
+      numeroFundasAlmohada: legacyStockFields.numeroFundasAlmohada ?? data.numeroFundasAlmohada,
+      kitAlimentario: legacyStockFields.kitAlimentario ?? data.kitAlimentario,
+      amenitiesBano: legacyStockFields.amenitiesBano ?? data.amenitiesBano,
+      amenitiesCocina: legacyStockFields.amenitiesCocina ?? data.amenitiesCocina,
+      cantidadRollosPapelHigienico: legacyStockFields.cantidadRollosPapelHigienico ?? data.cantidadRollosPapelHigienico,
+      cantidadRollosPapelCocina: legacyStockFields.cantidadRollosPapelCocina ?? data.cantidadRollosPapelCocina,
+      bayetasCocina: legacyStockFields.bayetasCocina ?? data.bayetasCocina ?? 0,
+      bolsasBasura: legacyStockFields.bolsasBasura ?? data.bolsasBasura ?? 0,
       notas: data.notas || '',
       clienteId: data.clienteId,
       linenControlEnabled: data.linenControlEnabled ?? null,
       isActive: data.isActive ?? null,
     };
 
-    createProperty.mutate(propertyData, {
-      onSuccess: () => {
-        setOpen(false);
-        form.reset();
-      },
+    const property = await createProperty.mutateAsync(propertyData);
+    await saveConsumptionRules.mutateAsync({
+      propertyId: property.id,
+      rules: stockProducts.map((product) => ({
+        product_id: product.id,
+        quantity_per_cleaning: stockConsumptions[product.id] || 0,
+      })),
     });
+    setOpen(false);
+    form.reset();
   };
 
   return (
@@ -138,8 +153,7 @@ export const CreatePropertyModal = () => {
               <BasicInfoSection control={form.control} />
               <CharacteristicsSection control={form.control} />
               <ServiceSection control={form.control} />
-              <TextileSection control={form.control} />
-              <AmenitiesSection control={form.control} />
+              <StockConsumptionSection control={form.control} setValue={form.setValue} />
               <NotesSection control={form.control} />
               
               <div className="flex justify-end gap-3 pt-6 border-t">
@@ -152,10 +166,10 @@ export const CreatePropertyModal = () => {
                 </Button>
                 <Button
                   type="submit"
-                  disabled={createProperty.isPending || !isActiveSedeSet()}
+                  disabled={createProperty.isPending || saveConsumptionRules.isPending || !isActiveSedeSet()}
                   className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700"
                 >
-                  {createProperty.isPending ? 'Creando...' : 'Crear Propiedad'}
+                  {createProperty.isPending || saveConsumptionRules.isPending ? 'Creando...' : 'Crear Propiedad'}
                 </Button>
               </div>
             </form>

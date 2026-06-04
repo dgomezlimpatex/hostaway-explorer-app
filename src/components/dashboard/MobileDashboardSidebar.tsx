@@ -84,6 +84,12 @@ const managementItems: NavigationItem[] = [
     icon: Package,
     permission: 'reports'
   },
+  {
+    title: 'Inventario',
+    href: '/inventory',
+    icon: Package,
+    permission: 'inventory'
+  },
 ];
 
 const reportsItems: NavigationItem[] = [

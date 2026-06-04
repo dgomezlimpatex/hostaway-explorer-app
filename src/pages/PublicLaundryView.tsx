@@ -12,8 +12,32 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { formatDateRange } from '@/services/laundryShareService';
 import { isNotCountCleaner } from '@/utils/laundryExclusions';
 import { Toaster } from '@/components/ui/toaster';
+import { fetchPublicLaundryStockConsumptions } from '@/services/laundryScheduleService';
 
 type FilterStatus = 'all' | 'pending' | 'prepared' | 'delivered';
+
+type PublicLaundryProperty = {
+  codigo?: string | null;
+  notas?: string | null;
+  numero_sabanas?: number | null;
+  numero_sabanas_pequenas?: number | null;
+  numero_sabanas_suite?: number | null;
+  numero_fundas_almohada?: number | null;
+  numero_toallas_grandes?: number | null;
+  numero_toallas_pequenas?: number | null;
+  numero_alfombrines?: number | null;
+  kit_alimentario?: number | null;
+  jabon_liquido?: number | null;
+  gel_ducha?: number | null;
+  champu?: number | null;
+  acondicionador?: number | null;
+  papel_higienico?: number | null;
+  cantidad_rollos_papel_higienico?: number | null;
+  cantidad_rollos_papel_cocina?: number | null;
+  amenities_bano?: number | null;
+  amenities_cocina?: number | null;
+  bayetas_cocina?: number | null;
+};
 
 const PublicLaundryView = () => {
   const { token } = useParams<{ token: string }>();
@@ -75,7 +99,8 @@ const PublicLaundryView = () => {
             cantidad_rollos_papel_higienico,
             cantidad_rollos_papel_cocina,
             amenities_bano,
-            amenities_cocina
+            amenities_cocina,
+            bayetas_cocina
           )
         `)
         .gte('date', shareLink.dateStart)
@@ -90,14 +115,20 @@ const PublicLaundryView = () => {
         if (dateCompare !== 0) return dateCompare;
         
         // Then by property code
-        const codeA = (a.properties as any)?.codigo || a.property || '';
-        const codeB = (b.properties as any)?.codigo || b.property || '';
+        const codeA = (a.properties as PublicLaundryProperty | null)?.codigo || a.property || '';
+        const codeB = (b.properties as PublicLaundryProperty | null)?.codigo || b.property || '';
         return codeA.localeCompare(codeB, 'es', { numeric: true });
       });
       
       return sorted;
     },
     enabled: !!shareLink,
+  });
+
+  const { data: stockConsumablesByTask = {}, refetch: refetchStockConsumables } = useQuery({
+    queryKey: ['public-laundry-stock-consumables', token, shareLink?.id],
+    queryFn: () => fetchPublicLaundryStockConsumptions(token!),
+    enabled: !!token && !!shareLink,
   });
 
   // Map tasks to LaundryTask format - only include tasks in the snapshot
@@ -113,7 +144,7 @@ const PublicLaundryView = () => {
     );
 
     const mappedTasks = includedTasks.map(task => {
-      const prop = task.properties as any;
+      const prop = task.properties as PublicLaundryProperty | null;
 
       return {
         id: task.id,
@@ -141,11 +172,13 @@ const PublicLaundryView = () => {
         kitchenPaperRolls: prop?.cantidad_rollos_papel_cocina || 0,
         bathroomAmenities: prop?.amenities_bano || 0,
         kitchenAmenities: prop?.amenities_cocina || 0,
+        kitchenCloths: prop?.bayetas_cocina || 0,
+        stockConsumables: stockConsumablesByTask[task.id] || [],
       } as LaundryTask;
     });
 
     return mappedTasks;
-  }, [tasksData, shareLink]);
+  }, [tasksData, shareLink, stockConsumablesByTask]);
 
   // Get unique dates for filter
   const uniqueDates = useMemo(() => {
@@ -220,6 +253,7 @@ const PublicLaundryView = () => {
   const handleRefresh = () => {
     refetchTasks();
     refetchTracking();
+    refetchStockConsumables();
   };
 
   // Loading state

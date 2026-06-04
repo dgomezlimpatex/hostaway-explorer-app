@@ -49,9 +49,102 @@ export interface LaundryApartment {
     sugar: number;
     foodKit: number;
   };
+  stockConsumables: LaundryStockConsumable[];
   collectionStatus: 'pending' | 'collected';
   deliveryStatus: 'pending' | 'prepared' | 'delivered';
 }
+
+export interface LaundryStockConsumable {
+  productId: string;
+  name: string;
+  quantity: number;
+  unitOfMeasure: string;
+  categoryName: string | null;
+}
+
+type LaundryStockConsumptionRow = {
+  task_id: string;
+  product_id: string;
+  product_name: string;
+  unit_of_measure: string;
+  category_name: string | null;
+  quantity: number | string;
+};
+
+type LaundryScheduleProperty = {
+  id?: string | null;
+  codigo?: string | null;
+  nombre?: string | null;
+  linen_control_enabled?: boolean | null;
+  is_active?: boolean | null;
+  clients?: {
+    linen_control_enabled?: boolean | null;
+    is_active?: boolean | null;
+  } | null;
+  numero_sabanas?: number | null;
+  numero_sabanas_pequenas?: number | null;
+  numero_sabanas_suite?: number | null;
+  numero_fundas_almohada?: number | null;
+  numero_toallas_grandes?: number | null;
+  numero_toallas_pequenas?: number | null;
+  numero_alfombrines?: number | null;
+  papel_higienico?: number | null;
+  papel_cocina?: number | null;
+  champu?: number | null;
+  acondicionador?: number | null;
+  gel_ducha?: number | null;
+  jabon_liquido?: number | null;
+  amenities_bano?: number | null;
+  amenities_cocina?: number | null;
+  ambientador_bano?: number | null;
+  bolsas_basura?: number | null;
+  detergente_lavavajillas?: number | null;
+  bayetas_cocina?: number | null;
+  estropajos?: number | null;
+  limpiacristales?: number | null;
+  desinfectante_bano?: number | null;
+  aceite?: number | null;
+  vinagre?: number | null;
+  sal?: number | null;
+  azucar?: number | null;
+  kit_alimentario?: number | null;
+};
+
+export const fetchPublicLaundryStockConsumptions = async (
+  token: string
+): Promise<Record<string, LaundryStockConsumable[]>> => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- RPC is not in generated Supabase types yet.
+  const { data, error } = await (supabase as any).rpc('get_public_laundry_stock_consumptions', {
+    token_param: token,
+  });
+
+  if (error) {
+    console.error('Error fetching public laundry stock consumptions:', error);
+    return {};
+  }
+
+  return ((data || []) as LaundryStockConsumptionRow[]).reduce<Record<string, LaundryStockConsumable[]>>(
+    (itemsByTask, row) => {
+      const quantity = Number(row.quantity) || 0;
+      if (quantity <= 0) return itemsByTask;
+
+      if (!itemsByTask[row.task_id]) {
+        itemsByTask[row.task_id] = [];
+      }
+
+      itemsByTask[row.task_id].push({
+        productId: row.product_id,
+        name: row.product_name,
+        quantity,
+        unitOfMeasure: row.unit_of_measure,
+        categoryName: row.category_name,
+      });
+
+      return itemsByTask;
+    },
+    {}
+  );
+};
 
 /**
  * Extract building code from property code
@@ -188,7 +281,7 @@ export const fetchTasksForDates = async (
 
   // Filter by linen control enabled and active
   const filtered = (data || []).filter(task => {
-    const property = task.properties as any;
+    const property = task.properties as LaundryScheduleProperty | null;
     if (!property) return false;
 
     // Check active status
@@ -206,7 +299,7 @@ export const fetchTasksForDates = async (
 
   // Map to LaundryApartment
   return filtered.map(task => {
-    const prop = task.properties as any;
+    const prop = task.properties as LaundryScheduleProperty | null;
     return {
       taskId: task.id,
       propertyId: prop?.id || '',
@@ -247,6 +340,7 @@ export const fetchTasksForDates = async (
         sugar: prop?.azucar || 0,
         foodKit: prop?.kit_alimentario || 0,
       },
+      stockConsumables: [],
       collectionStatus: 'pending',
       deliveryStatus: 'pending',
     };

@@ -39,6 +39,8 @@ export interface Property extends BaseEntity {
   // Consumibles
   cantidadRollosPapelHigienico: number;
   cantidadRollosPapelCocina: number;
+  bayetasCocina: number;
+  bolsasBasura: number;
   
   // Notas
   notas: string;
@@ -89,6 +91,8 @@ export interface CreatePropertyData {
   amenitiesCocina: number;
   cantidadRollosPapelHigienico: number;
   cantidadRollosPapelCocina: number;
+  bayetasCocina?: number;
+  bolsasBasura?: number;
   notas: string;
   clienteId: string;
   linenControlEnabled?: boolean | null;
