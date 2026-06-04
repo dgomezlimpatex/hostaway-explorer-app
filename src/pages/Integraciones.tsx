@@ -108,6 +108,19 @@ const getSearchText = (proposal: Proposal) =>
     .join(' ')
     .toLowerCase();
 
+const getProposalPriority = (proposal: Proposal) => {
+  switch (proposal.match_type) {
+    case 'no_match':
+      return 0;
+    case 'fuzzy_name':
+      return 1;
+    case 'exact_name':
+      return 2;
+    case 'already_linked':
+      return 3;
+  }
+};
+
 const Integraciones = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -179,17 +192,23 @@ const Integraciones = () => {
   const filteredProposals = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
 
-    return proposals.filter((proposal) => {
-      if (query && !getSearchText(proposal).includes(query)) return false;
+    return proposals
+      .filter((proposal) => {
+        if (query && !getSearchText(proposal).includes(query)) return false;
 
-      if (filter === 'selected') return selectedIds.has(proposal.registro.id);
-      if (filter === 'new') return proposal.match_type === 'no_match';
-      if (filter === 'similar') return proposal.match_type === 'fuzzy_name';
-      if (filter === 'exact') return proposal.match_type === 'exact_name';
-      if (filter === 'linked') return proposal.match_type === 'already_linked';
-      if (filter === 'pending') return proposal.match_type !== 'already_linked';
-      return true;
-    });
+        if (filter === 'selected') return selectedIds.has(proposal.registro.id);
+        if (filter === 'new') return proposal.match_type === 'no_match';
+        if (filter === 'similar') return proposal.match_type === 'fuzzy_name';
+        if (filter === 'exact') return proposal.match_type === 'exact_name';
+        if (filter === 'linked') return proposal.match_type === 'already_linked';
+        if (filter === 'pending') return proposal.match_type !== 'already_linked';
+        return true;
+      })
+      .sort((a, b) => {
+        const priorityDiff = getProposalPriority(a) - getProposalPriority(b);
+        if (priorityDiff !== 0) return priorityDiff;
+        return a.registro.name.localeCompare(b.registro.name, 'es', { sensitivity: 'base' });
+      });
   }, [filter, proposals, searchQuery, selectedIds]);
 
   const selectedProposals = useMemo(
@@ -333,7 +352,7 @@ const Integraciones = () => {
       case 'fuzzy_name':
         return <Badge className="bg-yellow-100 text-yellow-800 hover:bg-yellow-100">Revisar similar</Badge>;
       case 'no_match':
-        return <Badge variant="outline">Nuevo candidato</Badge>;
+        return <Badge className="bg-emerald-600 text-white hover:bg-emerald-600">NUEVO</Badge>;
     }
   };
 
@@ -459,7 +478,14 @@ const Integraciones = () => {
                 const decision = decisions[proposal.registro.id] || 'ignore';
 
                 return (
-                  <div key={proposal.registro.id} className="rounded-lg border p-4">
+                  <div
+                    key={proposal.registro.id}
+                    className={`rounded-lg border p-4 ${
+                      proposal.match_type === 'no_match'
+                        ? 'border-emerald-300 bg-emerald-50/70'
+                        : ''
+                    }`}
+                  >
                     <div className="grid gap-4 lg:grid-cols-[32px_1.3fr_1fr_190px] lg:items-center">
                       <Checkbox
                         checked={isSelected}

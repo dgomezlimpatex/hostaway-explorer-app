@@ -1,3 +1,6 @@
+import { useEffect, useMemo, useState } from 'react';
+import { format } from 'date-fns';
+import { CalendarDays, Clock, Euro, MapPin, UserRound } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -5,317 +8,389 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Calendar } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { CalendarIcon } from "lucide-react";
-import { format } from "date-fns";
-import { cn } from "@/lib/utils";
-import { useToast } from "@/hooks/use-toast";
-import { useState } from "react";
-
-interface ExtraordinaryServiceData {
-  serviceName: string;
-  clientName: string;
-  billingAddress: string;
-  email: string;
-  phoneNumber: string;
-  serviceAddress: string;
-  serviceDuration: number;
-  serviceCost: number;
-  needsInvoice: boolean;
-  notes: string;
-  serviceDate: Date;
-}
+} from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Separator } from '@/components/ui/separator';
+import { useToast } from '@/hooks/use-toast';
+import { useCleaners } from '@/hooks/useCleaners';
+import type { ExtraordinaryTaskFormData } from '@/services/extraordinaryTaskBuilder';
+import { addMinutesToTime } from '@/services/extraordinaryTaskBuilder';
 
 interface CreateExtraordinaryServiceModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onCreateService: (serviceData: ExtraordinaryServiceData) => Promise<void>;
+  onCreateService: (serviceData: ExtraordinaryTaskFormData) => Promise<void>;
   currentDate?: Date;
 }
 
-export const CreateExtraordinaryServiceModal = ({ 
-  open, 
-  onOpenChange, 
+const QUICK_SERVICES = [
+  'Limpieza puntual',
+  'Cristales',
+  'Mantenimiento',
+  'Revisión',
+  'Recogida / entrega',
+  'Desplazamiento',
+];
+
+const DURATION_OPTIONS = [
+  { label: '30 min', value: 30 },
+  { label: '1 h', value: 60 },
+  { label: '1 h 30', value: 90 },
+  { label: '2 h', value: 120 },
+  { label: '3 h', value: 180 },
+];
+
+const defaultForm = (currentDate: Date): ExtraordinaryTaskFormData => ({
+  serviceName: '',
+  serviceAddress: '',
+  serviceDate: format(currentDate, 'yyyy-MM-dd'),
+  startTime: '09:00',
+  durationMinutes: 60,
+  cleanerId: undefined,
+  cleanerName: '',
+  clientName: '',
+  billingAddress: '',
+  email: '',
+  phoneNumber: '',
+  serviceCost: 0,
+  paymentMethod: 'transferencia',
+  needsInvoice: false,
+  notes: '',
+});
+
+export const CreateExtraordinaryServiceModal = ({
+  open,
+  onOpenChange,
   onCreateService,
-  currentDate = new Date()
+  currentDate = new Date(),
 }: CreateExtraordinaryServiceModalProps) => {
   const { toast } = useToast();
-  
-  const [formData, setFormData] = useState<ExtraordinaryServiceData>({
-    serviceName: '',
-    clientName: '',
-    billingAddress: '',
-    email: '',
-    phoneNumber: '',
-    serviceAddress: '',
-    serviceDuration: 60,
-    serviceCost: 0,
-    needsInvoice: false,
-    notes: '',
-    serviceDate: currentDate
-  });
+  const { cleaners, isLoading } = useCleaners();
+  const [formData, setFormData] = useState<ExtraordinaryTaskFormData>(() => defaultForm(currentDate));
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleChange = (field: keyof ExtraordinaryServiceData, value: string | number | boolean | Date) => {
-    setFormData(prev => ({
-      ...prev,
-      [field]: value
+  const activeCleaners = useMemo(
+    () => cleaners.filter((cleaner) => cleaner.isActive).sort((a, b) => a.name.localeCompare(b.name)),
+    [cleaners]
+  );
+
+  useEffect(() => {
+    if (open) {
+      setFormData(defaultForm(currentDate));
+      setIsSubmitting(false);
+    }
+  }, [currentDate, open]);
+
+  const updateField = <K extends keyof ExtraordinaryTaskFormData>(field: K, value: ExtraordinaryTaskFormData[K]) => {
+    setFormData((current) => ({ ...current, [field]: value }));
+  };
+
+  const handleCleanerChange = (cleanerId: string) => {
+    if (cleanerId === 'unassigned') {
+      setFormData((current) => ({ ...current, cleanerId: undefined, cleanerName: '' }));
+      return;
+    }
+
+    const cleaner = activeCleaners.find((item) => item.id === cleanerId);
+    setFormData((current) => ({
+      ...current,
+      cleanerId,
+      cleanerName: cleaner?.name || '',
     }));
   };
 
-  const resetForm = () => {
-    setFormData({
-      serviceName: '',
-      clientName: '',
-      billingAddress: '',
-      email: '',
-      phoneNumber: '',
-      serviceAddress: '',
-      serviceDuration: 60,
-      serviceCost: 0,
-      needsInvoice: false,
-      notes: '',
-      serviceDate: currentDate
-    });
+  const validate = () => {
+    if (!formData.serviceName.trim()) return 'Indica qué trabajo hay que hacer.';
+    if (!formData.serviceAddress.trim()) return 'Indica dónde se realizará el trabajo.';
+    if (!formData.serviceDate) return 'Selecciona una fecha.';
+    if (!formData.startTime) return 'Selecciona una hora de inicio.';
+    if (formData.durationMinutes <= 0) return 'La duración debe ser mayor que 0.';
+    if (formData.serviceCost < 0) return 'El coste no puede ser negativo.';
+    if (formData.email.trim() && !formData.email.includes('@')) return 'Introduce un email válido.';
+    return null;
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    console.log('🟢🟢🟢 FORM SUBMIT - Starting with notes:', formData.notes);
-    
-    // Validaciones básicas
-    if (!formData.serviceName.trim()) {
-      toast({
-        title: "Error",
-        description: "El nombre del servicio es obligatorio.",
-        variant: "destructive",
-      });
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+
+    const error = validate();
+    if (error) {
+      toast({ title: 'Revisa la tarea', description: error, variant: 'destructive' });
       return;
     }
 
-    if (!formData.serviceAddress.trim()) {
-      toast({
-        title: "Error",
-        description: "La dirección del servicio es obligatoria.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (formData.serviceDuration <= 0) {
-      toast({
-        title: "Error",
-        description: "La duración del servicio debe ser mayor a 0.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (formData.serviceCost < 0) {
-      toast({
-        title: "Error",
-        description: "El coste del servicio no puede ser negativo.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    // Validar email solo si se proporciona
-    if (formData.email.trim() && !formData.email.includes('@')) {
-      toast({
-        title: "Error",
-        description: "Ingresa un email válido.",
-        variant: "destructive",
-      });
-      return;
-    }
-
+    setIsSubmitting(true);
     try {
       await onCreateService(formData);
       onOpenChange(false);
-      resetForm();
-    } catch (error) {
-      console.error('Error creating extraordinary service:', error);
+    } catch (submitError) {
+      console.error('Error creating extraordinary task:', submitError);
       toast({
-        title: "Error",
-        description: "No se pudo crear el servicio extraordinario.",
-        variant: "destructive",
+        title: 'Error',
+        description: 'No se pudo crear la tarea extraordinaria.',
+        variant: 'destructive',
       });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-[720px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Crear Servicio Extraordinario</DialogTitle>
+          <DialogTitle>Crear tarea extraordinaria</DialogTitle>
           <DialogDescription>
-            Completa los datos para crear un servicio extraordinario individual.
+            Para trabajos puntuales sin propiedad asociada. La tarea quedará en calendario y se podrá asignar como cualquier otra.
           </DialogDescription>
         </DialogHeader>
-        
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="serviceName">Nombre del Servicio *</Label>
-            <Input
-              id="serviceName"
-              value={formData.serviceName}
-              onChange={(e) => handleChange('serviceName', e.target.value)}
-              placeholder="Ej: Limpieza profunda, Mantenimiento, etc."
-              required
-            />
-          </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="clientName">Nombre del Cliente</Label>
-            <Input
-              id="clientName"
-              value={formData.clientName}
-              onChange={(e) => handleChange('clientName', e.target.value)}
-              placeholder="Nombre completo del cliente (opcional)"
-            />
-          </div>
+        <form onSubmit={handleSubmit} className="space-y-5">
+          <section className="space-y-3">
+            <div className="flex items-center gap-2 text-sm font-semibold">
+              <MapPin className="h-4 w-4 text-muted-foreground" />
+              Trabajo
+            </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
-            <Input
-              id="email"
-              type="email"
-              value={formData.email}
-              onChange={(e) => handleChange('email', e.target.value)}
-              placeholder="email@ejemplo.com (opcional)"
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="phoneNumber">Número de Teléfono</Label>
-            <Input
-              id="phoneNumber"
-              type="tel"
-              value={formData.phoneNumber}
-              onChange={(e) => handleChange('phoneNumber', e.target.value)}
-              placeholder="+34 600 000 000 (opcional)"
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="billingAddress">Dirección de Facturación</Label>
-            <Input
-              id="billingAddress"
-              value={formData.billingAddress}
-              onChange={(e) => handleChange('billingAddress', e.target.value)}
-              placeholder="Dirección completa para facturación (opcional)"
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="serviceAddress">Dirección del Servicio *</Label>
-            <Input
-              id="serviceAddress"
-              value={formData.serviceAddress}
-              onChange={(e) => handleChange('serviceAddress', e.target.value)}
-              placeholder="Dirección donde se realizará el servicio"
-              required
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="serviceDate">Fecha del Servicio *</Label>
-            <Popover>
-              <PopoverTrigger asChild>
+            <div className="flex flex-wrap gap-2">
+              {QUICK_SERVICES.map((service) => (
                 <Button
-                  variant="outline"
-                  className={cn(
-                    "w-full justify-start text-left font-normal",
-                    !formData.serviceDate && "text-muted-foreground"
-                  )}
+                  key={service}
+                  type="button"
+                  variant={formData.serviceName === service ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => updateField('serviceName', service)}
                 >
-                  <CalendarIcon className="mr-2 h-4 w-4" />
-                  {formData.serviceDate ? format(formData.serviceDate, "PPP") : <span>Selecciona una fecha</span>}
+                  {service}
                 </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="start">
-                <Calendar
-                  mode="single"
-                  selected={formData.serviceDate}
-                  onSelect={(date) => {
-                    if (date) {
-                      // Crear una nueva fecha en la zona horaria local para evitar desfases
-                      const localDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-                      handleChange('serviceDate', localDate);
-                    }
-                  }}
-                  initialFocus
-                  className={cn("p-3 pointer-events-auto")}
+              ))}
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="serviceName">Nombre del trabajo *</Label>
+                <Input
+                  id="serviceName"
+                  value={formData.serviceName}
+                  onChange={(event) => updateField('serviceName', event.target.value)}
+                  placeholder="Ej: Limpieza puntual oficina"
                 />
-              </PopoverContent>
-            </Popover>
-          </div>
+              </div>
 
-          <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="serviceAddress">Dirección del trabajo *</Label>
+                <Input
+                  id="serviceAddress"
+                  value={formData.serviceAddress}
+                  onChange={(event) => updateField('serviceAddress', event.target.value)}
+                  placeholder="Dirección donde se realiza"
+                />
+              </div>
+            </div>
+
             <div className="space-y-2">
-              <Label htmlFor="serviceDuration">Duración del Servicio (horas) *</Label>
-              <Input
-                id="serviceDuration"
-                type="number"
-                min="0.25"
-                step="0.25"
-                value={(formData.serviceDuration / 60).toFixed(2)}
-                onChange={(e) => {
-                  const hours = parseFloat(e.target.value) || 0;
-                  handleChange('serviceDuration', Math.round(hours * 60));
-                }}
-                placeholder="Ej: 1.5 = 1h 30min"
-                required
+              <Label htmlFor="notes">Instrucciones internas</Label>
+              <Textarea
+                id="notes"
+                value={formData.notes}
+                onChange={(event) => updateField('notes', event.target.value)}
+                placeholder="Material necesario, acceso, persona de contacto, detalles del servicio..."
+                rows={3}
               />
             </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="serviceCost">Coste del Servicio (€)</Label>
-              <Input
-                id="serviceCost"
-                type="number"
-                min="0"
-                step="0.01"
-                value={formData.serviceCost}
-                onChange={(e) => handleChange('serviceCost', parseFloat(e.target.value) || 0)}
-              />
+          </section>
+
+          <Separator />
+
+          <section className="space-y-3">
+            <div className="flex items-center gap-2 text-sm font-semibold">
+              <CalendarDays className="h-4 w-4 text-muted-foreground" />
+              Planificación
             </div>
-          </div>
 
-          <div className="flex items-center space-x-2">
-            <Checkbox 
-              id="needsInvoice"
-              checked={formData.needsInvoice}
-              onCheckedChange={(checked) => handleChange('needsInvoice', !!checked)}
-            />
-            <Label htmlFor="needsInvoice">¿Necesita factura?</Label>
-          </div>
+            <div className="grid gap-4 md:grid-cols-4">
+              <div className="space-y-2">
+                <Label htmlFor="serviceDate">Fecha *</Label>
+                <Input
+                  id="serviceDate"
+                  type="date"
+                  value={formData.serviceDate}
+                  onChange={(event) => updateField('serviceDate', event.target.value)}
+                />
+              </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="notes">Notas adicionales</Label>
-            <Textarea
-              id="notes"
-              value={formData.notes}
-              onChange={(e) => handleChange('notes', e.target.value)}
-              placeholder="Añade cualquier información adicional sobre el servicio..."
-              rows={3}
-            />
-          </div>
+              <div className="space-y-2">
+                <Label htmlFor="startTime">Inicio *</Label>
+                <Input
+                  id="startTime"
+                  type="time"
+                  value={formData.startTime}
+                  onChange={(event) => updateField('startTime', event.target.value)}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="durationMinutes">Duración</Label>
+                <Input
+                  id="durationMinutes"
+                  type="number"
+                  min="15"
+                  step="15"
+                  value={formData.durationMinutes}
+                  onChange={(event) => updateField('durationMinutes', parseInt(event.target.value, 10) || 0)}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Fin previsto</Label>
+                <div className="flex h-10 items-center rounded-md border bg-muted/40 px-3 text-sm">
+                  <Clock className="mr-2 h-4 w-4 text-muted-foreground" />
+                  {addMinutesToTime(formData.startTime, formData.durationMinutes)}
+                </div>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap gap-2">
+              {DURATION_OPTIONS.map((option) => (
+                <Button
+                  key={option.value}
+                  type="button"
+                  variant={formData.durationMinutes === option.value ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => updateField('durationMinutes', option.value)}
+                >
+                  {option.label}
+                </Button>
+              ))}
+            </div>
+
+            <div className="space-y-2">
+              <Label>Trabajador asignado</Label>
+              <Select
+                value={formData.cleanerId || 'unassigned'}
+                onValueChange={handleCleanerChange}
+                disabled={isLoading}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder={isLoading ? 'Cargando trabajadores...' : 'Sin asignar'} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="unassigned">Sin asignar</SelectItem>
+                  {activeCleaners.map((cleaner) => (
+                    <SelectItem key={cleaner.id} value={cleaner.id}>
+                      {cleaner.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </section>
+
+          <Separator />
+
+          <section className="space-y-3">
+            <div className="flex items-center gap-2 text-sm font-semibold">
+              <UserRound className="h-4 w-4 text-muted-foreground" />
+              Cliente y facturación opcional
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="clientName">Cliente o contacto</Label>
+                <Input
+                  id="clientName"
+                  value={formData.clientName}
+                  onChange={(event) => updateField('clientName', event.target.value)}
+                  placeholder="Nombre del cliente o contacto"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="phoneNumber">Teléfono</Label>
+                <Input
+                  id="phoneNumber"
+                  type="tel"
+                  value={formData.phoneNumber}
+                  onChange={(event) => updateField('phoneNumber', event.target.value)}
+                  placeholder="+34 600 000 000"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="email">Email</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  value={formData.email}
+                  onChange={(event) => updateField('email', event.target.value)}
+                  placeholder="email@ejemplo.com"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="serviceCost">Importe</Label>
+                <div className="relative">
+                  <Euro className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    id="serviceCost"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={formData.serviceCost}
+                    onChange={(event) => updateField('serviceCost', parseFloat(event.target.value) || 0)}
+                    className="pl-9"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-[1fr_220px]">
+              <div className="space-y-2">
+                <Label htmlFor="billingAddress">Dirección de facturación</Label>
+                <Input
+                  id="billingAddress"
+                  value={formData.billingAddress}
+                  onChange={(event) => updateField('billingAddress', event.target.value)}
+                  placeholder="Si es distinta a la dirección del trabajo"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Método de pago</Label>
+                <Select value={formData.paymentMethod} onValueChange={(value) => updateField('paymentMethod', value)}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="transferencia">Transferencia</SelectItem>
+                    <SelectItem value="efectivo">Efectivo</SelectItem>
+                    <SelectItem value="bizum">Bizum</SelectItem>
+                    <SelectItem value="tarjeta">Tarjeta</SelectItem>
+                    <SelectItem value="factura">Factura</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id="needsInvoice"
+                checked={formData.needsInvoice}
+                onCheckedChange={(checked) => updateField('needsInvoice', checked === true)}
+              />
+              <Label htmlFor="needsInvoice">Marcar como factura requerida en las notas</Label>
+            </div>
+          </section>
 
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isSubmitting}>
               Cancelar
             </Button>
-            <Button type="submit">
-              Crear Servicio Extraordinario
+            <Button type="submit" disabled={isSubmitting}>
+              Crear tarea extraordinaria
             </Button>
           </DialogFooter>
         </form>

@@ -12,6 +12,7 @@ import { CreateTaskModal } from '@/components/modals/CreateTaskModal';
 import { BatchCreateTaskModal } from '@/components/modals/BatchCreateTaskModal';
 import { TaskDetailsModal } from '@/components/modals/TaskDetailsModal';
 import { CreateExtraordinaryServiceModal } from '@/components/modals/CreateExtraordinaryServiceModal';
+import { buildExtraordinaryTask, type ExtraordinaryTaskFormData } from '@/services/extraordinaryTaskBuilder';
 
 // Lazy load components for better performance
 const DashboardStatsCards = lazy(() => import('./components/DashboardStatsCards').then(module => ({ default: module.DashboardStatsCards })));
@@ -166,51 +167,13 @@ export const ManagerDashboard = () => {
     setIsTaskDetailsOpen(false);
   }, []);
 
-  const handleCreateExtraordinaryService = useCallback(async (serviceData) => {
+  const handleCreateExtraordinaryService = useCallback(async (serviceData: ExtraordinaryTaskFormData) => {
     try {
-      console.log('🟢 ManagerDashboard - Creating extraordinary service:', serviceData);
-      
-      // Convert extraordinary service data to task format
-      const localDate = serviceData.serviceDate;
-      const formattedDate = `${localDate.getFullYear()}-${String(localDate.getMonth() + 1).padStart(2, '0')}-${String(localDate.getDate()).padStart(2, '0')}`;
-      
-      const taskData = {
-        date: formattedDate,
-        startTime: '09:00',
-        endTime: (() => {
-          const startMinutes = 9 * 60;
-          const endMinutes = startMinutes + serviceData.serviceDuration;
-          const endHours = Math.floor(endMinutes / 60);
-          const endMins = endMinutes % 60;
-          return `${endHours.toString().padStart(2, '0')}:${endMins.toString().padStart(2, '0')}`;
-        })(),
-        checkIn: '09:00',
-        checkOut: '09:00',
-        property: serviceData.serviceName,
-        address: serviceData.serviceAddress,
-        type: 'trabajo-extraordinario',
-        status: 'pending',
-        cleaner: '',
-        cleanerId: undefined,
-        duration: serviceData.serviceDuration,
-        cost: serviceData.serviceCost,
-        paymentMethod: 'transferencia',
-        supervisor: '',
-        backgroundColor: '#8B5CF6',
-        notes: serviceData.notes || '',
-        clienteId: null,
-        propertyId: null,
-        extraordinaryClientName: serviceData.clientName,
-        extraordinaryClientEmail: serviceData.email,
-        extraordinaryClientPhone: serviceData.phoneNumber,
-        extraordinaryBillingAddress: serviceData.billingAddress,
-      };
-
-      console.log('🟢 ManagerDashboard - Task data to create:', taskData);
+      const taskData = buildExtraordinaryTask(serviceData);
       await handleCreateTask(taskData);
       setIsExtraordinaryServiceModalOpen(false);
     } catch (error) {
-      console.error('❌ ManagerDashboard - Error creating extraordinary service:', error);
+      console.error('ManagerDashboard - Error creating extraordinary service:', error);
     }
   }, [handleCreateTask]);
 

@@ -4,6 +4,7 @@ import { BatchCreateTaskModal } from "../modals/BatchCreateTaskModal";
 import { CreateExtraordinaryServiceModal } from "../modals/CreateExtraordinaryServiceModal";
 import { TaskDetailsModal } from "../modals/TaskDetailsModal";
 import { Task } from "@/types/calendar";
+import type { ExtraordinaryTaskFormData } from "@/services/extraordinaryTaskBuilder";
 
 interface CalendarModalsProps {
   isCreateModalOpen: boolean;
@@ -18,7 +19,7 @@ interface CalendarModalsProps {
   currentDate: Date;
   onCreateTask: (taskData: Omit<Task, 'id'>) => Promise<void>;
   onBatchCreateTasks: (tasksData: Omit<Task, 'id'>[]) => Promise<void>;
-  onCreateExtraordinaryService: (serviceData: any) => Promise<void>;
+  onCreateExtraordinaryService: (serviceData: ExtraordinaryTaskFormData) => Promise<void>;
   onUpdateTask: (taskId: string, updates: Partial<Task>) => Promise<void>;
   onDeleteTask: (taskId: string) => Promise<void>;
   onUnassignTask: (taskId: string) => Promise<void>;

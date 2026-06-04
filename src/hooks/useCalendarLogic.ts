@@ -10,6 +10,7 @@ import { isCleanerAvailableAtTime } from "@/utils/availabilityUtils";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 import { ABSENCE_TYPE_LABELS } from "@/types/workerAbsence";
+import { buildExtraordinaryTask, type ExtraordinaryTaskFormData } from "@/services/extraordinaryTaskBuilder";
 
 // Helper function to check time overlap
 const toMin = (time: string) => {
@@ -417,70 +418,26 @@ export const useCalendarLogic = () => {
     }
   }, [createTask, toast]);
 
-  const handleCreateExtraordinaryService = useCallback(async (serviceData: any) => {
-    console.log('🟢🟢🟢 EXTRAORDINARY SERVICE - NOTES INPUT:', serviceData.notes);
-    console.log('🟢🟢🟢 EXTRAORDINARY SERVICE - FULL DATA:', serviceData);
-    
-    // Convert extraordinary service data to task format
-    // Format date in local timezone to avoid UTC conversion issues
-    const localDate = serviceData.serviceDate;
-    const formattedDate = `${localDate.getFullYear()}-${String(localDate.getMonth() + 1).padStart(2, '0')}-${String(localDate.getDate()).padStart(2, '0')}`;
-    
-    const taskData: Omit<Task, 'id'> = {
-      date: formattedDate,
-      startTime: '09:00', // Default start time
-      endTime: (() => {
-        const startMinutes = 9 * 60; // 09:00 in minutes
-        const endMinutes = startMinutes + serviceData.serviceDuration;
-        const endHours = Math.floor(endMinutes / 60);
-        const endMins = endMinutes % 60;
-        return `${endHours.toString().padStart(2, '0')}:${endMins.toString().padStart(2, '0')}`;
-      })(),
-      checkIn: '09:00',
-      checkOut: '09:00',
-      property: serviceData.serviceName,
-      address: serviceData.serviceAddress,
-      type: 'trabajo-extraordinario',
-      status: 'pending',
-      cleaner: '',
-      cleanerId: undefined,
-      duration: serviceData.serviceDuration,
-      cost: serviceData.serviceCost,
-      paymentMethod: 'transferencia',
-      supervisor: '',
-      backgroundColor: '#8B5CF6',
-      notes: serviceData.notes || '',
-      clienteId: null, // Use null instead of empty string
-      propertyId: null, // Use null instead of empty string
-      // Extraordinary service billing fields
-      extraordinaryClientName: serviceData.clientName,
-      extraordinaryClientEmail: serviceData.email,
-      extraordinaryClientPhone: serviceData.phoneNumber,
-      extraordinaryBillingAddress: serviceData.billingAddress,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
-    };
-
-    console.log('🟢🟢🟢 EXTRAORDINARY SERVICE - TASK NOTES BEFORE SAVE:', taskData.notes);
-    console.log('🟢🟢🟢 EXTRAORDINARY SERVICE - FULL TASK DATA:', taskData);
+  const handleCreateExtraordinaryService = useCallback(async (serviceData: ExtraordinaryTaskFormData) => {
+    const taskData = buildExtraordinaryTask(serviceData);
 
     try {
       const result = await createTask(taskData);
-      console.log('✅ useCalendarLogic - createExtraordinaryService successful:', result);
+      console.log('useCalendarLogic - createExtraordinaryService successful:', result);
       toast({
-        title: "Servicio Extraordinario creado",
-        description: `El servicio para ${serviceData.clientName} se ha creado correctamente.`,
+        title: "Tarea extraordinaria creada",
+        description: `"${serviceData.serviceName}" se ha creado correctamente.`,
       });
       setIsExtraordinaryServiceModalOpen(false);
     } catch (error) {
-      console.error('❌ useCalendarLogic - createExtraordinaryService error:', error);
+      console.error('useCalendarLogic - createExtraordinaryService error:', error);
       toast({
         title: "Error",
-        description: "No se pudo crear el servicio extraordinario.",
+        description: "No se pudo crear la tarea extraordinaria.",
         variant: "destructive",
       });
     }
-  }, [createTask, toast, currentDate]);
+  }, [createTask, toast]);
 
   const handleBatchCreateTasks = useCallback(async (tasksData: Omit<Task, 'id'>[]) => {
     console.log('🔵 useCalendarLogic - handleBatchCreateTasks called with:', tasksData.length, 'tasks');
