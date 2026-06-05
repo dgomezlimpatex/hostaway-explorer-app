@@ -4,6 +4,7 @@ import { useOptimizedTasks } from '@/hooks/useOptimizedTasks';
 import { useOptimizedCleaningReports } from '@/hooks/useOptimizedCleaningReports';
 import { useRolePermissions } from '@/hooks/useRolePermissions';
 import { useTasksPageActions } from '@/hooks/tasks/useTasksPageActions';
+import { useDeviceType } from '@/hooks/use-mobile';
 import { format, startOfMonth, endOfMonth, isAfter, isBefore, subMonths } from 'date-fns';
 import { es } from 'date-fns/locale';
 
@@ -13,6 +14,7 @@ import { BatchCreateTaskModal } from '@/components/modals/BatchCreateTaskModal';
 import { TaskDetailsModal } from '@/components/modals/TaskDetailsModal';
 import { CreateExtraordinaryServiceModal } from '@/components/modals/CreateExtraordinaryServiceModal';
 import { buildExtraordinaryTask, type ExtraordinaryTaskFormData } from '@/services/extraordinaryTaskBuilder';
+import { MobileManagerDashboard } from './MobileManagerDashboard';
 
 // Lazy load components for better performance
 const DashboardStatsCards = lazy(() => import('./components/DashboardStatsCards').then(module => ({ default: module.DashboardStatsCards })));
@@ -36,6 +38,7 @@ export const ManagerDashboard = () => {
   const [isTaskDetailsOpen, setIsTaskDetailsOpen] = useState(false);
   const [isExtraordinaryServiceModalOpen, setIsExtraordinaryServiceModalOpen] = useState(false);
   const { canAccessModule } = useRolePermissions();
+  const { isMobile } = useDeviceType();
   
   
   // Hook para manejar las acciones de tareas con la fecha correcta
@@ -181,6 +184,63 @@ export const ManagerDashboard = () => {
     setIsExtraordinaryServiceModalOpen(true);
   }, []);
 
+  if (isMobile) {
+    return (
+      <>
+        <MobileManagerDashboard
+          todayTasks={todayTasks}
+          unassignedTasks={unassignedTasks}
+          monthlyMetrics={monthlyMetrics}
+          pendingIncidents={pendingIncidents}
+          onTaskClick={handleTaskClick}
+          onOpenCreateModal={handleOpenCreateModal}
+          onOpenBatchModal={handleOpenBatchModal}
+          onOpenExtraordinaryServiceModal={handleOpenExtraordinaryServiceModal}
+          showWorkloadWidget={canAccessModule('workers')}
+          showLinenWidget={canAccessModule('reports')}
+          workloadWidget={
+            <Suspense fallback={<ComponentLoader />}>
+              <WorkloadWidget />
+            </Suspense>
+          }
+          linenWidget={
+            <Suspense fallback={<ComponentLoader />}>
+              <LinenControlWidget />
+            </Suspense>
+          }
+        />
+
+        <CreateTaskModal
+          open={isCreateModalOpen}
+          onOpenChange={setIsCreateModalOpen}
+          onCreateTask={handleCreateTask}
+        />
+
+        <BatchCreateTaskModal
+          open={isBatchCreateModalOpen}
+          onOpenChange={setIsBatchCreateModalOpen}
+          onCreateTasks={handleBatchCreateTasks}
+        />
+
+        {selectedTask && (
+          <TaskDetailsModal
+            task={selectedTask}
+            open={isTaskDetailsOpen}
+            onOpenChange={setIsTaskDetailsOpen}
+            onUpdateTask={handleUpdateTask}
+            onDeleteTask={handleDeleteTask}
+          />
+        )}
+
+        <CreateExtraordinaryServiceModal
+          open={isExtraordinaryServiceModalOpen}
+          onOpenChange={setIsExtraordinaryServiceModalOpen}
+          onCreateService={handleCreateExtraordinaryService}
+          currentDate={selectedDate}
+        />
+      </>
+    );
+  }
 
   return (
     <>

@@ -8,7 +8,7 @@ import { CalendarContainer } from "./calendar/CalendarContainer";
 import { UnavailableWorkersPanel } from "./calendar/UnavailableWorkersPanel";
 import { CleanerMobileCalendar } from "./calendar/CleanerMobileCalendar";
 import { CleanerDesktopCalendar } from "./calendar/CleanerDesktopCalendar";
-import { ManagerMobileCalendar } from "./calendar/ManagerMobileCalendar";
+import { ManagerMobileAgendaCalendar } from "./calendar/ManagerMobileAgendaCalendar";
 import { CalendarModalsWithSuspense } from "./calendar/LazyCalendarComponents";
 import { CalendarFooterSummary } from "./calendar/CalendarFooterSummary";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
@@ -19,6 +19,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useAuthGuard } from "@/hooks/useAuthGuard";
 import { useSede } from "@/contexts/SedeContext";
 import { Loader2 } from "lucide-react";
+import type { Client } from "@/types/client";
 
 const CleaningCalendar = () => {
   const { isMobile } = useDeviceType();
@@ -85,11 +86,12 @@ const CleaningCalendar = () => {
   const [selectedClientFilters, setSelectedClientFilters] = useState<string[]>([]);
   const [selectedCleanerFilters, setSelectedCleanerFilters] = useState<string[]>([]);
   const isAdminSearchEnabled = userRole !== 'cleaner';
-  const { data: clientsList = [] } = useClients();
+  const { data: clientsData = [] } = useClients();
+  const clientsList = clientsData as Client[];
 
   const clientNameById = useMemo(() => {
     const map = new Map<string, string>();
-    clientsList.forEach((c: any) => {
+    clientsList.forEach((c) => {
       if (c?.id && c?.nombre) map.set(c.id, c.nombre);
     });
     return map;
@@ -97,8 +99,8 @@ const CleaningCalendar = () => {
 
   const clientFilterOptions = useMemo(() => {
     return clientsList
-      .filter((c: any) => c?.isActive !== false)
-      .map((c: any) => ({ id: c.id, name: c.nombre }))
+      .filter((c) => c?.isActive !== false)
+      .map((c) => ({ id: c.id, name: c.nombre }))
       .sort((a, b) => a.name.localeCompare(b.name));
   }, [clientsList]);
 
@@ -315,13 +317,16 @@ const CleaningCalendar = () => {
                 <span className="text-sm text-muted-foreground">Actualizando...</span>
               </div>
             )}
-            <ManagerMobileCalendar
+            <ManagerMobileAgendaCalendar
               currentDate={currentDate}
               tasks={tasks}
               cleaners={cleaners}
               onNavigateDate={navigateDate}
+              onGoToToday={goToToday}
               onTaskClick={handleTaskClick}
               onNewTask={handleNewTask}
+              onNewBatchTask={handleNewBatchTask}
+              onNewExtraordinaryService={handleNewExtraordinaryService}
             />
           </div>
           

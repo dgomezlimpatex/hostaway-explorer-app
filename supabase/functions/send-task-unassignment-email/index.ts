@@ -122,7 +122,13 @@ const handler = async (req: Request): Promise<Response> => {
               </p>
             </div>
             
-            <p style="margin-bottom: 20px;">Si tienes alguna pregunta sobre este cambio, por favor contacta con tu supervisor.</p>
+            <p style="margin-bottom: 8px;">Puedes acceder a tus tareas o calendario desde el siguiente enlace:</p>
+            <p style="margin-top: 0; margin-bottom: 20px;">
+              <a href="https://gestionlimpatex.vercel.app/" style="color: #2563eb; font-weight: bold; text-decoration: none;">
+                https://gestionlimpatex.vercel.app/
+              </a>
+            </p>
+            <p style="margin-bottom: 20px; font-weight: bold;">Recuerda que es obligatorio completar los reportes de todas las tareas.</p>
             
             <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb;">
               <p style="color: #6b7280; font-size: 14px; margin: 0;">

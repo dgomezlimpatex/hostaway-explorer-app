@@ -101,17 +101,13 @@ const handler = async (req: Request): Promise<Response> => {
             </div>
             ` : ''}
             
-            <div style="background-color: #ecfdf5; padding: 15px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid #10b981;">
-              <h4 style="color: #065f46; margin-top: 0; margin-bottom: 10px;">✅ Próximos Pasos:</h4>
-              <ul style="color: #065f46; margin: 0; padding-left: 20px;">
-                <li>Revisa los detalles de la tarea</li>
-                <li>Confirma tu disponibilidad</li>
-                <li>Prepara los materiales necesarios</li>
-                <li>Llega puntual a la cita</li>
-              </ul>
-            </div>
-            
-            <p style="margin-bottom: 20px;">Si tienes alguna pregunta o necesitas modificar el horario, por favor contacta con tu supervisor.</p>
+            <p style="margin-bottom: 8px;">Puedes acceder a tus tareas o calendario desde el siguiente enlace:</p>
+            <p style="margin-top: 0; margin-bottom: 20px;">
+              <a href="https://gestionlimpatex.vercel.app/" style="color: #2563eb; font-weight: bold; text-decoration: none;">
+                https://gestionlimpatex.vercel.app/
+              </a>
+            </p>
+            <p style="margin-bottom: 20px; font-weight: bold;">Recuerda que es obligatorio completar los reportes de todas las tareas.</p>
             
             <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb;">
               <p style="color: #6b7280; font-size: 14px; margin: 0;">

@@ -1,21 +1,21 @@
-
 import React, { useState } from 'react';
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
-  TableRow 
-} from "@/components/ui/table";
-import { Card, CardContent } from "@/components/ui/card";
-import { Edit, User, GripVertical, UserX, UserCheck } from "lucide-react";
-import { Cleaner } from "@/types/calendar";
-import { useDeleteCleaner, useUpdateCleanersOrder, useUpdateCleaner } from "@/hooks/useCleaners";
-import { useIsMobile } from "@/hooks/use-mobile";
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import { Card, CardContent } from '@/components/ui/card';
+import { Edit, GripVertical, Mail, Phone, User, UserCheck, UserX } from 'lucide-react';
+import { Cleaner } from '@/types/calendar';
+import { useDeleteCleaner, useUpdateCleaner, useUpdateCleanersOrder } from '@/hooks/useCleaners';
+import { useIsMobile } from '@/hooks/use-mobile';
+import { cn } from '@/lib/utils';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -26,8 +26,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
-import { DeactivateWorkerDialog } from "./DeactivateWorkerDialog";
+} from '@/components/ui/alert-dialog';
+import { DeactivateWorkerDialog } from './DeactivateWorkerDialog';
 
 interface WorkersListProps {
   workers: Cleaner[];
@@ -36,12 +36,21 @@ interface WorkersListProps {
   onViewWorker: (worker: Cleaner) => void;
 }
 
+const initialsFor = (name: string) =>
+  name
+    .split(' ')
+    .filter(Boolean)
+    .map((part) => part[0])
+    .join('')
+    .slice(0, 3)
+    .toUpperCase();
+
 export const WorkersList = ({ workers, isLoading, onEditWorker, onViewWorker }: WorkersListProps) => {
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   const [localWorkers, setLocalWorkers] = useState<Cleaner[]>(workers);
   const [workerToDeactivate, setWorkerToDeactivate] = useState<Cleaner | null>(null);
   const isMobile = useIsMobile();
-  
+
   const deleteCleaner = useDeleteCleaner();
   const updateCleanersOrder = useUpdateCleanersOrder();
   const updateCleaner = useUpdateCleaner();
@@ -56,31 +65,30 @@ export const WorkersList = ({ workers, isLoading, onEditWorker, onViewWorker }: 
 
   const handleToggleActive = (worker: Cleaner) => {
     if (worker.isActive) {
-      // Desactivar: abrir diálogo con conteo de tareas y opción de desasignar
       setWorkerToDeactivate(worker);
       return;
     }
-    // Reactivar: directo
+
     updateCleaner.mutate({
       id: worker.id,
-      updates: { isActive: true }
+      updates: { isActive: true },
     });
   };
 
-  const handleDragStart = (e: React.DragEvent, index: number) => {
+  const handleDragStart = (event: React.DragEvent, index: number) => {
     setDraggedIndex(index);
-    e.dataTransfer.effectAllowed = 'move';
-    e.dataTransfer.setData('text/plain', index.toString());
+    event.dataTransfer.effectAllowed = 'move';
+    event.dataTransfer.setData('text/plain', index.toString());
   };
 
-  const handleDragOver = (e: React.DragEvent, index: number) => {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = 'move';
+  const handleDragOver = (event: React.DragEvent) => {
+    event.preventDefault();
+    event.dataTransfer.dropEffect = 'move';
   };
 
-  const handleDrop = (e: React.DragEvent, dropIndex: number) => {
-    e.preventDefault();
-    
+  const handleDrop = (event: React.DragEvent, dropIndex: number) => {
+    event.preventDefault();
+
     if (draggedIndex === null || draggedIndex === dropIndex) {
       setDraggedIndex(null);
       return;
@@ -90,15 +98,15 @@ export const WorkersList = ({ workers, isLoading, onEditWorker, onViewWorker }: 
     const draggedWorker = newWorkers[draggedIndex];
     newWorkers.splice(draggedIndex, 1);
     newWorkers.splice(dropIndex, 0, draggedWorker);
-    
+
     setLocalWorkers(newWorkers);
     setDraggedIndex(null);
 
     const orderUpdates = newWorkers.map((worker, index) => ({
       id: worker.id,
-      sortOrder: index
+      sortOrder: index,
     }));
-    
+
     updateCleanersOrder.mutate(orderUpdates);
   };
 
@@ -106,10 +114,20 @@ export const WorkersList = ({ workers, isLoading, onEditWorker, onViewWorker }: 
     setDraggedIndex(null);
   };
 
+  const deactivateDialog = (
+    <DeactivateWorkerDialog
+      worker={workerToDeactivate}
+      open={!!workerToDeactivate}
+      onOpenChange={(open) => {
+        if (!open) setWorkerToDeactivate(null);
+      }}
+    />
+  );
+
   if (isLoading) {
     return (
-      <div className="text-center py-8">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+      <div className="py-8 text-center">
+        <div className="mx-auto h-8 w-8 animate-spin rounded-full border-b-2 border-primary" />
         <p className="mt-2 text-muted-foreground">Cargando trabajadores...</p>
       </div>
     );
@@ -117,221 +135,129 @@ export const WorkersList = ({ workers, isLoading, onEditWorker, onViewWorker }: 
 
   if (localWorkers.length === 0) {
     return (
-      <div className="text-center py-8">
+      <div className="rounded-xl border border-dashed bg-white py-8 text-center">
         <User className="mx-auto h-12 w-12 text-muted-foreground" />
         <h3 className="mt-2 text-sm font-medium text-foreground">No hay trabajadores</h3>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Comienza creando tu primer trabajador.
-        </p>
+        <p className="mt-1 text-sm text-muted-foreground">Prueba con otro filtro o crea un trabajador nuevo.</p>
       </div>
     );
   }
 
-  // Mobile: card-based layout
   if (isMobile) {
     return (
       <>
-      <div className="space-y-2">
-        {localWorkers.map((worker) => (
-          <Card 
-            key={worker.id} 
-            className={`${!worker.isActive ? 'opacity-60 bg-muted/50' : ''}`}
-          >
-            <CardContent className="p-3">
-              <div className="flex items-center gap-3">
-                <Avatar className="h-10 w-10 flex-shrink-0">
-                  <AvatarImage src={worker.avatar || undefined} />
-                  <AvatarFallback className="text-xs">
-                    {worker.name.split(' ').map(n => n[0]).join('').toUpperCase()}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="flex-1 min-w-0" onClick={() => onViewWorker(worker)}>
-                  <div className="font-medium text-sm truncate flex items-center gap-1.5">
-                    {worker.name}
-                    {worker.externalId && (
-                      <span title="Vinculado a REGISTRO" className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-100 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 font-medium">🔗</span>
-                    )}
-                  </div>
-                  {worker.category && (
-                    <div className="text-[11px] text-muted-foreground truncate">{worker.category}</div>
-                  )}
-                  {worker.telefono && (
-                    <div className="text-xs text-muted-foreground truncate">{worker.telefono}</div>
-                  )}
-                </div>
-                <Badge variant={worker.isActive ? "default" : "secondary"} className="text-xs flex-shrink-0">
-                  {worker.isActive ? "Activo" : "Inactivo"}
-                </Badge>
-              </div>
-              <div className="flex items-center justify-end gap-1.5 mt-2 pt-2 border-t border-border">
-                <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => onViewWorker(worker)}>
-                  <User className="h-3 w-3 mr-1" />Ver
-                </Button>
-                <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => onEditWorker(worker)}>
-                  <Edit className="h-3 w-3 mr-1" />Editar
-                </Button>
-                {worker.isActive ? (
-                  <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => handleToggleActive(worker)}>
-                    <UserX className="h-3 w-3" />
-                  </Button>
-                ) : (
-                  <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => handleToggleActive(worker)}>
-                    <UserCheck className="h-3 w-3" />
-                  </Button>
-                )}
-                {worker.externalId ? (
-                  <Button variant="destructive" size="sm" className="h-7 text-xs" disabled title="Gestionado desde REGISTRO. Usa Desactivar.">
-                    Eliminar
-                  </Button>
-                ) : (
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                      <Button variant="destructive" size="sm" className="h-7 text-xs">
-                        Eliminar
-                      </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>¿Estás seguro de eliminar?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                          Esta acción no se puede deshacer. Se eliminará permanentemente 
-                          el trabajador "{worker.name}" y <strong>todas sus tareas asignadas quedarán sin asignar</strong>.
-                          <br /><br />
-                          💡 Si solo quieres que deje de aparecer en las asignaciones, usa <strong>"Desactivar"</strong> en su lugar.
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                        <AlertDialogAction
-                          onClick={() => handleDelete(worker.id)}
-                          className="bg-destructive hover:bg-destructive/90"
-                        >
-                          Eliminar definitivamente
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-      <DeactivateWorkerDialog
-        worker={workerToDeactivate}
-        open={!!workerToDeactivate}
-        onOpenChange={(o) => { if (!o) setWorkerToDeactivate(null); }}
-      />
-      </>
-    );
-  }
-
-  // Desktop: table layout
-  return (
-    <>
-    <div className="rounded-md border">
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead className="w-10"></TableHead>
-            <TableHead>Trabajador</TableHead>
-            <TableHead>Contacto</TableHead>
-            <TableHead>Estado</TableHead>
-            <TableHead className="text-right">Acciones</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {localWorkers.map((worker, index) => (
-            <TableRow 
+        <div className="space-y-2.5">
+          {localWorkers.map((worker) => (
+            <Card
               key={worker.id}
-              draggable
-              onDragStart={(e) => handleDragStart(e, index)}
-              onDragOver={(e) => handleDragOver(e, index)}
-              onDrop={(e) => handleDrop(e, index)}
-              onDragEnd={handleDragEnd}
-              className={`cursor-move transition-colors ${
-                draggedIndex === index ? 'opacity-50' : ''
-              } ${!worker.isActive ? 'opacity-60 bg-muted/50' : 'hover:bg-muted/30'}`}
+              className={cn(
+                'overflow-hidden border-0 bg-white shadow-sm',
+                !worker.isActive && 'bg-slate-100/80'
+              )}
             >
-              <TableCell>
-                <div className="flex items-center justify-center">
-                  <GripVertical className="h-4 w-4 text-muted-foreground" />
-                </div>
-              </TableCell>
-              <TableCell>
-                <div className="flex items-center space-x-3">
-                  <Avatar className="h-8 w-8">
+              <CardContent className="p-0">
+                <button
+                  type="button"
+                  onClick={() => onViewWorker(worker)}
+                  className="flex w-full items-start gap-3 p-3 text-left"
+                >
+                  <Avatar className="h-12 w-12 shrink-0">
                     <AvatarImage src={worker.avatar || undefined} />
-                    <AvatarFallback>
-                      {worker.name.split(' ').map(n => n[0]).join('').toUpperCase()}
+                    <AvatarFallback className="bg-blue-100 text-xs font-semibold text-blue-700">
+                      {initialsFor(worker.name)}
                     </AvatarFallback>
                   </Avatar>
-                  <div>
-                    <div className={`font-medium flex items-center gap-2 ${!worker.isActive ? 'text-muted-foreground' : ''}`}>
-                      {worker.name}
+
+                  <div className="min-w-0 flex-1">
+                    <div className="mb-1 flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className="line-clamp-2 text-sm font-semibold text-slate-950">{worker.name}</p>
+                        {worker.category && (
+                          <p className="truncate text-xs text-muted-foreground">{worker.category}</p>
+                        )}
+                      </div>
+                      <Badge
+                        variant="outline"
+                        className={cn(
+                          'shrink-0 border-0 text-[10px]',
+                          worker.isActive
+                            ? 'bg-emerald-100 text-emerald-800'
+                            : 'bg-slate-200 text-slate-700'
+                        )}
+                      >
+                        {worker.isActive ? 'Activo' : 'Inactivo'}
+                      </Badge>
+                    </div>
+
+                    <div className="space-y-1 text-xs text-muted-foreground">
+                      {worker.telefono && (
+                        <p className="flex items-center gap-1.5">
+                          <Phone className="h-3.5 w-3.5 shrink-0" />
+                          <span className="truncate">{worker.telefono}</span>
+                        </p>
+                      )}
+                      {worker.email && (
+                        <p className="flex items-center gap-1.5">
+                          <Mail className="h-3.5 w-3.5 shrink-0" />
+                          <span className="truncate">{worker.email}</span>
+                        </p>
+                      )}
                       {worker.externalId && (
-                        <span title="Vinculado a REGISTRO" className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-100 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 font-medium">
-                          🔗 REGISTRO
+                        <span className="inline-flex rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-medium text-emerald-700">
+                          REGISTRO
                         </span>
                       )}
                     </div>
-                    {worker.category && (
-                      <div className="text-xs text-muted-foreground">{worker.category}</div>
-                    )}
                   </div>
-                </div>
-              </TableCell>
-              <TableCell>
-                <div className="space-y-1">
-                  {worker.email && (
-                    <div className="text-sm text-muted-foreground">{worker.email}</div>
-                  )}
-                  {worker.telefono && (
-                    <div className="text-sm text-muted-foreground">{worker.telefono}</div>
-                  )}
-                </div>
-              </TableCell>
-              <TableCell>
-                <Badge variant={worker.isActive ? "default" : "secondary"}>
-                  {worker.isActive ? "Activo" : "Inactivo"}
-                </Badge>
-              </TableCell>
-              <TableCell className="text-right">
-                <div className="flex items-center justify-end gap-2">
-                  <Button variant="outline" size="sm" onClick={() => onViewWorker(worker)} className="flex items-center gap-1">
-                    <User className="h-4 w-4" />Ver
-                  </Button>
-                  <Button variant="outline" size="sm" onClick={() => onEditWorker(worker)} className="flex items-center gap-1">
-                    <Edit className="h-4 w-4" />Editar
+                </button>
+
+                <div className="flex items-center gap-2 border-t border-slate-100 p-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-9 flex-1 rounded-lg text-xs"
+                    onClick={() => onEditWorker(worker)}
+                  >
+                    <Edit className="mr-1 h-3.5 w-3.5" />
+                    Editar
                   </Button>
                   {worker.isActive ? (
-                    <Button variant="outline" size="sm" onClick={() => handleToggleActive(worker)}
-                      className="flex items-center gap-1 border-yellow-500 text-yellow-700 hover:bg-yellow-50">
-                      <UserX className="h-4 w-4" />Desactivar
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-9 flex-1 rounded-lg border-amber-200 text-xs text-amber-700"
+                      onClick={() => handleToggleActive(worker)}
+                    >
+                      <UserX className="mr-1 h-3.5 w-3.5" />
+                      Desactivar
                     </Button>
                   ) : (
-                    <Button variant="outline" size="sm" onClick={() => handleToggleActive(worker)}
-                      className="flex items-center gap-1 border-green-500 text-green-700 hover:bg-green-50">
-                      <UserCheck className="h-4 w-4" />Reactivar
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-9 flex-1 rounded-lg border-emerald-200 text-xs text-emerald-700"
+                      onClick={() => handleToggleActive(worker)}
+                    >
+                      <UserCheck className="mr-1 h-3.5 w-3.5" />
+                      Reactivar
                     </Button>
                   )}
-                  {worker.externalId ? (
-                    <Button variant="destructive" size="sm" disabled title="Gestionado desde REGISTRO. Usa Desactivar.">
-                      Eliminar
-                    </Button>
-                  ) : (
+                  {!worker.externalId && (
                     <AlertDialog>
                       <AlertDialogTrigger asChild>
-                        <Button variant="destructive" size="sm">Eliminar</Button>
+                        <Button variant="ghost" size="sm" className="h-9 rounded-lg px-2 text-xs text-destructive">
+                          Eliminar
+                        </Button>
                       </AlertDialogTrigger>
                       <AlertDialogContent>
                         <AlertDialogHeader>
-                          <AlertDialogTitle>¿Estás seguro de eliminar?</AlertDialogTitle>
+                          <AlertDialogTitle>Eliminar trabajador</AlertDialogTitle>
                           <AlertDialogDescription>
-                            Esta acción no se puede deshacer. Se eliminará permanentemente 
-                            el trabajador "{worker.name}" y <strong>todas sus tareas asignadas quedarán sin asignar</strong>.
-                            <br /><br />
-                            💡 Si solo quieres que deje de aparecer en las asignaciones, usa <strong>"Desactivar"</strong> en su lugar.
+                            Esta accion no se puede deshacer. Se eliminara permanentemente el trabajador
+                            "{worker.name}" y todas sus tareas asignadas quedaran sin asignar.
+                            <br />
+                            <br />
+                            Si solo quieres que deje de aparecer en las asignaciones, usa "Desactivar" en su lugar.
                           </AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>
@@ -347,17 +273,148 @@ export const WorkersList = ({ workers, isLoading, onEditWorker, onViewWorker }: 
                     </AlertDialog>
                   )}
                 </div>
-              </TableCell>
-            </TableRow>
+              </CardContent>
+            </Card>
           ))}
-        </TableBody>
-      </Table>
-    </div>
-    <DeactivateWorkerDialog
-      worker={workerToDeactivate}
-      open={!!workerToDeactivate}
-      onOpenChange={(o) => { if (!o) setWorkerToDeactivate(null); }}
-    />
+        </div>
+        {deactivateDialog}
+      </>
+    );
+  }
+
+  return (
+    <>
+      <div className="rounded-md border">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead className="w-10" />
+              <TableHead>Trabajador</TableHead>
+              <TableHead>Contacto</TableHead>
+              <TableHead>Estado</TableHead>
+              <TableHead className="text-right">Acciones</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {localWorkers.map((worker, index) => (
+              <TableRow
+                key={worker.id}
+                draggable
+                onDragStart={(event) => handleDragStart(event, index)}
+                onDragOver={handleDragOver}
+                onDrop={(event) => handleDrop(event, index)}
+                onDragEnd={handleDragEnd}
+                className={cn(
+                  'cursor-move transition-colors',
+                  draggedIndex === index && 'opacity-50',
+                  !worker.isActive ? 'bg-muted/50 opacity-60' : 'hover:bg-muted/30'
+                )}
+              >
+                <TableCell>
+                  <div className="flex items-center justify-center">
+                    <GripVertical className="h-4 w-4 text-muted-foreground" />
+                  </div>
+                </TableCell>
+                <TableCell>
+                  <div className="flex items-center space-x-3">
+                    <Avatar className="h-8 w-8">
+                      <AvatarImage src={worker.avatar || undefined} />
+                      <AvatarFallback>{initialsFor(worker.name)}</AvatarFallback>
+                    </Avatar>
+                    <div>
+                      <div className={cn('flex items-center gap-2 font-medium', !worker.isActive && 'text-muted-foreground')}>
+                        {worker.name}
+                        {worker.externalId && (
+                          <span className="rounded bg-emerald-100 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700">
+                            REGISTRO
+                          </span>
+                        )}
+                      </div>
+                      {worker.category && (
+                        <div className="text-xs text-muted-foreground">{worker.category}</div>
+                      )}
+                    </div>
+                  </div>
+                </TableCell>
+                <TableCell>
+                  <div className="space-y-1">
+                    {worker.email && <div className="text-sm text-muted-foreground">{worker.email}</div>}
+                    {worker.telefono && <div className="text-sm text-muted-foreground">{worker.telefono}</div>}
+                  </div>
+                </TableCell>
+                <TableCell>
+                  <Badge variant={worker.isActive ? 'default' : 'secondary'}>
+                    {worker.isActive ? 'Activo' : 'Inactivo'}
+                  </Badge>
+                </TableCell>
+                <TableCell className="text-right">
+                  <div className="flex items-center justify-end gap-2">
+                    <Button variant="outline" size="sm" onClick={() => onViewWorker(worker)} className="flex items-center gap-1">
+                      <User className="h-4 w-4" />
+                      Ver
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={() => onEditWorker(worker)} className="flex items-center gap-1">
+                      <Edit className="h-4 w-4" />
+                      Editar
+                    </Button>
+                    {worker.isActive ? (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleToggleActive(worker)}
+                        className="flex items-center gap-1 border-yellow-500 text-yellow-700 hover:bg-yellow-50"
+                      >
+                        <UserX className="h-4 w-4" />
+                        Desactivar
+                      </Button>
+                    ) : (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleToggleActive(worker)}
+                        className="flex items-center gap-1 border-green-500 text-green-700 hover:bg-green-50"
+                      >
+                        <UserCheck className="h-4 w-4" />
+                        Reactivar
+                      </Button>
+                    )}
+                    {worker.externalId ? (
+                      <Button variant="destructive" size="sm" disabled title="Gestionado desde REGISTRO. Usa Desactivar.">
+                        Eliminar
+                      </Button>
+                    ) : (
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button variant="destructive" size="sm">Eliminar</Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Eliminar trabajador</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Esta accion no se puede deshacer. Se eliminara permanentemente el trabajador
+                              "{worker.name}" y todas sus tareas asignadas quedaran sin asignar.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                            <AlertDialogAction
+                              onClick={() => handleDelete(worker.id)}
+                              className="bg-destructive hover:bg-destructive/90"
+                            >
+                              Eliminar definitivamente
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    )}
+                  </div>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+      {deactivateDialog}
     </>
   );
 };

@@ -1,9 +1,10 @@
 import React, { Suspense } from 'react';
-import { Outlet } from 'react-router-dom';
+import { Outlet, useLocation } from 'react-router-dom';
 import { SidebarProvider } from '@/components/ui/sidebar';
 import { DashboardSidebar } from '@/components/dashboard/DashboardSidebar';
-import { MobileDashboardHeader } from '@/components/dashboard/MobileDashboardHeader';
+import { MobileBottomNav } from '@/components/mobile/MobileBottomNav';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { cn } from '@/lib/utils';
 
 /**
  * Layout persistente para todas las páginas de gestión.
@@ -17,14 +18,15 @@ import { useIsMobile } from '@/hooks/use-mobile';
  */
 export const AppLayout = () => {
   const isMobile = useIsMobile();
+  const location = useLocation();
+  const showGlobalMobileNav = isMobile && location.pathname !== '/';
 
   return (
     <SidebarProvider>
       <div className="min-h-screen w-full bg-background">
-        <MobileDashboardHeader />
         <div className="flex min-h-screen w-full">
           {!isMobile && <DashboardSidebar />}
-          <main className="flex-1 overflow-auto min-w-0">
+          <main className={cn('flex-1 overflow-auto min-w-0', showGlobalMobileNav && 'pb-24')}>
             <Suspense
               fallback={
                 <div className="flex items-center justify-center h-64">
@@ -36,6 +38,7 @@ export const AppLayout = () => {
             </Suspense>
           </main>
         </div>
+        {showGlobalMobileNav && <MobileBottomNav />}
       </div>
     </SidebarProvider>
   );
