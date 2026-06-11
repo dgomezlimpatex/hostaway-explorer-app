@@ -1,7 +1,6 @@
 import { Task } from '@/types/calendar';
 import { BaseStorageService } from './baseStorage';
 import { supabase } from '@/integrations/supabase/client';
-import { InventoryMovementType, InventoryAlertType } from '@/types/inventory';
 import { formatMadridDate } from '@/utils/date';
 
 type StockRpcClient = {
@@ -15,7 +14,7 @@ type StockRpcClient = {
   ) => Promise<{ data: unknown; error: Error | null }>;
 };
 
-interface TaskCreateData extends Omit<Task, 'id' | 'created_at' | 'updated_at'> {}
+type TaskCreateData = Omit<Task, 'id' | 'created_at' | 'updated_at'>;
 
 const taskStorageConfig = {
   tableName: 'tasks',
@@ -393,78 +392,15 @@ export class TaskStorageService extends BaseStorageService<Task, TaskCreateData>
         throw error;
       }
 
-      console.log('Consumo automatico de stock procesado:', data);
-      return;
-
-      const { inventoryStorage } = await import('@/services/storage/inventoryStorage');
-      
-      // Obtener configuraciones de consumo para la propiedad
-      const configs = await inventoryStorage.getConsumptionByProperty(propertyId);
-      
-      if (!configs || configs.length === 0) {
-        console.log(`📦 No hay configuraciones de consumo para propiedad ${propertyId}`);
+      const result = data as { disabled?: boolean; consumed?: number; skipped?: number; alerts?: number; reason?: string } | null;
+      if (result?.disabled) {
+        console.info('Consumo automatico de stock desactivado:', result.reason);
         return;
       }
 
-      console.log(`📦 Procesando consumo automático para ${configs.length} productos`);
-
-      for (const config of configs) {
-        if (!config.is_active) continue;
-
-        try {
-          // Obtener stock actual del producto
-          const stock = await inventoryStorage.getStockByProduct(config.product_id);
-          
-          if (!stock || stock.current_quantity < config.quantity_per_cleaning) {
-            // Si no hay stock suficiente, crear alerta
-            await inventoryStorage.createAlert({
-              product_id: config.product_id,
-              alert_type: 'stock_bajo'
-            });
-            
-            console.log(`⚠️ Stock insuficiente para producto ${config.product?.name}`);
-            continue;
-          }
-
-          // Calcular nueva cantidad
-          const newQuantity = stock.current_quantity - config.quantity_per_cleaning;
-
-          // Actualizar stock
-          await inventoryStorage.updateStock(config.product_id, {
-            current_quantity: newQuantity,
-            updated_by: userId
-          });
-
-          // Crear movimiento de inventario
-          await inventoryStorage.createMovement({
-            product_id: config.product_id,
-            movement_type: 'consumo_automatico',
-            quantity: config.quantity_per_cleaning,
-            previous_quantity: stock.current_quantity,
-            new_quantity: newQuantity,
-            reason: `Consumo automático - Tarea ${taskId} completada`,
-            created_by: userId,
-            property_id: propertyId,
-            task_id: taskId
-          });
-
-          // Verificar si el nuevo stock está por debajo del mínimo
-          if (newQuantity <= stock.minimum_stock) {
-            await inventoryStorage.createAlert({
-              product_id: config.product_id,
-              alert_type: newQuantity === 0 ? 'stock_critico' : 'stock_bajo'
-            });
-          }
-
-          console.log(`✅ Consumo automático procesado: ${config.product?.name} (-${config.quantity_per_cleaning})`);
-
-        } catch (error) {
-          console.error(`❌ Error procesando consumo para producto ${config.product?.name}:`, error);
-        }
-      }
-
+      console.log('Consumo automatico de stock procesado:', result);
     } catch (error) {
-      console.error('❌ Error en processAutomaticConsumption:', error);
+      console.error('Error en processAutomaticConsumption:', error);
     }
   }
 

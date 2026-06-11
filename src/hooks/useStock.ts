@@ -10,12 +10,14 @@ import type {
   StockAdjustmentData,
   StockCategory,
   StockItemKind,
+  StockLevelSettingsData,
   StockProduct,
   SaveStockPropertyConsumptionRuleData,
   StockTransferData,
   StockWarehouse,
   UpdateStockCategoryData,
   UpdateStockProductData,
+  UpdateStockSedeSettingsData,
 } from '@/types/stock';
 
 const selectedWarehouseKey = (sedeId?: string) => `stock:selectedWarehouse:${sedeId || 'none'}`;
@@ -34,6 +36,16 @@ export const useStockWarehouses = () => {
   return useQuery({
     queryKey: ['stock-warehouses', activeSede?.id],
     queryFn: () => stockStorage.getWarehouses(activeSede!.id),
+    enabled: !!activeSede?.id,
+  });
+};
+
+export const useStockSedeSettings = () => {
+  const { activeSede } = useSede();
+
+  return useQuery({
+    queryKey: ['stock-sede-settings', activeSede?.id],
+    queryFn: () => stockStorage.getSedeSettings(activeSede!.id),
     enabled: !!activeSede?.id,
   });
 };
@@ -188,6 +200,36 @@ export const useDeleteStockWarehouse = () => {
   });
 };
 
+export const useSedeStockConsumptionRules = () => {
+  const { activeSede } = useSede();
+
+  return useQuery({
+    queryKey: ['stock-sede-consumption-rules', activeSede?.id],
+    queryFn: () => stockStorage.getSedeConsumptionRules(activeSede!.id),
+    enabled: !!activeSede?.id,
+  });
+};
+
+export const useUpdateStockSedeSettings = () => {
+  const queryClient = useQueryClient();
+  const { activeSede } = useSede();
+
+  return useMutation({
+    mutationFn: (updates: UpdateStockSedeSettingsData) => {
+      if (!activeSede?.id) throw new Error('No hay sede activa.');
+      return stockStorage.updateSedeSettings(activeSede.id, updates);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['stock-sede-settings', activeSede?.id] });
+      toast.success('Configuracion de stock actualizada');
+    },
+    onError: (error) => {
+      console.error('Error updating stock settings:', error);
+      toast.error(getErrorMessage(error, 'No se pudo actualizar la configuracion de stock'));
+    },
+  });
+};
+
 export const useCreateStockProduct = () => {
   const queryClient = useQueryClient();
   const { activeSede } = useSede();
@@ -254,6 +296,7 @@ export const useSavePropertyStockConsumptionRules = () => {
       stockStorage.savePropertyConsumptionRules(propertyId, rules),
     onSuccess: (_result, variables) => {
       queryClient.invalidateQueries({ queryKey: ['stock-property-consumption-rules', variables.propertyId] });
+      queryClient.invalidateQueries({ queryKey: ['stock-sede-consumption-rules'] });
       toast.success('Consumos de la propiedad actualizados');
     },
     onError: (error) => {
@@ -335,6 +378,23 @@ export const useAdjustStock = () => {
     onError: (error) => {
       console.error('Error adjusting stock:', error);
       toast.error(getErrorMessage(error, 'No se pudo actualizar el stock'));
+    },
+  });
+};
+
+export const useUpdateStockLevelSettings = () => {
+  const queryClient = useQueryClient();
+  const { activeSede } = useSede();
+
+  return useMutation({
+    mutationFn: (data: StockLevelSettingsData) => stockStorage.updateStockLevelSettings(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['stock-levels', activeSede?.id] });
+      toast.success('Parametros de stock actualizados');
+    },
+    onError: (error) => {
+      console.error('Error updating stock level settings:', error);
+      toast.error(getErrorMessage(error, 'No se pudieron actualizar los parametros de stock'));
     },
   });
 };

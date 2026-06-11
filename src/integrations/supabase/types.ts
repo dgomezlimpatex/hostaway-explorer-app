@@ -1,4 +1,4 @@
-export type Json =
+﻿export type Json =
   | string
   | number
   | boolean
@@ -2848,6 +2848,7 @@ export type Database = {
           codigo: string
           coste_servicio: number
           created_at: string
+          default_stock_warehouse_id: string | null
           desinfectante_bano: number
           detergente_lavavajillas: number
           direccion: string
@@ -2906,6 +2907,7 @@ export type Database = {
           codigo: string
           coste_servicio?: number
           created_at?: string
+          default_stock_warehouse_id?: string | null
           desinfectante_bano?: number
           detergente_lavavajillas?: number
           direccion: string
@@ -2964,6 +2966,7 @@ export type Database = {
           codigo?: string
           coste_servicio?: number
           created_at?: string
+          default_stock_warehouse_id?: string | null
           desinfectante_bano?: number
           detergente_lavavajillas?: number
           direccion?: string
@@ -3008,6 +3011,13 @@ export type Database = {
             columns: ["cliente_id"]
             isOneToOne: false
             referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "properties_default_stock_warehouse_id_fkey"
+            columns: ["default_stock_warehouse_id"]
+            isOneToOne: false
+            referencedRelation: "stock_warehouses"
             referencedColumns: ["id"]
           },
           {
@@ -3662,6 +3672,496 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "staffing_targets_sede_id_fkey"
+            columns: ["sede_id"]
+            isOneToOne: false
+            referencedRelation: "sedes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      stock_alerts: {
+        Row: {
+          alert_type: Database["public"]["Enums"]["stock_alert_type"]
+          id: string
+          is_active: boolean
+          notified_users: Json
+          product_id: string
+          resolved_at: string | null
+          stock_level_id: string
+          triggered_at: string
+          warehouse_id: string
+        }
+        Insert: {
+          alert_type: Database["public"]["Enums"]["stock_alert_type"]
+          id?: string
+          is_active?: boolean
+          notified_users?: Json
+          product_id: string
+          resolved_at?: string | null
+          stock_level_id: string
+          triggered_at?: string
+          warehouse_id: string
+        }
+        Update: {
+          alert_type?: Database["public"]["Enums"]["stock_alert_type"]
+          id?: string
+          is_active?: boolean
+          notified_users?: Json
+          product_id?: string
+          resolved_at?: string | null
+          stock_level_id?: string
+          triggered_at?: string
+          warehouse_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stock_alerts_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "stock_products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_alerts_stock_level_id_fkey"
+            columns: ["stock_level_id"]
+            isOneToOne: false
+            referencedRelation: "stock_levels"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_alerts_warehouse_id_fkey"
+            columns: ["warehouse_id"]
+            isOneToOne: false
+            referencedRelation: "stock_warehouses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      stock_categories: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean
+          kind: Database["public"]["Enums"]["stock_item_kind"]
+          name: string
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          kind?: Database["public"]["Enums"]["stock_item_kind"]
+          name: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          kind?: Database["public"]["Enums"]["stock_item_kind"]
+          name?: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      stock_levels: {
+        Row: {
+          cost_per_unit: number | null
+          current_quantity: number
+          id: string
+          last_updated: string
+          minimum_quantity: number
+          product_id: string
+          target_quantity: number
+          updated_by: string | null
+          warehouse_id: string
+        }
+        Insert: {
+          cost_per_unit?: number | null
+          current_quantity?: number
+          id?: string
+          last_updated?: string
+          minimum_quantity?: number
+          product_id: string
+          target_quantity?: number
+          updated_by?: string | null
+          warehouse_id: string
+        }
+        Update: {
+          cost_per_unit?: number | null
+          current_quantity?: number
+          id?: string
+          last_updated?: string
+          minimum_quantity?: number
+          product_id?: string
+          target_quantity?: number
+          updated_by?: string | null
+          warehouse_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stock_levels_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "stock_products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_levels_warehouse_id_fkey"
+            columns: ["warehouse_id"]
+            isOneToOne: false
+            referencedRelation: "stock_warehouses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      stock_movements: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          movement_type: Database["public"]["Enums"]["stock_movement_type"]
+          new_quantity: number
+          previous_quantity: number
+          product_id: string
+          property_id: string | null
+          quantity: number
+          reason: string
+          task_id: string | null
+          to_new_quantity: number | null
+          to_previous_quantity: number | null
+          to_warehouse_id: string | null
+          warehouse_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          movement_type: Database["public"]["Enums"]["stock_movement_type"]
+          new_quantity: number
+          previous_quantity: number
+          product_id: string
+          property_id?: string | null
+          quantity: number
+          reason: string
+          task_id?: string | null
+          to_new_quantity?: number | null
+          to_previous_quantity?: number | null
+          to_warehouse_id?: string | null
+          warehouse_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          movement_type?: Database["public"]["Enums"]["stock_movement_type"]
+          new_quantity?: number
+          previous_quantity?: number
+          product_id?: string
+          property_id?: string | null
+          quantity?: number
+          reason?: string
+          task_id?: string | null
+          to_new_quantity?: number | null
+          to_previous_quantity?: number | null
+          to_warehouse_id?: string | null
+          warehouse_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stock_movements_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "stock_products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_movements_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_movements_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_movements_to_warehouse_id_fkey"
+            columns: ["to_warehouse_id"]
+            isOneToOne: false
+            referencedRelation: "stock_warehouses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_movements_warehouse_id_fkey"
+            columns: ["warehouse_id"]
+            isOneToOne: false
+            referencedRelation: "stock_warehouses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      stock_products: {
+        Row: {
+          category_id: string | null
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean
+          is_consumable: boolean
+          name: string
+          sede_id: string
+          sku: string | null
+          sort_order: number
+          unit_of_measure: string
+          updated_at: string
+        }
+        Insert: {
+          category_id?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          is_consumable?: boolean
+          name: string
+          sede_id: string
+          sku?: string | null
+          sort_order?: number
+          unit_of_measure?: string
+          updated_at?: string
+        }
+        Update: {
+          category_id?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          is_consumable?: boolean
+          name?: string
+          sede_id?: string
+          sku?: string | null
+          sort_order?: number
+          unit_of_measure?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stock_products_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "stock_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_products_sede_id_fkey"
+            columns: ["sede_id"]
+            isOneToOne: false
+            referencedRelation: "sedes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      stock_property_consumption_rules: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          notes: string | null
+          product_id: string
+          property_id: string
+          quantity_per_cleaning: number
+          updated_at: string
+          warehouse_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          notes?: string | null
+          product_id: string
+          property_id: string
+          quantity_per_cleaning?: number
+          updated_at?: string
+          warehouse_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          notes?: string | null
+          product_id?: string
+          property_id?: string
+          quantity_per_cleaning?: number
+          updated_at?: string
+          warehouse_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stock_property_consumption_rules_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "stock_products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_property_consumption_rules_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_property_consumption_rules_warehouse_id_fkey"
+            columns: ["warehouse_id"]
+            isOneToOne: false
+            referencedRelation: "stock_warehouses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      stock_property_field_mappings: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          multiplier: number
+          product_id: string
+          property_field: string
+          sede_id: string
+          updated_at: string
+          warehouse_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          multiplier?: number
+          product_id: string
+          property_field: string
+          sede_id: string
+          updated_at?: string
+          warehouse_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          multiplier?: number
+          product_id?: string
+          property_field?: string
+          sede_id?: string
+          updated_at?: string
+          warehouse_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stock_property_field_mappings_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "stock_products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_property_field_mappings_sede_id_fkey"
+            columns: ["sede_id"]
+            isOneToOne: false
+            referencedRelation: "sedes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_property_field_mappings_warehouse_id_fkey"
+            columns: ["warehouse_id"]
+            isOneToOne: false
+            referencedRelation: "stock_warehouses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      stock_sede_settings: {
+        Row: {
+          auto_consumption_enabled: boolean
+          created_at: string
+          notes: string | null
+          preparation_mode: boolean
+          sede_id: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          auto_consumption_enabled?: boolean
+          created_at?: string
+          notes?: string | null
+          preparation_mode?: boolean
+          sede_id: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          auto_consumption_enabled?: boolean
+          created_at?: string
+          notes?: string | null
+          preparation_mode?: boolean
+          sede_id?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stock_sede_settings_sede_id_fkey"
+            columns: ["sede_id"]
+            isOneToOne: true
+            referencedRelation: "sedes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      stock_warehouses: {
+        Row: {
+          address: string | null
+          created_at: string
+          id: string
+          is_active: boolean
+          is_default: boolean
+          name: string
+          sede_id: string
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          address?: string | null
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          is_default?: boolean
+          name: string
+          sede_id: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          address?: string | null
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          is_default?: boolean
+          name?: string
+          sede_id?: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stock_warehouses_sede_id_fkey"
             columns: ["sede_id"]
             isOneToOne: false
             referencedRelation: "sedes"
@@ -4602,6 +5102,41 @@ export type Database = {
         }
         Returns: Json
       }
+      create_stock_alert_if_needed: {
+        Args: {
+          alert_type_param: Database["public"]["Enums"]["stock_alert_type"]
+          product_id_param: string
+          stock_level_id_param: string
+          warehouse_id_param: string
+        }
+        Returns: undefined
+      }
+      create_stock_warehouse: {
+        Args: {
+          address_param?: string
+          is_default_param?: boolean
+          name_param: string
+          sede_id_param: string
+          sort_order_param?: number
+        }
+        Returns: {
+          address: string | null
+          created_at: string
+          id: string
+          is_active: boolean
+          is_default: boolean
+          name: string
+          sede_id: string
+          sort_order: number
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "stock_warehouses"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       create_user_invitation_secure:
         | {
             Args: {
@@ -4687,6 +5222,19 @@ export type Database = {
           departure_date: string
           source: string
           task_id: string
+        }[]
+      }
+      get_public_laundry_stock_consumptions: {
+        Args: { token_param: string }
+        Returns: {
+          category_kind: Database["public"]["Enums"]["stock_item_kind"]
+          category_name: string
+          product_id: string
+          product_name: string
+          property_id: string
+          quantity: number
+          task_id: string
+          unit_of_measure: string
         }[]
       }
       get_user_accessible_sedes: { Args: never; Returns: string[] }
@@ -4804,6 +5352,14 @@ export type Database = {
         }
         Returns: undefined
       }
+      process_stock_consumption_for_task: {
+        Args: {
+          property_id_param: string
+          task_id_param: string
+          user_id_param: string
+        }
+        Returns: Json
+      }
       report_cleaning_incident: {
         Args: {
           _category_id: string
@@ -4820,8 +5376,39 @@ export type Database = {
         Args: { reset_action_type: string; reset_identifier: string }
         Returns: undefined
       }
+      set_default_stock_warehouse: {
+        Args: { warehouse_id_param: string }
+        Returns: {
+          address: string | null
+          created_at: string
+          id: string
+          is_active: boolean
+          is_default: boolean
+          name: string
+          sede_id: string
+          sort_order: number
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "stock_warehouses"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       set_task_assignments: {
         Args: { _cleaner_ids: string[]; _task_id: string }
+        Returns: Json
+      }
+      transfer_stock_between_warehouses: {
+        Args: {
+          from_warehouse_id_param: string
+          product_id_param: string
+          quantity_param: number
+          reason_param: string
+          to_warehouse_id_param: string
+          user_id_param: string
+        }
         Returns: Json
       }
       update_cleaners_order: {
@@ -4837,6 +5424,32 @@ export type Database = {
           _service_time?: string
         }
         Returns: Json
+      }
+      update_stock_level_settings: {
+        Args: {
+          cost_per_unit_param: number
+          minimum_quantity_param: number
+          stock_level_id_param: string
+          target_quantity_param: number
+          user_id_param: string
+        }
+        Returns: {
+          cost_per_unit: number | null
+          current_quantity: number
+          id: string
+          last_updated: string
+          minimum_quantity: number
+          product_id: string
+          target_quantity: number
+          updated_by: string | null
+          warehouse_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "stock_levels"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       user_can_access_task: { Args: { task_sede_id: string }; Returns: boolean }
       user_has_role: {
@@ -4891,6 +5504,14 @@ export type Database = {
       logistics_stop_status: "pending" | "delivered" | "failed" | "skipped"
       media_type: "photo" | "video"
       report_status: "pending" | "in_progress" | "completed" | "needs_review"
+      stock_alert_type: "stock_bajo" | "stock_critico"
+      stock_item_kind: "laundry" | "amenity" | "other"
+      stock_movement_type:
+        | "entrada"
+        | "salida"
+        | "ajuste"
+        | "consumo_automatico"
+        | "transferencia"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -5060,6 +5681,15 @@ export const Constants = {
       logistics_stop_status: ["pending", "delivered", "failed", "skipped"],
       media_type: ["photo", "video"],
       report_status: ["pending", "in_progress", "completed", "needs_review"],
+      stock_alert_type: ["stock_bajo", "stock_critico"],
+      stock_item_kind: ["laundry", "amenity", "other"],
+      stock_movement_type: [
+        "entrada",
+        "salida",
+        "ajuste",
+        "consumo_automatico",
+        "transferencia",
+      ],
     },
   },
 } as const

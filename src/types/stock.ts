@@ -88,6 +88,22 @@ export interface StockPropertyConsumptionRule {
   updated_at: string;
   product?: StockProduct | null;
   warehouse?: StockWarehouse | null;
+  property?: {
+    id: string;
+    codigo: string | null;
+    nombre: string | null;
+    is_active: boolean | null;
+  } | null;
+}
+
+export interface StockSedeSettings {
+  sede_id: string;
+  auto_consumption_enabled: boolean;
+  preparation_mode: boolean;
+  notes: string | null;
+  updated_by: string | null;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface SaveStockPropertyConsumptionRuleData {
@@ -170,4 +186,19 @@ export interface StockTransferData {
   quantity: number;
   reason: string;
   user_id: string;
+}
+
+export interface StockLevelSettingsData {
+  stock_level_id: string;
+  minimum_quantity: number;
+  target_quantity: number;
+  cost_per_unit?: number | null;
+  user_id: string;
+}
+
+export interface UpdateStockSedeSettingsData {
+  auto_consumption_enabled?: boolean;
+  preparation_mode?: boolean;
+  notes?: string | null;
+  updated_by?: string | null;
 }

@@ -14,12 +14,14 @@ import type {
   StockTransferData,
   StockWarehouse,
   SaveStockPropertyConsumptionRuleData,
+  StockLevelSettingsData,
+  StockSedeSettings,
   UpdateStockCategoryData,
   UpdateStockProductData,
+  UpdateStockSedeSettingsData,
 } from '@/types/stock';
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any -- stock_* tables are not in generated Supabase types yet.
-const db = supabase as any;
+const db = supabase;
 type StockDbRow = Record<string, unknown>;
 
 const toNumber = (value: unknown): number => {
@@ -49,6 +51,43 @@ class StockStorageService {
 
     if (error) throw error;
     return data || [];
+  }
+
+  async getSedeSettings(sedeId: string): Promise<StockSedeSettings> {
+    const { data, error } = await db
+      .from('stock_sede_settings')
+      .select('*')
+      .eq('sede_id', sedeId)
+      .maybeSingle();
+
+    if (error) throw error;
+    if (data) return data;
+
+    const { data: created, error: createError } = await db
+      .from('stock_sede_settings')
+      .insert({ sede_id: sedeId })
+      .select()
+      .single();
+
+    if (createError) throw createError;
+    return created;
+  }
+
+  async updateSedeSettings(
+    sedeId: string,
+    updates: UpdateStockSedeSettingsData
+  ): Promise<StockSedeSettings> {
+    const { data, error } = await db
+      .from('stock_sede_settings')
+      .upsert({
+        sede_id: sedeId,
+        ...updates,
+      }, { onConflict: 'sede_id' })
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data;
   }
 
   async createWarehouse(input: CreateStockWarehouseData): Promise<StockWarehouse> {
@@ -330,6 +369,29 @@ class StockStorageService {
     } as StockPropertyConsumptionRule));
   }
 
+  async getSedeConsumptionRules(sedeId: string): Promise<StockPropertyConsumptionRule[]> {
+    const { data, error } = await db
+      .from('stock_property_consumption_rules')
+      .select(`
+        *,
+        property:properties!inner(id, codigo, nombre, is_active, sede_id),
+        product:stock_products(
+          *,
+          category:stock_categories(*)
+        ),
+        warehouse:stock_warehouses(*)
+      `)
+      .eq('property.sede_id', sedeId)
+      .eq('is_active', true)
+      .order('updated_at', { ascending: false });
+
+    if (error) throw error;
+    return (data || []).map((rule: StockDbRow) => ({
+      ...rule,
+      quantity_per_cleaning: toNumber(rule.quantity_per_cleaning),
+    } as StockPropertyConsumptionRule));
+  }
+
   async savePropertyConsumptionRules(
     propertyId: string,
     rules: SaveStockPropertyConsumptionRuleData[]
@@ -398,6 +460,19 @@ class StockStorageService {
     });
 
     if (movementError) throw movementError;
+  }
+
+  async updateStockLevelSettings(input: StockLevelSettingsData): Promise<StockLevel> {
+    const { data, error } = await db.rpc('update_stock_level_settings', {
+      stock_level_id_param: input.stock_level_id,
+      minimum_quantity_param: input.minimum_quantity,
+      target_quantity_param: input.target_quantity,
+      cost_per_unit_param: input.cost_per_unit ?? null,
+      user_id_param: input.user_id,
+    });
+
+    if (error) throw error;
+    return normalizeStockLevel(data);
   }
 
   async transferStock(input: StockTransferData): Promise<void> {

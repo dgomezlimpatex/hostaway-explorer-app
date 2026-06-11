@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { AlertTriangle, ArrowRightLeft, Edit, Package, Plus, Search, SlidersHorizontal } from 'lucide-react';
+import { AlertTriangle, ArrowRightLeft, ClipboardList, Edit, Package, Plus, Search, SlidersHorizontal } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -18,6 +18,7 @@ interface StockLevelTableProps {
   levels: StockLevel[];
   isLoading?: boolean;
   onCreateProduct: () => void;
+  onBulkSetup: () => void;
   onEditProduct: (level: StockLevel) => void;
   onAdjustStock: (level: StockLevel) => void;
   onTransferStock: (level: StockLevel) => void;
@@ -33,6 +34,7 @@ export function StockLevelTable({
   levels,
   isLoading,
   onCreateProduct,
+  onBulkSetup,
   onEditProduct,
   onAdjustStock,
   onTransferStock,
@@ -82,10 +84,16 @@ export function StockLevelTable({
               <Package className="h-5 w-5" />
               Stock
             </CardTitle>
-            <Button onClick={onCreateProduct} size="sm">
-              <Plus className="mr-2 h-4 w-4" />
-              Nuevo producto
-            </Button>
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <Button onClick={onBulkSetup} variant="outline" size="sm">
+                <ClipboardList className="mr-2 h-4 w-4" />
+                Carga operativa
+              </Button>
+              <Button onClick={onCreateProduct} size="sm">
+                <Plus className="mr-2 h-4 w-4" />
+                Nuevo producto
+              </Button>
+            </div>
           </div>
         </CardHeader>
         <CardContent>
