@@ -192,6 +192,19 @@ export const RoleBasedNavigation = () => {
               hoverBorderColor="hover:border-amber-300"
             />
           )}
+
+          {isAdminOrManager() && (
+            <NavigationCard
+              to="/integraciones/avirato"
+              title="Avirato Hotel"
+              description="Reservas hoteleras, limpiezas diarias y checkout automatico"
+              icon={Hotel}
+              gradientFrom="bg-gradient-to-br from-slate-700"
+              gradientTo="to-slate-900"
+              iconColor="text-white"
+              hoverBorderColor="hover:border-slate-300"
+            />
+          )}
         </div>
       </div>
     </div>

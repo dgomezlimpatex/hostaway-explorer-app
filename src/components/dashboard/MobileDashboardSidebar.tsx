@@ -114,6 +114,12 @@ const syncItems: NavigationItem[] = [
     permission: 'admin-only'
   },
   {
+    title: 'Avirato Hotel',
+    href: '/integraciones/avirato',
+    icon: Hotel,
+    permission: 'admin-only'
+  },
+  {
     title: 'Hostaway Sync',
     href: '/hostaway-sync-logs',
     icon: AlertTriangle,
