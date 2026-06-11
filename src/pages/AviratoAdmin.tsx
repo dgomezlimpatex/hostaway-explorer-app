@@ -115,6 +115,19 @@ function getErrorMessage(error: unknown): string {
   return "Error desconocido";
 }
 
+const DURATION_STEP_MINUTES = 15;
+
+function normalizeDurationMinutes(value: unknown, fallback = 60): number {
+  const duration = Number(value);
+  if (!Number.isFinite(duration)) return fallback;
+  return Math.max(DURATION_STEP_MINUTES, Math.ceil(duration / DURATION_STEP_MINUTES) * DURATION_STEP_MINUTES);
+}
+
+function parseDecimalInput(value: string): number {
+  const parsed = Number(value.replace(",", "."));
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
 async function getFunctionErrorMessage(error: unknown): Promise<string> {
   const context = typeof error === "object" && error && "context" in error
     ? (error as { context?: Response }).context
@@ -402,6 +415,7 @@ function MappingsTab() {
 
   const saveMutation = useMutation({
     mutationFn: async (mapping: Partial<AviratoMapping>) => {
+      const normalizedDuration = normalizeDurationMinutes(mapping.default_duration_min);
       const payload = {
         sede_id: mapping.sede_id,
         space_subtype_id: Number(mapping.space_subtype_id),
@@ -411,7 +425,7 @@ function MappingsTab() {
         propiedad_id: mapping.propiedad_id,
         task_type: mapping.task_type || "limpieza-turistica",
         default_start_time: mapping.default_start_time || "11:00",
-        default_duration_min: mapping.default_duration_min ?? 60,
+        default_duration_min: normalizedDuration,
         default_cost: mapping.default_cost ?? 0,
         is_active: mapping.is_active ?? true,
       };
@@ -565,6 +579,8 @@ function MappingDialog({
 }) {
   if (!editing) return null;
   const filteredProps = editing.cliente_id ? properties.filter((property) => property.cliente_id === editing.cliente_id) : properties;
+  const normalizedDuration = normalizeDurationMinutes(editing.default_duration_min);
+  const durationWasRounded = Number(editing.default_duration_min) !== normalizedDuration;
   const update = (patch: Partial<AviratoMapping>) => setEditing({ ...editing, ...patch });
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -608,8 +624,20 @@ function MappingDialog({
           </Field>
           <Field label="Tipo de tarea"><Input value={editing.task_type ?? "limpieza-turistica"} onChange={(e) => update({ task_type: e.target.value })} /></Field>
           <Field label="Hora inicio"><Input type="time" value={editing.default_start_time ?? "11:00"} onChange={(e) => update({ default_start_time: e.target.value })} /></Field>
-          <Field label="Duracion min"><Input type="number" min={15} step={15} value={editing.default_duration_min ?? 60} onChange={(e) => update({ default_duration_min: Number(e.target.value) })} /></Field>
-          <Field label="Coste"><Input type="number" step={0.01} value={editing.default_cost ?? 0} onChange={(e) => update({ default_cost: Number(e.target.value) })} /></Field>
+          <Field label="Duracion min">
+            <Input
+              type="number"
+              min={15}
+              step={15}
+              value={editing.default_duration_min ?? 60}
+              onBlur={() => update({ default_duration_min: normalizedDuration })}
+              onChange={(e) => update({ default_duration_min: Number(e.target.value) })}
+            />
+            <p className="mt-1 text-xs text-muted-foreground">
+              Usa bloques de 15 min. {durationWasRounded ? `Se guardara como ${normalizedDuration} min.` : "Ejemplo: 60, 75, 90."}
+            </p>
+          </Field>
+          <Field label="Coste"><Input inputMode="decimal" value={editing.default_cost ?? 0} onChange={(e) => update({ default_cost: parseDecimalInput(e.target.value) })} /></Field>
           <Field label="Activo">
             <Select value={editing.is_active === false ? "false" : "true"} onValueChange={(value) => update({ is_active: value === "true" })}>
               <SelectTrigger><SelectValue /></SelectTrigger>
