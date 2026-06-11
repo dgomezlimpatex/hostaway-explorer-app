@@ -17,6 +17,7 @@ import {
 import { useSede } from '@/contexts/SedeContext';
 import { cn } from '@/lib/utils';
 import type { UpdateStockSedeSettingsData } from '@/types/stock';
+import { buildInitialStockConsumptions } from '@/components/properties/forms/propertyStockConsumption';
 
 export default function InventoryConfig() {
   const { user } = useAuth();
@@ -39,33 +40,44 @@ export default function InventoryConfig() {
 
   const diagnostics = useMemo(() => {
     const rulesByProperty = new Map<string, typeof rules>();
-    const positiveRulesByProperty = new Map<string, number>();
-    const positiveProductIds = new Set<string>();
+    const propertiesWithPositiveConsumption = new Set<string>();
+    const productsWithUsage = new Set<string>();
 
     rules.forEach((rule) => {
       if (!rulesByProperty.has(rule.property_id)) rulesByProperty.set(rule.property_id, []);
       rulesByProperty.get(rule.property_id)?.push(rule);
 
       if (rule.quantity_per_cleaning > 0) {
-        positiveRulesByProperty.set(rule.property_id, (positiveRulesByProperty.get(rule.property_id) || 0) + 1);
-        positiveProductIds.add(rule.product_id);
+        productsWithUsage.add(rule.product_id);
       }
     });
 
-    const propertiesWithoutRules = activeProperties.filter((property) => !rulesByProperty.has(property.id));
-    const incompleteProperties = activeProperties.filter((property) => {
-      const propertyRules = rulesByProperty.get(property.id);
-      return propertyRules && propertyRules.length < consumableProducts.length;
+    activeProperties.forEach((property) => {
+      const effectiveConsumptions = buildInitialStockConsumptions(
+        consumableProducts,
+        rulesByProperty.get(property.id) || [],
+        property
+      );
+
+      Object.entries(effectiveConsumptions).forEach(([productId, quantity]) => {
+        if (quantity > 0) {
+          propertiesWithPositiveConsumption.add(property.id);
+          productsWithUsage.add(productId);
+        }
+      });
     });
+
+    const propertiesWithoutConsumption = activeProperties.filter(
+      (property) => !propertiesWithPositiveConsumption.has(property.id)
+    );
     const zeroRules = rules.filter((rule) => rule.quantity_per_cleaning <= 0);
-    const productsWithoutUsage = consumableProducts.filter((product) => !positiveProductIds.has(product.id));
+    const productsWithoutUsage = consumableProducts.filter((product) => !productsWithUsage.has(product.id));
 
     return {
-      propertiesWithoutRules,
-      incompleteProperties,
+      propertiesWithoutConsumption,
       zeroRules,
       productsWithoutUsage,
-      propertiesWithPositiveRules: positiveRulesByProperty.size,
+      propertiesWithPositiveConsumption: propertiesWithPositiveConsumption.size,
       positiveRules: rules.filter((rule) => rule.quantity_per_cleaning > 0).length,
     };
   }, [activeProperties, consumableProducts, rules]);
@@ -98,8 +110,8 @@ export default function InventoryConfig() {
           <CardContent className="space-y-4">
             <div className="grid gap-3 md:grid-cols-3">
               <StatusMetric label="Sede activa" value={activeSede?.nombre || '-'} />
-              <StatusMetric label="Propiedades con reglas" value={`${diagnostics.propertiesWithPositiveRules}/${activeProperties.length}`} />
-              <StatusMetric label="Reglas positivas" value={diagnostics.positiveRules} />
+              <StatusMetric label="Propiedades con consumo" value={`${diagnostics.propertiesWithPositiveConsumption}/${activeProperties.length}`} />
+              <StatusMetric label="Reglas explicitas positivas" value={diagnostics.positiveRules} />
             </div>
 
             <div className="grid gap-3 md:grid-cols-2">
@@ -130,16 +142,16 @@ export default function InventoryConfig() {
 
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           <DiagnosticCard
-            title="Sin reglas"
-            value={diagnostics.propertiesWithoutRules.length}
-            description="Propiedades activas sin configuracion de consumo."
-            danger={diagnostics.propertiesWithoutRules.length > 0}
+            title="Sin consumo"
+            value={diagnostics.propertiesWithoutConsumption.length}
+            description="Propiedades activas sin ningun consumo positivo efectivo."
+            danger={diagnostics.propertiesWithoutConsumption.length > 0}
           />
           <DiagnosticCard
-            title="Incompletas"
-            value={diagnostics.incompleteProperties.length}
-            description="Propiedades con menos reglas que productos consumibles."
-            danger={diagnostics.incompleteProperties.length > 0}
+            title="Con consumo"
+            value={diagnostics.propertiesWithPositiveConsumption}
+            description="Propiedades con consumo desde reglas nuevas o campos antiguos."
+            danger={false}
           />
           <DiagnosticCard
             title="Reglas a 0"
@@ -157,20 +169,14 @@ export default function InventoryConfig() {
 
         <div className="grid gap-4 xl:grid-cols-2">
           <ActionList
-            title="Propiedades que necesitan revision"
-            emptyText="Todas las propiedades activas tienen reglas base."
+            title="Propiedades sin consumo configurado"
+            emptyText="Todas las propiedades activas tienen al menos un consumo positivo."
             items={[
-              ...diagnostics.propertiesWithoutRules.map((property) => ({
+              ...diagnostics.propertiesWithoutConsumption.map((property) => ({
                 id: `missing-${property.id}`,
                 title: property.codigo,
                 description: property.nombre,
-                badge: 'Sin reglas',
-              })),
-              ...diagnostics.incompleteProperties.slice(0, 20).map((property) => ({
-                id: `incomplete-${property.id}`,
-                title: property.codigo,
-                description: property.nombre,
-                badge: 'Incompleta',
+                badge: 'Sin consumo',
               })),
             ].slice(0, 30)}
             actionLabel="Editar propiedades"
