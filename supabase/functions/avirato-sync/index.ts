@@ -577,12 +577,16 @@ Deno.serve(async (req) => {
     return json({ success: errors.length === 0, sync_log_id: syncLogId, range: { startDate, endDate }, stats, warnings, errors });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
+    console.error("Avirato sync error:", message);
     if (syncLogId) {
       await supabase
         .from("avirato_sync_logs")
         .update({ status: "failed", completed_at: new Date().toISOString(), errors: [message], result: { error: message } })
         .eq("id", syncLogId);
     }
+    if (message === "No autorizado") return json({ success: false, error: message }, 401);
+    if (message.startsWith("Login Avirato fallido")) return json({ success: false, error: message }, 502);
+    if (message.startsWith("betweenDates Avirato fallido")) return json({ success: false, error: message }, 502);
     return json({ success: false, error: message }, 500);
   }
 });

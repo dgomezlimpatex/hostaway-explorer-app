@@ -39,6 +39,8 @@ Deno.serve(async (req) => {
     }
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
+    console.error("Manage Avirato cron error:", message);
+    if (message === "No autorizado") return json({ success: false, error: message }, 401);
     return json({ success: false, error: message }, 500);
   }
 });

@@ -115,6 +115,18 @@ function getErrorMessage(error: unknown): string {
   return "Error desconocido";
 }
 
+async function getFunctionErrorMessage(error: unknown): Promise<string> {
+  const context = typeof error === "object" && error && "context" in error
+    ? (error as { context?: Response }).context
+    : undefined;
+  if (context) {
+    const body = await context.clone().json().catch(() => null) as { error?: string; requiredSecrets?: string[] } | null;
+    if (body?.requiredSecrets?.length) return `Faltan secrets: ${body.requiredSecrets.join(", ")}`;
+    if (body?.error) return body.error;
+  }
+  return getErrorMessage(error);
+}
+
 const STATUS_BADGE: Record<string, string> = {
   confirmed: "bg-green-100 text-green-800",
   check_in: "bg-blue-100 text-blue-800",
@@ -176,7 +188,7 @@ function AviratoActions() {
       const { data, error } = await supabase.functions.invoke("avirato-sync", {
         body: { mode, startDate: startDate || undefined, endDate: endDate || undefined, triggered_by: "manual" },
       });
-      if (error) throw error;
+      if (error) throw new Error(await getFunctionErrorMessage(error));
       if (data?.success === false) throw new Error(data.error || "Error Avirato");
       return { mode, data };
     },
