@@ -404,7 +404,7 @@ function MappingsTab() {
   });
   const { data: clients } = useQuery({
     queryKey: ["clients-all"],
-    queryFn: async () => (await supabase.from("clients").select("id, nombre").order("nombre")).data ?? [],
+    queryFn: async () => (await supabase.from("clients").select("id, nombre, sede_id").order("nombre")).data ?? [],
   });
   const { data: properties } = useQuery({
     queryKey: ["properties-all"],
@@ -570,13 +570,20 @@ function MappingDialog({
   editing: Partial<AviratoMapping> | null;
   setEditing: (mapping: Partial<AviratoMapping> | null) => void;
   sedes: Array<{ id: string; nombre: string }>;
-  clients: Array<{ id: string; nombre: string }>;
+  clients: Array<{ id: string; nombre: string; sede_id: string }>;
   properties: Array<{ id: string; nombre: string; cliente_id: string; sede_id: string }>;
   onSave: (mapping: Partial<AviratoMapping>) => void;
   saving: boolean;
 }) {
   if (!editing) return null;
-  const filteredProps = editing.cliente_id ? properties.filter((property) => property.cliente_id === editing.cliente_id) : properties;
+  const filteredClients = editing.sede_id
+    ? clients.filter((client) => client.sede_id === editing.sede_id)
+    : [];
+  const filteredProps = properties.filter((property) => {
+    if (editing.sede_id && property.sede_id !== editing.sede_id) return false;
+    if (editing.cliente_id && property.cliente_id !== editing.cliente_id) return false;
+    return true;
+  });
   const normalizedDuration = normalizeDurationMinutes(editing.default_duration_min);
   const durationWasAdjusted = Number(editing.default_duration_min) !== normalizedDuration;
   const update = (patch: Partial<AviratoMapping>) => setEditing({ ...editing, ...patch });
@@ -597,15 +604,15 @@ function MappingDialog({
             </Select>
           </Field>
           <Field label="Sede">
-            <Select value={editing.sede_id} onValueChange={(value) => update({ sede_id: value })}>
+            <Select value={editing.sede_id} onValueChange={(value) => update({ sede_id: value, cliente_id: undefined, propiedad_id: undefined })}>
               <SelectTrigger><SelectValue placeholder="Selecciona" /></SelectTrigger>
               <SelectContent>{sedes.map((sede) => <SelectItem key={sede.id} value={sede.id}>{sede.nombre}</SelectItem>)}</SelectContent>
             </Select>
           </Field>
           <Field label="Cliente">
             <Select value={editing.cliente_id} onValueChange={(value) => update({ cliente_id: value, propiedad_id: undefined })}>
-              <SelectTrigger><SelectValue placeholder="Selecciona" /></SelectTrigger>
-              <SelectContent>{clients.map((client) => <SelectItem key={client.id} value={client.id}>{client.nombre}</SelectItem>)}</SelectContent>
+              <SelectTrigger><SelectValue placeholder={editing.sede_id ? "Selecciona" : "Elige sede primero"} /></SelectTrigger>
+              <SelectContent>{filteredClients.map((client) => <SelectItem key={client.id} value={client.id}>{client.nombre}</SelectItem>)}</SelectContent>
             </Select>
           </Field>
           <Field label="Propiedad">
