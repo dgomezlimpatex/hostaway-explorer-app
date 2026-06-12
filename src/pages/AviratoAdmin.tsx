@@ -115,12 +115,10 @@ function getErrorMessage(error: unknown): string {
   return "Error desconocido";
 }
 
-const DURATION_STEP_MINUTES = 15;
-
 function normalizeDurationMinutes(value: unknown, fallback = 60): number {
   const duration = Number(value);
   if (!Number.isFinite(duration)) return fallback;
-  return Math.max(DURATION_STEP_MINUTES, Math.ceil(duration / DURATION_STEP_MINUTES) * DURATION_STEP_MINUTES);
+  return Math.max(1, Math.round(duration));
 }
 
 function parseDecimalInput(value: string): number {
@@ -580,7 +578,7 @@ function MappingDialog({
   if (!editing) return null;
   const filteredProps = editing.cliente_id ? properties.filter((property) => property.cliente_id === editing.cliente_id) : properties;
   const normalizedDuration = normalizeDurationMinutes(editing.default_duration_min);
-  const durationWasRounded = Number(editing.default_duration_min) !== normalizedDuration;
+  const durationWasAdjusted = Number(editing.default_duration_min) !== normalizedDuration;
   const update = (patch: Partial<AviratoMapping>) => setEditing({ ...editing, ...patch });
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -627,14 +625,14 @@ function MappingDialog({
           <Field label="Duracion min">
             <Input
               type="number"
-              min={15}
-              step={15}
+              min={1}
+              step={1}
               value={editing.default_duration_min ?? 60}
               onBlur={() => update({ default_duration_min: normalizedDuration })}
               onChange={(e) => update({ default_duration_min: Number(e.target.value) })}
             />
             <p className="mt-1 text-xs text-muted-foreground">
-              Usa bloques de 15 min. {durationWasRounded ? `Se guardara como ${normalizedDuration} min.` : "Ejemplo: 60, 75, 90."}
+              Minutos exactos. {durationWasAdjusted ? `Se guardara como ${normalizedDuration} min.` : "Ejemplo: 33, 70, 95."}
             </p>
           </Field>
           <Field label="Coste"><Input inputMode="decimal" value={editing.default_cost ?? 0} onChange={(e) => update({ default_cost: parseDecimalInput(e.target.value) })} /></Field>
