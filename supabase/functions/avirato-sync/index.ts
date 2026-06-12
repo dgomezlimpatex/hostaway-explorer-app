@@ -499,16 +499,6 @@ Deno.serve(async (req) => {
             .eq("id", mapping.propiedad_id)
             .single();
 
-          const notes = [
-            `[AVIRATO ${reservation.operator_booking_id ?? reservation.external_id}]`,
-            `Alojamiento: ${reservation.space_name}`,
-            desiredTask.kind === "checkout" ? "Limpieza de salida" : "Limpieza diaria",
-            reservation.guest_name ? `Huesped: ${reservation.guest_name}` : null,
-            reservation.agency ? `Canal: ${reservation.agency}` : null,
-          ]
-            .filter(Boolean)
-            .join(" - ");
-
           const { data: task, error: taskError } = await supabase
             .from("tasks")
             .insert({
@@ -529,7 +519,7 @@ Deno.serve(async (req) => {
               cleaner: null,
               cleaner_id: null,
               background_color: desiredTask.kind === "checkout" ? "#3B82F6" : "#10B981",
-              notes,
+              notes: null,
             })
             .select("id")
             .single();
