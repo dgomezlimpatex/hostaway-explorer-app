@@ -93,6 +93,29 @@ function madridToday(): string {
   return `${parts.find((p) => p.type === "year")?.value}-${parts.find((p) => p.type === "month")?.value}-${parts.find((p) => p.type === "day")?.value}`;
 }
 
+function localTimeParts(timeZone = "Europe/Madrid"): { hour: number; minute: number } {
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone,
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).formatToParts(new Date());
+  return {
+    hour: Number(parts.find((p) => p.type === "hour")?.value ?? 0),
+    minute: Number(parts.find((p) => p.type === "minute")?.value ?? 0),
+  };
+}
+
+function shouldSkipScheduledRun(body: Record<string, unknown>): boolean {
+  if (body.triggered_by !== "scheduled") return false;
+  if (typeof body.scheduled_local_hour !== "number") return false;
+
+  const expectedMinute = typeof body.scheduled_local_minute === "number" ? body.scheduled_local_minute : 0;
+  const timezone = typeof body.scheduled_timezone === "string" ? body.scheduled_timezone : "Europe/Madrid";
+  const now = localTimeParts(timezone);
+  return now.hour !== body.scheduled_local_hour || now.minute !== expectedMinute;
+}
+
 function addDays(dateStr: string, days: number): string {
   const d = new Date(`${dateStr}T00:00:00Z`);
   d.setUTCDate(d.getUTCDate() + days);
@@ -289,6 +312,9 @@ Deno.serve(async (req) => {
 
   try {
     await assertAdminOrInternal(req, supabase, serviceKey);
+    if (shouldSkipScheduledRun(body)) {
+      return json({ success: true, skipped: true, message: "Ejecucion omitida: fuera de la hora local programada" });
+    }
 
     const token = await aviratoLogin(baseUrl, email, password);
     if (mode === "test") return json({ success: true, message: "Conexion con Avirato correcta", webCode, baseUrl });

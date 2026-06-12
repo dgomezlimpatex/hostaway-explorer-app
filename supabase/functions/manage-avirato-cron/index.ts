@@ -88,6 +88,9 @@ async function setupCronJobs(supabase: any, supabaseUrl: string, supabaseService
       triggered_by: "scheduled",
       schedule_id: schedule.id,
       schedule_name: schedule.name,
+      scheduled_local_hour: schedule.hour,
+      scheduled_local_minute: schedule.minute,
+      scheduled_timezone: schedule.timezone || "Europe/Madrid",
     });
 
     const { data, error: rpcError } = await supabase.rpc("manage_avirato_cron_job", {
