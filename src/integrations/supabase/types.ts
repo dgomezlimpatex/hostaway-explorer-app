@@ -1,4 +1,4 @@
-﻿export type Json =
+export type Json =
   | string
   | number
   | boolean
@@ -14,6 +14,356 @@ export type Database = {
   }
   public: {
     Tables: {
+      ai_action_audit_logs: {
+        Row: {
+          action_type: string
+          created_at: string
+          id: string
+          owner_email: string
+          owner_user_id: string
+          payload: Json
+          proposal_id: string | null
+          result: Json | null
+          status: string
+        }
+        Insert: {
+          action_type: string
+          created_at?: string
+          id?: string
+          owner_email: string
+          owner_user_id: string
+          payload?: Json
+          proposal_id?: string | null
+          result?: Json | null
+          status: string
+        }
+        Update: {
+          action_type?: string
+          created_at?: string
+          id?: string
+          owner_email?: string
+          owner_user_id?: string
+          payload?: Json
+          proposal_id?: string | null
+          result?: Json | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_action_audit_logs_proposal_id_fkey"
+            columns: ["proposal_id"]
+            isOneToOne: false
+            referencedRelation: "ai_action_proposals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ai_action_proposals: {
+        Row: {
+          actions: Json
+          conversation_id: string
+          created_at: string
+          date_from: string | null
+          date_to: string | null
+          id: string
+          owner_email: string
+          owner_user_id: string
+          result: Json | null
+          sede_id: string | null
+          status: string
+          summary: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          actions?: Json
+          conversation_id: string
+          created_at?: string
+          date_from?: string | null
+          date_to?: string | null
+          id?: string
+          owner_email: string
+          owner_user_id: string
+          result?: Json | null
+          sede_id?: string | null
+          status?: string
+          summary: string
+          title?: string
+          updated_at?: string
+        }
+        Update: {
+          actions?: Json
+          conversation_id?: string
+          created_at?: string
+          date_from?: string | null
+          date_to?: string | null
+          id?: string
+          owner_email?: string
+          owner_user_id?: string
+          result?: Json | null
+          sede_id?: string | null
+          status?: string
+          summary?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_action_proposals_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "ai_conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_action_proposals_sede_id_fkey"
+            columns: ["sede_id"]
+            isOneToOne: false
+            referencedRelation: "sedes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ai_conversations: {
+        Row: {
+          created_at: string
+          id: string
+          metadata: Json
+          owner_email: string
+          owner_user_id: string
+          status: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          metadata?: Json
+          owner_email: string
+          owner_user_id: string
+          status?: string
+          title?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          metadata?: Json
+          owner_email?: string
+          owner_user_id?: string
+          status?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      ai_learning_suggestions: {
+        Row: {
+          category: string
+          confidence: number
+          content: string
+          created_at: string
+          evidence: Json
+          generated_by: string
+          id: string
+          owner_email: string
+          owner_user_id: string
+          reviewed_at: string | null
+          source_event_ids: string[]
+          status: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          category?: string
+          confidence?: number
+          content: string
+          created_at?: string
+          evidence?: Json
+          generated_by?: string
+          id?: string
+          owner_email: string
+          owner_user_id: string
+          reviewed_at?: string | null
+          source_event_ids?: string[]
+          status?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          category?: string
+          confidence?: number
+          content?: string
+          created_at?: string
+          evidence?: Json
+          generated_by?: string
+          id?: string
+          owner_email?: string
+          owner_user_id?: string
+          reviewed_at?: string | null
+          source_event_ids?: string[]
+          status?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      ai_memories: {
+        Row: {
+          category: string
+          content: string
+          created_at: string
+          id: string
+          is_active: boolean
+          owner_email: string
+          owner_user_id: string
+          source: string
+          source_message_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          category?: string
+          content: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          owner_email: string
+          owner_user_id: string
+          source?: string
+          source_message_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          category?: string
+          content?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          owner_email?: string
+          owner_user_id?: string
+          source?: string
+          source_message_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_memories_source_message_id_fkey"
+            columns: ["source_message_id"]
+            isOneToOne: false
+            referencedRelation: "ai_messages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ai_messages: {
+        Row: {
+          content: string
+          conversation_id: string
+          created_at: string
+          estimated_cost_usd: number | null
+          id: string
+          input_tokens: number | null
+          metadata: Json
+          output_tokens: number | null
+          owner_user_id: string
+          role: string
+        }
+        Insert: {
+          content: string
+          conversation_id: string
+          created_at?: string
+          estimated_cost_usd?: number | null
+          id?: string
+          input_tokens?: number | null
+          metadata?: Json
+          output_tokens?: number | null
+          owner_user_id: string
+          role: string
+        }
+        Update: {
+          content?: string
+          conversation_id?: string
+          created_at?: string
+          estimated_cost_usd?: number | null
+          id?: string
+          input_tokens?: number | null
+          metadata?: Json
+          output_tokens?: number | null
+          owner_user_id?: string
+          role?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_messages_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "ai_conversations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ai_observed_events: {
+        Row: {
+          after_data: Json | null
+          before_data: Json | null
+          created_at: string
+          entity_id: string | null
+          entity_type: string
+          event_type: string
+          id: string
+          metadata: Json
+          occurred_at: string
+          owner_email: string
+          owner_user_id: string
+          processed_at: string | null
+          sede_id: string | null
+          source: string
+          summary: string
+        }
+        Insert: {
+          after_data?: Json | null
+          before_data?: Json | null
+          created_at?: string
+          entity_id?: string | null
+          entity_type: string
+          event_type: string
+          id?: string
+          metadata?: Json
+          occurred_at?: string
+          owner_email: string
+          owner_user_id: string
+          processed_at?: string | null
+          sede_id?: string | null
+          source?: string
+          summary: string
+        }
+        Update: {
+          after_data?: Json | null
+          before_data?: Json | null
+          created_at?: string
+          entity_id?: string | null
+          entity_type?: string
+          event_type?: string
+          id?: string
+          metadata?: Json
+          occurred_at?: string
+          owner_email?: string
+          owner_user_id?: string
+          processed_at?: string | null
+          sede_id?: string | null
+          source?: string
+          summary?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_observed_events_sede_id_fkey"
+            columns: ["sede_id"]
+            isOneToOne: false
+            referencedRelation: "sedes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       assignment_patterns: {
         Row: {
           avg_completion_time_minutes: number | null
@@ -449,6 +799,384 @@ export type Database = {
         ]
       }
       avantio_sync_schedules: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          hour: number
+          id: string
+          is_active: boolean
+          minute: number
+          name: string
+          timezone: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          hour: number
+          id?: string
+          is_active?: boolean
+          minute?: number
+          name: string
+          timezone?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          hour?: number
+          id?: string
+          is_active?: boolean
+          minute?: number
+          name?: string
+          timezone?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      avirato_reservation_tasks: {
+        Row: {
+          created_at: string
+          id: string
+          reservation_id: string
+          service_kind: string
+          space_name: string
+          space_subtype_id: number
+          status: string
+          task_date: string
+          task_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          reservation_id: string
+          service_kind: string
+          space_name: string
+          space_subtype_id: number
+          status?: string
+          task_date: string
+          task_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          reservation_id?: string
+          service_kind?: string
+          space_name?: string
+          space_subtype_id?: number
+          status?: string
+          task_date?: string
+          task_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "avirato_reservation_tasks_reservation_id_fkey"
+            columns: ["reservation_id"]
+            isOneToOne: false
+            referencedRelation: "avirato_reservations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "avirato_reservation_tasks_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      avirato_reservations: {
+        Row: {
+          adults: number
+          agency: string | null
+          check_in: string
+          check_out: string
+          children: number
+          created_at: string
+          external_id: string
+          guest_name: string | null
+          id: string
+          master_booking_id: string | null
+          normalized_status: string
+          operator_booking_id: string | null
+          sede_id: string | null
+          segment: string | null
+          source_system: string
+          space_name: string
+          space_subtype_id: number | null
+          space_subtype_name: string | null
+          status: string
+          synced_at: string
+          total_amount: number | null
+          updated_at: string
+        }
+        Insert: {
+          adults?: number
+          agency?: string | null
+          check_in: string
+          check_out: string
+          children?: number
+          created_at?: string
+          external_id: string
+          guest_name?: string | null
+          id?: string
+          master_booking_id?: string | null
+          normalized_status: string
+          operator_booking_id?: string | null
+          sede_id?: string | null
+          segment?: string | null
+          source_system?: string
+          space_name: string
+          space_subtype_id?: number | null
+          space_subtype_name?: string | null
+          status: string
+          synced_at?: string
+          total_amount?: number | null
+          updated_at?: string
+        }
+        Update: {
+          adults?: number
+          agency?: string | null
+          check_in?: string
+          check_out?: string
+          children?: number
+          created_at?: string
+          external_id?: string
+          guest_name?: string | null
+          id?: string
+          master_booking_id?: string | null
+          normalized_status?: string
+          operator_booking_id?: string | null
+          sede_id?: string | null
+          segment?: string | null
+          source_system?: string
+          space_name?: string
+          space_subtype_id?: number | null
+          space_subtype_name?: string | null
+          status?: string
+          synced_at?: string
+          total_amount?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "avirato_reservations_sede_id_fkey"
+            columns: ["sede_id"]
+            isOneToOne: false
+            referencedRelation: "sedes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      avirato_room_mapping: {
+        Row: {
+          cliente_id: string
+          created_at: string
+          default_cost: number
+          default_duration_min: number
+          default_start_time: string
+          id: string
+          is_active: boolean
+          propiedad_id: string
+          sede_id: string
+          service_kind: string
+          space_name: string
+          space_subtype_id: number
+          task_type: string
+          updated_at: string
+        }
+        Insert: {
+          cliente_id: string
+          created_at?: string
+          default_cost?: number
+          default_duration_min?: number
+          default_start_time?: string
+          id?: string
+          is_active?: boolean
+          propiedad_id: string
+          sede_id: string
+          service_kind: string
+          space_name: string
+          space_subtype_id: number
+          task_type?: string
+          updated_at?: string
+        }
+        Update: {
+          cliente_id?: string
+          created_at?: string
+          default_cost?: number
+          default_duration_min?: number
+          default_start_time?: string
+          id?: string
+          is_active?: boolean
+          propiedad_id?: string
+          sede_id?: string
+          service_kind?: string
+          space_name?: string
+          space_subtype_id?: number
+          task_type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "avirato_room_mapping_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "avirato_room_mapping_propiedad_id_fkey"
+            columns: ["propiedad_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "avirato_room_mapping_sede_id_fkey"
+            columns: ["sede_id"]
+            isOneToOne: false
+            referencedRelation: "sedes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      avirato_sync_errors: {
+        Row: {
+          created_at: string
+          details: Json | null
+          error_type: string
+          external_id: string | null
+          id: string
+          message: string
+          reservation_id: string | null
+          resolved: boolean
+          resolved_at: string | null
+          space_name: string | null
+          space_subtype_id: number | null
+          sync_log_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          details?: Json | null
+          error_type: string
+          external_id?: string | null
+          id?: string
+          message: string
+          reservation_id?: string | null
+          resolved?: boolean
+          resolved_at?: string | null
+          space_name?: string | null
+          space_subtype_id?: number | null
+          sync_log_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          details?: Json | null
+          error_type?: string
+          external_id?: string | null
+          id?: string
+          message?: string
+          reservation_id?: string | null
+          resolved?: boolean
+          resolved_at?: string | null
+          space_name?: string | null
+          space_subtype_id?: number | null
+          sync_log_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "avirato_sync_errors_reservation_id_fkey"
+            columns: ["reservation_id"]
+            isOneToOne: false
+            referencedRelation: "avirato_reservations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "avirato_sync_errors_sync_log_id_fkey"
+            columns: ["sync_log_id"]
+            isOneToOne: false
+            referencedRelation: "avirato_sync_logs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      avirato_sync_logs: {
+        Row: {
+          blocks_detected: number
+          checkout_tasks_created: number
+          completed_at: string | null
+          created_at: string
+          end_date: string | null
+          errors: string[]
+          id: string
+          preview: boolean
+          reservations_cancelled: number
+          reservations_new: number
+          reservations_processed: number
+          reservations_updated: number
+          result: Json | null
+          schedule_name: string | null
+          start_date: string | null
+          started_at: string
+          status: string
+          stay_tasks_created: number
+          tasks_cancelled: number
+          triggered_by: string | null
+          warnings: string[]
+        }
+        Insert: {
+          blocks_detected?: number
+          checkout_tasks_created?: number
+          completed_at?: string | null
+          created_at?: string
+          end_date?: string | null
+          errors?: string[]
+          id?: string
+          preview?: boolean
+          reservations_cancelled?: number
+          reservations_new?: number
+          reservations_processed?: number
+          reservations_updated?: number
+          result?: Json | null
+          schedule_name?: string | null
+          start_date?: string | null
+          started_at?: string
+          status?: string
+          stay_tasks_created?: number
+          tasks_cancelled?: number
+          triggered_by?: string | null
+          warnings?: string[]
+        }
+        Update: {
+          blocks_detected?: number
+          checkout_tasks_created?: number
+          completed_at?: string | null
+          created_at?: string
+          end_date?: string | null
+          errors?: string[]
+          id?: string
+          preview?: boolean
+          reservations_cancelled?: number
+          reservations_new?: number
+          reservations_processed?: number
+          reservations_updated?: number
+          result?: Json | null
+          schedule_name?: string | null
+          start_date?: string | null
+          started_at?: string
+          status?: string
+          stay_tasks_created?: number
+          tasks_cancelled?: number
+          triggered_by?: string | null
+          warnings?: string[]
+        }
+        Relationships: []
+      }
+      avirato_sync_schedules: {
         Row: {
           created_at: string
           created_by: string | null
@@ -5069,6 +5797,7 @@ export type Database = {
         Args: { input_user_id: string; invitation_token: string }
         Returns: Database["public"]["Enums"]["app_role"]
       }
+      ai_is_allowed_user: { Args: never; Returns: boolean }
       cancel_extraordinary_request: {
         Args: { _request_id: string }
         Returns: undefined
@@ -5156,6 +5885,7 @@ export type Database = {
             Returns: string
           }
       delete_avantio_cron_job: { Args: { job_name: string }; Returns: Json }
+      delete_avirato_cron_job: { Args: { job_name: string }; Returns: Json }
       delete_hostaway_cron_job: { Args: { job_name: string }; Returns: Json }
       generate_random_pin: { Args: never; Returns: string }
       generate_short_code: { Args: never; Returns: string }
@@ -5258,6 +5988,16 @@ export type Database = {
         Returns: boolean
       }
       list_avantio_cron_jobs: { Args: never; Returns: Json }
+      list_avirato_cron_jobs: {
+        Args: never
+        Returns: {
+          active: boolean
+          command: string
+          jobid: number
+          jobname: string
+          schedule: string
+        }[]
+      }
       list_hostaway_cron_jobs: { Args: never; Returns: Json }
       log_client_portal_access: {
         Args: {
@@ -5307,6 +6047,17 @@ export type Database = {
             }
             Returns: Json
           }
+      manage_avirato_cron_job: {
+        Args: {
+          auth_header: string
+          cron_schedule: string
+          function_url: string
+          job_name: string
+          job_timezone?: string
+          request_body: string
+        }
+        Returns: Json
+      }
       manage_hostaway_cron_job: {
         Args: {
           auth_header: string
