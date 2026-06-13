@@ -1,6 +1,7 @@
 
 import { supabase } from '@/integrations/supabase/client';
 import { BaseEntity } from '@/types/common';
+import { recordAiObservedEvent } from '@/services/aiObservedEvents';
 
 export interface StorageConfig<T, CreateData> {
   tableName: string;
@@ -150,6 +151,18 @@ export class BaseStorageService<T extends BaseEntity, CreateData = Omit<T, keyof
       throw error;
     }
 
+    if (this.config.tableName !== 'tasks') {
+      void recordAiObservedEvent({
+        eventType: 'create',
+        entityType: this.config.tableName,
+        entityId: data?.id,
+        sedeId: data?.sede_id,
+        summary: `Creado registro en ${this.config.tableName}`,
+        afterData: data,
+        metadata: { table: this.config.tableName },
+      });
+    }
+
     return this.config.mapFromDB(data);
   }
 
@@ -160,6 +173,26 @@ export class BaseStorageService<T extends BaseEntity, CreateData = Omit<T, keyof
     if (this.config.enforceSedeFilter !== false && dataToUpdate.sede_id === undefined) {
       // Mantener la sede actual - no cambiarla
       delete dataToUpdate.sede_id;
+    }
+
+    let beforeData: any = null;
+    try {
+      let beforeQuery = supabase
+        .from(this.config.tableName as any)
+        .select('*')
+        .eq('id', id);
+
+      if (this.config.enforceSedeFilter !== false) {
+        const activeSedeId = await this.getActiveSedeId();
+        if (activeSedeId) {
+          beforeQuery = beforeQuery.eq('sede_id', activeSedeId);
+        }
+      }
+
+      const { data: existing } = await beforeQuery.maybeSingle();
+      beforeData = existing;
+    } catch {
+      beforeData = null;
     }
 
     let query = supabase
@@ -186,6 +219,18 @@ export class BaseStorageService<T extends BaseEntity, CreateData = Omit<T, keyof
     }
 
     if (!data) return null;
+    if (this.config.tableName !== 'tasks') {
+      void recordAiObservedEvent({
+        eventType: 'update',
+        entityType: this.config.tableName,
+        entityId: data?.id || id,
+        sedeId: data?.sede_id || beforeData?.sede_id,
+        summary: `Actualizado registro en ${this.config.tableName}`,
+        beforeData,
+        afterData: data,
+        metadata: { table: this.config.tableName, changedFields: Object.keys(dataToUpdate) },
+      });
+    }
     return this.config.mapFromDB(data);
   }
 

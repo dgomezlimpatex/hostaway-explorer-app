@@ -17,10 +17,13 @@ import {
   Settings,
   Link2,
   Sparkles,
-  Hotel
+  Hotel,
+  Bot
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useRolePermissions } from '@/hooks/useRolePermissions';
+import { useAuth } from '@/hooks/useAuth';
+import { isAiAllowedUser } from '@/utils/aiAccess';
 
 interface NavigationItem {
   title: string;
@@ -40,6 +43,12 @@ const generalItems: NavigationItem[] = [
     href: '/calendar',
     icon: Calendar,
     permission: 'calendar'
+  },
+  {
+    title: 'Copiloto IA',
+    href: '/ai-assistant',
+    icon: Bot,
+    permission: 'ai-owner'
   },
 ];
 
@@ -163,6 +172,7 @@ interface MobileDashboardSidebarProps {
 export const MobileDashboardSidebar = ({ onNavigate }: MobileDashboardSidebarProps) => {
   const location = useLocation();
   const { canAccessModule, isAdminOrManager } = useRolePermissions();
+  const { user, profile } = useAuth();
 
   const isActive = (href: string) => {
     if (href === '/') {
@@ -185,6 +195,7 @@ export const MobileDashboardSidebar = ({ onNavigate }: MobileDashboardSidebarPro
       case 'inventory': return canAccessModule('inventory');
       case 'logistics': return canAccessModule('logistics');
       case 'admin-only': return isAdminOrManager();
+      case 'ai-owner': return isAiAllowedUser(user, profile);
       default: return true;
     }
   };

@@ -2,3 +2,12 @@ project_id = "qyipyygojlfhdghnraus"
 
 [functions.little-hotelier-sync]
 verify_jwt = false
+
+[functions.ai-assistant]
+verify_jwt = false
+
+[functions.apply-ai-actions]
+verify_jwt = false
+
+[functions.ai-learning-review]
+verify_jwt = false

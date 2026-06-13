@@ -28,11 +28,13 @@ import {
   Hotel,
   ChevronRight,
   Package,
+  Bot,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useRolePermissions } from '@/hooks/useRolePermissions';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
+import { isAiAllowedUser } from '@/utils/aiAccess';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import {
   Sidebar,
@@ -68,6 +70,12 @@ const generalItems: NavigationItem[] = [
     href: '/calendar',
     icon: Calendar,
     permission: 'calendar'
+  },
+  {
+    title: 'Copiloto IA',
+    href: '/ai-assistant',
+    icon: Bot,
+    permission: 'ai-owner'
   },
 ];
 
@@ -212,7 +220,7 @@ export const DashboardSidebar = () => {
   const location = useLocation();
   const { canAccessModule, isAdminOrManager } = useRolePermissions();
   const { state } = useSidebar();
-  const { signOut, profile } = useAuth();
+  const { signOut, profile, user } = useAuth();
 
   const isCollapsed = state === 'collapsed';
 
@@ -237,6 +245,7 @@ export const DashboardSidebar = () => {
       case 'inventory': return canAccessModule('inventory');
       case 'logistics': return canAccessModule('logistics');
       case 'admin-only': return isAdminOrManager();
+      case 'ai-owner': return isAiAllowedUser(user, profile);
       default: return true;
     }
   };

@@ -2,6 +2,7 @@ import { Task } from '@/types/calendar';
 import { BaseStorageService } from './baseStorage';
 import { supabase } from '@/integrations/supabase/client';
 import { formatMadridDate } from '@/utils/date';
+import { recordAiObservedEvent } from '@/services/aiObservedEvents';
 
 type StockRpcClient = {
   rpc: (
@@ -350,14 +351,70 @@ export class TaskStorageService extends BaseStorageService<Task, TaskCreateData>
   }
 
   async createTask(task: TaskCreateData): Promise<Task> {
-    return this.create(task);
+    const created = await this.create(task);
+    void recordAiObservedEvent({
+      eventType: 'task_created',
+      entityType: 'tasks',
+      entityId: created.id,
+      summary: `Creada tarea ${created.property} para ${created.date}`,
+      afterData: {
+        id: created.id,
+        property: created.property,
+        date: created.date,
+        startTime: created.startTime,
+        endTime: created.endTime,
+        cleaner: created.cleaner,
+        cleanerId: created.cleanerId,
+        type: created.type,
+        status: created.status,
+      },
+      metadata: { source: 'taskStorage.createTask' },
+    });
+    return created;
   }
 
   async updateTask(taskId: string, updates: Partial<Task>): Promise<Task> {
+    let previousTask: Task | undefined;
+    try {
+      previousTask = await this.getById(taskId);
+    } catch {
+      previousTask = undefined;
+    }
+
     const result = await this.update(taskId, updates);
     if (!result) {
       throw new Error(`Task with id ${taskId} not found`);
     }
+
+    void recordAiObservedEvent({
+      eventType: 'task_updated',
+      entityType: 'tasks',
+      entityId: taskId,
+      summary: `Actualizada tarea ${result.property} para ${result.date}`,
+      beforeData: previousTask ? {
+        id: previousTask.id,
+        property: previousTask.property,
+        date: previousTask.date,
+        startTime: previousTask.startTime,
+        endTime: previousTask.endTime,
+        cleaner: previousTask.cleaner,
+        cleanerId: previousTask.cleanerId,
+        type: previousTask.type,
+        status: previousTask.status,
+      } : null,
+      afterData: {
+        id: result.id,
+        property: result.property,
+        date: result.date,
+        startTime: result.startTime,
+        endTime: result.endTime,
+        cleaner: result.cleaner,
+        cleanerId: result.cleanerId,
+        type: result.type,
+        status: result.status,
+      },
+      metadata: { changedFields: Object.keys(updates), source: 'taskStorage.updateTask' },
+    });
 
     // Si la tarea se está marcando como completada, procesar consumo automático
     if (updates.status === 'completed' && result.propertyId) {
@@ -405,7 +462,32 @@ export class TaskStorageService extends BaseStorageService<Task, TaskCreateData>
   }
 
   async deleteTask(taskId: string): Promise<boolean> {
-    return this.delete(taskId);
+    let previousTask: Task | undefined;
+    try {
+      previousTask = await this.getById(taskId);
+    } catch {
+      previousTask = undefined;
+    }
+    const deleted = await this.delete(taskId);
+    void recordAiObservedEvent({
+      eventType: 'task_deleted',
+      entityType: 'tasks',
+      entityId: taskId,
+      summary: previousTask ? `Eliminada tarea ${previousTask.property} para ${previousTask.date}` : `Eliminada tarea ${taskId}`,
+      beforeData: previousTask ? {
+        id: previousTask.id,
+        property: previousTask.property,
+        date: previousTask.date,
+        startTime: previousTask.startTime,
+        endTime: previousTask.endTime,
+        cleaner: previousTask.cleaner,
+        cleanerId: previousTask.cleanerId,
+        type: previousTask.type,
+        status: previousTask.status,
+      } : null,
+      metadata: { source: 'taskStorage.deleteTask' },
+    });
+    return deleted;
   }
 }
 

@@ -1,4 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
+import { recordAiObservedEvent } from '@/services/aiObservedEvents';
 import type {
   CreateStockCategoryData,
   CreateStockProductData,
@@ -100,10 +101,24 @@ class StockStorageService {
     });
 
     if (error) throw error;
+    void recordAiObservedEvent({
+      eventType: 'stock_warehouse_created',
+      entityType: 'stock_warehouse',
+      entityId: data.id,
+      sedeId: data.sede_id,
+      summary: `Almacen de stock creado: ${data.name}`,
+      afterData: data as unknown as Record<string, unknown>,
+    });
     return data;
   }
 
   async updateWarehouse(id: string, updates: Partial<StockWarehouse>): Promise<StockWarehouse> {
+    const { data: beforeWarehouse } = await db
+      .from('stock_warehouses')
+      .select('*')
+      .eq('id', id)
+      .maybeSingle();
+
     const { is_default: isDefault, ...warehouseUpdates } = updates;
     let updatedWarehouse: StockWarehouse | null = null;
 
@@ -117,6 +132,15 @@ class StockStorageService {
     }
 
     if (Object.keys(warehouseUpdates).length === 0) {
+      void recordAiObservedEvent({
+        eventType: 'stock_warehouse_updated',
+        entityType: 'stock_warehouse',
+        entityId: updatedWarehouse!.id,
+        sedeId: updatedWarehouse!.sede_id,
+        summary: `Almacen de stock actualizado: ${updatedWarehouse!.name}`,
+        beforeData: beforeWarehouse as Record<string, unknown> | null,
+        afterData: updatedWarehouse as unknown as Record<string, unknown>,
+      });
       return updatedWarehouse!;
     }
 
@@ -128,6 +152,15 @@ class StockStorageService {
       .single();
 
     if (error) throw error;
+    void recordAiObservedEvent({
+      eventType: 'stock_warehouse_updated',
+      entityType: 'stock_warehouse',
+      entityId: data.id,
+      sedeId: data.sede_id,
+      summary: `Almacen de stock actualizado: ${data.name}`,
+      beforeData: beforeWarehouse as Record<string, unknown> | null,
+      afterData: data as unknown as Record<string, unknown>,
+    });
     return data;
   }
 
@@ -149,6 +182,13 @@ class StockStorageService {
       .eq('id', id);
 
     if (error) throw error;
+    void recordAiObservedEvent({
+      eventType: 'stock_warehouse_deleted',
+      entityType: 'stock_warehouse',
+      entityId: id,
+      summary: `Almacen de stock desactivado: ${id}`,
+      beforeData: warehouse as Record<string, unknown>,
+    });
   }
 
   async getCategories(kind?: StockItemKind): Promise<StockCategory[]> {
@@ -318,9 +358,30 @@ class StockStorageService {
     const { error: levelError } = await db.from('stock_levels').insert(stockLevels);
 
     if (levelError) throw levelError;
+    void recordAiObservedEvent({
+      eventType: 'stock_product_created',
+      entityType: 'stock_product',
+      entityId: product.id,
+      sedeId: product.sede_id,
+      summary: `Producto de stock creado: ${product.name}`,
+      afterData: {
+        product,
+        initial_quantity: input.initial_quantity ?? 0,
+        warehouse_id: warehouseId,
+        minimum_quantity: input.minimum_quantity ?? 0,
+        target_quantity: input.target_quantity ?? 0,
+        cost_per_unit: input.cost_per_unit ?? null,
+      },
+    });
   }
 
   async updateProduct(id: string, updates: UpdateStockProductData): Promise<StockProduct> {
+    const { data: beforeProduct } = await db
+      .from('stock_products')
+      .select('*')
+      .eq('id', id)
+      .maybeSingle();
+
     const payload: UpdateStockProductData = { ...updates };
     if (payload.name != null) payload.name = payload.name.trim();
     if (payload.description != null) payload.description = payload.description.trim() || null;
@@ -335,16 +396,39 @@ class StockStorageService {
       .single();
 
     if (error) throw error;
+    void recordAiObservedEvent({
+      eventType: 'stock_product_updated',
+      entityType: 'stock_product',
+      entityId: data.id,
+      sedeId: data.sede_id,
+      summary: `Producto de stock actualizado: ${data.name}`,
+      beforeData: beforeProduct as Record<string, unknown> | null,
+      afterData: data as unknown as Record<string, unknown>,
+    });
     return data;
   }
 
   async deleteProduct(id: string): Promise<void> {
+    const { data: beforeProduct } = await db
+      .from('stock_products')
+      .select('*')
+      .eq('id', id)
+      .maybeSingle();
+
     const { error } = await db
       .from('stock_products')
       .update({ is_active: false })
       .eq('id', id);
 
     if (error) throw error;
+    void recordAiObservedEvent({
+      eventType: 'stock_product_deleted',
+      entityType: 'stock_product',
+      entityId: id,
+      sedeId: beforeProduct?.sede_id || null,
+      summary: `Producto de stock desactivado: ${beforeProduct?.name || id}`,
+      beforeData: beforeProduct as Record<string, unknown> | null,
+    });
   }
 
   async getPropertyConsumptionRules(propertyId: string): Promise<StockPropertyConsumptionRule[]> {
@@ -412,6 +496,14 @@ class StockStorageService {
       .upsert(normalizedRules, { onConflict: 'property_id,product_id' });
 
     if (error) throw error;
+    void recordAiObservedEvent({
+      eventType: 'stock_consumption_rules_updated',
+      entityType: 'property',
+      entityId: propertyId,
+      summary: `Reglas de consumo actualizadas para propiedad ${propertyId}`,
+      afterData: { rules: normalizedRules },
+      metadata: { rules_count: normalizedRules.length },
+    });
   }
 
   async adjustStock(input: StockAdjustmentData): Promise<void> {
@@ -460,6 +552,24 @@ class StockStorageService {
     });
 
     if (movementError) throw movementError;
+    void recordAiObservedEvent({
+      eventType: 'stock_adjusted',
+      entityType: 'stock_level',
+      entityId: input.stock_level.id,
+      summary: `Stock ${input.movement_type}: ${movementQuantity} unidades`,
+      beforeData: {
+        product_id: input.stock_level.product_id,
+        warehouse_id: input.stock_level.warehouse_id,
+        current_quantity: currentQuantity,
+      },
+      afterData: {
+        product_id: input.stock_level.product_id,
+        warehouse_id: input.stock_level.warehouse_id,
+        current_quantity: newQuantity,
+        movement_type: input.movement_type,
+        reason: input.reason,
+      },
+    });
   }
 
   async updateStockLevelSettings(input: StockLevelSettingsData): Promise<StockLevel> {
@@ -472,7 +582,15 @@ class StockStorageService {
     });
 
     if (error) throw error;
-    return normalizeStockLevel(data);
+    const normalized = normalizeStockLevel(data);
+    void recordAiObservedEvent({
+      eventType: 'stock_level_settings_updated',
+      entityType: 'stock_level',
+      entityId: input.stock_level_id,
+      summary: `Parametros de stock actualizados: minimo ${input.minimum_quantity}, objetivo ${input.target_quantity}`,
+      afterData: normalized as unknown as Record<string, unknown>,
+    });
+    return normalized;
   }
 
   async transferStock(input: StockTransferData): Promise<void> {
@@ -486,6 +604,19 @@ class StockStorageService {
     });
 
     if (error) throw error;
+    void recordAiObservedEvent({
+      eventType: 'stock_transferred',
+      entityType: 'stock_level',
+      entityId: input.stock_level.id,
+      summary: `Transferencia de stock: ${input.quantity} unidades`,
+      afterData: {
+        product_id: input.stock_level.product_id,
+        from_warehouse_id: input.stock_level.warehouse_id,
+        to_warehouse_id: input.to_warehouse_id,
+        quantity: input.quantity,
+        reason: input.reason,
+      },
+    });
   }
 
   async getMovements(sedeId: string, limit = 100): Promise<StockMovement[]> {

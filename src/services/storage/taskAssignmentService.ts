@@ -2,6 +2,7 @@
 import { supabase } from '@/integrations/supabase/client';
 import { Task } from '@/types/calendar';
 import { taskStorageService } from './taskStorage';
+import { recordAiObservedEvent } from '@/services/aiObservedEvents';
 
 export class TaskAssignmentService {
   async assignTask(taskId: string, cleanerName: string, cleanerId?: string): Promise<Task> {
@@ -17,6 +18,22 @@ export class TaskAssignmentService {
 
     // Update the task first
     const updatedTask = await taskStorageService.updateTask(taskId, updateData);
+    void recordAiObservedEvent({
+      eventType: 'task_assigned',
+      entityType: 'tasks',
+      entityId: taskId,
+      summary: `Asignada tarea ${updatedTask.property} a ${cleanerName}`,
+      afterData: {
+        taskId,
+        property: updatedTask.property,
+        date: updatedTask.date,
+        startTime: updatedTask.startTime,
+        endTime: updatedTask.endTime,
+        cleaner: cleanerName,
+        cleanerId,
+      },
+      metadata: { source: 'taskAssignmentService.assignTask' },
+    });
 
     // If we have cleaner ID, send email notification (fire-and-forget)
     if (cleanerId) {
@@ -61,6 +78,24 @@ export class TaskAssignmentService {
       console.error('Error in assignTaskWithSchedule:', error);
       throw new Error(`Could not assign task: ${error.message}`);
     }
+
+    void recordAiObservedEvent({
+      eventType: 'task_assigned_with_schedule',
+      entityType: 'tasks',
+      entityId: taskId,
+      sedeId: updated.sede_id,
+      summary: `Asignada tarea ${updated.property} a ${cleanerName} con horario`,
+      afterData: {
+        taskId,
+        property: updated.property,
+        date: updated.date,
+        startTime: updated.start_time,
+        endTime: updated.end_time,
+        cleaner: cleanerName,
+        cleanerId,
+      },
+      metadata: { source: 'taskAssignmentService.assignTaskWithSchedule' },
+    });
 
     // Map DB row -> Task
     const task: Task = {
@@ -159,6 +194,25 @@ export class TaskAssignmentService {
       throw new Error(`Could not unassign task: ${updateError.message}`);
     }
 
+    void recordAiObservedEvent({
+      eventType: 'task_unassigned',
+      entityType: 'tasks',
+      entityId: taskId,
+      sedeId: updatedTask.sede_id,
+      summary: `Desasignada tarea ${updatedTask.property}`,
+      beforeData: currentTask,
+      afterData: {
+        id: updatedTask.id,
+        property: updatedTask.property,
+        date: updatedTask.date,
+        startTime: updatedTask.start_time,
+        endTime: updatedTask.end_time,
+        cleaner: updatedTask.cleaner,
+        cleanerId: updatedTask.cleaner_id,
+      },
+      metadata: { source: 'taskAssignmentService.unassignTask' },
+    });
+
     // Map the database result back to Task interface
     return {
       id: updatedTask.id,
@@ -195,6 +249,29 @@ export class TaskAssignmentService {
 
     // Update the task first
     const updatedTask = await taskStorageService.updateTask(taskId, updates);
+    void recordAiObservedEvent({
+      eventType: 'task_schedule_updated',
+      entityType: 'tasks',
+      entityId: taskId,
+      summary: `Actualizado horario de tarea ${updatedTask.property}`,
+      beforeData: originalTask ? {
+        id: originalTask.id,
+        date: originalTask.date,
+        startTime: originalTask.startTime,
+        endTime: originalTask.endTime,
+        cleaner: originalTask.cleaner,
+        cleanerId: originalTask.cleanerId,
+      } : null,
+      afterData: {
+        id: updatedTask.id,
+        date: updatedTask.date,
+        startTime: updatedTask.startTime,
+        endTime: updatedTask.endTime,
+        cleaner: updatedTask.cleaner,
+        cleanerId: updatedTask.cleanerId,
+      },
+      metadata: { source: 'taskAssignmentService.updateTaskSchedule', changedFields: Object.keys(updates) },
+    });
 
     // Check if schedule changed and cleaner is assigned
     if (originalTask?.cleanerId && this.hasScheduleChanged(originalTask, updatedTask)) {
