@@ -240,9 +240,9 @@ async function loadPlanningContext(
   let propertiesQuery = supabase
     .from("properties")
     .select("id,nombre,codigo,direccion,sede_id,is_active,duracion_servicio,coste_servicio,check_in_predeterminado,check_out_predeterminado")
-    .eq("is_active", true)
+    .or("is_active.eq.true,is_active.is.null")
     .order("nombre", { ascending: true })
-    .limit(200);
+    .limit(500);
   if (sedeId) propertiesQuery = propertiesQuery.eq("sede_id", sedeId);
 
   let reservationsQuery = supabase
@@ -370,6 +370,7 @@ serve(async (req) => {
       "Si propones acciones, deben usar IDs reales presentes en el contexto.",
       "Si hay muchas acciones posibles, propone solo las 8 mas urgentes y explica que puedes continuar por bloques.",
       "No inventes conocimiento de zonas, disponibilidad, preferencias de trabajadores ni familiaridad con propiedades si no aparece en el contexto o en memorias.",
+      "Si un trabajador aparece en el contexto con is_active=true, puedes considerarlo asignable; no lo descartes por su nombre, aunque se llame NOT COUNT, salvo que una memoria diga lo contrario.",
       "No guardes ni propongas memorias salvo que el usuario use expresiones como 'guarda esto como memoria', 'recuerda que' o 'añade a memoria'.",
       "Si el usuario pide una propuesta, un bloque, o dice 'hazlo', 'propón' o 'continúa', no vuelvas a pedir confirmación para analizar: genera la propuesta. La aplicación ya pedirá confirmación antes de aplicar cambios.",
       "Si el usuario menciona una fecha o día concreto, céntrate solo en esa fecha. No amplíes el análisis a otros días aunque el rango de la pantalla sea mayor.",
