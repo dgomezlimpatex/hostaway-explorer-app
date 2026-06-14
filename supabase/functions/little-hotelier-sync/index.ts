@@ -64,6 +64,24 @@ function isCancelledStatus(status: string | null | undefined): boolean {
   return s === "cancelled" || s === "canceled" || s === "no_show";
 }
 
+function normalizeLegacyRoomMarker(raw: string): string {
+  return raw
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/ã³/g, "o")
+    .replace(/ã¡/g, "a");
+}
+
+function isLegacyConcatenatedRooms(raw: string): boolean {
+  const normalized = normalizeLegacyRoomMarker(raw);
+  return /habitacion.*habitacion/.test(normalized) || /\(\+.*mas\)/.test(normalized);
+}
+
+function legacyConcatenatedRoomsWarning(raw: string): string {
+  return `Reserva con varias habitaciones recibida en formato antiguo ("${raw}"). Actualiza el script Python para enviar 'rooms' como array.`;
+}
+
 /**
  * Normalizes the incoming room data into a clean array of real room names.
  * Returns { rooms: [], needsAssignment, displayRoom, warnings }.
@@ -84,6 +102,17 @@ function normalizeRooms(payload: ReservationPayload): {
 
   if (Array.isArray(payload.rooms) && payload.rooms.length > 0) {
     candidates = payload.rooms.map((r) => (r ?? "").toString().trim());
+    const legacyConcatenatedRoom = candidates.find((room) => isLegacyConcatenatedRooms(room));
+    if (legacyConcatenatedRoom) {
+      const displayRoom = candidates.filter(Boolean).join(", ") || legacyConcatenatedRoom;
+      warnings.push(legacyConcatenatedRoomsWarning(displayRoom));
+      return {
+        rooms: [],
+        needsAssignment: true,
+        displayRoom,
+        warnings,
+      };
+    }
   } else if (payload.room) {
     const raw = payload.room.toString().trim();
     // Detect concatenated multi-room legacy format
