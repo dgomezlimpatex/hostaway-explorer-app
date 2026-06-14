@@ -11,3 +11,6 @@ verify_jwt = false
 
 [functions.ai-learning-review]
 verify_jwt = false
+
+[functions.laundry-route-workflow]
+verify_jwt = false

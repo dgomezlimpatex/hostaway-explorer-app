@@ -16,6 +16,7 @@ import {
 } from '@/services/laundryScheduleService';
 import { BuildingCollectionGroup } from '@/components/laundry-share/BuildingCollectionGroup';
 import { BuildingDeliveryGroup } from '@/components/laundry-share/BuildingDeliveryGroup';
+import { LaundryRouteV2View } from '@/components/laundry-share/LaundryRouteV2View';
 import { Toaster } from '@/components/ui/toaster';
 import { useToast } from '@/hooks/use-toast';
 
@@ -90,7 +91,7 @@ const PublicLaundryScheduledView = () => {
       if (error) throw error;
       return data || [];
     },
-    enabled: !!shareLink?.id,
+    enabled: !!shareLink?.id && shareLink.workflowVersion !== 'route_v2',
   });
 
   // Build tracking map
@@ -168,13 +169,13 @@ const PublicLaundryScheduledView = () => {
           return codeA.localeCompare(codeB, 'es', { numeric: true });
         });
     },
-    enabled: !!shareLink,
+    enabled: !!shareLink && shareLink.workflowVersion !== 'route_v2',
   });
 
   const { data: stockConsumablesByTask = {}, refetch: refetchStockConsumables } = useQuery({
     queryKey: ['public-laundry-scheduled-stock-consumables', token, shareLink?.id],
     queryFn: () => fetchPublicLaundryStockConsumptions(token!),
-    enabled: !!token && !!shareLink,
+    enabled: !!token && !!shareLink && shareLink.workflowVersion !== 'route_v2',
   });
 
   // Map to LaundryApartment format
@@ -382,7 +383,7 @@ const PublicLaundryScheduledView = () => {
   };
 
   // Loading state
-  if (isLoadingLink || isLoadingTasks) {
+  if (isLoadingLink || (shareLink?.workflowVersion !== 'route_v2' && isLoadingTasks)) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center space-y-4">
@@ -405,6 +406,15 @@ const PublicLaundryScheduledView = () => {
           </p>
         </div>
       </div>
+    );
+  }
+
+  if (shareLink.workflowVersion === 'route_v2') {
+    return (
+      <>
+        <LaundryRouteV2View token={token!} />
+        <Toaster />
+      </>
     );
   }
 

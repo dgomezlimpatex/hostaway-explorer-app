@@ -68,6 +68,26 @@ export const LaundryScheduledLinkModal = ({
     return Array.from(dates).sort();
   }, [deliveryDate, schedules, parsedDate]);
 
+  const nextRouteInfo = useMemo(() => {
+    if (!parsedDate || !schedules?.length) return null;
+    const activeSchedules = [...schedules]
+      .filter((schedule) => schedule.isActive)
+      .sort((a, b) => a.sortOrder - b.sortOrder);
+    const currentIndex = activeSchedules.findIndex((schedule) => schedule.dayOfWeek === parsedDate.getDay());
+    if (currentIndex < 0 || activeSchedules.length === 0) return null;
+    const nextSchedule = activeSchedules[(currentIndex + 1) % activeSchedules.length];
+    const daysForward = (nextSchedule.dayOfWeek - parsedDate.getDay() + 7) % 7 || 7;
+    const nextDeliveryDate = addDays(parsedDate, daysForward);
+    const nextRouteDates = calculateCollectionDates(nextDeliveryDate, nextSchedule)
+      .map((date) => format(date, 'yyyy-MM-dd'));
+    return {
+      schedule: nextSchedule,
+      deliveryDate: nextDeliveryDate,
+      deliveryDateString: format(nextDeliveryDate, 'yyyy-MM-dd'),
+      routeDates: nextRouteDates,
+    };
+  }, [parsedDate, schedules]);
+
   // Reset state when modal opens
   useEffect(() => {
     if (open) {
@@ -153,9 +173,14 @@ export const LaundryScheduledLinkModal = ({
         allTaskIds: taskIds,
         sedeId: activeSede.id,
         linkType: 'scheduled',
+        workflowVersion: 'route_v2',
         filters: {
+          workflowVersion: 'route_v2',
           collectionDates: fetchDates,
+          routeDates: fetchDates,
           deliveryDate,
+          nextDeliveryDate: nextRouteInfo?.deliveryDateString,
+          nextRouteDates: nextRouteInfo?.routeDates || [],
         },
       });
 
@@ -288,6 +313,16 @@ export const LaundryScheduledLinkModal = ({
                       <span>{previewData.count} apartamentos con servicio</span>
                     )}
                   </div>
+                  {nextRouteInfo && (
+                    <div className="rounded-md border border-blue-200 bg-blue-50 p-2 text-xs text-blue-900">
+                      <strong>Preparación siguiente:</strong>{' '}
+                      {nextRouteInfo.schedule.name}{' '}
+                      {format(nextRouteInfo.deliveryDate, "EEE d MMM", { locale: es })} · tareas de{' '}
+                      {nextRouteInfo.routeDates
+                        .map(d => format(new Date(d + 'T00:00:00'), "EEE d MMM", { locale: es }))
+                        .join(' + ')}
+                    </div>
+                  )}
                 </div>
               )}
 

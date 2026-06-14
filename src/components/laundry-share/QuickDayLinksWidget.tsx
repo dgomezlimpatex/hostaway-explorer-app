@@ -163,6 +163,25 @@ export const QuickDayLinksWidget = () => {
   const todayStr = format(today, 'yyyy-MM-dd');
   const tomorrowStr = format(tomorrow, 'yyyy-MM-dd');
 
+  const getNextRouteInfo = (date: Date) => {
+    const activeSchedules = [...(schedules || [])]
+      .filter((schedule) => schedule.isActive)
+      .sort((a, b) => a.sortOrder - b.sortOrder);
+    const currentIndex = activeSchedules.findIndex((schedule) => schedule.dayOfWeek === getDay(date));
+    if (currentIndex < 0 || activeSchedules.length === 0) return null;
+    const nextSchedule = activeSchedules[(currentIndex + 1) % activeSchedules.length];
+    const daysForward = (nextSchedule.dayOfWeek - getDay(date) + 7) % 7 || 7;
+    const nextDeliveryDate = addDays(date, daysForward);
+    const routeDates = getCollectionDatesForDelivery(nextDeliveryDate, nextSchedule.collectionDays)
+      .map(d => format(d, 'yyyy-MM-dd'));
+    return {
+      schedule: nextSchedule,
+      deliveryDate: nextDeliveryDate,
+      deliveryDateString: format(nextDeliveryDate, 'yyyy-MM-dd'),
+      routeDates,
+    };
+  };
+
   // Find matching schedule and collection dates for each day
   const todayScheduleInfo = useMemo(() => {
     const dow = getDay(today);
@@ -239,6 +258,7 @@ export const QuickDayLinksWidget = () => {
 
       const taskIds = tasks.map(t => t.taskId);
       const expiresAt = calculateExpirationDate('week');
+      const nextRouteInfo = getNextRouteInfo(date);
       
       const dateStart = info.collectionDateStrs[0];
       const dateEnd = info.collectionDateStrs[info.collectionDateStrs.length - 1];
@@ -250,8 +270,17 @@ export const QuickDayLinksWidget = () => {
         allTaskIds: taskIds,
         isPermanent: false,
         expiresAt,
-        filters: { sedeId: activeSede.id },
+        filters: {
+          sedeId: activeSede.id,
+          workflowVersion: 'route_v2',
+          deliveryDate: format(date, 'yyyy-MM-dd'),
+          collectionDates: info.collectionDateStrs,
+          routeDates: info.collectionDateStrs,
+          nextDeliveryDate: nextRouteInfo?.deliveryDateString,
+          nextRouteDates: nextRouteInfo?.routeDates || [],
+        },
         linkType: 'scheduled',
+        workflowVersion: 'route_v2',
         sedeId: activeSede.id,
       });
 

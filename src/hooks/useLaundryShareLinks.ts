@@ -17,6 +17,7 @@ export interface LaundryShareLink {
   originalTaskIds: string[]; // All tasks at creation time (for detecting truly new tasks)
   filters: Record<string, any>;
   linkType: string | null; // 'scheduled' or 'legacy' or null
+  workflowVersion: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -30,6 +31,7 @@ interface CreateShareLinkParams {
   allTaskIds: string[]; // All tasks at creation time
   filters?: Record<string, any>;
   linkType?: string; // 'scheduled' or undefined for legacy
+  workflowVersion?: string;
 }
 
 // Generate a random token for share links
@@ -57,6 +59,7 @@ const mapToShareLink = (row: any): LaundryShareLink => ({
   originalTaskIds: row.original_task_ids || row.snapshot_task_ids || [], // Fallback to snapshot for old links
   filters: row.filters || {},
   linkType: row.link_type,
+  workflowVersion: row.workflow_version || 'legacy',
   createdAt: row.created_at,
   updatedAt: row.updated_at,
 });
@@ -93,21 +96,24 @@ export const useLaundryShareLinks = () => {
 
       const token = generateToken();
       
-      const { data, error } = await supabase
+      const insertData = {
+        token,
+        created_by: userData.user.id,
+        sede_id: params.sedeId,
+        date_start: params.dateStart,
+        date_end: params.dateEnd,
+        expires_at: params.isPermanent ? null : params.expiresAt,
+        is_permanent: params.isPermanent,
+        snapshot_task_ids: params.taskIds,
+        original_task_ids: params.allTaskIds, // Store all tasks at creation time
+        filters: params.filters || {},
+        link_type: params.linkType || 'legacy',
+        workflow_version: params.workflowVersion || 'legacy',
+      };
+
+      const { data, error } = await (supabase as any)
         .from('laundry_share_links')
-        .insert({
-          token,
-          created_by: userData.user.id,
-          sede_id: params.sedeId,
-          date_start: params.dateStart,
-          date_end: params.dateEnd,
-          expires_at: params.isPermanent ? null : params.expiresAt,
-          is_permanent: params.isPermanent,
-          snapshot_task_ids: params.taskIds,
-          original_task_ids: params.allTaskIds, // Store all tasks at creation time
-          filters: params.filters || {},
-          link_type: params.linkType || 'legacy',
-        })
+        .insert(insertData)
         .select()
         .single();
 
