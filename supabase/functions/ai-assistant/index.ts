@@ -91,6 +91,60 @@ function parseAssistantJson(text: string) {
   return { answer: text, proposal: null, memories: [] };
 }
 
+function extractJsonStringField(text: string, field: string): string | null {
+  const marker = `"${field}"`;
+  const markerIndex = text.indexOf(marker);
+  if (markerIndex < 0) return null;
+
+  const colonIndex = text.indexOf(":", markerIndex + marker.length);
+  if (colonIndex < 0) return null;
+
+  const quoteIndex = text.indexOf('"', colonIndex + 1);
+  if (quoteIndex < 0) return null;
+
+  let output = "";
+  let escaped = false;
+  for (let i = quoteIndex + 1; i < text.length; i += 1) {
+    const char = text[i];
+    if (escaped) {
+      if (char === "n") output += "\n";
+      else if (char === "r") output += "\r";
+      else if (char === "t") output += "\t";
+      else output += char;
+      escaped = false;
+      continue;
+    }
+    if (char === "\\") {
+      escaped = true;
+      continue;
+    }
+    if (char === '"') return output;
+    output += char;
+  }
+
+  return output.trim()
+    ? `${output.trim()}\n\nLa respuesta se cortó antes de terminar. Pídeme que continúe o reduce el rango para una propuesta más precisa.`
+    : null;
+}
+
+function normalizeParsedAssistant(text: string) {
+  const parsed = parseAssistantJson(text);
+  if (parsed?.answer && typeof parsed.answer === "string" && !String(parsed.answer).trim().startsWith("{")) {
+    return parsed;
+  }
+
+  const recoveredAnswer = extractJsonStringField(text, "answer");
+  if (recoveredAnswer) {
+    return { answer: recoveredAnswer, proposal: null, memories: [] };
+  }
+
+  return {
+    answer: "La respuesta del modelo no llegó en un formato utilizable. Prueba con un rango más pequeño o una petición más concreta.",
+    proposal: null,
+    memories: [],
+  };
+}
+
 function estimateCostUsd(model: string, inputTokens = 0, outputTokens = 0): number | null {
   const isMini = model.toLowerCase().includes("mini");
   const inputPerMillion = isMini ? 0.75 : 2.5;
@@ -242,7 +296,10 @@ serve(async (req) => {
       "Nunca afirmes que has aplicado cambios. Solo propones acciones; otra función las aplicará tras confirmación.",
       "No propongas borrar tareas, completar tareas, tocar inventario, modificar reservas ni cambiar usuarios.",
       "Si propones acciones, deben usar IDs reales presentes en el contexto.",
-      "Puedes proponer memorias si el usuario te enseña una regla operativa útil.",
+      "Si hay muchas acciones posibles, propone solo las 8 mas urgentes y explica que puedes continuar por bloques.",
+      "No inventes conocimiento de zonas, disponibilidad, preferencias de trabajadores ni familiaridad con propiedades si no aparece en el contexto o en memorias.",
+      "No guardes ni propongas memorias salvo que el usuario use expresiones como 'guarda esto como memoria', 'recuerda que' o 'añade a memoria'.",
+      "Responde de forma compacta: diagnostico breve, riesgos principales y siguientes pasos.",
       "Devuelve SIEMPRE JSON válido con esta forma:",
       '{"answer":"texto claro en español","proposal":null|{"title":"...","summary":"...","actions":[{"type":"assign_task","taskId":"uuid","cleanerId":"uuid","startTime":"HH:MM opcional","endTime":"HH:MM opcional","reason":"..."},{"type":"create_task","propertyId":"uuid","date":"YYYY-MM-DD","startTime":"HH:MM","duration":60,"taskType":"limpieza-turistica","cleanerId":"uuid opcional","reason":"..."}]},"memories":[{"category":"operativa","content":"..."}]}',
     ].join("\n");
@@ -267,7 +324,7 @@ serve(async (req) => {
           { role: "user", content: [{ type: "input_text", text: userPrompt }] },
         ],
         store: false,
-        max_output_tokens: 2200,
+        max_output_tokens: 3600,
       }),
     });
 
@@ -277,7 +334,7 @@ serve(async (req) => {
     }
 
     const outputText = extractOutputText(raw);
-    const parsed = parseAssistantJson(outputText);
+    const parsed = normalizeParsedAssistant(outputText);
     const answer = safeText(parsed.answer || outputText || "No he podido generar una respuesta.", 8000);
     const usage = raw.usage || {};
     const inputTokens = Number(usage.input_tokens ?? usage.prompt_tokens ?? 0);
