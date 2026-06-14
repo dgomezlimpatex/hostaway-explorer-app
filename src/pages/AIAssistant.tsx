@@ -1,7 +1,7 @@
 import { FormEvent, useMemo, useState } from 'react';
 import { Navigate } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Bot, CheckCircle2, Loader2, Pencil, RefreshCw, Send, ShieldCheck, Sparkles, Trash2, XCircle } from 'lucide-react';
+import { Bot, CheckCircle2, Eye, Loader2, Pencil, RefreshCw, Send, ShieldCheck, Sparkles, Trash2, XCircle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useSede } from '@/contexts/SedeContext';
@@ -14,6 +14,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 
 type ChatMessage = {
   id: string;
@@ -49,6 +50,26 @@ type AiLearningSuggestion = {
   created_at: string;
 };
 
+type AiTaskLookup = {
+  id: string;
+  property: string | null;
+  address: string | null;
+  date: string | null;
+  start_time: string | null;
+  end_time: string | null;
+  type: string | null;
+};
+
+type AiCleanerLookup = {
+  id: string;
+  name: string | null;
+};
+
+type ProposalLookupData = {
+  tasks: Record<string, AiTaskLookup>;
+  cleaners: Record<string, AiCleanerLookup>;
+};
+
 function fromUntypedTable(table: string) {
   return supabase.from(table as never);
 }
@@ -68,9 +89,46 @@ function addDays(date: Date, days: number) {
   return copy;
 }
 
-function describeAction(action: Record<string, unknown>) {
+function collectProposalIds(proposals: AiProposal[] = []) {
+  const taskIds = new Set<string>();
+  const cleanerIds = new Set<string>();
+
+  proposals.forEach((proposal) => {
+    proposal.actions?.forEach((action) => {
+      if (typeof action.taskId === 'string') taskIds.add(action.taskId);
+      if (typeof action.cleanerId === 'string') cleanerIds.add(action.cleanerId);
+    });
+  });
+
+  return { taskIds: Array.from(taskIds), cleanerIds: Array.from(cleanerIds) };
+}
+
+function indexById<T extends { id: string }>(rows: T[] = []): Record<string, T> {
+  return rows.reduce<Record<string, T>>((acc, row) => {
+    acc[row.id] = row;
+    return acc;
+  }, {});
+}
+
+function formatActionTime(action: Record<string, unknown>, task?: AiTaskLookup) {
+  const start = String(action.startTime || task?.start_time || '').slice(0, 5);
+  const end = String(action.endTime || task?.end_time || '').slice(0, 5);
+  if (start && end) return `${start}-${end}`;
+  if (start) return start;
+  return 'sin hora';
+}
+
+function describeAction(action: Record<string, unknown>, lookups?: ProposalLookupData) {
   if (action.type === 'assign_task') {
-    return `Asignar tarea ${String(action.taskId || '').slice(0, 8)} a trabajador ${String(action.cleanerId || '').slice(0, 8)}`;
+    const taskId = String(action.taskId || '');
+    const cleanerId = String(action.cleanerId || '');
+    const task = lookups?.tasks[taskId];
+    const cleaner = lookups?.cleaners[cleanerId];
+    const taskLabel = task?.property || task?.address || `tarea ${taskId.slice(0, 8)}`;
+    const cleanerLabel = cleaner?.name || `trabajador ${cleanerId.slice(0, 8)}`;
+    const dateLabel = task?.date ? `${task.date} · ` : '';
+    const typeLabel = task?.type ? ` · ${task.type}` : '';
+    return `Asignar ${taskLabel} (${dateLabel}${formatActionTime(action, task)}${typeLabel}) a ${cleanerLabel}`;
   }
   if (action.type === 'create_task') {
     return `Crear tarea para propiedad ${String(action.propertyId || '').slice(0, 8)} el ${action.date || 'día indicado'}`;
@@ -121,6 +179,35 @@ export default function AIAssistant() {
         .limit(10);
       if (error) throw error;
       return (data || []) as unknown as AiProposal[];
+    },
+  });
+
+  const proposalIds = useMemo(() => collectProposalIds(proposalsQuery.data || []), [proposalsQuery.data]);
+
+  const proposalLookupsQuery = useQuery({
+    queryKey: ['ai-proposal-lookups', proposalIds.taskIds.join(','), proposalIds.cleanerIds.join(',')],
+    enabled: allowed && (!!proposalIds.taskIds.length || !!proposalIds.cleanerIds.length),
+    queryFn: async (): Promise<ProposalLookupData> => {
+      const [tasksResult, cleanersResult] = await Promise.all([
+        proposalIds.taskIds.length
+          ? fromUntypedTable('tasks')
+              .select('id,property,address,date,start_time,end_time,type')
+              .in('id', proposalIds.taskIds as never)
+          : Promise.resolve({ data: [], error: null }),
+        proposalIds.cleanerIds.length
+          ? fromUntypedTable('cleaners')
+              .select('id,name')
+              .in('id', proposalIds.cleanerIds as never)
+          : Promise.resolve({ data: [], error: null }),
+      ]);
+
+      if (tasksResult.error) throw tasksResult.error;
+      if (cleanersResult.error) throw cleanersResult.error;
+
+      return {
+        tasks: indexById((tasksResult.data || []) as unknown as AiTaskLookup[]),
+        cleaners: indexById((cleanersResult.data || []) as unknown as AiCleanerLookup[]),
+      };
     },
   });
 
@@ -335,6 +422,123 @@ export default function AIAssistant() {
     chatMutation.mutate(text);
   };
 
+  const proposalLookups = proposalLookupsQuery.data;
+  const latestPendingProposal = proposalsQuery.data?.find((proposal) => proposal.status === 'pending');
+
+  const renderProposalCard = (proposal: AiProposal, variant: 'chat' | 'sidebar' = 'sidebar') => {
+    const actions = proposal.actions || [];
+    const visibleActions = variant === 'chat' ? actions : actions.slice(0, 4);
+
+    return (
+      <div
+        key={proposal.id}
+        className={
+          variant === 'chat'
+            ? 'mr-auto max-w-[95%] rounded-2xl border border-blue-100 bg-blue-50/70 p-4 text-sm shadow-sm'
+            : 'rounded-xl border bg-white p-3'
+        }
+      >
+        <div className="mb-2 flex items-start justify-between gap-2">
+          <div>
+            <p className="font-semibold">{proposal.title}</p>
+            <p className="text-xs text-muted-foreground">{proposal.summary}</p>
+          </div>
+          <Badge variant={proposal.status === 'pending' ? 'default' : 'outline'}>{proposal.status}</Badge>
+        </div>
+
+        {proposalLookupsQuery.isLoading && actions.length > 0 && (
+          <p className="mb-2 text-xs text-muted-foreground">Cargando nombres de tareas y trabajadores...</p>
+        )}
+
+        <div className="space-y-1 text-xs text-slate-700">
+          {visibleActions.map((action, index) => (
+            <p key={index}>- {describeAction(action, proposalLookups)}</p>
+          ))}
+          {variant === 'sidebar' && actions.length > visibleActions.length && (
+            <p>- {actions.length - visibleActions.length} acciones mas...</p>
+          )}
+        </div>
+
+        <Dialog>
+          <DialogTrigger asChild>
+            <Button className="mt-3 w-full" size="sm" variant="outline">
+              <Eye className="mr-2 h-4 w-4" />
+              Ver detalle
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="max-h-[88vh] max-w-3xl overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>{proposal.title}</DialogTitle>
+              <DialogDescription>{proposal.summary}</DialogDescription>
+            </DialogHeader>
+            <div className="space-y-2">
+              {actions.length ? (
+                actions.map((action, index) => (
+                  <div key={index} className="rounded-lg border bg-slate-50 p-3">
+                    <p className="text-sm font-medium">Accion {index + 1}</p>
+                    <p className="mt-1 text-sm">{describeAction(action, proposalLookups)}</p>
+                    {typeof action.reason === 'string' && (
+                      <p className="mt-1 text-xs text-muted-foreground">Motivo: {action.reason}</p>
+                    )}
+                  </div>
+                ))
+              ) : (
+                <p className="text-sm text-muted-foreground">Esta propuesta no contiene acciones.</p>
+              )}
+            </div>
+            {proposal.status === 'pending' && (
+              <DialogFooter className="gap-2 sm:justify-between">
+                <Button
+                  onClick={() => {
+                    if (window.confirm('¿Aplicar esta propuesta de la IA?')) {
+                      applyMutation.mutate(proposal.id);
+                    }
+                  }}
+                  disabled={applyMutation.isPending}
+                >
+                  <CheckCircle2 className="mr-2 h-4 w-4" />
+                  Aplicar propuesta
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => discardProposalMutation.mutate(proposal.id)}
+                  disabled={discardProposalMutation.isPending}
+                >
+                  Descartar
+                </Button>
+              </DialogFooter>
+            )}
+          </DialogContent>
+        </Dialog>
+
+        {proposal.status === 'pending' && (
+          <div className="mt-2 grid gap-2 sm:grid-cols-2">
+            <Button
+              size="sm"
+              onClick={() => {
+                if (window.confirm('¿Aplicar esta propuesta de la IA?')) {
+                  applyMutation.mutate(proposal.id);
+                }
+              }}
+              disabled={applyMutation.isPending}
+            >
+              <CheckCircle2 className="mr-2 h-4 w-4" />
+              Aplicar
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => discardProposalMutation.mutate(proposal.id)}
+              disabled={discardProposalMutation.isPending}
+            >
+              Descartar
+            </Button>
+          </div>
+        )}
+      </div>
+    );
+  };
+
   if (isLoading) {
     return <div className="flex min-h-screen items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>;
   }
@@ -404,6 +608,7 @@ export default function AIAssistant() {
                     </div>
                   ))
                 )}
+                {latestPendingProposal && renderProposalCard(latestPendingProposal, 'chat')}
                 {chatMutation.isPending && (
                   <div className="mr-auto inline-flex items-center gap-2 rounded-2xl border bg-slate-50 p-3 text-sm text-muted-foreground">
                     <Loader2 className="h-4 w-4 animate-spin" /> Pensando con contexto operativo...
@@ -413,7 +618,7 @@ export default function AIAssistant() {
 
               {latestUsage?.estimatedCostUsd !== undefined && (
                 <p className="text-xs text-muted-foreground">
-                  Última respuesta: coste estimado ${latestUsage.estimatedCostUsd} · modelo {latestUsage.model}
+                  Ultima respuesta: coste estimado ${latestUsage.estimatedCostUsd} - modelo {latestUsage.model}
                 </p>
               )}
 
@@ -449,51 +654,7 @@ export default function AIAssistant() {
                   {proposalsQuery.isLoading ? (
                     <Loader2 className="h-5 w-5 animate-spin" />
                   ) : proposalsQuery.data?.length ? (
-                    proposalsQuery.data.map((proposal) => (
-                      <div key={proposal.id} className="rounded-xl border bg-white p-3">
-                        <div className="mb-2 flex items-start justify-between gap-2">
-                          <div>
-                            <p className="font-semibold">{proposal.title}</p>
-                            <p className="text-xs text-muted-foreground">{proposal.summary}</p>
-                          </div>
-                          <Badge variant={proposal.status === 'pending' ? 'default' : 'outline'}>
-                            {proposal.status}
-                          </Badge>
-                        </div>
-                        <div className="space-y-1 text-xs text-slate-600">
-                          {(proposal.actions || []).slice(0, 4).map((action, index) => (
-                            <p key={index}>• {describeAction(action)}</p>
-                          ))}
-                          {proposal.actions.length > 4 && <p>• {proposal.actions.length - 4} acciones más...</p>}
-                        </div>
-                        {proposal.status === 'pending' && (
-                          <>
-                            <Button
-                              className="mt-3 w-full"
-                              size="sm"
-                              onClick={() => {
-                                if (window.confirm('¿Aplicar esta propuesta de la IA?')) {
-                                  applyMutation.mutate(proposal.id);
-                                }
-                              }}
-                              disabled={applyMutation.isPending}
-                            >
-                              <CheckCircle2 className="mr-2 h-4 w-4" />
-                              Aplicar propuesta
-                            </Button>
-                            <Button
-                              className="mt-2 w-full"
-                              size="sm"
-                              variant="outline"
-                              onClick={() => discardProposalMutation.mutate(proposal.id)}
-                              disabled={discardProposalMutation.isPending}
-                            >
-                              Descartar
-                            </Button>
-                          </>
-                        )}
-                      </div>
-                    ))
+                    proposalsQuery.data.map((proposal) => renderProposalCard(proposal, 'sidebar'))
                   ) : (
                     <p className="text-sm text-muted-foreground">Todavía no hay propuestas.</p>
                   )}
