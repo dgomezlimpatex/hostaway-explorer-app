@@ -4,6 +4,15 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.50.0";
 const ALLOWED_EMAIL = "dgomezlimpatex@gmail.com";
 const DEFAULT_MODEL = "gpt-5.4-mini";
 const MAX_CONTEXT_ROWS = 250;
+const WEEKDAYS: Record<string, number> = {
+  domingo: 0,
+  lunes: 1,
+  martes: 2,
+  miercoles: 3,
+  jueves: 4,
+  viernes: 5,
+  sabado: 6,
+};
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -34,6 +43,57 @@ function addDays(dateStr: string, days: number): string {
   const d = new Date(`${dateStr}T00:00:00Z`);
   d.setUTCDate(d.getUTCDate() + days);
   return d.toISOString().slice(0, 10);
+}
+
+function normalizeText(value: string): string {
+  return value
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "");
+}
+
+function isDateInRange(date: string, from: string, to: string): boolean {
+  return date >= from && date <= to;
+}
+
+function resolveExplicitDate(text: string, dateFrom: string, dateTo: string): string | null {
+  const normalized = normalizeText(text);
+
+  const isoMatch = normalized.match(/\b(20\d{2}-\d{2}-\d{2})\b/);
+  if (isoMatch?.[1] && isDateInRange(isoMatch[1], dateFrom, dateTo)) return isoMatch[1];
+
+  const slashMatch = normalized.match(/\b(\d{1,2})[/-](\d{1,2})(?:[/-](\d{2,4}))?\b/);
+  if (slashMatch) {
+    const day = slashMatch[1].padStart(2, "0");
+    const month = slashMatch[2].padStart(2, "0");
+    const year = slashMatch[3]
+      ? slashMatch[3].length === 2 ? `20${slashMatch[3]}` : slashMatch[3]
+      : dateFrom.slice(0, 4);
+    const candidate = `${year}-${month}-${day}`;
+    if (isDateInRange(candidate, dateFrom, dateTo)) return candidate;
+  }
+
+  const weekdayEntry = Object.entries(WEEKDAYS).find(([weekday]) => normalized.includes(weekday));
+  if (!weekdayEntry) return null;
+
+  const [weekdayName, weekdayNumber] = weekdayEntry;
+  const weekdayDayMatch = normalized.match(new RegExp(`${weekdayName}\\s+(\\d{1,2})\\b`));
+  const requestedDay = weekdayDayMatch ? Number(weekdayDayMatch[1]) : null;
+
+  for (let cursor = dateFrom; cursor <= dateTo; cursor = addDays(cursor, 1)) {
+    const date = new Date(`${cursor}T00:00:00Z`);
+    const dayMatches = requestedDay == null || date.getUTCDate() === requestedDay;
+    if (date.getUTCDay() === weekdayNumber && dayMatches) return cursor;
+  }
+
+  return null;
+}
+
+function compactMessages(messages: Array<{ role: string; content: string }>) {
+  return messages.map((item) => ({
+    role: item.role,
+    content: safeText(item.content, 1200),
+  }));
 }
 
 function extractBearer(req: Request): string | null {
@@ -288,7 +348,19 @@ serve(async (req) => {
       .select("id")
       .single();
 
-    const context = await loadPlanningContext(supabase, user.id, dateFrom, dateTo, sedeId);
+    const { data: recentMessages } = await supabase
+      .from("ai_messages")
+      .select("role,content,created_at")
+      .eq("conversation_id", conversationId)
+      .order("created_at", { ascending: false })
+      .limit(8);
+
+    const orderedRecentMessages = (recentMessages ?? []).reverse();
+    const recentText = orderedRecentMessages.map((item) => `${item.role}: ${item.content}`).join("\n");
+    const focusedDate = resolveExplicitDate(`${recentText}\n${message}`, dateFrom, dateTo);
+    const effectiveDateFrom = focusedDate ?? dateFrom;
+    const effectiveDateTo = focusedDate ?? dateTo;
+    const context = await loadPlanningContext(supabase, user.id, effectiveDateFrom, effectiveDateTo, sedeId);
 
     const systemPrompt = [
       "Eres el copiloto IA privado de Limpatex. Solo ayudas a Daniel Gomez.",
@@ -299,6 +371,9 @@ serve(async (req) => {
       "Si hay muchas acciones posibles, propone solo las 8 mas urgentes y explica que puedes continuar por bloques.",
       "No inventes conocimiento de zonas, disponibilidad, preferencias de trabajadores ni familiaridad con propiedades si no aparece en el contexto o en memorias.",
       "No guardes ni propongas memorias salvo que el usuario use expresiones como 'guarda esto como memoria', 'recuerda que' o 'añade a memoria'.",
+      "Si el usuario pide una propuesta, un bloque, o dice 'hazlo', 'propón' o 'continúa', no vuelvas a pedir confirmación para analizar: genera la propuesta. La aplicación ya pedirá confirmación antes de aplicar cambios.",
+      "Si el usuario menciona una fecha o día concreto, céntrate solo en esa fecha. No amplíes el análisis a otros días aunque el rango de la pantalla sea mayor.",
+      "Si generas proposal.actions, el campo answer debe incluir un resumen legible de esas acciones por propiedad/trabajador/horario; no obligues al usuario a buscarlo en otra zona de la interfaz.",
       "Responde de forma compacta: diagnostico breve, riesgos principales y siguientes pasos.",
       "Devuelve SIEMPRE JSON válido con esta forma:",
       '{"answer":"texto claro en español","proposal":null|{"title":"...","summary":"...","actions":[{"type":"assign_task","taskId":"uuid","cleanerId":"uuid","startTime":"HH:MM opcional","endTime":"HH:MM opcional","reason":"..."},{"type":"create_task","propertyId":"uuid","date":"YYYY-MM-DD","startTime":"HH:MM","duration":60,"taskType":"limpieza-turistica","cleanerId":"uuid opcional","reason":"..."}]},"memories":[{"category":"operativa","content":"..."}]}',
@@ -306,7 +381,12 @@ serve(async (req) => {
 
     const userPrompt = [
       `Mensaje del usuario: ${message}`,
-      `Rango de planificacion: ${dateFrom} a ${dateTo}`,
+      `Fecha actual en Madrid: ${today}`,
+      `Rango seleccionado en pantalla: ${dateFrom} a ${dateTo}`,
+      `Rango efectivo para este analisis: ${effectiveDateFrom} a ${effectiveDateTo}`,
+      focusedDate ? `Fecha concreta detectada en la conversacion: ${focusedDate}` : "Fecha concreta detectada en la conversacion: ninguna",
+      "Historial reciente de esta conversacion:",
+      JSON.stringify(compactMessages(orderedRecentMessages)),
       "Contexto operativo JSON:",
       JSON.stringify(context),
     ].join("\n\n");
@@ -351,7 +431,7 @@ serve(async (req) => {
         input_tokens: inputTokens || null,
         output_tokens: outputTokens || null,
         estimated_cost_usd: estimatedCostUsd,
-        metadata: { rawModel: model, proposal: parsed.proposal ?? null },
+        metadata: { rawModel: model, proposal: parsed.proposal ?? null, effectiveDateFrom, effectiveDateTo, focusedDate },
       })
       .select("id")
       .single();
@@ -387,8 +467,8 @@ serve(async (req) => {
           owner_email: email,
           title: safeText(parsed.proposal.title || "Propuesta de planificacion", 120),
           summary: safeText(parsed.proposal.summary || "Propuesta generada por IA", 2000),
-          date_from: dateFrom,
-          date_to: dateTo,
+          date_from: effectiveDateFrom,
+          date_to: effectiveDateTo,
           sede_id: sedeId,
           actions: proposalActions,
         })
@@ -405,6 +485,9 @@ serve(async (req) => {
       savedMemories,
       usage: { inputTokens, outputTokens, estimatedCostUsd, model },
       warnings: context.loadWarnings,
+      effectiveDateFrom,
+      effectiveDateTo,
+      focusedDate,
     });
   } catch (err) {
     if (err instanceof Response) return err;
