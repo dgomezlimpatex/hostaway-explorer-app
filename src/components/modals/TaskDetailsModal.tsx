@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import { Dialog, DialogContent, DialogFooter, DialogHeader } from "@/components/ui/dialog";
 import { Task } from "@/types/calendar";
 import { useToast } from "@/hooks/use-toast";
@@ -11,6 +11,7 @@ import { TaskDetailsForm } from "./task-details/TaskDetailsForm";
 import { TaskDetailsActions } from "./task-details/TaskDetailsActions";
 import { TaskDetailsConfirmDialogs } from "./task-details/TaskDetailsConfirmDialogs";
 import { taskAssignmentService } from "@/services/storage/taskAssignmentService";
+import { taskStorageService } from "@/services/storage/taskStorage";
 import { useInlineFieldSave } from "@/hooks/useInlineFieldSave";
 
 interface TaskDetailsModalProps {
@@ -39,18 +40,55 @@ export const TaskDetailsModal = ({
   const [showUnassignConfirm, setShowUnassignConfirm] = useState(false);
   const [showReportModal, setShowReportModal] = useState(false);
   const [showAssignMultipleModal, setShowAssignMultipleModal] = useState(false);
+  const [freshTask, setFreshTask] = useState<Task | null>(null);
   const { userRole } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const isRecurringInstance = !!(task as any)?.isRecurringInstance;
   const realTaskId = task?.originalTaskId || task?.id || '';
   const canEdit = (userRole === 'admin' || userRole === 'manager') && !isRecurringInstance;
+  const displayTask = useMemo(() => (
+    freshTask && task
+      ? {
+          ...freshTask,
+          cleaner: task.cleaner,
+          cleanerId: task.cleanerId,
+          originalTaskId: task.originalTaskId || task.id,
+        }
+      : task
+  ), [freshTask, task]);
 
   const { saveField, statusByField } = useInlineFieldSave({ taskId: realTaskId });
 
   useEffect(() => {
-    if (task) setFormData(task);
-  }, [task]);
+    if (displayTask) setFormData(displayTask);
+  }, [displayTask]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const fetchFreshTask = async () => {
+      setFreshTask(null);
+      if (!open || !task || isRecurringInstance || !realTaskId) return;
+
+      try {
+        const latest = await taskStorageService.getById(realTaskId);
+        if (!cancelled) {
+          setFreshTask(latest || null);
+        }
+      } catch (error) {
+        console.error('Error fetching fresh task details:', error);
+        if (!cancelled) {
+          setFreshTask(null);
+        }
+      }
+    };
+
+    fetchFreshTask();
+    return () => {
+      cancelled = true;
+    };
+  }, [open, task, isRecurringInstance, realTaskId]);
 
   // Local state update only (used for typing)
   const handleFieldChange = useCallback((field: string, value: string) => {
@@ -117,6 +155,7 @@ export const TaskDetailsModal = ({
   );
 
   if (!task) return null;
+  const taskForDisplay = displayTask || task;
 
   const handleDelete = async () => {
     if (isRecurringInstance) {
@@ -261,7 +300,7 @@ export const TaskDetailsModal = ({
 
           <div className="flex-1 overflow-y-auto px-6 py-5">
             <TaskDetailsForm
-              task={task}
+              task={taskForDisplay}
               canEdit={canEdit}
               formData={formData}
               onFieldChange={handleFieldChange}
@@ -273,7 +312,7 @@ export const TaskDetailsModal = ({
 
           <DialogFooter className="flex-shrink-0 border-t bg-muted/20 px-6 py-3">
             <TaskDetailsActions
-              task={task}
+              task={taskForDisplay}
               onDelete={(canEdit || isRecurringInstance) ? () => setShowDeleteConfirm(true) : undefined}
               onUnassign={(canEdit || isRecurringInstance) && (onUnassignTask || isRecurringInstance) ? () => setShowUnassignConfirm(true) : undefined}
               onAssign={(canEdit || isRecurringInstance) ? handleAssign : undefined}
@@ -284,17 +323,17 @@ export const TaskDetailsModal = ({
         </DialogContent>
       </Dialog>
 
-      <TaskReportModal task={task} open={showReportModal} onOpenChange={setShowReportModal} />
+      <TaskReportModal task={taskForDisplay} open={showReportModal} onOpenChange={setShowReportModal} />
 
       <AssignMultipleCleanersModal
-        task={task}
+        task={taskForDisplay}
         open={showAssignMultipleModal}
         onOpenChange={setShowAssignMultipleModal}
         onAssignComplete={() => {}}
       />
 
       <TaskDetailsConfirmDialogs
-        task={task}
+        task={taskForDisplay}
         showDeleteConfirm={showDeleteConfirm}
         onDeleteConfirmChange={setShowDeleteConfirm}
         showUnassignConfirm={showUnassignConfirm}

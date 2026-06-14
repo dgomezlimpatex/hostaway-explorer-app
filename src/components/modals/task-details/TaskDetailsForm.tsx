@@ -53,15 +53,16 @@ export const TaskDetailsForm = ({
     const fetchPropertyAndClientInfo = async () => {
       if (task.propertyId) {
         try {
-          const { data: property } = await supabase
+          const propertyQuery = supabase
             .from('properties')
-            .select(`*, clients!inner(*)`)
-            .eq('id', task.propertyId)
-            .maybeSingle();
+            .select(userRole === 'cleaner' ? '*' : `*, clients!inner(*)`)
+            .eq('id', task.propertyId);
+
+          const { data: property } = await propertyQuery.maybeSingle();
 
           if (property) {
             setPropertyData(property);
-            setClientData(property.clients);
+            setClientData('clients' in property ? property.clients : null);
           }
         } catch (error) {
           console.error('Error fetching property data:', error);
@@ -74,7 +75,7 @@ export const TaskDetailsForm = ({
     };
 
     fetchPropertyAndClientInfo();
-  }, [task.propertyId]);
+  }, [task.propertyId, userRole]);
 
   if (loading) {
     return (
