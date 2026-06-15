@@ -419,18 +419,18 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
       !hasStartedTask &&
       !isLoadingReport &&
       !existingReport &&
-      isTaskFromToday &&
+      (isTaskFromToday || canBypassDateLock) &&
       currentCleanerId &&
       reportCreationAttempted.current !== realTaskId
     ) {
       handleStartTask();
     }
-  }, [open, task, hasStartedTask, isLoadingReport, existingReport, isTaskFromToday, currentCleanerId, realTaskId]);
+  }, [open, task, hasStartedTask, isLoadingReport, existingReport, isTaskFromToday, canBypassDateLock, currentCleanerId, realTaskId]);
 
   // Removed old auto-save logic - now handled by useOptimizedAutoSave hook
 
   const handleStartTask = async () => {
-    if (!task || !isTaskFromToday) {
+    if (!task || (!isTaskFromToday && !canBypassDateLock)) {
       toast({
         title: "Error",
         description: "Solo puedes iniciar tareas del día de hoy.",
