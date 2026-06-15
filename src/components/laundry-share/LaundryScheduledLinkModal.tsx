@@ -3,6 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Copy, Check, Loader2, Calendar, Truck, Package, ExternalLink } from 'lucide-react';
 import { useLaundryShareLinks } from '@/hooks/useLaundryShareLinks';
 import { isShareLinkExpired } from '@/services/laundryShareService';
@@ -22,6 +23,7 @@ interface LaundryScheduledLinkModalProps {
 
 // Default link duration (días)
 const DEFAULT_EXPIRATION_DAYS = 30;
+type LaundryWorkflowVersion = 'legacy' | 'route_v2';
 
 export const LaundryScheduledLinkModal = ({
   open,
@@ -49,6 +51,7 @@ export const LaundryScheduledLinkModal = ({
   const [copied, setCopied] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [previewData, setPreviewData] = useState<{ count: number; loading: boolean }>({ count: 0, loading: false });
+  const [workflowVersion, setWorkflowVersion] = useState<LaundryWorkflowVersion>('legacy');
 
   const lastFetchKey = useRef<string>('');
 
@@ -96,6 +99,7 @@ export const LaundryScheduledLinkModal = ({
       setPreviewData({ count: 0, loading: false });
       lastFetchKey.current = '';
       setDeliveryDate(format(preselectedDate || new Date(), 'yyyy-MM-dd'));
+      setWorkflowVersion('legacy');
     }
   }, [open, preselectedDate]);
 
@@ -173,9 +177,9 @@ export const LaundryScheduledLinkModal = ({
         allTaskIds: taskIds,
         sedeId: activeSede.id,
         linkType: 'scheduled',
-        workflowVersion: 'route_v2',
+        workflowVersion,
         filters: {
-          workflowVersion: 'route_v2',
+          workflowVersion,
           collectionDates: fetchDates,
           routeDates: fetchDates,
           deliveryDate,
@@ -284,6 +288,40 @@ export const LaundryScheduledLinkModal = ({
                 />
               </div>
 
+              <div className="space-y-2">
+                <Label>Método del enlace</Label>
+                <RadioGroup
+                  value={workflowVersion}
+                  onValueChange={(value) => setWorkflowVersion(value as LaundryWorkflowVersion)}
+                  className="grid gap-2"
+                >
+                  <Label
+                    htmlFor="workflow-legacy"
+                    className="flex cursor-pointer items-start gap-3 rounded-lg border p-3 hover:bg-muted/50"
+                  >
+                    <RadioGroupItem value="legacy" id="workflow-legacy" className="mt-0.5" />
+                    <span className="space-y-1">
+                      <span className="block text-sm font-semibold">Método clásico</span>
+                      <span className="block text-xs font-normal text-muted-foreground">
+                        Lista completa para preparar, recoger y entregar como hasta ahora.
+                      </span>
+                    </span>
+                  </Label>
+                  <Label
+                    htmlFor="workflow-route-v2"
+                    className="flex cursor-pointer items-start gap-3 rounded-lg border p-3 hover:bg-muted/50"
+                  >
+                    <RadioGroupItem value="route_v2" id="workflow-route-v2" className="mt-0.5" />
+                    <span className="space-y-1">
+                      <span className="block text-sm font-semibold">Nuevo método piloto</span>
+                      <span className="block text-xs font-normal text-muted-foreground">
+                        Flujo guiado con urgencias y preparación secuencial de la siguiente ruta.
+                      </span>
+                    </span>
+                  </Label>
+                </RadioGroup>
+              </div>
+
 
               {/* Preview */}
               {parsedDate && (
@@ -313,7 +351,7 @@ export const LaundryScheduledLinkModal = ({
                       <span>{previewData.count} apartamentos con servicio</span>
                     )}
                   </div>
-                  {nextRouteInfo && (
+                  {workflowVersion === 'route_v2' && nextRouteInfo && (
                     <div className="rounded-md border border-blue-200 bg-blue-50 p-2 text-xs text-blue-900">
                       <strong>Preparación siguiente:</strong>{' '}
                       {nextRouteInfo.schedule.name}{' '}

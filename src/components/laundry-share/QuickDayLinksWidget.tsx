@@ -272,7 +272,7 @@ export const QuickDayLinksWidget = () => {
         expiresAt,
         filters: {
           sedeId: activeSede.id,
-          workflowVersion: 'route_v2',
+          workflowVersion: 'legacy',
           deliveryDate: format(date, 'yyyy-MM-dd'),
           collectionDates: info.collectionDateStrs,
           routeDates: info.collectionDateStrs,
@@ -280,7 +280,7 @@ export const QuickDayLinksWidget = () => {
           nextRouteDates: nextRouteInfo?.routeDates || [],
         },
         linkType: 'scheduled',
-        workflowVersion: 'route_v2',
+        workflowVersion: 'legacy',
         sedeId: activeSede.id,
       });
 
