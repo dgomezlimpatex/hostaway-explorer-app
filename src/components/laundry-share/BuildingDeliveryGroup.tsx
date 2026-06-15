@@ -33,53 +33,68 @@ const hasKitchenClothStockItem = (items: LaundryApartment['stockConsumables']) =
     return name.includes('cocina') && (name.includes('pano') || name.includes('bayeta'));
   });
 
+const shouldMoveItemToBottom = (value: string) => {
+  const name = normalizeItemName(value);
+  return (
+    name.includes('amenit') ||
+    name.includes('papel') ||
+    (name.includes('cocina') && (name.includes('pano') || name.includes('bayeta')))
+  );
+};
+
 const buildApartmentItems = (apt: LaundryApartment): string[] => {
   const { textiles, amenities } = apt;
   const items: string[] = [];
+  const bottomItems: string[] = [];
   const kitchenClothsQuantity = amenities.kitchenCloths > 0 ? amenities.kitchenCloths : 1;
+  const pushItem = (quantity: number, name: string, forceBottom = false) => {
+    const formatted = formatDeliveryItem(quantity, name);
+    if (forceBottom || shouldMoveItemToBottom(name)) bottomItems.push(formatted);
+    else items.push(formatted);
+  };
 
   if (apt.stockConsumables.length > 0) {
     apt.stockConsumables.forEach((item) => {
-      items.push(formatDeliveryItem(item.quantity, item.name));
+      pushItem(item.quantity, item.name);
     });
     if (!hasKitchenClothStockItem(apt.stockConsumables)) {
-      items.push(formatDeliveryItem(kitchenClothsQuantity, 'PAÑOS DE COCINA'));
+      pushItem(kitchenClothsQuantity, 'PAÑOS DE COCINA', true);
     }
   } else {
-    if (amenities.trashBags > 0) items.push(formatDeliveryItem(amenities.trashBags, 'BOLSAS BASURA'));
-    if (amenities.bathroomAmenities > 0) items.push(formatDeliveryItem(amenities.bathroomAmenities, 'AMENITIES BAÑO'));
-    if (amenities.kitchenAmenities > 0) items.push(formatDeliveryItem(amenities.kitchenAmenities, 'AMENITIES COCINA'));
-    if (amenities.foodKit > 0) items.push(formatDeliveryItem(amenities.foodKit, 'KIT ALIMENTARIO'));
+    if (amenities.trashBags > 0) pushItem(amenities.trashBags, 'BOLSAS BASURA');
+    if (amenities.bathroomAmenities > 0) pushItem(amenities.bathroomAmenities, 'AMENITIES BAÑO', true);
+    if (amenities.kitchenAmenities > 0) pushItem(amenities.kitchenAmenities, 'AMENITIES COCINA', true);
+    if (amenities.foodKit > 0) pushItem(amenities.foodKit, 'KIT ALIMENTARIO', true);
   }
 
-  if (textiles.pillowCases > 0) items.push(formatDeliveryItem(textiles.pillowCases, 'FUNDAS ALMOHADA'));
-  if (textiles.bathMats > 0) items.push(formatDeliveryItem(textiles.bathMats, 'ALFOMBRINES'));
-  if (textiles.towelsSmall > 0) items.push(formatDeliveryItem(textiles.towelsSmall, 'TOALLAS PEQUEÑAS'));
-  if (textiles.sheets > 0) items.push(formatDeliveryItem(textiles.sheets, 'SÁBANAS'));
-  if (textiles.sheetsSmall > 0) items.push(formatDeliveryItem(textiles.sheetsSmall, 'SÁBANAS PEQUEÑAS'));
-  if (textiles.sheetsSuite > 0) items.push(formatDeliveryItem(textiles.sheetsSuite, 'SÁBANAS SUITE'));
-  if (textiles.towelsLarge > 0) items.push(formatDeliveryItem(textiles.towelsLarge, 'TOALLAS GRANDES'));
+  if (textiles.pillowCases > 0) pushItem(textiles.pillowCases, 'FUNDAS ALMOHADA');
+  if (textiles.bathMats > 0) pushItem(textiles.bathMats, 'ALFOMBRINES');
+  if (textiles.towelsSmall > 0) pushItem(textiles.towelsSmall, 'TOALLAS PEQUEÑAS');
+  if (textiles.sheets > 0) pushItem(textiles.sheets, 'SÁBANAS');
+  if (textiles.sheetsSmall > 0) pushItem(textiles.sheetsSmall, 'SÁBANAS PEQUEÑAS');
+  if (textiles.sheetsSuite > 0) pushItem(textiles.sheetsSuite, 'SÁBANAS SUITE');
+  if (textiles.towelsLarge > 0) pushItem(textiles.towelsLarge, 'TOALLAS GRANDES');
 
   if (apt.stockConsumables.length === 0) {
-    if (amenities.toiletPaper > 0) items.push(formatDeliveryItem(amenities.toiletPaper, 'PAPEL HIGIÉNICO'));
-    if (amenities.kitchenPaper > 0) items.push(formatDeliveryItem(amenities.kitchenPaper, 'PAPEL COCINA'));
-    if (amenities.shampoo > 0) items.push(formatDeliveryItem(amenities.shampoo, 'CHAMPÚ'));
-    if (amenities.conditioner > 0) items.push(formatDeliveryItem(amenities.conditioner, 'ACONDICIONADOR'));
-    if (amenities.showerGel > 0) items.push(formatDeliveryItem(amenities.showerGel, 'GEL DUCHA'));
-    if (amenities.liquidSoap > 0) items.push(formatDeliveryItem(amenities.liquidSoap, 'JABÓN LÍQUIDO'));
-    if (amenities.bathroomAirFreshener > 0) items.push(formatDeliveryItem(amenities.bathroomAirFreshener, 'AMBIENTADOR BAÑO'));
-    if (amenities.dishwasherDetergent > 0) items.push(formatDeliveryItem(amenities.dishwasherDetergent, 'DETERGENTE LAVAVAJILLAS'));
-    items.push(formatDeliveryItem(kitchenClothsQuantity, 'PAÑOS DE COCINA'));
-    if (amenities.sponges > 0) items.push(formatDeliveryItem(amenities.sponges, 'ESTROPAJOS'));
-    if (amenities.glassCleaner > 0) items.push(formatDeliveryItem(amenities.glassCleaner, 'LIMPIACRISTALES'));
-    if (amenities.bathroomDisinfectant > 0) items.push(formatDeliveryItem(amenities.bathroomDisinfectant, 'DESINFECTANTE BAÑO'));
-    if (amenities.oil > 0) items.push(formatDeliveryItem(amenities.oil, 'ACEITE'));
-    if (amenities.vinegar > 0) items.push(formatDeliveryItem(amenities.vinegar, 'VINAGRE'));
-    if (amenities.salt > 0) items.push(formatDeliveryItem(amenities.salt, 'SAL'));
-    if (amenities.sugar > 0) items.push(formatDeliveryItem(amenities.sugar, 'AZÚCAR'));
+    if (amenities.toiletPaper > 0) pushItem(amenities.toiletPaper, 'PAPEL HIGIÉNICO', true);
+    if (amenities.kitchenPaper > 0) pushItem(amenities.kitchenPaper, 'PAPEL COCINA', true);
+    if (amenities.shampoo > 0) pushItem(amenities.shampoo, 'CHAMPÚ', true);
+    if (amenities.conditioner > 0) pushItem(amenities.conditioner, 'ACONDICIONADOR', true);
+    if (amenities.showerGel > 0) pushItem(amenities.showerGel, 'GEL DUCHA', true);
+    if (amenities.liquidSoap > 0) pushItem(amenities.liquidSoap, 'JABÓN LÍQUIDO', true);
+    if (amenities.bathroomAirFreshener > 0) pushItem(amenities.bathroomAirFreshener, 'AMBIENTADOR BAÑO', true);
+    if (amenities.dishwasherDetergent > 0) pushItem(amenities.dishwasherDetergent, 'DETERGENTE LAVAVAJILLAS', true);
+    pushItem(kitchenClothsQuantity, 'PAÑOS DE COCINA', true);
+    if (amenities.sponges > 0) pushItem(amenities.sponges, 'ESTROPAJOS', true);
+    if (amenities.glassCleaner > 0) pushItem(amenities.glassCleaner, 'LIMPIACRISTALES', true);
+    if (amenities.bathroomDisinfectant > 0) pushItem(amenities.bathroomDisinfectant, 'DESINFECTANTE BAÑO', true);
+    if (amenities.oil > 0) pushItem(amenities.oil, 'ACEITE', true);
+    if (amenities.vinegar > 0) pushItem(amenities.vinegar, 'VINAGRE', true);
+    if (amenities.salt > 0) pushItem(amenities.salt, 'SAL', true);
+    if (amenities.sugar > 0) pushItem(amenities.sugar, 'AZÚCAR', true);
   }
 
-  return items;
+  return [...items, ...bottomItems];
 };
 
 export const BuildingDeliveryGroup = ({
@@ -187,9 +202,9 @@ export const BuildingDeliveryGroup = ({
                         </div>
                         {allItems.length > 0 && (
                           <ul className={cn('mt-2 space-y-0.5 text-sm text-muted-foreground', isDelivered && 'line-through')}>
-                            {allItems.map((item) => (
+                            {allItems.map((item, index) => (
                               <li key={item} className="flex items-center gap-2">
-                                <span className="h-1 w-1 rounded-full bg-current opacity-60 flex-shrink-0" />
+                                <span className="w-7 shrink-0 font-bold text-foreground">{index + 1}º</span>
                                 <span>{item}</span>
                               </li>
                             ))}

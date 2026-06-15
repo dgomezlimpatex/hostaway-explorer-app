@@ -125,52 +125,68 @@ const hasKitchenClothStockItem = (items: RouteBag['stockConsumables']) =>
     return name.includes('cocina') && (name.includes('pano') || name.includes('bayeta'));
   });
 
+const shouldMoveItemToBottom = (value: string) => {
+  const name = normalizeItemName(value);
+  return (
+    name.includes('amenit') ||
+    name.includes('papel') ||
+    (name.includes('cocina') && (name.includes('pano') || name.includes('bayeta')))
+  );
+};
+
 const buildBagItems = (bag: RouteBag): string[] => {
-  const items: Array<string | null> = [];
+  const items: string[] = [];
+  const bottomItems: string[] = [];
   const kitchenClothsQuantity = bag.amenities.kitchenCloths > 0 ? bag.amenities.kitchenCloths : 1;
+  const pushItem = (quantity: number, label: string, forceBottom = false) => {
+    const formatted = item(quantity, label);
+    if (!formatted) return;
+    if (forceBottom || shouldMoveItemToBottom(label)) bottomItems.push(formatted);
+    else items.push(formatted);
+  };
 
   if (bag.stockConsumables.length > 0) {
     bag.stockConsumables.forEach((stockItem) => {
-      items.push(item(stockItem.quantity, stockItem.name));
+      pushItem(stockItem.quantity, stockItem.name);
     });
     if (!hasKitchenClothStockItem(bag.stockConsumables)) {
-      items.push(item(kitchenClothsQuantity, 'PAÑOS DE COCINA'));
+      pushItem(kitchenClothsQuantity, 'PAÑOS DE COCINA', true);
     }
   } else {
-    items.push(item(bag.amenities.trashBags, 'BOLSAS BASURA'));
-    items.push(item(bag.amenities.bathroomAmenities, 'AMENITIES DE BAÑO'));
-    items.push(item(bag.amenities.kitchenAmenities, 'AMENITIES DE COCINA'));
-    items.push(item(bag.amenities.foodKit, 'AMENITIES DE ALIMENTACIÓN'));
+    pushItem(bag.amenities.trashBags, 'BOLSAS BASURA');
+    pushItem(bag.amenities.bathroomAmenities, 'AMENITIES DE BAÑO', true);
+    pushItem(bag.amenities.kitchenAmenities, 'AMENITIES DE COCINA', true);
+    pushItem(bag.amenities.foodKit, 'AMENITIES DE ALIMENTACIÓN', true);
   }
 
-  items.push(item(bag.textiles.pillowCases, 'FUNDAS ALMOHADA'));
-  items.push(item(bag.textiles.bathMats, 'ALFOMBRINES'));
-  items.push(item(bag.textiles.towelsSmall, 'TOALLAS PEQUEÑAS'));
-  items.push(item(bag.textiles.sheets, 'SÁBANAS MATRIMONIO'));
-  items.push(item(bag.textiles.sheetsSmall, 'SÁBANAS INDIVIDUALES'));
-  items.push(item(bag.textiles.sheetsSuite, 'SÁBANAS SUITE'));
-  items.push(item(bag.textiles.towelsLarge, 'TOALLAS GRANDES'));
+  pushItem(bag.textiles.pillowCases, 'FUNDAS ALMOHADA');
+  pushItem(bag.textiles.bathMats, 'ALFOMBRINES');
+  pushItem(bag.textiles.towelsSmall, 'TOALLAS PEQUEÑAS');
+  pushItem(bag.textiles.sheets, 'SÁBANAS MATRIMONIO');
+  pushItem(bag.textiles.sheetsSmall, 'SÁBANAS INDIVIDUALES');
+  pushItem(bag.textiles.sheetsSuite, 'SÁBANAS SUITE');
+  pushItem(bag.textiles.towelsLarge, 'TOALLAS GRANDES');
 
   if (bag.stockConsumables.length === 0) {
-    items.push(item(bag.amenities.toiletPaper, 'PAPEL HIGIÉNICO'));
-    items.push(item(bag.amenities.kitchenPaper, 'PAPEL DE COCINA'));
-    items.push(item(bag.amenities.shampoo, 'CHAMPÚ'));
-    items.push(item(bag.amenities.conditioner, 'ACONDICIONADOR'));
-    items.push(item(bag.amenities.showerGel, 'GEL DUCHA'));
-    items.push(item(bag.amenities.liquidSoap, 'JABÓN LÍQUIDO'));
-    items.push(item(bag.amenities.bathroomAirFreshener, 'AMBIENTADOR BAÑO'));
-    items.push(item(bag.amenities.dishwasherDetergent, 'DETERGENTE LAVAVAJILLAS'));
-    items.push(item(kitchenClothsQuantity, 'PAÑOS DE COCINA'));
-    items.push(item(bag.amenities.sponges, 'ESTROPAJOS'));
-    items.push(item(bag.amenities.glassCleaner, 'LIMPIACRISTALES'));
-    items.push(item(bag.amenities.bathroomDisinfectant, 'DESINFECTANTE BAÑO'));
-    items.push(item(bag.amenities.oil, 'ACEITE'));
-    items.push(item(bag.amenities.vinegar, 'VINAGRE'));
-    items.push(item(bag.amenities.salt, 'SAL'));
-    items.push(item(bag.amenities.sugar, 'AZÚCAR'));
+    pushItem(bag.amenities.toiletPaper, 'PAPEL HIGIÉNICO', true);
+    pushItem(bag.amenities.kitchenPaper, 'PAPEL DE COCINA', true);
+    pushItem(bag.amenities.shampoo, 'CHAMPÚ', true);
+    pushItem(bag.amenities.conditioner, 'ACONDICIONADOR', true);
+    pushItem(bag.amenities.showerGel, 'GEL DUCHA', true);
+    pushItem(bag.amenities.liquidSoap, 'JABÓN LÍQUIDO', true);
+    pushItem(bag.amenities.bathroomAirFreshener, 'AMBIENTADOR BAÑO', true);
+    pushItem(bag.amenities.dishwasherDetergent, 'DETERGENTE LAVAVAJILLAS', true);
+    pushItem(kitchenClothsQuantity, 'PAÑOS DE COCINA', true);
+    pushItem(bag.amenities.sponges, 'ESTROPAJOS', true);
+    pushItem(bag.amenities.glassCleaner, 'LIMPIACRISTALES', true);
+    pushItem(bag.amenities.bathroomDisinfectant, 'DESINFECTANTE BAÑO', true);
+    pushItem(bag.amenities.oil, 'ACEITE', true);
+    pushItem(bag.amenities.vinegar, 'VINAGRE', true);
+    pushItem(bag.amenities.salt, 'SAL', true);
+    pushItem(bag.amenities.sugar, 'AZÚCAR', true);
   }
 
-  return items.filter(Boolean) as string[];
+  return [...items, ...bottomItems];
 };
 
 const BagCard = ({
@@ -228,9 +244,9 @@ const BagCard = ({
             Contenido de la bolsa
           </p>
           <ul className="space-y-1">
-            {items.length > 0 ? items.map((line) => (
+            {items.length > 0 ? items.map((line, index) => (
               <li key={line} className="flex gap-2 text-base font-bold">
-                <span className="mt-2 h-1.5 w-1.5 rounded-full bg-current opacity-60" />
+                <span className="w-8 shrink-0 text-foreground">{index + 1}º</span>
                 <span>{line}</span>
               </li>
             )) : (
@@ -357,7 +373,7 @@ export const LaundryRouteV2View = ({ token }: LaundryRouteV2ViewProps) => {
                 <h2 className="font-black uppercase">Alerta importante</h2>
               </div>
               <p className="mt-1 text-sm font-semibold">
-                Hay {workflow.stats.urgentPending} bolsa(s) de la ruta actual sin preparar. Deben hacerse antes de continuar.
+                Hay {workflow.stats.urgentPending} {workflow.stats.urgentPending === 1 ? 'bolsa' : 'bolsas'} de la ruta actual pendientes de preparación. Deben prepararse y entregarse hoy antes de continuar con el resto del proceso.
               </p>
             </div>
 
