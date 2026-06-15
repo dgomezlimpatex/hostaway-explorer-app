@@ -137,7 +137,7 @@ const shouldMoveItemToBottom = (value: string) => {
 const buildBagItems = (bag: RouteBag): string[] => {
   const items: string[] = [];
   const bottomItems: string[] = [];
-  const kitchenClothsQuantity = bag.amenities.kitchenCloths > 0 ? bag.amenities.kitchenCloths : 1;
+  const kitchenClothsQuantity = bag.amenities.kitchenCloths || 0;
   const pushItem = (quantity: number, label: string, forceBottom = false) => {
     const formatted = item(quantity, label);
     if (!formatted) return;
@@ -149,7 +149,7 @@ const buildBagItems = (bag: RouteBag): string[] => {
     bag.stockConsumables.forEach((stockItem) => {
       pushItem(stockItem.quantity, stockItem.name);
     });
-    if (!hasKitchenClothStockItem(bag.stockConsumables)) {
+    if (kitchenClothsQuantity > 0 && !hasKitchenClothStockItem(bag.stockConsumables)) {
       pushItem(kitchenClothsQuantity, 'PAÑOS DE COCINA', true);
     }
   } else {
@@ -176,7 +176,7 @@ const buildBagItems = (bag: RouteBag): string[] => {
     pushItem(bag.amenities.liquidSoap, 'JABÓN LÍQUIDO', true);
     pushItem(bag.amenities.bathroomAirFreshener, 'AMBIENTADOR BAÑO', true);
     pushItem(bag.amenities.dishwasherDetergent, 'DETERGENTE LAVAVAJILLAS', true);
-    pushItem(kitchenClothsQuantity, 'PAÑOS DE COCINA', true);
+    if (kitchenClothsQuantity > 0) pushItem(kitchenClothsQuantity, 'PAÑOS DE COCINA', true);
     pushItem(bag.amenities.sponges, 'ESTROPAJOS', true);
     pushItem(bag.amenities.glassCleaner, 'LIMPIACRISTALES', true);
     pushItem(bag.amenities.bathroomDisinfectant, 'DESINFECTANTE BAÑO', true);

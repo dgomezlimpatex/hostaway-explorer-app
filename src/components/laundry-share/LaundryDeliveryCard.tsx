@@ -107,8 +107,8 @@ export const LaundryDeliveryCard = ({
     task.kitchenCloths > 0 || task.bathroomAmenities > 0 || task.kitchenAmenities > 0;
 
   const hasStockConsumables = !!task.stockConsumables?.length;
-  const kitchenClothsQuantity = task.kitchenCloths > 0 ? task.kitchenCloths : 1;
-  const shouldShowKitchenCloths = !hasKitchenClothStockItem(task.stockConsumables);
+  const kitchenClothsQuantity = task.kitchenCloths || 0;
+  const shouldShowKitchenCloths = kitchenClothsQuantity > 0 && !hasKitchenClothStockItem(task.stockConsumables);
   const hasAmenities = hasStockConsumables || hasLegacyAmenities || shouldShowKitchenCloths;
 
   return (

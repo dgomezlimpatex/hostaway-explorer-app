@@ -155,13 +155,15 @@ export const fetchPublicLaundryStockConsumptions = async (
  */
 export const extractBuildingCode = (propertyCode: string): string => {
   if (!propertyCode) return 'SIN EDIFICIO';
+
+  const normalizedCode = propertyCode.trim().replace(/\s*-\s*hu[eé]sped.*$/i, '');
   
   // Try to split by common separators and get first part
   const separators = ['-', ' ', '_', '.'];
   
   for (const sep of separators) {
-    if (propertyCode.includes(sep)) {
-      const parts = propertyCode.split(sep);
+    if (normalizedCode.includes(sep)) {
+      const parts = normalizedCode.split(sep);
       // Return the first part if it's mostly letters
       const firstPart = parts[0].trim();
       if (firstPart && /^[A-Za-z]+/.test(firstPart)) {
@@ -171,12 +173,12 @@ export const extractBuildingCode = (propertyCode: string): string => {
   }
   
   // If no separator found, try to extract letters from the beginning
-  const match = propertyCode.match(/^([A-Za-z]+)/);
+  const match = normalizedCode.match(/^([A-Za-z]+)/);
   if (match) {
     return match[1].toUpperCase();
   }
   
-  return propertyCode.toUpperCase();
+  return normalizedCode.toUpperCase();
 };
 
 /**

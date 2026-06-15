@@ -46,7 +46,7 @@ const buildApartmentItems = (apt: LaundryApartment): string[] => {
   const { textiles, amenities } = apt;
   const items: string[] = [];
   const bottomItems: string[] = [];
-  const kitchenClothsQuantity = amenities.kitchenCloths > 0 ? amenities.kitchenCloths : 1;
+  const kitchenClothsQuantity = amenities.kitchenCloths || 0;
   const pushItem = (quantity: number, name: string, forceBottom = false) => {
     const formatted = formatDeliveryItem(quantity, name);
     if (forceBottom || shouldMoveItemToBottom(name)) bottomItems.push(formatted);
@@ -57,7 +57,7 @@ const buildApartmentItems = (apt: LaundryApartment): string[] => {
     apt.stockConsumables.forEach((item) => {
       pushItem(item.quantity, item.name);
     });
-    if (!hasKitchenClothStockItem(apt.stockConsumables)) {
+    if (kitchenClothsQuantity > 0 && !hasKitchenClothStockItem(apt.stockConsumables)) {
       pushItem(kitchenClothsQuantity, 'PAÑOS DE COCINA', true);
     }
   } else {
@@ -84,7 +84,7 @@ const buildApartmentItems = (apt: LaundryApartment): string[] => {
     if (amenities.liquidSoap > 0) pushItem(amenities.liquidSoap, 'JABÓN LÍQUIDO', true);
     if (amenities.bathroomAirFreshener > 0) pushItem(amenities.bathroomAirFreshener, 'AMBIENTADOR BAÑO', true);
     if (amenities.dishwasherDetergent > 0) pushItem(amenities.dishwasherDetergent, 'DETERGENTE LAVAVAJILLAS', true);
-    pushItem(kitchenClothsQuantity, 'PAÑOS DE COCINA', true);
+    if (kitchenClothsQuantity > 0) pushItem(kitchenClothsQuantity, 'PAÑOS DE COCINA', true);
     if (amenities.sponges > 0) pushItem(amenities.sponges, 'ESTROPAJOS', true);
     if (amenities.glassCleaner > 0) pushItem(amenities.glassCleaner, 'LIMPIACRISTALES', true);
     if (amenities.bathroomDisinfectant > 0) pushItem(amenities.bathroomDisinfectant, 'DESINFECTANTE BAÑO', true);
