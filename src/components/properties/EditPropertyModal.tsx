@@ -16,7 +16,7 @@ import { PropertyPreferredCleaners } from './PropertyPreferredCleaners';
 import { NotesSection } from './forms/NotesSection';
 import { ClientSelectionSection } from './forms/ClientSelectionSection';
 import { useSavePropertyStockConsumptionRules, useStockProducts } from '@/hooks/useStock';
-import { deriveLegacyStockFields } from './forms/propertyStockConsumption';
+import { applyDefaultPropertyConsumptionsToForm, deriveLegacyStockFields } from './forms/propertyStockConsumption';
 import { 
   Home,
   Save,
@@ -49,6 +49,7 @@ export const EditPropertyModal: React.FC<EditPropertyModalProps> = ({
       numeroCamasSuite: property.numeroCamasSuite || 0,
       numeroSofasCama: property.numeroSofasCama || 0,
       numeroBanos: property.numeroBanos,
+      numeroCocinas: property.numeroCocinas ?? 1,
       duracionServicio: property.duracionServicio,
       costeServicio: property.costeServicio,
       checkInPredeterminado: property.checkInPredeterminado,
@@ -88,6 +89,7 @@ export const EditPropertyModal: React.FC<EditPropertyModalProps> = ({
         numeroCamasSuite: property.numeroCamasSuite || 0,
         numeroSofasCama: property.numeroSofasCama || 0,
         numeroBanos: property.numeroBanos,
+        numeroCocinas: property.numeroCocinas ?? 1,
         duracionServicio: property.duracionServicio,
         costeServicio: property.costeServicio,
         checkInPredeterminado: property.checkInPredeterminado,
@@ -142,6 +144,17 @@ export const EditPropertyModal: React.FC<EditPropertyModalProps> = ({
     }
   };
 
+  const handleApplyAutomaticConsumptions = () => {
+    const values = form.getValues();
+    applyDefaultPropertyConsumptionsToForm(form.setValue, stockProducts, {
+      numeroCamas: values.numeroCamas || 0,
+      numeroCamasPequenas: values.numeroCamasPequenas || 0,
+      numeroCamasSuite: values.numeroCamasSuite || 0,
+      numeroBanos: values.numeroBanos || 0,
+      numeroCocinas: values.numeroCocinas || 0,
+    });
+  };
+
   const handleClose = () => {
     form.reset();
     onOpenChange(false);
@@ -167,6 +180,21 @@ export const EditPropertyModal: React.FC<EditPropertyModalProps> = ({
             <CharacteristicsSection control={form.control} />
             
             <ServiceSection control={form.control} />
+
+            <div className="rounded-lg border border-blue-200 bg-blue-50 p-4">
+              <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                <div>
+                  <p className="font-semibold text-blue-900">Calculo automatico de consumos</p>
+                  <p className="text-sm text-blue-700">
+                    Recalcula sabanas, toallas, amenities y consumibles desde camas, banos y cocinas.
+                    Puedes ajustar cualquier cantidad despues.
+                  </p>
+                </div>
+                <Button type="button" variant="outline" onClick={handleApplyAutomaticConsumptions}>
+                  Recalcular consumos
+                </Button>
+              </div>
+            </div>
             
             <StockConsumptionSection control={form.control} setValue={form.setValue} property={property} />
             

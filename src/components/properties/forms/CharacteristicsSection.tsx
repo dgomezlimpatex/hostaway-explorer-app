@@ -115,6 +115,26 @@ export const CharacteristicsSection = ({ control }: CharacteristicsSectionProps)
             </FormItem>
           )}
         />
+        <FormField
+          control={control}
+          name="numeroCocinas"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel className="flex items-center gap-2">
+                Numero de Cocinas
+              </FormLabel>
+              <FormControl>
+                <Input 
+                  {...field} 
+                  type="number" 
+                  min="0"
+                  onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
       </div>
     </div>
   );

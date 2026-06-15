@@ -13,6 +13,7 @@ export interface Property extends BaseEntity {
   numeroCamasSuite: number;
   numeroSofasCama: number;
   numeroBanos: number;
+  numeroCocinas: number;
   
   // Servicio
   duracionServicio: number; // en minutos
@@ -75,6 +76,7 @@ export interface CreatePropertyData {
   numeroCamasSuite: number;
   numeroSofasCama: number;
   numeroBanos: number;
+  numeroCocinas: number;
   duracionServicio: number;
   costeServicio: number;
   checkInPredeterminado: string;

@@ -14,6 +14,7 @@ export const mapPropertyFromDB = (row: any): Property => ({
   numeroCamasSuite: row.numero_camas_suite || 0,
   numeroSofasCama: row.numero_sofas_cama || 0,
   numeroBanos: row.numero_banos,
+  numeroCocinas: row.numero_cocinas ?? 1,
   duracionServicio: row.duracion_servicio,
   costeServicio: row.coste_servicio,
   checkInPredeterminado: row.check_in_predeterminado,
@@ -56,6 +57,7 @@ export const mapPropertyToDB = (property: Partial<CreatePropertyData>): any => {
   if (property.numeroCamasSuite !== undefined) updateData.numero_camas_suite = property.numeroCamasSuite;
   if (property.numeroSofasCama !== undefined) updateData.numero_sofas_cama = property.numeroSofasCama;
   if (property.numeroBanos !== undefined) updateData.numero_banos = property.numeroBanos;
+  if (property.numeroCocinas !== undefined) updateData.numero_cocinas = property.numeroCocinas;
   if (property.duracionServicio !== undefined) updateData.duracion_servicio = property.duracionServicio;
   if (property.costeServicio !== undefined) updateData.coste_servicio = property.costeServicio;
   if (property.checkInPredeterminado !== undefined) updateData.check_in_predeterminado = property.checkInPredeterminado;

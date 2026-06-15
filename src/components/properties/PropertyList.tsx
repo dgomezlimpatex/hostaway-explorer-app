@@ -89,6 +89,7 @@ export const PropertyList = ({ searchTerm = '' }: PropertyListProps) => {
         numeroCamasSuite: property.numeroCamasSuite,
         numeroSofasCama: property.numeroSofasCama,
         numeroBanos: property.numeroBanos,
+        numeroCocinas: property.numeroCocinas ?? 1,
         duracionServicio: property.duracionServicio,
         costeServicio: property.costeServicio,
         checkInPredeterminado: property.checkInPredeterminado,
@@ -105,6 +106,8 @@ export const PropertyList = ({ searchTerm = '' }: PropertyListProps) => {
         amenitiesCocina: property.amenitiesCocina,
         cantidadRollosPapelHigienico: property.cantidadRollosPapelHigienico,
         cantidadRollosPapelCocina: property.cantidadRollosPapelCocina,
+        bayetasCocina: property.bayetasCocina,
+        bolsasBasura: property.bolsasBasura,
         notas: property.notas,
         clienteId: property.clienteId,
       };

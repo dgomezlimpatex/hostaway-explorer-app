@@ -1,6 +1,6 @@
 
-import { useState } from 'react';
-import { useForm } from 'react-hook-form';
+import { useEffect, useState } from 'react';
+import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -18,7 +18,7 @@ import { NotesSection } from './forms/NotesSection';
 import { ClientSelectionSection } from './forms/ClientSelectionSection';
 import { CreatePropertyData } from '@/types/property';
 import { useSavePropertyStockConsumptionRules, useStockProducts } from '@/hooks/useStock';
-import { deriveLegacyStockFields } from './forms/propertyStockConsumption';
+import { applyDefaultPropertyConsumptionsToForm, deriveLegacyStockFields } from './forms/propertyStockConsumption';
 
 export const CreatePropertyModal = () => {
   const [open, setOpen] = useState(false);
@@ -38,6 +38,7 @@ export const CreatePropertyModal = () => {
       numeroCamasSuite: 0,
       numeroSofasCama: 0,
       numeroBanos: 1,
+      numeroCocinas: 1,
       duracionServicio: 120,
       costeServicio: 0,
       checkInPredeterminado: '15:00',
@@ -64,6 +65,37 @@ export const CreatePropertyModal = () => {
     },
   });
 
+  const [numeroCamas, numeroCamasPequenas, numeroCamasSuite, numeroBanos, numeroCocinas] = useWatch({
+    control: form.control,
+    name: ['numeroCamas', 'numeroCamasPequenas', 'numeroCamasSuite', 'numeroBanos', 'numeroCocinas'],
+  });
+
+  useEffect(() => {
+    if (!open || stockProducts.length === 0) return;
+
+    applyDefaultPropertyConsumptionsToForm(
+      form.setValue,
+      stockProducts,
+      {
+        numeroCamas: numeroCamas || 0,
+        numeroCamasPequenas: numeroCamasPequenas || 0,
+        numeroCamasSuite: numeroCamasSuite || 0,
+        numeroBanos: numeroBanos || 0,
+        numeroCocinas: numeroCocinas || 0,
+      },
+      { shouldDirty: false }
+    );
+  }, [
+    form.setValue,
+    numeroBanos,
+    numeroCamas,
+    numeroCamasPequenas,
+    numeroCamasSuite,
+    numeroCocinas,
+    open,
+    stockProducts,
+  ]);
+
   const onSubmit = async (data: PropertyFormData) => {
     if (!isActiveSedeSet()) {
       return;
@@ -82,6 +114,7 @@ export const CreatePropertyModal = () => {
       numeroCamasSuite: data.numeroCamasSuite,
       numeroSofasCama: data.numeroSofasCama,
       numeroBanos: data.numeroBanos,
+      numeroCocinas: data.numeroCocinas,
       duracionServicio: data.duracionServicio,
       costeServicio: data.costeServicio,
       checkInPredeterminado: data.checkInPredeterminado,
