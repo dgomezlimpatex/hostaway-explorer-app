@@ -82,6 +82,22 @@ function legacyConcatenatedRoomsWarning(raw: string): string {
   return `Reserva con varias habitaciones recibida en formato antiguo ("${raw}"). Actualiza el script Python para enviar 'rooms' como array.`;
 }
 
+function splitLegacyConcatenatedRooms(raw: string): string[] {
+  const cleaned = raw.replace(/\(\+\s*\d+\s*M[aá]s\)/gi, "").trim();
+  const matches = cleaned.match(
+    /Habitaci[oó]n(?:\s+doble\s+sin\s+vistas)?\s+.*?(?=Habitaci[oó]n(?:\s+doble\s+sin\s+vistas)?\s+|$)/gi,
+  );
+  if (!matches) return [];
+
+  return Array.from(
+    new Set(
+      matches
+        .map((room) => room.trim())
+        .filter((room) => room.length > 0 && room !== "-"),
+    ),
+  );
+}
+
 /**
  * Normalizes the incoming room data into a clean array of real room names.
  * Returns { rooms: [], needsAssignment, displayRoom, warnings }.
@@ -104,6 +120,16 @@ function normalizeRooms(payload: ReservationPayload): {
     candidates = payload.rooms.map((r) => (r ?? "").toString().trim());
     const legacyConcatenatedRoom = candidates.find((room) => isLegacyConcatenatedRooms(room));
     if (legacyConcatenatedRoom) {
+      const splitRooms = splitLegacyConcatenatedRooms(legacyConcatenatedRoom);
+      if (splitRooms.length > 1) {
+        warnings.push(`Reserva con varias habitaciones separada automáticamente: ${splitRooms.join(", ")}`);
+        return {
+          rooms: splitRooms,
+          needsAssignment: false,
+          displayRoom: splitRooms.join(", "),
+          warnings,
+        };
+      }
       const displayRoom = candidates.filter(Boolean).join(", ") || legacyConcatenatedRoom;
       warnings.push(legacyConcatenatedRoomsWarning(displayRoom));
       return {
@@ -119,6 +145,16 @@ function normalizeRooms(payload: ReservationPayload): {
     const concatenated =
       /Habitaci[oó]n.*Habitaci[oó]n/i.test(raw) || /\(\+.*M[aá]s\)/i.test(raw);
     if (concatenated) {
+      const splitRooms = splitLegacyConcatenatedRooms(raw);
+      if (splitRooms.length > 1) {
+        warnings.push(`Reserva con varias habitaciones separada automáticamente: ${splitRooms.join(", ")}`);
+        return {
+          rooms: splitRooms,
+          needsAssignment: false,
+          displayRoom: splitRooms.join(", "),
+          warnings,
+        };
+      }
       warnings.push(
         `Reserva con varias habitaciones recibida en formato antiguo ("${raw}"). Actualiza el script Python para enviar 'rooms' como array.`,
       );
