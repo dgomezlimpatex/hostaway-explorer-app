@@ -23,7 +23,7 @@ export type StockConsumptionValues = Record<string, number>;
 
 export type PropertyConsumptionCharacteristics = Pick<
   CreatePropertyData,
-  'numeroCamas' | 'numeroCamasPequenas' | 'numeroCamasSuite' | 'numeroBanos' | 'numeroCocinas'
+  'numeroCamas' | 'numeroCamasPequenas' | 'numeroCamasSuite' | 'numeroSofasCama' | 'numeroBanos' | 'numeroCocinas'
 >;
 
 const legacyStockFields: LegacyStockField[] = [
@@ -82,16 +82,18 @@ export const calculateDefaultPropertyConsumptions = (
   const doubleBeds = Number(characteristics.numeroCamas) || 0;
   const singleBeds = Number(characteristics.numeroCamasPequenas) || 0;
   const suiteBeds = Number(characteristics.numeroCamasSuite) || 0;
+  const sofaBeds = Number(characteristics.numeroSofasCama) || 0;
   const bathrooms = Number(characteristics.numeroBanos) || 0;
   const kitchens = Number(characteristics.numeroCocinas) || 0;
+  const doubleBedEquivalent = doubleBeds + sofaBeds;
 
   return {
-    numeroSabanas: (doubleBeds * 3) + (singleBeds * 3),
+    numeroSabanas: (doubleBedEquivalent * 3) + (singleBeds * 3),
     numeroSabanasRequenas: 0,
     numeroSabanasSuite: suiteBeds * 3,
-    numeroFundasAlmohada: (doubleBeds * 2) + singleBeds + (suiteBeds * 2),
-    numeroToallasGrandes: (doubleBeds * 2) + singleBeds + (suiteBeds * 2),
-    numeroTotallasPequenas: (doubleBeds * 2) + singleBeds + (suiteBeds * 2),
+    numeroFundasAlmohada: (doubleBedEquivalent * 2) + singleBeds + (suiteBeds * 2),
+    numeroToallasGrandes: (doubleBedEquivalent * 2) + singleBeds + (suiteBeds * 2),
+    numeroTotallasPequenas: (doubleBedEquivalent * 2) + singleBeds + (suiteBeds * 2),
     numeroAlfombrines: bathrooms,
     amenitiesBano: bathrooms,
     cantidadRollosPapelHigienico: bathrooms * 2,

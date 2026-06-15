@@ -150,6 +150,7 @@ export const EditPropertyModal: React.FC<EditPropertyModalProps> = ({
       numeroCamas: values.numeroCamas || 0,
       numeroCamasPequenas: values.numeroCamasPequenas || 0,
       numeroCamasSuite: values.numeroCamasSuite || 0,
+      numeroSofasCama: values.numeroSofasCama || 0,
       numeroBanos: values.numeroBanos || 0,
       numeroCocinas: values.numeroCocinas || 0,
     });

@@ -65,9 +65,9 @@ export const CreatePropertyModal = () => {
     },
   });
 
-  const [numeroCamas, numeroCamasPequenas, numeroCamasSuite, numeroBanos, numeroCocinas] = useWatch({
+  const [numeroCamas, numeroCamasPequenas, numeroCamasSuite, numeroSofasCama, numeroBanos, numeroCocinas] = useWatch({
     control: form.control,
-    name: ['numeroCamas', 'numeroCamasPequenas', 'numeroCamasSuite', 'numeroBanos', 'numeroCocinas'],
+    name: ['numeroCamas', 'numeroCamasPequenas', 'numeroCamasSuite', 'numeroSofasCama', 'numeroBanos', 'numeroCocinas'],
   });
 
   useEffect(() => {
@@ -80,6 +80,7 @@ export const CreatePropertyModal = () => {
         numeroCamas: numeroCamas || 0,
         numeroCamasPequenas: numeroCamasPequenas || 0,
         numeroCamasSuite: numeroCamasSuite || 0,
+        numeroSofasCama: numeroSofasCama || 0,
         numeroBanos: numeroBanos || 0,
         numeroCocinas: numeroCocinas || 0,
       },
@@ -91,6 +92,7 @@ export const CreatePropertyModal = () => {
     numeroCamas,
     numeroCamasPequenas,
     numeroCamasSuite,
+    numeroSofasCama,
     numeroCocinas,
     open,
     stockProducts,
