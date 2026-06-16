@@ -247,29 +247,20 @@ const BagAssemblyGuide = ({ bag }: { bag: RouteBag }) => {
                 {layer.step}
               </span>
 
-              <div className="min-w-0 flex-1">
-                <div className="grid grid-cols-[minmax(88px,1fr)_auto] items-center gap-2">
-                  <div className="min-w-0">
-                    <p className="text-[13px] font-black leading-tight text-[#17130f]">{layer.title}</p>
-                    <p className="truncate text-[9px] font-bold uppercase tracking-wide text-[#9b8268]">{layer.hint}</p>
-                  </div>
-
-                  <div className="flex max-w-[170px] flex-wrap justify-end gap-1">
-                    {layer.items.map((guideItem, index) => (
-                      <span
-                        key={`${layer.id}-${guideItem.label}-${index}`}
-                        className="inline-flex items-center rounded-md bg-[#f5efe5] pr-1.5 text-[11px] font-bold leading-5 text-[#17130f]"
-                      >
-                        <span className="mr-1 grid h-5 min-w-5 place-items-center rounded bg-[#1f1a14] px-1 text-[11px] font-black text-white">
-                          {guideItem.quantity}
-                        </span>
-                        <span className="max-w-[112px] truncate normal-case">
-                          {guideItem.label.toLowerCase()}
-                        </span>
-                      </span>
-                    ))}
-                  </div>
-                </div>
+              <div className="flex min-w-0 flex-1 flex-wrap gap-1">
+                {layer.items.map((guideItem, index) => (
+                  <span
+                    key={`${layer.id}-${guideItem.label}-${index}`}
+                    className="inline-flex min-w-0 items-center rounded-md bg-[#f5efe5] pr-2 text-[12px] font-black leading-6 text-[#17130f]"
+                  >
+                    <span className="mr-1.5 grid h-6 min-w-6 place-items-center rounded bg-[#1f1a14] px-1 text-[12px] font-black text-white">
+                      {guideItem.quantity}
+                    </span>
+                    <span className="truncate normal-case">
+                      {guideItem.label.toLowerCase()}
+                    </span>
+                  </span>
+                ))}
               </div>
             </div>
           </div>
