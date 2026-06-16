@@ -111,8 +111,6 @@ const formatDate = (date: string) =>
     month: 'short',
   }).format(new Date(`${date}T00:00:00`));
 
-const item = (quantity: number, label: string) => quantity > 0 ? `${quantity} ${label}`.toUpperCase() : null;
-
 const normalizeItemName = (value: string) =>
   value
     .normalize('NFD')
@@ -125,68 +123,183 @@ const hasKitchenClothStockItem = (items: RouteBag['stockConsumables']) =>
     return name.includes('cocina') && (name.includes('pano') || name.includes('bayeta'));
   });
 
-const shouldMoveItemToBottom = (value: string) => {
-  const name = normalizeItemName(value);
-  return (
-    name.includes('amenit') ||
-    name.includes('papel') ||
-    (name.includes('cocina') && (name.includes('pano') || name.includes('bayeta')))
-  );
+type BagLayerId =
+  | 'small_towels'
+  | 'bath_mats'
+  | 'sheets'
+  | 'large_towels'
+  | 'amenities'
+  | 'kitchen_cloths'
+  | 'paper_trash'
+  | 'other';
+
+type BagGuideItem = {
+  quantity: number;
+  label: string;
 };
 
-const buildBagItems = (bag: RouteBag): string[] => {
-  const items: string[] = [];
-  const bottomItems: string[] = [];
+type BagGuideLayer = {
+  id: BagLayerId;
+  step: number;
+  title: string;
+  hint: string;
+  items: BagGuideItem[];
+};
+
+const bagLayerDefinitions: Array<Omit<BagGuideLayer, 'items'>> = [
+  { id: 'small_towels', step: 1, title: 'Toallas pequeñas', hint: 'Fondo de la bolsa' },
+  { id: 'bath_mats', step: 2, title: 'Alfombrines', hint: 'Encima de las toallas pequeñas' },
+  { id: 'sheets', step: 3, title: 'Sábanas y fundas', hint: 'Matrimonio, individuales o suite' },
+  { id: 'large_towels', step: 4, title: 'Toallas grandes', hint: 'Bloque superior de textiles' },
+  { id: 'amenities', step: 5, title: 'Amenities', hint: 'Kits de baño, cocina o alimentación' },
+  { id: 'kitchen_cloths', step: 6, title: 'Paño de cocina', hint: 'Sobre los amenities' },
+  { id: 'paper_trash', step: 7, title: 'Papel y bolsas', hint: 'Papel higiénico y bolsas de basura' },
+  { id: 'other', step: 8, title: 'Otros consumibles', hint: 'Revisar antes de cerrar' },
+];
+
+const classifyStockConsumable = (value: string): BagLayerId => {
+  const name = normalizeItemName(value);
+  if (name.includes('papel') || name.includes('basura')) return 'paper_trash';
+  if (name.includes('pano') || name.includes('bayeta')) return 'kitchen_cloths';
+  if (name.includes('amenit') || name.includes('kit')) return 'amenities';
+  return 'other';
+};
+
+const buildBagGuideLayers = (bag: RouteBag): BagGuideLayer[] => {
+  const itemsByLayer = bagLayerDefinitions.reduce<Record<BagLayerId, BagGuideItem[]>>((acc, layer) => {
+    acc[layer.id] = [];
+    return acc;
+  }, {} as Record<BagLayerId, BagGuideItem[]>);
+
   const kitchenClothsQuantity = bag.amenities.kitchenCloths || 0;
-  const pushItem = (quantity: number, label: string, forceBottom = false) => {
-    const formatted = item(quantity, label);
-    if (!formatted) return;
-    if (forceBottom || shouldMoveItemToBottom(label)) bottomItems.push(formatted);
-    else items.push(formatted);
+  const pushItem = (layer: BagLayerId, quantity: number, label: string) => {
+    if (quantity <= 0) return;
+    itemsByLayer[layer].push({ quantity, label: label.toUpperCase() });
   };
+
+  pushItem('small_towels', bag.textiles.towelsSmall, 'Toallas pequeñas');
+  pushItem('bath_mats', bag.textiles.bathMats, 'Alfombrines');
+  pushItem('sheets', bag.textiles.sheets, 'Sábanas matrimonio');
+  pushItem('sheets', bag.textiles.sheetsSmall, 'Sábanas individuales');
+  pushItem('sheets', bag.textiles.sheetsSuite, 'Sábanas suite');
+  pushItem('sheets', bag.textiles.pillowCases, 'Fundas almohada');
+  pushItem('large_towels', bag.textiles.towelsLarge, 'Toallas grandes');
 
   if (bag.stockConsumables.length > 0) {
     bag.stockConsumables.forEach((stockItem) => {
-      pushItem(stockItem.quantity, stockItem.name);
+      pushItem(classifyStockConsumable(stockItem.name), stockItem.quantity, stockItem.name);
     });
     if (kitchenClothsQuantity > 0 && !hasKitchenClothStockItem(bag.stockConsumables)) {
-      pushItem(kitchenClothsQuantity, 'PAÑOS DE COCINA', true);
+      pushItem('kitchen_cloths', kitchenClothsQuantity, 'Paños de cocina');
     }
   } else {
-    pushItem(bag.amenities.trashBags, 'BOLSAS BASURA');
-    pushItem(bag.amenities.bathroomAmenities, 'AMENITIES DE BAÑO', true);
-    pushItem(bag.amenities.kitchenAmenities, 'AMENITIES DE COCINA', true);
-    pushItem(bag.amenities.foodKit, 'AMENITIES DE ALIMENTACIÓN', true);
+    pushItem('paper_trash', bag.amenities.trashBags, 'Bolsas basura');
+    pushItem('amenities', bag.amenities.bathroomAmenities, 'Amenities de baño');
+    pushItem('amenities', bag.amenities.kitchenAmenities, 'Amenities de cocina');
+    pushItem('amenities', bag.amenities.foodKit, 'Amenities de alimentación');
+    pushItem('paper_trash', bag.amenities.toiletPaper, 'Papel higiénico');
+    pushItem('paper_trash', bag.amenities.kitchenPaper, 'Papel de cocina');
+    pushItem('amenities', bag.amenities.shampoo, 'Champú');
+    pushItem('amenities', bag.amenities.conditioner, 'Acondicionador');
+    pushItem('amenities', bag.amenities.showerGel, 'Gel ducha');
+    pushItem('amenities', bag.amenities.liquidSoap, 'Jabón líquido');
+    pushItem('amenities', bag.amenities.bathroomAirFreshener, 'Ambientador baño');
+    pushItem('amenities', bag.amenities.dishwasherDetergent, 'Detergente lavavajillas');
+    pushItem('kitchen_cloths', kitchenClothsQuantity, 'Paños de cocina');
+    pushItem('amenities', bag.amenities.sponges, 'Estropajos');
+    pushItem('amenities', bag.amenities.glassCleaner, 'Limpiacristales');
+    pushItem('amenities', bag.amenities.bathroomDisinfectant, 'Desinfectante baño');
+    pushItem('amenities', bag.amenities.oil, 'Aceite');
+    pushItem('amenities', bag.amenities.vinegar, 'Vinagre');
+    pushItem('amenities', bag.amenities.salt, 'Sal');
+    pushItem('amenities', bag.amenities.sugar, 'Azúcar');
   }
 
-  pushItem(bag.textiles.pillowCases, 'FUNDAS ALMOHADA');
-  pushItem(bag.textiles.bathMats, 'ALFOMBRINES');
-  pushItem(bag.textiles.towelsSmall, 'TOALLAS PEQUEÑAS');
-  pushItem(bag.textiles.sheets, 'SÁBANAS MATRIMONIO');
-  pushItem(bag.textiles.sheetsSmall, 'SÁBANAS INDIVIDUALES');
-  pushItem(bag.textiles.sheetsSuite, 'SÁBANAS SUITE');
-  pushItem(bag.textiles.towelsLarge, 'TOALLAS GRANDES');
+  return bagLayerDefinitions
+    .map((layer) => ({ ...layer, items: itemsByLayer[layer.id] }))
+    .filter((layer) => layer.items.length > 0);
+};
 
-  if (bag.stockConsumables.length === 0) {
-    pushItem(bag.amenities.toiletPaper, 'PAPEL HIGIÉNICO', true);
-    pushItem(bag.amenities.kitchenPaper, 'PAPEL DE COCINA', true);
-    pushItem(bag.amenities.shampoo, 'CHAMPÚ', true);
-    pushItem(bag.amenities.conditioner, 'ACONDICIONADOR', true);
-    pushItem(bag.amenities.showerGel, 'GEL DUCHA', true);
-    pushItem(bag.amenities.liquidSoap, 'JABÓN LÍQUIDO', true);
-    pushItem(bag.amenities.bathroomAirFreshener, 'AMBIENTADOR BAÑO', true);
-    pushItem(bag.amenities.dishwasherDetergent, 'DETERGENTE LAVAVAJILLAS', true);
-    if (kitchenClothsQuantity > 0) pushItem(kitchenClothsQuantity, 'PAÑOS DE COCINA', true);
-    pushItem(bag.amenities.sponges, 'ESTROPAJOS', true);
-    pushItem(bag.amenities.glassCleaner, 'LIMPIACRISTALES', true);
-    pushItem(bag.amenities.bathroomDisinfectant, 'DESINFECTANTE BAÑO', true);
-    pushItem(bag.amenities.oil, 'ACEITE', true);
-    pushItem(bag.amenities.vinegar, 'VINAGRE', true);
-    pushItem(bag.amenities.salt, 'SAL', true);
-    pushItem(bag.amenities.sugar, 'AZÚCAR', true);
+const BagAssemblyGuide = ({ bag }: { bag: RouteBag }) => {
+  const layers = buildBagGuideLayers(bag);
+  const visibleLayers = layers.filter((layer) => layer.id !== 'other');
+  const otherLayer = layers.find((layer) => layer.id === 'other');
+
+  if (layers.length === 0) {
+    return (
+      <div className="rounded-lg bg-white/80 p-3">
+        <p className="flex items-center gap-2 text-xs font-black uppercase tracking-wide text-muted-foreground">
+          <Shirt className="h-4 w-4" />
+          Contenido de la bolsa
+        </p>
+        <p className="mt-2 text-sm text-muted-foreground">Sin consumos configurados</p>
+      </div>
+    );
   }
 
-  return [...items, ...bottomItems];
+  return (
+    <div className="rounded-xl bg-white/90 p-3 shadow-sm">
+      <div className="mb-3">
+        <p className="flex items-center gap-2 text-xs font-black uppercase tracking-wide text-muted-foreground">
+          <Shirt className="h-4 w-4" />
+          Guía de preparación
+        </p>
+        <h3 className="mt-1 text-lg font-black">Prepara la bolsa de abajo a arriba</h3>
+        <p className="text-xs text-muted-foreground">Bolsa 93 L aprox. · 69 x 35 x 38 cm</p>
+      </div>
+
+      <div className="relative mx-auto max-w-sm">
+        <div className="absolute -top-3 left-1/2 h-8 w-28 -translate-x-1/2 rounded-t-full border-4 border-blue-900/80 border-b-0" />
+        <div className="relative overflow-hidden rounded-2xl border-4 border-blue-950 bg-blue-950 p-2 pt-6 shadow-lg">
+          <div className="flex min-h-[340px] flex-col-reverse gap-1 rounded-xl bg-blue-900/70 p-2">
+            {visibleLayers.map((layer) => (
+              <div
+                key={layer.id}
+                className="rounded-lg border border-white/20 bg-white/95 p-2 shadow-sm"
+                style={{ minHeight: `${Math.max(46, 34 + layer.items.length * 26)}px` }}
+              >
+                <div className="mb-1 flex items-center justify-between gap-2">
+                  <span className="rounded-full bg-blue-950 px-2 py-0.5 text-[11px] font-black text-white">
+                    {layer.step}º
+                  </span>
+                  <span className="text-right text-[11px] font-bold uppercase text-muted-foreground">
+                    {layer.hint}
+                  </span>
+                </div>
+                <p className="text-sm font-black uppercase leading-tight">{layer.title}</p>
+                <div className="mt-1 flex flex-wrap gap-1">
+                  {layer.items.map((guideItem, index) => (
+                    <span
+                      key={`${layer.id}-${guideItem.label}-${index}`}
+                      className="rounded-md bg-slate-100 px-2 py-1 text-xs font-black text-slate-950"
+                    >
+                      {guideItem.quantity} {guideItem.label}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {otherLayer && (
+        <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-3">
+          <p className="text-xs font-black uppercase text-amber-900">Otros consumibles</p>
+          <div className="mt-2 flex flex-wrap gap-1">
+            {otherLayer.items.map((guideItem, index) => (
+              <span
+                key={`other-${guideItem.label}-${index}`}
+                className="rounded-md bg-white px-2 py-1 text-xs font-black text-amber-950"
+              >
+                {guideItem.quantity} {guideItem.label}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
 };
 
 const BagCard = ({
@@ -198,8 +311,6 @@ const BagCard = ({
   tone: 'urgent' | 'next';
   children: ReactNode;
 }) => {
-  const items = buildBagItems(bag);
-
   return (
     <Card className={cn(
       'border-2 shadow-sm',
@@ -238,22 +349,7 @@ const BagCard = ({
           </div>
         </div>
 
-        <div className="rounded-lg bg-white/80 p-3">
-          <p className="mb-2 flex items-center gap-2 text-xs font-black uppercase tracking-wide text-muted-foreground">
-            <Shirt className="h-4 w-4" />
-            Contenido de la bolsa
-          </p>
-          <ul className="space-y-1">
-            {items.length > 0 ? items.map((line, index) => (
-              <li key={line} className="flex gap-2 text-base font-bold">
-                <span className="w-8 shrink-0 text-foreground">{index + 1}º</span>
-                <span>{line}</span>
-              </li>
-            )) : (
-              <li className="text-sm text-muted-foreground">Sin consumos configurados</li>
-            )}
-          </ul>
-        </div>
+        <BagAssemblyGuide bag={bag} />
 
         {children}
       </CardContent>
