@@ -9,15 +9,12 @@ import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import {
   AlertTriangle,
-  Calendar,
   CheckCircle2,
   Loader2,
-  MapPin,
   PackageCheck,
   RefreshCw,
   Shirt,
   Truck,
-  User,
   XCircle,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -148,7 +145,7 @@ type BagGuideLayer = {
 
 const bagLayerDefinitions: Array<Omit<BagGuideLayer, 'items'>> = [
   { id: 'small_towels', step: 1, title: 'Toallas pequeñas', hint: 'Fondo de la bolsa' },
-  { id: 'bath_mats', step: 2, title: 'Alfombrines', hint: 'Sobre toallas pequeñas' },
+  { id: 'bath_mats', step: 2, title: 'Alfombrines', hint: 'Sobre toallas peq.' },
   { id: 'sheets', step: 3, title: 'Sábanas y fundas', hint: 'Capa central' },
   { id: 'large_towels', step: 4, title: 'Toallas grandes', hint: 'Sobre sábanas' },
   { id: 'amenities', step: 5, title: 'Amenities', hint: 'Parte superior' },
@@ -220,17 +217,6 @@ const buildBagGuideLayers = (bag: RouteBag): BagGuideLayer[] => {
     .filter((layer) => layer.items.length > 0);
 };
 
-const bagLayerAccent: Record<BagLayerId, string> = {
-  small_towels: 'bg-sky-600',
-  bath_mats: 'bg-cyan-700',
-  sheets: 'bg-indigo-700',
-  large_towels: 'bg-blue-700',
-  amenities: 'bg-emerald-700',
-  kitchen_cloths: 'bg-amber-600',
-  paper_trash: 'bg-slate-800',
-  other: 'bg-orange-600',
-};
-
 const BagAssemblyGuide = ({ bag }: { bag: RouteBag }) => {
   const layers = buildBagGuideLayers(bag);
   const visibleLayers = layers.filter((layer) => layer.id !== 'other');
@@ -238,60 +224,51 @@ const BagAssemblyGuide = ({ bag }: { bag: RouteBag }) => {
 
   if (layers.length === 0) {
     return (
-      <div className="rounded-lg bg-white/80 p-3">
-        <p className="flex items-center gap-2 text-xs font-black uppercase tracking-wide text-muted-foreground">
+      <div className="rounded-xl bg-white/80 p-3">
+        <p className="flex items-center gap-2 text-xs font-black uppercase tracking-wide text-[#7a604b]">
           <Shirt className="h-4 w-4" />
           Contenido de la bolsa
         </p>
-        <p className="mt-2 text-sm text-muted-foreground">Sin consumos configurados</p>
+        <p className="mt-2 text-sm text-[#7a604b]">Sin consumos configurados</p>
       </div>
     );
   }
 
   return (
-    <div className="rounded-lg border border-slate-200 bg-white p-2 shadow-sm">
-      <div className="flex items-center justify-between gap-2 rounded-md bg-blue-50 px-2 py-1.5">
-        <p className="flex items-center gap-1.5 text-[11px] font-black uppercase tracking-wide text-blue-700">
-          <Shirt className="h-4 w-4" />
-          Preparar de abajo a arriba
-        </p>
-        <span className="shrink-0 rounded bg-white px-1.5 py-0.5 text-[10px] font-black text-muted-foreground">
-          93 L
-        </span>
-      </div>
-
-      <div className="mt-2 space-y-1">
+    <div className="space-y-1.5">
+      <div className="grid gap-1.5">
         {visibleLayers.map((layer) => (
           <div
             key={layer.id}
-            className="rounded-md border border-slate-200 bg-slate-50 px-2 py-1.5"
+            className="rounded-xl border border-[#e7d8c7] bg-white px-2.5 py-2 shadow-sm"
           >
-            <div className="flex items-start gap-2">
-              <span className={cn(
-                'grid h-6 w-7 shrink-0 place-items-center rounded-full text-[11px] font-black text-white shadow-sm',
-                bagLayerAccent[layer.id],
-              )}>
-                {layer.step}º
+            <div className="flex items-center gap-2">
+              <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-[#1f1a14] text-sm font-black text-white">
+                {layer.step}
               </span>
 
               <div className="min-w-0 flex-1">
-                <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0">
-                  <p className="text-[13px] font-black uppercase leading-tight">{layer.title}</p>
-                  <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">{layer.hint}</p>
-                </div>
+                <div className="grid grid-cols-[minmax(88px,1fr)_auto] items-center gap-2">
+                  <div className="min-w-0">
+                    <p className="text-[13px] font-black leading-tight text-[#17130f]">{layer.title}</p>
+                    <p className="truncate text-[9px] font-bold uppercase tracking-wide text-[#9b8268]">{layer.hint}</p>
+                  </div>
 
-                <div className="mt-1 flex flex-wrap gap-1">
-                  {layer.items.map((guideItem, index) => (
-                    <span
-                      key={`${layer.id}-${guideItem.label}-${index}`}
-                      className="rounded bg-white px-1.5 py-0.5 text-[11px] font-black leading-tight text-slate-950 ring-1 ring-slate-200"
-                    >
-                      <span className="mr-1 rounded bg-slate-900 px-1 text-[10px] text-white">
-                        {guideItem.quantity}
+                  <div className="flex max-w-[170px] flex-wrap justify-end gap-1">
+                    {layer.items.map((guideItem, index) => (
+                      <span
+                        key={`${layer.id}-${guideItem.label}-${index}`}
+                        className="inline-flex items-center rounded-md bg-[#f5efe5] pr-1.5 text-[11px] font-bold leading-5 text-[#17130f]"
+                      >
+                        <span className="mr-1 grid h-5 min-w-5 place-items-center rounded bg-[#1f1a14] px-1 text-[11px] font-black text-white">
+                          {guideItem.quantity}
+                        </span>
+                        <span className="max-w-[112px] truncate normal-case">
+                          {guideItem.label.toLowerCase()}
+                        </span>
                       </span>
-                      {guideItem.label}
-                    </span>
-                  ))}
+                    ))}
+                  </div>
                 </div>
               </div>
             </div>
@@ -300,13 +277,13 @@ const BagAssemblyGuide = ({ bag }: { bag: RouteBag }) => {
       </div>
 
       {otherLayer && (
-        <div className="mt-2 rounded-md border border-amber-200 bg-amber-50 p-2">
+        <div className="rounded-xl border border-amber-200 bg-amber-50 p-2">
           <p className="text-[11px] font-black uppercase text-amber-900">Otros consumibles</p>
           <div className="mt-1 flex flex-wrap gap-1">
             {otherLayer.items.map((guideItem, index) => (
               <span
                 key={`other-${guideItem.label}-${index}`}
-                className="rounded bg-white px-1.5 py-0.5 text-[11px] font-black text-amber-950"
+                className="rounded bg-white px-1.5 py-0.5 text-[11px] font-bold text-amber-950"
               >
                 {guideItem.quantity} {guideItem.label}
               </span>
@@ -318,6 +295,12 @@ const BagAssemblyGuide = ({ bag }: { bag: RouteBag }) => {
   );
 };
 
+const getBagTotalUnits = (bag: RouteBag) =>
+  buildBagGuideLayers(bag).reduce(
+    (total, layer) => total + layer.items.reduce((layerTotal, item) => layerTotal + item.quantity, 0),
+    0,
+  );
+
 const BagCard = ({
   bag,
   tone,
@@ -327,43 +310,31 @@ const BagCard = ({
   tone: 'urgent' | 'next';
   children: ReactNode;
 }) => {
+  const totalUnits = getBagTotalUnits(bag);
+
   return (
     <Card className={cn(
-      'border-2 shadow-sm',
-      tone === 'urgent' ? 'border-red-300 bg-red-50' : 'border-blue-200 bg-blue-50',
+      'overflow-hidden rounded-[1.6rem] border bg-[#fbf6ec] shadow-sm',
+      tone === 'urgent' ? 'border-[#e2b29b]' : 'border-[#dac8b2]',
     )}>
-      <CardContent className="space-y-3 p-3">
-        <div className="space-y-1.5">
-          <div className="flex items-start justify-between gap-2">
-            <div>
-              <div className="flex flex-wrap items-center gap-1.5">
-                <h2 className="text-xl font-black tracking-tight">{bag.propertyCode}</h2>
-                {bag.isNew && <Badge className="bg-red-600">NUEVA</Badge>}
-              </div>
-              <p className="text-xs font-semibold leading-tight text-muted-foreground">{bag.propertyName}</p>
+      <CardContent className="space-y-2.5 p-3">
+        <div className="flex items-end justify-between gap-2">
+          <div className="min-w-0">
+            <p className="text-[10px] font-black uppercase tracking-[0.18em] text-[#a18465]">Bolsa actual</p>
+            <div className="flex items-center gap-1.5">
+              <h2 className="text-3xl font-black leading-none tracking-tight text-[#070b18]">{bag.propertyCode}</h2>
+              {bag.isNew && <Badge className="bg-[#c4512e] text-white">Nueva</Badge>}
             </div>
-            <Badge variant="outline" className="shrink-0 text-[10px] uppercase">
-              {formatDate(bag.date)}
-            </Badge>
           </div>
-
-          <div className="space-y-0.5 text-xs text-muted-foreground">
-            <p className="flex gap-1.5">
-              <MapPin className="h-3.5 w-3.5 shrink-0" />
-              <span>{bag.address || 'Sin dirección'}</span>
-            </p>
-            <p className="flex gap-1.5">
-              <Calendar className="h-3.5 w-3.5 shrink-0" />
-              <span>{bag.serviceTime}</span>
-            </p>
-            {bag.cleaner && (
-              <p className="flex gap-1.5">
-                <User className="h-3.5 w-3.5 shrink-0" />
-                <span>{bag.cleaner}</span>
-              </p>
-            )}
+          <div className="text-right">
+            <p className="text-2xl font-black leading-none text-[#17130f]">{totalUnits}</p>
+            <p className="text-[9px] font-black uppercase tracking-wider text-[#a18465]">unidades</p>
           </div>
         </div>
+
+        <p className="text-[11px] font-black uppercase tracking-wide text-[#c4512e]">
+          Coloca de abajo hacia arriba
+        </p>
 
         <BagAssemblyGuide bag={bag} />
 
@@ -456,17 +427,17 @@ export const LaundryRouteV2View = ({ token }: LaundryRouteV2ViewProps) => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      <header className="sticky top-0 z-20 border-b bg-white/95 backdrop-blur">
-        <div className="mx-auto max-w-2xl px-3 py-2">
+    <div className="min-h-screen bg-[#eee8dc]">
+      <header className="sticky top-0 z-20 border-b border-[#dfd2bf] bg-[#fbf6ec]/95 backdrop-blur">
+        <div className="mx-auto max-w-md px-4 py-2">
           <div className="flex items-start justify-between gap-2">
             <div>
-              <p className="text-[10px] font-black uppercase tracking-wide text-primary">Reparto de lavandería</p>
-              <h1 className="text-lg font-black leading-tight">
+              <p className="text-[9px] font-black uppercase tracking-wide text-[#c4512e]">Reparto de lavandería</p>
+              <h1 className="text-base font-black leading-tight text-[#070b18]">
                 {workflow.route.routeName} {formatDate(workflow.route.deliveryDate)}
               </h1>
-              <p className="text-xs text-muted-foreground">
-                Próxima ruta: {workflow.route.nextRouteName} {formatDate(workflow.route.nextDeliveryDate)}
+              <p className="text-[11px] font-medium text-[#7a604b]">
+                Próxima: {workflow.route.nextRouteName} {formatDate(workflow.route.nextDeliveryDate)}
               </p>
             </div>
             <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => refetch()} disabled={actionMutation.isPending}>
@@ -476,16 +447,13 @@ export const LaundryRouteV2View = ({ token }: LaundryRouteV2ViewProps) => {
         </div>
       </header>
 
-      <main className="mx-auto max-w-2xl space-y-3 px-3 py-3 pb-6">
+      <main className="mx-auto max-w-md space-y-2 px-4 py-3 pb-6">
         {urgentBag && (
           <section className="space-y-2">
-            <div className="rounded-lg border-2 border-red-300 bg-red-100 p-2.5 text-red-950">
-              <div className="flex items-center gap-1.5">
-                <AlertTriangle className="h-4 w-4" />
-                <h2 className="text-sm font-black uppercase">Alerta importante</h2>
-              </div>
-              <p className="mt-1 text-xs font-semibold leading-snug">
-                Hay {workflow.stats.urgentPending} {workflow.stats.urgentPending === 1 ? 'bolsa' : 'bolsas'} de la ruta actual pendientes de preparación. Deben prepararse y entregarse hoy antes de continuar con el resto del proceso.
+            <div className="rounded-xl border border-[#e2a993] bg-[#f7ded3] px-3 py-2 text-[#8d351e]">
+              <p className="flex items-center gap-2 text-xs font-black leading-tight">
+                <AlertTriangle className="h-4 w-4 shrink-0" />
+                Hay {workflow.stats.urgentPending} {workflow.stats.urgentPending === 1 ? 'bolsa pendiente' : 'bolsas pendientes'} de preparar hoy.
               </p>
             </div>
 
@@ -513,7 +481,7 @@ export const LaundryRouteV2View = ({ token }: LaundryRouteV2ViewProps) => {
                     size="lg"
                     onClick={() => actionMutation.mutate({ action: 'prepare', taskId: urgentBag.taskId })}
                     disabled={actionMutation.isPending}
-                    className="h-11 text-sm font-black"
+                    className="h-12 rounded-xl bg-[#c4512e] text-sm font-black hover:bg-[#a94427]"
                   >
                     <PackageCheck className="mr-2 h-4 w-4" />
                     Bolsa preparada
@@ -523,7 +491,7 @@ export const LaundryRouteV2View = ({ token }: LaundryRouteV2ViewProps) => {
                     size="lg"
                     onClick={() => setIssueTaskId(urgentBag.taskId)}
                     disabled={actionMutation.isPending}
-                    className="h-10 border-red-300 text-sm text-red-700"
+                    className="h-9 rounded-xl border-0 bg-transparent text-sm font-semibold text-[#c4512e] hover:bg-[#f1dfcf]"
                   >
                     <XCircle className="mr-2 h-4 w-4" />
                     Marcar incidencia
@@ -536,14 +504,14 @@ export const LaundryRouteV2View = ({ token }: LaundryRouteV2ViewProps) => {
 
         {!urgentBag && nextPendingBag && (
           <section className="space-y-2">
-            <div className="rounded-lg border bg-white p-2.5">
-              <p className="text-[10px] font-black uppercase tracking-wide text-muted-foreground">
+            <div className="rounded-xl border border-[#dfd2bf] bg-[#fbf6ec] px-3 py-2">
+              <p className="text-[10px] font-black uppercase tracking-wide text-[#a18465]">
                 Preparación de la siguiente ruta
               </p>
-              <h2 className="text-base font-black">
+              <h2 className="text-sm font-black text-[#17130f]">
                 Bolsa {nextCurrentPosition} de {workflow.stats.nextTotal}
               </h2>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-[11px] text-[#7a604b]">
                 Se prepara para {workflow.route.nextRouteName} {formatDate(workflow.route.nextDeliveryDate)}.
               </p>
             </div>
@@ -572,7 +540,7 @@ export const LaundryRouteV2View = ({ token }: LaundryRouteV2ViewProps) => {
                     size="lg"
                     onClick={() => actionMutation.mutate({ action: 'prepare', taskId: nextPendingBag.taskId })}
                     disabled={actionMutation.isPending}
-                    className="h-11 text-sm font-black"
+                    className="h-12 rounded-xl bg-[#c4512e] text-sm font-black hover:bg-[#a94427]"
                   >
                     <PackageCheck className="mr-2 h-4 w-4" />
                     Bolsa preparada
@@ -582,7 +550,7 @@ export const LaundryRouteV2View = ({ token }: LaundryRouteV2ViewProps) => {
                     size="lg"
                     onClick={() => setIssueTaskId(nextPendingBag.taskId)}
                     disabled={actionMutation.isPending}
-                    className="h-10 text-sm"
+                    className="h-9 rounded-xl border-0 bg-transparent text-sm font-semibold text-[#c4512e] hover:bg-[#f1dfcf]"
                   >
                     <XCircle className="mr-2 h-4 w-4" />
                     Marcar incidencia
