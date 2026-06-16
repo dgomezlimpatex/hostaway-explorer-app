@@ -220,6 +220,17 @@ const buildBagGuideLayers = (bag: RouteBag): BagGuideLayer[] => {
     .filter((layer) => layer.items.length > 0);
 };
 
+const bagLayerAccent: Record<BagLayerId, string> = {
+  small_towels: 'bg-sky-600',
+  bath_mats: 'bg-cyan-700',
+  sheets: 'bg-indigo-700',
+  large_towels: 'bg-blue-700',
+  amenities: 'bg-emerald-700',
+  kitchen_cloths: 'bg-amber-600',
+  paper_trash: 'bg-slate-800',
+  other: 'bg-orange-600',
+};
+
 const BagAssemblyGuide = ({ bag }: { bag: RouteBag }) => {
   const layers = buildBagGuideLayers(bag);
   const visibleLayers = layers.filter((layer) => layer.id !== 'other');
@@ -238,49 +249,66 @@ const BagAssemblyGuide = ({ bag }: { bag: RouteBag }) => {
   }
 
   return (
-    <div className="rounded-xl bg-white/90 p-3 shadow-sm">
-      <div className="mb-3">
-        <p className="flex items-center gap-2 text-xs font-black uppercase tracking-wide text-muted-foreground">
+    <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
+      <div className="rounded-lg border border-blue-100 bg-blue-50/70 p-3">
+        <p className="flex items-center gap-2 text-xs font-black uppercase tracking-wide text-blue-700">
           <Shirt className="h-4 w-4" />
           Guía de preparación
         </p>
-        <h3 className="mt-1 text-lg font-black">Prepara la bolsa de abajo a arriba</h3>
-        <p className="text-xs text-muted-foreground">Bolsa 93 L aprox. · 69 x 35 x 38 cm</p>
+        <div className="mt-2 flex items-start justify-between gap-3">
+          <div>
+            <h3 className="text-lg font-black leading-tight">Orden de colocación</h3>
+            <p className="text-sm text-muted-foreground">Empieza por el fondo y termina arriba.</p>
+          </div>
+          <div className="shrink-0 rounded-lg bg-white px-2 py-1 text-right shadow-sm">
+            <p className="text-sm font-black">93 L</p>
+            <p className="text-[10px] font-bold uppercase text-muted-foreground">69 x 35 x 38</p>
+          </div>
+        </div>
       </div>
 
-      <div className="relative mx-auto max-w-sm">
-        <div className="absolute -top-3 left-1/2 h-8 w-28 -translate-x-1/2 rounded-t-full border-4 border-blue-900/80 border-b-0" />
-        <div className="relative overflow-hidden rounded-2xl border-4 border-blue-950 bg-blue-950 p-2 pt-6 shadow-lg">
-          <div className="flex min-h-[340px] flex-col-reverse gap-1 rounded-xl bg-blue-900/70 p-2">
-            {visibleLayers.map((layer) => (
-              <div
-                key={layer.id}
-                className="rounded-lg border border-white/20 bg-white/95 p-2 shadow-sm"
-                style={{ minHeight: `${Math.max(46, 34 + layer.items.length * 26)}px` }}
-              >
-                <div className="mb-1 flex items-center justify-between gap-2">
-                  <span className="rounded-full bg-blue-950 px-2 py-0.5 text-[11px] font-black text-white">
-                    {layer.step}º
-                  </span>
-                  <span className="text-right text-[11px] font-bold uppercase text-muted-foreground">
-                    {layer.hint}
-                  </span>
+      <div className="mt-3 space-y-2">
+        {visibleLayers.map((layer) => (
+          <div
+            key={layer.id}
+            className="rounded-xl border border-slate-200 bg-slate-50/80 p-3"
+          >
+            <div className="flex gap-3">
+              <div className="flex shrink-0 flex-col items-center">
+                <span className={cn(
+                  'grid h-9 w-9 place-items-center rounded-full text-sm font-black text-white shadow-sm',
+                  bagLayerAccent[layer.id],
+                )}>
+                  {layer.step}º
+                </span>
+                <span className="mt-1 h-full min-h-6 w-px bg-slate-200" />
+              </div>
+
+              <div className="min-w-0 flex-1">
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <p className="text-base font-black uppercase leading-tight">{layer.title}</p>
+                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{layer.hint}</p>
+                  </div>
                 </div>
-                <p className="text-sm font-black uppercase leading-tight">{layer.title}</p>
-                <div className="mt-1 flex flex-wrap gap-1">
+
+                <div className="mt-2 flex flex-wrap gap-1.5">
                   {layer.items.map((guideItem, index) => (
                     <span
                       key={`${layer.id}-${guideItem.label}-${index}`}
-                      className="rounded-md bg-slate-100 px-2 py-1 text-xs font-black text-slate-950"
+                      className="rounded-lg bg-white px-2.5 py-1.5 text-sm font-black text-slate-950 shadow-sm ring-1 ring-slate-200"
                     >
-                      {guideItem.quantity} {guideItem.label}
+                      <span className="mr-1 rounded bg-slate-900 px-1.5 py-0.5 text-xs text-white">
+                        {guideItem.quantity}
+                      </span>
+                      {guideItem.label}
                     </span>
                   ))}
                 </div>
               </div>
-            ))}
+            </div>
           </div>
-        </div>
+        ))}
       </div>
 
       {otherLayer && (
