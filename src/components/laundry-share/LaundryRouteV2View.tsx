@@ -12,7 +12,6 @@ import {
   CheckCircle2,
   Loader2,
   PackageCheck,
-  RefreshCw,
   Shirt,
   Truck,
   XCircle,
@@ -419,25 +418,6 @@ export const LaundryRouteV2View = ({ token }: LaundryRouteV2ViewProps) => {
 
   return (
     <div className="min-h-screen bg-[#eee8dc]">
-      <header className="sticky top-0 z-20 border-b border-[#dfd2bf] bg-[#fbf6ec]/95 backdrop-blur">
-        <div className="mx-auto max-w-md px-4 py-2">
-          <div className="flex items-start justify-between gap-2">
-            <div>
-              <p className="text-[9px] font-black uppercase tracking-wide text-[#c4512e]">Reparto de lavandería</p>
-              <h1 className="text-base font-black leading-tight text-[#070b18]">
-                {workflow.route.routeName} {formatDate(workflow.route.deliveryDate)}
-              </h1>
-              <p className="text-[11px] font-medium text-[#7a604b]">
-                Próxima: {workflow.route.nextRouteName} {formatDate(workflow.route.nextDeliveryDate)}
-              </p>
-            </div>
-            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => refetch()} disabled={actionMutation.isPending}>
-              <RefreshCw className={cn('h-4 w-4', actionMutation.isPending && 'animate-spin')} />
-            </Button>
-          </div>
-        </div>
-      </header>
-
       <main className="mx-auto max-w-md space-y-2 px-4 py-3 pb-6">
         {urgentBag && (
           <section className="space-y-2">
