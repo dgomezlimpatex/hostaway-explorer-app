@@ -20,7 +20,7 @@ export default function WorkersPage() {
   const [editingWorker, setEditingWorker] = useState<Cleaner | null>(null);
   const [selectedWorker, setSelectedWorker] = useState<Cleaner | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState<WorkerStatusFilter>('active');
+  const [statusFilter, setStatusFilter] = useState<WorkerStatusFilter>('all');
   const isMobile = useIsMobile();
 
   const { cleaners, isLoading } = useCleaners();
@@ -50,6 +50,8 @@ export default function WorkersPage() {
 
   const activeWorkers = filteredWorkers.filter((worker) => worker.isActive);
   const inactiveWorkers = filteredWorkers.filter((worker) => !worker.isActive);
+  const showActiveWorkers = statusFilter !== 'inactive';
+  const showInactiveWorkers = statusFilter !== 'active';
 
   const handleEditWorker = (worker: Cleaner) => {
     setEditingWorker(worker);
@@ -249,7 +251,7 @@ export default function WorkersPage() {
               <CardTitle className="text-xs font-medium text-muted-foreground sm:text-sm">Activos</CardTitle>
             </CardHeader>
             <CardContent className="px-3 pb-3 sm:px-6 sm:pb-6">
-              <div className="text-xl font-bold text-green-600 sm:text-2xl">{activeWorkers.length}</div>
+              <div className="text-xl font-bold text-green-600 sm:text-2xl">{totalActiveWorkers}</div>
             </CardContent>
           </Card>
 
@@ -258,29 +260,64 @@ export default function WorkersPage() {
               <CardTitle className="text-xs font-medium text-muted-foreground sm:text-sm">Inactivos</CardTitle>
             </CardHeader>
             <CardContent className="px-3 pb-3 sm:px-6 sm:pb-6">
-              <div className="text-xl font-bold text-destructive sm:text-2xl">{inactiveWorkers.length}</div>
+              <div className="text-xl font-bold text-destructive sm:text-2xl">{totalInactiveWorkers}</div>
             </CardContent>
           </Card>
         </div>
 
         <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle>Trabajadores Activos ({activeWorkers.length})</CardTitle>
-              <p className="text-sm text-muted-foreground">Arrastra las filas para reordenar</p>
+          <CardContent className="flex flex-col gap-3 p-3 sm:flex-row sm:items-center sm:justify-between sm:p-4">
+            <div>
+              <p className="text-sm font-medium text-foreground">Vista de trabajadores</p>
+              <p className="text-xs text-muted-foreground">
+                Cambia entre activos, inactivos o todos sin perder el historial.
+              </p>
             </div>
-          </CardHeader>
-          <CardContent>
-            <WorkersList
-              workers={activeWorkers}
-              isLoading={isLoading}
-              onEditWorker={handleEditWorker}
-              onViewWorker={handleViewWorker}
-            />
+            <div className="grid grid-cols-3 gap-2 rounded-xl bg-muted p-1 sm:w-[360px]">
+              <StatusFilterButton
+                active={statusFilter === 'all'}
+                onClick={() => setStatusFilter('all')}
+                label="Todos"
+                count={cleaners.length}
+              />
+              <StatusFilterButton
+                active={statusFilter === 'active'}
+                onClick={() => setStatusFilter('active')}
+                label="Activos"
+                count={totalActiveWorkers}
+                icon={UserCheck}
+              />
+              <StatusFilterButton
+                active={statusFilter === 'inactive'}
+                onClick={() => setStatusFilter('inactive')}
+                label="Inactivos"
+                count={totalInactiveWorkers}
+                icon={UserX}
+              />
+            </div>
           </CardContent>
         </Card>
 
-        {inactiveWorkers.length > 0 && (
+        {showActiveWorkers && (
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle>Trabajadores Activos ({activeWorkers.length})</CardTitle>
+                <p className="text-sm text-muted-foreground">Arrastra las filas para reordenar</p>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <WorkersList
+                workers={activeWorkers}
+                isLoading={isLoading}
+                onEditWorker={handleEditWorker}
+                onViewWorker={handleViewWorker}
+              />
+            </CardContent>
+          </Card>
+        )}
+
+        {showInactiveWorkers && (
           <Card className="border-dashed">
             <CardHeader>
               <CardTitle className="text-muted-foreground">
