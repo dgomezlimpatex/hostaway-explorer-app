@@ -51,6 +51,20 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 type AppRole = Database['public']['Enums']['app_role'];
 
+type ActiveUserRow = {
+  user_id: string;
+  role: AppRole;
+  profiles: {
+    email: string;
+    full_name?: string | null;
+  };
+};
+
+type InvitationRow = {
+  invitation_token: string;
+  email: string;
+};
+
 const roleLabels: Record<AppRole, string> = {
   admin: 'Administrador',
   manager: 'Manager',
@@ -282,7 +296,7 @@ export const UserManagement = () => {
     }
   };
 
-  const handleAddCleaner = (user: any) => {
+  const handleAddCleaner = (user: ActiveUserRow) => {
     // Get the sede assigned to this user (from their invitation or user_sede_access)
     const userSedes = getUserAssignedSedes(user.user_id);
     
@@ -355,8 +369,8 @@ export const UserManagement = () => {
     queryClient.invalidateQueries({ queryKey: ['user-sede-access'] });
   };
 
-  const copyInvitationLink = (invitation: any) => {
-    const appUrl = 'https://id-preview--47420173-53cc-4a1a-8da8-d4b51fe8c6fe.lovable.app';
+  const copyInvitationLink = (invitation: InvitationRow) => {
+    const appUrl = window.location.origin;
     const invitationUrl = `${appUrl}/accept-invitation?token=${invitation.invitation_token}&email=${encodeURIComponent(invitation.email)}`;
     
     navigator.clipboard.writeText(invitationUrl).then(() => {

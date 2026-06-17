@@ -15,6 +15,14 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -79,6 +87,30 @@ type SyncLog = {
   success: boolean;
 };
 
+type AccessConfirmation = {
+  email: string;
+  createWithoutAccess: boolean;
+};
+
+type InvitationDetail = {
+  external_id?: string;
+  cleaner_id?: string | null;
+  email: string | null;
+  outcome: string;
+  invitation_url?: string;
+  error?: string;
+};
+
+type LinkResponse = {
+  linked: number;
+  created: number;
+  invitations_sent?: number;
+  invitation_details?: InvitationDetail[];
+  errors?: Array<unknown>;
+};
+
+const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 const getErrorMessage = (error: unknown) => {
   if (error instanceof Error) return error.message;
   if (typeof error === 'object' && error && 'message' in error) {
@@ -133,6 +165,9 @@ const Integraciones = () => {
   const [createSedeId, setCreateSedeId] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [filter, setFilter] = useState<ProposalFilter>('pending');
+  const [isAccessDialogOpen, setIsAccessDialogOpen] = useState(false);
+  const [accessConfirmations, setAccessConfirmations] = useState<Record<string, AccessConfirmation>>({});
+  const [invitationDetails, setInvitationDetails] = useState<InvitationDetail[]>([]);
 
   const { data: sedes = [] } = useQuery({
     queryKey: ['sedes-active'],
@@ -216,6 +251,15 @@ const Integraciones = () => {
     [proposals, selectedIds]
   );
 
+  const selectedActionableProposals = useMemo(
+    () =>
+      selectedProposals.filter((proposal) => {
+        const decision = decisions[proposal.registro.id] || 'ignore';
+        return decision === 'create' || (decision === 'link' && proposal.cleaner);
+      }),
+    [decisions, selectedProposals]
+  );
+
   const selectedSummary = useMemo(() => {
     return selectedProposals.reduce(
       (summary, proposal) => {
@@ -260,15 +304,96 @@ const Integraciones = () => {
     if (decision !== 'ignore') toggleSelection(id, true);
   };
 
+  const setAccessConfirmation = (id: string, patch: Partial<AccessConfirmation>) => {
+    setAccessConfirmations((current) => ({
+      ...current,
+      [id]: {
+        email: current[id]?.email || '',
+        createWithoutAccess: current[id]?.createWithoutAccess || false,
+        ...patch,
+      },
+    }));
+  };
+
+  const handleApplySelection = () => {
+    if (!preview) {
+      toast({ title: 'Carga primero la vista previa', variant: 'destructive' });
+      return;
+    }
+
+    if (selectedActionableProposals.length === 0) {
+      toast({
+        title: 'Sin trabajadoras para aplicar',
+        description: 'Selecciona al menos una trabajadora para crear o vincular.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    const hasNewWorkers = selectedActionableProposals.some(
+      (proposal) => (decisions[proposal.registro.id] || 'ignore') === 'create'
+    );
+    if (hasNewWorkers && !createSedeId) {
+      toast({
+        title: 'Selecciona una sede',
+        description: 'La sede es obligatoria para crear trabajadoras nuevas.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    const defaults: Record<string, AccessConfirmation> = {};
+    selectedActionableProposals.forEach((proposal) => {
+      const email = proposal.registro.email || proposal.cleaner?.email || '';
+      defaults[proposal.registro.id] = {
+        email,
+        createWithoutAccess: !email,
+      };
+    });
+    setAccessConfirmations(defaults);
+    setIsAccessDialogOpen(true);
+  };
+
+  const confirmAccessAndApply = () => {
+    const normalized: Record<string, AccessConfirmation> = {};
+
+    for (const proposal of selectedActionableProposals) {
+      const current = accessConfirmations[proposal.registro.id] || { email: '', createWithoutAccess: true };
+      const email = current.email.trim().toLowerCase();
+      if (email && !emailRegex.test(email)) {
+        toast({
+          title: 'Email no válido',
+          description: `Revisa el email de ${proposal.registro.name || 'la trabajadora seleccionada'}.`,
+          variant: 'destructive',
+        });
+        return;
+      }
+      normalized[proposal.registro.id] = {
+        email,
+        createWithoutAccess: current.createWithoutAccess || !email,
+      };
+    }
+
+    linkMutation.mutate(normalized);
+  };
+
   const linkMutation = useMutation({
-    mutationFn: async () => {
+    mutationFn: async (confirmations: Record<string, AccessConfirmation>) => {
       if (!preview) throw new Error('Primero carga la vista previa');
 
       const links = selectedProposals.flatMap((proposal) => {
         const decision = decisions[proposal.registro.id] || 'ignore';
+        const access = confirmations[proposal.registro.id];
+        const accessEmail = access?.email?.trim().toLowerCase() || null;
+        const createWithoutAccess = access?.createWithoutAccess || !accessEmail;
         if (decision === 'ignore') return [];
         if (decision === 'link' && proposal.cleaner) {
-          return [{ external_id: proposal.registro.id, cleaner_id: proposal.cleaner.id }];
+          return [{
+            external_id: proposal.registro.id,
+            cleaner_id: proposal.cleaner.id,
+            access_email: accessEmail,
+            create_without_access: createWithoutAccess,
+          }];
         }
         if (decision === 'create') {
           if (!createSedeId) throw new Error('Selecciona una sede para los nuevos trabajadores');
@@ -277,6 +402,8 @@ const Integraciones = () => {
             create_new: true,
             sede_id: createSedeId,
             snapshot: proposal.registro,
+            access_email: accessEmail,
+            create_without_access: createWithoutAccess,
           }];
         }
         return [];
@@ -288,13 +415,15 @@ const Integraciones = () => {
         body: { mode: 'link', links },
       });
       if (error) throw error;
-      return data as { linked: number; created: number; invitations_sent?: number; errors?: Array<unknown> };
+      return data as LinkResponse;
     },
     onSuccess: (data) => {
       toast({
         title: 'Trabajadores aplicados',
         description: `Vinculados: ${data.linked}. Creados: ${data.created}. Invitaciones: ${data.invitations_sent || 0}.`,
       });
+      setInvitationDetails(data.invitation_details || []);
+      setIsAccessDialogOpen(false);
       setPreview(null);
       setDecisions({});
       setSelectedIds(new Set());
@@ -333,9 +462,10 @@ const Integraciones = () => {
         body: { mode: 'invite_pending' },
       });
       if (error) throw error;
-      return data as { invitations_sent: number };
+      return data as { invitations_sent: number; details?: InvitationDetail[] };
     },
     onSuccess: (data) => {
+      setInvitationDetails(data.details || []);
       toast({ title: 'Invitaciones reenviadas', description: `Enviadas: ${data.invitations_sent}.` });
     },
     onError: (error) => {
@@ -354,6 +484,26 @@ const Integraciones = () => {
       case 'no_match':
         return <Badge className="bg-emerald-600 text-white hover:bg-emerald-600">NUEVO</Badge>;
     }
+  };
+
+  const invitationOutcomeLabel = (outcome: string) => {
+    const labels: Record<string, string> = {
+      invited: 'Invitación enviada',
+      resent_pending: 'Invitación reenviada',
+      already_has_access: 'Ya tenía acceso',
+      no_email: 'Creada sin acceso',
+      no_sede: 'Sin sede',
+      email_failed: 'Email fallido',
+      invite_error: 'Error invitando',
+      error: 'Error',
+    };
+    return labels[outcome] || outcome;
+  };
+
+  const copyInvitationUrl = (url: string) => {
+    navigator.clipboard.writeText(url).then(() => {
+      toast({ title: 'Enlace copiado', description: 'Puedes enviarlo manualmente a la trabajadora.' });
+    });
   };
 
   return (
@@ -398,6 +548,120 @@ const Integraciones = () => {
           </div>
         </CardContent>
       </Card>
+
+      <Dialog open={isAccessDialogOpen} onOpenChange={setIsAccessDialogOpen}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>Confirmar acceso a la aplicación</DialogTitle>
+            <DialogDescription>
+              Revisa el email de acceso antes de crear o vincular trabajadoras desde REGISTRO. Si no indicas email, se crearán sin acceso.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="max-h-[60vh] space-y-3 overflow-y-auto pr-1">
+            {selectedActionableProposals.map((proposal) => {
+              const decision = decisions[proposal.registro.id] || 'ignore';
+              const confirmation = accessConfirmations[proposal.registro.id] || {
+                email: '',
+                createWithoutAccess: true,
+              };
+
+              return (
+                <div key={proposal.registro.id} className="rounded-lg border p-3">
+                  <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
+                    <div>
+                      <div className="font-semibold">{proposal.registro.name || 'Sin nombre'}</div>
+                      <div className="text-xs text-muted-foreground">
+                        {decision === 'create' ? 'Crear nueva trabajadora' : `Vincular con ${proposal.cleaner?.name || 'trabajadora existente'}`}
+                      </div>
+                      {decision === 'create' && (
+                        <div className="text-xs text-muted-foreground">
+                          Sede: {sedes.find((sede) => sede.id === createSedeId)?.nombre || 'Sin sede seleccionada'}
+                        </div>
+                      )}
+                    </div>
+                    <Badge variant={confirmation.createWithoutAccess ? 'outline' : 'secondary'}>
+                      {confirmation.createWithoutAccess ? 'Sin acceso' : 'Enviar invitación'}
+                    </Badge>
+                  </div>
+
+                  <div className="mt-3 grid gap-3 md:grid-cols-[1fr_auto] md:items-end">
+                    <div className="space-y-1">
+                      <Label>Email de acceso</Label>
+                      <Input
+                        type="email"
+                        value={confirmation.email}
+                        disabled={confirmation.createWithoutAccess}
+                        placeholder="trabajadora@ejemplo.com"
+                        onChange={(event) =>
+                          setAccessConfirmation(proposal.registro.id, {
+                            email: event.target.value,
+                            createWithoutAccess: false,
+                          })
+                        }
+                      />
+                    </div>
+                    <label className="flex items-center gap-2 rounded-md border px-3 py-2 text-sm">
+                      <Checkbox
+                        checked={confirmation.createWithoutAccess}
+                        onCheckedChange={(checked) =>
+                          setAccessConfirmation(proposal.registro.id, {
+                            createWithoutAccess: checked === true,
+                          })
+                        }
+                      />
+                      Crear sin acceso
+                    </label>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setIsAccessDialogOpen(false)}>
+              Cancelar
+            </Button>
+            <Button type="button" onClick={confirmAccessAndApply} disabled={linkMutation.isPending}>
+              {linkMutation.isPending ? 'Aplicando...' : 'Crear/vincular e invitar'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {invitationDetails.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Resultado de accesos</CardTitle>
+            <CardDescription>
+              Detalle de invitaciones generadas, reenviadas o pendientes de revisar.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {invitationDetails.map((detail, index) => (
+              <div key={`${detail.external_id || detail.cleaner_id || index}-${detail.outcome}`} className="flex flex-col gap-2 rounded-lg border p-3 md:flex-row md:items-center md:justify-between">
+                <div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Badge variant={detail.outcome.includes('error') || detail.outcome.includes('failed') ? 'destructive' : 'secondary'}>
+                      {invitationOutcomeLabel(detail.outcome)}
+                    </Badge>
+                    <span className="font-medium">{detail.email || 'Sin email'}</span>
+                  </div>
+                  {detail.error && <p className="mt-1 text-xs text-red-600">{detail.error}</p>}
+                  {detail.outcome === 'no_email' && (
+                    <p className="mt-1 text-xs text-muted-foreground">La trabajadora se creó o vinculó, pero todavía no puede acceder a la app.</p>
+                  )}
+                </div>
+                {detail.invitation_url && (
+                  <Button variant="outline" size="sm" onClick={() => copyInvitationUrl(detail.invitation_url!)}>
+                    Copiar enlace
+                  </Button>
+                )}
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
 
       {preview && (
         <Card>
@@ -457,7 +721,7 @@ const Integraciones = () => {
                   </SelectContent>
                 </Select>
               </div>
-              <Button onClick={() => linkMutation.mutate()} disabled={linkMutation.isPending || selectedIds.size === 0}>
+              <Button onClick={handleApplySelection} disabled={linkMutation.isPending || selectedIds.size === 0}>
                 <CheckCircle2 className="h-4 w-4 mr-2" />
                 Aplicar selección
               </Button>
