@@ -192,15 +192,15 @@ const formatCatalogItemLabel = (quantity: number, value: string) => {
   }
 
   if (name.includes('amenit') && name.includes('bano')) {
-    return quantity === 1 ? 'AMENITY DE BAÑO' : 'AMENITIES DE BAÑO';
+    return quantity === 1 ? 'AMENITIE DE BAÑO' : 'AMENITIES DE BAÑO';
   }
 
   if (name.includes('amenit') && name.includes('cocina')) {
-    return quantity === 1 ? 'AMENITY DE COCINA' : 'AMENITIES DE COCINA';
+    return quantity === 1 ? 'AMENITIE DE COCINA' : 'AMENITIES DE COCINA';
   }
 
   if (name.includes('amenit') && name.includes('alimentacion')) {
-    return quantity === 1 ? 'AMENITY DE ALIMENTACIÓN' : 'AMENITIES DE ALIMENTACIÓN';
+    return quantity === 1 ? 'AMENITIE DE ALIMENTACIÓN' : 'AMENITIES DE ALIMENTACIÓN';
   }
 
   if (name.includes('kit') && name.includes('aliment')) {
