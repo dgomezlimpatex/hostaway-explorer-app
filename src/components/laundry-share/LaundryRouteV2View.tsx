@@ -242,21 +242,21 @@ const BagAssemblyGuide = ({ bag }: { bag: RouteBag }) => {
             className="rounded-xl border border-[#e7d8c7] bg-white px-2.5 py-2 shadow-sm"
           >
             <div className="flex items-center gap-2">
-              <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-[#1f1a14] text-sm font-black text-white">
-                {layer.step}
+              <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-[#c4512e] text-[13px] font-black text-white shadow-sm">
+                {layer.step}º
               </span>
 
               <div className="flex min-w-0 flex-1 flex-wrap gap-1">
                 {layer.items.map((guideItem, index) => (
                   <span
                     key={`${layer.id}-${guideItem.label}-${index}`}
-                    className="inline-flex min-w-0 items-center rounded-md bg-[#f5efe5] pr-2 text-[12px] font-black leading-6 text-[#17130f]"
+                    className="inline-flex min-w-0 items-center rounded-md bg-[#f5efe5] pr-2 text-[12px] font-black uppercase leading-6 tracking-tight text-[#17130f]"
                   >
                     <span className="mr-1.5 grid h-6 min-w-6 place-items-center rounded bg-[#1f1a14] px-1 text-[12px] font-black text-white">
                       {guideItem.quantity}
                     </span>
-                    <span className="truncate normal-case">
-                      {guideItem.label.toLowerCase()}
+                    <span className="truncate">
+                      {guideItem.label}
                     </span>
                   </span>
                 ))}
@@ -273,7 +273,7 @@ const BagAssemblyGuide = ({ bag }: { bag: RouteBag }) => {
             {otherLayer.items.map((guideItem, index) => (
               <span
                 key={`other-${guideItem.label}-${index}`}
-                className="rounded bg-white px-1.5 py-0.5 text-[11px] font-bold text-amber-950"
+                className="rounded bg-white px-1.5 py-0.5 text-[11px] font-bold uppercase text-amber-950"
               >
                 {guideItem.quantity} {guideItem.label}
               </span>
