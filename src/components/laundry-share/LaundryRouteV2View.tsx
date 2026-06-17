@@ -442,11 +442,13 @@ const BagCard = ({
               {bag.isNew && <Badge className="bg-[#c4512e] text-white">Nueva</Badge>}
             </div>
           </div>
-          <div className="w-[118px] shrink-0 text-right">
+          <div className="w-[124px] shrink-0 text-right">
             <p className="text-[11px] font-black uppercase leading-tight text-[#17130f]">
-              {progress.pending}/{progress.total}
+              {progress.pending} pendientes
             </p>
-            <p className="text-[8px] font-black uppercase tracking-wider text-[#a18465]">bolsas pendientes</p>
+            <p className="text-[8px] font-black uppercase tracking-wider text-[#a18465]">
+              {progressCompleted}/{progress.total} preparadas
+            </p>
             <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-[#e8d9c6]">
               <div
                 className="h-full rounded-full bg-[#c4512e] transition-all duration-300"
