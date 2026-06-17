@@ -421,13 +421,15 @@ const BagCard = ({
     <Card className={cn(
       'relative overflow-hidden rounded-[1.6rem] border bg-[#fbf6ec] shadow-sm transition-colors duration-200',
       tone === 'urgent' ? 'border-[#e2b29b]' : 'border-[#dac8b2]',
-      isCompleteFlash && 'border-green-400 bg-green-50',
+      isCompleteFlash && 'laundry-bag-complete-card border-emerald-400 bg-emerald-50',
     )}>
       {isCompleteFlash && (
-        <div className="absolute inset-0 z-20 grid place-items-center bg-green-500/95 text-white">
-          <div className="text-center">
-            <CheckCircle2 className="mx-auto h-16 w-16" />
-            <p className="mt-2 text-xl font-black uppercase tracking-wide">Bolsa completada</p>
+        <div className="pointer-events-none absolute inset-0 z-20 overflow-hidden rounded-[1.6rem]">
+          <div className="laundry-bag-complete-sweep absolute inset-0" />
+          <div className="absolute inset-0 grid place-items-center">
+            <div className="laundry-bag-complete-badge rounded-full bg-white/95 p-4 text-emerald-600 shadow-2xl">
+              <CheckCircle2 className="h-14 w-14" strokeWidth={3} />
+            </div>
           </div>
         </div>
       )}
@@ -498,7 +500,7 @@ export const LaundryRouteV2View = ({ token }: LaundryRouteV2ViewProps) => {
             })),
           );
           setCompleteFlashTaskId((current) => (current === taskId ? null : current));
-        }, 420);
+        }, 680);
       }
 
       if (action === 'issue') {
@@ -546,7 +548,7 @@ export const LaundryRouteV2View = ({ token }: LaundryRouteV2ViewProps) => {
       if (variables.action === 'prepare') {
         window.setTimeout(() => {
           queryClient.setQueryData(queryKey, updatedWorkflow);
-        }, 430);
+        }, 690);
         return;
       }
       queryClient.setQueryData(queryKey, updatedWorkflow);
