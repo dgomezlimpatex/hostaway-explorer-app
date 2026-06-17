@@ -364,12 +364,6 @@ const BagAssemblyGuide = ({ bag }: { bag: RouteBag }) => {
   );
 };
 
-const getBagTotalUnits = (bag: RouteBag) =>
-  buildBagGuideLayers(bag).reduce(
-    (total, layer) => total + layer.items.reduce((layerTotal, item) => layerTotal + item.quantity, 0),
-    0,
-  );
-
 const recalculateWorkflowStats = (workflow: RouteWorkflow): RouteWorkflow => {
   const urgentBags = workflow.currentRouteBags.filter((bag) => bag.bagStatus.status === 'pending');
   const nextPendingBags = workflow.nextRouteBags.filter((bag) => bag.bagStatus.status === 'pending');
@@ -407,15 +401,21 @@ const updateWorkflowBag = (
 const BagCard = ({
   bag,
   tone,
+  progress,
   isCompleteFlash = false,
   children,
 }: {
   bag: RouteBag;
   tone: 'urgent' | 'next';
+  progress: {
+    pending: number;
+    total: number;
+  };
   isCompleteFlash?: boolean;
   children: ReactNode;
 }) => {
-  const totalUnits = getBagTotalUnits(bag);
+  const progressCompleted = Math.max(progress.total - progress.pending, 0);
+  const progressPercent = progress.total > 0 ? (progressCompleted / progress.total) * 100 : 0;
 
   return (
     <Card className={cn(
@@ -434,17 +434,25 @@ const BagCard = ({
         </div>
       )}
       <CardContent className="space-y-2.5 p-3">
-        <div className="flex items-end justify-between gap-2">
-          <div className="min-w-0">
+        <div className="flex items-end justify-between gap-3">
+          <div className="min-w-0 flex-1">
             <p className="text-[10px] font-black uppercase tracking-[0.18em] text-[#a18465]">Bolsa actual</p>
             <div className="flex items-center gap-1.5">
               <h2 className="text-3xl font-black leading-none tracking-tight text-[#070b18]">{bag.propertyCode}</h2>
               {bag.isNew && <Badge className="bg-[#c4512e] text-white">Nueva</Badge>}
             </div>
           </div>
-          <div className="text-right">
-            <p className="text-2xl font-black leading-none text-[#17130f]">{totalUnits}</p>
-            <p className="text-[9px] font-black uppercase tracking-wider text-[#a18465]">unidades</p>
+          <div className="w-[118px] shrink-0 text-right">
+            <p className="text-[11px] font-black uppercase leading-tight text-[#17130f]">
+              {progress.pending}/{progress.total}
+            </p>
+            <p className="text-[8px] font-black uppercase tracking-wider text-[#a18465]">bolsas pendientes</p>
+            <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-[#e8d9c6]">
+              <div
+                className="h-full rounded-full bg-[#c4512e] transition-all duration-300"
+                style={{ width: `${progressPercent}%` }}
+              />
+            </div>
           </div>
         </div>
 
@@ -603,6 +611,14 @@ export const LaundryRouteV2View = ({ token }: LaundryRouteV2ViewProps) => {
   const nextResolved = workflow.nextRouteBags.filter((bag) => bag.bagStatus.status !== 'pending').length;
   const nextCurrentPosition = nextPendingBag ? nextResolved + 1 : workflow.nextRouteBags.length;
   const flowBlocked = workflow.blockingStep !== 'deliver';
+  const urgentProgress = {
+    pending: workflow.stats.urgentPending,
+    total: workflow.currentRouteBags.length,
+  };
+  const nextProgress = {
+    pending: workflow.nextRouteBags.filter((bag) => bag.bagStatus.status === 'pending').length,
+    total: workflow.stats.nextTotal,
+  };
 
   const handleIssue = () => {
     if (!issueTaskId) return;
@@ -629,7 +645,12 @@ export const LaundryRouteV2View = ({ token }: LaundryRouteV2ViewProps) => {
               </p>
             </div>
 
-            <BagCard bag={urgentBag} tone="urgent" isCompleteFlash={completeFlashTaskId === urgentBag.taskId}>
+            <BagCard
+              bag={urgentBag}
+              tone="urgent"
+              progress={urgentProgress}
+              isCompleteFlash={completeFlashTaskId === urgentBag.taskId}
+            >
               {issueTaskId === urgentBag.taskId ? (
                 <div className="space-y-2">
                   <Textarea
@@ -688,7 +709,12 @@ export const LaundryRouteV2View = ({ token }: LaundryRouteV2ViewProps) => {
               </p>
             </div>
 
-            <BagCard bag={nextPendingBag} tone="next" isCompleteFlash={completeFlashTaskId === nextPendingBag.taskId}>
+            <BagCard
+              bag={nextPendingBag}
+              tone="next"
+              progress={nextProgress}
+              isCompleteFlash={completeFlashTaskId === nextPendingBag.taskId}
+            >
               {issueTaskId === nextPendingBag.taskId ? (
                 <div className="space-y-2">
                   <Textarea
