@@ -565,6 +565,102 @@ async function loadWorkflow(
   };
 }
 
+function recalculateWorkflowStats(workflow: JsonRecord): JsonRecord {
+  const currentRouteBags = Array.isArray(workflow.currentRouteBags) ? workflow.currentRouteBags as JsonRecord[] : [];
+  const nextRouteBags = Array.isArray(workflow.nextRouteBags) ? workflow.nextRouteBags as JsonRecord[] : [];
+  const urgentBags = currentRouteBags.filter((bag) => {
+    const bagStatus = bag.bagStatus && typeof bag.bagStatus === "object" ? bag.bagStatus as JsonRecord : {};
+    return bagStatus.status === "pending";
+  });
+  const nextPendingBags = nextRouteBags.filter((bag) => {
+    const bagStatus = bag.bagStatus && typeof bag.bagStatus === "object" ? bag.bagStatus as JsonRecord : {};
+    return bagStatus.status === "pending";
+  });
+
+  return {
+    ...workflow,
+    urgentBags,
+    blockingStep: urgentBags.length > 0 ? "urgent" : nextPendingBags.length > 0 ? "prepare_next" : "deliver",
+    stats: {
+      urgentPending: urgentBags.length,
+      nextTotal: nextRouteBags.length,
+      nextPrepared: nextRouteBags.filter((bag) => {
+        const bagStatus = bag.bagStatus && typeof bag.bagStatus === "object" ? bag.bagStatus as JsonRecord : {};
+        return bagStatus.status === "prepared";
+      }).length,
+      nextIssues: nextRouteBags.filter((bag) => {
+        const bagStatus = bag.bagStatus && typeof bag.bagStatus === "object" ? bag.bagStatus as JsonRecord : {};
+        return bagStatus.status === "issue";
+      }).length,
+      currentTotal: currentRouteBags.length,
+      collected: currentRouteBags.filter((bag) => {
+        const tracking = bag.deliveryTracking && typeof bag.deliveryTracking === "object" ? bag.deliveryTracking as JsonRecord : {};
+        return tracking.collectionStatus === "collected";
+      }).length,
+      delivered: currentRouteBags.filter((bag) => {
+        const tracking = bag.deliveryTracking && typeof bag.deliveryTracking === "object" ? bag.deliveryTracking as JsonRecord : {};
+        return tracking.deliveryStatus === "delivered";
+      }).length,
+    },
+  };
+}
+
+function applyActionToWorkflow(
+  workflow: JsonRecord,
+  taskId: string,
+  action: "prepare" | "issue" | "collect" | "deliver",
+  issueReason = "",
+): JsonRecord {
+  const updateBag = (bag: JsonRecord): JsonRecord => {
+    if (String(bag.taskId) !== taskId) return bag;
+
+    if (action === "prepare") {
+      return {
+        ...bag,
+        bagStatus: {
+          ...(bag.bagStatus && typeof bag.bagStatus === "object" ? bag.bagStatus as JsonRecord : {}),
+          status: "prepared",
+          issueReason: null,
+        },
+      };
+    }
+
+    if (action === "issue") {
+      return {
+        ...bag,
+        bagStatus: {
+          ...(bag.bagStatus && typeof bag.bagStatus === "object" ? bag.bagStatus as JsonRecord : {}),
+          status: "issue",
+          issueReason,
+        },
+      };
+    }
+
+    const tracking = bag.deliveryTracking && typeof bag.deliveryTracking === "object" ? bag.deliveryTracking as JsonRecord : {};
+    return {
+      ...bag,
+      deliveryTracking: {
+        ...tracking,
+        collectionStatus: action === "collect" ? "collected" : tracking.collectionStatus,
+        deliveryStatus: action === "deliver" ? "delivered" : tracking.deliveryStatus,
+      },
+    };
+  };
+
+  const currentRouteBags = Array.isArray(workflow.currentRouteBags)
+    ? (workflow.currentRouteBags as JsonRecord[]).map(updateBag)
+    : [];
+  const nextRouteBags = Array.isArray(workflow.nextRouteBags)
+    ? (workflow.nextRouteBags as JsonRecord[]).map(updateBag)
+    : [];
+
+  return recalculateWorkflowStats({
+    ...workflow,
+    currentRouteBags,
+    nextRouteBags,
+  });
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
   if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
@@ -606,6 +702,11 @@ serve(async (req) => {
         if (!currentTaskIds.has(taskId)) return json({ error: "Solo se puede recoger o entregar la ruta actual" }, 400);
         await upsertDeliveryTracking(supabase, String(workflow.link.id), taskId, action);
       }
+
+      return json({
+        success: true,
+        workflow: applyActionToWorkflow(workflow as JsonRecord, taskId, action, issueReason),
+      });
     }
 
     const workflow = await loadWorkflow(supabase, token);

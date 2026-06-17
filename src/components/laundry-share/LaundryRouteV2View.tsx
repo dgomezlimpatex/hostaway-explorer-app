@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -370,22 +370,67 @@ const getBagTotalUnits = (bag: RouteBag) =>
     0,
   );
 
+const recalculateWorkflowStats = (workflow: RouteWorkflow): RouteWorkflow => {
+  const urgentBags = workflow.currentRouteBags.filter((bag) => bag.bagStatus.status === 'pending');
+  const nextPendingBags = workflow.nextRouteBags.filter((bag) => bag.bagStatus.status === 'pending');
+
+  return {
+    ...workflow,
+    urgentBags,
+    blockingStep: urgentBags.length > 0 ? 'urgent' : nextPendingBags.length > 0 ? 'prepare_next' : 'deliver',
+    stats: {
+      urgentPending: urgentBags.length,
+      nextTotal: workflow.nextRouteBags.length,
+      nextPrepared: workflow.nextRouteBags.filter((bag) => bag.bagStatus.status === 'prepared').length,
+      nextIssues: workflow.nextRouteBags.filter((bag) => bag.bagStatus.status === 'issue').length,
+      currentTotal: workflow.currentRouteBags.length,
+      collected: workflow.currentRouteBags.filter((bag) => bag.deliveryTracking.collectionStatus === 'collected').length,
+      delivered: workflow.currentRouteBags.filter((bag) => bag.deliveryTracking.deliveryStatus === 'delivered').length,
+    },
+  };
+};
+
+const updateWorkflowBag = (
+  workflow: RouteWorkflow | undefined,
+  taskId: string,
+  updater: (bag: RouteBag) => RouteBag,
+) => {
+  if (!workflow) return workflow;
+
+  return recalculateWorkflowStats({
+    ...workflow,
+    currentRouteBags: workflow.currentRouteBags.map((bag) => (bag.taskId === taskId ? updater(bag) : bag)),
+    nextRouteBags: workflow.nextRouteBags.map((bag) => (bag.taskId === taskId ? updater(bag) : bag)),
+  });
+};
+
 const BagCard = ({
   bag,
   tone,
+  isCompleteFlash = false,
   children,
 }: {
   bag: RouteBag;
   tone: 'urgent' | 'next';
+  isCompleteFlash?: boolean;
   children: ReactNode;
 }) => {
   const totalUnits = getBagTotalUnits(bag);
 
   return (
     <Card className={cn(
-      'overflow-hidden rounded-[1.6rem] border bg-[#fbf6ec] shadow-sm',
+      'relative overflow-hidden rounded-[1.6rem] border bg-[#fbf6ec] shadow-sm transition-colors duration-200',
       tone === 'urgent' ? 'border-[#e2b29b]' : 'border-[#dac8b2]',
+      isCompleteFlash && 'border-green-400 bg-green-50',
     )}>
+      {isCompleteFlash && (
+        <div className="absolute inset-0 z-20 grid place-items-center bg-green-500/95 text-white">
+          <div className="text-center">
+            <CheckCircle2 className="mx-auto h-16 w-16" />
+            <p className="mt-2 text-xl font-black uppercase tracking-wide">Bolsa completada</p>
+          </div>
+        </div>
+      )}
       <CardContent className="space-y-2.5 p-3">
         <div className="flex items-end justify-between gap-2">
           <div className="min-w-0">
@@ -415,8 +460,11 @@ const BagCard = ({
 
 export const LaundryRouteV2View = ({ token }: LaundryRouteV2ViewProps) => {
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [issueTaskId, setIssueTaskId] = useState<string | null>(null);
   const [issueReason, setIssueReason] = useState('');
+  const [completeFlashTaskId, setCompleteFlashTaskId] = useState<string | null>(null);
+  const queryKey = useMemo(() => ['laundry-route-v2', token], [token]);
 
   const {
     data: workflow,
@@ -424,7 +472,7 @@ export const LaundryRouteV2View = ({ token }: LaundryRouteV2ViewProps) => {
     error,
     refetch,
   } = useQuery({
-    queryKey: ['laundry-route-v2', token],
+    queryKey,
     queryFn: () => invokeWorkflow(token),
     refetchOnWindowFocus: true,
   });
@@ -432,12 +480,84 @@ export const LaundryRouteV2View = ({ token }: LaundryRouteV2ViewProps) => {
   const actionMutation = useMutation({
     mutationFn: ({ action, taskId, reason }: { action: RouteAction; taskId: string; reason?: string }) =>
       invokeWorkflow(token, action, taskId, reason),
-    onSuccess: () => {
+    onMutate: async ({ action, taskId, reason }) => {
+      await queryClient.cancelQueries({ queryKey });
+      const previousWorkflow = queryClient.getQueryData<RouteWorkflow>(queryKey);
+
+      if (action === 'prepare') {
+        setCompleteFlashTaskId(taskId);
+        window.setTimeout(() => {
+          queryClient.setQueryData<RouteWorkflow>(queryKey, (current) =>
+            updateWorkflowBag(current, taskId, (bag) => ({
+              ...bag,
+              bagStatus: {
+                ...bag.bagStatus,
+                status: 'prepared',
+                issueReason: null,
+              },
+            })),
+          );
+          setCompleteFlashTaskId((current) => (current === taskId ? null : current));
+        }, 420);
+      }
+
+      if (action === 'issue') {
+        queryClient.setQueryData<RouteWorkflow>(queryKey, (current) =>
+          updateWorkflowBag(current, taskId, (bag) => ({
+            ...bag,
+            bagStatus: {
+              ...bag.bagStatus,
+              status: 'issue',
+              issueReason: reason || null,
+            },
+          })),
+        );
+      }
+
+      if (action === 'collect') {
+        queryClient.setQueryData<RouteWorkflow>(queryKey, (current) =>
+          updateWorkflowBag(current, taskId, (bag) => ({
+            ...bag,
+            deliveryTracking: {
+              ...bag.deliveryTracking,
+              collectionStatus: 'collected',
+            },
+          })),
+        );
+      }
+
+      if (action === 'deliver') {
+        queryClient.setQueryData<RouteWorkflow>(queryKey, (current) =>
+          updateWorkflowBag(current, taskId, (bag) => ({
+            ...bag,
+            deliveryTracking: {
+              ...bag.deliveryTracking,
+              deliveryStatus: 'delivered',
+            },
+          })),
+        );
+      }
+
+      return { previousWorkflow, taskId };
+    },
+    onSuccess: (updatedWorkflow, variables) => {
       setIssueTaskId(null);
       setIssueReason('');
-      refetch();
+      if (variables.action === 'prepare') {
+        window.setTimeout(() => {
+          queryClient.setQueryData(queryKey, updatedWorkflow);
+        }, 430);
+        return;
+      }
+      queryClient.setQueryData(queryKey, updatedWorkflow);
     },
-    onError: (err) => {
+    onError: (err, _variables, context) => {
+      if (context?.previousWorkflow) {
+        queryClient.setQueryData(queryKey, context.previousWorkflow);
+      }
+      if (context?.taskId) {
+        setCompleteFlashTaskId((current) => (current === context.taskId ? null : current));
+      }
       toast({
         title: 'No se pudo actualizar',
         description: err instanceof Error ? err.message : 'Inténtalo de nuevo',
@@ -507,7 +627,7 @@ export const LaundryRouteV2View = ({ token }: LaundryRouteV2ViewProps) => {
               </p>
             </div>
 
-            <BagCard bag={urgentBag} tone="urgent">
+            <BagCard bag={urgentBag} tone="urgent" isCompleteFlash={completeFlashTaskId === urgentBag.taskId}>
               {issueTaskId === urgentBag.taskId ? (
                 <div className="space-y-2">
                   <Textarea
@@ -530,7 +650,7 @@ export const LaundryRouteV2View = ({ token }: LaundryRouteV2ViewProps) => {
                   <Button
                     size="lg"
                     onClick={() => actionMutation.mutate({ action: 'prepare', taskId: urgentBag.taskId })}
-                    disabled={actionMutation.isPending}
+                    disabled={actionMutation.isPending || completeFlashTaskId === urgentBag.taskId}
                     className="h-12 rounded-xl bg-[#c4512e] text-sm font-black hover:bg-[#a94427]"
                   >
                     <PackageCheck className="mr-2 h-4 w-4" />
@@ -540,7 +660,7 @@ export const LaundryRouteV2View = ({ token }: LaundryRouteV2ViewProps) => {
                     variant="outline"
                     size="lg"
                     onClick={() => setIssueTaskId(urgentBag.taskId)}
-                    disabled={actionMutation.isPending}
+                    disabled={actionMutation.isPending || completeFlashTaskId === urgentBag.taskId}
                     className="h-9 rounded-xl border-0 bg-transparent text-sm font-semibold text-[#c4512e] hover:bg-[#f1dfcf]"
                   >
                     <XCircle className="mr-2 h-4 w-4" />
@@ -566,7 +686,7 @@ export const LaundryRouteV2View = ({ token }: LaundryRouteV2ViewProps) => {
               </p>
             </div>
 
-            <BagCard bag={nextPendingBag} tone="next">
+            <BagCard bag={nextPendingBag} tone="next" isCompleteFlash={completeFlashTaskId === nextPendingBag.taskId}>
               {issueTaskId === nextPendingBag.taskId ? (
                 <div className="space-y-2">
                   <Textarea
@@ -589,7 +709,7 @@ export const LaundryRouteV2View = ({ token }: LaundryRouteV2ViewProps) => {
                   <Button
                     size="lg"
                     onClick={() => actionMutation.mutate({ action: 'prepare', taskId: nextPendingBag.taskId })}
-                    disabled={actionMutation.isPending}
+                    disabled={actionMutation.isPending || completeFlashTaskId === nextPendingBag.taskId}
                     className="h-12 rounded-xl bg-[#c4512e] text-sm font-black hover:bg-[#a94427]"
                   >
                     <PackageCheck className="mr-2 h-4 w-4" />
@@ -599,7 +719,7 @@ export const LaundryRouteV2View = ({ token }: LaundryRouteV2ViewProps) => {
                     variant="outline"
                     size="lg"
                     onClick={() => setIssueTaskId(nextPendingBag.taskId)}
-                    disabled={actionMutation.isPending}
+                    disabled={actionMutation.isPending || completeFlashTaskId === nextPendingBag.taskId}
                     className="h-9 rounded-xl border-0 bg-transparent text-sm font-semibold text-[#c4512e] hover:bg-[#f1dfcf]"
                   >
                     <XCircle className="mr-2 h-4 w-4" />
