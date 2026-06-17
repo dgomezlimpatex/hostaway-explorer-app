@@ -344,7 +344,7 @@ Deno.serve(async (req) => {
             const { error: emailErr } = await admin.functions.invoke('send-invitation-email', {
               body: {
                 email: emailLower,
-                inviterName: 'Sincronización REGISTRO',
+                inviterName: 'LIMPATEX',
                 role: 'cleaner',
                 token: pending.invitation_token,
                 appUrl,
@@ -398,7 +398,7 @@ Deno.serve(async (req) => {
           const { error: emailErr } = await admin.functions.invoke('send-invitation-email', {
             body: {
               email: emailLower,
-              inviterName: 'Sincronización REGISTRO',
+              inviterName: 'LIMPATEX',
               role: 'cleaner',
               token,
               appUrl,
@@ -638,7 +638,7 @@ Deno.serve(async (req) => {
           if (pending) {
             const invitationUrl = buildInvitationUrl(String(pending.invitation_token), emailLower);
             const { error: emailErr } = await admin.functions.invoke('send-invitation-email', {
-              body: { email: emailLower, inviterName: 'Sincronización REGISTRO', role: 'cleaner', token: pending.invitation_token, appUrl },
+              body: { email: emailLower, inviterName: 'LIMPATEX', role: 'cleaner', token: pending.invitation_token, appUrl },
             });
             if (emailErr) {
               details.push({ cleaner_id: c.id, email: emailLower, outcome: 'email_failed', invitation_url: invitationUrl, error: emailErr.message });
@@ -658,7 +658,7 @@ Deno.serve(async (req) => {
           if (invErr) throw invErr;
 
           const { error: emailErr } = await admin.functions.invoke('send-invitation-email', {
-            body: { email: emailLower, inviterName: 'Sincronización REGISTRO', role: 'cleaner', token, appUrl },
+            body: { email: emailLower, inviterName: 'LIMPATEX', role: 'cleaner', token, appUrl },
           });
           if (emailErr) {
             details.push({ cleaner_id: c.id, email: emailLower, outcome: 'email_failed', invitation_url: buildInvitationUrl(token, emailLower), error: emailErr.message });

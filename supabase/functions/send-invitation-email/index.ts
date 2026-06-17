@@ -24,7 +24,7 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
-    const { email, inviterName, role, token, appUrl }: InvitationEmailRequest = await req.json();
+    const { email, role, token, appUrl }: InvitationEmailRequest = await req.json();
 
     console.log(`Sending invitation email to ${email} for role ${role}`);
 
@@ -49,7 +49,7 @@ const handler = async (req: Request): Promise<Response> => {
           
           <div style="background-color: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
             <p style="font-size: 16px; color: #333; margin: 0;">
-              <strong>${inviterName}</strong> te ha invitado a unirte al sistema de gestión con el rol de <strong>${roleLabels[role] || role}</strong>.
+              <strong>LIMPATEX</strong> te ha invitado a unirte al sistema de gestión con el rol de <strong>${roleLabels[role] || role}</strong>.
             </p>
           </div>
 
