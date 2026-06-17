@@ -134,6 +134,11 @@ type BagGuideItem = {
   label: string;
 };
 
+type QuantityLabel = {
+  singular: string;
+  plural: string;
+};
+
 type BagGuideLayer = {
   id: BagLayerId;
   step: number;
@@ -161,6 +166,59 @@ const classifyStockConsumable = (value: string): BagLayerId => {
   return 'other';
 };
 
+const getBagSizeSuffix = (value: string) => {
+  const match = value.match(/\b(\d+\s*l)\b/i);
+  return match ? ` ${match[1].replace(/\s+/g, '').toUpperCase()}` : '';
+};
+
+const formatCatalogItemLabel = (quantity: number, value: string) => {
+  const name = normalizeItemName(value);
+  const suffix = getBagSizeSuffix(value);
+
+  if (name.includes('bolsa') && name.includes('basura')) {
+    return quantity === 1 ? `BOLSA DE BASURA${suffix}` : `BOLSAS DE BASURA${suffix}`;
+  }
+
+  if ((name.includes('pano') || name.includes('bayeta')) && name.includes('cocina')) {
+    return quantity === 1 ? 'PAÑO DE COCINA' : 'PAÑOS DE COCINA';
+  }
+
+  if (name.includes('papel') && name.includes('higienico')) {
+    return quantity === 1 ? 'ROLLO DE PAPEL HIGIÉNICO' : 'ROLLOS DE PAPEL HIGIÉNICO';
+  }
+
+  if (name.includes('papel') && name.includes('cocina')) {
+    return quantity === 1 ? 'ROLLO DE PAPEL DE COCINA' : 'ROLLOS DE PAPEL DE COCINA';
+  }
+
+  if (name.includes('amenit') && name.includes('bano')) {
+    return quantity === 1 ? 'AMENITY DE BAÑO' : 'AMENITIES DE BAÑO';
+  }
+
+  if (name.includes('amenit') && name.includes('cocina')) {
+    return quantity === 1 ? 'AMENITY DE COCINA' : 'AMENITIES DE COCINA';
+  }
+
+  if (name.includes('amenit') && name.includes('alimentacion')) {
+    return quantity === 1 ? 'AMENITY DE ALIMENTACIÓN' : 'AMENITIES DE ALIMENTACIÓN';
+  }
+
+  if (name.includes('kit') && name.includes('aliment')) {
+    return quantity === 1 ? 'KIT ALIMENTARIO' : 'KITS ALIMENTARIOS';
+  }
+
+  if (name.includes('kit') && name.includes('cocina')) {
+    return quantity === 1 ? 'KIT DE COCINA' : 'KITS DE COCINA';
+  }
+
+  return value.toLocaleUpperCase('es-ES');
+};
+
+const formatQuantityLabel = (quantity: number, label: QuantityLabel | string) => {
+  if (typeof label === 'string') return formatCatalogItemLabel(quantity, label);
+  return (quantity === 1 ? label.singular : label.plural).toLocaleUpperCase('es-ES');
+};
+
 const buildBagGuideLayers = (bag: RouteBag): BagGuideLayer[] => {
   const itemsByLayer = bagLayerDefinitions.reduce<Record<BagLayerId, BagGuideItem[]>>((acc, layer) => {
     acc[layer.id] = [];
@@ -168,18 +226,39 @@ const buildBagGuideLayers = (bag: RouteBag): BagGuideLayer[] => {
   }, {} as Record<BagLayerId, BagGuideItem[]>);
 
   const kitchenClothsQuantity = bag.amenities.kitchenCloths || 0;
-  const pushItem = (layer: BagLayerId, quantity: number, label: string) => {
+  const pushItem = (layer: BagLayerId, quantity: number, label: QuantityLabel | string) => {
     if (quantity <= 0) return;
-    itemsByLayer[layer].push({ quantity, label: label.toUpperCase() });
+    itemsByLayer[layer].push({ quantity, label: formatQuantityLabel(quantity, label) });
   };
 
-  pushItem('small_towels', bag.textiles.towelsSmall, 'Toallas pequeñas');
-  pushItem('bath_mats', bag.textiles.bathMats, 'Alfombrines');
-  pushItem('sheets', bag.textiles.sheets, 'Sábanas matrimonio');
-  pushItem('sheets', bag.textiles.sheetsSmall, 'Sábanas individuales');
-  pushItem('sheets', bag.textiles.sheetsSuite, 'Sábanas suite');
-  pushItem('sheets', bag.textiles.pillowCases, 'Fundas almohada');
-  pushItem('large_towels', bag.textiles.towelsLarge, 'Toallas grandes');
+  pushItem('small_towels', bag.textiles.towelsSmall, {
+    singular: 'Toalla pequeña',
+    plural: 'Toallas pequeñas',
+  });
+  pushItem('bath_mats', bag.textiles.bathMats, {
+    singular: 'Alfombrín',
+    plural: 'Alfombrines',
+  });
+  pushItem('sheets', bag.textiles.sheets, {
+    singular: 'Sábana matrimonio',
+    plural: 'Sábanas matrimonio',
+  });
+  pushItem('sheets', bag.textiles.sheetsSmall, {
+    singular: 'Sábana individual',
+    plural: 'Sábanas individuales',
+  });
+  pushItem('sheets', bag.textiles.sheetsSuite, {
+    singular: 'Sábana suite',
+    plural: 'Sábanas suite',
+  });
+  pushItem('sheets', bag.textiles.pillowCases, {
+    singular: 'Funda almohada',
+    plural: 'Fundas almohada',
+  });
+  pushItem('large_towels', bag.textiles.towelsLarge, {
+    singular: 'Toalla grande',
+    plural: 'Toallas grandes',
+  });
 
   if (bag.stockConsumables.length > 0) {
     bag.stockConsumables.forEach((stockItem) => {
