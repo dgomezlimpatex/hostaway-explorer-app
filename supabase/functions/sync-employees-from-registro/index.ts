@@ -148,7 +148,7 @@ Deno.serve(async (req) => {
 
       const { data: cleaners, error: cErr } = await admin
         .from('cleaners')
-        .select('id, name, email, external_id, is_active, sede_id');
+        .select('id, name, email, external_id, is_active, sede_id, user_id');
       if (cErr) throw cErr;
 
       const linkedExternalIds = new Set(
@@ -165,7 +165,7 @@ Deno.serve(async (req) => {
           return {
             registro: publicRegistroEmployee(e, eName),
             match_type: 'already_linked',
-            cleaner: { id: linked.id, name: linked.name, email: linked.email },
+            cleaner: { id: linked.id, name: linked.name, email: linked.email, user_id: linked.user_id, sede_id: linked.sede_id },
             confidence: 1,
           };
         }
@@ -177,7 +177,7 @@ Deno.serve(async (req) => {
           return {
             registro: publicRegistroEmployee(e, eName),
             match_type: 'exact_name',
-            cleaner: { id: exact.id, name: exact.name, email: exact.email },
+            cleaner: { id: exact.id, name: exact.name, email: exact.email, user_id: exact.user_id, sede_id: exact.sede_id },
             confidence: 1,
           };
         }
@@ -192,7 +192,7 @@ Deno.serve(async (req) => {
           return {
             registro: publicRegistroEmployee(e, eName),
             match_type: 'fuzzy_name',
-            cleaner: { id: best.c.id, name: best.c.name, email: best.c.email },
+            cleaner: { id: best.c.id, name: best.c.name, email: best.c.email, user_id: best.c.user_id, sede_id: best.c.sede_id },
             confidence: 1 - best.d * 0.2,
             distance: best.d,
           };

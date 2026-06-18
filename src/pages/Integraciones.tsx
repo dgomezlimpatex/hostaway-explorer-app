@@ -53,7 +53,7 @@ type RegistroEmployee = {
 type Proposal = {
   registro: RegistroEmployee;
   match_type: 'already_linked' | 'exact_name' | 'fuzzy_name' | 'no_match';
-  cleaner: { id: string; name: string; email?: string | null } | null;
+  cleaner: { id: string; name: string; email?: string | null; user_id?: string | null; sede_id?: string | null } | null;
   confidence: number;
   distance?: number;
 };
@@ -120,9 +120,13 @@ const getErrorMessage = (error: unknown) => {
 };
 
 const getDefaultDecision = (proposal: Proposal): Decision => {
+  if (proposal.match_type === 'already_linked' && proposal.cleaner && !proposal.cleaner.user_id) return 'link';
   if (proposal.match_type === 'exact_name' && proposal.cleaner) return 'link';
   return 'ignore';
 };
+
+const needsAccessCompletion = (proposal: Proposal) =>
+  proposal.match_type === 'already_linked' && !!proposal.cleaner && !proposal.cleaner.user_id;
 
 const getSearchText = (proposal: Proposal) =>
   [
@@ -236,7 +240,7 @@ const Integraciones = () => {
         if (filter === 'similar') return proposal.match_type === 'fuzzy_name';
         if (filter === 'exact') return proposal.match_type === 'exact_name';
         if (filter === 'linked') return proposal.match_type === 'already_linked';
-        if (filter === 'pending') return proposal.match_type !== 'already_linked';
+        if (filter === 'pending') return proposal.match_type !== 'already_linked' || needsAccessCompletion(proposal);
         return true;
       })
       .sort((a, b) => {
@@ -274,7 +278,7 @@ const Integraciones = () => {
   }, [decisions, selectedProposals]);
 
   const actionableVisibleIds = filteredProposals
-    .filter((proposal) => proposal.match_type !== 'already_linked')
+    .filter((proposal) => proposal.match_type !== 'already_linked' || needsAccessCompletion(proposal))
     .map((proposal) => proposal.registro.id);
 
   const allVisibleSelected = actionableVisibleIds.length > 0 && actionableVisibleIds.every((id) => selectedIds.has(id));
@@ -476,6 +480,9 @@ const Integraciones = () => {
   const matchBadge = (proposal: Proposal) => {
     switch (proposal.match_type) {
       case 'already_linked':
+        if (needsAccessCompletion(proposal)) {
+          return <Badge className="bg-amber-100 text-amber-900 hover:bg-amber-100">Sin acceso</Badge>;
+        }
         return <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-100">Ya vinculado</Badge>;
       case 'exact_name':
         return <Badge className="bg-green-100 text-green-800 hover:bg-green-100">Coincidencia exacta</Badge>;
@@ -561,6 +568,7 @@ const Integraciones = () => {
           <div className="max-h-[60vh] space-y-3 overflow-y-auto pr-1">
             {selectedActionableProposals.map((proposal) => {
               const decision = decisions[proposal.registro.id] || 'ignore';
+              const completingAccess = needsAccessCompletion(proposal);
               const confirmation = accessConfirmations[proposal.registro.id] || {
                 email: '',
                 createWithoutAccess: true,
@@ -572,7 +580,11 @@ const Integraciones = () => {
                     <div>
                       <div className="font-semibold">{proposal.registro.name || 'Sin nombre'}</div>
                       <div className="text-xs text-muted-foreground">
-                        {decision === 'create' ? 'Crear nueva trabajadora' : `Vincular con ${proposal.cleaner?.name || 'trabajadora existente'}`}
+                        {completingAccess
+                          ? `Completar acceso de ${proposal.cleaner?.name || 'trabajadora existente'}`
+                          : decision === 'create'
+                            ? 'Crear nueva trabajadora'
+                            : `Vincular con ${proposal.cleaner?.name || 'trabajadora existente'}`}
                       </div>
                       {decision === 'create' && (
                         <div className="text-xs text-muted-foreground">
@@ -738,6 +750,8 @@ const Integraciones = () => {
             <div className="grid gap-3">
               {filteredProposals.map((proposal) => {
                 const isLinked = proposal.match_type === 'already_linked';
+                const canCompleteAccess = needsAccessCompletion(proposal);
+                const isLockedLinked = isLinked && !canCompleteAccess;
                 const isSelected = selectedIds.has(proposal.registro.id);
                 const decision = decisions[proposal.registro.id] || 'ignore';
 
@@ -753,7 +767,7 @@ const Integraciones = () => {
                     <div className="grid gap-4 lg:grid-cols-[32px_1.3fr_1fr_190px] lg:items-center">
                       <Checkbox
                         checked={isSelected}
-                        disabled={isLinked}
+                        disabled={isLockedLinked}
                         onCheckedChange={(checked) => toggleSelection(proposal.registro.id, checked === true)}
                       />
 
@@ -778,21 +792,27 @@ const Integraciones = () => {
                           <>
                             <div className="text-muted-foreground text-xs">Coincidencia en GESTIÓN</div>
                             <div className="font-medium">{proposal.cleaner.name}</div>
-                            <div className="text-xs text-muted-foreground">{proposal.cleaner.email || 'Sin email local'}</div>
+                            <div className="text-xs text-muted-foreground">
+                              {proposal.cleaner.email || 'Sin email local'} · {proposal.cleaner.user_id ? 'Con acceso' : 'Sin usuario registrado'}
+                            </div>
                           </>
                         ) : (
                           <span className="text-muted-foreground">No existe en GESTIÓN</span>
                         )}
                       </div>
 
-                      {isLinked ? (
+                      {isLockedLinked ? (
                         <div className="text-sm text-muted-foreground">Sin acción necesaria</div>
                       ) : (
                         <Select value={decision} onValueChange={(value) => setDecision(proposal.registro.id, value as Decision)}>
                           <SelectTrigger><SelectValue /></SelectTrigger>
                           <SelectContent>
-                            {proposal.cleaner && <SelectItem value="link">Vincular existente</SelectItem>}
-                            <SelectItem value="create">Crear nuevo</SelectItem>
+                            {proposal.cleaner && (
+                              <SelectItem value="link">
+                                {canCompleteAccess ? 'Completar acceso' : 'Vincular existente'}
+                              </SelectItem>
+                            )}
+                            {!isLinked && <SelectItem value="create">Crear nuevo</SelectItem>}
                             <SelectItem value="ignore">Ignorar</SelectItem>
                           </SelectContent>
                         </Select>
