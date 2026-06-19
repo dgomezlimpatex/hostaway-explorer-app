@@ -132,7 +132,7 @@ export const CalendarContainer = ({
   }, [tasks, currentDate]);
 
   // Build assignments map for visible assigned tasks (task_id -> [cleaner_id])
-  const taskIds = useMemo(() => assignedTasks.map(t => t.id), [assignedTasks]);
+  const taskIds = useMemo(() => assignedTasks.map(t => t.id).sort(), [assignedTasks]);
 
   const { data: assignmentRows = [] } = useQuery<{ task_id: string; cleaner_id: string }[]>({
     queryKey: ['taskAssignmentsForCalendar', taskIds],
@@ -145,7 +145,7 @@ export const CalendarContainer = ({
       return data as { task_id: string; cleaner_id: string }[];
     },
     enabled: taskIds.length > 0,
-    staleTime: 5 * 60 * 1000,
+    staleTime: 0,
   });
 
   const assignmentsMap = useMemo(() => {
@@ -176,9 +176,10 @@ export const CalendarContainer = ({
         const match = cleaners.find(c => c.name === t.cleaner);
         if (match) ids.add(match.id);
       }
+      assignmentsMap[t.id]?.forEach(cleanerId => ids.add(cleanerId));
     });
     return ids;
-  }, [assignedTasks, cleaners]);
+  }, [assignedTasks, cleaners, assignmentsMap]);
 
   // Final visible cleaners: hide unavailable ones unless they still have tasks assigned
   const visibleCleaners = useMemo(
