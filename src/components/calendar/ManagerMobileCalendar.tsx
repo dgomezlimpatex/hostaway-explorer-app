@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Task, Cleaner } from '@/types/calendar';
+import { isTaskAssignedToCleaner } from '@/utils/taskAssignments';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -40,7 +41,10 @@ export const ManagerMobileCalendar: React.FC<ManagerMobileCalendarProps> = ({
   // Filter assigned tasks by selected cleaner
   const filteredTasks = selectedCleaner === 'all' 
     ? assignedTasks 
-    : assignedTasks.filter(task => task.cleanerId === selectedCleaner);
+    : assignedTasks.filter(task => {
+        const cleaner = cleaners.find(c => c.id === selectedCleaner);
+        return isTaskAssignedToCleaner(task, selectedCleaner, cleaner?.name);
+      });
     
   // Group tasks by time
   const tasksByTime = filteredTasks.sort((a, b) => a.startTime.localeCompare(b.startTime));
@@ -119,7 +123,7 @@ export const ManagerMobileCalendar: React.FC<ManagerMobileCalendarProps> = ({
             Todos ({assignedTasks.length})
           </Button>
           {cleaners.map(cleaner => {
-            const cleanerTasks = assignedTasks.filter(task => task.cleanerId === cleaner.id);
+            const cleanerTasks = assignedTasks.filter(task => isTaskAssignedToCleaner(task, cleaner.id, cleaner.name));
             return (
               <Button
                 key={cleaner.id}

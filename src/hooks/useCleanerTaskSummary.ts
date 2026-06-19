@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { Task } from '@/types/calendar';
+import { isTaskAssignedToCleaner } from '@/utils/taskAssignments';
 
 interface UseCleanerTaskSummaryParams {
   tasks: Task[];
@@ -11,7 +12,7 @@ export const useCleanerTaskSummary = ({ tasks, currentDate, currentCleanerId }: 
   // Filter tasks for current cleaner
   const cleanerTasks = useMemo(() => {
     if (!currentCleanerId) return [];
-    return tasks.filter(task => task.cleanerId === currentCleanerId);
+    return tasks.filter(task => isTaskAssignedToCleaner(task, currentCleanerId));
   }, [tasks, currentCleanerId]);
 
   // Calculate today's tasks

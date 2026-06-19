@@ -1,5 +1,6 @@
 
 import { Task } from "@/types/calendar";
+import { isTaskAssignedToCleaner } from "@/utils/taskAssignments";
 
 interface TaskFilters {
   status: string;
@@ -42,11 +43,7 @@ export const filterTasks = (tasks: Task[], filters: TaskFilters): Task[] => {
 
     // Role-based filtering for cleaners: only their tasks, only today
     if (filters.userRole === 'cleaner') {
-      const isAssignedById = task.cleanerId && task.cleanerId === filters.currentUserId;
-      const isAssignedByName = task.cleaner && filters.currentUserName && 
-                               task.cleaner.includes(filters.currentUserName);
-      
-      if (!isAssignedById && !isAssignedByName) {
+      if (!isTaskAssignedToCleaner(task, filters.currentUserId, filters.currentUserName)) {
         return false;
       }
 

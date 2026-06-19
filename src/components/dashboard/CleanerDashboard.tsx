@@ -9,6 +9,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useCleaners } from '@/hooks/useCleaners';
 import { useMemo } from 'react';
 import { formatMadridDate } from '@/utils/date';
+import { isTaskAssignedToCleaner } from '@/utils/taskAssignments';
 
 interface CleanerDashboardProps {
   userFullName?: string | null;
@@ -30,7 +31,7 @@ export const CleanerDashboard = ({ userFullName, userEmail }: CleanerDashboardPr
     if (!tasks || !currentCleaner) return [];
     const todayStr = formatMadridDate(today);
     return tasks
-      .filter(t => t.date === todayStr && t.cleanerId === currentCleaner.id)
+      .filter(t => t.date === todayStr && isTaskAssignedToCleaner(t, currentCleaner.id, currentCleaner.name))
       .sort((a, b) => a.startTime.localeCompare(b.startTime));
   }, [tasks, currentCleaner, today]);
 
