@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
@@ -28,6 +28,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
+import { useSede } from '@/contexts/SedeContext';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -161,6 +162,7 @@ const Integraciones = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { activeSede } = useSede();
 
   const [includeInactive, setIncludeInactive] = useState(false);
   const [preview, setPreview] = useState<PreviewResponse | null>(null);
@@ -185,6 +187,14 @@ const Integraciones = () => {
       return (data || []) as SedeOption[];
     },
   });
+
+  useEffect(() => {
+    if (!activeSede?.id || sedes.length === 0) return;
+    const activeSedeIsAvailable = sedes.some((sede) => sede.id === activeSede.id);
+    if (!activeSedeIsAvailable) return;
+
+    setCreateSedeId(activeSede.id);
+  }, [activeSede?.id, sedes]);
 
   const { data: logs = [], refetch: refetchLogs } = useQuery({
     queryKey: ['employee-sync-logs'],
