@@ -21,6 +21,7 @@ import { useWorkersAbsenceStatus } from "@/hooks/useWorkersAbsenceStatus";
 import { usePreferredCleaners } from "@/hooks/usePropertyPreferredCleaners";
 import { useCalendarWorkload } from "@/hooks/useCalendarWorkload";
 import { useUnavailableCleaners } from "@/hooks/useUnavailableCleaners";
+import { isTaskAssignedToCleaner } from "@/utils/taskAssignments";
 
 export interface CalendarContainerProps {
   tasks: Task[];
@@ -173,7 +174,7 @@ export const CalendarContainer = ({
     assignedTasks.forEach(t => {
       if (t.cleanerId) ids.add(t.cleanerId);
       if (t.cleaner) {
-        const match = cleaners.find(c => c.name === t.cleaner);
+        const match = cleaners.find(c => isTaskAssignedToCleaner(t, c.id, c.name));
         if (match) ids.add(match.id);
       }
       assignmentsMap[t.id]?.forEach(cleanerId => ids.add(cleanerId));
@@ -201,11 +202,8 @@ export const CalendarContainer = ({
     
     cleaners.forEach(cleaner => {
       const cleanerTasks = assignedTasks.filter(task => {
-        if (task.cleanerId === cleaner.id || task.cleaner === cleaner.name) return true;
-        if (task.cleaner && task.cleaner.includes(',') && 
-            task.cleaner.split(',').some((name: string) => name.trim() === cleaner.name)) return true;
         if (Array.isArray(assignmentsMap?.[task.id]) && assignmentsMap![task.id].includes(cleaner.id)) return true;
-        return false;
+        return isTaskAssignedToCleaner(task, cleaner.id, cleaner.name);
       });
       
       const overlaps: any[] = [];

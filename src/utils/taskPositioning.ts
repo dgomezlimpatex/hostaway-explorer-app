@@ -22,10 +22,14 @@ const getAssignedCount = (task: any, assignmentsMap?: Record<string, string[]>):
 };
 
 const isTaskAssignedToCleaner = (task: any, cleanerId: string, cleanerName?: string, assignmentsMap?: Record<string, string[]>): boolean => {
+  const normalizedCleanerName = cleanerName?.trim().toLocaleUpperCase('es-ES');
+
   return task.cleanerId === cleanerId ||
-    task.cleaner === cleanerName ||
+    (normalizedCleanerName && task.cleaner?.trim().toLocaleUpperCase('es-ES') === normalizedCleanerName) ||
     (typeof task.cleaner === 'string' && task.cleaner.includes(',') &&
-      task.cleaner.split(',').some((name: string) => name.trim() === cleanerName)) ||
+      task.cleaner
+        .split(',')
+        .some((name: string) => name.trim().toLocaleUpperCase('es-ES') === normalizedCleanerName)) ||
     (Array.isArray(assignmentsMap?.[task.id]) && assignmentsMap![task.id].includes(cleanerId));
 };
 

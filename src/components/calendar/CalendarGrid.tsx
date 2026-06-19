@@ -8,6 +8,7 @@ import { getCleanerAvailabilityForDay, timeToMinutes, isCleanerAvailableAtTime }
 import { getTaskPositionWithOverlap, getEffectiveTaskEndTime } from "@/utils/taskPositioning";
 import { WorkerAbsenceStatus } from "@/hooks/useWorkersAbsenceStatus";
 import { ABSENCE_TYPE_COLORS, MAINTENANCE_COLOR } from "@/types/workerAbsence";
+import { isTaskAssignedToCleaner } from "@/utils/taskAssignments";
 
 interface CalendarGridProps {
   cleaners: Cleaner[];
@@ -408,19 +409,10 @@ export const CalendarGrid = memo(forwardRef<HTMLDivElement, CalendarGridProps>(
       });
       
       return cleaners.map((cleaner, index) => {
-        // Filter tasks by cleaner_id (preferred), cleaner name (fallback),
-        // or via assignmentsMap (multiple assignees), or cleaner name contains check
+        // Filter tasks by task_assignments, cleaner_id or normalized cleaner name.
         const cleanerTasks = assignedTasks.filter(task => {
-          // Direct cleaner_id match
-          if (task.cleanerId === cleaner.id) return true;
-          // Exact cleaner name match (single assignment)
-          if (task.cleaner === cleaner.name) return true;
-          // Check if cleaner name is in comma-separated list (multiple assignments)
-          if (task.cleaner && task.cleaner.includes(',') && 
-              task.cleaner.split(',').some((name: string) => name.trim() === cleaner.name)) return true;
-          // Check multiple assignments map
           if (Array.isArray(assignmentsMap?.[task.id]) && assignmentsMap![task.id].includes(cleaner.id)) return true;
-          return false;
+          return isTaskAssignedToCleaner(task, cleaner.id, cleaner.name);
         });
         
         console.log(`👷 Cleaner ${cleaner.name} tasks:`, {
