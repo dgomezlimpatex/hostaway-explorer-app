@@ -1,5 +1,6 @@
 
 import { useState, useMemo, useRef, useCallback } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useCalendarData } from "@/hooks/useCalendarData";
 import { useDragAndDrop } from "@/hooks/useDragAndDrop";
 import { useAllCleanersAvailability } from "@/hooks/useAllCleanersAvailability";
@@ -11,6 +12,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 import { ABSENCE_TYPE_LABELS } from "@/types/workerAbsence";
 import { buildExtraordinaryTask, type ExtraordinaryTaskFormData } from "@/services/extraordinaryTaskBuilder";
+import { materializeRecurringTaskInstance } from "@/services/recurringTaskInstanceService";
 
 // Helper function to check time overlap
 const toMin = (time: string) => {
@@ -50,6 +52,7 @@ export const useCalendarLogic = () => {
 
   const { data: availability = [], isInitialLoading: isInitialLoadingAvailability } = useAllCleanersAvailability();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isBatchCreateModalOpen, setIsBatchCreateModalOpen] = useState(false);
   const [isExtraordinaryServiceModalOpen, setIsExtraordinaryServiceModalOpen] = useState(false);
@@ -310,14 +313,30 @@ export const useCalendarLogic = () => {
       const cleanerObj = cleaners.find((c: any) => c.id === cleanerId);
       const cleanerName = cleanerObj?.name || '';
 
-      // SINGLE round-trip: assign + reschedule in one DB call (optimistic UI immediate)
-      assignTaskWithSchedule({
-        taskId,
-        cleanerId,
-        cleanerName,
-        startTime: timeSlot ? timeSlot : undefined,
-        endTime: timeSlot ? endTime : undefined,
-      });
+      if ((task as any).isRecurringInstance) {
+        await materializeRecurringTaskInstance(task, {
+          cleaner: cleanerName,
+          cleanerId,
+          startTime,
+          endTime,
+          status: 'pending',
+        });
+
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: ['recurring-task-executions'] }),
+          queryClient.invalidateQueries({ queryKey: ['recurring-tasks-for-calendar'] }),
+          queryClient.invalidateQueries({ queryKey: ['tasks'] }),
+        ]);
+      } else {
+        // SINGLE round-trip: assign + reschedule in one DB call (optimistic UI immediate)
+        assignTaskWithSchedule({
+          taskId,
+          cleanerId,
+          cleanerName,
+          startTime: timeSlot ? timeSlot : undefined,
+          endTime: timeSlot ? endTime : undefined,
+        });
+      }
 
       // Apply cascading reschedules to the displaced tasks
       if (displaced.length > 0) {
@@ -371,7 +390,7 @@ export const useCalendarLogic = () => {
         variant: "destructive",
       });
     }
-  }, [tasks, assignTaskWithSchedule, toast, availability, cleaners]);
+  }, [tasks, assignTaskWithSchedule, toast, availability, cleaners, queryClient]);
 
   // Initialize drag and drop with enhanced handler
   const {

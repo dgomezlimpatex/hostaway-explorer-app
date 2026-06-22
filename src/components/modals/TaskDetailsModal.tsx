@@ -3,7 +3,6 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader } from "@/components/
 import { Task } from "@/types/calendar";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
-import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from '@tanstack/react-query';
 import { TaskReportModal } from "./TaskReportModal";
 import { AssignMultipleCleanersModal } from "./AssignMultipleCleanersModal";
@@ -13,6 +12,10 @@ import { TaskDetailsConfirmDialogs } from "./task-details/TaskDetailsConfirmDial
 import { taskAssignmentService } from "@/services/storage/taskAssignmentService";
 import { taskStorageService } from "@/services/storage/taskStorage";
 import { useInlineFieldSave } from "@/hooks/useInlineFieldSave";
+import {
+  markRecurringTaskInstanceHandled,
+  materializeRecurringTaskInstance,
+} from "@/services/recurringTaskInstanceService";
 
 interface TaskDetailsModalProps {
   task: Task | null;
@@ -59,6 +62,12 @@ export const TaskDetailsModal = ({
   ), [freshTask, task]);
 
   const { saveField, statusByField } = useInlineFieldSave({ taskId: realTaskId });
+
+  const invalidateRecurringInstanceCaches = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ['recurring-task-executions'] });
+    queryClient.invalidateQueries({ queryKey: ['recurring-tasks-for-calendar'] });
+    queryClient.invalidateQueries({ queryKey: ['tasks'] });
+  }, [queryClient]);
 
   useEffect(() => {
     if (displayTask) setFormData(displayTask);
@@ -162,13 +171,8 @@ export const TaskDetailsModal = ({
       try {
         const recurringTaskId = (task as any).recurringTaskId;
         if (recurringTaskId) {
-          await supabase.from('recurring_task_executions').insert({
-            recurring_task_id: recurringTaskId,
-            execution_date: task.date,
-            success: true,
-          });
-          queryClient.invalidateQueries({ queryKey: ['recurring-task-executions'] });
-          queryClient.invalidateQueries({ queryKey: ['tasks'] });
+          await markRecurringTaskInstanceHandled(recurringTaskId, task.date);
+          invalidateRecurringInstanceCaches();
         }
         onOpenChange(false);
         setShowDeleteConfirm(false);
@@ -191,30 +195,14 @@ export const TaskDetailsModal = ({
   };
 
   const handleUnassign = async () => {
-    if (isRecurringInstance && onCreateTask) {
+    if (isRecurringInstance) {
       try {
-        const recurringTaskId = (task as any).recurringTaskId;
-        const { id, isRecurringInstance: _isRec, recurringTaskId: _rtId, originalTaskId, cleaner, cleanerId, ...taskBase } = task as any;
-        const newTaskData: Omit<Task, 'id'> = {
-          ...taskBase,
+        await materializeRecurringTaskInstance(task, {
           cleaner: undefined,
           cleanerId: undefined,
           status: formData.status || 'pending',
-        };
-        delete (newTaskData as any).isRecurringInstance;
-        delete (newTaskData as any).recurringTaskId;
-        delete (newTaskData as any).originalTaskId;
-
-        await onCreateTask(newTaskData);
-
-        if (recurringTaskId) {
-          await supabase.from('recurring_task_executions').insert({
-            recurring_task_id: recurringTaskId,
-            execution_date: task.date,
-            success: true,
-          });
-          queryClient.invalidateQueries({ queryKey: ['recurring-task-executions'] });
-        }
+        });
+        invalidateRecurringInstanceCaches();
 
         onOpenChange(false);
         setShowUnassignConfirm(false);
@@ -240,31 +228,14 @@ export const TaskDetailsModal = ({
   const handleAssign = async (cleanerId: string, cleanerName: string) => {
     // For a virtual recurring instance: materialize as a real task with the new cleaner
     // and mark this occurrence as executed so the virtual one disappears.
-    if (isRecurringInstance && onCreateTask) {
+    if (isRecurringInstance) {
       try {
-        const recurringTaskId = (task as any).recurringTaskId;
-        const { id, isRecurringInstance: _isRec, recurringTaskId: _rtId, originalTaskId, ...taskBase } = task as any;
-        const newTaskData: Omit<Task, 'id'> = {
-          ...taskBase,
+        await materializeRecurringTaskInstance(task, {
           cleaner: cleanerName,
           cleanerId,
           status: 'pending',
-        };
-        delete (newTaskData as any).isRecurringInstance;
-        delete (newTaskData as any).recurringTaskId;
-        delete (newTaskData as any).originalTaskId;
-
-        await onCreateTask(newTaskData);
-
-        if (recurringTaskId) {
-          await supabase.from('recurring_task_executions').insert({
-            recurring_task_id: recurringTaskId,
-            execution_date: task.date,
-            success: true,
-          });
-          queryClient.invalidateQueries({ queryKey: ['recurring-task-executions'] });
-          queryClient.invalidateQueries({ queryKey: ['tasks'] });
-        }
+        });
+        invalidateRecurringInstanceCaches();
 
         toast({ title: "Tarea reasignada", description: `Esta ocurrencia se ha asignado a ${cleanerName}.` });
         onOpenChange(false);

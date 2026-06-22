@@ -70,7 +70,12 @@ export const useRecurringTaskInstances = ({ dateFrom, dateTo, cleanerId }: UseRe
   // Build set of already-executed (taskId, date) pairs
   const executedSet = useMemo(() => {
     const set = new Set<string>();
-    executedDates.forEach(e => set.add(`${e.recurring_task_id}_${e.execution_date}`));
+    executedDates.forEach(e => {
+      const executionDate = typeof e.execution_date === 'string'
+        ? e.execution_date.slice(0, 10)
+        : e.execution_date;
+      set.add(`${e.recurring_task_id}_${executionDate}`);
+    });
     return set;
   }, [executedDates]);
 
