@@ -154,79 +154,83 @@ const DesktopManagerDashboard = ({
   return (
     <div className="min-h-screen bg-zinc-50 px-6 py-6">
       <div className="mx-auto max-w-[1500px] space-y-6">
-        <section className="overflow-hidden rounded-lg border border-zinc-200 bg-white shadow-sm">
-          <div className="grid gap-0 xl:grid-cols-[minmax(0,1.45fr)_minmax(420px,0.8fr)]">
-            <div className="border-b border-zinc-200 p-6 xl:border-b-0 xl:border-r">
-              <div className="flex flex-wrap items-start justify-between gap-4">
-                <div className="max-w-3xl">
-                  <div className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-cyan-700">
-                    <Sparkles className="h-4 w-4" />
-                    Centro de mando operativo
-                  </div>
-                  <h1 className="text-3xl font-semibold tracking-tight text-zinc-950">
-                    Dashboard de gestion
-                  </h1>
-                  <p className="mt-2 text-sm text-zinc-500">
-                    {format(new Date(), "EEEE, d 'de' MMMM 'de' yyyy", { locale: es })}
-                  </p>
-                </div>
-                <SedeSelector />
+        <section className="rounded-lg border border-zinc-200 bg-white p-5 shadow-sm">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div className="max-w-3xl">
+              <div className="mb-2 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-cyan-700">
+                <Sparkles className="h-4 w-4" />
+                Centro de mando operativo
               </div>
-
-              <div className="mt-8 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-                {healthCards.map((card) => {
-                  const Icon = card.icon;
-
-                  return (
-                    <div key={card.label} className={cn('rounded-lg border p-4', card.accent)}>
-                      <div className="flex items-start justify-between gap-3">
-                        <div>
-                          <p className="text-xs font-semibold uppercase tracking-[0.14em] opacity-75">
-                            {card.label}
-                          </p>
-                          <p className="mt-2 text-3xl font-semibold tabular-nums">{card.value}</p>
-                          <p className="mt-1 text-xs font-medium opacity-80">{card.detail}</p>
-                        </div>
-                        <Icon className="h-5 w-5 opacity-80" />
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
+              <h1 className="text-3xl font-semibold tracking-tight text-zinc-950">
+                Dashboard de gestion
+              </h1>
+              <p className="mt-1 text-sm text-zinc-500">
+                {format(new Date(), "EEEE, d 'de' MMMM 'de' yyyy", { locale: es })}
+              </p>
             </div>
 
-            <div className="bg-zinc-950 p-6 text-white">
+            <div className="rounded-lg border border-cyan-100 bg-cyan-50/70 p-3">
+              <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-cyan-800">
+                Sede activa
+              </p>
+              <SedeSelector />
+            </div>
+          </div>
+
+          <div className="mt-5 grid gap-4 xl:grid-cols-[minmax(0,1fr)_420px]">
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+              {healthCards.map((card) => {
+                const Icon = card.icon;
+
+                return (
+                  <div key={card.label} className={cn('rounded-lg border p-3', card.accent)}>
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.14em] opacity-75">
+                          {card.label}
+                        </p>
+                        <p className="mt-1 text-2xl font-semibold tabular-nums">{card.value}</p>
+                        <p className="mt-0.5 text-xs font-medium opacity-80">{card.detail}</p>
+                      </div>
+                      <Icon className="h-4 w-4 opacity-80" />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="rounded-lg bg-zinc-950 p-4 text-white">
               <div className="flex items-center justify-between gap-3">
                 <div>
-                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-cyan-200">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-cyan-200">
                     Pulso del dia
                   </p>
-                  <h2 className="mt-2 text-2xl font-semibold">{progressToday}% completado</h2>
+                  <h2 className="mt-1 text-xl font-semibold">{progressToday}% completado</h2>
                 </div>
                 <div className="rounded-lg border border-white/10 bg-white/10 px-3 py-2 text-right">
-                  <p className="text-2xl font-semibold tabular-nums">{completedToday}/{todayTasks.length}</p>
-                  <p className="text-xs text-zinc-300">tareas</p>
+                  <p className="text-xl font-semibold tabular-nums">{completedToday}/{todayTasks.length}</p>
+                  <p className="text-[11px] text-zinc-300">tareas</p>
                 </div>
               </div>
 
-              <Progress value={progressToday} className="mt-5 h-2 bg-white/15 [&>div]:bg-cyan-300" />
+              <Progress value={progressToday} className="mt-3 h-1.5 bg-white/15 [&>div]:bg-cyan-300" />
 
-              <div className="mt-6 grid grid-cols-3 gap-2 text-center">
-                <div className="rounded-lg bg-white/10 px-3 py-3">
-                  <p className="text-2xl font-semibold tabular-nums">{pendingToday}</p>
-                  <p className="text-xs text-zinc-300">pendientes</p>
+              <div className="mt-3 grid grid-cols-3 gap-2 text-center">
+                <div className="rounded-lg bg-white/10 px-3 py-2">
+                  <p className="text-lg font-semibold tabular-nums">{pendingToday}</p>
+                  <p className="text-[11px] text-zinc-300">pendientes</p>
                 </div>
-                <div className="rounded-lg bg-white/10 px-3 py-3">
-                  <p className="text-2xl font-semibold tabular-nums">{inProgressToday}</p>
-                  <p className="text-xs text-zinc-300">en curso</p>
+                <div className="rounded-lg bg-white/10 px-3 py-2">
+                  <p className="text-lg font-semibold tabular-nums">{inProgressToday}</p>
+                  <p className="text-[11px] text-zinc-300">en curso</p>
                 </div>
-                <div className="rounded-lg bg-white/10 px-3 py-3">
-                  <p className="text-2xl font-semibold tabular-nums">{urgentUnassigned.length}</p>
-                  <p className="text-xs text-zinc-300">criticas</p>
+                <div className="rounded-lg bg-white/10 px-3 py-2">
+                  <p className="text-lg font-semibold tabular-nums">{urgentUnassigned.length}</p>
+                  <p className="text-[11px] text-zinc-300">criticas</p>
                 </div>
               </div>
 
-              <div className="mt-6 grid gap-2">
+              <div className="mt-3 grid grid-cols-3 gap-2">
                 {actionCards.map((action) => {
                   const Icon = action.icon;
 
@@ -236,20 +240,12 @@ const DesktopManagerDashboard = ({
                       type="button"
                       onClick={action.onClick}
                       className={cn(
-                        'flex items-center justify-between rounded-lg border px-4 py-3 text-left transition-colors',
+                        'flex min-h-12 items-center gap-2 rounded-lg border px-3 py-2 text-left text-xs font-semibold transition-colors',
                         action.className,
                       )}
                     >
-                      <span className="flex items-center gap-3">
-                        <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-white/80">
-                          <Icon className="h-4 w-4" />
-                        </span>
-                        <span>
-                          <span className="block text-sm font-semibold">{action.title}</span>
-                          <span className="block text-xs opacity-70">{action.description}</span>
-                        </span>
-                      </span>
-                      <ArrowRight className="h-4 w-4" />
+                      <Icon className="h-4 w-4 shrink-0" />
+                      <span className="truncate">{action.title}</span>
                     </button>
                   );
                 })}
