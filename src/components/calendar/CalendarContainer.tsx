@@ -22,6 +22,26 @@ import { usePreferredCleaners } from "@/hooks/usePropertyPreferredCleaners";
 import { useCalendarWorkload } from "@/hooks/useCalendarWorkload";
 import { useUnavailableCleaners } from "@/hooks/useUnavailableCleaners";
 import { isTaskAssignedToCleaner } from "@/utils/taskAssignments";
+import { materializeRecurringTaskInstance } from "@/services/recurringTaskInstanceService";
+import { type ExtraordinaryTaskFormData } from "@/services/extraordinaryTaskBuilder";
+
+type CalendarDragState = {
+  isDragging: boolean;
+  draggedTask?: Task | null;
+  dragOffset?: { x: number; y: number };
+};
+
+type RecurringCalendarTask = Task & {
+  isRecurringInstance?: boolean;
+};
+
+type TaskOverlap = Task & {
+  endTime: string;
+};
+
+const getErrorMessage = (error: unknown, fallback: string) => {
+  return error instanceof Error ? error.message : fallback;
+};
 
 export interface CalendarContainerProps {
   tasks: Task[];
@@ -40,17 +60,17 @@ export interface CalendarContainerProps {
   selectedTask: Task | null;
   isTaskModalOpen: boolean;
   setIsTaskModalOpen: (open: boolean) => void;
-  dragState: any;
+  dragState: CalendarDragState;
   handleDragStart: (e: React.DragEvent, task: Task) => void;
   handleDragEnd: (e: React.DragEvent) => void;
   handleDragOver: (e: React.DragEvent) => void;
-  handleDrop: (e: React.DragEvent, cleanerId: string, cleaners: any[], timeSlot?: string) => void;
+  handleDrop: (e: React.DragEvent, cleanerId: string, cleaners: Cleaner[], timeSlot?: string) => void;
   handleHeaderScroll: (e: React.UIEvent<HTMLDivElement>) => void;
   handleBodyScroll: (e: React.UIEvent<HTMLDivElement>) => void;
   handleTaskClick: (task: Task) => void;
   handleCreateTask: (taskData: Omit<Task, 'id'>) => Promise<void>;
   handleBatchCreateTasks: (tasksData: Omit<Task, 'id'>[]) => Promise<void>;
-  handleCreateExtraordinaryService: (serviceData: any) => Promise<void>;
+  handleCreateExtraordinaryService: (serviceData: ExtraordinaryTaskFormData) => Promise<void>;
   handleUpdateTask: (taskId: string, updates: Partial<Task>) => Promise<void>;
   handleDeleteTask: (taskId: string) => Promise<void>;
   handleUnassignTask: (taskId: string) => Promise<void>;
@@ -198,7 +218,7 @@ export const CalendarContainer = ({
 
   // Detect overlapping tasks by cleaner
   const overlapsByCleanerMap = useMemo(() => {
-    const map: Record<string, any[]> = {};
+    const map: Record<string, TaskOverlap[]> = {};
     
     cleaners.forEach(cleaner => {
       const cleanerTasks = assignedTasks.filter(task => {
@@ -206,7 +226,7 @@ export const CalendarContainer = ({
         return isTaskAssignedToCleaner(task, cleaner.id, cleaner.name);
       });
       
-      const overlaps: any[] = [];
+      const overlaps: TaskOverlap[] = [];
       cleanerTasks.forEach(task => {
         const taskOverlaps = detectTaskOverlaps(
           cleaner.id,
@@ -224,7 +244,7 @@ export const CalendarContainer = ({
             .map(overlap => ({
               ...overlap,
               endTime: getEffectiveTaskEndTime(overlap, assignmentsMap),
-            }))
+            } as TaskOverlap))
           );
         }
       });
@@ -269,7 +289,7 @@ export const CalendarContainer = ({
       const t = findTask(taskId);
       if (!t) return;
       try {
-        const { id, created_at, updated_at, ...rest } = t as any;
+        const { id, created_at, updated_at, ...rest } = t;
         await taskStorageService.createTask({
           ...rest,
           status: 'pending',
@@ -278,16 +298,45 @@ export const CalendarContainer = ({
           predicate: q => Array.isArray(q.queryKey) && q.queryKey[0] === 'tasks',
         });
         toast({ title: 'Tarea duplicada', description: 'Se ha creado una copia.' });
-      } catch (err: any) {
-        toast({ title: 'Error', description: err?.message || 'No se pudo duplicar.', variant: 'destructive' });
+      } catch (err: unknown) {
+        toast({ title: 'Error', description: getErrorMessage(err, 'No se pudo duplicar.'), variant: 'destructive' });
       }
     };
 
     const handleUnassign = async (e: Event) => {
       const { taskId } = (e as CustomEvent).detail || {};
+      const t = findTask(taskId);
+      if (!t) return;
+
       try {
+        if ((t as RecurringCalendarTask).isRecurringInstance) {
+          await materializeRecurringTaskInstance(t, {
+            cleaner: undefined,
+            cleanerId: undefined,
+            status: 'pending',
+          });
+
+          await Promise.all([
+            queryClient.invalidateQueries({ queryKey: ['recurring-task-executions'] }),
+            queryClient.invalidateQueries({ queryKey: ['recurring-tasks-for-calendar'] }),
+            queryClient.invalidateQueries({ queryKey: ['tasks'] }),
+          ]);
+
+          toast({
+            title: 'Ocurrencia desasignada',
+            description: 'Se ha creado una tarea individual sin asignar para esta fecha.',
+          });
+          return;
+        }
+
         await handleUnassignTask(taskId);
-      } catch {/* handled inside */}
+      } catch (err: unknown) {
+        toast({
+          title: 'Error',
+          description: getErrorMessage(err, 'No se pudo desasignar la tarea.'),
+          variant: 'destructive',
+        });
+      }
     };
 
     const handleDelete = async (e: Event) => {
@@ -401,7 +450,7 @@ export const CalendarContainer = ({
 };
 
 interface OverlapAlertsBannerProps {
-  overlapsByCleanerMap: Record<string, any[]>;
+  overlapsByCleanerMap: Record<string, TaskOverlap[]>;
   cleaners: Cleaner[];
 }
 
