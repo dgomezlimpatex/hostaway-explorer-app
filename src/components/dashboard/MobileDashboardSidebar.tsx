@@ -24,12 +24,14 @@ import { cn } from '@/lib/utils';
 import { useRolePermissions } from '@/hooks/useRolePermissions';
 import { useAuth } from '@/hooks/useAuth';
 import { isAiAllowedUser } from '@/utils/aiAccess';
+import { useIncidentStats } from '@/hooks/useIncidents';
 
 interface NavigationItem {
   title: string;
   href: string;
   icon: React.ComponentType<{ className?: string }>;
   permission?: string;
+  badge?: 'pending-incidents';
 }
 
 const generalItems: NavigationItem[] = [
@@ -43,6 +45,13 @@ const generalItems: NavigationItem[] = [
     href: '/calendar',
     icon: Calendar,
     permission: 'calendar'
+  },
+  {
+    title: 'Incidencias',
+    href: '/cleaning-reports?tab=incidents',
+    icon: AlertTriangle,
+    permission: 'reports',
+    badge: 'pending-incidents',
   },
   {
     title: 'Copiloto IA',
@@ -173,12 +182,15 @@ export const MobileDashboardSidebar = ({ onNavigate }: MobileDashboardSidebarPro
   const location = useLocation();
   const { canAccessModule, isAdminOrManager } = useRolePermissions();
   const { user, profile } = useAuth();
+  const shouldShowIncidentBadge = isAdminOrManager();
+  const { data: incidentStats } = useIncidentStats(shouldShowIncidentBadge);
 
   const isActive = (href: string) => {
+    const path = href.split('?')[0];
     if (href === '/') {
       return location.pathname === '/';
     }
-    return location.pathname.startsWith(href);
+    return location.pathname.startsWith(path);
   };
 
   const hasPermission = (permission?: string) => {
@@ -204,6 +216,11 @@ export const MobileDashboardSidebar = ({ onNavigate }: MobileDashboardSidebarPro
     return items.filter(item => hasPermission(item.permission));
   };
 
+  const getBadgeCount = (item: NavigationItem) => {
+    if (item.badge !== 'pending-incidents') return 0;
+    return incidentStats?.pending_limpatex ?? 0;
+  };
+
   const renderNavigationSection = (title: string, items: NavigationItem[]) => (
     <div className="mb-4">
       <h3 className="mb-2 px-4 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
@@ -226,7 +243,12 @@ export const MobileDashboardSidebar = ({ onNavigate }: MobileDashboardSidebarPro
               'h-5 w-5 shrink-0',
               isActive(item.href) ? 'text-blue-600' : 'text-slate-400'
             )} />
-            {item.title}
+            <span className="min-w-0 flex-1">{item.title}</span>
+            {getBadgeCount(item) > 0 && (
+              <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-red-600 px-1.5 text-[11px] font-bold leading-none text-white shadow-sm">
+                {getBadgeCount(item) > 99 ? '99+' : getBadgeCount(item)}
+              </span>
+            )}
           </NavLink>
         ))}
       </div>

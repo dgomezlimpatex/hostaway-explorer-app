@@ -150,9 +150,10 @@ export const useIncidentDetail = (incidentId?: string | null) => {
   });
 };
 
-export const useIncidentStats = () => {
+export const useIncidentStats = (enabled = true) => {
   return useQuery({
     queryKey: ['cleaning-incidents-stats'],
+    enabled,
     queryFn: async () => {
       const { data, error } = await supabase
         .from('cleaning_incidents')

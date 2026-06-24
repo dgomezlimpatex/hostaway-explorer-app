@@ -35,6 +35,7 @@ import { useRolePermissions } from '@/hooks/useRolePermissions';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { isAiAllowedUser } from '@/utils/aiAccess';
+import { useIncidentStats } from '@/hooks/useIncidents';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import {
   Sidebar,
@@ -57,6 +58,7 @@ interface NavigationItem {
   href: string;
   icon: React.ComponentType<{ className?: string }>;
   permission?: string;
+  badge?: 'pending-incidents';
 }
 
 const generalItems: NavigationItem[] = [
@@ -70,6 +72,13 @@ const generalItems: NavigationItem[] = [
     href: '/calendar',
     icon: Calendar,
     permission: 'calendar'
+  },
+  {
+    title: 'Incidencias',
+    href: '/cleaning-reports?tab=incidents',
+    icon: AlertTriangle,
+    permission: 'reports',
+    badge: 'pending-incidents',
   },
   {
     title: 'Copiloto IA',
@@ -221,14 +230,17 @@ export const DashboardSidebar = () => {
   const { canAccessModule, isAdminOrManager } = useRolePermissions();
   const { state } = useSidebar();
   const { signOut, profile, user } = useAuth();
+  const shouldShowIncidentBadge = isAdminOrManager();
+  const { data: incidentStats } = useIncidentStats(shouldShowIncidentBadge);
 
   const isCollapsed = state === 'collapsed';
 
   const isActive = (href: string) => {
+    const path = href.split('?')[0];
     if (href === '/') {
       return location.pathname === '/';
     }
-    return location.pathname.startsWith(href);
+    return location.pathname.startsWith(path);
   };
 
   const hasPermission = (permission?: string) => {
@@ -254,6 +266,11 @@ export const DashboardSidebar = () => {
     return items.filter(item => hasPermission(item.permission));
   };
 
+  const getBadgeCount = (item: NavigationItem) => {
+    if (item.badge !== 'pending-incidents') return 0;
+    return incidentStats?.pending_limpatex ?? 0;
+  };
+
   const renderNavigationSection = (title: string, items: NavigationItem[]) => {
     const filteredItems = filterItemsByPermission(items);
     if (filteredItems.length === 0) return null;
@@ -271,7 +288,7 @@ export const DashboardSidebar = () => {
                   <NavLink
                     to={item.href}
                     className={cn(
-                      'flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-lg transition-all duration-200',
+                      'relative flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-lg transition-all duration-200',
                       isActive(item.href)
                         ? 'bg-blue-50 text-blue-600'
                         : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
@@ -282,6 +299,16 @@ export const DashboardSidebar = () => {
                       isActive(item.href) ? 'text-blue-600' : 'text-gray-400'
                     )} />
                     {!isCollapsed && <span>{item.title}</span>}
+                    {getBadgeCount(item) > 0 && (
+                      <span
+                        className={cn(
+                          'ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-red-600 px-1.5 text-[11px] font-bold leading-none text-white shadow-sm',
+                          isCollapsed && 'absolute -right-1 -top-1 h-4 min-w-4 px-1 text-[10px]'
+                        )}
+                      >
+                        {getBadgeCount(item) > 99 ? '99+' : getBadgeCount(item)}
+                      </span>
+                    )}
                   </NavLink>
                 </SidebarMenuButton>
               </SidebarMenuItem>

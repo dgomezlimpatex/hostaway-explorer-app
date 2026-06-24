@@ -1,7 +1,7 @@
 import React, { useState, Suspense, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, Download, Filter, RefreshCw } from 'lucide-react';
 import { CleaningReportsFilters } from '@/components/cleaning-reports/CleaningReportsFilters';
 import { 
@@ -13,7 +13,9 @@ import {
 import { Skeleton } from '@/components/ui/skeleton';
 
 export default function CleaningReports() {
-  const [activeTab, setActiveTab] = useState('dashboard');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const initialTab = searchParams.get('tab') === 'incidents' ? 'incidents' : 'dashboard';
+  const [activeTab, setActiveTab] = useState(initialTab);
   const [showFilters, setShowFilters] = useState(false);
   const [filters, setFilters] = useState({
     dateRange: 'all',
@@ -27,6 +29,15 @@ export default function CleaningReports() {
     // TODO: Implementar exportación
     console.log('Exporting reports with filters:', filters);
   }, [filters]);
+
+  const handleTabChange = useCallback((tab: string) => {
+    setActiveTab(tab);
+    if (tab === 'dashboard') {
+      setSearchParams({});
+    } else {
+      setSearchParams({ tab });
+    }
+  }, [setSearchParams]);
 
   // Componente de loading optimizado
   const LoadingComponent = useCallback(() => (
@@ -124,7 +135,7 @@ export default function CleaningReports() {
 
       {/* Content */}
       <div className="p-6">
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+        <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-6">
           <TabsList className="grid w-full grid-cols-4 lg:w-[600px]">
             <TabsTrigger value="dashboard">📊 Dashboard</TabsTrigger>
             <TabsTrigger value="incidents">⚠️ Incidencias</TabsTrigger>
