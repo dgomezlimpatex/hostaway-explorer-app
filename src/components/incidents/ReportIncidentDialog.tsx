@@ -8,7 +8,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { AlertTriangle, Camera, Check, Image as ImageIcon, Loader2, Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useIncidentCategories, useCreateIncident } from '@/hooks/useCleaningIncidents';
-import { useAuth } from '@/hooks/useAuth';
 
 interface ReportIncidentDialogProps {
   open: boolean;
@@ -23,8 +22,6 @@ export const ReportIncidentDialog: React.FC<ReportIncidentDialogProps> = ({
   taskId,
   propertyName,
 }) => {
-  const { userRole } = useAuth();
-  const isPrivileged = userRole === 'admin';
   const { data: categories = [], isLoading: loadingCats } = useIncidentCategories();
   const createIncident = useCreateIncident();
 
@@ -32,7 +29,6 @@ export const ReportIncidentDialog: React.FC<ReportIncidentDialogProps> = ({
   const [location, setLocation] = useState('');
   const [description, setDescription] = useState('');
   const [files, setFiles] = useState<File[]>([]);
-  const [publishDirect, setPublishDirect] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
 
@@ -41,7 +37,6 @@ export const ReportIncidentDialog: React.FC<ReportIncidentDialogProps> = ({
     setLocation('');
     setDescription('');
     setFiles([]);
-    setPublishDirect(false);
   };
 
   const handleClose = (v: boolean) => {
@@ -72,7 +67,7 @@ export const ReportIncidentDialog: React.FC<ReportIncidentDialogProps> = ({
         description: description.trim(),
         location: location.trim() || undefined,
         files,
-        createAsOpen: isPrivileged && publishDirect,
+        createAsOpen: false,
       });
       handleClose(false);
     } catch {
@@ -217,19 +212,6 @@ export const ReportIncidentDialog: React.FC<ReportIncidentDialogProps> = ({
             )}
           </div>
 
-          {isPrivileged && (
-            <label className="flex items-start gap-2 rounded-lg border bg-muted/30 p-3 text-xs text-muted-foreground cursor-pointer">
-              <input
-                type="checkbox"
-                checked={publishDirect}
-                onChange={(e) => setPublishDirect(e.target.checked)}
-                className="mt-0.5"
-              />
-              <span>
-                Publicar directamente como <strong>Abierta</strong> (visible para el cliente sin pasar por revisión).
-              </span>
-            </label>
-          )}
         </div>
 
         <div className="px-5 py-3 border-t flex items-center gap-2 bg-white">
