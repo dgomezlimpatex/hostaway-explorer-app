@@ -30,11 +30,21 @@ interface MonthlyMetrics {
   isPositive: boolean;
 }
 
+interface IncidentDashboardStats {
+  total: number;
+  pending_limpatex: number;
+  open: number;
+  in_progress: number;
+  resolved: number;
+  discarded: number;
+}
+
 interface DesktopManagerDashboardProps {
   todayTasks: Task[];
   unassignedTasks: Task[];
   monthlyMetrics: MonthlyMetrics;
   pendingIncidents: number;
+  incidentStats?: IncidentDashboardStats;
   onTaskClick: (task: Task) => void;
   onOpenCreateModal: () => void;
   onOpenBatchModal: () => void;
@@ -73,6 +83,7 @@ const DesktopManagerDashboard = ({
   unassignedTasks,
   monthlyMetrics,
   pendingIncidents,
+  incidentStats,
   onTaskClick,
   onOpenCreateModal,
   onOpenBatchModal,
@@ -88,6 +99,7 @@ const DesktopManagerDashboard = ({
   const inProgressToday = todayTasks.filter((task) => task.status === 'in-progress').length;
   const pendingToday = todayTasks.filter((task) => task.status === 'pending').length;
   const progressToday = todayTasks.length > 0 ? Math.round((completedToday / todayTasks.length) * 100) : 0;
+  const activeIncidents = (incidentStats?.open ?? 0) + (incidentStats?.in_progress ?? 0);
 
   const sortedTodayTasks = [...todayTasks].sort((a, b) => a.startTime.localeCompare(b.startTime));
   const nextTasks = sortedTodayTasks.filter((task) => task.status !== 'completed').slice(0, 8);
@@ -319,6 +331,62 @@ const DesktopManagerDashboard = ({
           </section>
 
           <aside className="space-y-6">
+            <section className="rounded-lg border border-zinc-200 bg-white shadow-sm">
+              <div className="flex items-start justify-between gap-3 border-b border-zinc-200 px-5 py-4">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.14em] text-rose-700">
+                    Incidencias
+                  </p>
+                  <h2 className="mt-1 text-xl font-semibold text-zinc-950">Revisión operativa</h2>
+                </div>
+                {pendingIncidents > 0 && (
+                  <Badge variant="destructive" className="rounded-full">
+                    {pendingIncidents} pendientes
+                  </Badge>
+                )}
+              </div>
+              <div className="space-y-3 p-4">
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="rounded-lg border border-rose-100 bg-rose-50 p-3">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-rose-700">
+                      Pendientes
+                    </p>
+                    <p className="mt-1 text-2xl font-semibold tabular-nums text-rose-900">
+                      {pendingIncidents}
+                    </p>
+                  </div>
+                  <div className="rounded-lg border border-cyan-100 bg-cyan-50 p-3">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-cyan-700">
+                      Activas
+                    </p>
+                    <p className="mt-1 text-2xl font-semibold tabular-nums text-cyan-900">
+                      {activeIncidents}
+                    </p>
+                  </div>
+                  <div className="rounded-lg border border-blue-100 bg-blue-50 p-3">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-blue-700">
+                      En curso
+                    </p>
+                    <p className="mt-1 text-2xl font-semibold tabular-nums text-blue-900">
+                      {incidentStats?.in_progress ?? 0}
+                    </p>
+                  </div>
+                  <div className="rounded-lg border border-emerald-100 bg-emerald-50 p-3">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-emerald-700">
+                      Resueltas
+                    </p>
+                    <p className="mt-1 text-2xl font-semibold tabular-nums text-emerald-900">
+                      {incidentStats?.resolved ?? 0}
+                    </p>
+                  </div>
+                </div>
+                <Button variant="outline" className="w-full" onClick={() => navigate('/cleaning-reports')}>
+                  Revisar incidencias
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </Button>
+              </div>
+            </section>
+
             <section className="rounded-lg border border-zinc-200 bg-white shadow-sm">
               <div className="border-b border-zinc-200 px-5 py-4">
                 <p className="text-xs font-semibold uppercase tracking-[0.14em] text-amber-700">

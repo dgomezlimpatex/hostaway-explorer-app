@@ -36,7 +36,6 @@ export interface TaskReport {
   start_time?: string;
   end_time?: string;
   notes?: string;
-  issues_found: any[];
   created_at: string;
   updated_at: string;
 }
@@ -62,5 +61,4 @@ export interface CreateTaskReportData {
   start_time?: string;
   end_time?: string;
   notes?: string;
-  issues_found?: any[];
 }

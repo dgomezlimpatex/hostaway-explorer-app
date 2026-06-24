@@ -28,11 +28,21 @@ interface MonthlyMetrics {
   isPositive: boolean;
 }
 
+interface IncidentDashboardStats {
+  total: number;
+  pending_limpatex: number;
+  open: number;
+  in_progress: number;
+  resolved: number;
+  discarded: number;
+}
+
 interface MobileManagerDashboardProps {
   todayTasks: Task[];
   unassignedTasks: Task[];
   monthlyMetrics: MonthlyMetrics;
   pendingIncidents: number;
+  incidentStats?: IncidentDashboardStats;
   onTaskClick: (task: Task) => void;
   onOpenCreateModal: () => void;
   onOpenBatchModal: () => void;
@@ -100,6 +110,7 @@ export function MobileManagerDashboard({
   unassignedTasks,
   monthlyMetrics,
   pendingIncidents,
+  incidentStats,
   onTaskClick,
   onOpenCreateModal,
   onOpenBatchModal,
@@ -111,6 +122,7 @@ export function MobileManagerDashboard({
 }: MobileManagerDashboardProps) {
   const navigate = useNavigate();
   const visibleTasks = todayTasks.slice(0, 8);
+  const activeIncidents = (incidentStats?.open ?? 0) + (incidentStats?.in_progress ?? 0);
 
   const summary = useMemo(() => {
     return {
@@ -217,6 +229,34 @@ export function MobileManagerDashboard({
             </CardContent>
           </Card>
         </section>
+
+        <Card className="border-0 shadow-sm">
+          <CardHeader className="pb-2">
+            <CardTitle className="flex items-center justify-between text-base">
+              <span className="flex items-center gap-2">
+                <AlertTriangle className="h-5 w-5 text-rose-600" />
+                Incidencias
+              </span>
+              <Button variant="ghost" size="sm" onClick={() => navigate('/cleaning-reports')}>
+                Revisar
+              </Button>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="grid grid-cols-3 gap-2 pt-0 text-center">
+            <div className="rounded-xl bg-rose-50 p-3">
+              <p className="text-xl font-bold text-rose-700">{pendingIncidents}</p>
+              <p className="text-[11px] text-rose-800">Pendientes</p>
+            </div>
+            <div className="rounded-xl bg-cyan-50 p-3">
+              <p className="text-xl font-bold text-cyan-700">{activeIncidents}</p>
+              <p className="text-[11px] text-cyan-800">Activas</p>
+            </div>
+            <div className="rounded-xl bg-emerald-50 p-3">
+              <p className="text-xl font-bold text-emerald-700">{incidentStats?.resolved ?? 0}</p>
+              <p className="text-[11px] text-emerald-800">Resueltas</p>
+            </div>
+          </CardContent>
+        </Card>
 
         <Card className="border-0 shadow-sm">
           <CardHeader className="pb-3">

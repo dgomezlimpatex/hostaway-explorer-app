@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { useTaskReports } from './useTaskReports';
 import { useCleaners } from './useCleaners';
-import { useSede } from '@/contexts/SedeContext';
+import { useIncidents } from './useIncidents';
 
 interface Filters {
   dateRange: string;
@@ -14,7 +14,11 @@ interface Filters {
 export const useOptimizedCleaningReports = (filters: Filters) => {
   const { reports, isLoading: reportsLoading } = useTaskReports();
   const { cleaners, isLoading: cleanersLoading } = useCleaners();
-  const { activeSede } = useSede();
+  const { data: incidents = [], isLoading: incidentsLoading } = useIncidents({ status: 'all' });
+
+  const incidentTaskIds = useMemo(() => {
+    return new Set(incidents.map((incident) => incident.task_id).filter(Boolean));
+  }, [incidents]);
 
   // Filtros aplicados solo cuando cambian los datos o filtros
   const filteredReports = useMemo(() => {
@@ -33,11 +37,13 @@ export const useOptimizedCleaningReports = (filters: Filters) => {
         return false;
       }
 
-      // Filtro por incidencias
-      if (filters.hasIncidents === 'true' && (!report.issues_found || report.issues_found.length === 0)) {
+      const hasModernIncidents = incidentTaskIds.has(report.task_id);
+
+      // Filtro por incidencias del sistema profesional
+      if (filters.hasIncidents === 'yes' && !hasModernIncidents) {
         return false;
       }
-      if (filters.hasIncidents === 'false' && report.issues_found && report.issues_found.length > 0) {
+      if (filters.hasIncidents === 'no' && hasModernIncidents) {
         return false;
       }
 
@@ -48,18 +54,21 @@ export const useOptimizedCleaningReports = (filters: Filters) => {
       switch (filters.dateRange) {
         case 'today':
           return reportDate.toDateString() === today.toDateString();
-        case 'yesterday':
+        case 'yesterday': {
           const yesterday = new Date(today);
           yesterday.setDate(yesterday.getDate() - 1);
           return reportDate.toDateString() === yesterday.toDateString();
-        case 'week':
+        }
+        case 'week': {
           const weekAgo = new Date(today);
           weekAgo.setDate(weekAgo.getDate() - 7);
           return reportDate >= weekAgo;
-        case 'month':
+        }
+        case 'month': {
           const monthAgo = new Date(today);
           monthAgo.setMonth(monthAgo.getMonth() - 1);
           return reportDate >= monthAgo;
+        }
         case 'all':
         default:
           return true;
@@ -67,7 +76,7 @@ export const useOptimizedCleaningReports = (filters: Filters) => {
     });
 
     return filtered;
-  }, [reports, filters]);
+  }, [reports, filters, incidentTaskIds]);
 
   // Memoizar estadísticas complejas
   const dashboardMetrics = useMemo(() => {
@@ -75,7 +84,7 @@ export const useOptimizedCleaningReports = (filters: Filters) => {
     const completedReports = filteredReports.filter(r => r.overall_status === 'completed').length;
     const pendingReports = filteredReports.filter(r => r.overall_status === 'pending').length;
     const inProgressReports = filteredReports.filter(r => r.overall_status === 'in_progress').length;
-    const reportsWithIncidents = filteredReports.filter(r => r.issues_found && r.issues_found.length > 0).length;
+    const reportsWithIncidents = filteredReports.filter(r => incidentTaskIds.has(r.task_id)).length;
 
     const completionRate = totalReports > 0 ? (completedReports / totalReports) * 100 : 0;
 
@@ -87,7 +96,7 @@ export const useOptimizedCleaningReports = (filters: Filters) => {
       reportsWithIncidents,
       completionRate,
     };
-  }, [filteredReports]);
+  }, [filteredReports, incidentTaskIds]);
 
   // Reportes recientes optimizados
   const recentReports = useMemo(() => {
@@ -101,6 +110,6 @@ export const useOptimizedCleaningReports = (filters: Filters) => {
     dashboardMetrics,
     recentReports,
     cleaners: cleaners || [],
-    isLoading: reportsLoading || cleanersLoading,
+    isLoading: reportsLoading || cleanersLoading || incidentsLoading,
   };
 };

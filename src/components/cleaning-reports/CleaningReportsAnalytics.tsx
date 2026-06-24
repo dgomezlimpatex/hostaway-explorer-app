@@ -34,6 +34,7 @@ import {
 } from 'recharts';
 import { useTaskReports } from '@/hooks/useTaskReports';
 import { useCleaners } from '@/hooks/useCleaners';
+import { useIncidents } from '@/hooks/useIncidents';
 import AnalyticsExportService from '@/services/analyticsExport';
 import { format, subDays, startOfDay, endOfDay } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -53,6 +54,7 @@ export const CleaningReportsAnalytics: React.FC<CleaningReportsAnalyticsProps> =
 }) => {
   const { reports, isLoading } = useTaskReports();
   const { cleaners } = useCleaners();
+  const { data: incidents = [] } = useIncidents({ status: 'all' });
   
   const [exportFormat, setExportFormat] = React.useState<'excel' | 'pdf'>('excel');
   
@@ -67,9 +69,7 @@ export const CleaningReportsAnalytics: React.FC<CleaningReportsAnalyticsProps> =
       const cleanerReports = reports.filter(r => r.cleaner_id === cleaner.id);
       const totalReports = cleanerReports.length;
       const completedReports = cleanerReports.filter(r => r.overall_status === 'completed').length;
-      const reportsWithIncidents = cleanerReports.filter(r => 
-        r.issues_found && r.issues_found.length > 0
-      ).length;
+      const reportsWithIncidents = incidents.filter(i => i.reporter_cleaner_id === cleaner.id).length;
       
       const completionRate = totalReports > 0 ? (completedReports / totalReports) * 100 : 0;
       const qualityScore = totalReports > 0 ? 
@@ -97,7 +97,7 @@ export const CleaningReportsAnalytics: React.FC<CleaningReportsAnalyticsProps> =
     });
 
     return performance.sort((a, b) => b.qualityScore - a.qualityScore);
-  }, [reports, cleaners]);
+  }, [reports, cleaners, incidents]);
 
   // Tendencias por día
   const dailyTrends = useMemo(() => {
@@ -118,12 +118,15 @@ export const CleaningReportsAnalytics: React.FC<CleaningReportsAnalyticsProps> =
         fullDate: date,
         total: dayReports.length,
         completed: dayReports.filter(r => r.overall_status === 'completed').length,
-        withIncidents: dayReports.filter(r => r.issues_found && r.issues_found.length > 0).length,
+        withIncidents: incidents.filter(i => {
+          const incidentDate = new Date(i.created_at);
+          return incidentDate >= dayStart && incidentDate <= dayEnd;
+        }).length,
       };
     });
 
     return last7Days;
-  }, [reports]);
+  }, [reports, incidents]);
 
   // Datos para gráfico de barras de tendencias
   const chartData = useMemo(() => {
@@ -153,34 +156,19 @@ export const CleaningReportsAnalytics: React.FC<CleaningReportsAnalyticsProps> =
 
   // Datos de incidencias para exportación
   const incidentsData = useMemo(() => {
-    if (!reports) return [];
-
-    const incidents: any[] = [];
-    reports.forEach(report => {
-      if (report.issues_found && Array.isArray(report.issues_found)) {
-        report.issues_found.forEach((issue: any) => {
-          const cleaner = cleaners.find(c => c.id === report.cleaner_id);
-          incidents.push({
-            id: `${report.id}-${issue.title}`,
-            title: issue.title || 'Sin título',
-            description: issue.description || '',
-            severity: issue.severity || 'medium',
-            status: issue.status || 'open',
-            category: issue.category || 'general',
-            location: issue.location || '',
-            createdAt: report.created_at,
-            resolvedAt: issue.resolvedAt,
-            assignedTo: issue.assignedTo,
-            resolutionNotes: issue.resolutionNotes || '',
-            property: 'Propiedad', // TODO: Obtener de la tarea
-            cleanerName: cleaner?.name || 'Desconocido',
-          });
-        });
-      }
-    });
-
-    return incidents;
-  }, [reports, cleaners]);
+    return incidents.map((incident) => ({
+      id: incident.id,
+      title: incident.category?.label || 'Incidencia',
+      description: incident.description || '',
+      status: incident.status,
+      category: incident.category?.label || 'Sin categoría',
+      location: incident.location || '',
+      createdAt: incident.created_at,
+      resolvedAt: incident.resolved_at,
+      property: incident.property?.nombre || 'Sin propiedad',
+      cleanerName: incident.cleaner?.name || 'Desconocido',
+    }));
+  }, [incidents]);
 
   // Métricas generales
   const generalMetrics = useMemo(() => {
@@ -190,9 +178,8 @@ export const CleaningReportsAnalytics: React.FC<CleaningReportsAnalyticsProps> =
     const completedReports = reports.filter(r => r.overall_status === 'completed').length;
     const avgCompletionRate = totalReports > 0 ? (completedReports / totalReports) * 100 : 0;
     
-    const reportsWithIncidents = reports.filter(r => 
-      r.issues_found && r.issues_found.length > 0
-    ).length;
+    const incidentTaskIds = new Set(incidents.map(i => i.task_id).filter(Boolean));
+    const reportsWithIncidents = reports.filter(r => incidentTaskIds.has(r.task_id)).length;
     const qualityScore = totalReports > 0 ? 
       ((totalReports - reportsWithIncidents) / totalReports) * 100 : 100;
 
@@ -213,7 +200,7 @@ export const CleaningReportsAnalytics: React.FC<CleaningReportsAnalyticsProps> =
       avgCleaningTimeMinutes: Math.round(avgCleaningTime / (1000 * 60)),
       reportsWithIncidents,
     };
-  }, [reports]);
+  }, [reports, incidents]);
 
   const handleExportAnalytics = () => {
     const analyticsData = {

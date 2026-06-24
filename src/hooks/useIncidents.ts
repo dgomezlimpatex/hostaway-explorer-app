@@ -3,6 +3,9 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 
+const getErrorMessage = (error: unknown) =>
+  error instanceof Error ? error.message : 'Error desconocido';
+
 export type IncidentStatus =
   | 'pending_limpatex'
   | 'discarded_limpatex'
@@ -36,6 +39,7 @@ export interface IncidentRow {
   client?: { id: string; nombre: string } | null;
   cleaner?: { id: string; name: string } | null;
   media?: Array<{ id: string; url: string; kind: string }>;
+  comments?: IncidentComment[];
   events?: Array<{
     id: string;
     event_type: string;
@@ -46,6 +50,16 @@ export interface IncidentRow {
     actor_role: string | null;
     created_at: string;
   }>;
+}
+
+export interface IncidentComment {
+  id: string;
+  incident_id: string;
+  body: string;
+  author_kind: 'client' | 'limpatex';
+  author_user_id: string | null;
+  author_name: string | null;
+  created_at: string;
 }
 
 export interface IncidentFilters {
@@ -112,7 +126,26 @@ export const useIncidentDetail = (incidentId?: string | null) => {
         .select('id, event_type, from_status, to_status, note, actor_name, actor_role, created_at')
         .eq('incident_id', incidentId as string)
         .order('created_at', { ascending: false });
-      return { ...(data as unknown as IncidentRow), events: (events as any) || [] };
+      let comments: IncidentComment[] = [];
+      try {
+        // TODO: remove this cast after regenerating Supabase types with cleaning_incident_comments.
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { data: commentsData, error: commentsError } = await (supabase as any)
+          .from('cleaning_incident_comments')
+          .select('id, incident_id, body, author_kind, author_user_id, author_name, created_at')
+          .eq('incident_id', incidentId as string)
+          .order('created_at', { ascending: true });
+        if (!commentsError) {
+          comments = (commentsData as IncidentComment[]) || [];
+        }
+      } catch (error) {
+        console.warn('Incident comments are not available yet', error);
+      }
+      return {
+        ...(data as unknown as IncidentRow),
+        events: (events as IncidentRow['events']) || [],
+        comments,
+      };
     },
   });
 };
@@ -140,6 +173,59 @@ export const useIncidentStats = () => {
   });
 };
 
+export const useAddIncidentComment = () => {
+  const qc = useQueryClient();
+  const { toast } = useToast();
+  const { user, userRole } = useAuth();
+
+  return useMutation({
+    mutationFn: async ({ incidentId, body }: { incidentId: string; body: string }) => {
+      const text = body.trim();
+      if (!text) throw new Error('El comentario no puede estar vacío');
+
+      let actorName: string | null = null;
+      if (user?.id) {
+        const { data: prof } = await supabase
+          .from('profiles')
+          .select('full_name, email')
+          .eq('id', user.id)
+          .maybeSingle();
+        const profile = prof as { full_name?: string | null; email?: string | null } | null;
+        actorName = profile?.full_name || profile?.email || null;
+      }
+
+      // TODO: remove this cast after regenerating Supabase types with cleaning_incident_comments.
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { error } = await (supabase as any)
+        .from('cleaning_incident_comments')
+        .insert({
+          incident_id: incidentId,
+          body: text,
+          author_kind: 'limpatex',
+          author_user_id: user?.id ?? null,
+          author_name: actorName || 'Limpatex',
+        });
+      if (error) throw error;
+
+      await supabase.from('cleaning_incident_events').insert({
+        incident_id: incidentId,
+        event_type: 'limpatex_comment',
+        note: text,
+        actor_user_id: user?.id ?? null,
+        actor_name: actorName || 'Limpatex',
+        actor_role: (userRole as string) ?? null,
+      });
+    },
+    onSuccess: (_data, vars) => {
+      toast({ title: 'Comentario añadido' });
+      qc.invalidateQueries({ queryKey: ['cleaning-incident', vars.incidentId] });
+      qc.invalidateQueries({ queryKey: ['cleaning-incidents'] });
+    },
+    onError: (e: unknown) =>
+      toast({ title: 'No se pudo comentar', description: getErrorMessage(e), variant: 'destructive' }),
+  });
+};
+
 interface UpdateInput {
   id: string;
   toStatus: IncidentStatus;
@@ -154,7 +240,7 @@ export const useUpdateIncidentStatus = () => {
 
   return useMutation({
     mutationFn: async ({ id, toStatus, note, fromStatus }: UpdateInput) => {
-      const patch: Record<string, any> = { status: toStatus };
+      const patch: Record<string, unknown> = { status: toStatus };
       const now = new Date().toISOString();
       if (toStatus === 'open') {
         patch.approved_at = now;
@@ -188,7 +274,8 @@ export const useUpdateIncidentStatus = () => {
           .select('full_name, email')
           .eq('id', user.id)
           .maybeSingle();
-        actorName = (prof as any)?.full_name || (prof as any)?.email || null;
+        const profile = prof as { full_name?: string | null; email?: string | null } | null;
+        actorName = profile?.full_name || profile?.email || null;
       }
       const eventType =
         toStatus === 'open' && fromStatus === 'pending_limpatex'
@@ -214,7 +301,7 @@ export const useUpdateIncidentStatus = () => {
       qc.invalidateQueries({ queryKey: ['cleaning-incident'] });
       qc.invalidateQueries({ queryKey: ['cleaning-incidents-stats'] });
     },
-    onError: (e: any) =>
-      toast({ title: 'No se pudo actualizar', description: e?.message, variant: 'destructive' }),
+    onError: (e: unknown) =>
+      toast({ title: 'No se pudo actualizar', description: getErrorMessage(e), variant: 'destructive' }),
   });
 };

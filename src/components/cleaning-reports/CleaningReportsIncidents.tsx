@@ -11,8 +11,7 @@ interface CleaningReportsIncidentsProps {
   };
 }
 
-// Vista de administración del nuevo módulo de incidencias.
-// Reemplaza la antigua bandeja basada en `task_reports.issues_found`.
+// Vista de administración del módulo profesional de incidencias.
 export const CleaningReportsIncidents: React.FC<CleaningReportsIncidentsProps> = () => {
   return <IncidentsAdminInbox />;
 };

@@ -9,6 +9,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sh
 import { Textarea } from '@/components/ui/textarea';
 import {
   usePortalIncidents,
+  usePortalAddIncidentComment,
   usePortalUpdateIncident,
   PortalIncident,
   PortalIncidentStatus,
@@ -29,7 +30,9 @@ export const IncidentsTab = ({ clientId }: Props) => {
   const { data: incidents = [], isLoading } = usePortalIncidents(clientId);
   const [selected, setSelected] = useState<PortalIncident | null>(null);
   const [note, setNote] = useState('');
+  const [comment, setComment] = useState('');
   const updateMutation = usePortalUpdateIncident();
+  const commentMutation = usePortalAddIncidentComment();
 
   const handleAction = async (toStatus: 'resolved' | 'discarded' | 'in_progress') => {
     if (!selected) return;
@@ -41,6 +44,16 @@ export const IncidentsTab = ({ clientId }: Props) => {
     });
     setSelected(null);
     setNote('');
+  };
+
+  const handleComment = async () => {
+    if (!selected || !comment.trim()) return;
+    await commentMutation.mutateAsync({
+      incidentId: selected.id,
+      body: comment,
+      clientId,
+    });
+    setComment('');
   };
 
   return (
@@ -73,6 +86,7 @@ export const IncidentsTab = ({ clientId }: Props) => {
                 onClick={() => {
                   setSelected(i);
                   setNote('');
+                  setComment('');
                 }}
               >
                 <div className="flex items-start justify-between gap-3">
@@ -111,7 +125,12 @@ export const IncidentsTab = ({ clientId }: Props) => {
         </div>
       )}
 
-      <Sheet open={!!selected} onOpenChange={(o) => !o && setSelected(null)}>
+      <Sheet open={!!selected} onOpenChange={(o) => {
+        if (!o) {
+          setSelected(null);
+          setComment('');
+        }
+      }}>
         <SheetContent className="w-full sm:max-w-lg overflow-y-auto">
           {selected && (
             <>
@@ -189,6 +208,52 @@ export const IncidentsTab = ({ clientId }: Props) => {
                     <p className="text-sm text-slate-800">{selected.client_discard_reason}</p>
                   </div>
                 )}
+
+                <div className="space-y-3 border-t pt-4">
+                  <div className="text-xs font-medium text-muted-foreground">Comentarios</div>
+                  {selected.comments && selected.comments.length > 0 ? (
+                    <div className="space-y-2">
+                      {selected.comments.map((c) => (
+                        <div
+                          key={c.id}
+                          className={`rounded-md border p-3 text-sm ${
+                            c.author_kind === 'client'
+                              ? 'border-amber-200 bg-amber-50'
+                              : 'border-sky-200 bg-sky-50'
+                          }`}
+                        >
+                          <div className="mb-1 flex items-center justify-between gap-2 text-xs text-muted-foreground">
+                            <span>{c.author_kind === 'client' ? 'Cliente' : 'Limpatex'}</span>
+                            <span>{format(new Date(c.created_at), "d MMM yyyy · HH:mm", { locale: es })}</span>
+                          </div>
+                          <p className="whitespace-pre-wrap">{c.body}</p>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="rounded-md border border-dashed p-3 text-sm text-muted-foreground">
+                      No hay comentarios todavía.
+                    </p>
+                  )}
+                  <div className="space-y-2">
+                    <Textarea
+                      value={comment}
+                      onChange={(e) => setComment(e.target.value)}
+                      placeholder="Escribe un comentario para Limpatex..."
+                      rows={3}
+                    />
+                    <Button
+                      variant="outline"
+                      onClick={handleComment}
+                      disabled={!comment.trim() || commentMutation.isPending}
+                    >
+                      {commentMutation.isPending ? (
+                        <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                      ) : null}
+                      Enviar comentario
+                    </Button>
+                  </div>
+                </div>
 
                 {(selected.status === 'open' || selected.status === 'in_progress') && (
                   <div className="space-y-3 border-t pt-4">

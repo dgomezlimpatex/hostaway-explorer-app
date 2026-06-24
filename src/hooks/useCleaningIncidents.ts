@@ -2,6 +2,9 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
+const getErrorMessage = (error: unknown) =>
+  error instanceof Error ? error.message : 'Error desconocido';
+
 export interface IncidentCategory {
   id: string;
   slug: string;
@@ -86,7 +89,13 @@ export const useCreateIncident = () => {
         _create_as_open: !!input.createAsOpen,
       });
       if (error) throw error;
-      return data as string;
+      const incidentId = data as string;
+      supabase.functions
+        .invoke('send-incident-notification-email', { body: { incidentId } })
+        .catch((emailError) => {
+          console.error('No se pudo enviar el aviso de incidencia:', emailError);
+        });
+      return incidentId;
     },
     onSuccess: () => {
       toast({
@@ -94,11 +103,12 @@ export const useCreateIncident = () => {
         description: 'Limpatex la revisará antes de mostrarla al cliente.',
       });
       qc.invalidateQueries({ queryKey: ['cleaning-incidents'] });
+      qc.invalidateQueries({ queryKey: ['cleaning-incidents-stats'] });
     },
-    onError: (e: any) => {
+    onError: (e: unknown) => {
       toast({
         title: 'No se pudo enviar',
-        description: e?.message || 'Error desconocido',
+        description: getErrorMessage(e),
         variant: 'destructive',
       });
     },

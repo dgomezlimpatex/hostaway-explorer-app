@@ -68,7 +68,6 @@ class ReportDebugger {
       action: `REPORT_SAVE_${action}`,
       data: {
         ...data,
-        issuesCount: data.issues_found ? data.issues_found.length : 0,
         checklistCompleted: data.checklist_completed ? Object.keys(data.checklist_completed).length : 0,
         overallStatus: data.overall_status,
         hasEndTime: !!data.end_time,

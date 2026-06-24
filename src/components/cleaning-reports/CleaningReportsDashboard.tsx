@@ -179,11 +179,6 @@ export const CleaningReportsDashboard: React.FC<CleaningReportsDashboardProps> =
                           locale: es 
                         })}
                       </span>
-                      {report.issues_found && report.issues_found.length > 0 && (
-                        <Badge variant="outline" className="text-orange-600">
-                          {report.issues_found.length} incidencia(s)
-                        </Badge>
-                      )}
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
@@ -223,12 +218,6 @@ export const CleaningReportsDashboard: React.FC<CleaningReportsDashboardProps> =
               {selectedReport && (
                 <div className="flex items-center gap-3">
                   {getStatusBadge(selectedReport.overall_status)}
-                  {selectedReport.issues_found && selectedReport.issues_found.length > 0 && (
-                    <Badge variant="destructive" className="flex items-center gap-1">
-                      <AlertTriangle className="h-3 w-3" />
-                      {selectedReport.issues_found.length} incidencia(s)
-                    </Badge>
-                  )}
                 </div>
               )}
             </div>
@@ -365,39 +354,6 @@ export const CleaningReportsDashboard: React.FC<CleaningReportsDashboardProps> =
                           value={(Object.values(selectedReport.checklist_completed).filter(Boolean).length / Object.keys(selectedReport.checklist_completed).length) * 100} 
                           className="mt-2"
                         />
-                      </div>
-                    </CardContent>
-                  </Card>
-                )}
-
-                {/* Incidencias */}
-                {selectedReport.issues_found && selectedReport.issues_found.length > 0 && (
-                  <Card className="border-orange-200">
-                    <CardHeader>
-                      <CardTitle className="flex items-center gap-2 text-orange-700">
-                        <AlertTriangle className="h-5 w-5" />
-                        Incidencias Encontradas
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-3">
-                        {selectedReport.issues_found.map((issue: any, index: number) => (
-                          <div key={index} className="p-4 border-l-4 border-orange-500 bg-orange-50 rounded-r-lg">
-                            <div className="flex items-start gap-3">
-                              <div className="flex-shrink-0 w-6 h-6 bg-orange-500 text-white rounded-full flex items-center justify-center text-xs font-bold">
-                                {index + 1}
-                              </div>
-                              <div className="flex-1">
-                                <p className="text-sm font-medium text-orange-900">
-                                  {issue.title || `Incidencia ${index + 1}`}
-                                </p>
-                                <p className="text-sm text-orange-700 mt-1">
-                                  {issue.description || issue}
-                                </p>
-                              </div>
-                            </div>
-                          </div>
-                        ))}
                       </div>
                     </CardContent>
                   </Card>

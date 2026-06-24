@@ -2,10 +2,10 @@ import React, { useState, useMemo, useCallback, Suspense, lazy } from 'react';
 import { format, startOfMonth, endOfMonth, isAfter, isBefore, subMonths } from 'date-fns';
 
 import { useOptimizedTasks } from '@/hooks/useOptimizedTasks';
-import { useOptimizedCleaningReports } from '@/hooks/useOptimizedCleaningReports';
 import { useRolePermissions } from '@/hooks/useRolePermissions';
 import { useTasksPageActions } from '@/hooks/tasks/useTasksPageActions';
 import { useDeviceType } from '@/hooks/use-mobile';
+import { useIncidentStats } from '@/hooks/useIncidents';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { CreateTaskModal } from '@/components/modals/CreateTaskModal';
 import { BatchCreateTaskModal } from '@/components/modals/BatchCreateTaskModal';
@@ -48,13 +48,7 @@ export const ManagerDashboard = () => {
     currentView: 'day',
   });
 
-  const { recentReports } = useOptimizedCleaningReports({
-    dateRange: 'month',
-    cleaner: '',
-    status: '',
-    property: '',
-    hasIncidents: 'yes',
-  });
+  const { data: incidentStats } = useIncidentStats();
 
   const monthlyMetrics = useMemo(() => {
     const now = new Date();
@@ -95,13 +89,7 @@ export const ManagerDashboard = () => {
     return tasks.filter((task) => !task.cleanerId && !task.cleaner);
   }, [tasks]);
 
-  const pendingIncidents = useMemo(() => {
-    return recentReports.filter((report) =>
-      report.issues_found &&
-      report.issues_found.length > 0 &&
-      report.overall_status !== 'completed'
-    ).length;
-  }, [recentReports]);
+  const pendingIncidents = incidentStats?.pending_limpatex ?? 0;
 
   const handleTaskClick = useCallback((task) => {
     setSelectedTask(task);
@@ -140,6 +128,7 @@ export const ManagerDashboard = () => {
           unassignedTasks={unassignedTasks}
           monthlyMetrics={monthlyMetrics}
           pendingIncidents={pendingIncidents}
+          incidentStats={incidentStats}
           onTaskClick={handleTaskClick}
           onOpenCreateModal={handleOpenCreateModal}
           onOpenBatchModal={handleOpenBatchModal}
@@ -197,6 +186,7 @@ export const ManagerDashboard = () => {
         unassignedTasks={unassignedTasks}
         monthlyMetrics={monthlyMetrics}
         pendingIncidents={pendingIncidents}
+        incidentStats={incidentStats}
         onTaskClick={handleTaskClick}
         onOpenCreateModal={handleOpenCreateModal}
         onOpenBatchModal={handleOpenBatchModal}

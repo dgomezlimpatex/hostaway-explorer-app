@@ -329,7 +329,6 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
   const autoSaveData = useMemo(() => ({
     checklist_completed: checklist,
     notes,
-    issues_found: [],
     overall_status: isTaskCompleted ? ('completed' as const) : ('in_progress' as const),
   }), [checklist, notes, isTaskCompleted]);
 
@@ -458,7 +457,6 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
       cleaner_id: currentCleanerId,
       checklist_completed: {},
       notes: '',
-      issues_found: [],
       overall_status: 'in_progress' as const,
       start_time: new Date().toISOString(),
     };
@@ -533,7 +531,6 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
       checklist_template_id: currentTemplate?.id,
       checklist_completed: checklist,
       notes,
-      issues_found: [],
       overall_status: reportStatusToPersist,
       ...(reportStatusToPersist === 'completed' ? {
         end_time: currentReport?.end_time || new Date().toISOString(),
@@ -640,7 +637,6 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
       checklist_template_id: currentTemplate?.id,
       checklist_completed: checklist,
       notes,
-      issues_found: [],
       overall_status: 'completed' as const,
       end_time: new Date().toISOString(),
     };

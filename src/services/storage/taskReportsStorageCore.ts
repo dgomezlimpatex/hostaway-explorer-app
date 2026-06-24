@@ -42,7 +42,6 @@ export class TaskReportsStorageService {
     const transformedData = (data || []).map(item => ({
       ...item,
       checklist_completed: item.checklist_completed as Record<string, any>,
-      issues_found: item.issues_found as any[]
     }));
 
     return transformedData;
@@ -80,7 +79,6 @@ export class TaskReportsStorageService {
     return {
       ...data,
       checklist_completed: data.checklist_completed as Record<string, any>,
-      issues_found: data.issues_found as any[]
     };
   }
 
@@ -99,7 +97,6 @@ export class TaskReportsStorageService {
     return {
       ...data,
       checklist_completed: data.checklist_completed as Record<string, any>,
-      issues_found: data.issues_found as any[]
     };
   }
 
@@ -123,7 +120,6 @@ export class TaskReportsStorageService {
     return {
       ...data,
       checklist_completed: data.checklist_completed as Record<string, any>,
-      issues_found: data.issues_found as any[]
     };
   }
 }

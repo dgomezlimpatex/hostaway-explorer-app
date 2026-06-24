@@ -93,7 +93,7 @@ export const useOptimizedAutoSave = ({
     const hasNotes = data?.notes && data.notes.trim().length > 0;
     const hasChecklist = hasChecklistContent(data);
     
-    if (!hasNotes && !hasChecklist && !data?.issues_found?.length) {
+    if (!hasNotes && !hasChecklist) {
       console.log('⏭️ AutoSave: Skipping - no meaningful content to save');
       return;
     }

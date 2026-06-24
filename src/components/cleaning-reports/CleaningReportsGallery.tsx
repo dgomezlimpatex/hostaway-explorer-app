@@ -95,18 +95,7 @@ export const CleaningReportsGallery: React.FC<CleaningReportsGalleryProps> = ({
         )
         .map(media => media.file_url);
 
-      // Obtener imágenes de incidencias (mantener estas)
-      const incidentImages: string[] = [];
-      if (Array.isArray(report.issues_found)) {
-        report.issues_found.forEach((issue: any) => {
-          if (issue?.media_urls && Array.isArray(issue.media_urls)) {
-            incidentImages.push(...issue.media_urls);
-          }
-        });
-      }
-
-      // Combinar solo fotos de la sección "fotos" e incidencias
-      const allImages: string[] = [...photosFromMediaSection, ...incidentImages];
+      const allImages: string[] = [...photosFromMediaSection];
       
       return {
         ...report,

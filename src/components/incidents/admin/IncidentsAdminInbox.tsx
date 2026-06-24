@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useIncidents, useIncidentDetail, useIncidentStats, useUpdateIncidentStatus, IncidentStatus } from '@/hooks/useIncidents';
+import { useAddIncidentComment, useIncidents, useIncidentDetail, useIncidentStats, useUpdateIncidentStatus, IncidentStatus } from '@/hooks/useIncidents';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,6 +9,7 @@ import { Card } from '@/components/ui/card';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   AlertTriangle, Check, X, Clock, CheckCircle2, Loader2, Eye, Search, ExternalLink,
+  MessageSquare,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
@@ -32,8 +33,10 @@ export const IncidentsAdminInbox: React.FC = () => {
   const { data: incidents = [], isLoading } = useIncidents({ status: statusFilter, search });
   const { data: detail } = useIncidentDetail(selectedId);
   const updateStatus = useUpdateIncidentStatus();
+  const addComment = useAddIncidentComment();
 
   const [actionNote, setActionNote] = useState('');
+  const [commentText, setCommentText] = useState('');
 
   const handleAction = async (toStatus: IncidentStatus) => {
     if (!detail) return;
@@ -49,6 +52,12 @@ export const IncidentsAdminInbox: React.FC = () => {
     }
   };
 
+  const handleAddComment = async () => {
+    if (!detail || !commentText.trim()) return;
+    await addComment.mutateAsync({ incidentId: detail.id, body: commentText });
+    setCommentText('');
+  };
+
   const TABS: { value: IncidentStatus | 'all'; label: string; count?: number }[] = [
     { value: 'pending_limpatex', label: 'Pendientes', count: stats?.pending_limpatex },
     { value: 'open', label: 'Abiertas', count: stats?.open },
@@ -61,7 +70,7 @@ export const IncidentsAdminInbox: React.FC = () => {
     <div className="space-y-4">
       {/* Header / filtros */}
       <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-        <Tabs value={statusFilter} onValueChange={(v) => setStatusFilter(v as any)} className="flex-1">
+        <Tabs value={statusFilter} onValueChange={(v) => setStatusFilter(v as IncidentStatus | 'all')} className="flex-1">
           <TabsList className="flex-wrap h-auto">
             {TABS.map((t) => (
               <TabsTrigger key={t.value} value={t.value} className="text-xs gap-1.5">
@@ -213,6 +222,61 @@ export const IncidentsAdminInbox: React.FC = () => {
                   </div>
                 )}
 
+                <div className="border-t pt-4 space-y-3">
+                  <p className="text-xs font-semibold text-muted-foreground mb-2 flex items-center gap-1">
+                    <MessageSquare className="h-3.5 w-3.5" />
+                    COMENTARIOS CON EL CLIENTE
+                  </p>
+                  {detail.comments && detail.comments.length > 0 ? (
+                    <div className="space-y-2">
+                      {detail.comments.map((comment) => (
+                        <div
+                          key={comment.id}
+                          className={cn(
+                            'rounded-md border p-3 text-sm',
+                            comment.author_kind === 'client'
+                              ? 'border-amber-200 bg-amber-50'
+                              : 'border-blue-200 bg-blue-50'
+                          )}
+                        >
+                          <div className="mb-1 flex items-center justify-between gap-2 text-[11px] text-muted-foreground">
+                            <span className="font-semibold">
+                              {comment.author_kind === 'client' ? 'Cliente' : 'Limpatex'}
+                              {comment.author_name ? ` · ${comment.author_name}` : ''}
+                            </span>
+                            <span>{format(new Date(comment.created_at), 'd MMM HH:mm', { locale: es })}</span>
+                          </div>
+                          <p className="whitespace-pre-wrap">{comment.body}</p>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="rounded-md border border-dashed p-3 text-sm text-muted-foreground">
+                      Todavía no hay comentarios.
+                    </p>
+                  )}
+                  <div className="space-y-2">
+                    <Textarea
+                      value={commentText}
+                      onChange={(e) => setCommentText(e.target.value)}
+                      placeholder="Escribe un comentario visible para el cliente..."
+                      className="min-h-[80px] text-sm"
+                    />
+                    <Button
+                      onClick={handleAddComment}
+                      disabled={!commentText.trim() || addComment.isPending}
+                      variant="secondary"
+                    >
+                      {addComment.isPending ? (
+                        <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                      ) : (
+                        <MessageSquare className="h-4 w-4 mr-1" />
+                      )}
+                      Añadir comentario
+                    </Button>
+                  </div>
+                </div>
+
                 {/* Acciones por estado */}
                 <div className="border-t pt-4 space-y-3">
                   {(detail.status === 'pending_limpatex' ||
@@ -325,6 +389,11 @@ export const IncidentsAdminInbox: React.FC = () => {
                             {ev.event_type === 'created' && 'Creada'}
                             {ev.event_type === 'approved' && 'Aprobada'}
                             {ev.event_type === 'discarded_limpatex' && 'Descartada (Limpatex)'}
+                            {ev.event_type === 'client_in_progress' && 'Cliente marcó en proceso'}
+                            {ev.event_type === 'client_resolved' && 'Cliente marcó resuelta'}
+                            {ev.event_type === 'client_discarded' && 'Cliente descartó'}
+                            {ev.event_type === 'client_comment' && 'Comentario del cliente'}
+                            {ev.event_type === 'limpatex_comment' && 'Comentario de Limpatex'}
                             {ev.event_type === 'status_change' && `Cambio de estado → ${ev.to_status ? STATUS_META[ev.to_status as IncidentStatus]?.label : ''}`}
                           </span>
                           <span className="text-muted-foreground">
