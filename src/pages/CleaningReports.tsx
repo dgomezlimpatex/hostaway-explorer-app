@@ -1,173 +1,71 @@
-import React, { useState, Suspense, useCallback } from 'react';
+import React, { Suspense, useCallback } from 'react';
+import { Link } from 'react-router-dom';
+import { ArrowLeft, RefreshCw, TriangleAlert } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Link, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, Download, Filter, RefreshCw } from 'lucide-react';
-import { CleaningReportsFilters } from '@/components/cleaning-reports/CleaningReportsFilters';
-import { 
-  LazyCleaningReportsDashboard,
-  LazyCleaningReportsIncidents,
-  LazyCleaningReportsGallery,
-  LazyCleaningReportsAnalytics
-} from '@/components/cleaning-reports/LazyCleaningReportsComponents';
 import { Skeleton } from '@/components/ui/skeleton';
+import { LazyCleaningReportsIncidents } from '@/components/cleaning-reports/LazyCleaningReportsComponents';
 
 export default function CleaningReports() {
-  const [searchParams, setSearchParams] = useSearchParams();
-  const initialTab = searchParams.get('tab') === 'incidents' ? 'incidents' : 'dashboard';
-  const [activeTab, setActiveTab] = useState(initialTab);
-  const [showFilters, setShowFilters] = useState(false);
-  const [filters, setFilters] = useState({
-    dateRange: 'all',
-    cleaner: 'all',
-    status: 'all',
-    property: 'all',
-    hasIncidents: 'all'
-  });
-
-  const handleExportReports = useCallback(() => {
-    // TODO: Implementar exportación
-    console.log('Exporting reports with filters:', filters);
-  }, [filters]);
-
-  const handleTabChange = useCallback((tab: string) => {
-    setActiveTab(tab);
-    if (tab === 'dashboard') {
-      setSearchParams({});
-    } else {
-      setSearchParams({ tab });
-    }
-  }, [setSearchParams]);
-
-  // Componente de loading optimizado
   const LoadingComponent = useCallback(() => (
-    <div className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {[...Array(4)].map((_, i) => (
-          <div key={i} className="bg-white rounded-lg border border-gray-200 p-6">
-            <div className="flex items-center justify-between mb-4">
-              <Skeleton className="h-4 w-24" />
-              <Skeleton className="h-4 w-4 rounded-full" />
-            </div>
-            <Skeleton className="h-8 w-16 mb-2" />
-            <Skeleton className="h-3 w-full" />
+    <div className="space-y-3">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+        <Skeleton className="h-10 flex-1" />
+        <Skeleton className="h-10 w-full sm:w-64" />
+      </div>
+      {[...Array(4)].map((_, i) => (
+        <div key={i} className="rounded-lg border border-gray-200 bg-white p-4">
+          <div className="mb-3 flex items-center justify-between gap-4">
+            <Skeleton className="h-5 w-40" />
+            <Skeleton className="h-6 w-24" />
           </div>
-        ))}
-      </div>
-      <div className="bg-white rounded-lg border border-gray-200 p-6">
-        <Skeleton className="h-6 w-48 mb-4" />
-        <div className="space-y-4">
-          {[...Array(3)].map((_, i) => (
-            <div key={i} className="flex items-center gap-4 p-4 border rounded-lg">
-              <Skeleton className="h-4 w-4 rounded-full" />
-              <div className="flex-1">
-                <Skeleton className="h-4 w-32 mb-2" />
-                <Skeleton className="h-3 w-full" />
-              </div>
-              <Skeleton className="h-8 w-8 rounded" />
-            </div>
-          ))}
+          <Skeleton className="mb-2 h-4 w-2/3" />
+          <Skeleton className="h-4 w-1/2" />
         </div>
-      </div>
+      ))}
     </div>
   ), []);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
-      {/* Header */}
-      <div className="bg-white border-b border-gray-200 px-6 py-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-4">
+    <div className="min-h-screen bg-slate-50">
+      <div className="border-b border-gray-200 bg-white px-4 py-4 sm:px-6">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-4">
             <Link to="/">
               <Button variant="outline" size="sm">
-                <ArrowLeft className="h-4 w-4 mr-2" />
+                <ArrowLeft className="mr-2 h-4 w-4" />
                 Volver
               </Button>
             </Link>
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">
-                📋 Dashboard de Reportes de Limpieza
-              </h1>
-              <p className="text-gray-600">
-                Control completo de todos los reportes y evidencias de limpieza
-              </p>
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-100 text-amber-700">
+                <TriangleAlert className="h-5 w-5" />
+              </div>
+              <div>
+                <h1 className="text-2xl font-bold text-gray-950">Incidencias</h1>
+                <p className="text-sm text-gray-600">
+                  Revisa, aprueba y controla las incidencias reportadas en las tareas.
+                </p>
+              </div>
             </div>
           </div>
-          
-          <div className="flex items-center space-x-3">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setShowFilters(!showFilters)}
-            >
-              <Filter className="h-4 w-4 mr-2" />
-              Filtros
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleExportReports}
-            >
-              <Download className="h-4 w-4 mr-2" />
-              Exportar
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => window.location.reload()}
-            >
-              <RefreshCw className="h-4 w-4 mr-2" />
-              Actualizar
-            </Button>
-          </div>
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => window.location.reload()}
+            className="w-full sm:w-auto"
+          >
+            <RefreshCw className="mr-2 h-4 w-4" />
+            Actualizar
+          </Button>
         </div>
       </div>
 
-      {/* Filters Panel */}
-      {showFilters && (
-        <div className="bg-white border-b border-gray-200 px-6 py-4">
-          <CleaningReportsFilters
-            filters={filters}
-            onFiltersChange={setFilters}
-          />
-        </div>
-      )}
-
-      {/* Content */}
-      <div className="p-6">
-        <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4 lg:w-[600px]">
-            <TabsTrigger value="dashboard">📊 Dashboard</TabsTrigger>
-            <TabsTrigger value="incidents">⚠️ Incidencias</TabsTrigger>
-            <TabsTrigger value="gallery">📸 Galería</TabsTrigger>
-            <TabsTrigger value="analytics">📈 Analytics</TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="dashboard" className="space-y-6">
-            <Suspense fallback={<LoadingComponent />}>
-              <LazyCleaningReportsDashboard filters={filters} />
-            </Suspense>
-          </TabsContent>
-
-          <TabsContent value="incidents" className="space-y-6">
-            <Suspense fallback={<LoadingComponent />}>
-              <LazyCleaningReportsIncidents filters={filters} />
-            </Suspense>
-          </TabsContent>
-
-          <TabsContent value="gallery" className="space-y-6">
-            <Suspense fallback={<LoadingComponent />}>
-              <LazyCleaningReportsGallery filters={filters} />
-            </Suspense>
-          </TabsContent>
-
-          <TabsContent value="analytics" className="space-y-6">
-            <Suspense fallback={<LoadingComponent />}>
-              <LazyCleaningReportsAnalytics filters={filters} />
-            </Suspense>
-          </TabsContent>
-        </Tabs>
-      </div>
+      <main className="p-4 sm:p-6">
+        <Suspense fallback={<LoadingComponent />}>
+          <LazyCleaningReportsIncidents />
+        </Suspense>
+      </main>
     </div>
   );
 }
