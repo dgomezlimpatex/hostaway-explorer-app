@@ -35,7 +35,6 @@ export const IncidentsAdminInbox: React.FC = () => {
   const updateStatus = useUpdateIncidentStatus();
   const addComment = useAddIncidentComment();
 
-  const [actionNote, setActionNote] = useState('');
   const [commentText, setCommentText] = useState('');
 
   const handleAction = async (toStatus: IncidentStatus) => {
@@ -44,9 +43,7 @@ export const IncidentsAdminInbox: React.FC = () => {
       id: detail.id,
       toStatus,
       fromStatus: detail.status,
-      note: actionNote.trim() || undefined,
     });
-    setActionNote('');
     if (toStatus === 'discarded_limpatex' || toStatus === 'resolved' || toStatus === 'discarded') {
       setSelectedId(null);
     }
@@ -279,22 +276,6 @@ export const IncidentsAdminInbox: React.FC = () => {
 
                 {/* Acciones por estado */}
                 <div className="border-t pt-4 space-y-3">
-                  {(detail.status === 'pending_limpatex' ||
-                    detail.status === 'open' ||
-                    detail.status === 'in_progress') && (
-                    <div>
-                      <p className="text-xs font-semibold text-muted-foreground mb-2">
-                        NOTA INTERNA (opcional)
-                      </p>
-                      <Textarea
-                        value={actionNote}
-                        onChange={(e) => setActionNote(e.target.value)}
-                        placeholder="Añadir motivo o detalles…"
-                        className="min-h-[70px] text-sm"
-                      />
-                    </div>
-                  )}
-
                   <div className="flex flex-wrap gap-2">
                     {detail.status === 'pending_limpatex' && (
                       <>
