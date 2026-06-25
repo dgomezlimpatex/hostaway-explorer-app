@@ -115,7 +115,6 @@ const countByStatus = (items: PortalIncident[]) => {
 export const IncidentsTab = ({ clientId }: Props) => {
   const { data: incidents = [], isLoading } = usePortalIncidents(clientId);
   const [selected, setSelected] = useState<PortalIncident | null>(null);
-  const [note, setNote] = useState('');
   const [comment, setComment] = useState('');
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<PortalIncidentStatus | 'all'>('all');
@@ -230,11 +229,9 @@ export const IncidentsTab = ({ clientId }: Props) => {
     await updateMutation.mutateAsync({
       incidentId: selected.id,
       toStatus,
-      note: note.trim() || undefined,
       clientId,
     });
     setSelected(null);
-    setNote('');
   };
 
   const handleComment = async () => {
@@ -410,7 +407,6 @@ export const IncidentsTab = ({ clientId }: Props) => {
               onToggle={() => toggleGroup(group.key)}
               onSelect={(incident) => {
                 setSelected(incident);
-                setNote('');
                 setComment('');
               }}
             />
@@ -420,16 +416,13 @@ export const IncidentsTab = ({ clientId }: Props) => {
 
       <IncidentDetailSheet
         selected={selected}
-        note={note}
         comment={comment}
         updatePending={updateMutation.isPending}
         commentPending={commentMutation.isPending}
         onClose={() => {
           setSelected(null);
           setComment('');
-          setNote('');
         }}
-        onNoteChange={setNote}
         onCommentChange={setComment}
         onComment={handleComment}
         onAction={handleAction}
@@ -599,23 +592,19 @@ const IncidentListItem = ({ incident, onSelect }: { incident: PortalIncident; on
 
 const IncidentDetailSheet = ({
   selected,
-  note,
   comment,
   updatePending,
   commentPending,
   onClose,
-  onNoteChange,
   onCommentChange,
   onComment,
   onAction,
 }: {
   selected: PortalIncident | null;
-  note: string;
   comment: string;
   updatePending: boolean;
   commentPending: boolean;
   onClose: () => void;
-  onNoteChange: (value: string) => void;
   onCommentChange: (value: string) => void;
   onComment: () => void;
   onAction: (toStatus: 'resolved' | 'discarded' | 'in_progress') => void;
@@ -755,19 +744,7 @@ const IncidentDetailSheet = ({
             </section>
 
             {(selected.status === 'open' || selected.status === 'in_progress') && (
-              <section className="space-y-3 border-t pt-4">
-                <div>
-                  <label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                    Mensaje para Limpatex (opcional)
-                  </label>
-                  <Textarea
-                    value={note}
-                    onChange={(event) => onNoteChange(event.target.value)}
-                    placeholder="Añade contexto antes de cambiar el estado..."
-                    rows={3}
-                    className="mt-2"
-                  />
-                </div>
+              <section className="border-t pt-4">
                 <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
                   {selected.status === 'open' && (
                     <Button variant="outline" onClick={() => onAction('in_progress')} disabled={updatePending}>
