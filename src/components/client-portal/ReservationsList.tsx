@@ -9,12 +9,9 @@ import {
   ChevronRight,
   Clock,
   Edit2,
-  Home,
   Loader2,
-  Lock,
   MapPin,
   MessageSquare,
-  RefreshCw,
   Search,
   Trash2,
   Users,
@@ -58,7 +55,7 @@ interface ReservationsListProps {
   isLoading: boolean;
 }
 
-type StatusFilter = 'all' | 'today' | 'upcoming' | 'past' | 'manual' | 'external';
+type StatusFilter = 'all' | 'today' | 'upcoming' | 'past' | 'manual';
 
 const bookingToReservation = (booking: PortalBooking): ClientReservation => ({
   id: booking.reservationId!,
@@ -114,7 +111,6 @@ const matchesStatusFilter = (booking: PortalBooking, filter: StatusFilter) => {
   if (filter === 'upcoming') return !isPastBooking(booking) && booking.status !== 'cancelled';
   if (filter === 'past') return isPastBooking(booking);
   if (filter === 'manual') return booking.source === 'manual';
-  if (filter === 'external') return booking.source === 'external';
   return true;
 };
 
@@ -139,8 +135,7 @@ export const ReservationsList = ({
     const today = bookings.filter((booking) => isToday(new Date(booking.cleaningDate))).length;
     const upcoming = bookings.filter((booking) => !isPastBooking(booking) && booking.status !== 'cancelled').length;
     const past = bookings.filter(isPastBooking).length;
-    const external = bookings.filter((booking) => booking.source === 'external').length;
-    return { total: bookings.length, today, upcoming, past, external };
+    return { total: bookings.length, today, upcoming, past };
   }, [bookings]);
 
   const propertyOptions = useMemo(() => {
@@ -282,48 +277,54 @@ export const ReservationsList = ({
     const cleaningDate = new Date(booking.cleaningDate);
     const checkInDate = booking.checkInDate ? new Date(booking.checkInDate) : cleaningDate;
     const checkOutDate = booking.checkOutDate ? new Date(booking.checkOutDate) : cleaningDate;
-    const external = booking.source === 'external';
     const upcoming = isFuture(cleaningDate) || isToday(cleaningDate);
     const stillActive = !isPast(checkOutDate) || isToday(checkOutDate) || isToday(cleaningDate);
     const pastBooking = isPastBooking(booking);
     const daysUntil = getDaysUntil(cleaningDate);
-    const nights = !external ? getNightsCount(checkInDate, checkOutDate) : null;
+    const nights = booking.source === 'manual' ? getNightsCount(checkInDate, checkOutDate) : null;
 
     return (
       <button
         key={booking.id}
         type="button"
         onClick={() => setDetailBooking(booking)}
-        className="group relative block w-full text-left transition-colors hover:bg-slate-50"
+        className="group relative block w-full p-2 text-left transition-colors"
       >
         {upcoming && (
           <span
             className={cn(
-              'absolute left-0 top-3 bottom-3 w-1 rounded-r-full',
+              'absolute left-2 top-4 bottom-4 w-1 rounded-full',
               isToday(cleaningDate) ? 'bg-emerald-500' : daysUntil <= 3 ? 'bg-amber-500' : 'bg-primary',
             )}
           />
         )}
 
-        <div className="flex items-center gap-3 p-3 pl-4 sm:p-4 sm:pl-5">
+        <div
+          className={cn(
+            'flex items-center gap-3 rounded-2xl border border-slate-100 bg-white p-3 pl-5 shadow-sm transition-all group-hover:border-blue-100 group-hover:shadow-md sm:p-3.5 sm:pl-5',
+            pastBooking && 'bg-slate-50/70 shadow-none',
+          )}
+        >
           <div
             className={cn(
               'hidden h-11 w-11 shrink-0 items-center justify-center rounded-2xl sm:flex',
               pastBooking
                 ? 'bg-slate-100 text-slate-400'
-                : external
-                  ? 'bg-slate-100 text-slate-600'
-                  : 'bg-blue-50 text-primary',
+                : isToday(cleaningDate)
+                  ? 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100'
+                  : daysUntil <= 3 && daysUntil > 0
+                    ? 'bg-amber-50 text-amber-700 ring-1 ring-amber-100'
+                    : 'bg-blue-50 text-primary ring-1 ring-blue-100',
             )}
           >
-            {external ? <RefreshCw className="h-4 w-4" /> : <Home className="h-4 w-4" />}
+            <Calendar className="h-4 w-4" />
           </div>
 
           <div className="min-w-0 flex-1">
             <div className="mb-1.5 flex flex-wrap items-center gap-1.5">
               <span className={cn('flex items-center gap-1 text-sm font-semibold', pastBooking ? 'text-slate-500' : 'text-slate-950')}>
                 <Calendar className="h-3.5 w-3.5 shrink-0" />
-                {external ? (
+                {booking.source === 'external' ? (
                   <span>{format(cleaningDate, "EEE d MMM yyyy", { locale: es })}</span>
                 ) : (
                   <>
@@ -335,12 +336,6 @@ export const ReservationsList = ({
                 )}
               </span>
 
-              {external && (
-                <Badge variant="outline" className="h-5 gap-1 bg-slate-50 px-1.5 text-[10px]">
-                  <Lock className="h-2.5 w-2.5" />
-                  Sync
-                </Badge>
-              )}
               {isToday(cleaningDate) && (
                 <Badge className="h-5 border-emerald-200 bg-emerald-50 px-1.5 text-[10px] text-emerald-700 hover:bg-emerald-50">
                   Hoy
@@ -422,11 +417,10 @@ export const ReservationsList = ({
               </p>
             </div>
 
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:min-w-[420px]">
+            <div className="grid grid-cols-3 gap-2 lg:min-w-[360px]">
               <ReservationMetric label="Hoy" value={metrics.today} tone="emerald" icon={Clock} />
               <ReservationMetric label="Próximas" value={metrics.upcoming} tone="blue" icon={Calendar} />
               <ReservationMetric label="Pasadas" value={metrics.past} tone="slate" icon={CheckCircle2} />
-              <ReservationMetric label="Sync" value={metrics.external} tone="amber" icon={RefreshCw} />
             </div>
           </div>
 
@@ -465,7 +459,6 @@ export const ReservationsList = ({
                 <SelectItem value="upcoming">Próximas</SelectItem>
                 <SelectItem value="past">Pasadas</SelectItem>
                 <SelectItem value="manual">Manuales</SelectItem>
-                <SelectItem value="external">Sincronizadas</SelectItem>
               </SelectContent>
             </Select>
 
