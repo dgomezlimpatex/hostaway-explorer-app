@@ -11,7 +11,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Card, CardContent } from '@/components/ui/card';
-import { Edit, GripVertical, Mail, Phone, User, UserCheck, UserX } from 'lucide-react';
+import { Edit, GripVertical, Mail, MoreHorizontal, Phone, Trash2, User, UserCheck, UserX } from 'lucide-react';
 import { Cleaner } from '@/types/calendar';
 import { useDeleteCleaner, useUpdateCleaner, useUpdateCleanersOrder } from '@/hooks/useCleaners';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -28,6 +28,7 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { DeactivateWorkerDialog } from './DeactivateWorkerDialog';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 
 interface WorkersListProps {
   workers: Cleaner[];
@@ -288,9 +289,9 @@ export const WorkersList = ({ workers, isLoading, onEditWorker, onViewWorker }: 
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="w-10" />
-              <TableHead>Trabajador</TableHead>
-              <TableHead>Contacto</TableHead>
+              <TableHead className="w-9" />
+              <TableHead className="w-[34%]">Trabajador</TableHead>
+              <TableHead className="w-[30%]">Contacto</TableHead>
               <TableHead>Estado</TableHead>
               <TableHead className="text-right">Acciones</TableHead>
             </TableRow>

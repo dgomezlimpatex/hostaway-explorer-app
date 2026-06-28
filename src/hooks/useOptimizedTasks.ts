@@ -22,6 +22,8 @@ export const useOptimizedTasks = ({
   const { userRole, user } = useAuth();
   const { cleaners } = useCleaners();
   const { activeSede, isInitialized, loading } = useSede();
+  const activeSedeId = activeSedeId;
+  const canQueryTasks = Boolean(enabled && isInitialized && !loading && activeSedeId);
 
   // Get current user's cleaner ID if they are a cleaner
   const currentCleanerId = useMemo(() => {
@@ -33,15 +35,15 @@ export const useOptimizedTasks = ({
   // OPTIMIZED: Simpler query key - for cleaners we don't need date in key since we fetch all their tasks
   const queryKey = useMemo(() => {
     if (userRole === 'cleaner' && currentCleanerId) {
-      return ['tasks', 'cleaner', currentCleanerId, activeSede?.id || 'no-sede'];
+      return ['tasks', 'cleaner', currentCleanerId, activeSedeId || 'pending-sede'];
     }
     return [
       'tasks',
       formatMadridDate(currentDate),
       currentView,
-      activeSede?.id || 'no-sede'
+      activeSedeId || 'pending-sede'
     ];
-  }, [currentDate, currentView, activeSede?.id, userRole, currentCleanerId]);
+  }, [currentDate, currentView, activeSedeId, userRole, currentCleanerId]);
 
   // Robust function to add/subtract months without date overflow issues
   const addMonths = (date: Date, months: number): Date => {
@@ -111,7 +113,7 @@ export const useOptimizedTasks = ({
       console.log('📋 useOptimizedTasks - queryFn executing:', {
         userRole,
         currentCleanerId,
-        activeSede: activeSede?.id,
+        activeSede: activeSedeId,
         dateRange,
         queryKey
       });
@@ -121,7 +123,7 @@ export const useOptimizedTasks = ({
         const result = await taskStorageService.getTasks({
           cleanerId: currentCleanerId,
           userRole: 'cleaner',
-          sedeId: activeSede?.id
+          sedeId: activeSedeId
         });
         console.log('📋 useOptimizedTasks - cleaner tasks loaded:', result.length);
         return result;
@@ -129,20 +131,20 @@ export const useOptimizedTasks = ({
       
       // For non-cleaners, fetch tasks based on the current view date range
       console.log('📋 useOptimizedTasks - fetching tasks with params:', {
-        sedeId: activeSede?.id,
+        sedeId: activeSedeId,
         dateFrom: dateRange.dateFrom,
         dateTo: dateRange.dateTo
       });
       
       const allTasks = await taskStorageService.getTasks({
-        sedeId: activeSede?.id,
+        sedeId: activeSedeId,
         dateFrom: dateRange.dateFrom,
         dateTo: dateRange.dateTo
       });
       
       console.log('📋 useOptimizedTasks - tasks fetched:', allTasks.length);
       
-      const sedeId = activeSede?.id || 'no-sede';
+      const sedeId = activeSedeId || 'pending-sede';
       queryClient.setQueryData(['tasks', 'all', sedeId], allTasks);
       
       const filtered = filterTasksByView(allTasks, currentDate, currentView);
@@ -152,7 +154,7 @@ export const useOptimizedTasks = ({
     },
     staleTime: userRole === 'cleaner' ? 30000 : 0, // Cleaners can have stale data for 30s
     gcTime: 60000,
-    enabled: enabled && isInitialized && !loading && (userRole !== 'cleaner' || currentCleanerId !== null),
+    enabled: canQueryTasks && (userRole !== 'cleaner' || currentCleanerId !== null),
     refetchOnWindowFocus: true,
     refetchOnMount: true,
   });
@@ -177,7 +179,7 @@ export const useOptimizedTasks = ({
 
   // Prefetch for next dates (only for non-cleaners)
   useMemo(() => {
-    if (!enabled || !activeSede?.id || userRole === 'cleaner') return;
+    if (!canQueryTasks || !activeSedeId || userRole === 'cleaner') return;
 
     const tomorrow = new Date(currentDate);
     tomorrow.setDate(tomorrow.getDate() + 1);
@@ -185,20 +187,20 @@ export const useOptimizedTasks = ({
     const nextWeek = new Date(currentDate);
     nextWeek.setDate(nextWeek.getDate() + 7);
 
-    const sedeId = activeSede?.id || 'no-sede';
+    const sedeId = activeSedeId || 'pending-sede';
     
     [tomorrow, nextWeek].forEach(date => {
       queryClient.prefetchQuery({
         queryKey: ['tasks', formatMadridDate(date), currentView, sedeId],
         queryFn: async () => {
           const allTasks = queryClient.getQueryData(['tasks', 'all', sedeId]) as Task[] || 
-                          await taskStorageService.getTasks({ sedeId: activeSede?.id });
+                          await taskStorageService.getTasks({ sedeId: activeSedeId });
           return filterTasksByView(allTasks, date, currentView);
         },
         staleTime: 5 * 60 * 1000,
       });
     });
-  }, [currentDate, currentView, queryClient, enabled, activeSede?.id, userRole]);
+  }, [currentDate, currentView, queryClient, canQueryTasks, activeSedeId, userRole]);
 
   return {
     tasks: filteredTasks,
@@ -211,7 +213,7 @@ export const useOptimizedTasks = ({
       filteredTasksCount: filteredTasks?.length || 0,
       currentDateStr: formatMadridDate(currentDate),
       userRole,
-      activeSede: activeSede?.id
+      activeSede: activeSedeId
     }
   };
 };
@@ -224,15 +226,16 @@ function filterTasksByView(tasks: Task[], currentDate: Date, currentView: ViewTy
     case 'day':
       return tasks.filter(task => task.date === currentDateStr);
     
-    case 'three-day':
+    case 'three-day': {
       const threeDayDates = Array.from({ length: 3 }, (_, i) => {
         const date = new Date(currentDate);
         date.setDate(date.getDate() + i);
         return formatMadridDate(date);
       });
       return tasks.filter(task => threeDayDates.includes(task.date));
+    }
     
-    case 'week':
+    case 'week': {
       const startOfWeek = new Date(currentDate);
       const dayOfWeek = startOfWeek.getDay();
       const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
@@ -245,6 +248,7 @@ function filterTasksByView(tasks: Task[], currentDate: Date, currentView: ViewTy
       const endDateStr = formatMadridDate(endOfWeek);
       
       return tasks.filter(task => task.date >= startDateStr && task.date <= endDateStr);
+    }
     
     default:
       return tasks;

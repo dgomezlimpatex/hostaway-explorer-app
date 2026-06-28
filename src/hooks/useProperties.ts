@@ -4,6 +4,37 @@ import { CreatePropertyData } from '@/types/property';
 import { toast } from '@/hooks/use-toast';
 import { useSede } from '@/contexts/SedeContext';
 import { useCacheInvalidation } from './useCacheInvalidation';
+import { supabase } from '@/integrations/supabase/client';
+import { formatMadridDate } from '@/utils/date';
+
+
+export interface PropertyCleaningScheduleItem {
+  taskId: string;
+  date: string;
+  startTime: string | null;
+  status: string;
+}
+
+export interface PropertyCleaningSchedule {
+  lastCleaning: PropertyCleaningScheduleItem | null;
+  nextCleaning: PropertyCleaningScheduleItem | null;
+}
+
+type ScheduleTaskRow = {
+  id: string;
+  propiedad_id: string | null;
+  date: string;
+  start_time: string | null;
+  status: string;
+  task_reports?: Array<{ overall_status: string | null }> | null;
+};
+
+const COMPLETED_STATUSES = new Set(['completed', 'done', 'finished']);
+
+const isCompletedTask = (task: ScheduleTaskRow) => (
+  COMPLETED_STATUSES.has(task.status) ||
+  task.task_reports?.some((report) => report.overall_status === 'completed')
+);
 
 export const useProperties = () => {
   const { activeSede, isInitialized, loading } = useSede();
@@ -32,6 +63,49 @@ export const usePropertiesByClient = (clienteId: string) => {
     queryKey: ['properties', 'client', clienteId, activeSede?.id || 'all'],
     queryFn: () => propertyStorage.getByClientId(clienteId),
     enabled: !!clienteId && isInitialized && !loading, // Wait for both clienteId and sede context
+  });
+};
+
+
+export const usePropertyCleaningSchedule = (propertyIds: string[]) => {
+  const { activeSede, isInitialized, loading } = useSede();
+  const uniquePropertyIds = Array.from(new Set(propertyIds)).sort();
+
+  return useQuery({
+    queryKey: ['property-cleaning-schedule', activeSede?.id || 'all', uniquePropertyIds],
+    enabled: uniquePropertyIds.length > 0 && isInitialized && !loading,
+    queryFn: async (): Promise<Record<string, PropertyCleaningSchedule>> => {
+      const scheduleByProperty = uniquePropertyIds.reduce<Record<string, PropertyCleaningSchedule>>((acc, propertyId) => {
+        acc[propertyId] = { lastCleaning: null, nextCleaning: null };
+        return acc;
+      }, {});
+      const today = formatMadridDate(new Date());
+      let query = supabase
+        .from('tasks')
+        .select('id, propiedad_id, date, start_time, status, task_reports(overall_status)')
+        .in('propiedad_id', uniquePropertyIds)
+        .order('date', { ascending: true })
+        .order('start_time', { ascending: true });
+      if (activeSede?.id) query = query.eq('sede_id', activeSede.id);
+      const { data, error } = await query;
+      if (error) throw error;
+      (data || []).forEach((task) => {
+        const row = task as ScheduleTaskRow;
+        if (!row.propiedad_id || !scheduleByProperty[row.propiedad_id]) return;
+        const item: PropertyCleaningScheduleItem = {
+          taskId: row.id,
+          date: row.date,
+          startTime: row.start_time,
+          status: row.status,
+        };
+        const schedule = scheduleByProperty[row.propiedad_id];
+        const completed = isCompletedTask(row);
+        if (row.date <= today && completed) schedule.lastCleaning = item;
+        if (row.date >= today && !completed && !schedule.nextCleaning) schedule.nextCleaning = item;
+      });
+      return scheduleByProperty;
+    },
+    staleTime: 5 * 60 * 1000,
   });
 };
 

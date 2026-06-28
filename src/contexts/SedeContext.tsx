@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, ReactNode, useCallback } from 'react';
+import { createContext, useContext, useEffect, useState, ReactNode, useCallback, useRef } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Sede, SedeContextType } from '@/types/sede';
@@ -9,6 +9,34 @@ import { setGlobalSedeContext } from '@/services/storage/baseStorage';
 const SedeContext = createContext<SedeContextType | undefined>(undefined);
 
 const ACTIVE_SEDE_KEY = 'activeSede';
+
+const normalizeSedeText = (value?: string | null) =>
+  (value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase();
+
+const isCorunaSede = (sede: Sede) => {
+  const searchableText = [sede.nombre, sede.codigo, sede.ciudad].map(normalizeSedeText).join(' ');
+  return searchableText.includes('a coruna') || searchableText.includes('coruna');
+};
+
+const selectPreferredSede = (sedes: Sede[], savedSede: Sede | null): Sede | null => {
+  if (sedes.length === 0) return null;
+  if (savedSede?.id) {
+    const validSavedSede = sedes.find((sede) => sede.id === savedSede.id);
+    if (validSavedSede) return validSavedSede;
+  }
+  return sedes.find(isCorunaSede) || sedes[0];
+};
+
+const persistActiveSede = (sede: Sede | null) => {
+  if (sede) {
+    localStorage.setItem(ACTIVE_SEDE_KEY, JSON.stringify(sede));
+  } else {
+    localStorage.removeItem(ACTIVE_SEDE_KEY);
+  }
+};
 
 interface SedeProviderProps {
   children: ReactNode;
@@ -21,52 +49,55 @@ export const SedeProvider = ({ children }: SedeProviderProps) => {
   const [availableSedes, setAvailableSedes] = useState<Sede[]>([]);
   const [loading, setLoading] = useState(true);
   const [isInitialized, setIsInitialized] = useState(false);
+  const hasStartedInitialLoad = useRef(false);
 
-  // Función para validar y restaurar sede desde localStorage
-  const restoreSedeFromStorage = useCallback(() => {
+  // Leer la sede guardada sin activarla hasta validarla contra sedes accesibles
+  const getSavedSedeFromStorage = useCallback(() => {
     try {
       const savedSede = localStorage.getItem(ACTIVE_SEDE_KEY);
-      if (savedSede) {
-        const parsedSede = JSON.parse(savedSede) as Sede;
-        setActiveSedeState(parsedSede);
-        return parsedSede;
-      }
+      if (savedSede) return JSON.parse(savedSede) as Sede;
     } catch (error) {
       console.error('Error parsing saved sede:', error);
-      localStorage.removeItem(ACTIVE_SEDE_KEY);
+      persistActiveSede(null);
     }
     return null;
   }, []);
 
-  // Función para sincronizar sede activa con sedes disponibles
+  const invalidateSedeScopedQueries = useCallback(() => {
+    const queriesToInvalidate = [
+      ['tasks'],
+      ['task-reports'],
+      ['cleaners'],
+      ['properties'],
+      ['clients'],
+      ['recurring-tasks'],
+      ['recurring-tasks-for-calendar'],
+    ];
+    queriesToInvalidate.forEach(queryKey => queryClient.invalidateQueries({ queryKey }));
+  }, [queryClient]);
+
+  // Sincronizar sede activa con sedes disponibles, prefiriendo guardada válida y luego A Coruña
   const syncActiveSede = useCallback((sedes: Sede[], currentActiveSede: Sede | null) => {
     if (sedes.length === 0) {
-      // No hay sedes disponibles, limpiar sede activa
       setActiveSedeState(null);
-      localStorage.removeItem(ACTIVE_SEDE_KEY);
+      persistActiveSede(null);
       return null;
     }
 
-    if (!currentActiveSede) {
-      // No hay sede activa, seleccionar la primera disponible
-      const firstSede = sedes[0];
-      setActiveSedeState(firstSede);
-      localStorage.setItem(ACTIVE_SEDE_KEY, JSON.stringify(firstSede));
-      return firstSede;
+    const preferredSede = selectPreferredSede(sedes, currentActiveSede);
+    if (preferredSede && preferredSede.id !== currentActiveSede?.id) {
+      setActiveSedeState(preferredSede);
+      persistActiveSede(preferredSede);
+      invalidateSedeScopedQueries();
+      return preferredSede;
     }
 
-    // Verificar si la sede activa sigue siendo válida
-    const isValidSede = sedes.find(s => s.id === currentActiveSede.id);
-    if (!isValidSede) {
-      // La sede activa ya no es válida, cambiar a la primera disponible
-      const firstSede = sedes[0];
-      setActiveSedeState(firstSede);
-      localStorage.setItem(ACTIVE_SEDE_KEY, JSON.stringify(firstSede));
-      return firstSede;
+    if (preferredSede) {
+      setActiveSedeState(preferredSede);
+      persistActiveSede(preferredSede);
     }
-
-    return currentActiveSede;
-  }, []);
+    return preferredSede;
+  }, [invalidateSedeScopedQueries]);
 
   // Cargar sedes disponibles y sincronizar estado
   const refreshSedes = useCallback(async () => {
@@ -76,17 +107,9 @@ export const SedeProvider = ({ children }: SedeProviderProps) => {
       setAvailableSedes(sedes);
 
       // Obtener sede activa actual (desde estado o localStorage)
-      const currentActiveSede = activeSede || restoreSedeFromStorage();
+      const currentActiveSede = activeSede || getSavedSedeFromStorage();
       
-      // Si no hay sede activa pero hay sedes disponibles, seleccionar la primera automáticamente
-      if (!currentActiveSede && sedes.length > 0) {
-        const firstSede = sedes[0];
-        setActiveSedeState(firstSede);
-        localStorage.setItem(ACTIVE_SEDE_KEY, JSON.stringify(firstSede));
-      } else {
-        // Sincronizar sede activa con sedes disponibles
-        syncActiveSede(sedes, currentActiveSede);
-      }
+      syncActiveSede(sedes, currentActiveSede);
 
     } catch (error) {
       console.error('🏢 SedeContext: Error loading sedes:', error);
@@ -95,7 +118,7 @@ export const SedeProvider = ({ children }: SedeProviderProps) => {
       setLoading(false);
       setIsInitialized(true);
     }
-  }, [activeSede, restoreSedeFromStorage, syncActiveSede]);
+  }, [activeSede, getSavedSedeFromStorage, syncActiveSede]);
 
   // Inicializar contexto una sola vez cuando el usuario esté autenticado
   useEffect(() => {
@@ -110,14 +133,16 @@ export const SedeProvider = ({ children }: SedeProviderProps) => {
       setIsInitialized(true);
       setActiveSedeState(null);
       setAvailableSedes([]);
+      hasStartedInitialLoad.current = false;
       return;
     }
     
     // Si hay usuario autenticado y no se ha inicializado, cargar sedes
-    if (!isInitialized) {
+    if (!isInitialized && !hasStartedInitialLoad.current) {
+      hasStartedInitialLoad.current = true;
       refreshSedes();
     }
-  }, [user, authLoading, isInitialized, loading]);
+  }, [user, authLoading, isInitialized, refreshSedes]);
 
   const setActiveSede = useCallback((sede: Sede | null) => {
     // Verificar que sede no sea null
@@ -135,21 +160,10 @@ export const SedeProvider = ({ children }: SedeProviderProps) => {
     
     // Actualizar estado y localStorage
     setActiveSedeState(sede);
-    localStorage.setItem(ACTIVE_SEDE_KEY, JSON.stringify(sede));
+    persistActiveSede(sede);
     
     // Invalidar cache inteligentemente (sin refetch inmediato)
-    const queriesToInvalidate = [
-      ['tasks'],
-      ['task-reports'], 
-      ['cleaners'],
-      ['properties'],
-      ['clients'],
-      ['recurring-tasks']
-    ];
-    
-    queriesToInvalidate.forEach(queryKey => {
-      queryClient.invalidateQueries({ queryKey });
-    });
+    invalidateSedeScopedQueries();
 
     // Log del cambio de sede para auditoría (no bloqueante)
     const logSedeChange = async () => {
@@ -170,7 +184,7 @@ export const SedeProvider = ({ children }: SedeProviderProps) => {
     };
     
     logSedeChange();
-  }, [activeSede, queryClient]);
+  }, [activeSede, invalidateSedeScopedQueries]);
 
   const isActiveSedeSet = (): boolean => {
     return activeSede !== null;
@@ -213,11 +227,13 @@ export const SedeProvider = ({ children }: SedeProviderProps) => {
           return;
         }
 
-        // Si hay sedes disponibles, auto-seleccionar la primera
+        // Si hay sedes disponibles, auto-seleccionar la preferida
         if (availableSedes.length > 0 && !activeSede) {
-          const firstSede = availableSedes[0];
-          setActiveSede(firstSede);
-          resolve(firstSede.id);
+          const preferredSede = selectPreferredSede(availableSedes, getSavedSedeFromStorage());
+          if (preferredSede) {
+            setActiveSede(preferredSede);
+            resolve(preferredSede.id);
+          }
           return;
         }
 
@@ -229,9 +245,11 @@ export const SedeProvider = ({ children }: SedeProviderProps) => {
               resolve(activeSede.id);
             } else if (availableSedes.length > 0 && !activeSede) {
               clearInterval(checkInterval);
-              const firstSede = availableSedes[0];
-              setActiveSede(firstSede);
-              resolve(firstSede.id);
+              const preferredSede = selectPreferredSede(availableSedes, getSavedSedeFromStorage());
+              if (preferredSede) {
+                setActiveSede(preferredSede);
+                resolve(preferredSede.id);
+              }
             } else if (isInitialized && !loading && availableSedes.length === 0) {
               clearInterval(checkInterval);
               console.error('❌ waitForActiveSede - no sedes available after loading completed');
@@ -259,7 +277,7 @@ export const SedeProvider = ({ children }: SedeProviderProps) => {
       getActiveSedeId,
       waitForActiveSede,
     });
-  }, [activeSede, availableSedes, loading, isInitialized, setActiveSede]);
+  }, [activeSede, availableSedes, loading, isInitialized, setActiveSede, getSavedSedeFromStorage]);
 
   return <SedeContext.Provider value={value}>{children}</SedeContext.Provider>;
 };

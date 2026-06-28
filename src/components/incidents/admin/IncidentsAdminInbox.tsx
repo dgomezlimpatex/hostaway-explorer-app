@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAddIncidentComment, useIncidents, useIncidentDetail, useIncidentStats, useUpdateIncidentStatus, IncidentStatus } from '@/hooks/useIncidents';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
@@ -9,11 +10,12 @@ import { Card } from '@/components/ui/card';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   AlertTriangle, Check, X, Clock, CheckCircle2, Loader2, Eye, Search, ExternalLink,
-  MessageSquare,
+  MessageSquare, List, Plus, CalendarDays, RotateCcw,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { CreateManualIncidentDialog } from './CreateManualIncidentDialog';
 
 const STATUS_META: Record<IncidentStatus, { label: string; color: string }> = {
   pending_limpatex: { label: 'Pendiente Limpatex', color: 'bg-amber-100 text-amber-800 border-amber-200' },
@@ -24,10 +26,22 @@ const STATUS_META: Record<IncidentStatus, { label: string; color: string }> = {
   discarded: { label: 'Descartada (cliente)', color: 'bg-gray-100 text-gray-700 border-gray-200' },
 };
 
+const EMPTY_MESSAGES: Record<IncidentStatus | 'all', string> = {
+  pending_limpatex: 'No hay incidencias pendientes de revisión.',
+  discarded_limpatex: 'No hay incidencias descartadas en esta vista.',
+  open: 'No hay incidencias abiertas.',
+  in_progress: 'No hay incidencias en curso.',
+  resolved: 'Todavía no hay incidencias resueltas en esta vista.',
+  discarded: 'No hay incidencias descartadas en esta vista.',
+  all: 'No hay incidencias registradas.',
+};
+
 export const IncidentsAdminInbox: React.FC = () => {
+  const navigate = useNavigate();
   const [statusFilter, setStatusFilter] = useState<IncidentStatus | 'all'>('pending_limpatex');
   const [search, setSearch] = useState('');
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [manualDialogOpen, setManualDialogOpen] = useState(false);
 
   const { data: stats } = useIncidentStats();
   const { data: incidents = [], isLoading } = useIncidents({ status: statusFilter, search });
@@ -36,6 +50,15 @@ export const IncidentsAdminInbox: React.FC = () => {
   const addComment = useAddIncidentComment();
 
   const [commentText, setCommentText] = useState('');
+  const emptyMessage = EMPTY_MESSAGES[statusFilter];
+  const hasSearch = search.trim().length > 0;
+  const emptyHint = useMemo(() => {
+    if (hasSearch) return 'La búsqueda actual puede estar ocultando incidencias de esta pestaña.';
+    if (statusFilter === 'all') return 'Puedes crear una incidencia manual si necesitas registrar un aviso interno.';
+    return 'Cambia a Todas o revisa el calendario para continuar la gestión operativa.';
+  }, [hasSearch, statusFilter]);
+
+  const handleViewAll = () => setStatusFilter('all');
 
   const handleAction = async (toStatus: IncidentStatus) => {
     if (!detail) return;
@@ -98,9 +121,31 @@ export const IncidentsAdminInbox: React.FC = () => {
           <Loader2 className="h-6 w-6 animate-spin mr-2" /> Cargando incidencias…
         </div>
       ) : incidents.length === 0 ? (
-        <Card className="p-12 text-center text-muted-foreground">
-          <AlertTriangle className="h-10 w-10 mx-auto mb-3 opacity-40" />
-          <p className="text-sm">No hay incidencias en este estado.</p>
+        <Card className="p-8 sm:p-12 text-center">
+          <AlertTriangle className="h-10 w-10 mx-auto mb-3 text-muted-foreground opacity-40" />
+          <p className="text-sm font-medium text-foreground">{emptyMessage}</p>
+          <p className="text-xs text-muted-foreground mt-1 max-w-md mx-auto">{emptyHint}</p>
+
+          <div className="flex flex-col sm:flex-row flex-wrap items-center justify-center gap-2 mt-5">
+            <Button variant="outline" onClick={handleViewAll} disabled={statusFilter === 'all'} className="w-full sm:w-auto">
+              <List className="h-4 w-4 mr-2" />
+              Ver todas
+            </Button>
+            <Button onClick={() => setManualDialogOpen(true)} className="w-full sm:w-auto">
+              <Plus className="h-4 w-4 mr-2" />
+              Crear incidencia manual
+            </Button>
+            <Button variant="secondary" onClick={() => navigate('/calendar')} className="w-full sm:w-auto">
+              <CalendarDays className="h-4 w-4 mr-2" />
+              Ir al calendario
+            </Button>
+            {hasSearch && (
+              <Button variant="ghost" onClick={() => setSearch('')} className="w-full sm:w-auto">
+                <RotateCcw className="h-4 w-4 mr-2" />
+                Limpiar búsqueda
+              </Button>
+            )}
+          </div>
         </Card>
       ) : (
         <div className="grid gap-2">
@@ -397,6 +442,7 @@ export const IncidentsAdminInbox: React.FC = () => {
           )}
         </SheetContent>
       </Sheet>
+      <CreateManualIncidentDialog open={manualDialogOpen} onOpenChange={setManualDialogOpen} />
     </div>
   );
 };

@@ -3,6 +3,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 
+type ProfileName = { full_name: string | null; email: string | null };
+
 const getErrorMessage = (error: unknown) =>
   error instanceof Error ? error.message : 'Error desconocido';
 
@@ -224,6 +226,82 @@ export const useAddIncidentComment = () => {
     },
     onError: (e: unknown) =>
       toast({ title: 'No se pudo comentar', description: getErrorMessage(e), variant: 'destructive' }),
+  });
+};
+
+
+interface CreateManualIncidentInput {
+  sedeId: string;
+  clientId: string;
+  propertyId?: string | null;
+  categoryId: string;
+  description: string;
+  location?: string | null;
+}
+
+export const useCreateManualIncident = () => {
+  const qc = useQueryClient();
+  const { toast } = useToast();
+  const { user, userRole } = useAuth();
+
+  return useMutation({
+    mutationFn: async (input: CreateManualIncidentInput) => {
+      if (!input.sedeId || !input.clientId || !input.categoryId || !input.description.trim()) {
+        throw new Error('Faltan campos obligatorios');
+      }
+
+      const { data: incident, error } = await supabase
+        .from('cleaning_incidents')
+        .insert({
+          task_id: null,
+          property_id: input.propertyId || null,
+          client_id: input.clientId,
+          sede_id: input.sedeId,
+          reporter_cleaner_id: null,
+          reporter_user_id: user?.id ?? null,
+          reporter_kind: 'limpatex_admin',
+          category_id: input.categoryId,
+          location: input.location || null,
+          description: input.description.trim(),
+          status: 'pending_limpatex',
+          visibility: 'internal',
+        })
+        .select('id')
+        .single();
+      if (error) throw error;
+
+      let actorName: string | null = null;
+      if (user?.id) {
+        const { data: prof } = await supabase
+          .from('profiles')
+          .select('full_name, email')
+          .eq('id', user.id)
+          .maybeSingle();
+        const profile = prof as ProfileName | null;
+        actorName = profile?.full_name || profile?.email || null;
+      }
+
+      await supabase.from('cleaning_incident_events').insert({
+        incident_id: incident.id,
+        event_type: 'created',
+        from_status: null,
+        to_status: 'pending_limpatex',
+        note: 'Incidencia creada manualmente desde administración',
+        actor_user_id: user?.id ?? null,
+        actor_name: actorName,
+        actor_role: (userRole as string) ?? null,
+        metadata: { reporter_kind: 'limpatex_admin', source: 'manual_admin' },
+      });
+
+      return incident.id as string;
+    },
+    onSuccess: () => {
+      toast({ title: 'Incidencia creada', description: 'Se ha añadido a pendientes de revisión.' });
+      qc.invalidateQueries({ queryKey: ['cleaning-incidents'] });
+      qc.invalidateQueries({ queryKey: ['cleaning-incidents-stats'] });
+    },
+    onError: (e: unknown) =>
+      toast({ title: 'No se pudo crear la incidencia', description: getErrorMessage(e), variant: 'destructive' }),
   });
 };
 

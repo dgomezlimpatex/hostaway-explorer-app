@@ -191,7 +191,7 @@ const CleaningCalendar = () => {
   }, []);
 
   // Wait for auth and sede initialization before showing calendar
-  if (authGuardLoading || !sedeInitialized || sedeLoading) {
+  if (authGuardLoading || !sedeInitialized || sedeLoading || (hasSedeAccess && !activeSede?.id)) {
     console.log('🔄 CleaningCalendar: Waiting for initialization', { 
       authGuardLoading, 
       sedeInitialized, 
@@ -199,7 +199,7 @@ const CleaningCalendar = () => {
     });
     return (
       <div className="flex items-center justify-center h-screen bg-background">
-        <LoadingSpinner size="lg" text="Inicializando sistema..." />
+        <LoadingSpinner size="lg" text="Preparando sede activa..." />
       </div>
     );
   }
@@ -220,7 +220,7 @@ const CleaningCalendar = () => {
     console.log('🔄 CleaningCalendar: Showing initial loading spinner', { isLoading, tasksLength: tasks?.length || 0 });
     return (
       <div className="flex items-center justify-center h-screen bg-background">
-        <LoadingSpinner size="lg" text="Cargando calendario..." />
+        <LoadingSpinner size="lg" text={`Cargando calendario${activeSede?.nombre ? ` de ${activeSede.nombre}` : ''}...`} />
       </div>
     );
   }

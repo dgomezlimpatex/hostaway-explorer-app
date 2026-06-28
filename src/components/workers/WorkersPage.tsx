@@ -4,6 +4,7 @@ import { ArrowLeft, Plus, Search, UserCheck, UserX, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { WorkersList } from './WorkersList';
 import { CreateWorkerModal } from './CreateWorkerModal';
 import { EditWorkerModal } from './EditWorkerModal';
@@ -14,13 +15,16 @@ import { cn } from '@/lib/utils';
 import { Cleaner } from '@/types/calendar';
 
 type WorkerStatusFilter = 'all' | 'active' | 'inactive';
+type WorkerRegistroFilter = 'all' | 'linked' | 'manual';
 
 export default function WorkersPage() {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [editingWorker, setEditingWorker] = useState<Cleaner | null>(null);
   const [selectedWorker, setSelectedWorker] = useState<Cleaner | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState<WorkerStatusFilter>('all');
+  const [statusFilter, setStatusFilter] = useState<WorkerStatusFilter>('active');
+  const [categoryFilter, setCategoryFilter] = useState('all');
+  const [registroFilter, setRegistroFilter] = useState<WorkerRegistroFilter>('all');
   const isMobile = useIsMobile();
 
   const { cleaners, isLoading } = useCleaners();
@@ -31,6 +35,8 @@ export default function WorkersPage() {
   );
   const totalInactiveWorkers = cleaners.length - totalActiveWorkers;
 
+  const categoryOptions = useMemo(() => Array.from(new Set(cleaners.map((worker) => worker.category?.trim()).filter((category): category is string => Boolean(category)))).sort((a, b) => a.localeCompare(b, 'es')), [cleaners]);
+
   const filteredWorkers = useMemo(() => {
     const term = searchTerm.trim().toLowerCase();
 
@@ -39,19 +45,27 @@ export default function WorkersPage() {
         || worker.name.toLowerCase().includes(term)
         || worker.email?.toLowerCase().includes(term)
         || worker.telefono?.toLowerCase().includes(term)
-        || worker.category?.toLowerCase().includes(term);
+        || worker.category?.toLowerCase().includes(term)
+        || worker.dni?.toLowerCase().includes(term)
+        || worker.externalId?.toLowerCase().includes(term);
 
       if (!matchesSearch) return false;
       if (statusFilter === 'active') return worker.isActive;
-      if (statusFilter === 'inactive') return !worker.isActive;
+      if (statusFilter === 'inactive' && worker.isActive) return false;
+      if (categoryFilter !== 'all' && worker.category !== categoryFilter) return false;
+      if (registroFilter === 'linked' && !worker.externalId) return false;
+      if (registroFilter === 'manual' && worker.externalId) return false;
       return true;
     });
-  }, [cleaners, searchTerm, statusFilter]);
+  }, [cleaners, searchTerm, statusFilter, categoryFilter, registroFilter]);
 
-  const activeWorkers = filteredWorkers.filter((worker) => worker.isActive);
-  const inactiveWorkers = filteredWorkers.filter((worker) => !worker.isActive);
-  const showActiveWorkers = statusFilter !== 'inactive';
-  const showInactiveWorkers = statusFilter !== 'active';
+  const hasExtraFilters = categoryFilter !== 'all' || registroFilter !== 'all';
+  const resetFilters = () => {
+    setSearchTerm('');
+    setStatusFilter('active');
+    setCategoryFilter('all');
+    setRegistroFilter('all');
+  };
 
   const handleEditWorker = (worker: Cleaner) => {
     setEditingWorker(worker);
@@ -156,6 +170,7 @@ export default function WorkersPage() {
                 icon={UserX}
               />
             </div>
+            <WorkerExtraFilters categoryOptions={categoryOptions} categoryFilter={categoryFilter} onCategoryChange={setCategoryFilter} registroFilter={registroFilter} onRegistroChange={setRegistroFilter} compact />
           </section>
 
           <section className="space-y-3">
@@ -167,8 +182,8 @@ export default function WorkersPage() {
                     ? `Inactivos (${filteredWorkers.length})`
                     : `Resultados (${filteredWorkers.length})`}
               </h2>
-              {searchTerm && (
-                <Button variant="ghost" size="sm" onClick={() => setSearchTerm('')}>
+              {(searchTerm || hasExtraFilters || statusFilter !== 'active') && (
+                <Button variant="ghost" size="sm" onClick={resetFilters}>
                   Limpiar
                 </Button>
               )}
@@ -266,77 +281,62 @@ export default function WorkersPage() {
         </div>
 
         <Card>
-          <CardContent className="flex flex-col gap-3 p-3 sm:flex-row sm:items-center sm:justify-between sm:p-4">
-            <div>
-              <p className="text-sm font-medium text-foreground">Vista de trabajadores</p>
-              <p className="text-xs text-muted-foreground">
-                Cambia entre activos, inactivos o todos sin perder el historial.
-              </p>
+          <CardHeader className="space-y-4">
+            <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
+              <div>
+                <CardTitle>
+                  {statusFilter === 'active' ? `Trabajadores activos (${filteredWorkers.length})` : statusFilter === 'inactive' ? `Trabajadores inactivos (${filteredWorkers.length})` : `Trabajadores (${filteredWorkers.length})`}
+                </CardTitle>
+                <p className="mt-1 text-sm text-muted-foreground">Lista filtrada única. Arrastra filas para reordenar la vista actual.</p>
+              </div>
+              {(searchTerm || hasExtraFilters || statusFilter !== 'active') && <Button variant="ghost" size="sm" onClick={resetFilters} className="self-start lg:self-auto">Limpiar filtros</Button>}
             </div>
-            <div className="grid grid-cols-3 gap-2 rounded-xl bg-muted p-1 sm:w-[360px]">
-              <StatusFilterButton
-                active={statusFilter === 'all'}
-                onClick={() => setStatusFilter('all')}
-                label="Todos"
-                count={cleaners.length}
-              />
-              <StatusFilterButton
-                active={statusFilter === 'active'}
-                onClick={() => setStatusFilter('active')}
-                label="Activos"
-                count={totalActiveWorkers}
-                icon={UserCheck}
-              />
-              <StatusFilterButton
-                active={statusFilter === 'inactive'}
-                onClick={() => setStatusFilter('inactive')}
-                label="Inactivos"
-                count={totalInactiveWorkers}
-                icon={UserX}
-              />
+            <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+              <div className="grid w-full max-w-lg grid-cols-3 gap-2 rounded-xl bg-muted p-1">
+                <StatusFilterButton active={statusFilter === 'all'} onClick={() => setStatusFilter('all')} label="Todos" count={cleaners.length} />
+                <StatusFilterButton active={statusFilter === 'active'} onClick={() => setStatusFilter('active')} label="Activos" count={totalActiveWorkers} icon={UserCheck} />
+                <StatusFilterButton active={statusFilter === 'inactive'} onClick={() => setStatusFilter('inactive')} label="Inactivos" count={totalInactiveWorkers} icon={UserX} />
+              </div>
+              <WorkerExtraFilters categoryOptions={categoryOptions} categoryFilter={categoryFilter} onCategoryChange={setCategoryFilter} registroFilter={registroFilter} onRegistroChange={setRegistroFilter} />
             </div>
+          </CardHeader>
+          <CardContent>
+            <WorkersList workers={filteredWorkers} isLoading={isLoading} onEditWorker={handleEditWorker} onViewWorker={handleViewWorker} />
           </CardContent>
         </Card>
 
-        {showActiveWorkers && (
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <CardTitle>Trabajadores Activos ({activeWorkers.length})</CardTitle>
-                <p className="text-sm text-muted-foreground">Arrastra las filas para reordenar</p>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <WorkersList
-                workers={activeWorkers}
-                isLoading={isLoading}
-                onEditWorker={handleEditWorker}
-                onViewWorker={handleViewWorker}
-              />
-            </CardContent>
-          </Card>
-        )}
-
-        {showInactiveWorkers && (
-          <Card className="border-dashed">
-            <CardHeader>
-              <CardTitle className="text-muted-foreground">
-                Trabajadores Inactivos ({inactiveWorkers.length})
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <WorkersList
-                workers={inactiveWorkers}
-                isLoading={isLoading}
-                onEditWorker={handleEditWorker}
-                onViewWorker={handleViewWorker}
-              />
-            </CardContent>
-          </Card>
-        )}
-
         {modalElements}
       </div>
+    </div>
+  );
+}
+
+
+function WorkerExtraFilters({ categoryOptions, categoryFilter, onCategoryChange, registroFilter, onRegistroChange, compact = false }: {
+  categoryOptions: string[];
+  categoryFilter: string;
+  onCategoryChange: (value: string) => void;
+  registroFilter: WorkerRegistroFilter;
+  onRegistroChange: (value: WorkerRegistroFilter) => void;
+  compact?: boolean;
+}) {
+  return (
+    <div className={cn('grid gap-2', compact ? 'grid-cols-2' : 'w-full sm:max-w-md sm:grid-cols-2')}>
+      <Select value={categoryFilter} onValueChange={onCategoryChange}>
+        <SelectTrigger className={cn('bg-white', compact ? 'h-10 rounded-xl text-xs' : 'h-9')}><SelectValue placeholder="Rol/categoría" /></SelectTrigger>
+        <SelectContent>
+          <SelectItem value="all">Todas las categorías</SelectItem>
+          {categoryOptions.map((category) => <SelectItem key={category} value={category}>{category}</SelectItem>)}
+        </SelectContent>
+      </Select>
+      <Select value={registroFilter} onValueChange={(value) => onRegistroChange(value as WorkerRegistroFilter)}>
+        <SelectTrigger className={cn('bg-white', compact ? 'h-10 rounded-xl text-xs' : 'h-9')}><SelectValue placeholder="REGISTRO" /></SelectTrigger>
+        <SelectContent>
+          <SelectItem value="all">Todos los registros</SelectItem>
+          <SelectItem value="linked">Vinculados a REGISTRO</SelectItem>
+          <SelectItem value="manual">Manual / sin REGISTRO</SelectItem>
+        </SelectContent>
+      </Select>
     </div>
   );
 }
