@@ -22,7 +22,7 @@ export const useOptimizedTasks = ({
   const { userRole, user } = useAuth();
   const { cleaners } = useCleaners();
   const { activeSede, isInitialized, loading } = useSede();
-  const activeSedeId = activeSedeId;
+  const activeSedeId = activeSede?.id || null;
   const canQueryTasks = Boolean(enabled && isInitialized && !loading && activeSedeId);
 
   // Get current user's cleaner ID if they are a cleaner
