@@ -25,8 +25,8 @@ const CleaningCalendar = () => {
   const { isMobile } = useDeviceType();
   const { userRole } = useAuth();
   const hasLoadedOnce = useRef(false);
-  const { isLoading: authGuardLoading, hasFullAccess } = useAuthGuard();
-  const { isInitialized: sedeInitialized, loading: sedeLoading } = useSede();
+  const { isLoading: authGuardLoading, hasFullAccess, hasSedeAccess } = useAuthGuard();
+  const { isInitialized: sedeInitialized, loading: sedeLoading, activeSede } = useSede();
 
   // Calendar logic and data
   const {
