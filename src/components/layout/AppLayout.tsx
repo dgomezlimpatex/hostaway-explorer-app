@@ -23,10 +23,10 @@ export const AppLayout = () => {
 
   return (
     <SidebarProvider>
-      <div className="min-h-screen w-full bg-background">
+      <div className="min-h-screen w-full bg-transparent">
         <div className="flex min-h-screen w-full">
           {!isMobile && <DashboardSidebar />}
-          <main className={cn('flex-1 overflow-auto min-w-0', showGlobalMobileNav && 'pb-24')}>
+          <main className={cn('flex-1 overflow-auto min-w-0 bg-transparent', showGlobalMobileNav && 'pb-24')}>
             <Suspense
               fallback={
                 <div className="flex items-center justify-center h-64">

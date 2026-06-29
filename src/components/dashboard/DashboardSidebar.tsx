@@ -277,7 +277,7 @@ export const DashboardSidebar = () => {
 
     return (
       <SidebarGroup>
-        <SidebarGroupLabel className="text-xs font-medium text-gray-500 uppercase tracking-wider">
+        <SidebarGroupLabel className="px-3 text-[10px] font-black uppercase tracking-[0.22em] text-white/45">
           {title}
         </SidebarGroupLabel>
         <SidebarGroupContent>
@@ -288,15 +288,15 @@ export const DashboardSidebar = () => {
                   <NavLink
                     to={item.href}
                     className={cn(
-                      'relative flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-lg transition-all duration-200',
+                      'relative flex items-center gap-3 rounded-2xl px-3 py-2.5 text-sm font-semibold transition-all duration-200',
                       isActive(item.href)
-                        ? 'bg-blue-50 text-blue-600'
-                        : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                        ? 'bg-white text-[#310984] shadow-lg shadow-black/10'
+                        : 'text-white/72 hover:bg-white/10 hover:text-white'
                     )}
                   >
                     <item.icon className={cn(
                       'h-5 w-5',
-                      isActive(item.href) ? 'text-blue-600' : 'text-gray-400'
+                      isActive(item.href) ? 'text-[#310984]' : 'text-white/48'
                     )} />
                     {!isCollapsed && <span>{item.title}</span>}
                     {getBadgeCount(item) > 0 && (
@@ -327,7 +327,7 @@ export const DashboardSidebar = () => {
 
     return (
       <SidebarGroup>
-        <SidebarGroupLabel className="text-xs font-medium text-gray-500 uppercase tracking-wider">
+        <SidebarGroupLabel className="px-3 text-[10px] font-black uppercase tracking-[0.22em] text-white/45">
           {title}
         </SidebarGroupLabel>
         <SidebarGroupContent>
@@ -366,18 +366,20 @@ export const DashboardSidebar = () => {
   };
 
   return (
-    <Sidebar className={isCollapsed ? "w-14" : "w-64"} collapsible="icon">
-      <SidebarContent className="flex flex-col h-full">
+    <Sidebar className={cn('border-r border-white/10 bg-[#160329] text-white shadow-[24px_0_80px_rgba(49,9,132,0.25)]', isCollapsed ? 'w-16' : 'w-72')} collapsible="icon">
+      <SidebarContent className="flex h-full flex-col bg-[radial-gradient(circle_at_top_left,rgba(255,255,255,0.16),transparent_18rem)]">
         {/* Header */}
         {!isCollapsed && (
-          <div className="p-4 border-b border-gray-100">
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
-                <span className="text-white text-sm font-medium">A</span>
-              </div>
-              <div>
-                <p className="text-sm font-medium text-gray-900">Panel de Control</p>
-                <p className="text-xs text-gray-500">Gestión de limpieza</p>
+          <div className="border-b border-white/10 p-4">
+            <div className="rounded-3xl border border-white/10 bg-white/8 p-3 shadow-2xl shadow-black/10 backdrop-blur">
+              <div className="flex items-center gap-3">
+                <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-[#d9ccff] via-white to-cyan-200 text-lg font-black text-[#310984] shadow-lg shadow-cyan-950/20">
+                  L
+                </div>
+                <div>
+                  <p className="text-sm font-black text-white">Limpatex OS</p>
+                  <p className="text-xs font-medium text-white/55">Operativa hospitality</p>
+                </div>
               </div>
             </div>
           </div>
@@ -389,10 +391,10 @@ export const DashboardSidebar = () => {
             <GlobalSearch
               trigger={
                 <button
-                  className="flex items-center justify-center w-8 h-8 rounded-md hover:bg-gray-100 transition-colors"
+                className="flex h-10 w-10 items-center justify-center rounded-2xl border border-white/10 bg-white/10 transition-colors hover:bg-white/15"
                   onClick={() => {}}
                 >
-                  <Search className="h-4 w-4 text-gray-500" />
+                  <Search className="h-4 w-4 text-white/65" />
                 </button>
               }
             />
@@ -414,18 +416,18 @@ export const DashboardSidebar = () => {
       </SidebarContent>
 
       {/* Footer with Logout Button */}
-      <SidebarFooter className="border-t border-gray-100 p-4">
+      <SidebarFooter className="border-t border-white/10 p-4">
         {!isCollapsed && profile && (
-          <div className="mb-3">
-            <p className="text-xs text-gray-500 truncate">{profile.full_name || 'Usuario'}</p>
-            <p className="text-xs text-gray-400 truncate">{profile.email}</p>
+          <div className="mb-3 rounded-2xl border border-white/10 bg-white/8 p-3">
+            <p className="truncate text-xs font-semibold text-white/80">{profile.full_name || 'Usuario'}</p>
+            <p className="truncate text-xs text-white/45">{profile.email}</p>
           </div>
         )}
         <Button
           variant="ghost"
           size={isCollapsed ? "icon" : "sm"}
           onClick={signOut}
-          className="w-full justify-start text-red-600 hover:text-red-700 hover:bg-red-50"
+          className="w-full justify-start rounded-2xl text-rose-100 hover:bg-rose-500/15 hover:text-white"
         >
           <LogOut className="h-4 w-4" />
           {!isCollapsed && <span className="ml-2">Cerrar sesión</span>}

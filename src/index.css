@@ -5,26 +5,26 @@
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    --background: 225 33% 98%;
+    --foreground: 226 64% 12%;
 
     --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card-foreground: 226 64% 12%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
+    --popover-foreground: 226 64% 12%;
 
-    --primary: 216 83% 56%;
+    --primary: 259 87% 28%;
     --primary-foreground: 210 40% 98%;
 
-    --secondary: 188 65% 75%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
+    --secondary: 262 83% 94%;
+    --secondary-foreground: 259 87% 22%;
 
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    --muted: 226 33% 95%;
+    --muted-foreground: 226 13% 42%;
 
-    --accent: 260 73% 71%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    --accent: 187 78% 84%;
+    --accent-foreground: 226 64% 12%;
 
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
@@ -49,16 +49,16 @@
     --input: 214.3 31.8% 91.4%;
     --ring: 222.2 84% 4.9%;
 
-    --radius: 0.5rem;
+    --radius: 1rem;
 
-    --sidebar-background: 0 0% 98%;
-    --sidebar-foreground: 240 5.3% 26.1%;
-    --sidebar-primary: 240 5.9% 10%;
-    --sidebar-primary-foreground: 0 0% 98%;
-    --sidebar-accent: 240 4.8% 95.9%;
-    --sidebar-accent-foreground: 240 5.9% 10%;
-    --sidebar-border: 220 13% 91%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --sidebar-background: 259 87% 14%;
+    --sidebar-foreground: 252 100% 98%;
+    --sidebar-primary: 187 78% 84%;
+    --sidebar-primary-foreground: 259 87% 18%;
+    --sidebar-accent: 259 62% 22%;
+    --sidebar-accent-foreground: 252 100% 98%;
+    --sidebar-border: 259 47% 24%;
+    --sidebar-ring: 187 78% 72%;
   }
 
   .dark {
@@ -115,6 +115,10 @@
 
   body {
     @apply bg-background text-foreground;
+    min-height: 100vh;
+    background:
+      radial-gradient(circle at top left, rgba(49, 9, 132, 0.10), transparent 34rem),
+      linear-gradient(180deg, hsl(var(--background)) 0%, #eef2ff 100%);
     transition: background-color 0.3s ease, color 0.3s ease;
     /* Font optimization for better FCP */
     font-display: swap;

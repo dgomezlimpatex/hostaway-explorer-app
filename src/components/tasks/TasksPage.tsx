@@ -91,11 +91,6 @@ const TasksPage = memo(() => {
     refetch();
   }, [refetch]);
 
-  // Only log on actual data changes, not on every render
-  const debugLog = useMemo(() => {
-    console.log('TasksPage - rendering with tasks:', tasks.length, 'filtered:', sortedTasks.length, 'paginated:', paginatedTasks.length, 'isLoading:', isLoading, 'unassigned:', unassignedTasks.length);
-  }, [tasks.length, sortedTasks.length, paginatedTasks.length, isLoading, unassignedTasks.length]);
-
   return (
     <div className="min-h-screen bg-gray-50">
       <MemoizedTasksPageHeader

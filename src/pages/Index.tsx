@@ -11,8 +11,6 @@ const Index = () => {
   const { user, profile, userRole, isLoading } = useAuth();
   const { isCleaner } = useRolePermissions();
 
-  console.log('Index - auth state:', { user: !!user, profile: !!profile, userRole, isLoading });
-
   // Si no hay usuario autenticado, mostrar página de bienvenida
   if (!user) {
     return <WelcomePage />;
