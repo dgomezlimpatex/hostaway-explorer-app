@@ -6,13 +6,6 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { EditPropertyModal } from './EditPropertyModal';
 import { AssignChecklistModal } from './AssignChecklistModal';
@@ -32,8 +25,7 @@ import {
   Building,
   Copy,
   Star,
-  CalendarDays,
-  MoreHorizontal
+  CalendarDays
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -69,6 +61,12 @@ const formatCapacity = (property: Property) => {
   return `${totalBeds} cama${totalBeds !== 1 ? 's' : ''} · ${bathrooms} baño${bathrooms !== 1 ? 's' : ''}`;
 };
 
+const formatServiceDuration = (minutes?: number | null) => {
+  const totalMinutes = minutes || 0;
+  if (totalMinutes === 0) return '0 h';
+  const hours = totalMinutes / 60;
+  return `${Number.isInteger(hours) ? hours.toString() : hours.toFixed(1).replace('.', ',')} h`;
+};
 
 
 interface ClientPropertiesPanelProps {
@@ -90,58 +88,8 @@ const PropertyActions = ({
   setEditingProperty,
   handleDuplicate,
   handleDelete,
-  compact = false,
-}: Omit<ClientPropertiesPanelProps, 'properties' | 'clients'> & { property: Property; compact?: boolean }) => {
+}: Omit<ClientPropertiesPanelProps, 'properties' | 'clients'> & { property: Property }) => {
   const isPreferredOpen = preferredCleanersPropertyId === property.id;
-
-  if (compact) {
-    return (
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button variant="outline" size="sm" className="h-8 w-8 p-0" title="Acciones de propiedad" aria-label={`Acciones de ${property.nombre}`}>
-            <MoreHorizontal className="h-4 w-4" />
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-56">
-          <DropdownMenuItem onClick={() => setAssigningProperty(property)}>
-            <CheckSquare className="mr-2 h-4 w-4" />
-            Checklist
-          </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => setPreferredCleanersPropertyId(isPreferredOpen ? null : property.id)}>
-            <Star className="mr-2 h-4 w-4 text-yellow-500" />
-            Limpiadoras preferidas
-          </DropdownMenuItem>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem onClick={() => handleDuplicate(property)}>
-            <Copy className="mr-2 h-4 w-4" />
-            Duplicar
-          </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => setEditingProperty(property)}>
-            <Edit className="mr-2 h-4 w-4" />
-            Editar
-          </DropdownMenuItem>
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <DropdownMenuItem onSelect={(event) => event.preventDefault()} className="text-red-600 focus:text-red-700">
-                <Trash2 className="mr-2 h-4 w-4" />
-                Eliminar
-              </DropdownMenuItem>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
-                <AlertDialogDescription>Esta acción no se puede deshacer. Se eliminará permanentemente la propiedad "{property.nombre}".</AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                <AlertDialogAction onClick={() => handleDelete(property.id)} className="bg-red-600 hover:bg-red-700">Eliminar</AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
-        </DropdownMenuContent>
-      </DropdownMenu>
-    );
-  }
 
   return (
     <div className="flex justify-end gap-1.5">
@@ -155,7 +103,7 @@ const PropertyActions = ({
       <Button variant="outline" size="sm" onClick={() => handleDuplicate(property)} title="Duplicar" className="h-8 px-2"><Copy className="h-3.5 w-3.5" /></Button>
       <Button variant="outline" size="sm" onClick={() => setEditingProperty(property)} title="Editar" className="h-8 px-2"><Edit className="h-3.5 w-3.5" /></Button>
       <AlertDialog>
-        <AlertDialogTrigger asChild><Button variant="outline" size="sm" title="Eliminar" className="h-8 px-2"><Trash2 className="h-3.5 w-3.5" /></Button></AlertDialogTrigger>
+        <AlertDialogTrigger asChild><Button variant="outline" size="sm" title="Eliminar" className="h-8 px-2 text-red-600 hover:text-red-700"><Trash2 className="h-3.5 w-3.5" /></Button></AlertDialogTrigger>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
@@ -186,18 +134,17 @@ const ClientPropertiesPanel = ({ properties, clients, ...actionProps }: ClientPr
     <div className="space-y-4">
       {hasScheduleError && <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">No se pudieron cargar las fechas de limpieza. Se muestran como “—”.</div>}
       <div className="hidden lg:block rounded-lg border overflow-hidden">
-        <Table className="min-w-[1180px]">
+        <Table className="min-w-[1120px]">
           <TableHeader>
             <TableRow className="bg-muted/40">
               <TableHead className="w-[90px] px-3">Código</TableHead>
               <TableHead className="min-w-[180px] px-3">Nombre comercial</TableHead>
               <TableHead className="min-w-[220px] px-3">Dirección</TableHead>
-              <TableHead className="w-[110px] px-3">Tiempo</TableHead>
-              <TableHead className="w-[150px] px-3">Capacidad</TableHead>
+              <TableHead className="w-[105px] px-3">Duración</TableHead>
               <TableHead className="min-w-[190px] px-3">Checklist</TableHead>
               <TableHead className="w-[135px] px-3">Última limpieza</TableHead>
               <TableHead className="w-[135px] px-3">Próxima limpieza</TableHead>
-              <TableHead className="sticky right-0 z-20 w-[72px] bg-muted/95 px-3 text-right shadow-[-12px_0_18px_-18px_rgba(15,23,42,0.75)]">Acciones</TableHead>
+              <TableHead className="sticky right-0 z-20 w-[230px] bg-muted/95 px-3 text-right shadow-[-12px_0_18px_-18px_rgba(15,23,42,0.75)]">Acciones</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -208,12 +155,11 @@ const ClientPropertiesPanel = ({ properties, clients, ...actionProps }: ClientPr
                   <TableCell className="px-3 py-3 align-top"><Badge variant="secondary" className="text-xs">{property.codigo || '—'}</Badge></TableCell>
                   <TableCell className="px-3 py-3 align-top"><div className="font-medium truncate" title={property.nombre}>{property.nombre}</div></TableCell>
                   <TableCell className="px-3 py-3 align-top"><div className="flex items-start gap-1.5 text-sm text-muted-foreground"><MapPin className="mt-0.5 h-3.5 w-3.5 flex-shrink-0" /><span className="line-clamp-2" title={property.direccion}>{property.direccion || '—'}</span></div></TableCell>
-                  <TableCell className="px-3 py-3 align-top text-sm"><div className="flex items-center gap-1.5"><Clock className="h-3.5 w-3.5 text-muted-foreground" /><span>{property.duracionServicio || 0} min</span></div></TableCell>
-                  <TableCell className="px-3 py-3 align-top text-sm">{formatCapacity(property)}</TableCell>
+                  <TableCell className="px-3 py-3 align-top text-sm"><div className="flex items-center gap-1.5"><Clock className="h-3.5 w-3.5 text-muted-foreground" /><span>{formatServiceDuration(property.duracionServicio)}</span></div></TableCell>
                   <TableCell className="px-3 py-3 align-top"><PropertyChecklistInfo propertyId={property.id} /></TableCell>
                   <TableCell className="px-3 py-3 align-top text-sm text-muted-foreground">{getLastCleaning(property.id)}</TableCell>
                   <TableCell className="px-3 py-3 align-top text-sm text-muted-foreground">{getNextCleaning(property.id)}</TableCell>
-                  <TableCell className="sticky right-0 z-10 bg-background px-3 py-3 align-top text-right shadow-[-12px_0_18px_-18px_rgba(15,23,42,0.75)]"><PropertyActions property={property} {...actionProps} compact /></TableCell>
+                  <TableCell className="sticky right-0 z-10 bg-background px-3 py-3 align-top text-right shadow-[-12px_0_18px_-18px_rgba(15,23,42,0.75)]"><PropertyActions property={property} {...actionProps} /></TableCell>
                 </TableRow>
               );
             })}
@@ -221,7 +167,7 @@ const ClientPropertiesPanel = ({ properties, clients, ...actionProps }: ClientPr
         </Table>
       </div>
       <div className="space-y-3 lg:hidden">
-        {properties.map((property) => <Card key={property.id} className={`border-l-4 ${isPropertyActive(property) ? 'border-l-green-500' : 'border-l-red-500 opacity-60'}`}><CardHeader className="pb-3 px-3"><CardTitle className="text-base truncate">{property.nombre}</CardTitle><CardDescription>{property.codigo || '—'} · {property.direccion || '—'}</CardDescription></CardHeader><CardContent className="space-y-3 px-3"><div className="grid grid-cols-2 gap-3 text-sm"><div><p className="text-xs text-muted-foreground">Tiempo estimado</p><p className="font-medium">{property.duracionServicio || 0} min</p></div><div><p className="text-xs text-muted-foreground">Capacidad</p><p className="font-medium">{formatCapacity(property)}</p></div><div><p className="text-xs text-muted-foreground">Última limpieza</p><p className="font-medium">{getLastCleaning(property.id)}</p></div><div><p className="text-xs text-muted-foreground">Próxima limpieza</p><p className="font-medium">{getNextCleaning(property.id)}</p></div></div><div className="pt-2 border-t border-gray-100"><PropertyChecklistInfo propertyId={property.id} /></div><PropertyActions property={property} {...actionProps} /></CardContent></Card>)}
+        {properties.map((property) => <Card key={property.id} className={`border-l-4 ${isPropertyActive(property) ? 'border-l-green-500' : 'border-l-red-500 opacity-60'}`}><CardHeader className="pb-3 px-3"><CardTitle className="text-base truncate">{property.nombre}</CardTitle><CardDescription>{property.codigo || '—'} · {property.direccion || '—'}</CardDescription></CardHeader><CardContent className="space-y-3 px-3"><div className="grid grid-cols-2 gap-3 text-sm"><div><p className="text-xs text-muted-foreground">Tiempo estimado</p><p className="font-medium">{formatServiceDuration(property.duracionServicio)}</p></div><div><p className="text-xs text-muted-foreground">Capacidad</p><p className="font-medium">{formatCapacity(property)}</p></div><div><p className="text-xs text-muted-foreground">Última limpieza</p><p className="font-medium">{getLastCleaning(property.id)}</p></div><div><p className="text-xs text-muted-foreground">Próxima limpieza</p><p className="font-medium">{getNextCleaning(property.id)}</p></div></div><div className="pt-2 border-t border-gray-100"><PropertyChecklistInfo propertyId={property.id} /></div><PropertyActions property={property} {...actionProps} /></CardContent></Card>)}
       </div>
       {properties.map((property) => actionProps.preferredCleanersPropertyId === property.id ? <div key={`preferred-${property.id}`} className="rounded-lg border bg-yellow-50/40 p-3"><div className="mb-2 flex items-center gap-2 text-sm font-medium text-yellow-800"><Star className="h-4 w-4" />Limpiadoras preferidas de {property.nombre}</div><PropertyPreferredCleaners propertyId={property.id} /></div> : null)}
     </div>

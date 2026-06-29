@@ -14,7 +14,7 @@ export const PropertiesPage = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-100">
-      <div className="container mx-auto px-3 sm:px-4 py-4 sm:py-6 space-y-4 sm:space-y-6">
+      <div className="mx-auto w-full max-w-none px-3 sm:px-4 xl:px-8 py-4 sm:py-6 space-y-4 sm:space-y-6">
         {/* Header */}
         <div className="flex flex-col sm:flex-row justify-between items-start gap-3 sm:gap-4">
           <div className="flex items-center gap-3 sm:gap-4">
