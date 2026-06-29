@@ -50,6 +50,7 @@ export const CleanerPlanningColumn = ({ day, cleaners, onAssign, onUnassign, isA
               onAssign={onAssign}
               onUnassign={onUnassign}
               isAssigning={isAssigning}
+              compact
             />
           ))
         )}

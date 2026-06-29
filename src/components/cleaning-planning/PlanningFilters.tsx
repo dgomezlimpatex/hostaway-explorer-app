@@ -1,13 +1,17 @@
 import { Button } from '@/components/ui/button';
-import { PlanningRangePreset } from '@/types/cleaningPlanning';
+import { CleaningPlanningFilters, PlanningRangePreset, PlanningTaskFilter } from '@/types/cleaningPlanning';
 import { addDays, subDays } from 'date-fns';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 interface PlanningFiltersProps {
   date: Date;
   preset: PlanningRangePreset;
+  filters: CleaningPlanningFilters;
+  zones: string[];
+  cleaners: Array<{ id: string; name: string }>;
   onDateChange: (date: Date) => void;
   onPresetChange: (preset: PlanningRangePreset) => void;
+  onFiltersChange: (filters: CleaningPlanningFilters) => void;
 }
 
 const presets: Array<{ value: PlanningRangePreset; label: string }> = [
@@ -16,40 +20,93 @@ const presets: Array<{ value: PlanningRangePreset; label: string }> = [
   { value: 'week', label: 'Semana' },
 ];
 
-export const PlanningFilters = ({ date, preset, onDateChange, onPresetChange }: PlanningFiltersProps) => {
+const taskFilters: Array<{ value: PlanningTaskFilter; label: string }> = [
+  { value: 'all', label: 'Todas' },
+  { value: 'unassigned', label: 'Solo sin asignar' },
+  { value: 'risks', label: 'Solo riesgos' },
+];
+
+export const PlanningFilters = ({
+  date,
+  preset,
+  filters,
+  zones,
+  cleaners,
+  onDateChange,
+  onPresetChange,
+  onFiltersChange,
+}: PlanningFiltersProps) => {
+  const updateFilter = <K extends keyof CleaningPlanningFilters>(key: K, value: CleaningPlanningFilters[K]) => {
+    onFiltersChange({ ...filters, [key]: value });
+  };
+
   return (
-    <div className="flex flex-col gap-3 rounded-lg border bg-white p-4 md:flex-row md:items-center md:justify-between">
-      <div>
-        <p className="text-sm font-medium text-gray-900">Rango de planificación</p>
-        <p className="text-xs text-muted-foreground">Cambia entre día y semana para equilibrar carga.</p>
+    <div className="space-y-3 rounded-lg border bg-white p-4 shadow-sm">
+      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+        <div>
+          <p className="text-sm font-medium text-gray-900">Rango de planificación</p>
+          <p className="text-xs text-muted-foreground">Cambia entre día y semana para equilibrar carga.</p>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2">
+          <Button variant="outline" size="sm" onClick={() => onDateChange(subDays(date, 1))}>
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+          <input
+            className="h-9 rounded-md border border-input bg-background px-3 text-sm"
+            type="date"
+            value={date.toISOString().slice(0, 10)}
+            onChange={(event) => onDateChange(new Date(`${event.target.value}T12:00:00`))}
+          />
+          <Button variant="outline" size="sm" onClick={() => onDateChange(addDays(date, 1))}>
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+
+          <div className="flex rounded-md border p-1">
+            {presets.map((item) => (
+              <Button
+                key={item.value}
+                size="sm"
+                variant={preset === item.value ? 'default' : 'ghost'}
+                onClick={() => onPresetChange(item.value)}
+              >
+                {item.label}
+              </Button>
+            ))}
+          </div>
+        </div>
       </div>
 
-      <div className="flex flex-wrap items-center gap-2">
-        <Button variant="outline" size="sm" onClick={() => onDateChange(subDays(date, 1))}>
-          <ChevronLeft className="h-4 w-4" />
-        </Button>
+      <div className="grid gap-2 md:grid-cols-4">
         <input
           className="h-9 rounded-md border border-input bg-background px-3 text-sm"
-          type="date"
-          value={date.toISOString().slice(0, 10)}
-          onChange={(event) => onDateChange(new Date(`${event.target.value}T12:00:00`))}
+          placeholder="Buscar propiedad/dirección…"
+          value={filters.search}
+          onChange={(event) => updateFilter('search', event.target.value)}
         />
-        <Button variant="outline" size="sm" onClick={() => onDateChange(addDays(date, 1))}>
-          <ChevronRight className="h-4 w-4" />
-        </Button>
-
-        <div className="flex rounded-md border p-1">
-          {presets.map((item) => (
-            <Button
-              key={item.value}
-              size="sm"
-              variant={preset === item.value ? 'default' : 'ghost'}
-              onClick={() => onPresetChange(item.value)}
-            >
-              {item.label}
-            </Button>
-          ))}
-        </div>
+        <select
+          className="h-9 rounded-md border border-input bg-background px-3 text-sm"
+          value={filters.taskFilter}
+          onChange={(event) => updateFilter('taskFilter', event.target.value as PlanningTaskFilter)}
+        >
+          {taskFilters.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
+        </select>
+        <select
+          className="h-9 rounded-md border border-input bg-background px-3 text-sm"
+          value={filters.zone}
+          onChange={(event) => updateFilter('zone', event.target.value)}
+        >
+          <option value="all">Todas las zonas</option>
+          {zones.map((zone) => <option key={zone} value={zone}>{zone}</option>)}
+        </select>
+        <select
+          className="h-9 rounded-md border border-input bg-background px-3 text-sm"
+          value={filters.cleanerId}
+          onChange={(event) => updateFilter('cleanerId', event.target.value)}
+        >
+          <option value="all">Todas las limpiadoras</option>
+          {cleaners.map((cleaner) => <option key={cleaner.id} value={cleaner.id}>{cleaner.name}</option>)}
+        </select>
       </div>
     </div>
   );

@@ -56,6 +56,45 @@ export const tasksOverlap = (a: Pick<Task, 'date' | 'startTime' | 'endTime'>, b:
 
 const uniqueRisks = (risks: PlanningTaskRisk[]): PlanningTaskRisk[] => Array.from(new Set(risks));
 
+export const formatPlanningTime = (time?: string | null): string => {
+  const minutes = timeToMinutes(time);
+  if (minutes === null) return 'Sin hora';
+  const hours = Math.floor(minutes / 60).toString().padStart(2, '0');
+  const mins = (minutes % 60).toString().padStart(2, '0');
+  return `${hours}:${mins}`;
+};
+
+export const formatTaskStatus = (status: string): string => {
+  const labels: Record<string, string> = {
+    pending: 'Pendiente',
+    'in-progress': 'En curso',
+    completed: 'Completada',
+    cancelled: 'Cancelada',
+  };
+  return labels[status] || status;
+};
+
+export const formatTaskType = (type: string): string => type
+  .split('-')
+  .filter(Boolean)
+  .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+  .join(' ');
+
+export const inferTaskZone = (task: Pick<Task, 'address' | 'property'>): string => {
+  const text = `${task.address || ''} ${task.property || ''}`.toLowerCase();
+  if (/sanxenxo|pontevedra|portonovo|a lanzada|sangenjo/.test(text)) return 'Sanxenxo';
+  if (/ourense|orense/.test(text)) return 'Ourense';
+  if (/benidorm|alicante/.test(text)) return 'Benidorm';
+  if (/perillo|oleiros|sada|betanzos|cambre|arteixo|coruña|coruna|a coruña/.test(text)) return 'A Coruña';
+  if (/santiago/.test(text)) return 'Santiago';
+  return 'Sin zona';
+};
+
+export const isOperationalCleaner = (cleaner: Cleaner): boolean => {
+  const name = cleaner.name.trim().toLowerCase();
+  return cleaner.isActive && name !== 'not count' && !name.includes('not count');
+};
+
 export const decoratePlanningTask = (task: Task, extraRisks: PlanningTaskRisk[] = []): CleaningPlanningTask => {
   const riskFlags: PlanningTaskRisk[] = [...extraRisks];
 
@@ -66,6 +105,11 @@ export const decoratePlanningTask = (task: Task, extraRisks: PlanningTaskRisk[] 
     ...task,
     durationMinutes: getTaskDurationMinutes(task),
     riskFlags: uniqueRisks(riskFlags),
+    zone: inferTaskZone(task),
+    displayStatus: formatTaskStatus(task.status),
+    displayType: formatTaskType(task.type),
+    displayStartTime: formatPlanningTime(task.startTime),
+    displayEndTime: formatPlanningTime(task.endTime),
   };
 };
 
@@ -101,7 +145,7 @@ export const buildCleanerPlanningDays = (
   });
 
   return cleaners
-    .filter((cleaner) => cleaner.isActive || tasksByCleaner.has(cleaner.id))
+    .filter((cleaner) => isOperationalCleaner(cleaner) || tasksByCleaner.has(cleaner.id))
     .map((cleaner) => {
       const cleanerTasks = tasksByCleaner.get(cleaner.id) || [];
       const overlapIds = detectOverlapTaskIds(cleanerTasks);
