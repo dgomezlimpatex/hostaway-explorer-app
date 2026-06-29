@@ -6,6 +6,13 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { EditPropertyModal } from './EditPropertyModal';
 import { AssignChecklistModal } from './AssignChecklistModal';
@@ -18,7 +25,6 @@ import {
   Trash2, 
   MapPin, 
   Clock, 
-  FileText,
   CheckSquare,
   ChevronDown,
   ChevronRight,
@@ -26,7 +32,8 @@ import {
   Building,
   Copy,
   Star,
-  CalendarDays
+  CalendarDays,
+  MoreHorizontal
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -83,32 +90,86 @@ const PropertyActions = ({
   setEditingProperty,
   handleDuplicate,
   handleDelete,
-}: Omit<ClientPropertiesPanelProps, 'properties' | 'clients'> & { property: Property }) => (
-  <div className="flex justify-end gap-1.5">
-    <Button variant="outline" size="sm" onClick={() => setAssigningProperty(property)} className="h-8 px-2">
-      <CheckSquare className="h-3.5 w-3.5 sm:mr-1" />
-      <span className="hidden sm:inline text-xs">Checklist</span>
-    </Button>
-    <Button variant="outline" size="sm" onClick={() => setPreferredCleanersPropertyId(preferredCleanersPropertyId === property.id ? null : property.id)} title="Limpiadoras preferidas" className={`h-8 px-2 ${preferredCleanersPropertyId === property.id ? 'border-yellow-400 bg-yellow-50' : ''}`}>
-      <Star className="h-3.5 w-3.5 text-yellow-500" />
-    </Button>
-    <Button variant="outline" size="sm" onClick={() => handleDuplicate(property)} title="Duplicar" className="h-8 px-2"><Copy className="h-3.5 w-3.5" /></Button>
-    <Button variant="outline" size="sm" onClick={() => setEditingProperty(property)} title="Editar" className="h-8 px-2"><Edit className="h-3.5 w-3.5" /></Button>
-    <AlertDialog>
-      <AlertDialogTrigger asChild><Button variant="outline" size="sm" title="Eliminar" className="h-8 px-2"><Trash2 className="h-3.5 w-3.5" /></Button></AlertDialogTrigger>
-      <AlertDialogContent>
-        <AlertDialogHeader>
-          <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
-          <AlertDialogDescription>Esta acción no se puede deshacer. Se eliminará permanentemente la propiedad "{property.nombre}".</AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel>Cancelar</AlertDialogCancel>
-          <AlertDialogAction onClick={() => handleDelete(property.id)} className="bg-red-600 hover:bg-red-700">Eliminar</AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
-  </div>
-);
+  compact = false,
+}: Omit<ClientPropertiesPanelProps, 'properties' | 'clients'> & { property: Property; compact?: boolean }) => {
+  const isPreferredOpen = preferredCleanersPropertyId === property.id;
+
+  if (compact) {
+    return (
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="outline" size="sm" className="h-8 w-8 p-0" title="Acciones de propiedad" aria-label={`Acciones de ${property.nombre}`}>
+            <MoreHorizontal className="h-4 w-4" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-56">
+          <DropdownMenuItem onClick={() => setAssigningProperty(property)}>
+            <CheckSquare className="mr-2 h-4 w-4" />
+            Checklist
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => setPreferredCleanersPropertyId(isPreferredOpen ? null : property.id)}>
+            <Star className="mr-2 h-4 w-4 text-yellow-500" />
+            Limpiadoras preferidas
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem onClick={() => handleDuplicate(property)}>
+            <Copy className="mr-2 h-4 w-4" />
+            Duplicar
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => setEditingProperty(property)}>
+            <Edit className="mr-2 h-4 w-4" />
+            Editar
+          </DropdownMenuItem>
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <DropdownMenuItem onSelect={(event) => event.preventDefault()} className="text-red-600 focus:text-red-700">
+                <Trash2 className="mr-2 h-4 w-4" />
+                Eliminar
+              </DropdownMenuItem>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
+                <AlertDialogDescription>Esta acción no se puede deshacer. Se eliminará permanentemente la propiedad "{property.nombre}".</AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                <AlertDialogAction onClick={() => handleDelete(property.id)} className="bg-red-600 hover:bg-red-700">Eliminar</AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    );
+  }
+
+  return (
+    <div className="flex justify-end gap-1.5">
+      <Button variant="outline" size="sm" onClick={() => setAssigningProperty(property)} className="h-8 px-2">
+        <CheckSquare className="h-3.5 w-3.5 sm:mr-1" />
+        <span className="hidden sm:inline text-xs">Checklist</span>
+      </Button>
+      <Button variant="outline" size="sm" onClick={() => setPreferredCleanersPropertyId(isPreferredOpen ? null : property.id)} title="Limpiadoras preferidas" className={`h-8 px-2 ${isPreferredOpen ? 'border-yellow-400 bg-yellow-50' : ''}`}>
+        <Star className="h-3.5 w-3.5 text-yellow-500" />
+      </Button>
+      <Button variant="outline" size="sm" onClick={() => handleDuplicate(property)} title="Duplicar" className="h-8 px-2"><Copy className="h-3.5 w-3.5" /></Button>
+      <Button variant="outline" size="sm" onClick={() => setEditingProperty(property)} title="Editar" className="h-8 px-2"><Edit className="h-3.5 w-3.5" /></Button>
+      <AlertDialog>
+        <AlertDialogTrigger asChild><Button variant="outline" size="sm" title="Eliminar" className="h-8 px-2"><Trash2 className="h-3.5 w-3.5" /></Button></AlertDialogTrigger>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
+            <AlertDialogDescription>Esta acción no se puede deshacer. Se eliminará permanentemente la propiedad "{property.nombre}".</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={() => handleDelete(property.id)} className="bg-red-600 hover:bg-red-700">Eliminar</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
+  );
+};
 
 const ClientPropertiesPanel = ({ properties, clients, ...actionProps }: ClientPropertiesPanelProps) => {
   const propertyIds = properties.map((property) => property.id);
@@ -124,8 +185,8 @@ const ClientPropertiesPanel = ({ properties, clients, ...actionProps }: ClientPr
   return (
     <div className="space-y-4">
       {hasScheduleError && <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">No se pudieron cargar las fechas de limpieza. Se muestran como “—”.</div>}
-      <div className="hidden lg:block rounded-lg border">
-        <Table>
+      <div className="hidden lg:block rounded-lg border overflow-hidden">
+        <Table className="min-w-[1180px]">
           <TableHeader>
             <TableRow className="bg-muted/40">
               <TableHead className="w-[90px] px-3">Código</TableHead>
@@ -136,7 +197,7 @@ const ClientPropertiesPanel = ({ properties, clients, ...actionProps }: ClientPr
               <TableHead className="min-w-[190px] px-3">Checklist</TableHead>
               <TableHead className="w-[135px] px-3">Última limpieza</TableHead>
               <TableHead className="w-[135px] px-3">Próxima limpieza</TableHead>
-              <TableHead className="w-[210px] px-3 text-right">Acciones</TableHead>
+              <TableHead className="sticky right-0 z-20 w-[72px] bg-muted/95 px-3 text-right shadow-[-12px_0_18px_-18px_rgba(15,23,42,0.75)]">Acciones</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -152,7 +213,7 @@ const ClientPropertiesPanel = ({ properties, clients, ...actionProps }: ClientPr
                   <TableCell className="px-3 py-3 align-top"><PropertyChecklistInfo propertyId={property.id} /></TableCell>
                   <TableCell className="px-3 py-3 align-top text-sm text-muted-foreground">{getLastCleaning(property.id)}</TableCell>
                   <TableCell className="px-3 py-3 align-top text-sm text-muted-foreground">{getNextCleaning(property.id)}</TableCell>
-                  <TableCell className="px-3 py-3 align-top"><PropertyActions property={property} {...actionProps} /></TableCell>
+                  <TableCell className="sticky right-0 z-10 bg-background px-3 py-3 align-top text-right shadow-[-12px_0_18px_-18px_rgba(15,23,42,0.75)]"><PropertyActions property={property} {...actionProps} compact /></TableCell>
                 </TableRow>
               );
             })}
