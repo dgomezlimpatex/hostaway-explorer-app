@@ -90,6 +90,12 @@ const generalItems: NavigationItem[] = [
 
 const managementItems: NavigationItem[] = [
   {
+    title: 'Planificación limpiezas',
+    href: '/cleaning-planning',
+    icon: ClipboardList,
+    permission: 'tasks'
+  },
+  {
     title: 'Trabajadores',
     href: '/workers',
     icon: Users,
