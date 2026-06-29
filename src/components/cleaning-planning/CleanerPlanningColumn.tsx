@@ -19,26 +19,26 @@ export const CleanerPlanningColumn = ({ day, cleaners, onAssign, onUnassign, isA
   const isOverloaded = day.riskFlags.includes('overcapacity');
 
   return (
-    <Card className="min-w-[320px]">
-      <CardHeader className="space-y-3">
+    <Card className="min-w-[320px] border-white/10 bg-white/[0.04] text-white shadow-xl shadow-black/20 backdrop-blur">
+      <CardHeader className="space-y-3 border-b border-white/10">
         <div className="flex items-start justify-between gap-2">
           <div>
-            <CardTitle className="text-base">{day.cleanerName}</CardTitle>
-            <p className="text-xs text-muted-foreground">{day.tasks.length} tareas planificadas</p>
+            <CardTitle className="text-base tracking-tight text-white">{day.cleanerName}</CardTitle>
+            <p className="text-xs text-white/50">{day.tasks.length} tareas planificadas</p>
           </div>
           {isOverloaded && <Badge variant="destructive">Sobrecarga</Badge>}
         </div>
         <div className="space-y-1">
-          <div className="flex justify-between text-xs text-muted-foreground">
+          <div className="flex justify-between text-xs text-white/50">
             <span>{minutesToHoursLabel(day.plannedMinutes)}</span>
             <span>{minutesToHoursLabel(day.capacityMinutes)}</span>
           </div>
-          <Progress value={Math.min(progressValue, 100)} className={isOverloaded ? 'bg-red-100' : undefined} />
+          <Progress value={Math.min(progressValue, 100)} className={isOverloaded ? 'h-2 bg-red-500/20' : 'h-2 bg-white/10'} />
         </div>
       </CardHeader>
-      <CardContent className="space-y-3">
+      <CardContent className="space-y-3 p-3">
         {day.tasks.length === 0 ? (
-          <div className="rounded-md border border-dashed p-4 text-center text-sm text-muted-foreground">
+          <div className="rounded-2xl border border-dashed border-white/15 bg-black/20 p-4 text-center text-sm text-white/50">
             Sin tareas en este rango.
           </div>
         ) : (

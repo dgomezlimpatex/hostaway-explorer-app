@@ -51,6 +51,9 @@ export interface AdditionalTask {
 export interface Task extends BaseEntity {
   property: string;
   propertyCode?: string;
+  propertyDurationMinutes?: number;
+  propertyName?: string;
+  propertyAddress?: string;
   address: string;
   date: string;
   startTime: string;
@@ -143,7 +146,7 @@ export interface WorkerContract extends BaseEntity {
   sickDaysPerYear: number;
   contractHoursPerWeek: number;
   paymentFrequency: 'weekly' | 'biweekly' | 'monthly';
-  benefits: Record<string, any>;
+  benefits: Record<string, unknown>;
   notes?: string;
   isActive: boolean;
 }

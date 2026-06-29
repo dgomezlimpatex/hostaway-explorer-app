@@ -7,6 +7,7 @@ import {
   CleaningPlanningTask,
   PlanningTaskRisk,
 } from '@/types/cleaningPlanning';
+import { getTaskPlannedDurationMinutes } from './cleaning-planning/capacity';
 
 export const DEFAULT_DAILY_CAPACITY_MINUTES = 8 * 60;
 
@@ -22,19 +23,9 @@ export const timeToMinutes = (time?: string | null): number | null => {
   return hours * 60 + minutes;
 };
 
-export const getTaskDurationMinutes = (task: Pick<Task, 'duration' | 'startTime' | 'endTime'>): number => {
-  if (typeof task.duration === 'number' && Number.isFinite(task.duration) && task.duration > 0) {
-    return task.duration;
-  }
+export const getTaskDurationMinutes = (task: Pick<Task, 'duration' | 'propertyDurationMinutes' | 'startTime' | 'endTime'>): number => getTaskPlannedDurationMinutes(task).minutes;
 
-  const start = timeToMinutes(task.startTime);
-  const end = timeToMinutes(task.endTime);
-
-  if (start === null || end === null || end <= start) return 0;
-  return end - start;
-};
-
-export const hasMissingTime = (task: Pick<Task, 'startTime' | 'endTime' | 'duration'>): boolean => {
+export const hasMissingTime = (task: Pick<Task, 'startTime' | 'endTime' | 'duration' | 'propertyDurationMinutes'>): boolean => {
   const start = timeToMinutes(task.startTime);
   const end = timeToMinutes(task.endTime);
   return start === null || end === null || end <= start || getTaskDurationMinutes(task) <= 0;
@@ -97,13 +88,16 @@ export const isOperationalCleaner = (cleaner: Cleaner): boolean => {
 
 export const decoratePlanningTask = (task: Task, extraRisks: PlanningTaskRisk[] = []): CleaningPlanningTask => {
   const riskFlags: PlanningTaskRisk[] = [...extraRisks];
+  const duration = getTaskPlannedDurationMinutes(task);
 
   if (!task.cleanerId) riskFlags.push('unassigned');
   if (hasMissingTime(task)) riskFlags.push('missing-time');
+  if (duration.source === 'missing') riskFlags.push('missing-duration');
 
   return {
     ...task,
-    durationMinutes: getTaskDurationMinutes(task),
+    durationMinutes: duration.minutes,
+    durationSource: duration.source,
     riskFlags: uniqueRisks(riskFlags),
     zone: inferTaskZone(task),
     displayStatus: formatTaskStatus(task.status),

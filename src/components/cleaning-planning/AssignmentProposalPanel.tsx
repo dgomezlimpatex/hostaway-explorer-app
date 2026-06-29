@@ -1,0 +1,125 @@
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { AssignmentProposalResult, CleaningPlanningTask } from '@/types/cleaningPlanning';
+import { minutesToHoursLabel } from '@/utils/cleaningPlanning';
+import { AlertTriangle, CheckCircle2, Lightbulb, Sparkles, XCircle } from 'lucide-react';
+
+interface AssignmentProposalPanelProps {
+  proposal: AssignmentProposalResult | null;
+  tasks: CleaningPlanningTask[];
+  isLoading?: boolean;
+  onGenerate: () => void;
+  onClear: () => void;
+}
+
+const proposalTone = (confidence: number): string => {
+  if (confidence >= 85) return 'border-emerald-300/30 bg-emerald-400/10 text-emerald-100';
+  if (confidence >= 65) return 'border-sky-300/30 bg-sky-400/10 text-sky-100';
+  return 'border-amber-300/30 bg-amber-400/10 text-amber-100';
+};
+
+export const AssignmentProposalPanel = ({ proposal, tasks, isLoading, onGenerate, onClear }: AssignmentProposalPanelProps) => {
+  const taskById = new Map(tasks.map((task) => [task.id, task]));
+
+  return (
+    <Card className="border-[#8b5cf6]/30 bg-gradient-to-b from-[#1f1633] to-[#10091f] text-white shadow-2xl shadow-[#310984]/25">
+      <CardHeader className="space-y-3 border-b border-white/10">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <CardTitle className="flex items-center gap-2 text-lg tracking-tight">
+              <Sparkles className="h-5 w-5 text-[#c7b8ff]" /> Propuesta IA operativa
+            </CardTitle>
+            <p className="mt-1 text-xs text-white/55">
+              Genera un borrador revisable. No guarda, no notifica y no cambia tareas automáticamente.
+            </p>
+          </div>
+          {proposal && (
+            <Button size="sm" variant="ghost" className="text-white/60 hover:bg-white/10 hover:text-white" onClick={onClear}>
+              Limpiar
+            </Button>
+          )}
+        </div>
+        <Button
+          className="w-full bg-[#310984] text-white shadow-lg shadow-[#310984]/30 hover:bg-[#4c1bb0]"
+          disabled={isLoading || tasks.length === 0}
+          onClick={onGenerate}
+        >
+          <Lightbulb className="mr-2 h-4 w-4" /> Proponer asignación
+        </Button>
+      </CardHeader>
+
+      <CardContent className="space-y-4 p-4">
+        {!proposal ? (
+          <div className="rounded-2xl border border-dashed border-white/15 bg-white/[0.03] p-4 text-sm text-white/60">
+            Selecciona rango/filtros y pulsa “Proponer asignación”. Verás asignaciones sugeridas con explicación y conflictos separados.
+          </div>
+        ) : (
+          <>
+            <div className="grid grid-cols-3 gap-2 text-center">
+              <div className="rounded-xl border border-white/10 bg-white/[0.04] p-3">
+                <p className="text-lg font-semibold">{proposal.summary.proposedCount}</p>
+                <p className="text-[11px] text-white/50">propuestas</p>
+              </div>
+              <div className="rounded-xl border border-white/10 bg-white/[0.04] p-3">
+                <p className="text-lg font-semibold">{proposal.summary.conflictCount}</p>
+                <p className="text-[11px] text-white/50">conflictos</p>
+              </div>
+              <div className="rounded-xl border border-white/10 bg-white/[0.04] p-3">
+                <p className="text-lg font-semibold">{minutesToHoursLabel(proposal.summary.proposedMinutes)}</p>
+                <p className="text-[11px] text-white/50">repartidas</p>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <div className="flex items-center gap-2 text-sm font-medium text-white">
+                <CheckCircle2 className="h-4 w-4 text-emerald-300" /> Asignaciones propuestas
+              </div>
+              {proposal.proposals.length === 0 ? (
+                <div className="rounded-xl border border-white/10 bg-black/20 p-3 text-xs text-white/55">
+                  No se pudo proponer ninguna asignación segura con los datos actuales.
+                </div>
+              ) : proposal.proposals.map((item) => {
+                const task = taskById.get(item.taskId);
+                return (
+                  <div key={item.taskId} className="rounded-2xl border border-white/10 bg-black/20 p-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <p className="text-sm font-medium text-white">{task?.property || 'Tarea'}</p>
+                        <p className="text-xs text-white/55">→ {item.cleanerName} · {item.propertyGroupName || 'Edificio'}</p>
+                      </div>
+                      <Badge variant="outline" className={proposalTone(item.confidence)}>{item.confidence}%</Badge>
+                    </div>
+                    <ul className="mt-2 space-y-1 text-xs text-white/55">
+                      {item.reasons.slice(0, 2).map((reason) => <li key={reason}>• {reason}</li>)}
+                      {item.warnings.map((warning) => <li key={warning} className="text-amber-100">• {warning}</li>)}
+                    </ul>
+                  </div>
+                );
+              })}
+            </div>
+
+            {proposal.conflicts.length > 0 && (
+              <div className="space-y-2">
+                <div className="flex items-center gap-2 text-sm font-medium text-white">
+                  <XCircle className="h-4 w-4 text-red-300" /> Revisión manual
+                </div>
+                {proposal.conflicts.map((conflict) => {
+                  const task = taskById.get(conflict.taskId);
+                  return (
+                    <div key={`${conflict.taskId}-${conflict.code}`} className="rounded-2xl border border-red-300/20 bg-red-500/10 p-3">
+                      <p className="text-sm font-medium text-white">{task?.property || 'Tarea'}</p>
+                      <p className="mt-1 flex gap-2 text-xs text-red-100">
+                        <AlertTriangle className="mt-0.5 h-3 w-3 shrink-0" /> {conflict.message}
+                      </p>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </>
+        )}
+      </CardContent>
+    </Card>
+  );
+};

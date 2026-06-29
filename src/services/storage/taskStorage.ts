@@ -17,14 +17,72 @@ type StockRpcClient = {
 
 type TaskCreateData = Omit<Task, 'id' | 'created_at' | 'updated_at'>;
 
+type TaskPropertyRow = {
+  codigo?: string | null;
+  duracion_servicio?: number | null;
+  nombre?: string | null;
+  direccion?: string | null;
+};
+
+type TaskReportRow = {
+  overall_status?: string | null;
+};
+
+type TaskAssignmentRow = {
+  id: string;
+  task_id?: string;
+  cleaner_id: string;
+  cleaner_name: string;
+};
+
+type TaskDBRow = {
+  id: string;
+  created_at: string;
+  updated_at: string;
+  property: string;
+  properties?: TaskPropertyRow | null;
+  address: string;
+  start_time: string;
+  end_time: string;
+  type: string;
+  status: string;
+  check_out: string;
+  check_in: string;
+  cleaner?: string | null;
+  background_color?: string | null;
+  date: string;
+  cliente_id?: string | null;
+  propiedad_id?: string | null;
+  duracion?: number | null;
+  coste?: number | null;
+  metodo_pago?: string | null;
+  supervisor?: string | null;
+  cleaner_id?: string | null;
+  notes?: string | null;
+  extraordinary_client_name?: string | null;
+  extraordinary_client_email?: string | null;
+  extraordinary_client_phone?: string | null;
+  extraordinary_billing_address?: string | null;
+  originalTaskId?: string;
+  additional_tasks?: Task['additionalTasks'];
+  task_reports?: TaskReportRow[] | null;
+  task_assignments?: TaskAssignmentRow[] | null;
+  assignments?: TaskAssignmentRow[] | null;
+};
+
+type TaskDBWrite = Record<string, unknown>;
+
 const taskStorageConfig = {
   tableName: 'tasks',
-  mapFromDB: (row: any): Task => ({
+  mapFromDB: (row: TaskDBRow): Task => ({
     id: row.id,
     created_at: row.created_at,
     updated_at: row.updated_at,
     property: row.property,
     propertyCode: row.properties?.codigo || null,
+    propertyDurationMinutes: row.properties?.duracion_servicio || null,
+    propertyName: row.properties?.nombre || null,
+    propertyAddress: row.properties?.direccion || null,
     address: row.address,
     startTime: row.start_time,
     endTime: row.end_time,
@@ -50,8 +108,8 @@ const taskStorageConfig = {
     originalTaskId: row.originalTaskId || row.id, // Para asignaciones múltiples
     additionalTasks: row.additional_tasks || [], // Map additional tasks
   }),
-  mapToDB: (task: Partial<TaskCreateData>): any => {
-    const data: any = {};
+  mapToDB: (task: Partial<TaskCreateData>): TaskDBWrite => {
+    const data: TaskDBWrite = {};
     
     if (task.property !== undefined) data.property = task.property;
     if (task.address !== undefined) data.address = task.address;
@@ -99,7 +157,7 @@ export class TaskStorageService extends BaseStorageService<Task, TaskCreateData>
       .from('tasks')
       .select(`
         *,
-        properties!tasks_propiedad_id_fkey(codigo),
+        properties!tasks_propiedad_id_fkey(codigo, duracion_servicio, nombre, direccion),
         task_reports(overall_status),
         task_assignments!inner(id, cleaner_id, cleaner_name)
       `)
@@ -124,7 +182,7 @@ export class TaskStorageService extends BaseStorageService<Task, TaskCreateData>
       .from('tasks')
       .select(`
         *,
-        properties!tasks_propiedad_id_fkey(codigo),
+        properties!tasks_propiedad_id_fkey(codigo, duracion_servicio, nombre, direccion),
         task_reports(overall_status),
         task_assignments(id, cleaner_id, cleaner_name)
       `)
@@ -144,7 +202,7 @@ export class TaskStorageService extends BaseStorageService<Task, TaskCreateData>
     }
     
     // Merge and deduplicate by task id
-    const taskMap = new Map<string, any>();
+    const taskMap = new Map<string, TaskDBRow>();
     
     [...(assignedTasks || []), ...(legacyTasks || [])].forEach(task => {
       if (!taskMap.has(task.id)) {
@@ -162,7 +220,7 @@ export class TaskStorageService extends BaseStorageService<Task, TaskCreateData>
         .select('id, task_id, cleaner_id, cleaner_name')
         .in('task_id', taskIds);
       if (!assignErr && allAssignments) {
-        const byTask = new Map<string, any[]>();
+        const byTask = new Map<string, TaskAssignmentRow[]>();
         allAssignments.forEach(a => {
           const arr = byTask.get(a.task_id) || [];
           arr.push(a);
@@ -194,8 +252,8 @@ export class TaskStorageService extends BaseStorageService<Task, TaskCreateData>
     }
   }
 
-  private mapTaskFromDB(task: any): Task {
-    const hasCompletedReport = task.task_reports?.some((report: any) => report.overall_status === 'completed');
+  private mapTaskFromDB(task: TaskDBRow): Task {
+    const hasCompletedReport = task.task_reports?.some((report) => report.overall_status === 'completed');
     const finalStatus = hasCompletedReport ? 'completed' : task.status;
 
     // Handle multiple assignments - combine all cleaners into one task
@@ -203,7 +261,7 @@ export class TaskStorageService extends BaseStorageService<Task, TaskCreateData>
     let cleanerIdValue = task.cleaner_id;
     
     if (task.task_assignments && task.task_assignments.length > 0) {
-      cleanerName = task.task_assignments.map((a: any) => a.cleaner_name).join(', ');
+      cleanerName = task.task_assignments.map((assignment) => assignment.cleaner_name).join(', ');
       cleanerIdValue = task.task_assignments[0].cleaner_id;
     }
 
@@ -260,7 +318,7 @@ export class TaskStorageService extends BaseStorageService<Task, TaskCreateData>
       .from('tasks')
       .select(`
         *,
-        properties!tasks_propiedad_id_fkey(codigo),
+        properties!tasks_propiedad_id_fkey(codigo, duracion_servicio, nombre, direccion),
         task_reports(overall_status),
         task_assignments(id, cleaner_id, cleaner_name)
       `)
@@ -315,7 +373,7 @@ export class TaskStorageService extends BaseStorageService<Task, TaskCreateData>
       .from('tasks')
       .select(`
         *,
-        properties!tasks_propiedad_id_fkey(codigo),
+        properties!tasks_propiedad_id_fkey(codigo, duracion_servicio, nombre, direccion),
         task_reports(overall_status),
         task_assignments(id, cleaner_id, cleaner_name)
       `)

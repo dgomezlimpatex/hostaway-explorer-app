@@ -21,6 +21,12 @@ const riskLabel: Record<PlanningTaskRisk, string> = {
   overlap: 'Solape',
   overcapacity: 'Sobrecarga',
   'missing-time': 'Horario incompleto',
+  'missing-building': 'Edificio sin detectar',
+  'ambiguous-building': 'Edificio ambiguo',
+  'missing-duration': 'Duración pendiente',
+  'no-real-availability': 'Sin disponibilidad real',
+  'no-preferred-worker': 'Sin equipo preferente',
+  'proposal-conflict': 'Conflicto propuesta',
 };
 
 const riskClass: Record<PlanningTaskRisk, string> = {
@@ -28,6 +34,12 @@ const riskClass: Record<PlanningTaskRisk, string> = {
   overlap: 'border-red-300 bg-red-50 text-red-800',
   overcapacity: 'border-red-300 bg-red-50 text-red-800',
   'missing-time': 'border-orange-300 bg-orange-50 text-orange-800',
+  'missing-building': 'border-purple-300 bg-purple-50 text-purple-800',
+  'ambiguous-building': 'border-purple-300 bg-purple-50 text-purple-800',
+  'missing-duration': 'border-orange-300 bg-orange-50 text-orange-800',
+  'no-real-availability': 'border-amber-300 bg-amber-50 text-amber-800',
+  'no-preferred-worker': 'border-slate-300 bg-slate-50 text-slate-800',
+  'proposal-conflict': 'border-red-300 bg-red-50 text-red-800',
 };
 
 export const PlanningTaskCard = ({ task, cleaners, onAssign, onUnassign, isAssigning, compact = false }: PlanningTaskCardProps) => {

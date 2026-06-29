@@ -3,11 +3,12 @@ import { useQuery } from '@tanstack/react-query';
 import { addDays, endOfWeek, format, startOfWeek } from 'date-fns';
 import { taskStorageService } from '@/services/taskStorage';
 import { useCleaners } from '@/hooks/useCleaners';
-import { useWorkerContracts } from '@/hooks/useWorkerContracts';
 import { useSede } from '@/contexts/SedeContext';
-import { buildCleaningPlanningModel, DEFAULT_DAILY_CAPACITY_MINUTES } from '@/utils/cleaningPlanning';
-import { WorkerContract } from '@/types/calendar';
-import { CleanerCapacityMap, CleaningPlanningModel, PlanningRangePreset } from '@/types/cleaningPlanning';
+import { supabase } from '@/integrations/supabase/client';
+import { buildCleaningPlanningModel } from '@/utils/cleaningPlanning';
+import { buildCapacityMapFromAvailability, buildEffectiveAvailabilityRange, WeeklyAvailabilityRow } from '@/utils/cleaning-planning/availability';
+import { CleaningPlanningModel, PlanningRangePreset } from '@/types/cleaningPlanning';
+import { WorkerAbsence, WorkerFixedDayOff, WorkerMaintenanceCleaning } from '@/types/workerAbsence';
 import { formatMadridDate } from '@/utils/date';
 
 interface UseCleaningPlanningOptions {
@@ -33,37 +34,89 @@ const getPlanningRange = (date: Date, preset: PlanningRangePreset) => {
   return { startDate: dateStr, endDate: dateStr };
 };
 
-const buildCapacityMap = (contracts: WorkerContract[] = [], rangeDays: number): CleanerCapacityMap => {
-  const capacityByCleaner: CleanerCapacityMap = {};
-
-  contracts
-    .filter((contract) => contract.isActive)
-    .forEach((contract) => {
-      const cleanerId = contract.cleanerId;
-      if (!cleanerId) return;
-
-      const weeklyHours = Number(contract.contractHoursPerWeek ?? 40);
-      const dailyMinutes = Number.isFinite(weeklyHours)
-        ? Math.max(0, Math.round((weeklyHours * 60) / 5))
-        : DEFAULT_DAILY_CAPACITY_MINUTES;
-
-      capacityByCleaner[cleanerId] = dailyMinutes * rangeDays;
-    });
-
-  return capacityByCleaner;
+type WorkerAbsenceRow = {
+  id: string;
+  cleaner_id: string;
+  start_date: string;
+  end_date: string;
+  start_time: string | null;
+  end_time: string | null;
+  absence_type: WorkerAbsence['absenceType'];
+  location_name: string | null;
+  notes: string | null;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
 };
+
+type WorkerFixedDayOffRow = {
+  id: string;
+  cleaner_id: string;
+  day_of_week: number;
+  is_active: boolean;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+type WorkerMaintenanceCleaningRow = {
+  id: string;
+  cleaner_id: string;
+  days_of_week: number[];
+  start_time: string;
+  end_time: string;
+  location_name: string;
+  notes: string | null;
+  is_active: boolean;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+const mapAbsenceFromDB = (row: WorkerAbsenceRow): WorkerAbsence => ({
+  id: row.id,
+  cleanerId: row.cleaner_id,
+  startDate: row.start_date,
+  endDate: row.end_date,
+  startTime: row.start_time,
+  endTime: row.end_time,
+  absenceType: row.absence_type,
+  locationName: row.location_name,
+  notes: row.notes,
+  createdBy: row.created_by,
+  createdAt: row.created_at,
+  updatedAt: row.updated_at,
+});
+
+const mapFixedDayOffFromDB = (row: WorkerFixedDayOffRow): WorkerFixedDayOff => ({
+  id: row.id,
+  cleanerId: row.cleaner_id,
+  dayOfWeek: row.day_of_week,
+  isActive: row.is_active,
+  createdBy: row.created_by,
+  createdAt: row.created_at,
+  updatedAt: row.updated_at,
+});
+
+const mapMaintenanceFromDB = (row: WorkerMaintenanceCleaningRow): WorkerMaintenanceCleaning => ({
+  id: row.id,
+  cleanerId: row.cleaner_id,
+  daysOfWeek: row.days_of_week,
+  startTime: row.start_time,
+  endTime: row.end_time,
+  locationName: row.location_name,
+  notes: row.notes,
+  isActive: row.is_active,
+  createdBy: row.created_by,
+  createdAt: row.created_at,
+  updatedAt: row.updated_at,
+});
 
 export const useCleaningPlanning = ({ date, preset }: UseCleaningPlanningOptions) => {
   const { activeSede, isInitialized, loading: sedeLoading } = useSede();
   const { cleaners, isLoading: cleanersLoading } = useCleaners();
-  const { data: contracts = [], isLoading: contractsLoading } = useWorkerContracts();
 
   const range = useMemo(() => getPlanningRange(date, preset), [date, preset]);
-  const rangeDays = useMemo(() => {
-    const start = new Date(`${range.startDate}T00:00:00`);
-    const end = new Date(`${range.endDate}T00:00:00`);
-    return Math.max(1, Math.round((end.getTime() - start.getTime()) / 86_400_000) + 1);
-  }, [range.endDate, range.startDate]);
 
   const tasksQuery = useQuery({
     queryKey: ['cleaning-planning-tasks', range.startDate, range.endDate, activeSede?.id || 'pending-sede'],
@@ -76,9 +129,85 @@ export const useCleaningPlanning = ({ date, preset }: UseCleaningPlanningOptions
     staleTime: 15_000,
   });
 
+  const weeklyAvailabilityQuery = useQuery({
+    queryKey: ['cleaning-planning-weekly-availability'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('cleaner_availability')
+        .select('cleaner_id, day_of_week, is_available, start_time, end_time');
+      if (error) throw error;
+      return (data || []) as WeeklyAvailabilityRow[];
+    },
+    enabled: isInitialized && !sedeLoading,
+    staleTime: 60_000,
+  });
+
+  const absencesQuery = useQuery({
+    queryKey: ['cleaning-planning-worker-absences', range.startDate, range.endDate],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('worker_absences')
+        .select('*')
+        .lte('start_date', range.endDate)
+        .gte('end_date', range.startDate);
+      if (error) throw error;
+      return (data || []).map((row) => mapAbsenceFromDB(row as WorkerAbsenceRow));
+    },
+    enabled: isInitialized && !sedeLoading,
+    staleTime: 60_000,
+  });
+
+  const fixedDaysOffQuery = useQuery({
+    queryKey: ['cleaning-planning-worker-fixed-days-off'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('worker_fixed_days_off')
+        .select('*')
+        .eq('is_active', true);
+      if (error) throw error;
+      return (data || []).map((row) => mapFixedDayOffFromDB(row as WorkerFixedDayOffRow));
+    },
+    enabled: isInitialized && !sedeLoading,
+    staleTime: 60_000,
+  });
+
+  const maintenanceQuery = useQuery({
+    queryKey: ['cleaning-planning-worker-maintenance-cleanings'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('worker_maintenance_cleanings')
+        .select('*')
+        .eq('is_active', true);
+      if (error) throw error;
+      return (data || []).map((row) => mapMaintenanceFromDB(row as WorkerMaintenanceCleaningRow));
+    },
+    enabled: isInitialized && !sedeLoading,
+    staleTime: 60_000,
+  });
+
+  const effectiveAvailability = useMemo(() => buildEffectiveAvailabilityRange({
+    cleaners,
+    startDate: range.startDate,
+    endDate: range.endDate,
+    weeklyAvailability: weeklyAvailabilityQuery.data || [],
+    absences: absencesQuery.data || [],
+    fixedDaysOff: fixedDaysOffQuery.data || [],
+    maintenanceCleanings: maintenanceQuery.data || [],
+    assignedTasks: tasksQuery.data || [],
+  }), [
+    absencesQuery.data,
+    cleaners,
+    fixedDaysOffQuery.data,
+    maintenanceQuery.data,
+    range.endDate,
+    range.startDate,
+    tasksQuery.data,
+    weeklyAvailabilityQuery.data,
+  ]);
+
   const capacityByCleaner = useMemo(
-    () => buildCapacityMap(contracts, rangeDays),
-    [contracts, rangeDays],
+    () => buildCapacityMapFromAvailability(effectiveAvailability),
+    [effectiveAvailability],
   );
 
   const planning = useMemo<CleaningPlanningModel>(() => buildCleaningPlanningModel(
@@ -92,7 +221,8 @@ export const useCleaningPlanning = ({ date, preset }: UseCleaningPlanningOptions
   return {
     planning,
     range,
-    isLoading: tasksQuery.isLoading || cleanersLoading || contractsLoading || sedeLoading,
+    effectiveAvailability,
+    isLoading: tasksQuery.isLoading || cleanersLoading || weeklyAvailabilityQuery.isLoading || absencesQuery.isLoading || fixedDaysOffQuery.isLoading || maintenanceQuery.isLoading || sedeLoading,
     isError: tasksQuery.isError,
     error: tasksQuery.error,
     refetch: tasksQuery.refetch,
