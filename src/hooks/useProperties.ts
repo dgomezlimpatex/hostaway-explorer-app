@@ -40,9 +40,9 @@ export const useProperties = () => {
   const { activeSede, isInitialized, loading } = useSede();
   
   return useQuery({
-    queryKey: ['properties', activeSede?.id || 'all'],
+    queryKey: ['properties', activeSede?.id || 'pending-sede'],
     queryFn: () => propertyStorage.getAll(),
-    enabled: isInitialized && !loading, // Wait for sede context to be fully initialized
+    enabled: isInitialized && !loading && !!activeSede?.id,
   });
 };
 
@@ -50,9 +50,9 @@ export const useProperty = (id: string) => {
   const { activeSede, isInitialized, loading } = useSede();
   
   return useQuery({
-    queryKey: ['property', id, activeSede?.id || 'all'],
+    queryKey: ['property', id, activeSede?.id || 'pending-sede'],
     queryFn: () => propertyStorage.getById(id),
-    enabled: !!id && isInitialized && !loading, // Wait for both id and sede context
+    enabled: !!id && isInitialized && !loading && !!activeSede?.id,
   });
 };
 
@@ -60,9 +60,9 @@ export const usePropertiesByClient = (clienteId: string) => {
   const { activeSede, isInitialized, loading } = useSede();
   
   return useQuery({
-    queryKey: ['properties', 'client', clienteId, activeSede?.id || 'all'],
+    queryKey: ['properties', 'client', clienteId, activeSede?.id || 'pending-sede'],
     queryFn: () => propertyStorage.getByClientId(clienteId),
-    enabled: !!clienteId && isInitialized && !loading, // Wait for both clienteId and sede context
+    enabled: !!clienteId && isInitialized && !loading && !!activeSede?.id,
   });
 };
 
@@ -72,8 +72,8 @@ export const usePropertyCleaningSchedule = (propertyIds: string[]) => {
   const uniquePropertyIds = Array.from(new Set(propertyIds)).sort();
 
   return useQuery({
-    queryKey: ['property-cleaning-schedule', activeSede?.id || 'all', uniquePropertyIds],
-    enabled: uniquePropertyIds.length > 0 && isInitialized && !loading,
+    queryKey: ['property-cleaning-schedule', activeSede?.id || 'pending-sede', uniquePropertyIds],
+    enabled: uniquePropertyIds.length > 0 && isInitialized && !loading && !!activeSede?.id,
     queryFn: async (): Promise<Record<string, PropertyCleaningSchedule>> => {
       const scheduleByProperty = uniquePropertyIds.reduce<Record<string, PropertyCleaningSchedule>>((acc, propertyId) => {
         acc[propertyId] = { lastCleaning: null, nextCleaning: null };

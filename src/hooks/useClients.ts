@@ -9,9 +9,9 @@ export const useClients = () => {
   const { activeSede, isInitialized, loading } = useSede();
   
   return useQuery({
-    queryKey: ['clients', activeSede?.id || 'all'],
+    queryKey: ['clients', activeSede?.id || 'pending-sede'],
     queryFn: () => clientStorage.getAll(),
-    enabled: isInitialized && !loading, // Wait for sede context to be fully initialized
+    enabled: isInitialized && !loading && !!activeSede?.id,
   });
 };
 
@@ -21,7 +21,7 @@ export const useClient = (id: string) => {
   return useQuery({
     queryKey: ['client', id, activeSede?.id || 'all'],
     queryFn: () => clientStorage.getById(id),
-    enabled: !!id, // Only depend on id, not sede
+    enabled: !!id && !!activeSede?.id,
   });
 };
 

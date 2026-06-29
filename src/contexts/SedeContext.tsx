@@ -49,7 +49,13 @@ export const SedeProvider = ({ children }: SedeProviderProps) => {
   const [availableSedes, setAvailableSedes] = useState<Sede[]>([]);
   const [loading, setLoading] = useState(true);
   const [isInitialized, setIsInitialized] = useState(false);
-  const hasStartedInitialLoad = useRef(false);
+  const loadedUserIdRef = useRef<string | null>(null);
+  const latestSedeStateRef = useRef({
+    activeSede: null as Sede | null,
+    availableSedes: [] as Sede[],
+    loading: true,
+    isInitialized: false,
+  });
 
   // Leer la sede guardada sin activarla hasta validarla contra sedes accesibles
   const getSavedSedeFromStorage = useCallback(() => {
@@ -85,17 +91,15 @@ export const SedeProvider = ({ children }: SedeProviderProps) => {
     }
 
     const preferredSede = selectPreferredSede(sedes, currentActiveSede);
-    if (preferredSede && preferredSede.id !== currentActiveSede?.id) {
-      setActiveSedeState(preferredSede);
-      persistActiveSede(preferredSede);
+    if (!preferredSede) return null;
+
+    setActiveSedeState(preferredSede);
+    persistActiveSede(preferredSede);
+
+    if (preferredSede.id !== currentActiveSede?.id) {
       invalidateSedeScopedQueries();
-      return preferredSede;
     }
 
-    if (preferredSede) {
-      setActiveSedeState(preferredSede);
-      persistActiveSede(preferredSede);
-    }
     return preferredSede;
   }, [invalidateSedeScopedQueries]);
 
@@ -120,29 +124,27 @@ export const SedeProvider = ({ children }: SedeProviderProps) => {
     }
   }, [activeSede, getSavedSedeFromStorage, syncActiveSede]);
 
-  // Inicializar contexto una sola vez cuando el usuario esté autenticado
+  // Inicializar contexto cada vez que cambia el usuario autenticado.
   useEffect(() => {
-    // Si la autenticación aún está cargando, esperar
     if (authLoading) {
       return;
     }
-    
-    // Si no hay usuario autenticado, marcar como inicializado sin cargar sedes
+
     if (!user) {
       setLoading(false);
       setIsInitialized(true);
       setActiveSedeState(null);
       setAvailableSedes([]);
-      hasStartedInitialLoad.current = false;
+      loadedUserIdRef.current = null;
       return;
     }
-    
-    // Si hay usuario autenticado y no se ha inicializado, cargar sedes
-    if (!isInitialized && !hasStartedInitialLoad.current) {
-      hasStartedInitialLoad.current = true;
+
+    if (loadedUserIdRef.current !== user.id) {
+      loadedUserIdRef.current = user.id;
+      setIsInitialized(false);
       refreshSedes();
     }
-  }, [user, authLoading, isInitialized, refreshSedes]);
+  }, [user, authLoading, refreshSedes]);
 
   const setActiveSede = useCallback((sede: Sede | null) => {
     // Verificar que sede no sea null
@@ -198,6 +200,16 @@ export const SedeProvider = ({ children }: SedeProviderProps) => {
     return availableSedes.some(sede => sede.id === sedeId);
   };
 
+  // Mantener una referencia viva para callbacks/polling que no deben quedarse con closures antiguas.
+  useEffect(() => {
+    latestSedeStateRef.current = {
+      activeSede,
+      availableSedes,
+      loading,
+      isInitialized,
+    };
+  }, [activeSede, availableSedes, loading, isInitialized]);
+
   const value: SedeContextType = {
     activeSede,
     availableSedes,
@@ -213,71 +225,60 @@ export const SedeProvider = ({ children }: SedeProviderProps) => {
   // Configurar contexto global cada vez que cambien los datos relevantes
   useEffect(() => {
     const getActiveSedeId = () => {
-      if (!activeSede) {
-        return null;
-      }
-      return activeSede.id;
+      const current = latestSedeStateRef.current.activeSede;
+      return current?.id || null;
     };
 
     const waitForActiveSede = async (timeout = 15000): Promise<string> => {
       return new Promise((resolve, reject) => {
-        // Si ya hay sede activa, resolver inmediatamente
-        if (activeSede?.id) {
-          resolve(activeSede.id);
-          return;
-        }
+        const resolveCurrentOrPreferred = () => {
+          const currentState = latestSedeStateRef.current;
 
-        // Si hay sedes disponibles, auto-seleccionar la preferida
-        if (availableSedes.length > 0 && !activeSede) {
-          const preferredSede = selectPreferredSede(availableSedes, getSavedSedeFromStorage());
-          if (preferredSede) {
-            setActiveSede(preferredSede);
-            resolve(preferredSede.id);
+          if (currentState.activeSede?.id) {
+            resolve(currentState.activeSede.id);
+            return true;
           }
-          return;
-        }
 
-        // Si no hay sedes disponibles pero aún se está inicializando, esperar
-        if (!isInitialized || loading) {
-          const checkInterval = setInterval(() => {
-            if (activeSede?.id) {
-              clearInterval(checkInterval);
-              resolve(activeSede.id);
-            } else if (availableSedes.length > 0 && !activeSede) {
-              clearInterval(checkInterval);
-              const preferredSede = selectPreferredSede(availableSedes, getSavedSedeFromStorage());
-              if (preferredSede) {
-                setActiveSede(preferredSede);
-                resolve(preferredSede.id);
-              }
-            } else if (isInitialized && !loading && availableSedes.length === 0) {
-              clearInterval(checkInterval);
-              console.error('❌ waitForActiveSede - no sedes available after loading completed');
-              reject(new Error('No hay sedes disponibles para el usuario'));
+          if (currentState.availableSedes.length > 0) {
+            const preferredSede = selectPreferredSede(currentState.availableSedes, getSavedSedeFromStorage());
+            if (preferredSede) {
+              setActiveSede(preferredSede);
+              resolve(preferredSede.id);
+              return true;
             }
-          }, 200);
+          }
 
-          setTimeout(() => {
-            clearInterval(checkInterval);
-            console.error('❌ waitForActiveSede - timeout');
-            reject(new Error('Timeout esperando por sede activa'));
-          }, timeout);
-          
+          if (currentState.isInitialized && !currentState.loading && currentState.availableSedes.length === 0) {
+            reject(new Error('No hay sedes disponibles para el usuario'));
+            return true;
+          }
+
+          return false;
+        };
+
+        if (resolveCurrentOrPreferred()) {
           return;
         }
 
-        // Si ya se inicializó y no hay sedes disponibles
-        console.error('❌ waitForActiveSede - no sedes available');
-        reject(new Error('No hay sedes disponibles para el usuario'));
+        const checkInterval = setInterval(() => {
+          if (resolveCurrentOrPreferred()) {
+            clearInterval(checkInterval);
+            clearTimeout(timeoutId);
+          }
+        }, 200);
+
+        const timeoutId = setTimeout(() => {
+          clearInterval(checkInterval);
+          reject(new Error('Timeout esperando por sede activa'));
+        }, timeout);
       });
     };
 
-    // Configurar contexto global siempre, incluso si no está inicializado
     setGlobalSedeContext({
       getActiveSedeId,
       waitForActiveSede,
     });
-  }, [activeSede, availableSedes, loading, isInitialized, setActiveSede, getSavedSedeFromStorage]);
+  }, [setActiveSede, getSavedSedeFromStorage]);
 
   return <SedeContext.Provider value={value}>{children}</SedeContext.Provider>;
 };

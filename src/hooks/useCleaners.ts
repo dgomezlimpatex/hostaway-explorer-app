@@ -13,9 +13,9 @@ export const useCleaners = () => {
   const { activeSede, isInitialized, loading } = useSede();
   
   const query = useQuery({
-    queryKey: ['cleaners', activeSede?.id || 'all'],
+    queryKey: ['cleaners', activeSede?.id || 'pending-sede'],
     queryFn: () => cleanerStorage.getAll(),
-    enabled: isInitialized && !loading, // Wait for sede context to be fully initialized
+    enabled: isInitialized && !loading && !!activeSede?.id,
   });
 
   const { data: allCleaners = [], isLoading } = query;

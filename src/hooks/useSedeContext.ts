@@ -25,28 +25,36 @@ export const useSedeContext = () => {
         resolve(context.activeSede.id);
         return;
       }
-      
-      if (context.loading || context.activeSede) {
-        // Si está cargando o hay una sede, esperar un poco más
-        const timeoutId = setTimeout(() => {
-          reject(new Error('Timeout: No se pudo obtener una sede activa'));
-        }, timeout);
-        
-        // Polling simple para esperar sede activa
-        const interval = setInterval(() => {
-          if (context.activeSede?.id) {
-            clearInterval(interval);
-            clearTimeout(timeoutId);
-            resolve(context.activeSede.id);
-          } else if (!context.loading && !context.activeSede && context.availableSedes.length === 0) {
-            clearInterval(interval);
-            clearTimeout(timeoutId);
-            reject(new Error('No hay sedes disponibles para el usuario'));
-          }
-        }, 100);
-      } else {
-        reject(new Error('No hay sede activa y no se está cargando'));
+
+      if (context.availableSedes.length > 0) {
+        const preferredSede = context.availableSedes[0];
+        context.setActiveSede(preferredSede);
+        resolve(preferredSede.id);
+        return;
       }
+
+      const interval = setInterval(() => {
+        if (context.activeSede?.id) {
+          clearInterval(interval);
+          clearTimeout(timeoutId);
+          resolve(context.activeSede.id);
+        } else if (!context.loading && context.isInitialized && context.availableSedes.length === 0) {
+          clearInterval(interval);
+          clearTimeout(timeoutId);
+          reject(new Error('No hay sedes disponibles para el usuario'));
+        } else if (context.availableSedes.length > 0) {
+          clearInterval(interval);
+          clearTimeout(timeoutId);
+          const preferredSede = context.availableSedes[0];
+          context.setActiveSede(preferredSede);
+          resolve(preferredSede.id);
+        }
+      }, 100);
+
+      const timeoutId = setTimeout(() => {
+        clearInterval(interval);
+        reject(new Error('Timeout: No se pudo obtener una sede activa'));
+      }, timeout);
     });
   };
   
