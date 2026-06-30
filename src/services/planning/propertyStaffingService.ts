@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { supabase } from '@/integrations/supabase/client';
 import { mapPropertyFromDB } from '@/services/storage/mappers/propertyMappers';
 import { mapCleanerFromDB } from '@/services/storage/mappers/cleanerMappers';
