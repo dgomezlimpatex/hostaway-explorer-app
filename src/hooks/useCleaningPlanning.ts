@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { addDays, endOfWeek, format, startOfWeek } from 'date-fns';
+import { addDays } from 'date-fns';
 import { taskStorageService } from '@/services/taskStorage';
 import { useCleaners } from '@/hooks/useCleaners';
 import { useSede } from '@/contexts/SedeContext';
@@ -17,16 +17,17 @@ interface UseCleaningPlanningOptions {
 }
 
 const getPlanningRange = (date: Date, preset: PlanningRangePreset) => {
-  if (preset === 'tomorrow') {
-    const tomorrow = addDays(date, 1);
-    const dateStr = formatMadridDate(tomorrow);
-    return { startDate: dateStr, endDate: dateStr };
+  if (preset === '7d') {
+    return {
+      startDate: formatMadridDate(date),
+      endDate: formatMadridDate(addDays(date, 6)),
+    };
   }
 
-  if (preset === 'week') {
+  if (preset === '30d') {
     return {
-      startDate: format(startOfWeek(date, { weekStartsOn: 1 }), 'yyyy-MM-dd'),
-      endDate: format(endOfWeek(date, { weekStartsOn: 1 }), 'yyyy-MM-dd'),
+      startDate: formatMadridDate(date),
+      endDate: formatMadridDate(addDays(date, 29)),
     };
   }
 

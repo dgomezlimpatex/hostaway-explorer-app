@@ -1,5 +1,6 @@
 import { Button } from '@/components/ui/button';
 import { CleaningPlanningFilters, PlanningRangePreset, PlanningTaskFilter } from '@/types/cleaningPlanning';
+import { Sede } from '@/types/sede';
 import { addDays, subDays } from 'date-fns';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 
@@ -9,15 +10,18 @@ interface PlanningFiltersProps {
   filters: CleaningPlanningFilters;
   zones: string[];
   cleaners: Array<{ id: string; name: string }>;
+  activeSedeId?: string;
+  availableSedes: Sede[];
   onDateChange: (date: Date) => void;
   onPresetChange: (preset: PlanningRangePreset) => void;
   onFiltersChange: (filters: CleaningPlanningFilters) => void;
+  onSedeChange: (sede: Sede) => void;
 }
 
 const presets: Array<{ value: PlanningRangePreset; label: string }> = [
-  { value: 'today', label: 'Día' },
-  { value: 'tomorrow', label: 'Mañana' },
-  { value: 'week', label: 'Semana' },
+  { value: 'today', label: 'Hoy' },
+  { value: '7d', label: '7 días' },
+  { value: '30d', label: '30 días' },
 ];
 
 const taskFilters: Array<{ value: PlanningTaskFilter; label: string }> = [
@@ -32,9 +36,12 @@ export const PlanningFilters = ({
   filters,
   zones,
   cleaners,
+  activeSedeId,
+  availableSedes,
   onDateChange,
   onPresetChange,
   onFiltersChange,
+  onSedeChange,
 }: PlanningFiltersProps) => {
   const updateFilter = <K extends keyof CleaningPlanningFilters>(key: K, value: CleaningPlanningFilters[K]) => {
     onFiltersChange({ ...filters, [key]: value });
@@ -44,8 +51,8 @@ export const PlanningFilters = ({
     <div className="space-y-3 rounded-lg border bg-white p-4 shadow-sm">
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div>
-          <p className="text-sm font-medium text-gray-900">Rango de planificación</p>
-          <p className="text-xs text-muted-foreground">Cambia entre día y semana para equilibrar carga.</p>
+          <p className="text-sm font-medium text-gray-900">Horizonte y sede</p>
+          <p className="text-xs text-muted-foreground">Centro = propiedad/edificio. La sede activa limita datos y evita mezclar sedes.</p>
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
@@ -77,10 +84,21 @@ export const PlanningFilters = ({
         </div>
       </div>
 
-      <div className="grid gap-2 md:grid-cols-4">
+      <div className="grid gap-2 md:grid-cols-5">
+        <select
+          className="h-9 rounded-md border border-input bg-background px-3 text-sm"
+          value={activeSedeId || ''}
+          onChange={(event) => {
+            const sede = availableSedes.find((item) => item.id === event.target.value);
+            if (sede) onSedeChange(sede);
+          }}
+          title="Sede operativa"
+        >
+          {availableSedes.map((sede) => <option key={sede.id} value={sede.id}>{sede.nombre}</option>)}
+        </select>
         <input
           className="h-9 rounded-md border border-input bg-background px-3 text-sm"
-          placeholder="Buscar propiedad/dirección…"
+          placeholder="Buscar propiedad/edificio/dirección…"
           value={filters.search}
           onChange={(event) => updateFilter('search', event.target.value)}
         />

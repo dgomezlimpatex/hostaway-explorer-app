@@ -125,9 +125,10 @@ export const buildAssignmentProposal = ({
     const candidates = buildingAssignments
       .map((assignment) => {
         const workerAvailability = availabilityByCleaner.get(assignment.cleanerId);
+        const requiredMinutes = task.durationMinutes + 30;
         if (!workerAvailability || !workerAvailability.isAvailable) return null;
-        if (workerAvailability.remainingMinutes < task.durationMinutes) return null;
-        const score = scoreCandidate({ assignment, availability: workerAvailability, durationMinutes: task.durationMinutes });
+        if (workerAvailability.remainingMinutes < requiredMinutes) return null;
+        const score = scoreCandidate({ assignment, availability: workerAvailability, durationMinutes: requiredMinutes });
         return { assignment, availability: workerAvailability, ...score };
       })
       .filter((candidate): candidate is NonNullable<typeof candidate> => Boolean(candidate))
@@ -135,9 +136,9 @@ export const buildAssignmentProposal = ({
 
     const bestCandidate = candidates[0];
     if (!bestCandidate) {
-      conflicts.push(buildConflict(task.id, 'no_available_worker', 'No hay trabajadora del equipo con disponibilidad real suficiente.', {
+      conflicts.push(buildConflict(task.id, 'no_available_worker', 'No hay trabajadora del equipo con disponibilidad real suficiente (incluye buffer de 30 min).', {
         propertyGroupId: detectedBuilding.propertyGroupId,
-        requiredMinutes: task.durationMinutes,
+        requiredMinutes: task.durationMinutes + 30,
       }));
       return;
     }

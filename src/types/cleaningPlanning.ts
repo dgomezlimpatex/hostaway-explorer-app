@@ -12,7 +12,7 @@ export type PlanningTaskRisk =
   | 'no-preferred-worker'
   | 'proposal-conflict';
 
-export type PlanningRangePreset = 'today' | 'tomorrow' | 'week';
+export type PlanningRangePreset = 'today' | '7d' | '30d';
 
 export type BuildingDetectionStatus = 'detected' | 'not_detected' | 'ambiguous';
 

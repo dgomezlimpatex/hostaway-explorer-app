@@ -54,10 +54,11 @@ export const PlanningTaskCard = ({ task, cleaners, onAssign, onUnassign, isAssig
 
   const handleAssign = () => {
     if (!selectedCleaner) return;
-    if (task.cleanerId && selectedCleaner.id !== task.cleanerId) {
-      const confirmed = window.confirm(`¿Reasignar "${task.property}" a ${selectedCleaner.name}?`);
-      if (!confirmed) return;
-    }
+    const message = task.cleanerId && selectedCleaner.id !== task.cleanerId
+      ? `¿Reasignar "${task.property}" a ${selectedCleaner.name}?`
+      : `¿Asignar "${task.property}" a ${selectedCleaner.name}?`;
+    const confirmed = window.confirm(message);
+    if (!confirmed) return;
     onAssign(taskId, selectedCleaner);
   };
 

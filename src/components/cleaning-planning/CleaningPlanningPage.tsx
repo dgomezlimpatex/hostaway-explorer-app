@@ -6,6 +6,7 @@ import { useCleaningPlanning } from '@/hooks/useCleaningPlanning';
 import { useCleaningPlanningActions } from '@/hooks/useCleaningPlanningActions';
 import { useCleaningPlanningBuildingData } from '@/hooks/useCleaningPlanningBuildingData';
 import { useCleaners } from '@/hooks/useCleaners';
+import { useSede } from '@/contexts/SedeContext';
 import { Cleaner } from '@/types/calendar';
 import {
   AssignmentProposalResult,
@@ -18,10 +19,13 @@ import {
 import { PropertyGroup, PropertyGroupAssignment } from '@/types/propertyGroups';
 import { isOperationalCleaner, minutesToHoursLabel } from '@/utils/cleaningPlanning';
 import { buildAssignmentProposal } from '@/utils/cleaning-planning/proposalEngine';
-import { Activity, AlertTriangle, CheckCircle2, RefreshCw, Sparkles, Wand2 } from 'lucide-react';
+import { extractBuildingCode } from '@/services/laundryScheduleService';
+import { Activity, AlertTriangle, CheckCircle2, RefreshCw, Wand2 } from 'lucide-react';
 import { AssignmentProposalPanel } from './AssignmentProposalPanel';
 import { BuildingTaskBoard } from './BuildingTaskBoard';
+import { CleanerLoadTable } from './CleanerLoadTable';
 import { CleanerPlanningColumn } from './CleanerPlanningColumn';
+import { PlanningAlertsPanel } from './PlanningAlertsPanel';
 import { PlanningFilters } from './PlanningFilters';
 import { PlanningSummaryCards } from './PlanningSummaryCards';
 import { WorkerAvailabilityPanel } from './WorkerAvailabilityPanel';
@@ -42,7 +46,7 @@ const taskMatchesFilters = (task: CleaningPlanningTask, filters: CleaningPlannin
   const search = filters.search.trim().toLowerCase();
   if (!search) return true;
 
-  return [task.property, task.address, task.type, task.cleaner, task.zone, task.detectedBuilding?.propertyGroupName]
+  return [task.property, task.propertyCode, task.address, task.type, task.cleaner, task.zone, task.detectedBuilding?.propertyGroupName]
     .filter(Boolean)
     .some((value) => value?.toLowerCase().includes(search));
 };
@@ -54,17 +58,50 @@ const detectBuildingForTask = (
   propertyAssignments: PropertyGroupAssignment[],
   propertyGroups: PropertyGroup[],
 ): DetectedBuilding => {
+  const codePrefix = extractBuildingCode(task.propertyCode || task.property || '');
+  const prefixMatches = propertyGroups
+    .filter((group) => group.isActive)
+    .filter((group) => {
+      const normalizedName = group.name.trim().toUpperCase();
+      return Boolean(codePrefix) && codePrefix !== 'SIN EDIFICIO' && (normalizedName === codePrefix || normalizedName.includes(codePrefix));
+    });
+
+  const detectByPrefix = (): DetectedBuilding | null => {
+    if (prefixMatches.length === 1) {
+      const [group] = prefixMatches;
+      return {
+        status: 'detected',
+        propertyGroupId: group.id,
+        propertyGroupName: group.name,
+        matchedPattern: codePrefix,
+        reason: `Edificio inferido por prefijo de código (${codePrefix}).`,
+      };
+    }
+
+    if (prefixMatches.length > 1) {
+      return {
+        status: 'ambiguous',
+        matchedPattern: codePrefix,
+        reason: `El prefijo ${codePrefix} coincide con varios edificios activos.`,
+      };
+    }
+
+    return null;
+  };
+
   if (!task.propertyId) {
-    return {
+    return detectByPrefix() || {
       status: 'not_detected',
-      reason: 'La tarea no tiene propiedad vinculada para inferir edificio automáticamente.',
+      matchedPattern: codePrefix,
+      reason: 'La tarea no tiene propiedad vinculada y el prefijo de código no coincide con un edificio configurado.',
     };
   }
 
   const assignments = propertyAssignments.filter((assignment) => assignment.propertyId === task.propertyId);
   if (assignments.length === 0) {
-    return {
+    return detectByPrefix() || {
       status: 'not_detected',
+      matchedPattern: codePrefix,
       reason: `La propiedad ${task.propertyCode || task.property} no está vinculada a un grupo/edificio operativo.`,
     };
   }
@@ -74,8 +111,9 @@ const detectBuildingForTask = (
     .filter((group): group is PropertyGroup => Boolean(group));
 
   if (activeGroups.length === 0) {
-    return {
+    return detectByPrefix() || {
       status: 'not_detected',
+      matchedPattern: codePrefix,
       reason: `La propiedad ${task.propertyCode || task.property} está en un grupo inactivo o inexistente.`,
     };
   }
@@ -120,6 +158,7 @@ export const CleaningPlanningPage = () => {
   const [proposal, setProposal] = useState<AssignmentProposalResult | null>(null);
   const { planning, range, effectiveAvailability, isLoading, isError, error, refetch } = useCleaningPlanning({ date, preset });
   const { cleaners } = useCleaners();
+  const { activeSede, availableSedes, setActiveSede } = useSede();
   const buildingDataQuery = useCleaningPlanningBuildingData();
   const { applyProposal, assignTask, unassignTask, isAssigning, isApplyingProposal } = useCleaningPlanningActions();
 
@@ -158,6 +197,13 @@ export const CleaningPlanningPage = () => {
     .filter((day) => day.tasks.length > 0 || filters.taskFilter === 'all'), [enhancedCleanerDays, filters]);
 
   const filteredCount = filteredUnassignedTasks.length + filteredCleanerDays.reduce((total, day) => total + day.tasks.length, 0);
+  const filteredTasks = useMemo(
+    () => [
+      ...filteredUnassignedTasks,
+      ...filteredCleanerDays.flatMap((day) => day.tasks),
+    ],
+    [filteredCleanerDays, filteredUnassignedTasks],
+  );
   const manualReviewCount = filteredUnassignedTasks.filter((task) => task.riskFlags.length > 0).length + planning.summary.conflictTasks + planning.summary.overcapacityCleaners;
   const dayState = planning.summary.unassignedTasks === 0 && manualReviewCount === 0 ? 'Día controlado' : 'Revisión operativa';
   const dayStateTone = planning.summary.unassignedTasks === 0 && manualReviewCount === 0
@@ -177,6 +223,8 @@ export const CleaningPlanningPage = () => {
 
   const handleApplyProposal = async () => {
     if (!proposal || proposal.proposals.length === 0) return;
+    const confirmed = window.confirm(`¿Confirmar ${proposal.proposals.length} asignación(es) propuestas? Se guardarán en tareas existentes, no se crearán tareas nuevas.`);
+    if (!confirmed) return;
     await applyProposal({ proposals: proposal.proposals });
     setProposal(null);
     refetch();
@@ -197,10 +245,10 @@ export const CleaningPlanningPage = () => {
               </div>
               <div>
                 <h1 className="text-3xl font-semibold tracking-[-0.04em] text-white md:text-5xl">
-                  Planificación diaria de limpiezas
+                  Planificación V2 por propiedades y edificios
                 </h1>
                 <p className="mt-3 max-w-3xl text-sm leading-6 text-white/62 md:text-base">
-                  Reparte la carga con disponibilidad real, edificios detectados y una propuesta revisable antes de guardar nada. Diseñado para que coordinación entienda el operativo en menos de 30 segundos.
+                  La pantalla legacy de listado queda sustituida por esta vista V2: horizonte hoy/7/30 días, sede activa, edificios por prefijo/catálogo, alertas y asignación manual confirmada sobre tareas existentes.
                 </p>
               </div>
             </div>
@@ -251,9 +299,12 @@ export const CleaningPlanningPage = () => {
             filters={filters}
             zones={zones}
             cleaners={operationalCleaners.map((cleaner) => ({ id: cleaner.id, name: cleaner.name }))}
+            activeSedeId={activeSede?.id}
+            availableSedes={availableSedes}
             onDateChange={setDate}
             onPresetChange={setPreset}
             onFiltersChange={setFilters}
+            onSedeChange={setActiveSede}
           />
         </div>
 
@@ -278,6 +329,8 @@ export const CleaningPlanningPage = () => {
         ) : (
           <>
             <PlanningSummaryCards summary={planning.summary} />
+            <PlanningAlertsPanel tasks={filteredTasks} summary={planning.summary} />
+            <CleanerLoadTable days={filteredCleanerDays} />
 
             <div className="grid gap-5 xl:grid-cols-[360px_minmax(0,1fr)_420px]">
               <div className="xl:sticky xl:top-4 xl:self-start">
@@ -285,9 +338,10 @@ export const CleaningPlanningPage = () => {
               </div>
 
               <BuildingTaskBoard
-                tasks={filteredUnassignedTasks}
+                tasks={filteredTasks}
                 cleaners={operationalCleaners}
                 onAssign={handleAssign}
+                onUnassign={unassignTask}
                 isAssigning={isAssigning}
               />
 
