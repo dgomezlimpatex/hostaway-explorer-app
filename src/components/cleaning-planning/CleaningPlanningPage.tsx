@@ -121,7 +121,7 @@ export const CleaningPlanningPage = () => {
   const { planning, range, effectiveAvailability, isLoading, isError, error, refetch } = useCleaningPlanning({ date, preset });
   const { cleaners } = useCleaners();
   const buildingDataQuery = useCleaningPlanningBuildingData();
-  const { assignTask, unassignTask, isAssigning } = useCleaningPlanningActions();
+  const { applyProposal, assignTask, unassignTask, isAssigning, isApplyingProposal } = useCleaningPlanningActions();
 
   const buildingData = buildingDataQuery.data || {
     propertyGroups: [],
@@ -173,6 +173,13 @@ export const CleaningPlanningPage = () => {
       cleanerGroupAssignments: buildingData.cleanerAssignments,
     });
     setProposal(nextProposal);
+  };
+
+  const handleApplyProposal = async () => {
+    if (!proposal || proposal.proposals.length === 0) return;
+    await applyProposal({ proposals: proposal.proposals });
+    setProposal(null);
+    refetch();
   };
 
   return (
@@ -289,7 +296,9 @@ export const CleaningPlanningPage = () => {
                   proposal={proposal}
                   tasks={filteredUnassignedTasks}
                   isLoading={buildingDataQuery.isLoading}
+                  isApplying={isApplyingProposal}
                   onGenerate={handleGenerateProposal}
+                  onApply={handleApplyProposal}
                   onClear={() => setProposal(null)}
                 />
               </div>

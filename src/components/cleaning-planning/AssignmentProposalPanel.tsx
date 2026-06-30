@@ -9,7 +9,9 @@ interface AssignmentProposalPanelProps {
   proposal: AssignmentProposalResult | null;
   tasks: CleaningPlanningTask[];
   isLoading?: boolean;
+  isApplying?: boolean;
   onGenerate: () => void;
+  onApply: () => void;
   onClear: () => void;
 }
 
@@ -19,7 +21,15 @@ const proposalTone = (confidence: number): string => {
   return 'border-amber-300/30 bg-amber-400/10 text-amber-100';
 };
 
-export const AssignmentProposalPanel = ({ proposal, tasks, isLoading, onGenerate, onClear }: AssignmentProposalPanelProps) => {
+export const AssignmentProposalPanel = ({
+  proposal,
+  tasks,
+  isLoading,
+  isApplying,
+  onGenerate,
+  onApply,
+  onClear,
+}: AssignmentProposalPanelProps) => {
   const taskById = new Map(tasks.map((task) => [task.id, task]));
 
   return (
@@ -69,6 +79,22 @@ export const AssignmentProposalPanel = ({ proposal, tasks, isLoading, onGenerate
                 <p className="text-lg font-semibold">{minutesToHoursLabel(proposal.summary.proposedMinutes)}</p>
                 <p className="text-[11px] text-white/50">repartidas</p>
               </div>
+            </div>
+
+            <div className="rounded-2xl border border-emerald-300/20 bg-emerald-400/10 p-3">
+              <div className="flex items-start gap-2 text-xs text-emerald-50/85">
+                <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-200" />
+                <p>
+                  Revisa la lista antes de confirmar. Al aplicar, se guardan estas asignaciones en tareas y se disparan las notificaciones actuales del sistema.
+                </p>
+              </div>
+              <Button
+                className="mt-3 w-full bg-emerald-500 text-emerald-950 hover:bg-emerald-400"
+                disabled={isApplying || proposal.proposals.length === 0}
+                onClick={onApply}
+              >
+                {isApplying ? 'Aplicando propuesta…' : `Confirmar ${proposal.proposals.length} asignación${proposal.proposals.length === 1 ? '' : 'es'}`}
+              </Button>
             </div>
 
             <div className="space-y-2">

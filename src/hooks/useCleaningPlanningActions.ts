@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { taskStorageService } from '@/services/taskStorage';
 import { Cleaner } from '@/types/calendar';
+import { AssignmentProposal } from '@/types/cleaningPlanning';
 import { useToast } from '@/hooks/use-toast';
 
 export const useCleaningPlanningActions = () => {
@@ -29,6 +30,31 @@ export const useCleaningPlanningActions = () => {
     },
   });
 
+  const applyProposalMutation = useMutation({
+    mutationFn: async ({ proposals }: { proposals: AssignmentProposal[] }) => {
+      const results = [];
+      for (const proposal of proposals) {
+        results.push(await taskStorageService.assignTask(proposal.taskId, proposal.cleanerName, proposal.cleanerId));
+      }
+      return results;
+    },
+    onSuccess: (_data, variables) => {
+      invalidatePlanning();
+      toast({
+        title: 'Propuesta aplicada',
+        description: `${variables.proposals.length} asignación${variables.proposals.length === 1 ? '' : 'es'} guardada${variables.proposals.length === 1 ? '' : 's'}.`,
+      });
+    },
+    onError: (error) => {
+      invalidatePlanning();
+      toast({
+        title: 'Error al aplicar propuesta',
+        description: error instanceof Error ? error.message : 'No se pudieron guardar las asignaciones propuestas.',
+        variant: 'destructive',
+      });
+    },
+  });
+
   const unassignTaskMutation = useMutation({
     mutationFn: async (taskId: string) => taskStorageService.unassignTask(taskId),
     onSuccess: () => {
@@ -45,8 +71,10 @@ export const useCleaningPlanningActions = () => {
   });
 
   return {
+    applyProposal: applyProposalMutation.mutateAsync,
     assignTask: assignTaskMutation.mutate,
     unassignTask: unassignTaskMutation.mutate,
     isAssigning: assignTaskMutation.isPending || unassignTaskMutation.isPending,
+    isApplyingProposal: applyProposalMutation.isPending,
   };
 };
