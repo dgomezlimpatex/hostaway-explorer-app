@@ -10,6 +10,7 @@
     "lint": "eslint .",
     "lint:app": "eslint src",
     "typecheck": "tsc --noEmit --pretty false",
+    "test:planning-v2-domain": "node scripts/planningV2DomainTest.mjs",
     "preview": "vite preview"
   },
   "dependencies": {
