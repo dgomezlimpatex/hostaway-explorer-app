@@ -27,12 +27,10 @@ const Tasks = React.lazy(() => import("./pages/Tasks"));
 const Clients = React.lazy(() => import("./pages/Clients"));
 const Properties = React.lazy(() => import("./pages/Properties"));
 const Workers = React.lazy(() => import("./pages/Workers"));
-const PropertyGroups = React.lazy(() => import("./pages/PropertyGroups"));
 const Reports = React.lazy(() => import("./pages/Reports"));
 const HostawaySyncLogs = React.lazy(() => import("./pages/HostawaySyncLogs"));
 const ChecklistTemplates = React.lazy(() => import("./pages/ChecklistTemplates"));
 const CleaningReports = React.lazy(() => import("./pages/CleaningReports"));
-const CleaningPlanning = React.lazy(() => import("./pages/CleaningPlanning"));
 const InventoryDashboard = React.lazy(() => import("./pages/InventoryDashboard"));
 const InventoryStock = React.lazy(() => import("./pages/InventoryStock"));
 const InventoryMovements = React.lazy(() => import("./pages/InventoryMovements"));
@@ -199,9 +197,6 @@ function App() {
                     <Route path="/tasks" element={
                       <RoleProtectedRoute requiredModule="tasks"><Tasks /></RoleProtectedRoute>
                     } />
-                    <Route path="/cleaning-planning" element={
-                      <RoleProtectedRoute requiredModule="tasks"><CleaningPlanning /></RoleProtectedRoute>
-                    } />
                     <Route path="/clients" element={
                       <RoleProtectedRoute requiredModule="clients"><Clients /></RoleProtectedRoute>
                     } />
@@ -222,9 +217,6 @@ function App() {
                     } />
                     <Route path="/workers" element={
                       <RoleProtectedRoute requiredModule="workers"><Workers /></RoleProtectedRoute>
-                    } />
-                    <Route path="/property-groups" element={
-                      <RoleProtectedRoute requiredModule="propertyGroups"><PropertyGroups /></RoleProtectedRoute>
                     } />
                     <Route path="/checklist-templates" element={
                       <RoleProtectedRoute requiredModule="tasks" requiredAction="canCreate"><ChecklistTemplates /></RoleProtectedRoute>

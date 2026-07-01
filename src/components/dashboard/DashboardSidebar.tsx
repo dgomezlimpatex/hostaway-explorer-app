@@ -4,7 +4,6 @@ import { GlobalSearch } from '@/components/navigation/GlobalSearch';
 import { NavLink, useLocation } from 'react-router-dom';
 import { 
   Calendar, 
-  ClipboardList, 
   Users, 
   MapPin, 
   BarChart3,
@@ -89,12 +88,6 @@ const generalItems: NavigationItem[] = [
 ];
 
 const managementItems: NavigationItem[] = [
-  {
-    title: 'Planificación limpiezas',
-    href: '/cleaning-planning',
-    icon: ClipboardList,
-    permission: 'tasks'
-  },
   {
     title: 'Trabajadores',
     href: '/workers',
