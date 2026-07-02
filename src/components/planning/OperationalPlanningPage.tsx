@@ -2422,99 +2422,27 @@ export const OperationalPlanningPage = () => {
                                     </Button>
                                   </div>
 
-                                  <div className="mt-3 grid gap-2 md:grid-cols-3">
-                                    <div className="space-y-1">
-                                      <Label className="text-xs">Rol</Label>
-                                      <Select
-                                        value={assignment.roleType || 'primary'}
-                                        onValueChange={(value: 'primary' | 'secondary' | 'backup') =>
-                                          updateCleanerAssignment.mutate({
-                                            id: assignment.id,
-                                            groupId: selectedBuilding.id,
-                                            updates: { roleType: value },
-                                          })
-                                        }
-                                      >
-                                        <SelectTrigger className="h-9 rounded-xl bg-white">
-                                          <SelectValue />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                          <SelectItem value="primary">Titular</SelectItem>
-                                          <SelectItem value="secondary">Suplente</SelectItem>
-                                          <SelectItem value="backup">Backup</SelectItem>
-                                        </SelectContent>
-                                      </Select>
-                                    </div>
-                                    <div className="space-y-1">
-                                      <Label className="text-xs">Conocimiento</Label>
-                                      <Input
-                                        type="number"
-                                        min={1}
-                                        max={5}
-                                        className="h-9 rounded-xl bg-white"
-                                        value={assignment.knowledgeLevel || 3}
-                                        onChange={(e) =>
-                                          updateCleanerAssignment.mutate({
-                                            id: assignment.id,
-                                            groupId: selectedBuilding.id,
-                                            updates: { knowledgeLevel: Number(e.target.value) || 3 },
-                                          })
-                                        }
-                                      />
-                                    </div>
-                                    <div className="space-y-1">
-                                      <Label className="text-xs">Máx tareas/día</Label>
-                                      <Input
-                                        type="number"
-                                        min={1}
-                                        className="h-9 rounded-xl bg-white"
-                                        value={assignment.maxTasksPerDay || 8}
-                                        onChange={(e) =>
-                                          updateCleanerAssignment.mutate({
-                                            id: assignment.id,
-                                            groupId: selectedBuilding.id,
-                                            updates: { maxTasksPerDay: Number(e.target.value) || 8 },
-                                          })
-                                        }
-                                      />
-                                    </div>
-                                  </div>
-
-                                  <div className="mt-3 grid gap-2 md:grid-cols-2">
-                                    <div className="space-y-1">
-                                      <Label className="text-xs">Capacidad diaria override (min)</Label>
-                                      <Input
-                                        type="number"
-                                        min={0}
-                                        step={30}
-                                        className="h-9 rounded-xl bg-white"
-                                        value={assignment.maxDailyMinutesOverride || 0}
-                                        onChange={(e) =>
-                                          updateCleanerAssignment.mutate({
-                                            id: assignment.id,
-                                            groupId: selectedBuilding.id,
-                                            updates: { maxDailyMinutesOverride: Number(e.target.value) > 0 ? Number(e.target.value) : null },
-                                          })
-                                        }
-                                      />
-                                    </div>
-                                    <div className="space-y-1">
-                                      <Label className="text-xs">Traslado estimado (min)</Label>
-                                      <Input
-                                        type="number"
-                                        min={0}
-                                        step={5}
-                                        className="h-9 rounded-xl bg-white"
-                                        value={assignment.estimatedTravelTimeMinutes || 15}
-                                        onChange={(e) =>
-                                          updateCleanerAssignment.mutate({
-                                            id: assignment.id,
-                                            groupId: selectedBuilding.id,
-                                            updates: { estimatedTravelTimeMinutes: Number(e.target.value) || 15 },
-                                          })
-                                        }
-                                      />
-                                    </div>
+                                  <div className="mt-3 space-y-1">
+                                    <Label className="text-xs">Rol en este edificio</Label>
+                                    <Select
+                                      value={assignment.roleType || 'primary'}
+                                      onValueChange={(value: 'primary' | 'secondary' | 'backup') =>
+                                        updateCleanerAssignment.mutate({
+                                          id: assignment.id,
+                                          groupId: selectedBuilding.id,
+                                          updates: { roleType: value },
+                                        })
+                                      }
+                                    >
+                                      <SelectTrigger className="h-10 rounded-xl bg-white">
+                                        <SelectValue />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        <SelectItem value="primary">Titular</SelectItem>
+                                        <SelectItem value="secondary">Suplente</SelectItem>
+                                        <SelectItem value="backup">Backup</SelectItem>
+                                      </SelectContent>
+                                    </Select>
                                   </div>
                                 </div>
                               ))
