@@ -52,6 +52,8 @@ export const useOperationalPlanningOverview = () => {
     queryKey: planningKeys.overview(activeSede?.id),
     queryFn: () => operationalPlanningService.getOverview(activeSede!.id),
     enabled: isInitialized && !loading && !!activeSede?.id,
+    retry: 1,
+    staleTime: 30_000,
   });
 };
 

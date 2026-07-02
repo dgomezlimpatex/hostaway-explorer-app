@@ -531,16 +531,8 @@ class OperationalPlanningService {
       };
     });
 
-    const latestRun = (await this.listRuns(sedeId, 1))[0] || null;
     const activeAbsences = dataset.absences.filter((absence) => absence.startDate <= endDate && absence.endDate >= startDate).length;
-    const scenario = this.buildScenario({
-      tasks: dataset.tasks
-        .filter((task) => isActivePlanningTask(task))
-        .filter((task) => !settings.excludeExtraordinary || isTouristCleaningTask(task))
-        .filter((task) => getTaskCleanerIds(task).length === 0),
-      dataset,
-      settings,
-    });
+    const unassignedTasks = tasks.filter((task) => getTaskCleanerIds(task).length === 0);
     const substitutions = this.buildAbsenceReplacements({
       dataset,
       settings,
@@ -551,18 +543,23 @@ class OperationalPlanningService {
       dataset,
       settings,
       overviewDays: daySummaries,
-      scenario,
+      unassignedTasks,
       substitutions,
       dateFrom: startDate,
       dateTo: endDate,
     });
-    const performance = await this.buildPerformanceOverview({
-      sedeId,
-      dataset,
-      settings,
-      daySummaries,
-      scenario,
-    });
+    const [latestRun, performance] = await Promise.all([
+      this.listRuns(sedeId, 1).then((runs) => runs[0] || null),
+      this.buildPerformanceOverview({
+        sedeId,
+        dataset,
+        settings,
+        daySummaries,
+      }).catch((error) => {
+        console.warn('Operational planning performance overview failed:', error);
+        return this.buildFallbackPerformanceOverview(daySummaries);
+      }),
+    ]);
 
     return {
       settings,
@@ -571,7 +568,7 @@ class OperationalPlanningService {
         startDate,
         endDate,
         totalTasks: tasks.length,
-        unassignedTasks: tasks.filter((task) => getTaskCleanerIds(task).length === 0).length,
+        unassignedTasks: unassignedTasks.length,
         requiredMinutes: daySummaries.reduce((sum, day) => sum + day.requiredMinutes, 0),
         availableMinutes: daySummaries.reduce((sum, day) => sum + day.availableMinutes, 0),
         activeAbsences,
@@ -1284,7 +1281,7 @@ class OperationalPlanningService {
     dataset: PlanningDataset;
     settings: PlanningSettings;
     overviewDays: PlanningOverviewDay[];
-    scenario: PlanningScenario;
+    unassignedTasks: RawPlanningTask[];
     substitutions: PlanningAbsenceReplacement[];
     dateFrom: string;
     dateTo: string;
@@ -1344,23 +1341,19 @@ class OperationalPlanningService {
       }
     });
 
-    const criticalUnsafeTasks = args.scenario.conflicts.filter((conflict) => {
-      if (!conflict.taskId) return false;
-      const task = args.scenario.unassignedTasks.find((entry) => entry.id === conflict.taskId);
-      if (!task) return false;
+    const criticalUnassignedTasks = args.unassignedTasks.filter((task) => {
       const duration = this.getTaskDurationMinutes(task, args.dataset.properties);
-      return ['no-candidate', 'insufficient-team'].includes(conflict.code)
-        && buildCriticality(task, duration, args.settings.bufferMinutes);
+      return buildCriticality(task, duration, args.settings.bufferMinutes);
     });
 
-    if (criticalUnsafeTasks.length > 0) {
+    if (criticalUnassignedTasks.length > 0) {
       alerts.push({
         id: 'critical-no-candidate',
         severity: 'critical',
         category: 'critical-task',
-        title: `Hay ${criticalUnsafeTasks.length} tareas críticas aún sin candidata segura`,
-        message: 'El motor detecta tareas que requieren cobertura prioritaria y siguen bloqueadas por capacidad o equipo insuficiente.',
-        count: criticalUnsafeTasks.length,
+        title: `Hay ${criticalUnassignedTasks.length} tareas críticas aún sin cubrir`,
+        message: 'Hay tareas con margen operativo ajustado que necesitan revisión prioritaria en la planificación.',
+        count: criticalUnassignedTasks.length,
       });
     }
 
@@ -1387,7 +1380,6 @@ class OperationalPlanningService {
     dataset: PlanningDataset;
     settings: PlanningSettings;
     daySummaries: PlanningOverviewDay[];
-    scenario: PlanningScenario;
   }): Promise<PlanningPerformanceOverview> {
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
@@ -1497,6 +1489,29 @@ class OperationalPlanningService {
         .sort((a, b) => b.pressureScore - a.pressureScore)
         .slice(0, 5),
       estimatedTimeSavedMinutes: plannedTasks * ESTIMATED_MANUAL_PLANNING_MINUTES_PER_TASK,
+    };
+  }
+
+  private buildFallbackPerformanceOverview(daySummaries: PlanningOverviewDay[]): PlanningPerformanceOverview {
+    return {
+      automationRate: 0,
+      approvedRuns: 0,
+      plannedTasks: 0,
+      buildingsWithMostConflicts: [],
+      overloadedWorkers: [],
+      pressureDays: daySummaries
+        .map((day) => ({
+          date: day.date,
+          deficitMinutes: day.deficitMinutes,
+          unassigned: day.unassigned,
+          criticalTasks: day.criticalTasks,
+          requiredMinutes: day.requiredMinutes,
+          availableMinutes: day.availableMinutes,
+          pressureScore: day.deficitMinutes + (day.unassigned * 90) + (day.criticalTasks * 60),
+        }))
+        .sort((a, b) => b.pressureScore - a.pressureScore)
+        .slice(0, 5),
+      estimatedTimeSavedMinutes: 0,
     };
   }
 

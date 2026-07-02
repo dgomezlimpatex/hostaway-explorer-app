@@ -76,6 +76,14 @@ const statusTone = (value: number, inverse = false) => {
   return 'text-rose-600';
 };
 
+const getReadableErrorMessage = (error: unknown) => {
+  if (error instanceof Error) return error.message;
+  if (error && typeof error === 'object' && 'message' in error) {
+    return String((error as { message: unknown }).message);
+  }
+  return 'No se pudo cargar la información de planificación.';
+};
+
 const conflictCodeLabel = (code: string) => {
   switch (code) {
     case 'missing-property':
@@ -219,8 +227,13 @@ const ProposalCard = ({
 export const OperationalPlanningPage = () => {
   const isMobile = useIsMobile();
   const { activeSede } = useSede();
-  const { data: overviewData, isLoading: overviewLoading } = useOperationalPlanningOverview();
-  const { data: runs = [], isLoading: runsLoading } = useOperationalPlanningRuns();
+  const {
+    data: overviewData,
+    isLoading: overviewLoading,
+    isError: overviewIsError,
+    error: overviewError,
+  } = useOperationalPlanningOverview();
+  const { data: runs = [] } = useOperationalPlanningRuns();
   const { data: workers = [], isLoading: workersLoading } = useOperationalPlanningWorkers();
   const { data: buildings = [], isLoading: buildingsLoading } = useOperationalPlanningBuildings();
   const { data: allGroups = [] } = usePropertyGroups();
@@ -586,6 +599,12 @@ export const OperationalPlanningPage = () => {
         Math.round((overviewData.overview.requiredMinutes / Math.max(1, overviewData.overview.availableMinutes)) * 100),
       )
     : 0;
+  const overviewErrorMessage = overviewIsError ? getReadableErrorMessage(overviewError) : null;
+  const overviewMetric = (value: string | number, empty = '--') => {
+    if (overviewLoading) return '...';
+    if (overviewIsError || !overviewData) return empty;
+    return value;
+  };
 
   const selectedFocusDaySummary = useMemo(
     () => overviewData?.overview.days.find((day) => day.date === selectedFocusDate) || null,
@@ -798,7 +817,7 @@ export const OperationalPlanningPage = () => {
     });
   };
 
-  const isLoading = overviewLoading || runsLoading;
+  const isLoading = overviewLoading;
 
   return (
     <div className="min-h-screen bg-[linear-gradient(180deg,#f8fbff_0%,#f5f2ff_40%,#ffffff_100%)]">
@@ -824,29 +843,44 @@ export const OperationalPlanningPage = () => {
               </div>
             </CardHeader>
             <CardContent>
+              {overviewErrorMessage && (
+                <div className="mb-4 rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-800">
+                  <div className="flex items-start gap-3">
+                    <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+                    <div>
+                      <p className="font-black">No se pudo cargar el resumen de planificación.</p>
+                      <p className="mt-1 leading-6">{overviewErrorMessage}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
               <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
                 <div className="rounded-2xl border border-sky-200 bg-sky-50 p-4">
                   <p className="text-xs font-black uppercase tracking-[0.22em] text-sky-700">Sin cubrir</p>
-                  <p className="mt-2 text-3xl font-black text-slate-950">{overviewData?.overview.unassignedTasks ?? 0}</p>
+                  <p className="mt-2 text-3xl font-black text-slate-950">
+                    {overviewMetric(overviewData?.overview.unassignedTasks ?? 0)}
+                  </p>
                   <p className="mt-1 text-xs text-slate-600 md:text-sm">Tareas pendientes de propuesta</p>
                 </div>
                 <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
                   <p className="text-xs font-black uppercase tracking-[0.22em] text-emerald-700">Capacidad</p>
                   <p className="mt-2 text-3xl font-black text-slate-950">
-                    {overviewData ? formatHours(overviewData.overview.availableMinutes) : '0 h'}
+                    {overviewMetric(overviewData ? formatHours(overviewData.overview.availableMinutes) : '0 h')}
                   </p>
                   <p className="mt-1 text-xs text-slate-600 md:text-sm">Capacidad teórica disponible</p>
                 </div>
                 <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
                   <p className="text-xs font-black uppercase tracking-[0.22em] text-amber-700">Incidencia de carga</p>
                   <p className={`mt-2 text-3xl font-black ${statusTone(utilizationPercent)}`}>
-                    {utilizationPercent}%
+                    {overviewMetric(`${utilizationPercent}%`)}
                   </p>
                   <p className="mt-1 text-xs text-slate-600 md:text-sm">Relación horas necesarias / disponibles</p>
                 </div>
                 <div className="rounded-2xl border border-rose-200 bg-rose-50 p-4">
                   <p className="text-xs font-black uppercase tracking-[0.22em] text-rose-700">Riesgo</p>
-                  <p className="mt-2 text-3xl font-black text-slate-950">{overviewData?.overview.deficitDays ?? 0}</p>
+                  <p className="mt-2 text-3xl font-black text-slate-950">
+                    {overviewMetric(overviewData?.overview.deficitDays ?? 0)}
+                  </p>
                   <p className="mt-1 text-xs text-slate-600 md:text-sm">Días con déficit o conflicto</p>
                 </div>
               </div>
@@ -868,21 +902,25 @@ export const OperationalPlanningPage = () => {
                 <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
                   <p className="text-xs font-bold uppercase tracking-[0.2em] text-white/50">Horas requeridas</p>
                   <p className="mt-2 text-2xl font-black text-white">
-                    {overviewData ? formatHours(overviewData.overview.requiredMinutes) : '0 h'}
+                    {overviewMetric(overviewData ? formatHours(overviewData.overview.requiredMinutes) : '0 h')}
                   </p>
                 </div>
                 <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
                   <p className="text-xs font-bold uppercase tracking-[0.2em] text-white/50">Bajas activas</p>
-                  <p className="mt-2 text-2xl font-black text-white">{overviewData?.overview.activeAbsences ?? 0}</p>
+                  <p className="mt-2 text-2xl font-black text-white">
+                    {overviewMetric(overviewData?.overview.activeAbsences ?? 0)}
+                  </p>
                 </div>
                 <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
                   <p className="text-xs font-bold uppercase tracking-[0.2em] text-white/50">Tareas críticas</p>
-                  <p className="mt-2 text-2xl font-black text-white">{overviewData?.overview.criticalTasks ?? 0}</p>
+                  <p className="mt-2 text-2xl font-black text-white">
+                    {overviewMetric(overviewData?.overview.criticalTasks ?? 0)}
+                  </p>
                 </div>
                 <div className="rounded-2xl border border-cyan-200/20 bg-cyan-300/10 p-4">
                   <p className="text-xs font-bold uppercase tracking-[0.2em] text-cyan-100/80">Tiempo ahorrado</p>
                   <p className="mt-2 text-2xl font-black text-white">
-                    {performance ? formatHours(performance.estimatedTimeSavedMinutes) : '0 h'}
+                    {overviewMetric(performance ? formatHours(performance.estimatedTimeSavedMinutes) : '0 h')}
                   </p>
                 </div>
               </div>
@@ -995,8 +1033,21 @@ export const OperationalPlanningPage = () => {
                 </CardHeader>
                 <CardContent className="space-y-3">
                   {isLoading ? (
-                    <div className="flex min-h-48 items-center justify-center">
-                      <Loader2 className="h-6 w-6 animate-spin text-slate-400" />
+                    <div className="flex min-h-48 flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-slate-300 bg-slate-50 text-sm text-slate-500">
+                      <Loader2 className="h-6 w-6 animate-spin text-[#310984]" />
+                      <span>Cargando tareas, capacidad y bajas de la sede activa...</span>
+                    </div>
+                  ) : overviewErrorMessage ? (
+                    <div className="rounded-2xl border border-rose-200 bg-rose-50 p-6 text-sm text-rose-800">
+                      <p className="font-black">No se puede mostrar el radar ahora mismo.</p>
+                      <p className="mt-2 leading-6">{overviewErrorMessage}</p>
+                    </div>
+                  ) : (overviewData?.overview.days || []).length === 0 ? (
+                    <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-6 text-sm text-slate-600">
+                      <p className="font-black text-slate-900">No hay tareas normales en este rango.</p>
+                      <p className="mt-2 leading-6">
+                        Revisa la sede activa, las fechas o la sincronización de reservas si esperabas ver limpiezas pendientes.
+                      </p>
                     </div>
                   ) : (
                     (overviewData?.overview.days || []).map((day) => {
