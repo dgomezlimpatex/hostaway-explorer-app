@@ -93,8 +93,10 @@ const comparePlanningProperties = (
 const normalizePropertyCode = (value?: string | null) =>
   (value || '').trim().replace(/\s+/g, '').toUpperCase();
 
-const isPlanningVisibleProperty = (property: { isActive?: boolean | null }) =>
-  property.isActive !== false;
+const isPlanningVisibleProperty = (property: { isActive?: boolean | null; clientIsActive?: boolean | null }) => {
+  if (property.isActive !== null && property.isActive !== undefined) return property.isActive;
+  return property.clientIsActive !== false;
+};
 
 const normalizePlanningSearchText = (value?: string | null) =>
   (value || '')

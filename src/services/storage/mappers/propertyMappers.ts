@@ -1,55 +1,72 @@
 
 import { Property, CreatePropertyData } from '@/types/property';
 
+type PropertyClientRelation = {
+  nombre?: string | null;
+  is_active?: boolean | null;
+} | Array<{
+  nombre?: string | null;
+  is_active?: boolean | null;
+}> | null | undefined;
+
+const getPropertyClientRelation = (clients: PropertyClientRelation) =>
+  Array.isArray(clients) ? clients[0] : clients;
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- property rows are mapped from Supabase's generated schema plus legacy columns.
-export const mapPropertyFromDB = (row: any): Property => ({
-  id: row.id,
-  created_at: row.created_at,
-  updated_at: row.updated_at,
-  codigo: row.codigo,
-  nombre: row.nombre,
-  direccion: row.direccion,
-  numeroCamas: row.numero_camas,
-  numeroCamasPequenas: row.numero_camas_pequenas || 0,
-  numeroCamasSuite: row.numero_camas_suite || 0,
-  numeroSofasCama: row.numero_sofas_cama || 0,
-  numeroBanos: row.numero_banos,
-  numeroCocinas: row.numero_cocinas ?? 1,
-  duracionServicio: row.duracion_servicio,
-  costeServicio: row.coste_servicio,
-  planningEstimatedCheckoutMinutes: row.planning_estimated_checkout_minutes ?? null,
-  planningEstimatedStayMinutes: row.planning_estimated_stay_minutes ?? null,
-  planningRequiredCleaners: row.planning_required_cleaners ?? 1,
-  planningComplexity: row.planning_complexity ?? 1,
-  planningRequiresLinenLoad: row.planning_requires_linen_load ?? false,
-  planningRequiresAmenitiesLoad: row.planning_requires_amenities_load ?? false,
-  planningSpecialInstructions: row.planning_special_instructions ?? null,
-  checkInPredeterminado: row.check_in_predeterminado,
-  checkOutPredeterminado: row.check_out_predeterminado,
-  numeroSabanas: row.numero_sabanas,
-  numeroSabanasRequenas: row.numero_sabanas_pequenas || 0,
-  numeroSabanasSuite: row.numero_sabanas_suite || 0,
-  numeroToallasGrandes: row.numero_toallas_grandes,
-  numeroTotallasPequenas: row.numero_toallas_pequenas,
-  numeroAlfombrines: row.numero_alfombrines,
-  numeroFundasAlmohada: row.numero_fundas_almohada,
-  kitAlimentario: row.kit_alimentario || 0,
-  amenitiesBano: row.amenities_bano || 0,
-  amenitiesCocina: row.amenities_cocina || 0,
-  cantidadRollosPapelHigienico: row.cantidad_rollos_papel_higienico || 0,
-  cantidadRollosPapelCocina: row.cantidad_rollos_papel_cocina || 0,
-  bayetasCocina: row.bayetas_cocina || 0,
-  bolsasBasura: row.bolsas_basura || 0,
-  notas: row.notas || '',
-  clienteId: row.cliente_id,
-  hostaway_listing_id: row.hostaway_listing_id,
-  hostaway_internal_name: row.hostaway_internal_name,
-  linenControlEnabled: row.linen_control_enabled,
-  isActive: row.is_active,
-  excludeFromExport: row.exclude_from_export || false,
-  fechaCreacion: row.fecha_creacion,
-  fechaActualizacion: row.fecha_actualizacion
-});
+export const mapPropertyFromDB = (row: any): Property => {
+  const client = getPropertyClientRelation(row.clients);
+
+  return {
+    id: row.id,
+    created_at: row.created_at,
+    updated_at: row.updated_at,
+    codigo: row.codigo,
+    nombre: row.nombre,
+    direccion: row.direccion,
+    numeroCamas: row.numero_camas,
+    numeroCamasPequenas: row.numero_camas_pequenas || 0,
+    numeroCamasSuite: row.numero_camas_suite || 0,
+    numeroSofasCama: row.numero_sofas_cama || 0,
+    numeroBanos: row.numero_banos,
+    numeroCocinas: row.numero_cocinas ?? 1,
+    duracionServicio: row.duracion_servicio,
+    costeServicio: row.coste_servicio,
+    planningEstimatedCheckoutMinutes: row.planning_estimated_checkout_minutes ?? null,
+    planningEstimatedStayMinutes: row.planning_estimated_stay_minutes ?? null,
+    planningRequiredCleaners: row.planning_required_cleaners ?? 1,
+    planningComplexity: row.planning_complexity ?? 1,
+    planningRequiresLinenLoad: row.planning_requires_linen_load ?? false,
+    planningRequiresAmenitiesLoad: row.planning_requires_amenities_load ?? false,
+    planningSpecialInstructions: row.planning_special_instructions ?? null,
+    checkInPredeterminado: row.check_in_predeterminado,
+    checkOutPredeterminado: row.check_out_predeterminado,
+    numeroSabanas: row.numero_sabanas,
+    numeroSabanasRequenas: row.numero_sabanas_pequenas || 0,
+    numeroSabanasSuite: row.numero_sabanas_suite || 0,
+    numeroToallasGrandes: row.numero_toallas_grandes,
+    numeroTotallasPequenas: row.numero_toallas_pequenas,
+    numeroAlfombrines: row.numero_alfombrines,
+    numeroFundasAlmohada: row.numero_fundas_almohada,
+    kitAlimentario: row.kit_alimentario || 0,
+    amenitiesBano: row.amenities_bano || 0,
+    amenitiesCocina: row.amenities_cocina || 0,
+    cantidadRollosPapelHigienico: row.cantidad_rollos_papel_higienico || 0,
+    cantidadRollosPapelCocina: row.cantidad_rollos_papel_cocina || 0,
+    bayetasCocina: row.bayetas_cocina || 0,
+    bolsasBasura: row.bolsas_basura || 0,
+    notas: row.notas || '',
+    clienteId: row.cliente_id,
+    hostaway_listing_id: row.hostaway_listing_id,
+    hostaway_internal_name: row.hostaway_internal_name,
+    linenControlEnabled: row.linen_control_enabled,
+    isActive: row.is_active,
+    clientIsActive: client?.is_active ?? null,
+    clientName: client?.nombre ?? null,
+    excludeFromExport: row.exclude_from_export || false,
+    fechaCreacion: row.fecha_creacion,
+    fechaActualizacion: row.fecha_actualizacion
+  };
+};
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- BaseStorage accepts table-specific payloads with DB column names.
 export const mapPropertyToDB = (property: Partial<CreatePropertyData>): any => {

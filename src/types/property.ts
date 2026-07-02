@@ -65,6 +65,8 @@ export interface Property extends BaseEntity {
   
   // Active status (null = inherit from client)
   isActive: boolean | null;
+  clientIsActive?: boolean | null;
+  clientName?: string | null;
   
   // Export exclusion
   excludeFromExport: boolean;
