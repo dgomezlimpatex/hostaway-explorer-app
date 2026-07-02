@@ -67,6 +67,19 @@ const formatLongDate = (date: string) =>
 
 const formatHours = (minutes: number) => `${(minutes / 60).toFixed(minutes % 60 === 0 ? 0 : 1)} h`;
 
+const propertySortCollator = new Intl.Collator('es', {
+  numeric: true,
+  sensitivity: 'base',
+});
+
+const comparePlanningProperties = (
+  a: { codigo?: string | null; nombre?: string | null },
+  b: { codigo?: string | null; nombre?: string | null },
+) => propertySortCollator.compare(
+  `${a.codigo || ''} ${a.nombre || ''}`.trim(),
+  `${b.codigo || ''} ${b.nombre || ''}`.trim(),
+);
+
 const statusTone = (value: number, inverse = false) => {
   if (inverse) {
     if (value === 0) return 'text-emerald-600';
@@ -517,13 +530,16 @@ export const OperationalPlanningPage = () => {
         assignmentId: assignment.id,
         property: properties.find((property) => property.id === assignment.propertyId) || null,
       }))
-      .filter((entry) => entry.property),
+      .filter((entry) => entry.property)
+      .sort((a, b) => comparePlanningProperties(a.property!, b.property!)),
     [propertyAssignments, properties],
   );
 
   const availableProperties = useMemo(() => {
     const assignedIds = new Set(propertyAssignments.map((assignment) => assignment.propertyId));
-    return properties.filter((property) => !assignedIds.has(property.id));
+    return properties
+      .filter((property) => !assignedIds.has(property.id))
+      .sort(comparePlanningProperties);
   }, [properties, propertyAssignments]);
 
   const assignedCleaners = useMemo(
