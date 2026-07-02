@@ -1298,7 +1298,7 @@ class OperationalPlanningService {
           severity: day.deficitMinutes > 60 || day.unassigned > 2 ? 'critical' : 'warning',
           category: 'capacity',
           title: `${formatPlanningDateLabel(day.date)} faltará capacidad`,
-          message: `${formatHours(day.requiredMinutes)} necesarias frente a ${formatHours(day.availableMinutes)} disponibles. Quedan ${day.unassigned} tareas sin cubrir.`,
+          message: `${hoursLabel(day.requiredMinutes)} necesarias frente a ${hoursLabel(day.availableMinutes)} disponibles. Quedan ${day.unassigned} tareas sin cubrir.`,
           date: day.date,
           count: day.unassigned,
         });
