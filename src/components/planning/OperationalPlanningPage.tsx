@@ -32,6 +32,7 @@ import { useProperties } from '@/hooks/useProperties';
 import { useWorkerAbsences } from '@/hooks/useWorkerAbsences';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -2173,74 +2174,84 @@ export const OperationalPlanningPage = () => {
                                 </Button>
                               </div>
                             ) : (
-                              assignedProperties.map(({ assignmentId, property }) => (
-                                <div key={assignmentId} className="rounded-xl border border-slate-200 bg-white p-3">
-                                  <div className="flex items-start justify-between gap-3">
-                                    <div>
-                                      <p className="font-black text-slate-950">{property!.codigo}</p>
-                                      <p className="text-sm text-slate-500">{property!.nombre}</p>
+                              <Accordion type="multiple" className="space-y-2">
+                                {assignedProperties.map(({ assignmentId, property }) => (
+                                  <AccordionItem
+                                    key={assignmentId}
+                                    value={assignmentId}
+                                    className="rounded-xl border border-slate-200 bg-white px-3"
+                                  >
+                                    <div className="flex items-center gap-2">
+                                      <AccordionTrigger className="min-w-0 flex-1 py-3 text-left hover:no-underline">
+                                        <div className="min-w-0">
+                                          <p className="truncate font-black text-slate-950">{property!.codigo}</p>
+                                          <p className="truncate text-sm font-normal text-slate-500">{property!.nombre}</p>
+                                        </div>
+                                      </AccordionTrigger>
+                                      <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="shrink-0 rounded-xl text-rose-600 hover:bg-rose-50 hover:text-rose-700"
+                                        onClick={() => removeProperty.mutate({ assignmentId, groupId: selectedBuilding.id })}
+                                      >
+                                        <Trash2 className="h-4 w-4" />
+                                      </Button>
                                     </div>
-                                    <Button
-                                      variant="ghost"
-                                      size="icon"
-                                      className="rounded-xl text-rose-600 hover:bg-rose-50 hover:text-rose-700"
-                                      onClick={() => removeProperty.mutate({ assignmentId, groupId: selectedBuilding.id })}
-                                    >
-                                      <Trash2 className="h-4 w-4" />
-                                    </Button>
-                                  </div>
 
-                                  <div className="mt-3 grid gap-2 md:grid-cols-3">
-                                    <div className="space-y-1">
-                                      <Label className="text-xs">Horas checkout</Label>
-                                      <Input
-                                        type="number"
-                                        min={0}
-                                        step={0.25}
-                                        defaultValue={minutesToHourInput(property!.planningEstimatedCheckoutMinutes || property!.duracionServicio || 0)}
-                                        className="h-9 rounded-xl bg-white"
-                                        onBlur={(e) =>
-                                          updatePlanningPropertyProfile.mutate({
-                                            propertyId: property!.id,
-                                            updates: { planningEstimatedCheckoutMinutes: hourInputToMinutes(e.target.value) },
-                                          })
-                                        }
-                                      />
-                                    </div>
-                                    <div className="space-y-1">
-                                      <Label className="text-xs">Horas huésped</Label>
-                                      <Input
-                                        type="number"
-                                        min={0}
-                                        step={0.25}
-                                        defaultValue={minutesToHourInput(property!.planningEstimatedStayMinutes || property!.duracionServicio || 0)}
-                                        className="h-9 rounded-xl bg-white"
-                                        onBlur={(e) =>
-                                          updatePlanningPropertyProfile.mutate({
-                                            propertyId: property!.id,
-                                            updates: { planningEstimatedStayMinutes: hourInputToMinutes(e.target.value) },
-                                          })
-                                        }
-                                      />
-                                    </div>
-                                    <div className="space-y-1">
-                                      <Label className="text-xs">Personas</Label>
-                                      <Input
-                                        type="number"
-                                        min={1}
-                                        defaultValue={property!.planningRequiredCleaners || 1}
-                                        className="h-9 rounded-xl bg-white"
-                                        onBlur={(e) =>
-                                          updatePlanningPropertyProfile.mutate({
-                                            propertyId: property!.id,
-                                            updates: { planningRequiredCleaners: Number(e.target.value) || 1 },
-                                          })
-                                        }
-                                      />
-                                    </div>
-                                  </div>
-                                </div>
-                              ))
+                                    <AccordionContent className="pb-3">
+                                      <div className="grid gap-2 md:grid-cols-3">
+                                        <div className="space-y-1">
+                                          <Label className="text-xs">Horas checkout</Label>
+                                          <Input
+                                            type="number"
+                                            min={0}
+                                            step={0.25}
+                                            defaultValue={minutesToHourInput(property!.planningEstimatedCheckoutMinutes || property!.duracionServicio || 0)}
+                                            className="h-9 rounded-xl bg-white"
+                                            onBlur={(e) =>
+                                              updatePlanningPropertyProfile.mutate({
+                                                propertyId: property!.id,
+                                                updates: { planningEstimatedCheckoutMinutes: hourInputToMinutes(e.target.value) },
+                                              })
+                                            }
+                                          />
+                                        </div>
+                                        <div className="space-y-1">
+                                          <Label className="text-xs">Horas huésped</Label>
+                                          <Input
+                                            type="number"
+                                            min={0}
+                                            step={0.25}
+                                            defaultValue={minutesToHourInput(property!.planningEstimatedStayMinutes || property!.duracionServicio || 0)}
+                                            className="h-9 rounded-xl bg-white"
+                                            onBlur={(e) =>
+                                              updatePlanningPropertyProfile.mutate({
+                                                propertyId: property!.id,
+                                                updates: { planningEstimatedStayMinutes: hourInputToMinutes(e.target.value) },
+                                              })
+                                            }
+                                          />
+                                        </div>
+                                        <div className="space-y-1">
+                                          <Label className="text-xs">Personas</Label>
+                                          <Input
+                                            type="number"
+                                            min={1}
+                                            defaultValue={property!.planningRequiredCleaners || 1}
+                                            className="h-9 rounded-xl bg-white"
+                                            onBlur={(e) =>
+                                              updatePlanningPropertyProfile.mutate({
+                                                propertyId: property!.id,
+                                                updates: { planningRequiredCleaners: Number(e.target.value) || 1 },
+                                              })
+                                            }
+                                          />
+                                        </div>
+                                      </div>
+                                    </AccordionContent>
+                                  </AccordionItem>
+                                ))}
+                              </Accordion>
                             )}
                           </div>
                         </div>
