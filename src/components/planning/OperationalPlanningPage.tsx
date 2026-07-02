@@ -92,6 +92,9 @@ const comparePlanningProperties = (
 const normalizePropertyCode = (value?: string | null) =>
   (value || '').trim().replace(/\s+/g, '').toUpperCase();
 
+const isPlanningVisibleProperty = (property: { isActive?: boolean | null }) =>
+  property.isActive !== false;
+
 const normalizePlanningSearchText = (value?: string | null) =>
   (value || '')
     .normalize('NFD')
@@ -612,7 +615,7 @@ export const OperationalPlanningPage = () => {
         assignmentId: assignment.id,
         property: properties.find((property) => property.id === assignment.propertyId) || null,
       }))
-      .filter((entry) => entry.property)
+      .filter((entry) => entry.property && isPlanningVisibleProperty(entry.property))
       .sort((a, b) => comparePlanningProperties(a.property!, b.property!)),
     [propertyAssignments, properties],
   );
@@ -621,7 +624,7 @@ export const OperationalPlanningPage = () => {
     if (allPropertyAssignmentsLoading) return [];
     const assignedIds = new Set(allPropertyAssignments.map((assignment) => assignment.propertyId));
     return properties
-      .filter((property) => !assignedIds.has(property.id))
+      .filter((property) => isPlanningVisibleProperty(property) && !assignedIds.has(property.id))
       .sort(comparePlanningProperties);
   }, [allPropertyAssignments, allPropertyAssignmentsLoading, properties]);
   const suggestedPropertiesForBuilding = useMemo(() => {
