@@ -817,10 +817,6 @@ export const OperationalPlanningPage = () => {
         zone: buildingForm.zone || undefined,
         checkOutTime: buildingForm.checkOutTime,
         checkInTime: buildingForm.checkInTime,
-        recommendedCapacity: buildingForm.recommendedCapacity,
-        difficultyLevel: buildingForm.difficultyLevel,
-        generalInstructions: buildingForm.generalInstructions || undefined,
-        planningNotes: buildingForm.planningNotes || undefined,
       },
     });
   };
@@ -2072,25 +2068,6 @@ export const OperationalPlanningPage = () => {
                         <div className="space-y-2">
                           <Label>Check-in tipo</Label>
                           <Input type="time" value={buildingForm.checkInTime} onChange={(e) => setBuildingForm((prev) => ({ ...prev, checkInTime: e.target.value }))} />
-                        </div>
-                        <div className="space-y-2">
-                          <Label>Capacidad recomendada</Label>
-                          <Input type="number" min={1} value={buildingForm.recommendedCapacity} onChange={(e) => setBuildingForm((prev) => ({ ...prev, recommendedCapacity: Number(e.target.value) || 1 }))} />
-                        </div>
-                        <div className="space-y-2">
-                          <Label>Dificultad operativa</Label>
-                          <Input type="number" min={1} max={5} value={buildingForm.difficultyLevel} onChange={(e) => setBuildingForm((prev) => ({ ...prev, difficultyLevel: Number(e.target.value) || 1 }))} />
-                        </div>
-                      </div>
-
-                      <div className="grid gap-4 md:grid-cols-2">
-                        <div className="space-y-2">
-                          <Label>Instrucciones generales</Label>
-                          <Textarea value={buildingForm.generalInstructions} onChange={(e) => setBuildingForm((prev) => ({ ...prev, generalInstructions: e.target.value }))} />
-                        </div>
-                        <div className="space-y-2">
-                          <Label>Notas de planificación</Label>
-                          <Textarea value={buildingForm.planningNotes} onChange={(e) => setBuildingForm((prev) => ({ ...prev, planningNotes: e.target.value }))} />
                         </div>
                       </div>
 
