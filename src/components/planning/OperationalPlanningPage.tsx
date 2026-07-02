@@ -1,5 +1,5 @@
 ﻿import { useEffect, useMemo, useState } from 'react';
-import { AlertTriangle, ArrowRight, Building2, CalendarDays, CheckCircle2, Clock3, Loader2, Plus, ShieldAlert, Sparkles, Trash2, Users } from 'lucide-react';
+import { AlertTriangle, ArrowRight, Building2, CalendarDays, Check, CheckCircle2, ChevronsUpDown, Clock3, Loader2, Plus, ShieldAlert, Sparkles, Trash2, Users } from 'lucide-react';
 import { useSede } from '@/contexts/SedeContext';
 import {
   useApplyOperationalPlanningReplacement,
@@ -39,6 +39,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -276,6 +278,7 @@ export const OperationalPlanningPage = () => {
   const [newPropertyId, setNewPropertyId] = useState('');
   const [newCleanerId, setNewCleanerId] = useState('');
   const [newCleanerRole, setNewCleanerRole] = useState<'primary' | 'secondary' | 'backup'>('primary');
+  const [cleanerPickerOpen, setCleanerPickerOpen] = useState(false);
   const [selectedCoverageCleanerId, setSelectedCoverageCleanerId] = useState<string | null>(null);
   const [workerSearch, setWorkerSearch] = useState('');
   const [workerFilter, setWorkerFilter] = useState<'all' | 'attention' | 'available' | 'without-zone'>('all');
@@ -537,6 +540,16 @@ export const OperationalPlanningPage = () => {
     const assignedIds = new Set(cleanerAssignments.map((assignment) => assignment.cleanerId));
     return cleaners.filter((cleaner) => !assignedIds.has(cleaner.id));
   }, [cleaners, cleanerAssignments]);
+  const selectedNewCleaner = useMemo(
+    () => availableCleaners.find((cleaner) => cleaner.id === newCleanerId) || null,
+    [availableCleaners, newCleanerId],
+  );
+
+  useEffect(() => {
+    if (newCleanerId && !selectedNewCleaner) {
+      setNewCleanerId('');
+    }
+  }, [newCleanerId, selectedNewCleaner]);
 
   const displayBuildings = useMemo(() => {
     if (!selectedBuilding) return buildings;
@@ -2219,18 +2232,73 @@ export const OperationalPlanningPage = () => {
                           <p className="mt-1 text-sm text-slate-600">Define titulares, suplentes y backups del edificio.</p>
 
                           <div className="mt-4 grid gap-2 md:grid-cols-[minmax(0,1fr)_160px_auto]">
-                            <Select value={newCleanerId} onValueChange={setNewCleanerId}>
-                              <SelectTrigger className="rounded-xl bg-white">
-                                <SelectValue placeholder="Añadir trabajadora" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {availableCleaners.map((cleaner) => (
-                                  <SelectItem key={cleaner.id} value={cleaner.id}>
-                                    {cleaner.name}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
+                            <Popover open={cleanerPickerOpen} onOpenChange={setCleanerPickerOpen}>
+                              <PopoverTrigger asChild>
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  role="combobox"
+                                  aria-expanded={cleanerPickerOpen}
+                                  className="h-10 justify-between rounded-xl border-slate-200 bg-white px-3 font-normal"
+                                  disabled={availableCleaners.length === 0}
+                                >
+                                  <span className="min-w-0 truncate text-left">
+                                    {selectedNewCleaner ? selectedNewCleaner.name : 'Buscar y añadir trabajadora'}
+                                  </span>
+                                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                </Button>
+                              </PopoverTrigger>
+                              <PopoverContent className="w-[min(92vw,520px)] p-0" align="start">
+                                <Command>
+                                  <CommandInput placeholder="Buscar por nombre, email o zona..." />
+                                  <CommandList>
+                                    <CommandEmpty>
+                                      <div className="px-4 py-3 text-sm text-slate-500">
+                                        No hay trabajadoras disponibles con ese filtro.
+                                      </div>
+                                    </CommandEmpty>
+                                    <CommandGroup heading="Personal disponible">
+                                      {availableCleaners.map((cleaner) => (
+                                        <CommandItem
+                                          key={cleaner.id}
+                                          value={`${cleaner.name} ${cleaner.email || ''} ${cleaner.telefono || ''} ${cleaner.planningZone || ''}`}
+                                          onSelect={() => {
+                                            setNewCleanerId(cleaner.id);
+                                            setCleanerPickerOpen(false);
+                                          }}
+                                          className="items-start gap-3 p-3"
+                                        >
+                                          <Check
+                                            className={cn(
+                                              'mt-1 h-4 w-4 shrink-0',
+                                              newCleanerId === cleaner.id ? 'opacity-100' : 'opacity-0',
+                                            )}
+                                          />
+                                          <div className="min-w-0 flex-1">
+                                            <div className="flex flex-wrap items-center gap-2">
+                                              <span className="truncate font-semibold text-slate-950">{cleaner.name}</span>
+                                              {!cleaner.isActive && (
+                                                <Badge variant="outline" className="border-amber-200 bg-amber-50 text-amber-800">
+                                                  Inactiva
+                                                </Badge>
+                                              )}
+                                            </div>
+                                            <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs text-slate-500">
+                                              <span>{cleaner.planningZone || 'Sin zona operativa'}</span>
+                                              {cleaner.email && <span>{cleaner.email}</span>}
+                                              {cleaner.telefono && <span>{cleaner.telefono}</span>}
+                                            </div>
+                                          </div>
+                                          <Badge variant="secondary" className="shrink-0">
+                                            {formatHours(cleaner.planningMaxDailyMinutes || fallbackDailyCapacityMinutes)}
+                                          </Badge>
+                                        </CommandItem>
+                                      ))}
+                                    </CommandGroup>
+                                  </CommandList>
+                                </Command>
+                              </PopoverContent>
+                            </Popover>
                             <Select value={newCleanerRole} onValueChange={(value: 'primary' | 'secondary' | 'backup') => setNewCleanerRole(value)}>
                               <SelectTrigger className="rounded-xl bg-white">
                                 <SelectValue />
