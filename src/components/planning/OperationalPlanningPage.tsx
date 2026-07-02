@@ -1,5 +1,5 @@
 ﻿import { useEffect, useMemo, useState } from 'react';
-import { AlertTriangle, ArrowRight, Building2, CalendarDays, Check, CheckCircle2, ChevronsUpDown, Clock3, Loader2, Plus, ShieldAlert, Sparkles, Trash2, Users } from 'lucide-react';
+import { AlertTriangle, ArrowRight, Building2, CalendarDays, Check, CheckCircle2, Clock3, Loader2, Plus, Search, ShieldAlert, Sparkles, Trash2, UserPlus, Users } from 'lucide-react';
 import { useSede } from '@/contexts/SedeContext';
 import {
   useApplyOperationalPlanningReplacement,
@@ -40,8 +40,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -304,6 +303,7 @@ export const OperationalPlanningPage = () => {
   const [newCleanerId, setNewCleanerId] = useState('');
   const [newCleanerRole, setNewCleanerRole] = useState<'primary' | 'secondary' | 'backup'>('primary');
   const [cleanerPickerOpen, setCleanerPickerOpen] = useState(false);
+  const [cleanerSearch, setCleanerSearch] = useState('');
   const [selectedCoverageCleanerId, setSelectedCoverageCleanerId] = useState<string | null>(null);
   const [workerSearch, setWorkerSearch] = useState('');
   const [workerFilter, setWorkerFilter] = useState<'all' | 'attention' | 'available' | 'without-zone'>('all');
@@ -580,6 +580,24 @@ export const OperationalPlanningPage = () => {
     () => availableCleaners.find((cleaner) => cleaner.id === newCleanerId) || null,
     [availableCleaners, newCleanerId],
   );
+  const filteredAvailableCleaners = useMemo(() => {
+    const normalizedSearch = cleanerSearch.trim().toLowerCase();
+
+    return [...availableCleaners]
+      .filter((cleaner) => {
+        if (!normalizedSearch) return true;
+        return (
+          cleaner.name.toLowerCase().includes(normalizedSearch)
+          || (cleaner.email || '').toLowerCase().includes(normalizedSearch)
+          || (cleaner.telefono || '').toLowerCase().includes(normalizedSearch)
+          || (cleaner.planningZone || '').toLowerCase().includes(normalizedSearch)
+        );
+      })
+      .sort((a, b) => {
+        if (a.isActive !== b.isActive) return a.isActive ? -1 : 1;
+        return a.name.localeCompare(b.name, 'es', { sensitivity: 'base' });
+      });
+  }, [availableCleaners, cleanerSearch]);
 
   useEffect(() => {
     if (newCleanerId && !selectedNewCleaner) {
@@ -2238,73 +2256,28 @@ export const OperationalPlanningPage = () => {
                           <p className="mt-1 text-sm text-slate-600">Define titulares, suplentes y backups del edificio.</p>
 
                           <div className="mt-4 grid gap-2 md:grid-cols-[minmax(0,1fr)_160px_auto]">
-                            <Popover open={cleanerPickerOpen} onOpenChange={setCleanerPickerOpen}>
-                              <PopoverTrigger asChild>
-                                <Button
-                                  type="button"
-                                  variant="outline"
-                                  role="combobox"
-                                  aria-expanded={cleanerPickerOpen}
-                                  className="h-10 justify-between rounded-xl border-slate-200 bg-white px-3 font-normal"
-                                  disabled={availableCleaners.length === 0}
-                                >
-                                  <span className="min-w-0 truncate text-left">
-                                    {selectedNewCleaner ? selectedNewCleaner.name : 'Buscar y añadir trabajadora'}
-                                  </span>
-                                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                </Button>
-                              </PopoverTrigger>
-                              <PopoverContent className="w-[min(92vw,520px)] p-0" align="start">
-                                <Command>
-                                  <CommandInput placeholder="Buscar por nombre, email o zona..." />
-                                  <CommandList>
-                                    <CommandEmpty>
-                                      <div className="px-4 py-3 text-sm text-slate-500">
-                                        No hay trabajadoras disponibles con ese filtro.
-                                      </div>
-                                    </CommandEmpty>
-                                    <CommandGroup heading="Personal disponible">
-                                      {availableCleaners.map((cleaner) => (
-                                        <CommandItem
-                                          key={cleaner.id}
-                                          value={`${cleaner.name} ${cleaner.email || ''} ${cleaner.telefono || ''} ${cleaner.planningZone || ''}`}
-                                          onSelect={() => {
-                                            setNewCleanerId(cleaner.id);
-                                            setCleanerPickerOpen(false);
-                                          }}
-                                          className="items-start gap-3 p-3"
-                                        >
-                                          <Check
-                                            className={cn(
-                                              'mt-1 h-4 w-4 shrink-0',
-                                              newCleanerId === cleaner.id ? 'opacity-100' : 'opacity-0',
-                                            )}
-                                          />
-                                          <div className="min-w-0 flex-1">
-                                            <div className="flex flex-wrap items-center gap-2">
-                                              <span className="truncate font-semibold text-slate-950">{cleaner.name}</span>
-                                              {!cleaner.isActive && (
-                                                <Badge variant="outline" className="border-amber-200 bg-amber-50 text-amber-800">
-                                                  Inactiva
-                                                </Badge>
-                                              )}
-                                            </div>
-                                            <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs text-slate-500">
-                                              <span>{cleaner.planningZone || 'Sin zona operativa'}</span>
-                                              {cleaner.email && <span>{cleaner.email}</span>}
-                                              {cleaner.telefono && <span>{cleaner.telefono}</span>}
-                                            </div>
-                                          </div>
-                                          <Badge variant="secondary" className="shrink-0">
-                                            {formatHours(cleaner.planningMaxDailyMinutes || fallbackDailyCapacityMinutes)}
-                                          </Badge>
-                                        </CommandItem>
-                                      ))}
-                                    </CommandGroup>
-                                  </CommandList>
-                                </Command>
-                              </PopoverContent>
-                            </Popover>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              className={cn(
+                                'h-auto min-h-12 justify-start rounded-2xl border-slate-200 bg-white px-3 py-2 text-left font-normal',
+                                selectedNewCleaner && 'border-[#310984]/30 bg-[#f3efff]',
+                              )}
+                              onClick={() => setCleanerPickerOpen(true)}
+                              disabled={availableCleaners.length === 0}
+                            >
+                              <UserPlus className="mr-3 h-4 w-4 shrink-0 text-[#310984]" />
+                              <span className="min-w-0 flex-1">
+                                <span className="block truncate text-sm font-black text-slate-950">
+                                  {selectedNewCleaner ? selectedNewCleaner.name : 'Elegir trabajadora'}
+                                </span>
+                                <span className="mt-0.5 block truncate text-xs text-slate-500">
+                                  {selectedNewCleaner
+                                    ? selectedNewCleaner.planningZone || selectedNewCleaner.email || 'Sin zona operativa'
+                                    : 'Busca por nombre, email, teléfono o zona'}
+                                </span>
+                              </span>
+                            </Button>
                             <Select value={newCleanerRole} onValueChange={(value: 'primary' | 'secondary' | 'backup') => setNewCleanerRole(value)}>
                               <SelectTrigger className="rounded-xl bg-white">
                                 <SelectValue />
@@ -2319,6 +2292,108 @@ export const OperationalPlanningPage = () => {
                               <Plus className="h-4 w-4" />
                             </Button>
                           </div>
+
+                          <Sheet open={cleanerPickerOpen} onOpenChange={setCleanerPickerOpen}>
+                            <SheetContent
+                              side={isMobile ? 'bottom' : 'right'}
+                              className={cn(
+                                'flex flex-col overflow-hidden p-0',
+                                isMobile
+                                  ? 'h-[82dvh] rounded-t-[28px]'
+                                  : 'w-full sm:max-w-xl',
+                              )}
+                            >
+                              <SheetHeader className="border-b border-slate-200 px-5 pb-4 pt-5 text-left">
+                                <SheetTitle className="text-xl font-black">Añadir cobertura</SheetTitle>
+                                <SheetDescription>
+                                  Elige una trabajadora disponible para este edificio. Después selecciona su rol y pulsa añadir.
+                                </SheetDescription>
+                              </SheetHeader>
+
+                              <div className="border-b border-slate-200 bg-white px-5 py-3">
+                                <div className="relative">
+                                  <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                                  <Input
+                                    value={cleanerSearch}
+                                    onChange={(event) => setCleanerSearch(event.target.value)}
+                                    placeholder="Buscar por nombre, email, teléfono o zona..."
+                                    className="h-12 rounded-2xl border-slate-200 bg-slate-50 pl-10 text-base"
+                                    inputMode="search"
+                                    autoFocus={!isMobile}
+                                  />
+                                </div>
+                              </div>
+
+                              <div className="flex-1 overflow-y-auto bg-slate-50 px-4 py-3">
+                                {filteredAvailableCleaners.length === 0 ? (
+                                  <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-5 text-sm text-slate-600">
+                                    <p className="font-black text-slate-950">No hay resultados.</p>
+                                    <p className="mt-1">Prueba con otro nombre, email, teléfono o zona operativa.</p>
+                                  </div>
+                                ) : (
+                                  <div className="space-y-2">
+                                    {filteredAvailableCleaners.map((cleaner) => {
+                                      const isSelected = newCleanerId === cleaner.id;
+
+                                      return (
+                                        <button
+                                          key={cleaner.id}
+                                          type="button"
+                                          className={cn(
+                                            'w-full rounded-2xl border bg-white p-4 text-left shadow-sm transition',
+                                            isSelected
+                                              ? 'border-[#310984] bg-[#f3efff] shadow-md'
+                                              : 'border-slate-200 hover:border-[#310984]/30 hover:bg-white',
+                                          )}
+                                          onClick={() => {
+                                            setNewCleanerId(cleaner.id);
+                                            setCleanerPickerOpen(false);
+                                            setCleanerSearch('');
+                                          }}
+                                        >
+                                          <div className="flex items-start gap-3">
+                                            <div
+                                              className={cn(
+                                                'mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full border text-sm font-black',
+                                                isSelected
+                                                  ? 'border-[#310984] bg-[#310984] text-white'
+                                                  : 'border-slate-200 bg-slate-50 text-slate-400',
+                                              )}
+                                            >
+                                              {isSelected ? <Check className="h-4 w-4" /> : cleaner.name.slice(0, 1).toUpperCase()}
+                                            </div>
+                                            <div className="min-w-0 flex-1">
+                                              <div className="flex flex-wrap items-center gap-2">
+                                                <span className="text-base font-black uppercase leading-tight text-slate-950">
+                                                  {cleaner.name}
+                                                </span>
+                                                {!cleaner.isActive && (
+                                                  <Badge variant="outline" className="border-amber-200 bg-amber-50 text-amber-800">
+                                                    Inactiva
+                                                  </Badge>
+                                                )}
+                                              </div>
+                                              <p className="mt-1 text-sm text-slate-600">
+                                                {cleaner.planningZone || 'Sin zona operativa'}
+                                              </p>
+                                              {(cleaner.email || cleaner.telefono) && (
+                                                <p className="mt-1 truncate text-xs text-slate-400">
+                                                  {[cleaner.email, cleaner.telefono].filter(Boolean).join(' · ')}
+                                                </p>
+                                              )}
+                                            </div>
+                                            <Badge className="shrink-0 rounded-full bg-[#ede7ff] text-[#310984] hover:bg-[#ede7ff]">
+                                              {formatHours(cleaner.planningMaxDailyMinutes || fallbackDailyCapacityMinutes)}
+                                            </Badge>
+                                          </div>
+                                        </button>
+                                      );
+                                    })}
+                                  </div>
+                                )}
+                              </div>
+                            </SheetContent>
+                          </Sheet>
 
                           <div className="mt-4 space-y-3">
                             {assignedCleaners.length === 0 ? (
