@@ -2273,7 +2273,7 @@ export const OperationalPlanningPage = () => {
                                 </span>
                                 <span className="mt-0.5 block truncate text-xs text-slate-500">
                                   {selectedNewCleaner
-                                    ? selectedNewCleaner.planningZone || selectedNewCleaner.email || 'Sin zona operativa'
+                                    ? selectedNewCleaner.planningZone || selectedNewCleaner.email || selectedNewCleaner.telefono || 'Seleccionada para cobertura'
                                     : 'Busca por nombre, email, teléfono o zona'}
                                 </span>
                               </span>
@@ -2373,9 +2373,11 @@ export const OperationalPlanningPage = () => {
                                                   </Badge>
                                                 )}
                                               </div>
-                                              <p className="mt-1 text-sm text-slate-600">
-                                                {cleaner.planningZone || 'Sin zona operativa'}
-                                              </p>
+                                              {cleaner.planningZone && (
+                                                <p className="mt-1 text-sm text-slate-600">
+                                                  {cleaner.planningZone}
+                                                </p>
+                                              )}
                                               {(cleaner.email || cleaner.telefono) && (
                                                 <p className="mt-1 truncate text-xs text-slate-400">
                                                   {[cleaner.email, cleaner.telefono].filter(Boolean).join(' · ')}
@@ -2418,7 +2420,9 @@ export const OperationalPlanningPage = () => {
                                   <div className="flex items-start justify-between gap-3">
                                     <div>
                                       <p className="font-black text-slate-950">{cleaner!.name}</p>
-                                      <p className="text-sm text-slate-500">{cleaner!.planningZone || 'Sin zona operativa'}</p>
+                                      {cleaner!.planningZone && (
+                                        <p className="text-sm text-slate-500">{cleaner!.planningZone}</p>
+                                      )}
                                     </div>
                                     <Button
                                       variant="ghost"
