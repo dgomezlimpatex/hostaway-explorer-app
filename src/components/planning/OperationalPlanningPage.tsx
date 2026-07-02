@@ -80,6 +80,9 @@ const comparePlanningProperties = (
   `${b.codigo || ''} ${b.nombre || ''}`.trim(),
 );
 
+const normalizePropertyCode = (value?: string | null) =>
+  (value || '').trim().replace(/\s+/g, '').toUpperCase();
+
 const statusTone = (value: number, inverse = false) => {
   if (inverse) {
     if (value === 0) return 'text-emerald-600';
@@ -541,6 +544,14 @@ export const OperationalPlanningPage = () => {
       .filter((property) => !assignedIds.has(property.id))
       .sort(comparePlanningProperties);
   }, [properties, propertyAssignments]);
+  const suggestedPropertiesForBuilding = useMemo(() => {
+    const prefix = normalizePropertyCode(buildingForm.internalCode);
+    if (prefix.length < 2) return [];
+
+    return availableProperties
+      .filter((property) => normalizePropertyCode(property.codigo).startsWith(prefix))
+      .sort(comparePlanningProperties);
+  }, [availableProperties, buildingForm.internalCode]);
 
   const assignedCleaners = useMemo(
     () => cleanerAssignments
@@ -808,6 +819,15 @@ export const OperationalPlanningPage = () => {
   const handleAssignProperty = async () => {
     if (!selectedBuildingId || !newPropertyId) return;
     await assignProperty.mutateAsync({ groupId: selectedBuildingId, propertyId: newPropertyId });
+    setNewPropertyId('');
+  };
+
+  const handleAssignSuggestedProperties = async () => {
+    if (!selectedBuildingId || suggestedPropertiesForBuilding.length === 0) return;
+
+    for (const property of suggestedPropertiesForBuilding) {
+      await assignProperty.mutateAsync({ groupId: selectedBuildingId, propertyId: property.id });
+    }
     setNewPropertyId('');
   };
 
@@ -2073,6 +2093,43 @@ export const OperationalPlanningPage = () => {
                               <p className="mt-1 text-sm text-slate-600">Asocia las propiedades que deben cubrirse como un mismo bloque operativo.</p>
                             </div>
                           </div>
+
+                          {suggestedPropertiesForBuilding.length > 0 && (
+                            <div className="mt-4 rounded-2xl border border-violet-200 bg-violet-50 p-4">
+                              <div className="flex flex-wrap items-start justify-between gap-3">
+                                <div>
+                                  <p className="text-sm font-black text-violet-950">
+                                    {suggestedPropertiesForBuilding.length} propiedades coinciden con {buildingForm.internalCode.trim().toUpperCase()}
+                                  </p>
+                                  <p className="mt-1 text-sm text-violet-800">
+                                    El sistema ha encontrado propiedades disponibles con el mismo código de edificio.
+                                  </p>
+                                </div>
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  className="rounded-xl bg-[#310984] text-white hover:bg-[#26066b]"
+                                  onClick={handleAssignSuggestedProperties}
+                                  disabled={assignProperty.isPending}
+                                >
+                                  {assignProperty.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+                                  Añadir sugeridas
+                                </Button>
+                              </div>
+                              <div className="mt-3 flex flex-wrap gap-2">
+                                {suggestedPropertiesForBuilding.slice(0, 8).map((property) => (
+                                  <Badge key={property.id} variant="outline" className="border-violet-200 bg-white text-violet-900">
+                                    {property.codigo}
+                                  </Badge>
+                                ))}
+                                {suggestedPropertiesForBuilding.length > 8 && (
+                                  <Badge variant="outline" className="border-violet-200 bg-white text-violet-900">
+                                    +{suggestedPropertiesForBuilding.length - 8} más
+                                  </Badge>
+                                )}
+                              </div>
+                            </div>
+                          )}
 
                           <div className="mt-4 flex gap-2">
                             <Select value={newPropertyId} onValueChange={setNewPropertyId}>
