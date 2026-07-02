@@ -145,12 +145,13 @@ export const useAssignPropertyToGroup = () => {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: ({ groupId, propertyId }: { groupId: string; propertyId: string }) =>
+    mutationFn: ({ groupId, propertyId }: { groupId: string; propertyId: string; silent?: boolean }) =>
       propertyGroupStorage.assignPropertyToGroup(groupId, propertyId),
-    onSuccess: (_, { groupId }) => {
+    onSuccess: (_, { groupId, silent }) => {
       queryClient.invalidateQueries({ queryKey: ['property-assignments', groupId] });
       queryClient.invalidateQueries({ queryKey: ['property-assignments', 'all'] });
       queryClient.invalidateQueries({ queryKey: ['operational-planning', 'buildings'] });
+      if (silent) return;
       toast({
         title: "Propiedad asignada",
         description: "La propiedad se ha asignado al grupo correctamente.",

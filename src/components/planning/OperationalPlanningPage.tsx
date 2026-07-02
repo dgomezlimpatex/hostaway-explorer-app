@@ -57,6 +57,7 @@ import { formatMadridDate } from '@/utils/date';
 import { CreateAbsenceModal } from '@/components/workers/absences/CreateAbsenceModal';
 import { AbsencesList } from '@/components/workers/absences/AbsencesList';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 
 const formatLongDate = (date: string) =>
@@ -371,7 +372,8 @@ export const OperationalPlanningPage = () => {
   const [selectedFocusDate, setSelectedFocusDate] = useState<string | null>(null);
   const [buildingSearch, setBuildingSearch] = useState('');
   const [buildingFilter, setBuildingFilter] = useState<'all' | 'attention' | 'covered'>('all');
-  const [newPropertyId, setNewPropertyId] = useState('');
+  const [selectedPropertyIds, setSelectedPropertyIds] = useState<string[]>([]);
+  const [propertySearch, setPropertySearch] = useState('');
   const [newCleanerId, setNewCleanerId] = useState('');
   const [newCleanerRole, setNewCleanerRole] = useState<'primary' | 'secondary' | 'backup'>('primary');
   const [cleanerPickerOpen, setCleanerPickerOpen] = useState(false);
@@ -627,6 +629,20 @@ export const OperationalPlanningPage = () => {
       .filter((property) => isPlanningVisibleProperty(property) && !assignedIds.has(property.id))
       .sort(comparePlanningProperties);
   }, [allPropertyAssignments, allPropertyAssignmentsLoading, properties]);
+  const filteredAvailableProperties = useMemo(() => {
+    const normalizedSearch = normalizePlanningSearchText(propertySearch);
+    if (!normalizedSearch) return availableProperties;
+
+    return availableProperties.filter((property) =>
+      normalizePlanningSearchText(`${property.codigo} ${property.nombre} ${property.direccion}`).includes(normalizedSearch)
+    );
+  }, [availableProperties, propertySearch]);
+
+  useEffect(() => {
+    const availableIds = new Set(availableProperties.map((property) => property.id));
+    setSelectedPropertyIds((current) => current.filter((id) => availableIds.has(id)));
+  }, [availableProperties]);
+
   const suggestedPropertiesForBuilding = useMemo(() => {
     const buildingText = `${buildingForm.internalCode} ${buildingForm.name} ${buildingForm.displayName}`.trim();
     const buildingCode = normalizePropertyCode(buildingForm.internalCode);
@@ -919,19 +935,42 @@ export const OperationalPlanningPage = () => {
     });
   };
 
-  const handleAssignProperty = async () => {
-    if (!selectedBuildingId || !newPropertyId) return;
-    await assignProperty.mutateAsync({ groupId: selectedBuildingId, propertyId: newPropertyId });
-    setNewPropertyId('');
+  const handleTogglePropertySelection = (propertyId: string) => {
+    setSelectedPropertyIds((current) =>
+      current.includes(propertyId)
+        ? current.filter((id) => id !== propertyId)
+        : [...current, propertyId]
+    );
+  };
+
+  const handleAssignSelectedProperties = async () => {
+    if (!selectedBuildingId || selectedPropertyIds.length === 0) return;
+    const propertyIdsToAssign = [...selectedPropertyIds];
+
+    for (const propertyId of propertyIdsToAssign) {
+      await assignProperty.mutateAsync({ groupId: selectedBuildingId, propertyId, silent: true });
+    }
+
+    toast({
+      title: "Propiedades añadidas",
+      description: `${propertyIdsToAssign.length} propiedad${propertyIdsToAssign.length === 1 ? '' : 'es'} añadida${propertyIdsToAssign.length === 1 ? '' : 's'} al edificio.`,
+    });
+    setSelectedPropertyIds([]);
+    setPropertySearch('');
   };
 
   const handleAssignSuggestedProperties = async () => {
     if (!selectedBuildingId || suggestedPropertiesForBuilding.length === 0) return;
 
     for (const property of suggestedPropertiesForBuilding) {
-      await assignProperty.mutateAsync({ groupId: selectedBuildingId, propertyId: property.id });
+      await assignProperty.mutateAsync({ groupId: selectedBuildingId, propertyId: property.id, silent: true });
     }
-    setNewPropertyId('');
+    toast({
+      title: "Propiedades sugeridas añadidas",
+      description: `${suggestedPropertiesForBuilding.length} propiedad${suggestedPropertiesForBuilding.length === 1 ? '' : 'es'} añadida${suggestedPropertiesForBuilding.length === 1 ? '' : 's'} al edificio.`,
+    });
+    setSelectedPropertyIds([]);
+    setPropertySearch('');
   };
 
   const handleAssignCleaner = async (roleOverride?: 'primary' | 'secondary' | 'backup') => {
@@ -2215,22 +2254,91 @@ export const OperationalPlanningPage = () => {
                             </div>
                           )}
 
-                          <div className="mt-4 flex gap-2">
-                            <Select value={newPropertyId} onValueChange={setNewPropertyId} disabled={allPropertyAssignmentsLoading}>
-                              <SelectTrigger className="rounded-xl bg-white">
-                                <SelectValue placeholder={allPropertyAssignmentsLoading ? 'Cargando propiedades...' : 'Añadir propiedad'} />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {availableProperties.map((property) => (
-                                  <SelectItem key={property.id} value={property.id}>
-                                    {property.codigo} · {property.nombre}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                            <Button className="rounded-xl" onClick={handleAssignProperty} disabled={!newPropertyId || allPropertyAssignmentsLoading || assignProperty.isPending}>
-                              <Plus className="h-4 w-4" />
-                            </Button>
+                          <div className="mt-4 rounded-2xl border border-slate-200 bg-white p-3">
+                            <div className="flex flex-col gap-2 sm:flex-row">
+                              <div className="relative min-w-0 flex-1">
+                                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                                <Input
+                                  value={propertySearch}
+                                  onChange={(event) => setPropertySearch(event.target.value)}
+                                  placeholder={allPropertyAssignmentsLoading ? 'Cargando propiedades...' : 'Buscar propiedades para añadir...'}
+                                  disabled={allPropertyAssignmentsLoading}
+                                  className="h-11 rounded-xl bg-slate-50 pl-10"
+                                />
+                              </div>
+                              <Button
+                                className="h-11 rounded-xl bg-[#310984] hover:bg-[#26066b]"
+                                onClick={handleAssignSelectedProperties}
+                                disabled={selectedPropertyIds.length === 0 || allPropertyAssignmentsLoading || assignProperty.isPending}
+                              >
+                                {assignProperty.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+                                {selectedPropertyIds.length > 0
+                                  ? `Añadir ${selectedPropertyIds.length}`
+                                  : 'Añadir'}
+                              </Button>
+                            </div>
+
+                            <div className="mt-3 flex items-center justify-between gap-3 text-xs text-slate-500">
+                              <span>
+                                {selectedPropertyIds.length > 0
+                                  ? `${selectedPropertyIds.length} seleccionada${selectedPropertyIds.length === 1 ? '' : 's'}`
+                                  : 'Selecciona todas las propiedades que quieras añadir.'}
+                              </span>
+                              {selectedPropertyIds.length > 0 && (
+                                <button
+                                  type="button"
+                                  className="font-semibold text-[#310984] hover:underline"
+                                  onClick={() => setSelectedPropertyIds([])}
+                                >
+                                  Limpiar selección
+                                </button>
+                              )}
+                            </div>
+
+                            <div className="mt-3 max-h-72 space-y-2 overflow-y-auto pr-1">
+                              {allPropertyAssignmentsLoading ? (
+                                <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 p-4 text-sm text-slate-500">
+                                  Cargando propiedades disponibles...
+                                </div>
+                              ) : filteredAvailableProperties.length === 0 ? (
+                                <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 p-4 text-sm text-slate-500">
+                                  No hay propiedades disponibles con ese filtro.
+                                </div>
+                              ) : (
+                                filteredAvailableProperties.map((property) => {
+                                  const selected = selectedPropertyIds.includes(property.id);
+
+                                  return (
+                                    <button
+                                      key={property.id}
+                                      type="button"
+                                      className={cn(
+                                        'flex w-full items-center gap-3 rounded-xl border p-3 text-left transition',
+                                        selected
+                                          ? 'border-[#310984] bg-[#f3efff] shadow-sm'
+                                          : 'border-slate-200 bg-white hover:border-[#310984]/30 hover:bg-slate-50',
+                                      )}
+                                      onClick={() => handleTogglePropertySelection(property.id)}
+                                    >
+                                      <span
+                                        className={cn(
+                                          'flex h-7 w-7 shrink-0 items-center justify-center rounded-full border text-xs font-black',
+                                          selected
+                                            ? 'border-[#310984] bg-[#310984] text-white'
+                                            : 'border-slate-300 bg-white text-transparent',
+                                        )}
+                                      >
+                                        <Check className="h-4 w-4" />
+                                      </span>
+                                      <span className="min-w-0 flex-1">
+                                        <span className="block truncate font-black text-slate-950">{property.codigo}</span>
+                                        <span className="block truncate text-sm text-slate-500">{property.nombre}</span>
+                                      </span>
+                                    </button>
+                                  );
+                                })
+                              )}
+                            </div>
                           </div>
 
                           <div className="mt-4 space-y-3">
@@ -2241,11 +2349,11 @@ export const OperationalPlanningPage = () => {
                                 <Button
                                   size="sm"
                                   className="mt-3 rounded-xl bg-[#310984] hover:bg-[#26066b]"
-                                  onClick={handleAssignProperty}
-                                  disabled={!newPropertyId || assignProperty.isPending}
+                                  onClick={handleAssignSelectedProperties}
+                                  disabled={selectedPropertyIds.length === 0 || allPropertyAssignmentsLoading || assignProperty.isPending}
                                 >
                                   <Plus className="h-4 w-4" />
-                                  Añadir propiedad
+                                  Añadir seleccionadas
                                 </Button>
                               </div>
                             ) : (
