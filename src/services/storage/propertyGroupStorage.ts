@@ -2,6 +2,27 @@
 import { supabase } from '@/integrations/supabase/client';
 import { PropertyGroup, PropertyGroupAssignment, CleanerGroupAssignment, AutoAssignmentRule } from '@/types/propertyGroups';
 
+type PropertyGroupRow = {
+  id: string;
+  name: string;
+  internal_code?: string | null;
+  display_name?: string | null;
+  zone?: string | null;
+  client_name?: string | null;
+  supervisor_name?: string | null;
+  general_instructions?: string | null;
+  difficulty_level?: number | null;
+  recommended_capacity?: number | null;
+  planning_notes?: string | null;
+  description?: string | null;
+  check_out_time: string;
+  check_in_time: string;
+  is_active: boolean;
+  auto_assign_enabled: boolean;
+  created_at: string;
+  updated_at: string;
+};
+
 class PropertyGroupStorageService {
   async getPropertyGroups(): Promise<PropertyGroup[]> {
     const { data, error } = await supabase
@@ -49,7 +70,7 @@ class PropertyGroupStorageService {
   }
 
   async updatePropertyGroup(id: string, updates: Partial<PropertyGroup>): Promise<PropertyGroup> {
-    const dbUpdates: any = {};
+    const dbUpdates: Record<string, unknown> = {};
     if (updates.name !== undefined) dbUpdates.name = updates.name;
     if (updates.internalCode !== undefined) dbUpdates.internal_code = updates.internalCode;
     if (updates.displayName !== undefined) dbUpdates.display_name = updates.displayName;
@@ -94,6 +115,24 @@ class PropertyGroupStorageService {
   }
 
   // Property assignments
+  async getAllPropertyAssignments(): Promise<PropertyGroupAssignment[]> {
+    const { data, error } = await supabase
+      .from('property_group_assignments')
+      .select('*');
+
+    if (error) {
+      console.error('Error fetching all property assignments:', error);
+      throw error;
+    }
+
+    return data?.map(row => ({
+      id: row.id,
+      propertyGroupId: row.property_group_id,
+      propertyId: row.property_id,
+      createdAt: row.created_at
+    })) || [];
+  }
+
   async getPropertyAssignments(groupId: string): Promise<PropertyGroupAssignment[]> {
     const { data, error } = await supabase
       .from('property_group_assignments')
@@ -114,6 +153,21 @@ class PropertyGroupStorageService {
   }
 
   async assignPropertyToGroup(groupId: string, propertyId: string): Promise<PropertyGroupAssignment> {
+    const { data: existingAssignment, error: existingError } = await supabase
+      .from('property_group_assignments')
+      .select('id, property_group_id')
+      .eq('property_id', propertyId)
+      .maybeSingle();
+
+    if (existingError) {
+      console.error('Error checking existing property assignment:', existingError);
+      throw existingError;
+    }
+
+    if (existingAssignment) {
+      throw new Error('Esta propiedad ya está asignada a otro edificio operativo.');
+    }
+
     const { data, error } = await supabase
       .from('property_group_assignments')
       .insert({
@@ -219,7 +273,7 @@ class PropertyGroupStorageService {
   }
 
   async updateCleanerAssignment(id: string, updates: Partial<CleanerGroupAssignment>): Promise<CleanerGroupAssignment> {
-    const dbUpdates: any = {};
+    const dbUpdates: Record<string, unknown> = {};
     if (updates.priority !== undefined) dbUpdates.priority = updates.priority;
     if (updates.roleType !== undefined) dbUpdates.role_type = updates.roleType;
     if (updates.knowledgeLevel !== undefined) dbUpdates.knowledge_level = updates.knowledgeLevel;
@@ -270,7 +324,7 @@ class PropertyGroupStorageService {
     }
   }
 
-  private mapFromDB(row: any): PropertyGroup {
+  private mapFromDB(row: PropertyGroupRow): PropertyGroup {
     return {
       id: row.id,
       name: row.name,

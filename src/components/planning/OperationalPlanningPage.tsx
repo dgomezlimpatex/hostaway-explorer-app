@@ -16,6 +16,7 @@ import {
   useUpdateOperationalPlanningWorkerProfile,
 } from '@/hooks/useOperationalPlanning';
 import {
+  useAllPropertyAssignments,
   useAssignCleanerToGroup,
   useAssignPropertyToGroup,
   useCleanerAssignments,
@@ -384,6 +385,7 @@ export const OperationalPlanningPage = () => {
   }, [allGroups, selectedBuildingId]);
 
   const { data: propertyAssignments = [] } = usePropertyAssignments(selectedBuildingId || '');
+  const { data: allPropertyAssignments = [], isLoading: allPropertyAssignmentsLoading } = useAllPropertyAssignments();
   const { data: cleanerAssignments = [] } = useCleanerAssignments(selectedBuildingId || '');
   const selectedPlanningWorker = useMemo(
     () => workers.find((worker) => worker.id === selectedCoverageCleanerId) || null,
@@ -616,11 +618,12 @@ export const OperationalPlanningPage = () => {
   );
 
   const availableProperties = useMemo(() => {
-    const assignedIds = new Set(propertyAssignments.map((assignment) => assignment.propertyId));
+    if (allPropertyAssignmentsLoading) return [];
+    const assignedIds = new Set(allPropertyAssignments.map((assignment) => assignment.propertyId));
     return properties
       .filter((property) => !assignedIds.has(property.id))
       .sort(comparePlanningProperties);
-  }, [properties, propertyAssignments]);
+  }, [allPropertyAssignments, allPropertyAssignmentsLoading, properties]);
   const suggestedPropertiesForBuilding = useMemo(() => {
     const buildingText = `${buildingForm.internalCode} ${buildingForm.name} ${buildingForm.displayName}`.trim();
     const buildingCode = normalizePropertyCode(buildingForm.internalCode);
@@ -2210,9 +2213,9 @@ export const OperationalPlanningPage = () => {
                           )}
 
                           <div className="mt-4 flex gap-2">
-                            <Select value={newPropertyId} onValueChange={setNewPropertyId}>
+                            <Select value={newPropertyId} onValueChange={setNewPropertyId} disabled={allPropertyAssignmentsLoading}>
                               <SelectTrigger className="rounded-xl bg-white">
-                                <SelectValue placeholder="Añadir propiedad" />
+                                <SelectValue placeholder={allPropertyAssignmentsLoading ? 'Cargando propiedades...' : 'Añadir propiedad'} />
                               </SelectTrigger>
                               <SelectContent>
                                 {availableProperties.map((property) => (
@@ -2222,7 +2225,7 @@ export const OperationalPlanningPage = () => {
                                 ))}
                               </SelectContent>
                             </Select>
-                            <Button className="rounded-xl" onClick={handleAssignProperty} disabled={!newPropertyId || assignProperty.isPending}>
+                            <Button className="rounded-xl" onClick={handleAssignProperty} disabled={!newPropertyId || allPropertyAssignmentsLoading || assignProperty.isPending}>
                               <Plus className="h-4 w-4" />
                             </Button>
                           </div>

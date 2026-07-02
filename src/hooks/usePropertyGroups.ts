@@ -19,6 +19,7 @@ export const useRemovePropertyFromGroup = () => {
       propertyGroupStorage.removePropertyFromGroup(assignmentId),
     onSuccess: (_, { groupId }) => {
       queryClient.invalidateQueries({ queryKey: ['property-assignments', groupId] });
+      queryClient.invalidateQueries({ queryKey: ['property-assignments', 'all'] });
       queryClient.invalidateQueries({ queryKey: ['operational-planning', 'buildings'] });
       toast({
         title: "Propiedad retirada",
@@ -125,6 +126,13 @@ export const usePropertyAssignments = (groupId: string) => {
   });
 };
 
+export const useAllPropertyAssignments = () => {
+  return useQuery({
+    queryKey: ['property-assignments', 'all'],
+    queryFn: () => propertyGroupStorage.getAllPropertyAssignments(),
+  });
+};
+
 export const useCleanerAssignments = (groupId: string) => {
   return useQuery({
     queryKey: ['cleaner-assignments', groupId],
@@ -141,10 +149,18 @@ export const useAssignPropertyToGroup = () => {
       propertyGroupStorage.assignPropertyToGroup(groupId, propertyId),
     onSuccess: (_, { groupId }) => {
       queryClient.invalidateQueries({ queryKey: ['property-assignments', groupId] });
+      queryClient.invalidateQueries({ queryKey: ['property-assignments', 'all'] });
       queryClient.invalidateQueries({ queryKey: ['operational-planning', 'buildings'] });
       toast({
         title: "Propiedad asignada",
         description: "La propiedad se ha asignado al grupo correctamente.",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "No se pudo asignar la propiedad",
+        description: error instanceof Error ? error.message : "Comprueba que la propiedad no esté ya en otro edificio.",
+        variant: "destructive",
       });
     },
   });
