@@ -39,6 +39,16 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { ABSENCE_TYPE_CONFIG } from '@/types/workerAbsence';
 import { formatMadridDate } from '@/utils/date';
 import { CreateAbsenceModal } from '@/components/workers/absences/CreateAbsenceModal';
@@ -257,6 +267,7 @@ export const OperationalPlanningPage = () => {
   const [workerSearch, setWorkerSearch] = useState('');
   const [workerFilter, setWorkerFilter] = useState<'all' | 'attention' | 'available' | 'without-zone'>('all');
   const [absenceModalOpen, setAbsenceModalOpen] = useState(false);
+  const [approveDialogOpen, setApproveDialogOpen] = useState(false);
 
   const selectedBuilding = useMemo(() => {
     if (!selectedBuildingId) return null;
@@ -622,8 +633,8 @@ export const OperationalPlanningPage = () => {
       .sort((a, b) => b.count - a.count || a.code.localeCompare(b.code));
   }, [preview]);
 
-  const predictiveAlerts = overviewData?.alerts || [];
-  const substitutionSuggestions = overviewData?.substitutions || [];
+  const predictiveAlerts = useMemo(() => overviewData?.alerts || [], [overviewData?.alerts]);
+  const substitutionSuggestions = useMemo(() => overviewData?.substitutions || [], [overviewData?.substitutions]);
   const performance = overviewData?.performance;
 
   const filteredWorkers = useMemo(() => {
@@ -752,16 +763,17 @@ export const OperationalPlanningPage = () => {
     setNewPropertyId('');
   };
 
-  const handleAssignCleaner = async () => {
+  const handleAssignCleaner = async (roleOverride?: 'primary' | 'secondary' | 'backup') => {
     if (!selectedBuildingId || !newCleanerId) return;
+    const roleToAssign = roleOverride || newCleanerRole;
     const currentCount = cleanerAssignments.length;
-    const priorityBase = newCleanerRole === 'primary' ? 10 : newCleanerRole === 'secondary' ? 20 : 30;
+    const priorityBase = roleToAssign === 'primary' ? 10 : roleToAssign === 'secondary' ? 20 : 30;
     await assignCleaner.mutateAsync({
       propertyGroupId: selectedBuildingId,
       cleanerId: newCleanerId,
       priority: priorityBase + currentCount,
-      roleType: newCleanerRole,
-      knowledgeLevel: newCleanerRole === 'primary' ? 5 : newCleanerRole === 'secondary' ? 3 : 2,
+      roleType: roleToAssign,
+      knowledgeLevel: roleToAssign === 'primary' ? 5 : roleToAssign === 'secondary' ? 3 : 2,
       maxTasksPerDay: 8,
       maxDailyMinutesOverride: null,
       estimatedTravelTimeMinutes: 15,
@@ -802,7 +814,7 @@ export const OperationalPlanningPage = () => {
                   Próximos 14 días
                 </CardTitle>
                 <CardDescription className="mt-2 text-sm text-slate-600">
-                  Genera un borrador seguro para tareas normales sin asignar, revisa conflictos y apruébalo solo cuando lo tengas claro.
+                  Genera un borrador seguro para tareas normales sin cubrir, revisa conflictos y apruébalo solo cuando lo tengas claro.
                 </CardDescription>
               </div>
 
@@ -814,7 +826,7 @@ export const OperationalPlanningPage = () => {
             <CardContent>
               <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
                 <div className="rounded-2xl border border-sky-200 bg-sky-50 p-4">
-                  <p className="text-xs font-black uppercase tracking-[0.22em] text-sky-700">Sin asignar</p>
+                  <p className="text-xs font-black uppercase tracking-[0.22em] text-sky-700">Sin cubrir</p>
                   <p className="mt-2 text-3xl font-black text-slate-950">{overviewData?.overview.unassignedTasks ?? 0}</p>
                   <p className="mt-1 text-xs text-slate-600 md:text-sm">Tareas pendientes de propuesta</p>
                 </div>
@@ -841,7 +853,7 @@ export const OperationalPlanningPage = () => {
             </CardContent>
           </Card>
 
-          <Card className="border-slate-900 bg-[#0d1118] text-white shadow-[0_28px_80px_rgba(15,23,42,0.32)]">
+          <Card className="border-[#310984]/20 bg-[#190044] text-white shadow-[0_28px_80px_rgba(49,9,132,0.22)]">
             <CardHeader>
               <div className="flex items-center justify-between">
                 <div>
@@ -914,6 +926,35 @@ export const OperationalPlanningPage = () => {
           </Card>
         </div>
 
+        <div className="grid gap-3 md:grid-cols-3">
+          <Button
+            className="h-12 rounded-2xl bg-[#310984] text-white hover:bg-[#26066b]"
+            onClick={handleGenerate}
+            disabled={!activeSede?.id || generateRun.isPending}
+          >
+            {generateRun.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <CalendarDays className="h-4 w-4" />}
+            Planificar tareas
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            className="h-12 rounded-2xl border-amber-200 bg-amber-50 text-amber-900 hover:bg-amber-100"
+            onClick={() => setActiveTab('coverage')}
+          >
+            <ShieldAlert className="h-4 w-4" />
+            Cubrir bajas
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            className="h-12 rounded-2xl border-slate-200 bg-white text-slate-900 hover:bg-slate-50"
+            onClick={() => setActiveTab('buildings')}
+          >
+            <Building2 className="h-4 w-4" />
+            Configurar edificios
+          </Button>
+        </div>
+
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
           <div className="md:hidden">
             <div className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
@@ -975,7 +1016,7 @@ export const OperationalPlanningPage = () => {
                             <div>
                               <p className="text-sm font-black uppercase tracking-[0.18em] text-slate-500">{formatLongDate(day.date)}</p>
                               <p className="mt-2 text-lg font-black text-slate-950">
-                                {day.unassigned} sin asignar · {day.tasks} tareas
+                                {day.unassigned} sin cubrir · {day.tasks} tareas
                               </p>
                             </div>
                             <div className="text-right">
@@ -1022,7 +1063,7 @@ export const OperationalPlanningPage = () => {
                               {formatLongDate(selectedFocusDate)}
                             </p>
                             <p className="mt-1 text-sm text-slate-600">
-                              {selectedFocusDaySummary.unassigned} sin asignar · {selectedFocusDaySummary.criticalTasks} críticas
+                              {selectedFocusDaySummary.unassigned} sin cubrir · {selectedFocusDaySummary.criticalTasks} críticas
                             </p>
                           </div>
                           <Badge variant={selectedFocusDaySummary.deficitMinutes > 0 ? 'destructive' : 'secondary'}>
@@ -1112,11 +1153,11 @@ export const OperationalPlanningPage = () => {
               <Card>
                 <CardHeader className="gap-4 md:flex-row md:items-start md:justify-between">
                   <div>
-                    <CardTitle className="text-xl font-black">Borrador de asignación</CardTitle>
+                    <CardTitle className="text-xl font-black">Borrador de cobertura</CardTitle>
                     <CardDescription>
                       {preview
                         ? `Periodo ${formatLongDate(preview.run.dateFrom)} → ${formatLongDate(preview.run.dateTo)}`
-                        : 'Selecciona un borrador o genera uno nuevo para revisar las propuestas.'}
+                        : 'Genera un borrador para revisar a quién cubriría cada tarea.'}
                     </CardDescription>
                   </div>
                   {preview && (
@@ -1140,7 +1181,7 @@ export const OperationalPlanningPage = () => {
                       </Button>
                       <Button
                         className="w-full rounded-xl sm:w-auto"
-                        onClick={() => approveRun.mutate(preview.run.id)}
+                        onClick={() => setApproveDialogOpen(true)}
                         disabled={approveRun.isPending || preview.run.status !== 'draft'}
                       >
                         {approveRun.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
@@ -1151,8 +1192,17 @@ export const OperationalPlanningPage = () => {
                 </CardHeader>
                 <CardContent className="space-y-5">
                   {!preview ? (
-                    <div className="rounded-2xl border border-dashed border-slate-300 p-8 text-sm text-slate-500">
-                      Aún no hay vista previa seleccionada.
+                    <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-6 text-sm text-slate-600">
+                      <p className="font-bold text-slate-900">Todavía no hay borrador.</p>
+                      <p className="mt-1">Genera una propuesta para ver tareas, conflictos y avisos antes de aplicar nada.</p>
+                      <Button
+                        className="mt-4 rounded-xl bg-[#310984] text-white hover:bg-[#26066b]"
+                        onClick={handleGenerate}
+                        disabled={!activeSede?.id || generateRun.isPending}
+                      >
+                        {generateRun.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <CalendarDays className="h-4 w-4" />}
+                        Planificar tareas
+                      </Button>
                     </div>
                   ) : previewQuery.isLoading ? (
                     <div className="flex min-h-64 items-center justify-center">
@@ -1170,7 +1220,7 @@ export const OperationalPlanningPage = () => {
                           <p className="mt-2 text-2xl font-black text-slate-950">{preview.run.summary.proposedTasks}</p>
                         </div>
                         <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
-                          <p className="text-xs font-black uppercase tracking-[0.2em] text-amber-700">Asignaciones</p>
+                          <p className="text-xs font-black uppercase tracking-[0.2em] text-amber-700">Personas</p>
                           <p className="mt-2 text-2xl font-black text-slate-950">{preview.run.summary.proposedAssignments}</p>
                         </div>
                         <div className="rounded-2xl border border-rose-200 bg-rose-50 p-4">
@@ -1320,7 +1370,7 @@ export const OperationalPlanningPage = () => {
                   <CardContent className="space-y-3">
                     {!preview ? (
                       <div className="rounded-2xl border border-dashed border-slate-300 p-4 text-sm text-slate-500">
-                        Genera o selecciona un borrador para ver la distribución.
+                        Genera un borrador para ver si el reparto queda equilibrado.
                       </div>
                     ) : proposedLoadByCleaner.length === 0 ? (
                       <div className="rounded-2xl border border-dashed border-slate-300 p-4 text-sm text-slate-500">
@@ -1356,11 +1406,11 @@ export const OperationalPlanningPage = () => {
                   <CardContent className="space-y-3">
                     {!preview ? (
                       <div className="rounded-2xl border border-dashed border-slate-300 p-4 text-sm text-slate-500">
-                        Aún no hay un borrador seleccionado.
+                        Genera un borrador para ver los avisos antes de enviarlos.
                       </div>
                     ) : pendingNotificationPreview.length === 0 ? (
                       <div className="rounded-2xl border border-dashed border-slate-300 p-4 text-sm text-slate-500">
-                        No hay avisos que preparar con este borrador.
+                        Este borrador no enviaría avisos.
                       </div>
                     ) : (
                       pendingNotificationPreview.slice(0, 8).map((entry) => (
@@ -1964,8 +2014,18 @@ export const OperationalPlanningPage = () => {
 
                           <div className="mt-4 space-y-3">
                             {assignedProperties.length === 0 ? (
-                              <div className="rounded-xl border border-dashed border-slate-300 p-4 text-sm text-slate-500">
-                                Este edificio todavía no tiene propiedades vinculadas.
+                              <div className="rounded-xl border border-dashed border-slate-300 bg-white p-4 text-sm text-slate-600">
+                                <p className="font-black text-slate-950">Sin propiedades vinculadas.</p>
+                                <p className="mt-1">Añade la primera propiedad para que el motor sepa qué tareas pertenecen a este edificio.</p>
+                                <Button
+                                  size="sm"
+                                  className="mt-3 rounded-xl bg-[#310984] hover:bg-[#26066b]"
+                                  onClick={handleAssignProperty}
+                                  disabled={!newPropertyId || assignProperty.isPending}
+                                >
+                                  <Plus className="h-4 w-4" />
+                                  Añadir propiedad
+                                </Button>
                               </div>
                             ) : (
                               assignedProperties.map(({ assignmentId, property }) => (
@@ -2130,15 +2190,27 @@ export const OperationalPlanningPage = () => {
                                 <SelectItem value="backup">Backup</SelectItem>
                               </SelectContent>
                             </Select>
-                            <Button className="rounded-xl" onClick={handleAssignCleaner} disabled={!newCleanerId || assignCleaner.isPending}>
+                            <Button className="rounded-xl" onClick={() => handleAssignCleaner()} disabled={!newCleanerId || assignCleaner.isPending}>
                               <Plus className="h-4 w-4" />
                             </Button>
                           </div>
 
                           <div className="mt-4 space-y-3">
                             {assignedCleaners.length === 0 ? (
-                              <div className="rounded-xl border border-dashed border-slate-300 p-4 text-sm text-slate-500">
-                                Aún no hay cobertura asignada para este edificio.
+                              <div className="rounded-xl border border-dashed border-slate-300 bg-white p-4 text-sm text-slate-600">
+                                <p className="font-black text-slate-950">Sin equipo asignado.</p>
+                                <p className="mt-1">Añade titulares para que el motor pueda cubrir este edificio con criterio.</p>
+                                <Button
+                                  size="sm"
+                                  className="mt-3 rounded-xl bg-[#310984] hover:bg-[#26066b]"
+                                  onClick={() => {
+                                    handleAssignCleaner('primary');
+                                  }}
+                                  disabled={!newCleanerId || assignCleaner.isPending}
+                                >
+                                  <Plus className="h-4 w-4" />
+                                  Añadir titular
+                                </Button>
                               </div>
                             ) : (
                               assignedCleaners.map(({ assignment, cleaner }) => (
@@ -2271,11 +2343,11 @@ export const OperationalPlanningPage = () => {
                 <CardHeader>
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div>
-                      <CardTitle className="text-xl font-black">Sustitución inteligente por ausencias</CardTitle>
-                      <CardDescription>Propuestas automáticas de reemplazo ya ordenadas por calidad, con explicación y advertencias.</CardDescription>
+                      <CardTitle className="text-xl font-black">Cubrir bajas y ausencias</CardTitle>
+                      <CardDescription>El sistema propone quién puede cubrir cada hueco, ordenado por encaje operativo y con advertencias.</CardDescription>
                     </div>
                     <Badge variant={pendingSubstitutionCount > 0 ? 'destructive' : 'secondary'}>
-                      {pendingSubstitutionCount} sustituciones pendientes
+                      {pendingSubstitutionCount} tareas sin cubrir
                     </Badge>
                   </div>
                 </CardHeader>
@@ -2327,7 +2399,7 @@ export const OperationalPlanningPage = () => {
                               <div className="mt-3 space-y-2">
                                 {item.recommendedCleaners.length === 0 ? (
                                   <div className="rounded-2xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-800">
-                                    No hay candidata segura. Esta sustitución necesita revisión manual.
+                                    No hay candidata segura. Déjala para revisión manual.
                                   </div>
                                 ) : (
                                   item.recommendedCleaners.map((candidate, index) => (
@@ -2367,7 +2439,7 @@ export const OperationalPlanningPage = () => {
                                 onClick={() => handleApplyReplacement(item)}
                               >
                                 {applyReplacement.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowRight className="h-4 w-4" />}
-                                Aplicar mejor sustitución
+                                Cubrir baja
                               </Button>
                             </div>
                           ))}
@@ -2381,7 +2453,7 @@ export const OperationalPlanningPage = () => {
               <Card>
                 <CardHeader>
                   <CardTitle className="text-xl font-black">Días con más presión</CardTitle>
-                  <CardDescription>Te ayuda a detectar dónde la cobertura necesitará revisión o sustitución manual.</CardDescription>
+                  <CardDescription>Detecta días donde hará falta cubrir huecos antes de que llegue el problema.</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-3">
                   {(overviewData?.overview.days || [])
@@ -2393,7 +2465,7 @@ export const OperationalPlanningPage = () => {
                           <div>
                             <p className="text-sm font-black uppercase tracking-[0.2em] text-slate-500">{formatLongDate(day.date)}</p>
                             <p className="mt-2 text-lg font-black text-slate-950">
-                              {day.unassigned} sin asignar · {day.criticalTasks} críticas
+                              {day.unassigned} sin cubrir · {day.criticalTasks} críticas
                             </p>
                           </div>
                           <Badge variant={day.deficitMinutes > 0 ? 'destructive' : 'secondary'}>
@@ -2638,7 +2710,7 @@ export const OperationalPlanningPage = () => {
                       </>
                     ) : (
                       <div className="rounded-2xl border border-dashed border-slate-300 p-5 text-sm text-slate-500">
-                        Selecciona una trabajadora para revisar sus ausencias dentro del horizonte de planificacion.
+                        Selecciona una trabajadora para revisar sus ausencias dentro del horizonte de planificación.
                       </div>
                     )}
                   </CardContent>
@@ -2754,7 +2826,7 @@ export const OperationalPlanningPage = () => {
                           <div>
                             <p className="font-black text-slate-950">{formatLongDate(day.date)}</p>
                             <p className="mt-1 text-sm text-slate-600">
-                              {day.unassigned} sin asignar · {day.criticalTasks} críticas
+                              {day.unassigned} sin cubrir · {day.criticalTasks} críticas
                             </p>
                           </div>
                           <Badge variant={day.deficitMinutes > 0 ? 'destructive' : 'secondary'}>
@@ -2908,6 +2980,31 @@ export const OperationalPlanningPage = () => {
             </CardContent>
           </Card>
         )}
+
+        <AlertDialog open={approveDialogOpen} onOpenChange={setApproveDialogOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Aprobar planificación</AlertDialogTitle>
+              <AlertDialogDescription>
+                Se asignarán {preview?.run.summary.proposedTasks ?? 0} tareas reales y se prepararán los avisos agrupados para las trabajadoras.
+                Revisa el borrador antes de continuar: esta acción ya cambia la planificación operativa.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Seguir revisando</AlertDialogCancel>
+              <AlertDialogAction
+                className="bg-[#310984] hover:bg-[#26066b]"
+                disabled={approveRun.isPending || !preview}
+                onClick={() => {
+                  if (!preview) return;
+                  approveRun.mutate(preview.run.id);
+                }}
+              >
+                {approveRun.isPending ? 'Aprobando...' : 'Aprobar y enviar avisos'}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </div>
   );

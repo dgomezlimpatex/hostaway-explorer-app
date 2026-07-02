@@ -1301,7 +1301,7 @@ class OperationalPlanningService {
           severity: day.deficitMinutes > 60 || day.unassigned > 2 ? 'critical' : 'warning',
           category: 'capacity',
           title: `${formatPlanningDateLabel(day.date)} faltará capacidad`,
-          message: `${formatHours(day.requiredMinutes)} necesarias frente a ${formatHours(day.availableMinutes)} disponibles. Quedan ${day.unassigned} tareas sin asignar.`,
+          message: `${formatHours(day.requiredMinutes)} necesarias frente a ${formatHours(day.availableMinutes)} disponibles. Quedan ${day.unassigned} tareas sin cubrir.`,
           date: day.date,
           count: day.unassigned,
         });
@@ -1370,8 +1370,8 @@ class OperationalPlanningService {
         id: 'absence-substitutions',
         severity: urgentSubstitutions >= 3 ? 'critical' : 'warning',
         category: 'absence',
-        title: `Hay ${urgentSubstitutions} sustituciones pendientes por ausencias`,
-        message: 'Revisa la pestaña de Cobertura para aplicar los reemplazos sugeridos y evitar huecos operativos.',
+        title: `Hay ${urgentSubstitutions} tareas sin cubrir por ausencias`,
+        message: 'Revisa la pestaña de Cobertura para cubrir esos huecos antes de que lleguen al calendario.',
         count: urgentSubstitutions,
       });
     }

@@ -181,10 +181,10 @@ export const useApplyOperationalPlanningReplacement = () => {
       queryClient.invalidateQueries({ queryKey: planningKeys.buildings(activeSede?.id) });
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
       queryClient.invalidateQueries({ queryKey: ['cleaning-planning-tasks'] });
-      toast.success(`Sustitución aplicada en ${result.assignedCleanerNames.join(', ')}.`);
+      toast.success(`Baja cubierta con ${result.assignedCleanerNames.join(', ')}.`);
     },
     onError: (error) => {
-      toast.error(getErrorMessage(error, 'No se pudo aplicar la sustitución.'));
+      toast.error(getErrorMessage(error, 'No se pudo cubrir la baja.'));
     },
   });
 };
