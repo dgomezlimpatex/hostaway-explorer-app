@@ -43,6 +43,8 @@ import { ABSENCE_TYPE_CONFIG } from '@/types/workerAbsence';
 import { formatMadridDate } from '@/utils/date';
 import { CreateAbsenceModal } from '@/components/workers/absences/CreateAbsenceModal';
 import { AbsencesList } from '@/components/workers/absences/AbsencesList';
+import { useIsMobile } from '@/hooks/use-mobile';
+import { cn } from '@/lib/utils';
 
 const formatLongDate = (date: string) =>
   new Date(`${date}T12:00:00`).toLocaleDateString('es-ES', {
@@ -148,6 +150,16 @@ const getBuildingCoverageState = ({
   };
 };
 
+const planningTabOptions = [
+  { value: 'overview', label: 'Resumen' },
+  { value: 'preview', label: 'Vista previa' },
+  { value: 'workers', label: 'Equipo' },
+  { value: 'buildings', label: 'Edificios' },
+  { value: 'coverage', label: 'Cobertura' },
+  { value: 'performance', label: 'Rendimiento' },
+  { value: 'rules', label: 'Reglas' },
+] as const;
+
 const ProposalCard = ({
   item,
 }: {
@@ -195,6 +207,7 @@ const ProposalCard = ({
 );
 
 export const OperationalPlanningPage = () => {
+  const isMobile = useIsMobile();
   const { activeSede } = useSede();
   const { data: overviewData, isLoading: overviewLoading } = useOperationalPlanningOverview();
   const { data: runs = [], isLoading: runsLoading } = useOperationalPlanningRuns();
@@ -578,6 +591,25 @@ export const OperationalPlanningPage = () => {
     [preview, selectedFocusDate],
   );
 
+  const previewFocusDate = useMemo(
+    () => selectedFocusDate || groupedPreviewItems[0]?.date || null,
+    [groupedPreviewItems, selectedFocusDate],
+  );
+
+  const visiblePreviewGroups = useMemo(() => {
+    if (!isMobile) return groupedPreviewItems;
+    if (!previewFocusDate) return groupedPreviewItems.slice(0, 1);
+    return groupedPreviewItems.filter((group) => group.date === previewFocusDate);
+  }, [groupedPreviewItems, isMobile, previewFocusDate]);
+
+  const visiblePreviewConflicts = useMemo(() => {
+    if (!preview) return [];
+    if (!isMobile || !previewFocusDate) return preview.conflicts;
+    return preview.conflicts.filter(
+      (conflict) => String(conflict.details?.date || '') === previewFocusDate,
+    );
+  }, [isMobile, preview, previewFocusDate]);
+
   const conflictSummaryByCode = useMemo(() => {
     const grouped = new Map<string, number>();
 
@@ -758,7 +790,7 @@ export const OperationalPlanningPage = () => {
 
   return (
     <div className="min-h-screen bg-[linear-gradient(180deg,#f8fbff_0%,#f5f2ff_40%,#ffffff_100%)]">
-      <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 py-6 md:px-6 lg:px-8">
+      <div className="mx-auto flex w-full max-w-7xl flex-col gap-4 px-3 py-4 pb-24 md:gap-6 md:px-6 md:py-6 md:pb-6 lg:px-8">
         <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
           <Card className="border-white/80 bg-white/92">
             <CardHeader className="gap-4 md:flex-row md:items-start md:justify-between">
@@ -766,7 +798,7 @@ export const OperationalPlanningPage = () => {
                 <p className="text-xs font-black uppercase tracking-[0.28em] text-[#310984]/70">
                   Planificación operativa
                 </p>
-                <CardTitle className="mt-2 text-3xl font-black text-slate-950">
+                <CardTitle className="mt-2 text-2xl font-black text-slate-950 md:text-3xl">
                   Próximos 14 días
                 </CardTitle>
                 <CardDescription className="mt-2 text-sm text-slate-600">
@@ -780,30 +812,30 @@ export const OperationalPlanningPage = () => {
               </div>
             </CardHeader>
             <CardContent>
-              <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+              <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
                 <div className="rounded-2xl border border-sky-200 bg-sky-50 p-4">
                   <p className="text-xs font-black uppercase tracking-[0.22em] text-sky-700">Sin asignar</p>
                   <p className="mt-2 text-3xl font-black text-slate-950">{overviewData?.overview.unassignedTasks ?? 0}</p>
-                  <p className="mt-1 text-sm text-slate-600">Tareas pendientes de propuesta</p>
+                  <p className="mt-1 text-xs text-slate-600 md:text-sm">Tareas pendientes de propuesta</p>
                 </div>
                 <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
                   <p className="text-xs font-black uppercase tracking-[0.22em] text-emerald-700">Capacidad</p>
                   <p className="mt-2 text-3xl font-black text-slate-950">
                     {overviewData ? formatHours(overviewData.overview.availableMinutes) : '0 h'}
                   </p>
-                  <p className="mt-1 text-sm text-slate-600">Capacidad teórica disponible</p>
+                  <p className="mt-1 text-xs text-slate-600 md:text-sm">Capacidad teórica disponible</p>
                 </div>
                 <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
                   <p className="text-xs font-black uppercase tracking-[0.22em] text-amber-700">Incidencia de carga</p>
                   <p className={`mt-2 text-3xl font-black ${statusTone(utilizationPercent)}`}>
                     {utilizationPercent}%
                   </p>
-                  <p className="mt-1 text-sm text-slate-600">Relación horas necesarias / disponibles</p>
+                  <p className="mt-1 text-xs text-slate-600 md:text-sm">Relación horas necesarias / disponibles</p>
                 </div>
                 <div className="rounded-2xl border border-rose-200 bg-rose-50 p-4">
                   <p className="text-xs font-black uppercase tracking-[0.22em] text-rose-700">Riesgo</p>
                   <p className="mt-2 text-3xl font-black text-slate-950">{overviewData?.overview.deficitDays ?? 0}</p>
-                  <p className="mt-1 text-sm text-slate-600">Días con déficit o conflicto</p>
+                  <p className="mt-1 text-xs text-slate-600 md:text-sm">Días con déficit o conflicto</p>
                 </div>
               </div>
             </CardContent>
@@ -820,7 +852,7 @@ export const OperationalPlanningPage = () => {
               </div>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
+              <div className="grid grid-cols-2 gap-3 xl:grid-cols-1">
                 <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
                   <p className="text-xs font-bold uppercase tracking-[0.2em] text-white/50">Horas requeridas</p>
                   <p className="mt-2 text-2xl font-black text-white">
@@ -883,7 +915,27 @@ export const OperationalPlanningPage = () => {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-          <TabsList className="h-auto w-full justify-start gap-2 rounded-2xl border border-slate-200 bg-white p-2">
+          <div className="md:hidden">
+            <div className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
+              <Label className="text-xs font-black uppercase tracking-[0.2em] text-slate-500">
+                Sección
+              </Label>
+              <Select value={activeTab} onValueChange={setActiveTab}>
+                <SelectTrigger className="mt-2 rounded-xl border-slate-200 bg-slate-50">
+                  <SelectValue placeholder="Selecciona una vista" />
+                </SelectTrigger>
+                <SelectContent>
+                  {planningTabOptions.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <TabsList className="hidden h-auto w-full justify-start gap-2 rounded-2xl border border-slate-200 bg-white p-2 md:flex">
             <TabsTrigger value="overview" className="rounded-xl px-4 py-2">Resumen</TabsTrigger>
             <TabsTrigger value="preview" className="rounded-xl px-4 py-2">Vista previa</TabsTrigger>
             <TabsTrigger value="workers" className="rounded-xl px-4 py-2">Equipo</TabsTrigger>
@@ -1068,10 +1120,10 @@ export const OperationalPlanningPage = () => {
                     </CardDescription>
                   </div>
                   {preview && (
-                    <div className="flex flex-wrap gap-2">
+                    <div className="grid w-full gap-2 sm:flex sm:w-auto sm:flex-wrap">
                       <Button
                         variant="outline"
-                        className="rounded-xl"
+                        className="w-full rounded-xl sm:w-auto"
                         onClick={handleGenerate}
                         disabled={generateRun.isPending}
                       >
@@ -1080,14 +1132,14 @@ export const OperationalPlanningPage = () => {
                       </Button>
                       <Button
                         variant="outline"
-                        className="rounded-xl"
+                        className="w-full rounded-xl sm:w-auto"
                         onClick={() => discardRun.mutate(preview.run.id)}
                         disabled={discardRun.isPending || preview.run.status !== 'draft'}
                       >
                         Descartar
                       </Button>
                       <Button
-                        className="rounded-xl"
+                        className="w-full rounded-xl sm:w-auto"
                         onClick={() => approveRun.mutate(preview.run.id)}
                         disabled={approveRun.isPending || preview.run.status !== 'draft'}
                       >
@@ -1108,7 +1160,7 @@ export const OperationalPlanningPage = () => {
                     </div>
                   ) : (
                     <>
-                      <div className="grid gap-3 md:grid-cols-4">
+                      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
                         <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
                           <p className="text-xs font-black uppercase tracking-[0.2em] text-slate-500">Tareas</p>
                           <p className="mt-2 text-2xl font-black text-slate-950">{preview.run.summary.totalTasks}</p>
@@ -1129,8 +1181,30 @@ export const OperationalPlanningPage = () => {
 
                       <div className="space-y-5">
                         {groupedPreviewItems.length > 0 && (
-                          <div className="flex flex-wrap gap-2">
-                            {groupedPreviewItems.map((group) => (
+                          <div className={cn('flex flex-wrap gap-2', isMobile && 'flex-col')}>
+                            {isMobile ? (
+                              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
+                                <Label className="text-xs font-black uppercase tracking-[0.18em] text-slate-500">
+                                  Día en revisión
+                                </Label>
+                                <Select
+                                  value={previewFocusDate || groupedPreviewItems[0].date}
+                                  onValueChange={(value) => setSelectedFocusDate(value)}
+                                >
+                                  <SelectTrigger className="mt-2 rounded-xl border-slate-200 bg-white">
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {groupedPreviewItems.map((group) => (
+                                      <SelectItem key={`focus-mobile-${group.date}`} value={group.date}>
+                                        {formatLongDate(group.date)} · {group.items.length}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                            ) : (
+                              groupedPreviewItems.map((group) => (
                               <button
                                 key={`focus-${group.date}`}
                                 type="button"
@@ -1143,11 +1217,12 @@ export const OperationalPlanningPage = () => {
                               >
                                 {formatLongDate(group.date)} · {group.items.length}
                               </button>
-                            ))}
+                              ))
+                            )}
                           </div>
                         )}
 
-                        {groupedPreviewItems.map((group) => (
+                        {visiblePreviewGroups.map((group) => (
                           <div key={group.date} className="space-y-3">
                             <div className="flex items-center gap-2">
                               <CalendarDays className="h-4 w-4 text-[#310984]" />
@@ -1189,8 +1264,8 @@ export const OperationalPlanningPage = () => {
                           ))}
                         </div>
 
-                        {preview.conflicts
-                          .filter((conflict) => !selectedFocusDate || String(conflict.details?.date || '') === selectedFocusDate)
+                        {visiblePreviewConflicts
+                          .filter((conflict) => !previewFocusDate || String(conflict.details?.date || '') === previewFocusDate)
                           .map((conflict) => (
                             <div key={conflict.id} className="rounded-2xl border border-rose-200 bg-rose-50 p-4">
                               <div className="flex items-start gap-3">
@@ -1225,6 +1300,11 @@ export const OperationalPlanningPage = () => {
                     ) : (
                       <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800">
                         No hay conflictos en el borrador actual.
+                      </div>
+                    )}
+                    {preview?.conflicts.length > 0 && visiblePreviewConflicts.length === 0 && (
+                      <div className="rounded-2xl border border-dashed border-slate-300 p-4 text-sm text-slate-500">
+                        No hay conflictos para el día seleccionado.
                       </div>
                     )}
                   </CardContent>
