@@ -94,6 +94,7 @@ export const useCreateWorkerAbsence = () => {
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['worker-absences', variables.cleanerId] });
       queryClient.invalidateQueries({ queryKey: ['all-worker-absences'] });
+      queryClient.invalidateQueries({ queryKey: ['operational-planning'] });
       toast.success('Ausencia creada correctamente');
     },
     onError: (error: Error) => {
@@ -132,6 +133,7 @@ export const useUpdateWorkerAbsence = () => {
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['worker-absences', data.cleanerId] });
       queryClient.invalidateQueries({ queryKey: ['all-worker-absences'] });
+      queryClient.invalidateQueries({ queryKey: ['operational-planning'] });
       toast.success('Ausencia actualizada correctamente');
     },
     onError: (error: Error) => {
@@ -158,6 +160,7 @@ export const useDeleteWorkerAbsence = () => {
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['worker-absences', variables.cleanerId] });
       queryClient.invalidateQueries({ queryKey: ['all-worker-absences'] });
+      queryClient.invalidateQueries({ queryKey: ['operational-planning'] });
       toast.success('Ausencia eliminada correctamente');
     },
     onError: (error: Error) => {

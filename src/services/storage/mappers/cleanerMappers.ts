@@ -26,7 +26,12 @@ export const mapCleanerFromDB = (row: any): Cleaner => ({
   pin: row.pin,
   category: row.category,
   delegationName: row.delegation_name,
-  officeName: row.office_name
+  officeName: row.office_name,
+  planningMaxDailyMinutes: row.planning_max_daily_minutes ?? 480,
+  planningZone: row.planning_zone ?? null,
+  planningOperationalRestrictions: row.planning_operational_restrictions ?? null,
+  planningCanHandleLinenLoad: row.planning_can_handle_linen_load ?? true,
+  planningCanHandleComplexCleanings: row.planning_can_handle_complex_cleanings ?? true,
 });
 
 export const mapCleanerToDB = (cleaner: Partial<CreateCleanerData>): any => {
@@ -45,6 +50,11 @@ export const mapCleanerToDB = (cleaner: Partial<CreateCleanerData>): any => {
   if (cleaner.emergencyContactName !== undefined) updateData.emergency_contact_name = cleaner.emergencyContactName;
   if (cleaner.emergencyContactPhone !== undefined) updateData.emergency_contact_phone = cleaner.emergencyContactPhone;
   if (cleaner.sede_id !== undefined) updateData.sede_id = cleaner.sede_id;
+  if ((cleaner as any).planningMaxDailyMinutes !== undefined) updateData.planning_max_daily_minutes = (cleaner as any).planningMaxDailyMinutes;
+  if ((cleaner as any).planningZone !== undefined) updateData.planning_zone = (cleaner as any).planningZone;
+  if ((cleaner as any).planningOperationalRestrictions !== undefined) updateData.planning_operational_restrictions = (cleaner as any).planningOperationalRestrictions;
+  if ((cleaner as any).planningCanHandleLinenLoad !== undefined) updateData.planning_can_handle_linen_load = (cleaner as any).planningCanHandleLinenLoad;
+  if ((cleaner as any).planningCanHandleComplexCleanings !== undefined) updateData.planning_can_handle_complex_cleanings = (cleaner as any).planningCanHandleComplexCleanings;
 
   return updateData;
 };

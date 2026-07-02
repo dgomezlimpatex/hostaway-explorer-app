@@ -2,6 +2,15 @@
 export interface PropertyGroup {
   id: string;
   name: string;
+  internalCode?: string;
+  displayName?: string;
+  zone?: string;
+  clientName?: string;
+  supervisorName?: string;
+  generalInstructions?: string;
+  difficultyLevel?: number;
+  recommendedCapacity?: number;
+  planningNotes?: string;
   description?: string;
   checkOutTime: string;
   checkInTime: string;
@@ -23,8 +32,12 @@ export interface CleanerGroupAssignment {
   propertyGroupId: string;
   cleanerId: string;
   priority: number;
+  roleType?: 'primary' | 'secondary' | 'backup';
+  knowledgeLevel?: number;
   maxTasksPerDay: number;
+  maxDailyMinutesOverride?: number | null;
   estimatedTravelTimeMinutes: number;
+  notes?: string | null;
   isActive: boolean;
   createdAt: string;
   updatedAt: string;

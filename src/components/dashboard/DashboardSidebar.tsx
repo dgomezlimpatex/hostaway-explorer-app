@@ -28,6 +28,7 @@ import {
   ChevronRight,
   Package,
   Bot,
+  ClipboardList,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useRolePermissions } from '@/hooks/useRolePermissions';
@@ -105,6 +106,12 @@ const managementItems: NavigationItem[] = [
     href: '/properties',
     icon: MapPin,
     permission: 'properties'
+  },
+  {
+    title: 'Planificación',
+    href: '/planning',
+    icon: ClipboardList,
+    permission: 'propertyGroups'
   },
   {
     title: 'Control de Mudas',

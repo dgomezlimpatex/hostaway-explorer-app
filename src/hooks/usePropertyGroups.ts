@@ -11,6 +11,41 @@ export const usePropertyGroups = () => {
   });
 };
 
+export const useRemovePropertyFromGroup = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ assignmentId }: { assignmentId: string; groupId: string }) =>
+      propertyGroupStorage.removePropertyFromGroup(assignmentId),
+    onSuccess: (_, { groupId }) => {
+      queryClient.invalidateQueries({ queryKey: ['property-assignments', groupId] });
+      queryClient.invalidateQueries({ queryKey: ['operational-planning', 'buildings'] });
+      toast({
+        title: "Propiedad retirada",
+        description: "La propiedad se ha retirado del grupo operativo.",
+      });
+    },
+  });
+};
+
+export const useRemoveCleanerFromGroup = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ assignmentId }: { assignmentId: string; groupId: string }) =>
+      propertyGroupStorage.removeCleanerFromGroup(assignmentId),
+    onSuccess: (_, { groupId }) => {
+      queryClient.invalidateQueries({ queryKey: ['cleaner-assignments', groupId] });
+      queryClient.invalidateQueries({ queryKey: ['operational-planning', 'buildings'] });
+      queryClient.invalidateQueries({ queryKey: ['operational-planning', 'buildings'] });
+      toast({
+        title: "Trabajadora retirada",
+        description: "La trabajadora se ha retirado del grupo operativo.",
+      });
+    },
+  });
+};
+
 export const useCreatePropertyGroup = () => {
   const queryClient = useQueryClient();
   
@@ -19,6 +54,7 @@ export const useCreatePropertyGroup = () => {
       propertyGroupStorage.createPropertyGroup(group),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['property-groups'] });
+      queryClient.invalidateQueries({ queryKey: ['operational-planning', 'buildings'] });
       toast({
         title: "Grupo creado",
         description: "El grupo de propiedades se ha creado correctamente.",
@@ -42,6 +78,7 @@ export const useUpdatePropertyGroup = () => {
       propertyGroupStorage.updatePropertyGroup(id, updates),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['property-groups'] });
+      queryClient.invalidateQueries({ queryKey: ['operational-planning', 'buildings'] });
       toast({
         title: "Grupo actualizado",
         description: "El grupo de propiedades se ha actualizado correctamente.",
@@ -64,6 +101,7 @@ export const useDeletePropertyGroup = () => {
     mutationFn: (id: string) => propertyGroupStorage.deletePropertyGroup(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['property-groups'] });
+      queryClient.invalidateQueries({ queryKey: ['operational-planning', 'buildings'] });
       toast({
         title: "Grupo eliminado",
         description: "El grupo de propiedades se ha eliminado correctamente.",
@@ -103,6 +141,7 @@ export const useAssignPropertyToGroup = () => {
       propertyGroupStorage.assignPropertyToGroup(groupId, propertyId),
     onSuccess: (_, { groupId }) => {
       queryClient.invalidateQueries({ queryKey: ['property-assignments', groupId] });
+      queryClient.invalidateQueries({ queryKey: ['operational-planning', 'buildings'] });
       toast({
         title: "Propiedad asignada",
         description: "La propiedad se ha asignado al grupo correctamente.",
@@ -119,6 +158,7 @@ export const useAssignCleanerToGroup = () => {
       propertyGroupStorage.assignCleanerToGroup(assignment),
     onSuccess: (_, assignment) => {
       queryClient.invalidateQueries({ queryKey: ['cleaner-assignments', assignment.propertyGroupId] });
+      queryClient.invalidateQueries({ queryKey: ['operational-planning', 'buildings'] });
       toast({
         title: "Trabajadora asignada",
         description: "La trabajadora se ha asignado al grupo correctamente.",
@@ -135,6 +175,7 @@ export const useUpdateCleanerAssignment = () => {
       propertyGroupStorage.updateCleanerAssignment(id, updates),
     onSuccess: (_, { groupId }) => {
       queryClient.invalidateQueries({ queryKey: ['cleaner-assignments', groupId] });
+      queryClient.invalidateQueries({ queryKey: ['operational-planning', 'buildings'] });
       toast({
         title: "Asignación actualizada",
         description: "La asignación de la trabajadora se ha actualizado correctamente.",

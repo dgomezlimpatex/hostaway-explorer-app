@@ -18,6 +18,13 @@ export interface Property extends BaseEntity {
   // Servicio
   duracionServicio: number; // en minutos
   costeServicio: number; // en euros
+  planningEstimatedCheckoutMinutes?: number | null;
+  planningEstimatedStayMinutes?: number | null;
+  planningRequiredCleaners?: number;
+  planningComplexity?: number;
+  planningRequiresLinenLoad?: boolean;
+  planningRequiresAmenitiesLoad?: boolean;
+  planningSpecialInstructions?: string | null;
   
   // Horarios predeterminados
   checkInPredeterminado: string; // formato HH:MM
@@ -79,6 +86,13 @@ export interface CreatePropertyData {
   numeroCocinas: number;
   duracionServicio: number;
   costeServicio: number;
+  planningEstimatedCheckoutMinutes?: number | null;
+  planningEstimatedStayMinutes?: number | null;
+  planningRequiredCleaners?: number;
+  planningComplexity?: number;
+  planningRequiresLinenLoad?: boolean;
+  planningRequiresAmenitiesLoad?: boolean;
+  planningSpecialInstructions?: string | null;
   checkInPredeterminado: string;
   checkOutPredeterminado: string;
   numeroSabanas: number;

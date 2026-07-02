@@ -23,6 +23,11 @@ export interface Cleaner extends BaseEntity {
   category?: string;
   delegationName?: string;
   officeName?: string;
+  planningMaxDailyMinutes?: number;
+  planningZone?: string | null;
+  planningOperationalRestrictions?: string | null;
+  planningCanHandleLinenLoad?: boolean;
+  planningCanHandleComplexCleanings?: boolean;
 }
 
 export interface TimeSlot {

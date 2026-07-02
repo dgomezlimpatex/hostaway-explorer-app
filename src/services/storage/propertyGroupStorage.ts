@@ -22,6 +22,15 @@ class PropertyGroupStorageService {
       .from('property_groups')
       .insert({
         name: group.name,
+        internal_code: group.internalCode,
+        display_name: group.displayName,
+        zone: group.zone,
+        client_name: group.clientName,
+        supervisor_name: group.supervisorName,
+        general_instructions: group.generalInstructions,
+        difficulty_level: group.difficultyLevel ?? 1,
+        recommended_capacity: group.recommendedCapacity ?? 1,
+        planning_notes: group.planningNotes,
         description: group.description,
         check_out_time: group.checkOutTime,
         check_in_time: group.checkInTime,
@@ -42,6 +51,15 @@ class PropertyGroupStorageService {
   async updatePropertyGroup(id: string, updates: Partial<PropertyGroup>): Promise<PropertyGroup> {
     const dbUpdates: any = {};
     if (updates.name !== undefined) dbUpdates.name = updates.name;
+    if (updates.internalCode !== undefined) dbUpdates.internal_code = updates.internalCode;
+    if (updates.displayName !== undefined) dbUpdates.display_name = updates.displayName;
+    if (updates.zone !== undefined) dbUpdates.zone = updates.zone;
+    if (updates.clientName !== undefined) dbUpdates.client_name = updates.clientName;
+    if (updates.supervisorName !== undefined) dbUpdates.supervisor_name = updates.supervisorName;
+    if (updates.generalInstructions !== undefined) dbUpdates.general_instructions = updates.generalInstructions;
+    if (updates.difficultyLevel !== undefined) dbUpdates.difficulty_level = updates.difficultyLevel;
+    if (updates.recommendedCapacity !== undefined) dbUpdates.recommended_capacity = updates.recommendedCapacity;
+    if (updates.planningNotes !== undefined) dbUpdates.planning_notes = updates.planningNotes;
     if (updates.description !== undefined) dbUpdates.description = updates.description;
     if (updates.checkOutTime !== undefined) dbUpdates.check_out_time = updates.checkOutTime;
     if (updates.checkInTime !== undefined) dbUpdates.check_in_time = updates.checkInTime;
@@ -148,8 +166,12 @@ class PropertyGroupStorageService {
       propertyGroupId: row.property_group_id,
       cleanerId: row.cleaner_id,
       priority: row.priority,
+      roleType: row.role_type,
+      knowledgeLevel: row.knowledge_level,
       maxTasksPerDay: row.max_tasks_per_day,
+      maxDailyMinutesOverride: row.max_daily_minutes_override,
       estimatedTravelTimeMinutes: row.estimated_travel_time_minutes,
+      notes: row.notes,
       isActive: row.is_active,
       createdAt: row.created_at,
       updatedAt: row.updated_at
@@ -163,8 +185,12 @@ class PropertyGroupStorageService {
         property_group_id: assignment.propertyGroupId,
         cleaner_id: assignment.cleanerId,
         priority: assignment.priority,
+        role_type: assignment.roleType ?? 'primary',
+        knowledge_level: assignment.knowledgeLevel ?? 3,
         max_tasks_per_day: assignment.maxTasksPerDay,
+        max_daily_minutes_override: assignment.maxDailyMinutesOverride ?? null,
         estimated_travel_time_minutes: assignment.estimatedTravelTimeMinutes,
+        notes: assignment.notes ?? null,
         is_active: assignment.isActive
       })
       .select()
@@ -180,8 +206,12 @@ class PropertyGroupStorageService {
       propertyGroupId: data.property_group_id,
       cleanerId: data.cleaner_id,
       priority: data.priority,
+      roleType: data.role_type,
+      knowledgeLevel: data.knowledge_level,
       maxTasksPerDay: data.max_tasks_per_day,
+      maxDailyMinutesOverride: data.max_daily_minutes_override,
       estimatedTravelTimeMinutes: data.estimated_travel_time_minutes,
+      notes: data.notes,
       isActive: data.is_active,
       createdAt: data.created_at,
       updatedAt: data.updated_at
@@ -191,8 +221,12 @@ class PropertyGroupStorageService {
   async updateCleanerAssignment(id: string, updates: Partial<CleanerGroupAssignment>): Promise<CleanerGroupAssignment> {
     const dbUpdates: any = {};
     if (updates.priority !== undefined) dbUpdates.priority = updates.priority;
+    if (updates.roleType !== undefined) dbUpdates.role_type = updates.roleType;
+    if (updates.knowledgeLevel !== undefined) dbUpdates.knowledge_level = updates.knowledgeLevel;
     if (updates.maxTasksPerDay !== undefined) dbUpdates.max_tasks_per_day = updates.maxTasksPerDay;
+    if (updates.maxDailyMinutesOverride !== undefined) dbUpdates.max_daily_minutes_override = updates.maxDailyMinutesOverride;
     if (updates.estimatedTravelTimeMinutes !== undefined) dbUpdates.estimated_travel_time_minutes = updates.estimatedTravelTimeMinutes;
+    if (updates.notes !== undefined) dbUpdates.notes = updates.notes;
     if (updates.isActive !== undefined) dbUpdates.is_active = updates.isActive;
 
     const { data, error } = await supabase
@@ -212,8 +246,12 @@ class PropertyGroupStorageService {
       propertyGroupId: data.property_group_id,
       cleanerId: data.cleaner_id,
       priority: data.priority,
+      roleType: data.role_type,
+      knowledgeLevel: data.knowledge_level,
       maxTasksPerDay: data.max_tasks_per_day,
+      maxDailyMinutesOverride: data.max_daily_minutes_override,
       estimatedTravelTimeMinutes: data.estimated_travel_time_minutes,
+      notes: data.notes,
       isActive: data.is_active,
       createdAt: data.created_at,
       updatedAt: data.updated_at
@@ -236,6 +274,15 @@ class PropertyGroupStorageService {
     return {
       id: row.id,
       name: row.name,
+      internalCode: row.internal_code,
+      displayName: row.display_name,
+      zone: row.zone,
+      clientName: row.client_name,
+      supervisorName: row.supervisor_name,
+      generalInstructions: row.general_instructions,
+      difficultyLevel: row.difficulty_level,
+      recommendedCapacity: row.recommended_capacity,
+      planningNotes: row.planning_notes,
       description: row.description,
       checkOutTime: row.check_out_time,
       checkInTime: row.check_in_time,

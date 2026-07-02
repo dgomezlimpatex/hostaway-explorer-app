@@ -67,6 +67,7 @@ const Integraciones = React.lazy(() => import("./pages/Integraciones"));
 const LittleHotelierAdmin = React.lazy(() => import("./pages/LittleHotelierAdmin"));
 const AviratoAdmin = React.lazy(() => import("./pages/AviratoAdmin"));
 const AIAssistant = React.lazy(() => import("./pages/AIAssistant"));
+const PlanningPage = React.lazy(() => import("./pages/PlanningPage"));
 
 // Suspense fallback for routes loaded WITHOUT the persistent layout (auth, public, calendar)
 const FullPageSuspense = ({ children }: { children: React.ReactNode }) => (
@@ -217,6 +218,9 @@ function App() {
                     } />
                     <Route path="/workers" element={
                       <RoleProtectedRoute requiredModule="workers"><Workers /></RoleProtectedRoute>
+                    } />
+                    <Route path="/planning" element={
+                      <RoleProtectedRoute requiredModule="propertyGroups"><PlanningPage /></RoleProtectedRoute>
                     } />
                     <Route path="/checklist-templates" element={
                       <RoleProtectedRoute requiredModule="tasks" requiredAction="canCreate"><ChecklistTemplates /></RoleProtectedRoute>

@@ -18,6 +18,11 @@ export interface CreateCleanerData {
   emergencyContactName?: string;
   emergencyContactPhone?: string;
   sede_id?: string;
+  planningMaxDailyMinutes?: number;
+  planningZone?: string | null;
+  planningOperationalRestrictions?: string | null;
+  planningCanHandleLinenLoad?: boolean;
+  planningCanHandleComplexCleanings?: boolean;
 }
 
 class CleanerStorageService extends BaseStorageService<Cleaner, CreateCleanerData> {

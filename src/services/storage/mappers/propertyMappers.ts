@@ -17,6 +17,13 @@ export const mapPropertyFromDB = (row: any): Property => ({
   numeroCocinas: row.numero_cocinas ?? 1,
   duracionServicio: row.duracion_servicio,
   costeServicio: row.coste_servicio,
+  planningEstimatedCheckoutMinutes: row.planning_estimated_checkout_minutes ?? null,
+  planningEstimatedStayMinutes: row.planning_estimated_stay_minutes ?? null,
+  planningRequiredCleaners: row.planning_required_cleaners ?? 1,
+  planningComplexity: row.planning_complexity ?? 1,
+  planningRequiresLinenLoad: row.planning_requires_linen_load ?? false,
+  planningRequiresAmenitiesLoad: row.planning_requires_amenities_load ?? false,
+  planningSpecialInstructions: row.planning_special_instructions ?? null,
   checkInPredeterminado: row.check_in_predeterminado,
   checkOutPredeterminado: row.check_out_predeterminado,
   numeroSabanas: row.numero_sabanas,
@@ -60,6 +67,13 @@ export const mapPropertyToDB = (property: Partial<CreatePropertyData>): any => {
   if (property.numeroCocinas !== undefined) updateData.numero_cocinas = property.numeroCocinas;
   if (property.duracionServicio !== undefined) updateData.duracion_servicio = property.duracionServicio;
   if (property.costeServicio !== undefined) updateData.coste_servicio = property.costeServicio;
+  if (property.planningEstimatedCheckoutMinutes !== undefined) updateData.planning_estimated_checkout_minutes = property.planningEstimatedCheckoutMinutes;
+  if (property.planningEstimatedStayMinutes !== undefined) updateData.planning_estimated_stay_minutes = property.planningEstimatedStayMinutes;
+  if (property.planningRequiredCleaners !== undefined) updateData.planning_required_cleaners = property.planningRequiredCleaners;
+  if (property.planningComplexity !== undefined) updateData.planning_complexity = property.planningComplexity;
+  if (property.planningRequiresLinenLoad !== undefined) updateData.planning_requires_linen_load = property.planningRequiresLinenLoad;
+  if (property.planningRequiresAmenitiesLoad !== undefined) updateData.planning_requires_amenities_load = property.planningRequiresAmenitiesLoad;
+  if (property.planningSpecialInstructions !== undefined) updateData.planning_special_instructions = property.planningSpecialInstructions;
   if (property.checkInPredeterminado !== undefined) updateData.check_in_predeterminado = property.checkInPredeterminado;
   if (property.checkOutPredeterminado !== undefined) updateData.check_out_predeterminado = property.checkOutPredeterminado;
   if (property.numeroSabanas !== undefined) updateData.numero_sabanas = property.numeroSabanas;
