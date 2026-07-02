@@ -67,6 +67,14 @@ const formatLongDate = (date: string) =>
 
 const formatHours = (minutes: number) => `${(minutes / 60).toFixed(minutes % 60 === 0 ? 0 : 1)} h`;
 
+const minutesToHourInput = (minutes?: number | null) => {
+  const value = Number(minutes || 0);
+  if (!Number.isFinite(value) || value <= 0) return '';
+  return String(Number((value / 60).toFixed(2)));
+};
+
+const hourInputToMinutes = (value: string) => Math.max(0, Math.round((Number(value) || 0) * 60));
+
 const propertySortCollator = new Intl.Collator('es', {
   numeric: true,
   sensitivity: 'base',
@@ -2184,31 +2192,33 @@ export const OperationalPlanningPage = () => {
 
                                   <div className="mt-3 grid gap-2 md:grid-cols-3">
                                     <div className="space-y-1">
-                                      <Label className="text-xs">Checkout min</Label>
+                                      <Label className="text-xs">Horas checkout</Label>
                                       <Input
                                         type="number"
                                         min={0}
-                                        defaultValue={property!.planningEstimatedCheckoutMinutes || property!.duracionServicio || 0}
+                                        step={0.25}
+                                        defaultValue={minutesToHourInput(property!.planningEstimatedCheckoutMinutes || property!.duracionServicio || 0)}
                                         className="h-9 rounded-xl bg-white"
                                         onBlur={(e) =>
                                           updatePlanningPropertyProfile.mutate({
                                             propertyId: property!.id,
-                                            updates: { planningEstimatedCheckoutMinutes: Number(e.target.value) || 0 },
+                                            updates: { planningEstimatedCheckoutMinutes: hourInputToMinutes(e.target.value) },
                                           })
                                         }
                                       />
                                     </div>
                                     <div className="space-y-1">
-                                      <Label className="text-xs">Stay min</Label>
+                                      <Label className="text-xs">Horas huésped</Label>
                                       <Input
                                         type="number"
                                         min={0}
-                                        defaultValue={property!.planningEstimatedStayMinutes || property!.duracionServicio || 0}
+                                        step={0.25}
+                                        defaultValue={minutesToHourInput(property!.planningEstimatedStayMinutes || property!.duracionServicio || 0)}
                                         className="h-9 rounded-xl bg-white"
                                         onBlur={(e) =>
                                           updatePlanningPropertyProfile.mutate({
                                             propertyId: property!.id,
-                                            updates: { planningEstimatedStayMinutes: Number(e.target.value) || 0 },
+                                            updates: { planningEstimatedStayMinutes: hourInputToMinutes(e.target.value) },
                                           })
                                         }
                                       />
@@ -2228,71 +2238,6 @@ export const OperationalPlanningPage = () => {
                                         }
                                       />
                                     </div>
-                                  </div>
-
-                                  <div className="mt-3 grid gap-2 md:grid-cols-3">
-                                    <div className="space-y-1">
-                                      <Label className="text-xs">Complejidad</Label>
-                                      <Input
-                                        type="number"
-                                        min={1}
-                                        max={5}
-                                        defaultValue={property!.planningComplexity || 1}
-                                        className="h-9 rounded-xl bg-white"
-                                        onBlur={(e) =>
-                                          updatePlanningPropertyProfile.mutate({
-                                            propertyId: property!.id,
-                                            updates: { planningComplexity: Number(e.target.value) || 1 },
-                                          })
-                                        }
-                                      />
-                                    </div>
-                                    <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
-                                      <div className="flex items-center justify-between gap-3">
-                                        <div>
-                                          <p className="text-xs font-black uppercase tracking-[0.12em] text-slate-500">Carga lencería</p>
-                                        </div>
-                                        <Switch
-                                          checked={property!.planningRequiresLinenLoad ?? false}
-                                          onCheckedChange={(checked) =>
-                                            updatePlanningPropertyProfile.mutate({
-                                              propertyId: property!.id,
-                                              updates: { planningRequiresLinenLoad: checked },
-                                            })
-                                          }
-                                        />
-                                      </div>
-                                    </div>
-                                    <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
-                                      <div className="flex items-center justify-between gap-3">
-                                        <div>
-                                          <p className="text-xs font-black uppercase tracking-[0.12em] text-slate-500">Carga amenities</p>
-                                        </div>
-                                        <Switch
-                                          checked={property!.planningRequiresAmenitiesLoad ?? false}
-                                          onCheckedChange={(checked) =>
-                                            updatePlanningPropertyProfile.mutate({
-                                              propertyId: property!.id,
-                                              updates: { planningRequiresAmenitiesLoad: checked },
-                                            })
-                                          }
-                                        />
-                                      </div>
-                                    </div>
-                                  </div>
-
-                                  <div className="mt-3 space-y-1">
-                                    <Label className="text-xs">Instrucciones especiales</Label>
-                                    <Textarea
-                                      defaultValue={property!.planningSpecialInstructions || ''}
-                                      className="min-h-[88px] rounded-xl bg-white"
-                                      onBlur={(e) =>
-                                        updatePlanningPropertyProfile.mutate({
-                                          propertyId: property!.id,
-                                          updates: { planningSpecialInstructions: e.target.value || null },
-                                        })
-                                      }
-                                    />
                                   </div>
                                 </div>
                               ))
