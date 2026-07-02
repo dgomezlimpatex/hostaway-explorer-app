@@ -91,6 +91,74 @@ const comparePlanningProperties = (
 const normalizePropertyCode = (value?: string | null) =>
   (value || '').trim().replace(/\s+/g, '').toUpperCase();
 
+const normalizePlanningSearchText = (value?: string | null) =>
+  (value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase();
+
+const getPlanningSearchTokens = (value: string) => {
+  const ignored = new Set([
+    'apartamento',
+    'apartment',
+    'apto',
+    'piso',
+    'habitacion',
+    'habitaciones',
+    'huesped',
+    'huespedes',
+    'del',
+    'de',
+    'la',
+    'el',
+    'los',
+    'las',
+  ]);
+
+  return Array.from(new Set(
+    normalizePlanningSearchText(value)
+      .split(/[^a-z0-9]+/i)
+      .map((token) => token.trim())
+      .filter((token) => token.length >= 2 && !ignored.has(token)),
+  ));
+};
+
+const getBuildingPropertySuggestionScore = (
+  property: { codigo?: string | null; nombre?: string | null },
+  buildingText: string,
+  buildingCode: string,
+) => {
+  const propertyCode = normalizePropertyCode(property.codigo);
+  const propertySearchText = normalizePlanningSearchText(`${property.codigo || ''} ${property.nombre || ''}`);
+  const propertyDigits = propertySearchText.replace(/\D/g, '');
+  const tokens = getPlanningSearchTokens(buildingText);
+  let score = 0;
+
+  if (buildingCode.length >= 2 && propertyCode.startsWith(buildingCode)) {
+    score += 8;
+  }
+
+  tokens.forEach((token) => {
+    const isNumeric = /^\d+$/.test(token);
+
+    if (isNumeric) {
+      if (propertySearchText.includes(token) || propertyDigits.startsWith(token)) score += 4;
+      return;
+    }
+
+    if (token.length >= 4 && propertySearchText.includes(token)) {
+      score += 3;
+      return;
+    }
+
+    if (propertySearchText.includes(token)) {
+      score += 1;
+    }
+  });
+
+  return score;
+};
+
 const statusTone = (value: number, inverse = false) => {
   if (inverse) {
     if (value === 0) return 'text-emerald-600';
@@ -554,13 +622,19 @@ export const OperationalPlanningPage = () => {
       .sort(comparePlanningProperties);
   }, [properties, propertyAssignments]);
   const suggestedPropertiesForBuilding = useMemo(() => {
-    const prefix = normalizePropertyCode(buildingForm.internalCode);
-    if (prefix.length < 2) return [];
+    const buildingText = `${buildingForm.internalCode} ${buildingForm.name} ${buildingForm.displayName}`.trim();
+    const buildingCode = normalizePropertyCode(buildingForm.internalCode);
+    if (buildingText.trim().length < 2 && buildingCode.length < 2) return [];
 
     return availableProperties
-      .filter((property) => normalizePropertyCode(property.codigo).startsWith(prefix))
-      .sort(comparePlanningProperties);
-  }, [availableProperties, buildingForm.internalCode]);
+      .map((property) => ({
+        property,
+        score: getBuildingPropertySuggestionScore(property, buildingText, buildingCode),
+      }))
+      .filter((entry) => entry.score >= 3)
+      .sort((a, b) => b.score - a.score || comparePlanningProperties(a.property, b.property))
+      .map((entry) => entry.property);
+  }, [availableProperties, buildingForm.displayName, buildingForm.internalCode, buildingForm.name]);
 
   const assignedCleaners = useMemo(
     () => cleanerAssignments
@@ -2103,10 +2177,10 @@ export const OperationalPlanningPage = () => {
                               <div className="flex flex-wrap items-start justify-between gap-3">
                                 <div>
                                   <p className="text-sm font-black text-violet-950">
-                                    {suggestedPropertiesForBuilding.length} propiedades coinciden con {buildingForm.internalCode.trim().toUpperCase()}
+                                    {suggestedPropertiesForBuilding.length} propiedades parecen pertenecer a este edificio
                                   </p>
                                   <p className="mt-1 text-sm text-violet-800">
-                                    El sistema ha encontrado propiedades disponibles con el mismo código de edificio.
+                                    Las hemos detectado por código, número o nombre similar. Revísalas antes de añadirlas en bloque.
                                   </p>
                                 </div>
                                 <Button
