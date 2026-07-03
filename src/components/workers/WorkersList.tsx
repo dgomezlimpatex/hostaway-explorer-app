@@ -292,12 +292,21 @@ export const WorkersList = ({ workers, isLoading, selectedWorkerId, onViewWorker
               <TableRow
                 key={worker.id}
                 draggable
+                role="button"
+                tabIndex={0}
+                onClick={() => onViewWorker(worker)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault();
+                    onViewWorker(worker);
+                  }
+                }}
                 onDragStart={(event) => handleDragStart(event, index)}
                 onDragOver={handleDragOver}
                 onDrop={(event) => handleDrop(event, index)}
                 onDragEnd={handleDragEnd}
                 className={cn(
-                  'cursor-move transition-colors',
+                  'cursor-pointer transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#310984]',
                   draggedIndex === index && 'opacity-50',
                   selectedWorkerId === worker.id && 'bg-violet-50 ring-1 ring-inset ring-[#310984]/20',
                   !worker.isActive ? 'bg-muted/50 opacity-60' : 'hover:bg-muted/30'
@@ -305,7 +314,7 @@ export const WorkersList = ({ workers, isLoading, selectedWorkerId, onViewWorker
               >
                 <TableCell>
                   <div className="flex items-center justify-center">
-                    <GripVertical className="h-4 w-4 text-muted-foreground" />
+                    <GripVertical className="h-4 w-4 cursor-grab text-muted-foreground" />
                   </div>
                 </TableCell>
                 <TableCell>
@@ -340,7 +349,7 @@ export const WorkersList = ({ workers, isLoading, selectedWorkerId, onViewWorker
                     {worker.isActive ? 'Activo' : 'Inactivo'}
                   </Badge>
                 </TableCell>
-                <TableCell className="text-right">
+                <TableCell className="text-right" onClick={(event) => event.stopPropagation()}>
                   <div className="flex items-center justify-end gap-2">
                     <Button variant="outline" size="sm" onClick={() => onViewWorker(worker)} className="flex items-center gap-1">
                       <UserCog className="h-4 w-4" />
