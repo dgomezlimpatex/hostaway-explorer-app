@@ -17,6 +17,8 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 
+const WEEK_START_MONDAY_DAYS = [1, 2, 3, 4, 5, 6, 0];
+
 interface AbsenceCalendarViewProps {
   cleanerId: string;
   absences: WorkerAbsence[];
@@ -48,7 +50,7 @@ export const AbsenceCalendarView: React.FC<AbsenceCalendarViewProps> = ({
     const firstDay = new Date(year, month, 1);
     const lastDay = new Date(year, month + 1, 0);
     const daysInMonth = lastDay.getDate();
-    const startingDayOfWeek = firstDay.getDay();
+    const startingDayOfWeek = (firstDay.getDay() + 6) % 7;
     
     const days: Array<{ date: Date | null; isCurrentMonth: boolean }> = [];
     
@@ -257,7 +259,7 @@ export const AbsenceCalendarView: React.FC<AbsenceCalendarViewProps> = ({
       <CardContent>
         {/* Day headers */}
         <div className="grid grid-cols-7 gap-1 mb-2">
-          {[0, 1, 2, 3, 4, 5, 6].map(day => (
+          {WEEK_START_MONDAY_DAYS.map(day => (
             <div key={day} className="text-center text-xs font-medium text-muted-foreground py-1">
               {DAY_OF_WEEK_SHORT[day]}
             </div>

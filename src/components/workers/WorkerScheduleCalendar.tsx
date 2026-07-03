@@ -12,6 +12,9 @@ import { format, startOfWeek, endOfWeek, eachDayOfInterval, isSameDay } from "da
 import { es } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { useWorkSchedule, useCreateWorkSchedule, useUpdateWorkSchedule, useDeleteWorkSchedule } from '@/hooks/useWorkSchedule';
+import { WorkSchedule } from '@/types/calendar';
+
+type ScheduleType = WorkSchedule['scheduleType'];
 
 interface WorkerScheduleCalendarProps {
   workerId: string;
@@ -21,14 +24,14 @@ interface ScheduleFormData {
   scheduledStartTime: string;
   scheduledEndTime: string;
   isWorkingDay: boolean;
-  scheduleType: 'regular' | 'overtime' | 'holiday';
+  scheduleType: ScheduleType;
   notes: string;
 }
 
 export const WorkerScheduleCalendar = ({ workerId }: WorkerScheduleCalendarProps) => {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  const [editingSchedule, setEditingSchedule] = useState<any>(null);
+  const [editingSchedule, setEditingSchedule] = useState<WorkSchedule | null>(null);
   const [formData, setFormData] = useState<ScheduleFormData>({
     scheduledStartTime: '09:00',
     scheduledEndTime: '17:00',
@@ -97,7 +100,7 @@ export const WorkerScheduleCalendar = ({ workerId }: WorkerScheduleCalendarProps
     });
   };
 
-  const openEditModal = (schedule: any) => {
+  const openEditModal = (schedule: WorkSchedule) => {
     setEditingSchedule(schedule);
     setFormData({
       scheduledStartTime: schedule.scheduledStartTime,
@@ -135,6 +138,7 @@ export const WorkerScheduleCalendar = ({ workerId }: WorkerScheduleCalendarProps
                 onSelect={(date) => date && setSelectedDate(date)}
                 className="rounded-md border pointer-events-auto"
                 locale={es}
+                weekStartsOn={1}
               />
             </div>
 
@@ -186,7 +190,7 @@ export const WorkerScheduleCalendar = ({ workerId }: WorkerScheduleCalendarProps
                         <Label>Tipo de Horario</Label>
                         <Select
                           value={formData.scheduleType}
-                          onValueChange={(value: any) => setFormData({
+                          onValueChange={(value: ScheduleType) => setFormData({
                             ...formData, 
                             scheduleType: value
                           })}
@@ -327,7 +331,7 @@ export const WorkerScheduleCalendar = ({ workerId }: WorkerScheduleCalendarProps
               <Label>Tipo de Horario</Label>
               <Select
                 value={formData.scheduleType}
-                onValueChange={(value: any) => setFormData({
+                onValueChange={(value: ScheduleType) => setFormData({
                   ...formData, 
                   scheduleType: value
                 })}
