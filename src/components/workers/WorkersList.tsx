@@ -32,6 +32,7 @@ import { DeactivateWorkerDialog } from './DeactivateWorkerDialog';
 interface WorkersListProps {
   workers: Cleaner[];
   isLoading: boolean;
+  selectedWorkerId?: string | null;
   onViewWorker: (worker: Cleaner) => void;
 }
 
@@ -44,7 +45,7 @@ const initialsFor = (name: string) =>
     .slice(0, 3)
     .toUpperCase();
 
-export const WorkersList = ({ workers, isLoading, onViewWorker }: WorkersListProps) => {
+export const WorkersList = ({ workers, isLoading, selectedWorkerId, onViewWorker }: WorkersListProps) => {
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   const [localWorkers, setLocalWorkers] = useState<Cleaner[]>(workers);
   const [workerToDeactivate, setWorkerToDeactivate] = useState<Cleaner | null>(null);
@@ -150,7 +151,8 @@ export const WorkersList = ({ workers, isLoading, onViewWorker }: WorkersListPro
             <Card
               key={worker.id}
               className={cn(
-                'overflow-hidden border-0 bg-white shadow-sm',
+                'overflow-hidden border-0 bg-white shadow-sm ring-offset-2 transition',
+                selectedWorkerId === worker.id && 'ring-2 ring-[#310984]',
                 !worker.isActive && 'bg-slate-100/80'
               )}
             >
@@ -297,6 +299,7 @@ export const WorkersList = ({ workers, isLoading, onViewWorker }: WorkersListPro
                 className={cn(
                   'cursor-move transition-colors',
                   draggedIndex === index && 'opacity-50',
+                  selectedWorkerId === worker.id && 'bg-violet-50 ring-1 ring-inset ring-[#310984]/20',
                   !worker.isActive ? 'bg-muted/50 opacity-60' : 'hover:bg-muted/30'
                 )}
               >
@@ -341,7 +344,7 @@ export const WorkersList = ({ workers, isLoading, onViewWorker }: WorkersListPro
                   <div className="flex items-center justify-end gap-2">
                     <Button variant="outline" size="sm" onClick={() => onViewWorker(worker)} className="flex items-center gap-1">
                       <UserCog className="h-4 w-4" />
-                      Ficha
+                      Abrir ficha
                     </Button>
                     {worker.isActive ? (
                       <Button

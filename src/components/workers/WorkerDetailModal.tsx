@@ -16,7 +16,19 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { BriefcaseBusiness, CalendarDays, CalendarX2, CheckCircle2, Clock, Mail, MapPin, Phone, Save, UserRoundCheck, X } from 'lucide-react';
+import {
+  BriefcaseBusiness,
+  CalendarDays,
+  CalendarX2,
+  CheckCircle2,
+  Clock,
+  Mail,
+  MapPin,
+  Phone,
+  Save,
+  UserRoundCheck,
+  X,
+} from 'lucide-react';
 import { Cleaner } from '@/types/calendar';
 import { CreateCleanerData } from '@/services/cleanerStorage';
 import { useUpdateCleaner } from '@/hooks/useCleaners';
@@ -30,6 +42,11 @@ interface WorkerDetailModalProps {
   worker: Cleaner | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+}
+
+interface WorkerDetailPanelProps {
+  worker: Cleaner;
+  className?: string;
 }
 
 type WorkerFormData = Pick<
@@ -77,6 +94,11 @@ const contractTypeLabel = (type?: string) => {
   }
 };
 
+const formatHours = (minutes?: number | null) => {
+  const value = Math.round(((minutes || 0) / 60) * 100) / 100;
+  return `${value} h`;
+};
+
 const getInitialFormData = (worker: Cleaner): WorkerFormData => ({
   name: worker.name,
   email: worker.email || '',
@@ -98,94 +120,94 @@ const getInitialFormData = (worker: Cleaner): WorkerFormData => ({
 });
 
 export const WorkerDetailModal = ({ worker, open, onOpenChange }: WorkerDetailModalProps) => {
-  const [activeTab, setActiveTab] = useState('profile');
-  const { data: contracts = [] } = useCleanerContracts(worker?.id || '');
-  const activeContract = contracts.find((contract) => contract.isActive);
-
-  useEffect(() => {
-    if (open) setActiveTab('profile');
-  }, [open, worker?.id]);
-
-  const displayHours = activeContract?.contractHoursPerWeek || worker?.contractHoursPerWeek || 0;
-  const displayRate = activeContract?.hourlyRate || worker?.hourlyRate;
-  const displayContractType = activeContract?.contractType || worker?.contractType;
-
   if (!worker) return null;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="flex max-h-[94vh] w-[calc(100vw-1rem)] max-w-6xl flex-col overflow-hidden rounded-2xl p-0 sm:w-full">
-        <DialogHeader className="border-b bg-gradient-to-br from-slate-950 via-slate-900 to-[#310984] p-4 text-white sm:p-6">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex min-w-0 items-center gap-3">
-              <Avatar className="h-14 w-14 shrink-0 border border-white/20 bg-white/10">
-                <AvatarImage src={worker.avatar || undefined} />
-                <AvatarFallback className="bg-white text-base font-black text-[#310984]">
-                  {initialsFor(worker.name)}
-                </AvatarFallback>
-              </Avatar>
-              <div className="min-w-0">
-                <DialogTitle className="truncate text-xl font-black sm:text-2xl">{worker.name}</DialogTitle>
-                <DialogDescription className="mt-1 flex flex-wrap items-center gap-2 text-slate-200">
-                  <span>{worker.category || 'Trabajadora'}</span>
-                  {worker.externalId && <Badge className="border-0 bg-emerald-400 text-slate-950">REGISTRO</Badge>}
-                  <Badge className={cn('border-0', worker.isActive ? 'bg-white text-slate-950' : 'bg-slate-700 text-white')}>
-                    {worker.isActive ? 'Activa' : 'Inactiva'}
-                  </Badge>
-                </DialogDescription>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-3 gap-2 sm:min-w-[360px]">
-              <MetricPill label="Contrato" value={`${displayHours || 0} h`} />
-              <MetricPill label="Tarifa" value={displayRate ? `${displayRate} €` : 'N/D'} />
-              <MetricPill label="Tipo" value={contractTypeLabel(displayContractType)} />
-            </div>
-          </div>
-        </DialogHeader>
-
-        <div className="min-h-0 flex-1 overflow-y-auto bg-slate-50 p-3 sm:p-5">
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-            <TabsList className="sticky top-0 z-10 grid h-auto grid-cols-2 rounded-2xl bg-white p-1 shadow-sm sm:grid-cols-4">
-              <TabsTrigger value="profile" className="rounded-xl py-2.5">
-                Ficha
-              </TabsTrigger>
-              <TabsTrigger value="tasks" className="rounded-xl py-2.5">
-                Tareas
-              </TabsTrigger>
-              <TabsTrigger value="absences" className="rounded-xl py-2.5">
-                Ausencias
-              </TabsTrigger>
-              <TabsTrigger value="contracts" className="rounded-xl py-2.5">
-                Contratos
-              </TabsTrigger>
-            </TabsList>
-
-            <TabsContent value="profile" className="mt-0">
-              <WorkerProfilePanel worker={worker} />
-            </TabsContent>
-
-            <TabsContent value="tasks" className="mt-0">
-              <SectionShell title="Tareas y horas" description="Revisa el trabajo asignado y el tiempo registrado.">
-                <TaskTimeBreakdown workerId={worker.id} workerName={worker.name} />
-              </SectionShell>
-            </TabsContent>
-
-            <TabsContent value="absences" className="mt-0">
-              <SectionShell title="Ausencias y cobertura" description="Crea bajas, días libres y limpiezas de mantenimiento sin salir de la ficha.">
-                <AbsencesTab cleanerId={worker.id} cleanerName={worker.name} />
-              </SectionShell>
-            </TabsContent>
-
-            <TabsContent value="contracts" className="mt-0">
-              <SectionShell title="Contratos" description="Gestiona contratos vigentes, vencidos y borradores.">
-                <ContractManagement cleanerId={worker.id} cleanerName={worker.name} isManager />
-              </SectionShell>
-            </TabsContent>
-          </Tabs>
-        </div>
+        <WorkerDetailPanel worker={worker} />
       </DialogContent>
     </Dialog>
+  );
+};
+
+export const WorkerDetailPanel = ({ worker, className }: WorkerDetailPanelProps) => {
+  const [activeTab, setActiveTab] = useState('profile');
+  const { data: contracts = [] } = useCleanerContracts(worker.id);
+  const activeContract = contracts.find((contract) => contract.isActive);
+
+  useEffect(() => {
+    setActiveTab('profile');
+  }, [worker.id]);
+
+  const displayHours = activeContract?.contractHoursPerWeek || worker.contractHoursPerWeek || 0;
+  const displayRate = activeContract?.hourlyRate || worker.hourlyRate;
+  const displayContractType = activeContract?.contractType || worker.contractType;
+
+  return (
+    <div className={cn('flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border bg-white shadow-sm', className)}>
+      <DialogHeader className="border-b bg-gradient-to-br from-slate-950 via-slate-900 to-[#310984] p-4 text-white sm:p-6">
+        <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+          <div className="flex min-w-0 items-center gap-3">
+            <Avatar className="h-14 w-14 shrink-0 border border-white/20 bg-white/10">
+              <AvatarImage src={worker.avatar || undefined} />
+              <AvatarFallback className="bg-white text-base font-black text-[#310984]">
+                {initialsFor(worker.name)}
+              </AvatarFallback>
+            </Avatar>
+            <div className="min-w-0">
+              <DialogTitle className="truncate text-xl font-black sm:text-2xl">{worker.name}</DialogTitle>
+              <DialogDescription className="mt-1 flex flex-wrap items-center gap-2 text-slate-200">
+                <span>{worker.category || 'Trabajadora'}</span>
+                {worker.externalId && <Badge className="border-0 bg-emerald-400 text-slate-950">REGISTRO</Badge>}
+                <Badge className={cn('border-0', worker.isActive ? 'bg-white text-slate-950' : 'bg-slate-700 text-white')}>
+                  {worker.isActive ? 'Activa' : 'Inactiva'}
+                </Badge>
+              </DialogDescription>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-3 gap-2 xl:min-w-[360px]">
+            <MetricPill label="Contrato" value={`${displayHours || 0} h`} />
+            <MetricPill label="Tarifa" value={displayRate ? `${displayRate} €` : 'N/D'} />
+            <MetricPill label="Tipo" value={contractTypeLabel(displayContractType)} />
+          </div>
+        </div>
+      </DialogHeader>
+
+      <div className="min-h-0 flex-1 overflow-y-auto bg-slate-50 p-3 sm:p-5">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+          <TabsList className="sticky top-0 z-10 grid h-auto grid-cols-2 rounded-2xl bg-white p-1 shadow-sm sm:grid-cols-4">
+            <TabsTrigger value="profile" className="rounded-xl py-2.5">Ficha</TabsTrigger>
+            <TabsTrigger value="tasks" className="rounded-xl py-2.5">Tareas</TabsTrigger>
+            <TabsTrigger value="absences" className="rounded-xl py-2.5">Ausencias</TabsTrigger>
+            <TabsTrigger value="contracts" className="rounded-xl py-2.5">Contratos</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="profile" className="mt-0">
+            <WorkerProfilePanel worker={worker} />
+          </TabsContent>
+
+          <TabsContent value="tasks" className="mt-0">
+            <SectionShell title="Tareas y horas" description="Revisa el trabajo asignado y el tiempo registrado.">
+              <TaskTimeBreakdown workerId={worker.id} workerName={worker.name} />
+            </SectionShell>
+          </TabsContent>
+
+          <TabsContent value="absences" className="mt-0">
+            <SectionShell title="Ausencias y cobertura" description="Crea bajas, días libres y limpiezas de mantenimiento sin salir de la ficha.">
+              <AbsencesTab cleanerId={worker.id} cleanerName={worker.name} />
+            </SectionShell>
+          </TabsContent>
+
+          <TabsContent value="contracts" className="mt-0">
+            <SectionShell title="Contratos" description="Gestiona contratos vigentes, vencidos y borradores.">
+              <ContractManagement cleanerId={worker.id} cleanerName={worker.name} isManager />
+            </SectionShell>
+          </TabsContent>
+        </Tabs>
+      </div>
+    </div>
   );
 };
 
@@ -256,7 +278,6 @@ const WorkerProfilePanel = ({ worker }: { worker: Cleaner }) => {
       },
       {
         onSuccess: () => {
-          // React Query refreshes the worker list. Keep the local form aligned meanwhile.
           setFormData((current) => ({ ...current, name: current.name.trim() }));
         },
       },
@@ -264,7 +285,7 @@ const WorkerProfilePanel = ({ worker }: { worker: Cleaner }) => {
   };
 
   return (
-    <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
+    <div className="grid gap-4 2xl:grid-cols-[minmax(0,1fr)_320px]">
       <Card className="border-0 shadow-sm">
         <CardContent className="space-y-5 p-4 sm:p-5">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -281,87 +302,43 @@ const WorkerProfilePanel = ({ worker }: { worker: Cleaner }) => {
               )}
               <Button onClick={saveChanges} disabled={!hasChanges || updateCleaner.isPending || !formData.name?.trim()}>
                 <Save className="mr-2 h-4 w-4" />
-                {updateCleaner.isPending ? 'Guardando...' : 'Guardar'}
+                {updateCleaner.isPending ? 'Guardando...' : 'Guardar ficha'}
               </Button>
             </div>
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2">
             <Field label="Nombre completo" hint={isLinked ? 'Viene de REGISTRO, pero puedes ajustarlo aquí si lo necesitas.' : undefined}>
-              <Input
-                value={formData.name || ''}
-                onChange={(event) => updateField('name', event.target.value)}
-                className="h-11"
-              />
+              <Input value={formData.name || ''} onChange={(event) => updateField('name', event.target.value)} className="h-11" />
             </Field>
 
             <Field label="Email">
-              <Input
-                type="email"
-                value={formData.email || ''}
-                onChange={(event) => updateField('email', event.target.value)}
-                placeholder="correo@ejemplo.com"
-                className="h-11"
-              />
+              <Input type="email" value={formData.email || ''} onChange={(event) => updateField('email', event.target.value)} placeholder="correo@ejemplo.com" className="h-11" />
             </Field>
 
             <Field label="Teléfono">
-              <Input
-                value={formData.telefono || ''}
-                onChange={(event) => updateField('telefono', event.target.value)}
-                placeholder="Teléfono"
-                className="h-11"
-              />
+              <Input value={formData.telefono || ''} onChange={(event) => updateField('telefono', event.target.value)} placeholder="Teléfono" className="h-11" />
             </Field>
 
             <Field label="Categoría / puesto">
-              <Input
-                value={formData.category || ''}
-                onChange={(event) => updateField('category', event.target.value)}
-                placeholder="Limpiador/a, encargado/a..."
-                className="h-11"
-              />
+              <Input value={formData.category || ''} onChange={(event) => updateField('category', event.target.value)} placeholder="Limpiador/a, encargado/a..." className="h-11" />
             </Field>
 
             <Field label="Avatar URL">
-              <Input
-                value={formData.avatar || ''}
-                onChange={(event) => updateField('avatar', event.target.value)}
-                placeholder="https://..."
-                className="h-11"
-              />
+              <Input value={formData.avatar || ''} onChange={(event) => updateField('avatar', event.target.value)} placeholder="https://..." className="h-11" />
             </Field>
 
             <Field label="Horas semanales">
-              <Input
-                type="number"
-                min="0"
-                max="80"
-                value={formData.contractHoursPerWeek || 0}
-                onChange={(event) => updateField('contractHoursPerWeek', Number(event.target.value) || 0)}
-                className="h-11"
-              />
+              <Input type="number" min="0" max="80" value={formData.contractHoursPerWeek || 0} onChange={(event) => updateField('contractHoursPerWeek', Number(event.target.value) || 0)} className="h-11" />
             </Field>
 
             <Field label="Tarifa por hora">
-              <Input
-                type="number"
-                min="0"
-                step="0.01"
-                value={formData.hourlyRate || 0}
-                onChange={(event) => updateField('hourlyRate', Number(event.target.value) || 0)}
-                className="h-11"
-              />
+              <Input type="number" min="0" step="0.01" value={formData.hourlyRate || 0} onChange={(event) => updateField('hourlyRate', Number(event.target.value) || 0)} className="h-11" />
             </Field>
 
             <Field label="Tipo de contrato">
-              <Select
-                value={formData.contractType || 'part-time'}
-                onValueChange={(value) => updateField('contractType', value)}
-              >
-                <SelectTrigger className="h-11">
-                  <SelectValue />
-                </SelectTrigger>
+              <Select value={formData.contractType || 'part-time'} onValueChange={(value) => updateField('contractType', value)}>
+                <SelectTrigger className="h-11"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="full-time">Tiempo completo</SelectItem>
                   <SelectItem value="part-time">Tiempo parcial</SelectItem>
@@ -372,21 +349,11 @@ const WorkerProfilePanel = ({ worker }: { worker: Cleaner }) => {
             </Field>
 
             <Field label="Fecha de inicio">
-              <Input
-                type="date"
-                value={formData.startDate || ''}
-                onChange={(event) => updateField('startDate', event.target.value)}
-                className="h-11"
-              />
+              <Input type="date" value={formData.startDate || ''} onChange={(event) => updateField('startDate', event.target.value)} className="h-11" />
             </Field>
 
             <Field label="Zona operativa">
-              <Input
-                value={formData.planningZone || ''}
-                onChange={(event) => updateField('planningZone', event.target.value)}
-                placeholder="Ej: Marina 30, After Surf, Centro..."
-                className="h-11"
-              />
+              <Input value={formData.planningZone || ''} onChange={(event) => updateField('planningZone', event.target.value)} placeholder="Ej: Marina 30, After Surf, Centro..." className="h-11" />
             </Field>
 
             <Field label="Máximo diario (horas)">
@@ -402,45 +369,27 @@ const WorkerProfilePanel = ({ worker }: { worker: Cleaner }) => {
             </Field>
 
             <Field label="Contacto de emergencia">
-              <Input
-                value={formData.emergencyContactName || ''}
-                onChange={(event) => updateField('emergencyContactName', event.target.value)}
-                placeholder="Nombre"
-                className="h-11"
-              />
+              <Input value={formData.emergencyContactName || ''} onChange={(event) => updateField('emergencyContactName', event.target.value)} placeholder="Nombre" className="h-11" />
             </Field>
 
             <Field label="Teléfono de emergencia">
-              <Input
-                value={formData.emergencyContactPhone || ''}
-                onChange={(event) => updateField('emergencyContactPhone', event.target.value)}
-                placeholder="Teléfono"
-                className="h-11"
-              />
+              <Input value={formData.emergencyContactPhone || ''} onChange={(event) => updateField('emergencyContactPhone', event.target.value)} placeholder="Teléfono" className="h-11" />
             </Field>
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2">
-            <div className="flex items-center justify-between rounded-2xl border bg-slate-50 p-4">
-              <div>
-                <Label className="text-sm font-black text-slate-950">Puede cargar lencería</Label>
-                <p className="text-xs text-slate-500">Útil para sustituciones y planificación.</p>
-              </div>
-              <Switch
-                checked={!!formData.planningCanHandleLinenLoad}
-                onCheckedChange={(checked) => updateField('planningCanHandleLinenLoad', checked)}
-              />
-            </div>
-            <div className="flex items-center justify-between rounded-2xl border bg-slate-50 p-4">
-              <div>
-                <Label className="text-sm font-black text-slate-950">Limpiezas complejas</Label>
-                <p className="text-xs text-slate-500">Marca si puede asumir tareas exigentes.</p>
-              </div>
-              <Switch
-                checked={!!formData.planningCanHandleComplexCleanings}
-                onCheckedChange={(checked) => updateField('planningCanHandleComplexCleanings', checked)}
-              />
-            </div>
+            <ToggleCard
+              label="Puede cargar lencería"
+              description="Útil para sustituciones y planificación."
+              checked={!!formData.planningCanHandleLinenLoad}
+              onCheckedChange={(checked) => updateField('planningCanHandleLinenLoad', checked)}
+            />
+            <ToggleCard
+              label="Limpiezas complejas"
+              description="Marca si puede asumir tareas exigentes."
+              checked={!!formData.planningCanHandleComplexCleanings}
+              onCheckedChange={(checked) => updateField('planningCanHandleComplexCleanings', checked)}
+            />
           </div>
 
           <Field label="Restricciones operativas">
@@ -452,18 +401,12 @@ const WorkerProfilePanel = ({ worker }: { worker: Cleaner }) => {
             />
           </Field>
 
-          <div className="flex items-center justify-between rounded-2xl border bg-slate-50 p-4">
-            <div>
-              <Label className="text-sm font-black text-slate-950">Trabajadora activa</Label>
-              <p className="text-xs text-slate-500">
-                Las trabajadoras inactivas no deberían usarse para nuevas asignaciones.
-              </p>
-            </div>
-            <Switch
-              checked={!!formData.isActive}
-              onCheckedChange={(checked) => updateField('isActive', checked)}
-            />
-          </div>
+          <ToggleCard
+            label="Trabajadora activa"
+            description="Las trabajadoras inactivas no deberían usarse para nuevas asignaciones."
+            checked={!!formData.isActive}
+            onCheckedChange={(checked) => updateField('isActive', checked)}
+          />
         </CardContent>
       </Card>
 
@@ -476,7 +419,7 @@ const WorkerProfilePanel = ({ worker }: { worker: Cleaner }) => {
             <InfoLine icon={CheckCircle2} label="Acceso" value={worker.user_id ? 'Usuario vinculado' : 'Sin usuario vinculado'} />
             <InfoLine icon={UserRoundCheck} label="Estado" value={worker.isActive ? 'Activa para asignar' : 'Inactiva'} />
             <InfoLine icon={MapPin} label="Zona" value={worker.planningZone || 'Sin zona definida'} />
-            <InfoLine icon={CalendarDays} label="Máximo diario" value={`${Math.round(((worker.planningMaxDailyMinutes || 0) / 60) * 100) / 100} h`} />
+            <InfoLine icon={CalendarDays} label="Máximo diario" value={formatHours(worker.planningMaxDailyMinutes)} />
           </CardContent>
         </Card>
 
@@ -500,8 +443,8 @@ const WorkerProfilePanel = ({ worker }: { worker: Cleaner }) => {
         <Card className="border-0 bg-[#f4f0ff] shadow-sm">
           <CardContent className="space-y-2 p-4">
             <h3 className="text-sm font-black text-[#310984]">Acciones frecuentes</h3>
-            <QuickHint icon={CalendarX2} text="Ausencias: entra en la pestaña Ausencias y pulsa Nueva ausencia." />
-            <QuickHint icon={BriefcaseBusiness} text="Contratos: entra en Contratos y pulsa Nuevo contrato." />
+            <QuickHint icon={CalendarX2} text="Ausencias: abre la pestaña Ausencias y pulsa Nueva ausencia." />
+            <QuickHint icon={BriefcaseBusiness} text="Contratos: abre Contratos y pulsa Nuevo contrato." />
           </CardContent>
         </Card>
       </aside>
@@ -530,6 +473,26 @@ const Field = ({
   </div>
 );
 
+const ToggleCard = ({
+  label,
+  description,
+  checked,
+  onCheckedChange,
+}: {
+  label: string;
+  description: string;
+  checked: boolean;
+  onCheckedChange: (checked: boolean) => void;
+}) => (
+  <div className="flex items-center justify-between gap-4 rounded-2xl border bg-slate-50 p-4">
+    <div>
+      <Label className="text-sm font-black text-slate-950">{label}</Label>
+      <p className="text-xs text-slate-500">{description}</p>
+    </div>
+    <Switch checked={checked} onCheckedChange={onCheckedChange} />
+  </div>
+);
+
 const InfoLine = ({
   icon: Icon,
   label,
@@ -552,7 +515,7 @@ const DataRow = ({ label, value, mono }: { label: string; value?: string | null;
   <div className="flex items-center justify-between gap-3 border-b border-slate-100 pb-2 last:border-0 last:pb-0">
     <span className="text-slate-500">{label}</span>
     <span className={cn('truncate text-right font-semibold text-slate-950', mono && 'font-mono text-xs')}>
-      {value || '—'}
+      {value || '-'}
     </span>
   </div>
 );
