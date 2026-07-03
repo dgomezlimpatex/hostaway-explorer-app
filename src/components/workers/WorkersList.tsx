@@ -2,18 +2,10 @@ import React, { useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
 import { Card, CardContent } from '@/components/ui/card';
-import { GripVertical, Mail, Phone, User, UserCheck, UserCog, UserX } from 'lucide-react';
+import { Mail, Phone, User, UserCheck, UserX } from 'lucide-react';
 import { Cleaner } from '@/types/calendar';
-import { useDeleteCleaner, useUpdateCleaner, useUpdateCleanersOrder } from '@/hooks/useCleaners';
+import { useDeleteCleaner, useUpdateCleaner } from '@/hooks/useCleaners';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from '@/lib/utils';
 import {
@@ -46,13 +38,11 @@ const initialsFor = (name: string) =>
     .toUpperCase();
 
 export const WorkersList = ({ workers, isLoading, selectedWorkerId, onViewWorker }: WorkersListProps) => {
-  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   const [localWorkers, setLocalWorkers] = useState<Cleaner[]>(workers);
   const [workerToDeactivate, setWorkerToDeactivate] = useState<Cleaner | null>(null);
   const isMobile = useIsMobile();
 
   const deleteCleaner = useDeleteCleaner();
-  const updateCleanersOrder = useUpdateCleanersOrder();
   const updateCleaner = useUpdateCleaner();
 
   React.useEffect(() => {
@@ -73,45 +63,6 @@ export const WorkersList = ({ workers, isLoading, selectedWorkerId, onViewWorker
       id: worker.id,
       updates: { isActive: true },
     });
-  };
-
-  const handleDragStart = (event: React.DragEvent, index: number) => {
-    setDraggedIndex(index);
-    event.dataTransfer.effectAllowed = 'move';
-    event.dataTransfer.setData('text/plain', index.toString());
-  };
-
-  const handleDragOver = (event: React.DragEvent) => {
-    event.preventDefault();
-    event.dataTransfer.dropEffect = 'move';
-  };
-
-  const handleDrop = (event: React.DragEvent, dropIndex: number) => {
-    event.preventDefault();
-
-    if (draggedIndex === null || draggedIndex === dropIndex) {
-      setDraggedIndex(null);
-      return;
-    }
-
-    const newWorkers = [...localWorkers];
-    const draggedWorker = newWorkers[draggedIndex];
-    newWorkers.splice(draggedIndex, 1);
-    newWorkers.splice(dropIndex, 0, draggedWorker);
-
-    setLocalWorkers(newWorkers);
-    setDraggedIndex(null);
-
-    const orderUpdates = newWorkers.map((worker, index) => ({
-      id: worker.id,
-      sortOrder: index,
-    }));
-
-    updateCleanersOrder.mutate(orderUpdates);
-  };
-
-  const handleDragEnd = () => {
-    setDraggedIndex(null);
   };
 
   const deactivateDialog = (
@@ -276,141 +227,52 @@ export const WorkersList = ({ workers, isLoading, selectedWorkerId, onViewWorker
 
   return (
     <>
-      <div className="rounded-md border">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="w-9" />
-              <TableHead className="w-[34%]">Trabajador</TableHead>
-              <TableHead className="w-[30%]">Contacto</TableHead>
-              <TableHead>Estado</TableHead>
-              <TableHead className="text-right">Acciones</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {localWorkers.map((worker, index) => (
-              <TableRow
-                key={worker.id}
-                draggable
-                role="button"
-                tabIndex={0}
-                onClick={() => onViewWorker(worker)}
-                onKeyDown={(event) => {
-                  if (event.key === 'Enter' || event.key === ' ') {
-                    event.preventDefault();
-                    onViewWorker(worker);
-                  }
-                }}
-                onDragStart={(event) => handleDragStart(event, index)}
-                onDragOver={handleDragOver}
-                onDrop={(event) => handleDrop(event, index)}
-                onDragEnd={handleDragEnd}
-                className={cn(
-                  'cursor-pointer transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#310984]',
-                  draggedIndex === index && 'opacity-50',
-                  selectedWorkerId === worker.id && 'bg-violet-50 ring-1 ring-inset ring-[#310984]/20',
-                  !worker.isActive ? 'bg-muted/50 opacity-60' : 'hover:bg-muted/30'
-                )}
-              >
-                <TableCell>
-                  <div className="flex items-center justify-center">
-                    <GripVertical className="h-4 w-4 cursor-grab text-muted-foreground" />
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <div className="flex items-center space-x-3">
-                    <Avatar className="h-8 w-8">
-                      <AvatarImage src={worker.avatar || undefined} />
-                      <AvatarFallback>{initialsFor(worker.name)}</AvatarFallback>
-                    </Avatar>
-                    <div>
-                      <div className={cn('flex items-center gap-2 font-medium', !worker.isActive && 'text-muted-foreground')}>
-                        {worker.name}
-                        {worker.externalId && (
-                          <span className="rounded bg-emerald-100 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700">
-                            REGISTRO
-                          </span>
-                        )}
-                      </div>
-                      {worker.category && (
-                        <div className="text-xs text-muted-foreground">{worker.category}</div>
-                      )}
-                    </div>
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <div className="space-y-1">
-                    {worker.email && <div className="text-sm text-muted-foreground">{worker.email}</div>}
-                    {worker.telefono && <div className="text-sm text-muted-foreground">{worker.telefono}</div>}
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <Badge variant={worker.isActive ? 'default' : 'secondary'}>
-                    {worker.isActive ? 'Activo' : 'Inactivo'}
-                  </Badge>
-                </TableCell>
-                <TableCell className="text-right" onClick={(event) => event.stopPropagation()}>
-                  <div className="flex items-center justify-end gap-2">
-                    <Button variant="outline" size="sm" onClick={() => onViewWorker(worker)} className="flex items-center gap-1">
-                      <UserCog className="h-4 w-4" />
-                      Abrir ficha
-                    </Button>
-                    {worker.isActive ? (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleToggleActive(worker)}
-                        className="flex items-center gap-1 border-yellow-500 text-yellow-700 hover:bg-yellow-50"
-                      >
-                        <UserX className="h-4 w-4" />
-                        Desactivar
-                      </Button>
-                    ) : (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleToggleActive(worker)}
-                        className="flex items-center gap-1 border-green-500 text-green-700 hover:bg-green-50"
-                      >
-                        <UserCheck className="h-4 w-4" />
-                        Reactivar
-                      </Button>
-                    )}
-                    {worker.externalId ? (
-                      <Button variant="destructive" size="sm" disabled title="Gestionado desde REGISTRO. Usa Desactivar.">
-                        Eliminar
-                      </Button>
-                    ) : (
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button variant="destructive" size="sm">Eliminar</Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>Eliminar trabajador</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              Esta acción no se puede deshacer. Se eliminará permanentemente el trabajador
-                              "{worker.name}" y todas sus tareas asignadas quedaran sin asignar.
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                            <AlertDialogAction
-                              onClick={() => handleDelete(worker.id)}
-                              className="bg-destructive hover:bg-destructive/90"
-                            >
-                              Eliminar definitivamente
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
-                    )}
-                  </div>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+      <div className="space-y-2">
+        {localWorkers.map((worker) => {
+          const isSelected = selectedWorkerId === worker.id;
+
+          return (
+            <button
+              key={worker.id}
+              type="button"
+              onClick={() => onViewWorker(worker)}
+              className={cn(
+                'flex w-full items-center gap-3 rounded-2xl border bg-white p-3 text-left shadow-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#310984]',
+                isSelected && 'border-[#310984]/30 bg-violet-50 shadow-md ring-1 ring-[#310984]/20',
+                !isSelected && 'border-slate-200 hover:border-[#310984]/25 hover:bg-slate-50',
+                !worker.isActive && 'opacity-70'
+              )}
+            >
+              <Avatar className="h-10 w-10 shrink-0">
+                <AvatarImage src={worker.avatar || undefined} />
+                <AvatarFallback className="bg-slate-100 text-xs font-black text-slate-700">
+                  {initialsFor(worker.name)}
+                </AvatarFallback>
+              </Avatar>
+
+              <div className="min-w-0 flex-1">
+                <p className={cn('line-clamp-2 text-sm font-black leading-tight text-slate-950', !worker.isActive && 'text-slate-500')}>
+                  {worker.name}
+                </p>
+                <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                  {worker.category && (
+                    <span className="truncate text-xs text-slate-500">{worker.category}</span>
+                  )}
+                  {worker.externalId && (
+                    <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-black text-emerald-700">
+                      REGISTRO
+                    </span>
+                  )}
+                  {!worker.isActive && (
+                    <span className="rounded-full bg-slate-200 px-2 py-0.5 text-[10px] font-black text-slate-600">
+                      INACTIVA
+                    </span>
+                  )}
+                </div>
+              </div>
+            </button>
+          );
+        })}
       </div>
       {deactivateDialog}
     </>
