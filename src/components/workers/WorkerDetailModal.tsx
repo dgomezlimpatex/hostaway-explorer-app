@@ -13,17 +13,12 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Switch } from '@/components/ui/switch';
-import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
   BriefcaseBusiness,
-  CalendarDays,
   CalendarX2,
   CheckCircle2,
-  Clock,
   Mail,
-  MapPin,
   Phone,
   Save,
   UserRoundCheck,
@@ -55,21 +50,23 @@ type WorkerFormData = Pick<
   | 'name'
   | 'email'
   | 'telefono'
-  | 'avatar'
   | 'isActive'
   | 'category'
   | 'startDate'
-  | 'emergencyContactName'
-  | 'emergencyContactPhone'
-  | 'contractHoursPerWeek'
-  | 'hourlyRate'
-  | 'contractType'
-  | 'planningMaxDailyMinutes'
-  | 'planningZone'
-  | 'planningOperationalRestrictions'
-  | 'planningCanHandleLinenLoad'
-  | 'planningCanHandleComplexCleanings'
 >;
+
+const WORKER_CATEGORY_OPTIONS = [
+  'Operario de limpieza',
+  'Supervisor',
+  'Administrador',
+] as const;
+
+const normalizeWorkerCategory = (category?: string | null) => {
+  const normalized = (category || '').trim().toLowerCase();
+  if (['admin', 'administrador', 'administradora'].includes(normalized)) return 'Administrador';
+  if (['supervisor', 'supervisora', 'encargado', 'encargada'].includes(normalized)) return 'Supervisor';
+  return 'Operario de limpieza';
+};
 
 const initialsFor = (name: string) =>
   name
@@ -80,44 +77,14 @@ const initialsFor = (name: string) =>
     .slice(0, 3)
     .toUpperCase();
 
-const contractTypeLabel = (type?: string) => {
-  switch (type) {
-    case 'full-time':
-      return 'Tiempo completo';
-    case 'part-time':
-      return 'Tiempo parcial';
-    case 'temporary':
-      return 'Temporal';
-    case 'freelance':
-      return 'Autónomo';
-    default:
-      return type || 'Sin contrato';
-  }
-};
-
-const formatHours = (minutes?: number | null) => {
-  const value = Math.round(((minutes || 0) / 60) * 100) / 100;
-  return `${value} h`;
-};
 
 const getInitialFormData = (worker: Cleaner): WorkerFormData => ({
   name: worker.name,
   email: worker.email || '',
   telefono: worker.telefono || '',
-  avatar: worker.avatar || '',
   isActive: worker.isActive,
-  category: worker.category || '',
+  category: normalizeWorkerCategory(worker.category),
   startDate: worker.startDate || '',
-  emergencyContactName: worker.emergencyContactName || '',
-  emergencyContactPhone: worker.emergencyContactPhone || '',
-  contractHoursPerWeek: worker.contractHoursPerWeek || 0,
-  hourlyRate: worker.hourlyRate || 0,
-  contractType: worker.contractType || 'part-time',
-  planningMaxDailyMinutes: worker.planningMaxDailyMinutes || 480,
-  planningZone: worker.planningZone || '',
-  planningOperationalRestrictions: worker.planningOperationalRestrictions || '',
-  planningCanHandleLinenLoad: worker.planningCanHandleLinenLoad ?? true,
-  planningCanHandleComplexCleanings: worker.planningCanHandleComplexCleanings ?? true,
 });
 
 export const WorkerDetailModal = ({ worker, open, onOpenChange }: WorkerDetailModalProps) => {
@@ -142,8 +109,6 @@ export const WorkerDetailPanel = ({ worker, className, inDialog = false }: Worke
   }, [worker.id]);
 
   const displayHours = activeContract?.contractHoursPerWeek || worker.contractHoursPerWeek || 0;
-  const displayRate = activeContract?.hourlyRate || worker.hourlyRate;
-  const displayContractType = activeContract?.contractType || worker.contractType;
 
   return (
     <div className={cn('flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border bg-white shadow-sm', className)}>
@@ -163,7 +128,7 @@ export const WorkerDetailPanel = ({ worker, className, inDialog = false }: Worke
                 <h2 className="truncate text-xl font-black sm:text-2xl">{worker.name}</h2>
               )}
               <WorkerDetailSubtitle inDialog={inDialog}>
-                <span>{worker.category || 'Trabajadora'}</span>
+                <span>{normalizeWorkerCategory(worker.category)}</span>
                 {worker.externalId && <Badge className="border-0 bg-emerald-400 text-slate-950">REGISTRO</Badge>}
                 <Badge className={cn('border-0', worker.isActive ? 'bg-white text-slate-950' : 'bg-slate-700 text-white')}>
                   {worker.isActive ? 'Activa' : 'Inactiva'}
@@ -172,10 +137,8 @@ export const WorkerDetailPanel = ({ worker, className, inDialog = false }: Worke
             </div>
           </div>
 
-          <div className="grid grid-cols-3 gap-2 xl:min-w-[360px]">
+          <div className="grid gap-2 xl:min-w-[160px]">
             <MetricPill label="Contrato" value={`${displayHours || 0} h`} />
-            <MetricPill label="Tarifa" value={displayRate ? `${displayRate} €` : 'N/D'} />
-            <MetricPill label="Tipo" value={contractTypeLabel(displayContractType)} />
           </div>
         </div>
       </WorkerDetailHeaderContainer>
@@ -287,7 +250,7 @@ const WorkerProfilePanel = ({ worker }: { worker: Cleaner }) => {
     return JSON.stringify(initial) !== JSON.stringify(formData);
   }, [formData, worker]);
 
-  const updateField = (field: keyof WorkerFormData, value: string | number | boolean) => {
+  const updateField = (field: keyof WorkerFormData, value: string | boolean) => {
     setFormData((current) => ({ ...current, [field]: value }));
   };
 
@@ -300,17 +263,12 @@ const WorkerProfilePanel = ({ worker }: { worker: Cleaner }) => {
       {
         id: worker.id,
         updates: {
-          ...formData,
           name: formData.name.trim(),
           email: formData.email?.trim(),
           telefono: formData.telefono?.trim(),
-          avatar: formData.avatar?.trim(),
           category: formData.category?.trim(),
+          isActive: formData.isActive,
           startDate: formData.startDate || undefined,
-          emergencyContactName: formData.emergencyContactName?.trim(),
-          emergencyContactPhone: formData.emergencyContactPhone?.trim(),
-          planningZone: formData.planningZone?.trim() || null,
-          planningOperationalRestrictions: formData.planningOperationalRestrictions?.trim() || null,
         },
       },
       {
@@ -328,7 +286,7 @@ const WorkerProfilePanel = ({ worker }: { worker: Cleaner }) => {
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <h3 className="text-lg font-black text-slate-950">Datos editables</h3>
-              <p className="text-sm text-slate-500">Nombre, contacto, acceso, contrato rápido y datos operativos.</p>
+              <p className="text-sm text-slate-500">Datos básicos de identificación y acceso. Contratos y ausencias se gestionan en sus pestañas.</p>
             </div>
             <div className="flex gap-2">
               {hasChanges && (
@@ -358,29 +316,14 @@ const WorkerProfilePanel = ({ worker }: { worker: Cleaner }) => {
             </Field>
 
             <Field label="Categoría / puesto">
-              <Input value={formData.category || ''} onChange={(event) => updateField('category', event.target.value)} placeholder="Limpiador/a, encargado/a..." className="h-11" />
-            </Field>
-
-            <Field label="Avatar URL">
-              <Input value={formData.avatar || ''} onChange={(event) => updateField('avatar', event.target.value)} placeholder="https://..." className="h-11" />
-            </Field>
-
-            <Field label="Horas semanales">
-              <Input type="number" min="0" max="80" value={formData.contractHoursPerWeek || 0} onChange={(event) => updateField('contractHoursPerWeek', Number(event.target.value) || 0)} className="h-11" />
-            </Field>
-
-            <Field label="Tarifa por hora">
-              <Input type="number" min="0" step="0.01" value={formData.hourlyRate || 0} onChange={(event) => updateField('hourlyRate', Number(event.target.value) || 0)} className="h-11" />
-            </Field>
-
-            <Field label="Tipo de contrato">
-              <Select value={formData.contractType || 'part-time'} onValueChange={(value) => updateField('contractType', value)}>
+              <Select value={formData.category || 'Operario de limpieza'} onValueChange={(value) => updateField('category', value)}>
                 <SelectTrigger className="h-11"><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="full-time">Tiempo completo</SelectItem>
-                  <SelectItem value="part-time">Tiempo parcial</SelectItem>
-                  <SelectItem value="temporary">Temporal</SelectItem>
-                  <SelectItem value="freelance">Autónomo</SelectItem>
+                  {WORKER_CATEGORY_OPTIONS.map((category) => (
+                    <SelectItem key={category} value={category}>
+                      {category}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </Field>
@@ -388,75 +331,37 @@ const WorkerProfilePanel = ({ worker }: { worker: Cleaner }) => {
             <Field label="Fecha de inicio">
               <Input type="date" value={formData.startDate || ''} onChange={(event) => updateField('startDate', event.target.value)} className="h-11" />
             </Field>
-
-            <Field label="Zona operativa">
-              <Input value={formData.planningZone || ''} onChange={(event) => updateField('planningZone', event.target.value)} placeholder="Ej: Marina 30, After Surf, Centro..." className="h-11" />
-            </Field>
-
-            <Field label="Máximo diario (horas)">
-              <Input
-                type="number"
-                min="0"
-                max="12"
-                step="0.25"
-                value={Math.round(((formData.planningMaxDailyMinutes || 0) / 60) * 100) / 100}
-                onChange={(event) => updateField('planningMaxDailyMinutes', Math.round((Number(event.target.value) || 0) * 60))}
-                className="h-11"
-              />
-            </Field>
-
-            <Field label="Contacto de emergencia">
-              <Input value={formData.emergencyContactName || ''} onChange={(event) => updateField('emergencyContactName', event.target.value)} placeholder="Nombre" className="h-11" />
-            </Field>
-
-            <Field label="Teléfono de emergencia">
-              <Input value={formData.emergencyContactPhone || ''} onChange={(event) => updateField('emergencyContactPhone', event.target.value)} placeholder="Teléfono" className="h-11" />
-            </Field>
           </div>
 
-          <div className="grid gap-4 sm:grid-cols-2">
-            <ToggleCard
-              label="Puede cargar lencería"
-              description="Útil para sustituciones y planificación."
-              checked={!!formData.planningCanHandleLinenLoad}
-              onCheckedChange={(checked) => updateField('planningCanHandleLinenLoad', checked)}
-            />
-            <ToggleCard
-              label="Limpiezas complejas"
-              description="Marca si puede asumir tareas exigentes."
-              checked={!!formData.planningCanHandleComplexCleanings}
-              onCheckedChange={(checked) => updateField('planningCanHandleComplexCleanings', checked)}
-            />
+          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <Label className="text-sm font-black text-slate-950">Trabajadora activa</Label>
+                <p className="text-xs text-slate-500">Las trabajadoras inactivas no deberían usarse para nuevas asignaciones.</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => updateField('isActive', !formData.isActive)}
+                className={cn(
+                  'rounded-full px-4 py-2 text-sm font-black transition-colors',
+                  formData.isActive ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-700',
+                )}
+              >
+                {formData.isActive ? 'Activa' : 'Inactiva'}
+              </button>
+            </div>
           </div>
-
-          <Field label="Restricciones operativas">
-            <Textarea
-              value={formData.planningOperationalRestrictions || ''}
-              onChange={(event) => updateField('planningOperationalRestrictions', event.target.value)}
-              placeholder="Ej: no asignar zonas lejanas, evitar cargas pesadas, solo mañanas..."
-              className="min-h-24"
-            />
-          </Field>
-
-          <ToggleCard
-            label="Trabajadora activa"
-            description="Las trabajadoras inactivas no deberían usarse para nuevas asignaciones."
-            checked={!!formData.isActive}
-            onCheckedChange={(checked) => updateField('isActive', checked)}
-          />
         </CardContent>
       </Card>
 
       <aside className="space-y-4">
         <Card className="border-0 shadow-sm">
           <CardContent className="space-y-3 p-4">
-            <h3 className="text-sm font-black uppercase tracking-[0.14em] text-slate-500">Acceso y contacto</h3>
+            <h3 className="text-sm font-black uppercase tracking-[0.14em] text-slate-500">Acceso</h3>
             <InfoLine icon={Mail} label="Email" value={worker.email || 'Sin email'} />
             <InfoLine icon={Phone} label="Teléfono" value={worker.telefono || 'Sin teléfono'} />
             <InfoLine icon={CheckCircle2} label="Acceso" value={worker.user_id ? 'Usuario vinculado' : 'Sin usuario vinculado'} />
             <InfoLine icon={UserRoundCheck} label="Estado" value={worker.isActive ? 'Activa para asignar' : 'Inactiva'} />
-            <InfoLine icon={MapPin} label="Zona" value={worker.planningZone || 'Sin zona definida'} />
-            <InfoLine icon={CalendarDays} label="Máximo diario" value={formatHours(worker.planningMaxDailyMinutes)} />
           </CardContent>
         </Card>
 
@@ -469,7 +374,7 @@ const WorkerProfilePanel = ({ worker }: { worker: Cleaner }) => {
             <div className="grid gap-2 text-sm">
               <DataRow label="DNI" value={worker.dni} />
               <DataRow label="PIN" value={worker.pin} />
-              <DataRow label="Categoría" value={worker.category} />
+              <DataRow label="Categoría" value={normalizeWorkerCategory(worker.category)} />
               <DataRow label="Delegación" value={worker.delegationName} />
               <DataRow label="Oficina" value={worker.officeName} />
               <DataRow label="ID externo" value={worker.externalId} mono />
@@ -488,7 +393,6 @@ const WorkerProfilePanel = ({ worker }: { worker: Cleaner }) => {
     </div>
   );
 };
-
 const Field = ({
   label,
   hint,
@@ -507,26 +411,6 @@ const Field = ({
     </Label>
     {children}
     {hint && <p className="text-xs text-slate-500">{hint}</p>}
-  </div>
-);
-
-const ToggleCard = ({
-  label,
-  description,
-  checked,
-  onCheckedChange,
-}: {
-  label: string;
-  description: string;
-  checked: boolean;
-  onCheckedChange: (checked: boolean) => void;
-}) => (
-  <div className="flex items-center justify-between gap-4 rounded-2xl border bg-slate-50 p-4">
-    <div>
-      <Label className="text-sm font-black text-slate-950">{label}</Label>
-      <p className="text-xs text-slate-500">{description}</p>
-    </div>
-    <Switch checked={checked} onCheckedChange={onCheckedChange} />
   </div>
 );
 

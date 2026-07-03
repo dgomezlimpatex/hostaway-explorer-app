@@ -16,6 +16,19 @@ import { Cleaner } from '@/types/calendar';
 type WorkerStatusFilter = 'all' | 'active' | 'inactive';
 type WorkerRegistroFilter = 'all' | 'linked' | 'manual' | 'without-access';
 
+const WORKER_CATEGORY_OPTIONS = [
+  'Operario de limpieza',
+  'Supervisor',
+  'Administrador',
+] as const;
+
+const normalizeWorkerCategory = (category?: string | null) => {
+  const normalized = (category || '').trim().toLowerCase();
+  if (['admin', 'administrador', 'administradora'].includes(normalized)) return 'Administrador';
+  if (['supervisor', 'supervisora', 'encargado', 'encargada'].includes(normalized)) return 'Supervisor';
+  return 'Operario de limpieza';
+};
+
 export default function WorkersPage() {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [selectedWorkerId, setSelectedWorkerId] = useState<string | null>(null);
@@ -33,13 +46,7 @@ export default function WorkersPage() {
     [cleaners],
   );
 
-  const categoryOptions = useMemo(
-    () =>
-      Array.from(
-        new Set(cleaners.map((worker) => worker.category?.trim()).filter((category): category is string => Boolean(category))),
-      ).sort((a, b) => a.localeCompare(b, 'es')),
-    [cleaners],
-  );
+  const categoryOptions = WORKER_CATEGORY_OPTIONS;
 
   const filteredWorkers = useMemo(() => {
     const term = searchTerm.trim().toLowerCase();
@@ -51,13 +58,14 @@ export default function WorkersPage() {
         worker.email?.toLowerCase().includes(term) ||
         worker.telefono?.toLowerCase().includes(term) ||
         worker.category?.toLowerCase().includes(term) ||
+        normalizeWorkerCategory(worker.category).toLowerCase().includes(term) ||
         worker.dni?.toLowerCase().includes(term) ||
         worker.externalId?.toLowerCase().includes(term);
 
       if (!matchesSearch) return false;
       if (statusFilter === 'active' && !worker.isActive) return false;
       if (statusFilter === 'inactive' && worker.isActive) return false;
-      if (categoryFilter !== 'all' && worker.category !== categoryFilter) return false;
+      if (categoryFilter !== 'all' && normalizeWorkerCategory(worker.category) !== categoryFilter) return false;
       if (registroFilter === 'linked' && !worker.externalId) return false;
       if (registroFilter === 'manual' && worker.externalId) return false;
       if (registroFilter === 'without-access' && worker.user_id) return false;
