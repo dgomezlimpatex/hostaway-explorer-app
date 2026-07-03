@@ -185,8 +185,8 @@ export default function WorkersPage() {
           withoutAccess={workersWithoutAccess}
         />
 
-        <div className="grid gap-4 2xl:grid-cols-[440px_minmax(0,1fr)]">
-          <Card className="h-fit border-0 shadow-sm 2xl:sticky 2xl:top-4">
+        <div className="grid gap-4 2xl:h-[calc(100dvh-250px)] 2xl:min-h-[640px] 2xl:grid-cols-[440px_minmax(0,1fr)] 2xl:overflow-hidden">
+          <Card className="flex min-h-0 flex-col overflow-hidden border-0 shadow-sm">
             <CardHeader className="space-y-4">
               <div className="flex items-start justify-between gap-3">
                 <div>
@@ -212,7 +212,7 @@ export default function WorkersPage() {
                 inactive={totalInactiveWorkers}
               />
             </CardHeader>
-            <CardContent>
+            <CardContent className="min-h-0 flex-1 overflow-y-auto p-4 pt-0 sm:p-6 sm:pt-0">
               <WorkersList
                 workers={filteredWorkers}
                 isLoading={isLoading}
@@ -223,9 +223,9 @@ export default function WorkersPage() {
           </Card>
 
           {desktopWorker ? (
-            <WorkerDetailPanel worker={desktopWorker} className="min-h-[720px]" />
+            <WorkerDetailPanel worker={desktopWorker} className="min-h-[720px] 2xl:h-full 2xl:min-h-0" />
           ) : (
-            <Card className="border-dashed bg-white shadow-sm">
+            <Card className="h-full border-dashed bg-white shadow-sm">
               <CardContent className="flex min-h-[520px] flex-col items-center justify-center p-8 text-center">
                 <Users className="h-12 w-12 text-slate-300" />
                 <h2 className="mt-4 text-xl font-black text-slate-950">Selecciona una trabajadora</h2>
