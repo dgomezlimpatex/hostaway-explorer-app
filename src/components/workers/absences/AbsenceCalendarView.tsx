@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ChevronLeft, ChevronRight, Clock, MapPin } from 'lucide-react';
@@ -23,6 +23,7 @@ interface AbsenceCalendarViewProps {
   fixedDaysOff: WorkerFixedDayOff[];
   maintenanceCleanings: WorkerMaintenanceCleaning[];
   onDateClick: (date: Date) => void;
+  onDateRangeSelect?: (startDate: Date, endDate: Date) => void;
   isLoading?: boolean;
 }
 
@@ -32,9 +33,14 @@ export const AbsenceCalendarView: React.FC<AbsenceCalendarViewProps> = ({
   fixedDaysOff,
   maintenanceCleanings,
   onDateClick,
+  onDateRangeSelect,
   isLoading,
 }) => {
   const [currentMonth, setCurrentMonth] = useState(new Date());
+  const [selectionRange, setSelectionRange] = useState<{ start: Date; end: Date } | null>(null);
+  const isSelectingRef = useRef(false);
+  const selectionStartRef = useRef<Date | null>(null);
+  const selectionEndRef = useRef<Date | null>(null);
 
   const getDaysInMonth = (date: Date) => {
     const year = date.getFullYear();
@@ -59,12 +65,21 @@ export const AbsenceCalendarView: React.FC<AbsenceCalendarViewProps> = ({
     return days;
   };
 
-  const getAbsenceForDate = (date: Date): WorkerAbsence | undefined => {
-    // Format date as YYYY-MM-DD using local timezone
+  const formatDateLocal = (date: Date): string => {
     const year = date.getFullYear();
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const day = String(date.getDate()).padStart(2, '0');
-    const dateStr = `${year}-${month}-${day}`;
+    return `${year}-${month}-${day}`;
+  };
+
+  const dateFromLocalKey = (dateKey: string) => {
+    const [year, month, day] = dateKey.split('-').map(Number);
+    return new Date(year, month - 1, day);
+  };
+
+  const getAbsenceForDate = (date: Date): WorkerAbsence | undefined => {
+    // Format date as YYYY-MM-DD using local timezone
+    const dateStr = formatDateLocal(date);
     
     return absences.find(a => {
       // Compare strings directly since startDate and endDate are already in YYYY-MM-DD format
@@ -88,10 +103,7 @@ export const AbsenceCalendarView: React.FC<AbsenceCalendarViewProps> = ({
   };
 
   const getAbsencesForDate = (date: Date): WorkerAbsence[] => {
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    const dateStr = `${year}-${month}-${day}`;
+    const dateStr = formatDateLocal(date);
     
     return absences.filter(a => dateStr >= a.startDate && dateStr <= a.endDate);
   };
@@ -136,6 +148,77 @@ export const AbsenceCalendarView: React.FC<AbsenceCalendarViewProps> = ({
       newDate.setMonth(newDate.getMonth() + direction);
       return newDate;
     });
+  };
+
+  const normalizeRange = (start: Date, end: Date) => {
+    const startTime = start.getTime();
+    const endTime = end.getTime();
+    return startTime <= endTime ? { start, end } : { start: end, end: start };
+  };
+
+  const isDateInSelectionRange = (date: Date) => {
+    if (!selectionRange) return false;
+    const { start, end } = normalizeRange(selectionRange.start, selectionRange.end);
+    const dayTime = new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
+    return dayTime >= start.getTime() && dayTime <= end.getTime();
+  };
+
+  const clearSelection = () => {
+    isSelectingRef.current = false;
+    selectionStartRef.current = null;
+    selectionEndRef.current = null;
+    setSelectionRange(null);
+  };
+
+  const handleDayPointerDown = (date: Date, event: React.PointerEvent<HTMLButtonElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+    event.currentTarget.setPointerCapture(event.pointerId);
+    isSelectingRef.current = true;
+    selectionStartRef.current = date;
+    selectionEndRef.current = date;
+    setSelectionRange({ start: date, end: date });
+  };
+
+  const handleDayPointerEnter = (date: Date) => {
+    if (!isSelectingRef.current || !selectionStartRef.current) return;
+    selectionEndRef.current = date;
+    setSelectionRange({ start: selectionStartRef.current, end: date });
+  };
+
+  const handleDayPointerMove = (event: React.PointerEvent<HTMLButtonElement>) => {
+    if (!isSelectingRef.current || !selectionStartRef.current) return;
+    const target = document.elementFromPoint(event.clientX, event.clientY);
+    const dateElement = target instanceof HTMLElement
+      ? target.closest<HTMLElement>('[data-calendar-date]')
+      : null;
+    const dateKey = dateElement?.dataset.calendarDate;
+    if (!dateKey) return;
+
+    const date = dateFromLocalKey(dateKey);
+    if (selectionEndRef.current && formatDateLocal(selectionEndRef.current) === dateKey) return;
+
+    selectionEndRef.current = date;
+    setSelectionRange({ start: selectionStartRef.current, end: date });
+  };
+
+  const handleDayPointerUp = (date: Date, event: React.PointerEvent<HTMLButtonElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+    const start = selectionStartRef.current || date;
+    const end = selectionEndRef.current || date;
+    const range = normalizeRange(start, end);
+    clearSelection();
+
+    if (onDateRangeSelect) {
+      onDateRangeSelect(range.start, range.end);
+      return;
+    }
+
+    onDateClick(range.start);
   };
 
   const days = getDaysInMonth(currentMonth);
@@ -196,26 +279,37 @@ export const AbsenceCalendarView: React.FC<AbsenceCalendarViewProps> = ({
             const maintenanceList = getMaintenanceCleaningsForDate(day.date);
             const absenceList = getAbsencesForDate(day.date);
             const hasDetails = maintenanceList.length > 0 || absenceList.length > 0 || isFixedOff;
+            const isRangeSelected = isDateInSelectionRange(day.date);
             
             const dayButton = (
               <button
-                onPointerDownCapture={(event) => {
-                  if (!hasDetails) return;
+                data-calendar-date={formatDateLocal(day.date)}
+                onPointerDown={(event) => handleDayPointerDown(day.date!, event)}
+                onPointerEnter={() => handleDayPointerEnter(day.date!)}
+                onPointerMove={handleDayPointerMove}
+                onPointerUp={(event) => handleDayPointerUp(day.date!, event)}
+                onPointerCancel={clearSelection}
+                onClick={(event) => {
                   event.preventDefault();
                   event.stopPropagation();
-                  onDateClick(day.date!);
                 }}
-                onClick={() => !hasDetails && onDateClick(day.date!)}
                 className={cn(
-                  'h-12 w-full rounded-md flex flex-col items-center justify-center text-sm transition-colors relative cursor-pointer hover:ring-2 hover:ring-[#310984]/25',
+                  'h-12 w-full touch-none select-none rounded-md flex flex-col items-center justify-center text-sm transition-colors relative cursor-pointer hover:ring-2 hover:ring-[#310984]/25',
                   style.bg,
                   style.border,
+                  isRangeSelected && 'ring-2 ring-[#310984] ring-offset-1',
                   style.pattern === 'striped' && 'bg-stripes'
                 )}
-                style={absence ? { 
-                  backgroundColor: `${ABSENCE_TYPE_CONFIG[absence.absenceType].color}30`,
-                  borderColor: ABSENCE_TYPE_CONFIG[absence.absenceType].color,
-                } : undefined}
+                style={
+                  isRangeSelected
+                    ? { backgroundColor: '#ede9fe', borderColor: '#310984' }
+                    : absence
+                      ? { 
+                          backgroundColor: `${ABSENCE_TYPE_CONFIG[absence.absenceType].color}30`,
+                          borderColor: ABSENCE_TYPE_CONFIG[absence.absenceType].color,
+                        }
+                      : undefined
+                }
               >
                 <span className="font-medium">{day.date.getDate()}</span>
                 {absence && (

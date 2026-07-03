@@ -24,6 +24,7 @@ export const AbsencesTab: React.FC<AbsencesTabProps> = ({ cleanerId, cleanerName
   const [showCreateAbsenceModal, setShowCreateAbsenceModal] = useState(false);
   const [showCreateMaintenanceModal, setShowCreateMaintenanceModal] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  const [selectedEndDate, setSelectedEndDate] = useState<Date | null>(null);
   
   const { data: absences = [], isLoading: loadingAbsences } = useWorkerAbsences(cleanerId);
   const { data: fixedDaysOff = [], isLoading: loadingFixedDays } = useWorkerFixedDaysOff(cleanerId);
@@ -35,6 +36,13 @@ export const AbsencesTab: React.FC<AbsencesTabProps> = ({ cleanerId, cleanerName
 
   const handleDateClick = (date: Date) => {
     setSelectedDate(date);
+    setSelectedEndDate(date);
+    setShowCreateAbsenceModal(true);
+  };
+
+  const handleDateRangeSelect = (startDate: Date, endDate: Date) => {
+    setSelectedDate(startDate);
+    setSelectedEndDate(endDate);
     setShowCreateAbsenceModal(true);
   };
 
@@ -54,6 +62,7 @@ export const AbsencesTab: React.FC<AbsencesTabProps> = ({ cleanerId, cleanerName
             size="sm"
             onClick={() => {
               setSelectedDate(null);
+              setSelectedEndDate(null);
               setShowCreateAbsenceModal(true);
             }}
             className="rounded-xl"
@@ -121,6 +130,7 @@ export const AbsencesTab: React.FC<AbsencesTabProps> = ({ cleanerId, cleanerName
             fixedDaysOff={fixedDaysOff}
             maintenanceCleanings={maintenanceCleanings}
             onDateClick={handleDateClick}
+            onDateRangeSelect={handleDateRangeSelect}
             isLoading={isLoading}
           />
         </TabsContent>
@@ -158,6 +168,7 @@ export const AbsencesTab: React.FC<AbsencesTabProps> = ({ cleanerId, cleanerName
         cleanerId={cleanerId}
         cleanerName={cleanerName}
         initialDate={selectedDate}
+        initialEndDate={selectedEndDate}
       />
       
       <CreateMaintenanceModal 

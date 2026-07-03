@@ -29,6 +29,7 @@ interface CreateAbsenceModalProps {
   cleanerId: string;
   cleanerName: string;
   initialDate?: Date | null;
+  initialEndDate?: Date | null;
 }
 
 export const CreateAbsenceModal: React.FC<CreateAbsenceModalProps> = ({
@@ -37,6 +38,7 @@ export const CreateAbsenceModal: React.FC<CreateAbsenceModalProps> = ({
   cleanerId,
   cleanerName,
   initialDate,
+  initialEndDate,
 }) => {
   const createMutation = useCreateWorkerAbsence();
   
@@ -51,11 +53,14 @@ export const CreateAbsenceModal: React.FC<CreateAbsenceModalProps> = ({
   const defaultDate = initialDate 
     ? formatDateLocal(initialDate) 
     : formatDateLocal(new Date());
+  const defaultEndDate = initialEndDate
+    ? formatDateLocal(initialEndDate)
+    : defaultDate;
 
   const [formData, setFormData] = useState({
     absenceType: 'vacation' as AbsenceType,
     startDate: defaultDate,
-    endDate: defaultDate,
+    endDate: defaultEndDate,
     isHourly: false,
     startTime: '09:00',
     endTime: '10:00',
@@ -69,13 +74,16 @@ export const CreateAbsenceModal: React.FC<CreateAbsenceModalProps> = ({
       const newDate = initialDate 
         ? formatDateLocal(initialDate) 
         : formatDateLocal(new Date());
+      const newEndDate = initialEndDate
+        ? formatDateLocal(initialEndDate)
+        : newDate;
       setFormData(prev => ({
         ...prev,
         startDate: newDate,
-        endDate: newDate,
+        endDate: newEndDate,
       }));
     }
-  }, [open, initialDate]);
+  }, [open, initialDate, initialEndDate]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -95,7 +103,7 @@ export const CreateAbsenceModal: React.FC<CreateAbsenceModalProps> = ({
         setFormData({
           absenceType: 'vacation',
           startDate: defaultDate,
-          endDate: defaultDate,
+          endDate: defaultEndDate,
           isHourly: false,
           startTime: '09:00',
           endTime: '10:00',
