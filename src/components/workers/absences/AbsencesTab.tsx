@@ -52,7 +52,10 @@ export const AbsencesTab: React.FC<AbsencesTabProps> = ({ cleanerId, cleanerName
           <Button 
             variant="outline" 
             size="sm"
-            onClick={() => setShowCreateAbsenceModal(true)}
+            onClick={() => {
+              setSelectedDate(null);
+              setShowCreateAbsenceModal(true);
+            }}
             className="rounded-xl"
           >
             <Plus className="h-4 w-4 mr-1" />

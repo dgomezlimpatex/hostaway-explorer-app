@@ -199,9 +199,15 @@ export const AbsenceCalendarView: React.FC<AbsenceCalendarViewProps> = ({
             
             const dayButton = (
               <button
+                onPointerDownCapture={(event) => {
+                  if (!hasDetails) return;
+                  event.preventDefault();
+                  event.stopPropagation();
+                  onDateClick(day.date!);
+                }}
                 onClick={() => !hasDetails && onDateClick(day.date!)}
                 className={cn(
-                  'h-12 w-full rounded-md flex flex-col items-center justify-center text-sm transition-colors relative',
+                  'h-12 w-full rounded-md flex flex-col items-center justify-center text-sm transition-colors relative cursor-pointer hover:ring-2 hover:ring-[#310984]/25',
                   style.bg,
                   style.border,
                   style.pattern === 'striped' && 'bg-stripes'
