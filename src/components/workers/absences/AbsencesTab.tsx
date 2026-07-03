@@ -38,43 +38,48 @@ export const AbsencesTab: React.FC<AbsencesTabProps> = ({ cleanerId, cleanerName
   return (
     <div className="space-y-6">
       {/* Header with action buttons */}
-      <div className="flex flex-wrap gap-2 justify-between items-center">
-        <h3 className="text-lg font-semibold">Gestión de Ausencias</h3>
-        <div className="flex gap-2">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h3 className="text-lg font-black text-slate-950">Ausencias</h3>
+          <p className="text-sm text-slate-500">Bajas, días libres y limpiezas de mantenimiento de {cleanerName}.</p>
+        </div>
+        <div className="grid grid-cols-2 gap-2 sm:flex">
           <Button 
             variant="outline" 
             size="sm"
             onClick={() => setShowCreateAbsenceModal(true)}
+            className="rounded-xl"
           >
             <Plus className="h-4 w-4 mr-1" />
-            Nueva Ausencia
+            Nueva ausencia
           </Button>
           <Button 
             variant="outline" 
             size="sm"
             onClick={() => setShowCreateMaintenanceModal(true)}
+            className="rounded-xl"
           >
             <Building2 className="h-4 w-4 mr-1" />
-            Limpieza Mantenimiento
+            Mantenimiento
           </Button>
         </div>
       </div>
 
       <Tabs defaultValue="calendar" className="w-full">
-        <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="calendar" className="flex items-center gap-1">
+        <TabsList className="grid h-auto w-full grid-cols-2 rounded-2xl bg-slate-100 p-1 sm:grid-cols-4">
+          <TabsTrigger value="calendar" className="flex items-center gap-1 rounded-xl py-2.5">
             <Calendar className="h-4 w-4" />
             Calendario
           </TabsTrigger>
-          <TabsTrigger value="fixed" className="flex items-center gap-1">
+          <TabsTrigger value="fixed" className="flex items-center gap-1 rounded-xl py-2.5">
             <Clock className="h-4 w-4" />
-            Días Fijos
+            Días fijos
           </TabsTrigger>
-          <TabsTrigger value="list" className="flex items-center gap-1">
+          <TabsTrigger value="list" className="flex items-center gap-1 rounded-xl py-2.5">
             <Building2 className="h-4 w-4" />
             Lista
           </TabsTrigger>
-          <TabsTrigger value="history" className="flex items-center gap-1">
+          <TabsTrigger value="history" className="flex items-center gap-1 rounded-xl py-2.5">
             <History className="h-4 w-4" />
             Historial
           </TabsTrigger>

@@ -11,27 +11,13 @@ import {
   TableHeader, 
   TableRow 
 } from '@/components/ui/table';
-import { 
-  FileText,
-  Plus,
-  Eye,
-  Edit,
-  Download,
-  Upload,
-  Calendar,
-  Clock,
-  DollarSign,
-  AlertTriangle,
-  CheckCircle2,
-  XCircle,
-  Building2,
-  User
-} from 'lucide-react';
+import { FileText, Plus, Eye, Edit, Download, Clock, CheckCircle2, XCircle } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { ContractForm } from './ContractForm';
 import { ContractDetail } from './ContractDetail';
 import { useCleanerContracts } from '@/hooks/useWorkerContracts';
+import { WorkerContract } from '@/services/storage/workerContractsStorage';
 
 interface ContractManagementProps {
   cleanerId: string;
@@ -45,8 +31,8 @@ export const ContractManagement: React.FC<ContractManagementProps> = ({
   isManager = false 
 }) => {
   const [isFormOpen, setIsFormOpen] = useState(false);
-  const [selectedContract, setSelectedContract] = useState<any>(null);
-  const [editingContract, setEditingContract] = useState<any>(null);
+  const [selectedContract, setSelectedContract] = useState<WorkerContract | null>(null);
+  const [editingContract, setEditingContract] = useState<WorkerContract | null>(null);
 
   const { data: contracts = [], isLoading } = useCleanerContracts(cleanerId);
   
@@ -119,49 +105,49 @@ export const ContractManagement: React.FC<ContractManagementProps> = ({
   return (
     <div className="space-y-6">
       {/* Header with Actions */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h3 className="text-lg font-semibold">Gestión de Contratos</h3>
-          <p className="text-sm text-muted-foreground">
-            Administración contractual para {cleanerName}
+          <h3 className="text-lg font-black text-slate-950">Contratos</h3>
+          <p className="text-sm text-slate-500">
+            Alta, renovación y consulta contractual de {cleanerName}.
           </p>
         </div>
         {isManager && (
-          <Button onClick={() => setIsFormOpen(true)} className="flex items-center gap-2">
+          <Button onClick={() => setIsFormOpen(true)} className="flex items-center gap-2 rounded-xl">
             <Plus className="h-4 w-4" />
-            Nuevo Contrato
+            Nuevo contrato
           </Button>
         )}
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-3 gap-2 sm:gap-4">
         <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-success-foreground">Activos</CardTitle>
+          <CardHeader className="px-3 pb-1 pt-3 sm:px-6 sm:pb-2 sm:pt-6">
+            <CardTitle className="text-xs font-bold text-emerald-700 sm:text-sm">Activos</CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{activeContracts.length}</div>
+          <CardContent className="px-3 pb-3 sm:px-6 sm:pb-6">
+            <div className="text-2xl font-black">{activeContracts.length}</div>
             <div className="text-xs text-muted-foreground">contratos vigentes</div>
           </CardContent>
         </Card>
         
         <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-destructive-foreground">Vencidos</CardTitle>
+          <CardHeader className="px-3 pb-1 pt-3 sm:px-6 sm:pb-2 sm:pt-6">
+            <CardTitle className="text-xs font-bold text-red-700 sm:text-sm">Vencidos</CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{expiredContracts.length}</div>
+          <CardContent className="px-3 pb-3 sm:px-6 sm:pb-6">
+            <div className="text-2xl font-black">{expiredContracts.length}</div>
             <div className="text-xs text-muted-foreground">requieren renovación</div>
           </CardContent>
         </Card>
         
         <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-warning-foreground">Borradores</CardTitle>
+          <CardHeader className="px-3 pb-1 pt-3 sm:px-6 sm:pb-2 sm:pt-6">
+            <CardTitle className="text-xs font-bold text-amber-700 sm:text-sm">Borradores</CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{draftContracts.length}</div>
+          <CardContent className="px-3 pb-3 sm:px-6 sm:pb-6">
+            <div className="text-2xl font-black">{draftContracts.length}</div>
             <div className="text-xs text-muted-foreground">pendientes firma</div>
           </CardContent>
         </Card>
@@ -173,7 +159,7 @@ export const ContractManagement: React.FC<ContractManagementProps> = ({
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <CheckCircle2 className="h-5 w-5 text-success-foreground" />
-              Contrato Activo
+              Contrato activo
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -186,10 +172,10 @@ export const ContractManagement: React.FC<ContractManagementProps> = ({
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Tarifa</p>
-                <p className="font-medium">€{activeContracts[0].hourlyRate}/hora</p>
+                <p className="font-medium">{activeContracts[0].hourlyRate} €/hora</p>
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">Horas Semanales</p>
+                <p className="text-sm text-muted-foreground">Horas semanales</p>
                 <p className="font-medium">{activeContracts[0].contractHoursPerWeek}h</p>
               </div>
             </div>
@@ -207,7 +193,7 @@ export const ContractManagement: React.FC<ContractManagementProps> = ({
                 size="sm"
                 onClick={() => setSelectedContract(activeContracts[0])}
               >
-                Ver Detalles
+                Ver detalles
               </Button>
             </div>
           </CardContent>
@@ -219,7 +205,7 @@ export const ContractManagement: React.FC<ContractManagementProps> = ({
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <FileText className="h-5 w-5" />
-            Historial de Contratos ({contracts.length})
+            Historial de contratos ({contracts.length})
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -227,15 +213,52 @@ export const ContractManagement: React.FC<ContractManagementProps> = ({
             <div className="text-center py-8 text-muted-foreground">
               <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
               <p>No hay contratos registrados</p>
-              <p className="text-sm">Cree el primer contrato usando el botón de arriba</p>
+              <p className="text-sm">Crea el primer contrato usando el botón de arriba</p>
             </div>
           ) : (
-            <ScrollArea className="h-[400px]">
+            <>
+            <div className="space-y-3 sm:hidden">
+              {contracts.map((contract) => (
+                <div key={contract.id} className="rounded-2xl border bg-white p-3 shadow-sm">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <Badge className={getContractTypeColor(contract.contractType)}>
+                        {getContractTypeLabel(contract.contractType)}
+                      </Badge>
+                      <p className="mt-2 text-sm font-semibold text-slate-950">
+                        {format(new Date(contract.startDate), 'dd MMM yyyy', { locale: es })}
+                        {' - '}
+                        {contract.endDate ? format(new Date(contract.endDate), 'dd MMM yyyy', { locale: es }) : 'Indefinido'}
+                      </p>
+                      <p className="text-xs text-slate-500">
+                        {contract.contractHoursPerWeek} h/semana · {contract.hourlyRate} €/hora
+                      </p>
+                    </div>
+                    <Badge className={getStatusColor(contract.isActive, contract.endDate)}>
+                      {getStatusLabel(contract.isActive, contract.endDate)}
+                    </Badge>
+                  </div>
+                  <div className="mt-3 grid grid-cols-2 gap-2">
+                    <Button variant="outline" size="sm" className="rounded-xl" onClick={() => setSelectedContract(contract)}>
+                      <Eye className="mr-1 h-4 w-4" />
+                      Ver
+                    </Button>
+                    {isManager && (
+                      <Button variant="outline" size="sm" className="rounded-xl" onClick={() => setEditingContract(contract)}>
+                        <Edit className="mr-1 h-4 w-4" />
+                        Editar
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+            <ScrollArea className="hidden h-[400px] sm:block">
               <Table>
                 <TableHeader>
                   <TableRow>
                     <TableHead>Tipo</TableHead>
-                    <TableHead>Período</TableHead>
+                    <TableHead>Periodo</TableHead>
                     <TableHead>Tarifa</TableHead>
                     <TableHead>Horas</TableHead>
                     <TableHead>Estado</TableHead>
@@ -262,7 +285,7 @@ export const ContractManagement: React.FC<ContractManagementProps> = ({
                         </div>
                       </TableCell>
                       <TableCell>
-                        <span className="font-medium">€{contract.hourlyRate}</span>
+                        <span className="font-medium">{contract.hourlyRate} €</span>
                         <div className="text-xs text-muted-foreground">por hora</div>
                       </TableCell>
                       <TableCell>
@@ -312,6 +335,7 @@ export const ContractManagement: React.FC<ContractManagementProps> = ({
                 </TableBody>
               </Table>
             </ScrollArea>
+            </>
           )}
         </CardContent>
       </Card>

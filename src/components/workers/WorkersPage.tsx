@@ -7,7 +7,6 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { WorkersList } from './WorkersList';
 import { CreateWorkerModal } from './CreateWorkerModal';
-import { EditWorkerModal } from './EditWorkerModal';
 import { WorkerDetailModal } from './WorkerDetailModal';
 import { useCleaners } from '@/hooks/useCleaners';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -19,8 +18,7 @@ type WorkerRegistroFilter = 'all' | 'linked' | 'manual';
 
 export default function WorkersPage() {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  const [editingWorker, setEditingWorker] = useState<Cleaner | null>(null);
-  const [selectedWorker, setSelectedWorker] = useState<Cleaner | null>(null);
+  const [selectedWorkerId, setSelectedWorkerId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<WorkerStatusFilter>('active');
   const [categoryFilter, setCategoryFilter] = useState('all');
@@ -28,6 +26,10 @@ export default function WorkersPage() {
   const isMobile = useIsMobile();
 
   const { cleaners, isLoading } = useCleaners();
+  const selectedWorker = useMemo(
+    () => cleaners.find((worker) => worker.id === selectedWorkerId) || null,
+    [cleaners, selectedWorkerId]
+  );
 
   const totalActiveWorkers = useMemo(
     () => cleaners.filter((worker) => worker.isActive).length,
@@ -67,12 +69,8 @@ export default function WorkersPage() {
     setRegistroFilter('all');
   };
 
-  const handleEditWorker = (worker: Cleaner) => {
-    setEditingWorker(worker);
-  };
-
   const handleViewWorker = (worker: Cleaner) => {
-    setSelectedWorker(worker);
+    setSelectedWorkerId(worker.id);
   };
 
   const modalElements = (
@@ -82,16 +80,10 @@ export default function WorkersPage() {
         onOpenChange={setIsCreateModalOpen}
       />
 
-      <EditWorkerModal
-        worker={editingWorker}
-        open={!!editingWorker}
-        onOpenChange={(open) => !open && setEditingWorker(null)}
-      />
-
       <WorkerDetailModal
         worker={selectedWorker}
-        open={!!selectedWorker}
-        onOpenChange={(open) => !open && setSelectedWorker(null)}
+        open={!!selectedWorkerId}
+        onOpenChange={(open) => !open && setSelectedWorkerId(null)}
       />
     </>
   );
@@ -192,7 +184,6 @@ export default function WorkersPage() {
             <WorkersList
               workers={filteredWorkers}
               isLoading={isLoading}
-              onEditWorker={handleEditWorker}
               onViewWorker={handleViewWorker}
             />
           </section>
@@ -301,7 +292,7 @@ export default function WorkersPage() {
             </div>
           </CardHeader>
           <CardContent>
-            <WorkersList workers={filteredWorkers} isLoading={isLoading} onEditWorker={handleEditWorker} onViewWorker={handleViewWorker} />
+            <WorkersList workers={filteredWorkers} isLoading={isLoading} onViewWorker={handleViewWorker} />
           </CardContent>
         </Card>
 

@@ -11,7 +11,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Card, CardContent } from '@/components/ui/card';
-import { Edit, GripVertical, Mail, MoreHorizontal, Phone, Trash2, User, UserCheck, UserX } from 'lucide-react';
+import { GripVertical, Mail, Phone, User, UserCheck, UserCog, UserX } from 'lucide-react';
 import { Cleaner } from '@/types/calendar';
 import { useDeleteCleaner, useUpdateCleaner, useUpdateCleanersOrder } from '@/hooks/useCleaners';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -28,12 +28,10 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { DeactivateWorkerDialog } from './DeactivateWorkerDialog';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 
 interface WorkersListProps {
   workers: Cleaner[];
   isLoading: boolean;
-  onEditWorker: (worker: Cleaner) => void;
   onViewWorker: (worker: Cleaner) => void;
 }
 
@@ -46,7 +44,7 @@ const initialsFor = (name: string) =>
     .slice(0, 3)
     .toUpperCase();
 
-export const WorkersList = ({ workers, isLoading, onEditWorker, onViewWorker }: WorkersListProps) => {
+export const WorkersList = ({ workers, isLoading, onViewWorker }: WorkersListProps) => {
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   const [localWorkers, setLocalWorkers] = useState<Cleaner[]>(workers);
   const [workerToDeactivate, setWorkerToDeactivate] = useState<Cleaner | null>(null);
@@ -214,13 +212,13 @@ export const WorkersList = ({ workers, isLoading, onEditWorker, onViewWorker }: 
 
                 <div className="flex items-center gap-2 border-t border-slate-100 p-2">
                   <Button
-                    variant="outline"
+                    variant="default"
                     size="sm"
                     className="h-9 flex-1 rounded-lg text-xs"
-                    onClick={() => onEditWorker(worker)}
+                    onClick={() => onViewWorker(worker)}
                   >
-                    <Edit className="mr-1 h-3.5 w-3.5" />
-                    Editar
+                    <UserCog className="mr-1 h-3.5 w-3.5" />
+                    Gestionar
                   </Button>
                   {worker.isActive ? (
                     <Button
@@ -351,12 +349,8 @@ export const WorkersList = ({ workers, isLoading, onEditWorker, onViewWorker }: 
                 <TableCell className="text-right">
                   <div className="flex items-center justify-end gap-2">
                     <Button variant="outline" size="sm" onClick={() => onViewWorker(worker)} className="flex items-center gap-1">
-                      <User className="h-4 w-4" />
-                      Ver
-                    </Button>
-                    <Button variant="outline" size="sm" onClick={() => onEditWorker(worker)} className="flex items-center gap-1">
-                      <Edit className="h-4 w-4" />
-                      Editar
+                      <UserCog className="h-4 w-4" />
+                      Gestionar
                     </Button>
                     {worker.isActive ? (
                       <Button
