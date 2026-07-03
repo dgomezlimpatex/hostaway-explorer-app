@@ -17,6 +17,8 @@ const getErrorMessage = (error: unknown, fallback: string) => {
 const planningKeys = {
   root: ['operational-planning'] as const,
   overview: (sedeId?: string) => ['operational-planning', 'overview', sedeId] as const,
+  monthlyForecast: (sedeId?: string, dateFrom?: string, dateTo?: string) =>
+    ['operational-planning', 'monthly-forecast', sedeId, dateFrom, dateTo] as const,
   runs: (sedeId?: string) => ['operational-planning', 'runs', sedeId] as const,
   preview: (runId?: string) => ['operational-planning', 'preview', runId] as const,
   workers: (sedeId?: string) => ['operational-planning', 'workers', sedeId] as const,
@@ -54,6 +56,22 @@ export const useOperationalPlanningOverview = () => {
     enabled: isInitialized && !loading && !!activeSede?.id,
     retry: 1,
     staleTime: 30_000,
+  });
+};
+
+export const useOperationalPlanningMonthlyForecast = (dateFrom: string, dateTo: string) => {
+  const { activeSede, isInitialized, loading } = useSede();
+
+  return useQuery({
+    queryKey: planningKeys.monthlyForecast(activeSede?.id, dateFrom, dateTo),
+    queryFn: () => operationalPlanningService.getMonthlyPropertyForecast({
+      sedeId: activeSede!.id,
+      dateFrom,
+      dateTo,
+    }),
+    enabled: isInitialized && !loading && !!activeSede?.id && !!dateFrom && !!dateTo,
+    retry: 1,
+    staleTime: 60_000,
   });
 };
 

@@ -56,6 +56,7 @@ import { ABSENCE_TYPE_CONFIG } from '@/types/workerAbsence';
 import { formatMadridDate } from '@/utils/date';
 import { CreateAbsenceModal } from '@/components/workers/absences/CreateAbsenceModal';
 import { AbsencesList } from '@/components/workers/absences/AbsencesList';
+import { MonthlyPropertyForecast } from '@/components/planning/MonthlyPropertyForecast';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
@@ -271,6 +272,7 @@ const getBuildingCoverageState = ({
 
 const planningTabOptions = [
   { value: 'overview', label: 'Resumen' },
+  { value: 'monthly', label: 'Previsión mensual' },
   { value: 'preview', label: 'Vista previa' },
   { value: 'workers', label: 'Equipo' },
   { value: 'buildings', label: 'Edificios' },
@@ -1209,6 +1211,7 @@ export const OperationalPlanningPage = () => {
 
           <TabsList className="hidden h-auto w-full justify-start gap-2 rounded-2xl border border-slate-200 bg-white p-2 md:flex">
             <TabsTrigger value="overview" className="rounded-xl px-4 py-2">Resumen</TabsTrigger>
+            <TabsTrigger value="monthly" className="rounded-xl px-4 py-2">Previsión mensual</TabsTrigger>
             <TabsTrigger value="preview" className="rounded-xl px-4 py-2">Vista previa</TabsTrigger>
             <TabsTrigger value="workers" className="rounded-xl px-4 py-2">Equipo</TabsTrigger>
             <TabsTrigger value="buildings" className="rounded-xl px-4 py-2">Edificios</TabsTrigger>
@@ -1390,6 +1393,10 @@ export const OperationalPlanningPage = () => {
                 </CardContent>
               </Card>
             </div>
+          </TabsContent>
+
+          <TabsContent value="monthly">
+            <MonthlyPropertyForecast />
           </TabsContent>
 
           <TabsContent value="preview">

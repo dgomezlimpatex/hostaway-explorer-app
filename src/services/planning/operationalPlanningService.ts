@@ -14,6 +14,9 @@ import {
   PlanningConflict,
   PlanningConflictCode,
   PlanningGenerateInput,
+  PlanningMonthlyForecastMonth,
+  PlanningMonthlyForecastProperty,
+  PlanningMonthlyForecastResponse,
   PlanningNotificationBatch,
   PlanningOverview,
   PlanningOverviewDay,
@@ -60,6 +63,7 @@ type RawPlanningTask = {
   duracion?: number | null;
   propiedad_id?: string | null;
   cliente_id?: string | null;
+  coste?: number | null;
   notes?: string | null;
   task_assignments?: Array<{ cleaner_id: string; cleaner_name: string }> | null;
   properties?: any;
@@ -131,6 +135,11 @@ const PRIMARY_ROLE_WEIGHT: Record<PlanningRoleType, number> = {
 
 const ESTIMATED_MANUAL_PLANNING_MINUTES_PER_TASK = 4;
 
+const MONTH_LABEL_FORMATTER = new Intl.DateTimeFormat('es-ES', {
+  month: 'long',
+  year: 'numeric',
+});
+
 const DAY_NAMES = ['dom', 'lun', 'mar', 'mié', 'jue', 'vie', 'sáb'];
 
 function toMinutes(time?: string | null): number | null {
@@ -165,6 +174,21 @@ function isActivePlanningTask(task: RawPlanningTask) {
 
 function isTouristCleaningTask(task: RawPlanningTask) {
   return task.type === 'limpieza-turistica';
+}
+
+function isStayCleaningTask(task: RawPlanningTask, property?: Property | null) {
+  const text = `${task.type || ''} ${task.notes || ''} ${task.property || ''}`.toLowerCase();
+  if (text.includes('stay') || text.includes('estancia') || text.includes('huésped') || text.includes('huesped') || text.includes('diaria')) {
+    return true;
+  }
+
+  const duration = Number(task.duracion || 0);
+  return Boolean(
+    property?.planningEstimatedStayMinutes
+    && duration > 0
+    && duration === property.planningEstimatedStayMinutes
+    && property.planningEstimatedStayMinutes !== property.planningEstimatedCheckoutMinutes
+  );
 }
 
 function getTaskCleanerIds(task: RawPlanningTask): string[] {
@@ -406,6 +430,34 @@ function sameWeek(dateA: string, dateB: string) {
   return mondayA.toISOString().slice(0, 10) === mondayB.toISOString().slice(0, 10);
 }
 
+function enumerateDates(startDate: string, endDate: string): string[] {
+  const dates: string[] = [];
+  const cursor = new Date(`${startDate}T12:00:00`);
+  const end = new Date(`${endDate}T12:00:00`);
+
+  while (cursor <= end) {
+    dates.push(cursor.toISOString().slice(0, 10));
+    cursor.setDate(cursor.getDate() + 1);
+  }
+
+  return dates;
+}
+
+function getMonthKey(date: string) {
+  return date.slice(0, 7);
+}
+
+function getMonthLabel(monthKey: string) {
+  const date = new Date(`${monthKey}-01T12:00:00`);
+  const label = MONTH_LABEL_FORMATTER.format(date);
+  return label.charAt(0).toUpperCase() + label.slice(1);
+}
+
+function isWeekendDate(date: string) {
+  const day = new Date(`${date}T12:00:00`).getDay();
+  return day === 0 || day === 6;
+}
+
 function overlapsTime(taskA: { date: string; startTime: string; endTime: string }, taskB: { date: string; startTime: string; endTime: string }) {
   if (taskA.date !== taskB.date) return false;
   const startA = toMinutes(taskA.startTime);
@@ -579,6 +631,198 @@ class OperationalPlanningService {
       alerts,
       substitutions,
       performance,
+    };
+  }
+
+  async getMonthlyPropertyForecast(input: PlanningGenerateInput): Promise<PlanningMonthlyForecastResponse> {
+    const settings = await this.getSettingsForSede(input.sedeId);
+    const dataset = await this.loadDataset(input, settings);
+    const dateRange = enumerateDates(input.dateFrom, input.dateTo);
+    const monthKeys = Array.from(new Set(dateRange.map(getMonthKey))).sort();
+    const activeProperties = dataset.properties.filter((property) => property.isActive !== false && property.clientIsActive !== false);
+    const activePropertyIds = new Set(activeProperties.map((property) => property.id));
+    const activeTasks = dataset.tasks
+      .filter((task) => isActivePlanningTask(task))
+      .filter((task) => isTouristCleaningTask(task))
+      .filter((task) => !!task.propiedad_id && activePropertyIds.has(task.propiedad_id));
+
+    const tasksByDate = activeTasks.reduce<Map<string, RawPlanningTask[]>>((map, task) => {
+      const current = map.get(task.date) || [];
+      current.push(task);
+      map.set(task.date, current);
+      return map;
+    }, new Map());
+
+    const monthCapacity = monthKeys.reduce<Map<string, { availableMinutes: number; requiredMinutes: number; pressureDays: number }>>((map, monthKey) => {
+      const monthDates = dateRange.filter((date) => getMonthKey(date) === monthKey);
+      let availableMinutes = 0;
+      let requiredMinutes = 0;
+      let pressureDays = 0;
+
+      monthDates.forEach((date) => {
+        const dayRequired = (tasksByDate.get(date) || []).reduce((sum, task) => {
+          const property = dataset.properties.find((entry) => entry.id === task.propiedad_id);
+          const requiredCleaners = property?.planningRequiredCleaners || 1;
+          return sum + (this.getTaskDurationMinutes(task, dataset.properties) * requiredCleaners);
+        }, 0);
+        const dayAvailable = dataset.cleaners.reduce((sum, cleaner) => {
+          const availability = this.buildAvailabilityState({
+            cleaner,
+            date,
+            dataset,
+            settings,
+            scheduledTasks: dataset.tasks,
+          });
+          return sum + availability.availableMinutes;
+        }, 0);
+
+        requiredMinutes += dayRequired;
+        availableMinutes += dayAvailable;
+        if (dayRequired > dayAvailable * 0.85) pressureDays += 1;
+      });
+
+      map.set(monthKey, { availableMinutes, requiredMinutes, pressureDays });
+      return map;
+    }, new Map());
+
+    const propertiesByMonth = new Map<string, PlanningMonthlyForecastProperty & {
+      dailyDemand: Map<string, { cleanings: number; minutes: number; slots: number }>;
+    }>();
+
+    activeProperties.forEach((property) => {
+      monthKeys.forEach((monthKey) => {
+        const group = this.resolvePropertyGroup(property.id, dataset.propertyGroupAssignments, dataset.propertyGroups);
+        propertiesByMonth.set(`${property.id}::${monthKey}`, {
+          propertyId: property.id,
+          propertyCode: property.codigo,
+          propertyName: property.nombre,
+          clientName: property.clientName,
+          propertyGroupId: group?.id || null,
+          propertyGroupName: group ? (group.displayName || group.name) : null,
+          monthKey,
+          monthLabel: getMonthLabel(monthKey),
+          cleanings: 0,
+          checkoutCleanings: 0,
+          stayCleanings: 0,
+          totalRevenue: 0,
+          totalMinutes: 0,
+          totalHours: 0,
+          requiredCleanerSlots: 0,
+          recommendedStaff: property.planningRequiredCleaners || 1,
+          peakDailyCleanings: 0,
+          peakDailyMinutes: 0,
+          cleaningDays: 0,
+          weekendCleanings: 0,
+          tightWindowCleanings: 0,
+          averageRevenuePerCleaning: 0,
+          riskLevel: 'low',
+          riskReasons: [],
+          dailyDemand: new Map(),
+        });
+      });
+    });
+
+    activeTasks.forEach((task) => {
+      if (!task.propiedad_id) return;
+      const property = activeProperties.find((entry) => entry.id === task.propiedad_id);
+      if (!property) return;
+      const monthKey = getMonthKey(task.date);
+      const entry = propertiesByMonth.get(`${property.id}::${monthKey}`);
+      if (!entry) return;
+      const durationMinutes = this.getTaskDurationMinutes(task, dataset.properties);
+      const requiredCleaners = property.planningRequiredCleaners || 1;
+      const revenue = Number(task.coste ?? property.costeServicio ?? 0);
+      const daily = entry.dailyDemand.get(task.date) || { cleanings: 0, minutes: 0, slots: 0 };
+
+      entry.cleanings += 1;
+      const isStay = isStayCleaningTask(task, property);
+      entry.checkoutCleanings += isStay ? 0 : 1;
+      entry.stayCleanings += isStay ? 1 : 0;
+      entry.totalRevenue += revenue;
+      entry.totalMinutes += durationMinutes;
+      entry.requiredCleanerSlots += requiredCleaners;
+      if (isWeekendDate(task.date)) entry.weekendCleanings += 1;
+      if (!this.validateTaskWindow(task, durationMinutes, settings.bufferMinutes).ok) entry.tightWindowCleanings += 1;
+
+      daily.cleanings += 1;
+      daily.minutes += durationMinutes * requiredCleaners;
+      daily.slots += requiredCleaners;
+      entry.dailyDemand.set(task.date, daily);
+    });
+
+    const properties = Array.from(propertiesByMonth.values()).map((entry) => {
+      const dailyDemand = Array.from(entry.dailyDemand.values());
+      const peakDay = dailyDemand.sort((a, b) => b.minutes - a.minutes || b.cleanings - a.cleanings)[0];
+      const cleaningDays = entry.dailyDemand.size;
+      const baseStaff = Math.max(1, entry.recommendedStaff);
+      const staffByPeakMinutes = peakDay ? Math.max(baseStaff, Math.ceil(peakDay.minutes / Math.max(240, settings.fallbackDailyCapacityMinutes * 0.75))) : baseStaff;
+      const staffByDaysOff = cleaningDays >= 18 || entry.weekendCleanings >= 6 ? Math.max(staffByPeakMinutes, 2) : staffByPeakMinutes;
+      const recommendedStaff = Math.max(staffByDaysOff, peakDay?.slots || 1);
+      const riskReasons: string[] = [];
+
+      if (entry.tightWindowCleanings > 0) riskReasons.push(`${entry.tightWindowCleanings} limpieza${entry.tightWindowCleanings === 1 ? '' : 's'} con ventana ajustada.`);
+      if (entry.weekendCleanings >= 6) riskReasons.push('Carga frecuente en fines de semana; conviene no depender de una sola persona.');
+      if (recommendedStaff >= 3) riskReasons.push('Pico mensual alto: prepara equipo amplio o refuerzo.');
+      if (entry.cleanings === 0) riskReasons.push('Sin limpiezas previstas en este mes.');
+
+      const riskLevel: PlanningMonthlyForecastProperty['riskLevel'] =
+        entry.cleanings === 0 || riskReasons.length === 0
+          ? 'low'
+          : recommendedStaff >= 3 || entry.tightWindowCleanings >= 3
+            ? 'high'
+            : 'medium';
+      const publicEntry = { ...entry };
+      delete (publicEntry as Partial<typeof publicEntry>).dailyDemand;
+
+      return {
+        ...publicEntry,
+        totalHours: Number((entry.totalMinutes / 60).toFixed(2)),
+        peakDailyCleanings: peakDay?.cleanings || 0,
+        peakDailyMinutes: peakDay?.minutes || 0,
+        cleaningDays,
+        recommendedStaff,
+        averageRevenuePerCleaning: entry.cleanings > 0 ? entry.totalRevenue / entry.cleanings : 0,
+        riskLevel,
+        riskReasons,
+      } as PlanningMonthlyForecastProperty;
+    });
+
+    const months: PlanningMonthlyForecastMonth[] = monthKeys.map((monthKey) => {
+      const monthProperties = properties.filter((property) => property.monthKey === monthKey);
+      const monthDates = dateRange.filter((date) => getMonthKey(date) === monthKey);
+      const capacity = monthCapacity.get(monthKey);
+
+      return {
+        monthKey,
+        label: getMonthLabel(monthKey),
+        dateFrom: monthDates[0],
+        dateTo: monthDates[monthDates.length - 1],
+        cleanings: monthProperties.reduce((sum, property) => sum + property.cleanings, 0),
+        totalRevenue: monthProperties.reduce((sum, property) => sum + property.totalRevenue, 0),
+        totalMinutes: monthProperties.reduce((sum, property) => sum + property.totalMinutes, 0),
+        requiredCleanerSlots: monthProperties.reduce((sum, property) => sum + property.requiredCleanerSlots, 0),
+        recommendedStaff: Math.max(0, ...monthProperties.map((property) => property.recommendedStaff)),
+        activeProperties: monthProperties.filter((property) => property.cleanings > 0).length,
+        pressureDays: capacity?.pressureDays || 0,
+      };
+    });
+
+    return {
+      dateFrom: input.dateFrom,
+      dateTo: input.dateTo,
+      generatedAt: new Date().toISOString(),
+      months,
+      properties,
+      summary: {
+        cleanings: months.reduce((sum, month) => sum + month.cleanings, 0),
+        totalRevenue: months.reduce((sum, month) => sum + month.totalRevenue, 0),
+        totalMinutes: months.reduce((sum, month) => sum + month.totalMinutes, 0),
+        totalHours: Number((months.reduce((sum, month) => sum + month.totalMinutes, 0) / 60).toFixed(2)),
+        requiredCleanerSlots: months.reduce((sum, month) => sum + month.requiredCleanerSlots, 0),
+        recommendedStaffPeak: Math.max(0, ...months.map((month) => month.recommendedStaff)),
+        pressureDays: months.reduce((sum, month) => sum + month.pressureDays, 0),
+        activeProperties: activeProperties.length,
+      },
     };
   }
 
@@ -1085,7 +1329,7 @@ class OperationalPlanningService {
       supabase
         .from('tasks')
         .select(`
-          id, property, address, date, start_time, end_time, check_in, check_out, type, status, cleaner_id, cleaner, duracion, propiedad_id, cliente_id, notes,
+          id, property, address, date, start_time, end_time, check_in, check_out, type, status, cleaner_id, cleaner, duracion, propiedad_id, cliente_id, coste, notes,
           task_assignments(cleaner_id, cleaner_name),
           properties(*)
         `)
@@ -1094,7 +1338,17 @@ class OperationalPlanningService {
         .lte('date', input.dateTo)
         .order('date', { ascending: true })
         .order('start_time', { ascending: true }),
-      supabase.from('properties').select('*').eq('sede_id', input.sedeId).order('codigo'),
+      supabase
+        .from('properties')
+        .select(`
+          *,
+          clients:cliente_id (
+            nombre,
+            is_active
+          )
+        `)
+        .eq('sede_id', input.sedeId)
+        .order('codigo'),
       supabase.from('cleaners').select('*').eq('sede_id', input.sedeId).eq('is_active', true).order('sort_order', { nullsFirst: false }).order('name'),
       fromUntypedTable('property_groups').select('*').eq('is_active', true).order('name'),
       fromUntypedTable('property_group_assignments').select('property_group_id, property_id, properties(sede_id)'),

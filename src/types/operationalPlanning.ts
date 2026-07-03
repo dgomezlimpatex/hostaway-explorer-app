@@ -129,7 +129,7 @@ export interface PlanningProposalCleaner {
   projectedRemainingMinutes: number;
 }
 
-export interface PlanningReplacementCandidate extends PlanningProposalCleaner {}
+export type PlanningReplacementCandidate = PlanningProposalCleaner;
 
 export interface PlanningRunItemProposal {
   taskId: string;
@@ -247,6 +247,65 @@ export interface PlanningPerformanceOverview {
   overloadedWorkers: PlanningPerformanceWorkerLoad[];
   pressureDays: PlanningPerformanceDayPressure[];
   estimatedTimeSavedMinutes: number;
+}
+
+export interface PlanningMonthlyForecastMonth {
+  monthKey: string;
+  label: string;
+  dateFrom: string;
+  dateTo: string;
+  cleanings: number;
+  totalRevenue: number;
+  totalMinutes: number;
+  requiredCleanerSlots: number;
+  recommendedStaff: number;
+  activeProperties: number;
+  pressureDays: number;
+}
+
+export interface PlanningMonthlyForecastProperty {
+  propertyId: string;
+  propertyCode: string;
+  propertyName: string;
+  clientName?: string | null;
+  propertyGroupId?: string | null;
+  propertyGroupName?: string | null;
+  monthKey: string;
+  monthLabel: string;
+  cleanings: number;
+  checkoutCleanings: number;
+  stayCleanings: number;
+  totalRevenue: number;
+  totalMinutes: number;
+  totalHours: number;
+  requiredCleanerSlots: number;
+  recommendedStaff: number;
+  peakDailyCleanings: number;
+  peakDailyMinutes: number;
+  cleaningDays: number;
+  weekendCleanings: number;
+  tightWindowCleanings: number;
+  averageRevenuePerCleaning: number;
+  riskLevel: 'low' | 'medium' | 'high';
+  riskReasons: string[];
+}
+
+export interface PlanningMonthlyForecastResponse {
+  dateFrom: string;
+  dateTo: string;
+  generatedAt: string;
+  months: PlanningMonthlyForecastMonth[];
+  properties: PlanningMonthlyForecastProperty[];
+  summary: {
+    cleanings: number;
+    totalRevenue: number;
+    totalMinutes: number;
+    totalHours: number;
+    requiredCleanerSlots: number;
+    recommendedStaffPeak: number;
+    pressureDays: number;
+    activeProperties: number;
+  };
 }
 
 export interface PlanningRunSummary {
