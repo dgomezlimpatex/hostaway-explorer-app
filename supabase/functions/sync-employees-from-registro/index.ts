@@ -308,7 +308,7 @@ Deno.serve(async (req) => {
               if (params.cleanerId) {
                 await admin
                   .from('cleaners')
-                  .update({ user_id: existingProfile.id, email: emailLower, is_active: true })
+                  .update({ user_id: existingProfile.id, email: emailLower })
                   .eq('id', params.cleanerId)
                   .is('user_id', null);
               }
@@ -529,7 +529,7 @@ Deno.serve(async (req) => {
         .not('external_id', 'is', null);
       if (lcErr) throw lcErr;
 
-      let updated = 0, deactivated = 0;
+      let updated = 0, deactivated = 0, kept_inactive = 0;
       const errors: any[] = [];
 
       for (const c of linkedCleaners) {
@@ -549,11 +549,13 @@ Deno.serve(async (req) => {
         if ((e.office_name ?? null) !== c.office_name) patch.office_name = e.office_name ?? null;
         if (e.hire_date && e.hire_date !== c.start_date) patch.start_date = e.hire_date;
 
-        const wasActive = c.is_active;
-        const newActive = e.is_active ?? true;
-        if (wasActive !== newActive) {
-          patch.is_active = newActive;
-          if (!newActive && wasActive) deactivated++;
+        const wasActive = c.is_active !== false;
+        const registroIsInactive = e.is_active === false;
+        if (registroIsInactive && wasActive) {
+          patch.is_active = false;
+          deactivated++;
+        } else if (!registroIsInactive && !wasActive) {
+          kept_inactive++;
         }
 
         if (Object.keys(patch).length === 0) continue;
@@ -582,7 +584,7 @@ Deno.serve(async (req) => {
       });
 
       return new Response(JSON.stringify({
-        ok: true, fetched: employees.length, updated, deactivated, errors,
+        ok: true, fetched: employees.length, updated, deactivated, kept_inactive, errors,
       }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
@@ -616,7 +618,7 @@ Deno.serve(async (req) => {
             if (existingRole) {
               await admin
                 .from('cleaners')
-                .update({ user_id: existingProfile.id, email: emailLower, is_active: true })
+                .update({ user_id: existingProfile.id, email: emailLower })
                 .eq('id', c.id)
                 .is('user_id', null);
               if (c.sede_id) {

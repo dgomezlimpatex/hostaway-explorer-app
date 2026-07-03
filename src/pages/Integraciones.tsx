@@ -455,12 +455,12 @@ const Integraciones = () => {
         body: { mode: 'sync', include_inactive: includeInactive },
       });
       if (error) throw error;
-      return data as { updated: number; deactivated: number };
+      return data as { updated: number; deactivated: number; kept_inactive?: number };
     },
     onSuccess: (data) => {
       toast({
         title: 'Sincronización completada',
-        description: `Actualizados: ${data.updated}. Desactivados: ${data.deactivated}.`,
+        description: `Actualizados: ${data.updated}. Desactivados: ${data.deactivated}. Inactivos respetados: ${data.kept_inactive || 0}.`,
       });
       refetchLogs();
       queryClient.invalidateQueries({ queryKey: ['cleaners'] });
