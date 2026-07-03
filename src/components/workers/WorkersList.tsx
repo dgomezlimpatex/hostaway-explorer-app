@@ -3,9 +3,9 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Card, CardContent } from '@/components/ui/card';
-import { Mail, Phone, User, UserCheck, UserX } from 'lucide-react';
+import { GripVertical, Mail, Phone, User, UserCheck, UserX } from 'lucide-react';
 import { Cleaner } from '@/types/calendar';
-import { useDeleteCleaner, useUpdateCleaner } from '@/hooks/useCleaners';
+import { useDeleteCleaner, useUpdateCleaner, useUpdateCleanersOrder } from '@/hooks/useCleaners';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from '@/lib/utils';
 import {
@@ -40,10 +40,12 @@ const initialsFor = (name: string) =>
 export const WorkersList = ({ workers, isLoading, selectedWorkerId, onViewWorker }: WorkersListProps) => {
   const [localWorkers, setLocalWorkers] = useState<Cleaner[]>(workers);
   const [workerToDeactivate, setWorkerToDeactivate] = useState<Cleaner | null>(null);
+  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   const isMobile = useIsMobile();
 
   const deleteCleaner = useDeleteCleaner();
   const updateCleaner = useUpdateCleaner();
+  const updateCleanersOrder = useUpdateCleanersOrder();
 
   React.useEffect(() => {
     setLocalWorkers(workers);
@@ -63,6 +65,45 @@ export const WorkersList = ({ workers, isLoading, selectedWorkerId, onViewWorker
       id: worker.id,
       updates: { isActive: true },
     });
+  };
+
+  const handleDragStart = (event: React.DragEvent, index: number) => {
+    setDraggedIndex(index);
+    event.dataTransfer.effectAllowed = 'move';
+    event.dataTransfer.setData('text/plain', index.toString());
+  };
+
+  const handleDragOver = (event: React.DragEvent) => {
+    event.preventDefault();
+    event.dataTransfer.dropEffect = 'move';
+  };
+
+  const handleDrop = (event: React.DragEvent, dropIndex: number) => {
+    event.preventDefault();
+
+    if (draggedIndex === null || draggedIndex === dropIndex) {
+      setDraggedIndex(null);
+      return;
+    }
+
+    const newWorkers = [...localWorkers];
+    const draggedWorker = newWorkers[draggedIndex];
+    newWorkers.splice(draggedIndex, 1);
+    newWorkers.splice(dropIndex, 0, draggedWorker);
+
+    setLocalWorkers(newWorkers);
+    setDraggedIndex(null);
+
+    const orderUpdates = newWorkers.map((worker, index) => ({
+      id: worker.id,
+      sortOrder: index,
+    }));
+
+    updateCleanersOrder.mutate(orderUpdates);
+  };
+
+  const handleDragEnd = () => {
+    setDraggedIndex(null);
   };
 
   const deactivateDialog = (
@@ -228,49 +269,69 @@ export const WorkersList = ({ workers, isLoading, selectedWorkerId, onViewWorker
   return (
     <>
       <div className="space-y-2">
-        {localWorkers.map((worker) => {
+        {localWorkers.map((worker, index) => {
           const isSelected = selectedWorkerId === worker.id;
 
           return (
-            <button
+            <div
               key={worker.id}
-              type="button"
-              onClick={() => onViewWorker(worker)}
+              onDragOver={handleDragOver}
+              onDrop={(event) => handleDrop(event, index)}
               className={cn(
-                'flex w-full items-center gap-3 rounded-2xl border bg-white p-3 text-left shadow-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#310984]',
+                'flex w-full items-center gap-2 rounded-2xl border bg-white p-2 shadow-sm transition',
                 isSelected && 'border-[#310984]/30 bg-violet-50 shadow-md ring-1 ring-[#310984]/20',
                 !isSelected && 'border-slate-200 hover:border-[#310984]/25 hover:bg-slate-50',
+                draggedIndex === index && 'opacity-50',
                 !worker.isActive && 'opacity-70'
               )}
             >
-              <Avatar className="h-10 w-10 shrink-0">
-                <AvatarImage src={worker.avatar || undefined} />
-                <AvatarFallback className="bg-slate-100 text-xs font-black text-slate-700">
-                  {initialsFor(worker.name)}
-                </AvatarFallback>
-              </Avatar>
+              <button
+                type="button"
+                draggable
+                onDragStart={(event) => handleDragStart(event, index)}
+                onDragEnd={handleDragEnd}
+                onClick={(event) => event.stopPropagation()}
+                className="flex h-10 w-7 shrink-0 cursor-grab items-center justify-center rounded-xl text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 active:cursor-grabbing"
+                title="Arrastrar para ordenar"
+                aria-label={`Mover ${worker.name}`}
+              >
+                <GripVertical className="h-4 w-4" />
+              </button>
 
-              <div className="min-w-0 flex-1">
-                <p className={cn('line-clamp-2 text-sm font-black leading-tight text-slate-950', !worker.isActive && 'text-slate-500')}>
-                  {worker.name}
-                </p>
-                <div className="mt-1 flex flex-wrap items-center gap-1.5">
-                  {worker.category && (
-                    <span className="truncate text-xs text-slate-500">{worker.category}</span>
-                  )}
-                  {worker.externalId && (
-                    <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-black text-emerald-700">
-                      REGISTRO
-                    </span>
-                  )}
-                  {!worker.isActive && (
-                    <span className="rounded-full bg-slate-200 px-2 py-0.5 text-[10px] font-black text-slate-600">
-                      INACTIVA
-                    </span>
-                  )}
+              <button
+                type="button"
+                onClick={() => onViewWorker(worker)}
+                className="flex min-w-0 flex-1 items-center gap-3 rounded-xl p-1 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#310984]"
+              >
+                <Avatar className="h-10 w-10 shrink-0">
+                  <AvatarImage src={worker.avatar || undefined} />
+                  <AvatarFallback className="bg-slate-100 text-xs font-black text-slate-700">
+                    {initialsFor(worker.name)}
+                  </AvatarFallback>
+                </Avatar>
+
+                <div className="min-w-0 flex-1">
+                  <p className={cn('line-clamp-2 text-sm font-black leading-tight text-slate-950', !worker.isActive && 'text-slate-500')}>
+                    {worker.name}
+                  </p>
+                  <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                    {worker.category && (
+                      <span className="truncate text-xs text-slate-500">{worker.category}</span>
+                    )}
+                    {worker.externalId && (
+                      <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-black text-emerald-700">
+                        REGISTRO
+                      </span>
+                    )}
+                    {!worker.isActive && (
+                      <span className="rounded-full bg-slate-200 px-2 py-0.5 text-[10px] font-black text-slate-600">
+                        INACTIVA
+                      </span>
+                    )}
+                  </div>
                 </div>
-              </div>
-            </button>
+              </button>
+            </div>
           );
         })}
       </div>
