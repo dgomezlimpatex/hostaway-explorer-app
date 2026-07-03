@@ -47,6 +47,7 @@ interface WorkerDetailModalProps {
 interface WorkerDetailPanelProps {
   worker: Cleaner;
   className?: string;
+  inDialog?: boolean;
 }
 
 type WorkerFormData = Pick<
@@ -125,13 +126,13 @@ export const WorkerDetailModal = ({ worker, open, onOpenChange }: WorkerDetailMo
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="flex max-h-[94vh] w-[calc(100vw-1rem)] max-w-6xl flex-col overflow-hidden rounded-2xl p-0 sm:w-full">
-        <WorkerDetailPanel worker={worker} />
+        <WorkerDetailPanel worker={worker} inDialog />
       </DialogContent>
     </Dialog>
   );
 };
 
-export const WorkerDetailPanel = ({ worker, className }: WorkerDetailPanelProps) => {
+export const WorkerDetailPanel = ({ worker, className, inDialog = false }: WorkerDetailPanelProps) => {
   const [activeTab, setActiveTab] = useState('profile');
   const { data: contracts = [] } = useCleanerContracts(worker.id);
   const activeContract = contracts.find((contract) => contract.isActive);
@@ -146,7 +147,7 @@ export const WorkerDetailPanel = ({ worker, className }: WorkerDetailPanelProps)
 
   return (
     <div className={cn('flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border bg-white shadow-sm', className)}>
-      <DialogHeader className="border-b bg-gradient-to-br from-slate-950 via-slate-900 to-[#310984] p-4 text-white sm:p-6">
+      <WorkerDetailHeaderContainer inDialog={inDialog}>
         <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
           <div className="flex min-w-0 items-center gap-3">
             <Avatar className="h-14 w-14 shrink-0 border border-white/20 bg-white/10">
@@ -156,14 +157,18 @@ export const WorkerDetailPanel = ({ worker, className }: WorkerDetailPanelProps)
               </AvatarFallback>
             </Avatar>
             <div className="min-w-0">
-              <DialogTitle className="truncate text-xl font-black sm:text-2xl">{worker.name}</DialogTitle>
-              <DialogDescription className="mt-1 flex flex-wrap items-center gap-2 text-slate-200">
+              {inDialog ? (
+                <DialogTitle className="truncate text-xl font-black sm:text-2xl">{worker.name}</DialogTitle>
+              ) : (
+                <h2 className="truncate text-xl font-black sm:text-2xl">{worker.name}</h2>
+              )}
+              <WorkerDetailSubtitle inDialog={inDialog}>
                 <span>{worker.category || 'Trabajadora'}</span>
                 {worker.externalId && <Badge className="border-0 bg-emerald-400 text-slate-950">REGISTRO</Badge>}
                 <Badge className={cn('border-0', worker.isActive ? 'bg-white text-slate-950' : 'bg-slate-700 text-white')}>
                   {worker.isActive ? 'Activa' : 'Inactiva'}
                 </Badge>
-              </DialogDescription>
+              </WorkerDetailSubtitle>
             </div>
           </div>
 
@@ -173,7 +178,7 @@ export const WorkerDetailPanel = ({ worker, className }: WorkerDetailPanelProps)
             <MetricPill label="Tipo" value={contractTypeLabel(displayContractType)} />
           </div>
         </div>
-      </DialogHeader>
+      </WorkerDetailHeaderContainer>
 
       <div className="min-h-0 flex-1 overflow-y-auto bg-slate-50 p-3 sm:p-5">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
@@ -217,6 +222,38 @@ const MetricPill = ({ label, value }: { label: string; value: string }) => (
     <p className="mt-1 truncate text-sm font-black text-white sm:text-base">{value}</p>
   </div>
 );
+
+const WorkerDetailHeaderContainer = ({
+  inDialog,
+  children,
+}: {
+  inDialog: boolean;
+  children: React.ReactNode;
+}) => {
+  const className = 'border-b bg-gradient-to-br from-slate-950 via-slate-900 to-[#310984] p-4 text-white sm:p-6';
+
+  return inDialog ? (
+    <DialogHeader className={className}>{children}</DialogHeader>
+  ) : (
+    <div className={className}>{children}</div>
+  );
+};
+
+const WorkerDetailSubtitle = ({
+  inDialog,
+  children,
+}: {
+  inDialog: boolean;
+  children: React.ReactNode;
+}) => {
+  const className = 'mt-1 flex flex-wrap items-center gap-2 text-slate-200';
+
+  return inDialog ? (
+    <DialogDescription className={className}>{children}</DialogDescription>
+  ) : (
+    <div className={cn(className, 'text-sm')}>{children}</div>
+  );
+};
 
 const SectionShell = ({
   title,
