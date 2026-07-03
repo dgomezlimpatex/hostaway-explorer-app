@@ -12,9 +12,11 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
+import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { BriefcaseBusiness, CalendarX2, CheckCircle2, Clock, Mail, Phone, Save, User, X } from 'lucide-react';
+import { BriefcaseBusiness, CalendarDays, CalendarX2, CheckCircle2, Clock, Mail, MapPin, Phone, Save, UserRoundCheck, X } from 'lucide-react';
 import { Cleaner } from '@/types/calendar';
 import { CreateCleanerData } from '@/services/cleanerStorage';
 import { useUpdateCleaner } from '@/hooks/useCleaners';
@@ -37,11 +39,18 @@ type WorkerFormData = Pick<
   | 'telefono'
   | 'avatar'
   | 'isActive'
+  | 'category'
+  | 'startDate'
   | 'emergencyContactName'
   | 'emergencyContactPhone'
   | 'contractHoursPerWeek'
   | 'hourlyRate'
   | 'contractType'
+  | 'planningMaxDailyMinutes'
+  | 'planningZone'
+  | 'planningOperationalRestrictions'
+  | 'planningCanHandleLinenLoad'
+  | 'planningCanHandleComplexCleanings'
 >;
 
 const initialsFor = (name: string) =>
@@ -74,11 +83,18 @@ const getInitialFormData = (worker: Cleaner): WorkerFormData => ({
   telefono: worker.telefono || '',
   avatar: worker.avatar || '',
   isActive: worker.isActive,
+  category: worker.category || '',
+  startDate: worker.startDate || '',
   emergencyContactName: worker.emergencyContactName || '',
   emergencyContactPhone: worker.emergencyContactPhone || '',
   contractHoursPerWeek: worker.contractHoursPerWeek || 0,
   hourlyRate: worker.hourlyRate || 0,
   contractType: worker.contractType || 'part-time',
+  planningMaxDailyMinutes: worker.planningMaxDailyMinutes || 480,
+  planningZone: worker.planningZone || '',
+  planningOperationalRestrictions: worker.planningOperationalRestrictions || '',
+  planningCanHandleLinenLoad: worker.planningCanHandleLinenLoad ?? true,
+  planningCanHandleComplexCleanings: worker.planningCanHandleComplexCleanings ?? true,
 });
 
 export const WorkerDetailModal = ({ worker, open, onOpenChange }: WorkerDetailModalProps) => {
@@ -130,7 +146,7 @@ export const WorkerDetailModal = ({ worker, open, onOpenChange }: WorkerDetailMo
 
         <div className="min-h-0 flex-1 overflow-y-auto bg-slate-50 p-3 sm:p-5">
           <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-            <TabsList className="grid h-auto grid-cols-2 rounded-2xl bg-white p-1 shadow-sm sm:grid-cols-4">
+            <TabsList className="sticky top-0 z-10 grid h-auto grid-cols-2 rounded-2xl bg-white p-1 shadow-sm sm:grid-cols-4">
               <TabsTrigger value="profile" className="rounded-xl py-2.5">
                 Ficha
               </TabsTrigger>
@@ -230,8 +246,12 @@ const WorkerProfilePanel = ({ worker }: { worker: Cleaner }) => {
           email: formData.email?.trim(),
           telefono: formData.telefono?.trim(),
           avatar: formData.avatar?.trim(),
+          category: formData.category?.trim(),
+          startDate: formData.startDate || undefined,
           emergencyContactName: formData.emergencyContactName?.trim(),
           emergencyContactPhone: formData.emergencyContactPhone?.trim(),
+          planningZone: formData.planningZone?.trim() || null,
+          planningOperationalRestrictions: formData.planningOperationalRestrictions?.trim() || null,
         },
       },
       {
@@ -250,7 +270,7 @@ const WorkerProfilePanel = ({ worker }: { worker: Cleaner }) => {
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <h3 className="text-lg font-black text-slate-950">Datos editables</h3>
-              <p className="text-sm text-slate-500">Nombre, contacto, acceso y datos rápidos de contrato.</p>
+              <p className="text-sm text-slate-500">Nombre, contacto, acceso, contrato rápido y datos operativos.</p>
             </div>
             <div className="flex gap-2">
               {hasChanges && (
@@ -267,11 +287,10 @@ const WorkerProfilePanel = ({ worker }: { worker: Cleaner }) => {
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="Nombre completo" locked={isLinked} hint={isLinked ? 'Sincronizado desde REGISTRO' : undefined}>
+            <Field label="Nombre completo" hint={isLinked ? 'Viene de REGISTRO, pero puedes ajustarlo aquí si lo necesitas.' : undefined}>
               <Input
                 value={formData.name || ''}
                 onChange={(event) => updateField('name', event.target.value)}
-                disabled={isLinked}
                 className="h-11"
               />
             </Field>
@@ -291,6 +310,15 @@ const WorkerProfilePanel = ({ worker }: { worker: Cleaner }) => {
                 value={formData.telefono || ''}
                 onChange={(event) => updateField('telefono', event.target.value)}
                 placeholder="Teléfono"
+                className="h-11"
+              />
+            </Field>
+
+            <Field label="Categoría / puesto">
+              <Input
+                value={formData.category || ''}
+                onChange={(event) => updateField('category', event.target.value)}
+                placeholder="Limpiador/a, encargado/a..."
                 className="h-11"
               />
             </Field>
@@ -326,6 +354,53 @@ const WorkerProfilePanel = ({ worker }: { worker: Cleaner }) => {
               />
             </Field>
 
+            <Field label="Tipo de contrato">
+              <Select
+                value={formData.contractType || 'part-time'}
+                onValueChange={(value) => updateField('contractType', value)}
+              >
+                <SelectTrigger className="h-11">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="full-time">Tiempo completo</SelectItem>
+                  <SelectItem value="part-time">Tiempo parcial</SelectItem>
+                  <SelectItem value="temporary">Temporal</SelectItem>
+                  <SelectItem value="freelance">Autónomo</SelectItem>
+                </SelectContent>
+              </Select>
+            </Field>
+
+            <Field label="Fecha de inicio">
+              <Input
+                type="date"
+                value={formData.startDate || ''}
+                onChange={(event) => updateField('startDate', event.target.value)}
+                className="h-11"
+              />
+            </Field>
+
+            <Field label="Zona operativa">
+              <Input
+                value={formData.planningZone || ''}
+                onChange={(event) => updateField('planningZone', event.target.value)}
+                placeholder="Ej: Marina 30, After Surf, Centro..."
+                className="h-11"
+              />
+            </Field>
+
+            <Field label="Máximo diario (horas)">
+              <Input
+                type="number"
+                min="0"
+                max="12"
+                step="0.25"
+                value={Math.round(((formData.planningMaxDailyMinutes || 0) / 60) * 100) / 100}
+                onChange={(event) => updateField('planningMaxDailyMinutes', Math.round((Number(event.target.value) || 0) * 60))}
+                className="h-11"
+              />
+            </Field>
+
             <Field label="Contacto de emergencia">
               <Input
                 value={formData.emergencyContactName || ''}
@@ -345,6 +420,38 @@ const WorkerProfilePanel = ({ worker }: { worker: Cleaner }) => {
             </Field>
           </div>
 
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="flex items-center justify-between rounded-2xl border bg-slate-50 p-4">
+              <div>
+                <Label className="text-sm font-black text-slate-950">Puede cargar lencería</Label>
+                <p className="text-xs text-slate-500">Útil para sustituciones y planificación.</p>
+              </div>
+              <Switch
+                checked={!!formData.planningCanHandleLinenLoad}
+                onCheckedChange={(checked) => updateField('planningCanHandleLinenLoad', checked)}
+              />
+            </div>
+            <div className="flex items-center justify-between rounded-2xl border bg-slate-50 p-4">
+              <div>
+                <Label className="text-sm font-black text-slate-950">Limpiezas complejas</Label>
+                <p className="text-xs text-slate-500">Marca si puede asumir tareas exigentes.</p>
+              </div>
+              <Switch
+                checked={!!formData.planningCanHandleComplexCleanings}
+                onCheckedChange={(checked) => updateField('planningCanHandleComplexCleanings', checked)}
+              />
+            </div>
+          </div>
+
+          <Field label="Restricciones operativas">
+            <Textarea
+              value={formData.planningOperationalRestrictions || ''}
+              onChange={(event) => updateField('planningOperationalRestrictions', event.target.value)}
+              placeholder="Ej: no asignar zonas lejanas, evitar cargas pesadas, solo mañanas..."
+              className="min-h-24"
+            />
+          </Field>
+
           <div className="flex items-center justify-between rounded-2xl border bg-slate-50 p-4">
             <div>
               <Label className="text-sm font-black text-slate-950">Trabajadora activa</Label>
@@ -355,7 +462,6 @@ const WorkerProfilePanel = ({ worker }: { worker: Cleaner }) => {
             <Switch
               checked={!!formData.isActive}
               onCheckedChange={(checked) => updateField('isActive', checked)}
-              disabled={isLinked}
             />
           </div>
         </CardContent>
@@ -368,6 +474,9 @@ const WorkerProfilePanel = ({ worker }: { worker: Cleaner }) => {
             <InfoLine icon={Mail} label="Email" value={worker.email || 'Sin email'} />
             <InfoLine icon={Phone} label="Teléfono" value={worker.telefono || 'Sin teléfono'} />
             <InfoLine icon={CheckCircle2} label="Acceso" value={worker.user_id ? 'Usuario vinculado' : 'Sin usuario vinculado'} />
+            <InfoLine icon={UserRoundCheck} label="Estado" value={worker.isActive ? 'Activa para asignar' : 'Inactiva'} />
+            <InfoLine icon={MapPin} label="Zona" value={worker.planningZone || 'Sin zona definida'} />
+            <InfoLine icon={CalendarDays} label="Máximo diario" value={`${Math.round(((worker.planningMaxDailyMinutes || 0) / 60) * 100) / 100} h`} />
           </CardContent>
         </Card>
 

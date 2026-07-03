@@ -2,7 +2,10 @@
 import { Cleaner } from '@/types/calendar';
 import { CreateCleanerData } from '@/services/cleanerStorage';
 
-export const mapCleanerFromDB = (row: any): Cleaner => ({
+type CleanerDBRow = Record<string, string | number | boolean | null | undefined>;
+type CleanerDBUpdate = Record<string, string | number | boolean | null>;
+
+export const mapCleanerFromDB = (row: CleanerDBRow): Cleaner => ({
   id: row.id,
   created_at: row.created_at,
   updated_at: row.updated_at,
@@ -34,8 +37,8 @@ export const mapCleanerFromDB = (row: any): Cleaner => ({
   planningCanHandleComplexCleanings: row.planning_can_handle_complex_cleanings ?? true,
 });
 
-export const mapCleanerToDB = (cleaner: Partial<CreateCleanerData>): any => {
-  const updateData: any = {};
+export const mapCleanerToDB = (cleaner: Partial<CreateCleanerData>): CleanerDBUpdate => {
+  const updateData: CleanerDBUpdate = {};
   
   if (cleaner.name !== undefined) updateData.name = cleaner.name;
   if (cleaner.email !== undefined) updateData.email = cleaner.email;
@@ -46,15 +49,16 @@ export const mapCleanerToDB = (cleaner: Partial<CreateCleanerData>): any => {
   if (cleaner.contractHoursPerWeek !== undefined) updateData.contract_hours_per_week = cleaner.contractHoursPerWeek;
   if (cleaner.hourlyRate !== undefined) updateData.hourly_rate = cleaner.hourlyRate;
   if (cleaner.contractType !== undefined) updateData.contract_type = cleaner.contractType;
+  if (cleaner.category !== undefined) updateData.category = cleaner.category;
   if (cleaner.startDate !== undefined) updateData.start_date = cleaner.startDate || null;
   if (cleaner.emergencyContactName !== undefined) updateData.emergency_contact_name = cleaner.emergencyContactName;
   if (cleaner.emergencyContactPhone !== undefined) updateData.emergency_contact_phone = cleaner.emergencyContactPhone;
   if (cleaner.sede_id !== undefined) updateData.sede_id = cleaner.sede_id;
-  if ((cleaner as any).planningMaxDailyMinutes !== undefined) updateData.planning_max_daily_minutes = (cleaner as any).planningMaxDailyMinutes;
-  if ((cleaner as any).planningZone !== undefined) updateData.planning_zone = (cleaner as any).planningZone;
-  if ((cleaner as any).planningOperationalRestrictions !== undefined) updateData.planning_operational_restrictions = (cleaner as any).planningOperationalRestrictions;
-  if ((cleaner as any).planningCanHandleLinenLoad !== undefined) updateData.planning_can_handle_linen_load = (cleaner as any).planningCanHandleLinenLoad;
-  if ((cleaner as any).planningCanHandleComplexCleanings !== undefined) updateData.planning_can_handle_complex_cleanings = (cleaner as any).planningCanHandleComplexCleanings;
+  if (cleaner.planningMaxDailyMinutes !== undefined) updateData.planning_max_daily_minutes = cleaner.planningMaxDailyMinutes;
+  if (cleaner.planningZone !== undefined) updateData.planning_zone = cleaner.planningZone;
+  if (cleaner.planningOperationalRestrictions !== undefined) updateData.planning_operational_restrictions = cleaner.planningOperationalRestrictions;
+  if (cleaner.planningCanHandleLinenLoad !== undefined) updateData.planning_can_handle_linen_load = cleaner.planningCanHandleLinenLoad;
+  if (cleaner.planningCanHandleComplexCleanings !== undefined) updateData.planning_can_handle_complex_cleanings = cleaner.planningCanHandleComplexCleanings;
 
   return updateData;
 };

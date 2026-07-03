@@ -108,9 +108,9 @@ export const CreateAbsenceModal: React.FC<CreateAbsenceModalProps> = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="max-h-[92dvh] w-[calc(100vw-1rem)] overflow-y-auto rounded-2xl sm:max-w-[520px]">
         <DialogHeader>
-          <DialogTitle>Nueva Ausencia</DialogTitle>
+          <DialogTitle>Nueva ausencia</DialogTitle>
           <DialogDescription>
             Registrar ausencia para {cleanerName}
           </DialogDescription>
@@ -132,7 +132,7 @@ export const CreateAbsenceModal: React.FC<CreateAbsenceModalProps> = ({
               <SelectContent>
                 {Object.entries(ABSENCE_TYPE_CONFIG).map(([key, config]) => (
                   <SelectItem key={key} value={key}>
-                    {config.icon} {config.label}
+                    {config.label}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -153,7 +153,7 @@ export const CreateAbsenceModal: React.FC<CreateAbsenceModalProps> = ({
           )}
 
           {/* Date range */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="startDate">Fecha inicio</Label>
               <Input
@@ -180,7 +180,7 @@ export const CreateAbsenceModal: React.FC<CreateAbsenceModalProps> = ({
           </div>
 
           {/* Hourly toggle */}
-          <div className="flex items-center justify-between py-2">
+          <div className="flex items-center justify-between rounded-2xl border bg-slate-50 p-4">
             <div>
               <Label htmlFor="isHourly">Ausencia por horas</Label>
               <p className="text-xs text-muted-foreground">
@@ -198,7 +198,7 @@ export const CreateAbsenceModal: React.FC<CreateAbsenceModalProps> = ({
 
           {/* Time range if hourly */}
           {formData.isHourly && (
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="startTime">Hora inicio</Label>
                 <Input
@@ -232,13 +232,13 @@ export const CreateAbsenceModal: React.FC<CreateAbsenceModalProps> = ({
             />
           </div>
 
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="sm:w-auto">
               Cancelar
             </Button>
-            <Button type="submit" disabled={createMutation.isPending}>
+            <Button type="submit" disabled={createMutation.isPending} className="sm:w-auto">
               {createMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-              Crear Ausencia
+              Crear ausencia
             </Button>
           </DialogFooter>
         </form>

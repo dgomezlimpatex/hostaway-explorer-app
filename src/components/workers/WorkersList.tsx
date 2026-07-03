@@ -211,15 +211,6 @@ export const WorkersList = ({ workers, isLoading, onViewWorker }: WorkersListPro
                 </button>
 
                 <div className="flex items-center gap-2 border-t border-slate-100 p-2">
-                  <Button
-                    variant="default"
-                    size="sm"
-                    className="h-9 flex-1 rounded-lg text-xs"
-                    onClick={() => onViewWorker(worker)}
-                  >
-                    <UserCog className="mr-1 h-3.5 w-3.5" />
-                    Gestionar
-                  </Button>
                   {worker.isActive ? (
                     <Button
                       variant="outline"
@@ -252,7 +243,7 @@ export const WorkersList = ({ workers, isLoading, onViewWorker }: WorkersListPro
                         <AlertDialogHeader>
                           <AlertDialogTitle>Eliminar trabajador</AlertDialogTitle>
                           <AlertDialogDescription>
-                            Esta accion no se puede deshacer. Se eliminara permanentemente el trabajador
+                            Esta acción no se puede deshacer. Se eliminará permanentemente el trabajador
                             "{worker.name}" y todas sus tareas asignadas quedaran sin asignar.
                             <br />
                             <br />
@@ -350,7 +341,7 @@ export const WorkersList = ({ workers, isLoading, onViewWorker }: WorkersListPro
                   <div className="flex items-center justify-end gap-2">
                     <Button variant="outline" size="sm" onClick={() => onViewWorker(worker)} className="flex items-center gap-1">
                       <UserCog className="h-4 w-4" />
-                      Gestionar
+                      Ficha
                     </Button>
                     {worker.isActive ? (
                       <Button
@@ -386,7 +377,7 @@ export const WorkersList = ({ workers, isLoading, onViewWorker }: WorkersListPro
                           <AlertDialogHeader>
                             <AlertDialogTitle>Eliminar trabajador</AlertDialogTitle>
                             <AlertDialogDescription>
-                              Esta accion no se puede deshacer. Se eliminara permanentemente el trabajador
+                              Esta acción no se puede deshacer. Se eliminará permanentemente el trabajador
                               "{worker.name}" y todas sus tareas asignadas quedaran sin asignar.
                             </AlertDialogDescription>
                           </AlertDialogHeader>

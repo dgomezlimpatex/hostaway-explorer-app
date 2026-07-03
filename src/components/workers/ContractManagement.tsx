@@ -11,7 +11,7 @@ import {
   TableHeader, 
   TableRow 
 } from '@/components/ui/table';
-import { FileText, Plus, Eye, Edit, Download, Clock, CheckCircle2, XCircle } from 'lucide-react';
+import { FileText, Plus, Edit, Clock, CheckCircle2, XCircle } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { ContractForm } from './ContractForm';
@@ -191,9 +191,9 @@ export const ContractManagement: React.FC<ContractManagementProps> = ({
               <Button 
                 variant="outline" 
                 size="sm"
-                onClick={() => setSelectedContract(activeContracts[0])}
+                onClick={() => isManager ? setEditingContract(activeContracts[0]) : setSelectedContract(activeContracts[0])}
               >
-                Ver detalles
+                {isManager ? 'Editar contrato activo' : 'Ver detalles'}
               </Button>
             </div>
           </CardContent>
@@ -238,17 +238,16 @@ export const ContractManagement: React.FC<ContractManagementProps> = ({
                       {getStatusLabel(contract.isActive, contract.endDate)}
                     </Badge>
                   </div>
-                  <div className="mt-3 grid grid-cols-2 gap-2">
-                    <Button variant="outline" size="sm" className="rounded-xl" onClick={() => setSelectedContract(contract)}>
-                      <Eye className="mr-1 h-4 w-4" />
-                      Ver
+                  <div className="mt-3">
+                    <Button
+                      variant={isManager ? 'default' : 'outline'}
+                      size="sm"
+                      className="w-full rounded-xl"
+                      onClick={() => isManager ? setEditingContract(contract) : setSelectedContract(contract)}
+                    >
+                      <Edit className="mr-1 h-4 w-4" />
+                      {isManager ? 'Editar contrato' : 'Ver contrato'}
                     </Button>
-                    {isManager && (
-                      <Button variant="outline" size="sm" className="rounded-xl" onClick={() => setEditingContract(contract)}>
-                        <Edit className="mr-1 h-4 w-4" />
-                        Editar
-                      </Button>
-                    )}
                   </div>
                 </div>
               ))}
@@ -262,7 +261,7 @@ export const ContractManagement: React.FC<ContractManagementProps> = ({
                     <TableHead>Tarifa</TableHead>
                     <TableHead>Horas</TableHead>
                     <TableHead>Estado</TableHead>
-                    <TableHead>Acciones</TableHead>
+                    <TableHead className="text-right">Acción</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -298,37 +297,15 @@ export const ContractManagement: React.FC<ContractManagementProps> = ({
                           <span className="ml-1">{getStatusLabel(contract.isActive, contract.endDate)}</span>
                         </Badge>
                       </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => setSelectedContract(contract)}
-                          >
-                            <Eye className="h-4 w-4" />
-                          </Button>
-                          
-                          {isManager && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => setEditingContract(contract)}
-                            >
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                          )}
-                          
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => {
-                              // Download contract logic
-                              console.log('Download contract', contract.id);
-                            }}
-                          >
-                            <Download className="h-4 w-4" />
-                          </Button>
-                        </div>
+                      <TableCell className="text-right">
+                        <Button
+                          variant={isManager ? 'default' : 'outline'}
+                          size="sm"
+                          onClick={() => isManager ? setEditingContract(contract) : setSelectedContract(contract)}
+                        >
+                          <Edit className="mr-1 h-4 w-4" />
+                          {isManager ? 'Editar' : 'Ver'}
+                        </Button>
                       </TableCell>
                     </TableRow>
                   ))}

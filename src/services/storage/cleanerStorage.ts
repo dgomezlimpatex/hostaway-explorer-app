@@ -14,6 +14,7 @@ export interface CreateCleanerData {
   contractHoursPerWeek?: number;
   hourlyRate?: number;
   contractType?: string;
+  category?: string;
   startDate?: string;
   emergencyContactName?: string;
   emergencyContactPhone?: string;
