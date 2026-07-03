@@ -114,6 +114,20 @@ type PlanningScenario = {
   unassignedTasks: RawPlanningTask[];
 };
 
+type ForecastCleaningSource = 'task' | 'hostaway' | 'avantio' | 'client' | 'little-hotelier' | 'avirato';
+type ForecastServiceKind = 'checkout' | 'stay';
+
+type ForecastCleaningItem = {
+  id: string;
+  source: ForecastCleaningSource;
+  propertyId: string;
+  date: string;
+  serviceKind: ForecastServiceKind;
+  durationMinutes: number;
+  cost: number;
+  requiredCleaners: number;
+};
+
 const DEFAULT_SETTINGS: PlanningSettings = {
   horizonDays: 14,
   bufferMinutes: 30,
@@ -458,6 +472,251 @@ function isWeekendDate(date: string) {
   return day === 0 || day === 6;
 }
 
+function normalizeForecastText(value: string | null | undefined) {
+  return (value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim();
+}
+
+function isActiveForecastStatus(status: string | null | undefined) {
+  const normalized = normalizeForecastText(status);
+  if (!normalized) return true;
+
+  return ![
+    'cancelada',
+    'cancelado',
+    'cancelled',
+    'canceled',
+    'eliminada',
+    'eliminado',
+    'deleted',
+    'no show',
+    'no_show',
+    'bloqueo',
+    'block',
+  ].some((inactiveStatus) => normalized.includes(inactiveStatus));
+}
+
+function normalizeForecastServiceKind(serviceKind: string | null | undefined): ForecastServiceKind {
+  const normalized = normalizeForecastText(serviceKind);
+  return normalized.includes('stay') || normalized.includes('huesped') || normalized.includes('diaria')
+    ? 'stay'
+    : 'checkout';
+}
+
+function getPropertyForecastDurationMinutes(property: Property, serviceKind: ForecastServiceKind, providedMinutes?: number | null) {
+  if (providedMinutes && providedMinutes > 0) return providedMinutes;
+  if (serviceKind === 'stay') {
+    return property.planningEstimatedStayMinutes || property.planningEstimatedCheckoutMinutes || property.duracionServicio || 90;
+  }
+  return property.planningEstimatedCheckoutMinutes || property.duracionServicio || property.planningEstimatedStayMinutes || 90;
+}
+
+function getForecastCleaningCost(property: Property, providedCost?: number | null) {
+  if (providedCost !== null && providedCost !== undefined && Number(providedCost) >= 0) return Number(providedCost);
+  return Number(property.costeServicio || 0);
+}
+
+function buildForecastTaskKey(propertyId: string, date: string) {
+  return `${propertyId}::${date}`;
+}
+
+async function loadMonthlyReservationForecastItems({
+  input,
+  activeProperties,
+  activeTasks,
+}: {
+  input: PlanningGenerateInput;
+  activeProperties: Property[];
+  activeTasks: RawPlanningTask[];
+}): Promise<ForecastCleaningItem[]> {
+  const items: ForecastCleaningItem[] = [];
+  const propertyById = new Map(activeProperties.map((property) => [property.id, property]));
+  const existingTaskKeys = new Set(
+    activeTasks
+      .filter((task) => task.propiedad_id && task.date)
+      .map((task) => buildForecastTaskKey(task.propiedad_id as string, task.date))
+  );
+  const seenVirtualKeys = new Set<string>();
+
+  const pushItem = ({
+    id,
+    source,
+    propertyId,
+    date,
+    serviceKind = 'checkout',
+    durationMinutes,
+    cost,
+    skipWhenTaskExists = true,
+  }: {
+    id: string;
+    source: ForecastCleaningSource;
+    propertyId: string | null | undefined;
+    date: string | null | undefined;
+    serviceKind?: ForecastServiceKind;
+    durationMinutes?: number | null;
+    cost?: number | null;
+    skipWhenTaskExists?: boolean;
+  }) => {
+    if (!propertyId || !date) return;
+    const property = propertyById.get(propertyId);
+    if (!property) return;
+    if (skipWhenTaskExists && existingTaskKeys.has(buildForecastTaskKey(propertyId, date))) return;
+
+    const virtualKey = `${source}::${propertyId}::${date}::${serviceKind}::${id}`;
+    if (seenVirtualKeys.has(virtualKey)) return;
+    seenVirtualKeys.add(virtualKey);
+
+    items.push({
+      id: `${source}:${id}`,
+      source,
+      propertyId,
+      date,
+      serviceKind,
+      durationMinutes: getPropertyForecastDurationMinutes(property, serviceKind, durationMinutes),
+      cost: getForecastCleaningCost(property, cost),
+      requiredCleaners: Math.max(1, property.planningRequiredCleaners || 1),
+    });
+  };
+
+  const loadExternalReservations = async ({
+    table,
+    source,
+    dateColumn,
+    select,
+  }: {
+    table: string;
+    source: ForecastCleaningSource;
+    dateColumn: string;
+    select: string;
+  }) => {
+    try {
+      const { data, error } = await (fromUntypedTable(table) as any)
+        .select(select)
+        .gte(dateColumn, input.dateFrom)
+        .lte(dateColumn, input.dateTo);
+
+      if (error) throw error;
+
+      (data || []).forEach((row: any) => {
+        if (row.task_id || !isActiveForecastStatus(row.status)) return;
+        pushItem({
+          id: String(row.id),
+          source,
+          propertyId: row.property_id,
+          date: row[dateColumn],
+          serviceKind: 'checkout',
+        });
+      });
+    } catch (error) {
+      console.warn(`Monthly forecast skipped ${table}:`, error);
+    }
+  };
+
+  await Promise.all([
+    loadExternalReservations({
+      table: 'hostaway_reservations',
+      source: 'hostaway',
+      dateColumn: 'departure_date',
+      select: 'id, property_id, departure_date, status, task_id',
+    }),
+    loadExternalReservations({
+      table: 'avantio_reservations',
+      source: 'avantio',
+      dateColumn: 'departure_date',
+      select: 'id, property_id, departure_date, status, task_id',
+    }),
+    loadExternalReservations({
+      table: 'client_reservations',
+      source: 'client',
+      dateColumn: 'check_out_date',
+      select: 'id, property_id, check_out_date, status, task_id',
+    }),
+  ]);
+
+  try {
+    const [{ data: taskRows, error: taskError }, { data: mappingRows, error: mappingError }] = await Promise.all([
+      (fromUntypedTable('lh_reservation_tasks') as any)
+        .select('id, reservation_id, task_id, service_kind, task_date, status, lh_room')
+        .gte('task_date', input.dateFrom)
+        .lte('task_date', input.dateTo),
+      (fromUntypedTable('lh_room_mapping') as any)
+        .select('lh_room, service_kind, propiedad_id, default_duration_min, default_cost, is_active, sede_id')
+        .eq('sede_id', input.sedeId)
+        .eq('is_active', true),
+    ]);
+
+    if (taskError) throw taskError;
+    if (mappingError) throw mappingError;
+
+    const mappings = new Map<string, any>();
+    (mappingRows || []).forEach((mapping: any) => {
+      mappings.set(`${normalizeForecastText(mapping.lh_room)}::${normalizeForecastServiceKind(mapping.service_kind)}`, mapping);
+    });
+
+    (taskRows || []).forEach((row: any) => {
+      if (row.task_id || !isActiveForecastStatus(row.status)) return;
+      const serviceKind = normalizeForecastServiceKind(row.service_kind);
+      const mapping = mappings.get(`${normalizeForecastText(row.lh_room)}::${serviceKind}`);
+      if (!mapping) return;
+      pushItem({
+        id: String(row.id),
+        source: 'little-hotelier',
+        propertyId: mapping.propiedad_id,
+        date: row.task_date,
+        serviceKind,
+        durationMinutes: mapping.default_duration_min,
+        cost: mapping.default_cost,
+      });
+    });
+  } catch (error) {
+    console.warn('Monthly forecast skipped Little Hotelier reservations:', error);
+  }
+
+  try {
+    const [{ data: taskRows, error: taskError }, { data: mappingRows, error: mappingError }] = await Promise.all([
+      (fromUntypedTable('avirato_reservation_tasks') as any)
+        .select('id, reservation_id, task_id, service_kind, task_date, status, space_subtype_id')
+        .gte('task_date', input.dateFrom)
+        .lte('task_date', input.dateTo),
+      (fromUntypedTable('avirato_room_mapping') as any)
+        .select('space_subtype_id, service_kind, propiedad_id, default_duration_min, default_cost, is_active, sede_id')
+        .eq('sede_id', input.sedeId)
+        .eq('is_active', true),
+    ]);
+
+    if (taskError) throw taskError;
+    if (mappingError) throw mappingError;
+
+    const mappings = new Map<string, any>();
+    (mappingRows || []).forEach((mapping: any) => {
+      mappings.set(`${mapping.space_subtype_id}::${normalizeForecastServiceKind(mapping.service_kind)}`, mapping);
+    });
+
+    (taskRows || []).forEach((row: any) => {
+      if (row.task_id || !isActiveForecastStatus(row.status)) return;
+      const serviceKind = normalizeForecastServiceKind(row.service_kind);
+      const mapping = mappings.get(`${row.space_subtype_id}::${serviceKind}`);
+      if (!mapping) return;
+      pushItem({
+        id: String(row.id),
+        source: 'avirato',
+        propertyId: mapping.propiedad_id,
+        date: row.task_date,
+        serviceKind,
+        durationMinutes: mapping.default_duration_min,
+        cost: mapping.default_cost,
+      });
+    });
+  } catch (error) {
+    console.warn('Monthly forecast skipped Avirato reservations:', error);
+  }
+
+  return items;
+}
+
 function overlapsTime(taskA: { date: string; startTime: string; endTime: string }, taskB: { date: string; startTime: string; endTime: string }) {
   if (taskA.date !== taskB.date) return false;
   const startA = toMinutes(taskA.startTime);
@@ -641,15 +900,41 @@ class OperationalPlanningService {
     const monthKeys = Array.from(new Set(dateRange.map(getMonthKey))).sort();
     const activeProperties = dataset.properties.filter((property) => property.isActive !== false && property.clientIsActive !== false);
     const activePropertyIds = new Set(activeProperties.map((property) => property.id));
+    const propertyById = new Map(activeProperties.map((property) => [property.id, property]));
     const activeTasks = dataset.tasks
       .filter((task) => isActivePlanningTask(task))
       .filter((task) => isTouristCleaningTask(task))
       .filter((task) => !!task.propiedad_id && activePropertyIds.has(task.propiedad_id));
 
-    const tasksByDate = activeTasks.reduce<Map<string, RawPlanningTask[]>>((map, task) => {
-      const current = map.get(task.date) || [];
-      current.push(task);
-      map.set(task.date, current);
+    const taskByForecastId = new Map<string, RawPlanningTask>();
+    const taskItems: ForecastCleaningItem[] = activeTasks.map((task) => {
+      const property = propertyById.get(task.propiedad_id as string);
+      const serviceKind = property && isStayCleaningTask(task, property) ? 'stay' : 'checkout';
+      const item: ForecastCleaningItem = {
+        id: `task:${task.id}`,
+        source: 'task',
+        propertyId: task.propiedad_id as string,
+        date: task.date,
+        serviceKind,
+        durationMinutes: this.getTaskDurationMinutes(task, dataset.properties),
+        cost: getForecastCleaningCost(property as Property, task.coste ?? property?.costeServicio ?? 0),
+        requiredCleaners: Math.max(1, property?.planningRequiredCleaners || 1),
+      };
+      taskByForecastId.set(item.id, task);
+      return item;
+    });
+
+    const reservationItems = await loadMonthlyReservationForecastItems({
+      input,
+      activeProperties,
+      activeTasks,
+    });
+    const forecastItems = [...taskItems, ...reservationItems].filter((item) => monthKeys.includes(getMonthKey(item.date)));
+
+    const itemsByDate = forecastItems.reduce<Map<string, ForecastCleaningItem[]>>((map, item) => {
+      const current = map.get(item.date) || [];
+      current.push(item);
+      map.set(item.date, current);
       return map;
     }, new Map());
 
@@ -660,11 +945,7 @@ class OperationalPlanningService {
       let pressureDays = 0;
 
       monthDates.forEach((date) => {
-        const dayRequired = (tasksByDate.get(date) || []).reduce((sum, task) => {
-          const property = dataset.properties.find((entry) => entry.id === task.propiedad_id);
-          const requiredCleaners = property?.planningRequiredCleaners || 1;
-          return sum + (this.getTaskDurationMinutes(task, dataset.properties) * requiredCleaners);
-        }, 0);
+        const dayRequired = (itemsByDate.get(date) || []).reduce((sum, item) => sum + (item.durationMinutes * item.requiredCleaners), 0);
         const dayAvailable = dataset.cleaners.reduce((sum, cleaner) => {
           const availability = this.buildAvailabilityState({
             cleaner,
@@ -715,6 +996,12 @@ class OperationalPlanningService {
           weekendCleanings: 0,
           tightWindowCleanings: 0,
           averageRevenuePerCleaning: 0,
+          sourceBreakdown: {
+            tasks: 0,
+            reservations: 0,
+            hotelStay: 0,
+            hotelCheckout: 0,
+          },
           riskLevel: 'low',
           riskReasons: [],
           dailyDemand: new Map(),
@@ -722,32 +1009,37 @@ class OperationalPlanningService {
       });
     });
 
-    activeTasks.forEach((task) => {
-      if (!task.propiedad_id) return;
-      const property = activeProperties.find((entry) => entry.id === task.propiedad_id);
+    forecastItems.forEach((item) => {
+      const property = propertyById.get(item.propertyId);
       if (!property) return;
-      const monthKey = getMonthKey(task.date);
+      const monthKey = getMonthKey(item.date);
       const entry = propertiesByMonth.get(`${property.id}::${monthKey}`);
       if (!entry) return;
-      const durationMinutes = this.getTaskDurationMinutes(task, dataset.properties);
-      const requiredCleaners = property.planningRequiredCleaners || 1;
-      const revenue = Number(task.coste ?? property.costeServicio ?? 0);
-      const daily = entry.dailyDemand.get(task.date) || { cleanings: 0, minutes: 0, slots: 0 };
+      const daily = entry.dailyDemand.get(item.date) || { cleanings: 0, minutes: 0, slots: 0 };
 
       entry.cleanings += 1;
-      const isStay = isStayCleaningTask(task, property);
-      entry.checkoutCleanings += isStay ? 0 : 1;
-      entry.stayCleanings += isStay ? 1 : 0;
-      entry.totalRevenue += revenue;
-      entry.totalMinutes += durationMinutes;
-      entry.requiredCleanerSlots += requiredCleaners;
-      if (isWeekendDate(task.date)) entry.weekendCleanings += 1;
-      if (!this.validateTaskWindow(task, durationMinutes, settings.bufferMinutes).ok) entry.tightWindowCleanings += 1;
+      entry.checkoutCleanings += item.serviceKind === 'checkout' ? 1 : 0;
+      entry.stayCleanings += item.serviceKind === 'stay' ? 1 : 0;
+      entry.totalRevenue += item.cost;
+      entry.totalMinutes += item.durationMinutes;
+      entry.requiredCleanerSlots += item.requiredCleaners;
+      if (item.source === 'task') {
+        entry.sourceBreakdown.tasks += 1;
+        const task = taskByForecastId.get(item.id);
+        if (task && !this.validateTaskWindow(task, item.durationMinutes, settings.bufferMinutes).ok) entry.tightWindowCleanings += 1;
+      } else {
+        entry.sourceBreakdown.reservations += 1;
+      }
+      if (item.source === 'little-hotelier' || item.source === 'avirato') {
+        if (item.serviceKind === 'stay') entry.sourceBreakdown.hotelStay += 1;
+        if (item.serviceKind === 'checkout') entry.sourceBreakdown.hotelCheckout += 1;
+      }
+      if (isWeekendDate(item.date)) entry.weekendCleanings += 1;
 
       daily.cleanings += 1;
-      daily.minutes += durationMinutes * requiredCleaners;
-      daily.slots += requiredCleaners;
-      entry.dailyDemand.set(task.date, daily);
+      daily.minutes += item.durationMinutes * item.requiredCleaners;
+      daily.slots += item.requiredCleaners;
+      entry.dailyDemand.set(item.date, daily);
     });
 
     const properties = Array.from(propertiesByMonth.values()).map((entry) => {
@@ -761,14 +1053,14 @@ class OperationalPlanningService {
       const riskReasons: string[] = [];
 
       if (entry.tightWindowCleanings > 0) riskReasons.push(`${entry.tightWindowCleanings} limpieza${entry.tightWindowCleanings === 1 ? '' : 's'} con ventana ajustada.`);
+      if (entry.sourceBreakdown.reservations > 0) riskReasons.push(`${entry.sourceBreakdown.reservations} limpieza${entry.sourceBreakdown.reservations === 1 ? '' : 's'} previstas todavía sin tarea creada.`);
       if (entry.weekendCleanings >= 6) riskReasons.push('Carga frecuente en fines de semana; conviene no depender de una sola persona.');
       if (recommendedStaff >= 3) riskReasons.push('Pico mensual alto: prepara equipo amplio o refuerzo.');
-      if (entry.cleanings === 0) riskReasons.push('Sin limpiezas previstas en este mes.');
 
       const riskLevel: PlanningMonthlyForecastProperty['riskLevel'] =
         entry.cleanings === 0 || riskReasons.length === 0
           ? 'low'
-          : recommendedStaff >= 3 || entry.tightWindowCleanings >= 3
+          : recommendedStaff >= 3 || entry.tightWindowCleanings >= 3 || entry.sourceBreakdown.reservations >= 5
             ? 'high'
             : 'medium';
       const publicEntry = { ...entry };
@@ -798,6 +1090,8 @@ class OperationalPlanningService {
         dateFrom: monthDates[0],
         dateTo: monthDates[monthDates.length - 1],
         cleanings: monthProperties.reduce((sum, property) => sum + property.cleanings, 0),
+        taskCleanings: monthProperties.reduce((sum, property) => sum + property.sourceBreakdown.tasks, 0),
+        reservationCleanings: monthProperties.reduce((sum, property) => sum + property.sourceBreakdown.reservations, 0),
         totalRevenue: monthProperties.reduce((sum, property) => sum + property.totalRevenue, 0),
         totalMinutes: monthProperties.reduce((sum, property) => sum + property.totalMinutes, 0),
         requiredCleanerSlots: monthProperties.reduce((sum, property) => sum + property.requiredCleanerSlots, 0),
@@ -815,6 +1109,8 @@ class OperationalPlanningService {
       properties,
       summary: {
         cleanings: months.reduce((sum, month) => sum + month.cleanings, 0),
+        taskCleanings: months.reduce((sum, month) => sum + month.taskCleanings, 0),
+        reservationCleanings: months.reduce((sum, month) => sum + month.reservationCleanings, 0),
         totalRevenue: months.reduce((sum, month) => sum + month.totalRevenue, 0),
         totalMinutes: months.reduce((sum, month) => sum + month.totalMinutes, 0),
         totalHours: Number((months.reduce((sum, month) => sum + month.totalMinutes, 0) / 60).toFixed(2)),

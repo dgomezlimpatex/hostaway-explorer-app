@@ -255,6 +255,8 @@ export interface PlanningMonthlyForecastMonth {
   dateFrom: string;
   dateTo: string;
   cleanings: number;
+  taskCleanings: number;
+  reservationCleanings: number;
   totalRevenue: number;
   totalMinutes: number;
   requiredCleanerSlots: number;
@@ -286,6 +288,12 @@ export interface PlanningMonthlyForecastProperty {
   weekendCleanings: number;
   tightWindowCleanings: number;
   averageRevenuePerCleaning: number;
+  sourceBreakdown: {
+    tasks: number;
+    reservations: number;
+    hotelStay: number;
+    hotelCheckout: number;
+  };
   riskLevel: 'low' | 'medium' | 'high';
   riskReasons: string[];
 }
@@ -298,6 +306,8 @@ export interface PlanningMonthlyForecastResponse {
   properties: PlanningMonthlyForecastProperty[];
   summary: {
     cleanings: number;
+    taskCleanings: number;
+    reservationCleanings: number;
     totalRevenue: number;
     totalMinutes: number;
     totalHours: number;

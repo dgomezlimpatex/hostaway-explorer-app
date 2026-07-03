@@ -3,11 +3,9 @@ import {
   AlertTriangle,
   Building2,
   CalendarRange,
-  Euro,
   Loader2,
   Search,
   ShieldCheck,
-  Users,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -37,8 +35,6 @@ const toDateInput = (date: Date) => date.toISOString().slice(0, 10);
 
 const getMonthStart = (date: Date) => new Date(date.getFullYear(), date.getMonth(), 1, 12);
 
-const addMonths = (date: Date, months: number) => new Date(date.getFullYear(), date.getMonth() + months, 1, 12);
-
 const getMonthEnd = (date: Date, monthsAhead: number) => new Date(date.getFullYear(), date.getMonth() + monthsAhead + 1, 0, 12);
 
 const formatMonthLabel = (monthKey: string) => {
@@ -59,6 +55,21 @@ const riskCopy: Record<PlanningMonthlyForecastProperty['riskLevel'], { label: st
   high: {
     label: 'Refuerzo',
     className: 'border-rose-200 bg-rose-50 text-rose-700',
+  },
+};
+
+const sourceCopy = {
+  confirmed: {
+    label: 'Confirmado',
+    className: 'border-emerald-200 bg-emerald-50 text-emerald-700',
+  },
+  mixed: {
+    label: 'Mixto',
+    className: 'border-sky-200 bg-sky-50 text-sky-700',
+  },
+  pending: {
+    label: 'Pendiente de tarea',
+    className: 'border-amber-200 bg-amber-50 text-amber-700',
   },
 };
 
@@ -93,6 +104,7 @@ export const MonthlyPropertyForecast = () => {
       })
       .sort((a, b) =>
         b.cleanings - a.cleanings
+        || b.sourceBreakdown.reservations - a.sourceBreakdown.reservations
         || b.totalRevenue - a.totalRevenue
         || a.propertyCode.localeCompare(b.propertyCode, 'es', { numeric: true, sensitivity: 'base' })
       );
@@ -108,14 +120,21 @@ export const MonthlyPropertyForecast = () => {
     if (selectedMonthSummary) {
       return {
         cleanings: selectedMonthSummary.cleanings,
+        taskCleanings: selectedMonthSummary.taskCleanings,
+        reservationCleanings: selectedMonthSummary.reservationCleanings,
         totalRevenue: selectedMonthSummary.totalRevenue,
         totalHours: selectedMonthSummary.totalMinutes / 60,
         recommendedStaffPeak: selectedMonthSummary.recommendedStaff,
         pressureDays: selectedMonthSummary.pressureDays,
+        activeProperties: selectedMonthSummary.activeProperties,
       };
     }
     return data.summary;
   }, [data, selectedMonthSummary]);
+
+  const creationGap = visibleSummary && visibleSummary.cleanings > 0
+    ? Math.round((visibleSummary.reservationCleanings / visibleSummary.cleanings) * 100)
+    : 0;
 
   const errorMessage = error instanceof Error ? error.message : 'No se pudo cargar la previsión mensual.';
 
@@ -128,9 +147,9 @@ export const MonthlyPropertyForecast = () => {
               <div className="flex flex-wrap items-start justify-between gap-4">
                 <div>
                   <p className="text-xs font-black uppercase tracking-[0.24em] text-[#310984]/70">Previsión mensual</p>
-                  <h2 className="mt-2 text-2xl font-black text-slate-950 sm:text-3xl">Mapa de temporada por propiedad</h2>
+                  <h2 className="mt-2 text-2xl font-black text-slate-950 sm:text-3xl">Demanda por propiedad</h2>
                   <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
-                    Lectura de limpiezas ya creadas en el calendario: carga mensual, facturación prevista, horas y equipo recomendado para no depender de improvisación.
+                    Combina limpiezas ya creadas en calendario con reservas futuras que todavía no tienen tarea. Lo estimado ayuda a planificar equipo, pero no bloquea agenda hasta crear la tarea.
                   </p>
                 </div>
                 <Button
@@ -146,41 +165,50 @@ export const MonthlyPropertyForecast = () => {
 
               <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
                 <ForecastMetric
-                  label="Limpiezas"
+                  label="Demanda total"
                   value={visibleSummary ? String(visibleSummary.cleanings) : '--'}
-                  helper="Tareas previstas"
+                  helper="Confirmado + previsto"
                   tone="sky"
                   icon={Building2}
                 />
                 <ForecastMetric
-                  label="Facturación"
-                  value={visibleSummary ? currencyFormatter.format(visibleSummary.totalRevenue) : '--'}
-                  helper="Según tarea o propiedad"
+                  label="Tareas creadas"
+                  value={visibleSummary ? String(visibleSummary.taskCleanings) : '--'}
+                  helper="Ya existen en calendario"
                   tone="emerald"
-                  icon={Euro}
+                  icon={ShieldCheck}
                 />
                 <ForecastMetric
-                  label="Horas"
-                  value={visibleSummary ? `${decimalFormatter.format(visibleSummary.totalHours)} h` : '--'}
-                  helper="Tiempo operativo"
+                  label="Reservas sin tarea"
+                  value={visibleSummary ? String(visibleSummary.reservationCleanings) : '--'}
+                  helper="Demanda pendiente"
+                  tone="amber"
+                  icon={AlertTriangle}
+                />
+                <ForecastMetric
+                  label="Brecha creación"
+                  value={visibleSummary ? `${creationGap}%` : '--'}
+                  helper="Pendiente de convertir"
                   tone="violet"
                   icon={CalendarRange}
                 />
-                <ForecastMetric
-                  label="Equipo pico"
-                  value={visibleSummary ? String(visibleSummary.recommendedStaffPeak) : '--'}
-                  helper="Personas recomendadas"
-                  tone="amber"
-                  icon={Users}
-                />
               </div>
+
+              {visibleSummary && visibleSummary.reservationCleanings > 0 && (
+                <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-900">
+                  Hay {visibleSummary.reservationCleanings} limpieza{visibleSummary.reservationCleanings === 1 ? '' : 's'} prevista{visibleSummary.reservationCleanings === 1 ? '' : 's'} por reservas que aún no tienen tarea creada. Úsalas para preparar personal, pero revisa la creación de tareas antes de cerrar el plan.
+                </div>
+              )}
             </div>
 
-            <div className="border-t border-[#310984]/10 bg-[#160333] p-5 text-white lg:border-l lg:border-t-0 sm:p-6">
+            <div className="border-t border-[#310984]/10 bg-[#160333] p-5 text-white sm:p-6 lg:border-l lg:border-t-0">
               <p className="text-xs font-black uppercase tracking-[0.24em] text-white/50">Lectura rápida</p>
               <div className="mt-4 space-y-3">
-                <InsightLine label="Rango" value={`${formatMonthLabel(dateFrom.slice(0, 7))} → ${formatMonthLabel(dateTo.slice(0, 7))}`} />
-                <InsightLine label="Propiedades activas" value={data ? String(data.summary.activeProperties) : '--'} />
+                <InsightLine label="Rango" value={`${formatMonthLabel(dateFrom.slice(0, 7))} - ${formatMonthLabel(dateTo.slice(0, 7))}`} />
+                <InsightLine label="Propiedades activas" value={visibleSummary ? String(visibleSummary.activeProperties) : '--'} />
+                <InsightLine label="Facturación" value={visibleSummary ? currencyFormatter.format(visibleSummary.totalRevenue) : '--'} />
+                <InsightLine label="Horas" value={visibleSummary ? `${decimalFormatter.format(visibleSummary.totalHours)} h` : '--'} />
+                <InsightLine label="Equipo pico" value={visibleSummary ? String(visibleSummary.recommendedStaffPeak) : '--'} />
                 <InsightLine label="Días de presión" value={visibleSummary ? String(visibleSummary.pressureDays) : '--'} />
               </div>
               <div className="mt-5 rounded-2xl border border-white/10 bg-white/8 p-4 text-sm leading-6 text-white/75">
@@ -322,41 +350,57 @@ const InsightLine = ({ label, value }: { label: string; value: string }) => (
 
 const PropertyForecastRow = ({ property }: { property: PlanningMonthlyForecastProperty }) => {
   const risk = riskCopy[property.riskLevel];
+  const source = property.sourceBreakdown.tasks > 0 && property.sourceBreakdown.reservations > 0
+    ? sourceCopy.mixed
+    : property.sourceBreakdown.reservations > 0
+      ? sourceCopy.pending
+      : sourceCopy.confirmed;
 
   return (
     <div className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm transition hover:border-[#310984]/20 hover:shadow-md">
-      <div className="grid gap-4 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,1.8fr)_220px] xl:items-center">
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,1.1fr)_minmax(0,1.8fr)_260px] xl:items-center">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
             <p className="truncate text-xl font-black text-slate-950">{property.propertyCode}</p>
             <Badge variant="outline" className={cn('rounded-full', risk.className)}>{risk.label}</Badge>
+            <Badge variant="outline" className={cn('rounded-full', source.className)}>{source.label}</Badge>
           </div>
           <p className="mt-1 truncate text-sm font-semibold text-slate-600">{property.propertyName}</p>
           <p className="mt-1 truncate text-xs text-slate-500">
-            {property.propertyGroupName || 'Sin edificio'}{property.clientName ? ` · ${property.clientName}` : ''}
+            {property.propertyGroupName || 'Sin edificio'}{property.clientName ? ` - ${property.clientName}` : ''}
           </p>
           <p className="mt-3 text-xs font-black uppercase tracking-[0.18em] text-[#310984]/70">{property.monthLabel}</p>
         </div>
 
-        <div className="grid grid-cols-2 gap-2 md:grid-cols-5">
-          <MiniStat label="Limpiezas" value={String(property.cleanings)} />
+        <div className="grid grid-cols-2 gap-2 md:grid-cols-3">
+          <MiniStat label="Demanda" value={String(property.cleanings)} />
+          <MiniStat label="Creadas" value={String(property.sourceBreakdown.tasks)} />
+          <MiniStat label="Sin tarea" value={String(property.sourceBreakdown.reservations)} />
           <MiniStat label="Horas" value={`${decimalFormatter.format(property.totalHours)} h`} />
           <MiniStat label="Facturación" value={currencyFormatter.format(property.totalRevenue)} />
-          <MiniStat label="Personas" value={String(property.recommendedStaff)} />
-          <MiniStat label="Pico día" value={`${decimalFormatter.format(property.peakDailyMinutes / 60)} h`} />
+          <MiniStat label="Equipo" value={String(property.recommendedStaff)} />
         </div>
 
-        <div className="space-y-2 rounded-2xl border border-slate-100 bg-slate-50 p-3">
+        <div className="space-y-3 rounded-2xl border border-slate-100 bg-slate-50 p-3">
           <div className="flex items-center gap-2 text-sm font-bold text-slate-900">
             {property.riskLevel === 'high' ? <AlertTriangle className="h-4 w-4 text-rose-500" /> : <ShieldCheck className="h-4 w-4 text-emerald-500" />}
             Lectura operativa
+          </div>
+          <div className="flex flex-wrap gap-2 text-xs font-bold text-slate-600">
+            <span className="rounded-full bg-white px-3 py-1">Salida: {property.checkoutCleanings}</span>
+            <span className="rounded-full bg-white px-3 py-1">Huésped: {property.stayCleanings}</span>
+            {(property.sourceBreakdown.hotelStay + property.sourceBreakdown.hotelCheckout) > 0 && (
+              <span className="rounded-full bg-white px-3 py-1">
+                Hotel: {property.sourceBreakdown.hotelStay + property.sourceBreakdown.hotelCheckout}
+              </span>
+            )}
           </div>
           {property.riskReasons.length === 0 ? (
             <p className="text-sm leading-5 text-slate-600">Carga controlada para este mes.</p>
           ) : (
             <ul className="space-y-1 text-sm leading-5 text-slate-600">
-              {property.riskReasons.slice(0, 2).map((reason) => (
-                <li key={reason}>• {reason}</li>
+              {property.riskReasons.slice(0, 3).map((reason) => (
+                <li key={reason}>- {reason}</li>
               ))}
             </ul>
           )}
