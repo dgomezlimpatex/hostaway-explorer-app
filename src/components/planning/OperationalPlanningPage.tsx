@@ -178,6 +178,37 @@ const statusTone = (value: number, inverse = false) => {
   return 'text-rose-600';
 };
 
+type PlanningMetricTone = 'sky' | 'slate' | 'emerald' | 'amber' | 'rose' | 'violet';
+
+const planningMetricToneClasses: Record<PlanningMetricTone, string> = {
+  sky: 'border-sky-200 bg-sky-50 text-sky-700',
+  slate: 'border-slate-200 bg-slate-50 text-slate-600',
+  emerald: 'border-emerald-200 bg-emerald-50 text-emerald-700',
+  amber: 'border-amber-200 bg-amber-50 text-amber-700',
+  rose: 'border-rose-200 bg-rose-50 text-rose-700',
+  violet: 'border-[#310984]/20 bg-[#310984]/5 text-[#310984]',
+};
+
+const PlanningMetricCard = ({
+  tone,
+  label,
+  value,
+  detail,
+  valueClassName,
+}: {
+  tone: PlanningMetricTone;
+  label: string;
+  value: string | number;
+  detail: string;
+  valueClassName?: string;
+}) => (
+  <div className={cn('rounded-2xl border p-3', planningMetricToneClasses[tone])}>
+    <p className="text-[10px] font-black uppercase tracking-[0.18em] opacity-90">{label}</p>
+    <p className={cn('mt-1 text-2xl font-black text-slate-950', valueClassName)}>{value}</p>
+    <p className="mt-0.5 text-xs text-slate-500">{detail}</p>
+  </div>
+);
+
 const getReadableErrorMessage = (error: unknown) => {
   if (error instanceof Error) return error.message;
   if (error && typeof error === 'object' && 'message' in error) {
@@ -1016,177 +1047,135 @@ export const OperationalPlanningPage = () => {
 
   return (
     <div className="min-h-screen bg-[linear-gradient(180deg,#f8fbff_0%,#f5f2ff_40%,#ffffff_100%)]">
-      <div className="mx-auto flex w-full max-w-7xl flex-col gap-4 px-3 py-4 pb-24 md:gap-6 md:px-6 md:py-6 md:pb-6 lg:px-8">
-        <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
-          <Card className="border-white/80 bg-white/92">
-            <CardHeader className="gap-4 md:flex-row md:items-start md:justify-between">
-              <div>
-                <p className="text-xs font-black uppercase tracking-[0.28em] text-[#310984]/70">
-                  Planificación operativa
-                </p>
-                <CardTitle className="mt-2 text-2xl font-black text-slate-950 md:text-3xl">
-                  Próximos 14 días
-                </CardTitle>
-                <CardDescription className="mt-2 text-sm text-slate-600">
-                  Genera un borrador seguro para tareas normales sin cubrir, revisa conflictos y apruébalo solo cuando lo tengas claro.
-                </CardDescription>
-              </div>
+      <div className="mx-auto flex w-full max-w-[1500px] flex-col gap-4 px-3 py-4 pb-24 md:gap-5 md:px-6 md:py-5 md:pb-6 lg:px-8">
+        <Card className="overflow-hidden border-white/80 bg-white/95 shadow-[0_24px_70px_rgba(49,9,132,0.10)]">
+          <CardContent className="p-4 md:p-5">
+            <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
+              <div className="space-y-4">
+                <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                  <div>
+                    <p className="text-xs font-black uppercase tracking-[0.28em] text-[#310984]/70">
+                      Planificación operativa
+                    </p>
+                    <div className="mt-2 flex flex-wrap items-center gap-3">
+                      <h1 className="text-2xl font-black text-slate-950 md:text-3xl">Próximos 14 días</h1>
+                      <span className="rounded-full border border-[#310984]/15 bg-[#310984]/5 px-3 py-1 text-xs font-black text-[#310984]">
+                        {activeSede?.nombre || 'Sin sede activa'}
+                      </span>
+                    </div>
+                    <p className="mt-2 max-w-3xl text-sm text-slate-600">
+                      Revisa carga, bajas y tareas sin cubrir. Genera un borrador solo cuando el escenario esté claro.
+                    </p>
+                  </div>
 
-              <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm">
-                <p className="text-xs font-bold uppercase tracking-[0.2em] text-slate-500">Sede activa</p>
-                <p className="mt-1 text-base font-black text-slate-900">{activeSede?.nombre || 'Sin sede activa'}</p>
-              </div>
-            </CardHeader>
-            <CardContent>
-              {overviewErrorMessage && (
-                <div className="mb-4 rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-800">
-                  <div className="flex items-start gap-3">
-                    <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+                  <div className="grid gap-2 sm:grid-cols-[150px_150px]">
                     <div>
-                      <p className="font-black">No se pudo cargar el resumen de planificación.</p>
-                      <p className="mt-1 leading-6">{overviewErrorMessage}</p>
+                      <Label htmlFor="planning-date-from" className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">
+                        Desde
+                      </Label>
+                      <Input
+                        id="planning-date-from"
+                        type="date"
+                        value={dateFrom}
+                        onChange={(event) => setDateFrom(event.target.value)}
+                        className="mt-1 h-10 rounded-xl border-slate-200 bg-slate-50"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="planning-date-to" className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">
+                        Hasta
+                      </Label>
+                      <Input
+                        id="planning-date-to"
+                        type="date"
+                        value={dateTo}
+                        onChange={(event) => setDateTo(event.target.value)}
+                        className="mt-1 h-10 rounded-xl border-slate-200 bg-slate-50"
+                      />
                     </div>
                   </div>
                 </div>
-              )}
-              <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
-                <div className="rounded-2xl border border-sky-200 bg-sky-50 p-4">
-                  <p className="text-xs font-black uppercase tracking-[0.22em] text-sky-700">Sin cubrir</p>
-                  <p className="mt-2 text-3xl font-black text-slate-950">
-                    {overviewMetric(overviewData?.overview.unassignedTasks ?? 0)}
-                  </p>
-                  <p className="mt-1 text-xs text-slate-600 md:text-sm">Tareas pendientes de propuesta</p>
-                </div>
-                <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
-                  <p className="text-xs font-black uppercase tracking-[0.22em] text-emerald-700">Capacidad</p>
-                  <p className="mt-2 text-3xl font-black text-slate-950">
-                    {overviewMetric(overviewData ? formatHours(overviewData.overview.availableMinutes) : '0 h')}
-                  </p>
-                  <p className="mt-1 text-xs text-slate-600 md:text-sm">Capacidad teórica disponible</p>
-                </div>
-                <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
-                  <p className="text-xs font-black uppercase tracking-[0.22em] text-amber-700">Incidencia de carga</p>
-                  <p className={`mt-2 text-3xl font-black ${statusTone(utilizationPercent)}`}>
-                    {overviewMetric(`${utilizationPercent}%`)}
-                  </p>
-                  <p className="mt-1 text-xs text-slate-600 md:text-sm">Relación horas necesarias / disponibles</p>
-                </div>
-                <div className="rounded-2xl border border-rose-200 bg-rose-50 p-4">
-                  <p className="text-xs font-black uppercase tracking-[0.22em] text-rose-700">Riesgo</p>
-                  <p className="mt-2 text-3xl font-black text-slate-950">
-                    {overviewMetric(overviewData?.overview.deficitDays ?? 0)}
-                  </p>
-                  <p className="mt-1 text-xs text-slate-600 md:text-sm">Días con déficit o conflicto</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
 
-          <Card className="border-[#310984]/20 bg-[#190044] text-white shadow-[0_28px_80px_rgba(49,9,132,0.22)]">
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs font-black uppercase tracking-[0.22em] text-white/45">Pulso del plan</p>
-                  <CardTitle className="mt-2 text-2xl font-black text-white">Centro de decisión</CardTitle>
-                </div>
-                <Sparkles className="h-5 w-5 text-cyan-300" />
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 gap-3 xl:grid-cols-1">
-                <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                  <p className="text-xs font-bold uppercase tracking-[0.2em] text-white/50">Horas requeridas</p>
-                  <p className="mt-2 text-2xl font-black text-white">
-                    {overviewMetric(overviewData ? formatHours(overviewData.overview.requiredMinutes) : '0 h')}
-                  </p>
-                </div>
-                <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                  <p className="text-xs font-bold uppercase tracking-[0.2em] text-white/50">Bajas activas</p>
-                  <p className="mt-2 text-2xl font-black text-white">
-                    {overviewMetric(overviewData?.overview.activeAbsences ?? 0)}
-                  </p>
-                </div>
-                <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                  <p className="text-xs font-bold uppercase tracking-[0.2em] text-white/50">Tareas críticas</p>
-                  <p className="mt-2 text-2xl font-black text-white">
-                    {overviewMetric(overviewData?.overview.criticalTasks ?? 0)}
-                  </p>
-                </div>
-                <div className="rounded-2xl border border-cyan-200/20 bg-cyan-300/10 p-4">
-                  <p className="text-xs font-bold uppercase tracking-[0.2em] text-cyan-100/80">Tiempo ahorrado</p>
-                  <p className="mt-2 text-2xl font-black text-white">
-                    {overviewMetric(performance ? formatHours(performance.estimatedTimeSavedMinutes) : '0 h')}
-                  </p>
+                {overviewErrorMessage && (
+                  <div className="rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-800">
+                    <div className="flex items-start gap-3">
+                      <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+                      <div>
+                        <p className="font-black">No se pudo cargar el resumen de planificación.</p>
+                        <p className="mt-1 leading-6">{overviewErrorMessage}</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                <div className="grid grid-cols-2 gap-2 lg:grid-cols-6">
+                  <PlanningMetricCard tone="sky" label="Sin cubrir" value={overviewMetric(overviewData?.overview.unassignedTasks ?? 0)} detail="Pendientes" />
+                  <PlanningMetricCard tone="slate" label="Horas req." value={overviewMetric(overviewData ? formatHours(overviewData.overview.requiredMinutes) : '0 h')} detail="Necesarias" />
+                  <PlanningMetricCard tone="emerald" label="Capacidad" value={overviewMetric(overviewData ? formatHours(overviewData.overview.availableMinutes) : '0 h')} detail="Disponible" />
+                  <PlanningMetricCard tone="amber" label="Carga" value={overviewMetric(`${utilizationPercent}%`)} detail="Req./disp." valueClassName={statusTone(utilizationPercent)} />
+                  <PlanningMetricCard tone="rose" label="Bajas" value={overviewMetric(overviewData?.overview.activeAbsences ?? 0)} detail="Activas" />
+                  <PlanningMetricCard tone="violet" label="Críticas" value={overviewMetric(overviewData?.overview.criticalTasks ?? 0)} detail="Tareas" />
                 </div>
               </div>
 
-              <div className="grid gap-3 sm:grid-cols-2">
-                <div>
-                  <Label htmlFor="planning-date-from" className="text-xs uppercase tracking-[0.18em] text-white/60">
-                    Desde
-                  </Label>
-                  <Input
-                    id="planning-date-from"
-                    type="date"
-                    value={dateFrom}
-                    onChange={(event) => setDateFrom(event.target.value)}
-                    className="mt-2 border-white/10 bg-white/5 text-white"
-                  />
+              <div className="rounded-3xl border border-[#310984]/15 bg-[#190044] p-4 text-white shadow-[0_20px_60px_rgba(49,9,132,0.24)]">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-xs font-black uppercase tracking-[0.22em] text-white/45">Centro de decisión</p>
+                    <p className="mt-1 text-lg font-black text-white">Acciones rápidas</p>
+                  </div>
+                  <Sparkles className="h-5 w-5 text-cyan-300" />
                 </div>
-                <div>
-                  <Label htmlFor="planning-date-to" className="text-xs uppercase tracking-[0.18em] text-white/60">
-                    Hasta
-                  </Label>
-                  <Input
-                    id="planning-date-to"
-                    type="date"
-                    value={dateTo}
-                    onChange={(event) => setDateTo(event.target.value)}
-                    className="mt-2 border-white/10 bg-white/5 text-white"
-                  />
+
+                <div className="mt-4 grid grid-cols-2 gap-2">
+                  <div className="rounded-2xl border border-cyan-200/20 bg-cyan-300/10 p-3">
+                    <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-cyan-100/80">Tiempo ahorrado</p>
+                    <p className="mt-1 text-xl font-black text-white">
+                      {overviewMetric(performance ? formatHours(performance.estimatedTimeSavedMinutes) : '0 h')}
+                    </p>
+                  </div>
+                  <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
+                    <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-white/50">Riesgo</p>
+                    <p className="mt-1 text-xl font-black text-white">
+                      {overviewMetric(overviewData?.overview.deficitDays ?? 0)}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="mt-4 grid gap-2">
+                  <Button
+                    className="h-11 rounded-2xl bg-cyan-300 text-slate-950 hover:bg-cyan-200"
+                    onClick={handleGenerate}
+                    disabled={!activeSede?.id || generateRun.isPending}
+                  >
+                    {generateRun.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <CalendarDays className="h-4 w-4" />}
+                    Planificar tareas
+                  </Button>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="h-10 rounded-2xl border-amber-200/40 bg-amber-100/10 text-amber-50 hover:bg-amber-100/20 hover:text-white"
+                      onClick={() => setActiveTab('coverage')}
+                    >
+                      <ShieldAlert className="h-4 w-4" />
+                      Cubrir bajas
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="h-10 rounded-2xl border-white/15 bg-white/5 text-white hover:bg-white/10 hover:text-white"
+                      onClick={() => setActiveTab('buildings')}
+                    >
+                      <Building2 className="h-4 w-4" />
+                      Edificios
+                    </Button>
+                  </div>
                 </div>
               </div>
-
-              <Button
-                className="w-full rounded-2xl bg-cyan-300 text-slate-950 hover:bg-cyan-200"
-                onClick={handleGenerate}
-                disabled={!activeSede?.id || generateRun.isPending}
-              >
-                {generateRun.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <CalendarDays className="h-4 w-4" />}
-                Planificar tareas
-              </Button>
-            </CardContent>
-          </Card>
-        </div>
-
-        <div className="grid gap-3 md:grid-cols-3">
-          <Button
-            className="h-12 rounded-2xl bg-[#310984] text-white hover:bg-[#26066b]"
-            onClick={handleGenerate}
-            disabled={!activeSede?.id || generateRun.isPending}
-          >
-            {generateRun.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <CalendarDays className="h-4 w-4" />}
-            Planificar tareas
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            className="h-12 rounded-2xl border-amber-200 bg-amber-50 text-amber-900 hover:bg-amber-100"
-            onClick={() => setActiveTab('coverage')}
-          >
-            <ShieldAlert className="h-4 w-4" />
-            Cubrir bajas
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            className="h-12 rounded-2xl border-slate-200 bg-white text-slate-900 hover:bg-slate-50"
-            onClick={() => setActiveTab('buildings')}
-          >
-            <Building2 className="h-4 w-4" />
-            Configurar edificios
-          </Button>
-        </div>
+            </div>
+          </CardContent>
+        </Card>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
           <div className="md:hidden">
