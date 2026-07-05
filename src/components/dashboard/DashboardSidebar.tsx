@@ -28,7 +28,6 @@ import {
   ChevronRight,
   Package,
   Bot,
-  ClipboardList,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useRolePermissions } from '@/hooks/useRolePermissions';
@@ -108,22 +107,10 @@ const managementItems: NavigationItem[] = [
     permission: 'properties'
   },
   {
-    title: 'Planificación',
-    href: '/planning',
-    icon: ClipboardList,
-    permission: 'tasks-edit'
-  },
-  {
     title: 'Hermes planificación',
     href: '/planning?copilot=open',
     icon: Bot,
     permission: 'tasks-edit'
-  },
-  {
-    title: 'Ajustes de planificación',
-    href: '/planning-settings',
-    icon: Layers,
-    permission: 'propertyGroups'
   },
   {
     title: 'Control de Mudas',
