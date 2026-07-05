@@ -93,6 +93,8 @@ export interface AssignmentProposal {
   propertyGroupId?: string;
   propertyGroupName?: string;
   durationMinutes: number;
+  proposedStartTime?: string;
+  proposedEndTime?: string;
   requiredCleaners?: number;
   assignmentIndex?: number;
   confidence: number;

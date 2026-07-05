@@ -162,13 +162,19 @@ export const AssignmentProposalPanel = ({
                       const reasons = uniqueText(group.proposals.flatMap((item) => item.reasons)).slice(0, 2);
                       const warnings = uniqueText(group.proposals.flatMap((item) => item.warnings));
                       const isTeam = group.proposals.length > 1 || (first.requiredCleaners || 1) > 1;
+                      const originalTimeLabel = `${group.task?.displayStartTime || '--:--'}–${group.task?.displayEndTime || '--:--'}`;
+                      const proposedTimeLabel = first.proposedStartTime && first.proposedEndTime ? `${first.proposedStartTime}–${first.proposedEndTime}` : null;
+                      const showProposedTime = Boolean(proposedTimeLabel && proposedTimeLabel !== originalTimeLabel);
 
                       return (
                         <div key={group.taskId} className="rounded-2xl border border-[#310984]/10 bg-[#faf8ff] p-4">
                           <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
                             <div className="min-w-0">
                               <p className="break-words text-sm font-semibold text-[#171321]">{group.task?.property || 'Limpieza'}</p>
-                              <p className="text-xs text-[#6b627a]">{group.task?.date || 'Sin fecha'} · {group.task?.displayStartTime || '--:--'}–{group.task?.displayEndTime || '--:--'} · {minutesToHoursLabel(first.durationMinutes)}{isTeam ? ' por persona' : ''}</p>
+                              <p className="text-xs text-[#6b627a]">{group.task?.date || 'Sin fecha'} · tarea {originalTimeLabel} · {minutesToHoursLabel(first.durationMinutes)}{isTeam ? ' por persona' : ''}</p>
+                              {showProposedTime && (
+                                <p className="mt-1 text-xs font-semibold text-[#310984]">Horario propuesto: {proposedTimeLabel} dentro de checkout–checkin</p>
+                              )}
                               <p className="text-xs text-[#6b627a]">→ {cleanerNames}{isTeam ? ` · equipo de ${group.proposals.length}` : ''}</p>
                               {group.task?.cleaner && <p className="text-[11px] text-[#6b627a]/80">Actual: {group.task.cleaner}</p>}
                             </div>
@@ -237,12 +243,16 @@ export const AssignmentProposalPanel = ({
             {proposalGroups.map((group) => {
               const cleanerNames = group.proposals.map((item) => item.cleanerName).join(', ');
               const first = group.proposals[0];
+              const originalTimeLabel = `${group.task?.displayStartTime || '--:--'}–${group.task?.displayEndTime || '--:--'}`;
+              const proposedTimeLabel = first.proposedStartTime && first.proposedEndTime ? `${first.proposedStartTime}–${first.proposedEndTime}` : null;
+              const showProposedTime = Boolean(proposedTimeLabel && proposedTimeLabel !== originalTimeLabel);
               return (
                 <div key={group.taskId} className="rounded-xl border bg-muted/30 p-3 text-sm">
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0 break-words">
                       <p className="font-medium">{group.task?.property || 'Limpieza'}</p>
-                      <p className="text-muted-foreground">{group.task?.date} · {group.task?.displayStartTime}–{group.task?.displayEndTime}</p>
+                      <p className="text-muted-foreground">{group.task?.date} · tarea {originalTimeLabel}</p>
+                      {showProposedTime && <p className="mt-1 text-xs font-semibold text-[#310984]">Horario propuesto: {proposedTimeLabel}</p>}
                     </div>
                     <Badge variant="outline" className="shrink-0">
                       {cleanerNames}

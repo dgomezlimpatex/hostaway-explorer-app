@@ -50,6 +50,7 @@ type ScheduledWindow = {
 type Candidate = {
   assignment: CleanerGroupAssignment;
   availability: EffectiveWorkerAvailability;
+  proposedWindow: ScheduledWindow;
   score: number;
   reasons: string[];
   warnings: string[];
@@ -81,6 +82,13 @@ const timeToMinutes = (time?: string | null): number | null => {
   return hours * 60 + minutes;
 };
 
+const minutesToTime = (minutes: number): string => {
+  const normalized = Math.max(0, Math.min(23 * 60 + 59, Math.round(minutes)));
+  const hours = Math.floor(normalized / 60).toString().padStart(2, '0');
+  const mins = (normalized % 60).toString().padStart(2, '0');
+  return `${hours}:${mins}`;
+};
+
 const getTaskWindow = (task: CleaningPlanningTask, propertyGroupId?: string): ScheduledWindow | null => {
   const startMinutes = timeToMinutes(task.startTime);
   const endMinutes = timeToMinutes(task.endTime);
@@ -90,6 +98,22 @@ const getTaskWindow = (task: CleaningPlanningTask, propertyGroupId?: string): Sc
     date: task.date,
     startMinutes,
     endMinutes,
+    propertyGroupId,
+  };
+};
+
+const getOperationalWindow = (task: CleaningPlanningTask, propertyGroupId?: string): ScheduledWindow | null => {
+  const checkOutMinutes = timeToMinutes(task.checkOut);
+  const checkInMinutes = timeToMinutes(task.checkIn);
+  if (checkOutMinutes === null || checkInMinutes === null || checkInMinutes <= checkOutMinutes) {
+    return getTaskWindow(task, propertyGroupId);
+  }
+
+  return {
+    taskId: task.id,
+    date: task.date,
+    startMinutes: checkOutMinutes,
+    endMinutes: checkInMinutes,
     propertyGroupId,
   };
 };
@@ -164,6 +188,37 @@ const findProposedWindowConflict = (
   }
 
   return null;
+};
+
+const buildProposedWorkWindow = (
+  proposedWindowsByCleaner: Map<string, ScheduledWindow[]>,
+  cleanerId: string,
+  operationalWindow: ScheduledWindow,
+  workMinutes: number,
+): ScheduledWindow | null => {
+  const sameBuildingWindows = (proposedWindowsByCleaner.get(cleanerId) || [])
+    .filter((window) => window.date === operationalWindow.date)
+    .filter((window) => window.propertyGroupId && window.propertyGroupId === operationalWindow.propertyGroupId)
+    .sort((a, b) => a.startMinutes - b.startMinutes || a.endMinutes - b.endMinutes);
+
+  let startMinutes = operationalWindow.startMinutes;
+
+  for (const window of sameBuildingWindows) {
+    const latestEndBeforeWindow = window.startMinutes - SAME_BUILDING_BUFFER_MINUTES;
+    if (startMinutes + workMinutes <= latestEndBeforeWindow) break;
+    startMinutes = Math.max(startMinutes, window.endMinutes + SAME_BUILDING_BUFFER_MINUTES);
+  }
+
+  const endMinutes = startMinutes + workMinutes;
+  if (endMinutes > operationalWindow.endMinutes) return null;
+
+  return {
+    taskId: operationalWindow.taskId,
+    date: operationalWindow.date,
+    startMinutes,
+    endMinutes,
+    propertyGroupId: operationalWindow.propertyGroupId,
+  };
 };
 
 const checkAvailabilityWindowFit = (
@@ -359,14 +414,16 @@ export const buildAssignmentProposal = ({
       return;
     }
 
-    const taskWindow = getTaskWindow(task, detectedBuilding.propertyGroupId);
-    if (!taskWindow) {
+    const displayTaskWindow = getTaskWindow(task, detectedBuilding.propertyGroupId);
+    if (!displayTaskWindow) {
       conflicts.push(buildConflict(task.id, 'invalid_time_window', 'La tarea no tiene una ventana horaria válida para proponer asignación.', {
         startTime: task.startTime,
         endTime: task.endTime,
       }));
       return;
     }
+
+    const taskWindow = getOperationalWindow(task, detectedBuilding.propertyGroupId) || displayTaskWindow;
 
     const buildingAssignments = cleanerGroupAssignments
       .filter((assignment) => assignment.isActive)
@@ -402,13 +459,20 @@ export const buildAssignmentProposal = ({
         const countKey = taskCountKey(assignment.cleanerId, task.date, detectedBuilding.propertyGroupId);
         const currentCount = proposedTaskCounts.get(countKey) || 0;
         if (assignment.maxTasksPerDay > 0 && currentCount >= assignment.maxTasksPerDay) return null;
-        const proposedWindowConflict = findProposedWindowConflict(proposedWindowsByCleaner, assignment.cleanerId, taskWindow);
+        const proposedWindow = buildProposedWorkWindow(proposedWindowsByCleaner, assignment.cleanerId, taskWindow, workerLoadMinutes);
+        if (!proposedWindow) return null;
+        const proposedWindowFit = checkAvailabilityWindowFit(workerAvailability, proposedWindow, workerLoadMinutes);
+        if (!proposedWindowFit.fits) {
+          if (proposedWindowFit.blockedCode) blockedWindowCodes.add(proposedWindowFit.blockedCode);
+          return null;
+        }
+        const proposedWindowConflict = findProposedWindowConflict(proposedWindowsByCleaner, assignment.cleanerId, proposedWindow);
         if (proposedWindowConflict) {
           proposedWindowConflicts.push(proposedWindowConflict);
           return null;
         }
         const score = scoreCandidate({ assignment, availability: workerAvailability, requiredMinutes });
-        return { assignment, availability: workerAvailability, ...score };
+        return { assignment, availability: workerAvailability, proposedWindow, ...score };
       })
       .filter((candidate): candidate is Candidate => Boolean(candidate))
       .sort((a, b) => b.score - a.score || getAssignmentRoleRank(a.assignment) - getAssignmentRoleRank(b.assignment) || a.assignment.priority - b.assignment.priority || b.availability.remainingMinutes - a.availability.remainingMinutes);
@@ -476,7 +540,7 @@ export const buildAssignmentProposal = ({
       availabilityByCleanerDate.set(availabilityKey(candidate.assignment.cleanerId, task.date), candidate.availability);
 
       const cleanerWindows = proposedWindowsByCleaner.get(candidate.assignment.cleanerId) || [];
-      proposedWindowsByCleaner.set(candidate.assignment.cleanerId, [...cleanerWindows, taskWindow]);
+      proposedWindowsByCleaner.set(candidate.assignment.cleanerId, [...cleanerWindows, candidate.proposedWindow]);
       const countKey = taskCountKey(candidate.assignment.cleanerId, task.date, detectedBuilding.propertyGroupId);
       proposedTaskCounts.set(countKey, (proposedTaskCounts.get(countKey) || 0) + 1);
 
@@ -487,6 +551,8 @@ export const buildAssignmentProposal = ({
         propertyGroupId: detectedBuilding.propertyGroupId,
         propertyGroupName: detectedBuilding.propertyGroupName,
         durationMinutes: workerLoadMinutes,
+        proposedStartTime: minutesToTime(candidate.proposedWindow.startMinutes),
+        proposedEndTime: minutesToTime(candidate.proposedWindow.endMinutes),
         requiredCleaners,
         assignmentIndex: index + 1,
         confidence: Math.max(0, Math.min(100, candidate.score)),

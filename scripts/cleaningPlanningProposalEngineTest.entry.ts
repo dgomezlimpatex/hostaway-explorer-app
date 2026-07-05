@@ -176,13 +176,49 @@ export async function run(assert: Assert) {
   const overlapsAreRejected = proposalFor(
     [
       fallbackTask({ id: 'task-overlap-1', startTime: '10:00', endTime: '12:00', durationMinutes: 120, duration: 120 }),
-      fallbackTask({ id: 'task-overlap-2', startTime: '10:30', endTime: '12:30', durationMinutes: 120, duration: 120 }),
+      fallbackTask({
+        id: 'task-overlap-2',
+        property: 'AB1.1',
+        propertyCode: 'AB1.1',
+        propertyName: 'AB1.1',
+        startTime: '10:30',
+        endTime: '12:30',
+        durationMinutes: 120,
+        duration: 120,
+        detectedBuilding: {
+          status: 'detected' as const,
+          propertyGroupId: 'group-ab1',
+          propertyGroupName: 'AB1',
+          reason: 'fixture',
+        },
+      }),
     ],
     [availability('2026-07-01', 480, true)],
-    [{ ...cleanerGroupAssignments[0], maxTasksPerDay: 10 }],
+    [
+      { ...cleanerGroupAssignments[0], maxTasksPerDay: 10 },
+      { ...cleanerGroupAssignments[0], id: 'assignment-ana-ab1', propertyGroupId: 'group-ab1', maxTasksPerDay: 10 },
+    ],
   );
-  assert.equal(overlapsAreRejected.proposals.length, 1, 'proposal engine must not create overlapping tasks for the same cleaner');
+  assert.equal(overlapsAreRejected.proposals.length, 1, 'proposal engine must not create overlapping tasks for the same cleaner across different buildings');
   assert.deepEqual(overlapsAreRejected.conflicts.map((conflict) => conflict.code), ['time_overlap']);
+
+  const sameBuildingTasksArePackedWithOneCleaner = proposalFor(
+    [
+      fallbackTask({ id: 'task-pack-101', property: 'AB1.101', propertyCode: 'AB1.101', propertyName: 'AB1.101', startTime: '11:00', endTime: '11:30', durationMinutes: 30, duration: 30, checkOut: '11:00', checkIn: '15:00' }),
+      fallbackTask({ id: 'task-pack-102', property: 'AB1.102', propertyCode: 'AB1.102', propertyName: 'AB1.102', startTime: '11:00', endTime: '11:30', durationMinutes: 30, duration: 30, checkOut: '11:00', checkIn: '15:00' }),
+      fallbackTask({ id: 'task-pack-601', property: 'AB1.601', propertyCode: 'AB1.601', propertyName: 'AB1.601', startTime: '11:00', endTime: '11:30', durationMinutes: 30, duration: 30, checkOut: '11:00', checkIn: '15:00' }),
+    ],
+    [
+      { ...availability('2026-07-01', 240, true, 'ana'), availableWindows: [{ startTime: '09:00', endTime: '17:00' }] },
+      { ...availability('2026-07-01', 240, true, 'bea'), availableWindows: [{ startTime: '09:00', endTime: '17:00' }] },
+      { ...availability('2026-07-01', 240, true, 'carla'), availableWindows: [{ startTime: '09:00', endTime: '17:00' }] },
+    ],
+    cleanerGroupAssignments.map((assignment) => ({ ...assignment, maxTasksPerDay: 10 })),
+  );
+  assert.equal(sameBuildingTasksArePackedWithOneCleaner.proposals.length, 3, 'all same-building tasks should be proposed when one cleaner can cover the pack');
+  assert.deepEqual(sameBuildingTasksArePackedWithOneCleaner.proposals.map((proposal) => proposal.cleanerId), ['ana', 'ana', 'ana'], 'same-building tasks inside checkout-checkin should stay with the same worker when capacity allows');
+  assert.deepEqual(sameBuildingTasksArePackedWithOneCleaner.proposals.map((proposal) => `${proposal.proposedStartTime}-${proposal.proposedEndTime}`), ['11:00-11:30', '11:40-12:10', '12:20-12:50'], 'same-building tasks should be sequenced with the same-building buffer inside checkout-checkin');
+  assert.equal(sameBuildingTasksArePackedWithOneCleaner.conflicts.length, 0);
 
   const missingTimeIsRejected = proposalFor(
     [fallbackTask({ id: 'task-invalid-time', startTime: '', endTime: '', displayStartTime: 'Sin hora', displayEndTime: 'Sin hora' })],
@@ -203,10 +239,10 @@ export async function run(assert: Assert) {
   assert.equal(invalidStatusesAreIgnored.conflicts.length, 0, 'ignored non-planifiable statuses should not create operator noise');
 
   const outsideAvailabilityWindowIsRejected = proposalFor(
-    [fallbackTask({ id: 'task-window-mismatch', startTime: '15:00', endTime: '17:00', durationMinutes: 120, duration: 120 })],
+    [fallbackTask({ id: 'task-window-mismatch', startTime: '15:00', endTime: '17:00', checkOut: '15:00', checkIn: '17:00', durationMinutes: 120, duration: 120 })],
     [{ ...availability('2026-07-01', 480, true), availableWindows: [{ startTime: '09:00', endTime: '13:00' }] }],
   );
-  assert.equal(outsideAvailabilityWindowIsRejected.proposals.length, 0, 'task must fit inside a real available window, not just available minutes');
+  assert.equal(outsideAvailabilityWindowIsRejected.proposals.length, 0, 'task checkout-checkin window must fit inside a real available window, not just available minutes');
   assert.deepEqual(outsideAvailabilityWindowIsRejected.conflicts.map((conflict) => conflict.code), ['availability_window_mismatch']);
 
   const sameBuildingTenMinuteBufferIsEnough = proposalFor(
@@ -223,13 +259,13 @@ export async function run(assert: Assert) {
   const sameBuildingLessThanTenMinuteBufferIsRejected = proposalFor(
     [
       fallbackTask({ id: 'task-buffer-5a', startTime: '10:00', endTime: '12:00', durationMinutes: 120, duration: 120 }),
-      fallbackTask({ id: 'task-buffer-5b', startTime: '12:05', endTime: '14:05', durationMinutes: 120, duration: 120 }),
+      fallbackTask({ id: 'task-buffer-5b', startTime: '12:05', endTime: '14:05', checkIn: '14:05', durationMinutes: 120, duration: 120 }),
     ],
     [availability('2026-07-01', 300, true)],
     [{ ...cleanerGroupAssignments[0], maxTasksPerDay: 10 }],
   );
   assert.equal(sameBuildingLessThanTenMinuteBufferIsRejected.proposals.length, 1);
-  assert.deepEqual(sameBuildingLessThanTenMinuteBufferIsRejected.conflicts.map((conflict) => conflict.code), ['time_buffer_overlap']);
+  assert.deepEqual(sameBuildingLessThanTenMinuteBufferIsRejected.conflicts.map((conflict) => conflict.code), ['no_available_worker']);
 
   const earlyCheckInIsPrioritized = proposalFor(
     [

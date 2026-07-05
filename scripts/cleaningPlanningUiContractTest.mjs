@@ -92,6 +92,7 @@ assert.doesNotMatch(proposalPanel, /max-h-\[260px\][\s\S]*overflow-y-auto/, 'Dec
 assert.match(proposalPanel, /grid gap-3 lg:grid-cols-2 2xl:grid-cols-3/, 'Proposal and decision lists must use a wide responsive grid');
 assert.match(proposalPanel, /Necesitan decisión manual/, 'Decision-needed section must be explicit and prominent');
 assert.match(proposalPanel, /displayStartTime.*displayEndTime/s, 'Proposal cards must show task time context');
+assert.match(proposalPanel, /Horario propuesto/, 'Proposal cards must show the sequenced operational time when Hermes packs same-building tasks');
 
 assert.match(planningPage, /const handleSedeChange = \(sede: Sede\) => \{/, 'Planning page must reset invalid filters/proposal when sede changes');
 assert.match(planningPage, /setFilters\(defaultFilters\)/, 'Changing sede must reset planning filters');
