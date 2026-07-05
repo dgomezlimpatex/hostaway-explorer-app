@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { AlertTriangle, ArrowRight, Building2, CalendarDays, Check, CheckCircle2, Clock3, Loader2, Plus, Search, ShieldAlert, Sparkles, Trash2, UserPlus, Users } from 'lucide-react';
 import { useSede } from '@/contexts/SedeContext';
 import {
@@ -179,6 +179,8 @@ const statusTone = (value: number, inverse = false) => {
 };
 
 type PlanningMetricTone = 'sky' | 'slate' | 'emerald' | 'amber' | 'rose' | 'violet';
+
+type CoverageRole = 'primary' | 'secondary' | 'backup' | 'excluded';
 
 const planningMetricToneClasses: Record<PlanningMetricTone, string> = {
   sky: 'border-sky-200 bg-sky-50 text-sky-700',
@@ -410,7 +412,7 @@ export const OperationalPlanningPage = () => {
   const [selectedPropertyIds, setSelectedPropertyIds] = useState<string[]>([]);
   const [propertySearch, setPropertySearch] = useState('');
   const [newCleanerId, setNewCleanerId] = useState('');
-  const [newCleanerRole, setNewCleanerRole] = useState<'primary' | 'secondary' | 'backup'>('primary');
+  const [newCleanerRole, setNewCleanerRole] = useState<CoverageRole>('primary');
   const [cleanerPickerOpen, setCleanerPickerOpen] = useState(false);
   const [cleanerSearch, setCleanerSearch] = useState('');
   const [selectedCoverageCleanerId, setSelectedCoverageCleanerId] = useState<string | null>(null);
@@ -1008,22 +1010,22 @@ export const OperationalPlanningPage = () => {
     setPropertySearch('');
   };
 
-  const handleAssignCleaner = async (roleOverride?: 'primary' | 'secondary' | 'backup') => {
+  const handleAssignCleaner = async (roleOverride?: CoverageRole) => {
     if (!selectedBuildingId || !newCleanerId) return;
     const roleToAssign = roleOverride || newCleanerRole;
     const currentCount = cleanerAssignments.length;
-    const priorityBase = roleToAssign === 'primary' ? 10 : roleToAssign === 'secondary' ? 20 : 30;
+    const priorityBase = roleToAssign === 'primary' ? 10 : roleToAssign === 'secondary' ? 20 : roleToAssign === 'backup' ? 30 : 90;
     await assignCleaner.mutateAsync({
       propertyGroupId: selectedBuildingId,
       cleanerId: newCleanerId,
       priority: priorityBase + currentCount,
       roleType: roleToAssign,
-      knowledgeLevel: roleToAssign === 'primary' ? 5 : roleToAssign === 'secondary' ? 3 : 2,
+      knowledgeLevel: roleToAssign === 'primary' ? 5 : roleToAssign === 'secondary' ? 3 : roleToAssign === 'backup' ? 2 : 0,
       maxTasksPerDay: 8,
       maxDailyMinutesOverride: null,
       estimatedTravelTimeMinutes: 15,
-      notes: null,
-      isActive: true,
+      notes: roleToAssign === 'excluded' ? 'No apta para este edificio' : null,
+      isActive: roleToAssign !== 'excluded',
     });
     setNewCleanerId('');
   };
@@ -1037,7 +1039,7 @@ export const OperationalPlanningPage = () => {
         planningMaxDailyMinutes: workerForm.planningMaxDailyMinutes,
         planningZone: workerForm.planningZone || null,
         planningOperationalRestrictions: workerForm.planningOperationalRestrictions || null,
-        planningCanHandleLinenLoad: workerForm.planningCanHandleLinenLoad,
+        planningCanHandleLinenLoad: true,
         planningCanHandleComplexCleanings: workerForm.planningCanHandleComplexCleanings,
       },
     });
@@ -1866,93 +1868,18 @@ export const OperationalPlanningPage = () => {
                         </div>
                       </div>
 
-                      <div className="grid gap-4 md:grid-cols-2">
-                        <div className="space-y-2">
-                          <Label>Horas contratadas / semana</Label>
-                          <Input
-                            type="number"
-                            min={0}
-                            step={1}
-                            value={workerForm.contractHoursPerWeek}
-                            onChange={(event) =>
-                              setWorkerForm((prev) => ({
-                                ...prev,
-                                contractHoursPerWeek: Number(event.target.value) || 0,
-                              }))
+                      <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                        <div className="flex items-center justify-between gap-4">
+                          <div>
+                            <p className="font-bold text-slate-900">Puede asumir limpiezas complejas</p>
+                            <p className="text-sm text-slate-500">Útil para propiedades delicadas o más exigentes.</p>
+                          </div>
+                          <Switch
+                            checked={workerForm.planningCanHandleComplexCleanings}
+                            onCheckedChange={(checked) =>
+                              setWorkerForm((prev) => ({ ...prev, planningCanHandleComplexCleanings: checked }))
                             }
                           />
-                        </div>
-                        <div className="space-y-2">
-                          <Label>Capacidad diaria (min)</Label>
-                          <Input
-                            type="number"
-                            min={60}
-                            step={30}
-                            value={workerForm.planningMaxDailyMinutes}
-                            onChange={(event) =>
-                              setWorkerForm((prev) => ({
-                                ...prev,
-                                planningMaxDailyMinutes: Number(event.target.value) || 480,
-                              }))
-                            }
-                          />
-                        </div>
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label>Zona operativa</Label>
-                        <Input
-                          value={workerForm.planningZone}
-                          onChange={(event) =>
-                            setWorkerForm((prev) => ({ ...prev, planningZone: event.target.value }))
-                          }
-                          placeholder="Ej: Centro, Marina, Orzán..."
-                        />
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label>Restricciones operativas</Label>
-                        <Textarea
-                          value={workerForm.planningOperationalRestrictions}
-                          onChange={(event) =>
-                            setWorkerForm((prev) => ({
-                              ...prev,
-                              planningOperationalRestrictions: event.target.value,
-                            }))
-                          }
-                          placeholder="Ej: evitar cargas largas, solo mañanas, no edificios sin ascensor..."
-                        />
-                      </div>
-
-                      <div className="grid gap-3 lg:grid-cols-2">
-                        <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                          <div className="flex items-center justify-between gap-4">
-                            <div>
-                              <p className="font-bold text-slate-900">Puede asumir carga de lencería</p>
-                              <p className="text-sm text-slate-500">Para edificios con más volumen o bolsas pesadas.</p>
-                            </div>
-                            <Switch
-                              checked={workerForm.planningCanHandleLinenLoad}
-                              onCheckedChange={(checked) =>
-                                setWorkerForm((prev) => ({ ...prev, planningCanHandleLinenLoad: checked }))
-                              }
-                            />
-                          </div>
-                        </div>
-
-                        <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                          <div className="flex items-center justify-between gap-4">
-                            <div>
-                              <p className="font-bold text-slate-900">Puede asumir limpiezas complejas</p>
-                              <p className="text-sm text-slate-500">Útil para propiedades delicadas o más exigentes.</p>
-                            </div>
-                            <Switch
-                              checked={workerForm.planningCanHandleComplexCleanings}
-                              onCheckedChange={(checked) =>
-                                setWorkerForm((prev) => ({ ...prev, planningCanHandleComplexCleanings: checked }))
-                              }
-                            />
-                          </div>
                         </div>
                       </div>
 
@@ -2439,7 +2366,7 @@ export const OperationalPlanningPage = () => {
 
                         <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
                           <p className="text-sm font-black uppercase tracking-[0.18em] text-slate-500">Cobertura humana</p>
-                          <p className="mt-1 text-sm text-slate-600">Define titulares, suplentes y backups del edificio.</p>
+                          <p className="mt-1 text-sm text-slate-600">Define titulares, suplentes, backups y trabajadoras no aptas para este edificio.</p>
 
                           <div className="mt-4 grid gap-2 md:grid-cols-[minmax(0,1fr)_160px_auto]">
                             <Button
@@ -2464,7 +2391,7 @@ export const OperationalPlanningPage = () => {
                                 </span>
                               </span>
                             </Button>
-                            <Select value={newCleanerRole} onValueChange={(value: 'primary' | 'secondary' | 'backup') => setNewCleanerRole(value)}>
+                            <Select value={newCleanerRole} onValueChange={(value: CoverageRole) => setNewCleanerRole(value)}>
                               <SelectTrigger className="rounded-xl bg-white">
                                 <SelectValue />
                               </SelectTrigger>
@@ -2472,6 +2399,7 @@ export const OperationalPlanningPage = () => {
                                 <SelectItem value="primary">Titular</SelectItem>
                                 <SelectItem value="secondary">Suplente</SelectItem>
                                 <SelectItem value="backup">Backup</SelectItem>
+                                <SelectItem value="excluded">No apta</SelectItem>
                               </SelectContent>
                             </Select>
                             <Button className="rounded-xl" onClick={() => handleAssignCleaner()} disabled={!newCleanerId || assignCleaner.isPending}>
@@ -2624,11 +2552,15 @@ export const OperationalPlanningPage = () => {
                                     <Label className="text-xs">Rol en este edificio</Label>
                                     <Select
                                       value={assignment.roleType || 'primary'}
-                                      onValueChange={(value: 'primary' | 'secondary' | 'backup') =>
+                                      onValueChange={(value: CoverageRole) =>
                                         updateCleanerAssignment.mutate({
                                           id: assignment.id,
                                           groupId: selectedBuilding.id,
-                                          updates: { roleType: value },
+                                          updates: {
+                                            roleType: value,
+                                            isActive: value !== 'excluded',
+                                            notes: value === 'excluded' ? 'No apta para este edificio' : assignment.notes ?? null,
+                                          },
                                         })
                                       }
                                     >
@@ -2639,6 +2571,7 @@ export const OperationalPlanningPage = () => {
                                         <SelectItem value="primary">Titular</SelectItem>
                                         <SelectItem value="secondary">Suplente</SelectItem>
                                         <SelectItem value="backup">Backup</SelectItem>
+                                        <SelectItem value="excluded">No apta</SelectItem>
                                       </SelectContent>
                                     </Select>
                                   </div>
@@ -2935,23 +2868,8 @@ export const OperationalPlanningPage = () => {
                           <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
                             <div className="flex items-center justify-between gap-4">
                               <div>
-                                <p className="font-bold text-slate-900">Puede asumir carga de lenceria</p>
-                                <p className="text-sm text-slate-500">Util para edificios con mas volumen o bolsas pesadas.</p>
-                              </div>
-                              <Switch
-                                checked={workerForm.planningCanHandleLinenLoad}
-                                onCheckedChange={(checked) =>
-                                  setWorkerForm((prev) => ({ ...prev, planningCanHandleLinenLoad: checked }))
-                                }
-                              />
-                            </div>
-                          </div>
-
-                          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                            <div className="flex items-center justify-between gap-4">
-                              <div>
                                 <p className="font-bold text-slate-900">Puede asumir limpiezas complejas</p>
-                                <p className="text-sm text-slate-500">Permite priorizarla en propiedades mas exigentes o delicadas.</p>
+                                <p className="text-sm text-slate-500">Permite priorizarla en propiedades más exigentes o delicadas.</p>
                               </div>
                               <Switch
                                 checked={workerForm.planningCanHandleComplexCleanings}
@@ -3252,7 +3170,7 @@ export const OperationalPlanningPage = () => {
                     <div className="flex items-center justify-between gap-4">
                       <div>
                         <p className="font-bold text-slate-900">Excluir extraordinarias</p>
-                        <p className="text-sm text-slate-500">MVP solo para limpiezas turísticas normales.</p>
+                        <p className="text-sm text-slate-500">Solo para limpiezas turísticas normales.</p>
                       </div>
                       <Switch checked={excludeExtraordinary} onCheckedChange={setExcludeExtraordinary} />
                     </div>

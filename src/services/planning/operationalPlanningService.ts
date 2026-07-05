@@ -2381,9 +2381,6 @@ class OperationalPlanningService {
           return null;
         }
 
-        if (args.property.planningRequiresLinenLoad && source.cleaner.planningCanHandleLinenLoad === false) {
-          return null;
-        }
 
         if ((args.property.planningComplexity || 1) >= 4 && source.cleaner.planningCanHandleComplexCleanings === false) {
           return null;

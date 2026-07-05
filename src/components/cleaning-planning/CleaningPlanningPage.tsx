@@ -30,10 +30,13 @@ import { AssignmentProposalPanel } from './AssignmentProposalPanel';
 import { BuildingTaskBoard } from './BuildingTaskBoard';
 import { CleanerLoadTable } from './CleanerLoadTable';
 import { CleanerPlanningColumn } from './CleanerPlanningColumn';
+import { DailyPlanningHeader } from './DailyPlanningHeader';
+import { PlanningAdvancedDetails } from './PlanningAdvancedDetails';
 import { PlanningAlertsPanel } from './PlanningAlertsPanel';
 import { PlanningCopilotPanel } from './PlanningCopilotPanel';
+import { PlanningDecisionQueue } from './PlanningDecisionQueue';
 import { PlanningFilters } from './PlanningFilters';
-import { PlanningSummaryCards } from './PlanningSummaryCards';
+import { PlanningAttentionSummary } from './PlanningAttentionSummary';
 import { WorkerAvailabilityPanel } from './WorkerAvailabilityPanel';
 
 const defaultFilters: CleaningPlanningFilters = {
@@ -290,6 +293,7 @@ export const CleaningPlanningPage = () => {
   const displayFilteredCount = isLoading ? '—' : filteredCount;
   const displayPlannedMinutes = isLoading ? '—' : minutesToHoursLabel(planning.summary.plannedMinutes);
   const displayCapacityMinutes = isLoading ? '—' : minutesToHoursLabel(planning.summary.capacityMinutes);
+  const rangeLabel = range.startDate === range.endDate ? range.startDate : `${range.startDate} → ${range.endDate}`;
 
   const handleAssign = (taskId: string, cleaner: Cleaner) => assignTask({ taskId, cleaner });
   const handleSedeChange = (sede: Sede) => {
@@ -333,75 +337,33 @@ export const CleaningPlanningPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#08090a] p-4 text-white md:p-6">
-      <div className="mx-auto max-w-[1800px] space-y-6">
-        <section className="overflow-hidden rounded-[2rem] border border-white/10 bg-[radial-gradient(circle_at_top_left,_rgba(49,9,132,0.62),_transparent_34%),linear-gradient(135deg,_rgba(255,255,255,0.08),_rgba(255,255,255,0.02))] p-5 shadow-2xl shadow-[#310984]/20 md:p-7">
-          <div className="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
-            <div className="max-w-4xl space-y-4">
-              <div className="flex flex-wrap items-center gap-2">
-                <Badge variant="outline" className="border-white/15 bg-white/10 text-white">
-                  <Activity className="mr-1 h-3 w-3" /> Centro de control operativo
-                </Badge>
-                <Badge variant="outline" className={dayStateTone}>{dayState}</Badge>
-                <Badge variant="outline" className="border-white/15 bg-black/20 text-white/70">{range.startDate} → {range.endDate}</Badge>
-              </div>
-              <div>
-                <h1 className="text-3xl font-semibold tracking-[-0.04em] text-white md:text-5xl">
-                  Planificación V2 por propiedades y edificios
-                </h1>
-                <p className="mt-3 max-w-3xl text-sm leading-6 text-white/62 md:text-base">
-                  La pantalla legacy de listado queda sustituida por esta vista V2: horizonte hoy/7/30 días, sede activa, edificios por prefijo/catálogo, alertas y asignación manual confirmada sobre tareas existentes.
-                </p>
-              </div>
-            </div>
+    <div className="min-h-screen bg-[#f7f5fb] p-4 text-[#171321] md:p-6">
+      <div className="mx-auto max-w-[1500px] space-y-5">
+        <DailyPlanningHeader
+          activeSedeName={activeSede?.nombre}
+          rangeLabel={rangeLabel}
+          unassignedCount={displayUnassignedTasks}
+          decisionCount={displayManualReviewCount}
+          capacityLabel={displayUtilization}
+          isLoading={isLoading || buildingDataQuery.isLoading}
+          canGenerateProposal={filteredUnassignedTasks.length > 0 && !buildingDataQuery.isLoading}
+          onGenerateProposal={handleGenerateProposal}
+          onRefresh={handleRefresh}
+        />
 
-            <div className="grid gap-3 sm:grid-cols-3 xl:min-w-[520px]">
-              <div className="rounded-2xl border border-white/10 bg-black/25 p-4">
-                <p className="text-xs uppercase tracking-[0.22em] text-white/65">Sin asignar</p>
-                <p className="mt-2 text-3xl font-semibold">{displayUnassignedTasks}</p>
-              </div>
-              <div className="rounded-2xl border border-white/10 bg-black/25 p-4">
-                <p className="text-xs uppercase tracking-[0.22em] text-white/65">Balance</p>
-                <p className="mt-2 text-3xl font-semibold">{displayUtilization}</p>
-              </div>
-              <div className="rounded-2xl border border-white/10 bg-black/25 p-4">
-                <p className="text-xs uppercase tracking-[0.22em] text-white/65">Revisión</p>
-                <p className="mt-2 text-3xl font-semibold">{displayManualReviewCount}</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex flex-wrap gap-2 text-xs text-white/65">
-              <span>{displayFilteredCount} tareas visibles</span>
-              <span>·</span>
-              <span>{displayPlannedMinutes} planificadas</span>
-              <span>·</span>
-              <span>{displayCapacityMinutes} capacidad real</span>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              <Button variant="outline" className="border-white/15 bg-white/5 text-white hover:bg-white/10 hover:text-white" onClick={handleRefresh} disabled={isLoading || buildingDataQuery.isLoading}>
-                <RefreshCw className="mr-2 h-4 w-4" /> Actualizar datos
-              </Button>
-            </div>
-          </div>
-        </section>
-
-        <div className="rounded-3xl border border-white/10 bg-white/[0.03] p-3 shadow-xl shadow-black/20">
-          <PlanningFilters
-            date={date}
-            preset={preset}
-            filters={filters}
-            zones={zones}
-            cleaners={operationalCleaners.map((cleaner) => ({ id: cleaner.id, name: cleaner.name }))}
-            activeSedeId={activeSede?.id}
-            availableSedes={availableSedes}
-            onDateChange={setDate}
-            onPresetChange={setPreset}
-            onFiltersChange={setFilters}
-            onSedeChange={handleSedeChange}
-          />
-        </div>
+        <PlanningFilters
+          date={date}
+          preset={preset}
+          filters={filters}
+          zones={zones}
+          cleaners={operationalCleaners.map((cleaner) => ({ id: cleaner.id, name: cleaner.name }))}
+          activeSedeId={activeSede?.id}
+          availableSedes={availableSedes}
+          onDateChange={setDate}
+          onPresetChange={setPreset}
+          onFiltersChange={setFilters}
+          onSedeChange={handleSedeChange}
+        />
 
         {isError && (
           <Alert variant="destructive">
@@ -412,33 +374,30 @@ export const CleaningPlanningPage = () => {
         )}
 
         {buildingDataQuery.isError && (
-          <Alert className="border-amber-300/30 bg-amber-500/10 text-amber-50">
+          <Alert className="border-amber-200 bg-amber-50 text-amber-900">
             <AlertTriangle className="h-4 w-4" />
             <AlertTitle>No se pudieron cargar edificios/equipos</AlertTitle>
-            <AlertDescription>La pantalla sigue funcionando, pero la propuesta no tendrá grupos de edificio completos.</AlertDescription>
+            <AlertDescription>La pantalla sigue funcionando, pero Hermes tendrá menos contexto para proponer equipos habituales.</AlertDescription>
           </Alert>
         )}
 
         {isLoading ? (
-          <div className="rounded-3xl border border-white/10 bg-white/[0.04] p-10 text-center text-white/55">Cargando centro de control…</div>
+          <div className="rounded-3xl border border-[#310984]/10 bg-white p-10 text-center text-[#6b627a] shadow-lg shadow-[#310984]/6">
+            Cargando planificación…
+          </div>
         ) : (
           <>
-            <PlanningSummaryCards summary={planning.summary} />
-            <PlanningAlertsPanel tasks={filteredTasks} summary={planning.summary} />
-            <CleanerLoadTable days={filteredCleanerDays} />
-
-            <div className="grid gap-5 xl:grid-cols-[360px_minmax(0,1fr)_420px]">
-              <div className="xl:sticky xl:top-4 xl:max-h-[calc(100vh-2rem)] xl:overflow-y-auto xl:self-start">
-                <WorkerAvailabilityPanel cleaners={operationalCleaners} availabilities={effectiveAvailability} />
+            <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_440px]">
+              <div className="space-y-5">
+                <PlanningAttentionSummary tasks={filteredTasks} summary={planning.summary} />
+                <PlanningDecisionQueue
+                  tasks={filteredTasks}
+                  cleaners={operationalCleaners}
+                  onAssign={handleAssign}
+                  onUnassign={unassignTask}
+                  isAssigning={isAssigning}
+                />
               </div>
-
-              <BuildingTaskBoard
-                tasks={filteredTasks}
-                cleaners={operationalCleaners}
-                onAssign={handleAssign}
-                onUnassign={unassignTask}
-                isAssigning={isAssigning}
-              />
 
               <div className="space-y-5 xl:sticky xl:top-4 xl:max-h-[calc(100vh-2rem)] xl:overflow-y-auto xl:self-start">
                 <PlanningCopilotPanel
@@ -451,44 +410,54 @@ export const CleaningPlanningPage = () => {
                 <AssignmentProposalPanel
                   proposal={proposal}
                   tasks={proposalTasks}
-                  isLoading={buildingDataQuery.isLoading}
                   isApplying={isApplyingProposal}
                   isStale={isProposalStale}
-                  onGenerate={handleGenerateProposal}
                   onApply={handleApplyProposal}
                   onClear={() => setProposalState(null)}
                 />
               </div>
             </div>
 
-            <section className="space-y-3">
-              <div className="flex flex-col gap-1 md:flex-row md:items-end md:justify-between">
-                <div>
-                  <h2 className="text-xl font-semibold tracking-tight text-white">Carga asignada por limpiadora</h2>
-                  <p className="text-sm text-white/50">Columnas filtradas, ordenadas por riesgo y carga prevista.</p>
-                </div>
-                <Badge variant="outline" className="w-fit border-white/15 bg-white/5 text-white/65">
-                  <CheckCircle2 className="mr-1 h-3 w-3" /> Revisión humana antes de guardar
-                </Badge>
-              </div>
-              <div className="grid gap-4 xl:grid-cols-2 2xl:grid-cols-3">
-                {filteredCleanerDays.length === 0 ? (
-                  <div className="rounded-2xl border border-dashed border-white/15 bg-white/[0.04] p-6 text-sm text-white/65 xl:col-span-2 2xl:col-span-3">
-                    <p className="font-medium text-white/80">No hay limpiadoras con tareas para los filtros actuales.</p>
-                    <p className="mt-1 text-xs">Limpia búsqueda/filtros, cambia rango o revisa la sede activa para volver a ver la carga asignada.</p>
-                  </div>
-                ) : filteredCleanerDays.map((day) => (
-                  <CleanerPlanningColumn
-                    key={day.cleanerId}
-                    day={day}
+            <PlanningAdvancedDetails>
+              <div className="grid gap-5 xl:grid-cols-[360px_minmax(0,1fr)]">
+                <WorkerAvailabilityPanel cleaners={operationalCleaners} availabilities={effectiveAvailability} />
+                <div className="space-y-5">
+                  <PlanningAlertsPanel tasks={filteredTasks} summary={planning.summary} />
+                  <CleanerLoadTable days={filteredCleanerDays} />
+                  <BuildingTaskBoard
+                    tasks={filteredTasks}
                     cleaners={operationalCleaners}
                     onAssign={handleAssign}
                     onUnassign={unassignTask}
                     isAssigning={isAssigning}
                   />
-                ))}
+                </div>
               </div>
-            </section>
+
+              <section className="space-y-3">
+                <div>
+                  <h2 className="text-xl font-semibold tracking-tight text-[#171321]">Carga asignada por limpiadora</h2>
+                  <p className="text-sm text-[#6b627a]">Detalle completo para auditoría o ajustes finos.</p>
+                </div>
+                <div className="grid gap-4 xl:grid-cols-2 2xl:grid-cols-3">
+                  {filteredCleanerDays.length === 0 ? (
+                    <div className="rounded-2xl border border-dashed border-[#310984]/15 bg-white p-6 text-sm text-[#6b627a] xl:col-span-2 2xl:col-span-3">
+                      <p className="font-medium text-[#171321]">No hay limpiadoras con tareas para los filtros actuales.</p>
+                      <p className="mt-1 text-xs">Limpia búsqueda/filtros, cambia rango o revisa la sede activa para volver a ver la carga asignada.</p>
+                    </div>
+                  ) : filteredCleanerDays.map((day) => (
+                    <CleanerPlanningColumn
+                      key={day.cleanerId}
+                      day={day}
+                      cleaners={operationalCleaners}
+                      onAssign={handleAssign}
+                      onUnassign={unassignTask}
+                      isAssigning={isAssigning}
+                    />
+                  ))}
+                </div>
+              </section>
+            </PlanningAdvancedDetails>
           </>
         )}
       </div>

@@ -4,7 +4,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthProvider";
 import { SedeContextProvider } from "@/contexts/SedeContextProvider";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
@@ -92,6 +92,11 @@ function SecurityWrapper({ children }: { children: React.ReactNode }) {
   useSessionTimeout();
   return <>{children}</>;
 }
+
+const CleaningPlanningRedirect = () => {
+  const { search } = useLocation();
+  return <Navigate to={`/planning${search || ''}`} replace />;
+};
 
 function App() {
   return (
@@ -200,7 +205,7 @@ function App() {
                       <RoleProtectedRoute requiredModule="tasks"><Tasks /></RoleProtectedRoute>
                     } />
                     <Route path="/cleaning-planning" element={
-                      <RoleProtectedRoute requiredModule="tasks" requiredAction="canEdit"><CleaningPlanning /></RoleProtectedRoute>
+                      <RoleProtectedRoute requiredModule="tasks" requiredAction="canEdit"><CleaningPlanningRedirect /></RoleProtectedRoute>
                     } />
                     <Route path="/clients" element={
                       <RoleProtectedRoute requiredModule="clients"><Clients /></RoleProtectedRoute>
@@ -224,6 +229,9 @@ function App() {
                       <RoleProtectedRoute requiredModule="workers"><Workers /></RoleProtectedRoute>
                     } />
                     <Route path="/planning" element={
+                      <RoleProtectedRoute requiredModule="tasks" requiredAction="canEdit"><CleaningPlanning /></RoleProtectedRoute>
+                    } />
+                    <Route path="/planning-settings" element={
                       <RoleProtectedRoute requiredModule="propertyGroups"><PlanningPage /></RoleProtectedRoute>
                     } />
                     <Route path="/checklist-templates" element={

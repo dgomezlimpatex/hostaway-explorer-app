@@ -29,7 +29,7 @@ export const PlanningAlertsPanel = ({ tasks, summary }: PlanningAlertsPanelProps
   return (
     <Alert className="border-amber-300/30 bg-amber-400/10 text-amber-50">
       <AlertTriangle className="h-4 w-4" />
-      <AlertTitle>Alertas de planificación V2</AlertTitle>
+      <AlertTitle>Alertas técnicas de planificación</AlertTitle>
       <AlertDescription>
         <div className="mt-2 flex flex-wrap gap-2">
           {unassigned.length > 0 && <Badge variant="outline" className="border-red-300/30 bg-red-500/10 text-red-100">{unassigned.length} tareas sin cubrir</Badge>}

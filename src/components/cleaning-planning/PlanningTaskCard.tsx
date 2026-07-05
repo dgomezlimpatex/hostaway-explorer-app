@@ -25,6 +25,7 @@ interface PlanningTaskCardProps {
   onUnassign?: (taskId: string) => void;
   isAssigning?: boolean;
   compact?: boolean;
+  variant?: 'simple' | 'detailed';
 }
 
 const riskLabel: Record<PlanningTaskRisk, string> = {
@@ -53,13 +54,14 @@ const riskClass: Record<PlanningTaskRisk, string> = {
   'proposal-conflict': 'border-red-300/40 bg-red-400/10 text-red-100',
 };
 
-export const PlanningTaskCard = ({ task, cleaners, onAssign, onUnassign, isAssigning, compact = false }: PlanningTaskCardProps) => {
+export const PlanningTaskCard = ({ task, cleaners, onAssign, onUnassign, isAssigning, compact = false, variant = 'detailed' }: PlanningTaskCardProps) => {
   const [selectedCleanerId, setSelectedCleanerId] = useState(task.cleanerId || '');
   const operationalCleaners = useMemo(() => cleaners.filter(isOperationalCleaner), [cleaners]);
   const selectedCleaner = operationalCleaners.find((cleaner) => cleaner.id === selectedCleanerId);
   const taskId = task.originalTaskId || task.id;
   const isReassignment = Boolean(task.cleanerId && selectedCleaner && selectedCleaner.id !== task.cleanerId);
   const canAssignSelected = Boolean(selectedCleaner && !isAssigning && selectedCleanerId !== task.cleanerId);
+  const isSimple = variant === 'simple';
 
   useEffect(() => {
     setSelectedCleanerId(task.cleanerId || '');
@@ -76,15 +78,15 @@ export const PlanningTaskCard = ({ task, cleaners, onAssign, onUnassign, isAssig
   };
 
   return (
-    <Card className="border-l-4 border-l-[#8b5cf6] border-white/10 bg-white/[0.06] text-white shadow-sm shadow-black/20">
+    <Card className={isSimple ? 'border-l-4 border-l-[#310984] border-[#310984]/10 bg-white text-[#171321] shadow-sm shadow-[#310984]/5' : 'border-l-4 border-l-[#8b5cf6] border-white/10 bg-white/[0.06] text-white shadow-sm shadow-black/20'}>
       <CardContent className={compact ? 'space-y-2 p-3' : 'space-y-3 p-4'}>
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <div className="flex items-center gap-2">
-              <Home className="h-4 w-4 shrink-0 text-[#c7b8ff]" />
-              <h4 className="break-words font-semibold text-white">{task.property}</h4>
+              <Home className={isSimple ? 'h-4 w-4 shrink-0 text-[#310984]' : 'h-4 w-4 shrink-0 text-[#c7b8ff]'} />
+              <h4 className={isSimple ? 'break-words font-semibold text-[#171321]' : 'break-words font-semibold text-white'}>{task.property}</h4>
             </div>
-            {!compact && (
+            {!compact && !isSimple && (
               <div className="mt-1 flex items-center gap-1 text-xs text-white/55">
                 <MapPin className="h-3 w-3 shrink-0" />
                 <span className="min-w-0 break-words">{task.address}</span>
@@ -94,15 +96,15 @@ export const PlanningTaskCard = ({ task, cleaners, onAssign, onUnassign, isAssig
           <Badge variant={task.status === 'completed' ? 'default' : 'secondary'}>{task.displayStatus}</Badge>
         </div>
 
-        <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-white/70">
+        <div className={isSimple ? 'flex flex-wrap gap-x-3 gap-y-1 text-xs text-[#6b627a]' : 'flex flex-wrap gap-x-3 gap-y-1 text-xs text-white/70'}>
           <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{task.date}</span>
           <span>{task.displayStartTime}–{task.displayEndTime}</span>
           <span>{task.displayType}</span>
           <span>{minutesToHoursLabel(task.durationMinutes)}</span>
-          <Badge variant="outline" className="border-white/15 bg-white/5 text-[10px] text-white/70">{task.zone}</Badge>
+          {!isSimple && <Badge variant="outline" className="border-white/15 bg-white/5 text-[10px] text-white/70">{task.zone}</Badge>}
         </div>
 
-        {task.riskFlags.length > 0 && (
+        {task.riskFlags.length > 0 && !isSimple && (
           <div className="flex flex-wrap gap-1">
             {task.riskFlags.map((risk) => (
               <Badge key={risk} variant="outline" className={riskClass[risk]}>
@@ -112,10 +114,28 @@ export const PlanningTaskCard = ({ task, cleaners, onAssign, onUnassign, isAssig
           </div>
         )}
 
+        {isSimple && (
+          <div className="flex flex-wrap gap-2 text-xs">
+            <Badge variant="outline" className={task.cleanerId ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-amber-200 bg-amber-50 text-amber-700'}>
+              {task.cleaner || 'Sin responsable'}
+            </Badge>
+            {task.riskFlags.length > 0 && (
+              <Badge variant="outline" className="border-amber-200 bg-amber-50 text-amber-700">
+                {task.riskFlags.length} revisión{task.riskFlags.length === 1 ? '' : 'es'}
+              </Badge>
+            )}
+            {task.durationMinutes >= 240 && (
+              <Badge variant="outline" className="border-purple-200 bg-purple-50 text-purple-700">
+                Casa grande
+              </Badge>
+            )}
+          </div>
+        )}
+
         <div className="flex flex-col gap-2 sm:flex-row">
           <select
             aria-label={`Seleccionar limpiadora para ${task.property}`}
-            className="h-11 min-h-[44px] flex-1 rounded-md border border-white/10 bg-black/30 px-3 text-sm text-white outline-none ring-offset-[#08090a] focus:border-[#c7b8ff]/60 focus:ring-2 focus:ring-[#c7b8ff]/30"
+            className={isSimple ? 'h-11 min-h-[44px] flex-1 rounded-md border border-[#310984]/12 bg-white px-3 text-sm text-[#171321] outline-none ring-offset-white focus:border-[#310984]/50 focus:ring-2 focus:ring-[#310984]/15' : 'h-11 min-h-[44px] flex-1 rounded-md border border-white/10 bg-black/30 px-3 text-sm text-white outline-none ring-offset-[#08090a] focus:border-[#c7b8ff]/60 focus:ring-2 focus:ring-[#c7b8ff]/30'}
             value={selectedCleanerId}
             onChange={(event) => setSelectedCleanerId(event.target.value)}
           >
@@ -176,7 +196,7 @@ export const PlanningTaskCard = ({ task, cleaners, onAssign, onUnassign, isAssig
                   size="sm"
                   variant="outline"
                   disabled={isAssigning}
-                  className="min-h-[44px] min-w-[44px] border-white/15 bg-white/5 text-white hover:bg-white/10 hover:text-white"
+                  className={isSimple ? 'min-h-[44px] min-w-[44px] border-[#310984]/15 bg-white text-[#310984] hover:bg-[#f0eaff] hover:text-[#310984]' : 'min-h-[44px] min-w-[44px] border-white/15 bg-white/5 text-white hover:bg-white/10 hover:text-white'}
                   title="Desasignar"
                 >
                   <UserX className="h-4 w-4" />

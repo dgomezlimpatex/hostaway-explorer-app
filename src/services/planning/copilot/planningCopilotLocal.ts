@@ -7,25 +7,25 @@ const normalize = (value: string): string => value.toLowerCase().normalize('NFD'
 const proposalSummary = (snapshot: PlanningCopilotSnapshot): string => {
   const proposal = snapshot.activeProposal;
   if (!proposal) {
-    return 'Todavía no hay una propuesta activa. Puedo generar una para los filtros visibles.';
+    return 'Todavía no hay plan recomendado. Puedo prepararlo para las limpiezas de esta vista.';
   }
 
   const largeHouseAssignments = proposal.proposals.filter((item) => (item.requiredCleaners || 1) > 1).length;
   return [
-    `Propuesta activa: ${proposal.proposals.length} asignaciones y ${proposal.conflicts.length} conflictos.`,
-    largeHouseAssignments > 0 ? `${largeHouseAssignments} asignaciones pertenecen a casas grandes/multi-persona.` : null,
-    'Todas las acciones requieren tu confirmación antes de guardarse; al confirmar, se notifica inmediatamente.',
+    `Plan activo: ${proposal.proposals.length} asignaciones preparadas y ${proposal.conflicts.length} pendientes para decidir.`,
+    largeHouseAssignments > 0 ? `${largeHouseAssignments} asignaciones son de casas grandes o equipos multi-persona.` : null,
+    'Nada se guarda hasta que confirmes el plan.',
   ].filter(Boolean).join(' ');
 };
 
 const conflictSummary = (snapshot: PlanningCopilotSnapshot): string => {
   const proposalConflicts = snapshot.activeProposal?.conflicts || [];
   if (proposalConflicts.length === 0 && snapshot.summary.conflictTasks === 0) {
-    return 'No veo conflictos destacados en el subconjunto visible. Si quieres, puedo generar o recalcular una propuesta para confirmarlo.';
+    return 'No veo pendientes importantes en esta vista. Si quieres, puedo recalcular un plan recomendado para confirmarlo.';
   }
 
   const conflictLines = proposalConflicts.slice(0, 5).map((conflict) => `• ${conflict.message}`).join('\n');
-  return `Hay ${snapshot.summary.conflictTasks} tareas con riesgo visible y ${proposalConflicts.length} conflictos en la propuesta activa.${conflictLines ? `\n${conflictLines}` : ''}`;
+  return `Veo ${snapshot.summary.conflictTasks} limpiezas con algo a revisar y ${proposalConflicts.length} pendientes en el plan activo.${conflictLines ? `\n${conflictLines}` : ''}`;
 };
 
 export const buildPlanningCopilotReply = (
@@ -38,23 +38,23 @@ export const buildPlanningCopilotReply = (
   if (text.includes('aplica') || text.includes('guardar') || text.includes('confirma')) {
     return {
       message: snapshot.activeProposal?.proposals.length
-        ? `Puedo ayudarte a aplicar la propuesta, pero por seguridad debes pulsar “Revisar y confirmar” en el panel. Alcance actual: ${scope}.`
-        : `No hay propuesta aplicable todavía. Primero genera una propuesta para: ${scope}.`,
+        ? `Para guardar con seguridad, pulsa “Revisar y confirmar” en el plan recomendado. Alcance actual: ${scope}.`
+        : `Aún no hay plan para guardar. Primero genera un plan desde el botón principal para: ${scope}.`,
       actions: snapshot.activeProposal ? proposalsToCopilotActions(snapshot.activeProposal.proposals) : [],
       shouldOpenConfirmation: Boolean(snapshot.activeProposal?.proposals.length),
     };
   }
 
-  if (text.includes('conflicto') || text.includes('riesgo') || text.includes('revision')) {
+  if (text.includes('conflicto') || text.includes('riesgo') || text.includes('revision') || text.includes('pendiente')) {
     return {
-      message: `${conflictSummary(snapshot)}\n\nAlcance: ${scope}.`,
+      message: `${conflictSummary(snapshot)}\n\nEstoy mirando: ${scope}.`,
       actions: snapshot.activeProposal ? proposalsToCopilotActions(snapshot.activeProposal.proposals) : [],
     };
   }
 
   if (text.includes('planifica') || text.includes('propuesta') || text.includes('asigna') || text.includes('recalcula')) {
     return {
-      message: `Voy a preparar una propuesta para el subconjunto visible: ${scope}. Priorizaré check-in temprano a las 14:00, titular → suplentes → backups, casas grandes >6h con 3 personas y buffer de 10 min en mismo edificio.`,
+      message: `Voy a preparar un plan recomendado para: ${scope}. Priorizaré entradas tempranas, limpiadoras habituales, casas grandes con equipo y evitaré sobrecargar a nadie.`,
       actions: [],
       shouldGenerateProposal: true,
     };
@@ -63,8 +63,8 @@ export const buildPlanningCopilotReply = (
   if (text.includes('resumen') || text.includes('estado')) {
     return {
       message: [
-        `Resumen del alcance actual: ${scope}.`,
-        `${snapshot.summary.unassignedTasks} sin asignar, ${snapshot.summary.assignedTasks} asignadas, ${snapshot.summary.earlyCheckInTasks} early check-in y ${snapshot.summary.largeHouseTasks} casas grandes.`,
+        `Resumen: ${scope}.`,
+        `${snapshot.summary.unassignedTasks} sin responsable, ${snapshot.summary.assignedTasks} ya cubiertas, ${snapshot.summary.earlyCheckInTasks} entradas tempranas y ${snapshot.summary.largeHouseTasks} casas grandes.`,
         proposalSummary(snapshot),
       ].join(' '),
       actions: snapshot.activeProposal ? proposalsToCopilotActions(snapshot.activeProposal.proposals) : [],
@@ -73,9 +73,9 @@ export const buildPlanningCopilotReply = (
 
   return {
     message: [
-      `Estoy trabajando sobre: ${scope}.`,
-      'Puedes pedirme: “planifica”, “explica conflictos”, “resumen” o “aplica”.',
-      'Por seguridad, yo preparo borradores y tú confirmas antes de guardar/notificar.',
+      `Estoy mirando: ${scope}.`,
+      'Puedes pedirme “planifica”, “explica pendientes” o “resumen”.',
+      'Yo preparo el plan; tú confirmas antes de guardar y notificar.',
     ].join(' '),
     actions: snapshot.activeProposal ? proposalsToCopilotActions(snapshot.activeProposal.proposals) : [],
   };

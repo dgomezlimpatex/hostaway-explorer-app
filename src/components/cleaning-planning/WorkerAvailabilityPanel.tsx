@@ -100,7 +100,7 @@ export const WorkerAvailabilityPanel = ({ cleaners, availabilities }: WorkerAvai
         <div className="flex items-center justify-between gap-2">
           <CardTitle className="text-base font-semibold tracking-tight">Disponibilidad real</CardTitle>
           <Badge className="border-[#c7b8ff]/30 bg-[#310984]/60 text-white hover:bg-[#310984]/70">
-            <Sparkles className="mr-1 h-3 w-3" /> MVP
+            <Sparkles className="mr-1 h-3 w-3" /> Detalle
           </Badge>
         </div>
         <p className="text-xs text-white/55">
@@ -150,7 +150,7 @@ export const WorkerAvailabilityPanel = ({ cleaners, availabilities }: WorkerAvai
               <div className="mt-2 flex flex-wrap gap-2 text-[11px] text-white/50">
                 <span className="inline-flex items-center gap-1"><CalendarClock className="h-3 w-3" />{minutesToHoursLabel(row.availableMinutes)} reales</span>
                 {row.blockedCount > 0 && <span>{row.blockedCount} bloqueos</span>}
-                {row.fallbackDays > 0 && <span className="inline-flex items-center gap-1 text-amber-100"><ShieldAlert className="h-3 w-3" />fallback</span>}
+                {row.fallbackDays > 0 && <span className="inline-flex items-center gap-1 text-amber-100"><ShieldAlert className="h-3 w-3" />horario estimado</span>}
                 {row.unavailableDays > 0 && <span>{row.unavailableDays} días no disponible</span>}
               </div>
               {row.days.length > 1 && (

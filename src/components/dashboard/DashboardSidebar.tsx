@@ -111,13 +111,19 @@ const managementItems: NavigationItem[] = [
     title: 'Planificación',
     href: '/planning',
     icon: ClipboardList,
-    permission: 'propertyGroups'
+    permission: 'tasks-edit'
   },
   {
     title: 'Hermes planificación',
-    href: '/cleaning-planning?copilot=open',
+    href: '/planning?copilot=open',
     icon: Bot,
     permission: 'tasks-edit'
+  },
+  {
+    title: 'Ajustes de planificación',
+    href: '/planning-settings',
+    icon: Layers,
+    permission: 'propertyGroups'
   },
   {
     title: 'Control de Mudas',

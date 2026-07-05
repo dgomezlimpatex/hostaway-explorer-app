@@ -32,7 +32,7 @@ export interface CleanerGroupAssignment {
   propertyGroupId: string;
   cleanerId: string;
   priority: number;
-  roleType?: 'primary' | 'secondary' | 'backup';
+  roleType?: 'primary' | 'secondary' | 'backup' | 'excluded';
   knowledgeLevel?: number;
   maxTasksPerDay: number;
   maxDailyMinutesOverride?: number | null;

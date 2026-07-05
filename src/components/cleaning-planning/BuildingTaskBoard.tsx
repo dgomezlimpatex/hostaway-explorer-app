@@ -94,7 +94,7 @@ export const BuildingTaskBoard = ({ tasks, cleaners, onAssign, onUnassign, isAss
               <Layers3 className="h-5 w-5 text-[#c7b8ff]" /> Propiedades por edificio
             </CardTitle>
             <p className="mt-1 text-xs text-white/55">
-              Vista V2 centrada en propiedad/apartamento. Agrupa por edificio configurado o prefijo de código y permite asignar/reasignar con confirmación.
+              Vista detallada centrada en propiedad/apartamento. Agrupa por edificio configurado o prefijo de código y permite asignar/reasignar con confirmación.
             </p>
           </div>
           <Badge className="w-fit border-white/10 bg-white/10 text-white hover:bg-white/15">

@@ -1,5 +1,5 @@
 import { FormEvent, useMemo, useState } from 'react';
-import { Bot, Send, ShieldCheck, Sparkles, UserRound } from 'lucide-react';
+import { Bot, MessageSquareText, Send, ShieldCheck, Sparkles } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -28,8 +28,8 @@ const buildInitialMessage = (snapshot: PlanningCopilotSnapshot): PlanningCopilot
   createdAt: nowIso(),
   content: [
     'Soy Hermes dentro de planificación.',
-    `Estoy limitado al alcance visible: ${describePlanningScope(snapshot)}.`,
-    'Puedo proponer, explicar conflictos y preparar acciones, pero tú confirmas antes de guardar y notificar.',
+    `Trabajo solo sobre esta vista: ${describePlanningScope(snapshot)}.`,
+    'Preparo recomendaciones, pero tú confirmas antes de guardar y notificar.',
   ].join(' '),
 });
 
@@ -43,9 +43,28 @@ export const PlanningCopilotPanel = ({
   const [input, setInput] = useState('');
   const [messages, setMessages] = useState<PlanningCopilotMessage[]>(() => [buildInitialMessage(snapshot)]);
   const scopeLabel = useMemo(() => describePlanningScope(snapshot), [snapshot]);
+  const proposal = snapshot.activeProposal;
+  const canGenerate = !isGenerating && !isApplying && snapshot.visibleUnassignedTasks.length > 0;
 
   const appendMessage = (message: PlanningCopilotMessage) => {
     setMessages((current) => [...current, message]);
+  };
+
+  const generateProposal = (source: 'button' | 'instruction' = 'button') => {
+    if (!canGenerate) return null;
+    const generated = onGenerateProposal();
+    appendMessage({
+      id: messageId(),
+      role: 'assistant',
+      createdAt: nowIso(),
+      content: source === 'button'
+        ? `He preparado un plan recomendado: ${generated.proposals.length} asignaciones y ${generated.conflicts.length} decisiones pendientes.`
+        : `Plan recalculado con tu instrucción: ${generated.proposals.length} asignaciones y ${generated.conflicts.length} decisiones pendientes.`,
+      actions: proposalsToCopilotActions(generated.proposals),
+      proposal: generated,
+      conflicts: generated.conflicts,
+    });
+    return generated;
   };
 
   const handleSubmit = (event: FormEvent) => {
@@ -58,16 +77,16 @@ export const PlanningCopilotPanel = ({
 
     const reply = buildPlanningCopilotReply(trimmed, snapshot);
     if (reply.shouldGenerateProposal) {
-      const generated = onGenerateProposal();
-      appendMessage({
-        id: messageId(),
-        role: 'assistant',
-        createdAt: nowIso(),
-        content: `${reply.message}\n\nResultado: ${generated.proposals.length} asignaciones propuestas y ${generated.conflicts.length} conflictos. Revisa el panel de propuesta antes de confirmar.`,
-        actions: proposalsToCopilotActions(generated.proposals),
-        proposal: generated,
-        conflicts: generated.conflicts,
-      });
+      const generated = generateProposal('instruction');
+      if (!generated) {
+        appendMessage({
+          id: messageId(),
+          role: 'assistant',
+          createdAt: nowIso(),
+          content: 'No hay limpiezas sin responsable en esta vista para proponer ahora.',
+          actions: [],
+        });
+      }
       return;
     }
 
@@ -82,92 +101,118 @@ export const PlanningCopilotPanel = ({
     });
   };
 
-  const runQuickCommand = (command: string) => {
-    setInput(command);
+  const askHermes = (command: string) => {
+    const reply = buildPlanningCopilotReply(command, snapshot);
+    appendMessage({ id: messageId(), role: 'user', content: command, createdAt: nowIso() });
+    appendMessage({
+      id: messageId(),
+      role: 'assistant',
+      createdAt: nowIso(),
+      content: reply.message,
+      actions: reply.actions,
+      proposal: snapshot.activeProposal,
+      conflicts: snapshot.activeProposal?.conflicts,
+    });
   };
 
   return (
-    <Card className="border-[#8b5cf6]/25 bg-gradient-to-b from-[#180f29] to-[#090512] text-white shadow-2xl shadow-[#310984]/20">
-      <CardHeader className="space-y-3 border-b border-white/10">
-        <div className="flex items-start justify-between gap-3">
+    <Card className="border-[#310984]/12 bg-white text-[#171321] shadow-lg shadow-[#310984]/8">
+      <CardHeader className="space-y-3 border-b border-[#310984]/10 pb-4">
+        <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
           <div>
-            <CardTitle className="flex items-center gap-2 text-lg tracking-tight">
-              <Bot className="h-5 w-5 text-[#c7b8ff]" /> Copiloto Hermes
+            <CardTitle className="flex items-center gap-2 text-xl tracking-tight">
+              <Bot className="h-5 w-5 text-[#310984]" /> Hermes te ayuda a cerrar el día
             </CardTitle>
-            <p className="mt-1 text-xs leading-5 text-white/55">
-              Propuestas sobre filtros visibles. Confirmación humana obligatoria; notificaciones inmediatas solo después de confirmar.
+            <p className="mt-1 text-sm leading-5 text-[#6b627a]">
+              Planifica esta vista, explica pendientes y prepara cambios. Tú confirmas antes de guardar y notificar.
             </p>
           </div>
-          <Badge variant="outline" className="border-emerald-300/25 bg-emerald-400/10 text-emerald-100">
-            <ShieldCheck className="mr-1 h-3 w-3" /> seguro
+          <Badge variant="outline" className="w-fit border-emerald-200 bg-emerald-50 text-emerald-700">
+            <ShieldCheck className="mr-1 h-3 w-3" /> con confirmación
           </Badge>
         </div>
-        <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-3 text-xs text-white/62">
+        <div className="rounded-2xl border border-[#310984]/10 bg-[#faf8ff] p-3 text-xs text-[#6b627a]">
           {scopeLabel}
         </div>
       </CardHeader>
 
       <CardContent className="space-y-4 p-4">
-        <div className="flex flex-wrap gap-2">
-          {['planifica', 'explica conflictos', 'resumen', 'aplica'].map((command) => (
-            <Button
-              key={command}
-              type="button"
-              size="sm"
-              variant="outline"
-              className="border-white/15 bg-white/5 text-white hover:bg-white/10 hover:text-white"
-              onClick={() => runQuickCommand(command)}
-            >
-              <Sparkles className="mr-1 h-3 w-3" /> {command}
-            </Button>
-          ))}
-          {snapshot.activeProposal && (
-            <Button
-              type="button"
-              size="sm"
-              variant="ghost"
-              className="text-white/55 hover:bg-white/10 hover:text-white"
-              onClick={onClearProposal}
-            >
-              limpiar propuesta
-            </Button>
-          )}
+        <div className="rounded-3xl border border-[#310984]/10 bg-[#faf8ff] p-4">
+          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <div>
+              <p className="font-semibold text-[#171321]">Plan recomendado por Hermes</p>
+              {!proposal ? (
+                <p className="mt-1 text-sm text-[#6b627a]">Todavía no hay plan recomendado. Usa el botón principal de arriba para prepararlo.</p>
+              ) : (
+                <p className="mt-1 text-sm text-[#6b627a]">
+                  {proposal.proposals.length} asignación{proposal.proposals.length === 1 ? '' : 'es'} preparadas · {proposal.conflicts.length} decisión{proposal.conflicts.length === 1 ? '' : 'es'} pendiente{proposal.conflicts.length === 1 ? '' : 's'}.
+                </p>
+              )}
+            </div>
+            <div className="flex flex-col gap-2 sm:flex-row">
+              {proposal && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="min-h-[44px] border-[#310984]/15 bg-white text-[#310984] hover:bg-[#f0eaff] hover:text-[#310984]"
+                  onClick={onClearProposal}
+                >
+                  Limpiar plan
+                </Button>
+              )}
+            </div>
+          </div>
         </div>
 
-        <ScrollArea className="h-[320px] rounded-2xl border border-white/10 bg-black/20 p-3">
-          <div className="space-y-3 pr-2">
-            {messages.map((message) => (
-              <div key={message.id} className={`flex gap-2 ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                {message.role === 'assistant' && <Bot className="mt-1 h-4 w-4 shrink-0 text-[#c7b8ff]" />}
-                <div className={`max-w-[86%] rounded-2xl px-3 py-2 text-sm leading-5 ${message.role === 'user' ? 'bg-[#310984] text-white' : 'bg-white/[0.06] text-white/78'}`}>
-                  <p className="whitespace-pre-wrap">{message.content}</p>
-                  {message.actions && message.actions.length > 0 && (
-                    <p className="mt-2 text-[11px] text-white/45">
-                      {message.actions.length} acción{message.actions.length === 1 ? '' : 'es'} preparadas · requieren confirmación.
-                    </p>
-                  )}
-                </div>
-                {message.role === 'user' && <UserRound className="mt-1 h-4 w-4 shrink-0 text-white/45" />}
-              </div>
-            ))}
-          </div>
-        </ScrollArea>
-
-        <form onSubmit={handleSubmit} className="space-y-2">
-          <Textarea
-            value={input}
-            onChange={(event) => setInput(event.target.value)}
-            placeholder="Ej.: planifica los filtros visibles sin usar a Ana salvo emergencia…"
-            className="min-h-[74px] resize-none border-white/10 bg-black/25 text-white placeholder:text-white/35"
-          />
-          <Button
-            type="submit"
-            className="w-full bg-[#310984] text-white shadow-lg shadow-[#310984]/30 hover:bg-[#4c1bb0]"
-            disabled={!input.trim() || isGenerating || isApplying}
-          >
-            <Send className="mr-2 h-4 w-4" /> Enviar a Hermes
+        <div className="flex flex-wrap gap-2">
+          <Button type="button" variant="outline" className="min-h-[44px] border-[#310984]/15 bg-white text-[#310984] hover:bg-[#f0eaff] hover:text-[#310984]" onClick={() => askHermes('resumen')}>
+            Resumen
           </Button>
-        </form>
+          <Button type="button" variant="outline" className="min-h-[44px] border-[#310984]/15 bg-white text-[#310984] hover:bg-[#f0eaff] hover:text-[#310984]" onClick={() => askHermes('explica pendientes')}>
+            Explicar pendientes
+          </Button>
+        </div>
+
+        <details className="rounded-2xl border border-[#310984]/10 bg-white p-3">
+          <summary className="cursor-pointer text-sm font-medium text-[#310984]">
+            <span className="inline-flex items-center gap-2"><MessageSquareText className="h-4 w-4" /> Añadir instrucción o ver conversación avanzada</span>
+          </summary>
+
+          <div className="mt-3 space-y-3">
+            <ScrollArea className="h-[220px] rounded-2xl border border-[#310984]/10 bg-[#faf8ff] p-3">
+              <div className="space-y-3 pr-2">
+                {messages.map((message) => (
+                  <div key={message.id} className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                    <div className={`max-w-[88%] rounded-2xl px-3 py-2 text-sm leading-5 ${message.role === 'user' ? 'bg-[#310984] text-white' : 'bg-white text-[#171321] shadow-sm'}`}>
+                      <p className="whitespace-pre-wrap">{message.content}</p>
+                      {message.actions && message.actions.length > 0 && (
+                        <p className={message.role === 'user' ? 'mt-2 text-[11px] text-white/70' : 'mt-2 text-[11px] text-[#6b627a]'}>
+                          {message.actions.length} acción{message.actions.length === 1 ? '' : 'es'} preparadas · requieren confirmación.
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </ScrollArea>
+
+            <form onSubmit={handleSubmit} className="space-y-2">
+              <Textarea
+                value={input}
+                onChange={(event) => setInput(event.target.value)}
+                placeholder="Ej.: planifica evitando usar a Ana salvo emergencia…"
+                className="min-h-[74px] resize-none border-[#310984]/12 bg-white text-[#171321] placeholder:text-[#6b627a]/55"
+              />
+              <Button
+                type="submit"
+                className="w-full bg-[#310984] text-white shadow-lg shadow-[#310984]/20 hover:bg-[#4c1bb0]"
+                disabled={!input.trim() || isGenerating || isApplying}
+              >
+                <Send className="mr-2 h-4 w-4" /> Enviar instrucción a Hermes
+              </Button>
+            </form>
+          </div>
+        </details>
       </CardContent>
     </Card>
   );

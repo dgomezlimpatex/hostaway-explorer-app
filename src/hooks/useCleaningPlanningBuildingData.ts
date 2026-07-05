@@ -35,7 +35,7 @@ type CleanerGroupAssignmentRow = {
   property_group_id: string;
   cleaner_id: string;
   priority: number;
-  role_type?: 'primary' | 'secondary' | 'backup';
+  role_type?: 'primary' | 'secondary' | 'backup' | 'excluded';
   knowledge_level?: number | null;
   max_tasks_per_day: number;
   max_daily_minutes_override?: number | null;

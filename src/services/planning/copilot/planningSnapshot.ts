@@ -75,5 +75,5 @@ export const describePlanningScope = (snapshot: PlanningCopilotSnapshot): string
     || snapshot.filters.cleanerId !== 'all'
     || snapshot.filters.search.trim().length > 0;
   const sedeLabel = snapshot.sede?.nombre || 'sede activa';
-  return `${sedeLabel} · ${snapshot.range.startDate}${snapshot.range.endDate !== snapshot.range.startDate ? ` → ${snapshot.range.endDate}` : ''} · ${hasFilters ? 'filtros activos' : 'sin filtros'} · ${snapshot.summary.totalVisibleTasks} tareas visibles`;
+  return `${sedeLabel} · ${snapshot.range.startDate}${snapshot.range.endDate !== snapshot.range.startDate ? ` → ${snapshot.range.endDate}` : ''} · ${hasFilters ? 'búsqueda/filtros aplicados' : 'vista completa'} · ${snapshot.summary.totalVisibleTasks} limpiezas`;
 };

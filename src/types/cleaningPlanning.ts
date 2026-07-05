@@ -124,7 +124,7 @@ export interface AssignmentProposalResult {
   };
 }
 
-export type PlanningDurationSource = 'property' | 'task' | 'time_window' | 'missing';
+export type PlanningDurationSource = 'property' | 'missing';
 
 export interface CleaningPlanningTask extends Task {
   durationMinutes: number;

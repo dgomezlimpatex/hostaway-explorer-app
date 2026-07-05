@@ -49,14 +49,27 @@ export const RoleBasedNavigation = () => {
 
           {hasPermission('tasks', 'canEdit') && (
             <NavigationCard
-              to="/cleaning-planning"
+              to="/planning"
               title="Planificación"
-              description="Cockpit de asignación por sede, edificio y disponibilidad real"
+              description="Planifica limpiezas por sede, edificio, disponibilidad real y revisión de Hermes"
               icon={Layers}
               gradientFrom="bg-gradient-to-br from-[#310984]"
               gradientTo="to-violet-700"
               iconColor="text-white"
               hoverBorderColor="hover:border-violet-300"
+            />
+          )}
+
+          {canAccessModule('propertyGroups') && (
+            <NavigationCard
+              to="/planning-settings"
+              title="Ajustes de planificación"
+              description="Configura edificios, agrupaciones y parámetros operativos de planificación"
+              icon={ClipboardList}
+              gradientFrom="bg-gradient-to-br from-slate-600"
+              gradientTo="to-slate-800"
+              iconColor="text-white"
+              hoverBorderColor="hover:border-slate-300"
             />
           )}
 
