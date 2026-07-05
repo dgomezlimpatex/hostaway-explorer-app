@@ -219,6 +219,52 @@ export async function run(assert: Assert) {
   assert.deepEqual(sameBuildingTasksArePackedWithOneCleaner.proposals.map((proposal) => proposal.cleanerId), ['ana', 'ana', 'ana'], 'same-building tasks inside checkout-checkin should stay with the same worker when capacity allows');
   assert.deepEqual(sameBuildingTasksArePackedWithOneCleaner.proposals.map((proposal) => `${proposal.proposedStartTime}-${proposal.proposedEndTime}`), ['11:00-11:30', '11:40-12:10', '12:20-12:50'], 'same-building tasks should be sequenced with the same-building buffer inside checkout-checkin');
   assert.equal(sameBuildingTasksArePackedWithOneCleaner.conflicts.length, 0);
+  const sameBuildingQuality = (sameBuildingTasksArePackedWithOneCleaner.summary as any).globalQuality;
+  assert.equal(sameBuildingQuality.fullBundlesCovered, 1, 'global quality should count a same-building pack covered by one worker');
+  assert.equal(sameBuildingQuality.splitBundles, 0, 'global quality should not flag a packed centre as split');
+  assert.equal(sameBuildingQuality.avoidableSplits, 0, 'global quality should not flag avoidable splits when Hermes keeps the centre together');
+
+  const scarceTitularIsReservedForOnlyViableBuilding = proposalFor(
+    [
+      fallbackTask({ id: 'task-easy-ab1', property: 'AB1.1', propertyCode: 'AB1.1', propertyName: 'AB1.1', startTime: '09:00', endTime: '10:00', checkOut: '09:00', checkIn: '15:00', durationMinutes: 60, duration: 60, detectedBuilding: { status: 'detected' as const, propertyGroupId: 'group-ab1', propertyGroupName: 'AB1', reason: 'fixture' } }),
+      fallbackTask({ id: 'task-critical-md18', property: 'MD18.9', propertyCode: 'MD18.9', propertyName: 'MD18.9', startTime: '13:00', endTime: '14:30', checkOut: '13:00', checkIn: '16:00', durationMinutes: 90, duration: 90 }),
+    ],
+    [
+      { ...availability('2026-07-01', 150, true, 'ana'), availableWindows: [{ startTime: '09:00', endTime: '17:00' }] },
+      { ...availability('2026-07-01', 120, true, 'bea'), availableWindows: [{ startTime: '09:00', endTime: '17:00' }] },
+    ],
+    [
+      { ...cleanerGroupAssignments[0], id: 'assignment-ana-ab1-scarce', propertyGroupId: 'group-ab1', cleanerId: 'ana', roleType: 'primary', maxTasksPerDay: 10 },
+      { ...cleanerGroupAssignments[1], id: 'assignment-bea-ab1-scarce', propertyGroupId: 'group-ab1', cleanerId: 'bea', roleType: 'secondary', maxTasksPerDay: 10 },
+      { ...cleanerGroupAssignments[0], id: 'assignment-ana-md18-scarce', propertyGroupId: 'group-md18', cleanerId: 'ana', roleType: 'primary', maxTasksPerDay: 10 },
+    ],
+  );
+  assert.equal(scarceTitularIsReservedForOnlyViableBuilding.conflicts.length, 0, 'global optimizer should avoid consuming the only viable worker for a later critical centre');
+  assert.deepEqual(
+    scarceTitularIsReservedForOnlyViableBuilding.proposals.map((proposal) => `${proposal.taskId}:${proposal.cleanerId}`),
+    ['task-easy-ab1:bea', 'task-critical-md18:ana'],
+    'easy centre should use suplente so the scarce titular remains available for the centre only she can cover',
+  );
+  assert.ok((scarceTitularIsReservedForOnlyViableBuilding.summary as any).globalQuality.criticalWarnings.some((warning: string) => warning.includes('Ana') && warning.includes('MD18')), 'global quality should explain why a scarce titular was reserved');
+
+  const splitBundleIsJustifiedWhenNobodyCoversFullCentre = proposalFor(
+    [
+      fallbackTask({ id: 'task-split-1', startTime: '10:00', endTime: '11:00', checkOut: '10:00', checkIn: '13:00', durationMinutes: 60, duration: 60 }),
+      fallbackTask({ id: 'task-split-2', startTime: '10:00', endTime: '11:00', checkOut: '10:00', checkIn: '13:00', durationMinutes: 60, duration: 60 }),
+      fallbackTask({ id: 'task-split-3', startTime: '10:00', endTime: '11:00', checkOut: '10:00', checkIn: '13:00', durationMinutes: 60, duration: 60 }),
+    ],
+    [
+      { ...availability('2026-07-01', 140, true, 'ana'), availableWindows: [{ startTime: '09:00', endTime: '17:00' }] },
+      { ...availability('2026-07-01', 140, true, 'bea'), availableWindows: [{ startTime: '09:00', endTime: '17:00' }] },
+      { ...availability('2026-07-01', 140, true, 'carla'), availableWindows: [{ startTime: '09:00', endTime: '17:00' }] },
+    ],
+    cleanerGroupAssignments.map((assignment) => ({ ...assignment, roleType: assignment.cleanerId === 'ana' ? 'primary' : assignment.cleanerId === 'bea' ? 'secondary' : 'backup', maxTasksPerDay: 10 })),
+  );
+  assert.equal(splitBundleIsJustifiedWhenNobodyCoversFullCentre.proposals.length, 3, 'split centre should still cover every task when no single worker can cover the full bundle');
+  assert.equal(new Set(splitBundleIsJustifiedWhenNobodyCoversFullCentre.proposals.map((proposal) => proposal.cleanerId)).size, 2, 'centre should be split into the minimum viable number of workers');
+  assert.equal((splitBundleIsJustifiedWhenNobodyCoversFullCentre.summary as any).globalQuality.splitBundles, 1, 'global quality should count split centres');
+  assert.equal((splitBundleIsJustifiedWhenNobodyCoversFullCentre.summary as any).globalQuality.avoidableSplits, 0, 'split should not be avoidable when no single worker can cover full bundle');
+  assert.ok((splitBundleIsJustifiedWhenNobodyCoversFullCentre.summary as any).globalQuality.criticalWarnings.some((warning: string) => warning.includes('se divide') && warning.includes('MD18')), 'split centre must explain why it was divided');
 
   const missingTimeIsRejected = proposalFor(
     [fallbackTask({ id: 'task-invalid-time', startTime: '', endTime: '', displayStartTime: 'Sin hora', displayEndTime: 'Sin hora' })],

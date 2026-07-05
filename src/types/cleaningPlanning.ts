@@ -86,12 +86,16 @@ export type AssignmentConflictCode =
   | 'time_overlap'
   | 'time_buffer_overlap';
 
+export type PlanningAssignmentRole = 'primary' | 'secondary' | 'backup';
+
 export interface AssignmentProposal {
   taskId: string;
   cleanerId: string;
   cleanerName: string;
   propertyGroupId?: string;
   propertyGroupName?: string;
+  bundleId?: string;
+  assignmentRole?: PlanningAssignmentRole;
   durationMinutes: number;
   proposedStartTime?: string;
   proposedEndTime?: string;
@@ -113,6 +117,18 @@ export interface AssignmentConflict {
   details?: Record<string, unknown>;
 }
 
+export interface GlobalPlanQualitySummary {
+  fullBundlesCovered: number;
+  splitBundles: number;
+  avoidableSplits: number;
+  backupAssignments: number;
+  avoidableBackupAssignments: number;
+  nearCheckInTasks: number;
+  manualDecisionCount: number;
+  globalScore: number;
+  criticalWarnings: string[];
+}
+
 export interface AssignmentProposalResult {
   proposals: AssignmentProposal[];
   conflicts: AssignmentConflict[];
@@ -123,6 +139,7 @@ export interface AssignmentProposalResult {
     proposedMinutes: number;
     remainingCapacityMinutes: number;
     missingCapacityMinutes: number;
+    globalQuality?: GlobalPlanQualitySummary;
   };
 }
 

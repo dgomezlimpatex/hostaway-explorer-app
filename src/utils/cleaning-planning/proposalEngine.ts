@@ -12,6 +12,8 @@ import {
 import { CleanerGroupAssignment } from '../../types/propertyGroups';
 import { isPlannableTaskStatus } from '../cleaningPlanning';
 import { detectBuildingFromCode } from './buildingDetection';
+import { buildPlanningBundleId, getPlanningBundleTaskSortKey } from './planningBundles';
+import { buildGlobalPlanQualitySummary, type PlanQualityBundleInput } from './planScoring';
 
 interface ProposalInput {
   tasks: CleaningPlanningTask[];
@@ -380,6 +382,41 @@ const sortTasksForPlanning = (tasks: CleaningPlanningTask[]): CleaningPlanningTa
     return `${a.date} ${a.startTime}`.localeCompare(`${b.date} ${b.startTime}`);
   });
 
+type PreparedPlanningTask = {
+  task: CleaningPlanningTask;
+  detectedBuilding: {
+    propertyGroupId: string;
+    propertyGroupName: string;
+  };
+  displayTaskWindow: ScheduledWindow;
+  taskWindow: ScheduledWindow;
+  buildingAssignments: CleanerGroupAssignment[];
+  requiredCleaners: number;
+  workerLoadMinutes: number;
+  requiredMinutes: number;
+  bundleId: string;
+};
+
+type FullBundleCandidate = {
+  assignment: CleanerGroupAssignment;
+  role: Exclude<AssignmentRole, 'excluded'>;
+  score: number;
+  preparedWindows: Array<{
+    prepared: PreparedPlanningTask;
+    proposedWindow: ScheduledWindow;
+    score: number;
+    reasons: string[];
+    warnings: string[];
+  }>;
+};
+
+type PlanningBundleState = PlanQualityBundleInput & {
+  date: string;
+  tasks: PreparedPlanningTask[];
+  hadFullBundleCandidate: boolean;
+  hadNonBackupFullCandidate: boolean;
+};
+
 export const buildAssignmentProposal = ({
   tasks,
   cleaners,
@@ -389,12 +426,15 @@ export const buildAssignmentProposal = ({
 }: ProposalInput): AssignmentProposalResult => {
   const proposals: AssignmentProposal[] = [];
   const conflicts: AssignmentConflict[] = [];
+  const additionalQualityWarnings: string[] = [];
   const availabilityByCleanerDate = new Map(availability.map((item) => [availabilityKey(item.cleanerId, item.date), { ...item }]));
   const activeCleanerIds = new Set(cleaners.filter((cleaner) => cleaner.isActive).map((cleaner) => cleaner.id));
   const proposedWindowsByCleaner = new Map<string, ScheduledWindow[]>();
   const proposedTaskCounts = new Map<string, number>();
 
   const orderedTasks = sortTasksForPlanning(tasks);
+  const taskOrder = new Map(orderedTasks.map((task, index) => [task.id, index]));
+  const preparedTasks: PreparedPlanningTask[] = [];
 
   orderedTasks.forEach((task) => {
     const detectedBuilding = task.detectedBuilding || detectBuildingFromCode(task.propertyCode, buildingRules);
@@ -443,131 +483,366 @@ export const buildAssignmentProposal = ({
     const requiredCleaners = getRequiredCleanerCount(task);
     const workerLoadMinutes = getWorkerLoadMinutes(task, requiredCleaners);
     const requiredMinutes = workerLoadMinutes + SAME_BUILDING_BUFFER_MINUTES;
-    const blockedWindowCodes = new Set<AssignmentConflict['code']>();
-    const proposedWindowConflicts: ProposedWindowConflict[] = [];
+    const bundleId = buildPlanningBundleId(task.date, detectedBuilding.propertyGroupId);
 
-    const candidates: Candidate[] = buildingAssignments
-      .map((assignment) => {
-        const workerAvailability = availabilityByCleanerDate.get(availabilityKey(assignment.cleanerId, task.date));
-        if (!workerAvailability || !workerAvailability.isAvailable) return null;
-        if (workerAvailability.remainingMinutes < requiredMinutes) return null;
-        const windowFit = checkAvailabilityWindowFit(workerAvailability, taskWindow, workerLoadMinutes);
-        if (!windowFit.fits) {
-          if (windowFit.blockedCode) blockedWindowCodes.add(windowFit.blockedCode);
-          return null;
-        }
-        const countKey = taskCountKey(assignment.cleanerId, task.date, detectedBuilding.propertyGroupId);
-        const currentCount = proposedTaskCounts.get(countKey) || 0;
-        if (assignment.maxTasksPerDay > 0 && currentCount >= assignment.maxTasksPerDay) return null;
-        const proposedWindow = buildProposedWorkWindow(proposedWindowsByCleaner, assignment.cleanerId, taskWindow, workerLoadMinutes);
-        if (!proposedWindow) return null;
-        const proposedWindowFit = checkAvailabilityWindowFit(workerAvailability, proposedWindow, workerLoadMinutes);
-        if (!proposedWindowFit.fits) {
-          if (proposedWindowFit.blockedCode) blockedWindowCodes.add(proposedWindowFit.blockedCode);
-          return null;
-        }
-        const proposedWindowConflict = findProposedWindowConflict(proposedWindowsByCleaner, assignment.cleanerId, proposedWindow);
-        if (proposedWindowConflict) {
-          proposedWindowConflicts.push(proposedWindowConflict);
-          return null;
-        }
-        const score = scoreCandidate({ assignment, availability: workerAvailability, requiredMinutes });
-        return { assignment, availability: workerAvailability, proposedWindow, ...score };
-      })
-      .filter((candidate): candidate is Candidate => Boolean(candidate))
-      .sort((a, b) => b.score - a.score || getAssignmentRoleRank(a.assignment) - getAssignmentRoleRank(b.assignment) || a.assignment.priority - b.assignment.priority || b.availability.remainingMinutes - a.availability.remainingMinutes);
-
-    const selectedCandidates = candidates.slice(0, requiredCleaners);
-    if (selectedCandidates.length < requiredCleaners) {
-      const blockedByMaxTasks = buildingAssignments.some((assignment) => {
-        const countKey = taskCountKey(assignment.cleanerId, task.date, detectedBuilding.propertyGroupId);
-        return assignment.maxTasksPerDay > 0 && (proposedTaskCounts.get(countKey) || 0) >= assignment.maxTasksPerDay;
-      });
-      if (blockedByMaxTasks) {
-        conflicts.push(buildConflict(task.id, 'max_tasks_per_day', 'El equipo del edificio ya alcanzó el límite de tareas por día configurado.', {
-          propertyGroupId: detectedBuilding.propertyGroupId,
-          propertyGroupName: detectedBuilding.propertyGroupName,
-          date: task.date,
-          requiredCleaners,
-        }));
-        return;
-      }
-
-      const blockedWindowCode = Array.from(blockedWindowCodes)[0];
-      if (blockedWindowCode) {
-        conflicts.push(buildConflict(task.id, blockedWindowCode, 'La tarea no encaja dentro de una ventana real disponible o está bloqueada por ausencia/mantenimiento.', {
-          propertyGroupId: detectedBuilding.propertyGroupId,
-          date: task.date,
-          startTime: task.startTime,
-          endTime: task.endTime,
-          requiredCleaners,
-        }));
-        return;
-      }
-
-      const proposedWindowConflict = proposedWindowConflicts[0];
-      if (proposedWindowConflict) {
-        conflicts.push(buildConflict(
-          task.id,
-          proposedWindowConflict.code,
-          proposedWindowConflict.code === 'time_buffer_overlap'
-            ? `La propuesta no respeta el buffer mínimo de ${proposedWindowConflict.bufferMinutes || SAME_BUILDING_BUFFER_MINUTES} min entre tareas.`
-            : 'La propuesta generaría un solape horario para la trabajadora del equipo.',
-          {
-            overlapsWithTaskId: proposedWindowConflict.window.taskId,
-            date: task.date,
-            startTime: task.startTime,
-            endTime: task.endTime,
-            requiredCleaners,
-          },
-        ));
-        return;
-      }
-
-      conflicts.push(buildConflict(task.id, 'no_available_worker', 'No hay suficientes trabajadoras del equipo con disponibilidad real para cubrir la tarea.', {
+    preparedTasks.push({
+      task,
+      detectedBuilding: {
         propertyGroupId: detectedBuilding.propertyGroupId,
-        requiredMinutes,
-        requiredCleaners,
-        availableCandidates: candidates.length,
-        date: task.date,
+        propertyGroupName: detectedBuilding.propertyGroupName,
+      },
+      displayTaskWindow,
+      taskWindow,
+      buildingAssignments,
+      requiredCleaners,
+      workerLoadMinutes,
+      requiredMinutes,
+      bundleId,
+    });
+  });
+
+  const bundleMap = new Map<string, PlanningBundleState>();
+  preparedTasks.forEach((prepared) => {
+    const current = bundleMap.get(prepared.bundleId) || {
+      bundleId: prepared.bundleId,
+      date: prepared.task.date,
+      propertyGroupName: prepared.detectedBuilding.propertyGroupName,
+      taskIds: [],
+      tasks: [],
+      hadFullBundleCandidate: false,
+      hadNonBackupFullCandidate: false,
+    };
+    current.tasks.push(prepared);
+    current.taskIds.push(prepared.task.id);
+    const latestFinish = minutesToTime(Math.min(...current.tasks.map((item) => item.taskWindow.endMinutes)));
+    current.latestFinishTime = latestFinish;
+    bundleMap.set(prepared.bundleId, current);
+  });
+
+  const sortPreparedTasksInsideBundle = (a: PreparedPlanningTask, b: PreparedPlanningTask): number => {
+    const earlyDiff = Number(isEarlyCheckInTask(b.task)) - Number(isEarlyCheckInTask(a.task));
+    if (earlyDiff !== 0) return earlyDiff;
+    if (b.task.riskFlags.length !== a.task.riskFlags.length) return b.task.riskFlags.length - a.task.riskFlags.length;
+    return getPlanningBundleTaskSortKey(a.task).localeCompare(getPlanningBundleTaskSortKey(b.task), 'es', { numeric: true });
+  };
+
+  const bundleStates = Array.from(bundleMap.values()).map((bundle) => {
+    const sortedTasks = [...bundle.tasks].sort(sortPreparedTasksInsideBundle);
+    return {
+      ...bundle,
+      tasks: sortedTasks,
+      taskIds: sortedTasks.map((item) => item.task.id),
+    };
+  });
+
+  const getAvailableAssignmentCount = (bundle: PlanningBundleState): number => {
+    const cleanerIds = new Set<string>();
+    bundle.tasks.forEach((prepared) => {
+      prepared.buildingAssignments.forEach((assignment) => {
+        const workerAvailability = availabilityByCleanerDate.get(availabilityKey(assignment.cleanerId, prepared.task.date));
+        if (workerAvailability?.isAvailable && workerAvailability.remainingMinutes > 0) {
+          cleanerIds.add(assignment.cleanerId);
+        }
+      });
+    });
+    return cleanerIds.size;
+  };
+
+  const orderedBundles = [...bundleStates].sort((a, b) => {
+    const aScarcity = getAvailableAssignmentCount(a);
+    const bScarcity = getAvailableAssignmentCount(b);
+    if (aScarcity !== bScarcity) return aScarcity - bScarcity;
+    const aEarly = Number(a.tasks.some((item) => isEarlyCheckInTask(item.task)));
+    const bEarly = Number(b.tasks.some((item) => isEarlyCheckInTask(item.task)));
+    if (aEarly !== bEarly) return bEarly - aEarly;
+    if (a.tasks.length !== b.tasks.length) return b.tasks.length - a.tasks.length;
+    return getPlanningBundleTaskSortKey(a.tasks[0].task).localeCompare(getPlanningBundleTaskSortKey(b.tasks[0].task), 'es', { numeric: true });
+  });
+
+  const getExistingBundleNamesForCleaner = (cleanerId: string, date: string, excludeBundleId: string): string[] => Array.from(new Set(proposals
+    .filter((proposal) => proposal.cleanerId === cleanerId)
+    .filter((proposal) => proposal.bundleId !== excludeBundleId)
+    .filter((proposal) => {
+      const prepared = preparedTasks.find((item) => item.task.id === proposal.taskId);
+      return prepared?.task.date === date;
+    })
+    .map((proposal) => proposal.propertyGroupName || 'otro centro')));
+
+  const pushProposal = (
+    prepared: PreparedPlanningTask,
+    candidate: Candidate,
+    assignmentIndex: number,
+    extraReasons: string[] = [],
+    extraWarnings: string[] = [],
+  ) => {
+    candidate.availability.assignedMinutes += prepared.requiredMinutes;
+    candidate.availability.remainingMinutes = Math.max(0, candidate.availability.remainingMinutes - prepared.requiredMinutes);
+    availabilityByCleanerDate.set(availabilityKey(candidate.assignment.cleanerId, prepared.task.date), candidate.availability);
+
+    const cleanerWindows = proposedWindowsByCleaner.get(candidate.assignment.cleanerId) || [];
+    proposedWindowsByCleaner.set(candidate.assignment.cleanerId, [...cleanerWindows, candidate.proposedWindow]);
+    const countKey = taskCountKey(candidate.assignment.cleanerId, prepared.task.date, prepared.detectedBuilding.propertyGroupId);
+    proposedTaskCounts.set(countKey, (proposedTaskCounts.get(countKey) || 0) + 1);
+
+    proposals.push({
+      taskId: prepared.task.id,
+      cleanerId: candidate.assignment.cleanerId,
+      cleanerName: getCleanerName(cleaners, candidate.assignment.cleanerId),
+      propertyGroupId: prepared.detectedBuilding.propertyGroupId,
+      propertyGroupName: prepared.detectedBuilding.propertyGroupName,
+      bundleId: prepared.bundleId,
+      assignmentRole: getAssignmentRole(candidate.assignment),
+      durationMinutes: prepared.workerLoadMinutes,
+      proposedStartTime: minutesToTime(candidate.proposedWindow.startMinutes),
+      proposedEndTime: minutesToTime(candidate.proposedWindow.endMinutes),
+      requiredCleaners: prepared.requiredCleaners,
+      assignmentIndex,
+      confidence: Math.max(0, Math.min(100, candidate.score)),
+      reasons: [
+        ...candidate.reasons,
+        ...extraReasons,
+        ...(isEarlyCheckInTask(prepared.task) ? ['Check-in temprano a las 14:00 o antes: prioridad crítica.'] : []),
+        ...(prepared.requiredCleaners > 1 ? [`Casa grande: ${Math.round(prepared.task.durationMinutes / 60 * 10) / 10} h repartidas entre ${prepared.requiredCleaners} personas.`] : []),
+      ],
+      warnings: [...candidate.warnings, ...extraWarnings],
+      capacityAfterAssignment: {
+        assignedMinutes: candidate.availability.assignedMinutes,
+        remainingMinutes: candidate.availability.remainingMinutes,
+      },
+    });
+  };
+
+  const pushWindowForSimulation = (
+    windowsByCleaner: Map<string, ScheduledWindow[]>,
+    cleanerId: string,
+    proposedWindow: ScheduledWindow,
+  ) => {
+    const cleanerWindows = windowsByCleaner.get(cleanerId) || [];
+    windowsByCleaner.set(cleanerId, [...cleanerWindows, proposedWindow]);
+  };
+
+  const evaluateFullBundleCandidate = (bundle: PlanningBundleState, assignment: CleanerGroupAssignment): FullBundleCandidate | null => {
+    if (bundle.tasks.length <= 1) return null;
+    if (bundle.tasks.some((prepared) => prepared.requiredCleaners !== 1)) return null;
+
+    const firstTask = bundle.tasks[0];
+    const workerAvailability = availabilityByCleanerDate.get(availabilityKey(assignment.cleanerId, firstTask.task.date));
+    if (!workerAvailability || !workerAvailability.isAvailable) return null;
+
+    const currentCount = proposedTaskCounts.get(taskCountKey(assignment.cleanerId, firstTask.task.date, firstTask.detectedBuilding.propertyGroupId)) || 0;
+    if (assignment.maxTasksPerDay > 0 && currentCount + bundle.tasks.length > assignment.maxTasksPerDay) return null;
+
+    const simulatedAvailability: EffectiveWorkerAvailability = { ...workerAvailability };
+    const simulatedWindowsByCleaner = new Map(Array.from(proposedWindowsByCleaner.entries()).map(([key, value]) => [key, [...value]]));
+    const preparedWindows: FullBundleCandidate['preparedWindows'] = [];
+    let score = 0;
+
+    for (const prepared of bundle.tasks) {
+      if (simulatedAvailability.remainingMinutes < prepared.requiredMinutes) return null;
+      const windowFit = checkAvailabilityWindowFit(simulatedAvailability, prepared.taskWindow, prepared.workerLoadMinutes);
+      if (!windowFit.fits) return null;
+      const proposedWindow = buildProposedWorkWindow(simulatedWindowsByCleaner, assignment.cleanerId, prepared.taskWindow, prepared.workerLoadMinutes);
+      if (!proposedWindow) return null;
+      const proposedWindowFit = checkAvailabilityWindowFit(simulatedAvailability, proposedWindow, prepared.workerLoadMinutes);
+      if (!proposedWindowFit.fits) return null;
+      const proposedWindowConflict = findProposedWindowConflict(simulatedWindowsByCleaner, assignment.cleanerId, proposedWindow);
+      if (proposedWindowConflict) return null;
+
+      const candidateScore = scoreCandidate({ assignment, availability: simulatedAvailability, requiredMinutes: prepared.requiredMinutes });
+      score += candidateScore.score;
+      preparedWindows.push({ prepared, proposedWindow, ...candidateScore });
+      simulatedAvailability.assignedMinutes += prepared.requiredMinutes;
+      simulatedAvailability.remainingMinutes = Math.max(0, simulatedAvailability.remainingMinutes - prepared.requiredMinutes);
+      pushWindowForSimulation(simulatedWindowsByCleaner, assignment.cleanerId, proposedWindow);
+    }
+
+    return {
+      assignment,
+      role: getAssignmentRole(assignment),
+      score: score + 150 + bundle.tasks.length * 25 - getAssignmentRoleRank(assignment) * 5,
+      preparedWindows,
+    };
+  };
+
+  const buildSingleTaskCandidates = (prepared: PreparedPlanningTask, blockedWindowCodes: Set<AssignmentConflict['code']>, proposedWindowConflicts: ProposedWindowConflict[]): Candidate[] => prepared.buildingAssignments
+    .map((assignment) => {
+      const workerAvailability = availabilityByCleanerDate.get(availabilityKey(assignment.cleanerId, prepared.task.date));
+      if (!workerAvailability || !workerAvailability.isAvailable) return null;
+      if (workerAvailability.remainingMinutes < prepared.requiredMinutes) return null;
+      const windowFit = checkAvailabilityWindowFit(workerAvailability, prepared.taskWindow, prepared.workerLoadMinutes);
+      if (!windowFit.fits) {
+        if (windowFit.blockedCode) blockedWindowCodes.add(windowFit.blockedCode);
+        return null;
+      }
+      const countKey = taskCountKey(assignment.cleanerId, prepared.task.date, prepared.detectedBuilding.propertyGroupId);
+      const currentCount = proposedTaskCounts.get(countKey) || 0;
+      if (assignment.maxTasksPerDay > 0 && currentCount >= assignment.maxTasksPerDay) return null;
+      const proposedWindow = buildProposedWorkWindow(proposedWindowsByCleaner, assignment.cleanerId, prepared.taskWindow, prepared.workerLoadMinutes);
+      if (!proposedWindow) return null;
+      const proposedWindowFit = checkAvailabilityWindowFit(workerAvailability, proposedWindow, prepared.workerLoadMinutes);
+      if (!proposedWindowFit.fits) {
+        if (proposedWindowFit.blockedCode) blockedWindowCodes.add(proposedWindowFit.blockedCode);
+        return null;
+      }
+      const proposedWindowConflict = findProposedWindowConflict(proposedWindowsByCleaner, assignment.cleanerId, proposedWindow);
+      if (proposedWindowConflict) {
+        proposedWindowConflicts.push(proposedWindowConflict);
+        return null;
+      }
+      const score = scoreCandidate({ assignment, availability: workerAvailability, requiredMinutes: prepared.requiredMinutes });
+      return { assignment, availability: workerAvailability, proposedWindow, ...score };
+    })
+    .filter((candidate): candidate is Candidate => Boolean(candidate))
+    .sort((a, b) => b.score - a.score || getAssignmentRoleRank(a.assignment) - getAssignmentRoleRank(b.assignment) || a.assignment.priority - b.assignment.priority || b.availability.remainingMinutes - a.availability.remainingMinutes);
+
+  const addNoCandidateConflict = (
+    prepared: PreparedPlanningTask,
+    candidates: Candidate[],
+    blockedWindowCodes: Set<AssignmentConflict['code']>,
+    proposedWindowConflicts: ProposedWindowConflict[],
+  ) => {
+    const blockedByMaxTasks = prepared.buildingAssignments.some((assignment) => {
+      const countKey = taskCountKey(assignment.cleanerId, prepared.task.date, prepared.detectedBuilding.propertyGroupId);
+      return assignment.maxTasksPerDay > 0 && (proposedTaskCounts.get(countKey) || 0) >= assignment.maxTasksPerDay;
+    });
+    if (blockedByMaxTasks) {
+      conflicts.push(buildConflict(prepared.task.id, 'max_tasks_per_day', 'El equipo del edificio ya alcanzó el límite de tareas por día configurado.', {
+        propertyGroupId: prepared.detectedBuilding.propertyGroupId,
+        propertyGroupName: prepared.detectedBuilding.propertyGroupName,
+        date: prepared.task.date,
+        requiredCleaners: prepared.requiredCleaners,
       }));
       return;
     }
 
-    selectedCandidates.forEach((candidate, index) => {
-      candidate.availability.assignedMinutes += requiredMinutes;
-      candidate.availability.remainingMinutes = Math.max(0, candidate.availability.remainingMinutes - requiredMinutes);
-      availabilityByCleanerDate.set(availabilityKey(candidate.assignment.cleanerId, task.date), candidate.availability);
+    const blockedWindowCode = Array.from(blockedWindowCodes)[0];
+    if (blockedWindowCode) {
+      conflicts.push(buildConflict(prepared.task.id, blockedWindowCode, 'La tarea no encaja dentro de una ventana real disponible o está bloqueada por ausencia/mantenimiento.', {
+        propertyGroupId: prepared.detectedBuilding.propertyGroupId,
+        date: prepared.task.date,
+        startTime: prepared.task.startTime,
+        endTime: prepared.task.endTime,
+        requiredCleaners: prepared.requiredCleaners,
+      }));
+      return;
+    }
 
-      const cleanerWindows = proposedWindowsByCleaner.get(candidate.assignment.cleanerId) || [];
-      proposedWindowsByCleaner.set(candidate.assignment.cleanerId, [...cleanerWindows, candidate.proposedWindow]);
-      const countKey = taskCountKey(candidate.assignment.cleanerId, task.date, detectedBuilding.propertyGroupId);
-      proposedTaskCounts.set(countKey, (proposedTaskCounts.get(countKey) || 0) + 1);
-
-      proposals.push({
-        taskId: task.id,
-        cleanerId: candidate.assignment.cleanerId,
-        cleanerName: getCleanerName(cleaners, candidate.assignment.cleanerId),
-        propertyGroupId: detectedBuilding.propertyGroupId,
-        propertyGroupName: detectedBuilding.propertyGroupName,
-        durationMinutes: workerLoadMinutes,
-        proposedStartTime: minutesToTime(candidate.proposedWindow.startMinutes),
-        proposedEndTime: minutesToTime(candidate.proposedWindow.endMinutes),
-        requiredCleaners,
-        assignmentIndex: index + 1,
-        confidence: Math.max(0, Math.min(100, candidate.score)),
-        reasons: [
-          ...candidate.reasons,
-          ...(isEarlyCheckInTask(task) ? ['Check-in temprano a las 14:00 o antes: prioridad crítica.'] : []),
-          ...(requiredCleaners > 1 ? [`Casa grande: ${Math.round(task.durationMinutes / 60 * 10) / 10} h repartidas entre ${requiredCleaners} personas.`] : []),
-        ],
-        warnings: candidate.warnings,
-        capacityAfterAssignment: {
-          assignedMinutes: candidate.availability.assignedMinutes,
-          remainingMinutes: candidate.availability.remainingMinutes,
+    const proposedWindowConflict = proposedWindowConflicts[0];
+    if (proposedWindowConflict) {
+      conflicts.push(buildConflict(
+        prepared.task.id,
+        proposedWindowConflict.code,
+        proposedWindowConflict.code === 'time_buffer_overlap'
+          ? `La propuesta no respeta el buffer mínimo de ${proposedWindowConflict.bufferMinutes || SAME_BUILDING_BUFFER_MINUTES} min entre tareas.`
+          : 'La propuesta generaría un solape horario para la trabajadora del equipo.',
+        {
+          overlapsWithTaskId: proposedWindowConflict.window.taskId,
+          date: prepared.task.date,
+          startTime: prepared.task.startTime,
+          endTime: prepared.task.endTime,
+          requiredCleaners: prepared.requiredCleaners,
         },
-      });
+      ));
+      return;
+    }
+
+    conflicts.push(buildConflict(prepared.task.id, 'no_available_worker', 'No hay suficientes trabajadoras del equipo con disponibilidad real para cubrir la tarea.', {
+      propertyGroupId: prepared.detectedBuilding.propertyGroupId,
+      requiredMinutes: prepared.requiredMinutes,
+      requiredCleaners: prepared.requiredCleaners,
+      availableCandidates: candidates.length,
+      date: prepared.task.date,
+    }));
+  };
+
+  const processPreparedTaskIndividually = (prepared: PreparedPlanningTask): boolean => {
+    const blockedWindowCodes = new Set<AssignmentConflict['code']>();
+    const proposedWindowConflicts: ProposedWindowConflict[] = [];
+    const candidates = buildSingleTaskCandidates(prepared, blockedWindowCodes, proposedWindowConflicts);
+    const selectedCandidates = candidates.slice(0, prepared.requiredCleaners);
+
+    if (selectedCandidates.length < prepared.requiredCleaners) {
+      addNoCandidateConflict(prepared, candidates, blockedWindowCodes, proposedWindowConflicts);
+      return false;
+    }
+
+    selectedCandidates.forEach((candidate, index) => {
+      const selectedRole = getAssignmentRole(candidate.assignment);
+      const primaryAssignment = prepared.buildingAssignments.find((assignment) => getAssignmentRole(assignment) === 'primary');
+      const primaryExistingBundles = primaryAssignment
+        ? getExistingBundleNamesForCleaner(primaryAssignment.cleanerId, prepared.task.date, prepared.bundleId)
+        : [];
+      const reservedWarning = selectedRole !== 'primary' && primaryAssignment && primaryExistingBundles.length > 0
+        ? `${prepared.detectedBuilding.propertyGroupName} usa ${selectedRole === 'secondary' ? 'suplente' : 'backup'} porque ${getCleanerName(cleaners, primaryAssignment.cleanerId)} queda reservada en ${primaryExistingBundles.join(', ')}.`
+        : undefined;
+      if (reservedWarning) additionalQualityWarnings.push(reservedWarning);
+      pushProposal(prepared, candidate, index + 1, [], reservedWarning ? [reservedWarning] : []);
     });
+    return true;
+  };
+
+  orderedBundles.forEach((bundle) => {
+    const uniqueAssignments = Array.from(new Map(
+      bundle.tasks.flatMap((prepared) => prepared.buildingAssignments).map((assignment) => [assignment.cleanerId, assignment]),
+    ).values()).sort((a, b) => getAssignmentRoleRank(a) - getAssignmentRoleRank(b) || a.priority - b.priority);
+
+    const fullBundleCandidates = uniqueAssignments
+      .map((assignment) => evaluateFullBundleCandidate(bundle, assignment))
+      .filter((candidate): candidate is FullBundleCandidate => Boolean(candidate))
+      .sort((a, b) => b.score - a.score || getAssignmentRoleRank(a.assignment) - getAssignmentRoleRank(b.assignment));
+
+    bundle.hadFullBundleCandidate = fullBundleCandidates.length > 0;
+    bundle.hadNonBackupFullCandidate = fullBundleCandidates.some((candidate) => candidate.role !== 'backup');
+
+    const selectedFullBundleCandidate = fullBundleCandidates[0];
+    if (selectedFullBundleCandidate) {
+      const selectedRole = getAssignmentRole(selectedFullBundleCandidate.assignment);
+      const primaryAssignment = uniqueAssignments.find((assignment) => getAssignmentRole(assignment) === 'primary');
+      const primaryExistingBundles = primaryAssignment
+        ? getExistingBundleNamesForCleaner(primaryAssignment.cleanerId, bundle.date, bundle.bundleId)
+        : [];
+      const reservedWarning = selectedRole !== 'primary' && primaryAssignment && primaryExistingBundles.length > 0
+        ? `${bundle.propertyGroupName} usa ${selectedRole === 'secondary' ? 'suplente' : 'backup'} porque ${getCleanerName(cleaners, primaryAssignment.cleanerId)} queda reservada en ${primaryExistingBundles.join(', ')}.`
+        : undefined;
+      if (reservedWarning) additionalQualityWarnings.push(reservedWarning);
+
+      selectedFullBundleCandidate.preparedWindows.forEach((item, index) => {
+        const workerAvailability = availabilityByCleanerDate.get(availabilityKey(selectedFullBundleCandidate.assignment.cleanerId, item.prepared.task.date));
+        if (!workerAvailability) return;
+        pushProposal(
+          item.prepared,
+          {
+            assignment: selectedFullBundleCandidate.assignment,
+            availability: workerAvailability,
+            proposedWindow: item.proposedWindow,
+            score: item.score,
+            reasons: item.reasons,
+            warnings: item.warnings,
+          },
+          1,
+          bundle.tasks.length > 1 ? [`Mantiene ${bundle.propertyGroupName} con una sola trabajadora dentro de checkout–checkin.`] : [],
+          reservedWarning ? [reservedWarning] : [],
+        );
+      });
+      return;
+    }
+
+    let coveredTasks = 0;
+    bundle.tasks.forEach((prepared) => {
+      if (processPreparedTaskIndividually(prepared)) coveredTasks += 1;
+    });
+
+    const bundleProposals = proposals.filter((proposal) => proposal.bundleId === bundle.bundleId);
+    const uniqueCleaners = new Set(bundleProposals.map((proposal) => proposal.cleanerId));
+    if (coveredTasks === bundle.tasks.length && uniqueCleaners.size > 1) {
+      bundle.splitReason = `${bundle.propertyGroupName} se divide porque ninguna trabajadora puede cubrir el centro completo dentro de disponibilidad y checkout–checkin.`;
+    }
+  });
+
+  proposals.sort((a, b) => {
+    const taskDiff = (taskOrder.get(a.taskId) ?? 9999) - (taskOrder.get(b.taskId) ?? 9999);
+    if (taskDiff !== 0) return taskDiff;
+    return (a.assignmentIndex || 1) - (b.assignmentIndex || 1);
   });
 
   const remainingCapacityMinutes = Array.from(availabilityByCleanerDate.values())
@@ -576,6 +851,12 @@ export const buildAssignmentProposal = ({
   const conflictMinutes = orderedTasks
     .filter((task) => conflicts.some((conflict) => conflict.taskId === task.id))
     .reduce((total, task) => total + Math.max(0, task.durationMinutes), 0);
+  const globalQuality = buildGlobalPlanQualitySummary({
+    bundles: bundleStates,
+    proposals,
+    conflicts,
+    additionalWarnings: additionalQualityWarnings,
+  });
 
   return {
     proposals,
@@ -587,6 +868,7 @@ export const buildAssignmentProposal = ({
       proposedMinutes,
       remainingCapacityMinutes,
       missingCapacityMinutes: Math.max(0, conflictMinutes - remainingCapacityMinutes),
+      globalQuality,
     },
   };
 };

@@ -93,6 +93,9 @@ assert.match(proposalPanel, /grid gap-3 lg:grid-cols-2 2xl:grid-cols-3/, 'Propos
 assert.match(proposalPanel, /Necesitan decisión manual/, 'Decision-needed section must be explicit and prominent');
 assert.match(proposalPanel, /displayStartTime.*displayEndTime/s, 'Proposal cards must show task time context');
 assert.match(proposalPanel, /Horario propuesto/, 'Proposal cards must show the sequenced operational time when Hermes packs same-building tasks');
+assert.match(proposalPanel, /Calidad operativa del plan/, 'Proposal panel must show whole-plan operational quality, not only individual task cards');
+assert.match(proposalPanel, /centros completos[\s\S]*centros divididos[\s\S]*divisiones evitables[\s\S]*backups usados/s, 'Whole-plan quality must expose centre continuity and backup metrics');
+assert.match(proposalPanel, /Alertas críticas del plan/, 'Proposal panel must surface critical warnings as an explicit devil-advocate section');
 
 assert.match(planningPage, /const handleSedeChange = \(sede: Sede\) => \{/, 'Planning page must reset invalid filters/proposal when sede changes');
 assert.match(planningPage, /setFilters\(defaultFilters\)/, 'Changing sede must reset planning filters');

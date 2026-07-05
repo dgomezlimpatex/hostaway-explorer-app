@@ -131,6 +131,49 @@ export const AssignmentProposalPanel = ({
                 </div>
               </div>
 
+              {proposal.summary.globalQuality && (
+                <div className="rounded-2xl border border-[#310984]/10 bg-[#faf8ff] p-4">
+                  <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
+                    <div>
+                      <p className="text-sm font-semibold text-[#171321]">Calidad operativa del plan</p>
+                      <p className="text-xs text-[#6b627a]">Hermes revisa el reparto completo, no solo tarjetas sueltas.</p>
+                    </div>
+                    <Badge variant="outline" className="w-fit border-[#310984]/20 bg-white text-[#310984]">
+                      Score {proposal.summary.globalQuality.globalScore}
+                    </Badge>
+                  </div>
+                  <div className="mt-3 grid gap-2 text-center sm:grid-cols-2 lg:grid-cols-4">
+                    <div className="rounded-xl border border-emerald-200 bg-white p-3">
+                      <p className="text-xl font-semibold text-emerald-700">{proposal.summary.globalQuality.fullBundlesCovered}</p>
+                      <p className="text-[11px] text-[#6b627a]">centros completos</p>
+                    </div>
+                    <div className="rounded-xl border border-amber-200 bg-white p-3">
+                      <p className="text-xl font-semibold text-amber-700">{proposal.summary.globalQuality.splitBundles}</p>
+                      <p className="text-[11px] text-[#6b627a]">centros divididos</p>
+                    </div>
+                    <div className="rounded-xl border border-red-200 bg-white p-3">
+                      <p className="text-xl font-semibold text-red-700">{proposal.summary.globalQuality.avoidableSplits}</p>
+                      <p className="text-[11px] text-[#6b627a]">divisiones evitables</p>
+                    </div>
+                    <div className="rounded-xl border border-sky-200 bg-white p-3">
+                      <p className="text-xl font-semibold text-sky-700">{proposal.summary.globalQuality.backupAssignments}</p>
+                      <p className="text-[11px] text-[#6b627a]">backups usados</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {proposal.summary.globalQuality?.criticalWarnings.length ? (
+                <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
+                  <div className="flex items-center gap-2 text-sm font-semibold text-amber-900">
+                    <AlertTriangle className="h-4 w-4" /> Alertas críticas del plan
+                  </div>
+                  <ul className="mt-2 space-y-1 text-xs leading-5 text-amber-800">
+                    {proposal.summary.globalQuality.criticalWarnings.map((warning) => <li key={warning}>• {warning}</li>)}
+                  </ul>
+                </div>
+              ) : null}
+
               <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-3">
                 <div className="flex items-start gap-2 text-sm text-emerald-800">
                   <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
