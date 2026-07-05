@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -10,6 +10,7 @@ import { useSede } from '@/contexts/SedeContext';
 import { Cleaner } from '@/types/calendar';
 import {
   AssignmentProposalResult,
+  AssignmentProposal,
   CleaningPlanningFilters,
   CleaningPlanningTask,
   DetectedBuilding,
@@ -17,15 +18,20 @@ import {
   PlanningTaskRisk,
 } from '@/types/cleaningPlanning';
 import { PropertyGroup, PropertyGroupAssignment } from '@/types/propertyGroups';
+import { Sede } from '@/types/sede';
 import { isOperationalCleaner, minutesToHoursLabel } from '@/utils/cleaningPlanning';
 import { buildAssignmentProposal } from '@/utils/cleaning-planning/proposalEngine';
+import { buildProposalSignature } from '@/utils/cleaning-planning/proposalBatchApply';
+import { buildPlanningCopilotSnapshot } from '@/services/planning/copilot/planningSnapshot';
 import { extractBuildingCode } from '@/services/laundryScheduleService';
-import { Activity, AlertTriangle, CheckCircle2, RefreshCw, Wand2 } from 'lucide-react';
+import { isTaskAssignedToCleaner } from '@/utils/taskAssignments';
+import { Activity, AlertTriangle, CheckCircle2, RefreshCw } from 'lucide-react';
 import { AssignmentProposalPanel } from './AssignmentProposalPanel';
 import { BuildingTaskBoard } from './BuildingTaskBoard';
 import { CleanerLoadTable } from './CleanerLoadTable';
 import { CleanerPlanningColumn } from './CleanerPlanningColumn';
 import { PlanningAlertsPanel } from './PlanningAlertsPanel';
+import { PlanningCopilotPanel } from './PlanningCopilotPanel';
 import { PlanningFilters } from './PlanningFilters';
 import { PlanningSummaryCards } from './PlanningSummaryCards';
 import { WorkerAvailabilityPanel } from './WorkerAvailabilityPanel';
@@ -41,7 +47,7 @@ const taskMatchesFilters = (task: CleaningPlanningTask, filters: CleaningPlannin
   if (filters.taskFilter === 'unassigned' && task.cleanerId) return false;
   if (filters.taskFilter === 'risks' && task.riskFlags.length === 0) return false;
   if (filters.zone !== 'all' && task.zone !== filters.zone) return false;
-  if (filters.cleanerId !== 'all' && task.cleanerId !== filters.cleanerId) return false;
+  if (filters.cleanerId !== 'all' && !isTaskAssignedToCleaner(task, filters.cleanerId)) return false;
 
   const search = filters.search.trim().toLowerCase();
   if (!search) return true;
@@ -52,6 +58,50 @@ const taskMatchesFilters = (task: CleaningPlanningTask, filters: CleaningPlannin
 };
 
 const uniqueRisks = (risks: PlanningTaskRisk[]): PlanningTaskRisk[] => Array.from(new Set(risks));
+
+type ProposalState = {
+  result: AssignmentProposalResult;
+  contextKey: string;
+  tasksSnapshot: CleaningPlanningTask[];
+};
+
+const buildProposalContextKey = ({
+  activeSedeId,
+  cleanerIds,
+  availability,
+  filters,
+  range,
+  tasks,
+}: {
+  activeSedeId?: string;
+  cleanerIds: string[];
+  availability: Array<{ cleanerId: string; date: string; remainingMinutes: number; isAvailable: boolean }>;
+  filters: CleaningPlanningFilters;
+  range: { startDate: string; endDate: string };
+  tasks: CleaningPlanningTask[];
+}): string => JSON.stringify({
+  activeSedeId: activeSedeId || 'sin-sede',
+  cleanerIds: [...cleanerIds].sort(),
+  availability: availability
+    .map((item) => `${item.cleanerId}:${item.date}:${item.isAvailable ? 1 : 0}:${item.remainingMinutes}`)
+    .sort(),
+  filters,
+  range,
+  tasks: tasks
+    .map((task) => `${task.id}:${task.date}:${task.startTime}:${task.endTime}:${task.durationMinutes}:${task.cleanerId || 'sin-asignar'}:${(task.assignments || []).map((assignment) => assignment.cleaner_id).sort().join(',') || 'sin-multi'}:${task.detectedBuilding?.propertyGroupId || 'sin-edificio'}`)
+    .sort(),
+});
+
+const buildIndividualBuilding = (task: CleaningPlanningTask, codePrefix: string): DetectedBuilding => {
+  const label = task.propertyCode || task.property || codePrefix || task.propertyId || task.id;
+  return {
+    status: 'detected',
+    propertyGroupId: `individual:${task.propertyId || label}`,
+    propertyGroupName: label,
+    matchedPattern: codePrefix || label,
+    reason: `Propiedad tratada como centro individual (${label}).`,
+  };
+};
 
 const detectBuildingForTask = (
   task: CleaningPlanningTask,
@@ -90,20 +140,12 @@ const detectBuildingForTask = (
   };
 
   if (!task.propertyId) {
-    return detectByPrefix() || {
-      status: 'not_detected',
-      matchedPattern: codePrefix,
-      reason: 'La tarea no tiene propiedad vinculada y el prefijo de código no coincide con un edificio configurado.',
-    };
+    return detectByPrefix() || buildIndividualBuilding(task, codePrefix);
   }
 
   const assignments = propertyAssignments.filter((assignment) => assignment.propertyId === task.propertyId);
   if (assignments.length === 0) {
-    return detectByPrefix() || {
-      status: 'not_detected',
-      matchedPattern: codePrefix,
-      reason: `La propiedad ${task.propertyCode || task.property} no está vinculada a un grupo/edificio operativo.`,
-    };
+    return detectByPrefix() || buildIndividualBuilding(task, codePrefix);
   }
 
   const activeGroups = assignments
@@ -111,11 +153,7 @@ const detectBuildingForTask = (
     .filter((group): group is PropertyGroup => Boolean(group));
 
   if (activeGroups.length === 0) {
-    return detectByPrefix() || {
-      status: 'not_detected',
-      matchedPattern: codePrefix,
-      reason: `La propiedad ${task.propertyCode || task.property} está en un grupo inactivo o inexistente.`,
-    };
+    return detectByPrefix() || buildIndividualBuilding(task, codePrefix);
   }
 
   if (activeGroups.length > 1) {
@@ -155,9 +193,9 @@ export const CleaningPlanningPage = () => {
   const [date, setDate] = useState(() => new Date());
   const [preset, setPreset] = useState<PlanningRangePreset>('today');
   const [filters, setFilters] = useState<CleaningPlanningFilters>(defaultFilters);
-  const [proposal, setProposal] = useState<AssignmentProposalResult | null>(null);
+  const [proposalState, setProposalState] = useState<ProposalState | null>(null);
   const { planning, range, effectiveAvailability, isLoading, isError, error, refetch } = useCleaningPlanning({ date, preset });
-  const { cleaners } = useCleaners();
+  const { cleaners, refetch: refetchCleaners } = useCleaners();
   const { activeSede, availableSedes, setActiveSede } = useSede();
   const buildingDataQuery = useCleaningPlanningBuildingData();
   const { applyProposal, assignTask, unassignTask, isAssigning, isApplyingProposal } = useCleaningPlanningActions();
@@ -167,16 +205,21 @@ export const CleaningPlanningPage = () => {
     propertyAssignments: [],
     cleanerAssignments: [],
   };
+  const buildingDataReady = Boolean(buildingDataQuery.data) && !buildingDataQuery.isLoading;
 
   const operationalCleaners = useMemo(() => cleaners.filter(isOperationalCleaner), [cleaners]);
   const enhancedUnassignedTasks = useMemo(
-    () => enhanceTaskBuildings(planning.unassignedTasks, buildingData.propertyAssignments, buildingData.propertyGroups),
-    [buildingData.propertyAssignments, buildingData.propertyGroups, planning.unassignedTasks],
+    () => (buildingDataReady
+      ? enhanceTaskBuildings(planning.unassignedTasks, buildingData.propertyAssignments, buildingData.propertyGroups)
+      : planning.unassignedTasks),
+    [buildingData.propertyAssignments, buildingData.propertyGroups, buildingDataReady, planning.unassignedTasks],
   );
   const enhancedCleanerDays = useMemo(() => planning.cleaners.map((day) => ({
     ...day,
-    tasks: enhanceTaskBuildings(day.tasks, buildingData.propertyAssignments, buildingData.propertyGroups),
-  })), [buildingData.propertyAssignments, buildingData.propertyGroups, planning.cleaners]);
+    tasks: buildingDataReady
+      ? enhanceTaskBuildings(day.tasks, buildingData.propertyAssignments, buildingData.propertyGroups)
+      : day.tasks,
+  })), [buildingData.propertyAssignments, buildingData.propertyGroups, buildingDataReady, planning.cleaners]);
 
   const zones = useMemo(() => {
     const allTasks = [
@@ -205,29 +248,88 @@ export const CleaningPlanningPage = () => {
     [filteredCleanerDays, filteredUnassignedTasks],
   );
   const manualReviewCount = filteredUnassignedTasks.filter((task) => task.riskFlags.length > 0).length + planning.summary.conflictTasks + planning.summary.overcapacityCleaners;
-  const dayState = planning.summary.unassignedTasks === 0 && manualReviewCount === 0 ? 'Día controlado' : 'Revisión operativa';
-  const dayStateTone = planning.summary.unassignedTasks === 0 && manualReviewCount === 0
-    ? 'border-emerald-300/30 bg-emerald-400/10 text-emerald-100'
-    : 'border-amber-300/30 bg-amber-400/10 text-amber-100';
+  const proposalContextKey = useMemo(() => buildProposalContextKey({
+    activeSedeId: activeSede?.id,
+    cleanerIds: operationalCleaners.map((cleaner) => cleaner.id),
+    availability: effectiveAvailability,
+    filters,
+    range,
+    tasks: filteredUnassignedTasks,
+  }), [activeSede?.id, effectiveAvailability, filters, filteredUnassignedTasks, operationalCleaners, range]);
+  const proposal = proposalState?.result || null;
+  const proposalTasks = proposalState?.tasksSnapshot || filteredUnassignedTasks;
+  const isProposalStale = Boolean(proposalState && proposalState.contextKey !== proposalContextKey);
+  const copilotSnapshot = useMemo(() => buildPlanningCopilotSnapshot({
+    activeSede,
+    range,
+    filters,
+    visibleTasks: filteredTasks,
+    cleaners: operationalCleaners,
+    availability: effectiveAvailability,
+    activeProposal: proposal,
+  }), [activeSede, effectiveAvailability, filteredTasks, filters, operationalCleaners, proposal, range]);
+
+  useEffect(() => {
+    if (filters.cleanerId === 'all') return;
+    const cleanerStillAvailable = operationalCleaners.some((cleaner) => cleaner.id === filters.cleanerId);
+    if (!cleanerStillAvailable) {
+      setFilters((current) => ({ ...current, cleanerId: 'all' }));
+      setProposalState(null);
+    }
+  }, [filters.cleanerId, operationalCleaners]);
+
+  const dayState = isLoading ? 'Cargando planificación' : planning.summary.unassignedTasks === 0 && manualReviewCount === 0 ? 'Día controlado' : 'Revisión operativa';
+  const dayStateTone = isLoading
+    ? 'border-sky-300/30 bg-sky-400/10 text-sky-100'
+    : planning.summary.unassignedTasks === 0 && manualReviewCount === 0
+      ? 'border-emerald-300/30 bg-emerald-400/10 text-emerald-100'
+      : 'border-amber-300/30 bg-amber-400/10 text-amber-100';
+  const displayUnassignedTasks = isLoading ? '—' : planning.summary.unassignedTasks;
+  const displayUtilization = isLoading ? '—' : `${planning.summary.utilizationPercent}%`;
+  const displayManualReviewCount = isLoading ? '—' : manualReviewCount;
+  const displayFilteredCount = isLoading ? '—' : filteredCount;
+  const displayPlannedMinutes = isLoading ? '—' : minutesToHoursLabel(planning.summary.plannedMinutes);
+  const displayCapacityMinutes = isLoading ? '—' : minutesToHoursLabel(planning.summary.capacityMinutes);
 
   const handleAssign = (taskId: string, cleaner: Cleaner) => assignTask({ taskId, cleaner });
-  const handleGenerateProposal = () => {
+  const handleSedeChange = (sede: Sede) => {
+    setFilters(defaultFilters);
+    setProposalState(null);
+    setActiveSede(sede);
+  };
+
+  const handleRefresh = () => {
+    setProposalState(null);
+    void refetch();
+    void buildingDataQuery.refetch();
+    void refetchCleaners();
+  };
+
+  const handleGenerateProposal = (): AssignmentProposalResult => {
     const nextProposal = buildAssignmentProposal({
       tasks: filteredUnassignedTasks,
       cleaners: operationalCleaners,
       availability: effectiveAvailability,
       cleanerGroupAssignments: buildingData.cleanerAssignments,
     });
-    setProposal(nextProposal);
+    setProposalState({ result: nextProposal, contextKey: proposalContextKey, tasksSnapshot: filteredUnassignedTasks });
+    return nextProposal;
   };
 
   const handleApplyProposal = async () => {
-    if (!proposal || proposal.proposals.length === 0) return;
-    const confirmed = window.confirm(`¿Confirmar ${proposal.proposals.length} asignación(es) propuestas? Se guardarán en tareas existentes, no se crearán tareas nuevas.`);
-    if (!confirmed) return;
-    await applyProposal({ proposals: proposal.proposals });
-    setProposal(null);
-    refetch();
+    if (!proposal || proposal.proposals.length === 0 || isProposalStale) return;
+    const proposalSignature = buildProposalSignature(proposal.proposals);
+    const freshTasksResult = await refetch();
+    await applyProposal({
+      proposals: proposal.proposals,
+      proposalSignature,
+      activeSedeId: activeSede?.id,
+      activeCleanerIds: operationalCleaners.map((cleaner) => cleaner.id),
+      expectedTasks: proposalTasks,
+      freshTasks: freshTasksResult.data || [],
+    });
+    setProposalState(null);
+    await Promise.all([buildingDataQuery.refetch(), refetchCleaners()]);
   };
 
   return (
@@ -255,38 +357,31 @@ export const CleaningPlanningPage = () => {
 
             <div className="grid gap-3 sm:grid-cols-3 xl:min-w-[520px]">
               <div className="rounded-2xl border border-white/10 bg-black/25 p-4">
-                <p className="text-xs uppercase tracking-[0.22em] text-white/45">Sin asignar</p>
-                <p className="mt-2 text-3xl font-semibold">{planning.summary.unassignedTasks}</p>
+                <p className="text-xs uppercase tracking-[0.22em] text-white/65">Sin asignar</p>
+                <p className="mt-2 text-3xl font-semibold">{displayUnassignedTasks}</p>
               </div>
               <div className="rounded-2xl border border-white/10 bg-black/25 p-4">
-                <p className="text-xs uppercase tracking-[0.22em] text-white/45">Balance</p>
-                <p className="mt-2 text-3xl font-semibold">{planning.summary.utilizationPercent}%</p>
+                <p className="text-xs uppercase tracking-[0.22em] text-white/65">Balance</p>
+                <p className="mt-2 text-3xl font-semibold">{displayUtilization}</p>
               </div>
               <div className="rounded-2xl border border-white/10 bg-black/25 p-4">
-                <p className="text-xs uppercase tracking-[0.22em] text-white/45">Revisión</p>
-                <p className="mt-2 text-3xl font-semibold">{manualReviewCount}</p>
+                <p className="text-xs uppercase tracking-[0.22em] text-white/65">Revisión</p>
+                <p className="mt-2 text-3xl font-semibold">{displayManualReviewCount}</p>
               </div>
             </div>
           </div>
 
           <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex flex-wrap gap-2 text-xs text-white/55">
-              <span>{filteredCount} tareas visibles</span>
+            <div className="flex flex-wrap gap-2 text-xs text-white/65">
+              <span>{displayFilteredCount} tareas visibles</span>
               <span>·</span>
-              <span>{minutesToHoursLabel(planning.summary.plannedMinutes)} planificadas</span>
+              <span>{displayPlannedMinutes} planificadas</span>
               <span>·</span>
-              <span>{minutesToHoursLabel(planning.summary.capacityMinutes)} capacidad real</span>
+              <span>{displayCapacityMinutes} capacidad real</span>
             </div>
             <div className="flex flex-wrap gap-2">
-              <Button
-                className="bg-[#310984] text-white shadow-lg shadow-[#310984]/30 hover:bg-[#4c1bb0]"
-                disabled={isLoading || buildingDataQuery.isLoading || filteredUnassignedTasks.length === 0}
-                onClick={handleGenerateProposal}
-              >
-                <Wand2 className="mr-2 h-4 w-4" /> Proponer asignación
-              </Button>
-              <Button variant="outline" className="border-white/15 bg-white/5 text-white hover:bg-white/10 hover:text-white" onClick={() => refetch()} disabled={isLoading}>
-                <RefreshCw className="mr-2 h-4 w-4" /> Actualizar
+              <Button variant="outline" className="border-white/15 bg-white/5 text-white hover:bg-white/10 hover:text-white" onClick={handleRefresh} disabled={isLoading || buildingDataQuery.isLoading}>
+                <RefreshCw className="mr-2 h-4 w-4" /> Actualizar datos
               </Button>
             </div>
           </div>
@@ -304,7 +399,7 @@ export const CleaningPlanningPage = () => {
             onDateChange={setDate}
             onPresetChange={setPreset}
             onFiltersChange={setFilters}
-            onSedeChange={setActiveSede}
+            onSedeChange={handleSedeChange}
           />
         </div>
 
@@ -333,7 +428,7 @@ export const CleaningPlanningPage = () => {
             <CleanerLoadTable days={filteredCleanerDays} />
 
             <div className="grid gap-5 xl:grid-cols-[360px_minmax(0,1fr)_420px]">
-              <div className="xl:sticky xl:top-4 xl:self-start">
+              <div className="xl:sticky xl:top-4 xl:max-h-[calc(100vh-2rem)] xl:overflow-y-auto xl:self-start">
                 <WorkerAvailabilityPanel cleaners={operationalCleaners} availabilities={effectiveAvailability} />
               </div>
 
@@ -345,15 +440,23 @@ export const CleaningPlanningPage = () => {
                 isAssigning={isAssigning}
               />
 
-              <div className="xl:sticky xl:top-4 xl:self-start">
+              <div className="space-y-5 xl:sticky xl:top-4 xl:max-h-[calc(100vh-2rem)] xl:overflow-y-auto xl:self-start">
+                <PlanningCopilotPanel
+                  snapshot={copilotSnapshot}
+                  isGenerating={buildingDataQuery.isLoading}
+                  isApplying={isApplyingProposal}
+                  onGenerateProposal={handleGenerateProposal}
+                  onClearProposal={() => setProposalState(null)}
+                />
                 <AssignmentProposalPanel
                   proposal={proposal}
-                  tasks={filteredUnassignedTasks}
+                  tasks={proposalTasks}
                   isLoading={buildingDataQuery.isLoading}
                   isApplying={isApplyingProposal}
+                  isStale={isProposalStale}
                   onGenerate={handleGenerateProposal}
                   onApply={handleApplyProposal}
-                  onClear={() => setProposal(null)}
+                  onClear={() => setProposalState(null)}
                 />
               </div>
             </div>
@@ -369,7 +472,12 @@ export const CleaningPlanningPage = () => {
                 </Badge>
               </div>
               <div className="grid gap-4 xl:grid-cols-2 2xl:grid-cols-3">
-                {filteredCleanerDays.map((day) => (
+                {filteredCleanerDays.length === 0 ? (
+                  <div className="rounded-2xl border border-dashed border-white/15 bg-white/[0.04] p-6 text-sm text-white/65 xl:col-span-2 2xl:col-span-3">
+                    <p className="font-medium text-white/80">No hay limpiadoras con tareas para los filtros actuales.</p>
+                    <p className="mt-1 text-xs">Limpia búsqueda/filtros, cambia rango o revisa la sede activa para volver a ver la carga asignada.</p>
+                  </div>
+                ) : filteredCleanerDays.map((day) => (
                   <CleanerPlanningColumn
                     key={day.cleanerId}
                     day={day}

@@ -19,7 +19,7 @@ import {
 } from 'lucide-react';
 
 export const RoleBasedNavigation = () => {
-  const { canAccessModule, isAdminOrManager } = useRolePermissions();
+  const { canAccessModule, hasPermission, isAdminOrManager } = useRolePermissions();
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 py-12">
@@ -47,6 +47,18 @@ export const RoleBasedNavigation = () => {
             />
           )}
 
+          {hasPermission('tasks', 'canEdit') && (
+            <NavigationCard
+              to="/cleaning-planning"
+              title="Planificación"
+              description="Cockpit de asignación por sede, edificio y disponibilidad real"
+              icon={Layers}
+              gradientFrom="bg-gradient-to-br from-[#310984]"
+              gradientTo="to-violet-700"
+              iconColor="text-white"
+              hoverBorderColor="hover:border-violet-300"
+            />
+          )}
 
           {isAdminOrManager() && (
             <NavigationCard

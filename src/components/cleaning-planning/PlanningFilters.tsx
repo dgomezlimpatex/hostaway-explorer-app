@@ -1,6 +1,7 @@
 import { Button } from '@/components/ui/button';
 import { CleaningPlanningFilters, PlanningRangePreset, PlanningTaskFilter } from '@/types/cleaningPlanning';
 import { Sede } from '@/types/sede';
+import { formatMadridDate } from '@/utils/date';
 import { addDays, subDays } from 'date-fns';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 
@@ -30,6 +31,8 @@ const taskFilters: Array<{ value: PlanningTaskFilter; label: string }> = [
   { value: 'risks', label: 'Solo riesgos' },
 ];
 
+const controlClass = 'h-11 min-h-[44px] rounded-md border border-white/10 bg-black/30 px-3 text-sm text-white outline-none ring-offset-[#08090a] placeholder:text-white/40 focus:border-[#c7b8ff]/60 focus:ring-2 focus:ring-[#c7b8ff]/30';
+
 export const PlanningFilters = ({
   date,
   preset,
@@ -48,33 +51,47 @@ export const PlanningFilters = ({
   };
 
   return (
-    <div className="space-y-3 rounded-lg border bg-white p-4 shadow-sm">
+    <div className="space-y-3 rounded-2xl border border-white/10 bg-white/[0.04] p-4 shadow-xl shadow-black/20">
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div>
-          <p className="text-sm font-medium text-gray-900">Horizonte y sede</p>
-          <p className="text-xs text-muted-foreground">Centro = propiedad/edificio. La sede activa limita datos y evita mezclar sedes.</p>
+          <p className="text-sm font-medium text-white">Horizonte y sede</p>
+          <p className="text-xs text-white/55">Centro = propiedad/edificio. La sede activa limita datos y evita mezclar sedes.</p>
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <Button variant="outline" size="sm" onClick={() => onDateChange(subDays(date, 1))}>
+          <Button
+            aria-label="Día anterior"
+            variant="outline"
+            size="sm"
+            className="min-h-[44px] border-white/15 bg-white/5 text-white hover:bg-white/10 hover:text-white"
+            onClick={() => onDateChange(subDays(date, 1))}
+          >
             <ChevronLeft className="h-4 w-4" />
           </Button>
           <input
-            className="h-9 rounded-md border border-input bg-background px-3 text-sm"
+            aria-label="Fecha de planificación"
+            className={controlClass}
             type="date"
-            value={date.toISOString().slice(0, 10)}
+            value={formatMadridDate(date)}
             onChange={(event) => onDateChange(new Date(`${event.target.value}T12:00:00`))}
           />
-          <Button variant="outline" size="sm" onClick={() => onDateChange(addDays(date, 1))}>
+          <Button
+            aria-label="Día siguiente"
+            variant="outline"
+            size="sm"
+            className="min-h-[44px] border-white/15 bg-white/5 text-white hover:bg-white/10 hover:text-white"
+            onClick={() => onDateChange(addDays(date, 1))}
+          >
             <ChevronRight className="h-4 w-4" />
           </Button>
 
-          <div className="flex rounded-md border p-1">
+          <div className="flex rounded-md border border-white/10 bg-black/20 p-1" aria-label="Horizonte de planificación">
             {presets.map((item) => (
               <Button
                 key={item.value}
                 size="sm"
                 variant={preset === item.value ? 'default' : 'ghost'}
+                className={preset === item.value ? 'min-h-[44px] bg-[#310984] text-white hover:bg-[#4c1bb0]' : 'min-h-[44px] text-white/65 hover:bg-white/10 hover:text-white'}
                 onClick={() => onPresetChange(item.value)}
               >
                 {item.label}
@@ -86,31 +103,34 @@ export const PlanningFilters = ({
 
       <div className="grid gap-2 md:grid-cols-5">
         <select
-          className="h-9 rounded-md border border-input bg-background px-3 text-sm"
+          aria-label="Seleccionar sede operativa"
+          className={controlClass}
           value={activeSedeId || ''}
           onChange={(event) => {
             const sede = availableSedes.find((item) => item.id === event.target.value);
             if (sede) onSedeChange(sede);
           }}
-          title="Sede operativa"
         >
           {availableSedes.map((sede) => <option key={sede.id} value={sede.id}>{sede.nombre}</option>)}
         </select>
         <input
-          className="h-9 rounded-md border border-input bg-background px-3 text-sm"
+          aria-label="Buscar propiedad, edificio o dirección"
+          className={controlClass}
           placeholder="Buscar propiedad/edificio/dirección…"
           value={filters.search}
           onChange={(event) => updateFilter('search', event.target.value)}
         />
         <select
-          className="h-9 rounded-md border border-input bg-background px-3 text-sm"
+          aria-label="Filtrar tareas por estado"
+          className={controlClass}
           value={filters.taskFilter}
           onChange={(event) => updateFilter('taskFilter', event.target.value as PlanningTaskFilter)}
         >
           {taskFilters.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
         </select>
         <select
-          className="h-9 rounded-md border border-input bg-background px-3 text-sm"
+          aria-label="Filtrar por zona"
+          className={controlClass}
           value={filters.zone}
           onChange={(event) => updateFilter('zone', event.target.value)}
         >
@@ -118,7 +138,8 @@ export const PlanningFilters = ({
           {zones.map((zone) => <option key={zone} value={zone}>{zone}</option>)}
         </select>
         <select
-          className="h-9 rounded-md border border-input bg-background px-3 text-sm"
+          aria-label="Filtrar por limpiadora"
+          className={controlClass}
           value={filters.cleanerId}
           onChange={(event) => updateFilter('cleanerId', event.target.value)}
         >

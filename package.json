@@ -11,6 +11,10 @@
     "lint:app": "eslint src",
     "typecheck": "tsc --noEmit --pretty false",
     "test:planning-v2-domain": "node scripts/planningV2DomainTest.mjs",
+    "test:cleaning-planning-proposal-engine": "node scripts/cleaningPlanningProposalEngineTest.mjs",
+    "test:cleaning-planning-domain-safety": "node scripts/cleaningPlanningDomainSafetyTest.mjs",
+    "test:cleaning-planning-ui": "node scripts/cleaningPlanningUiContractTest.mjs",
+    "test:whatsapp-prep": "node scripts/whatsappPrepTest.mjs",
     "preview": "vite preview"
   },
   "dependencies": {

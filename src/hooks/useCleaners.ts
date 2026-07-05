@@ -34,7 +34,8 @@ export const useCleaners = () => {
   return {
     cleaners,
     isLoading,
-    isInitialLoading: isLoading && query.fetchStatus !== 'idle'
+    isInitialLoading: isLoading && query.fetchStatus !== 'idle',
+    refetch: query.refetch,
   };
 };
 

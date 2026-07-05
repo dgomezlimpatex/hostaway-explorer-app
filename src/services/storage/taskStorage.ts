@@ -33,6 +33,10 @@ type TaskAssignmentRow = {
   task_id?: string;
   cleaner_id: string;
   cleaner_name: string;
+  assigned_at?: string;
+  assigned_by?: string | null;
+  created_at?: string;
+  updated_at?: string;
 };
 
 type TaskDBRow = {
@@ -53,6 +57,7 @@ type TaskDBRow = {
   date: string;
   cliente_id?: string | null;
   propiedad_id?: string | null;
+  sede_id?: string | null;
   duracion?: number | null;
   coste?: number | null;
   metodo_pago?: string | null;
@@ -100,6 +105,16 @@ const taskStorageConfig = {
     paymentMethod: row.metodo_pago,
     supervisor: row.supervisor,
     cleanerId: row.cleaner_id,
+    assignments: (row.assignments || row.task_assignments || []).map((assignment) => ({
+      id: assignment.id,
+      task_id: assignment.task_id || row.id,
+      cleaner_id: assignment.cleaner_id,
+      cleaner_name: assignment.cleaner_name,
+      assigned_at: assignment.assigned_at || row.updated_at,
+      assigned_by: assignment.assigned_by || undefined,
+      created_at: assignment.created_at || assignment.assigned_at || row.created_at,
+      updated_at: assignment.updated_at || assignment.assigned_at || row.updated_at,
+    })),
     notes: row.notes,
     extraordinaryClientName: row.extraordinary_client_name,
     extraordinaryClientEmail: row.extraordinary_client_email,
@@ -159,7 +174,7 @@ export class TaskStorageService extends BaseStorageService<Task, TaskCreateData>
         *,
         properties!tasks_propiedad_id_fkey(codigo, duracion_servicio, nombre, direccion),
         task_reports(overall_status),
-        task_assignments!inner(id, cleaner_id, cleaner_name)
+        task_assignments!inner(id, task_id, cleaner_id, cleaner_name, assigned_at, assigned_by, created_at, updated_at)
       `)
       .eq('task_assignments.cleaner_id', cleanerId)
       .gte('date', today)
@@ -184,7 +199,7 @@ export class TaskStorageService extends BaseStorageService<Task, TaskCreateData>
         *,
         properties!tasks_propiedad_id_fkey(codigo, duracion_servicio, nombre, direccion),
         task_reports(overall_status),
-        task_assignments(id, cleaner_id, cleaner_name)
+        task_assignments(id, task_id, cleaner_id, cleaner_name, assigned_at, assigned_by, created_at, updated_at)
       `)
       .eq('cleaner_id', cleanerId)
       .gte('date', today)
@@ -217,7 +232,7 @@ export class TaskStorageService extends BaseStorageService<Task, TaskCreateData>
     if (taskIds.length > 0) {
       const { data: allAssignments, error: assignErr } = await supabase
         .from('task_assignments')
-        .select('id, task_id, cleaner_id, cleaner_name')
+        .select('id, task_id, cleaner_id, cleaner_name, assigned_at, assigned_by, created_at, updated_at')
         .in('task_id', taskIds);
       if (!assignErr && allAssignments) {
         const byTask = new Map<string, TaskAssignmentRow[]>();
@@ -320,7 +335,7 @@ export class TaskStorageService extends BaseStorageService<Task, TaskCreateData>
         *,
         properties!tasks_propiedad_id_fkey(codigo, duracion_servicio, nombre, direccion),
         task_reports(overall_status),
-        task_assignments(id, cleaner_id, cleaner_name)
+        task_assignments(id, task_id, cleaner_id, cleaner_name, assigned_at, assigned_by, created_at, updated_at)
       `)
       .gte('date', dateFrom)
       .lte('date', dateTo);
@@ -375,7 +390,7 @@ export class TaskStorageService extends BaseStorageService<Task, TaskCreateData>
         *,
         properties!tasks_propiedad_id_fkey(codigo, duracion_servicio, nombre, direccion),
         task_reports(overall_status),
-        task_assignments(id, cleaner_id, cleaner_name)
+        task_assignments(id, task_id, cleaner_id, cleaner_name, assigned_at, assigned_by, created_at, updated_at)
       `)
       .gte('date', options.dateFrom)
       .lte('date', options.dateTo);

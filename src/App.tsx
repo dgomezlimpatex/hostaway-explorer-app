@@ -200,7 +200,7 @@ function App() {
                       <RoleProtectedRoute requiredModule="tasks"><Tasks /></RoleProtectedRoute>
                     } />
                     <Route path="/cleaning-planning" element={
-                      <RoleProtectedRoute requiredModule="tasks"><CleaningPlanning /></RoleProtectedRoute>
+                      <RoleProtectedRoute requiredModule="tasks" requiredAction="canEdit"><CleaningPlanning /></RoleProtectedRoute>
                     } />
                     <Route path="/clients" element={
                       <RoleProtectedRoute requiredModule="clients"><Clients /></RoleProtectedRoute>

@@ -3,6 +3,7 @@ import { NavLink, useLocation } from 'react-router-dom';
 import { GlobalSearch } from '@/components/navigation/GlobalSearch';
 import { 
   Calendar, 
+  ClipboardList,
   Users, 
   MapPin, 
   BarChart3,
@@ -62,6 +63,18 @@ const generalItems: NavigationItem[] = [
 ];
 
 const managementItems: NavigationItem[] = [
+  {
+    title: 'Planificación limpiezas',
+    href: '/cleaning-planning',
+    icon: ClipboardList,
+    permission: 'tasks-edit'
+  },
+  {
+    title: 'Hermes planificación',
+    href: '/cleaning-planning?copilot=open',
+    icon: Bot,
+    permission: 'tasks-edit'
+  },
   {
     title: 'Trabajadores',
     href: '/workers',
@@ -180,7 +193,7 @@ interface MobileDashboardSidebarProps {
 
 export const MobileDashboardSidebar = ({ onNavigate }: MobileDashboardSidebarProps) => {
   const location = useLocation();
-  const { canAccessModule, isAdminOrManager } = useRolePermissions();
+  const { canAccessModule, hasPermission: hasRolePermission, isAdminOrManager } = useRolePermissions();
   const { user, profile } = useAuth();
   const shouldShowIncidentBadge = isAdminOrManager();
   const { data: incidentStats } = useIncidentStats(shouldShowIncidentBadge);
@@ -198,6 +211,7 @@ export const MobileDashboardSidebar = ({ onNavigate }: MobileDashboardSidebarPro
     switch (permission) {
       case 'calendar': return canAccessModule('calendar');
       case 'tasks': return canAccessModule('tasks');
+      case 'tasks-edit': return hasRolePermission('tasks', 'canEdit');
       case 'workers': return canAccessModule('workers');
       case 'clients': return canAccessModule('clients');
       case 'properties': return canAccessModule('properties');

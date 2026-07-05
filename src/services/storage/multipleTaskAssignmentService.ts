@@ -1,6 +1,7 @@
 import { supabase } from '@/integrations/supabase/client';
 import { TaskAssignment } from '@/types/taskAssignments';
 import { Task } from '@/types/calendar';
+import { createTaskNotificationEvent } from '@/services/notifications/notificationOrchestrator';
 
 type CleanerLite = { id: string; name: string; email: string | null };
 
@@ -8,6 +9,10 @@ export interface SetAssignmentsResult {
   added: CleanerLite[];
   removed: CleanerLite[];
   final: { id: string; name: string }[];
+}
+
+export interface SetAssignmentsOptions {
+  notify?: boolean;
 }
 
 const stripVirtualId = (taskId: string) =>
@@ -36,9 +41,11 @@ export class MultipleTaskAssignmentService {
    */
   async setTaskAssignments(
     taskId: string,
-    cleanerIds: string[]
+    cleanerIds: string[],
+    options: SetAssignmentsOptions = {},
   ): Promise<SetAssignmentsResult> {
     const actualTaskId = stripVirtualId(taskId);
+    const shouldNotify = options.notify ?? true;
 
     const { data, error } = await supabase.rpc('set_task_assignments', {
       _task_id: actualTaskId,
@@ -51,12 +58,27 @@ export class MultipleTaskAssignmentService {
     const added = result.added || [];
     const removed = result.removed || [];
 
-    // Sólo después de que la transacción se commitee, enviamos los emails.
-    if (added.length > 0 || removed.length > 0) {
-      await this.sendAssignmentEmails(actualTaskId, added, removed);
+    // Sólo después de que la transacción se commitee, enviamos notificaciones.
+    // En batch se puede desactivar y notificar al final, evitando avisos de una
+    // aplicación parcial si otra tarea falla después.
+    if (shouldNotify && (added.length > 0 || removed.length > 0)) {
+      await this.notifyAssignmentDiff(actualTaskId, added, removed);
     }
 
     return { added, removed, final: result.final || [] };
+  }
+
+  async notifyAssignmentDiff(taskId: string, added: CleanerLite[], removed: CleanerLite[]): Promise<void> {
+    const actualTaskId = stripVirtualId(taskId);
+    added.forEach((cleaner) => {
+      void createTaskNotificationEvent({
+        eventType: 'task_assigned',
+        taskId: actualTaskId,
+        cleanerId: cleaner.id,
+        dedupeKey: `task_assigned:${actualTaskId}:${cleaner.id}`,
+      });
+    });
+    await this.sendAssignmentEmails(actualTaskId, added, removed);
   }
 
   private async sendAssignmentEmails(

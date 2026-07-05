@@ -50,6 +50,7 @@ export async function run(assert: typeof import('node:assert/strict')) {
   const cleaners: PlanningV2CleanerRef[] = [
     { id: 'ana', name: 'Ana', sedeId: 'a-coruna', maxMinutesPerDay: 420, homeBuildingGroupIds: ['a-coruna:MD18'] },
     { id: 'bea', name: 'Bea', sedeId: 'a-coruna', maxMinutesPerDay: 420, preferredPropertyIds: ['prop-1'] },
+    { id: 'carla', name: 'Carla', sedeId: 'a-coruna', maxMinutesPerDay: 420 },
     { id: 'cris', name: 'Cris', sedeId: 'ourense', maxMinutesPerDay: 420 },
   ];
 
@@ -67,7 +68,7 @@ export async function run(assert: typeof import('node:assert/strict')) {
   ];
 
   const loads = buildCleanerCapacity(cleaners, existingTasks);
-  assert.equal(loads.ana.assignedMinutes, 90);
+  assert.equal(loads.ana.assignedMinutes, 45);
   assert.equal(loads.ana.multiPersonTaskCount, 1);
   assert.equal(loads.bea.assignedTaskCount, 1);
 
@@ -80,6 +81,7 @@ export async function run(assert: typeof import('node:assert/strict')) {
     availabilityWindows: [
       { cleanerId: 'ana', startsAt: '2026-07-01T08:00:00.000Z', endsAt: '2026-07-01T13:00:00.000Z' },
       { cleanerId: 'bea', startsAt: '2026-07-01T08:00:00.000Z', endsAt: '2026-07-01T13:00:00.000Z' },
+      { cleanerId: 'carla', startsAt: '2026-07-01T08:00:00.000Z', endsAt: '2026-07-01T13:00:00.000Z' },
       { cleanerId: 'cris', startsAt: '2026-07-01T08:00:00.000Z', endsAt: '2026-07-01T13:00:00.000Z' },
     ],
     existingAssignments: existingTasks,
@@ -97,7 +99,7 @@ export async function run(assert: typeof import('node:assert/strict')) {
     requiredCleaners: requiredCleanerCountForProperty({ isLargeHome: true }),
   });
   assert.equal(teamCandidates[0].canAssign, true);
-  assert.deepEqual(teamCandidates[0].cleanerIds.sort(), ['ana', 'bea']);
+  assert.deepEqual(teamCandidates[0].cleanerIds.sort(), ['ana', 'bea', 'carla']);
 
   const overCapacity = rankCleanerCandidates({
     ...scoringInput,

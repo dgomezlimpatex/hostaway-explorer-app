@@ -35,6 +35,11 @@ export const PlanningAlertsPanel = ({ tasks, summary }: PlanningAlertsPanelProps
           {unassigned.length > 0 && <Badge variant="outline" className="border-red-300/30 bg-red-500/10 text-red-100">{unassigned.length} tareas sin cubrir</Badge>}
           {missingBuildings.length > 0 && <Badge variant="outline" className="border-purple-300/30 bg-purple-500/10 text-purple-100">{missingBuildings.length} edificios a revisar</Badge>}
           {conflictTasks.length > 0 && <Badge variant="outline" className="border-amber-300/30 bg-amber-500/10 text-amber-100">{conflictTasks.length} conflictos/capacidad</Badge>}
+          {summary.overcapacityCleaners > 0 && (
+            <Badge variant="outline" className="border-red-300/30 bg-red-500/10 text-red-100">
+              {summary.overcapacityCleaners} limpiadora(s) sobrecargada(s)
+            </Badge>
+          )}
           {largeHomes.length > 0 && (
             <Badge variant="outline" className="border-sky-300/30 bg-sky-500/10 text-sky-100">
               {largeHomes.length} casa(s) grande(s), {minutesToHoursLabel(largeHomes.reduce((total, task) => total + task.durationMinutes, 0))}: valorar 2–3 limpiadoras

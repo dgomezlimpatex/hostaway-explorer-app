@@ -93,7 +93,13 @@ const managementItems: NavigationItem[] = [
     title: 'Planificación limpiezas',
     href: '/cleaning-planning',
     icon: ClipboardList,
-    permission: 'tasks'
+    permission: 'tasks-edit'
+  },
+  {
+    title: 'Hermes planificación',
+    href: '/cleaning-planning?copilot=open',
+    icon: Bot,
+    permission: 'tasks-edit'
   },
   {
     title: 'Trabajadores',
@@ -233,7 +239,7 @@ const adminItems: NavigationItem[] = [
 
 export const DashboardSidebar = () => {
   const location = useLocation();
-  const { canAccessModule, isAdminOrManager } = useRolePermissions();
+  const { canAccessModule, hasPermission: hasRolePermission, isAdminOrManager } = useRolePermissions();
   const { state } = useSidebar();
   const { signOut, profile, user } = useAuth();
   const shouldShowIncidentBadge = isAdminOrManager();
@@ -254,6 +260,7 @@ export const DashboardSidebar = () => {
     switch (permission) {
       case 'calendar': return canAccessModule('calendar');
       case 'tasks': return canAccessModule('tasks');
+      case 'tasks-edit': return hasRolePermission('tasks', 'canEdit');
       case 'workers': return canAccessModule('workers');
       case 'clients': return canAccessModule('clients');
       case 'properties': return canAccessModule('properties');

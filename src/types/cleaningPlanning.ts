@@ -78,7 +78,13 @@ export type AssignmentConflictCode =
   | 'no_building_team'
   | 'over_capacity'
   | 'worker_absent'
-  | 'invalid_time_window';
+  | 'invalid_time_window'
+  | 'availability_window_mismatch'
+  | 'blocked_by_maintenance'
+  | 'blocked_by_partial_absence'
+  | 'max_tasks_per_day'
+  | 'time_overlap'
+  | 'time_buffer_overlap';
 
 export interface AssignmentProposal {
   taskId: string;
@@ -87,6 +93,8 @@ export interface AssignmentProposal {
   propertyGroupId?: string;
   propertyGroupName?: string;
   durationMinutes: number;
+  requiredCleaners?: number;
+  assignmentIndex?: number;
   confidence: number;
   reasons: string[];
   warnings: string[];
