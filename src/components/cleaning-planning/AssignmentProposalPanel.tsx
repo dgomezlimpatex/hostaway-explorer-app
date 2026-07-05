@@ -99,7 +99,7 @@ export const AssignmentProposalPanel = ({
           </div>
         </CardHeader>
 
-        <CardContent className="space-y-4 p-4">
+        <CardContent className="space-y-5 p-4 md:p-5">
           {!proposal ? (
             <div className="rounded-2xl border border-dashed border-[#310984]/15 bg-[#faf8ff] p-4 text-sm text-[#6b627a]">
               Todavía no hay plan recomendado. Usa el botón principal de arriba para preparar una propuesta sobre esta vista.
@@ -112,7 +112,7 @@ export const AssignmentProposalPanel = ({
                 </div>
               )}
 
-              <div className="grid gap-2 text-center md:grid-cols-4">
+              <div className="grid gap-3 text-center sm:grid-cols-2 lg:grid-cols-4">
                 <div className="rounded-xl border border-[#310984]/10 bg-[#faf8ff] p-3">
                   <p className="text-2xl font-semibold">{proposalGroups.length}</p>
                   <p className="text-xs text-[#6b627a]">limpiezas cubiertas</p>
@@ -154,7 +154,7 @@ export const AssignmentProposalPanel = ({
                     No se pudo preparar ninguna asignación segura con los datos actuales.
                   </div>
                 ) : (
-                  <div className="max-h-[360px] space-y-2 overflow-y-auto pr-1">
+                  <div className="grid gap-3 lg:grid-cols-2 2xl:grid-cols-3">
                     {proposalGroups.map((group) => {
                       const cleanerNames = group.proposals.map((item) => item.cleanerName).join(', ');
                       const minConfidence = Math.min(...group.proposals.map((item) => item.confidence));
@@ -164,7 +164,7 @@ export const AssignmentProposalPanel = ({
                       const isTeam = group.proposals.length > 1 || (first.requiredCleaners || 1) > 1;
 
                       return (
-                        <div key={group.taskId} className="rounded-2xl border border-[#310984]/10 bg-[#faf8ff] p-3">
+                        <div key={group.taskId} className="rounded-2xl border border-[#310984]/10 bg-[#faf8ff] p-4">
                           <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
                             <div className="min-w-0">
                               <p className="break-words text-sm font-semibold text-[#171321]">{group.task?.property || 'Limpieza'}</p>
@@ -192,19 +192,24 @@ export const AssignmentProposalPanel = ({
               </div>
 
               {proposal.conflicts.length > 0 && (
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2 text-sm font-semibold text-[#171321]">
-                    <XCircle className="h-4 w-4 text-red-600" /> Necesitan decisión
+                <div className="space-y-4 rounded-3xl border border-red-200 bg-red-50/70 p-4 md:p-5">
+                  <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
+                    <div className="flex items-center gap-2 text-base font-semibold text-[#171321]">
+                      <XCircle className="h-5 w-5 text-red-600" /> Necesitan decisión manual
+                    </div>
+                    <Badge variant="outline" className="w-fit border-red-200 bg-white text-red-700">
+                      {proposal.conflicts.length} pendiente{proposal.conflicts.length === 1 ? '' : 's'}
+                    </Badge>
                   </div>
-                  <div className="max-h-[260px] space-y-2 overflow-y-auto pr-1">
+                  <div className="grid gap-3 lg:grid-cols-2 2xl:grid-cols-3">
                     {proposal.conflicts.map((conflict) => {
                       const task = tasks.find((item) => item.id === conflict.taskId);
                       return (
-                        <div key={`${conflict.taskId}-${conflict.code}`} className="rounded-2xl border border-red-200 bg-red-50 p-3">
-                          <p className="text-sm font-semibold text-[#171321]">{task?.property || 'Limpieza'}</p>
-                          <p className="text-xs text-[#6b627a]">{task?.date || 'Sin fecha'} · {task?.displayStartTime || '--:--'}–{task?.displayEndTime || '--:--'}</p>
-                          <p className="mt-1 flex gap-2 text-xs text-red-700">
-                            <AlertTriangle className="mt-0.5 h-3 w-3 shrink-0" /> {conflict.message}
+                        <div key={`${conflict.taskId}-${conflict.code}`} className="rounded-2xl border border-red-200 bg-white p-4 shadow-sm">
+                          <p className="break-words text-sm font-semibold text-[#171321]">{task?.property || 'Limpieza'}</p>
+                          <p className="mt-1 text-xs text-[#6b627a]">{task?.date || 'Sin fecha'} · {task?.displayStartTime || '--:--'}–{task?.displayEndTime || '--:--'}</p>
+                          <p className="mt-3 flex gap-2 text-sm leading-5 text-red-700">
+                            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" /> {conflict.message}
                           </p>
                         </div>
                       );

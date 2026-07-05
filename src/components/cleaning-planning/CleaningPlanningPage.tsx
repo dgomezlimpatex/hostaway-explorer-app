@@ -387,19 +387,10 @@ export const CleaningPlanningPage = () => {
           </div>
         ) : (
           <>
-            <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_440px]">
-              <div className="space-y-5">
-                <PlanningAttentionSummary tasks={filteredTasks} summary={planning.summary} />
-                <PlanningDecisionQueue
-                  tasks={filteredTasks}
-                  cleaners={operationalCleaners}
-                  onAssign={handleAssign}
-                  onUnassign={unassignTask}
-                  isAssigning={isAssigning}
-                />
-              </div>
+            <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_380px]">
+              <PlanningAttentionSummary tasks={filteredTasks} summary={planning.summary} />
 
-              <div className="space-y-5 xl:sticky xl:top-4 xl:max-h-[calc(100vh-2rem)] xl:overflow-y-auto xl:self-start">
+              <div className="space-y-5 xl:sticky xl:top-4 xl:self-start">
                 <PlanningCopilotPanel
                   snapshot={copilotSnapshot}
                   isGenerating={buildingDataQuery.isLoading}
@@ -407,16 +398,25 @@ export const CleaningPlanningPage = () => {
                   onGenerateProposal={handleGenerateProposal}
                   onClearProposal={() => setProposalState(null)}
                 />
-                <AssignmentProposalPanel
-                  proposal={proposal}
-                  tasks={proposalTasks}
-                  isApplying={isApplyingProposal}
-                  isStale={isProposalStale}
-                  onApply={handleApplyProposal}
-                  onClear={() => setProposalState(null)}
-                />
               </div>
             </div>
+
+            <AssignmentProposalPanel
+              proposal={proposal}
+              tasks={proposalTasks}
+              isApplying={isApplyingProposal}
+              isStale={isProposalStale}
+              onApply={handleApplyProposal}
+              onClear={() => setProposalState(null)}
+            />
+
+            <PlanningDecisionQueue
+              tasks={filteredTasks}
+              cleaners={operationalCleaners}
+              onAssign={handleAssign}
+              onUnassign={unassignTask}
+              isAssigning={isAssigning}
+            />
 
             <PlanningAdvancedDetails>
               <div className="grid gap-5 xl:grid-cols-[360px_minmax(0,1fr)]">

@@ -87,7 +87,10 @@ assert.match(proposalPanel, /Plan recomendado/, 'Proposal title must be operatio
 assert.doesNotMatch(proposalPanel, /Proponer asignación/, 'Proposal panel must not compete with the primary Hermes planning CTA');
 assert.match(proposalPanel, /groupProposalsByTask/, 'Proposal panel must group multi-cleaner proposals by task');
 assert.match(proposalPanel, /por persona/, 'Grouped multi-cleaner proposals must explain per-person duration');
-assert.match(proposalPanel, /max-h-\[360px\].*overflow-y-auto/s, 'Proposal lists should have bounded height and internal scroll');
+assert.doesNotMatch(proposalPanel, /max-h-\[360px\][\s\S]*overflow-y-auto/, 'Ready proposal list must not be trapped in a small internal scroll area');
+assert.doesNotMatch(proposalPanel, /max-h-\[260px\][\s\S]*overflow-y-auto/, 'Decision-needed list must not be trapped in a small internal scroll area');
+assert.match(proposalPanel, /grid gap-3 lg:grid-cols-2 2xl:grid-cols-3/, 'Proposal and decision lists must use a wide responsive grid');
+assert.match(proposalPanel, /Necesitan decisión manual/, 'Decision-needed section must be explicit and prominent');
 assert.match(proposalPanel, /displayStartTime.*displayEndTime/s, 'Proposal cards must show task time context');
 
 assert.match(planningPage, /const handleSedeChange = \(sede: Sede\) => \{/, 'Planning page must reset invalid filters/proposal when sede changes');
@@ -97,7 +100,8 @@ assert.match(planningPage, /const handleRefresh = \(\) => \{/, 'Planning page mu
 assert.match(planningPage, /buildingDataQuery\.refetch\(\)/, 'Refresh must retry building/team data as well as planning data');
 assert.match(planningPage, /isLoading \? '—' : planning\.summary\.unassignedTasks/, 'Header metrics must show loading placeholders instead of zeroes');
 assert.match(planningPage, /filteredCleanerDays\.length === 0 \?/, 'Detailed cleaner section needs an actionable empty state when filters hide all workers');
-assert.match(planningPage, /xl:max-h-\[calc\(100vh-2rem\)\] xl:overflow-y-auto/, 'Sticky side panels should be scrollable');
+assert.doesNotMatch(planningPage, /xl:max-h-\[calc\(100vh-2rem\)\] xl:overflow-y-auto/, 'Planning page must not create nested scrolling in the right rail');
+assert.match(planningPage, /<AssignmentProposalPanel[\s\S]*<PlanningDecisionQueue/s, 'Plan recomendado must be a wide main-section before the decision queue, not inside the narrow Hermes rail');
 assert.match(planningPage, /PlanningCopilotPanel/, 'Planning page must embed the Hermes planning copilot panel');
 assert.match(planningPage, /buildPlanningCopilotSnapshot/, 'Planning page must build an explicit copilot snapshot');
 assert.match(planningPage, /visibleTasks: filteredTasks/, 'Copilot snapshot must use the visible filtered task subset');
