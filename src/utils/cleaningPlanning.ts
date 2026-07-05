@@ -7,7 +7,7 @@ import {
   CleaningPlanningTask,
   PlanningTaskRisk,
 } from '@/types/cleaningPlanning';
-import { getTaskPlannedDurationMinutes } from './cleaning-planning/capacity';
+import { getTaskAssignmentCleanerIds, getTaskPlannedDurationMinutes, getTaskWorkerPlannedDurationMinutes } from './cleaning-planning/capacity';
 
 export const DEFAULT_DAILY_CAPACITY_MINUTES = 8 * 60;
 
@@ -61,9 +61,16 @@ export const formatTaskStatus = (status: string): string => {
     'in-progress': 'En curso',
     completed: 'Completada',
     cancelled: 'Cancelada',
+    canceled: 'Cancelada',
+    declined: 'Declinada',
+    expired: 'Expirada',
   };
   return labels[status] || status;
 };
+
+export const PLANNABLE_TASK_STATUSES = new Set<string>(['pending', 'in-progress']);
+
+export const isPlannableTaskStatus = (status?: string | null): boolean => PLANNABLE_TASK_STATUSES.has(status || '');
 
 export const formatTaskType = (type: string): string => type
   .split('-')
@@ -132,10 +139,12 @@ export const buildCleanerPlanningDays = (
   const tasksByCleaner = new Map<string, Task[]>();
 
   tasks.forEach((task) => {
-    if (!task.cleanerId) return;
-    const cleanerTasks = tasksByCleaner.get(task.cleanerId) || [];
-    cleanerTasks.push(task);
-    tasksByCleaner.set(task.cleanerId, cleanerTasks);
+    const cleanerIds = getTaskAssignmentCleanerIds(task);
+    cleanerIds.forEach((cleanerId) => {
+      const cleanerTasks = tasksByCleaner.get(cleanerId) || [];
+      cleanerTasks.push(task);
+      tasksByCleaner.set(cleanerId, cleanerTasks);
+    });
   });
 
   return cleaners
@@ -144,12 +153,15 @@ export const buildCleanerPlanningDays = (
       const cleanerTasks = tasksByCleaner.get(cleaner.id) || [];
       const overlapIds = detectOverlapTaskIds(cleanerTasks);
       const capacityMinutes = capacityByCleaner[cleaner.id] ?? DEFAULT_DAILY_CAPACITY_MINUTES;
-      const plannedMinutes = cleanerTasks.reduce((total, task) => total + getTaskDurationMinutes(task), 0);
+      const plannedMinutes = cleanerTasks.reduce((total, task) => total + getTaskWorkerPlannedDurationMinutes(task), 0);
       const isOvercapacity = capacityMinutes > 0 && plannedMinutes > capacityMinutes;
-      const tasksWithRisks = cleanerTasks.map((task) => decoratePlanningTask(task, [
-        ...(overlapIds.has(task.id) ? ['overlap' as const] : []),
-        ...(isOvercapacity ? ['overcapacity' as const] : []),
-      ]));
+      const tasksWithRisks = cleanerTasks.map((task) => ({
+        ...decoratePlanningTask(task, [
+          ...(overlapIds.has(task.id) ? ['overlap' as const] : []),
+          ...(isOvercapacity ? ['overcapacity' as const] : []),
+        ]),
+        durationMinutes: getTaskWorkerPlannedDurationMinutes(task),
+      }));
       const riskFlags = uniqueRisks(tasksWithRisks.flatMap((task) => task.riskFlags));
 
       return {
@@ -174,13 +186,14 @@ export const buildPlanningSummary = (
   unassignedTasks: CleaningPlanningTask[],
 ): CleaningPlanningSummary => {
   const assignedTasks = cleanerDays.flatMap((day) => day.tasks);
-  const allTasks = [...assignedTasks, ...unassignedTasks];
+  const uniqueAssignedTasks = Array.from(new Map(assignedTasks.map((task) => [task.id, task])).values());
+  const allTasks = [...uniqueAssignedTasks, ...unassignedTasks];
   const plannedMinutes = cleanerDays.reduce((total, day) => total + day.plannedMinutes, 0);
   const capacityMinutes = cleanerDays.reduce((total, day) => total + day.capacityMinutes, 0);
 
   return {
     totalTasks: allTasks.length,
-    assignedTasks: assignedTasks.length,
+    assignedTasks: uniqueAssignedTasks.length,
     unassignedTasks: unassignedTasks.length,
     completedTasks: allTasks.filter((task) => task.status === 'completed').length,
     conflictTasks: allTasks.filter((task) => task.riskFlags.includes('overlap') || task.riskFlags.includes('missing-time')).length,
@@ -198,7 +211,7 @@ export const buildCleaningPlanningModel = (
   startDate: string,
   endDate: string,
 ): CleaningPlanningModel => {
-  const activeTasks = tasks.filter((task) => task.status !== 'completed');
+  const activeTasks = tasks.filter((task) => isPlannableTaskStatus(task.status));
   const cleanerDays = buildCleanerPlanningDays(activeTasks, cleaners, capacityByCleaner);
   const unassignedTasks = activeTasks
     .filter((task) => !task.cleanerId)

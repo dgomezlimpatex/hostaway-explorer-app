@@ -58,6 +58,12 @@ const managementItems: NavigationItem[] = [
     icon: ClipboardList,
     permission: 'propertyGroups',
   },
+  {
+    title: 'Hermes planificación',
+    href: '/cleaning-planning?copilot=open',
+    icon: Bot,
+    permission: 'tasks-edit',
+  },
   { title: 'Lavandería', href: '/lavanderia/gestion', icon: Package, permission: 'reports' },
   { title: 'Inventario', href: '/inventory', icon: Package, permission: 'inventory' },
 ];
@@ -121,7 +127,7 @@ interface MobileDashboardSidebarProps {
 
 export const MobileDashboardSidebar = ({ onNavigate }: MobileDashboardSidebarProps) => {
   const location = useLocation();
-  const { canAccessModule, isAdminOrManager } = useRolePermissions();
+  const { canAccessModule, hasPermission: hasRolePermission, isAdminOrManager } = useRolePermissions();
   const { user, profile } = useAuth();
   const shouldShowIncidentBadge = isAdminOrManager();
   const { data: incidentStats } = useIncidentStats(shouldShowIncidentBadge);
@@ -141,6 +147,7 @@ export const MobileDashboardSidebar = ({ onNavigate }: MobileDashboardSidebarPro
         return canAccessModule('calendar');
       case 'tasks':
         return canAccessModule('tasks');
+      case 'tasks-edit': return hasRolePermission('tasks', 'canEdit');
       case 'workers':
         return canAccessModule('workers');
       case 'clients':
@@ -227,3 +234,4 @@ export const MobileDashboardSidebar = ({ onNavigate }: MobileDashboardSidebarPro
     </div>
   );
 };
+

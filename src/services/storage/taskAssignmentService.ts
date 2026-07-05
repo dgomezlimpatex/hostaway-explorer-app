@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Task } from '@/types/calendar';
 import { taskStorageService } from './taskStorage';
 import { recordAiObservedEvent } from '@/services/aiObservedEvents';
+import { createTaskNotificationEvent } from '@/services/notifications/notificationOrchestrator';
 
 export class TaskAssignmentService {
   async assignTask(taskId: string, cleanerName: string, cleanerId?: string): Promise<Task> {
@@ -37,6 +38,15 @@ export class TaskAssignmentService {
 
     // If we have cleaner ID, send email notification (fire-and-forget)
     if (cleanerId) {
+      // Preparación WhatsApp (detrás de feature flag; no-op si está apagado):
+      // crea un notification_event de asignación. No afecta al email actual.
+      void createTaskNotificationEvent({
+        eventType: 'task_assigned',
+        taskId,
+        cleanerId,
+        dedupeKey: `task_assigned:${taskId}:${cleanerId}`,
+      });
+
       this.sendTaskAssignmentEmail(updatedTask, cleanerId)
         .then(() => console.log('Task assignment email sent successfully'))
         .catch(error => console.error('Failed to send assignment email:', error));

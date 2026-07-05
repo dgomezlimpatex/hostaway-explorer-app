@@ -1,4 +1,5 @@
 import { BaseEntity } from './common';
+import type { TaskAssignment } from './taskAssignments';
 
 export interface Cleaner extends BaseEntity {
   name: string;
@@ -70,9 +71,12 @@ export interface Task extends BaseEntity {
   status: 'pending' | 'in-progress' | 'completed';
   cleaner?: string;
   cleanerId?: string;
+  assignments?: TaskAssignment[];
   client?: string;
   clienteId?: string;
   propertyId?: string;
+  sedeId?: string;
+  requiredCleaners?: number;
   cost?: number;
   paymentMethod?: string;
   supervisor?: string;
@@ -89,6 +93,16 @@ export interface Task extends BaseEntity {
   extraordinaryBillingAddress?: string;
   // Additional subtasks
   additionalTasks?: AdditionalTask[];
+  // WhatsApp task approval fields (preparación WhatsApp Business API).
+  // Opcionales: no afectan al flujo actual hasta activar el feature flag.
+  approvalStatus?: 'not_required' | 'pending' | 'approved' | 'rejected' | 'expired' | 'auto_approved_by_admin';
+  approvalRequestedAt?: string | null;
+  approvedAt?: string | null;
+  rejectedAt?: string | null;
+  approvalResponseSource?: string | null;
+  approvalRejectionReason?: string | null;
+  lastApprovalReminderAt?: string | null;
+  lateStartReminderSentAt?: string | null;
 }
 
 export interface Assignment {

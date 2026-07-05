@@ -1,7 +1,8 @@
 import { Cleaner, Task } from '../../types/calendar';
 import { CleanerCapacityMap, EffectiveWorkerAvailability } from '../../types/cleaningPlanning';
 import { WorkerAbsence, WorkerFixedDayOff, WorkerMaintenanceCleaning } from '../../types/workerAbsence';
-import { getTaskPlannedDurationMinutes, getWindowDurationMinutes } from './capacity';
+import { isPlannableTaskStatus } from '../cleaningPlanning';
+import { getTaskAssignmentCleanerIds, getTaskWorkerPlannedDurationMinutes, getWindowDurationMinutes } from './capacity';
 
 export interface WeeklyAvailabilityRow {
   cleaner_id: string;
@@ -11,16 +12,38 @@ export interface WeeklyAvailabilityRow {
   end_time: string | null;
 }
 
-const dateToDayOfWeek = (date: string): number => new Date(`${date}T00:00:00`).getDay();
+const parseDateParts = (date: string): { year: number; month: number; day: number } | null => {
+  const [year, month, day] = date.split('-').map(Number);
+  if (!Number.isInteger(year) || !Number.isInteger(month) || !Number.isInteger(day)) return null;
+  if (year < 1900 || month < 1 || month > 12 || day < 1 || day > 31) return null;
+  return { year, month, day };
+};
+
+const dateToUtcMidnight = (date: string): number => {
+  const parts = parseDateParts(date);
+  if (!parts) return Date.parse(`${date}T00:00:00Z`);
+  return Date.UTC(parts.year, parts.month - 1, parts.day);
+};
+
+const formatUtcDate = (timestamp: number): string => {
+  const date = new Date(timestamp);
+  const year = date.getUTCFullYear();
+  const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+  const day = String(date.getUTCDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+const dateToDayOfWeek = (date: string): number => new Date(dateToUtcMidnight(date)).getUTCDay();
 
 const enumerateDates = (startDate: string, endDate: string): string[] => {
   const dates: string[] = [];
-  const cursor = new Date(`${startDate}T00:00:00`);
-  const end = new Date(`${endDate}T00:00:00`);
+  let cursor = dateToUtcMidnight(startDate);
+  const end = dateToUtcMidnight(endDate);
+  const dayMs = 24 * 60 * 60 * 1000;
 
   while (cursor <= end) {
-    dates.push(cursor.toISOString().slice(0, 10));
-    cursor.setDate(cursor.getDate() + 1);
+    dates.push(formatUtcDate(cursor));
+    cursor += dayMs;
   }
 
   return dates;
@@ -29,8 +52,9 @@ const enumerateDates = (startDate: string, endDate: string): string[] => {
 const overlapsDate = (date: string, startDate: string, endDate: string): boolean => startDate <= date && endDate >= date;
 
 const assignedMinutesForCleanerDate = (tasks: Task[], cleanerId: string, date: string): number => tasks
-  .filter((task) => task.cleanerId === cleanerId && task.date === date && task.status !== 'completed')
-  .reduce((total, task) => total + getTaskPlannedDurationMinutes(task).minutes, 0);
+  .filter((task) => task.date === date && isPlannableTaskStatus(task.status))
+  .filter((task) => getTaskAssignmentCleanerIds(task).includes(cleanerId))
+  .reduce((total, task) => total + getTaskWorkerPlannedDurationMinutes(task), 0);
 
 export const buildEffectiveAvailabilityForDate = ({
   cleaner,

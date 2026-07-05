@@ -6,6 +6,10 @@ export function getTaskCleanerIds(task: PlanningV2TaskRef): string[] {
   return Array.from(new Set(task.cleanerIds.filter(Boolean)));
 }
 
+const getTaskWorkerDurationMinutes = (task: PlanningV2TaskRef, cleanerCount: number): number => (
+  Math.ceil(task.durationMinutes / Math.max(cleanerCount, 1))
+);
+
 export function buildCleanerCapacity(
   cleaners: PlanningV2CleanerRef[],
   assignedTasks: PlanningV2TaskRef[],
@@ -28,7 +32,9 @@ export function buildCleanerCapacity(
 
   for (const task of assignedTasks) {
     const cleanerIds = getTaskCleanerIds(task);
-    const isMultiPerson = (task.requiredCleaners ?? cleanerIds.length) > 1 || cleanerIds.length > 1;
+    const workerCount = Math.max(1, cleanerIds.length || task.requiredCleaners || 1);
+    const workerDurationMinutes = getTaskWorkerDurationMinutes(task, workerCount);
+    const isMultiPerson = workerCount > 1;
 
     for (const cleanerId of cleanerIds) {
       if (!loads[cleanerId]) {
@@ -46,7 +52,7 @@ export function buildCleanerCapacity(
 
       const load = loads[cleanerId];
       load.taskIds.push(task.id);
-      load.assignedMinutes += task.durationMinutes;
+      load.assignedMinutes += workerDurationMinutes;
       load.assignedTaskCount += 1;
       if (isMultiPerson) load.multiPersonTaskCount += 1;
     }
@@ -81,5 +87,5 @@ export function requiredCleanerCountForProperty(property: { isLargeHome?: boolea
     return Math.min(3, Math.max(1, Math.ceil(property.requiredCleaners)));
   }
 
-  return property.isLargeHome ? 2 : 1;
+  return property.isLargeHome ? 3 : 1;
 }

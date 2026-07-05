@@ -19,7 +19,7 @@ export const CleanerPlanningColumn = ({ day, cleaners, onAssign, onUnassign, isA
   const isOverloaded = day.riskFlags.includes('overcapacity');
 
   return (
-    <Card className="min-w-[320px] border-white/10 bg-white/[0.04] text-white shadow-xl shadow-black/20 backdrop-blur">
+    <Card className="w-full min-w-0 max-w-full border-white/10 bg-white/[0.04] text-white shadow-xl shadow-black/20 backdrop-blur">
       <CardHeader className="space-y-3 border-b border-white/10">
         <div className="flex items-start justify-between gap-2">
           <div>
@@ -33,7 +33,12 @@ export const CleanerPlanningColumn = ({ day, cleaners, onAssign, onUnassign, isA
             <span>{minutesToHoursLabel(day.plannedMinutes)}</span>
             <span>{minutesToHoursLabel(day.capacityMinutes)}</span>
           </div>
-          <Progress value={Math.min(progressValue, 100)} className={isOverloaded ? 'h-2 bg-red-500/20' : 'h-2 bg-white/10'} />
+          <Progress
+            value={Math.min(progressValue, 100)}
+            className={isOverloaded ? 'h-2 bg-red-500/20' : 'h-2 bg-white/10'}
+            aria-label={`Carga de ${day.cleanerName}`}
+            aria-valuetext={`${day.utilizationPercent}% utilizado, ${minutesToHoursLabel(Math.max(day.capacityMinutes - day.plannedMinutes, 0))} libres`}
+          />
         </div>
       </CardHeader>
       <CardContent className="space-y-3 p-3">

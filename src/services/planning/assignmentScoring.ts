@@ -63,8 +63,9 @@ export function scoreCleanerCandidate(cleaner: PlanningV2CleanerRef, input: Assi
   const durationMinutes = input.window.durationMinutes ?? input.property.estimatedCleaningMinutes ?? 0;
   const requiredCleaners = input.requiredCleaners ?? requiredCleanerCountForProperty(input.property);
   const isMultiPersonTask = requiredCleaners > 1;
+  const workerDurationMinutes = Math.ceil(durationMinutes / Math.max(requiredCleaners, 1));
   const baseLoad = input.loads[cleaner.id] ?? emptyLoad(cleaner.id);
-  const projectedLoad = projectCleanerLoad(baseLoad, input.taskId, durationMinutes, isMultiPersonTask);
+  const projectedLoad = projectCleanerLoad(baseLoad, input.taskId, workerDurationMinutes, isMultiPersonTask);
   const grouping = groupPropertyByCode(input.property);
 
   const reasons: string[] = [];
@@ -86,7 +87,7 @@ export function scoreCleanerCandidate(cleaner: PlanningV2CleanerRef, input: Assi
     score -= 500;
     reasons.push(`Ventana no asignable: ${input.window.status}.`);
   } else {
-    reasons.push(`Ventana de limpieza disponible (${durationMinutes} min requeridos).`);
+    reasons.push(`Ventana de limpieza disponible (${isMultiPersonTask ? `${workerDurationMinutes} min por persona / ${durationMinutes} min totales` : `${durationMinutes} min requeridos`}).`);
     score += 30;
   }
 

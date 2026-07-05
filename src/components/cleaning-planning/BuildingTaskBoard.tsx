@@ -105,7 +105,8 @@ export const BuildingTaskBoard = ({ tasks, cleaners, onAssign, onUnassign, isAss
       <CardContent className="space-y-4 p-4">
         {groups.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-white/15 bg-black/20 p-6 text-center text-sm text-white/55">
-            No hay tareas con los filtros actuales.
+            <p className="font-medium text-white/75">No hay tareas con los filtros actuales.</p>
+            <p className="mt-1 text-xs">Limpia búsqueda/filtros, cambia rango o comprueba que la sede activa tenga tareas cargadas.</p>
           </div>
         ) : groups.map((group) => {
           const minutes = group.tasks.reduce((total, task) => total + task.durationMinutes, 0);
@@ -134,7 +135,7 @@ export const BuildingTaskBoard = ({ tasks, cleaners, onAssign, onUnassign, isAss
 
                 <div className="flex flex-wrap gap-2 text-xs text-white/55">
                   <span className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/5 px-2 py-1">
-                    <Users className="h-3 w-3" /> Equipo: {team.length > 0 ? team.join(', ') : 'pendiente'}
+                    <Users className="h-3 w-3" /> Asignadas ahora: {team.length > 0 ? team.join(', ') : 'pendiente'}
                   </span>
                   {largeHomes > 0 && (
                     <span className="inline-flex items-center gap-1 rounded-full border border-amber-300/25 bg-amber-400/10 px-2 py-1 text-amber-100">
