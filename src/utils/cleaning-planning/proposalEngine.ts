@@ -55,6 +55,8 @@ type Candidate = {
   warnings: string[];
 };
 
+type AssignmentRole = NonNullable<CleanerGroupAssignment['roleType']>;
+
 type AvailabilityFitResult = {
   fits: boolean;
   blockedCode?: AssignmentConflict['code'];
@@ -247,6 +249,23 @@ const getWorkerLoadMinutes = (task: CleaningPlanningTask, requiredCleaners: numb
   Math.ceil(task.durationMinutes / Math.max(requiredCleaners, 1))
 );
 
+const getAssignmentRole = (assignment: CleanerGroupAssignment): Exclude<AssignmentRole, 'excluded'> => {
+  if (assignment.roleType === 'primary' || assignment.roleType === 'secondary' || assignment.roleType === 'backup') {
+    return assignment.roleType;
+  }
+
+  if (assignment.priority <= 1) return 'primary';
+  if (assignment.priority === 2) return 'secondary';
+  return 'backup';
+};
+
+const getAssignmentRoleRank = (assignment: CleanerGroupAssignment): number => {
+  const role = getAssignmentRole(assignment);
+  if (role === 'primary') return 1;
+  if (role === 'secondary') return 2;
+  return 3;
+};
+
 const scoreCandidate = ({
   assignment,
   availability,
@@ -259,11 +278,12 @@ const scoreCandidate = ({
   const reasons: string[] = [];
   const warnings: string[] = [];
   let score = 50;
+  const role = getAssignmentRole(assignment);
 
-  if (assignment.priority <= 1) {
+  if (role === 'primary') {
     score += 40;
     reasons.push('Es la trabajadora titular/preferente del edificio.');
-  } else if (assignment.priority === 2) {
+  } else if (role === 'secondary') {
     score += 22;
     reasons.push('Es suplente configurada para este edificio.');
     warnings.push('Se propone suplente porque la titular no está disponible o no encaja.');
@@ -350,9 +370,10 @@ export const buildAssignmentProposal = ({
 
     const buildingAssignments = cleanerGroupAssignments
       .filter((assignment) => assignment.isActive)
+      .filter((assignment) => assignment.roleType !== 'excluded')
       .filter((assignment) => assignment.propertyGroupId === detectedBuilding.propertyGroupId)
       .filter((assignment) => activeCleanerIds.has(assignment.cleanerId))
-      .sort((a, b) => a.priority - b.priority);
+      .sort((a, b) => getAssignmentRoleRank(a) - getAssignmentRoleRank(b) || a.priority - b.priority);
 
     if (buildingAssignments.length === 0) {
       conflicts.push(buildConflict(task.id, 'no_building_team', 'El edificio no tiene equipo preferente, suplente o backup configurado.', {
@@ -390,7 +411,7 @@ export const buildAssignmentProposal = ({
         return { assignment, availability: workerAvailability, ...score };
       })
       .filter((candidate): candidate is Candidate => Boolean(candidate))
-      .sort((a, b) => b.score - a.score || a.assignment.priority - b.assignment.priority || b.availability.remainingMinutes - a.availability.remainingMinutes);
+      .sort((a, b) => b.score - a.score || getAssignmentRoleRank(a.assignment) - getAssignmentRoleRank(b.assignment) || a.assignment.priority - b.assignment.priority || b.availability.remainingMinutes - a.availability.remainingMinutes);
 
     const selectedCandidates = candidates.slice(0, requiredCleaners);
     if (selectedCandidates.length < requiredCleaners) {

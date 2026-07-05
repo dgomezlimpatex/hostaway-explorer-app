@@ -263,6 +263,22 @@ export async function run(assert: Assert) {
   assert.equal(suplenteFallsBackToBackup.proposals[0].cleanerId, 'carla', 'if titular and suplente are unavailable, backup should be proposed');
   assert.ok(suplenteFallsBackToBackup.proposals[0].warnings.some((warning) => warning.includes('backup')));
 
+  const roleTypeBeatsUnnormalizedPriority = proposalFor(
+    [fallbackTask({ id: 'task-role-type-priority' })],
+    [
+      availability('2026-07-01', 200, true, 'ana'),
+      availability('2026-07-01', 200, true, 'bea'),
+      availability('2026-07-01', 200, true, 'carla'),
+    ],
+    [
+      { ...cleanerGroupAssignments[2], cleanerId: 'carla', roleType: 'backup', priority: 9 },
+      { ...cleanerGroupAssignments[1], cleanerId: 'bea', roleType: 'secondary', priority: 9 },
+      { ...cleanerGroupAssignments[0], cleanerId: 'ana', roleType: 'primary', priority: 9 },
+    ],
+  );
+  assert.equal(roleTypeBeatsUnnormalizedPriority.proposals[0].cleanerId, 'ana', 'explicit roleType primary must be proposed before secondary/backup when priorities are not normalized');
+  assert.ok(roleTypeBeatsUnnormalizedPriority.proposals[0].reasons.some((reason) => reason.includes('titular')), 'primary roleType should explain titular/preferente, not backup');
+
   const largeHouseGetsThreeCleaners = proposalFor(
     [fallbackTask({ id: 'task-large-house', startTime: '11:00', endTime: '18:00', durationMinutes: 420, duration: 420, propertyDurationMinutes: 420 })],
     [
