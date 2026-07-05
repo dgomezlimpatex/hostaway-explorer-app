@@ -14,6 +14,7 @@ import { ReservationsCalendar } from './ReservationsCalendar';
 import { ExtraordinaryRequestsTab } from './ExtraordinaryRequestsTab';
 import { IncidentsTab } from './IncidentsTab';
 import { Toaster } from '@/components/ui/toaster';
+import { filterClientPortalListBookings } from './clientPortalVisibility';
 
 interface ClientPortalDashboardProps {
   clientId: string;
@@ -51,21 +52,12 @@ export const ClientPortalDashboard = ({
   const { data: properties = [], isLoading: loadingProperties } = useClientProperties(clientId);
   const { data: bookings = [], isLoading: loadingBookings, refetch } = useClientPortalBookings(clientId);
 
-  // Show only past bookings + upcoming bookings within the next 7 days in the list & header counters.
-  // The calendar tab keeps the full dataset.
-  const todayMs = (() => {
-    const d = new Date();
-    d.setHours(0, 0, 0, 0);
-    return d.getTime();
-  })();
-  const sevenDaysAgoMs = todayMs - 7 * 24 * 60 * 60 * 1000;
-  const thirtyDaysAheadMs = todayMs + 30 * 24 * 60 * 60 * 1000;
-
-  const listBookings = bookings.filter(b => {
-    const raw = new Date(b.cleaningDate);
-    const localMidnight = new Date(raw.getFullYear(), raw.getMonth(), raw.getDate()).getTime();
-    return localMidnight >= sevenDaysAgoMs && localMidnight <= thirtyDaysAheadMs;
-  });
+  // Show recent past bookings plus every future booking in the list & header counters.
+  // Clients add reservations well ahead of time; a future cap makes successful saves look lost.
+  const listBookings = useMemo(
+    () => filterClientPortalListBookings(bookings),
+    [bookings],
+  );
 
   const upcomingBookings = listBookings.filter(b => {
     const date = new Date(b.checkOutDate ?? b.cleaningDate);
