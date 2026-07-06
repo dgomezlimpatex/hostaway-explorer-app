@@ -21,6 +21,8 @@ interface TaskScheduleSectionProps {
   statusByField?: Record<string, FieldSaveStatus>;
   /** When true, fields are displayed but cannot be edited. */
   readOnly?: boolean;
+  /** Optional read-only display duration, useful for multi-worker tasks split by person. */
+  displayDurationMinutes?: number;
 }
 
 // Helpers
@@ -67,10 +69,11 @@ export const TaskScheduleSection = ({
   onScheduleSave,
   statusByField,
   readOnly = false,
+  displayDurationMinutes,
 }: TaskScheduleSectionProps) => {
   const startTime = normalizeTime(formData.startTime);
   const endTime = normalizeTime(formData.endTime);
-  const currentDuration = computeDurationMin(startTime, endTime);
+  const currentDuration = displayDurationMinutes ?? computeDurationMin(startTime, endTime);
   const currentHours = currentDuration / 60;
 
   const [durationInput, setDurationInput] = useState<string>(
