@@ -69,6 +69,7 @@ const AviratoAdmin = React.lazy(() => import("./pages/AviratoAdmin"));
 const AIAssistant = React.lazy(() => import("./pages/AIAssistant"));
 const CleaningPlanning = React.lazy(() => import("./pages/CleaningPlanning"));
 const PlanningPage = React.lazy(() => import("./pages/PlanningPage"));
+const PlanningBuildingDetail = React.lazy(() => import("./pages/PlanningBuildingDetail"));
 
 // Suspense fallback for routes loaded WITHOUT the persistent layout (auth, public, calendar)
 const FullPageSuspense = ({ children }: { children: React.ReactNode }) => (
@@ -230,6 +231,9 @@ function App() {
                     } />
                     <Route path="/planning" element={
                       <RoleProtectedRoute requiredModule="tasks" requiredAction="canEdit"><CleaningPlanning /></RoleProtectedRoute>
+                    } />
+                    <Route path="/planning/buildings/:propertyGroupId" element={
+                      <RoleProtectedRoute requiredModule="tasks" requiredAction="canEdit"><PlanningBuildingDetail /></RoleProtectedRoute>
                     } />
                     <Route path="/planning-settings" element={
                       <RoleProtectedRoute requiredModule="propertyGroups"><PlanningPage /></RoleProtectedRoute>

@@ -16,7 +16,8 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Cleaner } from '@/types/calendar';
 import { CleaningPlanningTask, PlanningTaskRisk } from '@/types/cleaningPlanning';
 import { isOperationalCleaner, minutesToHoursLabel } from '@/utils/cleaningPlanning';
-import { AlertTriangle, Clock, Home, MapPin, UserX } from 'lucide-react';
+import { AlertTriangle, Clock, ExternalLink, Home, MapPin, UserX } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 interface PlanningTaskCardProps {
   task: CleaningPlanningTask;
@@ -112,6 +113,15 @@ export const PlanningTaskCard = ({ task, cleaners, onAssign, onUnassign, isAssig
               </Badge>
             ))}
           </div>
+        )}
+
+        {task.detectedBuilding?.propertyGroupId && !isSimple && (
+          <Button asChild size="sm" variant="outline" className="min-h-[36px] w-fit border-white/15 bg-white/5 text-xs text-white hover:bg-white/10 hover:text-white">
+            <Link to={`/planning/buildings/${task.detectedBuilding.propertyGroupId}`}>
+              Ver ficha edificio
+              <ExternalLink className="ml-2 h-3.5 w-3.5" />
+            </Link>
+          </Button>
         )}
 
         {isSimple && (

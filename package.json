@@ -14,6 +14,8 @@
     "test:cleaning-planning-proposal-engine": "node scripts/cleaningPlanningProposalEngineTest.mjs",
     "test:cleaning-planning-domain-safety": "node scripts/cleaningPlanningDomainSafetyTest.mjs",
     "test:cleaning-planning-ui": "node scripts/cleaningPlanningUiContractTest.mjs",
+    "test:planning-building-crm": "node scripts/planningBuildingCrmServiceTest.mjs",
+    "test:planning-building-crm-ui": "node scripts/planningBuildingCrmUiContractTest.mjs",
     "test:whatsapp-prep": "node scripts/whatsappPrepTest.mjs",
     "test:client-portal-visibility": "node scripts/clientPortalVisibilityTest.mjs",
     "preview": "vite preview"

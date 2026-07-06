@@ -9,7 +9,8 @@ import { useCleaners } from '@/hooks/useCleaners';
 import { PropertyGroup } from '@/types/propertyGroups';
 import { PropertyAssignmentSection } from './PropertyAssignmentSection';
 import { CleanerAssignmentSection } from './CleanerAssignmentSection';
-import { Edit, Building2, Users, Clock, Settings } from 'lucide-react';
+import { Edit, Building2, Users, Clock, Settings, ExternalLink } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 interface PropertyGroupDetailsProps {
   group: PropertyGroup;
@@ -48,10 +49,18 @@ export const PropertyGroupDetails = ({ group, onEdit, onUpdate }: PropertyGroupD
                 <p className="text-gray-600 mt-1">{group.description}</p>
               )}
             </div>
-            <Button onClick={onEdit} variant="outline" size="sm">
-              <Edit className="h-4 w-4 mr-2" />
-              Editar
-            </Button>
+            <div className="flex flex-wrap gap-2">
+              <Button asChild variant="outline" size="sm" className="border-[#310984]/15 text-[#310984] hover:bg-[#f0eaff]">
+                <Link to={`/planning/buildings/${group.id}`}>
+                  <ExternalLink className="h-4 w-4 mr-2" />
+                  Ver ficha edificio
+                </Link>
+              </Button>
+              <Button onClick={onEdit} variant="outline" size="sm">
+                <Edit className="h-4 w-4 mr-2" />
+                Editar
+              </Button>
+            </div>
           </div>
         </CardHeader>
         
