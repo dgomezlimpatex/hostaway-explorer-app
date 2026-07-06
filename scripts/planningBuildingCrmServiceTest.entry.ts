@@ -1,7 +1,7 @@
 import type { Cleaner } from '../src/types/calendar';
 import type { Property } from '../src/types/property';
 import type { CleanerGroupAssignment, PropertyGroup } from '../src/types/propertyGroups';
-import { buildPlanningBuildingCrmProfile } from '../src/services/planning/buildingCrmAggregator';
+import { buildBuildingCrmAssignmentProposal, buildPlanningBuildingCrmProfile } from '../src/services/planning/buildingCrmAggregator';
 
 type Assert = typeof import('node:assert/strict');
 
@@ -219,4 +219,20 @@ export const run = async (assert: Assert) => {
   assert.equal(empty.summary.status, 'empty');
   assert.equal(empty.days.length, 3);
   assert.deepEqual(empty.days.map((day) => day.date), ['2026-07-09', '2026-07-10', '2026-07-11']);
+
+  const buildingProposal = buildBuildingCrmAssignmentProposal(profile);
+  assert.equal(buildingProposal.summary.totalUnassignedTasks, 2, 'Only confirmed unassigned building tasks with duration should be proposed/conflicted');
+  assert.equal(buildingProposal.summary.proposedCount, 1, 'Large valid unassigned task should receive one building-level proposal group');
+  assert.equal(buildingProposal.summary.conflictCount, 1, 'Missing-duration task should remain a manual conflict');
+  assert.equal(buildingProposal.proposals.length, 3, 'Large property should propose the required team size');
+  assert.deepEqual(
+    buildingProposal.proposals.map((proposal) => proposal.cleanerName),
+    ['Ana', 'Bea', 'Carla'],
+    'Proposal must use titulares, suplentes and backup before excluded cleaners',
+  );
+  assert.ok(buildingProposal.proposals.every((proposal) => proposal.taskId === 'task-large'));
+  assert.ok(buildingProposal.proposals.every((proposal) => proposal.propertyGroupId === 'group-md18'));
+  assert.ok(buildingProposal.proposals.every((proposal) => proposal.reasons.some((reason) => reason.includes('equipo del edificio'))));
+  assert.ok(buildingProposal.conflicts.some((conflict) => conflict.taskId === 'task-missing-duration' && conflict.code === 'missing_duration'));
+  assert.ok(!buildingProposal.proposals.some((proposal) => proposal.cleanerName === 'Marta'), 'No apta/excluded cleaners must never be proposed');
 };

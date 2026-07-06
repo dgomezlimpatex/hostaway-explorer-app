@@ -1,9 +1,13 @@
+import { useEffect, useState } from 'react';
 import { AlertTriangle, Building2, RefreshCw } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import type { AssignmentProposalResult } from '@/types/cleaningPlanning';
 import type { PlanningBuildingCrmProfile } from '@/types/operationalPlanning';
+import { buildBuildingCrmAssignmentProposal } from '@/services/planning/buildingCrmAggregator';
+import { BuildingAssignmentProposalPanel } from './BuildingAssignmentProposalPanel';
 import { BuildingCrmHeader } from './BuildingCrmHeader';
 import { BuildingCrmKpis } from './BuildingCrmKpis';
 import { BuildingDemandCalendar } from './BuildingDemandCalendar';
@@ -42,6 +46,17 @@ export const BuildingCrmPage = ({
   error,
   onRefresh,
 }: BuildingCrmPageProps) => {
+  const [assignmentProposal, setAssignmentProposal] = useState<AssignmentProposalResult | null>(null);
+
+  useEffect(() => {
+    setAssignmentProposal(null);
+  }, [profile?.building.id, dateFrom, dateTo]);
+
+  const handleGenerateAssignmentProposal = () => {
+    if (!profile) return;
+    setAssignmentProposal(buildBuildingCrmAssignmentProposal(profile));
+  };
+
   return (
     <div className="min-h-screen bg-[#f7f4fb] px-4 py-5 text-[#171321] md:px-6 lg:px-8">
       <div className="mx-auto max-w-7xl space-y-5">
@@ -117,6 +132,12 @@ export const BuildingCrmPage = ({
             <BuildingCrmKpis summary={profile.summary} rangeDays={rangeDays} />
             <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_380px]">
               <div className="space-y-5">
+                <BuildingAssignmentProposalPanel
+                  profile={profile}
+                  proposal={assignmentProposal}
+                  onGenerate={handleGenerateAssignmentProposal}
+                  onClear={() => setAssignmentProposal(null)}
+                />
                 <BuildingDemandCalendar days={profile.days} />
                 <BuildingPropertiesPanel properties={profile.properties} />
               </div>

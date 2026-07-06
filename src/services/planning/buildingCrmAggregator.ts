@@ -1,4 +1,5 @@
 import type { Cleaner } from '@/types/calendar';
+import type { AssignmentConflict, AssignmentProposal, AssignmentProposalResult, GlobalPlanQualitySummary } from '@/types/cleaningPlanning';
 import type {
   PlanningBuildingCrmDay,
   PlanningBuildingCrmDecision,
@@ -533,5 +534,139 @@ export const buildPlanningBuildingCrmProfile = (input: BuildPlanningBuildingCrmP
     },
     days,
     decisions: unique(decisions, (decision) => decision.id),
+  };
+};
+
+const TEAM_ROLE_ORDER: Record<PlanningBuildingCrmTeamMember['roleType'], number> = {
+  primary: 1,
+  secondary: 2,
+  backup: 3,
+  excluded: 4,
+};
+
+const EMPTY_GLOBAL_QUALITY: GlobalPlanQualitySummary = {
+  fullBundlesCovered: 0,
+  splitBundles: 0,
+  avoidableSplits: 0,
+  backupAssignments: 0,
+  avoidableBackupAssignments: 0,
+  nearCheckInTasks: 0,
+  manualDecisionCount: 0,
+  globalScore: 100,
+  criticalWarnings: [],
+};
+
+const getBuildingProposalTasks = (profile: PlanningBuildingCrmProfile): PlanningBuildingCrmTask[] => profile.days
+  .flatMap((day) => day.tasks)
+  .filter((task) => task.isConfirmed)
+  .filter((task) => task.assignedCleanerIds.length < task.requiredCleaners)
+  .sort((a, b) => `${a.date} ${a.startTime || '99:99'} ${a.propertyCode}`.localeCompare(`${b.date} ${b.startTime || '99:99'} ${b.propertyCode}`, 'es', { numeric: true }));
+
+const getAssignableBuildingTeam = (profile: PlanningBuildingCrmProfile): PlanningBuildingCrmTeamMember[] => profile.team
+  .filter((member) => member.isActive)
+  .filter((member) => member.roleType !== 'excluded')
+  .sort((a, b) => (
+    TEAM_ROLE_ORDER[a.roleType] - TEAM_ROLE_ORDER[b.roleType]
+    || (b.knowledgeLevel || 0) - (a.knowledgeLevel || 0)
+    || a.futureAssignedMinutes - b.futureAssignedMinutes
+    || a.cleanerName.localeCompare(b.cleanerName, 'es', { numeric: true })
+  ));
+
+const getTaskConflict = (task: PlanningBuildingCrmTask, code: AssignmentConflict['code'], message: string): AssignmentConflict => ({
+  taskId: task.id,
+  code,
+  message,
+  details: {
+    propertyId: task.propertyId,
+    propertyCode: task.propertyCode,
+    date: task.date,
+  },
+});
+
+export const buildBuildingCrmAssignmentProposal = (profile: PlanningBuildingCrmProfile): AssignmentProposalResult => {
+  const candidateTasks = getBuildingProposalTasks(profile);
+  const assignableTeam = getAssignableBuildingTeam(profile);
+  const proposals: AssignmentProposal[] = [];
+  const conflicts: AssignmentConflict[] = [];
+  const criticalWarnings: string[] = [];
+  let coveredTaskCount = 0;
+  let proposedMinutes = 0;
+
+  candidateTasks.forEach((task) => {
+    if (task.durationMinutes <= 0) {
+      conflicts.push(getTaskConflict(task, 'missing_duration', `${task.propertyCode} no tiene duración operativa; revisa la propiedad antes de asignar.`));
+      return;
+    }
+
+    if (assignableTeam.length === 0) {
+      conflicts.push(getTaskConflict(task, 'no_building_team', `${profile.building.displayName || profile.building.name} no tiene equipo activo para proponer asignación.`));
+      return;
+    }
+
+    const requiredSlots = Math.max(1, task.requiredCleaners - task.assignedCleanerIds.length);
+    const availableTeam = assignableTeam.filter((member) => !task.assignedCleanerIds.includes(member.cleanerId));
+    if (availableTeam.length < requiredSlots) {
+      conflicts.push(getTaskConflict(task, 'no_available_worker', `${task.propertyCode} necesita ${requiredSlots} persona${requiredSlots === 1 ? '' : 's'} y solo hay ${availableTeam.length} disponible${availableTeam.length === 1 ? '' : 's'} en el equipo del edificio.`));
+      criticalWarnings.push(`${task.date} · ${task.propertyCode}: falta equipo disponible del edificio.`);
+      return;
+    }
+
+    const chosen = availableTeam.slice(0, requiredSlots);
+    coveredTaskCount += 1;
+
+    chosen.forEach((member, index) => {
+      const usesBackup = member.roleType === 'backup';
+      if (usesBackup) criticalWarnings.push(`${task.date} · ${task.propertyCode}: se usa backup porque titulares/suplentes no alcanzan.`);
+      proposedMinutes += task.durationMinutes;
+      proposals.push({
+        taskId: task.id,
+        cleanerId: member.cleanerId,
+        cleanerName: member.cleanerName,
+        propertyGroupId: profile.building.id,
+        propertyGroupName: profile.building.displayName || profile.building.name,
+        bundleId: `${profile.building.id}-${task.date}`,
+        assignmentRole: member.roleType === 'backup' ? 'backup' : index === 0 ? 'primary' : 'secondary',
+        durationMinutes: task.durationMinutes,
+        proposedStartTime: task.startTime || undefined,
+        proposedEndTime: task.endTime || undefined,
+        requiredCleaners: task.requiredCleaners,
+        assignmentIndex: task.assignedCleanerIds.length + index + 1,
+        confidence: usesBackup ? 72 : member.roleType === 'secondary' ? 82 : 90,
+        reasons: [
+          `Forma parte del equipo del edificio ${profile.building.displayName || profile.building.name}.`,
+          member.roleType === 'primary' ? 'Es titular del edificio.' : member.roleType === 'secondary' ? 'Es suplente del edificio.' : 'Es backup operativo del edificio.',
+        ],
+        warnings: usesBackup ? ['Usa backup: revisar si conviene reforzar titulares/suplentes.'] : [],
+        capacityAfterAssignment: {
+          assignedMinutes: member.futureAssignedMinutes + task.durationMinutes,
+          remainingMinutes: Math.max(0, (member.maxDailyMinutesOverride || 360) - task.durationMinutes),
+        },
+      });
+    });
+  });
+
+  const backupAssignments = proposals.filter((proposal) => proposal.assignmentRole === 'backup').length;
+  const globalQuality: GlobalPlanQualitySummary = {
+    ...EMPTY_GLOBAL_QUALITY,
+    fullBundlesCovered: coveredTaskCount,
+    backupAssignments,
+    avoidableBackupAssignments: backupAssignments > 0 ? 1 : 0,
+    manualDecisionCount: conflicts.length,
+    globalScore: Math.max(35, 100 - conflicts.length * 18 - backupAssignments * 5),
+    criticalWarnings: Array.from(new Set(criticalWarnings)),
+  };
+
+  return {
+    proposals,
+    conflicts,
+    summary: {
+      totalUnassignedTasks: candidateTasks.length,
+      proposedCount: coveredTaskCount,
+      conflictCount: conflicts.length,
+      proposedMinutes,
+      remainingCapacityMinutes: 0,
+      missingCapacityMinutes: conflicts.length > 0 ? conflicts.length * 60 : 0,
+      globalQuality,
+    },
   };
 };
