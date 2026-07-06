@@ -32,7 +32,7 @@ const group: PropertyGroup = {
   recommendedCapacity: 2,
   planningNotes: 'Edificio de prueba',
   checkOutTime: '11:00',
-  checkInTime: '15:00',
+  checkInTime: '18:00',
   isActive: true,
   autoAssignEnabled: true,
   createdAt: stamp,
@@ -146,7 +146,7 @@ const buildBaseProfile = (overrides: Parameters<typeof buildPlanningBuildingCrmP
     property({ id: 'property-md18-large', codigo: 'MD18.3', nombre: 'Casa grande MD18', duracionServicio: 390, planningRequiredCleaners: 3 }),
     property({ id: 'property-md18-missing-duration', codigo: 'MD18.0', nombre: 'MD18 sin duración', duracionServicio: 0, planningRequiredCleaners: 1 }),
   ],
-  cleaners: [cleaner('ana', 'Ana'), cleaner('bea', 'Bea'), cleaner('carla', 'Carla'), cleaner('marta', 'Marta')],
+  cleaners: [cleaner('ana', 'Ana', 480), cleaner('bea', 'Bea', 480), cleaner('carla', 'Carla', 480), cleaner('marta', 'Marta')],
   cleanerGroupAssignments: [
     assignment('ana', 'primary', true, 1),
     assignment('bea', 'secondary', true, 2),
@@ -235,4 +235,51 @@ export const run = async (assert: Assert) => {
   assert.ok(buildingProposal.proposals.every((proposal) => proposal.reasons.some((reason) => reason.includes('equipo del edificio'))));
   assert.ok(buildingProposal.conflicts.some((conflict) => conflict.taskId === 'task-missing-duration' && conflict.code === 'missing_duration'));
   assert.ok(!buildingProposal.proposals.some((proposal) => proposal.cleanerName === 'Marta'), 'No apta/excluded cleaners must never be proposed');
+
+  const sameDayCapacityProfile = buildBaseProfile({
+    propertyGroups: [{ ...group, checkInTime: '17:00', checkOutTime: '11:00' }],
+    propertyGroupAssignments: [
+      { property_group_id: 'group-md18', property_id: 'property-md18-1' },
+      { property_group_id: 'group-md18', property_id: 'property-md18-2' },
+      { property_group_id: 'group-md18', property_id: 'property-md18-3' },
+      { property_group_id: 'group-md18', property_id: 'property-md18-4' },
+    ],
+    properties: [
+      property({ id: 'property-md18-1', codigo: 'MD18.1', duracionServicio: 90, planningRequiredCleaners: 1 }),
+      property({ id: 'property-md18-2', codigo: 'MD18.2', duracionServicio: 90, planningRequiredCleaners: 1 }),
+      property({ id: 'property-md18-3', codigo: 'MD18.3', duracionServicio: 90, planningRequiredCleaners: 1 }),
+      property({ id: 'property-md18-4', codigo: 'MD18.4', duracionServicio: 120, planningRequiredCleaners: 1 }),
+    ],
+    cleaners: [cleaner('ana', 'Ana'), cleaner('bea', 'Bea')],
+    cleanerGroupAssignments: [
+      assignment('ana', 'primary', true, 1),
+      assignment('bea', 'secondary', true, 2),
+    ],
+    tasks: [
+      task({ id: 'task-same-day-1', propiedad_id: 'property-md18-1', property: 'MD18.1', date: '2026-07-09', start_time: '11:00', end_time: '12:30' }),
+      task({ id: 'task-same-day-2', propiedad_id: 'property-md18-2', property: 'MD18.2', date: '2026-07-09', start_time: '11:00', end_time: '12:30' }),
+      task({ id: 'task-same-day-3', propiedad_id: 'property-md18-3', property: 'MD18.3', date: '2026-07-09', start_time: '11:00', end_time: '12:30' }),
+      task({ id: 'task-same-day-4', propiedad_id: 'property-md18-4', property: 'MD18.4', date: '2026-07-09', start_time: '11:00', end_time: '13:00' }),
+    ],
+    teamAvailability: [
+      { cleanerId: 'ana', date: '2026-07-09', availableMinutes: 360, isAvailable: true },
+      { cleanerId: 'bea', date: '2026-07-09', availableMinutes: 360, isAvailable: true },
+    ],
+    forecastItems: [],
+  });
+  const sameDayProposal = buildBuildingCrmAssignmentProposal(sameDayCapacityProfile);
+  assert.equal(sameDayProposal.proposals.length, 4, 'All four same-day tasks should remain assignable with two cleaners');
+  const anaMinutes = sameDayProposal.proposals
+    .filter((proposal) => proposal.cleanerName === 'Ana')
+    .reduce((total, proposal) => total + proposal.durationMinutes, 0);
+  assert.ok(anaMinutes <= 360, 'Proposal must not assign more minutes to Ana than the 11:00-17:00 building window');
+  assert.equal(
+    sameDayProposal.proposals.find((proposal) => proposal.taskId === 'task-same-day-4')?.cleanerName,
+    'Bea',
+    'When the titular would exceed the check-out/check-in window, the next available building worker must be proposed',
+  );
+  assert.ok(
+    sameDayProposal.proposals.every((proposal) => !proposal.proposedEndTime || proposal.proposedEndTime <= '17:00'),
+    'Proposed end times must stay inside the building check-in deadline',
+  );
 };

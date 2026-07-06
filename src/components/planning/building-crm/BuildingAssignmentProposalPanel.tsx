@@ -164,8 +164,17 @@ export const BuildingAssignmentProposalPanel = ({ profile, proposal, onGenerate,
                           </div>
                           <Badge variant="outline" className={confidenceTone(confidence)}>{confidence}%</Badge>
                         </div>
-                        <ul className="mt-2 space-y-1 text-xs text-[#6b627a]">
-                          {group.proposals.slice(0, 2).flatMap((item) => item.reasons.slice(0, 1)).map((reason) => <li key={reason}>• {reason}</li>)}
+                        <ul className="mt-2 space-y-2 text-xs text-[#6b627a]">
+                          {group.proposals.map((item) => (
+                            <li key={`${item.taskId}-${item.cleanerId}`} className="rounded-xl border border-[#310984]/10 bg-white/70 p-2">
+                              <div className="font-medium text-[#171321]">
+                                {item.cleanerName} · {item.proposedStartTime || '--:--'}–{item.proposedEndTime || '--:--'} · carga tras asignar {formatCrmHours(item.capacityAfterAssignment.assignedMinutes)}
+                              </div>
+                              <ul className="mt-1 space-y-0.5">
+                                {item.reasons.map((reason) => <li key={reason}>• {reason}</li>)}
+                              </ul>
+                            </li>
+                          ))}
                         </ul>
                       </div>
                     );

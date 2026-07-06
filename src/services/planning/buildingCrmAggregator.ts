@@ -583,9 +583,69 @@ const getTaskConflict = (task: PlanningBuildingCrmTask, code: AssignmentConflict
   },
 });
 
+interface BuildingProposalWorkerDayState {
+  proposedMinutes: number;
+  cursorMinutes: number;
+}
+
+const parseClockMinutes = (value?: string | null): number | null => {
+  if (!value) return null;
+  const match = value.match(/^(\d{1,2}):(\d{2})/);
+  if (!match) return null;
+  const hours = Number(match[1]);
+  const minutes = Number(match[2]);
+  if (!Number.isFinite(hours) || !Number.isFinite(minutes)) return null;
+  return hours * 60 + minutes;
+};
+
+const formatClockMinutes = (minutes: number): string => {
+  const normalized = Math.max(0, Math.round(minutes));
+  const hours = Math.floor(normalized / 60);
+  const mins = normalized % 60;
+  return `${String(hours).padStart(2, '0')}:${String(mins).padStart(2, '0')}`;
+};
+
+const getBuildingWindow = (profile: PlanningBuildingCrmProfile): { startMinutes: number; endMinutes: number; durationMinutes: number } | null => {
+  const startMinutes = parseClockMinutes(profile.building.checkOutTime);
+  const endMinutes = parseClockMinutes(profile.building.checkInTime);
+  if (startMinutes === null || endMinutes === null || endMinutes <= startMinutes) return null;
+  return {
+    startMinutes,
+    endMinutes,
+    durationMinutes: endMinutes - startMinutes,
+  };
+};
+
+const getWorkerDayKey = (cleanerId: string, date: string): string => `${cleanerId}::${date}`;
+
+const getWorkerDayState = (
+  stateByWorkerDay: Map<string, BuildingProposalWorkerDayState>,
+  cleanerId: string,
+  date: string,
+  initialCursorMinutes: number,
+): BuildingProposalWorkerDayState => {
+  const key = getWorkerDayKey(cleanerId, date);
+  const current = stateByWorkerDay.get(key);
+  if (current) return current;
+  const initial = { proposedMinutes: 0, cursorMinutes: initialCursorMinutes };
+  stateByWorkerDay.set(key, initial);
+  return initial;
+};
+
+const cloneWorkerDayState = (stateByWorkerDay: Map<string, BuildingProposalWorkerDayState>): Map<string, BuildingProposalWorkerDayState> => new Map(
+  Array.from(stateByWorkerDay.entries()).map(([key, value]) => [key, { ...value }]),
+);
+
+const getWorkerDailyCapacityMinutes = (member: PlanningBuildingCrmTeamMember, buildingWindowMinutes?: number): number => {
+  const workerLimit = member.maxDailyMinutesOverride || buildingWindowMinutes || 360;
+  return typeof buildingWindowMinutes === 'number' ? Math.min(workerLimit, buildingWindowMinutes) : workerLimit;
+};
+
 export const buildBuildingCrmAssignmentProposal = (profile: PlanningBuildingCrmProfile): AssignmentProposalResult => {
   const candidateTasks = getBuildingProposalTasks(profile);
   const assignableTeam = getAssignableBuildingTeam(profile);
+  const buildingWindow = getBuildingWindow(profile);
+  const stateByWorkerDay = new Map<string, BuildingProposalWorkerDayState>();
   const proposals: AssignmentProposal[] = [];
   const conflicts: AssignmentConflict[] = [];
   const criticalWarnings: string[] = [];
@@ -611,10 +671,56 @@ export const buildBuildingCrmAssignmentProposal = (profile: PlanningBuildingCrmP
       return;
     }
 
-    const chosen = availableTeam.slice(0, requiredSlots);
+    const taskStartMinutes = parseClockMinutes(task.startTime) ?? buildingWindow?.startMinutes ?? 11 * 60;
+    const dayStartMinutes = Math.max(buildingWindow?.startMinutes ?? taskStartMinutes, taskStartMinutes);
+    const dayEndMinutes = buildingWindow?.endMinutes;
+    const tentativeState = cloneWorkerDayState(stateByWorkerDay);
+    const chosen: Array<{ member: PlanningBuildingCrmTeamMember; startMinutes: number; endMinutes: number; assignedMinutes: number; remainingMinutes: number }> = [];
+
+    for (let index = 0; index < requiredSlots; index += 1) {
+      const chosenIds = new Set(chosen.map((item) => item.member.cleanerId));
+      const eligible = availableTeam
+        .filter((member) => !chosenIds.has(member.cleanerId))
+        .map((member) => {
+          const state = getWorkerDayState(tentativeState, member.cleanerId, task.date, dayStartMinutes);
+          const capacityMinutes = getWorkerDailyCapacityMinutes(member, buildingWindow?.durationMinutes);
+          const startMinutes = Math.max(state.cursorMinutes, dayStartMinutes);
+          const endMinutes = startMinutes + task.durationMinutes;
+          const fitsCapacity = state.proposedMinutes + task.durationMinutes <= capacityMinutes;
+          const fitsWindow = typeof dayEndMinutes !== 'number' || endMinutes <= dayEndMinutes;
+          return { member, state, capacityMinutes, startMinutes, endMinutes, fitsCapacity, fitsWindow };
+        })
+        .filter((item) => item.fitsCapacity && item.fitsWindow)
+        .sort((a, b) => (
+          TEAM_ROLE_ORDER[a.member.roleType] - TEAM_ROLE_ORDER[b.member.roleType]
+          || a.state.proposedMinutes - b.state.proposedMinutes
+          || (b.member.knowledgeLevel || 0) - (a.member.knowledgeLevel || 0)
+          || a.member.cleanerName.localeCompare(b.member.cleanerName, 'es', { numeric: true })
+        ));
+
+      const selected = eligible[0];
+      if (!selected) break;
+      selected.state.proposedMinutes += task.durationMinutes;
+      selected.state.cursorMinutes = selected.endMinutes;
+      chosen.push({
+        member: selected.member,
+        startMinutes: selected.startMinutes,
+        endMinutes: selected.endMinutes,
+        assignedMinutes: selected.state.proposedMinutes,
+        remainingMinutes: Math.max(0, selected.capacityMinutes - selected.state.proposedMinutes),
+      });
+    }
+
+    if (chosen.length < requiredSlots) {
+      conflicts.push(getTaskConflict(task, 'no_available_worker', `${task.propertyCode} no cabe en la ventana ${profile.building.checkOutTime || 'checkout'}–${profile.building.checkInTime || 'checkin'} con el equipo disponible del edificio.`));
+      criticalWarnings.push(`${task.date} · ${task.propertyCode}: no cabe respetando checkout/checkin y carga diaria por trabajadora.`);
+      return;
+    }
+
+    tentativeState.forEach((value, key) => stateByWorkerDay.set(key, value));
     coveredTaskCount += 1;
 
-    chosen.forEach((member, index) => {
+    chosen.forEach(({ member, startMinutes, endMinutes, assignedMinutes, remainingMinutes }, index) => {
       const usesBackup = member.roleType === 'backup';
       if (usesBackup) criticalWarnings.push(`${task.date} · ${task.propertyCode}: se usa backup porque titulares/suplentes no alcanzan.`);
       proposedMinutes += task.durationMinutes;
@@ -627,19 +733,20 @@ export const buildBuildingCrmAssignmentProposal = (profile: PlanningBuildingCrmP
         bundleId: `${profile.building.id}-${task.date}`,
         assignmentRole: member.roleType === 'backup' ? 'backup' : index === 0 ? 'primary' : 'secondary',
         durationMinutes: task.durationMinutes,
-        proposedStartTime: task.startTime || undefined,
-        proposedEndTime: task.endTime || undefined,
+        proposedStartTime: formatClockMinutes(startMinutes),
+        proposedEndTime: formatClockMinutes(endMinutes),
         requiredCleaners: task.requiredCleaners,
         assignmentIndex: task.assignedCleanerIds.length + index + 1,
         confidence: usesBackup ? 72 : member.roleType === 'secondary' ? 82 : 90,
         reasons: [
           `Forma parte del equipo del edificio ${profile.building.displayName || profile.building.name}.`,
+          `Cabe en la ventana operativa ${profile.building.checkOutTime || formatClockMinutes(dayStartMinutes)}–${profile.building.checkInTime || 'fin de jornada'}.`,
           member.roleType === 'primary' ? 'Es titular del edificio.' : member.roleType === 'secondary' ? 'Es suplente del edificio.' : 'Es backup operativo del edificio.',
         ],
         warnings: usesBackup ? ['Usa backup: revisar si conviene reforzar titulares/suplentes.'] : [],
         capacityAfterAssignment: {
-          assignedMinutes: member.futureAssignedMinutes + task.durationMinutes,
-          remainingMinutes: Math.max(0, (member.maxDailyMinutesOverride || 360) - task.durationMinutes),
+          assignedMinutes,
+          remainingMinutes,
         },
       });
     });
