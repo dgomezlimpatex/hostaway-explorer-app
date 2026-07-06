@@ -121,7 +121,6 @@ const taskStorageConfig = {
     extraordinaryClientPhone: row.extraordinary_client_phone,
     extraordinaryBillingAddress: row.extraordinary_billing_address,
     originalTaskId: row.originalTaskId || row.id, // Para asignaciones múltiples
-    assignments: row.assignments || row.task_assignments || [],
     additionalTasks: row.additional_tasks || [], // Map additional tasks
   }),
   mapToDB: (task: Partial<TaskCreateData>): TaskDBWrite => {

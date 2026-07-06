@@ -1,6 +1,7 @@
 import React, { memo, useMemo } from 'react';
 import { Task } from '@/types/calendar';
 import { CheckCircle2, Clock, ArrowRight } from 'lucide-react';
+import { getEffectiveTaskDurationMinutes } from '@/utils/taskPositioning';
 
 interface CleanerTaskSummaryProps {
   todayTasks: Task[];
@@ -16,13 +17,8 @@ const CleanerTaskSummaryComponent: React.FC<CleanerTaskSummaryProps> = ({
     const completed = todayTasks.filter(t => t.status === 'completed').length;
     const pending = todayTasks.filter(t => t.status !== 'completed').length;
     
-    // Calculate total hours for today
     const totalMinutes = todayTasks.reduce((acc, task) => {
-      const [startHour, startMinute] = task.startTime.split(':').map(Number);
-      const [endHour, endMinute] = task.endTime.split(':').map(Number);
-      const startMins = startHour * 60 + startMinute;
-      const endMins = endHour * 60 + endMinute;
-      return acc + (endMins - startMins);
+      return acc + getEffectiveTaskDurationMinutes(task);
     }, 0);
     
     const hours = Math.floor(totalMinutes / 60);

@@ -2,27 +2,44 @@ import React, { memo } from 'react';
 import { Task } from '@/types/calendar';
 import { MapPin, Calendar, ListTodo } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import {
+  getEffectiveTaskDurationMinutes,
+  getEffectiveTaskEndTime,
+  getTaskAssignedCount,
+} from '@/utils/taskPositioning';
 
 interface CleanerTaskCardProps {
   task: Task;
   onClick: () => void;
 }
 
+const formatTime = (time: string) => time.slice(0, 5);
+
+const formatDuration = (minutes: number) => {
+  if (minutes >= 60) {
+    const hours = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+    return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`;
+  }
+
+  return `${minutes}m`;
+};
+
 // Subtask badge component for cleaner view
 const SubtaskBadge = ({ task }: { task: Task }) => {
   const additionalTasks = task.additionalTasks || [];
   if (additionalTasks.length === 0) return null;
-  
-  const pendingCount = additionalTasks.filter(t => !t.completed).length;
+
+  const pendingCount = additionalTasks.filter((t) => !t.completed).length;
   const allCompleted = pendingCount === 0;
-  
+
   return (
-    <div 
+    <div
       className={cn(
-        "absolute -top-2 -right-2 z-20 flex items-center gap-1 px-2 py-1 rounded-full text-xs font-bold shadow-lg",
-        allCompleted 
-          ? "bg-green-500 text-white" 
-          : "bg-red-500 text-white animate-pulse"
+        'absolute -top-2 -right-2 z-20 flex items-center gap-1 px-2 py-1 rounded-full text-xs font-bold shadow-lg',
+        allCompleted
+          ? 'bg-green-500 text-white'
+          : 'bg-red-500 text-white animate-pulse'
       )}
     >
       <ListTodo className="h-3.5 w-3.5" />
@@ -33,76 +50,40 @@ const SubtaskBadge = ({ task }: { task: Task }) => {
 
 const CleanerTaskCardComponent: React.FC<CleanerTaskCardProps> = ({
   task,
-  onClick
+  onClick,
 }) => {
-  // Detect multi-worker assignment from comma-separated cleaner names
-  const assignedCount = React.useMemo(() => {
-    if (task.cleaner && task.cleaner.includes(',')) {
-      return task.cleaner.split(',').map(s => s.trim()).filter(Boolean).length;
-    }
-    return 1;
-  }, [task.cleaner]);
+  const assignedCount = React.useMemo(() => getTaskAssignedCount(task), [task]);
+  const displayEndTime = React.useMemo(() => getEffectiveTaskEndTime(task), [task]);
+  const displayDuration = React.useMemo(
+    () => formatDuration(getEffectiveTaskDurationMinutes(task)),
+    [task]
+  );
 
-  // Compute displayed end time: if multi-worker, divide duration evenly
-  const displayEndTime = React.useMemo(() => {
-    if (assignedCount <= 1) return task.endTime;
-    const [sh, sm] = task.startTime.split(':').map(Number);
-    const [eh, em] = task.endTime.split(':').map(Number);
-    const startMin = sh * 60 + sm;
-    let endMin = eh * 60 + em;
-    // Handle tasks crossing midnight (e.g. 16:00 → 04:00)
-    if (endMin <= startMin) endMin += 24 * 60;
-    const totalDur = Math.max(0, endMin - startMin);
-    const perWorker = Math.max(15, Math.round(totalDur / assignedCount));
-    const newEnd = (startMin + perWorker) % (24 * 60);
-    const h = Math.floor(newEnd / 60);
-    const m = newEnd % 60;
-    return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
-  }, [task.startTime, task.endTime, assignedCount]);
-
-  // Calculate duration based on displayed times
-  const calculateDuration = () => {
-    const [startHour, startMinute] = task.startTime.split(':').map(Number);
-    const [endHour, endMinute] = displayEndTime.split(':').map(Number);
-    const startMinutes = startHour * 60 + startMinute;
-    const endMinutes = endHour * 60 + endMinute;
-    let durationMinutes = endMinutes - startMinutes;
-    if (durationMinutes <= 0) durationMinutes += 24 * 60;
-    
-    if (durationMinutes >= 60) {
-      const hours = Math.floor(durationMinutes / 60);
-      const mins = durationMinutes % 60;
-      return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`;
-    }
-    return `${durationMinutes}m`;
-  };
-
-  // Format date for display
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     const today = new Date();
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
-    
-    // Compare dates (ignoring time)
+
     const taskDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
     const todayDate = new Date(today.getFullYear(), today.getMonth(), today.getDate());
     const tomorrowDate = new Date(tomorrow.getFullYear(), tomorrow.getMonth(), tomorrow.getDate());
-    
+
     if (taskDate.getTime() === todayDate.getTime()) {
       return 'Hoy';
-    } else if (taskDate.getTime() === tomorrowDate.getTime()) {
-      return 'Mañana';
-    } else {
-      return date.toLocaleDateString('es-ES', { 
-        weekday: 'short', 
-        day: 'numeric', 
-        month: 'short' 
-      });
     }
+
+    if (taskDate.getTime() === tomorrowDate.getTime()) {
+      return 'Mañana';
+    }
+
+    return date.toLocaleDateString('es-ES', {
+      weekday: 'short',
+      day: 'numeric',
+      month: 'short',
+    });
   };
 
-  // Get gradient based on status
   const getGradient = () => {
     switch (task.status) {
       case 'completed':
@@ -115,28 +96,23 @@ const CleanerTaskCardComponent: React.FC<CleanerTaskCardProps> = ({
   };
 
   return (
-    <div 
+    <div
       onClick={onClick}
       className={`${getGradient()} p-6 rounded-3xl shadow-lg cursor-pointer hover:shadow-xl transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] text-white relative overflow-hidden`}
     >
       {/* Background pattern */}
-      <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -translate-y-16 translate-x-16"></div>
-      <div className="absolute bottom-0 left-0 w-24 h-24 bg-white/5 rounded-full translate-y-12 -translate-x-12"></div>
-      
-      {/* Subtask badge */}
+      <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -translate-y-16 translate-x-16" />
+      <div className="absolute bottom-0 left-0 w-24 h-24 bg-white/5 rounded-full translate-y-12 -translate-x-12" />
+
       <SubtaskBadge task={task} />
-      
+
       <div className="relative z-10">
-        
-        {/* Main content */}
         <div className="space-y-4">
-          {/* Property name and date */}
           <div className="space-y-2">
             <h3 className="text-2xl font-bold leading-tight">
               {task.property}
             </h3>
-            
-            {/* Date badge */}
+
             <div className="flex items-center">
               <div className="bg-white/20 backdrop-blur-sm px-3 py-1 rounded-full flex items-center">
                 <Calendar className="h-3 w-3 mr-2 opacity-80" />
@@ -144,46 +120,39 @@ const CleanerTaskCardComponent: React.FC<CleanerTaskCardProps> = ({
               </div>
             </div>
           </div>
-          
-          {/* Property code if available */}
+
           {task.propertyCode && (
             <p className="text-white/80 text-sm font-medium">
               Código: {task.propertyCode}
             </p>
           )}
-          
-          {/* Time and duration section */}
+
           <div className="flex items-center justify-between">
-            {/* Start time */}
             <div className="text-left">
-              <div className="text-2xl font-bold">{task.startTime}</div>
+              <div className="text-2xl font-bold">{formatTime(task.startTime)}</div>
               <div className="text-white/80 text-sm font-medium">Inicio</div>
             </div>
-            
-            {/* Duration badge */}
+
             <div className="bg-white/20 backdrop-blur-sm px-4 py-2 rounded-full">
-              <span className="text-white font-bold text-sm">{calculateDuration()}</span>
+              <span className="text-white font-bold text-sm">{displayDuration}</span>
             </div>
-            
-            {/* End time */}
+
             <div className="text-right">
-              <div className="text-2xl font-bold">{displayEndTime}</div>
+              <div className="text-2xl font-bold">{formatTime(displayEndTime)}</div>
               <div className="text-white/80 text-sm font-medium">Fin</div>
             </div>
           </div>
 
-          {/* Multi-worker split badge */}
           {assignedCount > 1 && (
             <div
               className="inline-flex items-center gap-1.5 bg-white/20 backdrop-blur-sm px-3 py-1 rounded-full text-xs font-semibold text-white"
-              title={`Compartida con ${assignedCount} personas. Total: ${task.startTime}–${task.endTime}`}
+              title={`Compartida con ${assignedCount} personas. Total: ${formatTime(task.startTime)}-${formatTime(task.endTime)}`}
             >
               <span>÷{assignedCount}</span>
               <span className="opacity-90">Compartida ({assignedCount} personas)</span>
             </div>
           )}
-          
-          {/* Address if available */}
+
           {task.address && (
             <div className="flex items-start text-white/90 mt-3">
               <MapPin className="h-4 w-4 mr-2 flex-shrink-0 mt-0.5 opacity-80" />
@@ -198,5 +167,4 @@ const CleanerTaskCardComponent: React.FC<CleanerTaskCardProps> = ({
   );
 };
 
-// Memoize component to prevent unnecessary re-renders
 export const CleanerTaskCard = memo(CleanerTaskCardComponent);

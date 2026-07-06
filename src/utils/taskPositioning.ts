@@ -11,7 +11,7 @@ const minutesToTime = (mins: number) => {
   return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
 };
 
-const getAssignedCount = (task: any, assignmentsMap?: Record<string, string[]>): number => {
+export const getTaskAssignedCount = (task: any, assignmentsMap?: Record<string, string[]>): number => {
   const assignmentIds = assignmentsMap?.[task.id];
   if (Array.isArray(assignmentIds) && assignmentIds.length > 0) return assignmentIds.length;
   if (Array.isArray(task.assignments) && task.assignments.length > 0) return task.assignments.length;
@@ -38,7 +38,7 @@ export const getEffectiveTaskEndTime = (task: any, assignmentsMap?: Record<strin
   // total scheduled window (all in parallel, same start). The visible block on
   // the calendar — and the slots considered "occupied" — should reflect that
   // shorter per-worker duration, not the full window.
-  const count = getAssignedCount(task, assignmentsMap);
+  const count = getTaskAssignedCount(task, assignmentsMap);
   if (count <= 1) return task.endTime;
 
   const startMin = timeToMinutes(task.startTime);
@@ -48,6 +48,13 @@ export const getEffectiveTaskEndTime = (task: any, assignmentsMap?: Record<strin
   const perWorker = Math.max(15, Math.round(totalMin / count));
   const newEnd = (startMin + perWorker) % (24 * 60);
   return minutesToTime(newEnd);
+};
+
+export const getEffectiveTaskDurationMinutes = (task: any, assignmentsMap?: Record<string, string[]>): number => {
+  const startMin = timeToMinutes(task.startTime);
+  let endMin = timeToMinutes(getEffectiveTaskEndTime(task, assignmentsMap));
+  if (endMin <= startMin) endMin += 24 * 60;
+  return Math.max(0, endMin - startMin);
 };
 
 
