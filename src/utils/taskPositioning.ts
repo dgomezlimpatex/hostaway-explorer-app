@@ -12,6 +12,7 @@ const minutesToTime = (mins: number) => {
 };
 
 export const getTaskAssignedCount = (task: any, assignmentsMap?: Record<string, string[]>): number => {
+  if (typeof task.assignmentCount === 'number' && task.assignmentCount > 0) return task.assignmentCount;
   const assignmentIds = assignmentsMap?.[task.id];
   if (Array.isArray(assignmentIds) && assignmentIds.length > 0) return assignmentIds.length;
   if (Array.isArray(task.assignments) && task.assignments.length > 0) return task.assignments.length;

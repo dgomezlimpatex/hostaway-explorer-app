@@ -73,6 +73,7 @@ type TaskDBRow = {
   task_reports?: TaskReportRow[] | null;
   task_assignments?: TaskAssignmentRow[] | null;
   assignments?: TaskAssignmentRow[] | null;
+  assignment_count?: number | null;
 };
 
 type TaskDBWrite = Record<string, unknown>;
@@ -105,6 +106,7 @@ const taskStorageConfig = {
     paymentMethod: row.metodo_pago,
     supervisor: row.supervisor,
     cleanerId: row.cleaner_id,
+    assignmentCount: row.assignment_count ?? undefined,
     assignments: (row.assignments || row.task_assignments || []).map((assignment) => ({
       id: assignment.id,
       task_id: assignment.task_id || row.id,
@@ -158,6 +160,39 @@ const taskStorageConfig = {
 export class TaskStorageService extends BaseStorageService<Task, TaskCreateData> {
   constructor() {
     super(taskStorageConfig);
+  }
+
+  private async applyAssignmentCounts(tasks: Map<string, TaskDBRow> | TaskDBRow[]): Promise<void> {
+    const taskRows = Array.isArray(tasks) ? tasks : Array.from(tasks.values());
+    const taskIds = taskRows.map((task) => task.id).filter(Boolean);
+    if (taskIds.length === 0) return;
+
+    try {
+      const { data, error } = await (supabase as any).rpc('get_task_assignment_counts', {
+        _task_ids: taskIds,
+      });
+
+      if (error || !Array.isArray(data)) {
+        if (error) console.warn('Task assignment count RPC unavailable:', error.message);
+        return;
+      }
+
+      const counts = new Map<string, number>(
+        data.map((row: { task_id: string; assignment_count: number }) => [
+          row.task_id,
+          row.assignment_count,
+        ])
+      );
+
+      taskRows.forEach((task) => {
+        const count = counts.get(task.id);
+        if (typeof count === 'number' && count > 0) {
+          task.assignment_count = count;
+        }
+      });
+    } catch (error) {
+      console.warn('Task assignment count RPC failed:', error);
+    }
   }
 
   // Optimized method for cleaners - fetches only their tasks from server
@@ -250,6 +285,8 @@ export class TaskStorageService extends BaseStorageService<Task, TaskCreateData>
       }
     }
     
+    await this.applyAssignmentCounts(taskMap);
+
     // Map to Task objects
     return Array.from(taskMap.values()).map(task => this.mapTaskFromDB(task));
   }
@@ -370,6 +407,15 @@ export class TaskStorageService extends BaseStorageService<Task, TaskCreateData>
       console.error(`🚨 TaskStorage: LÍMITE ALCANZADO (${TASK_LIMIT} tareas). Es posible que falten tareas. Reduce el rango de fechas.`);
     }
     
+    if (data?.length) {
+      data.forEach((task) => {
+        const assignmentCount = task.task_assignments?.length || 0;
+        if (assignmentCount > 0) {
+          (task as TaskDBRow).assignment_count = assignmentCount;
+        }
+      });
+    }
+
     return (data || []).map(task => this.mapTaskFromDB(task));
   }
 

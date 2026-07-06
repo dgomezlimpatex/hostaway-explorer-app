@@ -57,6 +57,7 @@ export const TaskDetailsModal = ({
           cleaner: task.cleaner,
           cleanerId: task.cleanerId,
           assignments: task.assignments || freshTask.assignments,
+          assignmentCount: task.assignmentCount || freshTask.assignmentCount,
           originalTaskId: task.originalTaskId || task.id,
         }
       : task
