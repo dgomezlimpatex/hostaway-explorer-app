@@ -10,6 +10,7 @@ import {
   PlanningApprovalResult,
   PlanningAbsenceReplacement,
   PlanningAbsenceReplacementTask,
+  PlanningBuildingCrmProfile,
   PlanningBuildingSummary,
   PlanningConflict,
   PlanningConflictCode,
@@ -37,6 +38,11 @@ import {
 import { buildEffectiveAvailabilityForDate, WeeklyAvailabilityRow } from '@/utils/cleaning-planning/availability';
 import { formatMadridDate } from '@/utils/date';
 import { WorkerAbsence, WorkerFixedDayOff, WorkerMaintenanceCleaning } from '@/types/workerAbsence';
+import {
+  buildPlanningBuildingCrmProfile,
+  type BuildingCrmForecastItem,
+  type BuildingCrmTeamAvailability,
+} from './buildingCrmAggregator';
 
 type VacationRequestRow = {
   cleaner_id: string;
@@ -1120,6 +1126,84 @@ class OperationalPlanningService {
         activeProperties: activeProperties.length,
       },
     };
+  }
+
+  async getBuildingCrmProfile(input: {
+    sedeId: string;
+    propertyGroupId: string;
+    dateFrom: string;
+    dateTo: string;
+  }): Promise<PlanningBuildingCrmProfile> {
+    const settings = await this.getSettingsForSede(input.sedeId);
+    const dataset = await this.loadDataset(input, settings);
+    const activeProperties = dataset.properties.filter((property) => property.isActive !== false && property.clientIsActive !== false);
+    const activePropertyIds = new Set(activeProperties.map((property) => property.id));
+    const activeTasks = dataset.tasks
+      .filter((task) => isActivePlanningTask(task))
+      .filter((task) => isTouristCleaningTask(task))
+      .filter((task) => !!task.propiedad_id && activePropertyIds.has(task.propiedad_id));
+    const reservationItems = await loadMonthlyReservationForecastItems({
+      input,
+      activeProperties,
+      activeTasks,
+    });
+
+    const { data: allCleanerAssignmentRows, error: cleanerAssignmentsError } = await fromUntypedTable('cleaner_group_assignments')
+      .select('*')
+      .eq('property_group_id', input.propertyGroupId)
+      .order('priority');
+    if (cleanerAssignmentsError) throw cleanerAssignmentsError;
+
+    const cleanerGroupAssignments = ((allCleanerAssignmentRows as any[]) || []).map(mapCleanerGroupAssignment);
+    const teamCleanerIds = new Set(cleanerGroupAssignments.map((assignment) => assignment.cleanerId));
+    const dateRange = enumerateDates(input.dateFrom, input.dateTo);
+    const teamAvailability: BuildingCrmTeamAvailability[] = [];
+
+    cleanerGroupAssignments.forEach((assignment) => {
+      if (!assignment.isActive || assignment.roleType === 'excluded') return;
+      const cleaner = dataset.cleaners.find((entry) => entry.id === assignment.cleanerId);
+      if (!cleaner || !teamCleanerIds.has(cleaner.id)) return;
+      dateRange.forEach((date) => {
+        const availability = this.buildAvailabilityState({
+          cleaner,
+          date,
+          dataset,
+          settings,
+          scheduledTasks: dataset.tasks,
+        });
+        teamAvailability.push({
+          cleanerId: cleaner.id,
+          date,
+          availableMinutes: availability.availableMinutes,
+          isAvailable: availability.isAvailable,
+        });
+      });
+    });
+
+    const forecastItems: BuildingCrmForecastItem[] = reservationItems.map((item) => ({
+      id: item.id,
+      source: item.source,
+      propertyId: item.propertyId,
+      date: item.date,
+      serviceKind: item.serviceKind,
+      durationMinutes: item.durationMinutes,
+      requiredCleaners: item.requiredCleaners,
+    }));
+
+    return buildPlanningBuildingCrmProfile({
+      propertyGroupId: input.propertyGroupId,
+      dateFrom: input.dateFrom,
+      dateTo: input.dateTo,
+      fallbackDailyCapacityMinutes: settings.fallbackDailyCapacityMinutes,
+      propertyGroups: dataset.propertyGroups,
+      propertyGroupAssignments: dataset.propertyGroupAssignments,
+      properties: dataset.properties,
+      cleaners: dataset.cleaners,
+      cleanerGroupAssignments,
+      tasks: dataset.tasks,
+      forecastItems,
+      teamAvailability,
+    });
   }
 
   async generateRun(input: PlanningGenerateInput): Promise<PlanningPreviewData> {

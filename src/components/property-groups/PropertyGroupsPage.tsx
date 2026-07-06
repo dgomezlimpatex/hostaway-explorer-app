@@ -7,7 +7,7 @@ import { usePropertyGroups } from '@/hooks/usePropertyGroups';
 import { PropertyGroupModal } from './PropertyGroupModal';
 import { PropertyGroupDetails } from './PropertyGroupDetails';
 import { PropertyGroup } from '@/types/propertyGroups';
-import { Plus, Building2, Clock, Users, Settings, ArrowLeft } from 'lucide-react';
+import { Plus, Building2, Clock, Users, Settings, ArrowLeft, ExternalLink } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 export const PropertyGroupsPage = () => {
@@ -158,6 +158,18 @@ export const PropertyGroupsPage = () => {
                           <span>Check-out: {group.checkOutTime}</span>
                           <span>Check-in: {group.checkInTime}</span>
                         </div>
+                        <Button
+                          asChild
+                          size="sm"
+                          variant="outline"
+                          className="mt-3 h-9 border-[#310984]/15 bg-white text-[#310984] hover:bg-[#f0eaff]"
+                          onClick={(event) => event.stopPropagation()}
+                        >
+                          <Link to={`/planning/buildings/${group.id}`}>
+                            Ver ficha edificio
+                            <ExternalLink className="ml-2 h-3.5 w-3.5" />
+                          </Link>
+                        </Button>
                       </div>
                     ))
                   )}

@@ -19,6 +19,8 @@ const planningKeys = {
   overview: (sedeId?: string) => ['operational-planning', 'overview', sedeId] as const,
   monthlyForecast: (sedeId?: string, dateFrom?: string, dateTo?: string) =>
     ['operational-planning', 'monthly-forecast', sedeId, dateFrom, dateTo] as const,
+  buildingCrm: (sedeId?: string, propertyGroupId?: string, dateFrom?: string, dateTo?: string) =>
+    ['operational-planning', 'building-crm', sedeId, propertyGroupId, dateFrom, dateTo] as const,
   runs: (sedeId?: string) => ['operational-planning', 'runs', sedeId] as const,
   preview: (runId?: string) => ['operational-planning', 'preview', runId] as const,
   workers: (sedeId?: string) => ['operational-planning', 'workers', sedeId] as const,
@@ -70,6 +72,23 @@ export const useOperationalPlanningMonthlyForecast = (dateFrom: string, dateTo: 
       dateTo,
     }),
     enabled: isInitialized && !loading && !!activeSede?.id && !!dateFrom && !!dateTo,
+    retry: 1,
+    staleTime: 60_000,
+  });
+};
+
+export const useOperationalPlanningBuildingCrm = (propertyGroupId?: string, dateFrom?: string, dateTo?: string) => {
+  const { activeSede, isInitialized, loading } = useSede();
+
+  return useQuery({
+    queryKey: planningKeys.buildingCrm(activeSede?.id, propertyGroupId, dateFrom, dateTo),
+    queryFn: () => operationalPlanningService.getBuildingCrmProfile({
+      sedeId: activeSede!.id,
+      propertyGroupId: propertyGroupId!,
+      dateFrom: dateFrom!,
+      dateTo: dateTo!,
+    }),
+    enabled: isInitialized && !loading && !!activeSede?.id && !!propertyGroupId && !!dateFrom && !!dateTo,
     retry: 1,
     staleTime: 60_000,
   });

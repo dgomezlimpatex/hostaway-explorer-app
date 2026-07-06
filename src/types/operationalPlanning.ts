@@ -318,6 +318,140 @@ export interface PlanningMonthlyForecastResponse {
   };
 }
 
+export type PlanningBuildingCrmStatus = 'empty' | 'covered' | 'watch' | 'critical';
+
+export type PlanningBuildingCrmDecisionSeverity = 'info' | 'warning' | 'critical';
+
+export type PlanningBuildingCrmDecisionCategory =
+  | 'coverage'
+  | 'capacity'
+  | 'missing-duration'
+  | 'missing-team'
+  | 'forecast-not-created'
+  | 'excluded-worker'
+  | 'large-property';
+
+export interface PlanningBuildingCrmBuilding {
+  id: string;
+  name: string;
+  displayName?: string | null;
+  internalCode?: string | null;
+  zone?: string | null;
+  clientName?: string | null;
+  supervisorName?: string | null;
+  planningNotes?: string | null;
+  propertyCount: number;
+  checkOutTime?: string | null;
+  checkInTime?: string | null;
+  isActive: boolean;
+}
+
+export interface PlanningBuildingCrmProperty {
+  propertyId: string;
+  propertyCode: string;
+  propertyName: string;
+  propertyAddress?: string | null;
+  durationMinutes: number;
+  requiredCleaners: number;
+  personMinutes: number;
+  hasMissingDuration: boolean;
+  isLargeProperty: boolean;
+  clientName?: string | null;
+}
+
+export interface PlanningBuildingCrmTask {
+  id: string;
+  source: 'task' | 'forecast';
+  sourceLabel: string;
+  date: string;
+  propertyId: string;
+  propertyCode: string;
+  propertyName: string;
+  startTime?: string | null;
+  endTime?: string | null;
+  status?: string | null;
+  serviceKind?: 'checkout' | 'stay';
+  durationMinutes: number;
+  requiredCleaners: number;
+  personMinutes: number;
+  assignedCleanerIds: string[];
+  assignedCleanerNames: string[];
+  isConfirmed: boolean;
+  warnings: string[];
+}
+
+export interface PlanningBuildingCrmDay {
+  date: string;
+  confirmedCleanings: number;
+  forecastCleanings: number;
+  serviceMinutes: number;
+  personMinutes: number;
+  assignedPersonMinutes: number;
+  availableAssignedPersonMinutes: number;
+  requiredCleanerSlots: number;
+  status: PlanningBuildingCrmStatus;
+  tasks: PlanningBuildingCrmTask[];
+  warnings: string[];
+}
+
+export interface PlanningBuildingCrmTeamMember {
+  cleanerId: string;
+  cleanerName: string;
+  roleType: 'primary' | 'secondary' | 'backup' | 'excluded';
+  knowledgeLevel?: number;
+  maxTasksPerDay: number;
+  maxDailyMinutesOverride?: number | null;
+  futureAssignedMinutes: number;
+  availableDaysInRange: number;
+  pressureConflicts: number;
+  notes?: string | null;
+  isActive: boolean;
+}
+
+export interface PlanningBuildingCrmSummary {
+  confirmedCleanings: number;
+  forecastCleanings: number;
+  serviceMinutes: number;
+  personMinutes: number;
+  averageDailyServiceMinutes: number;
+  averageWeeklyServiceMinutes: number;
+  averageMonthlyServiceMinutes: number;
+  peakDailyPersonMinutes: number;
+  recommendedStableStaff: number;
+  assignedPrimaryCount: number;
+  assignedSecondaryCount: number;
+  assignedBackupCount: number;
+  excludedCount: number;
+  pressureDays: number;
+  uncoveredDays: number;
+  missingDurationProperties: number;
+  status: PlanningBuildingCrmStatus;
+}
+
+export interface PlanningBuildingCrmDecision {
+  id: string;
+  severity: PlanningBuildingCrmDecisionSeverity;
+  category: PlanningBuildingCrmDecisionCategory;
+  title: string;
+  message: string;
+  date?: string;
+  propertyId?: string;
+  propertyCode?: string;
+  cleanerId?: string;
+  actionLabel: string;
+  actionTarget: 'planning' | 'property' | 'team' | 'settings';
+}
+
+export interface PlanningBuildingCrmProfile {
+  building: PlanningBuildingCrmBuilding;
+  properties: PlanningBuildingCrmProperty[];
+  team: PlanningBuildingCrmTeamMember[];
+  range: { dateFrom: string; dateTo: string };
+  summary: PlanningBuildingCrmSummary;
+  days: PlanningBuildingCrmDay[];
+  decisions: PlanningBuildingCrmDecision[];
+}
+
 export interface PlanningRunSummary {
   totalTasks: number;
   proposedTasks: number;
