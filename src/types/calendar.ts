@@ -72,6 +72,7 @@ export interface Task extends BaseEntity {
   cleaner?: string;
   cleanerId?: string;
   assignments?: TaskAssignment[];
+  assignmentCount?: number;
   client?: string;
   clienteId?: string;
   propertyId?: string;
@@ -83,12 +84,6 @@ export interface Task extends BaseEntity {
   backgroundColor?: string;
   notes?: string;
   originalTaskId?: string; // Para tareas con asignaciones múltiples, guarda el ID original
-  assignments?: Array<{
-    id?: string;
-    task_id?: string;
-    cleaner_id: string;
-    cleaner_name: string;
-  }>;
   // Recurring task fields
   isRecurringInstance?: boolean; // True if this is a virtual (not yet generated) recurring task preview
   recurringTaskId?: string; // ID of the parent recurring task

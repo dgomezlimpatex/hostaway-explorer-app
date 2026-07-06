@@ -14,6 +14,7 @@ import { AdditionalTasksSection } from "./AdditionalTasksSection";
 import { useAuth } from "@/hooks/useAuth";
 import { useAdditionalTasks } from "@/hooks/useAdditionalTasks";
 import { FieldSaveStatus } from "@/hooks/useInlineFieldSave";
+import { getEffectiveTaskDurationMinutes, getTaskAssignedCount } from "@/utils/taskPositioning";
 
 interface TaskDetailsFormProps {
   task: Task;
@@ -25,30 +26,6 @@ interface TaskDetailsFormProps {
   onScheduleSave?: (updates: Partial<Task>) => void;
   statusByField?: Record<string, FieldSaveStatus>;
 }
-
-const timeToMinutes = (time?: string) => {
-  if (!time) return null;
-  const [hours, minutes] = time.substring(0, 5).split(':').map(Number);
-  if (Number.isNaN(hours) || Number.isNaN(minutes)) return null;
-  return hours * 60 + minutes;
-};
-
-const getTaskDurationMinutes = (task: Task) => {
-  if (task.duration && task.duration > 0) return task.duration;
-  const start = timeToMinutes(task.startTime);
-  const end = timeToMinutes(task.endTime);
-  if (start == null || end == null) return null;
-  const diff = end >= start ? end - start : end + 24 * 60 - start;
-  return diff > 0 ? diff : null;
-};
-
-const getPerWorkerDurationMinutes = (task: Task) => {
-  const assignmentCount = task.assignments?.length || 0;
-  if (assignmentCount <= 1) return undefined;
-  const totalMinutes = getTaskDurationMinutes(task);
-  if (!totalMinutes) return undefined;
-  return Math.max(15, Math.round(totalMinutes / assignmentCount));
-};
 
 export const TaskDetailsForm = ({
   task,
@@ -64,7 +41,10 @@ export const TaskDetailsForm = ({
   const [propertyData, setPropertyData] = useState<any>(null);
   const [clientData, setClientData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const workerDisplayDurationMinutes = userRole === 'cleaner' ? getPerWorkerDurationMinutes(task) : undefined;
+  const workerDisplayDurationMinutes =
+    userRole === 'cleaner' && getTaskAssignedCount(task) > 1
+      ? getEffectiveTaskDurationMinutes(task)
+      : undefined;
 
   const handleAddSubtask = (subtask: Omit<AdditionalTask, 'id' | 'completed' | 'addedAt' | 'addedBy'>) => {
     addSubtask({ task, subtask });
