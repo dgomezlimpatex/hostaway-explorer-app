@@ -1,4 +1,4 @@
-import { ArrowRight, Building2, CalendarDays, Settings, ShieldAlert, Users } from 'lucide-react';
+import { ArrowRight, Building2, CalendarDays, ListTree, ShieldAlert, Users } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -38,9 +38,9 @@ export const BuildingCrmHeader = ({ profile }: BuildingCrmHeaderProps) => {
               </Link>
             </Button>
             <Button asChild variant="outline" className="border-white/20 bg-white/5 text-white hover:bg-white/10 hover:text-white">
-              <Link to="/planning-settings">
-                <Settings className="mr-2 h-4 w-4" />
-                Editar configuración
+              <Link to="/planning/buildings">
+                <ListTree className="mr-2 h-4 w-4" />
+                Todos los edificios
               </Link>
             </Button>
           </div>

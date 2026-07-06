@@ -25,7 +25,8 @@ import { buildProposalSignature } from '@/utils/cleaning-planning/proposalBatchA
 import { buildPlanningCopilotSnapshot } from '@/services/planning/copilot/planningSnapshot';
 import { extractBuildingCode } from '@/services/laundryScheduleService';
 import { isTaskAssignedToCleaner } from '@/utils/taskAssignments';
-import { Activity, AlertTriangle, CheckCircle2, RefreshCw } from 'lucide-react';
+import { Activity, AlertTriangle, ArrowRight, Building2, CheckCircle2, RefreshCw } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { AssignmentProposalPanel } from './AssignmentProposalPanel';
 import { BuildingTaskBoard } from './BuildingTaskBoard';
 import { CleanerLoadTable } from './CleanerLoadTable';
@@ -364,6 +365,28 @@ export const CleaningPlanningPage = () => {
           onFiltersChange={setFilters}
           onSedeChange={handleSedeChange}
         />
+
+        <section className="rounded-3xl border border-[#310984]/10 bg-white p-4 shadow-lg shadow-[#310984]/6">
+          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <div className="flex items-start gap-3">
+              <div className="rounded-2xl bg-[#310984]/10 p-3 text-[#310984]">
+                <Building2 className="h-5 w-5" />
+              </div>
+              <div>
+                <h2 className="text-base font-semibold tracking-tight text-[#171321]">Edificios</h2>
+                <p className="mt-1 max-w-3xl text-sm text-[#6b627a]">
+                  Consulta MD18 y otros centros con calendario, horas futuras, equipo asignado, propiedades y decisiones abiertas.
+                </p>
+              </div>
+            </div>
+            <Button asChild className="w-full bg-[#310984] text-white hover:bg-[#4c1bb0] md:w-auto">
+              <Link to="/planning/buildings">
+                Abrir edificios
+                <ArrowRight className="ml-2 h-4 w-4" />
+              </Link>
+            </Button>
+          </div>
+        </section>
 
         {isError && (
           <Alert variant="destructive">

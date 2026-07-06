@@ -105,7 +105,7 @@ export const BuildingCrmPage = ({
                 <p className="text-sm">No hay datos para el centro solicitado: {propertyGroupId || 'sin id'}.</p>
               </div>
               <Button asChild className="bg-[#310984] text-white hover:bg-[#4c1bb0]">
-                <Link to="/planning-settings">Volver a ajustes</Link>
+                <Link to="/planning/buildings">Volver a edificios</Link>
               </Button>
             </CardContent>
           </Card>

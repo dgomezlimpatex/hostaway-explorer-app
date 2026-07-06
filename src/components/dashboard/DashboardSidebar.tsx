@@ -113,6 +113,12 @@ const managementItems: NavigationItem[] = [
     permission: 'tasks-edit'
   },
   {
+    title: 'Edificios',
+    href: '/planning/buildings',
+    icon: Building2,
+    permission: 'tasks-edit'
+  },
+  {
     title: 'Control de Mudas',
     href: '/control-mudas',
     icon: Bed,

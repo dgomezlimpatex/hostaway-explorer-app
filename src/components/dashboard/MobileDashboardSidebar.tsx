@@ -57,6 +57,12 @@ const managementItems: NavigationItem[] = [
     icon: Bot,
     permission: 'tasks-edit',
   },
+  {
+    title: 'Edificios',
+    href: '/planning/buildings',
+    icon: Building2,
+    permission: 'tasks-edit',
+  },
   { title: 'Lavandería', href: '/lavanderia/gestion', icon: Package, permission: 'reports' },
   { title: 'Inventario', href: '/inventory', icon: Package, permission: 'inventory' },
 ];

@@ -15,7 +15,8 @@ import {
   RefreshCw,
   Link2,
   AlertTriangle,
-  Hotel
+  Hotel,
+  Building2
 } from 'lucide-react';
 
 export const RoleBasedNavigation = () => {
@@ -55,6 +56,19 @@ export const RoleBasedNavigation = () => {
               icon={Layers}
               gradientFrom="bg-gradient-to-br from-[#310984]"
               gradientTo="to-violet-700"
+              iconColor="text-white"
+              hoverBorderColor="hover:border-violet-300"
+            />
+          )}
+
+          {hasPermission('tasks', 'canEdit') && (
+            <NavigationCard
+              to="/planning/buildings"
+              title="Edificios"
+              description="Consulta carga futura, equipo, propiedades y decisiones por edificio"
+              icon={Building2}
+              gradientFrom="bg-gradient-to-br from-violet-600"
+              gradientTo="to-[#310984]"
               iconColor="text-white"
               hoverBorderColor="hover:border-violet-300"
             />
