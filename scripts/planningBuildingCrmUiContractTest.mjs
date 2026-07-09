@@ -29,6 +29,7 @@ const requiredFiles = [
   'src/components/planning/building-crm/BuildingTeamPanel.tsx',
   'src/components/planning/building-crm/BuildingPropertiesPanel.tsx',
   'src/components/planning/building-crm/BuildingSetupChecklist.tsx',
+  'src/components/planning/building-crm/BuildingTeamEditor.tsx',
   'src/components/planning/building-crm/BuildingAssignmentProposalPanel.tsx',
   'src/services/planning/buildingCrmAggregator.ts',
 ];
@@ -44,6 +45,7 @@ const kpis = read('src/components/planning/building-crm/BuildingCrmKpis.tsx');
 const calendar = read('src/components/planning/building-crm/BuildingDemandCalendar.tsx');
 const decisions = read('src/components/planning/building-crm/BuildingDecisionList.tsx');
 const team = read('src/components/planning/building-crm/BuildingTeamPanel.tsx');
+const teamEditor = read('src/components/planning/building-crm/BuildingTeamEditor.tsx');
 const properties = read('src/components/planning/building-crm/BuildingPropertiesPanel.tsx');
 const setupChecklist = read('src/components/planning/building-crm/BuildingSetupChecklist.tsx');
 const assignmentPanel = read('src/components/planning/building-crm/BuildingAssignmentProposalPanel.tsx');
@@ -64,6 +66,8 @@ assert.match(page, /Ficha operativa del edificio/, 'CRM page must use plain oper
 assert.match(page, /30 días|60 días|90 días/, 'CRM page must expose simple forecast range presets');
 assert.match(page, /BuildingCrmHeader/, 'CRM page must render header');
 assert.match(page, /BuildingSetupChecklist/, 'CRM page must render the operational setup checklist before detailed panels');
+assert.match(page, /useCleaners/, 'CRM page must load active cleaners for direct building-team editing');
+assert.match(page, /BuildingTeamEditor/, 'CRM page must render direct team editing inside the building profile');
 assert.match(page, /BuildingDemandCalendar/, 'CRM page must render demand calendar');
 assert.match(page, /BuildingAssignmentProposalPanel/, 'CRM page must render individual building assignment proposal panel');
 assert.match(page, /buildBuildingCrmAssignmentProposal/, 'CRM page must generate assignment proposals scoped to the current building');
@@ -91,12 +95,20 @@ assert.match(team, /Titulares/, 'Team panel must group titulares');
 assert.match(team, /Suplentes/, 'Team panel must group suplentes');
 assert.match(team, /Backups/, 'Team panel must group backups');
 assert.match(team, /No aptas/, 'Team panel must show No apta workers');
+assert.match(teamEditor, /Equipo y No aptas del edificio/, 'Team editor must live in the building profile, not only legacy settings');
+assert.match(teamEditor, /Añadir trabajadora/, 'Team editor must allow adding workers directly');
+assert.match(teamEditor, /Editar[\s\S]*Quitar/s, 'Team editor must allow editing and removing existing building assignments');
+assert.match(teamEditor, /Titular[\s\S]*Suplente[\s\S]*Backup[\s\S]*No apta/s, 'Team editor must expose titulares, suplentes, backups and No apta roles');
+assert.match(teamEditor, /useAssignCleanerToGroup[\s\S]*useUpdateCleanerAssignment[\s\S]*useRemoveCleanerFromGroup/s, 'Team editor must persist through the canonical property-group assignment mutations');
+assert.match(teamEditor, /No entra en propuestas automáticas/, 'Team editor must explain that No apta workers are excluded from proposals');
 assert.match(properties, /Duración/, 'Properties panel must show duration');
 assert.match(properties, /Necesita/, 'Properties panel must show required cleaners/personas');
 assert.match(properties, /Editar propiedad/, 'Properties panel must provide a settings/edit link without inline editing');
 assert.match(setupChecklist, /Personalización del edificio/, 'Setup checklist must frame building customization explicitly');
 assert.match(setupChecklist, /Propiedades y duración[\s\S]*Equipo habitual[\s\S]*Propuesta revisable/s, 'Setup checklist must guide the three setup steps');
 assert.match(setupChecklist, /Editar equipo \/ No aptas/, 'Setup checklist must expose building team and No apta editing path');
+assert.match(setupChecklist, /href="#building-team-editor"/, 'Setup checklist team CTA must jump to the in-page team editor');
+assert.doesNotMatch(setupChecklist, /to="\/planning-settings"/, 'Setup checklist must not send building team editing back to legacy planning settings');
 assert.match(setupChecklist, /Hermes no debe inventar horas/, 'Setup checklist must reinforce missing-duration safety');
 assert.match(assignmentPanel, /Proponer asignación/, 'Building assignment panel must expose a proposal CTA');
 assert.match(assignmentPanel, /No guarda cambios/, 'Building assignment panel must make review-only behavior clear');

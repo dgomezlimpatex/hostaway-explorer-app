@@ -101,9 +101,9 @@ export const BuildingSetupChecklist = ({ profile, proposal, onGenerateProposal }
               </p>
               <p className="mt-2 text-[11px] opacity-75">No aptas registradas: {profile.summary.excludedCount}. No entran en propuestas.</p>
               <Button asChild size="sm" variant="outline" className="mt-3 border-current/25 bg-white/75 text-current hover:bg-white">
-                <Link to="/planning-settings">
+                <a href="#building-team-editor">
                   Editar equipo / No aptas <ArrowRight className="ml-2 h-3.5 w-3.5" />
-                </Link>
+                </a>
               </Button>
             </div>
           </div>

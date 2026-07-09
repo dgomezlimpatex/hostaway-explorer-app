@@ -395,12 +395,15 @@ export interface PlanningBuildingCrmDay {
 }
 
 export interface PlanningBuildingCrmTeamMember {
+  assignmentId: string;
   cleanerId: string;
   cleanerName: string;
   roleType: 'primary' | 'secondary' | 'backup' | 'excluded';
+  priority: number;
   knowledgeLevel?: number;
   maxTasksPerDay: number;
   maxDailyMinutesOverride?: number | null;
+  estimatedTravelTimeMinutes: number;
   futureAssignedMinutes: number;
   availableDaysInRange: number;
   pressureConflicts: number;

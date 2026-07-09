@@ -394,12 +394,15 @@ export const buildPlanningBuildingCrmProfile = (input: BuildPlanningBuildingCrmP
       return getTeamAvailabilityMinutes(cleaner, assignment, date, input) > 0;
     }).length;
     return {
+      assignmentId: assignment.id,
       cleanerId: assignment.cleanerId,
       cleanerName: cleaner?.name || 'Trabajadora no encontrada',
       roleType: getRoleType(assignment),
+      priority: assignment.priority,
       knowledgeLevel: assignment.knowledgeLevel,
       maxTasksPerDay: assignment.maxTasksPerDay,
       maxDailyMinutesOverride: assignment.maxDailyMinutesOverride ?? null,
+      estimatedTravelTimeMinutes: assignment.estimatedTravelTimeMinutes,
       futureAssignedMinutes,
       availableDaysInRange,
       pressureConflicts: days.filter((day) => day.status === 'critical' && day.tasks.some((item) => item.assignedCleanerIds.includes(assignment.cleanerId))).length,

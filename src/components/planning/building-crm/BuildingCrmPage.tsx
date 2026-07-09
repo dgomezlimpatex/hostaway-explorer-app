@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { useCleaners } from '@/hooks/useCleaners';
 import type { AssignmentProposalResult } from '@/types/cleaningPlanning';
 import type { PlanningBuildingCrmProfile } from '@/types/operationalPlanning';
 import { buildBuildingCrmAssignmentProposal } from '@/services/planning/buildingCrmAggregator';
@@ -13,6 +14,7 @@ import { BuildingCrmHeader } from './BuildingCrmHeader';
 import { BuildingCrmKpis } from './BuildingCrmKpis';
 import { BuildingDemandCalendar } from './BuildingDemandCalendar';
 import { BuildingDecisionList } from './BuildingDecisionList';
+import { BuildingTeamEditor } from './BuildingTeamEditor';
 import { BuildingTeamPanel } from './BuildingTeamPanel';
 import { BuildingPropertiesPanel } from './BuildingPropertiesPanel';
 
@@ -48,6 +50,7 @@ export const BuildingCrmPage = ({
   onRefresh,
 }: BuildingCrmPageProps) => {
   const [assignmentProposal, setAssignmentProposal] = useState<AssignmentProposalResult | null>(null);
+  const { cleaners, isLoading: isLoadingCleaners } = useCleaners();
 
   useEffect(() => {
     setAssignmentProposal(null);
@@ -56,6 +59,11 @@ export const BuildingCrmPage = ({
   const handleGenerateAssignmentProposal = () => {
     if (!profile) return;
     setAssignmentProposal(buildBuildingCrmAssignmentProposal(profile));
+  };
+
+  const handleTeamSaved = () => {
+    setAssignmentProposal(null);
+    onRefresh();
   };
 
   return (
@@ -149,6 +157,12 @@ export const BuildingCrmPage = ({
               </div>
               <aside className="space-y-5">
                 <BuildingDecisionList decisions={profile.decisions} />
+                <BuildingTeamEditor
+                  profile={profile}
+                  allCleaners={cleaners}
+                  isLoadingCleaners={isLoadingCleaners}
+                  onSaved={handleTeamSaved}
+                />
                 <BuildingTeamPanel team={profile.team} />
               </aside>
             </div>

@@ -4,6 +4,15 @@ import { propertyGroupStorage } from '@/services/storage/propertyGroupStorage';
 import { PropertyGroup, CleanerGroupAssignment, PropertyGroupAssignment } from '@/types/propertyGroups';
 import { toast } from '@/hooks/use-toast';
 
+const invalidateCleanerGroupPlanningData = (
+  queryClient: ReturnType<typeof useQueryClient>,
+  groupId: string,
+) => {
+  queryClient.invalidateQueries({ queryKey: ['cleaner-assignments', groupId] });
+  queryClient.invalidateQueries({ queryKey: ['cleaning-planning-building-data'] });
+  queryClient.invalidateQueries({ queryKey: ['operational-planning'] });
+};
+
 export const usePropertyGroups = () => {
   return useQuery({
     queryKey: ['property-groups'],
@@ -36,9 +45,7 @@ export const useRemoveCleanerFromGroup = () => {
     mutationFn: ({ assignmentId }: { assignmentId: string; groupId: string }) =>
       propertyGroupStorage.removeCleanerFromGroup(assignmentId),
     onSuccess: (_, { groupId }) => {
-      queryClient.invalidateQueries({ queryKey: ['cleaner-assignments', groupId] });
-      queryClient.invalidateQueries({ queryKey: ['operational-planning', 'buildings'] });
-      queryClient.invalidateQueries({ queryKey: ['operational-planning', 'buildings'] });
+      invalidateCleanerGroupPlanningData(queryClient, groupId);
       toast({
         title: "Trabajadora retirada",
         description: "La trabajadora se ha retirado del grupo operativo.",
@@ -174,8 +181,7 @@ export const useAssignCleanerToGroup = () => {
     mutationFn: (assignment: Omit<CleanerGroupAssignment, 'id' | 'createdAt' | 'updatedAt'>) =>
       propertyGroupStorage.assignCleanerToGroup(assignment),
     onSuccess: (_, assignment) => {
-      queryClient.invalidateQueries({ queryKey: ['cleaner-assignments', assignment.propertyGroupId] });
-      queryClient.invalidateQueries({ queryKey: ['operational-planning', 'buildings'] });
+      invalidateCleanerGroupPlanningData(queryClient, assignment.propertyGroupId);
       toast({
         title: "Trabajadora asignada",
         description: "La trabajadora se ha asignado al grupo correctamente.",
@@ -191,8 +197,7 @@ export const useUpdateCleanerAssignment = () => {
     mutationFn: ({ id, updates, groupId }: { id: string; updates: Partial<CleanerGroupAssignment>; groupId: string }) =>
       propertyGroupStorage.updateCleanerAssignment(id, updates),
     onSuccess: (_, { groupId }) => {
-      queryClient.invalidateQueries({ queryKey: ['cleaner-assignments', groupId] });
-      queryClient.invalidateQueries({ queryKey: ['operational-planning', 'buildings'] });
+      invalidateCleanerGroupPlanningData(queryClient, groupId);
       toast({
         title: "Asignación actualizada",
         description: "La asignación de la trabajadora se ha actualizado correctamente.",
