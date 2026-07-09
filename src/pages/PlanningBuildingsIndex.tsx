@@ -1,16 +1,93 @@
+import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { AlertTriangle, ArrowRight, Building2, Home, RefreshCw, Users } from 'lucide-react';
+import { AlertTriangle, ArrowRight, Building2, Home, RefreshCw, Search, Users } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
 import { useCleaningPlanningBuildingData } from '@/hooks/useCleaningPlanningBuildingData';
+import type { PropertyGroup } from '@/types/propertyGroups';
+
+const getSetupState = (
+  group: PropertyGroup,
+  propertyCount: number,
+  teamCount: number,
+) => {
+  if (propertyCount === 0) {
+    return {
+      rank: 0,
+      label: 'Faltan propiedades',
+      helper: 'Vincula apartamentos/propiedades antes de automatizar.',
+      className: 'border-red-200 bg-red-50 text-red-800',
+    };
+  }
+
+  if (teamCount === 0) {
+    return {
+      rank: 1,
+      label: 'Falta equipo',
+      helper: 'Añade titulares, suplentes, backups o No aptas.',
+      className: 'border-amber-200 bg-amber-50 text-amber-800',
+    };
+  }
+
+  if (!group.autoAssignEnabled) {
+    return {
+      rank: 2,
+      label: 'Listo para probar',
+      helper: 'Ya tiene base operativa; prueba propuesta revisable.',
+      className: 'border-sky-200 bg-sky-50 text-sky-800',
+    };
+  }
+
+  return {
+    rank: 3,
+    label: 'Configurado',
+    helper: 'Tiene propiedades, equipo y auto-asignación activada.',
+    className: 'border-emerald-200 bg-emerald-50 text-emerald-800',
+  };
+};
+
+const normalize = (value?: string | null) => (value || '').toLowerCase().trim();
 
 const PlanningBuildingsIndex = () => {
   const { data, isLoading, isError, error, refetch, isFetching } = useCleaningPlanningBuildingData();
-  const propertyGroups = data?.propertyGroups || [];
-  const propertyAssignments = data?.propertyAssignments || [];
-  const cleanerAssignments = data?.cleanerAssignments || [];
+  const [searchTerm, setSearchTerm] = useState('');
+  const propertyGroups = useMemo(() => data?.propertyGroups || [], [data?.propertyGroups]);
+  const propertyAssignments = useMemo(() => data?.propertyAssignments || [], [data?.propertyAssignments]);
+  const cleanerAssignments = useMemo(() => data?.cleanerAssignments || [], [data?.cleanerAssignments]);
+
+  const buildingCards = useMemo(() => {
+    const query = normalize(searchTerm);
+
+    return propertyGroups
+      .map((group) => {
+        const propertyCount = propertyAssignments.filter((assignment) => assignment.propertyGroupId === group.id).length;
+        const teamCount = cleanerAssignments.filter((assignment) => assignment.propertyGroupId === group.id && assignment.roleType !== 'excluded').length;
+        const excludedCount = cleanerAssignments.filter((assignment) => assignment.propertyGroupId === group.id && assignment.roleType === 'excluded').length;
+        const setup = getSetupState(group, propertyCount, teamCount);
+        const searchable = [group.name, group.displayName, group.internalCode, group.zone, group.clientName, group.planningNotes].map(normalize).join(' ');
+        return { group, propertyCount, teamCount, excludedCount, setup, matches: !query || searchable.includes(query) };
+      })
+      .filter((item) => item.matches)
+      .sort((a, b) => a.setup.rank - b.setup.rank || (a.group.displayName || a.group.name).localeCompare(b.group.displayName || b.group.name, 'es', { numeric: true }));
+  }, [cleanerAssignments, propertyAssignments, propertyGroups, searchTerm]);
+
+  const setupStats = useMemo(() => {
+    const cards = propertyGroups.map((group) => {
+      const propertyCount = propertyAssignments.filter((assignment) => assignment.propertyGroupId === group.id).length;
+      const teamCount = cleanerAssignments.filter((assignment) => assignment.propertyGroupId === group.id && assignment.roleType !== 'excluded').length;
+      return getSetupState(group, propertyCount, teamCount);
+    });
+
+    return {
+      total: propertyGroups.length,
+      needsSetup: cards.filter((card) => card.rank <= 1).length,
+      readyToTest: cards.filter((card) => card.rank === 2).length,
+      configured: cards.filter((card) => card.rank === 3).length,
+    };
+  }, [cleanerAssignments, propertyAssignments, propertyGroups]);
 
   return (
     <div className="min-h-screen bg-[#f7f4fb] px-4 py-5 text-[#171321] md:px-6 lg:px-8">
@@ -21,7 +98,7 @@ const PlanningBuildingsIndex = () => {
               <p className="text-xs font-semibold uppercase tracking-[0.25em] text-white/55">Hermes Planificación</p>
               <h1 className="mt-2 text-3xl font-bold tracking-tight md:text-5xl">Edificios</h1>
               <p className="mt-3 max-w-3xl text-sm leading-6 text-white/72 md:text-base">
-                Acceso operativo a los edificios/centros de trabajo: carga futura, equipo asignado, propiedades vinculadas y decisiones pendientes.
+                Acceso operativo a los edificios/centros de trabajo: primero detecta qué falta configurar, luego entra en cada ficha para probar propuestas por edificio.
               </p>
             </div>
             <div className="flex flex-wrap gap-2">
@@ -35,6 +112,46 @@ const PlanningBuildingsIndex = () => {
             </div>
           </div>
         </div>
+
+        <Card className="border-[#310984]/10 bg-white shadow-lg shadow-[#310984]/6">
+          <CardContent className="space-y-4 p-4 md:p-5">
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+              <div>
+                <p className="text-sm font-semibold text-[#171321]">Orden recomendado de trabajo</p>
+                <p className="mt-1 text-xs leading-5 text-[#6b627a]">Configura primero los edificios incompletos. Los listos para probar ya pueden generar propuesta revisable desde su ficha.</p>
+              </div>
+              <div className="relative w-full lg:w-80">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#6b627a]" />
+                <Input
+                  aria-label="Buscar edificio por nombre, código, zona o cliente"
+                  className="h-11 border-[#310984]/12 pl-9"
+                  placeholder="Buscar edificio, código o zona…"
+                  value={searchTerm}
+                  onChange={(event) => setSearchTerm(event.target.value)}
+                />
+              </div>
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              <div className="rounded-2xl border border-[#310984]/10 bg-[#faf8ff] p-3">
+                <p className="text-xs text-[#6b627a]">Total edificios</p>
+                <p className="text-2xl font-semibold text-[#171321]">{setupStats.total}</p>
+              </div>
+              <div className="rounded-2xl border border-red-200 bg-red-50 p-3 text-red-800">
+                <p className="text-xs opacity-80">Configurar primero</p>
+                <p className="text-2xl font-semibold">{setupStats.needsSetup}</p>
+              </div>
+              <div className="rounded-2xl border border-sky-200 bg-sky-50 p-3 text-sky-800">
+                <p className="text-xs opacity-80">Listos para probar</p>
+                <p className="text-2xl font-semibold">{setupStats.readyToTest}</p>
+              </div>
+              <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-3 text-emerald-800">
+                <p className="text-xs opacity-80">Configurados</p>
+                <p className="text-2xl font-semibold">{setupStats.configured}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
         {isError && (
           <Alert variant="destructive">
@@ -60,58 +177,65 @@ const PlanningBuildingsIndex = () => {
               <p className="max-w-xl text-sm">Si deberían aparecer MD18 u otros centros, probablemente falta permiso de lectura sobre grupos o hay que revisar los datos activos.</p>
             </CardContent>
           </Card>
+        ) : buildingCards.length === 0 ? (
+          <Card className="border-[#310984]/10 bg-white shadow-sm">
+            <CardContent className="flex min-h-[220px] flex-col items-center justify-center gap-3 text-center text-[#6b627a]">
+              <Search className="h-10 w-10 text-[#310984]" />
+              <p className="font-semibold text-[#171321]">No hay edificios con esa búsqueda</p>
+              <p className="max-w-xl text-sm">Prueba por código, nombre, zona o cliente.</p>
+            </CardContent>
+          </Card>
         ) : (
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-            {propertyGroups.map((group) => {
-              const propertyCount = propertyAssignments.filter((assignment) => assignment.propertyGroupId === group.id).length;
-              const teamCount = cleanerAssignments.filter((assignment) => assignment.propertyGroupId === group.id && assignment.roleType !== 'excluded').length;
-              const excludedCount = cleanerAssignments.filter((assignment) => assignment.propertyGroupId === group.id && assignment.roleType === 'excluded').length;
-              return (
-                <Card key={group.id} className="group border-[#310984]/10 bg-white shadow-sm shadow-[#310984]/5 transition hover:-translate-y-0.5 hover:shadow-lg hover:shadow-[#310984]/10">
-                  <CardHeader className="pb-3">
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0">
+            {buildingCards.map(({ group, propertyCount, teamCount, excludedCount, setup }) => (
+              <Card key={group.id} className="group border-[#310984]/10 bg-white shadow-sm shadow-[#310984]/5 transition hover:-translate-y-0.5 hover:shadow-lg hover:shadow-[#310984]/10">
+                <CardHeader className="pb-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap gap-2">
                         <Badge variant="outline" className="border-[#310984]/15 bg-[#faf8ff] text-[#310984]">
                           {group.internalCode || group.name}
                         </Badge>
-                        <CardTitle className="mt-3 break-words text-xl text-[#171321]">
-                          {group.displayName || group.name}
-                        </CardTitle>
-                        {group.zone && <p className="mt-1 text-sm text-[#6b627a]">Zona: {group.zone}</p>}
+                        <Badge variant="outline" className={setup.className}>{setup.label}</Badge>
                       </div>
-                      <div className="rounded-2xl bg-[#310984]/10 p-3 text-[#310984]">
-                        <Building2 className="h-5 w-5" />
-                      </div>
+                      <CardTitle className="mt-3 break-words text-xl text-[#171321]">
+                        {group.displayName || group.name}
+                      </CardTitle>
+                      {group.zone && <p className="mt-1 text-sm text-[#6b627a]">Zona: {group.zone}</p>}
                     </div>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="grid grid-cols-3 gap-2 text-sm">
-                      <div className="rounded-2xl bg-[#faf8ff] p-3">
-                        <p className="text-xs text-[#6b627a]">Propiedades</p>
-                        <p className="text-lg font-semibold text-[#171321]">{propertyCount}</p>
-                      </div>
-                      <div className="rounded-2xl bg-[#faf8ff] p-3">
-                        <p className="text-xs text-[#6b627a]">Equipo</p>
-                        <p className="text-lg font-semibold text-[#171321]">{teamCount}</p>
-                      </div>
-                      <div className="rounded-2xl bg-[#faf8ff] p-3">
-                        <p className="text-xs text-[#6b627a]">No aptas</p>
-                        <p className="text-lg font-semibold text-[#171321]">{excludedCount}</p>
-                      </div>
+                    <div className="rounded-2xl bg-[#310984]/10 p-3 text-[#310984]">
+                      <Building2 className="h-5 w-5" />
                     </div>
-                    {group.planningNotes && (
-                      <p className="line-clamp-2 rounded-2xl border border-[#310984]/10 bg-[#faf8ff] p-3 text-sm text-[#6b627a]">{group.planningNotes}</p>
-                    )}
-                    <Button asChild className="w-full bg-[#310984] text-white hover:bg-[#4c1bb0]">
-                      <Link to={`/planning/buildings/${group.id}`}>
-                        Ver ficha edificio
-                        <ArrowRight className="ml-2 h-4 w-4" />
-                      </Link>
-                    </Button>
-                  </CardContent>
-                </Card>
-              );
-            })}
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <p className="rounded-2xl border border-[#310984]/10 bg-[#faf8ff] p-3 text-sm text-[#6b627a]">{setup.helper}</p>
+                  <div className="grid grid-cols-3 gap-2 text-sm">
+                    <div className="rounded-2xl bg-[#faf8ff] p-3">
+                      <p className="text-xs text-[#6b627a]">Propiedades</p>
+                      <p className="text-lg font-semibold text-[#171321]">{propertyCount}</p>
+                    </div>
+                    <div className="rounded-2xl bg-[#faf8ff] p-3">
+                      <p className="text-xs text-[#6b627a]">Equipo</p>
+                      <p className="text-lg font-semibold text-[#171321]">{teamCount}</p>
+                    </div>
+                    <div className="rounded-2xl bg-[#faf8ff] p-3">
+                      <p className="text-xs text-[#6b627a]">No aptas</p>
+                      <p className="text-lg font-semibold text-[#171321]">{excludedCount}</p>
+                    </div>
+                  </div>
+                  {group.planningNotes && (
+                    <p className="line-clamp-2 rounded-2xl border border-[#310984]/10 bg-[#faf8ff] p-3 text-sm text-[#6b627a]">{group.planningNotes}</p>
+                  )}
+                  <Button asChild className="w-full bg-[#310984] text-white hover:bg-[#4c1bb0]">
+                    <Link to={`/planning/buildings/${group.id}`}>
+                      Personalizar edificio
+                      <ArrowRight className="ml-2 h-4 w-4" />
+                    </Link>
+                  </Button>
+                </CardContent>
+              </Card>
+            ))}
           </div>
         )}
 
@@ -119,7 +243,7 @@ const PlanningBuildingsIndex = () => {
           <CardContent className="flex flex-col gap-3 p-4 text-sm text-[#6b627a] md:flex-row md:items-center md:justify-between">
             <div className="flex items-start gap-3">
               <Users className="mt-0.5 h-4 w-4 text-[#310984]" />
-              <p>Esta entrada depende del permiso operativo de planificación, no del acceso antiguo a ajustes.</p>
+              <p>Esta entrada depende del permiso operativo de planificación, no del acceso antiguo a ajustes. La aplicación final sigue en Hermes Planificación.</p>
             </div>
             <Button asChild variant="outline" className="border-[#310984]/15 text-[#310984] hover:bg-[#f0eaff]">
               <Link to="/planning?copilot=open">Abrir Hermes Planificación</Link>

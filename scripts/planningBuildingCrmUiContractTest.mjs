@@ -15,7 +15,7 @@ const planningTaskCard = read('src/components/cleaning-planning/PlanningTaskCard
 const desktopSidebar = read('src/components/dashboard/DashboardSidebar.tsx');
 const mobileSidebar = read('src/components/dashboard/MobileDashboardSidebar.tsx');
 const roleBasedNavigation = read('src/components/navigation/RoleBasedNavigation.tsx');
-const cleaningPlanningPage = read('src/components/cleaning-planning/CleaningPlanningPage.tsx');
+const workflowGuide = read('src/components/cleaning-planning/PlanningWorkflowGuide.tsx');
 const operationalTypes = read('src/types/operationalPlanning.ts');
 
 const requiredFiles = [
@@ -28,6 +28,7 @@ const requiredFiles = [
   'src/components/planning/building-crm/BuildingDecisionList.tsx',
   'src/components/planning/building-crm/BuildingTeamPanel.tsx',
   'src/components/planning/building-crm/BuildingPropertiesPanel.tsx',
+  'src/components/planning/building-crm/BuildingSetupChecklist.tsx',
   'src/components/planning/building-crm/BuildingAssignmentProposalPanel.tsx',
   'src/services/planning/buildingCrmAggregator.ts',
 ];
@@ -44,6 +45,7 @@ const calendar = read('src/components/planning/building-crm/BuildingDemandCalend
 const decisions = read('src/components/planning/building-crm/BuildingDecisionList.tsx');
 const team = read('src/components/planning/building-crm/BuildingTeamPanel.tsx');
 const properties = read('src/components/planning/building-crm/BuildingPropertiesPanel.tsx');
+const setupChecklist = read('src/components/planning/building-crm/BuildingSetupChecklist.tsx');
 const assignmentPanel = read('src/components/planning/building-crm/BuildingAssignmentProposalPanel.tsx');
 
 assert.match(operationalTypes, /export interface PlanningBuildingCrmProfile/, 'Types must define PlanningBuildingCrmProfile');
@@ -61,13 +63,17 @@ assert.match(appRoutes, /path="\/planning\/buildings\/:propertyGroupId"[\s\S]*re
 assert.match(page, /Ficha operativa del edificio/, 'CRM page must use plain operational wording');
 assert.match(page, /30 días|60 días|90 días/, 'CRM page must expose simple forecast range presets');
 assert.match(page, /BuildingCrmHeader/, 'CRM page must render header');
+assert.match(page, /BuildingSetupChecklist/, 'CRM page must render the operational setup checklist before detailed panels');
 assert.match(page, /BuildingDemandCalendar/, 'CRM page must render demand calendar');
 assert.match(page, /BuildingAssignmentProposalPanel/, 'CRM page must render individual building assignment proposal panel');
 assert.match(page, /buildBuildingCrmAssignmentProposal/, 'CRM page must generate assignment proposals scoped to the current building');
 assert.match(page, /setAssignmentProposal/, 'CRM page must keep building proposals review-only in local UI state');
 assert.match(page, /BuildingDecisionList/, 'CRM page must render decision list');
 assert.match(buildingsIndex, /Hermes Planificación/, 'Buildings index must live in the Hermes planning context');
-assert.match(buildingsIndex, /Acceso operativo a los edificios/, 'Buildings index must describe the operational building access');
+assert.match(buildingsIndex, /primero detecta qué falta configurar/, 'Buildings index must describe the operational building setup queue');
+assert.match(buildingsIndex, /Buscar edificio por nombre, código, zona o cliente/, 'Buildings index must allow searching operational buildings');
+assert.match(buildingsIndex, /Configurar primero[\s\S]*Listos para probar[\s\S]*Configurados/s, 'Buildings index must summarize building setup states');
+assert.match(buildingsIndex, /Personalizar edificio/, 'Buildings cards must frame the next action as personalization');
 assert.match(buildingsIndex, /useCleaningPlanningBuildingData/, 'Buildings index must reuse planning building data, not planning-settings access');
 assert.match(buildingsIndex, /\/planning\/buildings\/\$\{group\.id\}/, 'Buildings index must link every building to its CRM detail');
 assert.match(header, /Estado operativo/, 'Header must answer operational status');
@@ -88,6 +94,10 @@ assert.match(team, /No aptas/, 'Team panel must show No apta workers');
 assert.match(properties, /Duración/, 'Properties panel must show duration');
 assert.match(properties, /Necesita/, 'Properties panel must show required cleaners/personas');
 assert.match(properties, /Editar propiedad/, 'Properties panel must provide a settings/edit link without inline editing');
+assert.match(setupChecklist, /Personalización del edificio/, 'Setup checklist must frame building customization explicitly');
+assert.match(setupChecklist, /Propiedades y duración[\s\S]*Equipo habitual[\s\S]*Propuesta revisable/s, 'Setup checklist must guide the three setup steps');
+assert.match(setupChecklist, /Editar equipo \/ No aptas/, 'Setup checklist must expose building team and No apta editing path');
+assert.match(setupChecklist, /Hermes no debe inventar horas/, 'Setup checklist must reinforce missing-duration safety');
 assert.match(assignmentPanel, /Proponer asignación/, 'Building assignment panel must expose a proposal CTA');
 assert.match(assignmentPanel, /No guarda cambios/, 'Building assignment panel must make review-only behavior clear');
 assert.match(assignmentPanel, /Necesitan decisión manual/, 'Building assignment panel must show conflicts separately');
@@ -96,8 +106,8 @@ assert.match(assignmentPanel, /Ver en planificación/, 'Building assignment pane
 assert.match(desktopSidebar, /title: 'Edificios'[\s\S]*href: '\/planning\/buildings'[\s\S]*permission: 'tasks-edit'/, 'Desktop sidebar must expose Edificios with tasks-edit permission');
 assert.match(mobileSidebar, /title: 'Edificios'[\s\S]*href: '\/planning\/buildings'[\s\S]*permission: 'tasks-edit'/, 'Mobile sidebar must expose Edificios with tasks-edit permission');
 assert.match(roleBasedNavigation, /to="\/planning\/buildings"[\s\S]*title="Edificios"/, 'Control panel must expose Edificios for planning users');
-assert.match(cleaningPlanningPage, /Abrir edificios/, 'Hermes planning page must include an explicit building access CTA');
-assert.match(cleaningPlanningPage, /to="\/planning\/buildings"/, 'Hermes planning CTA must point to operational buildings index');
+assert.match(workflowGuide, /Personalizar edificios/, 'Hermes planning workflow guide must include an explicit building access CTA');
+assert.match(workflowGuide, /to="\/planning\/buildings"/, 'Hermes planning building CTA must point to operational buildings index');
 
 assert.match(propertyGroupsPage, /\/planning\/buildings\/\$\{group\.id\}/, 'PropertyGroupsPage must link each group to building CRM');
 assert.match(propertyGroupDetails, /\/planning\/buildings\/\$\{group\.id\}/, 'PropertyGroupDetails must link selected group to building CRM');

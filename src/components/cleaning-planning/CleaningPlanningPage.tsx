@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import { useCleaningPlanning } from '@/hooks/useCleaningPlanning';
 import { useCleaningPlanningActions } from '@/hooks/useCleaningPlanningActions';
 import { useCleaningPlanningBuildingData } from '@/hooks/useCleaningPlanningBuildingData';
@@ -25,8 +24,7 @@ import { buildProposalSignature } from '@/utils/cleaning-planning/proposalBatchA
 import { buildPlanningCopilotSnapshot } from '@/services/planning/copilot/planningSnapshot';
 import { extractBuildingCode } from '@/services/laundryScheduleService';
 import { isTaskAssignedToCleaner } from '@/utils/taskAssignments';
-import { Activity, AlertTriangle, ArrowRight, Building2, CheckCircle2, RefreshCw } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { AlertTriangle } from 'lucide-react';
 import { AssignmentProposalPanel } from './AssignmentProposalPanel';
 import { BuildingTaskBoard } from './BuildingTaskBoard';
 import { CleanerLoadTable } from './CleanerLoadTable';
@@ -37,6 +35,7 @@ import { PlanningAlertsPanel } from './PlanningAlertsPanel';
 import { PlanningCopilotPanel } from './PlanningCopilotPanel';
 import { PlanningDecisionQueue } from './PlanningDecisionQueue';
 import { PlanningFilters } from './PlanningFilters';
+import { PlanningWorkflowGuide } from './PlanningWorkflowGuide';
 import { PlanningAttentionSummary } from './PlanningAttentionSummary';
 import { WorkerAvailabilityPanel } from './WorkerAvailabilityPanel';
 
@@ -252,6 +251,7 @@ export const CleaningPlanningPage = () => {
     [filteredCleanerDays, filteredUnassignedTasks],
   );
   const manualReviewCount = filteredUnassignedTasks.filter((task) => task.riskFlags.length > 0).length + planning.summary.conflictTasks + planning.summary.overcapacityCleaners;
+  const buildingIssueCount = filteredTasks.filter((task) => task.riskFlags.includes('missing-building') || task.riskFlags.includes('ambiguous-building')).length;
   const proposalContextKey = useMemo(() => buildProposalContextKey({
     activeSedeId: activeSede?.id,
     cleanerIds: operationalCleaners.map((cleaner) => cleaner.id),
@@ -282,12 +282,6 @@ export const CleaningPlanningPage = () => {
     }
   }, [filters.cleanerId, operationalCleaners]);
 
-  const dayState = isLoading ? 'Cargando planificación' : planning.summary.unassignedTasks === 0 && manualReviewCount === 0 ? 'Día controlado' : 'Revisión operativa';
-  const dayStateTone = isLoading
-    ? 'border-sky-300/30 bg-sky-400/10 text-sky-100'
-    : planning.summary.unassignedTasks === 0 && manualReviewCount === 0
-      ? 'border-emerald-300/30 bg-emerald-400/10 text-emerald-100'
-      : 'border-amber-300/30 bg-amber-400/10 text-amber-100';
   const displayUnassignedTasks = isLoading ? '—' : planning.summary.unassignedTasks;
   const displayUtilization = isLoading ? '—' : `${planning.summary.utilizationPercent}%`;
   const displayManualReviewCount = isLoading ? '—' : manualReviewCount;
@@ -366,27 +360,13 @@ export const CleaningPlanningPage = () => {
           onSedeChange={handleSedeChange}
         />
 
-        <section className="rounded-3xl border border-[#310984]/10 bg-white p-4 shadow-lg shadow-[#310984]/6">
-          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-            <div className="flex items-start gap-3">
-              <div className="rounded-2xl bg-[#310984]/10 p-3 text-[#310984]">
-                <Building2 className="h-5 w-5" />
-              </div>
-              <div>
-                <h2 className="text-base font-semibold tracking-tight text-[#171321]">Edificios</h2>
-                <p className="mt-1 max-w-3xl text-sm text-[#6b627a]">
-                  Consulta MD18 y otros centros con calendario, horas futuras, equipo asignado, propiedades y decisiones abiertas.
-                </p>
-              </div>
-            </div>
-            <Button asChild className="w-full bg-[#310984] text-white hover:bg-[#4c1bb0] md:w-auto">
-              <Link to="/planning/buildings">
-                Abrir edificios
-                <ArrowRight className="ml-2 h-4 w-4" />
-              </Link>
-            </Button>
-          </div>
-        </section>
+        <PlanningWorkflowGuide
+          visibleTasksCount={displayFilteredCount}
+          plannedHoursLabel={displayPlannedMinutes}
+          capacityHoursLabel={displayCapacityMinutes}
+          buildingIssueCount={isLoading ? '—' : buildingIssueCount}
+          hasProposal={Boolean(proposal)}
+        />
 
         {isError && (
           <Alert variant="destructive">

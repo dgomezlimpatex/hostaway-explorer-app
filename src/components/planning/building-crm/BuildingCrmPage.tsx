@@ -8,6 +8,7 @@ import type { AssignmentProposalResult } from '@/types/cleaningPlanning';
 import type { PlanningBuildingCrmProfile } from '@/types/operationalPlanning';
 import { buildBuildingCrmAssignmentProposal } from '@/services/planning/buildingCrmAggregator';
 import { BuildingAssignmentProposalPanel } from './BuildingAssignmentProposalPanel';
+import { BuildingSetupChecklist } from './BuildingSetupChecklist';
 import { BuildingCrmHeader } from './BuildingCrmHeader';
 import { BuildingCrmKpis } from './BuildingCrmKpis';
 import { BuildingDemandCalendar } from './BuildingDemandCalendar';
@@ -130,6 +131,11 @@ export const BuildingCrmPage = ({
           <>
             <BuildingCrmHeader profile={profile} />
             <BuildingCrmKpis summary={profile.summary} rangeDays={rangeDays} />
+            <BuildingSetupChecklist
+              profile={profile}
+              proposal={assignmentProposal}
+              onGenerateProposal={handleGenerateAssignmentProposal}
+            />
             <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_380px]">
               <div className="space-y-5">
                 <BuildingAssignmentProposalPanel

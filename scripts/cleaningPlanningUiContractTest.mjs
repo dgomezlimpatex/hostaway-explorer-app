@@ -10,6 +10,7 @@ const filters = read('src/components/cleaning-planning/PlanningFilters.tsx');
 const taskCard = read('src/components/cleaning-planning/PlanningTaskCard.tsx');
 const proposalPanel = read('src/components/cleaning-planning/AssignmentProposalPanel.tsx');
 const planningPage = read('src/components/cleaning-planning/CleaningPlanningPage.tsx');
+const workflowGuide = read('src/components/cleaning-planning/PlanningWorkflowGuide.tsx');
 const alertsPanel = read('src/components/cleaning-planning/PlanningAlertsPanel.tsx');
 const cleanerLoadTable = read('src/components/cleaning-planning/CleanerLoadTable.tsx');
 const cleanerColumn = read('src/components/cleaning-planning/CleanerPlanningColumn.tsx');
@@ -75,6 +76,11 @@ assert.match(decisionQueue, /<details className=/, 'Already-covered tasks should
 
 assert.match(advancedDetails, /Ver disponibilidad, carga y diagnóstico técnico/, 'Technical panels must live behind advanced details');
 assert.match(planningPage, /DailyPlanningHeader/, 'Planning page must use the simplified daily header');
+assert.match(planningPage, /PlanningWorkflowGuide/, 'Planning page must show a simple 3-step workflow guide');
+assert.match(workflowGuide, /Cierra el plan en 3 pasos/, 'Workflow guide must explain the daily planning sequence');
+assert.match(workflowGuide, /Personalizar edificios/, 'Workflow guide must expose building personalization from planning');
+assert.match(workflowGuide, /to="\/planning\/buildings"/, 'Workflow guide must link to operational buildings index');
+assert.match(workflowGuide, /Define propiedades, duración, titulares, suplentes, backups y “No apta”/, 'Workflow guide must explain building customization inputs');
 assert.match(planningPage, /PlanningAttentionSummary/, 'Planning page must show an operational attention summary');
 assert.match(planningPage, /PlanningDecisionQueue/, 'Planning page must show a single decision queue');
 assert.match(planningPage, /PlanningAdvancedDetails[\s\S]*WorkerAvailabilityPanel[\s\S]*CleanerLoadTable[\s\S]*BuildingTaskBoard/s, 'Availability/load/building technical panels must be inside advanced details');
