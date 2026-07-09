@@ -50,6 +50,7 @@ export interface CleaningPlanningBuildingData {
   propertyGroups: PropertyGroup[];
   propertyAssignments: PropertyGroupAssignment[];
   cleanerAssignments: CleanerGroupAssignment[];
+  excludedCleanerAssignments: CleanerGroupAssignment[];
 }
 
 const mapPropertyGroup = (row: PropertyGroupRow): PropertyGroup => ({
@@ -99,20 +100,23 @@ const mapCleanerAssignment = (row: CleanerGroupAssignmentRow): CleanerGroupAssig
 export const useCleaningPlanningBuildingData = () => useQuery({
   queryKey: ['cleaning-planning-building-data'],
   queryFn: async (): Promise<CleaningPlanningBuildingData> => {
-    const [groupsResult, propertyAssignmentsResult, cleanerAssignmentsResult] = await Promise.all([
+    const [groupsResult, propertyAssignmentsResult, cleanerAssignmentsResult, excludedCleanerAssignmentsResult] = await Promise.all([
       supabase.from('property_groups').select('*').eq('is_active', true).order('name'),
       supabase.from('property_group_assignments').select('*'),
       supabase.from('cleaner_group_assignments').select('*').eq('is_active', true).order('priority'),
+      supabase.from('cleaner_group_assignments').select('*').eq('role_type', 'excluded').order('priority'),
     ]);
 
     if (groupsResult.error) throw groupsResult.error;
     if (propertyAssignmentsResult.error) throw propertyAssignmentsResult.error;
     if (cleanerAssignmentsResult.error) throw cleanerAssignmentsResult.error;
+    if (excludedCleanerAssignmentsResult.error) throw excludedCleanerAssignmentsResult.error;
 
     return {
       propertyGroups: ((groupsResult.data || []) as PropertyGroupRow[]).map(mapPropertyGroup),
       propertyAssignments: ((propertyAssignmentsResult.data || []) as PropertyGroupAssignmentRow[]).map(mapPropertyAssignment),
       cleanerAssignments: ((cleanerAssignmentsResult.data || []) as CleanerGroupAssignmentRow[]).map(mapCleanerAssignment),
+      excludedCleanerAssignments: ((excludedCleanerAssignmentsResult.data || []) as CleanerGroupAssignmentRow[]).map(mapCleanerAssignment),
     };
   },
   staleTime: 60_000,

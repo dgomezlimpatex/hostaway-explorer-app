@@ -9,6 +9,7 @@ const appRoutes = read('src/App.tsx');
 const filters = read('src/components/cleaning-planning/PlanningFilters.tsx');
 const taskCard = read('src/components/cleaning-planning/PlanningTaskCard.tsx');
 const proposalPanel = read('src/components/cleaning-planning/AssignmentProposalPanel.tsx');
+const proposalCalendar = read('src/components/cleaning-planning/PlanningProposalCalendar.tsx');
 const planningPage = read('src/components/cleaning-planning/CleaningPlanningPage.tsx');
 const workflowGuide = read('src/components/cleaning-planning/PlanningWorkflowGuide.tsx');
 const alertsPanel = read('src/components/cleaning-planning/PlanningAlertsPanel.tsx');
@@ -87,8 +88,8 @@ assert.match(planningPage, /PlanningAdvancedDetails[\s\S]*WorkerAvailabilityPane
 assert.doesNotMatch(planningPage, /PlanningSummaryCards/, 'The simplified default view must not render duplicated summary-card KPIs');
 assert.doesNotMatch(`${planningPage}\n${dailyHeader}\n${copilotPanel}\n${proposalPanel}\n${alertsPanel}`, /Planificación V2|legacy|MVP|fallback/, 'Primary planning UI must not expose technical rollout jargon');
 
-assert.match(proposalPanel, /onApply: \(\) => Promise<void>;/, 'AssignmentProposalPanel onApply prop must be async');
-assert.match(proposalPanel, /await onApply\(\)/, 'Proposal dialog must await applying before closing');
+assert.match(proposalPanel, /onApply: \(draftProposals: AssignmentProposal\[\]\) => Promise<void>;/, 'AssignmentProposalPanel onApply prop must accept the reviewed draft and be async');
+assert.match(proposalPanel, /await onApply\(draftProposals\)/, 'Proposal dialog must await applying the edited draft before closing');
 assert.match(proposalPanel, /Plan recomendado/, 'Proposal title must be operational and consistent with Hermes');
 assert.doesNotMatch(proposalPanel, /Proponer asignación/, 'Proposal panel must not compete with the primary Hermes planning CTA');
 assert.match(proposalPanel, /groupProposalsByTask/, 'Proposal panel must group multi-cleaner proposals by task');
@@ -102,6 +103,21 @@ assert.match(proposalPanel, /Horario propuesto/, 'Proposal cards must show the s
 assert.match(proposalPanel, /Calidad operativa del plan/, 'Proposal panel must show whole-plan operational quality, not only individual task cards');
 assert.match(proposalPanel, /centros completos[\s\S]*centros divididos[\s\S]*divisiones evitables[\s\S]*backups usados/s, 'Whole-plan quality must expose centre continuity and backup metrics');
 assert.match(proposalPanel, /Alertas críticas del plan/, 'Proposal panel must surface critical warnings as an explicit devil-advocate section');
+assert.match(proposalPanel, /PlanningProposalCalendar/, 'Proposal panel must embed the sandbox calendar view for recommended plans');
+assert.match(proposalPanel, /viewMode.*calendar.*list.*conflicts/s, 'Proposal panel must offer Calendar/List/Conflicts review modes');
+assert.match(proposalPanel, /onApply\(draftProposals\)/, 'Confirming the proposal must apply the edited draft, not the original unreviewed proposal');
+assert.match(proposalPanel, /draftBlockingWarnings\.length === 0/, 'Proposal apply must be blocked while the calendar draft has blocking warnings');
+assert.match(proposalPanel, /setDraftProposals\(proposal\?\.proposals \|\| \[\]\)/, 'Draft proposal state must reset when Hermes generates or clears a proposal');
+
+assert.match(proposalCalendar, /Plan calendario editable/, 'PlanningProposalCalendar must name the visual sandbox clearly');
+assert.match(proposalCalendar, /No guarda nada hasta confirmar/, 'PlanningProposalCalendar must explain that edits are not persisted yet');
+assert.match(proposalCalendar, /Cambiar responsable/, 'Calendar cards must allow responsible-person edits in the draft');
+assert.match(proposalCalendar, /Cambios pendientes/, 'Calendar must summarize manual draft changes');
+assert.match(proposalCalendar, /Solape de horario/, 'Calendar must detect and expose draft overlaps');
+assert.match(proposalCalendar, /No apta para este edificio/, 'Calendar must block explicit No apta draft assignments');
+assert.match(proposalCalendar, /Fuera del equipo habitual/, 'Calendar must warn when a manual assignment leaves the building team');
+assert.match(proposalCalendar, /resetDraft/, 'Calendar must allow resetting manual edits back to Hermes proposal');
+assert.doesNotMatch(proposalCalendar, /taskStorageService|multipleTaskAssignmentService|supabase\.from/, 'PlanningProposalCalendar must be a local sandbox and must not persist changes directly');
 
 assert.match(planningPage, /const handleSedeChange = \(sede: Sede\) => \{/, 'Planning page must reset invalid filters/proposal when sede changes');
 assert.match(planningPage, /setFilters\(defaultFilters\)/, 'Changing sede must reset planning filters');
@@ -112,11 +128,14 @@ assert.match(planningPage, /isLoading \? '—' : planning\.summary\.unassignedTa
 assert.match(planningPage, /filteredCleanerDays\.length === 0 \?/, 'Detailed cleaner section needs an actionable empty state when filters hide all workers');
 assert.doesNotMatch(planningPage, /xl:max-h-\[calc\(100vh-2rem\)\] xl:overflow-y-auto/, 'Planning page must not create nested scrolling in the right rail');
 assert.match(planningPage, /<AssignmentProposalPanel[\s\S]*<PlanningDecisionQueue/s, 'Plan recomendado must be a wide main-section before the decision queue, not inside the narrow Hermes rail');
+assert.match(planningPage, /calendarTasks=\{filteredTasks\}/, 'Proposal calendar must receive all visible tasks so existing assignments and proposed work are seen together');
+assert.match(planningPage, /cleaners=\{operationalCleaners\}/, 'Proposal calendar must receive operational cleaners for responsible-person edits');
+assert.match(planningPage, /excludedCleanerAssignments=\{buildingData\.excludedCleanerAssignments\}/, 'Proposal calendar must receive No apta assignments for blocking warnings');
 assert.match(planningPage, /PlanningCopilotPanel/, 'Planning page must embed the Hermes planning copilot panel');
 assert.match(planningPage, /buildPlanningCopilotSnapshot/, 'Planning page must build an explicit copilot snapshot');
 assert.match(planningPage, /visibleTasks: filteredTasks/, 'Copilot snapshot must use the visible filtered task subset');
 assert.match(planningPage, /isTaskAssignedToCleaner\(task, filters\.cleanerId\)/, 'Cleaner filter must include multi-assigned tasks via task_assignments');
-assert.match(planningPage, /buildProposalSignature\(proposal\.proposals\)/, 'Proposal apply must use shared batch signature builder');
+assert.match(planningPage, /buildProposalSignature\(proposalsToApply\)/, 'Proposal apply must use shared batch signature builder over the reviewed draft');
 
 assert.doesNotMatch(copilotPanel, /window\.confirm/, 'PlanningCopilotPanel must not use native window.confirm');
 assert.match(copilotPanel, /Hermes te ayuda a cerrar el día/, 'PlanningCopilotPanel must be action-first and operational');

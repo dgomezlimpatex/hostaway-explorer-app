@@ -207,6 +207,7 @@ export const CleaningPlanningPage = () => {
     propertyGroups: [],
     propertyAssignments: [],
     cleanerAssignments: [],
+    excludedCleanerAssignments: [],
   };
   const buildingDataReady = Boolean(buildingDataQuery.data) && !buildingDataQuery.isLoading;
 
@@ -315,12 +316,13 @@ export const CleaningPlanningPage = () => {
     return nextProposal;
   };
 
-  const handleApplyProposal = async () => {
+  const handleApplyProposal = async (draftProposals?: AssignmentProposal[]) => {
     if (!proposal || proposal.proposals.length === 0 || isProposalStale) return;
-    const proposalSignature = buildProposalSignature(proposal.proposals);
+    const proposalsToApply = draftProposals && draftProposals.length > 0 ? draftProposals : proposal.proposals;
+    const proposalSignature = buildProposalSignature(proposalsToApply);
     const freshTasksResult = await refetch();
     await applyProposal({
-      proposals: proposal.proposals,
+      proposals: proposalsToApply,
       proposalSignature,
       activeSedeId: activeSede?.id,
       activeCleanerIds: operationalCleaners.map((cleaner) => cleaner.id),
@@ -407,6 +409,10 @@ export const CleaningPlanningPage = () => {
             <AssignmentProposalPanel
               proposal={proposal}
               tasks={proposalTasks}
+              calendarTasks={filteredTasks}
+              cleaners={operationalCleaners}
+              activeCleanerAssignments={buildingData.cleanerAssignments}
+              excludedCleanerAssignments={buildingData.excludedCleanerAssignments}
               isApplying={isApplyingProposal}
               isStale={isProposalStale}
               onApply={handleApplyProposal}
