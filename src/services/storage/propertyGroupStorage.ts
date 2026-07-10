@@ -102,6 +102,30 @@ class PropertyGroupStorageService {
     return this.mapFromDB(data);
   }
 
+  async deleteEmptyPropertyGroup(id: string): Promise<void> {
+    const [propertyAssignmentsResult, cleanerAssignmentsResult] = await Promise.all([
+      supabase
+        .from('property_group_assignments')
+        .select('id', { count: 'exact', head: true })
+        .eq('property_group_id', id),
+      supabase
+        .from('cleaner_group_assignments')
+        .select('id', { count: 'exact', head: true })
+        .eq('property_group_id', id),
+    ]);
+
+    if (propertyAssignmentsResult.error) throw propertyAssignmentsResult.error;
+    if (cleanerAssignmentsResult.error) throw cleanerAssignmentsResult.error;
+
+    const propertyCount = propertyAssignmentsResult.count || 0;
+    const cleanerCount = cleanerAssignmentsResult.count || 0;
+    if (propertyCount > 0 || cleanerCount > 0) {
+      throw new Error('No se puede eliminar: el edificio tiene propiedades o equipo relacionado. Actualiza la página y revisa su ficha.');
+    }
+
+    await this.deletePropertyGroup(id);
+  }
+
   async deletePropertyGroup(id: string): Promise<void> {
     const { error } = await supabase
       .from('property_groups')

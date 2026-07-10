@@ -1,12 +1,25 @@
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { AlertTriangle, ArrowRight, Building2, Home, RefreshCw, Search, Users } from 'lucide-react';
+import { AlertTriangle, ArrowRight, Building2, Home, Loader2, RefreshCw, Search, Trash2, Users } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { useToast } from '@/hooks/use-toast';
 import { useCleaningPlanningBuildingData } from '@/hooks/useCleaningPlanningBuildingData';
+import { propertyGroupStorage } from '@/services/storage/propertyGroupStorage';
 import type { PropertyGroup } from '@/types/propertyGroups';
 
 const getSetupState = (
@@ -53,7 +66,9 @@ const normalize = (value?: string | null) => (value || '').toLowerCase().trim();
 
 const PlanningBuildingsIndex = () => {
   const { data, isLoading, isError, error, refetch, isFetching } = useCleaningPlanningBuildingData();
+  const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState('');
+  const [deletingGroupId, setDeletingGroupId] = useState<string | null>(null);
   const propertyGroups = useMemo(() => data?.propertyGroups || [], [data?.propertyGroups]);
   const propertyAssignments = useMemo(() => data?.propertyAssignments || [], [data?.propertyAssignments]);
   const cleanerAssignments = useMemo(() => data?.cleanerAssignments || [], [data?.cleanerAssignments]);
@@ -88,6 +103,39 @@ const PlanningBuildingsIndex = () => {
       configured: cards.filter((card) => card.rank === 3).length,
     };
   }, [cleanerAssignments, propertyAssignments, propertyGroups]);
+
+  const handleDeleteEmptyBuilding = async (group: PropertyGroup) => {
+    const propertyCount = propertyAssignments.filter((assignment) => assignment.propertyGroupId === group.id).length;
+    const teamCount = cleanerAssignments.filter((assignment) => assignment.propertyGroupId === group.id && assignment.roleType !== 'excluded').length;
+    const excludedCount = cleanerAssignments.filter((assignment) => assignment.propertyGroupId === group.id && assignment.roleType === 'excluded').length;
+
+    if (!(propertyCount === 0 && teamCount === 0 && excludedCount === 0)) {
+      toast({
+        title: 'No se puede eliminar el edificio',
+        description: 'Solo se pueden eliminar edificios completamente vacíos, sin propiedades, equipo ni personas marcadas como No aptas.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setDeletingGroupId(group.id);
+    try {
+      await propertyGroupStorage.deleteEmptyPropertyGroup(group.id);
+      await refetch();
+      toast({
+        title: 'Edificio eliminado',
+        description: `${group.displayName || group.name} se eliminó correctamente.`,
+      });
+    } catch (deleteError) {
+      toast({
+        title: 'No se pudo eliminar el edificio',
+        description: deleteError instanceof Error ? deleteError.message : 'Revisa permisos o relaciones pendientes e inténtalo de nuevo.',
+        variant: 'destructive',
+      });
+    } finally {
+      setDeletingGroupId(null);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-[#f7f4fb] px-4 py-5 text-[#171321] md:px-6 lg:px-8">
@@ -227,12 +275,48 @@ const PlanningBuildingsIndex = () => {
                   {group.planningNotes && (
                     <p className="line-clamp-2 rounded-2xl border border-[#310984]/10 bg-[#faf8ff] p-3 text-sm text-[#6b627a]">{group.planningNotes}</p>
                   )}
-                  <Button asChild className="w-full bg-[#310984] text-white hover:bg-[#4c1bb0]">
-                    <Link to={`/planning/buildings/${group.id}`}>
-                      Personalizar edificio
-                      <ArrowRight className="ml-2 h-4 w-4" />
-                    </Link>
-                  </Button>
+                  <div className="flex flex-col gap-2 sm:flex-row">
+                    <Button asChild className="flex-1 bg-[#310984] text-white hover:bg-[#4c1bb0]">
+                      <Link to={`/planning/buildings/${group.id}`}>
+                        Personalizar edificio
+                        <ArrowRight className="ml-2 h-4 w-4" />
+                      </Link>
+                    </Button>
+                    {propertyCount === 0 && teamCount === 0 && excludedCount === 0 && (
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            className="border-red-200 text-red-700 hover:bg-red-50 hover:text-red-800"
+                            disabled={deletingGroupId === group.id}
+                          >
+                            {deletingGroupId === group.id
+                              ? <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                              : <Trash2 className="mr-2 h-4 w-4" />}
+                            Eliminar edificio vacío
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>¿Eliminar {group.displayName || group.name}?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Este edificio no tiene propiedades, equipo ni personas marcadas como No aptas. Se eliminará permanentemente y esta acción no se puede deshacer.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                            <AlertDialogAction
+                              className="bg-red-600 text-white hover:bg-red-700"
+                              onClick={() => void handleDeleteEmptyBuilding(group)}
+                            >
+                              Sí, eliminar edificio
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    )}
+                  </div>
                 </CardContent>
               </Card>
             ))}
