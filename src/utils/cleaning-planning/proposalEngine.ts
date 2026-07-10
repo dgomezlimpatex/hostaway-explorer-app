@@ -410,6 +410,19 @@ type FullBundleCandidate = {
   }>;
 };
 
+type MinimalCrewBundleCandidate = {
+  crewSize: number;
+  score: number;
+  preparedWindows: Array<{
+    prepared: PreparedPlanningTask;
+    assignment: CleanerGroupAssignment;
+    proposedWindow: ScheduledWindow;
+    score: number;
+    reasons: string[];
+    warnings: string[];
+  }>;
+};
+
 type PlanningBundleState = PlanQualityBundleInput & {
   date: string;
   tasks: PreparedPlanningTask[];
@@ -664,6 +677,138 @@ export const buildAssignmentProposal = ({
     };
   };
 
+  const buildAssignmentCombinations = (assignments: CleanerGroupAssignment[], size: number): CleanerGroupAssignment[][] => {
+    const results: CleanerGroupAssignment[][] = [];
+
+    const visit = (startIndex: number, current: CleanerGroupAssignment[]) => {
+      if (current.length === size) {
+        results.push(current);
+        return;
+      }
+
+      for (let index = startIndex; index < assignments.length; index += 1) {
+        visit(index + 1, [...current, assignments[index]]);
+      }
+    };
+
+    visit(0, []);
+    return results;
+  };
+
+  const evaluateMinimalCrewBundleCandidate = (
+    bundle: PlanningBundleState,
+    assignments: CleanerGroupAssignment[],
+  ): MinimalCrewBundleCandidate | null => {
+    if (bundle.tasks.length <= 1) return null;
+    if (bundle.tasks.some((prepared) => prepared.requiredCleaners !== 1)) return null;
+
+    const maxCrewSize = Math.min(assignments.length, bundle.tasks.length);
+
+    for (let crewSize = 2; crewSize <= maxCrewSize; crewSize += 1) {
+      const candidatesForCrewSize = buildAssignmentCombinations(assignments, crewSize)
+        .map((crew) => {
+          const initialAvailability = new Map<string, EffectiveWorkerAvailability>();
+          for (const assignment of crew) {
+            const workerAvailability = availabilityByCleanerDate.get(availabilityKey(assignment.cleanerId, bundle.date));
+            if (!workerAvailability || !workerAvailability.isAvailable) return null;
+            initialAvailability.set(assignment.cleanerId, { ...workerAvailability });
+          }
+
+          const initialWindowsByCleaner = new Map(Array.from(proposedWindowsByCleaner.entries()).map(([key, value]) => [key, [...value]]));
+          const initialTaskCounts = new Map(proposedTaskCounts);
+
+          type SimulationState = {
+            availabilityByCleaner: Map<string, EffectiveWorkerAvailability>;
+            windowsByCleaner: Map<string, ScheduledWindow[]>;
+            taskCounts: Map<string, number>;
+            preparedWindows: MinimalCrewBundleCandidate['preparedWindows'];
+            score: number;
+          };
+
+          const assignTaskAt = (taskIndex: number, state: SimulationState): SimulationState | null => {
+            if (taskIndex >= bundle.tasks.length) return state;
+
+            const prepared = bundle.tasks[taskIndex];
+            const orderedCrew = [...crew].sort((a, b) => {
+              const aCount = state.preparedWindows.filter((item) => item.assignment.cleanerId === a.cleanerId).length;
+              const bCount = state.preparedWindows.filter((item) => item.assignment.cleanerId === b.cleanerId).length;
+              if (aCount !== bCount) return bCount - aCount;
+              return getAssignmentRoleRank(a) - getAssignmentRoleRank(b) || a.priority - b.priority;
+            });
+
+            for (const assignment of orderedCrew) {
+              const workerAvailability = state.availabilityByCleaner.get(assignment.cleanerId);
+              if (!workerAvailability || workerAvailability.remainingMinutes < prepared.requiredMinutes) continue;
+
+              const countKey = taskCountKey(assignment.cleanerId, prepared.task.date, prepared.detectedBuilding.propertyGroupId);
+              const currentCount = state.taskCounts.get(countKey) || 0;
+              if (assignment.maxTasksPerDay > 0 && currentCount >= assignment.maxTasksPerDay) continue;
+
+              const windowFit = checkAvailabilityWindowFit(workerAvailability, prepared.taskWindow, prepared.workerLoadMinutes);
+              if (!windowFit.fits) continue;
+
+              const proposedWindow = buildProposedWorkWindow(state.windowsByCleaner, assignment.cleanerId, prepared.taskWindow, prepared.workerLoadMinutes);
+              if (!proposedWindow) continue;
+
+              const proposedWindowFit = checkAvailabilityWindowFit(workerAvailability, proposedWindow, prepared.workerLoadMinutes);
+              if (!proposedWindowFit.fits) continue;
+
+              const proposedWindowConflict = findProposedWindowConflict(state.windowsByCleaner, assignment.cleanerId, proposedWindow);
+              if (proposedWindowConflict) continue;
+
+              const candidateScore = scoreCandidate({ assignment, availability: workerAvailability, requiredMinutes: prepared.requiredMinutes });
+              const nextAvailability: EffectiveWorkerAvailability = {
+                ...workerAvailability,
+                assignedMinutes: workerAvailability.assignedMinutes + prepared.requiredMinutes,
+                remainingMinutes: Math.max(0, workerAvailability.remainingMinutes - prepared.requiredMinutes),
+              };
+              const nextAvailabilityByCleaner = new Map(state.availabilityByCleaner);
+              nextAvailabilityByCleaner.set(assignment.cleanerId, nextAvailability);
+              const nextWindowsByCleaner = new Map(Array.from(state.windowsByCleaner.entries()).map(([key, value]) => [key, [...value]]));
+              pushWindowForSimulation(nextWindowsByCleaner, assignment.cleanerId, proposedWindow);
+              const nextTaskCounts = new Map(state.taskCounts);
+              nextTaskCounts.set(countKey, currentCount + 1);
+
+              const result = assignTaskAt(taskIndex + 1, {
+                availabilityByCleaner: nextAvailabilityByCleaner,
+                windowsByCleaner: nextWindowsByCleaner,
+                taskCounts: nextTaskCounts,
+                preparedWindows: [
+                  ...state.preparedWindows,
+                  { prepared, assignment, proposedWindow, ...candidateScore },
+                ],
+                score: state.score + candidateScore.score,
+              });
+              if (result) return result;
+            }
+
+            return null;
+          };
+
+          const result = assignTaskAt(0, {
+            availabilityByCleaner: initialAvailability,
+            windowsByCleaner: initialWindowsByCleaner,
+            taskCounts: initialTaskCounts,
+            preparedWindows: [],
+            score: 0,
+          });
+
+          if (!result) return null;
+          return {
+            crewSize,
+            score: result.score + 100 - crewSize * 30,
+            preparedWindows: result.preparedWindows,
+          };
+        })
+        .filter((candidate): candidate is MinimalCrewBundleCandidate => Boolean(candidate))
+        .sort((a, b) => b.score - a.score);
+
+      if (candidatesForCrewSize.length > 0) return candidatesForCrewSize[0];
+    }
+
+    return null;
+  };
+
   const buildSingleTaskCandidates = (prepared: PreparedPlanningTask, blockedWindowCodes: Set<AssignmentConflict['code']>, proposedWindowConflicts: ProposedWindowConflict[]): Candidate[] => prepared.buildingAssignments
     .map((assignment) => {
       const workerAvailability = availabilityByCleanerDate.get(availabilityKey(assignment.cleanerId, prepared.task.date));
@@ -822,6 +967,29 @@ export const buildAssignmentProposal = ({
           1,
           bundle.tasks.length > 1 ? [`Mantiene ${bundle.propertyGroupName} con una sola trabajadora dentro de checkout–checkin.`] : [],
           reservedWarning ? [reservedWarning] : [],
+        );
+      });
+      return;
+    }
+
+    const minimalCrewBundleCandidate = evaluateMinimalCrewBundleCandidate(bundle, uniqueAssignments);
+    if (minimalCrewBundleCandidate) {
+      bundle.splitReason = `${bundle.propertyGroupName} se divide en ${minimalCrewBundleCandidate.crewSize} trabajadoras porque ninguna puede cubrir el centro completo sola, pero el edificio sí cabe con el equipo mínimo viable.`;
+      minimalCrewBundleCandidate.preparedWindows.forEach((item) => {
+        const workerAvailability = availabilityByCleanerDate.get(availabilityKey(item.assignment.cleanerId, item.prepared.task.date));
+        if (!workerAvailability) return;
+        pushProposal(
+          item.prepared,
+          {
+            assignment: item.assignment,
+            availability: workerAvailability,
+            proposedWindow: item.proposedWindow,
+            score: item.score,
+            reasons: item.reasons,
+            warnings: item.warnings,
+          },
+          1,
+          [`Mantiene ${bundle.propertyGroupName} compacto con el mínimo equipo viable (${minimalCrewBundleCandidate.crewSize} trabajadoras).`],
         );
       });
       return;

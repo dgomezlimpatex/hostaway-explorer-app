@@ -1,6 +1,6 @@
 import { buildAssignmentProposal } from '../src/utils/cleaning-planning/proposalEngine';
 import type { Cleaner } from '../src/types/calendar';
-import type { CleaningPlanningTask, EffectiveWorkerAvailability } from '../src/types/cleaningPlanning';
+import type { CleaningPlanningTask, EffectiveWorkerAvailability, GlobalPlanQualitySummary } from '../src/types/cleaningPlanning';
 import type { CleanerGroupAssignment } from '../src/types/propertyGroups';
 
 type Assert = typeof import('node:assert/strict');
@@ -219,10 +219,40 @@ export async function run(assert: Assert) {
   assert.deepEqual(sameBuildingTasksArePackedWithOneCleaner.proposals.map((proposal) => proposal.cleanerId), ['ana', 'ana', 'ana'], 'same-building tasks inside checkout-checkin should stay with the same worker when capacity allows');
   assert.deepEqual(sameBuildingTasksArePackedWithOneCleaner.proposals.map((proposal) => `${proposal.proposedStartTime}-${proposal.proposedEndTime}`), ['11:00-11:30', '11:40-12:10', '12:20-12:50'], 'same-building tasks should be sequenced with the same-building buffer inside checkout-checkin');
   assert.equal(sameBuildingTasksArePackedWithOneCleaner.conflicts.length, 0);
-  const sameBuildingQuality = (sameBuildingTasksArePackedWithOneCleaner.summary as any).globalQuality;
+  const sameBuildingQuality = sameBuildingTasksArePackedWithOneCleaner.summary.globalQuality as GlobalPlanQualitySummary;
   assert.equal(sameBuildingQuality.fullBundlesCovered, 1, 'global quality should count a same-building pack covered by one worker');
   assert.equal(sameBuildingQuality.splitBundles, 0, 'global quality should not flag a packed centre as split');
   assert.equal(sameBuildingQuality.avoidableSplits, 0, 'global quality should not flag avoidable splits when Hermes keeps the centre together');
+
+  const marinaLikeBundleUsesMinimumViableCrew = proposalFor(
+    [
+      fallbackTask({ id: 'marina-201', property: 'M30.201', propertyCode: 'M30.201', propertyName: 'M30.201', startTime: '12:00', endTime: '13:10', durationMinutes: 70, duration: 70, checkOut: '12:00', checkIn: '16:00' }),
+      fallbackTask({ id: 'marina-301', property: 'M30.301', propertyCode: 'M30.301', propertyName: 'M30.301', startTime: '12:00', endTime: '13:10', durationMinutes: 70, duration: 70, checkOut: '12:00', checkIn: '16:00' }),
+      fallbackTask({ id: 'marina-302', property: 'M30.302', propertyCode: 'M30.302', propertyName: 'M30.302', startTime: '12:00', endTime: '13:10', durationMinutes: 70, duration: 70, checkOut: '12:00', checkIn: '16:00' }),
+      fallbackTask({ id: 'marina-401', property: 'M30.401', propertyCode: 'M30.401', propertyName: 'M30.401', startTime: '13:20', endTime: '14:30', durationMinutes: 70, duration: 70, checkOut: '12:00', checkIn: '16:00' }),
+      fallbackTask({ id: 'marina-402', property: 'M30.402', propertyCode: 'M30.402', propertyName: 'M30.402', startTime: '13:20', endTime: '14:30', durationMinutes: 70, duration: 70, checkOut: '12:00', checkIn: '16:00' }),
+      fallbackTask({ id: 'marina-502', property: 'M30.502', propertyCode: 'M30.502', propertyName: 'M30.502', startTime: '13:20', endTime: '14:30', durationMinutes: 70, duration: 70, checkOut: '12:00', checkIn: '16:00' }),
+    ],
+    [
+      { ...availability('2026-07-01', 240, true, 'ana'), availableWindows: [{ startTime: '09:00', endTime: '17:00' }] },
+      { ...availability('2026-07-01', 240, true, 'bea'), availableWindows: [{ startTime: '09:00', endTime: '17:00' }] },
+      { ...availability('2026-07-01', 240, true, 'carla'), availableWindows: [{ startTime: '09:00', endTime: '17:00' }] },
+      { ...availability('2026-07-01', 240, true, 'diana'), availableWindows: [{ startTime: '09:00', endTime: '17:00' }] },
+    ],
+    [
+      { ...cleanerGroupAssignments[0], cleanerId: 'ana', roleType: 'primary', maxTasksPerDay: 10 },
+      { ...cleanerGroupAssignments[1], cleanerId: 'bea', roleType: 'secondary', maxTasksPerDay: 10 },
+      { ...cleanerGroupAssignments[2], cleanerId: 'carla', roleType: 'secondary', maxTasksPerDay: 10 },
+      { ...cleanerGroupAssignments[2], id: 'assignment-diana-md18', cleanerId: 'diana', roleType: 'backup', priority: 4, maxTasksPerDay: 10 },
+    ],
+  );
+  assert.equal(marinaLikeBundleUsesMinimumViableCrew.proposals.length, 6, 'all Marina-like same-building tasks should be covered');
+  assert.equal(new Set(marinaLikeBundleUsesMinimumViableCrew.proposals.map((proposal) => proposal.cleanerId)).size, 2, 'Marina-like same-building pack should use the minimum viable crew, not one worker per simultaneous card');
+  assert.deepEqual(
+    Array.from(marinaLikeBundleUsesMinimumViableCrew.proposals.reduce((counts, proposal) => counts.set(proposal.cleanerId, (counts.get(proposal.cleanerId) || 0) + 1), new Map<string, number>()).values()).sort((a, b) => b - a),
+    [3, 3],
+    'two workers should each receive three sequenced same-building cleanings when capacity/window allow it',
+  );
 
   const scarceTitularIsReservedForOnlyViableBuilding = proposalFor(
     [
@@ -245,7 +275,8 @@ export async function run(assert: Assert) {
     ['task-easy-ab1:bea', 'task-critical-md18:ana'],
     'easy centre should use suplente so the scarce titular remains available for the centre only she can cover',
   );
-  assert.ok((scarceTitularIsReservedForOnlyViableBuilding.summary as any).globalQuality.criticalWarnings.some((warning: string) => warning.includes('Ana') && warning.includes('MD18')), 'global quality should explain why a scarce titular was reserved');
+  const scarceTitularQuality = scarceTitularIsReservedForOnlyViableBuilding.summary.globalQuality as GlobalPlanQualitySummary;
+  assert.ok(scarceTitularQuality.criticalWarnings.some((warning) => warning.includes('Ana') && warning.includes('MD18')), 'global quality should explain why a scarce titular was reserved');
 
   const splitBundleIsJustifiedWhenNobodyCoversFullCentre = proposalFor(
     [
@@ -262,9 +293,10 @@ export async function run(assert: Assert) {
   );
   assert.equal(splitBundleIsJustifiedWhenNobodyCoversFullCentre.proposals.length, 3, 'split centre should still cover every task when no single worker can cover the full bundle');
   assert.equal(new Set(splitBundleIsJustifiedWhenNobodyCoversFullCentre.proposals.map((proposal) => proposal.cleanerId)).size, 2, 'centre should be split into the minimum viable number of workers');
-  assert.equal((splitBundleIsJustifiedWhenNobodyCoversFullCentre.summary as any).globalQuality.splitBundles, 1, 'global quality should count split centres');
-  assert.equal((splitBundleIsJustifiedWhenNobodyCoversFullCentre.summary as any).globalQuality.avoidableSplits, 0, 'split should not be avoidable when no single worker can cover full bundle');
-  assert.ok((splitBundleIsJustifiedWhenNobodyCoversFullCentre.summary as any).globalQuality.criticalWarnings.some((warning: string) => warning.includes('se divide') && warning.includes('MD18')), 'split centre must explain why it was divided');
+  const splitBundleQuality = splitBundleIsJustifiedWhenNobodyCoversFullCentre.summary.globalQuality as GlobalPlanQualitySummary;
+  assert.equal(splitBundleQuality.splitBundles, 1, 'global quality should count split centres');
+  assert.equal(splitBundleQuality.avoidableSplits, 0, 'split should not be avoidable when no single worker can cover full bundle');
+  assert.ok(splitBundleQuality.criticalWarnings.some((warning) => warning.includes('se divide') && warning.includes('MD18')), 'split centre must explain why it was divided');
 
   const missingTimeIsRejected = proposalFor(
     [fallbackTask({ id: 'task-invalid-time', startTime: '', endTime: '', displayStartTime: 'Sin hora', displayEndTime: 'Sin hora' })],
