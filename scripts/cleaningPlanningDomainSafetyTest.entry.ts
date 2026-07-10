@@ -40,7 +40,9 @@ const task = (id: string, status: string, cleanerId?: string): Task => ({
 export async function run(assert: Assert) {
   const readSource = (relativePath: string) => readFileSync(join(process.cwd(), relativePath), 'utf8');
   const actionsSource = readSource('src/hooks/useCleaningPlanningActions.ts');
+  const batchExecutionSource = readSource('src/utils/cleaning-planning/proposalBatchExecution.ts');
   const multiAssignmentSource = readSource('src/services/storage/multipleTaskAssignmentService.ts');
+  const taskAssignmentSource = readSource('src/services/storage/taskAssignmentService.ts');
   const notificationSource = readSource('src/services/notifications/notificationOrchestrator.ts');
   const notificationGrantMigration = readSource('supabase/migrations/20260705141000_grant_notification_events_insert.sql');
 
@@ -51,13 +53,18 @@ export async function run(assert: Assert) {
   );
   assert.match(
     actionsSource,
-    /setTaskAssignments\(plan\.taskId, plan\.cleanerIds, \{ notify: false \}\)/,
-    'proposal application must write via task_assignments without early notifications',
+    /executeProposalBatch\(validation\.taskPlans/,
+    'proposal application must execute the reviewed schedule and assignment plan together',
   );
   assert.match(
     actionsSource,
-    /Promise\.allSettled\([\s\S]*previousCleanerIds[\s\S]*notify: false/,
-    'proposal application must attempt rollback to previous assignments if a batch step fails',
+    /updateSchedule:[\s\S]*startTime[\s\S]*endTime[\s\S]*setAssignments:[\s\S]*notify: false/,
+    'proposal application must persist proposed times before task_assignments without early notifications',
+  );
+  assert.match(
+    batchExecutionSource,
+    /previousCleanerIds[\s\S]*previousStartTime[\s\S]*previousEndTime/,
+    'proposal application must attempt rollback to previous assignments and schedule if a batch step fails',
   );
   assert.match(
     actionsSource,
@@ -73,6 +80,26 @@ export async function run(assert: Assert) {
     multiAssignmentSource,
     /supabase\.rpc\('set_task_assignments'/,
     'multi-assignment service must use the atomic set_task_assignments RPC',
+  );
+  assert.match(
+    taskAssignmentSource,
+    /getTaskAssignments\(taskId\)/,
+    'manual assignment changes must read the full canonical cleaner set for safe rollback',
+  );
+  assert.match(
+    taskAssignmentSource,
+    /executeCanonicalTaskAssignmentChange\([\s\S]*nextCleanerIds: \[cleanerId\]/,
+    'manual calendar assignment and reassignment must replace canonical task_assignments',
+  );
+  assert.match(
+    taskAssignmentSource,
+    /async unassignTask[\s\S]*nextCleanerIds: \[\][\s\S]*setTaskAssignments/,
+    'manual calendar unassignment must clear canonical task_assignments created by Hermes',
+  );
+  assert.doesNotMatch(
+    taskAssignmentSource,
+    /async unassignTask[\s\S]*\.update\(\{\s*cleaner: null,\s*cleaner_id: null/,
+    'manual unassignment must not clear only legacy task columns',
   );
   assert.match(
     notificationSource,

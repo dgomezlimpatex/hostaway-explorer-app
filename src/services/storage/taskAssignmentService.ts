@@ -3,63 +3,63 @@ import { supabase } from '@/integrations/supabase/client';
 import { Task } from '@/types/calendar';
 import { taskStorageService } from './taskStorage';
 import { recordAiObservedEvent } from '@/services/aiObservedEvents';
-import { createTaskNotificationEvent } from '@/services/notifications/notificationOrchestrator';
+import { multipleTaskAssignmentService } from './multipleTaskAssignmentService';
+import { executeCanonicalTaskAssignmentChange } from '@/utils/taskAssignmentExecution';
 
 export class TaskAssignmentService {
+  private async getCurrentCleanerIds(taskId: string, task?: Task | null): Promise<string[]> {
+    const assignments = await multipleTaskAssignmentService.getTaskAssignments(taskId);
+    const cleanerIds = Array.from(new Set(assignments.map((assignment) => assignment.cleaner_id).filter(Boolean)));
+    if (cleanerIds.length === 0 && task?.cleanerId) cleanerIds.push(task.cleanerId);
+    return cleanerIds;
+  }
+
   async assignTask(taskId: string, cleanerName: string, cleanerId?: string): Promise<Task> {
     console.log('assignTask called with:', { taskId, cleanerName, cleanerId });
-    
-    const updateData: any = { 
-      cleaner: cleanerName
-    };
-    
-    if (cleanerId) {
-      updateData.cleanerId = cleanerId;
-    }
 
-    // Update the task first
-    const updatedTask = await taskStorageService.updateTask(taskId, updateData);
-    void recordAiObservedEvent({
-      eventType: 'task_assigned',
-      entityType: 'tasks',
-      entityId: taskId,
-      summary: `Asignada tarea ${updatedTask.property} a ${cleanerName}`,
-      afterData: {
-        taskId,
-        property: updatedTask.property,
-        date: updatedTask.date,
-        startTime: updatedTask.startTime,
-        endTime: updatedTask.endTime,
-        cleaner: cleanerName,
-        cleanerId,
-      },
-      metadata: { source: 'taskAssignmentService.assignTask' },
-    });
-
-    // If we have cleaner ID, send email notification (fire-and-forget)
     if (cleanerId) {
-      // Preparación WhatsApp (detrás de feature flag; no-op si está apagado):
-      // crea un notification_event de asignación. No afecta al email actual.
-      void createTaskNotificationEvent({
-        eventType: 'task_assigned',
+      const currentTask = await taskStorageService.getById(taskId);
+      const previousCleanerIds = await this.getCurrentCleanerIds(taskId, currentTask);
+
+      await executeCanonicalTaskAssignmentChange({
         taskId,
-        cleanerId,
-        dedupeKey: `task_assigned:${taskId}:${cleanerId}`,
+        nextCleanerIds: [cleanerId],
+        previousCleanerIds,
+      }, {
+        setAssignments: (id, cleanerIds) => multipleTaskAssignmentService.setTaskAssignments(id, cleanerIds),
+        updateSchedule: (id, startTime, endTime) => taskStorageService.updateTask(id, { startTime, endTime }),
       });
 
-      this.sendTaskAssignmentEmail(updatedTask, cleanerId)
-        .then(() => console.log('Task assignment email sent successfully'))
-        .catch(error => console.error('Failed to send assignment email:', error));
-    } else {
-      console.log('No cleanerId provided, skipping email notification');
+      const updatedTask = await taskStorageService.getById(taskId);
+      if (!updatedTask) throw new Error('No se pudo recargar la tarea después de asignarla.');
+
+      void recordAiObservedEvent({
+        eventType: 'task_assigned',
+        entityType: 'tasks',
+        entityId: taskId,
+        summary: `Asignada tarea ${updatedTask.property} a ${cleanerName}`,
+        afterData: {
+          taskId,
+          property: updatedTask.property,
+          date: updatedTask.date,
+          startTime: updatedTask.startTime,
+          endTime: updatedTask.endTime,
+          cleaner: cleanerName,
+          cleanerId,
+        },
+        metadata: { source: 'taskAssignmentService.assignTask.canonical' },
+      });
+      return updatedTask;
     }
 
+    const updatedTask = await taskStorageService.updateTask(taskId, { cleaner: cleanerName });
+    console.log('No cleanerId provided; used legacy name-only assignment fallback');
     return updatedTask;
   }
 
   /**
-   * Optimized: Combines schedule update + assignment in a SINGLE database UPDATE.
-   * Email is sent in background (fire-and-forget) so UI is not blocked.
+   * Reasigna y, cuando procede, reprograma usando `task_assignments` como fuente
+   * autoritativa. Si falla uno de los pasos, restaura responsables y horario.
    */
   async assignTaskWithSchedule(
     taskId: string,
@@ -70,183 +70,88 @@ export class TaskAssignmentService {
   ): Promise<Task> {
     console.log('assignTaskWithSchedule called:', { taskId, cleanerName, cleanerId, startTime, endTime });
 
-    const updatePayload: any = {
-      cleaner: cleanerName,
-      cleaner_id: cleanerId,
-    };
-    if (startTime) updatePayload.start_time = startTime;
-    if (endTime) updatePayload.end_time = endTime;
+    const currentTask = await taskStorageService.getById(taskId);
+    if (!currentTask) throw new Error('No se encontró la tarea para reasignarla.');
 
-    const { data: updated, error } = await supabase
-      .from('tasks')
-      .update(updatePayload)
-      .eq('id', taskId)
-      .select()
-      .single();
+    const previousCleanerIds = await this.getCurrentCleanerIds(taskId, currentTask);
+    const hasScheduleChange = Boolean(startTime && endTime);
 
-    if (error) {
-      console.error('Error in assignTaskWithSchedule:', error);
-      throw new Error(`Could not assign task: ${error.message}`);
-    }
+    await executeCanonicalTaskAssignmentChange({
+      taskId,
+      nextCleanerIds: [cleanerId],
+      previousCleanerIds,
+      nextSchedule: hasScheduleChange ? { startTime: startTime!, endTime: endTime! } : undefined,
+      previousSchedule: hasScheduleChange
+        ? { startTime: currentTask.startTime, endTime: currentTask.endTime }
+        : undefined,
+    }, {
+      setAssignments: (id, cleanerIds) => multipleTaskAssignmentService.setTaskAssignments(id, cleanerIds),
+      updateSchedule: (id, nextStartTime, nextEndTime) => taskStorageService.updateTask(id, {
+        startTime: nextStartTime,
+        endTime: nextEndTime,
+      }),
+    });
+
+    const updatedTask = await taskStorageService.getById(taskId);
+    if (!updatedTask) throw new Error('No se pudo recargar la tarea después de reasignarla.');
 
     void recordAiObservedEvent({
       eventType: 'task_assigned_with_schedule',
       entityType: 'tasks',
       entityId: taskId,
-      sedeId: updated.sede_id,
-      summary: `Asignada tarea ${updated.property} a ${cleanerName} con horario`,
+      summary: `Asignada tarea ${updatedTask.property} a ${cleanerName} con horario`,
       afterData: {
         taskId,
-        property: updated.property,
-        date: updated.date,
-        startTime: updated.start_time,
-        endTime: updated.end_time,
+        property: updatedTask.property,
+        date: updatedTask.date,
+        startTime: updatedTask.startTime,
+        endTime: updatedTask.endTime,
         cleaner: cleanerName,
         cleanerId,
       },
-      metadata: { source: 'taskAssignmentService.assignTaskWithSchedule' },
+      metadata: { source: 'taskAssignmentService.assignTaskWithSchedule.canonical' },
     });
 
-    // Map DB row -> Task
-    const task: Task = {
-      id: updated.id,
-      created_at: updated.created_at,
-      updated_at: updated.updated_at,
-      property: updated.property,
-      address: updated.address,
-      startTime: updated.start_time,
-      endTime: updated.end_time,
-      type: updated.type,
-      status: updated.status as 'pending' | 'in-progress' | 'completed',
-      checkOut: updated.check_out,
-      checkIn: updated.check_in,
-      cleaner: updated.cleaner,
-      backgroundColor: updated.background_color,
-      date: updated.date,
-      clienteId: updated.cliente_id,
-      propertyId: updated.propiedad_id,
-      duration: updated.duracion,
-      cost: updated.coste,
-      paymentMethod: updated.metodo_pago,
-      supervisor: updated.supervisor,
-      cleanerId: updated.cleaner_id,
-    };
-
-    // Fire-and-forget assignment email (does not block UI)
-    this.sendTaskAssignmentEmail(task, cleanerId)
-      .then(() => console.log('✅ Assignment email sent (background)'))
-      .catch(err => console.error('⚠️ Assignment email failed (non-blocking):', err));
-
-    return task;
+    return updatedTask;
   }
 
   async unassignTask(taskId: string): Promise<Task> {
-    // Get the current task from database directly to send email before unassigning
-    const { data: currentTask, error } = await supabase
-      .from('tasks')
-      .select('*')
-      .eq('id', taskId)
-      .single();
-    
-    if (error) {
-      console.error('Error fetching task for unassignment:', error);
-      throw new Error(`Could not fetch task: ${error.message}`);
-    }
-    
-    // Send unassignment email if cleaner was assigned
-    if (currentTask?.cleaner_id) {
-      try {
-        // Map the database row to Task interface for email
-        const taskForEmail: Task = {
-          id: currentTask.id,
-          created_at: currentTask.created_at,
-          updated_at: currentTask.updated_at,
-          property: currentTask.property,
-          address: currentTask.address,
-          startTime: currentTask.start_time,
-          endTime: currentTask.end_time,
-          type: currentTask.type,
-          status: currentTask.status as 'pending' | 'in-progress' | 'completed',
-          checkOut: currentTask.check_out,
-          checkIn: currentTask.check_in,
-          cleaner: currentTask.cleaner,
-          backgroundColor: currentTask.background_color,
-          date: currentTask.date,
-          clienteId: currentTask.cliente_id,
-          propertyId: currentTask.propiedad_id,
-          duration: currentTask.duracion,
-          cost: currentTask.coste,
-          paymentMethod: currentTask.metodo_pago,
-          supervisor: currentTask.supervisor,
-          cleanerId: currentTask.cleaner_id
-        };
-        
-        await this.sendTaskUnassignmentEmail(taskForEmail, currentTask.cleaner_id, 'unassigned');
-        console.log('Task unassignment email sent successfully');
-      } catch (error) {
-        console.error('Failed to send unassignment email:', error);
-      }
-    }
+    const currentTask = await taskStorageService.getById(taskId);
+    if (!currentTask) throw new Error('No se encontró la tarea para desasignarla.');
 
-    // Update task directly in database to unassign
-    const { data: updatedTask, error: updateError } = await supabase
-      .from('tasks')
-      .update({ 
-        cleaner: null, 
-        cleaner_id: null 
-      })
-      .eq('id', taskId)
-      .select()
-      .single();
+    const previousCleanerIds = await this.getCurrentCleanerIds(taskId, currentTask);
 
-    if (updateError) {
-      console.error('Error updating task for unassignment:', updateError);
-      throw new Error(`Could not unassign task: ${updateError.message}`);
-    }
+    await executeCanonicalTaskAssignmentChange({
+      taskId,
+      nextCleanerIds: [],
+      previousCleanerIds,
+    }, {
+      setAssignments: (id, cleanerIds) => multipleTaskAssignmentService.setTaskAssignments(id, cleanerIds),
+      updateSchedule: (id, startTime, endTime) => taskStorageService.updateTask(id, { startTime, endTime }),
+    });
+
+    const updatedTask = await taskStorageService.getById(taskId);
+    if (!updatedTask) throw new Error('No se pudo recargar la tarea después de desasignarla.');
 
     void recordAiObservedEvent({
       eventType: 'task_unassigned',
       entityType: 'tasks',
       entityId: taskId,
-      sedeId: updatedTask.sede_id,
       summary: `Desasignada tarea ${updatedTask.property}`,
       beforeData: currentTask,
       afterData: {
         id: updatedTask.id,
         property: updatedTask.property,
         date: updatedTask.date,
-        startTime: updatedTask.start_time,
-        endTime: updatedTask.end_time,
+        startTime: updatedTask.startTime,
+        endTime: updatedTask.endTime,
         cleaner: updatedTask.cleaner,
-        cleanerId: updatedTask.cleaner_id,
+        cleanerId: updatedTask.cleanerId,
       },
-      metadata: { source: 'taskAssignmentService.unassignTask' },
+      metadata: { source: 'taskAssignmentService.unassignTask.canonical' },
     });
 
-    // Map the database result back to Task interface
-    return {
-      id: updatedTask.id,
-      created_at: updatedTask.created_at,
-      updated_at: updatedTask.updated_at,
-      property: updatedTask.property,
-      address: updatedTask.address,
-      startTime: updatedTask.start_time,
-      endTime: updatedTask.end_time,
-      type: updatedTask.type,
-      status: updatedTask.status as 'pending' | 'in-progress' | 'completed',
-      checkOut: updatedTask.check_out,
-      checkIn: updatedTask.check_in,
-      cleaner: updatedTask.cleaner,
-      backgroundColor: updatedTask.background_color,
-      date: updatedTask.date,
-      clienteId: updatedTask.cliente_id,
-      propertyId: updatedTask.propiedad_id,
-      duration: updatedTask.duracion,
-      cost: updatedTask.coste,
-      paymentMethod: updatedTask.metodo_pago,
-      supervisor: updatedTask.supervisor,
-      cleanerId: updatedTask.cleaner_id
-    };
+    return updatedTask;
   }
 
   async updateTaskSchedule(taskId: string, updates: Partial<Task>, originalTask?: Task): Promise<Task> {

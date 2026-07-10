@@ -5,6 +5,7 @@ import { Cleaner, Task } from '@/types/calendar';
 import { AssignmentProposal } from '@/types/cleaningPlanning';
 import { useToast } from '@/hooks/use-toast';
 import { validateProposalBatchForApply } from '@/utils/cleaning-planning/proposalBatchApply';
+import { executeProposalBatch } from '@/utils/cleaning-planning/proposalBatchExecution';
 import { recordPlanningCopilotApply } from '@/services/planning/copilot/planningAudit';
 
 type ApplyProposalInput = {
@@ -65,24 +66,23 @@ export const useCleaningPlanningActions = () => {
         throw new Error(firstBlocked?.message || 'La propuesta ya no es aplicable. Regenera antes de confirmar.');
       }
 
-      const results: Array<{ taskId: string; result: SetAssignmentsResult }> = [];
-      const appliedPlans: typeof validation.taskPlans = [];
+      let results: Array<{ taskId: string; result: SetAssignmentsResult }>;
       try {
-        for (const plan of validation.taskPlans) {
-          const result = await multipleTaskAssignmentService.setTaskAssignments(plan.taskId, plan.cleanerIds, { notify: false });
-          results.push({ taskId: plan.taskId, result });
-          appliedPlans.push(plan);
-        }
+        results = await executeProposalBatch(validation.taskPlans, {
+          updateSchedule: (taskId, startTime, endTime) => taskStorageService.updateTask(taskId, {
+            startTime,
+            endTime,
+          }),
+          setAssignments: (taskId, cleanerIds) => multipleTaskAssignmentService.setTaskAssignments(
+            taskId,
+            cleanerIds,
+            { notify: false },
+          ),
+        });
       } catch (error) {
-        await Promise.allSettled(
-          appliedPlans
-            .slice()
-            .reverse()
-            .map((plan) => multipleTaskAssignmentService.setTaskAssignments(plan.taskId, plan.previousCleanerIds, { notify: false })),
-        );
         throw new Error(error instanceof Error
-          ? `No se pudo aplicar la propuesta completa. Se intentó revertir cualquier cambio parcial. Detalle: ${error.message}`
-          : 'No se pudo aplicar la propuesta completa. Se intentó revertir cualquier cambio parcial.');
+          ? `No se pudo aplicar la propuesta completa. Se intentó revertir responsables y horarios. Detalle: ${error.message}`
+          : 'No se pudo aplicar la propuesta completa. Se intentó revertir responsables y horarios.');
       }
 
       for (const item of results) {

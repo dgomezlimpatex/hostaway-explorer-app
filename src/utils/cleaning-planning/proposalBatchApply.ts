@@ -6,6 +6,8 @@ export type ProposalBatchReasonCode =
   | 'invalid_signature'
   | 'empty_batch'
   | 'duplicate_cleaner_for_task'
+  | 'invalid_proposed_schedule'
+  | 'inconsistent_proposed_schedule'
   | 'expected_task_missing'
   | 'task_not_found_in_active_sede'
   | 'sede_mismatch'
@@ -30,6 +32,11 @@ export interface ProposalBatchTaskPlan {
   cleanerIds: string[];
   cleanerNames: string[];
   previousCleanerIds: string[];
+  proposedStartTime?: string;
+  proposedEndTime?: string;
+  previousStartTime?: string;
+  previousEndTime?: string;
+  hasInconsistentSchedule?: boolean;
 }
 
 export interface ProposalBatchValidationResult {
@@ -58,7 +65,12 @@ type TaskWithSede = Task & { sedeId?: string | null; requiredCleaners?: number |
 const unique = <T>(values: T[]): T[] => Array.from(new Set(values));
 
 export const buildProposalSignature = (proposals: AssignmentProposal[]): string => proposals
-  .map((proposal) => `${proposal.taskId}:${proposal.cleanerId}`)
+  .map((proposal) => [
+    proposal.taskId,
+    proposal.cleanerId,
+    proposal.proposedStartTime || '',
+    proposal.proposedEndTime || '',
+  ].join(':'))
   .sort()
   .join('|');
 
@@ -71,7 +83,17 @@ const groupProposalsByTask = (proposals: AssignmentProposal[]): ProposalBatchTas
       cleanerIds: [],
       cleanerNames: [],
       previousCleanerIds: [],
+      proposedStartTime: proposal.proposedStartTime,
+      proposedEndTime: proposal.proposedEndTime,
+      hasInconsistentSchedule: false,
     };
+
+    if (
+      existing.proposedStartTime !== proposal.proposedStartTime
+      || existing.proposedEndTime !== proposal.proposedEndTime
+    ) {
+      existing.hasInconsistentSchedule = true;
+    }
 
     existing.cleanerIds.push(proposal.cleanerId);
     existing.cleanerNames.push(proposal.cleanerName);
@@ -166,6 +188,14 @@ export const validateProposalBatchForApply = ({
       return buildBlockedItem(plan, 'duplicate_cleaner_for_task', 'La propuesta contiene la misma limpiadora repetida para una tarea.');
     }
 
+    if (!plan.proposedStartTime || !plan.proposedEndTime) {
+      return buildBlockedItem(plan, 'invalid_proposed_schedule', 'La propuesta no contiene un horario completo para la tarea.');
+    }
+
+    if (plan.hasInconsistentSchedule) {
+      return buildBlockedItem(plan, 'inconsistent_proposed_schedule', 'La propuesta contiene horarios distintos para la misma tarea.');
+    }
+
     const inactiveCleanerId = plan.cleanerIds.find((cleanerId) => !activeCleanerSet.has(cleanerId));
     if (inactiveCleanerId) {
       return buildBlockedItem(plan, 'cleaner_not_in_sede', 'La propuesta incluye una limpiadora que no pertenece a la sede activa o ya no está disponible.');
@@ -226,6 +256,8 @@ export const validateProposalBatchForApply = ({
       return {
         ...plan,
         previousCleanerIds: getTaskCleanerIds(freshTask),
+        previousStartTime: freshTask?.startTime,
+        previousEndTime: freshTask?.endTime,
       };
     });
 
