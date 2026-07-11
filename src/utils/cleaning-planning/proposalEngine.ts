@@ -430,6 +430,159 @@ type PlanningBundleState = PlanQualityBundleInput & {
   hadNonBackupFullCandidate: boolean;
 };
 
+export interface ValidateDraftAssignmentMoveInput extends Omit<ProposalInput, 'tasks'> {
+  task: CleaningPlanningTask;
+  cleanerId: string;
+  draftProposals: AssignmentProposal[];
+  calendarTasks: CleaningPlanningTask[];
+  excludeProposalIndex?: number;
+}
+
+export interface DraftAssignmentMoveValidation {
+  valid: boolean;
+  conflict?: AssignmentConflict;
+  assignmentRole?: AssignmentProposal['assignmentRole'];
+  proposedStartTime?: string;
+  proposedEndTime?: string;
+  durationMinutes?: number;
+  capacityAfterAssignment?: AssignmentProposal['capacityAfterAssignment'];
+}
+
+export const validateDraftAssignmentMove = ({
+  task,
+  cleanerId,
+  cleaners,
+  availability,
+  buildingRules = [],
+  cleanerGroupAssignments = [],
+  draftProposals,
+  calendarTasks,
+  excludeProposalIndex,
+}: ValidateDraftAssignmentMoveInput): DraftAssignmentMoveValidation => {
+  const invalid = (
+    code: AssignmentConflict['code'],
+    message: string,
+    details?: Record<string, unknown>,
+  ): DraftAssignmentMoveValidation => ({ valid: false, conflict: buildConflict(task.id, code, message, details) });
+  const cleaner = cleaners.find((item) => item.id === cleanerId && item.isActive);
+  if (!cleaner) return invalid('no_available_worker', 'La trabajadora no está activa o no existe.');
+
+  const detectedBuilding = task.detectedBuilding || detectBuildingFromCode(task.propertyCode, buildingRules);
+  if (detectedBuilding.status === 'not_detected') return invalid('building_not_detected', detectedBuilding.reason);
+  if (detectedBuilding.status === 'ambiguous') return invalid('building_ambiguous', detectedBuilding.reason);
+  if (task.durationMinutes <= 0 || task.durationSource === 'missing') {
+    return invalid('missing_duration', 'La tarea no tiene duración predeterminada válida.');
+  }
+
+  const displayTaskWindow = getTaskWindow(task, detectedBuilding.propertyGroupId);
+  if (!displayTaskWindow) return invalid('invalid_time_window', 'La tarea no tiene una ventana horaria válida.');
+  const operationalWindow = getOperationalWindow(task, detectedBuilding.propertyGroupId) || displayTaskWindow;
+  const requiredCleaners = getRequiredCleanerCount(task);
+  const workerLoadMinutes = getWorkerLoadMinutes(task, requiredCleaners);
+  const requiredMinutes = workerLoadMinutes + SAME_BUILDING_BUFFER_MINUTES;
+
+  const assignment = cleanerGroupAssignments.find((item) => (
+    item.isActive
+    && item.roleType !== 'excluded'
+    && item.propertyGroupId === detectedBuilding.propertyGroupId
+    && item.cleanerId === cleanerId
+  ));
+  if (!assignment) {
+    return invalid('no_building_team', `${cleaner.name} no forma parte del equipo válido de este edificio.`);
+  }
+
+  const workerAvailability = availability.find((item) => item.cleanerId === cleanerId && item.date === task.date);
+  if (!workerAvailability?.isAvailable) {
+    return invalid('no_available_worker', `${cleaner.name} no está disponible ese día.`);
+  }
+
+  const otherProposals = draftProposals.filter((_, index) => index !== excludeProposalIndex);
+  if (otherProposals.some((proposal) => proposal.taskId === task.id && proposal.cleanerId === cleanerId)) {
+    return invalid('no_available_worker', `${cleaner.name} ya ocupa otra posición de esta limpieza.`);
+  }
+
+  const proposedWindowsByCleaner = new Map<string, ScheduledWindow[]>();
+  otherProposals.filter((proposal) => proposal.cleanerId === cleanerId).forEach((proposal) => {
+    const proposalTask = calendarTasks.find((item) => item.id === proposal.taskId);
+    if (!proposalTask) return;
+    const propertyGroupId = proposal.propertyGroupId || proposalTask.detectedBuilding?.propertyGroupId;
+    const startMinutes = timeToMinutes(proposal.proposedStartTime || proposalTask.startTime);
+    const endMinutes = timeToMinutes(proposal.proposedEndTime || proposalTask.endTime);
+    if (startMinutes === null || endMinutes === null || endMinutes <= startMinutes) return;
+    const windows = proposedWindowsByCleaner.get(cleanerId) || [];
+    windows.push({ taskId: proposal.taskId, date: proposalTask.date, startMinutes, endMinutes, propertyGroupId });
+    proposedWindowsByCleaner.set(cleanerId, windows);
+  });
+
+  calendarTasks.filter((item) => item.id !== task.id && item.date === task.date).forEach((item) => {
+    const assignedIds = new Set([
+      ...(item.assignments || []).map((entry) => entry.cleaner_id),
+      ...(item.cleanerId ? [item.cleanerId] : []),
+    ].filter(Boolean));
+    if (!assignedIds.has(cleanerId)) return;
+    const existingWindow = getTaskWindow(item, item.detectedBuilding?.propertyGroupId);
+    if (!existingWindow) return;
+    const windows = proposedWindowsByCleaner.get(cleanerId) || [];
+    windows.push(existingWindow);
+    proposedWindowsByCleaner.set(cleanerId, windows);
+  });
+
+  const usedDraftMinutes = otherProposals
+    .filter((proposal) => proposal.cleanerId === cleanerId)
+    .reduce((total, proposal) => total + proposal.durationMinutes + SAME_BUILDING_BUFFER_MINUTES, 0);
+  const simulatedAvailability = {
+    ...workerAvailability,
+    assignedMinutes: workerAvailability.assignedMinutes + usedDraftMinutes,
+    remainingMinutes: Math.max(0, workerAvailability.remainingMinutes - usedDraftMinutes),
+  };
+  if (simulatedAvailability.remainingMinutes < requiredMinutes) {
+    return invalid('no_available_worker', `${cleaner.name} no tiene capacidad restante suficiente.`);
+  }
+
+  const sameBuildingTaskCount = otherProposals.filter((proposal) => {
+    if (proposal.cleanerId !== cleanerId) return false;
+    const proposalTask = calendarTasks.find((item) => item.id === proposal.taskId);
+    return proposalTask?.date === task.date
+      && (proposal.propertyGroupId || proposalTask.detectedBuilding?.propertyGroupId) === detectedBuilding.propertyGroupId;
+  }).length;
+  if (assignment.maxTasksPerDay > 0 && sameBuildingTaskCount >= assignment.maxTasksPerDay) {
+    return invalid('max_tasks_per_day', `${cleaner.name} ya alcanzó el límite diario configurado para este edificio.`);
+  }
+
+  const windowFit = checkAvailabilityWindowFit(simulatedAvailability, operationalWindow, workerLoadMinutes);
+  if (!windowFit.fits) {
+    return invalid(windowFit.blockedCode || 'availability_window_mismatch', 'La limpieza no encaja en la disponibilidad real de la trabajadora.');
+  }
+  const proposedWindow = buildProposedWorkWindow(proposedWindowsByCleaner, cleanerId, operationalWindow, workerLoadMinutes);
+  if (!proposedWindow) return invalid('availability_window_mismatch', 'No queda una franja suficiente dentro de la ventana operativa.');
+  const proposedWindowFit = checkAvailabilityWindowFit(simulatedAvailability, proposedWindow, workerLoadMinutes);
+  if (!proposedWindowFit.fits) {
+    return invalid(proposedWindowFit.blockedCode || 'availability_window_mismatch', 'La franja propuesta no encaja en la disponibilidad real.');
+  }
+  const proposedWindowConflict = findProposedWindowConflict(proposedWindowsByCleaner, cleanerId, proposedWindow);
+  if (proposedWindowConflict) {
+    return invalid(
+      proposedWindowConflict.code,
+      proposedWindowConflict.code === 'time_buffer_overlap'
+        ? `No se respeta el buffer mínimo de ${proposedWindowConflict.bufferMinutes || SAME_BUILDING_BUFFER_MINUTES} min.`
+        : 'La limpieza se solapa con otra tarea de la trabajadora.',
+      { overlapsWithTaskId: proposedWindowConflict.window.taskId },
+    );
+  }
+
+  return {
+    valid: true,
+    assignmentRole: getAssignmentRole(assignment),
+    proposedStartTime: minutesToTime(proposedWindow.startMinutes),
+    proposedEndTime: minutesToTime(proposedWindow.endMinutes),
+    durationMinutes: workerLoadMinutes,
+    capacityAfterAssignment: {
+      assignedMinutes: simulatedAvailability.assignedMinutes + requiredMinutes,
+      remainingMinutes: simulatedAvailability.remainingMinutes - requiredMinutes,
+    },
+  };
+};
+
 export const buildAssignmentProposal = ({
   tasks,
   cleaners,

@@ -1,5 +1,17 @@
-import { useEffect, useMemo, useState } from 'react';
-import { AlertTriangle, CalendarDays, CheckCircle2, Clock, RotateCcw, ShieldAlert, Users } from 'lucide-react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import {
+  DndContext,
+  KeyboardSensor,
+  MouseSensor,
+  TouchSensor,
+  useDraggable,
+  useDroppable,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+  type DragStartEvent,
+} from '@dnd-kit/core';
+import { AlertTriangle, CalendarDays, CheckCircle2, Clock, GripVertical, RotateCcw, ShieldAlert, Users } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -11,10 +23,11 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Cleaner } from '@/types/calendar';
-import { AssignmentProposal, CleaningPlanningTask } from '@/types/cleaningPlanning';
+import { AssignmentProposal, CleaningPlanningTask, EffectiveWorkerAvailability } from '@/types/cleaningPlanning';
 import { CleanerGroupAssignment } from '@/types/propertyGroups';
 import { minutesToHoursLabel } from '@/utils/cleaningPlanning';
 import { isTaskAssignedToCleaner } from '@/utils/taskAssignments';
+import { validateDraftAssignmentMove, type DraftAssignmentMoveValidation } from '@/utils/cleaning-planning/proposalEngine';
 
 export type PlanningProposalDraftWarningSeverity = 'blocking' | 'warning';
 
@@ -33,12 +46,47 @@ interface PlanningProposalCalendarProps {
   tasks: CleaningPlanningTask[];
   calendarTasks: CleaningPlanningTask[];
   cleaners: Cleaner[];
+  effectiveAvailability: EffectiveWorkerAvailability[];
   activeCleanerAssignments?: CleanerGroupAssignment[];
   excludedCleanerAssignments?: CleanerGroupAssignment[];
   isStale?: boolean;
   onDraftProposalsChange: (proposals: AssignmentProposal[]) => void;
   onDraftWarningsChange: (warnings: PlanningProposalDraftWarning[]) => void;
 }
+
+type DragPayload = { taskId: string; proposalIndex?: number; sourceCleanerId?: string };
+
+const DraggableHandle = ({ id, payload, disabled }: { id: string; payload: DragPayload; disabled?: boolean }) => {
+  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({ id, data: payload, disabled });
+  return (
+    <button
+      ref={setNodeRef}
+      type="button"
+      aria-label="Arrastrar para cambiar responsable"
+      data-dnd-handle
+      className={`min-h-[36px] min-w-[36px] touch-pan-y rounded-lg p-1 text-[#310984] hover:bg-[#efe9fb] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#310984] ${isDragging ? 'opacity-40' : ''}`}
+      onClick={(event) => event.stopPropagation()}
+      {...listeners}
+      {...attributes}
+    >
+      <GripVertical className="mx-auto h-4 w-4" />
+    </button>
+  );
+};
+
+const CleanerDropZone = ({ cleanerId, feedback, className, dropId, children }: {
+  cleanerId: string;
+  feedback?: DraftAssignmentMoveValidation;
+  className?: string;
+  dropId?: string;
+  children: ReactNode;
+}) => {
+  const { setNodeRef, isOver } = useDroppable({ id: dropId || `cleaner:${cleanerId}` });
+  const tone = feedback ? (feedback.valid
+    ? 'ring-2 ring-inset ring-emerald-500 bg-emerald-50/50'
+    : 'ring-2 ring-inset ring-red-400 bg-red-50/50') : '';
+  return <div ref={setNodeRef} data-dnd-drop-worker={cleanerId} className={`${className || ''} ${tone} ${isOver ? 'ring-4' : ''}`}>{children}</div>;
+};
 
 interface CalendarItem {
   id: string;
@@ -228,6 +276,7 @@ export const PlanningProposalCalendar = ({
   tasks,
   calendarTasks,
   cleaners,
+  effectiveAvailability,
   activeCleanerAssignments = [],
   excludedCleanerAssignments = [],
   isStale,
@@ -237,6 +286,13 @@ export const PlanningProposalCalendar = ({
   const dates = useMemo(() => uniqueDates(calendarTasks, draftProposals), [calendarTasks, draftProposals]);
   const [selectedDate, setSelectedDate] = useState(() => dates[0] || '');
   const [reassignment, setReassignment] = useState<{ taskId: string; proposalIndex?: number } | null>(null);
+  const [activeDrag, setActiveDrag] = useState<DragPayload | null>(null);
+  const [moveNotice, setMoveNotice] = useState<{ message: string; previous?: AssignmentProposal[]; error?: boolean } | null>(null);
+  const sensors = useSensors(
+    useSensor(MouseSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 300, tolerance: 8 } }),
+    useSensor(KeyboardSensor),
+  );
 
   useEffect(() => {
     if (!dates.length) return;
@@ -332,6 +388,85 @@ export const PlanningProposalCalendar = ({
     .filter((task) => !draftedTaskIds.has(task.id))
     .filter((task) => getAssignedCleanerIds(task, cleaners).length === 0), [calendarTasks, cleaners, draftedTaskIds, selectedDate]);
 
+  const validateMove = (payload: DragPayload, cleanerId: string): DraftAssignmentMoveValidation => {
+    const task = taskById.get(payload.taskId);
+    if (!task) return { valid: false, conflict: { taskId: payload.taskId, code: 'invalid_time_window', message: 'La limpieza ya no está disponible.' } };
+    return validateDraftAssignmentMove({
+      task,
+      cleanerId,
+      cleaners,
+      availability: effectiveAvailability,
+      cleanerGroupAssignments: activeCleanerAssignments,
+      draftProposals,
+      calendarTasks,
+      excludeProposalIndex: payload.proposalIndex,
+    });
+  };
+
+  const dragFeedback = useMemo(() => {
+    if (!activeDrag || isStale) return new Map<string, DraftAssignmentMoveValidation>();
+    return new Map(cleaners.map((cleaner) => [cleaner.id, validateMove(activeDrag, cleaner.id)]));
+    // Validation intentionally follows every draft mutation while dragging.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeCleanerAssignments, activeDrag, calendarTasks, cleaners, draftProposals, effectiveAvailability, isStale, taskById]);
+
+  const applyValidatedMove = (payload: DragPayload, cleanerId: string) => {
+    if (isStale) {
+      setMoveNotice({ message: 'El plan cambió. Regenera antes de mover limpiezas.', error: true });
+      return;
+    }
+    if (payload.sourceCleanerId === cleanerId) return;
+    const task = taskById.get(payload.taskId);
+    const cleaner = cleanerById.get(cleanerId);
+    if (!task || !cleaner) return;
+    const validation = validateMove(payload, cleanerId);
+    if (!validation.valid) {
+      setMoveNotice({ message: validation.conflict?.message || 'Ese destino no es válido.', error: true });
+      return;
+    }
+    const previous = draftProposals.map((proposal) => ({ ...proposal }));
+    const validatedFields = {
+      cleanerId: cleaner.id,
+      cleanerName: cleaner.name,
+      assignmentRole: validation.assignmentRole,
+      proposedStartTime: validation.proposedStartTime,
+      proposedEndTime: validation.proposedEndTime,
+      durationMinutes: validation.durationMinutes ?? task.durationMinutes,
+      capacityAfterAssignment: validation.capacityAfterAssignment || { assignedMinutes: 0, remainingMinutes: 0 },
+    };
+    const next = payload.proposalIndex !== undefined
+      ? draftProposals.map((proposal, index) => index === payload.proposalIndex ? { ...proposal, ...validatedFields } : proposal)
+      : [...draftProposals, {
+        taskId: task.id,
+        ...validatedFields,
+        propertyGroupId: task.detectedBuilding?.propertyGroupId,
+        propertyGroupName: task.detectedBuilding?.propertyGroupName,
+        requiredCleaners: Math.max(1, task.requiredCleaners || 1),
+        assignmentIndex: draftProposals.filter((proposal) => proposal.taskId === task.id).length,
+        confidence: 0,
+        reasons: ['Asignación manual validada durante la revisión'],
+        warnings: [],
+      }];
+    onDraftProposalsChange(next);
+    setMoveNotice({ message: `${task.property} movida a ${cleaner.name}.`, previous });
+  };
+
+  const handleDragStart = ({ active }: DragStartEvent) => {
+    if (isStale) return;
+    setMoveNotice(null);
+    setActiveDrag(active.data.current as DragPayload);
+  };
+  const handleDragEnd = ({ active, over }: DragEndEvent) => {
+    setActiveDrag(null);
+    if (!over) return;
+    const destinationId = String(over.id);
+    const cleanerPrefix = destinationId.startsWith('cleaner:') ? 'cleaner:' : destinationId.startsWith('mobile-cleaner:') ? 'mobile-cleaner:' : '';
+    if (!cleanerPrefix) return;
+    applyValidatedMove(active.data.current as DragPayload, destinationId.slice(cleanerPrefix.length));
+  };
+
+  const validCleanerCount = activeDrag ? Array.from(dragFeedback.values()).filter((result) => result.valid).length : 0;
+
   const bounds = useMemo(() => {
     const starts = dayItems.map((item) => item.startMinute);
     const ends = dayItems.map((item) => item.endMinute);
@@ -373,62 +508,36 @@ export const PlanningProposalCalendar = ({
 
   const reassignmentTask = reassignment ? taskById.get(reassignment.taskId) : undefined;
   const reassignmentCandidates = useMemo(() => {
-    if (!reassignment || !reassignmentTask) return [];
-    const buildingId = reassignmentTask.detectedBuilding?.propertyGroupId;
-    const usedCleanerIds = new Set(draftProposals
-      .filter((proposal, index) => proposal.taskId === reassignment.taskId && index !== reassignment.proposalIndex)
-      .map((proposal) => proposal.cleanerId));
-    const roleByCleaner = new Map(activeCleanerAssignments
-      .filter((assignment) => assignment.propertyGroupId === buildingId && assignment.isActive && assignment.roleType !== 'excluded')
-      .map((assignment) => [assignment.cleanerId, assignment.roleType]));
-    const excludedIds = new Set(excludedCleanerAssignments
-      .filter((assignment) => assignment.propertyGroupId === buildingId && assignment.roleType === 'excluded')
-      .map((assignment) => assignment.cleanerId));
+    if (!reassignment || !reassignmentTask || isStale) return [];
+    const payload: DragPayload = {
+      taskId: reassignment.taskId,
+      proposalIndex: reassignment.proposalIndex,
+      sourceCleanerId: reassignment.proposalIndex === undefined ? undefined : draftProposals[reassignment.proposalIndex]?.cleanerId,
+    };
     const roleOrder = { primary: 0, secondary: 1, backup: 2 } as const;
-
     return cleaners
-      .filter((cleaner) => !usedCleanerIds.has(cleaner.id) && !excludedIds.has(cleaner.id))
+      .map((cleaner) => ({ cleaner, validation: validateMove(payload, cleaner.id) }))
+      .filter((candidate) => candidate.validation.valid)
       .sort((left, right) => {
-        const leftRole = roleByCleaner.get(left.id);
-        const rightRole = roleByCleaner.get(right.id);
-        const leftOrder = leftRole && leftRole in roleOrder ? roleOrder[leftRole as keyof typeof roleOrder] : 3;
-        const rightOrder = rightRole && rightRole in roleOrder ? roleOrder[rightRole as keyof typeof roleOrder] : 3;
-        return leftOrder - rightOrder || left.name.localeCompare(right.name, 'es');
-      })
-      .map((cleaner) => ({ cleaner, roleType: roleByCleaner.get(cleaner.id) }));
-  }, [activeCleanerAssignments, cleaners, draftProposals, excludedCleanerAssignments, reassignment, reassignmentTask]);
+        const leftRole = left.validation.assignmentRole;
+        const rightRole = right.validation.assignmentRole;
+        const leftOrder = leftRole ? roleOrder[leftRole] : 3;
+        const rightOrder = rightRole ? roleOrder[rightRole] : 3;
+        return leftOrder - rightOrder || left.cleaner.name.localeCompare(right.cleaner.name, 'es');
+      });
+    // Every fallback candidate is engine-validated against the current draft.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeCleanerAssignments, calendarTasks, cleaners, draftProposals, effectiveAvailability, isStale, reassignment, reassignmentTask]);
 
   const chooseReassignmentCandidate = (cleanerId: string) => {
     if (!reassignment || !reassignmentTask) return;
     const candidate = reassignmentCandidates.find((item) => item.cleaner.id === cleanerId);
     if (!candidate) return;
-
-    const assignmentRole = candidate.roleType === 'primary' || candidate.roleType === 'secondary' || candidate.roleType === 'backup'
-      ? candidate.roleType
-      : undefined;
-
-    if (reassignment.proposalIndex !== undefined) {
-      handleCleanerChange(reassignment.proposalIndex, cleanerId, assignmentRole);
-    } else {
-      const existingPositions = draftProposals.filter((proposal) => proposal.taskId === reassignment.taskId).length;
-      onDraftProposalsChange([...draftProposals, {
-        taskId: reassignmentTask.id,
-        cleanerId: candidate.cleaner.id,
-        cleanerName: candidate.cleaner.name,
-        propertyGroupId: reassignmentTask.detectedBuilding?.propertyGroupId,
-        propertyGroupName: reassignmentTask.detectedBuilding?.propertyGroupName,
-        assignmentRole,
-        durationMinutes: reassignmentTask.durationMinutes,
-        proposedStartTime: reassignmentTask.displayStartTime,
-        proposedEndTime: reassignmentTask.displayEndTime,
-        requiredCleaners: Math.max(1, reassignmentTask.requiredCleaners || 1),
-        assignmentIndex: existingPositions,
-        confidence: 0,
-        reasons: ['Asignación manual durante la revisión'],
-        warnings: [],
-        capacityAfterAssignment: { assignedMinutes: 0, remainingMinutes: 0 },
-      }]);
-    }
+    applyValidatedMove({
+      taskId: reassignment.taskId,
+      proposalIndex: reassignment.proposalIndex,
+      sourceCleanerId: reassignment.proposalIndex === undefined ? undefined : draftProposals[reassignment.proposalIndex]?.cleanerId,
+    }, cleanerId);
     setReassignment(null);
   };
 
@@ -444,6 +553,7 @@ export const PlanningProposalCalendar = ({
   const daySoftWarnings = warnings.filter((warning) => warning.severity === 'warning');
 
   return (
+    <DndContext sensors={sensors} onDragStart={handleDragStart} onDragCancel={() => setActiveDrag(null)} onDragEnd={handleDragEnd}>
     <Card className="border-[#310984]/12 bg-[#fbfaff] shadow-sm">
       <CardHeader className="space-y-4 border-b border-[#310984]/10 pb-4">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
@@ -490,6 +600,29 @@ export const PlanningProposalCalendar = ({
           </div>
         )}
 
+        {moveNotice && (
+          <div role="alert" aria-live="assertive" data-dnd-notice className={`flex items-center justify-between gap-3 rounded-2xl border p-3 text-sm ${moveNotice.error ? 'border-red-200 bg-red-50 text-red-800' : 'border-emerald-200 bg-emerald-50 text-emerald-800'}`}>
+            <span>{moveNotice.message}</span>
+            {moveNotice.previous && <Button type="button" variant="outline" size="sm" onClick={() => { onDraftProposalsChange(moveNotice.previous!); setMoveNotice(null); }}>Deshacer</Button>}
+          </div>
+        )}
+
+        {activeDrag && (
+          <div data-dnd-mobile-destinations className="hidden max-[400px]:block rounded-2xl border border-[#310984]/15 bg-white p-3">
+            <p className="mb-2 text-xs font-semibold text-[#310984]">Suelta en una responsable · {validCleanerCount} disponibles</p>
+            <div className="space-y-2">
+              {cleaners.map((cleaner) => {
+                const feedback = dragFeedback.get(cleaner.id);
+                return (
+                  <CleanerDropZone key={`mobile-drop:${cleaner.id}`} cleanerId={cleaner.id} dropId={`mobile-cleaner:${cleaner.id}`} feedback={feedback} className={`min-h-[48px] rounded-xl border p-3 text-sm font-semibold ${feedback?.valid ? 'border-emerald-300 text-emerald-800' : 'border-red-200 text-red-700 opacity-70'}`}>
+                    {cleaner.name} · {feedback?.valid ? 'Destino válido' : feedback?.conflict?.message || 'No disponible'}
+                  </CleanerDropZone>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         {(dayBlockingWarnings.length > 0 || daySoftWarnings.length > 0) && (
           <div className="grid gap-3 lg:grid-cols-2">
             {dayBlockingWarnings.length > 0 && (
@@ -523,18 +656,23 @@ export const PlanningProposalCalendar = ({
             .map((item) => {
               const status = statusForItem(item);
               return (
-                <button
+                <div
                   key={`mobile:${item.id}`}
-                  type="button"
-                  disabled={!item.editable || isStale}
-                  aria-label={item.editable ? `Cambiar responsable de ${item.task.property}` : `${item.task.property}, ya asignada`}
-                  className="min-h-[72px] w-full rounded-2xl border border-[#310984]/10 bg-white p-4 text-left shadow-sm transition enabled:hover:border-[#310984]/30 enabled:focus-visible:outline-none enabled:focus-visible:ring-2 enabled:focus-visible:ring-[#310984] disabled:cursor-default"
-                  onClick={() => openReassignment(item.taskId, item.proposalIndex)}
+                  className="flex min-h-[72px] w-full items-center rounded-2xl border border-[#310984]/10 bg-white p-2 text-left shadow-sm"
                 >
-                  <span className={`text-xs font-semibold ${status.tone}`}>● {status.label}</span>
-                  <span className="mt-1 block font-semibold text-[#171321]">{item.task.property}</span>
-                  <span className="mt-1 block text-xs text-[#6b627a]">{fromMinutes(item.startMinute)}–{fromMinutes(item.endMinute)} · {item.cleanerName}</span>
-                </button>
+                  <button
+                    type="button"
+                    disabled={!item.editable || isStale}
+                    aria-label={item.editable ? `Cambiar responsable de ${item.task.property}` : `${item.task.property}, ya asignada`}
+                    className="min-w-0 flex-1 p-2 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#310984] disabled:cursor-default"
+                    onClick={() => openReassignment(item.taskId, item.proposalIndex)}
+                  >
+                    <span className={`text-xs font-semibold ${status.tone}`}>● {status.label}</span>
+                    <span className="mt-1 block font-semibold text-[#171321]">{item.task.property}</span>
+                    <span className="mt-1 block text-xs text-[#6b627a]">{fromMinutes(item.startMinute)}–{fromMinutes(item.endMinute)} · {item.cleanerName}</span>
+                  </button>
+                  {item.editable && <DraggableHandle id={`draft:${item.proposalIndex}`} payload={{ taskId: item.taskId, proposalIndex: item.proposalIndex, sourceCleanerId: item.cleanerId }} disabled={isStale} />}
+                </div>
               );
             })}
         </div>
@@ -558,17 +696,17 @@ export const PlanningProposalCalendar = ({
               </div>
             </div>
 
-            {visibleCleaners.length === 0 ? (
+            {cleaners.length === 0 ? (
               <div className="flex min-h-[260px] w-[640px] items-center justify-center p-8 text-center text-sm text-[#6b627a]">
-                No hay tareas asignadas ni propuestas para este día. Revisa filtros o conflictos manuales.
+                No hay trabajadoras operativas disponibles.
               </div>
-            ) : visibleCleaners.map((cleaner) => {
+            ) : cleaners.map((cleaner) => {
               const cleanerItems = dayItems
                 .filter((item) => item.cleanerId === cleaner.id)
                 .sort((a, b) => a.startMinute - b.startMinute || a.task.property.localeCompare(b.task.property));
 
               return (
-                <div key={cleaner.id} className="w-[250px] shrink-0 border-r border-[#310984]/10 last:border-r-0">
+                <CleanerDropZone key={cleaner.id} cleanerId={cleaner.id} feedback={dragFeedback.get(cleaner.id)} className="w-[250px] shrink-0 border-r border-[#310984]/10 last:border-r-0">
                   <div className="sticky top-0 z-10 flex h-12 items-center justify-between gap-2 border-b border-[#310984]/10 bg-white px-3">
                     <div className="min-w-0">
                       <p className="truncate text-sm font-semibold text-[#171321]">{cleaner.name}</p>
@@ -589,29 +727,32 @@ export const PlanningProposalCalendar = ({
                           : 'border-emerald-200 bg-emerald-50 text-emerald-900';
 
                       return (
-                        <button
+                        <div
                           key={item.id}
-                          type="button"
-                          disabled={!item.editable || isStale}
-                          aria-label={item.editable ? `Cambiar responsable de ${item.task.property}` : `${item.task.property}, ya asignada`}
-                          className={`absolute left-2 right-2 overflow-hidden rounded-2xl border p-3 text-left shadow-sm transition enabled:hover:ring-2 enabled:hover:ring-[#310984]/30 enabled:focus-visible:outline-none enabled:focus-visible:ring-2 enabled:focus-visible:ring-[#310984] disabled:cursor-default ${tone}`}
+                          className={`absolute left-2 right-2 overflow-hidden rounded-2xl border p-2 text-left shadow-sm ${tone}`}
                           style={{ top, minHeight: height }}
-                          onClick={() => openReassignment(item.taskId, item.proposalIndex)}
                         >
-                          <div className="flex items-start justify-between gap-2">
-                            <div className="min-w-0">
+                          <div className="flex items-start justify-between gap-1">
+                            <button
+                              type="button"
+                              disabled={!item.editable || isStale}
+                              aria-label={item.editable ? `Cambiar responsable de ${item.task.property}` : `${item.task.property}, ya asignada`}
+                              className="min-w-0 flex-1 p-1 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#310984] disabled:cursor-default"
+                              onClick={() => openReassignment(item.taskId, item.proposalIndex)}
+                            >
                               <p className="break-words text-xs font-semibold leading-4">{item.task.property}</p>
                               <p className="mt-1 flex items-center gap-1 text-[11px] opacity-80">
                                 <Clock className="h-3 w-3" /> {fromMinutes(item.startMinute)}-{fromMinutes(item.endMinute)} · {minutesToHoursLabel(item.endMinute - item.startMinute)}
                               </p>
-                            </div>
-                            <Badge variant="outline" className={`shrink-0 bg-white/80 text-[10px] ${status.tone}`}>● {status.label}</Badge>
+                              <Badge variant="outline" className={`mt-1 bg-white/80 text-[10px] ${status.tone}`}>● {status.label}</Badge>
+                            </button>
+                            {item.editable && <DraggableHandle id={`desktop-draft:${item.proposalIndex}`} payload={{ taskId: item.taskId, proposalIndex: item.proposalIndex, sourceCleanerId: item.cleanerId }} disabled={isStale} />}
                           </div>
-                        </button>
+                        </div>
                       );
                     })}
                   </div>
-                </div>
+                </CleanerDropZone>
               );
             })}
           </div>
@@ -624,17 +765,19 @@ export const PlanningProposalCalendar = ({
             </div>
             <div className="mt-2 grid gap-2 md:grid-cols-2 xl:grid-cols-3">
               {unassignedTasks.map((task) => (
-                <button
-                  key={task.id}
-                  type="button"
-                  disabled={isStale}
-                  aria-label={`Elegir responsable para ${task.property}`}
-                  className="min-h-[64px] rounded-xl border border-red-200 bg-white p-3 text-left text-xs text-red-800 transition hover:border-red-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 disabled:cursor-not-allowed disabled:opacity-60"
-                  onClick={() => openReassignment(task.id)}
-                >
-                  <span className="font-semibold text-red-900">● Sin cubrir · {task.property}</span>
-                  <span className="mt-1 block">{task.displayStartTime}-{task.displayEndTime} · {task.detectedBuilding?.propertyGroupName || 'sin edificio'}</span>
-                </button>
+                <div key={task.id} data-dnd-unassigned-tray-item className="flex min-h-[64px] items-center rounded-xl border border-red-200 bg-white p-2 text-xs text-red-800">
+                  <button
+                    type="button"
+                    disabled={isStale}
+                    aria-label={`Elegir responsable para ${task.property}`}
+                    className="min-w-0 flex-1 p-1 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 disabled:cursor-not-allowed disabled:opacity-60"
+                    onClick={() => openReassignment(task.id)}
+                  >
+                    <span className="font-semibold text-red-900">● Sin cubrir · {task.property}</span>
+                    <span className="mt-1 block">{task.displayStartTime}-{task.displayEndTime} · {task.detectedBuilding?.propertyGroupName || 'sin edificio'}</span>
+                  </button>
+                  <DraggableHandle id={`unassigned:${task.id}`} payload={{ taskId: task.id }} disabled={isStale} />
+                </div>
               ))}
             </div>
           </div>
@@ -662,7 +805,8 @@ export const PlanningProposalCalendar = ({
               <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">
                 No hay otras responsables elegibles para esta limpieza.
               </div>
-            ) : reassignmentCandidates.map(({ cleaner, roleType }) => {
+            ) : reassignmentCandidates.map(({ cleaner, validation }) => {
+              const roleType = validation.assignmentRole;
               const roleLabel = roleType === 'primary'
                 ? 'Titular'
                 : roleType === 'secondary' || roleType === 'backup'
@@ -685,5 +829,6 @@ export const PlanningProposalCalendar = ({
         </DialogContent>
       </Dialog>
     </Card>
+    </DndContext>
   );
 };

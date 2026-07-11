@@ -112,6 +112,14 @@ assert.match(proposalCalendar, /Solape de horario/, 'Calendar must detect and ex
 assert.match(proposalCalendar, /No apta para este edificio/, 'Calendar must block explicit No apta draft assignments');
 assert.match(proposalCalendar, /Fuera del equipo habitual/, 'Calendar must warn when a manual assignment leaves the building team');
 assert.match(proposalCalendar, /resetDraft/, 'Calendar must allow resetting manual edits back to Hermes proposal');
+assert.match(proposalCalendar, /@dnd-kit\/core/, 'Sandbox drag and drop must use the maintained dnd-kit core sensors');
+assert.match(proposalCalendar, /validateDraftAssignmentMove/, 'Drag and fallback reassignment must use the shared proposal-engine validator');
+assert.match(proposalCalendar, /TouchSensor/, 'Mobile drag must use an explicit touch sensor');
+assert.match(proposalCalendar, /KeyboardSensor/, 'Drag and drop must retain a keyboard-accessible sensor');
+assert.match(proposalCalendar, /Deshacer/, 'Every successful drag must expose one-interaction undo');
+assert.match(proposalCalendar, /Sin cubrir/, 'Unassigned tasks must remain in a visible dedicated tray');
+assert.match(proposalPanel, /effectiveAvailability/, 'The sandbox must receive the same effective availability used by the proposal engine');
+assert.match(planningPage, /effectiveAvailability=\{effectiveAvailability\}/, 'Planning page must pass engine availability into the reviewed sandbox');
 assert.doesNotMatch(proposalCalendar, /taskStorageService|multipleTaskAssignmentService|supabase\.from/, 'PlanningProposalCalendar must be a local sandbox and must not persist changes directly');
 
 assert.match(planningPage, /const handleSedeChange = \(sede: Sede\) => \{/, 'Planning page must reset invalid filters/proposal when sede changes');
@@ -166,6 +174,24 @@ assert.match(capacityUtils, /return \{ minutes: 0, source: 'missing' \};/, 'Task
 assert.doesNotMatch(operationalPlanning, /Puede asumir carga de lencer[ií]a|bolsas pesadas/i, 'Planning UI must not treat linen/bag logistics as a worker planning criterion');
 assert.doesNotMatch(operationalPlanning, /\bMVP\b|Planificación V2|>fallback</, 'Planning settings UI must not expose rollout jargon');
 assert.doesNotMatch(operationalPlanningService, /planningRequiresLinenLoad && source\.cleaner\.planningCanHandleLinenLoad === false/, 'Planning service must not reject workers based on linen logistics');
+
+// DnD sandbox contract: keep interaction, validation and responsive safeguards explicit.
+assert.match(planningPage, /effectiveAvailability=\{effectiveAvailability\}/, 'Planning page must pass effective availability into proposal review');
+assert.match(proposalPanel, /effectiveAvailability=\{effectiveAvailability\}/, 'Proposal panel must pass effective availability into the calendar');
+assert.match(proposalCalendar, /DndContext/, 'Proposal calendar must own the local dnd-kit context');
+assert.match(proposalCalendar, /KeyboardSensor/, 'Proposal DnD must remain keyboard accessible');
+assert.match(proposalCalendar, /TouchSensor[\s\S]*delay: 300[\s\S]*tolerance: 8/, 'Touch drag must use a deliberate long-press activation with movement tolerance');
+assert.match(proposalCalendar, /data-dnd-handle/, 'Proposed and uncovered cards must expose a dedicated drag handle');
+assert.match(proposalCalendar, /data-dnd-mobile-destinations[\s\S]*max-\[400px\]:block/, 'Narrow mobile drag must reveal explicit destination drop zones');
+assert.match(proposalCalendar, /data-dnd-unassigned-tray-item/, 'Uncovered tasks must remain in their own draggable tray');
+assert.match(proposalCalendar, /validateDraftAssignmentMove/, 'Every DnD and fallback reassignment must use proposal-engine validation');
+assert.match(proposalCalendar, /reassignmentCandidates[\s\S]*\.filter\(\(candidate\) => candidate\.validation\.valid\)/, 'Fallback candidate list must only show engine-valid workers');
+assert.match(proposalCalendar, /assignmentRole: validation\.assignmentRole[\s\S]*proposedStartTime: validation\.proposedStartTime[\s\S]*durationMinutes:[\s\S]*capacityAfterAssignment:/, 'Validated moves must copy role, times, duration and capacity into the draft');
+assert.match(proposalCalendar, /sourceCleanerId === cleanerId/, 'Dropping on the same worker must be a no-op');
+assert.match(proposalCalendar, /isStale[\s\S]*Regenera antes de mover/, 'Stale proposals must block drag mutations');
+assert.match(proposalCalendar, />Deshacer<\//, 'Successful moves must expose one-click undo');
+assert.doesNotMatch(proposalCalendar, /droppable[^\n]*unassigned|dropId=\{`unassigned/i, 'Assigned cards must not be droppable back to uncovered');
+
 assert.match(roleNavigation, /hasPermission\('tasks', 'canEdit'\).*to="\/planning"/s, 'RoleBasedNavigation must expose official planning at /planning only to tasks/canEdit users');
 assert.match(roleNavigation, /to="\/planning-settings"[\s\S]*Ajustes de planificación/, 'RoleBasedNavigation must preserve the old planning configuration screen under /planning-settings');
 assert.match(dashboardSidebar, /permission: 'tasks-edit'/, 'DashboardSidebar planning link must use tasks-edit permission');

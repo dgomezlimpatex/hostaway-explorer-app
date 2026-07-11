@@ -1,4 +1,4 @@
-import { buildAssignmentProposal } from '../src/utils/cleaning-planning/proposalEngine';
+import { buildAssignmentProposal, validateDraftAssignmentMove } from '../src/utils/cleaning-planning/proposalEngine';
 import type { Cleaner } from '../src/types/calendar';
 import type { CleaningPlanningTask, EffectiveWorkerAvailability, GlobalPlanQualitySummary } from '../src/types/cleaningPlanning';
 import type { CleanerGroupAssignment } from '../src/types/propertyGroups';
@@ -406,4 +406,41 @@ export async function run(assert: Assert) {
   assert.deepEqual(largeHouseGetsThreeCleaners.proposals.map((proposal) => proposal.cleanerId), ['ana', 'bea', 'carla']);
   assert.deepEqual(largeHouseGetsThreeCleaners.proposals.map((proposal) => proposal.durationMinutes), [140, 140, 140], 'large-house load should be split across cleaners');
   assert.deepEqual(largeHouseGetsThreeCleaners.proposals.map((proposal) => proposal.requiredCleaners), [3, 3, 3]);
+
+  const draftMoveBase = {
+    task: fallbackTask({ id: 'task-draft-move', startTime: '10:00', endTime: '12:00', checkOut: '10:00', checkIn: '15:00' }),
+    cleanerId: 'bea',
+    cleaners,
+    availability: [availability('2026-07-01', 1000, true, 'bea')],
+    cleanerGroupAssignments,
+    draftProposals: [],
+    calendarTasks: [],
+  };
+  const validDraftMove = validateDraftAssignmentMove(draftMoveBase);
+  assert.equal(validDraftMove.valid, true, 'a valid draft move should be accepted by the shared engine validator');
+  assert.equal(validDraftMove.assignmentRole, 'secondary');
+  assert.equal(validDraftMove.proposedStartTime, '10:00');
+  assert.equal(validDraftMove.proposedEndTime, '12:00');
+
+  const unavailableDraftMove = validateDraftAssignmentMove({
+    ...draftMoveBase,
+    availability: [availability('2026-07-01', 0, false, 'bea')],
+  });
+  assert.equal(unavailableDraftMove.valid, false, 'an unavailable worker must be a hard-invalid drop target');
+  assert.equal(unavailableDraftMove.conflict?.code, 'no_available_worker');
+
+  const overlapDraftMove = validateDraftAssignmentMove({
+    ...draftMoveBase,
+    draftProposals: [{
+      taskId: 'other-task', cleanerId: 'bea', cleanerName: 'Bea', durationMinutes: 270,
+      proposedStartTime: '10:30', proposedEndTime: '15:00', confidence: 100, reasons: [], warnings: [],
+      capacityAfterAssignment: { assignedMinutes: 270, remainingMinutes: 30 },
+    }],
+    calendarTasks: [fallbackTask({ id: 'other-task', startTime: '10:30', endTime: '15:00', durationMinutes: 270, duration: 270 })],
+  });
+  assert.equal(overlapDraftMove.valid, false, 'a move that overlaps another draft assignment must be rejected');
+  assert.ok(
+    overlapDraftMove.conflict?.code === 'time_overlap' || overlapDraftMove.conflict?.code === 'availability_window_mismatch',
+    'the shared validator should explain that no conflict-free operational window remains',
+  );
 }

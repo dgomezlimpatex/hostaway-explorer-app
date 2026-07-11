@@ -431,6 +431,7 @@ export const CleaningPlanningPage = () => {
             tasks={proposalTasks}
             calendarTasks={filteredTasks}
             cleaners={operationalCleaners}
+            effectiveAvailability={effectiveAvailability}
             activeCleanerAssignments={buildingData.cleanerAssignments}
             excludedCleanerAssignments={buildingData.excludedCleanerAssignments}
             isApplying={isApplyingProposal}

@@ -5,7 +5,7 @@ import { AlertTriangle, CheckCircle2, ChevronDown, Clock3, Sparkles, XCircle } f
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Cleaner } from '@/types/calendar';
-import { AssignmentProposal, AssignmentProposalResult, CleaningPlanningTask } from '@/types/cleaningPlanning';
+import { AssignmentProposal, AssignmentProposalResult, CleaningPlanningTask, EffectiveWorkerAvailability } from '@/types/cleaningPlanning';
 import { CleanerGroupAssignment } from '@/types/propertyGroups';
 import { minutesToHoursLabel } from '@/utils/cleaningPlanning';
 import { buildProposalSignature } from '@/utils/cleaning-planning/proposalBatchApply';
@@ -16,6 +16,7 @@ interface AssignmentProposalPanelProps {
   tasks: CleaningPlanningTask[];
   calendarTasks?: CleaningPlanningTask[];
   cleaners?: Cleaner[];
+  effectiveAvailability?: EffectiveWorkerAvailability[];
   activeCleanerAssignments?: CleanerGroupAssignment[];
   excludedCleanerAssignments?: CleanerGroupAssignment[];
   isApplying?: boolean;
@@ -53,6 +54,7 @@ export const AssignmentProposalPanel = ({
   tasks,
   calendarTasks = tasks,
   cleaners = [],
+  effectiveAvailability = [],
   activeCleanerAssignments = [],
   excludedCleanerAssignments = [],
   isApplying = false,
@@ -238,6 +240,7 @@ export const AssignmentProposalPanel = ({
           tasks={tasks}
           calendarTasks={calendarTasks}
           cleaners={cleaners}
+          effectiveAvailability={effectiveAvailability}
           activeCleanerAssignments={activeCleanerAssignments}
           excludedCleanerAssignments={excludedCleanerAssignments}
           isStale={isStale}
