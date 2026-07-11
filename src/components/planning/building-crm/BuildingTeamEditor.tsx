@@ -200,10 +200,9 @@ export const BuildingTeamEditor = ({ profile, allCleaners, isLoadingCleaners = f
       <CardHeader className="space-y-3 pb-3">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#310984]/65">Edición directa</p>
-            <CardTitle className="mt-1 text-[#171321]">Equipo y No aptas del edificio</CardTitle>
+            <CardTitle className="mt-1 text-[#171321]">Personal asignado</CardTitle>
             <p className="mt-1 text-sm leading-6 text-[#6b627a]">
-              Añade o cambia titulares, suplentes, backups y No aptas desde esta ficha. Se guarda en el equipo operativo real del edificio.
+              Titulares, suplentes, backups y personas marcadas como No aptas.
             </p>
           </div>
           <Button type="button" className="bg-[#310984] text-white hover:bg-[#4c1bb0]" onClick={() => openAddDialog()} disabled={isLoadingCleaners || availableCleaners.length === 0}>

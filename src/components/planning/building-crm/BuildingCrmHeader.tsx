@@ -1,80 +1,66 @@
-import { ArrowRight, Building2, CalendarDays, ListTree, ShieldAlert, Users } from 'lucide-react';
+import { ArrowLeft, CalendarClock, MoreHorizontal, RefreshCw } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import type { PlanningBuildingCrmProfile } from '@/types/operationalPlanning';
-import { formatCrmHours, getCrmStatusCopy } from './buildingCrmFormatters';
 
 interface BuildingCrmHeaderProps {
   profile: PlanningBuildingCrmProfile;
+  onRefresh: () => void;
+  isRefreshing?: boolean;
 }
 
-export const BuildingCrmHeader = ({ profile }: BuildingCrmHeaderProps) => {
-  const status = getCrmStatusCopy(profile.summary.status);
+export const BuildingCrmHeader = ({ profile, onRefresh, isRefreshing = false }: BuildingCrmHeaderProps) => {
   const title = profile.building.displayName || profile.building.name;
   const code = profile.building.internalCode || profile.building.name;
 
   return (
-    <section className="overflow-hidden rounded-[2rem] border border-white/10 bg-[radial-gradient(circle_at_top_left,_rgba(244,211,94,0.22),_transparent_32%),linear-gradient(135deg,#10051f_0%,#1b0b34_48%,#310984_100%)] text-white shadow-2xl shadow-[#310984]/20">
-      <div className="grid gap-6 p-5 md:p-7 lg:grid-cols-[minmax(0,1fr)_360px]">
-        <div className="space-y-5">
+    <header className="rounded-3xl border border-[#310984]/10 bg-white p-4 shadow-sm shadow-[#310984]/5 sm:p-5 md:p-6">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0">
+          <Button asChild variant="ghost" size="sm" className="-ml-3 mb-2 text-[#6b627a] hover:bg-[#f0eaff] hover:text-[#310984]">
+            <Link to="/planning/buildings">
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Todos los edificios
+            </Link>
+          </Button>
           <div className="flex flex-wrap items-center gap-2">
-            <Badge variant="outline" className="border-white/15 bg-white/10 text-white">{code}</Badge>
-            {profile.building.zone && <Badge variant="outline" className="border-white/15 bg-white/10 text-white">{profile.building.zone}</Badge>}
-            {profile.building.clientName && <Badge variant="outline" className="border-white/15 bg-white/10 text-white">{profile.building.clientName}</Badge>}
+            <Badge variant="outline" className="border-[#310984]/15 bg-[#faf8ff] text-[#310984]">{code}</Badge>
+            {profile.building.zone && <span className="text-sm text-[#6b627a]">{profile.building.zone}</span>}
           </div>
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.25em] text-white/55">Estado operativo</p>
-            <h2 className="mt-2 text-3xl font-bold tracking-tight md:text-5xl">{title}</h2>
-            <p className="mt-3 max-w-2xl text-sm leading-6 text-white/72">
-              {profile.building.propertyCount} propiedades · {formatCrmHours(profile.summary.serviceMinutes)} servicio · {formatCrmHours(profile.summary.personMinutes)} h-persona en el rango.
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-3">
-            <Button asChild className="bg-white text-[#310984] hover:bg-[#f0eaff]">
-              <Link to={`/planning?building=${profile.building.id}&copilot=open`}>
-                Planificar este edificio
-                <ArrowRight className="ml-2 h-4 w-4" />
-              </Link>
-            </Button>
-            <Button asChild variant="outline" className="border-white/20 bg-white/5 text-white hover:bg-white/10 hover:text-white">
-              <Link to="/planning/buildings">
-                <ListTree className="mr-2 h-4 w-4" />
-                Todos los edificios
-              </Link>
-            </Button>
-          </div>
+          <h1 className="mt-2 break-words text-2xl font-bold tracking-tight text-[#171321] sm:text-3xl">{title}</h1>
+          <p className="mt-1 text-sm text-[#6b627a]">
+            {profile.building.propertyCount} {profile.building.propertyCount === 1 ? 'propiedad' : 'propiedades'} · {profile.team.filter((member) => member.roleType !== 'excluded').length} personas asignadas
+          </p>
         </div>
 
-        <div className="rounded-3xl border border-white/10 bg-white/[0.08] p-4 backdrop-blur-xl">
-          <div className={`w-fit rounded-2xl border px-3 py-1 text-sm font-semibold ${status.className}`}>
-            {status.label}
-          </div>
-          <p className="mt-3 text-sm leading-6 text-white/70">{status.description}</p>
-          <div className="mt-5 grid grid-cols-2 gap-3 text-sm">
-            <div className="rounded-2xl bg-black/20 p-3">
-              <CalendarDays className="mb-2 h-4 w-4 text-[#f4d35e]" />
-              <p className="text-white/50">Limpiezas</p>
-              <p className="text-lg font-semibold">{profile.summary.confirmedCleanings + profile.summary.forecastCleanings}</p>
-            </div>
-            <div className="rounded-2xl bg-black/20 p-3">
-              <Users className="mb-2 h-4 w-4 text-[#f4d35e]" />
-              <p className="text-white/50">Equipo</p>
-              <p className="text-lg font-semibold">{profile.summary.assignedPrimaryCount + profile.summary.assignedSecondaryCount + profile.summary.assignedBackupCount}</p>
-            </div>
-            <div className="rounded-2xl bg-black/20 p-3">
-              <ShieldAlert className="mb-2 h-4 w-4 text-[#f4d35e]" />
-              <p className="text-white/50">Decisiones</p>
-              <p className="text-lg font-semibold">{profile.decisions.length}</p>
-            </div>
-            <div className="rounded-2xl bg-black/20 p-3">
-              <Building2 className="mb-2 h-4 w-4 text-[#f4d35e]" />
-              <p className="text-white/50">Propiedades</p>
-              <p className="text-lg font-semibold">{profile.building.propertyCount}</p>
-            </div>
-          </div>
+        <div className="flex w-full items-center gap-2 sm:w-auto">
+          <Button type="button" disabled className="min-h-11 flex-1 bg-[#310984] text-white disabled:cursor-not-allowed disabled:opacity-70 sm:flex-none">
+            <CalendarClock className="mr-2 h-4 w-4" />
+            Planificación
+            <span className="ml-2 text-xs opacity-75">Próximamente</span>
+          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button type="button" variant="outline" size="icon" className="h-11 w-11 shrink-0 border-[#310984]/15" aria-label="Más acciones">
+                <MoreHorizontal className="h-5 w-5" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onSelect={onRefresh} disabled={isRefreshing}>
+                <RefreshCw className={`mr-2 h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+                Actualizar datos
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
-    </section>
+    </header>
   );
 };

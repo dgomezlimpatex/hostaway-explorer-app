@@ -221,8 +221,11 @@ export const BuildingDataEditor = ({ profile, onSaved }: BuildingDataEditorProps
           </div>
         )}
 
-        <div className="border-t border-red-100 pt-5">
-          <div className="rounded-2xl border border-red-200 bg-red-50 p-4">
+        <details className="border-t border-[#310984]/10 pt-4">
+          <summary className="cursor-pointer list-none text-sm font-medium text-[#6b627a] hover:text-[#310984]">
+            Acciones avanzadas
+          </summary>
+          <div className="mt-4 rounded-2xl border border-red-200 bg-red-50 p-4">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <p className="font-semibold text-red-900">Eliminar edificio</p>
@@ -260,7 +263,7 @@ export const BuildingDataEditor = ({ profile, onSaved }: BuildingDataEditorProps
               </AlertDialog>
             </div>
           </div>
-        </div>
+        </details>
       </CardContent>
     </Card>
   );

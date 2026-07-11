@@ -98,21 +98,6 @@ const PlanningBuildingsIndex = () => {
       .sort((a, b) => a.setup.rank - b.setup.rank || (a.group.displayName || a.group.name).localeCompare(b.group.displayName || b.group.name, 'es', { numeric: true }));
   }, [cleanerAssignments, propertyAssignments, propertyGroups, searchTerm]);
 
-  const setupStats = useMemo(() => {
-    const cards = propertyGroups.map((group) => {
-      const propertyCount = propertyAssignments.filter((assignment) => assignment.propertyGroupId === group.id).length;
-      const teamCount = cleanerAssignments.filter((assignment) => assignment.propertyGroupId === group.id && assignment.roleType !== 'excluded').length;
-      return getSetupState(group, propertyCount, teamCount);
-    });
-
-    return {
-      total: propertyGroups.length,
-      needsSetup: cards.filter((card) => card.rank <= 1).length,
-      readyToTest: cards.filter((card) => card.rank === 2).length,
-      configured: cards.filter((card) => card.rank === 3).length,
-    };
-  }, [cleanerAssignments, propertyAssignments, propertyGroups]);
-
   const handleCreateBuilding = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const name = buildingForm.name.trim();
@@ -187,30 +172,23 @@ const PlanningBuildingsIndex = () => {
   return (
     <div className="min-h-screen bg-[#f7f4fb] px-4 py-5 text-[#171321] md:px-6 lg:px-8">
       <div className="mx-auto max-w-7xl space-y-5">
-        <div className="overflow-hidden rounded-[2rem] border border-white/10 bg-[radial-gradient(circle_at_top_left,_rgba(244,211,94,0.20),_transparent_34%),linear-gradient(135deg,#10051f_0%,#1b0b34_48%,#310984_100%)] p-5 text-white shadow-2xl shadow-[#310984]/20 md:p-7">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+        <header className="rounded-3xl border border-[#310984]/10 bg-white p-4 shadow-sm sm:p-5 md:p-6">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.25em] text-white/55">Hermes Planificación</p>
-              <h1 className="mt-2 text-3xl font-bold tracking-tight md:text-5xl">Edificios</h1>
-              <p className="mt-3 max-w-3xl text-sm leading-6 text-white/72 md:text-base">
-                Acceso operativo a los edificios/centros de trabajo: primero detecta qué falta configurar, luego entra en cada ficha para probar propuestas por edificio.
-              </p>
+              <h1 className="text-3xl font-bold tracking-tight text-[#171321]">Edificios</h1>
+              <p className="mt-1 text-sm text-[#6b627a]">Consulta y gestiona cada centro desde una sola ficha.</p>
             </div>
-            <div className="flex flex-wrap gap-2">
-              <Button type="button" className="bg-[#f4d35e] text-[#171321] hover:bg-[#ffe17a]" onClick={() => setIsCreateOpen(true)}>
+            <div className="flex items-center gap-2">
+              <Button type="button" className="min-h-11 flex-1 bg-[#310984] text-white hover:bg-[#4c1bb0] sm:flex-none" onClick={() => setIsCreateOpen(true)}>
                 <Plus className="mr-2 h-4 w-4" />
                 Añadir edificio
               </Button>
-              <Button asChild className="bg-white text-[#310984] hover:bg-[#f0eaff]">
-                <Link to="/planning?copilot=open">Volver a Hermes Planificación</Link>
-              </Button>
-              <Button type="button" variant="outline" className="border-white/20 bg-white/5 text-white hover:bg-white/10 hover:text-white" onClick={() => refetch()} disabled={isFetching}>
-                <RefreshCw className="mr-2 h-4 w-4" />
-                Actualizar
+              <Button type="button" variant="outline" size="icon" className="h-11 w-11 shrink-0 border-[#310984]/15" onClick={() => refetch()} disabled={isFetching} aria-label="Actualizar edificios">
+                <RefreshCw className={`h-4 w-4 ${isFetching ? 'animate-spin' : ''}`} />
               </Button>
             </div>
           </div>
-        </div>
+        </header>
 
         <Dialog open={isCreateOpen} onOpenChange={(open) => {
           if (isCreating) return;
@@ -257,45 +235,16 @@ const PlanningBuildingsIndex = () => {
           </DialogContent>
         </Dialog>
 
-        <Card className="border-[#310984]/10 bg-white shadow-lg shadow-[#310984]/6">
-          <CardContent className="space-y-4 p-4 md:p-5">
-            <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-              <div>
-                <p className="text-sm font-semibold text-[#171321]">Orden recomendado de trabajo</p>
-                <p className="mt-1 text-xs leading-5 text-[#6b627a]">Configura primero los edificios incompletos. Los listos para probar ya pueden generar propuesta revisable desde su ficha.</p>
-              </div>
-              <div className="relative w-full lg:w-80">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#6b627a]" />
-                <Input
-                  aria-label="Buscar edificio por nombre, código, zona o cliente"
-                  className="h-11 border-[#310984]/12 pl-9"
-                  placeholder="Buscar edificio, código o zona…"
-                  value={searchTerm}
-                  onChange={(event) => setSearchTerm(event.target.value)}
-                />
-              </div>
-            </div>
-
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-              <div className="rounded-2xl border border-[#310984]/10 bg-[#faf8ff] p-3">
-                <p className="text-xs text-[#6b627a]">Total edificios</p>
-                <p className="text-2xl font-semibold text-[#171321]">{setupStats.total}</p>
-              </div>
-              <div className="rounded-2xl border border-red-200 bg-red-50 p-3 text-red-800">
-                <p className="text-xs opacity-80">Configurar primero</p>
-                <p className="text-2xl font-semibold">{setupStats.needsSetup}</p>
-              </div>
-              <div className="rounded-2xl border border-sky-200 bg-sky-50 p-3 text-sky-800">
-                <p className="text-xs opacity-80">Listos para probar</p>
-                <p className="text-2xl font-semibold">{setupStats.readyToTest}</p>
-              </div>
-              <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-3 text-emerald-800">
-                <p className="text-xs opacity-80">Configurados</p>
-                <p className="text-2xl font-semibold">{setupStats.configured}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+        <div className="relative w-full sm:max-w-md">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#6b627a]" />
+          <Input
+            aria-label="Buscar edificio por nombre, código, zona o cliente"
+            className="h-11 border-[#310984]/12 bg-white pl-9 shadow-sm"
+            placeholder="Buscar edificio, código o zona…"
+            value={searchTerm}
+            onChange={(event) => setSearchTerm(event.target.value)}
+          />
+        </div>
 
         {isError && (
           <Alert variant="destructive">
@@ -353,34 +302,29 @@ const PlanningBuildingsIndex = () => {
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <p className="rounded-2xl border border-[#310984]/10 bg-[#faf8ff] p-3 text-sm text-[#6b627a]">{setup.helper}</p>
-                  <div className="grid grid-cols-3 gap-2 text-sm">
+                  <div className="grid grid-cols-2 gap-2 text-sm">
                     <div className="rounded-2xl bg-[#faf8ff] p-3">
                       <p className="text-xs text-[#6b627a]">Propiedades</p>
                       <p className="text-lg font-semibold text-[#171321]">{propertyCount}</p>
                     </div>
                     <div className="rounded-2xl bg-[#faf8ff] p-3">
-                      <p className="text-xs text-[#6b627a]">Equipo</p>
+                      <p className="text-xs text-[#6b627a]">Personal</p>
                       <p className="text-lg font-semibold text-[#171321]">{teamCount}</p>
                     </div>
-                    <div className="rounded-2xl bg-[#faf8ff] p-3">
-                      <p className="text-xs text-[#6b627a]">No aptas</p>
-                      <p className="text-lg font-semibold text-[#171321]">{excludedCount}</p>
-                    </div>
                   </div>
-                  {group.planningNotes && (
-                    <p className="line-clamp-2 rounded-2xl border border-[#310984]/10 bg-[#faf8ff] p-3 text-sm text-[#6b627a]">{group.planningNotes}</p>
-                  )}
                   <div className="flex flex-col gap-2 sm:flex-row">
-                    <Button asChild className="flex-1 bg-[#310984] text-white hover:bg-[#4c1bb0]">
+                    <Button asChild className="min-h-11 flex-1 bg-[#310984] text-white hover:bg-[#4c1bb0]">
                       <Link to={`/planning/buildings/${group.id}`}>
-                        Personalizar edificio
+                        Ver edificio
                         <ArrowRight className="ml-2 h-4 w-4" />
                       </Link>
                     </Button>
                     {propertyCount === 0 && teamCount === 0 && excludedCount === 0 && (
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
+                      <details className="rounded-xl border border-[#310984]/10 px-3 py-2 text-sm">
+                        <summary className="cursor-pointer list-none text-center font-medium text-[#6b627a] hover:text-[#310984]">Acciones</summary>
+                        <div className="mt-2">
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
                           <Button
                             type="button"
                             variant="outline"
@@ -409,8 +353,10 @@ const PlanningBuildingsIndex = () => {
                               Sí, eliminar edificio
                             </AlertDialogAction>
                           </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </div>
+                      </details>
                     )}
                   </div>
                 </CardContent>
@@ -419,17 +365,6 @@ const PlanningBuildingsIndex = () => {
           </div>
         )}
 
-        <Card className="border-[#310984]/10 bg-white shadow-sm">
-          <CardContent className="flex flex-col gap-3 p-4 text-sm text-[#6b627a] md:flex-row md:items-center md:justify-between">
-            <div className="flex items-start gap-3">
-              <Users className="mt-0.5 h-4 w-4 text-[#310984]" />
-              <p>Esta entrada depende del permiso operativo de planificación, no del acceso antiguo a ajustes. La aplicación final sigue en Hermes Planificación.</p>
-            </div>
-            <Button asChild variant="outline" className="border-[#310984]/15 text-[#310984] hover:bg-[#f0eaff]">
-              <Link to="/planning?copilot=open">Abrir Hermes Planificación</Link>
-            </Button>
-          </CardContent>
-        </Card>
       </div>
     </div>
   );
