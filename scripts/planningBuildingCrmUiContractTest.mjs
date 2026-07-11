@@ -32,6 +32,7 @@ const requiredFiles = [
   'src/components/planning/building-crm/BuildingSetupChecklist.tsx',
   'src/components/planning/building-crm/BuildingTeamEditor.tsx',
   'src/components/planning/building-crm/BuildingAssignmentProposalPanel.tsx',
+  'src/components/planning/building-crm/BuildingDataEditor.tsx',
   'src/services/planning/buildingCrmAggregator.ts',
 ];
 
@@ -50,6 +51,7 @@ const teamEditor = read('src/components/planning/building-crm/BuildingTeamEditor
 const properties = read('src/components/planning/building-crm/BuildingPropertiesPanel.tsx');
 const setupChecklist = read('src/components/planning/building-crm/BuildingSetupChecklist.tsx');
 const assignmentPanel = read('src/components/planning/building-crm/BuildingAssignmentProposalPanel.tsx');
+const buildingDataEditor = read('src/components/planning/building-crm/BuildingDataEditor.tsx');
 
 assert.match(operationalTypes, /export interface PlanningBuildingCrmProfile/, 'Types must define PlanningBuildingCrmProfile');
 assert.match(operationalTypes, /PlanningBuildingCrmSummary/, 'Types must define summary contract');
@@ -69,6 +71,7 @@ assert.match(page, /BuildingCrmHeader/, 'CRM page must render header');
 assert.match(page, /BuildingSetupChecklist/, 'CRM page must render the operational setup checklist before detailed panels');
 assert.match(page, /useCleaners/, 'CRM page must load active cleaners for direct building-team editing');
 assert.match(page, /BuildingTeamEditor/, 'CRM page must render direct team editing inside the building profile');
+assert.match(page, /BuildingDataEditor/, 'CRM page must render building identity and schedule editing');
 assert.match(page, /BuildingDemandCalendar/, 'CRM page must render demand calendar');
 assert.match(page, /BuildingAssignmentProposalPanel/, 'CRM page must render individual building assignment proposal panel');
 assert.match(page, /buildBuildingCrmAssignmentProposal/, 'CRM page must generate assignment proposals scoped to the current building');
@@ -89,6 +92,16 @@ assert.match(buildingsIndex, /await refetch\(\)/, 'Building deletion must refres
 assert.match(propertyGroupStorage, /deleteEmptyPropertyGroup/, 'Property-group storage must expose guarded empty-building deletion');
 assert.match(propertyGroupStorage, /property_group_assignments[\s\S]*cleaner_group_assignments/s, 'Guarded deletion must recheck both property and cleaner relationships in Supabase');
 assert.match(propertyGroupStorage, /No se puede eliminar[\s\S]*propiedades o equipo/s, 'Guarded deletion must reject non-empty buildings with an operational error');
+assert.match(propertyGroupStorage, /ilike\('internal_code'[\s\S]*Ya existe otro edificio con ese código interno/s, 'Building updates must reject duplicate internal codes');
+assert.match(buildingDataEditor, /Datos del edificio/, 'Building profile must expose its editable master data');
+assert.match(buildingDataEditor, /Nombre[\s\S]*Código interno[\s\S]*Check-out[\s\S]*Check-in/s, 'Building editor must expose identity and whole-building schedule fields');
+assert.match(buildingDataEditor, /propertyGroupStorage\.updatePropertyGroup/, 'Building editor must persist through canonical property-group storage');
+assert.match(buildingDataEditor, /checkOutTime[\s\S]*checkInTime/s, 'Building editor must save checkout and checkin times');
+assert.match(buildingDataEditor, /invalidateQueries\(\{ queryKey: \['cleaning-planning-building-data'\]/, 'Saving building data must immediately refresh the buildings index cache');
+assert.match(buildingDataEditor, /El check-in debe ser posterior al check-out/, 'Building editor must reject an invalid operational window');
+assert.match(buildingDataEditor, /Eliminar edificio/, 'Building profile must always expose the delete action');
+assert.match(buildingDataEditor, /propertyGroupStorage\.deleteEmptyPropertyGroup/, 'Building deletion must keep the guarded storage check');
+assert.match(buildingDataEditor, /propiedades[\s\S]*equipo[\s\S]*No aptas/s, 'Delete area must explain the relationships that block deletion');
 assert.match(header, /Estado operativo/, 'Header must answer operational status');
 assert.match(header, /Planificar este edificio/, 'Header must expose planning CTA');
 assert.match(header, /Todos los edificios/, 'Header must link back to the operational buildings index, not legacy settings');

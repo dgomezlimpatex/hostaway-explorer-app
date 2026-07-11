@@ -17,6 +17,7 @@ import { BuildingDecisionList } from './BuildingDecisionList';
 import { BuildingTeamEditor } from './BuildingTeamEditor';
 import { BuildingTeamPanel } from './BuildingTeamPanel';
 import { BuildingPropertiesPanel } from './BuildingPropertiesPanel';
+import { BuildingDataEditor } from './BuildingDataEditor';
 
 interface BuildingCrmPageProps {
   propertyGroupId: string;
@@ -138,6 +139,7 @@ export const BuildingCrmPage = ({
         {profile && (
           <>
             <BuildingCrmHeader profile={profile} />
+            <BuildingDataEditor profile={profile} onSaved={handleTeamSaved} />
             <BuildingCrmKpis summary={profile.summary} rangeDays={rangeDays} />
             <BuildingSetupChecklist
               profile={profile}

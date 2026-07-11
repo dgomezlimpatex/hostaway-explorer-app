@@ -70,6 +70,18 @@ class PropertyGroupStorageService {
   }
 
   async updatePropertyGroup(id: string, updates: Partial<PropertyGroup>): Promise<PropertyGroup> {
+    if (updates.internalCode !== undefined && updates.internalCode.trim()) {
+      const { data: duplicateCode, error: duplicateCodeError } = await supabase
+        .from('property_groups')
+        .select('id')
+        .ilike('internal_code', updates.internalCode.trim())
+        .neq('id', id)
+        .maybeSingle();
+
+      if (duplicateCodeError) throw duplicateCodeError;
+      if (duplicateCode) throw new Error('Ya existe otro edificio con ese código interno.');
+    }
+
     const dbUpdates: Record<string, unknown> = {};
     if (updates.name !== undefined) dbUpdates.name = updates.name;
     if (updates.internalCode !== undefined) dbUpdates.internal_code = updates.internalCode;
