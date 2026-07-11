@@ -51,8 +51,21 @@ const enumerateDates = (startDate: string, endDate: string): string[] => {
 
 const overlapsDate = (date: string, startDate: string, endDate: string): boolean => startDate <= date && endDate >= date;
 
+const isExtraordinaryTask = (task: Task): boolean => task.type.toLowerCase().includes('extraordinario');
+
+const extraordinaryWindowsForCleanerDate = (tasks: Task[], cleanerId: string, date: string) => tasks
+  .filter((task) => task.date === date && isPlannableTaskStatus(task.status) && isExtraordinaryTask(task))
+  .filter((task) => getTaskAssignmentCleanerIds(task).includes(cleanerId))
+  .filter((task) => getWindowDurationMinutes(task.startTime, task.endTime) > 0)
+  .map((task) => ({
+    startTime: task.startTime,
+    endTime: task.endTime,
+    reason: `Servicio extraordinario: ${task.property || task.type}`,
+  }));
+
 const assignedMinutesForCleanerDate = (tasks: Task[], cleanerId: string, date: string): number => tasks
   .filter((task) => task.date === date && isPlannableTaskStatus(task.status))
+  .filter((task) => !isExtraordinaryTask(task))
   .filter((task) => getTaskAssignmentCleanerIds(task).includes(cleanerId))
   .reduce((total, task) => total + getTaskWorkerPlannedDurationMinutes(task), 0);
 
@@ -80,6 +93,7 @@ export const buildEffectiveAvailabilityForDate = ({
   const cleanerFixedDayOff = fixedDaysOff.find((row) => row.cleanerId === cleaner.id && row.isActive && row.dayOfWeek === dayOfWeek);
   const dayAbsences = absences.filter((absence) => absence.cleanerId === cleaner.id && overlapsDate(date, absence.startDate, absence.endDate));
   const dayMaintenance = maintenanceCleanings.filter((maintenance) => maintenance.cleanerId === cleaner.id && maintenance.isActive && maintenance.daysOfWeek.includes(dayOfWeek));
+  const extraordinaryWindows = extraordinaryWindowsForCleanerDate(assignedTasks, cleaner.id, date);
   const assignedMinutes = assignedMinutesForCleanerDate(assignedTasks, cleaner.id, date);
 
   if (cleanerFixedDayOff) {
@@ -131,6 +145,7 @@ export const buildEffectiveAvailabilityForDate = ({
       endTime: maintenance.endTime,
       reason: maintenance.locationName ? `Mantenimiento: ${maintenance.locationName}` : 'Mantenimiento fijo',
     })),
+    ...extraordinaryWindows,
   ];
 
   const blockedMinutes = blockedWindows.reduce((total, window) => total + getWindowDurationMinutes(window.startTime, window.endTime), 0);

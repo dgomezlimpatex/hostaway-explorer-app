@@ -165,6 +165,31 @@ export async function run(assert: Assert) {
     );
     assert.equal(rangeAvailability[0].assignedMinutes, 90, 'availability capacity must ignore cancelled/invalid assigned tasks');
     assert.equal(rangeAvailability[0].remainingMinutes, 390, 'remaining capacity should subtract only active planifiable work');
+
+    const extraordinaryAvailability = buildEffectiveAvailabilityRange({
+      cleaners: [cleaner],
+      startDate: '2026-07-01',
+      endDate: '2026-07-01',
+      weeklyAvailability: [
+        { cleaner_id: cleaner.id, day_of_week: 3, is_available: true, start_time: '09:00', end_time: '17:00' },
+      ],
+      assignedTasks: [{
+        ...task('extraordinary-service', 'pending', cleaner.id),
+        type: 'trabajo-extraordinario',
+        startTime: '10:00',
+        endTime: '14:00',
+        duration: 240,
+        propertyDurationMinutes: 240,
+      }],
+    });
+    assert.deepEqual(
+      extraordinaryAvailability[0].blockedWindows,
+      [{ startTime: '10:00', endTime: '14:00', reason: 'Servicio extraordinario: Propiedad extraordinary-service' }],
+      'assigned extraordinary services must block their exact time window in ordinary planning',
+    );
+    assert.equal(extraordinaryAvailability[0].availableMinutes, 240, 'extraordinary service window must reduce available daily minutes');
+    assert.equal(extraordinaryAvailability[0].assignedMinutes, 0, 'extraordinary service must not be debited twice as assigned ordinary work');
+    assert.equal(extraordinaryAvailability[0].remainingMinutes, 240, 'remaining capacity must reflect the extraordinary blocked window exactly once');
   } finally {
     if (previousTimezone === undefined) delete process.env.TZ;
     else process.env.TZ = previousTimezone;
