@@ -182,6 +182,9 @@ assert.match(proposalCalendar, /DndContext/, 'Proposal calendar must own the loc
 assert.match(proposalCalendar, /KeyboardSensor/, 'Proposal DnD must remain keyboard accessible');
 assert.match(proposalCalendar, /TouchSensor[\s\S]*delay: 300[\s\S]*tolerance: 8/, 'Touch drag must use a deliberate long-press activation with movement tolerance');
 assert.match(proposalCalendar, /data-dnd-handle/, 'Proposed and uncovered cards must expose a dedicated drag handle');
+assert.match(proposalCalendar, /data-dnd-handle[\s\S]*touch-none/, 'The dedicated drag handle must reserve the gesture instead of scrolling the page');
+assert.doesNotMatch(proposalCalendar, /data-dnd-handle[\s\S]*touch-pan-y/, 'The drag handle must not authorize vertical browser scrolling');
+assert.match(proposalCalendar, /<DndContext[\s\S]*autoScroll=\{false\}/, 'Starting a calendar drag must not auto-scroll or shift the current viewport');
 assert.match(proposalCalendar, /data-dnd-mobile-destinations[\s\S]*max-\[400px\]:block/, 'Narrow mobile drag must reveal explicit destination drop zones');
 assert.match(proposalCalendar, /data-dnd-unassigned-tray-item/, 'Uncovered tasks must remain in their own draggable tray');
 assert.match(proposalCalendar, /availableCleanerIds[\s\S]*availability\.date === selectedDate[\s\S]*availability\.isAvailable[\s\S]*availability\.remainingMinutes > 0/, 'Sandbox columns must identify workers with real remaining availability on the selected date');

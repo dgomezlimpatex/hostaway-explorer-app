@@ -65,7 +65,7 @@ const DraggableHandle = ({ id, payload, disabled }: { id: string; payload: DragP
       type="button"
       aria-label="Arrastrar para cambiar responsable"
       data-dnd-handle
-      className={`min-h-[36px] min-w-[36px] touch-pan-y rounded-lg p-1 text-[#310984] hover:bg-[#efe9fb] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#310984] ${isDragging ? 'opacity-40' : ''}`}
+      className={`min-h-[36px] min-w-[36px] touch-none rounded-lg p-1 text-[#310984] hover:bg-[#efe9fb] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#310984] ${isDragging ? 'opacity-40' : ''}`}
       onClick={(event) => event.stopPropagation()}
       {...listeners}
       {...attributes}
@@ -644,7 +644,7 @@ export const PlanningProposalCalendar = ({
   const daySoftWarnings = warnings.filter((warning) => warning.severity === 'warning');
 
   return (
-    <DndContext sensors={sensors} onDragStart={handleDragStart} onDragMove={handleDragMove} onDragCancel={() => { setActiveDrag(null); setDragHover(null); }} onDragEnd={handleDragEnd}>
+    <DndContext sensors={sensors} autoScroll={false} onDragStart={handleDragStart} onDragMove={handleDragMove} onDragCancel={() => { setActiveDrag(null); setDragHover(null); }} onDragEnd={handleDragEnd}>
     <Card className="border-[#310984]/12 bg-[#fbfaff] shadow-sm">
       <CardHeader className="space-y-4 border-b border-[#310984]/10 pb-4">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
