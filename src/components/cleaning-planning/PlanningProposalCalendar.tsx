@@ -9,6 +9,7 @@ import {
   useSensor,
   useSensors,
   type DragEndEvent,
+  type DragMoveEvent,
   type DragStartEvent,
 } from '@dnd-kit/core';
 import { AlertTriangle, CalendarDays, CheckCircle2, Clock, GripVertical, RotateCcw, ShieldAlert, Users } from 'lucide-react';
@@ -85,7 +86,8 @@ const CleanerDropZone = ({ cleanerId, feedback, className, dropId, children }: {
   const tone = feedback ? (feedback.valid
     ? 'ring-2 ring-inset ring-emerald-500 bg-emerald-50/50'
     : 'ring-2 ring-inset ring-amber-400 bg-amber-50/50') : '';
-  return <div ref={setNodeRef} data-dnd-drop-worker={cleanerId} className={`${className || ''} ${tone} ${isOver ? 'ring-4' : ''}`}>{children}</div>;
+  const mobileTone = dropId?.startsWith('mobile-cleaner:') && isOver ? tone : '';
+  return <div ref={setNodeRef} data-dnd-drop-worker={cleanerId} className={`${className || ''} ${mobileTone}`}>{children}</div>;
 };
 
 interface CalendarItem {
@@ -326,6 +328,7 @@ export const PlanningProposalCalendar = ({
   const [placementCleanerId, setPlacementCleanerId] = useState('');
   const [placementStartTime, setPlacementStartTime] = useState('09:00');
   const [activeDrag, setActiveDrag] = useState<DragPayload | null>(null);
+  const [dragHover, setDragHover] = useState<{ cleanerId: string; startMinute: number } | null>(null);
   const [moveNotice, setMoveNotice] = useState<{ message: string; previous?: AssignmentProposal[]; error?: boolean } | null>(null);
   const sensors = useSensors(
     useSensor(MouseSensor, { activationConstraint: { distance: 6 } }),
@@ -459,8 +462,25 @@ export const PlanningProposalCalendar = ({
     setMoveNotice(null);
     setActiveDrag(active.data.current as DragPayload);
   };
+  const handleDragMove = ({ active, over, activatorEvent, delta }: DragMoveEvent) => {
+    if (!over || !String(over.id).startsWith('cleaner:')) {
+      setDragHover(null);
+      return;
+    }
+    const payload = active.data.current as DragPayload;
+    const task = taskById.get(payload.taskId);
+    if (!task) return;
+    const activatorClientY = getActivatorClientY(activatorEvent);
+    const finalPointerY = activatorClientY === undefined ? undefined : activatorClientY + delta.y;
+    const fallbackMinute = getTaskStart(task, payload.proposalIndex === undefined ? undefined : draftProposals[payload.proposalIndex]);
+    setDragHover({
+      cleanerId: String(over.id).slice('cleaner:'.length),
+      startMinute: getDropStartMinute(finalPointerY, over.rect.top, bounds.start, bounds.end, fallbackMinute),
+    });
+  };
   const handleDragEnd = ({ active, over, activatorEvent, delta }: DragEndEvent) => {
     setActiveDrag(null);
+    setDragHover(null);
     if (!over) return;
     const destinationId = String(over.id);
     const cleanerPrefix = destinationId.startsWith('cleaner:') ? 'cleaner:' : destinationId.startsWith('mobile-cleaner:') ? 'mobile-cleaner:' : '';
@@ -624,7 +644,7 @@ export const PlanningProposalCalendar = ({
   const daySoftWarnings = warnings.filter((warning) => warning.severity === 'warning');
 
   return (
-    <DndContext sensors={sensors} onDragStart={handleDragStart} onDragCancel={() => setActiveDrag(null)} onDragEnd={handleDragEnd}>
+    <DndContext sensors={sensors} onDragStart={handleDragStart} onDragMove={handleDragMove} onDragCancel={() => { setActiveDrag(null); setDragHover(null); }} onDragEnd={handleDragEnd}>
     <Card className="border-[#310984]/12 bg-[#fbfaff] shadow-sm">
       <CardHeader className="space-y-4 border-b border-[#310984]/10 pb-4">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
@@ -795,6 +815,17 @@ export const PlanningProposalCalendar = ({
                       backgroundSize: `100% ${QUARTER_HOUR_GRID_SIZE}px, 100% ${60 * PIXELS_PER_MINUTE}px`,
                     }}
                   >
+                    {dragHover?.cleanerId === cleaner.id && (
+                      <div
+                        data-dnd-quarter-hover
+                        aria-hidden="true"
+                        className={`pointer-events-none absolute left-0 right-0 z-[5] border-y-2 ${dragFeedback.get(cleaner.id)?.valid ? 'border-emerald-500 bg-emerald-300/45' : 'border-amber-500 bg-amber-300/45'}`}
+                        style={{
+                          top: (dragHover.startMinute - bounds.start) * PIXELS_PER_MINUTE,
+                          height: QUARTER_HOUR_GRID_SIZE,
+                        }}
+                      />
+                    )}
                     {cleanerItems.map((item) => {
                       const top = Math.max(0, (item.startMinute - bounds.start) * PIXELS_PER_MINUTE);
                       const height = Math.max(MIN_CARD_HEIGHT, (item.endMinute - item.startMinute) * PIXELS_PER_MINUTE - 4);

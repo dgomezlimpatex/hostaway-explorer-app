@@ -200,6 +200,11 @@ assert.match(proposalCalendar, /SNAP_MINUTES = 15/, 'Timeline drops must snap di
 assert.match(proposalCalendar, /QUARTER_HOUR_GRID_SIZE = SNAP_MINUTES \* PIXELS_PER_MINUTE/, 'Visible quarter-hour grid must share the exact scale used by drag snapping');
 assert.match(proposalCalendar, /data-quarter-hour-grid/, 'Each worker timeline must expose a visible 15-minute placement grid');
 assert.match(proposalCalendar, /backgroundSize: `100% \$\{QUARTER_HOUR_GRID_SIZE\}px, 100% \$\{60 \* PIXELS_PER_MINUTE\}px`/, 'Worker columns must draw quarter-hour subdivisions plus stronger hourly lines');
+assert.match(proposalCalendar, /type DragMoveEvent/, 'Timeline DnD must track pointer movement while a task is selected');
+assert.match(proposalCalendar, /onDragMove=\{handleDragMove\}/, 'Timeline DnD must update its hovered quarter-hour continuously');
+assert.match(proposalCalendar, /data-dnd-quarter-hover/, 'Timeline DnD must render one explicit quarter-hour hover indicator');
+assert.match(proposalCalendar, /height: QUARTER_HOUR_GRID_SIZE/, 'The hover indicator must cover exactly one 15-minute grid block');
+assert.doesNotMatch(proposalCalendar, /\$\{isOver \? 'ring-4' : ''\}/, 'Desktop timeline DnD must not highlight the entire worker column');
 assert.match(proposalCalendar, /handleDragEnd[\s\S]*applyPlacement\([\s\S]*fromMinutes\(dropStartMinute\)/, 'Dropping on a worker timeline must apply the responsible person and dropped time immediately');
 assert.doesNotMatch(proposalCalendar, /handleDragEnd[\s\S]*setReassignment\(\{ taskId: payload\.taskId, proposalIndex: payload\.proposalIndex \}\)/, 'Timeline drag must not open the placement dialog after drop');
 assert.match(proposalCalendar, /Hora de inicio/, 'Manual placement must allow choosing the start time');
