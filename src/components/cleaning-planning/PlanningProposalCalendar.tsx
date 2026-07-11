@@ -84,7 +84,7 @@ const CleanerDropZone = ({ cleanerId, feedback, className, dropId, children }: {
   const { setNodeRef, isOver } = useDroppable({ id: dropId || `cleaner:${cleanerId}` });
   const tone = feedback ? (feedback.valid
     ? 'ring-2 ring-inset ring-emerald-500 bg-emerald-50/50'
-    : 'ring-2 ring-inset ring-red-400 bg-red-50/50') : '';
+    : 'ring-2 ring-inset ring-amber-400 bg-amber-50/50') : '';
   return <div ref={setNodeRef} data-dnd-drop-worker={cleanerId} className={`${className || ''} ${tone} ${isOver ? 'ring-4' : ''}`}>{children}</div>;
 };
 
@@ -241,6 +241,17 @@ const buildDraftWarnings = ({
         cleanerId: proposal.cleanerId,
       });
     }
+
+    proposal.manualOverrideWarnings?.forEach((message, warningIndex) => {
+      warnings.push({
+        id: warningKey('manual-override', proposal.taskId, proposal.cleanerId, index, warningIndex),
+        severity: 'warning',
+        title: 'Excepción manual',
+        message,
+        taskId: proposal.taskId,
+        cleanerId: proposal.cleanerId,
+      });
+    });
   });
 
   const itemsByCleanerDate = new Map<string, CalendarItem[]>();
@@ -258,7 +269,7 @@ const buildDraftWarnings = ({
       if (!next || item.endMinute <= next.startMinute) return;
       warnings.push({
         id: warningKey('overlap', item.cleanerId, item.taskId, next.taskId),
-        severity: 'blocking',
+        severity: 'warning',
         title: 'Solape de horario',
         message: `${item.cleanerName} tiene solape entre ${item.task.property} (${fromMinutes(item.startMinute)}-${fromMinutes(item.endMinute)}) y ${next.task.property} (${fromMinutes(next.startMinute)}-${fromMinutes(next.endMinute)}).`,
         taskId: item.taskId,
@@ -286,6 +297,8 @@ export const PlanningProposalCalendar = ({
   const dates = useMemo(() => uniqueDates(calendarTasks, draftProposals), [calendarTasks, draftProposals]);
   const [selectedDate, setSelectedDate] = useState(() => dates[0] || '');
   const [reassignment, setReassignment] = useState<{ taskId: string; proposalIndex?: number } | null>(null);
+  const [placementCleanerId, setPlacementCleanerId] = useState('');
+  const [placementStartTime, setPlacementStartTime] = useState('09:00');
   const [activeDrag, setActiveDrag] = useState<DragPayload | null>(null);
   const [moveNotice, setMoveNotice] = useState<{ message: string; previous?: AssignmentProposal[]; error?: boolean } | null>(null);
   const sensors = useSensors(
@@ -410,47 +423,6 @@ export const PlanningProposalCalendar = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeCleanerAssignments, activeDrag, calendarTasks, cleaners, draftProposals, effectiveAvailability, isStale, taskById]);
 
-  const applyValidatedMove = (payload: DragPayload, cleanerId: string) => {
-    if (isStale) {
-      setMoveNotice({ message: 'El plan cambió. Regenera antes de mover limpiezas.', error: true });
-      return;
-    }
-    if (payload.sourceCleanerId === cleanerId) return;
-    const task = taskById.get(payload.taskId);
-    const cleaner = cleanerById.get(cleanerId);
-    if (!task || !cleaner) return;
-    const validation = validateMove(payload, cleanerId);
-    if (!validation.valid) {
-      setMoveNotice({ message: validation.conflict?.message || 'Ese destino no es válido.', error: true });
-      return;
-    }
-    const previous = draftProposals.map((proposal) => ({ ...proposal }));
-    const validatedFields = {
-      cleanerId: cleaner.id,
-      cleanerName: cleaner.name,
-      assignmentRole: validation.assignmentRole,
-      proposedStartTime: validation.proposedStartTime,
-      proposedEndTime: validation.proposedEndTime,
-      durationMinutes: validation.durationMinutes ?? task.durationMinutes,
-      capacityAfterAssignment: validation.capacityAfterAssignment || { assignedMinutes: 0, remainingMinutes: 0 },
-    };
-    const next = payload.proposalIndex !== undefined
-      ? draftProposals.map((proposal, index) => index === payload.proposalIndex ? { ...proposal, ...validatedFields } : proposal)
-      : [...draftProposals, {
-        taskId: task.id,
-        ...validatedFields,
-        propertyGroupId: task.detectedBuilding?.propertyGroupId,
-        propertyGroupName: task.detectedBuilding?.propertyGroupName,
-        requiredCleaners: Math.max(1, task.requiredCleaners || 1),
-        assignmentIndex: draftProposals.filter((proposal) => proposal.taskId === task.id).length,
-        confidence: 0,
-        reasons: ['Asignación manual validada durante la revisión'],
-        warnings: [],
-      }];
-    onDraftProposalsChange(next);
-    setMoveNotice({ message: `${task.property} movida a ${cleaner.name}.`, previous });
-  };
-
   const handleDragStart = ({ active }: DragStartEvent) => {
     if (isStale) return;
     setMoveNotice(null);
@@ -462,7 +434,12 @@ export const PlanningProposalCalendar = ({
     const destinationId = String(over.id);
     const cleanerPrefix = destinationId.startsWith('cleaner:') ? 'cleaner:' : destinationId.startsWith('mobile-cleaner:') ? 'mobile-cleaner:' : '';
     if (!cleanerPrefix) return;
-    applyValidatedMove(active.data.current as DragPayload, destinationId.slice(cleanerPrefix.length));
+    const payload = active.data.current as DragPayload;
+    const task = taskById.get(payload.taskId);
+    if (!task) return;
+    setPlacementCleanerId(destinationId.slice(cleanerPrefix.length));
+    setPlacementStartTime(fromMinutes(getTaskStart(task, payload.proposalIndex === undefined ? undefined : draftProposals[payload.proposalIndex])));
+    setReassignment({ taskId: payload.taskId, proposalIndex: payload.proposalIndex });
   };
 
   const validCleanerCount = activeDrag ? Array.from(dragFeedback.values()).filter((result) => result.valid).length : 0;
@@ -503,6 +480,11 @@ export const PlanningProposalCalendar = ({
 
   const openReassignment = (taskId: string, proposalIndex?: number) => {
     if (isStale) return;
+    const task = taskById.get(taskId);
+    if (!task) return;
+    const proposal = proposalIndex === undefined ? undefined : draftProposals[proposalIndex];
+    setPlacementCleanerId(proposal?.cleanerId || '');
+    setPlacementStartTime(fromMinutes(getTaskStart(task, proposal)));
     setReassignment({ taskId, proposalIndex });
   };
 
@@ -517,7 +499,6 @@ export const PlanningProposalCalendar = ({
     const roleOrder = { primary: 0, secondary: 1, backup: 2 } as const;
     return cleaners
       .map((cleaner) => ({ cleaner, validation: validateMove(payload, cleaner.id) }))
-      .filter((candidate) => candidate.validation.valid)
       .sort((left, right) => {
         const leftRole = left.validation.assignmentRole;
         const rightRole = right.validation.assignmentRole;
@@ -529,15 +510,59 @@ export const PlanningProposalCalendar = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeCleanerAssignments, calendarTasks, cleaners, draftProposals, effectiveAvailability, isStale, reassignment, reassignmentTask]);
 
-  const chooseReassignmentCandidate = (cleanerId: string) => {
-    if (!reassignment || !reassignmentTask) return;
-    const candidate = reassignmentCandidates.find((item) => item.cleaner.id === cleanerId);
-    if (!candidate) return;
-    applyValidatedMove({
+  const confirmPlacement = () => {
+    if (isStale) {
+      setMoveNotice({ message: 'El plan cambió. Regenera antes de mover limpiezas.', error: true });
+      return;
+    }
+    if (!reassignment || !reassignmentTask || !placementCleanerId || !/^\d{2}:\d{2}$/.test(placementStartTime)) return;
+    const cleaner = cleanerById.get(placementCleanerId);
+    if (!cleaner?.isActive) return;
+    const buildingId = reassignmentTask.detectedBuilding?.status === 'detected' ? reassignmentTask.detectedBuilding.propertyGroupId : undefined;
+    const explicitlyExcluded = Boolean(buildingId && excludedCleanerAssignments.some((assignment) => (
+      assignment.propertyGroupId === buildingId && assignment.cleanerId === placementCleanerId && assignment.roleType === 'excluded'
+    )));
+    if (explicitlyExcluded) {
+      setMoveNotice({ message: `${cleaner.name} está marcada como No apta para este edificio.`, error: true });
+      return;
+    }
+    const payload: DragPayload = {
       taskId: reassignment.taskId,
       proposalIndex: reassignment.proposalIndex,
       sourceCleanerId: reassignment.proposalIndex === undefined ? undefined : draftProposals[reassignment.proposalIndex]?.cleanerId,
-    }, cleanerId);
+    };
+    const validation = validateMove(payload, placementCleanerId);
+    const durationMinutes = Math.max(30, validation.durationMinutes ?? reassignmentTask.durationMinutes ?? 30);
+    const previous = draftProposals.map((proposal) => ({ ...proposal }));
+    const manualOverrideWarnings = validation.valid || !validation.conflict ? [] : [validation.conflict.message];
+    const activeAssignment = activeCleanerAssignments.find((assignment) => (
+      assignment.propertyGroupId === buildingId && assignment.cleanerId === placementCleanerId && assignment.isActive && assignment.roleType !== 'excluded'
+    ));
+    const fields = {
+      cleanerId: cleaner.id,
+      cleanerName: cleaner.name,
+      assignmentRole: (validation.assignmentRole || activeAssignment?.roleType) as AssignmentProposal['assignmentRole'],
+      proposedStartTime: placementStartTime,
+      proposedEndTime: fromMinutes(toMinutes(placementStartTime) + durationMinutes),
+      durationMinutes,
+      manualOverrideWarnings,
+      warnings: manualOverrideWarnings,
+      capacityAfterAssignment: validation.capacityAfterAssignment || { assignedMinutes: 0, remainingMinutes: 0 },
+    };
+    const next = reassignment.proposalIndex !== undefined
+      ? draftProposals.map((proposal, index) => index === reassignment.proposalIndex ? { ...proposal, ...fields } : proposal)
+      : [...draftProposals, {
+        taskId: reassignmentTask.id,
+        ...fields,
+        propertyGroupId: buildingId,
+        propertyGroupName: reassignmentTask.detectedBuilding?.status === 'detected' ? reassignmentTask.detectedBuilding.propertyGroupName : undefined,
+        requiredCleaners: Math.max(1, reassignmentTask.requiredCleaners || 1),
+        assignmentIndex: draftProposals.filter((proposal) => proposal.taskId === reassignmentTask.id).length,
+        confidence: 0,
+        reasons: ['Asignación manual durante la revisión'],
+      }];
+    onDraftProposalsChange(next);
+    setMoveNotice({ message: `${reassignmentTask.property} colocada con ${cleaner.name} a las ${placementStartTime}.${manualOverrideWarnings.length ? ' Se ha guardado como excepción.' : ''}`, previous });
     setReassignment(null);
   };
 
@@ -614,8 +639,8 @@ export const PlanningProposalCalendar = ({
               {cleaners.map((cleaner) => {
                 const feedback = dragFeedback.get(cleaner.id);
                 return (
-                  <CleanerDropZone key={`mobile-drop:${cleaner.id}`} cleanerId={cleaner.id} dropId={`mobile-cleaner:${cleaner.id}`} feedback={feedback} className={`min-h-[48px] rounded-xl border p-3 text-sm font-semibold ${feedback?.valid ? 'border-emerald-300 text-emerald-800' : 'border-red-200 text-red-700 opacity-70'}`}>
-                    {cleaner.name} · {feedback?.valid ? 'Destino válido' : feedback?.conflict?.message || 'No disponible'}
+                  <CleanerDropZone key={`mobile-drop:${cleaner.id}`} cleanerId={cleaner.id} dropId={`mobile-cleaner:${cleaner.id}`} feedback={feedback} className={`min-h-[48px] rounded-xl border p-3 text-sm font-semibold ${feedback?.valid ? 'border-emerald-300 text-emerald-800' : 'border-amber-300 text-amber-800'}`}>
+                    {cleaner.name} · {feedback?.valid ? 'Destino recomendado' : 'Excepción permitida'}
                   </CleanerDropZone>
                 );
               })}
@@ -795,12 +820,18 @@ export const PlanningProposalCalendar = ({
       }}>
         <DialogContent className="max-h-[85dvh] w-[calc(100vw-2rem)] max-w-md overflow-hidden p-0">
           <DialogHeader className="border-b border-[#310984]/10 p-5 pb-4 text-left">
-            <DialogTitle>Elegir responsable</DialogTitle>
+            <DialogTitle>Colocar tarea</DialogTitle>
             <DialogDescription>
               {reassignmentTask ? `${reassignmentTask.property} · ${reassignmentTask.displayStartTime}–${reassignmentTask.displayEndTime}` : 'Selecciona una responsable.'}
             </DialogDescription>
           </DialogHeader>
-          <div className="max-h-[60dvh] space-y-2 overflow-y-auto p-4">
+          <div className="max-h-[60dvh] space-y-4 overflow-y-auto p-4">
+            <div>
+              <label htmlFor="placement-start-time" className="mb-1 block text-sm font-semibold text-[#171321]">Hora de inicio</label>
+              <input id="placement-start-time" type="time" value={placementStartTime} onChange={(event) => setPlacementStartTime(event.target.value)} className="min-h-[44px] w-full rounded-xl border border-[#310984]/20 bg-white px-3 text-sm" />
+              <p className="mt-1 text-xs text-[#6b627a]">El final se calcula con la duración prevista de la limpieza.</p>
+            </div>
+            <p className="text-sm font-semibold text-[#171321]">Responsable</p>
             {reassignmentCandidates.length === 0 ? (
               <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">
                 No hay otras responsables elegibles para esta limpieza.
@@ -817,14 +848,26 @@ export const PlanningProposalCalendar = ({
                 <button
                   key={cleaner.id}
                   type="button"
-                  className="flex min-h-[52px] w-full items-center justify-between gap-3 rounded-2xl border border-[#310984]/10 bg-white px-4 py-3 text-left transition hover:border-[#310984]/30 hover:bg-[#faf8ff] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#310984]"
-                  onClick={() => chooseReassignmentCandidate(cleaner.id)}
+                  disabled={!cleaner.isActive}
+                  className={`flex min-h-[52px] w-full items-center justify-between gap-3 rounded-2xl border px-4 py-3 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#310984] ${placementCleanerId === cleaner.id ? 'border-[#310984] bg-[#f4efff]' : 'border-[#310984]/10 bg-white hover:border-[#310984]/30 hover:bg-[#faf8ff]'}`}
+                  onClick={() => setPlacementCleanerId(cleaner.id)}
                 >
                   <span className="font-semibold text-[#171321]">{cleaner.name}</span>
-                  <span className={`text-xs font-semibold ${roleTone}`}>● {roleLabel}</span>
+                  <span className={`text-xs font-semibold ${validation.valid ? roleTone : 'text-amber-700'}`}>● {validation.valid ? roleLabel : 'Excepción permitida'}</span>
                 </button>
               );
             })}
+            {placementCleanerId && (() => {
+              const selected = reassignmentCandidates.find((item) => item.cleaner.id === placementCleanerId);
+              return selected && !selected.validation.valid ? (
+                <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+                  <strong>Advertencia:</strong> {selected.validation.conflict?.message} Puedes aplicarlo como una excepción manual.
+                </div>
+              ) : null;
+            })()}
+            <Button type="button" className="min-h-[44px] w-full bg-[#310984] text-white hover:bg-[#23066a]" disabled={!placementCleanerId || !placementStartTime} onClick={confirmPlacement}>
+              {reassignmentCandidates.find((item) => item.cleaner.id === placementCleanerId)?.validation.valid ? 'Aplicar cambio' : 'Aplicar como excepción'}
+            </Button>
           </div>
         </DialogContent>
       </Dialog>

@@ -104,6 +104,7 @@ export interface AssignmentProposal {
   confidence: number;
   reasons: string[];
   warnings: string[];
+  manualOverrideWarnings?: string[];
   capacityAfterAssignment: {
     assignedMinutes: number;
     remainingMinutes: number;
