@@ -105,6 +105,20 @@ interface CalendarItem {
 
 const PIXELS_PER_MINUTE = 1.15;
 const MIN_CARD_HEIGHT = 52;
+const TIMELINE_HEADER_HEIGHT = 48;
+const SNAP_MINUTES = 15;
+
+const getDropStartMinute = (
+  translatedTop: number | undefined,
+  dropZoneTop: number,
+  timelineStartMinute: number,
+  fallbackMinute: number,
+): number => {
+  if (translatedTop === undefined) return fallbackMinute;
+  const timelineOffset = Math.max(0, translatedTop - dropZoneTop - TIMELINE_HEADER_HEIGHT);
+  const rawMinute = timelineStartMinute + timelineOffset / PIXELS_PER_MINUTE;
+  return Math.max(0, Math.min(23 * 60 + 45, Math.round(rawMinute / SNAP_MINUTES) * SNAP_MINUTES));
+};
 
 const toMinutes = (value?: string): number => {
   const match = value?.match(/^(\d{1,2}):(\d{2})/);
@@ -442,9 +456,15 @@ export const PlanningProposalCalendar = ({
     const payload = active.data.current as DragPayload;
     const task = taskById.get(payload.taskId);
     if (!task) return;
-    setPlacementCleanerId(destinationId.slice(cleanerPrefix.length));
-    setPlacementStartTime(fromMinutes(getTaskStart(task, payload.proposalIndex === undefined ? undefined : draftProposals[payload.proposalIndex])));
-    setReassignment({ taskId: payload.taskId, proposalIndex: payload.proposalIndex });
+    const fallbackMinute = getTaskStart(task, payload.proposalIndex === undefined ? undefined : draftProposals[payload.proposalIndex]);
+    const dropStartMinute = cleanerPrefix === 'mobile-cleaner:'
+      ? fallbackMinute
+      : getDropStartMinute(active.rect.current.translated?.top, over.rect.top, bounds.start, fallbackMinute);
+    applyPlacement(
+      { taskId: payload.taskId, proposalIndex: payload.proposalIndex },
+      destinationId.slice(cleanerPrefix.length),
+      fromMinutes(dropStartMinute),
+    );
   };
 
   const validCleanerCount = activeDrag ? Array.from(dragFeedback.values()).filter((result) => result.valid).length : 0;
@@ -515,61 +535,68 @@ export const PlanningProposalCalendar = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeCleanerAssignments, calendarTasks, cleaners, draftProposals, effectiveAvailability, isStale, reassignment, reassignmentTask]);
 
-  const confirmPlacement = () => {
+  const applyPlacement = (
+    directPlacement = reassignment,
+    directCleanerId = placementCleanerId,
+    directStartTime = placementStartTime,
+  ) => {
     if (isStale) {
       setMoveNotice({ message: 'El plan cambió. Regenera antes de mover limpiezas.', error: true });
       return;
     }
-    if (!reassignment || !reassignmentTask || !placementCleanerId || !/^\d{2}:\d{2}$/.test(placementStartTime)) return;
-    const cleaner = cleanerById.get(placementCleanerId);
+    const placementTask = directPlacement ? taskById.get(directPlacement.taskId) : undefined;
+    if (!directPlacement || !placementTask || !directCleanerId || !/^\d{2}:\d{2}$/.test(directStartTime)) return;
+    const cleaner = cleanerById.get(directCleanerId);
     if (!cleaner?.isActive) return;
-    const buildingId = reassignmentTask.detectedBuilding?.status === 'detected' ? reassignmentTask.detectedBuilding.propertyGroupId : undefined;
+    const buildingId = placementTask.detectedBuilding?.status === 'detected' ? placementTask.detectedBuilding.propertyGroupId : undefined;
     const explicitlyExcluded = Boolean(buildingId && excludedCleanerAssignments.some((assignment) => (
-      assignment.propertyGroupId === buildingId && assignment.cleanerId === placementCleanerId && assignment.roleType === 'excluded'
+      assignment.propertyGroupId === buildingId && assignment.cleanerId === directCleanerId && assignment.roleType === 'excluded'
     )));
     if (explicitlyExcluded) {
       setMoveNotice({ message: `${cleaner.name} está marcada como No apta para este edificio.`, error: true });
       return;
     }
     const payload: DragPayload = {
-      taskId: reassignment.taskId,
-      proposalIndex: reassignment.proposalIndex,
-      sourceCleanerId: reassignment.proposalIndex === undefined ? undefined : draftProposals[reassignment.proposalIndex]?.cleanerId,
+      taskId: directPlacement.taskId,
+      proposalIndex: directPlacement.proposalIndex,
+      sourceCleanerId: directPlacement.proposalIndex === undefined ? undefined : draftProposals[directPlacement.proposalIndex]?.cleanerId,
     };
-    const validation = validateMove(payload, placementCleanerId);
-    const durationMinutes = Math.max(30, validation.durationMinutes ?? reassignmentTask.durationMinutes ?? 30);
+    const validation = validateMove(payload, directCleanerId);
+    const durationMinutes = Math.max(30, validation.durationMinutes ?? placementTask.durationMinutes ?? 30);
     const previous = draftProposals.map((proposal) => ({ ...proposal }));
     const manualOverrideWarnings = validation.valid || !validation.conflict ? [] : [validation.conflict.message];
     const activeAssignment = activeCleanerAssignments.find((assignment) => (
-      assignment.propertyGroupId === buildingId && assignment.cleanerId === placementCleanerId && assignment.isActive && assignment.roleType !== 'excluded'
+      assignment.propertyGroupId === buildingId && assignment.cleanerId === directCleanerId && assignment.isActive && assignment.roleType !== 'excluded'
     ));
     const fields = {
       cleanerId: cleaner.id,
       cleanerName: cleaner.name,
       assignmentRole: (validation.assignmentRole || activeAssignment?.roleType) as AssignmentProposal['assignmentRole'],
-      proposedStartTime: placementStartTime,
-      proposedEndTime: fromMinutes(toMinutes(placementStartTime) + durationMinutes),
+      proposedStartTime: directStartTime,
+      proposedEndTime: fromMinutes(toMinutes(directStartTime) + durationMinutes),
       durationMinutes,
       manualOverrideWarnings,
       warnings: manualOverrideWarnings,
       capacityAfterAssignment: validation.capacityAfterAssignment || { assignedMinutes: 0, remainingMinutes: 0 },
     };
-    const next = reassignment.proposalIndex !== undefined
-      ? draftProposals.map((proposal, index) => index === reassignment.proposalIndex ? { ...proposal, ...fields } : proposal)
+    const next = directPlacement.proposalIndex !== undefined
+      ? draftProposals.map((proposal, index) => index === directPlacement.proposalIndex ? { ...proposal, ...fields } : proposal)
       : [...draftProposals, {
-        taskId: reassignmentTask.id,
+        taskId: placementTask.id,
         ...fields,
         propertyGroupId: buildingId,
-        propertyGroupName: reassignmentTask.detectedBuilding?.status === 'detected' ? reassignmentTask.detectedBuilding.propertyGroupName : undefined,
-        requiredCleaners: Math.max(1, reassignmentTask.requiredCleaners || 1),
-        assignmentIndex: draftProposals.filter((proposal) => proposal.taskId === reassignmentTask.id).length,
+        propertyGroupName: placementTask.detectedBuilding?.status === 'detected' ? placementTask.detectedBuilding.propertyGroupName : undefined,
+        requiredCleaners: Math.max(1, placementTask.requiredCleaners || 1),
+        assignmentIndex: draftProposals.filter((proposal) => proposal.taskId === placementTask.id).length,
         confidence: 0,
         reasons: ['Asignación manual durante la revisión'],
       }];
     onDraftProposalsChange(next);
-    setMoveNotice({ message: `${reassignmentTask.property} colocada con ${cleaner.name} a las ${placementStartTime}.${manualOverrideWarnings.length ? ' Se ha guardado como excepción.' : ''}`, previous });
+    setMoveNotice({ message: `${placementTask.property} colocada con ${cleaner.name} a las ${directStartTime}.${manualOverrideWarnings.length ? ' Se ha guardado como excepción.' : ''}`, previous });
     setReassignment(null);
   };
+
+  const confirmPlacement = () => applyPlacement();
 
   const statusForItem = (item: CalendarItem): { label: string; tone: string } => {
     if (item.source === 'existing') return { label: 'Ya asignada', tone: 'text-slate-600' };

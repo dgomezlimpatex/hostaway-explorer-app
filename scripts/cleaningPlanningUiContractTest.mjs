@@ -191,6 +191,10 @@ assert.doesNotMatch(proposalCalendar, /\) : cleaners\.map\(\(cleaner\) =>/, 'Des
 assert.match(proposalCalendar, /validateDraftAssignmentMove/, 'Every DnD and fallback reassignment must use proposal-engine validation');
 assert.doesNotMatch(proposalCalendar, /reassignmentCandidates[\s\S]*\.filter\(\(candidate\) => candidate\.validation\.valid\)/, 'Manual placement must not hide active workers merely because engine rules recommend against them');
 assert.match(proposalCalendar, /Colocar tarea/, 'Dropping or selecting a task must open a manual placement dialog');
+assert.match(proposalCalendar, /getDropStartMinute/, 'Timeline drops must convert the final pointer position into a start minute');
+assert.match(proposalCalendar, /SNAP_MINUTES = 15/, 'Timeline drops must snap direct placement to practical 15-minute intervals');
+assert.match(proposalCalendar, /handleDragEnd[\s\S]*applyPlacement\([\s\S]*fromMinutes\(dropStartMinute\)/, 'Dropping on a worker timeline must apply the responsible person and dropped time immediately');
+assert.doesNotMatch(proposalCalendar, /handleDragEnd[\s\S]*setReassignment\(\{ taskId: payload\.taskId, proposalIndex: payload\.proposalIndex \}\)/, 'Timeline drag must not open the placement dialog after drop');
 assert.match(proposalCalendar, /Hora de inicio/, 'Manual placement must allow choosing the start time');
 assert.match(proposalCalendar, /type="time"/, 'Manual placement start must use a native time input');
 assert.match(proposalCalendar, /Aplicar como excepción/, 'Manual placement must allow overriding soft engine conflicts explicitly');
@@ -199,9 +203,9 @@ assert.match(proposalCalendar, /title: 'Excepción manual'[\s\S]*message,/, 'Man
 assert.match(proposalCalendar, /severity: 'warning',[\s\S]*title: 'Solape de horario'/, 'A consciously chosen manual overlap must warn without blocking final approval');
 assert.match(proposalCalendar, /Excepción permitida/, 'Non-recommended drag destinations must be shown as allowed exceptions, not rejected destinations');
 assert.match(proposalCalendar, /No apta para este edificio/, 'Explicit No apta exclusions must remain blocking');
-assert.match(proposalCalendar, /proposedStartTime: placementStartTime/, 'The selected start time must be written into the draft proposal');
-assert.match(proposalCalendar, /proposedEndTime: fromMinutes\(toMinutes\(placementStartTime\) \+ durationMinutes\)/, 'The manual end time must be calculated from selected start plus real task duration');
-assert.match(proposalCalendar, /assignmentRole:[\s\S]*proposedStartTime: placementStartTime[\s\S]*durationMinutes,[\s\S]*capacityAfterAssignment:/, 'Manual moves must copy role, selected times, duration and capacity into the draft');
+assert.match(proposalCalendar, /proposedStartTime: directStartTime/, 'The selected or dropped start time must be written into the draft proposal');
+assert.match(proposalCalendar, /proposedEndTime: fromMinutes\(toMinutes\(directStartTime\) \+ durationMinutes\)/, 'The manual end time must be calculated from selected or dropped start plus real task duration');
+assert.match(proposalCalendar, /assignmentRole:[\s\S]*proposedStartTime: directStartTime[\s\S]*durationMinutes,[\s\S]*capacityAfterAssignment:/, 'Manual moves must copy role, selected times, duration and capacity into the draft');
 assert.doesNotMatch(proposalCalendar, /sourceCleanerId === cleanerId/, 'Dropping on the same worker must still allow changing its time block');
 assert.match(proposalCalendar, /isStale[\s\S]*Regenera antes de mover/, 'Stale proposals must block drag mutations');
 assert.match(proposalCalendar, />Deshacer<\//, 'Successful moves must expose one-click undo');
