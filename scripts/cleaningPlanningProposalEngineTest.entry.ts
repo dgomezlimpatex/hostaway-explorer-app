@@ -177,6 +177,28 @@ export async function run(assert: Assert) {
   assert.equal(dateSpecificAvailability.proposals.length, 0, 'must not use another day availability for the task date');
   assert.deepEqual(dateSpecificAvailability.conflicts.map((conflict) => conflict.code), ['no_available_worker']);
 
+  const lateShiftInsideOperationalWindow = proposalFor(
+    [fallbackTask({
+      id: 'task-late-shift',
+      startTime: '11:00',
+      endTime: '12:30',
+      checkOut: '11:00',
+      checkIn: '19:00',
+      durationMinutes: 90,
+      duration: 90,
+    })],
+    [{
+      ...availability('2026-07-01', 180, true),
+      availableWindows: [{ startTime: '15:00', endTime: '18:00' }],
+      availableMinutes: 180,
+      remainingMinutes: 180,
+    }],
+  );
+  assert.equal(lateShiftInsideOperationalWindow.proposals.length, 1, 'a worker available later inside checkout-checkin must receive the task');
+  assert.equal(lateShiftInsideOperationalWindow.proposals[0]?.proposedStartTime, '15:00', 'proposal must start at the first real worker availability, not always at checkout');
+  assert.equal(lateShiftInsideOperationalWindow.proposals[0]?.proposedEndTime, '16:30');
+  assert.equal(lateShiftInsideOperationalWindow.conflicts.length, 0);
+
   const bufferIsDebited = proposalFor(
     [
       fallbackTask({ id: 'task-buffer-1', startTime: '10:00', endTime: '12:15', durationMinutes: 135, duration: 135 }),
@@ -201,7 +223,7 @@ export async function run(assert: Assert) {
 
   const overlapsAreRejected = proposalFor(
     [
-      fallbackTask({ id: 'task-overlap-1', startTime: '10:00', endTime: '12:00', durationMinutes: 120, duration: 120 }),
+      fallbackTask({ id: 'task-overlap-1', startTime: '10:00', endTime: '12:00', checkOut: '10:00', checkIn: '12:00', durationMinutes: 120, duration: 120 }),
       fallbackTask({
         id: 'task-overlap-2',
         property: 'AB1.1',
@@ -209,6 +231,8 @@ export async function run(assert: Assert) {
         propertyName: 'AB1.1',
         startTime: '10:30',
         endTime: '12:30',
+        checkOut: '10:30',
+        checkIn: '12:30',
         durationMinutes: 120,
         duration: 120,
         detectedBuilding: {
@@ -226,7 +250,7 @@ export async function run(assert: Assert) {
     ],
   );
   assert.equal(overlapsAreRejected.proposals.length, 1, 'proposal engine must not create overlapping tasks for the same cleaner across different buildings');
-  assert.deepEqual(overlapsAreRejected.conflicts.map((conflict) => conflict.code), ['time_overlap']);
+  assert.deepEqual(overlapsAreRejected.conflicts.map((conflict) => conflict.code), ['no_available_worker']);
 
   const sameBuildingTasksArePackedWithOneCleaner = proposalFor(
     [

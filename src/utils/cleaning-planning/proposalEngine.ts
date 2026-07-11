@@ -197,30 +197,33 @@ const buildProposedWorkWindow = (
   cleanerId: string,
   operationalWindow: ScheduledWindow,
   workMinutes: number,
+  availability: EffectiveWorkerAvailability,
 ): ScheduledWindow | null => {
-  const sameBuildingWindows = (proposedWindowsByCleaner.get(cleanerId) || [])
-    .filter((window) => window.date === operationalWindow.date)
-    .filter((window) => window.propertyGroupId && window.propertyGroupId === operationalWindow.propertyGroupId)
-    .sort((a, b) => a.startMinutes - b.startMinutes || a.endMinutes - b.endMinutes);
+  const availableWindows = availability.availableWindows
+    .map(availabilityWindowToMinutes)
+    .filter((window): window is NonNullable<typeof window> => Boolean(window));
+  const blockedWindows = availability.blockedWindows
+    .map(blockedWindowToMinutes)
+    .filter((window): window is NonNullable<typeof window> => Boolean(window));
 
-  let startMinutes = operationalWindow.startMinutes;
-
-  for (const window of sameBuildingWindows) {
-    const latestEndBeforeWindow = window.startMinutes - SAME_BUILDING_BUFFER_MINUTES;
-    if (startMinutes + workMinutes <= latestEndBeforeWindow) break;
-    startMinutes = Math.max(startMinutes, window.endMinutes + SAME_BUILDING_BUFFER_MINUTES);
+  for (let startMinutes = operationalWindow.startMinutes; startMinutes + workMinutes <= operationalWindow.endMinutes; startMinutes += 1) {
+    const proposedWindow: ScheduledWindow = {
+      taskId: operationalWindow.taskId,
+      date: operationalWindow.date,
+      startMinutes,
+      endMinutes: startMinutes + workMinutes,
+      propertyGroupId: operationalWindow.propertyGroupId,
+    };
+    const insideAvailability = availableWindows.some((window) => (
+      proposedWindow.startMinutes >= window.startMinutes && proposedWindow.endMinutes <= window.endMinutes
+    ));
+    if (!insideAvailability) continue;
+    if (blockedWindows.some((window) => minuteWindowsOverlap(window, proposedWindow))) continue;
+    if (findProposedWindowConflict(proposedWindowsByCleaner, cleanerId, proposedWindow)) continue;
+    return proposedWindow;
   }
 
-  const endMinutes = startMinutes + workMinutes;
-  if (endMinutes > operationalWindow.endMinutes) return null;
-
-  return {
-    taskId: operationalWindow.taskId,
-    date: operationalWindow.date,
-    startMinutes,
-    endMinutes,
-    propertyGroupId: operationalWindow.propertyGroupId,
-  };
+  return null;
 };
 
 const checkAvailabilityWindowFit = (
@@ -553,7 +556,7 @@ export const validateDraftAssignmentMove = ({
   if (!windowFit.fits) {
     return invalid(windowFit.blockedCode || 'availability_window_mismatch', 'La limpieza no encaja en la disponibilidad real de la trabajadora.');
   }
-  const proposedWindow = buildProposedWorkWindow(proposedWindowsByCleaner, cleanerId, operationalWindow, workerLoadMinutes);
+  const proposedWindow = buildProposedWorkWindow(proposedWindowsByCleaner, cleanerId, operationalWindow, workerLoadMinutes, simulatedAvailability);
   if (!proposedWindow) return invalid('availability_window_mismatch', 'No queda una franja suficiente dentro de la ventana operativa.');
   const proposedWindowFit = checkAvailabilityWindowFit(simulatedAvailability, proposedWindow, workerLoadMinutes);
   if (!proposedWindowFit.fits) {
@@ -807,7 +810,7 @@ export const buildAssignmentProposal = ({
       if (simulatedAvailability.remainingMinutes < prepared.requiredMinutes) return null;
       const windowFit = checkAvailabilityWindowFit(simulatedAvailability, prepared.taskWindow, prepared.workerLoadMinutes);
       if (!windowFit.fits) return null;
-      const proposedWindow = buildProposedWorkWindow(simulatedWindowsByCleaner, assignment.cleanerId, prepared.taskWindow, prepared.workerLoadMinutes);
+      const proposedWindow = buildProposedWorkWindow(simulatedWindowsByCleaner, assignment.cleanerId, prepared.taskWindow, prepared.workerLoadMinutes, simulatedAvailability);
       if (!proposedWindow) return null;
       const proposedWindowFit = checkAvailabilityWindowFit(simulatedAvailability, proposedWindow, prepared.workerLoadMinutes);
       if (!proposedWindowFit.fits) return null;
@@ -900,7 +903,7 @@ export const buildAssignmentProposal = ({
               const windowFit = checkAvailabilityWindowFit(workerAvailability, prepared.taskWindow, prepared.workerLoadMinutes);
               if (!windowFit.fits) continue;
 
-              const proposedWindow = buildProposedWorkWindow(state.windowsByCleaner, assignment.cleanerId, prepared.taskWindow, prepared.workerLoadMinutes);
+              const proposedWindow = buildProposedWorkWindow(state.windowsByCleaner, assignment.cleanerId, prepared.taskWindow, prepared.workerLoadMinutes, workerAvailability);
               if (!proposedWindow) continue;
 
               const proposedWindowFit = checkAvailabilityWindowFit(workerAvailability, proposedWindow, prepared.workerLoadMinutes);
@@ -975,7 +978,7 @@ export const buildAssignmentProposal = ({
       const countKey = taskCountKey(assignment.cleanerId, prepared.task.date, prepared.detectedBuilding.propertyGroupId);
       const currentCount = proposedTaskCounts.get(countKey) || 0;
       if (assignment.maxTasksPerDay > 0 && currentCount >= assignment.maxTasksPerDay) return null;
-      const proposedWindow = buildProposedWorkWindow(proposedWindowsByCleaner, assignment.cleanerId, prepared.taskWindow, prepared.workerLoadMinutes);
+      const proposedWindow = buildProposedWorkWindow(proposedWindowsByCleaner, assignment.cleanerId, prepared.taskWindow, prepared.workerLoadMinutes, workerAvailability);
       if (!proposedWindow) return null;
       const proposedWindowFit = checkAvailabilityWindowFit(workerAvailability, proposedWindow, prepared.workerLoadMinutes);
       if (!proposedWindowFit.fits) {
