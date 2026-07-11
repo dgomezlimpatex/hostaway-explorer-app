@@ -107,6 +107,7 @@ const PIXELS_PER_MINUTE = 1.15;
 const MIN_CARD_HEIGHT = 52;
 const TIMELINE_HEADER_HEIGHT = 48;
 const SNAP_MINUTES = 15;
+const QUARTER_HOUR_GRID_SIZE = SNAP_MINUTES * PIXELS_PER_MINUTE;
 
 const getDropStartMinute = (
   translatedTop: number | undefined,
@@ -772,7 +773,15 @@ export const PlanningProposalCalendar = ({
                     <Users className="h-4 w-4 text-[#310984]" />
                   </div>
 
-                  <div className="relative bg-[linear-gradient(to_bottom,rgba(49,9,132,0.08)_1px,transparent_1px)]" style={{ height: timelineHeight, backgroundSize: `100% ${60 * PIXELS_PER_MINUTE}px` }}>
+                  <div
+                    data-quarter-hour-grid
+                    className="relative"
+                    style={{
+                      height: timelineHeight,
+                      backgroundImage: 'linear-gradient(to bottom, rgba(49,9,132,0.06) 1px, transparent 1px), linear-gradient(to bottom, rgba(49,9,132,0.16) 1px, transparent 1px)',
+                      backgroundSize: `100% ${QUARTER_HOUR_GRID_SIZE}px, 100% ${60 * PIXELS_PER_MINUTE}px`,
+                    }}
+                  >
                     {cleanerItems.map((item) => {
                       const top = Math.max(0, (item.startMinute - bounds.start) * PIXELS_PER_MINUTE);
                       const height = Math.max(MIN_CARD_HEIGHT, (item.endMinute - item.startMinute) * PIXELS_PER_MINUTE - 4);

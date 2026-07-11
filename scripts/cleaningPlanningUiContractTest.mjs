@@ -193,6 +193,9 @@ assert.doesNotMatch(proposalCalendar, /reassignmentCandidates[\s\S]*\.filter\(\(
 assert.match(proposalCalendar, /Colocar tarea/, 'Dropping or selecting a task must open a manual placement dialog');
 assert.match(proposalCalendar, /getDropStartMinute/, 'Timeline drops must convert the final pointer position into a start minute');
 assert.match(proposalCalendar, /SNAP_MINUTES = 15/, 'Timeline drops must snap direct placement to practical 15-minute intervals');
+assert.match(proposalCalendar, /QUARTER_HOUR_GRID_SIZE = SNAP_MINUTES \* PIXELS_PER_MINUTE/, 'Visible quarter-hour grid must share the exact scale used by drag snapping');
+assert.match(proposalCalendar, /data-quarter-hour-grid/, 'Each worker timeline must expose a visible 15-minute placement grid');
+assert.match(proposalCalendar, /backgroundSize: `100% \$\{QUARTER_HOUR_GRID_SIZE\}px, 100% \$\{60 \* PIXELS_PER_MINUTE\}px`/, 'Worker columns must draw quarter-hour subdivisions plus stronger hourly lines');
 assert.match(proposalCalendar, /handleDragEnd[\s\S]*applyPlacement\([\s\S]*fromMinutes\(dropStartMinute\)/, 'Dropping on a worker timeline must apply the responsible person and dropped time immediately');
 assert.doesNotMatch(proposalCalendar, /handleDragEnd[\s\S]*setReassignment\(\{ taskId: payload\.taskId, proposalIndex: payload\.proposalIndex \}\)/, 'Timeline drag must not open the placement dialog after drop');
 assert.match(proposalCalendar, /Hora de inicio/, 'Manual placement must allow choosing the start time');
