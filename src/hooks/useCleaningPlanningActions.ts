@@ -102,8 +102,8 @@ export const useCleaningPlanningActions = () => {
     onSuccess: (data) => {
       invalidatePlanning();
       toast({
-        title: 'Propuesta aplicada',
-        description: `${data.validation.summary.readyTasks} tarea${data.validation.summary.readyTasks === 1 ? '' : 's'} actualizada${data.validation.summary.readyTasks === 1 ? '' : 's'} y notificada${data.validation.summary.readyTasks === 1 ? '' : 's'}.`,
+        title: 'Reparto guardado',
+        description: `${data.validation.summary.readyTasks} limpieza${data.validation.summary.readyTasks === 1 ? '' : 's'} guardada${data.validation.summary.readyTasks === 1 ? '' : 's'}; avisos iniciados.`,
       });
     },
     onError: (error) => {

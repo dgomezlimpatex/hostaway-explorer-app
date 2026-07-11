@@ -4,12 +4,12 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { Cleaner } from '@/types/calendar';
 import { AssignmentProposal, CleaningPlanningTask } from '@/types/cleaningPlanning';
 import { CleanerGroupAssignment } from '@/types/propertyGroups';
@@ -52,6 +52,7 @@ interface CalendarItem {
   endMinute: number;
   editable: boolean;
   isManualChange: boolean;
+  assignmentRole?: AssignmentProposal['assignmentRole'];
 }
 
 const PIXELS_PER_MINUTE = 1.15;
@@ -235,6 +236,7 @@ export const PlanningProposalCalendar = ({
 }: PlanningProposalCalendarProps) => {
   const dates = useMemo(() => uniqueDates(calendarTasks, draftProposals), [calendarTasks, draftProposals]);
   const [selectedDate, setSelectedDate] = useState(() => dates[0] || '');
+  const [reassignment, setReassignment] = useState<{ taskId: string; proposalIndex?: number } | null>(null);
 
   useEffect(() => {
     if (!dates.length) return;
@@ -243,7 +245,13 @@ export const PlanningProposalCalendar = ({
 
   const taskById = useMemo(() => new Map(calendarTasks.map((task) => [task.id, task])), [calendarTasks]);
   const cleanerById = useMemo(() => new Map(cleaners.map((cleaner) => [cleaner.id, cleaner])), [cleaners]);
-  const draftedTaskIds = useMemo(() => new Set(draftProposals.map((proposal) => proposal.taskId)), [draftProposals]);
+  const draftedTaskIds = useMemo(() => {
+    const proposalCountByTask = new Map<string, number>();
+    draftProposals.forEach((proposal) => proposalCountByTask.set(proposal.taskId, (proposalCountByTask.get(proposal.taskId) || 0) + 1));
+    return new Set(calendarTasks
+      .filter((task) => (proposalCountByTask.get(task.id) || 0) >= Math.max(1, task.requiredCleaners || 1))
+      .map((task) => task.id));
+  }, [calendarTasks, draftProposals]);
 
   const calendarItems = useMemo<CalendarItem[]>(() => {
     const items: CalendarItem[] = [];
@@ -285,6 +293,7 @@ export const PlanningProposalCalendar = ({
         endMinute: getTaskEnd(task, proposal),
         editable: true,
         isManualChange,
+        assignmentRole: proposal.assignmentRole,
       });
     });
 
@@ -343,14 +352,92 @@ export const PlanningProposalCalendar = ({
 
   const resetDraft = () => onDraftProposalsChange(originalProposals.map((proposal) => ({ ...proposal })));
 
-  const handleCleanerChange = (proposalIndex: number, cleanerId: string) => {
+  const handleCleanerChange = (
+    proposalIndex: number,
+    cleanerId: string,
+    assignmentRole?: AssignmentProposal['assignmentRole'],
+  ) => {
     const cleaner = cleanerById.get(cleanerId);
     if (!cleaner) return;
     onDraftProposalsChange(draftProposals.map((proposal, index) => (
       index === proposalIndex
-        ? { ...proposal, cleanerId: cleaner.id, cleanerName: cleaner.name }
+        ? { ...proposal, cleanerId: cleaner.id, cleanerName: cleaner.name, assignmentRole }
         : proposal
     )));
+  };
+
+  const openReassignment = (taskId: string, proposalIndex?: number) => {
+    if (isStale) return;
+    setReassignment({ taskId, proposalIndex });
+  };
+
+  const reassignmentTask = reassignment ? taskById.get(reassignment.taskId) : undefined;
+  const reassignmentCandidates = useMemo(() => {
+    if (!reassignment || !reassignmentTask) return [];
+    const buildingId = reassignmentTask.detectedBuilding?.propertyGroupId;
+    const usedCleanerIds = new Set(draftProposals
+      .filter((proposal, index) => proposal.taskId === reassignment.taskId && index !== reassignment.proposalIndex)
+      .map((proposal) => proposal.cleanerId));
+    const roleByCleaner = new Map(activeCleanerAssignments
+      .filter((assignment) => assignment.propertyGroupId === buildingId && assignment.isActive && assignment.roleType !== 'excluded')
+      .map((assignment) => [assignment.cleanerId, assignment.roleType]));
+    const excludedIds = new Set(excludedCleanerAssignments
+      .filter((assignment) => assignment.propertyGroupId === buildingId && assignment.roleType === 'excluded')
+      .map((assignment) => assignment.cleanerId));
+    const roleOrder = { primary: 0, secondary: 1, backup: 2 } as const;
+
+    return cleaners
+      .filter((cleaner) => !usedCleanerIds.has(cleaner.id) && !excludedIds.has(cleaner.id))
+      .sort((left, right) => {
+        const leftRole = roleByCleaner.get(left.id);
+        const rightRole = roleByCleaner.get(right.id);
+        const leftOrder = leftRole && leftRole in roleOrder ? roleOrder[leftRole as keyof typeof roleOrder] : 3;
+        const rightOrder = rightRole && rightRole in roleOrder ? roleOrder[rightRole as keyof typeof roleOrder] : 3;
+        return leftOrder - rightOrder || left.name.localeCompare(right.name, 'es');
+      })
+      .map((cleaner) => ({ cleaner, roleType: roleByCleaner.get(cleaner.id) }));
+  }, [activeCleanerAssignments, cleaners, draftProposals, excludedCleanerAssignments, reassignment, reassignmentTask]);
+
+  const chooseReassignmentCandidate = (cleanerId: string) => {
+    if (!reassignment || !reassignmentTask) return;
+    const candidate = reassignmentCandidates.find((item) => item.cleaner.id === cleanerId);
+    if (!candidate) return;
+
+    const assignmentRole = candidate.roleType === 'primary' || candidate.roleType === 'secondary' || candidate.roleType === 'backup'
+      ? candidate.roleType
+      : undefined;
+
+    if (reassignment.proposalIndex !== undefined) {
+      handleCleanerChange(reassignment.proposalIndex, cleanerId, assignmentRole);
+    } else {
+      const existingPositions = draftProposals.filter((proposal) => proposal.taskId === reassignment.taskId).length;
+      onDraftProposalsChange([...draftProposals, {
+        taskId: reassignmentTask.id,
+        cleanerId: candidate.cleaner.id,
+        cleanerName: candidate.cleaner.name,
+        propertyGroupId: reassignmentTask.detectedBuilding?.propertyGroupId,
+        propertyGroupName: reassignmentTask.detectedBuilding?.propertyGroupName,
+        assignmentRole,
+        durationMinutes: reassignmentTask.durationMinutes,
+        proposedStartTime: reassignmentTask.displayStartTime,
+        proposedEndTime: reassignmentTask.displayEndTime,
+        requiredCleaners: Math.max(1, reassignmentTask.requiredCleaners || 1),
+        assignmentIndex: existingPositions,
+        confidence: 0,
+        reasons: ['Asignación manual durante la revisión'],
+        warnings: [],
+        capacityAfterAssignment: { assignedMinutes: 0, remainingMinutes: 0 },
+      }]);
+    }
+    setReassignment(null);
+  };
+
+  const statusForItem = (item: CalendarItem): { label: string; tone: string } => {
+    if (item.source === 'existing') return { label: 'Ya asignada', tone: 'text-slate-600' };
+    if (item.isManualChange) return { label: 'Revisado', tone: 'text-amber-700' };
+    if (item.assignmentRole === 'primary') return { label: 'Titular', tone: 'text-emerald-700' };
+    if (item.assignmentRole === 'secondary' || item.assignmentRole === 'backup') return { label: 'Suplente/backup', tone: 'text-amber-700' };
+    return { label: 'Propuesta', tone: 'text-amber-700' };
   };
 
   const dayBlockingWarnings = warnings.filter((warning) => warning.severity === 'blocking');
@@ -362,10 +449,10 @@ export const PlanningProposalCalendar = ({
         <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
           <div>
             <CardTitle className="flex items-center gap-2 text-lg text-[#171321]">
-              <CalendarDays className="h-5 w-5 text-[#310984]" /> Plan calendario editable
+              <CalendarDays className="h-5 w-5 text-[#310984]" /> Reparto del día
             </CardTitle>
             <p className="mt-1 max-w-3xl text-sm leading-6 text-[#6b627a]">
-              Sandbox visual: mueve responsables en el borrador, revisa solapes y confirma solo cuando el reparto encaje. No guarda nada hasta confirmar.
+              Revisa horarios y responsables. Toca una limpieza propuesta para cambiarla; no se guarda nada hasta guardar el reparto.
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
@@ -378,20 +465,22 @@ export const PlanningProposalCalendar = ({
           </div>
         </div>
 
-        <div className="flex flex-wrap gap-2">
-          {dates.map((date) => (
-            <Button
-              key={date}
-              type="button"
-              variant={date === selectedDate ? 'default' : 'outline'}
-              size="sm"
-              className={date === selectedDate ? 'bg-[#310984] text-white hover:bg-[#23066a]' : 'border-[#310984]/15 bg-white text-[#310984]'}
-              onClick={() => setSelectedDate(date)}
-            >
-              {date}
-            </Button>
-          ))}
-        </div>
+        {dates.length > 1 && (
+          <div className="flex flex-wrap gap-2">
+            {dates.map((date) => (
+              <Button
+                key={date}
+                type="button"
+                variant={date === selectedDate ? 'default' : 'outline'}
+                size="sm"
+                className={date === selectedDate ? 'bg-[#310984] text-white hover:bg-[#23066a]' : 'border-[#310984]/15 bg-white text-[#310984]'}
+                onClick={() => setSelectedDate(date)}
+              >
+                {date}
+              </Button>
+            ))}
+          </div>
+        )}
       </CardHeader>
 
       <CardContent className="space-y-4 p-4 md:p-5">
@@ -426,7 +515,31 @@ export const PlanningProposalCalendar = ({
           </div>
         )}
 
-        <div className="overflow-x-auto rounded-3xl border border-[#310984]/10 bg-white scrollbar-gutter-stable" aria-label="Calendario editable del plan recomendado">
+        <div className="space-y-2 md:hidden" aria-label="Agenda del reparto propuesto">
+          {dayItems.length === 0 && unassignedTasks.length === 0 ? (
+            <div className="rounded-2xl border border-[#310984]/10 bg-white p-5 text-center text-sm text-[#6b627a]">No hay limpiezas para este día.</div>
+          ) : dayItems
+            .sort((left, right) => left.startMinute - right.startMinute || left.task.property.localeCompare(right.task.property))
+            .map((item) => {
+              const status = statusForItem(item);
+              return (
+                <button
+                  key={`mobile:${item.id}`}
+                  type="button"
+                  disabled={!item.editable || isStale}
+                  aria-label={item.editable ? `Cambiar responsable de ${item.task.property}` : `${item.task.property}, ya asignada`}
+                  className="min-h-[72px] w-full rounded-2xl border border-[#310984]/10 bg-white p-4 text-left shadow-sm transition enabled:hover:border-[#310984]/30 enabled:focus-visible:outline-none enabled:focus-visible:ring-2 enabled:focus-visible:ring-[#310984] disabled:cursor-default"
+                  onClick={() => openReassignment(item.taskId, item.proposalIndex)}
+                >
+                  <span className={`text-xs font-semibold ${status.tone}`}>● {status.label}</span>
+                  <span className="mt-1 block font-semibold text-[#171321]">{item.task.property}</span>
+                  <span className="mt-1 block text-xs text-[#6b627a]">{fromMinutes(item.startMinute)}–{fromMinutes(item.endMinute)} · {item.cleanerName}</span>
+                </button>
+              );
+            })}
+        </div>
+
+        <div className="hidden overflow-x-auto rounded-3xl border border-[#310984]/10 bg-white scrollbar-gutter-stable md:block" aria-label="Calendario editable del plan recomendado">
           <div className="flex min-w-max">
             <div className="sticky left-0 z-20 w-20 shrink-0 border-r border-[#310984]/10 bg-[#f7f5fb]">
               <div className="sticky top-0 z-10 flex h-12 items-center justify-center border-b border-[#310984]/10 text-[11px] font-bold uppercase tracking-widest text-[#6b627a]">
@@ -468,7 +581,7 @@ export const PlanningProposalCalendar = ({
                     {cleanerItems.map((item) => {
                       const top = Math.max(0, (item.startMinute - bounds.start) * PIXELS_PER_MINUTE);
                       const height = Math.max(MIN_CARD_HEIGHT, (item.endMinute - item.startMinute) * PIXELS_PER_MINUTE - 4);
-                      const sourceLabel = item.source === 'existing' ? 'Ya asignada' : item.source === 'manual' ? 'Cambio manual' : 'Hermes';
+                      const status = statusForItem(item);
                       const tone = item.source === 'existing'
                         ? 'border-[#310984]/15 bg-slate-50 text-slate-700'
                         : item.source === 'manual'
@@ -476,10 +589,14 @@ export const PlanningProposalCalendar = ({
                           : 'border-emerald-200 bg-emerald-50 text-emerald-900';
 
                       return (
-                        <div
+                        <button
                           key={item.id}
-                          className={`absolute left-2 right-2 overflow-hidden rounded-2xl border p-3 shadow-sm ${tone}`}
+                          type="button"
+                          disabled={!item.editable || isStale}
+                          aria-label={item.editable ? `Cambiar responsable de ${item.task.property}` : `${item.task.property}, ya asignada`}
+                          className={`absolute left-2 right-2 overflow-hidden rounded-2xl border p-3 text-left shadow-sm transition enabled:hover:ring-2 enabled:hover:ring-[#310984]/30 enabled:focus-visible:outline-none enabled:focus-visible:ring-2 enabled:focus-visible:ring-[#310984] disabled:cursor-default ${tone}`}
                           style={{ top, minHeight: height }}
+                          onClick={() => openReassignment(item.taskId, item.proposalIndex)}
                         >
                           <div className="flex items-start justify-between gap-2">
                             <div className="min-w-0">
@@ -488,25 +605,9 @@ export const PlanningProposalCalendar = ({
                                 <Clock className="h-3 w-3" /> {fromMinutes(item.startMinute)}-{fromMinutes(item.endMinute)} · {minutesToHoursLabel(item.endMinute - item.startMinute)}
                               </p>
                             </div>
-                            <Badge variant="outline" className="shrink-0 bg-white/80 text-[10px]">{sourceLabel}</Badge>
+                            <Badge variant="outline" className={`shrink-0 bg-white/80 text-[10px] ${status.tone}`}>● {status.label}</Badge>
                           </div>
-
-                          {item.editable && item.proposalIndex !== undefined && (
-                            <div className="mt-2 space-y-1">
-                              <label className="text-[11px] font-semibold text-[#171321]">Cambiar responsable</label>
-                              <Select value={item.cleanerId} onValueChange={(cleanerId) => handleCleanerChange(item.proposalIndex!, cleanerId)}>
-                                <SelectTrigger className="h-9 min-h-[44px] border-[#310984]/15 bg-white text-xs">
-                                  <SelectValue placeholder="Responsable" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {cleaners.map((option) => (
-                                    <SelectItem key={option.id} value={option.id}>{option.name}</SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            </div>
-                          )}
-                        </div>
+                        </button>
                       );
                     })}
                   </div>
@@ -517,16 +618,23 @@ export const PlanningProposalCalendar = ({
         </div>
 
         {unassignedTasks.length > 0 && (
-          <div className="rounded-2xl border border-dashed border-[#310984]/15 bg-white p-3">
-            <div className="flex items-center gap-2 text-sm font-semibold text-[#171321]">
-              <AlertTriangle className="h-4 w-4 text-amber-600" /> Sin colocar en el calendario
+          <div className="rounded-2xl border border-red-200 bg-red-50 p-3">
+            <div className="flex items-center gap-2 text-sm font-semibold text-red-900">
+              <AlertTriangle className="h-4 w-4 text-red-600" /> Sin cubrir
             </div>
             <div className="mt-2 grid gap-2 md:grid-cols-2 xl:grid-cols-3">
-              {unassignedTasks.slice(0, 9).map((task) => (
-                <div key={task.id} className="rounded-xl bg-[#faf8ff] p-3 text-xs text-[#6b627a]">
-                  <p className="font-semibold text-[#171321]">{task.property}</p>
-                  <p>{task.displayStartTime}-{task.displayEndTime} · {task.detectedBuilding?.propertyGroupName || 'sin edificio'}</p>
-                </div>
+              {unassignedTasks.map((task) => (
+                <button
+                  key={task.id}
+                  type="button"
+                  disabled={isStale}
+                  aria-label={`Elegir responsable para ${task.property}`}
+                  className="min-h-[64px] rounded-xl border border-red-200 bg-white p-3 text-left text-xs text-red-800 transition hover:border-red-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 disabled:cursor-not-allowed disabled:opacity-60"
+                  onClick={() => openReassignment(task.id)}
+                >
+                  <span className="font-semibold text-red-900">● Sin cubrir · {task.property}</span>
+                  <span className="mt-1 block">{task.displayStartTime}-{task.displayEndTime} · {task.detectedBuilding?.propertyGroupName || 'sin edificio'}</span>
+                </button>
               ))}
             </div>
           </div>
@@ -538,6 +646,44 @@ export const PlanningProposalCalendar = ({
           </div>
         )}
       </CardContent>
+
+      <Dialog open={Boolean(reassignment)} onOpenChange={(open) => {
+        if (!open) setReassignment(null);
+      }}>
+        <DialogContent className="max-h-[85dvh] w-[calc(100vw-2rem)] max-w-md overflow-hidden p-0">
+          <DialogHeader className="border-b border-[#310984]/10 p-5 pb-4 text-left">
+            <DialogTitle>Elegir responsable</DialogTitle>
+            <DialogDescription>
+              {reassignmentTask ? `${reassignmentTask.property} · ${reassignmentTask.displayStartTime}–${reassignmentTask.displayEndTime}` : 'Selecciona una responsable.'}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="max-h-[60dvh] space-y-2 overflow-y-auto p-4">
+            {reassignmentCandidates.length === 0 ? (
+              <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">
+                No hay otras responsables elegibles para esta limpieza.
+              </div>
+            ) : reassignmentCandidates.map(({ cleaner, roleType }) => {
+              const roleLabel = roleType === 'primary'
+                ? 'Titular'
+                : roleType === 'secondary' || roleType === 'backup'
+                  ? 'Suplente/backup'
+                  : 'Otra responsable';
+              const roleTone = roleType === 'primary' ? 'text-emerald-700' : 'text-amber-700';
+              return (
+                <button
+                  key={cleaner.id}
+                  type="button"
+                  className="flex min-h-[52px] w-full items-center justify-between gap-3 rounded-2xl border border-[#310984]/10 bg-white px-4 py-3 text-left transition hover:border-[#310984]/30 hover:bg-[#faf8ff] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#310984]"
+                  onClick={() => chooseReassignmentCandidate(cleaner.id)}
+                >
+                  <span className="font-semibold text-[#171321]">{cleaner.name}</span>
+                  <span className={`text-xs font-semibold ${roleTone}`}>● {roleLabel}</span>
+                </button>
+              );
+            })}
+          </div>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 };

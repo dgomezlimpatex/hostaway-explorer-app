@@ -1,21 +1,14 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { format, parseISO } from 'date-fns';
+import { es } from 'date-fns/locale';
+import { AlertTriangle, CheckCircle2, ChevronDown, Clock3, Sparkles, XCircle } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Cleaner } from '@/types/calendar';
 import { AssignmentProposal, AssignmentProposalResult, CleaningPlanningTask } from '@/types/cleaningPlanning';
 import { CleanerGroupAssignment } from '@/types/propertyGroups';
 import { minutesToHoursLabel } from '@/utils/cleaningPlanning';
-import { AlertTriangle, CheckCircle2, Sparkles, XCircle } from 'lucide-react';
+import { buildProposalSignature } from '@/utils/cleaning-planning/proposalBatchApply';
 import { PlanningProposalCalendar, PlanningProposalDraftWarning } from './PlanningProposalCalendar';
 
 interface AssignmentProposalPanelProps {
@@ -27,44 +20,32 @@ interface AssignmentProposalPanelProps {
   excludedCleanerAssignments?: CleanerGroupAssignment[];
   isApplying?: boolean;
   isStale?: boolean;
+  sedeName?: string;
+  isPartialScope?: boolean;
+  totalPendingTaskCount?: number;
   onApply: (draftProposals: AssignmentProposal[]) => Promise<void>;
   onClear: () => void;
 }
 
-interface ProposalTaskGroup {
-  taskId: string;
-  task?: CleaningPlanningTask;
+interface StoredProposalDraft {
+  sourceSignature: string;
   proposals: AssignmentProposal[];
 }
 
-const proposalTone = (confidence: number): string => {
-  if (confidence >= 85) return 'border-emerald-200 bg-emerald-50 text-emerald-700';
-  if (confidence >= 65) return 'border-sky-200 bg-sky-50 text-sky-700';
-  return 'border-amber-200 bg-amber-50 text-amber-700';
-};
+const storageKeyForSignature = (signature: string): string => (
+  `cleaning-planning:hermes-draft:${encodeURIComponent(signature)}`
+);
 
-const uniqueText = (values: string[]): string[] => Array.from(new Set(values.filter(Boolean)));
-
-const groupProposalsByTask = (proposal: AssignmentProposalResult | null, tasks: CleaningPlanningTask[]): ProposalTaskGroup[] => {
-  if (!proposal) return [];
-  const taskById = new Map(tasks.map((task) => [task.id, task]));
-  const groups = new Map<string, ProposalTaskGroup>();
-
-  proposal.proposals.forEach((item) => {
-    const group = groups.get(item.taskId) || {
-      taskId: item.taskId,
-      task: taskById.get(item.taskId),
-      proposals: [],
-    };
-    group.proposals.push(item);
-    groups.set(item.taskId, group);
-  });
-
-  return Array.from(groups.values()).sort((a, b) => {
-    const left = `${a.task?.date || ''} ${a.task?.startTime || ''} ${a.task?.property || ''}`;
-    const right = `${b.task?.date || ''} ${b.task?.startTime || ''} ${b.task?.property || ''}`;
-    return left.localeCompare(right, 'es', { numeric: true });
-  });
+const readStoredDraft = (key: string, sourceSignature: string): AssignmentProposal[] | null => {
+  try {
+    const stored = sessionStorage.getItem(key);
+    if (!stored) return null;
+    const parsed = JSON.parse(stored) as StoredProposalDraft;
+    if (parsed.sourceSignature !== sourceSignature || !Array.isArray(parsed.proposals)) return null;
+    return parsed.proposals;
+  } catch {
+    return null;
+  }
 };
 
 export const AssignmentProposalPanel = ({
@@ -74,350 +55,245 @@ export const AssignmentProposalPanel = ({
   cleaners = [],
   activeCleanerAssignments = [],
   excludedCleanerAssignments = [],
-  isApplying,
+  isApplying = false,
   isStale = false,
+  sedeName,
+  isPartialScope = false,
+  totalPendingTaskCount = 0,
   onApply,
   onClear,
 }: AssignmentProposalPanelProps) => {
-  const [isConfirmOpen, setIsConfirmOpen] = useState(false);
-  const [viewMode, setViewMode] = useState<'calendar' | 'list' | 'conflicts'>('calendar');
   const [draftProposals, setDraftProposals] = useState<AssignmentProposal[]>([]);
   const [draftWarnings, setDraftWarnings] = useState<PlanningProposalDraftWarning[]>([]);
+  const [draftSourceSignature, setDraftSourceSignature] = useState('');
+  const [applyError, setApplyError] = useState('');
+  const [draftSafetyReady, setDraftSafetyReady] = useState(false);
+  const applyInFlightRef = useRef(false);
+
+  const sourceSignature = useMemo(
+    () => (proposal ? buildProposalSignature(proposal.proposals) : ''),
+    [proposal],
+  );
+  const storageKey = useMemo(
+    () => (sourceSignature ? storageKeyForSignature(sourceSignature) : ''),
+    [sourceSignature],
+  );
 
   useEffect(() => {
-    setDraftProposals(proposal?.proposals || []);
+    if (!proposal || !sourceSignature || !storageKey) {
+      setDraftProposals([]);
+      setDraftWarnings([]);
+      setDraftSourceSignature('');
+      setDraftSafetyReady(false);
+      return;
+    }
+
+    setDraftProposals(readStoredDraft(storageKey, sourceSignature) || proposal.proposals.map((item) => ({ ...item })));
     setDraftWarnings([]);
-    setViewMode('calendar');
-  }, [proposal]);
+    setDraftSafetyReady(false);
+    setDraftSourceSignature(sourceSignature);
+  }, [proposal, sourceSignature, storageKey]);
 
-  const draftProposalResult = useMemo<AssignmentProposalResult | null>(() => {
-    if (!proposal) return null;
-    return {
-      ...proposal,
-      proposals: draftProposals,
-      summary: {
-        ...proposal.summary,
-        proposedCount: draftProposals.length,
-        proposedMinutes: draftProposals.reduce((total, item) => total + item.durationMinutes, 0),
-      },
-    };
-  }, [draftProposals, proposal]);
+  useEffect(() => {
+    if (!storageKey || !sourceSignature || draftSourceSignature !== sourceSignature) return;
+    const value: StoredProposalDraft = { sourceSignature, proposals: draftProposals };
+    try {
+      sessionStorage.setItem(storageKey, JSON.stringify(value));
+    } catch {
+      // La propuesta sigue funcionando aunque el navegador no permita sessionStorage.
+    }
+  }, [draftProposals, draftSourceSignature, sourceSignature, storageKey]);
 
-  const proposalGroups = useMemo(() => groupProposalsByTask(draftProposalResult, tasks), [draftProposalResult, tasks]);
-  const draftBlockingWarnings = draftWarnings.filter((warning) => warning.severity === 'blocking');
-  const draftSoftWarnings = draftWarnings.filter((warning) => warning.severity === 'warning');
-  const canApply = Boolean(proposal && draftProposals.length > 0 && !isApplying && !isStale && draftBlockingWarnings.length === 0);
-  const groupedLargeHomes = proposalGroups.filter((group) => group.proposals.length > 1 || (group.proposals[0]?.requiredCleaners || 1) > 1).length;
+  const handleDraftProposalsChange = useCallback((nextProposals: AssignmentProposal[]) => {
+    setDraftSafetyReady(false);
+    setApplyError('');
+    setDraftProposals(nextProposals);
+  }, []);
 
-  const handleConfirmApply = async () => {
-    if (!canApply) return;
-    await onApply(draftProposals);
-    setIsConfirmOpen(false);
+  const handleDraftWarningsChange = useCallback((nextWarnings: PlanningProposalDraftWarning[]) => {
+    setDraftWarnings(nextWarnings);
+    setDraftSafetyReady(true);
+  }, []);
+
+  const coveredTaskIds = useMemo(() => {
+    const proposalCountByTask = new Map<string, number>();
+    draftProposals.forEach((item) => proposalCountByTask.set(item.taskId, (proposalCountByTask.get(item.taskId) || 0) + 1));
+    return new Set(tasks
+      .filter((task) => (proposalCountByTask.get(task.id) || 0) >= Math.max(1, task.requiredCleaners || 1))
+      .map((task) => task.id));
+  }, [draftProposals, tasks]);
+  const coveredCount = coveredTaskIds.size;
+  const completeDraftProposals = useMemo(
+    () => draftProposals.filter((item) => coveredTaskIds.has(item.taskId)),
+    [coveredTaskIds, draftProposals],
+  );
+  const uncoveredCount = Math.max(0, (proposal?.summary.totalUnassignedTasks || 0) - coveredCount);
+  const blockingWarnings = draftWarnings.filter((warning) => (
+    warning.severity === 'blocking'
+    && (!warning.taskId || coveredTaskIds.has(warning.taskId))
+  ));
+  const softWarnings = draftWarnings.filter((warning) => warning.severity === 'warning');
+  const canApply = Boolean(
+    proposal
+    && coveredCount > 0
+    && draftSafetyReady
+    && !isApplying
+    && !isStale
+    && blockingWarnings.length === 0
+    && !applyInFlightRef.current
+  );
+
+  const dateLabel = useMemo(() => {
+    const dates = Array.from(new Set(tasks.map((task) => task.date))).sort();
+    if (dates.length === 0) return 'el periodo elegido';
+    const formatDate = (value: string) => format(parseISO(value), "EEEE, d 'de' MMMM", { locale: es });
+    if (dates.length === 1) return formatDate(dates[0]);
+    return `${formatDate(dates[0])} – ${formatDate(dates[dates.length - 1])}`;
+  }, [tasks]);
+
+  const handleApply = async () => {
+    if (!canApply || applyInFlightRef.current) return;
+    applyInFlightRef.current = true;
+    setApplyError('');
+    try {
+      await onApply(completeDraftProposals);
+      if (storageKey) sessionStorage.removeItem(storageKey);
+    } catch (error) {
+      setApplyError(error instanceof Error
+        ? error.message
+        : 'No se pudo guardar el reparto. Conservamos la propuesta para que puedas reintentarlo.');
+    } finally {
+      applyInFlightRef.current = false;
+    }
   };
 
+  const handleDiscard = () => {
+    if (isApplying || applyInFlightRef.current) return;
+    if (storageKey) sessionStorage.removeItem(storageKey);
+    onClear();
+  };
+
+  if (!proposal) return null;
+
+  const hasBlockingIssue = isStale || blockingWarnings.length > 0;
+  const summaryTone = applyError || isStale || blockingWarnings.length > 0 || uncoveredCount > 0
+    ? 'border-red-200 bg-red-50 text-red-900'
+    : softWarnings.length > 0
+      ? 'border-amber-200 bg-amber-50 text-amber-900'
+      : 'border-emerald-200 bg-emerald-50 text-emerald-900';
+
   return (
-    <>
-      <Card className="border-[#310984]/12 bg-white text-[#171321] shadow-lg shadow-[#310984]/8">
-        <CardHeader className="space-y-3 border-b border-[#310984]/10 pb-4">
-          <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+    <main className="space-y-4 pb-24 md:space-y-5 md:pb-28" aria-busy={isApplying}>
+      <header className="rounded-3xl border border-[#310984]/10 bg-white p-4 shadow-lg shadow-[#310984]/8 md:p-6">
+        <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+          <div>
+            <div className="inline-flex items-center gap-2 rounded-full bg-[#efe9fb] px-3 py-1 text-xs font-semibold text-[#310984]">
+              <Sparkles className="h-3.5 w-3.5" /> Propuesta de Hermes
+            </div>
+            <h1 className="mt-3 text-2xl font-semibold tracking-tight text-[#171321]">Propuesta para {dateLabel}</h1>
+            <p className="mt-1 text-sm text-[#6b627a]">{sedeName ? `${sedeName} · ` : ''}{isPartialScope ? `Alcance parcial: ${tasks.length} de ${totalPendingTaskCount}. ` : ''}Toca una limpieza para cambiar su responsable. Nada se guarda hasta pulsar “Guardar reparto”.</p>
+          </div>
+          <Badge variant="outline" className="w-fit border-[#310984]/15 bg-[#faf8ff] px-3 py-1 text-[#310984]">
+            {coveredCount} cubierta{coveredCount === 1 ? '' : 's'}
+          </Badge>
+        </div>
+      </header>
+
+      <section className={`rounded-2xl border p-4 ${summaryTone}`} aria-live="polite">
+        {applyError ? (
+          <div className="flex items-start gap-2">
+            <XCircle className="mt-0.5 h-5 w-5 shrink-0" />
+            <div><p className="font-semibold">No pudimos guardar el reparto.</p><p className="text-sm">{applyError}</p></div>
+          </div>
+        ) : isStale ? (
+          <div className="flex items-start gap-2">
+            <XCircle className="mt-0.5 h-5 w-5 shrink-0" />
+            <div><p className="font-semibold">Los datos cambiaron.</p><p className="text-sm">Vuelve a planificar para no pisar cambios recientes.</p></div>
+          </div>
+        ) : blockingWarnings.length > 0 ? (
+          <div className="flex items-start gap-2">
+            <XCircle className="mt-0.5 h-5 w-5 shrink-0" />
+            <div><p className="font-semibold">Hay {blockingWarnings.length} bloqueo{blockingWarnings.length === 1 ? '' : 's'} por corregir.</p><p className="text-sm">Revisa las tarjetas marcadas antes de guardar.</p></div>
+          </div>
+        ) : uncoveredCount > 0 ? (
+          <div className="flex items-start gap-2">
+            <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0" />
             <div>
-              <CardTitle className="flex items-center gap-2 text-xl tracking-tight">
-                <Sparkles className="h-5 w-5 text-[#310984]" /> Plan recomendado
-              </CardTitle>
-              <p className="mt-1 text-sm text-[#6b627a]">
-                Revisa el plan en calendario antes de guardar. Las notificaciones salen solo después de confirmar.
-              </p>
+              <p className="font-semibold">{uncoveredCount} limpieza{uncoveredCount === 1 ? '' : 's'} sin cubrir.</p>
+              <p className="text-sm">Puedes corregirlas o guardar solo las {coveredCount} cubiertas.</p>
             </div>
-            {proposal && (
-              <Button size="sm" variant="outline" className="w-fit border-[#310984]/15 bg-white text-[#310984] hover:bg-[#f0eaff] hover:text-[#310984]" onClick={onClear}>
-                Limpiar plan
-              </Button>
-            )}
           </div>
-        </CardHeader>
+        ) : (
+          <div className="flex items-start gap-2">
+            <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0" />
+            <div><p className="font-semibold">Todo cubierto.</p><p className="text-sm">Revisa el reparto y aprueba cuando esté correcto.</p></div>
+          </div>
+        )}
+      </section>
 
-        <CardContent className="space-y-5 p-4 md:p-5">
-          {!proposal ? (
-            <div className="rounded-2xl border border-dashed border-[#310984]/15 bg-[#faf8ff] p-4 text-sm text-[#6b627a]">
-              Todavía no hay plan recomendado. Usa el botón principal de arriba para preparar una propuesta sobre esta vista.
+      <div className={isApplying ? 'pointer-events-none opacity-70' : ''} aria-disabled={isApplying}>
+        <PlanningProposalCalendar
+          originalProposals={proposal.proposals}
+          draftProposals={draftProposals}
+          tasks={tasks}
+          calendarTasks={calendarTasks}
+          cleaners={cleaners}
+          activeCleanerAssignments={activeCleanerAssignments}
+          excludedCleanerAssignments={excludedCleanerAssignments}
+          isStale={isStale}
+          onDraftProposalsChange={handleDraftProposalsChange}
+          onDraftWarningsChange={handleDraftWarningsChange}
+        />
+      </div>
+
+      <details className="group rounded-2xl border border-[#310984]/10 bg-white shadow-sm">
+        <summary className="flex min-h-[48px] cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm font-semibold text-[#310984] outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#310984]">
+          Ver detalles del plan
+          <ChevronDown className="h-4 w-4 transition-transform group-open:rotate-180" />
+        </summary>
+        <div className="space-y-4 border-t border-[#310984]/10 p-4 text-sm text-[#6b627a]">
+          <div className="grid gap-3 sm:grid-cols-3">
+            <div className="rounded-xl bg-[#faf8ff] p-3"><p className="font-semibold text-[#171321]">{coveredCount}</p><p>limpiezas cubiertas</p></div>
+            <div className="rounded-xl bg-[#faf8ff] p-3"><p className="font-semibold text-[#171321]">{minutesToHoursLabel(draftProposals.reduce((sum, item) => sum + item.durationMinutes, 0))}</p><p>horas repartidas</p></div>
+            <div className="rounded-xl bg-[#faf8ff] p-3"><p className="font-semibold text-[#171321]">{proposal.summary.globalQuality?.globalScore ?? '—'}</p><p>calidad global</p></div>
+          </div>
+          {proposal.conflicts.length > 0 && (
+            <div>
+              <p className="font-semibold text-red-800">Sin cubrir</p>
+              <ul className="mt-2 space-y-1 text-red-700">{proposal.conflicts.map((conflict) => <li key={`${conflict.taskId}-${conflict.code}`}>• {conflict.message}</li>)}</ul>
             </div>
-          ) : (
-            <>
-              {isStale && (
-                <div className="rounded-2xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
-                  El plan quedó desactualizado porque cambiaron fecha, sede, filtros o datos. Regenera antes de confirmar.
-                </div>
-              )}
-
-              <div className="grid gap-3 text-center sm:grid-cols-2 lg:grid-cols-4">
-                <div className="rounded-xl border border-[#310984]/10 bg-[#faf8ff] p-3">
-                  <p className="text-2xl font-semibold">{proposalGroups.length}</p>
-                  <p className="text-xs text-[#6b627a]">limpiezas cubiertas</p>
-                </div>
-                <div className="rounded-xl border border-[#310984]/10 bg-[#faf8ff] p-3">
-                  <p className="text-2xl font-semibold">{proposal.conflicts.length + draftBlockingWarnings.length}</p>
-                  <p className="text-xs text-[#6b627a]">requieren decisión</p>
-                </div>
-                <div className="rounded-xl border border-[#310984]/10 bg-[#faf8ff] p-3">
-                  <p className="text-2xl font-semibold">{groupedLargeHomes}</p>
-                  <p className="text-xs text-[#6b627a]">equipos grandes</p>
-                </div>
-                <div className="rounded-xl border border-[#310984]/10 bg-[#faf8ff] p-3">
-                  <p className="text-2xl font-semibold">{minutesToHoursLabel(draftProposalResult.summary.proposedMinutes)}</p>
-                  <p className="text-xs text-[#6b627a]">repartidas</p>
-                </div>
-              </div>
-
-              {proposal.summary.globalQuality && (
-                <div className="rounded-2xl border border-[#310984]/10 bg-[#faf8ff] p-4">
-                  <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
-                    <div>
-                      <p className="text-sm font-semibold text-[#171321]">Calidad operativa del plan</p>
-                      <p className="text-xs text-[#6b627a]">Hermes revisa el reparto completo, no solo tarjetas sueltas.</p>
-                    </div>
-                    <Badge variant="outline" className="w-fit border-[#310984]/20 bg-white text-[#310984]">
-                      Score {proposal.summary.globalQuality.globalScore}
-                    </Badge>
-                  </div>
-                  <div className="mt-3 grid gap-2 text-center sm:grid-cols-2 lg:grid-cols-4">
-                    <div className="rounded-xl border border-emerald-200 bg-white p-3">
-                      <p className="text-xl font-semibold text-emerald-700">{proposal.summary.globalQuality.fullBundlesCovered}</p>
-                      <p className="text-[11px] text-[#6b627a]">centros completos</p>
-                    </div>
-                    <div className="rounded-xl border border-amber-200 bg-white p-3">
-                      <p className="text-xl font-semibold text-amber-700">{proposal.summary.globalQuality.splitBundles}</p>
-                      <p className="text-[11px] text-[#6b627a]">centros divididos</p>
-                    </div>
-                    <div className="rounded-xl border border-red-200 bg-white p-3">
-                      <p className="text-xl font-semibold text-red-700">{proposal.summary.globalQuality.avoidableSplits}</p>
-                      <p className="text-[11px] text-[#6b627a]">divisiones evitables</p>
-                    </div>
-                    <div className="rounded-xl border border-sky-200 bg-white p-3">
-                      <p className="text-xl font-semibold text-sky-700">{proposal.summary.globalQuality.backupAssignments}</p>
-                      <p className="text-[11px] text-[#6b627a]">backups usados</p>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {proposal.summary.globalQuality?.criticalWarnings.length ? (
-                <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
-                  <div className="flex items-center gap-2 text-sm font-semibold text-amber-900">
-                    <AlertTriangle className="h-4 w-4" /> Alertas críticas del plan
-                  </div>
-                  <ul className="mt-2 space-y-1 text-xs leading-5 text-amber-800">
-                    {proposal.summary.globalQuality.criticalWarnings.map((warning) => <li key={warning}>• {warning}</li>)}
-                  </ul>
-                </div>
-              ) : null}
-
-              {draftBlockingWarnings.length > 0 && (
-                <div className="rounded-2xl border border-red-200 bg-red-50 p-3 text-sm text-red-800">
-                  Hay {draftBlockingWarnings.length} bloqueo{draftBlockingWarnings.length === 1 ? '' : 's'} en el calendario editable. Corrígelo antes de confirmar.
-                </div>
-              )}
-
-              {draftSoftWarnings.length > 0 && draftBlockingWarnings.length === 0 && (
-                <div className="rounded-2xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
-                  Hay {draftSoftWarnings.length} aviso{draftSoftWarnings.length === 1 ? '' : 's'} operativo{draftSoftWarnings.length === 1 ? '' : 's'}. Puedes confirmar si la decisión es consciente.
-                </div>
-              )}
-
-              <Tabs value={viewMode} onValueChange={(value) => setViewMode(value as 'calendar' | 'list' | 'conflicts')} className="space-y-4">
-                <TabsList className="grid h-auto w-full grid-cols-3 bg-[#f0eaff] p-1 text-[#6b627a] md:w-fit">
-                  <TabsTrigger value="calendar">Calendario</TabsTrigger>
-                  <TabsTrigger value="list">Lista</TabsTrigger>
-                  <TabsTrigger value="conflicts">Conflictos</TabsTrigger>
-                </TabsList>
-
-                <TabsContent value="calendar" className="mt-0">
-                  <PlanningProposalCalendar
-                    originalProposals={proposal.proposals}
-                    draftProposals={draftProposals}
-                    tasks={tasks}
-                    calendarTasks={calendarTasks}
-                    cleaners={cleaners}
-                    activeCleanerAssignments={activeCleanerAssignments}
-                    excludedCleanerAssignments={excludedCleanerAssignments}
-                    isStale={isStale}
-                    onDraftProposalsChange={setDraftProposals}
-                    onDraftWarningsChange={setDraftWarnings}
-                  />
-                </TabsContent>
-
-                <TabsContent value="list" className="mt-0 space-y-2">
-                  <div className="flex items-center gap-2 text-sm font-semibold text-[#171321]">
-                    <CheckCircle2 className="h-4 w-4 text-emerald-600" /> Listas para confirmar
-                  </div>
-                  {proposalGroups.length === 0 ? (
-                    <div className="rounded-xl border border-[#310984]/10 bg-[#faf8ff] p-3 text-sm text-[#6b627a]">
-                      No se pudo preparar ninguna asignación segura con los datos actuales.
-                    </div>
-                  ) : (
-                    <div className="grid gap-3 lg:grid-cols-2 2xl:grid-cols-3">
-                      {proposalGroups.map((group) => {
-                        const cleanerNames = group.proposals.map((item) => item.cleanerName).join(', ');
-                        const minConfidence = Math.min(...group.proposals.map((item) => item.confidence));
-                        const first = group.proposals[0];
-                        const reasons = uniqueText(group.proposals.flatMap((item) => item.reasons)).slice(0, 2);
-                        const warnings = uniqueText(group.proposals.flatMap((item) => item.warnings));
-                        const isTeam = group.proposals.length > 1 || (first.requiredCleaners || 1) > 1;
-                        const originalTimeLabel = `${group.task?.displayStartTime || '--:--'}–${group.task?.displayEndTime || '--:--'}`;
-                        const proposedTimeLabel = first.proposedStartTime && first.proposedEndTime ? `${first.proposedStartTime}–${first.proposedEndTime}` : null;
-                        const showProposedTime = Boolean(proposedTimeLabel && proposedTimeLabel !== originalTimeLabel);
-
-                        return (
-                          <div key={group.taskId} className="rounded-2xl border border-[#310984]/10 bg-[#faf8ff] p-4">
-                            <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
-                              <div className="min-w-0">
-                                <p className="break-words text-sm font-semibold text-[#171321]">{group.task?.property || 'Limpieza'}</p>
-                                <p className="text-xs text-[#6b627a]">{group.task?.date || 'Sin fecha'} · tarea {originalTimeLabel} · {minutesToHoursLabel(first.durationMinutes)}{isTeam ? ' por persona' : ''}</p>
-                                {showProposedTime && (
-                                  <p className="mt-1 text-xs font-semibold text-[#310984]">Horario propuesto: {proposedTimeLabel} dentro de checkout–checkin</p>
-                                )}
-                                <p className="text-xs text-[#6b627a]">→ {cleanerNames}{isTeam ? ` · equipo de ${group.proposals.length}` : ''}</p>
-                                {group.task?.cleaner && <p className="text-[11px] text-[#6b627a]/80">Actual: {group.task.cleaner}</p>}
-                              </div>
-                              <Badge variant="outline" className={proposalTone(minConfidence)}>{minConfidence}%</Badge>
-                            </div>
-                            {reasons.length > 0 && (
-                              <ul className="mt-2 space-y-1 text-xs text-[#6b627a]">
-                                {reasons.map((reason) => <li key={reason}>• {reason}</li>)}
-                              </ul>
-                            )}
-                            {warnings.length > 0 && (
-                              <ul className="mt-2 space-y-1 text-xs text-amber-700">
-                                {warnings.map((warning) => <li key={warning}>• {warning}</li>)}
-                              </ul>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </TabsContent>
-
-                <TabsContent value="conflicts" className="mt-0 space-y-4">
-                  {draftWarnings.length === 0 && proposal.conflicts.length === 0 ? (
-                    <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800">
-                      No hay conflictos visibles en el borrador actual.
-                    </div>
-                  ) : (
-                    <>
-                      {draftWarnings.length > 0 && (
-                        <div className="space-y-3 rounded-3xl border border-amber-200 bg-amber-50/70 p-4 md:p-5">
-                          <div className="flex items-center gap-2 text-base font-semibold text-[#171321]">
-                            <AlertTriangle className="h-5 w-5 text-amber-600" /> Avisos del calendario editable
-                          </div>
-                          <div className="grid gap-3 lg:grid-cols-2 2xl:grid-cols-3">
-                            {draftWarnings.map((warning) => (
-                              <div key={warning.id} className="rounded-2xl border border-amber-200 bg-white p-4 shadow-sm">
-                                <Badge variant="outline" className={warning.severity === 'blocking' ? 'border-red-200 bg-red-50 text-red-700' : 'border-amber-200 bg-amber-50 text-amber-700'}>
-                                  {warning.severity === 'blocking' ? 'Bloquea' : 'Aviso'}
-                                </Badge>
-                                <p className="mt-2 text-sm font-semibold text-[#171321]">{warning.title}</p>
-                                <p className="mt-1 text-xs leading-5 text-[#6b627a]">{warning.message}</p>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-
-                      {proposal.conflicts.length > 0 && (
-                        <div className="space-y-4 rounded-3xl border border-red-200 bg-red-50/70 p-4 md:p-5">
-                          <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
-                            <div className="flex items-center gap-2 text-base font-semibold text-[#171321]">
-                              <XCircle className="h-5 w-5 text-red-600" /> Necesitan decisión manual
-                            </div>
-                            <Badge variant="outline" className="w-fit border-red-200 bg-white text-red-700">
-                              {proposal.conflicts.length} pendiente{proposal.conflicts.length === 1 ? '' : 's'}
-                            </Badge>
-                          </div>
-                          <div className="grid gap-3 lg:grid-cols-2 2xl:grid-cols-3">
-                            {proposal.conflicts.map((conflict) => {
-                              const task = tasks.find((item) => item.id === conflict.taskId);
-                              return (
-                                <div key={`${conflict.taskId}-${conflict.code}`} className="rounded-2xl border border-red-200 bg-white p-4 shadow-sm">
-                                  <p className="break-words text-sm font-semibold text-[#171321]">{task?.property || 'Limpieza'}</p>
-                                  <p className="mt-1 text-xs text-[#6b627a]">{task?.date || 'Sin fecha'} · {task?.displayStartTime || '--:--'}–{task?.displayEndTime || '--:--'}</p>
-                                  <p className="mt-3 flex gap-2 text-sm leading-5 text-red-700">
-                                    <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" /> {conflict.message}
-                                  </p>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      )}
-                    </>
-                  )}
-                </TabsContent>
-              </Tabs>
-
-              <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-3">
-                <div className="flex items-start gap-2 text-sm text-emerald-800">
-                  <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
-                  <p>Si el reparto del calendario es correcto, confirma. Se guardarán asignaciones sobre tareas existentes; no se crean tareas nuevas.</p>
-                </div>
-                <Button
-                  className="mt-3 w-full bg-emerald-600 text-white hover:bg-emerald-500"
-                  disabled={!canApply}
-                  onClick={() => setIsConfirmOpen(true)}
-                >
-                  {isApplying ? 'Aplicando plan…' : `Revisar y confirmar ${proposalGroups.length} limpieza${proposalGroups.length === 1 ? '' : 's'}`}
-                </Button>
-              </div>
-            </>
           )}
-        </CardContent>
-      </Card>
-
-      <Dialog open={isConfirmOpen} onOpenChange={(open) => {
-        if (!isApplying) setIsConfirmOpen(open);
-      }}>
-        <DialogContent className="max-h-[90dvh] w-[calc(100vw-2rem)] max-w-2xl overflow-y-auto p-4 sm:p-6">
-          <DialogHeader>
-            <DialogTitle>Confirmar plan recomendado</DialogTitle>
-            <DialogDescription>
-              Se actualizarán tareas existentes con el borrador revisado en calendario y después se crearán los eventos de notificación correspondientes. No se crearán tareas nuevas.
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="max-h-[420px] space-y-3 overflow-y-auto pr-1">
-            {proposalGroups.map((group) => {
-              const cleanerNames = group.proposals.map((item) => item.cleanerName).join(', ');
-              const first = group.proposals[0];
-              const originalTimeLabel = `${group.task?.displayStartTime || '--:--'}–${group.task?.displayEndTime || '--:--'}`;
-              const proposedTimeLabel = first.proposedStartTime && first.proposedEndTime ? `${first.proposedStartTime}–${first.proposedEndTime}` : null;
-              const showProposedTime = Boolean(proposedTimeLabel && proposedTimeLabel !== originalTimeLabel);
-              return (
-                <div key={group.taskId} className="rounded-xl border bg-muted/30 p-3 text-sm">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0 break-words">
-                      <p className="font-medium">{group.task?.property || 'Limpieza'}</p>
-                      <p className="text-muted-foreground">{group.task?.date} · tarea {originalTimeLabel}</p>
-                      {showProposedTime && <p className="mt-1 text-xs font-semibold text-[#310984]">Horario propuesto: {proposedTimeLabel}</p>}
-                    </div>
-                    <Badge variant="outline" className="shrink-0">
-                      {cleanerNames}
-                    </Badge>
-                  </div>
-                  <p className="mt-2 text-xs text-muted-foreground">
-                    {first.propertyGroupName || 'Edificio'} · {minutesToHoursLabel(first.durationMinutes)}{group.proposals.length > 1 ? ' por persona' : ''} · {group.proposals.length} responsable{group.proposals.length === 1 ? '' : 's'}
-                  </p>
-                </div>
-              );
-            })}
+          {softWarnings.length > 0 && (
+            <div><p className="font-semibold text-amber-900">Avisos operativos</p><ul className="mt-2 space-y-1 text-amber-800">{softWarnings.map((warning) => <li key={warning.id}>• {warning.message}</li>)}</ul></div>
+          )}
+          <div className="flex items-start gap-2 rounded-xl bg-[#faf8ff] p-3">
+            <Clock3 className="mt-0.5 h-4 w-4 shrink-0 text-[#310984]" />
+            <p>Tus cambios se guardan en este navegador hasta guardar el reparto o descartar.</p>
           </div>
+        </div>
+      </details>
 
-          <DialogFooter>
-            <Button variant="outline" disabled={isApplying} onClick={() => setIsConfirmOpen(false)}>Cancelar</Button>
-            <Button className="bg-[#310984] text-white hover:bg-[#4c1bb0]" disabled={!canApply} onClick={handleConfirmApply}>
-              {isApplying ? 'Guardando…' : 'Confirmar y guardar plan'}
+      <div className="fixed inset-x-0 bottom-0 z-40 border-t border-[#310984]/10 bg-white/95 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] shadow-[0_-10px_30px_rgba(49,9,132,0.12)] backdrop-blur md:p-4">
+        <div className="mx-auto flex max-w-[1500px] flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <Button type="button" variant="outline" className="min-h-[48px] border-[#310984]/15 text-[#310984]" disabled={isApplying} onClick={handleDiscard}>
+            Descartar propuesta
+          </Button>
+          <div className="flex flex-col gap-2 sm:items-end">
+            <p className="text-xs font-semibold text-[#6b627a]">
+              Se guardarán {coveredCount} limpieza{coveredCount === 1 ? '' : 's'}{uncoveredCount > 0 ? ` · ${uncoveredCount} quedarán sin responsable` : ''}. Después se iniciarán los avisos.
+            </p>
+            <Button type="button" className="min-h-[50px] bg-[#310984] px-6 text-base font-semibold text-white hover:bg-[#26066a]" disabled={!canApply} onClick={handleApply}>
+              {isApplying
+                ? 'Guardando reparto…'
+                : uncoveredCount > 0
+                  ? `Guardar ${coveredCount} y avisar`
+                  : 'Guardar reparto y avisar'}
             </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </>
+          </div>
+        </div>
+      </div>
+
+      {hasBlockingIssue && <p className="sr-only">La aprobación está bloqueada hasta resolver los cambios indicados.</p>}
+    </main>
   );
 };
