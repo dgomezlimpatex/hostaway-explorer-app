@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
-import { AlertTriangle, ArrowRight, Building2, Home, Loader2, RefreshCw, Search, Trash2, Users } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { AlertTriangle, ArrowRight, Building2, Home, Loader2, Plus, RefreshCw, Search, Trash2, Users } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import {
   AlertDialog,
@@ -16,7 +16,9 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { useCleaningPlanningBuildingData } from '@/hooks/useCleaningPlanningBuildingData';
 import { propertyGroupStorage } from '@/services/storage/propertyGroupStorage';
@@ -64,11 +66,18 @@ const getSetupState = (
 
 const normalize = (value?: string | null) => (value || '').toLowerCase().trim();
 
+const initialBuildingForm = { name: '', internalCode: '', checkOutTime: '11:00', checkInTime: '17:00' };
+
 const PlanningBuildingsIndex = () => {
   const { data, isLoading, isError, error, refetch, isFetching } = useCleaningPlanningBuildingData();
   const { toast } = useToast();
+  const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
   const [deletingGroupId, setDeletingGroupId] = useState<string | null>(null);
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [isCreating, setIsCreating] = useState(false);
+  const [createError, setCreateError] = useState('');
+  const [buildingForm, setBuildingForm] = useState(initialBuildingForm);
   const propertyGroups = useMemo(() => data?.propertyGroups || [], [data?.propertyGroups]);
   const propertyAssignments = useMemo(() => data?.propertyAssignments || [], [data?.propertyAssignments]);
   const cleanerAssignments = useMemo(() => data?.cleanerAssignments || [], [data?.cleanerAssignments]);
@@ -103,6 +112,44 @@ const PlanningBuildingsIndex = () => {
       configured: cards.filter((card) => card.rank === 3).length,
     };
   }, [cleanerAssignments, propertyAssignments, propertyGroups]);
+
+  const handleCreateBuilding = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const name = buildingForm.name.trim();
+    const internalCode = buildingForm.internalCode.trim();
+
+    if (!name || !internalCode) {
+      setCreateError('El nombre y el código interno son obligatorios.');
+      return;
+    }
+    if (buildingForm.checkInTime <= buildingForm.checkOutTime) {
+      setCreateError('El check-in debe ser posterior al check-out.');
+      return;
+    }
+
+    setIsCreating(true);
+    setCreateError('');
+    try {
+      const created = await propertyGroupStorage.createPropertyGroup({
+        name,
+        internalCode,
+        displayName: name,
+        checkOutTime: buildingForm.checkOutTime,
+        checkInTime: buildingForm.checkInTime,
+        isActive: true,
+        autoAssignEnabled: false,
+      });
+      await refetch();
+      setBuildingForm(initialBuildingForm);
+      setIsCreateOpen(false);
+      toast({ title: 'Edificio creado', description: 'Ahora puedes vincular propiedades y configurar su equipo.' });
+      navigate(`/planning/buildings/${created.id}`);
+    } catch (createBuildingError) {
+      setCreateError(createBuildingError instanceof Error ? createBuildingError.message : 'No se pudo crear el edificio.');
+    } finally {
+      setIsCreating(false);
+    }
+  };
 
   const handleDeleteEmptyBuilding = async (group: PropertyGroup) => {
     const propertyCount = propertyAssignments.filter((assignment) => assignment.propertyGroupId === group.id).length;
@@ -150,6 +197,10 @@ const PlanningBuildingsIndex = () => {
               </p>
             </div>
             <div className="flex flex-wrap gap-2">
+              <Button type="button" className="bg-[#f4d35e] text-[#171321] hover:bg-[#ffe17a]" onClick={() => setIsCreateOpen(true)}>
+                <Plus className="mr-2 h-4 w-4" />
+                Añadir edificio
+              </Button>
               <Button asChild className="bg-white text-[#310984] hover:bg-[#f0eaff]">
                 <Link to="/planning?copilot=open">Volver a Hermes Planificación</Link>
               </Button>
@@ -160,6 +211,51 @@ const PlanningBuildingsIndex = () => {
             </div>
           </div>
         </div>
+
+        <Dialog open={isCreateOpen} onOpenChange={(open) => {
+          if (isCreating) return;
+          setIsCreateOpen(open);
+          if (!open) {
+            setCreateError('');
+            setBuildingForm(initialBuildingForm);
+          }
+        }}>
+          <DialogContent className="sm:max-w-lg">
+            <DialogHeader>
+              <DialogTitle>Añadir edificio</DialogTitle>
+              <DialogDescription>Crea el centro operativo y continúa en su ficha para vincular propiedades y equipo.</DialogDescription>
+            </DialogHeader>
+            <form className="space-y-4" onSubmit={handleCreateBuilding}>
+              <div className="space-y-2">
+                <Label htmlFor="building-name">Nombre del edificio</Label>
+                <Input id="building-name" autoFocus value={buildingForm.name} onChange={(event) => setBuildingForm((current) => ({ ...current, name: event.target.value }))} placeholder="Ej. Marina 30" required />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="building-code">Código interno</Label>
+                <Input id="building-code" value={buildingForm.internalCode} onChange={(event) => setBuildingForm((current) => ({ ...current, internalCode: event.target.value }))} placeholder="Ej. M30" required />
+                <p className="text-xs text-[#6b627a]">Debe ser único. Hermes lo utiliza para detectar y relacionar el edificio.</p>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <Label htmlFor="building-checkout">Check-out</Label>
+                  <Input id="building-checkout" type="time" value={buildingForm.checkOutTime} onChange={(event) => setBuildingForm((current) => ({ ...current, checkOutTime: event.target.value }))} required />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="building-checkin">Check-in</Label>
+                  <Input id="building-checkin" type="time" value={buildingForm.checkInTime} onChange={(event) => setBuildingForm((current) => ({ ...current, checkInTime: event.target.value }))} required />
+                </div>
+              </div>
+              {createError && <p role="alert" className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800">{createError}</p>}
+              <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                <Button type="button" variant="outline" onClick={() => setIsCreateOpen(false)} disabled={isCreating}>Cancelar</Button>
+                <Button type="submit" className="bg-[#310984] text-white hover:bg-[#4c1bb0]" disabled={isCreating}>
+                  {isCreating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  Crear edificio
+                </Button>
+              </div>
+            </form>
+          </DialogContent>
+        </Dialog>
 
         <Card className="border-[#310984]/10 bg-white shadow-lg shadow-[#310984]/6">
           <CardContent className="space-y-4 p-4 md:p-5">

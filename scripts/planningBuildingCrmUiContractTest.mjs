@@ -82,6 +82,11 @@ assert.match(buildingsIndex, /primero detecta qué falta configurar/, 'Buildings
 assert.match(buildingsIndex, /Buscar edificio por nombre, código, zona o cliente/, 'Buildings index must allow searching operational buildings');
 assert.match(buildingsIndex, /Configurar primero[\s\S]*Listos para probar[\s\S]*Configurados/s, 'Buildings index must summarize building setup states');
 assert.match(buildingsIndex, /Personalizar edificio/, 'Buildings cards must frame the next action as personalization');
+assert.match(buildingsIndex, /Añadir edificio/, 'Buildings index must expose the create-building action');
+assert.match(buildingsIndex, /Nombre del edificio[\s\S]*Código interno[\s\S]*Check-out[\s\S]*Check-in/s, 'Building creation must request operational identity and whole-building schedule');
+assert.match(buildingsIndex, /propertyGroupStorage\.createPropertyGroup/, 'Building creation must use canonical property-group storage');
+assert.match(buildingsIndex, /El check-in debe ser posterior al check-out/, 'Building creation must reject invalid operational windows');
+assert.match(buildingsIndex, /navigate\(`\/planning\/buildings\/\$\{created\.id\}`\)/, 'After creation, the user must continue in the new building profile');
 assert.match(buildingsIndex, /useCleaningPlanningBuildingData/, 'Buildings index must reuse planning building data, not planning-settings access');
 assert.match(buildingsIndex, /\/planning\/buildings\/\$\{group\.id\}/, 'Buildings index must link every building to its CRM detail');
 assert.match(buildingsIndex, /propertyCount === 0[\s\S]*teamCount === 0[\s\S]*excludedCount === 0/s, 'Buildings index must only enable deletion for completely empty buildings');
@@ -92,6 +97,7 @@ assert.match(buildingsIndex, /await refetch\(\)/, 'Building deletion must refres
 assert.match(propertyGroupStorage, /deleteEmptyPropertyGroup/, 'Property-group storage must expose guarded empty-building deletion');
 assert.match(propertyGroupStorage, /property_group_assignments[\s\S]*cleaner_group_assignments/s, 'Guarded deletion must recheck both property and cleaner relationships in Supabase');
 assert.match(propertyGroupStorage, /No se puede eliminar[\s\S]*propiedades o equipo/s, 'Guarded deletion must reject non-empty buildings with an operational error');
+assert.match(propertyGroupStorage, /createPropertyGroup[\s\S]*ilike\('internal_code'[\s\S]*Ya existe otro edificio con ese código interno/s, 'Building creation must reject duplicate internal codes case-insensitively');
 assert.match(propertyGroupStorage, /ilike\('internal_code'[\s\S]*Ya existe otro edificio con ese código interno/s, 'Building updates must reject duplicate internal codes');
 assert.match(buildingDataEditor, /Datos del edificio/, 'Building profile must expose its editable master data');
 assert.match(buildingDataEditor, /Nombre[\s\S]*Código interno[\s\S]*Check-out[\s\S]*Check-in/s, 'Building editor must expose identity and whole-building schedule fields');

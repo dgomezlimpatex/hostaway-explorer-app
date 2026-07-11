@@ -39,6 +39,17 @@ class PropertyGroupStorageService {
   }
 
   async createPropertyGroup(group: Omit<PropertyGroup, 'id' | 'createdAt' | 'updatedAt'>): Promise<PropertyGroup> {
+    if (group.internalCode?.trim()) {
+      const { data: duplicateCode, error: duplicateCodeError } = await supabase
+        .from('property_groups')
+        .select('id')
+        .ilike('internal_code', group.internalCode.trim())
+        .maybeSingle();
+
+      if (duplicateCodeError) throw duplicateCodeError;
+      if (duplicateCode) throw new Error('Ya existe otro edificio con ese código interno.');
+    }
+
     const { data, error } = await supabase
       .from('property_groups')
       .insert({
