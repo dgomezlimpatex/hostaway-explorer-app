@@ -20,6 +20,7 @@ import { Sede } from '@/types/sede';
 import { isOperationalCleaner, minutesToHoursLabel } from '@/utils/cleaningPlanning';
 import { getTodayMadrid } from '@/utils/date';
 import { buildAssignmentProposal } from '@/utils/cleaning-planning/proposalEngine';
+import { applyBuildingOperationalWindow } from '@/utils/cleaning-planning/buildingOperationalWindow';
 import { buildProposalSignature } from '@/utils/cleaning-planning/proposalBatchApply';
 import { buildPlanningCopilotSnapshot } from '@/services/planning/copilot/planningSnapshot';
 import { extractBuildingCode } from '@/services/laundryScheduleService';
@@ -185,7 +186,7 @@ const enhanceTaskBuildings = (
     : [detectedBuilding.status === 'ambiguous' ? 'ambiguous-building' : 'missing-building'];
 
   return {
-    ...task,
+    ...applyBuildingOperationalWindow(task, detectedBuilding, propertyGroups),
     detectedBuilding,
     riskFlags: uniqueRisks([...task.riskFlags, ...buildingRisk]),
   };

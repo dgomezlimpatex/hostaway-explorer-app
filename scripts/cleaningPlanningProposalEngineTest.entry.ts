@@ -2,6 +2,7 @@ import { buildAssignmentProposal, validateDraftAssignmentMove } from '../src/uti
 import type { Cleaner } from '../src/types/calendar';
 import type { CleaningPlanningTask, EffectiveWorkerAvailability, GlobalPlanQualitySummary } from '../src/types/cleaningPlanning';
 import type { CleanerGroupAssignment } from '../src/types/propertyGroups';
+import { applyBuildingOperationalWindow } from '../src/utils/cleaning-planning/buildingOperationalWindow';
 
 type Assert = typeof import('node:assert/strict');
 
@@ -141,6 +142,31 @@ const proposalFor = (
 });
 
 export async function run(assert: Assert) {
+  const buildingWindowOverridesPropertyWindow = applyBuildingOperationalWindow(
+    fallbackTask({ checkOut: '10:00', checkIn: '15:00' }),
+    detectedBuilding,
+    [{
+      id: 'group-md18',
+      name: 'MD18',
+      checkOutTime: '12:00',
+      checkInTime: '16:30',
+      isActive: true,
+      autoAssignEnabled: false,
+      createdAt: '2026-07-01T00:00:00.000Z',
+      updatedAt: '2026-07-01T00:00:00.000Z',
+    }],
+  );
+  assert.equal(buildingWindowOverridesPropertyWindow.checkOut, '12:00', 'building checkout must override the property/task checkout in planning');
+  assert.equal(buildingWindowOverridesPropertyWindow.checkIn, '16:30', 'building checkin must override the property/task checkin in planning');
+
+  const standalonePropertyKeepsOwnWindow = applyBuildingOperationalWindow(
+    fallbackTask({ checkOut: '10:00', checkIn: '15:00' }),
+    { status: 'missing', reason: 'standalone fixture' },
+    [],
+  );
+  assert.equal(standalonePropertyKeepsOwnWindow.checkOut, '10:00', 'standalone properties must keep their own checkout');
+  assert.equal(standalonePropertyKeepsOwnWindow.checkIn, '15:00', 'standalone properties must keep their own checkin');
+
   const dateSpecificAvailability = proposalFor(
     [fallbackTask({ id: 'task-date', date: '2026-07-01' })],
     [
