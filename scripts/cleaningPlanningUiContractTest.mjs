@@ -192,6 +192,10 @@ assert.match(proposalCalendar, /validateDraftAssignmentMove/, 'Every DnD and fal
 assert.doesNotMatch(proposalCalendar, /reassignmentCandidates[\s\S]*\.filter\(\(candidate\) => candidate\.validation\.valid\)/, 'Manual placement must not hide active workers merely because engine rules recommend against them');
 assert.match(proposalCalendar, /Colocar tarea/, 'Dropping or selecting a task must open a manual placement dialog');
 assert.match(proposalCalendar, /getDropStartMinute/, 'Timeline drops must convert the final pointer position into a start minute');
+assert.match(proposalCalendar, /getActivatorClientY/, 'Timeline DnD must read the real mouse or touch activation coordinate');
+assert.match(proposalCalendar, /activatorClientY \+ delta\.y/, 'Timeline DnD must derive the final pointer from activation coordinate plus DnD movement');
+assert.doesNotMatch(proposalCalendar, /active\.rect\.current\.translated\?\.top/, 'Timeline DnD must not infer the dropped time from the draggable handle top edge');
+assert.match(proposalCalendar, /Math\.max\(timelineStartMinute, Math\.min\(timelineEndMinute, snappedMinute\)\)/, 'Dropped times must stay inside the visible timeline bounds');
 assert.match(proposalCalendar, /SNAP_MINUTES = 15/, 'Timeline drops must snap direct placement to practical 15-minute intervals');
 assert.match(proposalCalendar, /QUARTER_HOUR_GRID_SIZE = SNAP_MINUTES \* PIXELS_PER_MINUTE/, 'Visible quarter-hour grid must share the exact scale used by drag snapping');
 assert.match(proposalCalendar, /data-quarter-hour-grid/, 'Each worker timeline must expose a visible 15-minute placement grid');

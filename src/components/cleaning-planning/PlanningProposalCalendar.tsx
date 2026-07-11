@@ -109,16 +109,27 @@ const TIMELINE_HEADER_HEIGHT = 48;
 const SNAP_MINUTES = 15;
 const QUARTER_HOUR_GRID_SIZE = SNAP_MINUTES * PIXELS_PER_MINUTE;
 
+const getActivatorClientY = (event: Event): number | undefined => {
+  if ('clientY' in event && typeof event.clientY === 'number') return event.clientY;
+  if ('touches' in event) {
+    const touchEvent = event as TouchEvent;
+    return touchEvent.touches[0]?.clientY ?? touchEvent.changedTouches[0]?.clientY;
+  }
+  return undefined;
+};
+
 const getDropStartMinute = (
-  translatedTop: number | undefined,
+  finalPointerY: number | undefined,
   dropZoneTop: number,
   timelineStartMinute: number,
+  timelineEndMinute: number,
   fallbackMinute: number,
 ): number => {
-  if (translatedTop === undefined) return fallbackMinute;
-  const timelineOffset = Math.max(0, translatedTop - dropZoneTop - TIMELINE_HEADER_HEIGHT);
+  if (finalPointerY === undefined) return fallbackMinute;
+  const timelineOffset = Math.max(0, finalPointerY - dropZoneTop - TIMELINE_HEADER_HEIGHT);
   const rawMinute = timelineStartMinute + timelineOffset / PIXELS_PER_MINUTE;
-  return Math.max(0, Math.min(23 * 60 + 45, Math.round(rawMinute / SNAP_MINUTES) * SNAP_MINUTES));
+  const snappedMinute = Math.round(rawMinute / SNAP_MINUTES) * SNAP_MINUTES;
+  return Math.max(timelineStartMinute, Math.min(timelineEndMinute, snappedMinute));
 };
 
 const toMinutes = (value?: string): number => {
@@ -448,7 +459,7 @@ export const PlanningProposalCalendar = ({
     setMoveNotice(null);
     setActiveDrag(active.data.current as DragPayload);
   };
-  const handleDragEnd = ({ active, over }: DragEndEvent) => {
+  const handleDragEnd = ({ active, over, activatorEvent, delta }: DragEndEvent) => {
     setActiveDrag(null);
     if (!over) return;
     const destinationId = String(over.id);
@@ -458,9 +469,11 @@ export const PlanningProposalCalendar = ({
     const task = taskById.get(payload.taskId);
     if (!task) return;
     const fallbackMinute = getTaskStart(task, payload.proposalIndex === undefined ? undefined : draftProposals[payload.proposalIndex]);
+    const activatorClientY = getActivatorClientY(activatorEvent);
+    const finalPointerY = activatorClientY === undefined ? undefined : activatorClientY + delta.y;
     const dropStartMinute = cleanerPrefix === 'mobile-cleaner:'
       ? fallbackMinute
-      : getDropStartMinute(active.rect.current.translated?.top, over.rect.top, bounds.start, fallbackMinute);
+      : getDropStartMinute(finalPointerY, over.rect.top, bounds.start, bounds.end, fallbackMinute);
     applyPlacement(
       { taskId: payload.taskId, proposalIndex: payload.proposalIndex },
       destinationId.slice(cleanerPrefix.length),
