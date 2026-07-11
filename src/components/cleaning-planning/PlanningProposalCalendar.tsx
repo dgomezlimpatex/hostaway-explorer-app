@@ -387,14 +387,19 @@ export const PlanningProposalCalendar = ({
   )).length, [draftProposals, originalProposals]);
 
   const dayItems = useMemo(() => calendarItems.filter((item) => item.task.date === selectedDate), [calendarItems, selectedDate]);
+  const availableCleanerIds = useMemo(() => new Set(effectiveAvailability
+    .filter((availability) => availability.date === selectedDate)
+    .filter((availability) => availability.isAvailable && availability.remainingMinutes > 0)
+    .map((availability) => availability.cleanerId)), [effectiveAvailability, selectedDate]);
   const visibleCleanerIds = useMemo(() => {
     const ids = new Set(dayItems.map((item) => item.cleanerId));
+    availableCleanerIds.forEach((cleanerId) => ids.add(cleanerId));
     draftProposals.forEach((proposal) => {
       const task = taskById.get(proposal.taskId);
       if (task?.date === selectedDate) ids.add(proposal.cleanerId);
     });
     return ids;
-  }, [dayItems, draftProposals, selectedDate, taskById]);
+  }, [availableCleanerIds, dayItems, draftProposals, selectedDate, taskById]);
   const visibleCleaners = useMemo(() => cleaners.filter((cleaner) => visibleCleanerIds.has(cleaner.id)), [cleaners, visibleCleanerIds]);
   const unassignedTasks = useMemo(() => calendarTasks
     .filter((task) => task.date === selectedDate)
@@ -721,11 +726,11 @@ export const PlanningProposalCalendar = ({
               </div>
             </div>
 
-            {cleaners.length === 0 ? (
+            {visibleCleaners.length === 0 ? (
               <div className="flex min-h-[260px] w-[640px] items-center justify-center p-8 text-center text-sm text-[#6b627a]">
                 No hay trabajadoras operativas disponibles.
               </div>
-            ) : cleaners.map((cleaner) => {
+            ) : visibleCleaners.map((cleaner) => {
               const cleanerItems = dayItems
                 .filter((item) => item.cleanerId === cleaner.id)
                 .sort((a, b) => a.startMinute - b.startMinute || a.task.property.localeCompare(b.task.property));

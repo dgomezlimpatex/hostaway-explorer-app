@@ -184,6 +184,10 @@ assert.match(proposalCalendar, /TouchSensor[\s\S]*delay: 300[\s\S]*tolerance: 8/
 assert.match(proposalCalendar, /data-dnd-handle/, 'Proposed and uncovered cards must expose a dedicated drag handle');
 assert.match(proposalCalendar, /data-dnd-mobile-destinations[\s\S]*max-\[400px\]:block/, 'Narrow mobile drag must reveal explicit destination drop zones');
 assert.match(proposalCalendar, /data-dnd-unassigned-tray-item/, 'Uncovered tasks must remain in their own draggable tray');
+assert.match(proposalCalendar, /availableCleanerIds[\s\S]*availability\.date === selectedDate[\s\S]*availability\.isAvailable[\s\S]*availability\.remainingMinutes > 0/, 'Sandbox columns must identify workers with real remaining availability on the selected date');
+assert.match(proposalCalendar, /visibleCleanerIds[\s\S]*dayItems[\s\S]*availableCleanerIds/, 'Sandbox must retain workers with assigned blocks while adding available empty workers');
+assert.match(proposalCalendar, /visibleCleaners\.length === 0[\s\S]*visibleCleaners\.map/, 'Desktop sandbox must render only visible workers instead of every active worker');
+assert.doesNotMatch(proposalCalendar, /\) : cleaners\.map\(\(cleaner\) =>/, 'Desktop sandbox must not reserve columns for every active worker');
 assert.match(proposalCalendar, /validateDraftAssignmentMove/, 'Every DnD and fallback reassignment must use proposal-engine validation');
 assert.doesNotMatch(proposalCalendar, /reassignmentCandidates[\s\S]*\.filter\(\(candidate\) => candidate\.validation\.valid\)/, 'Manual placement must not hide active workers merely because engine rules recommend against them');
 assert.match(proposalCalendar, /Colocar tarea/, 'Dropping or selecting a task must open a manual placement dialog');
