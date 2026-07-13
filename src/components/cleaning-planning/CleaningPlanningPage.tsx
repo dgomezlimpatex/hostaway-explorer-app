@@ -292,7 +292,14 @@ export const CleaningPlanningPage = () => {
   const displayCapacityMinutes = isLoading ? '—' : minutesToHoursLabel(planning.summary.capacityMinutes);
   const rangeLabel = range.startDate === range.endDate ? range.startDate : `${range.startDate} → ${range.endDate}`;
 
-  const handleAssign = (taskId: string, cleaner: Cleaner) => assignTask({ taskId, cleaner });
+  const handleAssign = (taskId: string, cleaner: Cleaner) => {
+    const task = filteredTasks.find((item) => item.id === taskId);
+    if (task) assignTask({ task, cleaner });
+  };
+  const handleUnassign = (taskId: string) => {
+    const task = filteredTasks.find((item) => item.id === taskId);
+    if (task) unassignTask(task);
+  };
   const handleSedeChange = (sede: Sede) => {
     setFilters(defaultFilters);
     setProposalState(null);
@@ -375,7 +382,7 @@ export const CleaningPlanningPage = () => {
             tasks={filteredTasks}
             cleaners={operationalCleaners}
             onAssign={handleAssign}
-            onUnassign={unassignTask}
+            onUnassign={handleUnassign}
             isAssigning={isAssigning}
           />
           <PlanningAdvancedDetails>
@@ -388,7 +395,7 @@ export const CleaningPlanningPage = () => {
                   tasks={filteredTasks}
                   cleaners={operationalCleaners}
                   onAssign={handleAssign}
-                  onUnassign={unassignTask}
+                  onUnassign={handleUnassign}
                   isAssigning={isAssigning}
                 />
               </div>
@@ -411,7 +418,7 @@ export const CleaningPlanningPage = () => {
                     day={day}
                     cleaners={operationalCleaners}
                     onAssign={handleAssign}
-                    onUnassign={unassignTask}
+                    onUnassign={handleUnassign}
                     isAssigning={isAssigning}
                   />
                 ))}

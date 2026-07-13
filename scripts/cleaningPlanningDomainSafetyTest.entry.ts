@@ -45,6 +45,29 @@ export async function run(assert: Assert) {
   const taskAssignmentSource = readSource('src/services/storage/taskAssignmentService.ts');
   const notificationSource = readSource('src/services/notifications/notificationOrchestrator.ts');
   const notificationGrantMigration = readSource('supabase/migrations/20260705141000_grant_notification_events_insert.sql');
+  const planningHookSource = readSource('src/hooks/useCleaningPlanning.ts');
+  const recurringHookSource = readSource('src/hooks/useRecurringTaskInstances.ts');
+
+  assert.match(
+    planningHookSource,
+    /useRecurringTaskInstances\(\{\s*dateFrom: range\.startDate,\s*dateTo: range\.endDate,\s*\}\)/,
+    'Hermes planning must load recurring task instances for the selected range',
+  );
+  assert.match(
+    planningHookSource,
+    /assignedTasks: planningTasks/,
+    'assigned recurring instances must reduce worker availability together with normal tasks',
+  );
+  assert.match(
+    planningHookSource,
+    /buildCleaningPlanningModel\(\s*planningTasks,/,
+    'unassigned recurring instances must enter the same planning model as normal tasks',
+  );
+  assert.match(
+    recurringHookSource,
+    /propertyDurationMinutes:\s*rt\.properties\?\.duracion_servicio\s*\|\|\s*rt\.duracion/,
+    'recurring instances must retain a template-duration fallback so assigned work never counts as zero capacity',
+  );
 
   assert.match(
     actionsSource,
@@ -53,8 +76,23 @@ export async function run(assert: Assert) {
   );
   assert.match(
     actionsSource,
-    /executeProposalBatch\(validation\.taskPlans/,
+    /executeProposalBatch\(executablePlans/,
     'proposal application must execute the reviewed schedule and assignment plan together',
+  );
+  assert.match(
+    actionsSource,
+    /expectedTask\?\.isRecurringInstance[\s\S]*materializeRecurringTaskInstance\(expectedTask/,
+    'virtual recurring proposals must be materialized before their schedule and assignments are persisted',
+  );
+  assert.match(
+    actionsSource,
+    /mutationFn: async \(\{ task, cleaner \}[\s\S]*task\.isRecurringInstance[\s\S]*materializeRecurringTaskInstance\(task/,
+    'manual assignment from planning must materialize a virtual recurring occurrence',
+  );
+  assert.match(
+    actionsSource,
+    /mutationFn: async \(task: Task\)[\s\S]*task\.isRecurringInstance[\s\S]*materializeRecurringTaskInstance\(task/,
+    'manual unassignment from planning must materialize a virtual recurring occurrence',
   );
   assert.match(
     actionsSource,
@@ -165,6 +203,51 @@ export async function run(assert: Assert) {
     );
     assert.equal(rangeAvailability[0].assignedMinutes, 90, 'availability capacity must ignore cancelled/invalid assigned tasks');
     assert.equal(rangeAvailability[0].remainingMinutes, 390, 'remaining capacity should subtract only active planifiable work');
+
+    const recurringAssignedTask = {
+      ...task('recurring-assigned-capacity', 'pending', cleaner.id),
+      id: 'recurring_rule-1_2026-07-01',
+      isRecurringInstance: true,
+      recurringTaskId: 'rule-1',
+      duration: 120,
+      propertyDurationMinutes: 120,
+      startTime: '12:00',
+      endTime: '14:00',
+    };
+    const recurringAvailability = buildEffectiveAvailabilityRange({
+      cleaners: [cleaner],
+      startDate: '2026-07-01',
+      endDate: '2026-07-01',
+      weeklyAvailability: [
+        { cleaner_id: cleaner.id, day_of_week: 3, is_available: true, start_time: '09:00', end_time: '17:00' },
+      ],
+      assignedTasks: [recurringAssignedTask],
+    });
+    assert.equal(recurringAvailability[0].assignedMinutes, 120, 'assigned recurring instances must consume worker capacity');
+    assert.equal(recurringAvailability[0].remainingMinutes, 360, 'worker remaining capacity must include assigned recurring work');
+
+    const recurringPlanningModel = buildCleaningPlanningModel(
+      [recurringAssignedTask, {
+        ...task('recurring-unassigned', 'pending'),
+        id: 'recurring_rule-2_2026-07-01',
+        isRecurringInstance: true,
+        recurringTaskId: 'rule-2',
+      }],
+      [cleaner],
+      { [cleaner.id]: 480 },
+      '2026-07-01',
+      '2026-07-01',
+    );
+    assert.deepEqual(
+      recurringPlanningModel.cleaners[0].tasks.map((item) => item.id),
+      ['recurring_rule-1_2026-07-01'],
+      'assigned recurring instances must appear in the worker plan',
+    );
+    assert.deepEqual(
+      recurringPlanningModel.unassignedTasks.map((item) => item.id),
+      ['recurring_rule-2_2026-07-01'],
+      'unassigned recurring instances must appear in the Hermes planning queue',
+    );
 
     const extraordinaryAvailability = buildEffectiveAvailabilityRange({
       cleaners: [cleaner],

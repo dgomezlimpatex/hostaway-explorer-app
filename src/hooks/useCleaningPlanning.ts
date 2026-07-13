@@ -10,6 +10,7 @@ import { buildCapacityMapFromAvailability, buildEffectiveAvailabilityRange, Week
 import { CleaningPlanningModel, PlanningRangePreset } from '@/types/cleaningPlanning';
 import { WorkerAbsence, WorkerFixedDayOff, WorkerMaintenanceCleaning } from '@/types/workerAbsence';
 import { formatMadridDate } from '@/utils/date';
+import { useRecurringTaskInstances } from '@/hooks/useRecurringTaskInstances';
 
 interface UseCleaningPlanningOptions {
   date: Date;
@@ -118,6 +119,10 @@ export const useCleaningPlanning = ({ date, preset }: UseCleaningPlanningOptions
   const { cleaners, isLoading: cleanersLoading } = useCleaners();
 
   const range = useMemo(() => getPlanningRange(date, preset), [date, preset]);
+  const recurringInstances = useRecurringTaskInstances({
+    dateFrom: range.startDate,
+    dateTo: range.endDate,
+  });
 
   const tasksQuery = useQuery({
     queryKey: ['cleaning-planning-tasks', range.startDate, range.endDate, activeSede?.id || 'pending-sede'],
@@ -186,6 +191,11 @@ export const useCleaningPlanning = ({ date, preset }: UseCleaningPlanningOptions
     staleTime: 60_000,
   });
 
+  const planningTasks = useMemo(
+    () => [...(tasksQuery.data || []), ...recurringInstances.virtualTasks],
+    [recurringInstances.virtualTasks, tasksQuery.data],
+  );
+
   const effectiveAvailability = useMemo(() => buildEffectiveAvailabilityRange({
     cleaners,
     startDate: range.startDate,
@@ -194,7 +204,7 @@ export const useCleaningPlanning = ({ date, preset }: UseCleaningPlanningOptions
     absences: absencesQuery.data || [],
     fixedDaysOff: fixedDaysOffQuery.data || [],
     maintenanceCleanings: maintenanceQuery.data || [],
-    assignedTasks: tasksQuery.data || [],
+    assignedTasks: planningTasks,
   }), [
     absencesQuery.data,
     cleaners,
@@ -202,7 +212,7 @@ export const useCleaningPlanning = ({ date, preset }: UseCleaningPlanningOptions
     maintenanceQuery.data,
     range.endDate,
     range.startDate,
-    tasksQuery.data,
+    planningTasks,
     weeklyAvailabilityQuery.data,
   ]);
 
@@ -212,20 +222,28 @@ export const useCleaningPlanning = ({ date, preset }: UseCleaningPlanningOptions
   );
 
   const planning = useMemo<CleaningPlanningModel>(() => buildCleaningPlanningModel(
-    tasksQuery.data || [],
+    planningTasks,
     cleaners,
     capacityByCleaner,
     range.startDate,
     range.endDate,
-  ), [capacityByCleaner, cleaners, range.endDate, range.startDate, tasksQuery.data]);
+  ), [capacityByCleaner, cleaners, planningTasks, range.endDate, range.startDate]);
+
+  const refetch = async () => {
+    const result = await tasksQuery.refetch();
+    return {
+      ...result,
+      data: result.data ? [...result.data, ...recurringInstances.virtualTasks] : result.data,
+    };
+  };
 
   return {
     planning,
     range,
     effectiveAvailability,
-    isLoading: tasksQuery.isLoading || cleanersLoading || weeklyAvailabilityQuery.isLoading || absencesQuery.isLoading || fixedDaysOffQuery.isLoading || maintenanceQuery.isLoading || sedeLoading,
-    isError: tasksQuery.isError,
-    error: tasksQuery.error,
-    refetch: tasksQuery.refetch,
+    isLoading: tasksQuery.isLoading || recurringInstances.isLoading || cleanersLoading || weeklyAvailabilityQuery.isLoading || absencesQuery.isLoading || fixedDaysOffQuery.isLoading || maintenanceQuery.isLoading || sedeLoading,
+    isError: tasksQuery.isError || recurringInstances.isError,
+    error: tasksQuery.error || recurringInstances.error,
+    refetch,
   };
 };

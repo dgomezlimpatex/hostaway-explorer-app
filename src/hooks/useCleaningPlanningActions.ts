@@ -7,6 +7,7 @@ import { useToast } from '@/hooks/use-toast';
 import { validateProposalBatchForApply } from '@/utils/cleaning-planning/proposalBatchApply';
 import { executeProposalBatch } from '@/utils/cleaning-planning/proposalBatchExecution';
 import { recordPlanningCopilotApply } from '@/services/planning/copilot/planningAudit';
+import { materializeRecurringTaskInstance } from '@/services/recurringTaskInstanceService';
 
 type ApplyProposalInput = {
   proposals: AssignmentProposal[];
@@ -24,11 +25,20 @@ export const useCleaningPlanningActions = () => {
   const invalidatePlanning = () => {
     queryClient.invalidateQueries({ queryKey: ['tasks'] });
     queryClient.invalidateQueries({ queryKey: ['cleaning-planning-tasks'] });
+    queryClient.invalidateQueries({ queryKey: ['recurring-tasks-for-calendar'] });
+    queryClient.invalidateQueries({ queryKey: ['recurring-task-executions'] });
   };
 
   const assignTaskMutation = useMutation({
-    mutationFn: async ({ taskId, cleaner }: { taskId: string; cleaner: Cleaner }) => {
-      return taskStorageService.assignTask(taskId, cleaner.name, cleaner.id);
+    mutationFn: async ({ task, cleaner }: { task: Task; cleaner: Cleaner }) => {
+      if (task.isRecurringInstance) {
+        return materializeRecurringTaskInstance(task, {
+          cleaner: cleaner.name,
+          cleanerId: cleaner.id,
+          status: 'pending',
+        });
+      }
+      return taskStorageService.assignTask(task.id, cleaner.name, cleaner.id);
     },
     onSuccess: () => {
       invalidatePlanning();
@@ -66,9 +76,32 @@ export const useCleaningPlanningActions = () => {
         throw new Error(firstBlocked?.message || 'La propuesta ya no es aplicable. Regenera antes de confirmar.');
       }
 
+      const expectedById = new Map(expectedTasks.map((task) => [task.id, task]));
+      const executablePlans: typeof validation.taskPlans = [];
+      for (const plan of validation.taskPlans) {
+        const expectedTask = expectedById.get(plan.taskId);
+        if (!expectedTask?.isRecurringInstance) {
+          executablePlans.push(plan);
+          continue;
+        }
+
+        const materializedTask = await materializeRecurringTaskInstance(expectedTask, {
+          startTime: plan.proposedStartTime,
+          endTime: plan.proposedEndTime,
+          status: 'pending',
+        });
+        executablePlans.push({
+          ...plan,
+          taskId: materializedTask.id,
+          previousCleanerIds: [],
+          previousStartTime: materializedTask.startTime,
+          previousEndTime: materializedTask.endTime,
+        });
+      }
+
       let results: Array<{ taskId: string; result: SetAssignmentsResult }>;
       try {
-        results = await executeProposalBatch(validation.taskPlans, {
+        results = await executeProposalBatch(executablePlans, {
           updateSchedule: (taskId, startTime, endTime) => taskStorageService.updateTask(taskId, {
             startTime,
             endTime,
@@ -117,7 +150,16 @@ export const useCleaningPlanningActions = () => {
   });
 
   const unassignTaskMutation = useMutation({
-    mutationFn: async (taskId: string) => taskStorageService.unassignTask(taskId),
+    mutationFn: async (task: Task) => {
+      if (task.isRecurringInstance) {
+        return materializeRecurringTaskInstance(task, {
+          cleaner: undefined,
+          cleanerId: undefined,
+          status: 'pending',
+        });
+      }
+      return taskStorageService.unassignTask(task.id);
+    },
     onSuccess: () => {
       invalidatePlanning();
       toast({ title: 'Asignación retirada', description: 'La tarea vuelve a quedar sin asignar.' });

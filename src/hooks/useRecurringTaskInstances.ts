@@ -12,6 +12,15 @@ interface UseRecurringTaskInstancesProps {
   cleanerId?: string | null; // For cleaner role filtering
 }
 
+interface RecurringTaskSchedule {
+  start_date: string;
+  end_date?: string | null;
+  frequency: string;
+  interval_days?: number | null;
+  days_of_week?: number[] | null;
+  day_of_month?: number | null;
+}
+
 /**
  * Generates virtual Task instances from active recurring tasks
  * for the given date range. Excludes dates that already have
@@ -22,12 +31,17 @@ export const useRecurringTaskInstances = ({ dateFrom, dateTo, cleanerId }: UseRe
   const { userRole } = useAuth();
 
   // Fetch active recurring tasks
-  const { data: recurringTasks = [] } = useQuery({
+  const {
+    data: recurringTasks = [],
+    isLoading: recurringTasksLoading,
+    isError: recurringTasksError,
+    error: recurringTasksQueryError,
+  } = useQuery({
     queryKey: ['recurring-tasks-for-calendar', activeSede?.id, cleanerId],
     queryFn: async () => {
       let query = supabase
         .from('recurring_tasks')
-        .select('*, properties:propiedad_id(nombre, direccion, codigo)')
+        .select('*, properties:propiedad_id(nombre, direccion, codigo, duracion_servicio)')
         .eq('is_active', true);
 
       if (activeSede?.id) {
@@ -49,7 +63,12 @@ export const useRecurringTaskInstances = ({ dateFrom, dateTo, cleanerId }: UseRe
   // Fetch already-executed dates to avoid duplicates
   const recurringTaskIds = useMemo(() => recurringTasks.map(rt => rt.id), [recurringTasks]);
 
-  const { data: executedDates = [] } = useQuery({
+  const {
+    data: executedDates = [],
+    isLoading: executedDatesLoading,
+    isError: executedDatesError,
+    error: executedDatesQueryError,
+  } = useQuery({
     queryKey: ['recurring-task-executions', recurringTaskIds, dateFrom, dateTo],
     queryFn: async () => {
       if (recurringTaskIds.length === 0) return [];
@@ -104,6 +123,7 @@ export const useRecurringTaskInstances = ({ dateFrom, dateTo, cleanerId }: UseRe
           id: `recurring_${rt.id}_${dateStr}`, // Virtual ID
           property: propertyName,
           propertyCode,
+          propertyDurationMinutes: rt.properties?.duracion_servicio || rt.duracion || undefined,
           address: propertyAddress,
           date: dateStr,
           startTime: rt.start_time,
@@ -117,6 +137,7 @@ export const useRecurringTaskInstances = ({ dateFrom, dateTo, cleanerId }: UseRe
           cleanerId: rt.cleaner_id || undefined,
           clienteId: rt.cliente_id || undefined,
           propertyId: rt.propiedad_id || undefined,
+          sedeId: rt.sede_id || undefined,
           cost: rt.coste || undefined,
           paymentMethod: rt.metodo_pago || undefined,
           supervisor: rt.supervisor || undefined,
@@ -134,13 +155,18 @@ export const useRecurringTaskInstances = ({ dateFrom, dateTo, cleanerId }: UseRe
     return instances;
   }, [recurringTasks, executedSet, dateFrom, dateTo]);
 
-  return { virtualTasks };
+  return {
+    virtualTasks,
+    isLoading: recurringTasksLoading || (recurringTaskIds.length > 0 && executedDatesLoading),
+    isError: recurringTasksError || executedDatesError,
+    error: recurringTasksQueryError || executedDatesQueryError,
+  };
 };
 
 /**
  * Calculate all occurrence dates of a recurring task within a date range.
  */
-function calculateOccurrences(rt: any, fromDate: Date, toDate: Date): Date[] {
+function calculateOccurrences(rt: RecurringTaskSchedule, fromDate: Date, toDate: Date): Date[] {
   const dates: Date[] = [];
   const startDate = new Date(rt.start_date);
   const endDate = rt.end_date ? new Date(rt.end_date) : toDate;
@@ -150,7 +176,7 @@ function calculateOccurrences(rt: any, fromDate: Date, toDate: Date): Date[] {
   if (effectiveStart > effectiveEnd) return dates;
 
   // Start from the recurring task's start_date or next_execution
-  let current = new Date(rt.start_date);
+  const current = new Date(rt.start_date);
   const interval = rt.interval_days || 1;
 
   // For efficiency, advance to near the fromDate first

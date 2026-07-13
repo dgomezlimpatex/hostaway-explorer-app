@@ -105,6 +105,8 @@ assert.match(proposalCalendar, /Reparto del día/, 'PlanningProposalCalendar mus
 assert.match(proposalCalendar, /no se guarda nada hasta guardar el reparto/i, 'PlanningProposalCalendar must explain that edits are not persisted yet');
 assert.match(proposalCalendar, /openReassignment/, 'Calendar task cards must open responsible-person editing');
 assert.match(proposalCalendar, /Elegir responsable/, 'Reassignment must finish by choosing one valid candidate');
+assert.match(proposalCalendar, /Sin asignar/, 'Reassignment must offer an explicit option to leave the task unassigned');
+assert.match(proposalCalendar, /proposal\.taskId !== directPlacement\.taskId/, 'Leaving a task unassigned must remove all of its assignments from the draft');
 assert.match(proposalCalendar, /assignmentRole/, 'Traffic-light labels must use the real building-team role');
 assert.match(proposalCalendar, /md:hidden/, 'Calendar must provide a vertical mobile agenda instead of requiring horizontal timeline use');
 assert.match(proposalCalendar, /Cambios pendientes/, 'Calendar must summarize manual draft changes');

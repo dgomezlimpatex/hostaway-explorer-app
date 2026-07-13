@@ -110,6 +110,7 @@ const MIN_CARD_HEIGHT = 52;
 const TIMELINE_HEADER_HEIGHT = 48;
 const SNAP_MINUTES = 15;
 const QUARTER_HOUR_GRID_SIZE = SNAP_MINUTES * PIXELS_PER_MINUTE;
+const UNASSIGNED_PLACEMENT_ID = '__unassigned__';
 
 const getActivatorClientY = (event: Event): number | undefined => {
   if ('clientY' in event && typeof event.clientY === 'number') return event.clientY;
@@ -579,7 +580,15 @@ export const PlanningProposalCalendar = ({
       return;
     }
     const placementTask = directPlacement ? taskById.get(directPlacement.taskId) : undefined;
-    if (!directPlacement || !placementTask || !directCleanerId || !/^\d{2}:\d{2}$/.test(directStartTime)) return;
+    if (!directPlacement || !placementTask || !directCleanerId) return;
+    if (directCleanerId === UNASSIGNED_PLACEMENT_ID) {
+      const previous = draftProposals.map((proposal) => ({ ...proposal }));
+      onDraftProposalsChange(draftProposals.filter((proposal) => proposal.taskId !== directPlacement.taskId));
+      setMoveNotice({ message: `${placementTask.property} quedará sin asignar.`, previous });
+      setReassignment(null);
+      return;
+    }
+    if (!/^\d{2}:\d{2}$/.test(directStartTime)) return;
     const cleaner = cleanerById.get(directCleanerId);
     if (!cleaner?.isActive) return;
     const buildingId = placementTask.detectedBuilding?.status === 'detected' ? placementTask.detectedBuilding.propertyGroupId : undefined;
@@ -917,6 +926,16 @@ export const PlanningProposalCalendar = ({
               <p className="mt-1 text-xs text-[#6b627a]">El final se calcula con la duración prevista de la limpieza.</p>
             </div>
             <p className="text-sm font-semibold text-[#171321]">Responsable</p>
+            {reassignment?.proposalIndex !== undefined && (
+              <button
+                type="button"
+                className={`flex min-h-[52px] w-full items-center justify-between gap-3 rounded-2xl border px-4 py-3 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#310984] ${placementCleanerId === UNASSIGNED_PLACEMENT_ID ? 'border-red-500 bg-red-50' : 'border-red-200 bg-white hover:border-red-400 hover:bg-red-50'}`}
+                onClick={() => setPlacementCleanerId(UNASSIGNED_PLACEMENT_ID)}
+              >
+                <span className="font-semibold text-red-900">Sin asignar</span>
+                <span className="text-xs font-semibold text-red-700">● Dejar sin responsable</span>
+              </button>
+            )}
             {reassignmentCandidates.length === 0 ? (
               <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">
                 No hay otras responsables elegibles para esta limpieza.
@@ -950,8 +969,12 @@ export const PlanningProposalCalendar = ({
                 </div>
               ) : null;
             })()}
-            <Button type="button" className="min-h-[44px] w-full bg-[#310984] text-white hover:bg-[#23066a]" disabled={!placementCleanerId || !placementStartTime} onClick={confirmPlacement}>
-              {reassignmentCandidates.find((item) => item.cleaner.id === placementCleanerId)?.validation.valid ? 'Aplicar cambio' : 'Aplicar como excepción'}
+            <Button type="button" className="min-h-[44px] w-full bg-[#310984] text-white hover:bg-[#23066a]" disabled={!placementCleanerId || (placementCleanerId !== UNASSIGNED_PLACEMENT_ID && !placementStartTime)} onClick={confirmPlacement}>
+              {placementCleanerId === UNASSIGNED_PLACEMENT_ID
+                ? 'Dejar tarea sin asignar'
+                : reassignmentCandidates.find((item) => item.cleaner.id === placementCleanerId)?.validation.valid
+                  ? 'Aplicar cambio'
+                  : 'Aplicar como excepción'}
             </Button>
           </div>
         </DialogContent>
