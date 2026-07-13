@@ -10,7 +10,6 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { EditPropertyModal } from './EditPropertyModal';
 import { AssignChecklistModal } from './AssignChecklistModal';
 import { PropertyChecklistInfo } from './PropertyChecklistInfo';
-import { PropertyPreferredCleaners } from './PropertyPreferredCleaners';
 import { Property } from '@/types/property';
 import { Skeleton } from '@/components/ui/skeleton';
 import { 
@@ -24,7 +23,6 @@ import {
   User,
   Building,
   Copy,
-  Star,
   CalendarDays
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
@@ -72,8 +70,6 @@ const formatServiceDuration = (minutes?: number | null) => {
 interface ClientPropertiesPanelProps {
   properties: Property[];
   clients: Array<{ id: string; isActive?: boolean | null }>;
-  preferredCleanersPropertyId: string | null;
-  setPreferredCleanersPropertyId: (id: string | null) => void;
   setAssigningProperty: (property: Property) => void;
   setEditingProperty: (property: Property) => void;
   handleDuplicate: (property: Property) => void;
@@ -82,42 +78,33 @@ interface ClientPropertiesPanelProps {
 
 const PropertyActions = ({
   property,
-  preferredCleanersPropertyId,
-  setPreferredCleanersPropertyId,
   setAssigningProperty,
   setEditingProperty,
   handleDuplicate,
   handleDelete,
-}: Omit<ClientPropertiesPanelProps, 'properties' | 'clients'> & { property: Property }) => {
-  const isPreferredOpen = preferredCleanersPropertyId === property.id;
-
-  return (
-    <div className="flex justify-end gap-1">
-      <Button variant="outline" size="sm" onClick={() => setAssigningProperty(property)} className="h-8 px-2">
-        <CheckSquare className="h-3.5 w-3.5 lg:mr-1" />
-        <span className="hidden lg:inline text-xs">Checklist</span>
-      </Button>
-      <Button variant="outline" size="sm" onClick={() => setPreferredCleanersPropertyId(isPreferredOpen ? null : property.id)} title="Limpiadoras preferidas" className={`h-8 px-2 ${isPreferredOpen ? 'border-yellow-400 bg-yellow-50' : ''}`}>
-        <Star className="h-3.5 w-3.5 text-yellow-500" />
-      </Button>
-      <Button variant="outline" size="sm" onClick={() => handleDuplicate(property)} title="Duplicar" className="h-8 px-2"><Copy className="h-3.5 w-3.5" /></Button>
-      <Button variant="outline" size="sm" onClick={() => setEditingProperty(property)} title="Editar" className="h-8 px-2"><Edit className="h-3.5 w-3.5" /></Button>
-      <AlertDialog>
-        <AlertDialogTrigger asChild><Button variant="outline" size="sm" title="Eliminar" className="h-8 px-2 text-red-600 hover:text-red-700"><Trash2 className="h-3.5 w-3.5" /></Button></AlertDialogTrigger>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
-            <AlertDialogDescription>Esta acción no se puede deshacer. Se eliminará permanentemente la propiedad "{property.nombre}".</AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={() => handleDelete(property.id)} className="bg-red-600 hover:bg-red-700">Eliminar</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </div>
-  );
-};
+}: Omit<ClientPropertiesPanelProps, 'properties' | 'clients'> & { property: Property }) => (
+  <div className="flex justify-end gap-1">
+    <Button variant="outline" size="sm" onClick={() => setAssigningProperty(property)} className="h-8 px-2">
+      <CheckSquare className="h-3.5 w-3.5 lg:mr-1" />
+      <span className="hidden lg:inline text-xs">Checklist</span>
+    </Button>
+    <Button variant="outline" size="sm" onClick={() => handleDuplicate(property)} title="Duplicar" className="h-8 px-2"><Copy className="h-3.5 w-3.5" /></Button>
+    <Button variant="outline" size="sm" onClick={() => setEditingProperty(property)} title="Editar" className="h-8 px-2"><Edit className="h-3.5 w-3.5" /></Button>
+    <AlertDialog>
+      <AlertDialogTrigger asChild><Button variant="outline" size="sm" title="Eliminar" className="h-8 px-2 text-red-600 hover:text-red-700"><Trash2 className="h-3.5 w-3.5" /></Button></AlertDialogTrigger>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
+          <AlertDialogDescription>Esta acción no se puede deshacer. Se eliminará permanentemente la propiedad "{property.nombre}".</AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancelar</AlertDialogCancel>
+          <AlertDialogAction onClick={() => handleDelete(property.id)} className="bg-red-600 hover:bg-red-700">Eliminar</AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  </div>
+);
 
 const ClientPropertiesPanel = ({ properties, clients, ...actionProps }: ClientPropertiesPanelProps) => {
   const propertyIds = properties.map((property) => property.id);
@@ -169,7 +156,6 @@ const ClientPropertiesPanel = ({ properties, clients, ...actionProps }: ClientPr
       <div className="space-y-3 lg:hidden">
         {properties.map((property) => <Card key={property.id} className={`border-l-4 ${isPropertyActive(property) ? 'border-l-green-500' : 'border-l-red-500 opacity-60'}`}><CardHeader className="pb-3 px-3"><CardTitle className="text-base truncate">{property.nombre}</CardTitle><CardDescription>{property.codigo || '—'} · {property.direccion || '—'}</CardDescription></CardHeader><CardContent className="space-y-3 px-3"><div className="grid grid-cols-2 gap-3 text-sm"><div><p className="text-xs text-muted-foreground">Tiempo estimado</p><p className="font-medium">{formatServiceDuration(property.duracionServicio)}</p></div><div><p className="text-xs text-muted-foreground">Capacidad</p><p className="font-medium">{formatCapacity(property)}</p></div><div><p className="text-xs text-muted-foreground">Última limpieza</p><p className="font-medium">{getLastCleaning(property.id)}</p></div><div><p className="text-xs text-muted-foreground">Próxima limpieza</p><p className="font-medium">{getNextCleaning(property.id)}</p></div></div><div className="pt-2 border-t border-gray-100"><PropertyChecklistInfo propertyId={property.id} /></div><PropertyActions property={property} {...actionProps} /></CardContent></Card>)}
       </div>
-      {properties.map((property) => actionProps.preferredCleanersPropertyId === property.id ? <div key={`preferred-${property.id}`} className="rounded-lg border bg-yellow-50/40 p-3"><div className="mb-2 flex items-center gap-2 text-sm font-medium text-yellow-800"><Star className="h-4 w-4" />Limpiadoras preferidas de {property.nombre}</div><PropertyPreferredCleaners propertyId={property.id} /></div> : null)}
     </div>
   );
 };
@@ -181,7 +167,6 @@ export const PropertyList = ({ searchTerm = '' }: PropertyListProps) => {
   const createProperty = useCreateProperty();
   const [editingProperty, setEditingProperty] = useState<Property | null>(null);
   const [assigningProperty, setAssigningProperty] = useState<Property | null>(null);
-  const [preferredCleanersPropertyId, setPreferredCleanersPropertyId] = useState<string | null>(null);
   const [openClients, setOpenClients] = useState<Set<string>>(new Set());
   const { toast } = useToast();
 
@@ -365,8 +350,6 @@ export const PropertyList = ({ searchTerm = '' }: PropertyListProps) => {
                     <ClientPropertiesPanel
                       properties={clientProperties}
                       clients={clients}
-                      preferredCleanersPropertyId={preferredCleanersPropertyId}
-                      setPreferredCleanersPropertyId={setPreferredCleanersPropertyId}
                       setAssigningProperty={setAssigningProperty}
                       setEditingProperty={setEditingProperty}
                       handleDuplicate={handleDuplicate}

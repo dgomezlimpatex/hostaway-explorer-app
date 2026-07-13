@@ -30,6 +30,7 @@ const capacityUtils = read('src/utils/cleaning-planning/capacity.ts');
 const propertyGroupTypes = read('src/types/propertyGroups.ts');
 const buildingDataHook = read('src/hooks/useCleaningPlanningBuildingData.ts');
 const operationalPlanningService = read('src/services/planning/operationalPlanningService.ts');
+const propertyList = read('src/components/properties/PropertyList.tsx');
 
 assert.match(filters, /import \{ formatMadridDate \} from '@\/utils\/date';/, 'PlanningFilters must import formatMadridDate');
 assert.match(filters, /value=\{formatMadridDate\(date\)\}/, 'date input must use formatMadridDate(date), not toISOString()');
@@ -73,8 +74,13 @@ assert.match(attentionSummary, /slice\(0, 5\)/, 'Attention summary should cap bu
 
 assert.match(decisionQueue, /Decisiones pendientes/, 'PlanningDecisionQueue must be the main task list');
 assert.match(decisionQueue, /Urgente: entradas tempranas[\s\S]*Sin cubrir[\s\S]*Casas grandes[\s\S]*Requieren revisión/, 'Decision queue must prioritize operational groups');
-assert.match(decisionQueue, /variant="simple"/, 'Decision queue must use simple task cards');
+assert.match(decisionQueue, /variant="simple"/, 'PlanningDecisionQueue must use simple task cards');
 assert.match(decisionQueue, /<details className=/, 'Already-covered tasks should be collapsed by default');
+assert.doesNotMatch(
+  propertyList,
+  /PropertyPreferredCleaners|preferredCleanersPropertyId|Limpiadoras preferidas/,
+  'Property management must not expose legacy preferred-cleaner configuration now managed by buildings',
+);
 
 assert.match(advancedDetails, /Ver disponibilidad, carga y diagnóstico técnico/, 'Technical panels must live behind advanced details');
 assert.match(planningPage, /PlanningStartScreen/, 'Planning page must use the radical-simple start screen');
