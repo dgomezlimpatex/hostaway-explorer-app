@@ -203,6 +203,49 @@ export async function run(assert: Assert) {
     );
     assert.equal(rangeAvailability[0].assignedMinutes, 90, 'availability capacity must ignore cancelled/invalid assigned tasks');
     assert.equal(rangeAvailability[0].remainingMinutes, 390, 'remaining capacity should subtract only active planifiable work');
+    assert.deepEqual(
+      rangeAvailability[0].blockedWindows,
+      [{
+        startTime: '10:00',
+        endTime: '11:30',
+        reason: 'Tarea ya asignada: Propiedad pending-assigned-capacity',
+      }],
+      'normal tasks assigned manually must block their real schedule so Hermes cannot overlap a new proposal',
+    );
+
+    const sharedSanVicenteTask = {
+      ...task('san-vicente-manual', 'pending', cleaner.id),
+      property: 'SVCP San Vicente do Mar',
+      startTime: '11:00',
+      endTime: '21:00',
+      duration: 600,
+      propertyDurationMinutes: 600,
+      requiredCleaners: 2,
+      assignments: [
+        { cleaner_id: cleaner.id },
+        { cleaner_id: 'cleaner-claudia' },
+      ] as Task['assignments'],
+    };
+    const sharedTaskAvailability = buildEffectiveAvailabilityRange({
+      cleaners: [cleaner],
+      startDate: '2026-07-01',
+      endDate: '2026-07-01',
+      weeklyAvailability: [
+        { cleaner_id: cleaner.id, day_of_week: 3, is_available: true, start_time: '09:00', end_time: '17:00' },
+      ],
+      assignedTasks: [sharedSanVicenteTask],
+    });
+    assert.equal(sharedTaskAvailability[0].assignedMinutes, 300, 'San Vicente must consume 5 hours per assigned worker');
+    assert.equal(sharedTaskAvailability[0].remainingMinutes, 180, 'shared tasks must reduce capacity only once per worker');
+    assert.deepEqual(
+      sharedTaskAvailability[0].blockedWindows,
+      [{
+        startTime: '11:00',
+        endTime: '16:00',
+        reason: 'Tarea ya asignada: SVCP San Vicente do Mar',
+      }],
+      'San Vicente must block 11:00-16:00 for each assigned worker instead of allowing overlapping proposals',
+    );
 
     const recurringAssignedTask = {
       ...task('recurring-assigned-capacity', 'pending', cleaner.id),

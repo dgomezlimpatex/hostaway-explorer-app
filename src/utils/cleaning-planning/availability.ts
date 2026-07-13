@@ -63,6 +63,40 @@ const extraordinaryWindowsForCleanerDate = (tasks: Task[], cleanerId: string, da
     reason: `Servicio extraordinario: ${task.property || task.type}`,
   }));
 
+const timeToMinutesValue = (time?: string | null): number | null => {
+  if (!time) return null;
+  const [rawHours, rawMinutes = '0'] = time.split(':');
+  const hours = Number(rawHours);
+  const minutes = Number(rawMinutes);
+  if (!Number.isFinite(hours) || !Number.isFinite(minutes)) return null;
+  if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59) return null;
+  return hours * 60 + minutes;
+};
+
+const minutesToTimeValue = (minutes: number): string => {
+  const clamped = Math.max(0, Math.min(23 * 60 + 59, Math.round(minutes)));
+  const hours = Math.floor(clamped / 60).toString().padStart(2, '0');
+  const minutePart = (clamped % 60).toString().padStart(2, '0');
+  return `${hours}:${minutePart}`;
+};
+
+const assignedTaskWindowsForCleanerDate = (tasks: Task[], cleanerId: string, date: string) => tasks
+  .filter((task) => task.date === date && isPlannableTaskStatus(task.status))
+  .filter((task) => !isExtraordinaryTask(task))
+  .filter((task) => getTaskAssignmentCleanerIds(task).includes(cleanerId))
+  .flatMap((task) => {
+    const startMinutes = timeToMinutesValue(task.startTime);
+    const workerDurationMinutes = getTaskWorkerPlannedDurationMinutes(task);
+    const fallbackDurationMinutes = getWindowDurationMinutes(task.startTime, task.endTime);
+    const durationMinutes = workerDurationMinutes > 0 ? workerDurationMinutes : fallbackDurationMinutes;
+    if (startMinutes === null || durationMinutes <= 0) return [];
+    return [{
+      startTime: task.startTime,
+      endTime: minutesToTimeValue(startMinutes + durationMinutes),
+      reason: `Tarea ya asignada: ${task.property || task.type}`,
+    }];
+  });
+
 const assignedMinutesForCleanerDate = (tasks: Task[], cleanerId: string, date: string): number => tasks
   .filter((task) => task.date === date && isPlannableTaskStatus(task.status))
   .filter((task) => !isExtraordinaryTask(task))
@@ -94,6 +128,7 @@ export const buildEffectiveAvailabilityForDate = ({
   const dayAbsences = absences.filter((absence) => absence.cleanerId === cleaner.id && overlapsDate(date, absence.startDate, absence.endDate));
   const dayMaintenance = maintenanceCleanings.filter((maintenance) => maintenance.cleanerId === cleaner.id && maintenance.isActive && maintenance.daysOfWeek.includes(dayOfWeek));
   const extraordinaryWindows = extraordinaryWindowsForCleanerDate(assignedTasks, cleaner.id, date);
+  const assignedTaskWindows = assignedTaskWindowsForCleanerDate(assignedTasks, cleaner.id, date);
   const assignedMinutes = assignedMinutesForCleanerDate(assignedTasks, cleaner.id, date);
 
   if (cleanerFixedDayOff) {
@@ -132,7 +167,7 @@ export const buildEffectiveAvailabilityForDate = ({
     ? (cleanerWeeklyAvailability.is_available ? getWindowDurationMinutes(baseStartTime, baseEndTime) : 0)
     : fallbackCapacityMinutes;
 
-  const blockedWindows = [
+  const unavailableWindows = [
     ...dayAbsences
       .filter((absence) => absence.startTime && absence.endTime)
       .map((absence) => ({
@@ -147,8 +182,9 @@ export const buildEffectiveAvailabilityForDate = ({
     })),
     ...extraordinaryWindows,
   ];
+  const blockedWindows = [...unavailableWindows, ...assignedTaskWindows];
 
-  const blockedMinutes = blockedWindows.reduce((total, window) => total + getWindowDurationMinutes(window.startTime, window.endTime), 0);
+  const blockedMinutes = unavailableWindows.reduce((total, window) => total + getWindowDurationMinutes(window.startTime, window.endTime), 0);
   const availableMinutes = Math.max(0, baseMinutes - blockedMinutes);
   const remainingMinutes = Math.max(0, availableMinutes - assignedMinutes);
 

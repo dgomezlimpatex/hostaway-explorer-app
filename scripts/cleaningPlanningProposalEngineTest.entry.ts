@@ -199,6 +199,38 @@ export async function run(assert: Assert) {
   assert.equal(lateShiftInsideOperationalWindow.proposals[0]?.proposedEndTime, '16:30');
   assert.equal(lateShiftInsideOperationalWindow.conflicts.length, 0);
 
+  const manualAssignmentBlocksProposalSlot = proposalFor(
+    [fallbackTask({
+      id: 'task-after-manual-assignment',
+      startTime: '10:00',
+      endTime: '11:30',
+      checkOut: '10:00',
+      checkIn: '18:00',
+      durationMinutes: 90,
+      duration: 90,
+    })],
+    [{
+      ...availability('2026-07-01', 180, true),
+      availableWindows: [{ startTime: '09:00', endTime: '18:00' }],
+      blockedWindows: [{
+        startTime: '11:00',
+        endTime: '16:00',
+        reason: 'Tarea ya asignada: SVCP San Vicente do Mar',
+      }],
+    }],
+  );
+  assert.equal(
+    manualAssignmentBlocksProposalSlot.proposals.length,
+    1,
+    `a task should still be proposed after a manual assignment when it fits: ${JSON.stringify(manualAssignmentBlocksProposalSlot.conflicts)}`,
+  );
+  assert.equal(
+    manualAssignmentBlocksProposalSlot.proposals[0]?.proposedStartTime,
+    '16:00',
+    'Hermes must move the proposal after the manually assigned task instead of overlapping it',
+  );
+  assert.equal(manualAssignmentBlocksProposalSlot.proposals[0]?.proposedEndTime, '17:30');
+
   const bufferIsDebited = proposalFor(
     [
       fallbackTask({ id: 'task-buffer-1', startTime: '10:00', endTime: '12:15', durationMinutes: 135, duration: 135 }),
