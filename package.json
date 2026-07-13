@@ -20,6 +20,7 @@
     "test:planning-building-crm-ui": "node scripts/planningBuildingCrmUiContractTest.mjs",
     "test:whatsapp-prep": "node scripts/whatsappPrepTest.mjs",
     "test:client-portal-visibility": "node scripts/clientPortalVisibilityTest.mjs",
+    "test:task-next-client-entry": "node scripts/taskNextClientEntryTest.mjs && node scripts/taskNextClientEntryUiContractTest.mjs",
     "preview": "vite preview"
   },
   "dependencies": {

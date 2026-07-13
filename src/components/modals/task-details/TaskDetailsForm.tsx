@@ -15,6 +15,14 @@ import { useAuth } from "@/hooks/useAuth";
 import { useAdditionalTasks } from "@/hooks/useAdditionalTasks";
 import { FieldSaveStatus } from "@/hooks/useInlineFieldSave";
 import { getEffectiveTaskDurationMinutes, getTaskAssignedCount } from "@/utils/taskPositioning";
+import { NextClientEntrySection } from "./components/NextClientEntrySection";
+import type { Database } from "@/integrations/supabase/types";
+
+type PropertyDetails = Database['public']['Tables']['properties']['Row'] & {
+  clients?: Database['public']['Tables']['clients']['Row'] | null;
+};
+
+type ClientDetails = Database['public']['Tables']['clients']['Row'];
 
 interface TaskDetailsFormProps {
   task: Task;
@@ -38,8 +46,8 @@ export const TaskDetailsForm = ({
 }: TaskDetailsFormProps) => {
   const { userRole } = useAuth();
   const { addSubtask, removeSubtask } = useAdditionalTasks();
-  const [propertyData, setPropertyData] = useState<any>(null);
-  const [clientData, setClientData] = useState<any>(null);
+  const [propertyData, setPropertyData] = useState<PropertyDetails | null>(null);
+  const [clientData, setClientData] = useState<ClientDetails | null>(null);
   const [loading, setLoading] = useState(true);
   const workerDisplayDurationMinutes =
     userRole === 'cleaner' && getTaskAssignedCount(task) > 1
@@ -66,8 +74,9 @@ export const TaskDetailsForm = ({
           const { data: property } = await propertyQuery.maybeSingle();
 
           if (property) {
-            setPropertyData(property);
-            setClientData('clients' in property ? property.clients : null);
+            const typedProperty = property as PropertyDetails;
+            setPropertyData(typedProperty);
+            setClientData(typedProperty.clients ?? null);
           }
         } catch (error) {
           console.error('Error fetching property data:', error);
@@ -127,6 +136,13 @@ export const TaskDetailsForm = ({
           readOnly
           displayDurationMinutes={workerDisplayDurationMinutes}
         />
+      )}
+
+      {userRole === 'admin' && task.propertyId && (
+        <>
+          <div className="h-px bg-border/60" />
+          <NextClientEntrySection propertyId={task.propertyId} taskDate={formData.date ?? task.date} />
+        </>
       )}
 
       {canEdit && (
