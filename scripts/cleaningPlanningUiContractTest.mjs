@@ -125,6 +125,11 @@ assert.match(proposalCalendar, /TouchSensor/, 'Mobile drag must use an explicit 
 assert.match(proposalCalendar, /KeyboardSensor/, 'Drag and drop must retain a keyboard-accessible sensor');
 assert.match(proposalCalendar, /Deshacer/, 'Every successful drag must expose one-interaction undo');
 assert.match(proposalCalendar, /Sin cubrir/, 'Unassigned tasks must remain in a visible dedicated tray');
+assert.match(
+  proposalCalendar,
+  /const unassignedTasks = useMemo\([\s\S]*?\.sort\(\(left, right\) => \(left\.propertyCode \|\| left\.property\)\.localeCompare\([\s\S]*?right\.propertyCode \|\| right\.property[\s\S]*?numeric: true[\s\S]*?sensitivity: 'base'/,
+  'Uncovered sandbox tasks must be sorted naturally and alphabetically by property code',
+);
 assert.match(proposalPanel, /effectiveAvailability/, 'The sandbox must receive the same effective availability used by the proposal engine');
 assert.match(planningPage, /effectiveAvailability=\{effectiveAvailability\}/, 'Planning page must pass engine availability into the reviewed sandbox');
 assert.doesNotMatch(proposalCalendar, /taskStorageService|multipleTaskAssignmentService|supabase\.from/, 'PlanningProposalCalendar must be a local sandbox and must not persist changes directly');

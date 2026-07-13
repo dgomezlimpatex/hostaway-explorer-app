@@ -439,7 +439,12 @@ export const PlanningProposalCalendar = ({
   const unassignedTasks = useMemo(() => calendarTasks
     .filter((task) => task.date === selectedDate)
     .filter((task) => !draftedTaskIds.has(task.id))
-    .filter((task) => getAssignedCleanerIds(task, cleaners).length === 0), [calendarTasks, cleaners, draftedTaskIds, selectedDate]);
+    .filter((task) => getAssignedCleanerIds(task, cleaners).length === 0)
+    .sort((left, right) => (left.propertyCode || left.property).localeCompare(
+      right.propertyCode || right.property,
+      'es',
+      { numeric: true, sensitivity: 'base' },
+    )), [calendarTasks, cleaners, draftedTaskIds, selectedDate]);
 
   const validateMove = (payload: DragPayload, cleanerId: string): DraftAssignmentMoveValidation => {
     const task = taskById.get(payload.taskId);
