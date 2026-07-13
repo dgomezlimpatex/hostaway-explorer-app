@@ -7,6 +7,7 @@ const form = read('src/components/modals/task-details/TaskDetailsForm.tsx');
 const section = read('src/components/modals/task-details/components/NextClientEntrySection.tsx');
 const service = read('src/services/clientPortal/nextClientEntry.ts');
 const migration = read('supabase/migrations/20260713120000_admin_next_client_entry.sql');
+const avantioMigration = read('supabase/migrations/20260713130000_include_avantio_in_admin_next_entry.sql');
 
 assert.match(form, /userRole === ['"]admin['"][\s\S]*<NextClientEntrySection/, 'the section must render only for admin');
 assert.doesNotMatch(form, /userRole !== ['"]cleaner['"][\s\S]*<NextClientEntrySection/, 'a broad non-cleaner check is not sufficient');
@@ -24,5 +25,15 @@ assert.match(migration, /REVOKE ALL ON FUNCTION[\s\S]*FROM PUBLIC, anon/i, 'anon
 assert.match(migration, /DROP POLICY IF EXISTS "Users can view all reservations"/, 'legacy authenticated-wide read access must be removed');
 assert.match(migration, /CREATE POLICY "Operational roles can view client reservations"/, 'reservation reads must be restricted by operational role');
 assert.doesNotMatch(migration, /has_role\(auth\.uid\(\), 'cleaner'/, 'cleaners must not be granted reservation reads');
+assert.match(avantioMigration, /public\.client_reservations/, 'portal reservations must remain a source');
+assert.match(avantioMigration, /public\.avantio_reservations/, 'Avantio reservations must also be a source');
+assert.match(avantioMigration, /arrival_date\s*>=\s*_from_date/, 'Avantio entries must start on the task date');
+assert.match(avantioMigration, /lower\([^)]*status[^)]*\)\s*(?:<>|NOT IN)/i, 'cancelled Avantio reservations must be ignored');
+assert.match(avantioMigration, /cancellation_date\s+IS\s+NULL/i, 'cancelled Avantio rows must be ignored even if their status is stale');
+for (const excludedStatus of ['cancelled', 'canceled', 'unavailable', 'unavaliable', 'requested', 'pending', 'tentative']) {
+  assert.match(avantioMigration, new RegExp(`['"]${excludedStatus}['"]`), `Avantio status ${excludedStatus} must be ignored`);
+}
+assert.match(avantioMigration, /ORDER BY[\s\S]*check_in_date\s+ASC/i, 'the nearest entry across all sources must be returned');
+assert.match(avantioMigration, /has_role\(auth\.uid\(\),\s*'admin'::public\.app_role\)/, 'the updated RPC must remain admin-only');
 
 console.log('task-next-client-entry-ui-contract-tests: OK');
