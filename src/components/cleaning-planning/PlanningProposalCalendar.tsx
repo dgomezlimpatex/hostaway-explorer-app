@@ -28,6 +28,7 @@ import { AssignmentProposal, CleaningPlanningTask, EffectiveWorkerAvailability }
 import { CleanerGroupAssignment } from '@/types/propertyGroups';
 import { minutesToHoursLabel } from '@/utils/cleaningPlanning';
 import { isTaskAssignedToCleaner } from '@/utils/taskAssignments';
+import { getTaskWorkerCount, getTaskWorkerPlannedDurationMinutes } from '@/utils/cleaning-planning/capacity';
 import { validateDraftAssignmentMove, type DraftAssignmentMoveValidation } from '@/utils/cleaning-planning/proposalEngine';
 
 export type PlanningProposalDraftWarningSeverity = 'blocking' | 'warning';
@@ -155,8 +156,12 @@ const getTaskStart = (task: CleaningPlanningTask, proposal?: AssignmentProposal)
 );
 
 const getTaskEnd = (task: CleaningPlanningTask, proposal?: AssignmentProposal): number => {
-  const explicitEnd = toMinutes(proposal?.proposedEndTime || task.displayEndTime || task.endTime);
   const start = getTaskStart(task, proposal);
+  if (!proposal && getTaskWorkerCount(task) > 1) {
+    const workerDurationMinutes = getTaskWorkerPlannedDurationMinutes(task);
+    if (workerDurationMinutes > 0) return start + workerDurationMinutes;
+  }
+  const explicitEnd = toMinutes(proposal?.proposedEndTime || task.displayEndTime || task.endTime);
   return Math.max(explicitEnd, start + Math.max(proposal?.durationMinutes || task.durationMinutes || 30, 30));
 };
 

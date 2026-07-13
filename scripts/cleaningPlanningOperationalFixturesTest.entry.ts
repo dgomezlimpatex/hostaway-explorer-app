@@ -4,6 +4,7 @@ import {
   validateProposalBatchForApply,
 } from '../src/utils/cleaning-planning/proposalBatchApply';
 import { buildCleaningWindow } from '../src/services/planning/planningWindows';
+import { getTaskWorkerPlannedDurationMinutes } from '../src/utils/cleaning-planning/capacity';
 import type { Cleaner, Task } from '../src/types/calendar';
 import type { AssignmentProposal, CleaningPlanningTask, EffectiveWorkerAvailability } from '../src/types/cleaningPlanning';
 import type { CleanerGroupAssignment } from '../src/types/propertyGroups';
@@ -157,6 +158,20 @@ export async function run(assert: Assert) {
   assert.equal(largeHouseProposal.proposals.length, 2, 'casa grande con requiredCleaners=2 debe proponer dos limpiadoras');
   assert.deepEqual(largeHouseProposal.proposals.map((item) => item.taskId), ['large-house-2-cleaners', 'large-house-2-cleaners']);
   assert.deepEqual(new Set(largeHouseProposal.proposals.map((item) => item.cleanerId)), new Set(['ana', 'bea']));
+
+  const sanVicente = task({
+    id: 'san-vicente-two-workers',
+    property: 'SVCP San Vicente do Mar',
+    propertyDurationMinutes: 600,
+    durationMinutes: 600,
+    duration: 600,
+    requiredCleaners: 2,
+  });
+  assert.equal(
+    getTaskWorkerPlannedDurationMinutes(sanVicente),
+    300,
+    'una tarea de 10 h repartida entre dos personas debe ocupar 5 h por trabajadora',
+  );
 
   const sevenDayTasks = Array.from({ length: 7 }, (_, index) => task({
     id: `7d-${index + 1}`,

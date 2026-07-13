@@ -107,6 +107,11 @@ assert.match(proposalCalendar, /openReassignment/, 'Calendar task cards must ope
 assert.match(proposalCalendar, /Elegir responsable/, 'Reassignment must finish by choosing one valid candidate');
 assert.match(proposalCalendar, /Sin asignar/, 'Reassignment must offer an explicit option to leave the task unassigned');
 assert.match(proposalCalendar, /proposal\.taskId !== directPlacement\.taskId/, 'Leaving a task unassigned must remove all of its assignments from the draft');
+assert.match(
+  proposalCalendar,
+  /getTaskWorkerPlannedDurationMinutes\(task\)/,
+  'Existing multi-worker tasks must render the real per-worker duration instead of the full task duration',
+);
 assert.match(proposalCalendar, /assignmentRole/, 'Traffic-light labels must use the real building-team role');
 assert.match(proposalCalendar, /md:hidden/, 'Calendar must provide a vertical mobile agenda instead of requiring horizontal timeline use');
 assert.match(proposalCalendar, /Cambios pendientes/, 'Calendar must summarize manual draft changes');
