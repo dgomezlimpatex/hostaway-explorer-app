@@ -14,3 +14,8 @@ verify_jwt = false
 
 [functions.laundry-route-workflow]
 verify_jwt = false
+
+# Meta verifica y entrega eventos sin un JWT de Supabase.
+# La función valida el verify token (GET) y la firma HMAC de Meta (POST).
+[functions.whatsapp-webhook]
+verify_jwt = false

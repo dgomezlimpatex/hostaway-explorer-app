@@ -3,7 +3,14 @@
 
 import { serve } from 'https://deno.land/std@0.190.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.50.0';
+import { Resend } from 'npm:resend@2.0.0';
 import { sendWhatsAppTemplateMessage } from '../_shared/whatsappClient.ts';
+import {
+  buildRejectedAlertBodyParameters,
+  buildRejectedAlertEmail,
+  resolveNotificationRecipient,
+  shouldSendAdminEmailFallback,
+} from '../_shared/whatsappNotificationRouting.ts';
 import {
   templateForEventType,
   WHATSAPP_TEMPLATES,
@@ -37,13 +44,20 @@ serve(async (req: Request): Promise<Response> => {
     return new Response('Method not allowed', { status: 405, headers: corsHeaders });
   }
 
+  const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
   const supabase = createClient(
     Deno.env.get('SUPABASE_URL') ?? '',
-    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
+    serviceRoleKey,
   );
 
   try {
-    const { eventId } = await req.json();
+    const { eventId, forceEmailFallback = false } = await req.json();
+    if (forceEmailFallback && req.headers.get('Authorization') !== `Bearer ${serviceRoleKey}`) {
+      return new Response(JSON.stringify({ error: 'Fallback forzado requiere service role' }), {
+        status: 403,
+        headers: { 'Content-Type': 'application/json', ...corsHeaders },
+      });
+    }
     if (!eventId) {
       return new Response(JSON.stringify({ error: 'eventId requerido' }), {
         status: 400,
@@ -101,9 +115,12 @@ serve(async (req: Request): Promise<Response> => {
       });
     }
 
-    // 3. Validar que la limpiadora tiene WhatsApp habilitado
-    const recipient: string | null = cleaner.whatsapp_phone_e164 ?? null;
-    const enabled = Boolean(cleaner.whatsapp_notifications_enabled) && Boolean(recipient);
+    // 3. Resolver destinatario: trabajadora para eventos normales, administración para rechazos.
+    const adminPhone = Deno.env.get('WHATSAPP_ADMIN_PHONE_E164') ?? '';
+    const fallbackEmail = Deno.env.get('WHATSAPP_ADMIN_FALLBACK_EMAIL') ?? '';
+    const routing = resolveNotificationRecipient(event.event_type, cleaner, adminPhone);
+    const recipient = routing.recipient;
+    const enabled = routing.enabled;
 
     // 4. Construir parámetros del cuerpo según plantilla
     const def = WHATSAPP_TEMPLATES[templateName];
@@ -126,13 +143,127 @@ serve(async (req: Request): Promise<Response> => {
         bodyParameters = [name, property, date, start, end];
         break;
       case 'task_approval_reminder_es':
-        bodyParameters = [name, property, start, end];
+        bodyParameters = [name, property, date, start, end];
         break;
       case 'task_late_start_reminder_es':
         bodyParameters = [name, property, start];
         break;
+      case 'task_rejected_admin_alert_es':
+        bodyParameters = buildRejectedAlertBodyParameters(cleaner, task, event.payload ?? {}, date);
+        break;
       default:
         bodyParameters = [name, property, date, start, end].slice(0, def.bodyParamCount);
+    }
+
+    const sendAdminFallbackEmail = async (
+      whatsappSucceeded: boolean,
+      triggerError: string | null,
+    ): Promise<{ attempted: boolean; ok: boolean; providerMessageId?: string; errorMessage?: string }> => {
+      if (!shouldSendAdminEmailFallback(event.event_type, whatsappSucceeded, fallbackEmail)) {
+        return { attempted: false, ok: false };
+      }
+
+      const emailContent = buildRejectedAlertEmail(cleaner, task, event.payload ?? {}, date);
+      const { data: emailDelivery, error: emailDeliveryError } = await supabase
+        .from('notification_deliveries')
+        .insert({
+          notification_event_id: eventId,
+          channel: 'email',
+          provider: 'resend',
+          recipient: fallbackEmail,
+          template_name: 'task_rejected_admin_fallback_email',
+          status: 'queued',
+          provider_payload: { triggerError },
+        })
+        .select('id')
+        .single();
+
+      if (emailDeliveryError) {
+        if (emailDeliveryError.code === '23505') {
+          const { data: existing } = await supabase
+            .from('notification_deliveries')
+            .select('status,provider_message_id,error_message')
+            .eq('notification_event_id', eventId)
+            .eq('channel', 'email')
+            .eq('template_name', 'task_rejected_admin_fallback_email')
+            .maybeSingle();
+          const existingOk = Boolean(existing) && existing.status !== 'failed';
+          return {
+            attempted: false,
+            ok: existingOk,
+            providerMessageId: existing?.provider_message_id ?? undefined,
+            errorMessage: existingOk ? undefined : (existing?.error_message ?? 'Fallback email ya registrado como fallido'),
+          };
+        }
+        return { attempted: true, ok: false, errorMessage: emailDeliveryError.message };
+      }
+
+      const resendApiKey = Deno.env.get('RESEND_API_KEY') ?? '';
+      const fallbackFrom = Deno.env.get('WHATSAPP_ADMIN_FALLBACK_FROM')
+        ?? 'Limpatex Gestión <onboarding@resend.dev>';
+      let providerMessageId: string | undefined;
+      let errorMessage: string | undefined;
+
+      if (!resendApiKey) {
+        errorMessage = 'RESEND_API_KEY no configurada';
+      } else {
+        try {
+          const response = await new Resend(resendApiKey).emails.send({
+            from: fallbackFrom,
+            to: [fallbackEmail],
+            subject: emailContent.subject,
+            html: emailContent.html,
+          });
+          if (response.error) {
+            errorMessage = response.error.message ?? JSON.stringify(response.error);
+          } else {
+            providerMessageId = response.data?.id;
+          }
+        } catch (error) {
+          errorMessage = error instanceof Error ? error.message : String(error);
+        }
+      }
+
+      const ok = Boolean(providerMessageId) && !errorMessage;
+      await supabase.from('notification_deliveries').update({
+        status: ok ? 'sent' : 'failed',
+        provider_message_id: providerMessageId ?? null,
+        provider_response: providerMessageId ? { id: providerMessageId } : {},
+        error_code: ok ? null : 'resend_error',
+        error_message: errorMessage ?? null,
+        sent_at: ok ? new Date().toISOString() : null,
+      }).eq('id', emailDelivery.id);
+
+      return { attempted: true, ok, providerMessageId, errorMessage };
+    };
+
+    if (forceEmailFallback) {
+      if (event.event_type !== 'task_rejected_alert') {
+        return new Response(JSON.stringify({ error: 'Fallback forzado no permitido para este evento' }), {
+          status: 422,
+          headers: { 'Content-Type': 'application/json', ...corsHeaders },
+        });
+      }
+
+      const fallback = await sendAdminFallbackEmail(false, 'Meta informó fallo asíncrono de WhatsApp');
+      const now = new Date().toISOString();
+      await supabase.from('notification_events').update({
+        status: fallback.ok ? 'sent' : 'failed',
+        processed_at: now,
+        error_message: fallback.ok
+          ? 'WhatsApp falló de forma asíncrona; correo de respaldo enviado'
+          : (fallback.errorMessage ?? 'Fallaron WhatsApp y correo de respaldo'),
+      }).eq('id', eventId);
+
+      return new Response(JSON.stringify({
+        ok: fallback.ok,
+        status: fallback.ok ? 'fallback_sent' : 'failed',
+        fallbackChannel: fallback.ok ? 'email' : null,
+        fallbackProviderMessageId: fallback.providerMessageId,
+      }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json', ...corsHeaders },
+      });
     }
 
     // 5. Botones (payloads compactos) si la plantilla los tiene
@@ -161,15 +292,38 @@ serve(async (req: Request): Promise<Response> => {
       .select()
       .single();
 
-    // Si la limpiadora no está habilitada para WhatsApp, marcamos skipped y salimos.
+    // Si no hay canal WhatsApp disponible, la alerta administrativa cae a correo.
     if (!enabled) {
+      const unavailableReason = routing.kind === 'admin'
+        ? 'Teléfono administrativo de WhatsApp no configurado'
+        : 'Limpiadora sin teléfono/opt-in de WhatsApp';
       await supabase.from('notification_deliveries').update({
         status: 'skipped',
-        error_message: 'Limpiadora sin teléfono/opt-in de WhatsApp',
+        error_message: unavailableReason,
       }).eq('id', delivery?.id);
+
+      const fallback = await sendAdminFallbackEmail(false, unavailableReason);
+      const now = new Date().toISOString();
+
+      if (routing.kind === 'admin') {
+        await supabase.from('notification_events').update({
+          status: fallback.ok ? 'sent' : 'failed',
+          processed_at: now,
+          error_message: fallback.ok ? unavailableReason : (fallback.errorMessage ?? unavailableReason),
+        }).eq('id', eventId);
+        return new Response(JSON.stringify({
+          ok: fallback.ok,
+          status: fallback.ok ? 'fallback_sent' : 'failed',
+          fallbackChannel: fallback.ok ? 'email' : null,
+        }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json', ...corsHeaders },
+        });
+      }
+
       await supabase.from('notification_events').update({
         status: 'sent',
-        processed_at: new Date().toISOString(),
+        processed_at: now,
         error_message: 'Omitido: limpiadora sin WhatsApp habilitado (modo preparación)',
       }).eq('id', eventId);
       return new Response(JSON.stringify({ ok: true, status: 'skipped', reason: 'cleaner_not_enabled' }), {
@@ -198,17 +352,24 @@ serve(async (req: Request): Promise<Response> => {
       sent_at: result.status === 'sent' ? now : null,
     }).eq('id', delivery?.id);
 
+    const fallback = await sendAdminFallbackEmail(result.ok, result.errorMessage ?? null);
+    const finalOk = result.ok || fallback.ok;
+
     await supabase.from('notification_events').update({
-      status: result.ok ? 'sent' : 'failed',
+      status: finalOk ? 'sent' : 'failed',
       processed_at: now,
-      error_message: result.ok ? null : result.errorMessage,
+      error_message: result.ok ? null : (fallback.ok
+        ? `WhatsApp falló; correo de respaldo enviado: ${result.errorMessage ?? 'error desconocido'}`
+        : (fallback.errorMessage ?? result.errorMessage)),
     }).eq('id', eventId);
 
     return new Response(JSON.stringify({
-      ok: result.ok,
-      status: result.status,
+      ok: finalOk,
+      status: fallback.ok ? 'fallback_sent' : result.status,
       dryRun: result.dryRun,
       providerMessageId: result.providerMessageId,
+      fallbackChannel: fallback.ok ? 'email' : null,
+      fallbackProviderMessageId: fallback.providerMessageId,
     }), {
       status: 200,
       headers: { 'Content-Type': 'application/json', ...corsHeaders },

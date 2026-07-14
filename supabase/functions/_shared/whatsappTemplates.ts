@@ -44,7 +44,7 @@ export const WHATSAPP_TEMPLATES: Record<WhatsAppTemplateName, WhatsAppTemplateDe
   task_approval_reminder_es: {
     name: 'task_approval_reminder_es',
     languageCode: 'es',
-    bodyParamCount: 4, // nombre, propiedad, horaInicio, horaFin
+    bodyParamCount: 5, // nombre, propiedad, fecha, horaInicio, horaFin
     hasButtons: true,
     category: 'utility',
   },
