@@ -24,6 +24,7 @@
     "test:whatsapp-admin-fallback": "node scripts/whatsappAdminFallbackTest.mjs",
     "test:whatsapp-delivery-pipeline": "node scripts/whatsappDeliveryPipelineTest.mjs",
     "test:resend-sender": "node scripts/resendSenderContractTest.mjs",
+    "test:task-assignment-selector": "node scripts/taskAssignmentSelectorContractTest.mjs",
     "test:client-portal-visibility": "node scripts/clientPortalVisibilityTest.mjs",
     "test:task-next-client-entry": "node scripts/taskNextClientEntryTest.mjs && node scripts/taskNextClientEntryUiContractTest.mjs",
     "preview": "vite preview"
