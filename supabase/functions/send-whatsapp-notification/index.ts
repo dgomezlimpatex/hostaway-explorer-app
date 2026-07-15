@@ -78,6 +78,69 @@ serve(async (req: Request): Promise<Response> => {
       });
     }
 
+    const { data: alreadyDelivered } = await supabase
+      .from('notification_deliveries')
+      .select('status,provider_message_id')
+      .eq('notification_event_id', eventId)
+      .eq('channel', 'whatsapp')
+      .in('status', ['sent', 'delivered', 'read'])
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (alreadyDelivered) {
+      return new Response(JSON.stringify({
+        ok: true,
+        status: 'already_sent',
+        providerMessageId: alreadyDelivered.provider_message_id,
+      }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json', ...corsHeaders },
+      });
+    }
+
+    // Reclamo atómico: evita que el envío inmediato y el procesador cron
+    // procesen a la vez el mismo evento. Un claim abandonado puede recuperarse
+    // después de 10 minutos.
+    const claimedAt = new Date().toISOString();
+    const staleBefore = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+    let claimedEvent: { id: string } | null = null;
+
+    if (event.status === 'pending') {
+      const { data } = await supabase
+        .from('notification_events')
+        .update({ status: 'processing', processed_at: claimedAt, error_message: null })
+        .eq('id', eventId)
+        .eq('status', 'pending')
+        .select('id')
+        .maybeSingle();
+      claimedEvent = data;
+    } else if (
+      event.status === 'processing'
+      && event.processed_at
+      && event.processed_at < staleBefore
+    ) {
+      const { data } = await supabase
+        .from('notification_events')
+        .update({ processed_at: claimedAt, error_message: null })
+        .eq('id', eventId)
+        .eq('status', 'processing')
+        .lt('processed_at', staleBefore)
+        .select('id')
+        .maybeSingle();
+      claimedEvent = data;
+    }
+
+    if (!claimedEvent) {
+      return new Response(JSON.stringify({
+        ok: true,
+        status: event.status === 'processing' ? 'already_processing' : `not_pending:${event.status}`,
+      }), {
+        status: 202,
+        headers: { 'Content-Type': 'application/json', ...corsHeaders },
+      });
+    }
+
     const templateName = templateForEventType(event.event_type);
     if (!templateName) {
       await supabase.from('notification_events').update({

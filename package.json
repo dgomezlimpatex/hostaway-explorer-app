@@ -22,6 +22,7 @@
     "test:whatsapp-templates": "node scripts/whatsappOperationalTemplatesTest.mjs",
     "test:whatsapp-webhook-approval": "node scripts/whatsappWebhookApprovalTest.mjs",
     "test:whatsapp-admin-fallback": "node scripts/whatsappAdminFallbackTest.mjs",
+    "test:whatsapp-delivery-pipeline": "node scripts/whatsappDeliveryPipelineTest.mjs",
     "test:client-portal-visibility": "node scripts/clientPortalVisibilityTest.mjs",
     "test:task-next-client-entry": "node scripts/taskNextClientEntryTest.mjs && node scripts/taskNextClientEntryUiContractTest.mjs",
     "preview": "vite preview"

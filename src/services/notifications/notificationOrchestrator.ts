@@ -1,10 +1,8 @@
 // Orquestador de notificaciones (frontend).
-// Crea notification_events (capa lógica desacoplada del canal) y, si el flag de
-// WhatsApp está activo, dispara el envío. Con el flag apagado registra el evento
-// como cancelado/preparado para auditoría, sin invocar ningún canal.
+// Crea notification_events y solicita el envío al backend. El feature flag real
+// vive únicamente en la Edge Function para evitar builds de Vercel desalineados.
 
 import { supabase } from '@/integrations/supabase/client';
-import { isWhatsAppNotificationsEnabled } from '@/services/whatsapp/whatsappConfig';
 import type { NotificationEventType } from '@/types/notifications';
 
 interface CreateTaskNotificationEventParams {
@@ -13,22 +11,19 @@ interface CreateTaskNotificationEventParams {
   cleanerId?: string | null;
   sedeId?: string | null;
   payload?: Record<string, unknown>;
-  /** Clave de deduplicación; si no se pasa se genera una básica. */
+  /** Clave de deduplicación; si no se pasa se genera una por operación. */
   dedupeKey?: string;
 }
 
 /**
- * Crea un evento de notificación operativa. Devuelve el id del evento o null.
- * No lanza: es fire-and-forget; cualquier error se loguea sin romper el flujo.
- * Con el feature flag de WhatsApp apagado, crea el evento como `cancelled` para
- * dejar rastro lógico/auditoría sin generar entregas ni envíos.
+ * Crea un evento operativo y espera a que la Edge Function acepte el envío.
+ * Si falla la invocación, el evento queda pending para diagnóstico/reintento.
  */
 export async function createTaskNotificationEvent(
   params: CreateTaskNotificationEventParams,
 ): Promise<string | null> {
   const { eventType, taskId, cleanerId, sedeId, payload } = params;
-  const dedupeKey = params.dedupeKey ?? `${eventType}:${taskId}:${Date.now()}`;
-  const whatsappEnabled = isWhatsAppNotificationsEnabled();
+  const dedupeKey = params.dedupeKey ?? `${eventType}:${taskId}:${cleanerId ?? 'none'}:${Date.now()}`;
 
   try {
     const { data, error } = await supabase
@@ -40,32 +35,30 @@ export async function createTaskNotificationEvent(
         task_id: taskId,
         cleaner_id: cleanerId ?? null,
         sede_id: sedeId ?? null,
-        payload: {
-          ...(payload ?? {}),
-          whatsappEnabled,
-        },
+        payload: payload ?? {},
         dedupe_key: dedupeKey,
-        status: whatsappEnabled ? 'pending' : 'cancelled',
+        status: 'pending',
       })
       .select('id')
       .single();
 
-    if (error) {
-      console.error('createTaskNotificationEvent error:', error.message);
+    if (error || !data?.id) {
+      console.error('createTaskNotificationEvent error:', error?.message ?? 'event id missing');
       return null;
     }
 
-    // Disparar envío (fire-and-forget) solo cuando el canal está activo. La
-    // función decide dry-run según secrets.
-    if (whatsappEnabled && data?.id) {
-      void supabase.functions
-        .invoke('send-whatsapp-notification', { body: { eventId: data.id } })
-        .catch((e) => console.error('send-whatsapp-notification invoke error:', e));
+    const { data: sendResult, error: sendError } = await supabase.functions
+      .invoke('send-whatsapp-notification', { body: { eventId: data.id } });
+
+    if (sendError || sendResult?.ok !== true) {
+      throw new Error(
+        `send-whatsapp-notification returned no successful delivery: ${sendError?.message ?? sendResult?.status ?? 'unknown'}`,
+      );
     }
 
-    return data?.id ?? null;
-  } catch (e) {
-    console.error('createTaskNotificationEvent exception:', e);
+    return data.id;
+  } catch (error) {
+    console.error('createTaskNotificationEvent exception:', error);
     return null;
   }
 }

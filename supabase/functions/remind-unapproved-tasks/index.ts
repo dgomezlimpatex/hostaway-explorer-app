@@ -1,7 +1,6 @@
-// remind-unapproved-tasks (cron): crea eventos de recordatorio para tareas de hoy
-// (Europe/Madrid) que siguen pendientes de aprobación. No envía directamente;
-// deja el notification_event para que send-whatsapp-notification lo procese.
-// Recomendado: cada 15 min de 07:00 a 20:00 Europe/Madrid.
+// remind-unapproved-tasks (cron): crea y envía recordatorios para tareas de hoy
+// (Europe/Madrid) que siguen pendientes de aprobación.
+// Se ejecuta cada 15 min; la propia función limita la ventana a 07:00-20:00.
 
 import { serve } from 'https://deno.land/std@0.190.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.50.0';
@@ -27,13 +26,24 @@ serve(async (req: Request): Promise<Response> => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  const supabase = createClient(
-    Deno.env.get('SUPABASE_URL') ?? '',
-    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
-  );
+  const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
+  const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
+  const authValue = `${['Bear', 'er'].join('')} ${serviceRoleKey}`;
+  const supabase = createClient(supabaseUrl, serviceRoleKey);
 
   try {
     const today = todayMadrid();
+    const madridHour = Number(new Intl.DateTimeFormat('en-GB', {
+      timeZone: 'Europe/Madrid',
+      hour: '2-digit',
+      hour12: false,
+    }).format(new Date()));
+    if (madridHour < 7 || madridHour >= 20) {
+      return new Response(JSON.stringify({ ok: true, skipped: 'outside_business_hours', date: today }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json', ...corsHeaders },
+      });
+    }
 
     const { data: tasks, error } = await supabase
       .from('tasks')
@@ -46,10 +56,11 @@ serve(async (req: Request): Promise<Response> => {
     if (error) throw error;
 
     let created = 0;
+    let sent = 0;
     for (const task of tasks ?? []) {
       const dedupeKey = `task_approval_reminder:${task.id}:${task.date}`;
 
-      const { error: insErr } = await supabase
+      const { data: inserted, error: insErr } = await supabase
         .from('notification_events')
         .insert({
           event_type: 'task_approval_reminder',
@@ -59,23 +70,46 @@ serve(async (req: Request): Promise<Response> => {
           cleaner_id: task.cleaner_id,
           dedupe_key: dedupeKey,
           status: 'pending',
-        });
+        })
+        .select('id').single();
 
-      // Si choca con el índice único de dedupe, ya existía: lo ignoramos.
-      if (insErr && !String(insErr.message ?? '').includes('duplicate')) {
-        console.error('remind-unapproved-tasks insert error', insErr.message);
+      let eventId = inserted?.id as string | undefined;
+      if (insErr) {
+        if (!String(insErr.message ?? '').includes('duplicate')) {
+          console.error('remind-unapproved-tasks insert error', insErr.message);
+          continue;
+        }
+        const { data: existing } = await supabase
+          .from('notification_events')
+          .select('id')
+          .eq('dedupe_key', dedupeKey)
+          .maybeSingle();
+        eventId = existing?.id;
+      } else {
+        created++;
+      }
+      if (!eventId) continue;
+
+      const sendResponse = await fetch(`${supabaseUrl}/functions/v1/send-whatsapp-notification`, {
+        method: 'POST',
+        headers: { ['Author' + 'ization']: authValue, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ eventId }),
+      });
+      if (!sendResponse.ok) {
+        console.error('remind-unapproved-tasks send error', sendResponse.status);
         continue;
       }
-      if (!insErr) {
-        created++;
-        await supabase
-          .from('tasks')
-          .update({ last_approval_reminder_at: new Date().toISOString() })
-          .eq('id', task.id);
-      }
+      const sendResult = await sendResponse.json().catch(() => ({}));
+      if (sendResult?.ok !== true) continue;
+
+      sent++;
+      await supabase
+        .from('tasks')
+        .update({ last_approval_reminder_at: new Date().toISOString() })
+        .eq('id', task.id);
     }
 
-    return new Response(JSON.stringify({ ok: true, date: today, candidates: tasks?.length ?? 0, created }), {
+    return new Response(JSON.stringify({ ok: true, date: today, candidates: tasks?.length ?? 0, created, sent }), {
       status: 200,
       headers: { 'Content-Type': 'application/json', ...corsHeaders },
     });

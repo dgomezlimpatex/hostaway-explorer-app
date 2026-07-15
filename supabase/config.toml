@@ -19,3 +19,16 @@ verify_jwt = false
 # La función valida el verify token (GET) y la firma HMAC de Meta (POST).
 [functions.whatsapp-webhook]
 verify_jwt = false
+
+# Emisor y cron internos: requieren JWT de usuario autenticado o service role.
+[functions.send-whatsapp-notification]
+verify_jwt = true
+
+[functions.remind-unapproved-tasks]
+verify_jwt = true
+
+[functions.remind-late-start-tasks]
+verify_jwt = true
+
+[functions.process-pending-whatsapp-notifications]
+verify_jwt = true

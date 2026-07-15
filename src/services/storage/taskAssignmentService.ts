@@ -5,6 +5,7 @@ import { taskStorageService } from './taskStorage';
 import { recordAiObservedEvent } from '@/services/aiObservedEvents';
 import { multipleTaskAssignmentService } from './multipleTaskAssignmentService';
 import { executeCanonicalTaskAssignmentChange } from '@/utils/taskAssignmentExecution';
+import { createTaskNotificationEvent } from '@/services/notifications/notificationOrchestrator';
 
 export class TaskAssignmentService {
   private async getCurrentCleanerIds(taskId: string, task?: Task | null): Promise<string[]> {
@@ -190,6 +191,11 @@ export class TaskAssignmentService {
 
     // Check if schedule changed and cleaner is assigned
     if (originalTask?.cleanerId && this.hasScheduleChanged(originalTask, updatedTask)) {
+      await createTaskNotificationEvent({
+        eventType: 'task_modified',
+        taskId,
+        cleanerId: originalTask.cleanerId,
+      });
       try {
         await this.sendTaskScheduleChangeEmail(updatedTask, originalTask.cleanerId, originalTask);
         console.log('Task schedule change email sent successfully');
@@ -207,6 +213,15 @@ export class TaskAssignmentService {
       tasks.find(t => t.id === taskId)
     );
     
+    // Notificar antes de retirar la asignación para que el backend pueda leer la tarea completa.
+    if (currentTask?.cleanerId) {
+      await createTaskNotificationEvent({
+        eventType: 'task_cancelled',
+        taskId,
+        cleanerId: currentTask.cleanerId,
+      });
+    }
+
     // Send cancellation email if cleaner was assigned
     if (currentTask?.cleanerId) {
       try {

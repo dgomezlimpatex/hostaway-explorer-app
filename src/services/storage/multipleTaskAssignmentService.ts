@@ -70,14 +70,20 @@ export class MultipleTaskAssignmentService {
 
   async notifyAssignmentDiff(taskId: string, added: CleanerLite[], removed: CleanerLite[]): Promise<void> {
     const actualTaskId = stripVirtualId(taskId);
-    added.forEach((cleaner) => {
-      void createTaskNotificationEvent({
+    await Promise.all(added.map((cleaner) =>
+      createTaskNotificationEvent({
         eventType: 'task_assigned',
         taskId: actualTaskId,
         cleanerId: cleaner.id,
-        dedupeKey: `task_assigned:${actualTaskId}:${cleaner.id}`,
-      });
-    });
+      }),
+    ));
+    await Promise.all(removed.map((cleaner) =>
+      createTaskNotificationEvent({
+        eventType: 'task_cancelled',
+        taskId: actualTaskId,
+        cleanerId: cleaner.id,
+      }),
+    ));
     await this.sendAssignmentEmails(actualTaskId, added, removed);
   }
 
@@ -105,7 +111,9 @@ export class MultipleTaskAssignmentService {
       .select('cleaner_id')
       .eq('task_id', taskId);
 
-    const assignedIds: string[] = (currentAssignments || []).map((a: any) => a.cleaner_id);
+    const assignedIds: string[] = (currentAssignments || [])
+      .map((assignment) => assignment.cleaner_id)
+      .filter((cleanerId): cleanerId is string => Boolean(cleanerId));
     const workerCount = Math.max(assignedIds.length, 1);
 
     const toMin = (t: string) => {
@@ -124,7 +132,7 @@ export class MultipleTaskAssignmentService {
     const perWorkerMin = Math.round(totalMin / workerCount);
 
     const buildTaskData = (_cleanerId?: string) => {
-      let startTime = task.start_time;
+      const startTime = task.start_time;
       let endTime = task.end_time;
       if (workerCount > 1) {
         // All workers start at the same time and work in parallel; each one
