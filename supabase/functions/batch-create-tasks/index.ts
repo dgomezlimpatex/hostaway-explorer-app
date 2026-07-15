@@ -183,7 +183,7 @@ const handler = async (req: Request): Promise<Response> => {
           }).join('');
 
           await resend.emails.send({
-            from: "Sistema de Gestión <noreply@limpatexgestion.com>",
+            from: "Sistema de Gestión <alertas@gestionlimpatex.es>",
             to: [data.email],
             subject: `📋 ${data.tasks.length} Nuevas Tareas Asignadas`,
             html: `

@@ -81,7 +81,7 @@ const handler = async (req: Request): Promise<Response> => {
       .join("");
 
     const emailResponse = await resend.emails.send({
-      from: "Sistema de Gestión <noreply@limpatexgestion.com>",
+      from: "Sistema de Gestión <alertas@gestionlimpatex.es>",
       to: [cleanerEmail],
       subject: `🔄 Reorganización de tu horario – ${formattedDate}`,
       html: `

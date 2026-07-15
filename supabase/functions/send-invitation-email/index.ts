@@ -40,7 +40,7 @@ const handler = async (req: Request): Promise<Response> => {
     };
 
     const emailResponse = await resend.emails.send({
-      from: "Sistema de Gestión <noreply@limpatexgestion.com>",
+      from: "Sistema de Gestión <alertas@gestionlimpatex.es>",
       to: [email],
       subject: `Invitación para unirse como ${roleLabels[role] || role}`,
       html: `
