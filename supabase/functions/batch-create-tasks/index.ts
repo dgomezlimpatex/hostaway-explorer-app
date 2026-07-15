@@ -248,13 +248,14 @@ const handler = async (req: Request): Promise<Response> => {
       status: 200,
       headers: { "Content-Type": "application/json", ...corsHeaders },
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("❌ Batch create error:", error);
+    const errorMessage = error instanceof Error ? error.message : String(error);
     return new Response(
       JSON.stringify({ 
         success: false,
-        error: error.message,
-        details: error.toString()
+        error: errorMessage,
+        details: String(error)
       }),
       {
         status: 500,
