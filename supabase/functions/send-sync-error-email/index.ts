@@ -109,7 +109,7 @@ const handler = async (req: Request): Promise<Response> => {
     console.log(`📧 Sending error notification email for schedule: ${scheduleName}`);
 
     const emailResponse = await resend.emails.send({
-      from: "Sistema Hostaway <alertas@gestionlimpatex.es>",
+      from: "Sistema Hostaway <alertas@limpatexgestion.es>",
       to: ["dgomezlimpatex@gmail.com"],
       subject: `🚨 Error en Sincronización Hostaway - ${scheduleName}`,
       html: generateErrorEmailHTML(error, scheduleName, retryAttempt, timestamp),

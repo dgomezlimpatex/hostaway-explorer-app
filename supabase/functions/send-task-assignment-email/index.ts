@@ -53,7 +53,7 @@ const handler = async (req: Request): Promise<Response> => {
     });
 
     const emailResponse = await resend.emails.send({
-      from: "Sistema de Gestión <alertas@gestionlimpatex.es>",
+      from: "Sistema de Gestión <alertas@limpatexgestion.es>",
       to: [cleanerEmail],
       subject: `Nueva Tarea Asignada - ${taskData.property}`,
       html: `
@@ -119,11 +119,15 @@ const handler = async (req: Request): Promise<Response> => {
       `,
     });
 
-    console.log("Task assignment email sent successfully:", emailResponse);
+    if (emailResponse.error) {
+      throw new Error(`Resend rejected the task assignment email: ${emailResponse.error.message}`);
+    }
+
+    console.log("Task assignment email sent successfully:", emailResponse.data);
 
     return new Response(JSON.stringify({ 
       success: true, 
-      messageId: emailResponse.data?.id 
+      messageId: emailResponse.data?.id
     }), {
       status: 200,
       headers: {

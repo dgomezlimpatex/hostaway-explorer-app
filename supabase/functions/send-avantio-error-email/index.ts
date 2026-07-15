@@ -189,7 +189,7 @@ const handler = async (req: Request): Promise<Response> => {
     const tasksSummary = `${data.stats.tasks_created}↑ ${data.stats.tasks_modified}~ ${data.stats.tasks_cancelled}↓`;
 
     const emailResponse = await resend.emails.send({
-      from: "Sistema Avantio <alertas@gestionlimpatex.es>",
+      from: "Sistema Avantio <alertas@limpatexgestion.es>",
       to: ["dgomezlimpatex@gmail.com"],
       subject: `${statusEmoji} Avantio: ${statusText} | ${tasksSummary}${hasErrors ? ` | ${data.stats.errors_count} errores` : ''}`,
       html: generateEmailHTML(data),
