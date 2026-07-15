@@ -136,7 +136,7 @@ serve(async (req) => {
 </html>`;
 
     const emailResponse = await resend.emails.send({
-      from: "Limpatex Alertas <alertas@limpatexgestion.com>",
+      from: "Limpatex Alertas <alertas@gestionlimpatex.es>",
       to: [
         "dgomezlimpatex@gmail.com",
         "Danielfernandezlimpatex@gmail.com",

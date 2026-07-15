@@ -76,7 +76,7 @@ serve(async (req) => {
     const subject = `Nueva incidencia pendiente · ${propertyLabel}`;
 
     const emailResponse = await resend.emails.send({
-      from: "Limpatex Gestión <noreply@limpatexgestion.com>",
+      from: "Limpatex Gestión <alertas@gestionlimpatex.es>",
       to: ["dgomezlimpatex@gmail.com"],
       subject,
       html: `

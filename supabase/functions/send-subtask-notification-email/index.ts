@@ -76,7 +76,7 @@ const handler = async (req: Request): Promise<Response> => {
     });
 
     const emailResponse = await resend.emails.send({
-      from: "Sistema de Gestión <noreply@limpatexgestion.com>",
+      from: "Sistema de Gestión <alertas@gestionlimpatex.es>",
       to: [cleaner.email],
       subject: `⚠️ Nueva Subtarea Añadida - ${taskData.property}`,
       html: `

@@ -64,7 +64,7 @@ const handler = async (req: Request): Promise<Response> => {
     const borderColor = isCancelled ? '#dc2626' : '#f59e0b';
 
     const emailResponse = await resend.emails.send({
-      from: "Sistema de Gestión <noreply@limpatexgestion.com>",
+      from: "Sistema de Gestión <alertas@gestionlimpatex.es>",
       to: [cleanerEmail],
       subject: subject,
       html: `
