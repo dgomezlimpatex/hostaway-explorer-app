@@ -78,7 +78,7 @@ export const TaskDetailsActions = ({
             <span className="hidden xs:inline">Asignar</span>
           </SelectTrigger>
           <SelectContent className="z-50">
-            {cleaners.map((cleaner) => (
+            {cleaners.filter(c => c.isActive !== false).map((cleaner) => (
               <SelectItem key={cleaner.id} value={`${cleaner.id}|${cleaner.name}`}>
                 {cleaner.name}
               </SelectItem>
