@@ -263,7 +263,7 @@ serve(async (req: Request): Promise<Response> => {
 
       const resendApiKey = Deno.env.get('RESEND_API_KEY') ?? '';
       const fallbackFrom = Deno.env.get('WHATSAPP_ADMIN_FALLBACK_FROM')
-        ?? 'Limpatex Gestión <alertas@gestionlimpatex.es>';
+        ?? 'Limpatex Gestión <alertas@limpatexgestion.es>';
       let providerMessageId: string | undefined;
       let errorMessage: string | undefined;
 

@@ -182,8 +182,8 @@ const handler = async (req: Request): Promise<Response> => {
             return `<li style="margin-bottom: 10px;"><strong>${t.property}</strong> - ${formattedDate} (${t.startTime} - ${t.endTime})</li>`;
           }).join('');
 
-          await resend.emails.send({
-            from: "Sistema de Gestión <alertas@gestionlimpatex.es>",
+          const emailResponse = await resend.emails.send({
+            from: "Sistema de Gestión <alertas@limpatexgestion.es>",
             to: [data.email],
             subject: `📋 ${data.tasks.length} Nuevas Tareas Asignadas`,
             html: `
@@ -222,6 +222,10 @@ const handler = async (req: Request): Promise<Response> => {
               </div>
             `,
           });
+
+          if (emailResponse.error) {
+            throw new Error(`Resend rejected the batch task email: ${emailResponse.error.message}`);
+          }
 
           emailsSent++;
           console.log(`📧 Sent consolidated email to ${data.email} with ${data.tasks.length} tasks`);

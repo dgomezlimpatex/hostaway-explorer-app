@@ -311,7 +311,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     // Send email via Resend
     const emailResponse = await resend.emails.send({
-      from: "Sistema de Gestión <alertas@gestionlimpatex.es>",
+      from: "Sistema de Gestión <alertas@limpatexgestion.es>",
       to: ["dgomezlimpatex@gmail.com"],
       subject: `📋 ${totalReservations} Nueva${totalReservations > 1 ? 's' : ''} Reserva${totalReservations > 1 ? 's' : ''} del Portal (${sortedClients.length} cliente${sortedClients.length > 1 ? 's' : ''})`,
       html: emailHtml,

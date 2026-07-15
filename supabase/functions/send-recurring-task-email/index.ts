@@ -101,7 +101,7 @@ const handler = async (req: Request): Promise<Response> => {
     const scheduleText = buildScheduleText(taskData);
 
     const emailResponse = await resend.emails.send({
-      from: "Sistema de Gestión <alertas@gestionlimpatex.es>",
+      from: "Sistema de Gestión <alertas@limpatexgestion.es>",
       to: [cleanerEmail],
       subject: `🔄 Tarea Recurrente Programada - ${taskData.property}`,
       html: `

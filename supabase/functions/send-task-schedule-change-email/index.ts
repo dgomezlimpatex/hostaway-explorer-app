@@ -98,7 +98,7 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     const emailResponse = await resend.emails.send({
-      from: "Sistema de Gestión <alertas@gestionlimpatex.es>",
+      from: "Sistema de Gestión <alertas@limpatexgestion.es>",
       to: [cleanerEmail],
       subject: `Cambio de Horario - ${taskData.property}`,
       html: `

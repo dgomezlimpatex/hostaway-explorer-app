@@ -312,7 +312,7 @@ const handler = async (req: Request): Promise<Response> => {
 
       try {
         await resend.emails.send({
-          from: "Previsión Limpatex <alertas@gestionlimpatex.es>",
+          from: "Previsión Limpatex <alertas@limpatexgestion.es>",
           to: [sub.email],
           subject: `⚠️ ${toSend.length} día(s) en alerta — previsión de personal`,
           html: renderEmail(sub.email, toSend, origin),

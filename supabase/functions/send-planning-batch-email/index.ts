@@ -66,7 +66,7 @@ serve(async (req: Request) => {
       .join('');
 
     const response = await resend.emails.send({
-      from: 'LIMPATEX <alertas@gestionlimpatex.es>',
+      from: 'LIMPATEX <alertas@limpatexgestion.es>',
       to: [cleanerEmail],
       subject: `Planificación del ${formatDate(taskDate)}`,
       html: `
