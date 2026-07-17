@@ -18,6 +18,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { MobileBottomNav } from '@/components/mobile/MobileBottomNav';
 import { cn } from '@/lib/utils';
 import { formatMadridDate } from '@/utils/date';
+import { countTasksByAssignedCleaner, isTaskAssignedToCleaner } from '@/utils/taskAssignments';
 import type { Cleaner, Task } from '@/types/calendar';
 
 interface ManagerMobileAgendaCalendarProps {
@@ -118,12 +119,7 @@ export function ManagerMobileAgendaCalendar({
   }, [dayTasks]);
 
   const cleanerCounts = useMemo(() => {
-    const counts = new Map<string, number>();
-    dayTasks.forEach((task) => {
-      if (!task.cleanerId) return;
-      counts.set(task.cleanerId, (counts.get(task.cleanerId) || 0) + 1);
-    });
-    return counts;
+    return countTasksByAssignedCleaner(dayTasks);
   }, [dayTasks]);
 
   const filteredTasks = useMemo(() => {
@@ -131,7 +127,7 @@ export function ManagerMobileAgendaCalendar({
       return dayTasks.filter((task) => !task.cleanerId && !task.cleaner);
     }
     if (selectedFilter !== 'all') {
-      return dayTasks.filter((task) => task.cleanerId === selectedFilter);
+      return dayTasks.filter((task) => isTaskAssignedToCleaner(task, selectedFilter));
     }
     return dayTasks;
   }, [dayTasks, selectedFilter]);

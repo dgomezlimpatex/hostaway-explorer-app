@@ -1,4 +1,5 @@
 import { Task } from '../../types/calendar';
+import { getTaskAssignedCleanerIds } from '../taskAssignments';
 
 const timeToMinutesValue = (time?: string | null): number | null => {
   if (!time) return null;
@@ -35,13 +36,7 @@ export const sumTaskDurations = (tasks: Pick<Task, 'duration' | 'propertyDuratio
 
 export const getTaskAssignmentCleanerIds = (
   task: Pick<Task, 'cleanerId' | 'assignments'>,
-): string[] => {
-  const assignmentIds = (task.assignments || [])
-    .map((assignment) => assignment.cleaner_id)
-    .filter(Boolean);
-  const ids = assignmentIds.length > 0 ? assignmentIds : ([task.cleanerId].filter(Boolean) as string[]);
-  return Array.from(new Set(ids));
-};
+): string[] => getTaskAssignedCleanerIds(task);
 
 export const getTaskWorkerCount = (
   task: Pick<Task, 'cleanerId' | 'assignments' | 'requiredCleaners'>,

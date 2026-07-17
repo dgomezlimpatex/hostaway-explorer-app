@@ -27,6 +27,7 @@
     "test:whatsapp-task-modification-trigger": "node scripts/whatsappTaskModificationTriggerTest.mjs",
     "test:resend-sender": "node scripts/resendSenderContractTest.mjs",
     "test:task-assignment-selector": "node scripts/taskAssignmentSelectorContractTest.mjs",
+    "test:mobile-calendar-multi-assignment": "bun scripts/mobileCalendarMultiAssignmentTest.ts",
     "test:client-portal-visibility": "node scripts/clientPortalVisibilityTest.mjs",
     "test:task-next-client-entry": "node scripts/taskNextClientEntryTest.mjs && node scripts/taskNextClientEntryUiContractTest.mjs",
     "preview": "vite preview"
