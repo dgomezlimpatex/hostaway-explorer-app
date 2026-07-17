@@ -23,6 +23,7 @@
     "test:whatsapp-webhook-approval": "node scripts/whatsappWebhookApprovalTest.mjs",
     "test:whatsapp-admin-fallback": "node scripts/whatsappAdminFallbackTest.mjs",
     "test:whatsapp-delivery-pipeline": "node scripts/whatsappDeliveryPipelineTest.mjs",
+    "test:whatsapp-schedule-modification": "node scripts/whatsappScheduleModificationTest.mjs",
     "test:resend-sender": "node scripts/resendSenderContractTest.mjs",
     "test:task-assignment-selector": "node scripts/taskAssignmentSelectorContractTest.mjs",
     "test:client-portal-visibility": "node scripts/clientPortalVisibilityTest.mjs",

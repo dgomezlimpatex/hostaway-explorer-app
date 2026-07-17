@@ -58,6 +58,18 @@ export const useInlineFieldSave = ({ taskId, notifyScheduleChange = true }: UseI
 
       setFieldStatus(fieldKey, 'saving');
 
+      // Capture the real previous task before the optimistic cache patch. Reading it
+      // afterwards would return the new schedule and suppress the modification event.
+      const taskQueriesBeforeUpdate = queryClient.getQueriesData<Task[]>({
+        predicate: q => Array.isArray(q.queryKey) && q.queryKey[0] === 'tasks',
+      });
+      const cachedTaskBeforeUpdate = taskQueriesBeforeUpdate
+        .flatMap(([, data]) => Array.isArray(data) ? data : [])
+        .find(task => task.id === taskId);
+      const originalTaskBeforeOptimisticUpdate = cachedTaskBeforeUpdate
+        ? { ...cachedTaskBeforeUpdate }
+        : undefined;
+
       // Snapshot previous data per query for rollback
       const snapshots: Array<{ key: unknown; data: Task[] | undefined }> = [];
 
@@ -78,21 +90,7 @@ export const useInlineFieldSave = ({ taskId, notifyScheduleChange = true }: UseI
           ('date' in updates || 'startTime' in updates || 'endTime' in updates);
 
         if (isScheduleChange) {
-          // Find current task in cache
-          let currentTask: Task | undefined;
-          const queries = queryClient.getQueriesData<Task[]>({
-            predicate: q => Array.isArray(q.queryKey) && q.queryKey[0] === 'tasks',
-          });
-          for (const [, data] of queries) {
-            if (Array.isArray(data)) {
-              const found = data.find(t => t.id === taskId);
-              if (found) {
-                currentTask = found;
-                break;
-              }
-            }
-          }
-          await taskStorageService.updateTaskSchedule(taskId, updates, currentTask);
+          await taskStorageService.updateTaskSchedule(taskId, updates, originalTaskBeforeOptimisticUpdate);
         } else {
           await taskStorageService.updateTask(taskId, updates);
         }
@@ -104,7 +102,7 @@ export const useInlineFieldSave = ({ taskId, notifyScheduleChange = true }: UseI
           predicate: q => Array.isArray(q.queryKey) && q.queryKey[0] === 'tasks',
           refetchType: 'none',
         });
-      } catch (err: any) {
+      } catch (err: unknown) {
         logger.error('Inline save failed:', err);
         setFieldStatus(fieldKey, 'error');
 
@@ -115,7 +113,7 @@ export const useInlineFieldSave = ({ taskId, notifyScheduleChange = true }: UseI
 
         toast({
           title: 'No se pudo guardar',
-          description: err?.message || 'Error guardando el cambio.',
+          description: err instanceof Error ? err.message : 'Error guardando el cambio.',
           variant: 'destructive',
         });
       }
