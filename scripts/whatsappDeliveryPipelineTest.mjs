@@ -15,8 +15,12 @@ assert.match(assignments, /eventType:\s*'task_cancelled'/);
 assert.doesNotMatch(assignments, /dedupeKey:\s*`task_assigned:\$\{actualTaskId\}:\$\{cleaner\.id\}`/);
 
 const taskAssignments = await read('src/services/storage/taskAssignmentService.ts');
-assert.match(taskAssignments, /eventType:\s*'task_modified'/);
+assert.doesNotMatch(taskAssignments, /eventType:\s*'task_modified'/);
 assert.match(taskAssignments, /eventType:\s*'task_cancelled'/);
+
+const modificationTrigger = await read('supabase/migrations/20260717160000_notify_all_assigned_cleaners_on_task_changes.sql');
+assert.match(modificationTrigger, /'task_modified'/);
+assert.match(modificationTrigger, /AFTER UPDATE ON public\.tasks/);
 
 const sender = await read('supabase/functions/send-whatsapp-notification/index.ts');
 assert.match(sender, /alreadyDelivered/);

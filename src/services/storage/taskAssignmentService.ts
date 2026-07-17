@@ -189,13 +189,9 @@ export class TaskAssignmentService {
       metadata: { source: 'taskAssignmentService.updateTaskSchedule', changedFields: Object.keys(updates) },
     });
 
-    // Check if schedule changed and cleaner is assigned
+    // El trigger central de Supabase crea task_modified para todos los trabajadores.
+    // Aquí se conserva únicamente el correo histórico de cambios horarios.
     if (originalTask?.cleanerId && this.hasScheduleChanged(originalTask, updatedTask)) {
-      await createTaskNotificationEvent({
-        eventType: 'task_modified',
-        taskId,
-        cleanerId: originalTask.cleanerId,
-      });
       try {
         await this.sendTaskScheduleChangeEmail(updatedTask, originalTask.cleanerId, originalTask);
         console.log('Task schedule change email sent successfully');
