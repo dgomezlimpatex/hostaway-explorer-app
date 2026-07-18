@@ -29,6 +29,7 @@
     "test:task-assignment-selector": "node scripts/taskAssignmentSelectorContractTest.mjs",
     "test:worker-deactivation-assignment": "node scripts/workerDeactivationAssignmentTest.mjs",
     "test:worker-deactivation-assignment:db": "npx supabase db query --linked --file scripts/workerDeactivationAssignmentDatabaseTest.sql",
+    "test:worker-deactivation-security:db": "npx supabase db query --linked --file scripts/workerDeactivationSecurityTest.sql",
     "test:mobile-calendar-multi-assignment": "bun scripts/mobileCalendarMultiAssignmentTest.ts",
     "test:client-portal-visibility": "node scripts/clientPortalVisibilityTest.mjs",
     "test:task-next-client-entry": "node scripts/taskNextClientEntryTest.mjs && node scripts/taskNextClientEntryUiContractTest.mjs",

@@ -110,9 +110,56 @@ BEGIN
 END
 $test$;
 
+-- Dos ciclos puramente legados: cada reactivación debe generar una nueva
+-- cancelación, mientras los reintentos del mismo ciclo siguen siendo idempotentes.
+DO $test$
+DECLARE
+  fixture _qa_deactivation_fixture%ROWTYPE;
+  cleaner_name text;
+  legacy_events integer;
+BEGIN
+  SELECT * INTO fixture FROM _qa_deactivation_fixture;
+  SELECT name INTO cleaner_name FROM public.cleaners WHERE id = fixture.cleaner_id;
+
+  UPDATE public.cleaners
+  SET is_active = true,
+      updated_at = now() + interval '1 second'
+  WHERE id = fixture.cleaner_id;
+  UPDATE public.tasks
+  SET cleaner_id = fixture.cleaner_id,
+      cleaner = cleaner_name,
+      updated_at = now()
+  WHERE id = fixture.task_id;
+  PERFORM public.deactivate_cleaner_with_future_assignments(fixture.cleaner_id, true);
+
+  UPDATE public.cleaners
+  SET is_active = true,
+      updated_at = now() + interval '2 seconds'
+  WHERE id = fixture.cleaner_id;
+  UPDATE public.tasks
+  SET cleaner_id = fixture.cleaner_id,
+      cleaner = cleaner_name,
+      updated_at = now() + interval '1 second'
+  WHERE id = fixture.task_id;
+  PERFORM public.deactivate_cleaner_with_future_assignments(fixture.cleaner_id, true);
+
+  SELECT count(*) INTO legacy_events
+  FROM public.notification_events e
+  WHERE e.task_id = fixture.task_id
+    AND e.cleaner_id = fixture.cleaner_id
+    AND e.event_type = 'task_cancelled'
+    AND e.payload->>'source' = 'deactivate_cleaner_legacy_assignment';
+
+  IF legacy_events <> 2 THEN
+    RAISE EXCEPTION 'Los dos ciclos legados debían generar dos cancelaciones, recibidas %', legacy_events;
+  END IF;
+END
+$test$;
+
 SELECT
   'worker-deactivation-assignment-db-tests: OK' AS result,
   (SELECT result->>'unassignedCount' FROM _qa_result) AS unassigned_count,
-  (SELECT assignments_before - 1 FROM _qa_deactivation_fixture) AS preserved_assignments;
+  (SELECT assignments_before - 1 FROM _qa_deactivation_fixture) AS preserved_assignments,
+  2 AS legacy_cycles_verified;
 
 ROLLBACK;
