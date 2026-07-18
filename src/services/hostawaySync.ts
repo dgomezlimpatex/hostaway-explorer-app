@@ -3,9 +3,18 @@ import { supabase } from "@/integrations/supabase/client";
 import { HostawaySyncLog, TaskDetail, ReservationDetail } from "@/types/hostaway";
 import { HostawaySchedule, CreateScheduleRequest, UpdateScheduleRequest } from "@/types/hostawaySchedule";
 
+export const HOSTAWAY_INTEGRATION_ENABLED = false;
+
+export function assertHostawayIntegrationEnabled(): void {
+  if (!HOSTAWAY_INTEGRATION_ENABLED) {
+    throw new Error('La integración con Hostaway está desactivada y conservada para futuros clientes.');
+  }
+}
+
 export const hostawaySync = {
   // Ejecutar inserción de propiedades
   async insertProperties() {
+    assertHostawayIntegrationEnabled();
     console.log('Ejecutando inserción de propiedades...');
     
     const { data, error } = await supabase.functions.invoke('insert-properties');
@@ -20,6 +29,7 @@ export const hostawaySync = {
 
   // Configurar automatización completa (propiedades + cron job)
   async setupAutomation() {
+    assertHostawayIntegrationEnabled();
     console.log('Ejecutando configuración automática...');
     
     const { data, error } = await supabase.functions.invoke('setup-automation');
@@ -34,6 +44,7 @@ export const hostawaySync = {
 
   // Ejecutar sincronización manual
   async runSync() {
+    assertHostawayIntegrationEnabled();
     console.log('Ejecutando sincronización manual con Hostaway...');
     
     const { data, error } = await supabase.functions.invoke('hostaway-sync');
@@ -48,6 +59,7 @@ export const hostawaySync = {
 
   // Eliminar todas las reservas de Hostaway
   async deleteAllHostawayReservations() {
+    assertHostawayIntegrationEnabled();
     console.log('Eliminando todas las reservas de Hostaway...');
     
     const { error } = await supabase
@@ -174,6 +186,7 @@ export const hostawaySync = {
 
   // Crear nuevo horario
   async createSchedule(scheduleData: CreateScheduleRequest): Promise<HostawaySchedule> {
+    assertHostawayIntegrationEnabled();
     const { data, error } = await supabase
       .from('hostaway_sync_schedules')
       .insert({
@@ -197,6 +210,7 @@ export const hostawaySync = {
 
   // Actualizar horario existente
   async updateSchedule(id: string, updates: UpdateScheduleRequest): Promise<HostawaySchedule> {
+    assertHostawayIntegrationEnabled();
     const { data, error } = await supabase
       .from('hostaway_sync_schedules')
       .update(updates)
@@ -217,6 +231,7 @@ export const hostawaySync = {
 
   // Eliminar horario
   async deleteSchedule(id: string): Promise<void> {
+    assertHostawayIntegrationEnabled();
     const { error } = await supabase
       .from('hostaway_sync_schedules')
       .delete()
@@ -233,6 +248,7 @@ export const hostawaySync = {
 
   // Configurar trabajos cron
   async setupCronJobs() {
+    assertHostawayIntegrationEnabled();
     console.log('Configurando trabajos cron...');
     
     const { data, error } = await supabase.functions.invoke('manage-hostaway-cron', {
@@ -249,6 +265,7 @@ export const hostawaySync = {
 
   // Ejecutar sincronización para un horario específico
   async runScheduledSync(scheduleId: string) {
+    assertHostawayIntegrationEnabled();
     console.log('Ejecutando sincronización programada...');
     
     const { data, error } = await supabase.functions.invoke('manage-hostaway-cron', {

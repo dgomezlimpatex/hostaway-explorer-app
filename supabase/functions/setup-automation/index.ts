@@ -1,6 +1,11 @@
 
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.50.0";
+import {
+  assertAdminManagerOrServiceRole,
+  authorizationErrorResponse,
+} from '../_shared/edgeAuthorization.ts';
+import { disabledHostawayResponse, isHostawayIntegrationEnabled } from '../_shared/disabledIntegration.ts';
 
 const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
 const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -17,7 +22,12 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  if (!isHostawayIntegrationEnabled()) {
+    return disabledHostawayResponse(corsHeaders);
+  }
+
   try {
+    await assertAdminManagerOrServiceRole(req, supabase, supabaseServiceKey);
     console.log('Iniciando configuración automática...');
 
     // 1. Ejecutar inserción de propiedades
@@ -40,30 +50,9 @@ serve(async (req) => {
       propertiesResult = { success: false, message: propertiesError };
     }
 
-    // 2. Información sobre el cron job (manual por ahora)
-    console.log('Paso 2: Información sobre cron job...');
-    const cronMessage = `
-    Para configurar la sincronización automática cada 2 horas, necesitas:
-    
-    1. Ir al SQL Editor de Supabase: https://supabase.com/dashboard/project/qyipyygojlfhdghnraus/sql/new
-    
-    2. Ejecutar este comando SQL:
-    
-    SELECT cron.schedule(
-      'hostaway-sync-every-2-hours',
-      '0 */2 * * *',
-      $$
-      SELECT net.http_post(
-        url := 'https://qyipyygojlfhdghnraus.supabase.co/functions/v1/hostaway-sync',
-        headers := '{"Content-Type": "application/json", "Authorization": "Bearer ${supabaseServiceKey}"}'::jsonb
-      );
-      $$
-    );
-    
-    Esto configurará la sincronización automática cada 2 horas.
-    `;
-
-    console.log('📋 Instrucciones del cron job preparadas');
+    // La programación se gestiona mediante manage-hostaway-cron. Nunca se
+    // devuelven ni se incrustan credenciales administrativas en respuestas.
+    console.log('Paso 2: Automatización gestionada por manage-hostaway-cron');
 
     return new Response(JSON.stringify({
       success: true,
@@ -72,8 +61,7 @@ serve(async (req) => {
         properties: propertiesResult,
         cronJob: {
           success: true,
-          message: 'Instrucciones para configurar cron job preparadas',
-          instructions: cronMessage
+          message: 'Gestiona los horarios desde la configuración Hostaway autorizada'
         }
       }
     }), {
@@ -85,6 +73,8 @@ serve(async (req) => {
     });
 
   } catch (error) {
+    const authResponse = authorizationErrorResponse(error, corsHeaders);
+    if (authResponse) return authResponse;
     console.error('Error en configuración automática:', error);
     
     return new Response(JSON.stringify({ 

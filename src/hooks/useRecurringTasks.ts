@@ -29,59 +29,6 @@ export const useCreateRecurringTask = () => {
     mutationFn: async (taskData: Omit<RecurringTask, 'id' | 'createdAt' | 'nextExecution'>) => {
       const result = await recurringTaskStorage.create(taskData);
 
-      // Send email notification to assigned cleaner
-      if (result.cleanerId) {
-        try {
-          // Fetch cleaner email
-          const { data: cleanerData } = await supabase
-            .from('cleaners')
-            .select('name, email')
-            .eq('id', result.cleanerId)
-            .single();
-
-          if (cleanerData?.email) {
-            // Fetch property info
-            let propertyName = result.name;
-            let propertyAddress = '';
-            if (result.propiedadId) {
-              const { data: propData } = await supabase
-                .from('properties')
-                .select('nombre, direccion')
-                .eq('id', result.propiedadId)
-                .single();
-              if (propData) {
-                propertyName = propData.nombre || result.name;
-                propertyAddress = propData.direccion || '';
-              }
-            }
-
-            await supabase.functions.invoke('send-recurring-task-email', {
-              body: {
-                cleanerEmail: cleanerData.email,
-                cleanerName: cleanerData.name || 'Trabajador',
-                taskData: {
-                  property: propertyName,
-                  address: propertyAddress,
-                  date: result.nextExecution,
-                  startTime: result.startTime,
-                  endTime: result.endTime,
-                  type: result.type,
-                  recurringTaskName: result.name,
-                  frequency: result.frequency,
-                  interval: result.interval,
-                  daysOfWeek: result.daysOfWeek,
-                  dayOfMonth: result.dayOfMonth,
-                },
-              },
-            });
-            console.log('📧 Email de tarea recurrente enviado a', cleanerData.email);
-          }
-        } catch (emailError) {
-          console.error('⚠️ Error enviando email de tarea recurrente:', emailError);
-          // Don't fail the creation if email fails
-        }
-      }
-
       return result;
     },
     onSuccess: () => {
@@ -171,16 +118,36 @@ export const useProcessRecurringTasks = () => {
 
   return useMutation({
     mutationFn: async () => {
-      return await recurringTaskStorage.processRecurringTasks();
+      const { data, error } = await supabase.functions.invoke('process-recurring-tasks', {
+        body: { source: 'manual' },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      if (data?.failed > 0) {
+        throw new Error(`${data.failed} recurrencias no pudieron procesarse`);
+      }
+      return data as {
+        processed: number;
+        generatedTasks: Array<{ id: string; name: string; executionDate: string }>;
+        updatedRecurringTasks: number;
+        failed: number;
+        hasBacklog: boolean;
+      };
     },
-    onSuccess: (generatedTasks) => {
+    onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ['recurring-tasks'] });
+      queryClient.invalidateQueries({ queryKey: ['recurring-task-executions'] });
       invalidateTasks();
-      
-      if (generatedTasks.length > 0) {
+
+      if (result.generatedTasks.length > 0) {
         toast({
           title: "Tareas generadas",
-          description: `Se han generado ${generatedTasks.length} tareas desde plantillas recurrentes.`,
+          description: `Se han generado ${result.generatedTasks.length} tareas desde plantillas recurrentes.`,
+        });
+      } else {
+        toast({
+          title: "Recurrencias revisadas",
+          description: "No había nuevas tareas recurrentes pendientes de generar.",
         });
       }
     },

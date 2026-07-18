@@ -199,12 +199,6 @@ const syncItems: NavigationItem[] = [
     icon: Hotel,
     permission: 'admin-only'
   },
-  {
-    title: 'Hostaway Sync',
-    href: '/hostaway-sync-logs',
-    icon: AlertTriangle,
-    permission: 'hostaway'
-  },
 ];
 
 const adminItems: NavigationItem[] = [

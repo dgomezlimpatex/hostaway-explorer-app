@@ -3,6 +3,7 @@
 // and logs warnings/errors.
 
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { canDeleteTaskAfterPmsCancellation } from '../_shared/taskCancellationPolicy.ts';
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -458,18 +459,34 @@ Deno.serve(async (req) => {
       if (link.status !== "active" || !link.task_id) continue;
       if (link.task_date < today) continue;
 
-      const { data: t } = await supabase
+      const { data: t, error: taskReadError } = await supabase
         .from("tasks")
         .select("status")
         .eq("id", link.task_id)
         .maybeSingle();
-      if (t && t.status === "completed") continue;
+      if (taskReadError) throw taskReadError;
+      if (!t || !canDeleteTaskAfterPmsCancellation(t.status)) {
+        warnings.push(`Tarea ${link.task_id} conservada tras cancelación Little Hotelier: ya comenzó, terminó o su estado no es seguro para borrar`);
+        continue;
+      }
 
-      await supabase.from("tasks").delete().eq("id", link.task_id);
-      await supabase
+      const { data: deletedTask, error: taskDeleteError } = await supabase
+        .from("tasks")
+        .delete()
+        .eq("id", link.task_id)
+        .eq("status", t.status)
+        .select("id")
+        .maybeSingle();
+      if (taskDeleteError) throw taskDeleteError;
+      if (!deletedTask) {
+        warnings.push(`Tarea ${link.task_id} conservada: cambió de estado durante la cancelación Little Hotelier`);
+        continue;
+      }
+      const { error: linkUpdateError } = await supabase
         .from("lh_reservation_tasks")
         .update({ status: "cancelled" })
         .eq("id", link.id);
+      if (linkUpdateError) throw linkUpdateError;
 
       changes.tasks_cancelled.push({
         room: link.lh_room,

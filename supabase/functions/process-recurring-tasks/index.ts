@@ -1,5 +1,16 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.50.0";
+import {
+  calculateDueExecutions,
+  calculateNextExecution,
+  getMadridDateKey,
+} from '../_shared/recurringSchedule.ts';
+import {
+  assertAdminManagerOrServiceRole,
+  authorizationErrorResponse,
+} from '../_shared/edgeAuthorization.ts';
+
+const MAX_OCCURRENCES_PER_TASK = 31;
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -14,12 +25,20 @@ const handler = async (req: Request): Promise<Response> => {
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const recurringCronSecret = Deno.env.get('RECURRING_TASKS_CRON_SECRET') ?? '';
     
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    await assertAdminManagerOrServiceRole(req, supabase, supabaseServiceKey, {
+      dedicatedSecret: {
+        headerName: 'X-Cron-Secret',
+        value: recurringCronSecret,
+        actorKind: 'cron',
+      },
+    });
     
     console.log("🔄 Starting recurring tasks processing...");
     
-    const today = new Date().toISOString().split('T')[0];
+    const today = getMadridDateKey();
     
     // Get all active recurring tasks that are due for execution (using snake_case DB columns)
     const { data: recurringTasks, error: fetchError } = await supabase
@@ -48,165 +67,157 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     const generatedTasks: any[] = [];
-    const updatedTasks: string[] = [];
+    const updatedTasks = new Set<string>();
+    const failures: Array<{ recurringTaskId: string; executionDate: string; error: string }> = [];
+    let hasBacklog = false;
 
     for (const rt of recurringTasks) {
       try {
         console.log(`🔨 Processing task: ${rt.name}`);
 
-        // Resolve property name and address from the joined relation
         const propertyName = rt.properties?.nombre || rt.name;
         const propertyAddress = rt.properties?.direccion || '';
+        const scheduleSnapshot = {
+          frequency: rt.frequency,
+          interval_days: rt.interval_days,
+          days_of_week: rt.days_of_week,
+          day_of_month: rt.day_of_month,
+          start_date: rt.start_date,
+          end_date: rt.end_date,
+        };
+        const dueExecutions = calculateDueExecutions(
+          rt,
+          rt.next_execution,
+          today,
+          MAX_OCCURRENCES_PER_TASK,
+        );
+        hasBacklog ||= dueExecutions.hasMore;
 
-        // Create the new task using correct snake_case column names for the tasks table
-        const { data: newTask, error: createError } = await supabase
-          .from('tasks')
-          .insert({
-            property: propertyName,
-            address: propertyAddress,
-            date: rt.next_execution,
-            start_time: rt.start_time,
-            end_time: rt.end_time,
-            type: rt.type,
-            status: 'pending',
-            check_out: rt.check_out,
-            check_in: rt.check_in,
-            cleaner: rt.cleaner,
-            cleaner_id: rt.cleaner_id,
-            cliente_id: rt.cliente_id,
-            propiedad_id: rt.propiedad_id,
-            duracion: rt.duracion,
-            coste: rt.coste,
-            metodo_pago: rt.metodo_pago,
-            supervisor: rt.supervisor,
-            sede_id: rt.sede_id,
-            background_color: '#3B82F6',
-            notes: `Generada automáticamente desde tarea recurrente: ${rt.name}`
-          })
-          .select()
-          .single();
+        for (const executionDate of dueExecutions.dates) {
+          const nextExecution = calculateNextExecution(rt, executionDate);
+          const { data: materialization, error: materializationError } = await supabase
+            .rpc('materialize_recurring_task', {
+              p_recurring_task_id: rt.id,
+              p_execution_date: executionDate,
+              p_next_execution: nextExecution,
+              p_schedule_snapshot: scheduleSnapshot,
+            })
+            .single();
 
-        if (createError) {
-          console.error(`❌ Error creating task for ${rt.name}:`, createError);
-          
-          // Log execution error
-          await supabase.from('recurring_task_executions').insert({
-            recurring_task_id: rt.id,
-            execution_date: rt.next_execution,
-            success: false,
-            error_message: createError.message
-          });
-          continue;
-        }
+          if (materializationError || !materialization) {
+            const message = materializationError?.message
+              || `La materialización de ${rt.name} no devolvió resultado`;
+            failures.push({ recurringTaskId: rt.id, executionDate, error: message });
+            hasBacklog = true;
+            console.error(`❌ Error materializing recurring task ${rt.name}:`, message);
 
-        generatedTasks.push({ id: newTask.id, name: propertyName });
-
-        // Log successful execution
-        await supabase.from('recurring_task_executions').insert({
-          recurring_task_id: rt.id,
-          execution_date: rt.next_execution,
-          success: true,
-          generated_task_id: newTask.id
-        });
-
-        // Send email notification to assigned cleaner
-        if (rt.cleaner_id) {
-          try {
-            // Fetch cleaner email from DB
-            const { data: cleanerData } = await supabase
-              .from('cleaners')
-              .select('name, email')
-              .eq('id', rt.cleaner_id)
-              .single();
-
-            if (cleanerData?.email) {
-              const emailPayload = {
-                cleanerEmail: cleanerData.email,
-                cleanerName: cleanerData.name || 'Trabajador',
-                taskData: {
-                  property: propertyName,
-                  address: propertyAddress,
-                  date: rt.next_execution,
-                  startTime: rt.start_time,
-                  endTime: rt.end_time,
-                  type: rt.type,
-                  recurringTaskName: rt.name,
-                },
-              };
-
-              const emailRes = await fetch(
-                `${supabaseUrl}/functions/v1/send-recurring-task-email`,
-                {
-                  method: 'POST',
-                  headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${supabaseServiceKey}`,
-                  },
-                  body: JSON.stringify(emailPayload),
-                }
-              );
-
-              if (!emailRes.ok) {
-                const errText = await emailRes.text();
-                console.error(`⚠️ Email send failed for ${cleanerData.email}:`, errText);
-              } else {
-                console.log(`📧 Email sent to ${cleanerData.email} for task ${rt.name}`);
-              }
-            } else {
-              console.log(`⚠️ No email found for cleaner ${rt.cleaner_id}, skipping notification`);
+            const { error: executionLogError } = await supabase
+              .from('recurring_task_executions')
+              .insert({
+                recurring_task_id: rt.id,
+                execution_date: executionDate,
+                success: false,
+                error_message: message,
+              });
+            if (executionLogError) {
+              console.error(`⚠️ Could not log recurring task failure ${rt.name}:`, executionLogError);
             }
-          } catch (emailError: any) {
-            console.error(`⚠️ Error sending email for task ${rt.name}:`, emailError.message);
-            // Don't fail the whole process if email fails
+            break;
           }
-        }
 
-        // Calculate next execution date
-        const nextExecution = calculateNextExecution(rt);
-        
-        // Check if task should be deactivated (past end date)
-        const shouldDeactivate = rt.end_date && 
-          new Date(nextExecution) > new Date(rt.end_date);
+          updatedTasks.add(rt.id);
+          if (materialization.was_created) {
+            generatedTasks.push({
+              id: materialization.generated_task_id,
+              name: propertyName,
+              executionDate,
+            });
+            console.log(`✅ Task ${rt.name} materialized atomically for ${executionDate}`);
+          } else {
+            console.log(`↩️ Task ${rt.name} for ${executionDate} already existed; state repaired`);
+          }
 
-        // Update the recurring task with snake_case columns
-        const { error: updateError } = await supabase
-          .from('recurring_tasks')
-          .update({
-            last_execution: rt.next_execution,
-            next_execution: shouldDeactivate ? '2099-12-31' : nextExecution,
-            is_active: !shouldDeactivate
-          })
-          .eq('id', rt.id);
+          if (materialization.was_created && rt.cleaner_id) {
+            try {
+              const { data: cleanerData } = await supabase
+                .from('cleaners')
+                .select('name, email')
+                .eq('id', rt.cleaner_id)
+                .single();
 
-        if (updateError) {
-          console.error(`❌ Error updating recurring task ${rt.name}:`, updateError);
-        } else {
-          updatedTasks.push(rt.id);
-          console.log(`✅ Task ${rt.name} processed successfully`);
-          
-          if (shouldDeactivate) {
+              if (cleanerData?.email) {
+                const emailRes = await fetch(
+                  `${supabaseUrl}/functions/v1/send-recurring-task-email`,
+                  {
+                    method: 'POST',
+                    headers: {
+                      'Content-Type': 'application/json',
+                      'Authorization': `Bearer ${supabaseServiceKey}`,
+                    },
+                    body: JSON.stringify({
+                      cleanerEmail: cleanerData.email,
+                      cleanerName: cleanerData.name || 'Trabajador',
+                      taskData: {
+                        property: propertyName,
+                        address: propertyAddress,
+                        date: executionDate,
+                        startTime: rt.start_time,
+                        endTime: rt.end_time,
+                        type: rt.type,
+                        recurringTaskName: rt.name,
+                      },
+                    }),
+                  },
+                );
+
+                if (!emailRes.ok) {
+                  const errText = await emailRes.text();
+                  console.error(`⚠️ Email send failed for ${cleanerData.email}:`, errText);
+                }
+              }
+            } catch (emailError: any) {
+              console.error(`⚠️ Error sending email for task ${rt.name}:`, emailError.message);
+            }
+          }
+
+          if (nextExecution === null) {
             console.log(`🔚 Task ${rt.name} deactivated - reached end date`);
           }
         }
-
       } catch (taskError: any) {
+        failures.push({
+          recurringTaskId: rt.id,
+          executionDate: rt.next_execution,
+          error: taskError.message || String(taskError),
+        });
+        hasBacklog = true;
         console.error(`❌ Error processing task ${rt.name}:`, taskError);
       }
     }
 
-    console.log(`✨ Processing complete. Generated ${generatedTasks.length} tasks, updated ${updatedTasks.length} recurring tasks`);
+    console.log(
+      `✨ Processing complete. Generated ${generatedTasks.length} tasks, `
+      + `updated ${updatedTasks.size} recurring tasks, failures ${failures.length}`,
+    );
 
     return new Response(JSON.stringify({
-      message: "Recurring tasks processed successfully",
+      message: failures.length > 0
+        ? "Recurring tasks processed with errors"
+        : "Recurring tasks processed successfully",
       processed: generatedTasks.length,
       generatedTasks,
-      updatedRecurringTasks: updatedTasks.length
+      updatedRecurringTasks: updatedTasks.size,
+      failed: failures.length,
+      errors: failures,
+      hasBacklog,
     }), {
       status: 200,
       headers: { "Content-Type": "application/json", ...corsHeaders },
     });
 
   } catch (error: any) {
+    const authResponse = authorizationErrorResponse(error, corsHeaders);
+    if (authResponse) return authResponse;
     console.error("❌ Error in process-recurring-tasks function:", error);
     return new Response(JSON.stringify({ 
       error: error.message,
@@ -217,46 +228,5 @@ const handler = async (req: Request): Promise<Response> => {
     });
   }
 };
-
-function calculateNextExecution(task: any): string {
-  const lastDate = new Date(task.next_execution);
-  const nextDate = new Date(lastDate);
-  const interval = task.interval_days || 1;
-
-  switch (task.frequency) {
-    case 'daily':
-      nextDate.setDate(nextDate.getDate() + interval);
-      break;
-      
-    case 'weekly':
-      if (task.days_of_week && task.days_of_week.length > 0) {
-        let daysAdded = 0;
-        const maxDays = 14;
-        
-        do {
-          daysAdded++;
-          nextDate.setDate(nextDate.getDate() + 1);
-        } while (
-          !task.days_of_week.includes(nextDate.getDay()) && 
-          daysAdded < maxDays
-        );
-      } else {
-        nextDate.setDate(nextDate.getDate() + (7 * interval));
-      }
-      break;
-      
-    case 'monthly':
-      nextDate.setMonth(nextDate.getMonth() + interval);
-      
-      if (task.day_of_month) {
-        const lastDayOfMonth = new Date(nextDate.getFullYear(), nextDate.getMonth() + 1, 0).getDate();
-        const targetDay = Math.min(task.day_of_month, lastDayOfMonth);
-        nextDate.setDate(targetDay);
-      }
-      break;
-  }
-
-  return nextDate.toISOString().split('T')[0];
-}
 
 serve(handler);

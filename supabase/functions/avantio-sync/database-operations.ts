@@ -1,5 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.50.0";
 import { AvantioReservation } from './types.ts';
+import { canDeleteTaskAfterPmsCancellation } from '../_shared/taskCancellationPolicy.ts';
 
 const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
 const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -360,6 +361,28 @@ export async function deleteTask(taskId: string) {
     .from('tasks')
     .delete()
     .eq('id', taskId);
+}
+
+export async function deleteTaskIfPending(taskId: string): Promise<boolean> {
+  const { data: task, error: taskError } = await supabase
+    .from('tasks')
+    .select('status')
+    .eq('id', taskId)
+    .maybeSingle();
+
+  if (taskError) throw taskError;
+  if (!task || !canDeleteTaskAfterPmsCancellation(task.status)) return false;
+
+  const { data: deletedTask, error: deleteError } = await supabase
+    .from('tasks')
+    .delete()
+    .eq('id', taskId)
+    .eq('status', task.status)
+    .select('id')
+    .maybeSingle();
+
+  if (deleteError) throw deleteError;
+  return Boolean(deletedTask);
 }
 
 /**

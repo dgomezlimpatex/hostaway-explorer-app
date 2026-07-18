@@ -322,7 +322,7 @@ export class SyncOrchestrator {
 
     console.log(`⚠️ Eliminando ${toCleanup.length} tareas POSIBLE expiradas...`);
 
-    const { deleteTask } = await import('./database-operations.ts');
+    const { deleteTaskIfPending } = await import('./database-operations.ts');
 
     for (const reservation of toCleanup) {
       try {
@@ -371,18 +371,23 @@ export class SyncOrchestrator {
           .eq('id', reservation.task_id)
           .single();
 
-        await this.supabase
+        const deleted = await deleteTaskIfPending(reservation.task_id);
+        if (!deleted) {
+          console.log(`🛡️ Tarea POSIBLE ${reservation.task_id} conservada: ya comenzó, terminó o su estado no es seguro para borrar`);
+          continue;
+        }
+
+        const { error: unlinkError } = await this.supabase
           .from('avantio_reservations')
           .update({ task_id: null })
           .eq('id', reservation.id);
-
-        await deleteTask(reservation.task_id);
+        if (unlinkError) throw unlinkError;
 
         // Send cancellation email if cleaner was assigned
         if (taskData?.cleaner_id && taskData?.cleaners?.email) {
           console.log(`📧 Enviando email de cancelación POSIBLE expirada a ${taskData.cleaners.name}`);
           try {
-            await this.supabase.functions.invoke('send-task-unassignment-email', {
+            const { error: emailError } = await this.supabase.functions.invoke('send-task-unassignment-email', {
               body: {
                 taskId: reservation.task_id,
                 cleanerEmail: taskData.cleaners.email,
@@ -399,6 +404,7 @@ export class SyncOrchestrator {
                 reason: 'cancelled'
               }
             });
+            if (emailError) throw emailError;
           } catch (emailError) {
             console.error(`❌ Error enviando email cancelación POSIBLE:`, emailError);
           }

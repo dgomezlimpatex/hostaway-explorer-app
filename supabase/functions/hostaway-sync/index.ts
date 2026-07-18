@@ -1,6 +1,12 @@
 
 import { SyncOrchestrator } from './sync-orchestrator.ts';
 import { ResponseBuilder } from './response-builder.ts';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.50.0';
+import {
+  assertAdminManagerOrServiceRole,
+  authorizationErrorResponse,
+} from '../_shared/edgeAuthorization.ts';
+import { disabledHostawayResponse, isHostawayIntegrationEnabled } from '../_shared/disabledIntegration.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -12,9 +18,15 @@ Deno.serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  if (!isHostawayIntegrationEnabled()) {
+    return disabledHostawayResponse(corsHeaders);
+  }
+
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    await assertAdminManagerOrServiceRole(req, supabase, supabaseServiceKey);
 
     const orchestrator = new SyncOrchestrator(supabaseUrl, supabaseServiceKey);
 
@@ -66,6 +78,8 @@ Deno.serve(async (req) => {
     }
 
   } catch (error) {
+    const authResponse = authorizationErrorResponse(error, corsHeaders);
+    if (authResponse) return authResponse;
     console.error('❌ Error crítico:', error);
     
     const response = ResponseBuilder.buildCriticalErrorResponse(error);

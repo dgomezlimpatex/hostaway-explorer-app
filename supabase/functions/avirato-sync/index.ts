@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.50.0";
+import { canDeleteTaskAfterPmsCancellation } from '../_shared/taskCancellationPolicy.ts';
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -557,10 +558,34 @@ Deno.serve(async (req) => {
           if (desired.has(key)) continue;
           if (link.status !== "active" || !link.task_id) continue;
           if (link.task_date < today) continue;
-          const { data: task } = await supabase.from("tasks").select("status").eq("id", link.task_id).maybeSingle();
-          if (task?.status === "completed") continue;
-          await supabase.from("tasks").delete().eq("id", link.task_id);
-          await supabase.from("avirato_reservation_tasks").update({ status: "cancelled" }).eq("id", link.id);
+          const { data: task, error: taskReadError } = await supabase
+            .from("tasks")
+            .select("status")
+            .eq("id", link.task_id)
+            .maybeSingle();
+          if (taskReadError) throw taskReadError;
+          if (!task || !canDeleteTaskAfterPmsCancellation(task.status)) {
+            warnings.push(`Tarea ${link.task_id} conservada tras cancelación Avirato: ya comenzó, terminó o su estado no es seguro para borrar`);
+            continue;
+          }
+
+          const { data: deletedTask, error: taskDeleteError } = await supabase
+            .from("tasks")
+            .delete()
+            .eq("id", link.task_id)
+            .eq("status", task.status)
+            .select("id")
+            .maybeSingle();
+          if (taskDeleteError) throw taskDeleteError;
+          if (!deletedTask) {
+            warnings.push(`Tarea ${link.task_id} conservada: cambió de estado durante la cancelación Avirato`);
+            continue;
+          }
+          const { error: linkUpdateError } = await supabase
+            .from("avirato_reservation_tasks")
+            .update({ status: "cancelled" })
+            .eq("id", link.id);
+          if (linkUpdateError) throw linkUpdateError;
           stats.tasks_cancelled += 1;
         }
       } catch (reservationError) {

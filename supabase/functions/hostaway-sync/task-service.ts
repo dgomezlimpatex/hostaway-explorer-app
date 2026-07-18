@@ -1,6 +1,6 @@
 
 import { HostawayReservation, SyncStats, TaskDetail } from './types.ts';
-import { createTaskForReservation, deleteTask } from './database-operations.ts';
+import { createTaskForReservation, deleteTaskIfPending } from './database-operations.ts';
 import { shouldCreateTaskForReservation, getTaskCreationReason } from './reservation-validator.ts';
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.50.0";
 
@@ -65,14 +65,16 @@ export async function handleCancelledReservationTask(
 ): Promise<void> {
   if (existingReservation.task_id) {
     try {
-      // Primero obtener información de la tarea y limpiadora asignada antes de eliminarla
-      await sendTaskCancellationEmail(existingReservation.task_id);
-      
-      // Luego eliminar la tarea
-      await deleteTask(existingReservation.task_id);
-      console.log(`🗑️ Tarea eliminada: ${existingReservation.task_id}`);
+      const deleted = await deletePendingTaskAndSendCancellationEmail(existingReservation.task_id);
+      if (deleted) {
+        stats.tasks_cancelled++;
+        console.log(`🗑️ Tarea pendiente eliminada: ${existingReservation.task_id}`);
+      } else {
+        console.log(`🛡️ Tarea ${existingReservation.task_id} conservada: ya comenzó, terminó o su estado no es seguro para borrar`);
+      }
     } catch (error) {
       console.error(`Error eliminando tarea ${existingReservation.task_id}:`, error);
+      stats.errors.push(`No se pudo aplicar de forma segura la cancelación a la tarea ${existingReservation.task_id}: ${error.message}`);
     }
   }
 }
@@ -118,7 +120,7 @@ export async function createMissingTask(
 /**
  * Sends cancellation email to assigned cleaner before deleting task
  */
-async function sendTaskCancellationEmail(taskId: string): Promise<void> {
+async function deletePendingTaskAndSendCancellationEmail(taskId: string): Promise<boolean> {
   try {
     // Obtener información completa de la tarea y la limpiadora asignada
     const { data: task, error: taskError } = await supabase
@@ -140,19 +142,21 @@ async function sendTaskCancellationEmail(taskId: string): Promise<void> {
       .single();
 
     if (taskError) {
-      console.error(`❌ Error obteniendo información de tarea ${taskId}:`, taskError);
-      return;
+      throw taskError;
     }
 
     if (!task) {
-      console.log(`⚠️ Tarea ${taskId} no encontrada para envío de email`);
-      return;
+      console.log(`⚠️ Tarea ${taskId} no encontrada; no se intenta un borrado destructivo`);
+      return false;
     }
+
+    const deleted = await deleteTaskIfPending(taskId);
+    if (!deleted) return false;
 
     // Solo enviar email si hay una limpiadora asignada
     if (!task.cleaner_id || !task.cleaners) {
       console.log(`ℹ️ Tarea ${taskId} no tiene limpiadora asignada, no se envía email`);
-      return;
+      return true;
     }
 
     console.log(`📧 Enviando email de cancelación a limpiadora: ${task.cleaners.name}`);
@@ -180,7 +184,10 @@ async function sendTaskCancellationEmail(taskId: string): Promise<void> {
       console.log(`✅ Email de cancelación enviado exitosamente a ${task.cleaners.name}`);
     }
 
+    return true;
+
   } catch (error) {
     console.error(`❌ Error general enviando email de cancelación:`, error);
+    throw error;
   }
 }

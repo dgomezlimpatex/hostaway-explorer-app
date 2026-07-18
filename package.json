@@ -30,6 +30,10 @@
     "test:mobile-calendar-multi-assignment": "bun scripts/mobileCalendarMultiAssignmentTest.ts",
     "test:client-portal-visibility": "node scripts/clientPortalVisibilityTest.mjs",
     "test:task-next-client-entry": "node scripts/taskNextClientEntryTest.mjs && node scripts/taskNextClientEntryUiContractTest.mjs",
+    "test:recurring-task-schedule": "node scripts/recurringTaskScheduleTest.mjs",
+    "test:pms-cancellation-safety": "node scripts/pmsCancellationSafetyTest.mjs",
+    "test:edge-authorization-safety": "node scripts/edgeAuthorizationSafetyTest.mjs",
+    "test:hostaway-dormancy": "node scripts/hostawayDormancyTest.mjs",
     "preview": "vite preview"
   },
   "dependencies": {

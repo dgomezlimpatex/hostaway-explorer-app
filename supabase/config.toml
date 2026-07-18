@@ -1,5 +1,27 @@
 project_id = "qyipyygojlfhdghnraus"
 
+# Operaciones privilegiadas: usuario admin/manager o service_role de cron.
+[functions.hostaway-sync]
+verify_jwt = true
+
+[functions.process-recurring-tasks]
+verify_jwt = true
+
+[functions.hostaway-sync-with-retry]
+verify_jwt = true
+
+[functions.manage-hostaway-cron]
+verify_jwt = true
+
+[functions.setup-automation]
+verify_jwt = true
+
+[functions.insert-properties]
+verify_jwt = true
+
+[functions.send-sync-error-email]
+verify_jwt = true
+
 [functions.little-hotelier-sync]
 verify_jwt = false
 

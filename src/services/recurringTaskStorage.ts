@@ -1,7 +1,11 @@
 
 import { supabase } from '@/integrations/supabase/client';
 import { RecurringTask } from '@/types/recurring';
-import { Task } from '@/types/calendar';
+import {
+  calculateInitialExecution,
+  calculateNextExecution,
+  getMadridDateKey,
+} from '../../supabase/functions/_shared/recurringSchedule';
 
 // Helper function to get sede_id from context or throw error
 const getSedeId = (): string => {
@@ -109,7 +113,17 @@ export const recurringTaskStorage = {
 
   create: async (taskData: Omit<RecurringTask, 'id' | 'createdAt' | 'nextExecution'>): Promise<RecurringTask> => {
     // Calculate next execution date
-    const nextExecution = calculateNextExecution(taskData);
+    const nextExecution = calculateInitialExecution({
+      frequency: taskData.frequency,
+      interval_days: taskData.interval,
+      days_of_week: taskData.daysOfWeek,
+      day_of_month: taskData.dayOfMonth,
+      start_date: taskData.startDate,
+      end_date: taskData.endDate,
+    }, getMadridDateKey());
+    if (!nextExecution) {
+      throw new Error('La recurrencia no tiene ninguna ejecución válida dentro del rango de fechas');
+    }
     
     const { data, error } = await supabase
       .from('recurring_tasks')
@@ -180,6 +194,36 @@ export const recurringTaskStorage = {
 
   update: async (id: string, updates: Partial<RecurringTask>): Promise<RecurringTask | null> => {
     const updateData: any = {};
+
+    const scheduleChanged = [
+      'frequency',
+      'interval',
+      'daysOfWeek',
+      'dayOfMonth',
+      'startDate',
+      'endDate',
+    ].some((field) => updates[field as keyof RecurringTask] !== undefined);
+    const recurringStateChanged = scheduleChanged
+      || updates.isActive !== undefined
+      || updates.nextExecution !== undefined
+      || updates.lastExecution !== undefined;
+    const shouldRecalculateSchedule = (scheduleChanged || updates.isActive === true)
+      && updates.isActive !== false
+      && updates.nextExecution === undefined;
+
+    let currentData: any = null;
+    if (recurringStateChanged) {
+      const { data: current, error: currentError } = await supabase
+        .from('recurring_tasks')
+        .select('frequency, interval_days, days_of_week, day_of_month, start_date, end_date, last_execution, state_revision')
+        .eq('id', id)
+        .single();
+      if (currentError) {
+        if (currentError.code === 'PGRST116') return null;
+        throw currentError;
+      }
+      currentData = current;
+    }
     
     if (updates.name !== undefined) updateData.name = updates.name;
     if (updates.description !== undefined) updateData.description = updates.description;
@@ -206,15 +250,47 @@ export const recurringTaskStorage = {
     if (updates.nextExecution !== undefined) updateData.next_execution = updates.nextExecution;
     if (updates.lastExecution !== undefined) updateData.last_execution = updates.lastExecution;
 
-    const { data, error } = await supabase
+    if (shouldRecalculateSchedule && currentData) {
+      const mergedSchedule = {
+        frequency: updates.frequency !== undefined ? updates.frequency : currentData.frequency,
+        interval_days: updates.interval !== undefined ? updates.interval : currentData.interval_days,
+        days_of_week: updates.daysOfWeek !== undefined ? updates.daysOfWeek : currentData.days_of_week,
+        day_of_month: updates.dayOfMonth !== undefined ? updates.dayOfMonth : currentData.day_of_month,
+        start_date: updates.startDate !== undefined ? updates.startDate : currentData.start_date,
+        end_date: updates.endDate !== undefined ? updates.endDate : currentData.end_date,
+      };
+      const todayMadrid = getMadridDateKey();
+      let nextExecution = calculateInitialExecution(mergedSchedule, todayMadrid);
+      if (
+        nextExecution
+        && currentData.last_execution
+        && nextExecution <= currentData.last_execution
+      ) {
+        nextExecution = calculateNextExecution(mergedSchedule, currentData.last_execution);
+      }
+
+      updateData.next_execution = nextExecution ?? '2099-12-31';
+      updateData.is_active = nextExecution !== null;
+    }
+
+    let updateQuery = supabase
       .from('recurring_tasks')
       .update(updateData)
-      .eq('id', id)
+      .eq('id', id);
+
+    if (currentData) {
+      updateQuery = updateQuery.eq('state_revision', currentData.state_revision);
+    }
+
+    const { data, error } = await updateQuery
       .select()
       .single();
 
     if (error) {
       if (error.code === 'PGRST116') {
+        if (currentData) {
+          throw new Error('La recurrencia cambió mientras se editaba. Recarga y vuelve a intentarlo.');
+        }
         return null; // No data found
       }
       console.error('Error updating recurring task:', error);
@@ -266,240 +342,4 @@ export const recurringTaskStorage = {
 
     return true;
   },
-
-  processRecurringTasks: async (): Promise<Task[]> => {
-    // Get all active recurring tasks that need to be executed
-    const { data: recurringTasks, error } = await supabase
-      .from('recurring_tasks')
-      .select('*')
-      .eq('is_active', true)
-      .lte('next_execution', new Date().toISOString().split('T')[0]);
-
-    if (error) {
-      console.error('Error fetching recurring tasks for processing:', error);
-      throw error;
-    }
-
-    const generatedTasks: Task[] = [];
-
-    for (const recurringTask of recurringTasks || []) {
-      // Create a new task from the recurring task template
-      const newTask: Omit<Task, 'id'> = {
-        property: `${recurringTask.name}`, // You might want to get the actual property name
-        address: 'Dirección desde propiedad', // You might want to get the actual address
-        startTime: recurringTask.start_time,
-        endTime: recurringTask.end_time,
-        type: recurringTask.type,
-        status: 'pending' as const,
-        checkOut: recurringTask.check_out,
-        checkIn: recurringTask.check_in,
-        cleaner: recurringTask.cleaner,
-        backgroundColor: '#3B82F6',
-        date: recurringTask.next_execution,
-        clienteId: recurringTask.cliente_id,
-        propertyId: recurringTask.propiedad_id,
-        duration: recurringTask.duracion,
-        cost: recurringTask.coste,
-        paymentMethod: recurringTask.metodo_pago,
-        supervisor: recurringTask.supervisor,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      };
-
-      // Create the task
-      const { data: createdTask, error: createError } = await supabase
-        .from('tasks')
-        .insert({
-          property: newTask.property,
-          address: newTask.address,
-          start_time: newTask.startTime,
-          end_time: newTask.endTime,
-          type: newTask.type,
-          status: newTask.status,
-          check_out: newTask.checkOut,
-          check_in: newTask.checkIn,
-          cleaner: newTask.cleaner,
-          background_color: newTask.backgroundColor,
-          date: newTask.date,
-          cliente_id: newTask.clienteId,
-          propiedad_id: newTask.propertyId,
-          duracion: newTask.duration,
-          coste: newTask.cost,
-          metodo_pago: newTask.paymentMethod,
-          supervisor: newTask.supervisor,
-          sede_id: getSedeId()
-        })
-        .select()
-        .single();
-
-      if (createError) {
-        console.error('Error creating task from recurring template:', createError);
-        continue;
-      }
-
-      generatedTasks.push({
-        id: createdTask.id,
-        property: createdTask.property,
-        address: createdTask.address,
-        startTime: createdTask.start_time,
-        endTime: createdTask.end_time,
-        type: createdTask.type,
-        status: createdTask.status as 'pending' | 'in-progress' | 'completed',
-        checkOut: createdTask.check_out,
-        checkIn: createdTask.check_in,
-        cleaner: createdTask.cleaner,
-        backgroundColor: createdTask.background_color,
-        date: createdTask.date,
-        clienteId: createdTask.cliente_id,
-        propertyId: createdTask.propiedad_id,
-        duration: createdTask.duracion,
-        cost: createdTask.coste,
-        paymentMethod: createdTask.metodo_pago,
-        supervisor: createdTask.supervisor,
-        created_at: createdTask.created_at,
-        updated_at: createdTask.updated_at
-      });
-
-      // Update the recurring task with new next execution date
-      const nextExecution = calculateNextExecutionFromData({
-        frequency: recurringTask.frequency as 'daily' | 'weekly' | 'monthly',
-        interval: recurringTask.interval_days,
-        daysOfWeek: recurringTask.days_of_week,
-        dayOfMonth: recurringTask.day_of_month,
-        startDate: recurringTask.start_date,
-        endDate: recurringTask.end_date,
-        lastExecution: recurringTask.next_execution
-      });
-
-      await supabase
-        .from('recurring_tasks')
-        .update({
-          next_execution: nextExecution,
-          last_execution: recurringTask.next_execution
-        })
-        .eq('id', recurringTask.id);
-    }
-
-    return generatedTasks;
-  }
 };
-
-// Parse a YYYY-MM-DD string as UTC midnight (avoids timezone shifts)
-function parseDateUTC(s: string): Date {
-  const [y, m, d] = s.split('-').map(Number);
-  return new Date(Date.UTC(y, (m || 1) - 1, d || 1));
-}
-
-function toISODate(d: Date): string {
-  return d.toISOString().split('T')[0];
-}
-
-function todayUTC(): Date {
-  return parseDateUTC(new Date().toISOString().split('T')[0]);
-}
-
-// Find next date (>= base) whose UTC weekday is in the allowed set.
-// If inclusive is true, the base date itself is a candidate.
-function findNextValidWeekday(base: Date, daysOfWeek: number[], inclusive: boolean): Date {
-  const valid = new Set(daysOfWeek);
-  const d = new Date(base.getTime());
-  if (inclusive && valid.has(d.getUTCDay())) return d;
-  for (let i = 0; i < 14; i++) {
-    d.setUTCDate(d.getUTCDate() + 1);
-    if (valid.has(d.getUTCDay())) return d;
-  }
-  return d;
-}
-
-// Helper function to calculate next execution date (used on creation)
-function calculateNextExecution(taskData: Partial<RecurringTask>): string {
-  return calculateNextExecutionFromData({
-    frequency: taskData.frequency!,
-    interval: taskData.interval!,
-    daysOfWeek: taskData.daysOfWeek,
-    dayOfMonth: taskData.dayOfMonth,
-    startDate: taskData.startDate!,
-    endDate: taskData.endDate,
-    lastExecution: undefined,
-  });
-}
-
-function calculateNextExecutionFromData(data: {
-  frequency: 'daily' | 'weekly' | 'monthly';
-  interval: number;
-  daysOfWeek?: number[] | null;
-  dayOfMonth?: number | null;
-  startDate: string;
-  endDate?: string | null;
-  lastExecution?: string | null;
-}): string {
-  const today = todayUTC();
-  const startDate = parseDateUTC(data.startDate);
-  const isFirstRun = !data.lastExecution;
-
-  let nextDate: Date;
-
-  if (isFirstRun) {
-    // Base = max(startDate, today). First occurrence may be the base itself.
-    const base = startDate.getTime() > today.getTime() ? startDate : today;
-    nextDate = new Date(base.getTime());
-
-    switch (data.frequency) {
-      case 'daily':
-        // Use base as-is
-        break;
-      case 'weekly':
-        if (data.daysOfWeek && data.daysOfWeek.length > 0) {
-          nextDate = findNextValidWeekday(base, data.daysOfWeek, true);
-        }
-        break;
-      case 'monthly':
-        if (data.dayOfMonth) {
-          const y = base.getUTCFullYear();
-          const m = base.getUTCMonth();
-          const lastDay = new Date(Date.UTC(y, m + 1, 0)).getUTCDate();
-          const targetDay = Math.min(data.dayOfMonth, lastDay);
-          let candidate = new Date(Date.UTC(y, m, targetDay));
-          if (candidate.getTime() < base.getTime()) {
-            const lastNext = new Date(Date.UTC(y, m + 2, 0)).getUTCDate();
-            candidate = new Date(Date.UTC(y, m + 1, Math.min(data.dayOfMonth, lastNext)));
-          }
-          nextDate = candidate;
-        }
-        break;
-    }
-  } else {
-    // Subsequent execution: advance from lastExecution
-    const lastDate = parseDateUTC(data.lastExecution!);
-    nextDate = new Date(lastDate.getTime());
-
-    switch (data.frequency) {
-      case 'daily':
-        nextDate.setUTCDate(nextDate.getUTCDate() + (data.interval || 1));
-        break;
-      case 'weekly':
-        if (data.daysOfWeek && data.daysOfWeek.length > 0) {
-          nextDate = findNextValidWeekday(lastDate, data.daysOfWeek, false);
-        } else {
-          nextDate.setUTCDate(nextDate.getUTCDate() + 7 * (data.interval || 1));
-        }
-        break;
-      case 'monthly':
-        nextDate.setUTCMonth(nextDate.getUTCMonth() + (data.interval || 1));
-        if (data.dayOfMonth) {
-          const lastDay = new Date(Date.UTC(nextDate.getUTCFullYear(), nextDate.getUTCMonth() + 1, 0)).getUTCDate();
-          nextDate.setUTCDate(Math.min(data.dayOfMonth, lastDay));
-        }
-        break;
-    }
-  }
-
-  if (data.endDate) {
-    const endDate = parseDateUTC(data.endDate);
-    if (nextDate.getTime() > endDate.getTime()) {
-      return '2099-12-31';
-    }
-  }
-
-  return toISODate(nextDate);
-}

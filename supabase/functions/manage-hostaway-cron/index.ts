@@ -1,5 +1,10 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.50.0";
+import {
+  assertAdminManagerOrServiceRole,
+  authorizationErrorResponse,
+} from '../_shared/edgeAuthorization.ts';
+import { disabledHostawayResponse, isHostawayIntegrationEnabled } from '../_shared/disabledIntegration.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -92,6 +97,10 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  if (!isHostawayIntegrationEnabled()) {
+    return disabledHostawayResponse(corsHeaders);
+  }
+
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
@@ -101,6 +110,7 @@ serve(async (req) => {
     }
 
     const supabase = createClient(supabaseUrl, supabaseKey);
+    await assertAdminManagerOrServiceRole(req, supabase, supabaseKey);
     
     const requestBody: CronRequest = await req.json().catch(() => ({ action: 'setup' }));
     const { action, scheduleId } = requestBody;
@@ -177,6 +187,8 @@ serve(async (req) => {
     }
 
   } catch (error) {
+    const authResponse = authorizationErrorResponse(error, corsHeaders);
+    if (authResponse) return authResponse;
     console.error('❌ Error in manage-hostaway-cron:', error);
     
     return new Response(JSON.stringify({ 

@@ -7,6 +7,7 @@ import {
   createTaskForReservation,
   updateReservation,
   deleteTask,
+  deleteTaskIfPending,
   updateTaskDate,
   updateTaskPropertyName,
   getTaskPropertyName,
@@ -396,20 +397,23 @@ export class ReservationProcessor {
             .eq('id', existingReservation.task_id)
             .single();
 
-          // Clear task reference first
-          await this.supabase
-            .from('avantio_reservations')
-            .update({ task_id: null })
-            .eq('id', existingReservation.id);
-          
-          await deleteTask(existingReservation.task_id);
+          const deleted = await deleteTaskIfPending(existingReservation.task_id);
+          if (!deleted) {
+            console.log(`🛡️ Tarea ${existingReservation.task_id} conservada tras cancelación Avantio: ya comenzó, terminó o su estado no es seguro para borrar`);
+          } else {
+            const { error: unlinkError } = await this.supabase
+              .from('avantio_reservations')
+              .update({ task_id: null })
+              .eq('id', existingReservation.id);
+            if (unlinkError) throw unlinkError;
+
           stats.tasks_cancelled++;
 
           // Send cancellation email if cleaner was assigned
           if (taskData?.cleaner_id && taskData?.cleaners?.email) {
             console.log(`📧 Enviando email de cancelación a ${taskData.cleaners.name} (${taskData.cleaners.email})`);
             try {
-              await this.supabase.functions.invoke('send-task-unassignment-email', {
+              const { error: emailError } = await this.supabase.functions.invoke('send-task-unassignment-email', {
                 body: {
                   taskId: existingReservation.task_id,
                   cleanerEmail: taskData.cleaners.email,
@@ -426,6 +430,7 @@ export class ReservationProcessor {
                   reason: 'cancelled'
                 }
               });
+              if (emailError) throw emailError;
               console.log(`✅ Email de cancelación enviado a ${taskData.cleaners.name}`);
             } catch (emailError) {
               console.error(`❌ Error enviando email de cancelación:`, emailError);
@@ -442,6 +447,7 @@ export class ReservationProcessor {
             accommodation_id: reservation.accommodationId,
             status: 'cancelled'
           });
+          }
         } catch (taskError) {
           const errorMsg = `Error eliminando tarea ${existingReservation.task_id}: ${taskError.message}`;
           stats.errors.push(errorMsg);
