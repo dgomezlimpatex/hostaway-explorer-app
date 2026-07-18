@@ -36,7 +36,6 @@ export const DeactivateWorkerDialog: React.FC<DeactivateWorkerDialogProps> = ({
   const [unassign, setUnassign] = useState(true);
   const { data: futureTasks = [], isLoading: loadingTasks } = useFuturePendingTasksForCleaner(
     open ? worker?.id ?? null : null,
-    worker?.name
   );
   const deactivate = useDeactivateCleaner();
 
@@ -44,7 +43,6 @@ export const DeactivateWorkerDialog: React.FC<DeactivateWorkerDialogProps> = ({
     if (!worker) return;
     await deactivate.mutateAsync({
       cleanerId: worker.id,
-      cleanerName: worker.name,
       unassignFutureTasks: unassign && futureTasks.length > 0,
     });
     onOpenChange(false);
