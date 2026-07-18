@@ -117,7 +117,17 @@ export async function sendWhatsAppTemplateMessage(
 
     const messages = (json?.messages ?? []) as Array<{ id?: string }>;
     const providerMessageId = messages[0]?.id ?? null;
-
+    if (!providerMessageId) {
+      return {
+        ok: false,
+        dryRun: false,
+        status: 'failed',
+        providerMessageId: null,
+        errorCode: 'missing_provider_message_id',
+        errorMessage: 'Meta aceptó la petición sin devolver un identificador de mensaje.',
+        response: json,
+      };
+    }
     return {
       ok: true,
       dryRun: false,

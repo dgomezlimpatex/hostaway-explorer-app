@@ -1,7 +1,6 @@
 import { supabase } from '@/integrations/supabase/client';
 import { TaskAssignment } from '@/types/taskAssignments';
 import { Task } from '@/types/calendar';
-import { createTaskNotificationEvent } from '@/services/notifications/notificationOrchestrator';
 
 type CleanerLite = { id: string; name: string; email: string | null };
 
@@ -70,20 +69,8 @@ export class MultipleTaskAssignmentService {
 
   async notifyAssignmentDiff(taskId: string, added: CleanerLite[], removed: CleanerLite[]): Promise<void> {
     const actualTaskId = stripVirtualId(taskId);
-    await Promise.all(added.map((cleaner) =>
-      createTaskNotificationEvent({
-        eventType: 'task_assigned',
-        taskId: actualTaskId,
-        cleanerId: cleaner.id,
-      }),
-    ));
-    await Promise.all(removed.map((cleaner) =>
-      createTaskNotificationEvent({
-        eventType: 'task_cancelled',
-        taskId: actualTaskId,
-        cleanerId: cleaner.id,
-      }),
-    ));
+    // WhatsApp se encola de forma canónica mediante el trigger de
+    // task_assignments. Aquí mantenemos únicamente el correo legado.
     await this.sendAssignmentEmails(actualTaskId, added, removed);
   }
 

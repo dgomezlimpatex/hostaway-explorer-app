@@ -385,18 +385,18 @@ serve(async (req: Request): Promise<Response> => {
       }
 
       await supabase.from('notification_events').update({
-        status: 'sent',
+        status: 'failed',
         processed_at: now,
-        error_message: 'Omitido: limpiadora sin WhatsApp habilitado (modo preparación)',
+        error_message: 'Omitido: limpiadora sin WhatsApp habilitado',
       }).eq('id', eventId);
-      return new Response(JSON.stringify({ ok: true, status: 'skipped', reason: 'cleaner_not_enabled' }), {
+      return new Response(JSON.stringify({ ok: false, status: 'skipped', reason: 'cleaner_not_enabled' }), {
         status: 200,
         headers: { 'Content-Type': 'application/json', ...corsHeaders },
       });
     }
 
     // 7. Enviar (o dry-run según feature flag)
-    const result = await sendWhatsAppTemplateMessage({
+    const sendResult = await sendWhatsAppTemplateMessage({
       to: recipient as string,
       templateName,
       languageCode: def.languageCode,
@@ -407,30 +407,30 @@ serve(async (req: Request): Promise<Response> => {
 
     const now = new Date().toISOString();
     await supabase.from('notification_deliveries').update({
-      status: result.status,
-      provider_message_id: result.providerMessageId,
-      provider_response: result.response ?? {},
-      error_code: result.errorCode ?? null,
-      error_message: result.errorMessage ?? null,
-      sent_at: result.status === 'sent' ? now : null,
+      status: sendResult.status,
+      provider_message_id: sendResult.providerMessageId,
+      provider_response: sendResult.response ?? {},
+      error_code: sendResult.errorCode ?? null,
+      error_message: sendResult.errorMessage ?? null,
+      sent_at: sendResult.status === 'sent' ? now : null,
     }).eq('id', delivery?.id);
 
-    const fallback = await sendAdminFallbackEmail(result.ok, result.errorMessage ?? null);
-    const finalOk = result.ok || fallback.ok;
+    const fallback = await sendAdminFallbackEmail(sendResult.status === 'sent', sendResult.errorMessage ?? null);
+    const eventStatus = sendResult.status === 'skipped' ? 'failed' : sendResult.status;
 
     await supabase.from('notification_events').update({
-      status: finalOk ? 'sent' : 'failed',
+      status: fallback.ok ? 'sent' : eventStatus,
       processed_at: now,
-      error_message: result.ok ? null : (fallback.ok
-        ? `WhatsApp falló; correo de respaldo enviado: ${result.errorMessage ?? 'error desconocido'}`
-        : (fallback.errorMessage ?? result.errorMessage)),
+      error_message: sendResult.status === 'sent' ? null : (fallback.ok
+        ? `WhatsApp falló; correo de respaldo enviado: ${sendResult.errorMessage ?? 'error desconocido'}`
+        : (fallback.errorMessage ?? sendResult.errorMessage)),
     }).eq('id', eventId);
 
     return new Response(JSON.stringify({
-      ok: finalOk,
-      status: fallback.ok ? 'fallback_sent' : result.status,
-      dryRun: result.dryRun,
-      providerMessageId: result.providerMessageId,
+      ok: sendResult.status === 'sent' || fallback.ok,
+      status: fallback.ok ? 'fallback_sent' : sendResult.status,
+      dryRun: sendResult.dryRun,
+      providerMessageId: sendResult.providerMessageId,
       fallbackChannel: fallback.ok ? 'email' : null,
       fallbackProviderMessageId: fallback.providerMessageId,
     }), {

@@ -10,9 +10,21 @@ assert.match(orchestrator, /await supabase\.functions\s*\.invoke\('send-whatsapp
 assert.match(orchestrator, /send-whatsapp-notification returned no successful delivery/);
 
 const assignments = await read('src/services/storage/multipleTaskAssignmentService.ts');
-assert.match(assignments, /await Promise\.all\(added\.map/);
-assert.match(assignments, /eventType:\s*'task_cancelled'/);
+assert.doesNotMatch(
+  assignments,
+  /createTaskNotificationEvent/,
+  'las asignaciones deben generar WhatsApp exclusivamente desde el trigger backend',
+);
+assert.match(assignments, /sendAssignmentEmails/);
 assert.doesNotMatch(assignments, /dedupeKey:\s*`task_assigned:\$\{actualTaskId\}:\$\{cleaner\.id\}`/);
+
+const assignmentTrigger = await read('supabase/migrations/20260718193000_enqueue_task_assignment_notifications.sql');
+assert.match(assignmentTrigger, /CREATE OR REPLACE FUNCTION public\.enqueue_task_assignment_notification\(\)/);
+assert.match(assignmentTrigger, /AFTER INSERT OR DELETE ON public\.task_assignments/);
+assert.match(assignmentTrigger, /TG_OP = 'INSERT'/);
+assert.match(assignmentTrigger, /'task_assigned'/);
+assert.match(assignmentTrigger, /'task_cancelled'/);
+assert.match(assignmentTrigger, /ON CONFLICT \(dedupe_key\) DO NOTHING/);
 
 const taskAssignments = await read('src/services/storage/taskAssignmentService.ts');
 assert.doesNotMatch(taskAssignments, /eventType:\s*'task_modified'/);
@@ -29,6 +41,12 @@ assert.match(sender, /status:\s*'processing'/);
 assert.match(sender, /\.eq\('status', 'pending'\)/);
 assert.match(sender, /\.lt\('processed_at', staleBefore\)/);
 assert.match(sender, /already_processing/);
+assert.match(sender, /const eventStatus = sendResult\.status === 'skipped' \? 'failed' : sendResult\.status/);
+assert.match(sender, /ok:\s*sendResult\.status === 'sent'/);
+
+const whatsappClient = await read('supabase/functions/_shared/whatsappClient.ts');
+assert.match(whatsappClient, /if \(!providerMessageId\)/);
+assert.match(whatsappClient, /errorCode:\s*'missing_provider_message_id'/);
 
 const pendingProcessor = await read('supabase/functions/process-pending-whatsapp-notifications/index.ts');
 assert.match(pendingProcessor, /status\.eq\.pending/);
