@@ -31,6 +31,7 @@ import { useCleanerContracts } from '@/hooks/useWorkerContracts';
 import { TaskTimeBreakdown } from './TaskTimeBreakdown';
 import { ContractManagement } from './ContractManagement';
 import { AbsencesTab } from './absences/AbsencesTab';
+import { DeactivateWorkerDialog } from './DeactivateWorkerDialog';
 import { cn } from '@/lib/utils';
 
 interface WorkerDetailModalProps {
@@ -238,6 +239,7 @@ const SectionShell = ({
 
 const WorkerProfilePanel = ({ worker }: { worker: Cleaner }) => {
   const [formData, setFormData] = useState<WorkerFormData>(() => getInitialFormData(worker));
+  const [deactivateOpen, setDeactivateOpen] = useState(false);
   const updateCleaner = useUpdateCleaner();
   const isLinked = !!worker.externalId;
 
@@ -267,7 +269,7 @@ const WorkerProfilePanel = ({ worker }: { worker: Cleaner }) => {
           email: formData.email?.trim(),
           telefono: formData.telefono?.trim(),
           category: formData.category?.trim(),
-          isActive: formData.isActive,
+          ...(!worker.isActive && formData.isActive ? { isActive: true } : {}),
           startDate: formData.startDate || undefined,
         },
       },
@@ -280,7 +282,8 @@ const WorkerProfilePanel = ({ worker }: { worker: Cleaner }) => {
   };
 
   return (
-    <div className="grid gap-4 2xl:grid-cols-[minmax(0,1fr)_320px]">
+    <>
+      <div className="grid gap-4 2xl:grid-cols-[minmax(0,1fr)_320px]">
       <Card className="border-0 shadow-sm">
         <CardContent className="space-y-5 p-4 sm:p-5">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -341,7 +344,13 @@ const WorkerProfilePanel = ({ worker }: { worker: Cleaner }) => {
               </div>
               <button
                 type="button"
-                onClick={() => updateField('isActive', !formData.isActive)}
+                onClick={() => {
+                  if (worker.isActive) {
+                    setDeactivateOpen(true);
+                    return;
+                  }
+                  updateField('isActive', !formData.isActive);
+                }}
                 className={cn(
                   'rounded-full px-4 py-2 text-sm font-black transition-colors',
                   formData.isActive ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-700',
@@ -390,7 +399,16 @@ const WorkerProfilePanel = ({ worker }: { worker: Cleaner }) => {
           </CardContent>
         </Card>
       </aside>
-    </div>
+      </div>
+      <DeactivateWorkerDialog
+        worker={worker}
+        open={deactivateOpen}
+        onOpenChange={setDeactivateOpen}
+        onDone={() => {
+          setFormData((current) => ({ ...current, isActive: false }));
+        }}
+      />
+    </>
   );
 };
 const Field = ({

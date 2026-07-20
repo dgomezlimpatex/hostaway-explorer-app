@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { format, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
 import {
@@ -11,7 +11,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Checkbox } from '@/components/ui/checkbox';
+import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Loader2, AlertTriangle } from 'lucide-react';
 import { Cleaner } from '@/types/calendar';
@@ -33,17 +33,23 @@ export const DeactivateWorkerDialog: React.FC<DeactivateWorkerDialogProps> = ({
   onOpenChange,
   onDone,
 }) => {
-  const [unassign, setUnassign] = useState(true);
-  const { data: futureTasks = [], isLoading: loadingTasks } = useFuturePendingTasksForCleaner(
+  const {
+    data: futureTasks = [],
+    isLoading: loadingTasks,
+    isFetching,
+    isError: previewFailed,
+    error: previewError,
+    refetch,
+  } = useFuturePendingTasksForCleaner(
     open ? worker?.id ?? null : null,
   );
   const deactivate = useDeactivateCleaner();
 
   const handleConfirm = async () => {
-    if (!worker) return;
+    if (!worker || loadingTasks || previewFailed) return;
     await deactivate.mutateAsync({
       cleanerId: worker.id,
-      unassignFutureTasks: unassign && futureTasks.length > 0,
+      unassignFutureTasks: true,
     });
     onOpenChange(false);
     onDone?.();
@@ -76,6 +82,27 @@ export const DeactivateWorkerDialog: React.FC<DeactivateWorkerDialogProps> = ({
                 <div className="flex items-center gap-2 text-muted-foreground">
                   <Loader2 className="h-4 w-4 animate-spin" />
                   Comprobando tareas pendientes...
+                </div>
+              ) : previewFailed ? (
+                <div className="rounded-md border border-red-200 bg-red-50 p-3 text-red-900">
+                  <p className="font-medium">No se pudieron comprobar las tareas pendientes.</p>
+                  <p className="mt-1 text-xs">
+                    La baja está bloqueada para evitar que alguna tarea quede oculta. Reintenta la comprobación.
+                  </p>
+                  {previewError instanceof Error && (
+                    <p className="mt-1 text-xs text-red-700">{previewError.message}</p>
+                  )}
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="mt-3 border-red-200 bg-white"
+                    onClick={() => refetch()}
+                    disabled={isFetching}
+                  >
+                    {isFetching && <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />}
+                    Volver a comprobar
+                  </Button>
                 </div>
               ) : count === 0 ? (
                 <div className="rounded-md bg-muted/50 p-3">
@@ -115,17 +142,10 @@ export const DeactivateWorkerDialog: React.FC<DeactivateWorkerDialogProps> = ({
                     )}
                   </div>
 
-                  <label className="flex items-start gap-2 pt-2 border-t border-yellow-200 cursor-pointer">
-                    <Checkbox
-                      checked={unassign}
-                      onCheckedChange={(c) => setUnassign(c === true)}
-                      className="mt-0.5"
-                    />
-                    <span className="text-sm text-yellow-900">
-                      <strong>Desasignar estas {count} tarea{count === 1 ? '' : 's'}</strong>{' '}
-                      para poder reasignarlas (manual o automáticamente).
-                    </span>
-                  </label>
+                  <div className="border-t border-yellow-200 pt-2 text-sm text-yellow-900">
+                    <strong>Al confirmar, estas {count} tarea{count === 1 ? '' : 's'} quedarán sin asignar</strong>{' '}
+                    y volverán a estar visibles para reasignarlas manualmente o con Hermes.
+                  </div>
                 </div>
               )}
             </div>
@@ -138,7 +158,7 @@ export const DeactivateWorkerDialog: React.FC<DeactivateWorkerDialogProps> = ({
               e.preventDefault();
               handleConfirm();
             }}
-            disabled={deactivate.isPending || loadingTasks}
+            disabled={deactivate.isPending || loadingTasks || previewFailed}
             className="bg-yellow-600 hover:bg-yellow-700 text-white"
           >
             {deactivate.isPending ? (

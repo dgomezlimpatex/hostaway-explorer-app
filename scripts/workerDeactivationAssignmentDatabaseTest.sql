@@ -25,6 +25,27 @@ BEGIN
 END
 $test$;
 
+-- Una actualización genérica nunca puede ocultar tareas detrás de una baja.
+DO $test$
+DECLARE
+  rejected_direct_deactivation boolean := false;
+BEGIN
+  BEGIN
+    UPDATE public.cleaners
+    SET is_active = false,
+        updated_at = now()
+    WHERE id = (SELECT cleaner_id FROM _qa_deactivation_fixture);
+  EXCEPTION
+    WHEN check_violation THEN
+      rejected_direct_deactivation := true;
+  END;
+
+  IF NOT rejected_direct_deactivation THEN
+    RAISE EXCEPTION 'La baja directa debía rechazarse mientras existan tareas futuras pendientes';
+  END IF;
+END
+$test$;
+
 CREATE TEMPORARY TABLE _qa_expected ON COMMIT DROP AS
 SELECT count(DISTINCT t.id)::integer AS expected_unassigned
 FROM public.tasks t
