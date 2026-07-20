@@ -71,6 +71,7 @@ const CleaningPlanning = React.lazy(() => import("./pages/CleaningPlanning"));
 const PlanningPage = React.lazy(() => import("./pages/PlanningPage"));
 const PlanningBuildingsIndex = React.lazy(() => import("./pages/PlanningBuildingsIndex"));
 const PlanningBuildingDetail = React.lazy(() => import("./pages/PlanningBuildingDetail"));
+const WhatsAppNotifications = React.lazy(() => import("./pages/WhatsAppNotifications"));
 
 // Suspense fallback for routes loaded WITHOUT the persistent layout (auth, public, calendar)
 const FullPageSuspense = ({ children }: { children: React.ReactNode }) => (
@@ -304,6 +305,9 @@ function App() {
                     } />
                     <Route path="/integraciones" element={
                       <RoleProtectedRoute requiredModule="admin"><Integraciones /></RoleProtectedRoute>
+                    } />
+                    <Route path="/whatsapp-notifications" element={
+                      <RoleProtectedRoute requiredModule="reports"><WhatsAppNotifications /></RoleProtectedRoute>
                     } />
                     <Route path="/little-hotelier" element={
                       <RoleProtectedRoute requiredModule="admin"><LittleHotelierAdmin /></RoleProtectedRoute>

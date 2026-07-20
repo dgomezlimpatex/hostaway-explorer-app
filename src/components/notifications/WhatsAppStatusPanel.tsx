@@ -4,6 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { Smartphone, AlertTriangle, CheckCircle2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { isWhatsAppNotificationsEnabled } from '@/services/whatsapp/whatsappConfig';
+import { useWhatsAppDeliveryHealth } from '@/hooks/useWhatsAppDeliveryHealth';
 
 interface HealthCounters {
   cleanersTotal: number;
@@ -22,6 +23,7 @@ export function WhatsAppStatusPanel() {
   const [loading, setLoading] = useState(true);
   const [counters, setCounters] = useState<HealthCounters | null>(null);
   const live = isWhatsAppNotificationsEnabled();
+  const { data: deliveryHealth } = useWhatsAppDeliveryHealth(true);
 
   useEffect(() => {
     let active = true;
@@ -40,24 +42,13 @@ export function WhatsAppStatusPanel() {
               .eq('whatsapp_opt_in', true),
           ]);
 
-        const { count: deliveriesToday } = await supabase
-          .from('notification_deliveries')
-          .select('id', { count: 'exact', head: true })
-          .eq('channel', 'whatsapp');
-
-        const { count: deliveriesFailed } = await supabase
-          .from('notification_deliveries')
-          .select('id', { count: 'exact', head: true })
-          .eq('channel', 'whatsapp')
-          .eq('status', 'failed');
-
         if (!active) return;
         setCounters({
           cleanersTotal: cleanersTotal ?? 0,
           cleanersWithPhone: cleanersWithPhone ?? 0,
           cleanersWithOptIn: cleanersWithOptIn ?? 0,
-          deliveriesToday: deliveriesToday ?? 0,
-          deliveriesFailed: deliveriesFailed ?? 0,
+          deliveriesToday: 0,
+          deliveriesFailed: 0,
         });
       } catch (e) {
         console.error('WhatsAppStatusPanel error:', e);
@@ -69,6 +60,11 @@ export function WhatsAppStatusPanel() {
       active = false;
     };
   }, []);
+
+  const visibleDeliveries = deliveryHealth
+    ? deliveryHealth.sent + deliveryHealth.delivered + deliveryHealth.failed + deliveryHealth.skipped
+    : counters?.deliveriesToday ?? 0;
+  const visibleFailures = deliveryHealth?.failed ?? counters?.deliveriesFailed ?? 0;
 
   return (
     <Card>
@@ -95,8 +91,8 @@ export function WhatsAppStatusPanel() {
             <Metric label="Limpiadoras" value={counters.cleanersTotal} />
             <Metric label="Con teléfono WhatsApp" value={counters.cleanersWithPhone} />
             <Metric label="Con consentimiento" value={counters.cleanersWithOptIn} />
-            <Metric label="Envíos WhatsApp" value={counters.deliveriesToday} />
-            <Metric label="Fallidos" value={counters.deliveriesFailed} highlight={counters.deliveriesFailed > 0} />
+            <Metric label="Envíos WhatsApp (7 días)" value={visibleDeliveries} />
+            <Metric label="Fallidos" value={visibleFailures} highlight={visibleFailures > 0} />
           </div>
         ) : (
           <p className="text-sm text-muted-foreground">No se pudo cargar el estado.</p>

@@ -13,6 +13,7 @@ import {
   Layers,
   Link2,
   MapPin,
+  MessageCircle,
   Package,
   Receipt,
   Settings,
@@ -25,13 +26,14 @@ import { useRolePermissions } from '@/hooks/useRolePermissions';
 import { useAuth } from '@/hooks/useAuth';
 import { isAiAllowedUser } from '@/utils/aiAccess';
 import { useIncidentStats } from '@/hooks/useIncidents';
+import { useWhatsAppDeliveryHealth } from '@/hooks/useWhatsAppDeliveryHealth';
 
 interface NavigationItem {
   title: string;
   href: string;
   icon: React.ComponentType<{ className?: string }>;
   permission?: string;
-  badge?: 'pending-incidents';
+  badge?: 'pending-incidents' | 'whatsapp-delivery-errors';
 }
 
 const generalItems: NavigationItem[] = [
@@ -43,6 +45,13 @@ const generalItems: NavigationItem[] = [
     icon: AlertTriangle,
     permission: 'reports',
     badge: 'pending-incidents',
+  },
+  {
+    title: 'WhatsApp',
+    href: '/whatsapp-notifications',
+    icon: MessageCircle,
+    permission: 'admin-only',
+    badge: 'whatsapp-delivery-errors',
   },
   { title: 'Copiloto IA', href: '/ai-assistant', icon: Bot, permission: 'ai-owner' },
 ];
@@ -124,6 +133,7 @@ export const MobileDashboardSidebar = ({ onNavigate }: MobileDashboardSidebarPro
   const { user, profile } = useAuth();
   const shouldShowIncidentBadge = isAdminOrManager();
   const { data: incidentStats } = useIncidentStats(shouldShowIncidentBadge);
+  const { data: whatsappHealth } = useWhatsAppDeliveryHealth(shouldShowIncidentBadge);
 
   const isActive = (href: string) => {
     const path = href.split('?')[0];
@@ -170,8 +180,9 @@ export const MobileDashboardSidebar = ({ onNavigate }: MobileDashboardSidebarPro
     items.filter((item) => hasPermission(item.permission));
 
   const getBadgeCount = (item: NavigationItem) => {
-    if (item.badge !== 'pending-incidents') return 0;
-    return incidentStats?.pending_limpatex ?? 0;
+    if (item.badge === 'pending-incidents') return incidentStats?.pending_limpatex ?? 0;
+    if (item.badge === 'whatsapp-delivery-errors') return whatsappHealth?.unresolved ?? 0;
+    return 0;
   };
 
   const renderNavigationSection = (title: string, items: NavigationItem[]) => (

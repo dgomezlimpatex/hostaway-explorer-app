@@ -123,6 +123,7 @@ serve(async (req: Request): Promise<Response> => {
           if (!providerMessageId || !newStatus) continue;
           const patch: Record<string, unknown> = { status: newStatus };
           const ts = new Date().toISOString();
+          if (newStatus === 'sent') patch.sent_at = ts;
           if (newStatus === 'delivered') patch.delivered_at = ts;
           if (newStatus === 'read') patch.read_at = ts;
           if (newStatus === 'failed') {
