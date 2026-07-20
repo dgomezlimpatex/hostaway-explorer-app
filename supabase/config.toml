@@ -42,7 +42,7 @@ verify_jwt = false
 [functions.whatsapp-webhook]
 verify_jwt = false
 
-# Emisor y cron internos: requieren JWT de usuario autenticado o service role.
+# Emisor y cron internos: validan explícitamente la service role.
 [functions.send-whatsapp-notification]
 verify_jwt = true
 

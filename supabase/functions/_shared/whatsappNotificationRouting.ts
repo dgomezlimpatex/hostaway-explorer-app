@@ -60,7 +60,6 @@ export function resolveNotificationRecipient(
 export function buildRejectedAlertBodyParameters(
   cleaner: CleanerLike,
   task: TaskLike,
-  payload: EventPayloadLike,
   formattedDate: string,
 ): string[] {
   return [
@@ -68,7 +67,6 @@ export function buildRejectedAlertBodyParameters(
     clean(task.property) || 'Tarea sin propiedad',
     formattedDate,
     clean(task.start_time ?? task.startTime) || 'Sin hora',
-    rejectionReason(payload),
   ];
 }
 

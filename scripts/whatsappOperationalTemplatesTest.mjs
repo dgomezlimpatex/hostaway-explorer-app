@@ -17,7 +17,7 @@ const expectedVariables = new Map([
   ['task_cancelled_es', 5],
   ['task_approval_reminder_es', 5],
   ['task_late_start_reminder_es', 3],
-  ['task_rejected_admin_alert_es', 5],
+  ['task_rejected_admin_alert_es', 4],
 ]);
 
 for (const template of OPERATIONAL_TEMPLATES) {
@@ -33,7 +33,7 @@ assert.deepEqual(assignedButtons.buttons.map((button) => button.text), ['Confirm
 
 const late = OPERATIONAL_TEMPLATES.find((template) => template.name === 'task_late_start_reminder_es');
 const lateButtons = late.components.find((component) => component.type === 'BUTTONS');
-assert.deepEqual(lateButtons.buttons.map((button) => button.text), ['Ya he empezado', 'Tengo un problema']);
+assert.equal(lateButtons, undefined);
 
 const sendFunction = await readFile(new URL('../supabase/functions/send-whatsapp-notification/index.ts', import.meta.url), 'utf8');
 assert.match(

@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { toast } from 'sonner';
 import {
   WHATSAPP_MONITOR_DAYS,
   WHATSAPP_UNCONFIRMED_MINUTES,
@@ -34,6 +35,29 @@ interface DeliveryRow {
   property: string | null;
   task_date: string | null;
   total_count: number;
+}
+
+interface SendReconciliationRow {
+  delivery_id: string;
+  notification_event_id: string;
+  channel: 'whatsapp' | 'email';
+  provider: string;
+  recipient_masked: string;
+  template_name: string | null;
+  uncertainty_state: string;
+  detail: string;
+  created_at: string;
+  open_action_status: string | null;
+}
+
+interface ReconciliationRow {
+  callback_kind: string;
+  provider_message_ref: string;
+  sender_masked: string;
+  callback_state: string;
+  detail: string;
+  attempts: number;
+  received_at: string;
 }
 
 const eventLabels: Record<string, string> = {
@@ -74,6 +98,7 @@ export default function WhatsAppNotifications() {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [page, setPage] = useState(0);
+  const [resolvingDeliveryId, setResolvingDeliveryId] = useState<string | null>(null);
   const { data: stats, isFetching: statsFetching, refetch: refetchStats } = useWhatsAppDeliveryHealth(true);
 
   const { data: deliveries = [], isLoading, isFetching, error, refetch } = useQuery({
@@ -93,11 +118,73 @@ export default function WhatsAppNotifications() {
     staleTime: 15_000,
   });
 
+  const { data: sendReconciliationQueue = [], refetch: refetchSendQueue } = useQuery({
+    queryKey: ['notification-send-reconciliation-queue'],
+    queryFn: async (): Promise<SendReconciliationRow[]> => {
+      const { data, error: queryError } = await rpcUntyped('get_notification_send_reconciliation_queue', {
+        _limit: 50,
+      });
+      if (queryError) throw queryError;
+      return (data ?? []) as unknown as SendReconciliationRow[];
+    },
+    refetchInterval: 30_000,
+    staleTime: 15_000,
+  });
+
+  const { data: reconciliationQueue = [], refetch: refetchQueue } = useQuery({
+    queryKey: ['whatsapp-webhook-reconciliation-queue'],
+    queryFn: async (): Promise<ReconciliationRow[]> => {
+      const { data, error: queryError } = await rpcUntyped('get_whatsapp_webhook_reconciliation_queue', {
+        _limit: 50,
+      });
+      if (queryError) throw queryError;
+      return (data ?? []) as unknown as ReconciliationRow[];
+    },
+    refetchInterval: 30_000,
+    staleTime: 15_000,
+  });
+
   const total = Number(deliveries[0]?.total_count ?? 0);
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
-  const needsAttention = (stats?.failed ?? 0) + (stats?.skipped ?? 0) + (stats?.unconfirmed ?? 0);
+  // `unresolved` ya agrega fallos, omitidos, envíos sin confirmar,
+  // reconciliation_required y callbacks pendientes sin duplicarlos.
+  const needsAttention = stats?.unresolved ?? 0;
   const refreshing = isFetching || statsFetching;
-  const refreshAll = () => Promise.all([refetch(), refetchStats()]);
+  const refreshAll = () => Promise.all([refetch(), refetchStats(), refetchQueue(), refetchSendQueue()]);
+
+  const requestSendResolution = async (
+    row: SendReconciliationRow,
+    resolution: 'confirmed_sent' | 'confirmed_not_sent',
+  ) => {
+    if (row.channel === 'whatsapp' && resolution === 'confirmed_not_sent') {
+      toast.error('Un WhatsApp incierto no se reenvía: Meta no permite demostrar que el primer POST no produjo efecto.');
+      return;
+    }
+    const providerLabel = row.channel === 'whatsapp' ? 'Meta' : 'Resend';
+    let providerMessageId: string | null = null;
+    if (resolution === 'confirmed_sent') {
+      providerMessageId = window.prompt(`Introduce el ID del mensaje confirmado en ${providerLabel}:`)?.trim() ?? null;
+      if (!providerMessageId) return;
+    } else if (!window.confirm(`Confirma que has comprobado en ${providerLabel} que este intento NO fue enviado. Se autorizará un único reintento backend.`)) {
+      return;
+    }
+
+    setResolvingDeliveryId(row.delivery_id);
+    try {
+      const { error: requestError } = await rpcUntyped('request_notification_send_reconciliation', {
+        _delivery_id: row.delivery_id,
+        _resolution: resolution,
+        _provider_message_id: providerMessageId,
+      });
+      if (requestError) throw requestError;
+      toast.success('Resolución encolada para el worker backend');
+      await refreshAll();
+    } catch (resolutionError) {
+      toast.error(resolutionError instanceof Error ? resolutionError.message : 'No se pudo encolar la resolución');
+    } finally {
+      setResolvingDeliveryId(null);
+    }
+  };
 
   return (
     <div className="space-y-6 p-4 md:p-8">
@@ -109,13 +196,14 @@ export default function WhatsAppNotifications() {
         <Button variant="outline" onClick={refreshAll} disabled={refreshing}><RefreshCw className={`mr-2 h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />Actualizar</Button>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-6">
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-7">
         <Metric title="Enviados, sin entrega" value={stats?.sent ?? 0} tone="info" />
         <Metric title="Entregados" value={stats?.delivered ?? 0} tone="success" />
         <Metric title="Leídos" value={stats?.read ?? 0} tone="read" />
         <Metric title="Fallidos" value={stats?.failed ?? 0} tone="danger" />
         <Metric title="No enviados" value={stats?.skipped ?? 0} tone="warning" />
         <Metric title={`Sin confirmar +${WHATSAPP_UNCONFIRMED_MINUTES} min`} value={stats?.unconfirmed ?? 0} tone={(stats?.unconfirmed ?? 0) ? 'danger' : 'neutral'} />
+        <Metric title="Callbacks por conciliar" value={stats?.callbackPending ?? 0} tone={(stats?.callbackPending ?? 0) ? 'danger' : 'neutral'} />
       </div>
 
       {needsAttention > 0 && (
@@ -123,6 +211,50 @@ export default function WhatsAppNotifications() {
           <AlertCircle className="mt-0.5 h-5 w-5 shrink-0" />
           <div><p className="font-semibold">Hay WhatsApp que necesitan revisión</p><p className="text-sm">“Enviado” solo significa aceptado por Meta. Fallos, mensajes no enviados y envíos sin confirmación aparecen también en el contador del menú.</p></div>
         </div>
+      )}
+
+      {sendReconciliationQueue.length > 0 && (
+        <Card className="border-red-200">
+          <CardHeader>
+            <CardTitle className="text-base text-red-900">Envíos pendientes de comprobación manual</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <p className="text-sm text-muted-foreground">Comprueba primero el intento en Meta o Resend. El sistema nunca reenvía automáticamente un resultado incierto.</p>
+            {sendReconciliationQueue.map((row) => {
+              const busy = resolvingDeliveryId === row.delivery_id || Boolean(row.open_action_status);
+              return (
+                <div key={row.delivery_id} className="rounded-lg border p-3">
+                  <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                    <div>
+                      <p className="font-medium">{row.channel === 'whatsapp' ? 'WhatsApp · Meta' : 'Fallback email · Resend'} · {row.recipient_masked}</p>
+                      <p className="text-xs text-muted-foreground">{formatMadrid(row.created_at)} · {row.detail}</p>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      <Button size="sm" variant="outline" disabled={busy} onClick={() => requestSendResolution(row, 'confirmed_sent')}>Confirmar enviado</Button>
+                      {row.channel === 'email' && (
+                        <Button size="sm" variant="destructive" disabled={busy} onClick={() => requestSendResolution(row, 'confirmed_not_sent')}>Confirmar no enviado y reintentar</Button>
+                      )}
+                    </div>
+                  </div>
+                  {row.channel === 'whatsapp' && <p className="mt-2 text-xs font-medium text-red-700">WhatsApp incierto no se reenvía. Solo puede confirmarse como enviado con el ID de Meta; si no hay prueba, permanece en revisión para evitar duplicados.</p>}
+                  {row.open_action_status && <p className="mt-2 text-xs font-medium text-amber-700">Resolución encolada para el worker backend.</p>}
+                </div>
+              );
+            })}
+          </CardContent>
+        </Card>
+      )}
+
+      {reconciliationQueue.length > 0 && (
+        <Card className="border-amber-200">
+          <CardHeader><CardTitle className="text-base text-amber-900">Cola de conciliación de Meta</CardTitle></CardHeader>
+          <CardContent className="overflow-x-auto">
+            <table className="w-full min-w-[720px] text-sm">
+              <thead><tr className="border-b text-left text-muted-foreground"><th className="pb-2">Recibido</th><th className="pb-2">Tipo</th><th className="pb-2">Referencia</th><th className="pb-2">Remitente</th><th className="pb-2">Estado</th><th className="pb-2">Intentos</th><th className="pb-2">Detalle</th></tr></thead>
+              <tbody>{reconciliationQueue.map((row, index) => <tr key={`${row.provider_message_ref}-${row.received_at}-${index}`} className="border-b"><td className="py-3">{formatMadrid(row.received_at)}</td><td>{row.callback_kind === 'status' ? 'Estado' : 'Botón'}</td><td>{row.provider_message_ref}</td><td>{row.sender_masked}</td><td>{row.callback_state === 'manual_review' ? 'Revisión manual' : 'Reintentando'}</td><td>{row.attempts}</td><td className="max-w-xs text-xs text-muted-foreground">{row.detail}</td></tr>)}</tbody>
+            </table>
+          </CardContent>
+        </Card>
       )}
 
       <Card>

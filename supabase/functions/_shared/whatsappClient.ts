@@ -5,6 +5,7 @@
 import { getWhatsAppConfig, isWhatsAppLive } from './featureFlags.ts';
 import { isE164 } from './phone.ts';
 import { buildBodyComponent } from './whatsappTemplates.ts';
+import { isAmbiguousWhatsAppHttpStatus } from './whatsappDeliverySemantics.ts';
 
 export interface SendTemplateParams {
   to: string;
@@ -22,6 +23,8 @@ export interface SendTemplateResult {
   dryRun: boolean;
   status: 'sent' | 'skipped' | 'failed';
   providerMessageId: string | null;
+  /** true cuando Meta pudo haber aceptado el efecto aunque no haya ID verificable. */
+  effectUncertain: boolean;
   errorCode?: string | null;
   errorMessage?: string | null;
   /** Respuesta cruda de Meta (sin secretos). */
@@ -39,6 +42,7 @@ export async function sendWhatsAppTemplateMessage(
       dryRun: false,
       status: 'failed',
       providerMessageId: null,
+      effectUncertain: false,
       errorCode: 'invalid_phone',
       errorMessage: 'El teléfono destino no está en formato E.164.',
     };
@@ -51,6 +55,7 @@ export async function sendWhatsAppTemplateMessage(
       dryRun: true,
       status: 'skipped',
       providerMessageId: null,
+      effectUncertain: false,
       errorMessage: 'WhatsApp no está activo (modo preparación / dry-run).',
     };
   }
@@ -98,18 +103,25 @@ export async function sendWhatsAppTemplateMessage(
 
     if (!resp.ok) {
       const err = (json?.error ?? {}) as Record<string, unknown>;
+      // 5xx/408/429 no demuestran ausencia de efecto: Meta puede haber aceptado
+      // la petición antes de responder o de cortar la conexión.
+      const effectUncertain = isAmbiguousWhatsAppHttpStatus(resp.status);
       // No logueamos el token; solo el estado y el mensaje de error de Meta.
       console.error('WhatsApp send error', {
         httpStatus: resp.status,
         code: err?.code,
         message: err?.message,
+        effectUncertain,
       });
       return {
         ok: false,
         dryRun: false,
         status: 'failed',
         providerMessageId: null,
-        errorCode: String(err?.code ?? resp.status),
+        effectUncertain,
+        errorCode: effectUncertain
+          ? `ambiguous_http_${resp.status}`
+          : `provider_rejected_${String(err?.code ?? resp.status)}`,
         errorMessage: String(err?.message ?? `HTTP ${resp.status}`),
         response: json,
       };
@@ -123,6 +135,7 @@ export async function sendWhatsAppTemplateMessage(
         dryRun: false,
         status: 'failed',
         providerMessageId: null,
+        effectUncertain: true,
         errorCode: 'missing_provider_message_id',
         errorMessage: 'Meta aceptó la petición sin devolver un identificador de mensaje.',
         response: json,
@@ -133,6 +146,7 @@ export async function sendWhatsAppTemplateMessage(
       dryRun: false,
       status: 'sent',
       providerMessageId,
+      effectUncertain: false,
       response: json,
     };
   } catch (e) {
@@ -141,6 +155,7 @@ export async function sendWhatsAppTemplateMessage(
       dryRun: false,
       status: 'failed',
       providerMessageId: null,
+      effectUncertain: true,
       errorCode: 'network_error',
       errorMessage: e instanceof Error ? e.message : String(e),
     };

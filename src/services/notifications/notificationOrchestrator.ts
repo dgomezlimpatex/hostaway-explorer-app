@@ -1,6 +1,6 @@
 // Orquestador de notificaciones (frontend).
-// Crea notification_events y solicita el envío al backend. El feature flag real
-// vive únicamente en la Edge Function para evitar builds de Vercel desalineados.
+// Crea notification_events para su procesamiento backend asíncrono. El navegador
+// nunca invoca el emisor privilegiado ni necesita conocer su feature flag.
 
 import { supabase } from '@/integrations/supabase/client';
 import type { NotificationEventType } from '@/types/notifications';
@@ -16,8 +16,8 @@ interface CreateTaskNotificationEventParams {
 }
 
 /**
- * Crea un evento operativo y espera a que la Edge Function acepte el envío.
- * Si falla la invocación, el evento queda pending para diagnóstico/reintento.
+ * Crea un evento operativo. El cron backend lo reclama y envía sin depender de
+ * que la sesión o el navegador permanezcan abiertos.
  */
 export async function createTaskNotificationEvent(
   params: CreateTaskNotificationEventParams,
@@ -45,15 +45,6 @@ export async function createTaskNotificationEvent(
     if (error || !data?.id) {
       console.error('createTaskNotificationEvent error:', error?.message ?? 'event id missing');
       return null;
-    }
-
-    const { data: sendResult, error: sendError } = await supabase.functions
-      .invoke('send-whatsapp-notification', { body: { eventId: data.id } });
-
-    if (sendError || sendResult?.ok !== true) {
-      throw new Error(
-        `send-whatsapp-notification returned no successful delivery: ${sendError?.message ?? sendResult?.status ?? 'unknown'}`,
-      );
     }
 
     return data.id;

@@ -52,13 +52,15 @@ export const WHATSAPP_TEMPLATES: Record<WhatsAppTemplateName, WhatsAppTemplateDe
     name: 'task_late_start_reminder_es',
     languageCode: 'es',
     bodyParamCount: 3, // nombre, propiedad, horaInicio
-    hasButtons: true,
+    // La versión aprobada actualmente en Meta no contiene botones.
+    hasButtons: false,
     category: 'utility',
   },
   task_rejected_admin_alert_es: {
     name: 'task_rejected_admin_alert_es',
     languageCode: 'es',
-    bodyParamCount: 5, // limpiadora, propiedad, fecha, hora, motivo
+    // La versión aprobada actualmente en Meta no incluye el motivo.
+    bodyParamCount: 4, // limpiadora, propiedad, fecha, hora
     hasButtons: false,
     category: 'utility',
   },

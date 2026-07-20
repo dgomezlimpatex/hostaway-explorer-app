@@ -29,6 +29,12 @@ serve(async (req: Request): Promise<Response> => {
   const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
   const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
   const authValue = `${['Bear', 'er'].join('')} ${serviceRoleKey}`;
+  if (!serviceRoleKey || req.headers.get('Authorization') !== authValue) {
+    return new Response(JSON.stringify({ error: 'forbidden' }), {
+      status: 403,
+      headers: { 'Content-Type': 'application/json', ...corsHeaders },
+    });
+  }
   const supabase = createClient(supabaseUrl, serviceRoleKey);
 
   try {

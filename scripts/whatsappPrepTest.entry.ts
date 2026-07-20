@@ -10,10 +10,121 @@ import {
   approvalReminderDedupeKey,
   lateStartDedupeKey,
 } from '../src/services/notifications/approvalPatches';
+import { getWhatsAppConfig, isWhatsAppLive } from '../supabase/functions/_shared/featureFlags.ts';
+import { sendWhatsAppTemplateMessage } from '../supabase/functions/_shared/whatsappClient.ts';
+import {
+  classifyApprovalCallbackOutcome,
+  TERMINAL_APPROVAL_CALLBACK_OUTCOMES,
+} from '../supabase/functions/_shared/whatsappApprovalOutcome.ts';
 
 const CC = '+' + '34';
 
 export async function run(assert: typeof import('node:assert/strict')) {
+  // ── Replay durable de botones ────────────────────────────────
+  const discardedRejectOutcomes = [
+    'invalid',
+    'expired',
+    'stale',
+    'superseded',
+    'not_actionable',
+    'unauthorized_sender',
+  ];
+  for (const outcome of discardedRejectOutcomes) {
+    assert.equal(TERMINAL_APPROVAL_CALLBACK_OUTCOMES.has(outcome), true);
+    assert.deepEqual(
+      classifyApprovalCallbackOutcome('reject', outcome, null),
+      { processed: true, derivedEventId: null, missingDerivedEvent: false },
+      `${outcome} debe cerrarse sin crear ni exigir una alerta derivada`,
+    );
+  }
+  for (const outcome of ['applied', 'duplicate']) {
+    assert.deepEqual(
+      classifyApprovalCallbackOutcome('reject', outcome, null),
+      { processed: false, derivedEventId: null, missingDerivedEvent: true },
+    );
+    assert.deepEqual(
+      classifyApprovalCallbackOutcome('reject', outcome, 'derived-event-id'),
+      { processed: true, derivedEventId: 'derived-event-id', missingDerivedEvent: false },
+    );
+  }
+  assert.deepEqual(
+    classifyApprovalCallbackOutcome('approve', 'applied', null),
+    { processed: true, derivedEventId: null, missingDerivedEvent: false },
+  );
+  assert.deepEqual(
+    classifyApprovalCallbackOutcome('reject', 'source_not_found', null),
+    { processed: false, derivedEventId: null, missingDerivedEvent: false },
+  );
+  assert.deepEqual(
+    classifyApprovalCallbackOutcome('reject', 'future_unknown_outcome', null),
+    { processed: false, derivedEventId: null, missingDerivedEvent: false },
+  );
+
+  // ── Configuración efectiva Meta/HMAC ─────────────────────────
+  const env = new Map<string, string>([
+    ['WHATSAPP_NOTIFICATIONS_ENABLED', ' true '],
+    ['WHATSAPP_ACCESS_TOKEN', ' access-token-with-outer-space '],
+    ['WHATSAPP_PHONE_NUMBER_ID', ' phone-id-with-outer-space '],
+    ['WHATSAPP_APP_SECRET', '\tapp-secret-with-outer-space \n'],
+    ['WHATSAPP_VERIFY_TOKEN', ' verify-token-with-outer-space '],
+    ['WHATSAPP_DEFAULT_COUNTRY_CODE', ' ES '],
+    ['WHATSAPP_GRAPH_API_VERSION', ' v21.0 '],
+  ]);
+  (globalThis as { Deno?: unknown }).Deno = { env: { get: (key: string) => env.get(key) } };
+
+  const cfg = getWhatsAppConfig();
+  assert.equal(cfg.accessToken, 'access-token-with-outer-space');
+  assert.equal(cfg.phoneNumberId, 'phone-id-with-outer-space');
+  assert.equal(cfg.appSecret, 'app-secret-with-outer-space');
+  assert.equal(cfg.verifyToken, 'verify-token-with-outer-space');
+  assert.equal(cfg.defaultCountryCode, 'ES');
+  assert.equal(cfg.graphApiVersion, 'v21.0');
+  assert.equal(isWhatsAppLive(), true);
+
+  let metaUrl = '';
+  let metaAuthorization = '';
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = (async (input: string | URL | Request, init?: RequestInit) => {
+    metaUrl = String(input);
+    metaAuthorization = new Headers(init?.headers).get('Authorization') ?? '';
+    return new Response(JSON.stringify({ messages: [{ id: 'provider-message-test' }] }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }) as typeof fetch;
+  try {
+    const sent = await sendWhatsAppTemplateMessage({
+      to: '+' + '34600111222',
+      templateName: 'task_assigned_es',
+      languageCode: 'es',
+      bodyParameters: ['A', 'B', 'C', 'D'],
+    });
+    assert.equal(sent.status, 'sent');
+    assert.equal(metaUrl, 'https://graph.facebook.com/v21.0/phone-id-with-outer-space/messages');
+    assert.equal(metaAuthorization, 'Bearer access-token-with-outer-space');
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+
+  const rawBody = '{"object":"whatsapp_business_account"}';
+  const expectedKey = await crypto.subtle.importKey(
+    'raw',
+    new TextEncoder().encode('app-secret-with-outer-space'),
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign'],
+  );
+  const configuredKey = await crypto.subtle.importKey(
+    'raw',
+    new TextEncoder().encode(cfg.appSecret),
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign'],
+  );
+  const expectedSignature = Buffer.from(await crypto.subtle.sign('HMAC', expectedKey, new TextEncoder().encode(rawBody))).toString('hex');
+  const configuredSignature = Buffer.from(await crypto.subtle.sign('HMAC', configuredKey, new TextEncoder().encode(rawBody))).toString('hex');
+  assert.equal(configuredSignature, expectedSignature);
+
   // ── Normalización de teléfonos ──────────────────────────────
   const expSix = CC + '600111222';
   const expSeven = CC + '711222333';

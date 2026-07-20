@@ -77,7 +77,6 @@ export const OPERATIONAL_TEMPLATES = [
         'Hola {{1}}, la limpieza de {{2}} estaba prevista para comenzar a las {{3}} y todavía no consta como iniciada. Indica tu situación.',
         ['María', 'Apartamento Centro', '10:00'],
       ),
-      quickReplies('Ya he empezado', 'Tengo un problema'),
     ],
   },
   {
@@ -87,8 +86,8 @@ export const OPERATIONAL_TEMPLATES = [
     allow_category_change: true,
     components: [
       body(
-        'Aviso operativo: {{1}} ha rechazado la limpieza de {{2}} del {{3}} a las {{4}}. Motivo: {{5}}. Revisa la asignación.',
-        ['María', 'Apartamento Centro', '15 de julio de 2026', '10:00', 'No está disponible'],
+        'Aviso operativo: {{1}} ha rechazado la limpieza de {{2}} del {{3}} a las {{4}}. Revisa la asignación.',
+        ['María', 'Apartamento Centro', '15 de julio de 2026', '10:00'],
       ),
     ],
   },
