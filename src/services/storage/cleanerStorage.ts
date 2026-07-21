@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Cleaner } from '@/types/calendar';
 import { BaseStorageService } from './baseStorage';
 import { mapCleanerFromDB, mapCleanerToDB } from './mappers/cleanerMappers';
+import { normalizeWorkerPhoneForStorage } from '@/utils/phone/workerPhone';
 
 export interface CreateCleanerData {
   name: string;
@@ -34,6 +35,20 @@ class CleanerStorageService extends BaseStorageService<Cleaner, CreateCleanerDat
       mapToDB: mapCleanerToDB,
       enforceSedeFilter: true // Habilitar filtro automático por sede
     });
+  }
+
+  async create(entityData: CreateCleanerData): Promise<Cleaner> {
+    return super.create({
+      ...entityData,
+      telefono: normalizeWorkerPhoneForStorage(entityData.telefono),
+    });
+  }
+
+  async update(id: string, updates: Partial<CreateCleanerData>): Promise<Cleaner | null> {
+    const normalizedUpdates = Object.prototype.hasOwnProperty.call(updates, 'telefono')
+      ? { ...updates, telefono: normalizeWorkerPhoneForStorage(updates.telefono) }
+      : updates;
+    return super.update(id, normalizedUpdates);
   }
 
   async getAll(): Promise<Cleaner[]> {

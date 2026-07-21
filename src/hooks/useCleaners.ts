@@ -97,7 +97,7 @@ export const useCreateCleaner = () => {
       console.error('Create cleaner error:', error);
       toast({
         title: "Error",
-        description: "Ha ocurrido un error al crear el trabajador.",
+        description: error instanceof Error ? error.message : "Ha ocurrido un error al crear el trabajador.",
         variant: "destructive",
       });
     },
@@ -125,7 +125,7 @@ export const useUpdateCleaner = () => {
       console.error('Update cleaner error:', error);
       toast({
         title: "Error",
-        description: "Ha ocurrido un error al actualizar el trabajador.",
+        description: error instanceof Error ? error.message : "Ha ocurrido un error al actualizar el trabajador.",
         variant: "destructive",
       });
     },
