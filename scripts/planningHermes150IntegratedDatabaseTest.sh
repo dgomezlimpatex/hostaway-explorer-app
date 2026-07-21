@@ -18,10 +18,12 @@ docker exec "$name" psql -v ON_ERROR_STOP=1 -U postgres -d "$db" -Atc 'SELECT 1'
 files=(
   scripts/planningBatchTestBaseline.sql
   scripts/planningHermes150IntegratedBaseline.sql
+  supabase/migrations/20260717160000_notify_all_assigned_cleaners_on_task_changes.sql
   supabase/migrations/20260721130000_transactional_canonical_assignment_writers.sql
   supabase/migrations/20260721150000_planning_batch_transactional_apply.sql
   supabase/migrations/20260721151000_fix_deleted_task_cancellation_notifications.sql
   supabase/migrations/20260721152000_add_whatsapp_attempt_history_and_recipient_snapshot.sql
+  supabase/migrations/20260721164500_ignore_planning_version_in_task_modified_notifications.sql
   scripts/planningHermes150IntegratedSmoke.sql
 )
 for file in "${files[@]}"; do
@@ -30,10 +32,12 @@ done
 
 docker exec "$name" psql -v ON_ERROR_STOP=1 -U postgres -d "$db" -f /tmp/planningHermes150IntegratedBaseline.sql >/dev/null
 for migration in \
+  20260717160000_notify_all_assigned_cleaners_on_task_changes.sql \
   20260721130000_transactional_canonical_assignment_writers.sql \
   20260721150000_planning_batch_transactional_apply.sql \
   20260721151000_fix_deleted_task_cancellation_notifications.sql \
-  20260721152000_add_whatsapp_attempt_history_and_recipient_snapshot.sql; do
+  20260721152000_add_whatsapp_attempt_history_and_recipient_snapshot.sql \
+  20260721164500_ignore_planning_version_in_task_modified_notifications.sql; do
   docker exec "$name" psql -v ON_ERROR_STOP=1 -U postgres -d "$db" -f "/tmp/$migration" >/dev/null
 done
 docker exec "$name" psql -v ON_ERROR_STOP=1 -U postgres -d "$db" -f /tmp/planningHermes150IntegratedSmoke.sql

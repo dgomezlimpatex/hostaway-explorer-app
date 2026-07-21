@@ -12,7 +12,8 @@ INSERT INTO public.tasks(id,date,start_time,end_time,sede_id) VALUES
  ('43000000-0000-0000-0000-000000000002','2027-01-12','10:00','11:00','13000000-0000-0000-0000-000000000001'),
  ('43000000-0000-0000-0000-000000000003','2027-01-13','10:00','11:00','13000000-0000-0000-0000-000000000001'),
  ('43000000-0000-0000-0000-000000000004','2027-01-14','10:00','11:00','13000000-0000-0000-0000-000000000001'),
- ('43000000-0000-0000-0000-000000000005','2027-01-15','10:00','11:00','13000000-0000-0000-0000-000000000001');
+ ('43000000-0000-0000-0000-000000000005','2027-01-15','10:00','11:00','13000000-0000-0000-0000-000000000001'),
+ ('43000000-0000-0000-0000-000000000006','2027-01-16','10:00','11:00','13000000-0000-0000-0000-000000000001');
 
 -- Helpers exclusivamente del baseline integrado: no forman parte de la migración.
 CREATE TABLE public.planning_test_race_results(
@@ -77,6 +78,54 @@ CREATE OR REPLACE FUNCTION public.planning_test_force_technical_failure() RETURN
 LANGUAGE plpgsql SET search_path=pg_catalog AS $$
 BEGIN RAISE EXCEPTION 'PLANNING_TEST_TECHNICAL_FAULT' USING ERRCODE='XX000'; END
 $$;
+
+-- Una asignación simple debe producir un único aviso de asignación. El cambio
+-- técnico de planning_version nunca debe convertirse en task_modified.
+DO $$
+BEGIN
+ PERFORM set_config('request.jwt.claim.sub','23000000-0000-0000-0000-000000000001',true);
+ PERFORM set_config('request.jwt.claim.role','authenticated',true);
+ PERFORM public.set_task_assignments(
+   '43000000-0000-0000-0000-000000000006',
+   ARRAY['33000000-0000-0000-0000-000000000003'::uuid]
+ );
+ -- La autoasignación canónica registra después metadatos técnicos. Ambos campos
+ -- ya están excluidos del aviso; planning_version también debe estarlo.
+ UPDATE public.tasks
+ SET auto_assigned=true, assignment_confidence=0.95, updated_at=now()
+ WHERE id='43000000-0000-0000-0000-000000000006';
+ IF (SELECT count(*) FROM public.notification_events
+     WHERE task_id='43000000-0000-0000-0000-000000000006'
+       AND cleaner_id='33000000-0000-0000-0000-000000000003'
+       AND event_type='task_assigned') <> 1 THEN
+   RAISE EXCEPTION 'assignment_notification_count_invalid';
+ END IF;
+ IF EXISTS(SELECT 1 FROM public.notification_events
+           WHERE task_id='43000000-0000-0000-0000-000000000006'
+             AND cleaner_id='33000000-0000-0000-0000-000000000003'
+             AND event_type='task_modified') THEN
+   RAISE EXCEPTION 'assignment_created_spurious_task_modified';
+ END IF;
+
+ -- Un cambio operativo real sigue generando exactamente un aviso modificado.
+ UPDATE public.tasks
+ SET address='Dirección operativa actualizada', updated_at=now()
+ WHERE id='43000000-0000-0000-0000-000000000006';
+ IF (SELECT count(*) FROM public.notification_events
+     WHERE task_id='43000000-0000-0000-0000-000000000006'
+       AND cleaner_id='33000000-0000-0000-0000-000000000003'
+       AND event_type='task_modified') <> 1
+    OR NOT EXISTS(
+      SELECT 1 FROM public.notification_events
+      WHERE task_id='43000000-0000-0000-0000-000000000006'
+        AND cleaner_id='33000000-0000-0000-0000-000000000003'
+        AND event_type='task_modified'
+        AND payload->'changed_fields' ? 'address'
+    ) THEN
+   RAISE EXCEPTION 'real_task_change_notification_missing';
+ END IF;
+END $$;
+
 CREATE TRIGGER planning_test_force_technical_failure
 BEFORE UPDATE ON public.tasks FOR EACH ROW
 WHEN (NEW.id='43000000-0000-0000-0000-000000000005'::uuid)
