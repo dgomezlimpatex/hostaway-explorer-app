@@ -18,6 +18,10 @@ assert.match(page, /recipient_masked/);
 assert.match(page, /get_whatsapp_delivery_monitor/);
 assert.match(page, /get_whatsapp_webhook_reconciliation_queue/);
 assert.match(page, /Cola de conciliación de Meta/);
+assert.match(page, /WhatsApp aplica como máximo un reintento automático 2\/2 tras 15 minutos/);
+assert.match(page, /Después del intento 2\/2 no habrá un tercero/);
+assert.doesNotMatch(page, /El sistema nunca reenvía automáticamente un resultado incierto/);
+assert.doesNotMatch(page, /WhatsApp incierto no se reenvía/);
 assert.match(page, /refetchInterval:\s*30_000/);
 assert.doesNotMatch(page, /\.from\('notification_deliveries'\)[\s\S]{0,200}channel[^\n]+email/);
 assert.doesNotMatch(page, /\.from\('notification_deliveries'\)/);
@@ -57,10 +61,35 @@ const sendReconciliationMigrationPath = 'supabase/migrations/20260720260000_add_
 const sendReconciliationMigration = await read(sendReconciliationMigrationPath);
 const cronRecoveryMigrationPath = 'supabase/migrations/20260721070000_schedule_whatsapp_notification_recovery.sql';
 const cronRecoveryMigration = await read(cronRecoveryMigrationPath);
+const retryPolicyMigrationPath = 'supabase/migrations/20260721102400_add_bounded_whatsapp_retry.sql';
+const retryPolicyMigration = await read(retryPolicyMigrationPath);
 assert.ok(
   cronRecoveryMigrationPath > sendReconciliationMigrationPath,
-  'la programación recuperada debe publicarse después de todas las migraciones del pipeline',
+  'la programación recuperada debe publicarse después de todas las migraciones base del pipeline',
 );
+assert.ok(retryPolicyMigrationPath > cronRecoveryMigrationPath);
+assert.match(retryPolicyMigration, /CREATE OR REPLACE FUNCTION public\.claim_bounded_whatsapp_retry/);
+assert.match(retryPolicyMigration, /CREATE OR REPLACE FUNCTION public\.get_bounded_whatsapp_retry_event_ids/);
+assert.match(retryPolicyMigration, /interval '15 minutes'/);
+assert.match(retryPolicyMigration, /meta_attempt_count'\)::integer, 1\) = 1/);
+assert.match(retryPolicyMigration, /'retry_authorized'/);
+assert.match(
+  retryPolicyMigration,
+  /get_bounded_whatsapp_retry_event_ids[\s\S]{0,2600}meta_attempt_state'[\s\S]{0,140}retry_authorized/,
+  'un claim 2/2 caído antes de begin debe reaparecer tras expirar su lease',
+);
+assert.match(
+  retryPolicyMigration,
+  /claim_bounded_whatsapp_retry[\s\S]{0,5200}retry_authorized[\s\S]{0,900}processing_lease_token = _lease_token/,
+  'la recuperación debe rotar el lease sin consumir otro intento',
+);
+assert.match(retryPolicyMigration, /CREATE OR REPLACE FUNCTION public\.finalize_uncertain_whatsapp_send_delivery/);
+assert.match(retryPolicyMigration, /attempt_count >= 2/);
+assert.match(retryPolicyMigration, /status = CASE WHEN event\.status = 'cancelled' THEN 'cancelled' ELSE 'failed' END/);
+assert.match(retryPolicyMigration, /processing_lease_token = NULL/);
+assert.match(retryPolicyMigration, /'prioritize_delivery'/);
+assert.doesNotMatch(retryPolicyMigration, /channel = 'email'[\s\S]{0,300}status = 'queued'[\s\S]{0,300}RETURN _delivery_id/);
+
 assert.match(cronRecoveryMigration, /whatsapp-process-pending/);
 assert.match(cronRecoveryMigration, /process-pending-whatsapp-notifications/);
 assert.match(cronRecoveryMigration, /whatsapp-remind-unapproved/);
@@ -119,11 +148,11 @@ assert.match(sendReconciliationMigration, /CREATE OR REPLACE FUNCTION public\.ap
 assert.match(sendReconciliationMigration, /CREATE OR REPLACE FUNCTION public\.finish_notification_send_reconciliation_action/);
 assert.match(sendReconciliationMigration, /pg_advisory_xact_lock/);
 assert.match(sendReconciliationMigration, /public\.has_role\(auth\.uid\(\), 'admin'\)/);
-assert.match(sendReconciliationMigration, /FOR UPDATE SKIP LOCKED/);
+assert.match(sendReconciliationMigration, /FOR UPDATE OF action SKIP LOCKED/);
 assert.match(sendReconciliationMigration, /confirmed_sent/);
 assert.match(sendReconciliationMigration, /confirmed_not_sent/);
 assert.match(sendReconciliationMigration, /effect_pending/);
-assert.match(sendReconciliationMigration, /effect_started_at > now\(\) - interval '23 hours'/);
+assert.match(sendReconciliationMigration, /fallback_send_started_at'\)::timestamptz\s*> now\(\) - interval '23 hours'/);
 assert.match(sendReconciliationMigration, /delivery\.status IN \('sent', 'delivered', 'read'\)/);
 assert.match(sendReconciliationMigration, /provider_message_id_conflict/);
 assert.match(sendReconciliationMigration, /claim_token uuid/);
@@ -132,8 +161,8 @@ assert.match(sendReconciliationMigration, /apply_notification_send_reconciliatio
 assert.match(sendReconciliationMigration, /finish_notification_send_reconciliation_action\(\s*_action_id uuid,\s*_claim_token uuid/);
 assert.match(
   sendReconciliationMigration,
-  /action\.status = 'effect_pending'[\s\S]{0,180}action\.effect_started_at <= now\(\) - interval '23 hours'[\s\S]{0,180}action\.processing_started_at < now\(\) - interval '10 minutes'/,
-  'una acción effect_pending activa no puede caducar mientras conserva un lease reciente',
+  /action\.status = 'effect_pending'[\s\S]{0,260}fallback_send_started_at'\)::timestamptz[\s\S]{0,80}<= now\(\) - interval '23 hours'[\s\S]{0,180}action\.processing_started_at < now\(\) - interval '10 minutes'/,
+  'la caducidad debe usar el POST original de Resend y no puede vencer un lease activo',
 );
 assert.match(
   sendReconciliationMigration,
@@ -144,6 +173,10 @@ assert.match(
   sendReconciliationMigration,
   /_resolution = 'confirmed_not_sent'[\s\S]{0,160}delivery\.channel = 'whatsapp'[\s\S]{0,160}whatsapp_uncertain_cannot_be_reopened/,
   'Meta incierto nunca puede aceptar confirmed_not_sent ni reabrir un POST sin idempotencia',
+);
+assert.ok(
+  (sendReconciliationMigration.match(/resend_idempotency_window_expired/g) ?? []).length >= 2,
+  'la ventana original de Resend debe validarse tanto al solicitar como al aplicar la resolución',
 );
 assert.match(page, /get_notification_send_reconciliation_queue/);
 assert.match(page, /request_notification_send_reconciliation/);
@@ -298,6 +331,16 @@ assert.match(
 );
 assert.match(webhookStateMigration, /IF NOT FOUND THEN[\s\S]{0,250}RETURN;/);
 assert.match(webhookStateMigration, /claim_whatsapp_admin_fallback/);
+assert.match(
+  webhookStateMigration,
+  /public\.notification_deliveries\.status = 'failed'[\s\S]{0,420}fallback_send_started_at'[\s\S]{0,140}> now\(\) - interval '23 hours'/,
+  'una fila failed que contactó Resend solo puede reutilizar la misma clave dentro de la ventana original',
+);
+assert.doesNotMatch(
+  webhookStateMigration,
+  /WHERE public\.notification_deliveries\.status = 'failed'\s*OR/,
+  'una fila failed de Resend no puede reclamarse sin comprobar la ventana idempotente original',
+);
 assert.match(webhookStateMigration, /ON CONFLICT \(notification_event_id\)/);
 assert.match(webhookStateMigration, /notification_deliveries\.status = 'failed'/);
 assert.match(webhookStateMigration, /GRANT EXECUTE[^;]+service_role/);
@@ -350,8 +393,8 @@ assert.match(
 );
 assert.match(
   monitorPage,
-  /WhatsApp incierto no se reenvía/,
-  'el panel debe explicar que Meta queda fail-closed',
+  /no admite reintentos manuales[\s\S]{0,180}máximo de 2 intentos/,
+  'el panel debe impedir reintentos manuales ilimitados y explicar el límite backend',
 );
 assert.match(webhookStateMigration, /'…' \|\| right\(inbox\.provider_message_id, 8\)/);
 assert.match(webhookStateMigration, /'•••• ' \|\| right\(regexp_replace\(inbox\.sender/);
@@ -369,7 +412,8 @@ const sender = await read('supabase/functions/send-whatsapp-notification/index.t
 assert.match(sender, /claim_whatsapp_admin_fallback/);
 assert.match(sender, /authorization !== `Bearer \$\{serviceRoleKey\}`/);
 assert.match(sender, /if \(!shouldForceFallback\)/);
-assert.match(sender, /event\.event_type === 'task_rejected_alert' && event\.status === 'failed'/);
+assert.match(sender, /const shouldForceFallback = forceEmailFallback/);
+assert.doesNotMatch(sender, /event\.event_type === 'task_rejected_alert' && event\.status === 'failed'/);
 assert.match(sender, /whatsapp-admin-fallback\/\$\{eventId\}/);
 assert.match(sender, /finalize_whatsapp_non_delivery_result/);
 assert.match(
@@ -382,23 +426,29 @@ assert.doesNotMatch(
   /from\('notification_deliveries'\)\.update\(\{[\s\S]{0,220}status:\s*sendResult\.status/,
   'un resultado tardío sin ID nunca puede sobrescribir la delivery directamente',
 );
-assert.match(sender, /send_started_at/);
-assert.match(sender, /reconciliation_required/);
-assert.match(sender, /Meta no ofrece idempotencia/);
+assert.match(sender, /claim_bounded_whatsapp_retry/);
+assert.doesNotMatch(sender, /const nonce = crypto\.randomUUID\(\)\.slice\(0, 8\)/);
+assert.match(sender, /const nonce = eventId\.replaceAll\('-', ''\)\.slice\(0, 8\)/);
+assert.match(retryPolicyMigration, /COALESCE\(_provider_payload, '\{\}'::jsonb\) - 'buttonPayloads'/);
+assert.match(retryPolicyMigration, /delivery\.provider_payload->'buttonPayloads'/);
+assert.match(sender, /priorizar entrega[\s\S]{0,180}riesgo excepcional de duplicado/i);
+assert.match(sender, /const reconciliationMessage = metaRetryClaimed/);
+assert.match(sender, /intento 2\/2: reintentos automáticos agotados/);
+assert.match(sender, /tras 15 minutos se permitirá un único reintento 2\/2/);
+assert.doesNotMatch(sender, /const reconciliationMessage = `Resultado de Meta incierto[^`]+dentro de 15 minutos[^`]+2\/2[^`]+`;/);
+assert.match(sender, /metaRetryClaimed/);
+assert.doesNotMatch(sender, /no se reenviará automáticamente/);
+
 const manualReconciliationMigration = await read('supabase/migrations/20260720260000_add_manual_send_reconciliation.sql');
 assert.match(
   manualReconciliationMigration,
   /IF _resolution = 'confirmed_not_sent'[\s\S]{0,160}delivery\.channel = 'whatsapp'[\s\S]{0,160}whatsapp_uncertain_cannot_be_reopened/,
-  'una incertidumbre Meta nunca puede reabrirse basándose en una comprobación puntual',
-);
-assert.doesNotMatch(
-  manualReconciliationMigration,
-  /ELSIF delivery\.channel = 'whatsapp'[\s\S]{0,900}SET status = 'pending'/,
-  'el worker no debe conservar una ruta capaz de reencolar Meta tras incertidumbre',
+  'la política de entrega solo permite el reintento automático acotado; la UI no puede abrir reintentos ilimitados',
 );
 assert.match(
-  sender,
-  /Resultado de Meta incierto[\s\S]{0,180}no se reenviará automáticamente/,
+  retryPolicyMigration,
+  /meta_attempt_count[\s\S]{0,180}LEAST\([\s\S]{0,80}2/,
+  'el segundo POST debe ser el último intento automático',
 );
 assert.match(sender, /prepare_whatsapp_send_delivery/);
 assert.match(sender, /queuedDeliveries/);
@@ -438,6 +488,9 @@ for (const cronPath of [
 const processor = await read('supabase/functions/process-pending-whatsapp-notifications/index.ts');
 assert.match(processor, /req\.headers\.get\('Authorization'\) !== authValue/);
 assert.match(processor, /return json\(\{ error: 'forbidden' \}, 403\)/);
+assert.match(processor, /get_bounded_whatsapp_retry_event_ids/);
+assert.match(processor, /new Set\(\[\.\.\.pendingEventIds, \.\.\.retryEventIds\]\)/);
+
 
 const orchestrator = await read('src/services/notifications/notificationOrchestrator.ts');
 assert.doesNotMatch(orchestrator, /functions\s*\.invoke\('send-whatsapp-notification'/);

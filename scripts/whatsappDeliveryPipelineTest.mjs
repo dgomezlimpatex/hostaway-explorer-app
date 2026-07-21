@@ -1,6 +1,10 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { isAmbiguousWhatsAppHttpStatus } from '../supabase/functions/_shared/whatsappDeliverySemantics.ts';
+import {
+  classifyResendSendResponse,
+  isAmbiguousResendError,
+} from '../supabase/functions/_shared/resendDeliverySemantics.ts';
 
 for (const status of [408, 429, 500, 503]) {
   assert.equal(isAmbiguousWhatsAppHttpStatus(status), true, `HTTP ${status} debe ser incierto`);
@@ -8,6 +12,33 @@ for (const status of [408, 429, 500, 503]) {
 for (const status of [400, 401, 403, 404]) {
   assert.equal(isAmbiguousWhatsAppHttpStatus(status), false, `HTTP ${status} debe ser rechazo definitivo`);
 }
+for (const statusCode of [408, 429, 500, 503, null]) {
+  assert.equal(isAmbiguousResendError({ statusCode }), true, `Resend ${statusCode} debe ser incierto`);
+}
+for (const statusCode of [400, 401, 403, 404, 422]) {
+  assert.equal(isAmbiguousResendError({ statusCode }), false, `Resend ${statusCode} debe ser rechazo definitivo`);
+}
+for (const response of [
+  {},
+  { data: null },
+  { data: {} },
+  { data: { id: '' } },
+  { data: { id: '   ' } },
+]) {
+  assert.deepEqual(
+    classifyResendSendResponse(response),
+    {
+      effectUncertain: true,
+      providerMessageId: null,
+      errorMessage: 'Resend respondió sin ID de mensaje; efecto incierto',
+    },
+    'un 2xx sin ID no demuestra que Resend no aceptó el correo',
+  );
+}
+assert.deepEqual(
+  classifyResendSendResponse({ data: { id: 'email-provider-id' } }),
+  { effectUncertain: false, providerMessageId: 'email-provider-id', errorMessage: null },
+);
 
 const read = (path) => readFile(new URL(`../${path}`, import.meta.url), 'utf8');
 
@@ -74,6 +105,14 @@ assert.match(
   /ok:\s*effectiveSendOk \|\| fallbackEmailSent \|\| Boolean\(fallback\.skippedBecauseWhatsappSucceeded\)/,
 );
 assert.match(sender, /const uncertainSendResult = sendResult\.effectUncertain === true/);
+assert.match(sender, /const resendOutcome = classifyResendSendResponse\(response\)/);
+assert.match(sender, /uncertainResult = resendOutcome\.effectUncertain/);
+assert.match(sender, /providerMessageId = resendOutcome\.providerMessageId/);
+assert.doesNotMatch(
+  sender,
+  /if \(response\.error\)[\s\S]{0,180}else \{\s*providerMessageId = response\.data\?\.id/,
+  'toda respuesta Resend, incluido 2xx sin ID, debe clasificarse por certeza del efecto',
+);
 assert.doesNotMatch(
   sender,
   /\['network_error', 'missing_provider_message_id'\]\.includes/,

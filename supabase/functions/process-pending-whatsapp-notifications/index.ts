@@ -328,11 +328,19 @@ serve(async (req: Request): Promise<Response> => {
       .order('created_at', { ascending: true })
       .limit(50);
     if (error) throw error;
+    const { data: retryEvents, error: retryEventsError } = await supabase.rpc(
+      'get_bounded_whatsapp_retry_event_ids',
+      { _limit: 50 },
+    );
+    if (retryEventsError) throw retryEventsError;
+    const pendingEventIds = (events ?? []).map((event) => event.id);
+    const retryEventIds = (retryEvents ?? []).map((event: { event_id: string }) => event.event_id);
+    const candidateEventIds = [...new Set([...pendingEventIds, ...retryEventIds])].slice(0, 50);
 
     let accepted = 0;
     let failed = 0;
-    for (const event of events ?? []) {
-      if (await invokeSender(event.id)) accepted++;
+    for (const eventId of candidateEventIds) {
+      if (await invokeSender(eventId)) accepted++;
       else failed++;
     }
 
@@ -346,7 +354,7 @@ serve(async (req: Request): Promise<Response> => {
       callbacksPending,
       callbacksManualReview,
       callbackFailures,
-      candidates: events?.length ?? 0,
+      candidates: candidateEventIds.length,
       accepted,
       failed,
     });

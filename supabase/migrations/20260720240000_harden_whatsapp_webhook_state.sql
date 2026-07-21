@@ -1833,7 +1833,14 @@ BEGIN
     error_message = NULL,
     sent_at = NULL,
     failed_at = NULL
-  WHERE public.notification_deliveries.status = 'failed'
+  WHERE (
+      public.notification_deliveries.status = 'failed'
+      AND (
+        NOT (COALESCE(public.notification_deliveries.provider_response, '{}'::jsonb) ? 'fallback_send_started_at')
+        OR (public.notification_deliveries.provider_response->>'fallback_send_started_at')::timestamptz
+          > now() - interval '23 hours'
+      )
+    )
      OR (
        public.notification_deliveries.status = 'queued'
        AND public.notification_deliveries.provider_message_id IS NULL

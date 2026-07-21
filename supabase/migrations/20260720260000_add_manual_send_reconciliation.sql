@@ -165,6 +165,15 @@ BEGIN
      AND delivery.channel = 'whatsapp' THEN
     RAISE EXCEPTION 'whatsapp_uncertain_cannot_be_reopened' USING ERRCODE = '22023';
   END IF;
+  IF _resolution = 'confirmed_not_sent'
+     AND delivery.channel = 'email'
+     AND (
+       delivery.provider_response->>'fallback_send_started_at' IS NULL
+       OR (delivery.provider_response->>'fallback_send_started_at')::timestamptz
+         <= now() - interval '23 hours'
+     ) THEN
+    RAISE EXCEPTION 'resend_idempotency_window_expired' USING ERRCODE = '22023';
+  END IF;
 
   INSERT INTO public.notification_send_reconciliation_actions (
     delivery_id, notification_event_id, channel, resolution, provider_message_id
@@ -209,24 +218,33 @@ BEGIN
   SET status = 'failed',
       completed_at = now(),
       result_detail = 'Ventana idempotente agotada; comprobar Resend antes de solicitar otra resolución'
-  WHERE action.status = 'effect_pending'
-    AND action.effect_started_at <= now() - interval '23 hours'
+  FROM public.notification_deliveries delivery
+  WHERE delivery.id = action.delivery_id
+    AND action.status = 'effect_pending'
+    AND (
+      delivery.provider_response->>'fallback_send_started_at' IS NULL
+      OR (delivery.provider_response->>'fallback_send_started_at')::timestamptz
+        <= now() - interval '23 hours'
+    )
     AND action.processing_started_at < now() - interval '10 minutes';
 
   RETURN QUERY
   WITH candidates AS (
     SELECT action.id
     FROM public.notification_send_reconciliation_actions action
+    JOIN public.notification_deliveries delivery ON delivery.id = action.delivery_id
     WHERE action.status = 'pending'
        OR (action.status = 'processing' AND action.processing_started_at < now() - interval '10 minutes')
        OR (
          action.status = 'effect_pending'
-         AND action.effect_started_at > now() - interval '23 hours'
+         AND delivery.provider_response->>'fallback_send_started_at' IS NOT NULL
+         AND (delivery.provider_response->>'fallback_send_started_at')::timestamptz
+           > now() - interval '23 hours'
          AND action.processing_started_at < now() - interval '10 minutes'
        )
     ORDER BY action.requested_at
     LIMIT GREATEST(1, LEAST(_limit, 50))
-    FOR UPDATE SKIP LOCKED
+    FOR UPDATE OF action SKIP LOCKED
   ), claimed AS (
     UPDATE public.notification_send_reconciliation_actions action
     SET status = CASE WHEN action.status = 'effect_pending' THEN 'effect_pending' ELSE 'processing' END,
@@ -276,14 +294,17 @@ BEGIN
 
   SELECT true INTO valid
   FROM public.notification_send_reconciliation_actions action
+  JOIN public.notification_deliveries delivery ON delivery.id = action.delivery_id
   WHERE action.id = _action_id
     AND action.notification_event_id = event_id
     AND action.status = 'effect_pending'
     AND action.claim_token = _claim_token
     AND action.processing_started_at >= now() - interval '10 minutes'
-    AND action.effect_started_at > now() - interval '23 hours'
+    AND delivery.provider_response->>'fallback_send_started_at' IS NOT NULL
+    AND (delivery.provider_response->>'fallback_send_started_at')::timestamptz
+      > now() - interval '23 hours'
     AND action.fallback_whatsapp_delivery_id IS NOT NULL
-  FOR UPDATE;
+  FOR UPDATE OF action;
 
   RETURN COALESCE(valid, false);
 END;
@@ -365,6 +386,15 @@ BEGIN
   IF action.resolution = 'confirmed_not_sent'
      AND action.channel = 'whatsapp' THEN
     RAISE EXCEPTION 'whatsapp_uncertain_cannot_be_reopened' USING ERRCODE = '23514';
+  END IF;
+  IF action.resolution = 'confirmed_not_sent'
+     AND action.channel = 'email'
+     AND (
+       delivery.provider_response->>'fallback_send_started_at' IS NULL
+       OR (delivery.provider_response->>'fallback_send_started_at')::timestamptz
+         <= now() - interval '23 hours'
+     ) THEN
+    RAISE EXCEPTION 'resend_idempotency_window_expired' USING ERRCODE = '23514';
   END IF;
 
   IF delivery.status <> 'queued'

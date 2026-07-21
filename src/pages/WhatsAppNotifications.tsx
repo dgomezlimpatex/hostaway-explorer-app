@@ -157,7 +157,7 @@ export default function WhatsAppNotifications() {
     resolution: 'confirmed_sent' | 'confirmed_not_sent',
   ) => {
     if (row.channel === 'whatsapp' && resolution === 'confirmed_not_sent') {
-      toast.error('Un WhatsApp incierto no se reenvía: Meta no permite demostrar que el primer POST no produjo efecto.');
+      toast.error('Un WhatsApp incierto no admite reintentos manuales: el backend limita el flujo a un máximo de 2 intentos y Meta no permite demostrar que un POST no produjo efecto.');
       return;
     }
     const providerLabel = row.channel === 'whatsapp' ? 'Meta' : 'Resend';
@@ -219,7 +219,7 @@ export default function WhatsAppNotifications() {
             <CardTitle className="text-base text-red-900">Envíos pendientes de comprobación manual</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            <p className="text-sm text-muted-foreground">Comprueba primero el intento en Meta o Resend. El sistema nunca reenvía automáticamente un resultado incierto.</p>
+            <p className="text-sm text-muted-foreground">Comprueba primero el intento en Meta o Resend. WhatsApp aplica como máximo un reintento automático 2/2 tras 15 minutos; Resend solo reutiliza su clave dentro de la ventana segura.</p>
             {sendReconciliationQueue.map((row) => {
               const busy = resolvingDeliveryId === row.delivery_id || Boolean(row.open_action_status);
               return (
@@ -236,7 +236,7 @@ export default function WhatsAppNotifications() {
                       )}
                     </div>
                   </div>
-                  {row.channel === 'whatsapp' && <p className="mt-2 text-xs font-medium text-red-700">WhatsApp incierto no se reenvía. Solo puede confirmarse como enviado con el ID de Meta; si no hay prueba, permanece en revisión para evitar duplicados.</p>}
+                  {row.channel === 'whatsapp' && <p className="mt-2 text-xs font-medium text-red-700">El intento 1/2 incierto puede recibir un único reintento backend tras 15 minutos. Después del intento 2/2 no habrá un tercero. Solo puede confirmarse como enviado con el ID de Meta; el detalle indica el estado actual.</p>}
                   {row.open_action_status && <p className="mt-2 text-xs font-medium text-amber-700">Resolución encolada para el worker backend.</p>}
                 </div>
               );

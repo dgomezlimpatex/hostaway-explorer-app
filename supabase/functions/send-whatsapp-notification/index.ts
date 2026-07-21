@@ -6,6 +6,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.50.0';
 import { Resend } from 'npm:resend@6.17.2';
 import { sendWhatsAppTemplateMessage } from '../_shared/whatsappClient.ts';
 import { classifyApprovalCallbackOutcome } from '../_shared/whatsappApprovalOutcome.ts';
+import { classifyResendSendResponse } from '../_shared/resendDeliverySemantics.ts';
 import {
   buildRejectedAlertBodyParameters,
   buildRejectedAlertEmail,
@@ -99,9 +100,9 @@ serve(async (req: Request): Promise<Response> => {
       });
     }
 
-    const shouldForceFallback = forceEmailFallback
-      || (event.event_type === 'task_rejected_alert' && event.status === 'failed');
+    const shouldForceFallback = forceEmailFallback;
     let processingLeaseToken: string | null = null;
+    let metaRetryClaimed = false;
     const finalizeClaimedEventFailure = async (errorMessage: string): Promise<boolean> => {
       // Los fallos de la ruta forzada ya parten de un evento terminal y no deben
       // mutarlo. En la ruta normal, solo la generación que conserva el lease
@@ -173,7 +174,22 @@ serve(async (req: Request): Promise<Response> => {
       const hasStartedDelivery = (queuedDeliveries ?? []).some(
         (delivery) => Boolean(delivery.provider_payload?.send_started_at),
       );
-      if (queuedDeliveryIds.length > 0 && (hasStartedDelivery || queuedDeliveryIds.length > 1)) {
+
+      // Política aceptada por operación: priorizar entrega. Tras 15 minutos sin
+      // evidencia, SQL puede autorizar exactamente un segundo POST. Existe un
+      // riesgo excepcional de duplicado, siempre visible en provider_payload.
+      if (queuedDeliveryIds.length === 1 && hasStartedDelivery) {
+        processingLeaseToken = crypto.randomUUID();
+        const { data: retryDeliveryId, error: retryClaimError } = await supabase.rpc(
+          'claim_bounded_whatsapp_retry',
+          { _event_id: eventId, _lease_token: processingLeaseToken },
+        );
+        if (retryClaimError) throw retryClaimError;
+        metaRetryClaimed = retryDeliveryId === queuedDeliveryIds[0];
+        if (!metaRetryClaimed) processingLeaseToken = null;
+      }
+
+      if (queuedDeliveryIds.length > 0 && (hasStartedDelivery || queuedDeliveryIds.length > 1) && !metaRetryClaimed) {
         const reconciliationMessage = 'Resultado de Meta incierto: requiere reconciliación manual para evitar duplicados';
         let concurrentlyReconciled: { deliveryId: string; status: string; providerMessageId?: string } | null = null;
         for (const queuedDeliveryId of queuedDeliveryIds) {
@@ -221,18 +237,32 @@ serve(async (req: Request): Promise<Response> => {
             headers: { 'Content-Type': 'application/json', ...corsHeaders },
           });
         }
+        if (queuedDeliveryIds.length === 1) {
+          const { error: exhaustedEventError } = await supabase.rpc(
+            'finalize_whatsapp_notification_event',
+            {
+              _delivery_id: queuedDeliveryIds[0],
+              _fallback_ok: false,
+              _fallback_error: null,
+              _send_error: reconciliationMessage,
+            },
+          );
+          if (exhaustedEventError) throw exhaustedEventError;
+        }
         return new Response(JSON.stringify({ ok: false, status: 'reconciliation_required' }), {
           status: 202,
           headers: { 'Content-Type': 'application/json', ...corsHeaders },
         });
       }
 
-      // procesen a la vez el mismo evento. Un claim abandonado puede recuperarse
-      // después de 10 minutos.
-      const claimedAt = new Date().toISOString();
-      const staleBefore = new Date(Date.now() - 10 * 60 * 1000).toISOString();
-      processingLeaseToken = crypto.randomUUID();
-      let claimedEvent: { id: string } | null = null;
+      // Si el reintento acotado ya obtuvo un lease desde SQL, no repetimos el
+      // claim genérico del evento. En la ruta normal, un claim abandonado puede
+      // recuperarse después de 10 minutos.
+      if (!metaRetryClaimed) {
+        const claimedAt = new Date().toISOString();
+        const staleBefore = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+        processingLeaseToken = crypto.randomUUID();
+        let claimedEvent: { id: string } | null = null;
 
       if (event.status === 'pending') {
         const { data, error: claimEventError } = await supabase
@@ -278,6 +308,7 @@ serve(async (req: Request): Promise<Response> => {
           status: 202,
           headers: { 'Content-Type': 'application/json', ...corsHeaders },
         });
+      }
       }
 
     }
@@ -459,11 +490,10 @@ serve(async (req: Request): Promise<Response> => {
             },
             { idempotencyKey: `whatsapp-admin-fallback/${eventId}` },
           );
-          if (response.error) {
-            errorMessage = response.error.message ?? JSON.stringify(response.error);
-          } else {
-            providerMessageId = response.data?.id;
-          }
+          const resendOutcome = classifyResendSendResponse(response);
+          uncertainResult = resendOutcome.effectUncertain;
+          providerMessageId = resendOutcome.providerMessageId ?? undefined;
+          errorMessage = resendOutcome.errorMessage ?? undefined;
         } catch (error) {
           uncertainResult = true;
           errorMessage = error instanceof Error ? error.message : String(error);
@@ -580,8 +610,10 @@ serve(async (req: Request): Promise<Response> => {
       });
     }
 
-    // 5. Botones (payloads compactos) si la plantilla los tiene
-    const nonce = crypto.randomUUID().slice(0, 8);
+    // El correlador de botón es estable por evento. Ambos POST del presupuesto
+    // acotado 2/2 deben aceptar el mismo payload para que un callback firmado
+    // del primer intento siga siendo vinculable durante la preparación del segundo.
+    const nonce = eventId.replaceAll('-', '').slice(0, 8);
     let buttonPayloads: string[] | undefined;
     if (def.hasButtons) {
       if (templateName === 'task_late_start_reminder_es') {
@@ -747,7 +779,9 @@ serve(async (req: Request): Promise<Response> => {
     let effectiveDeliveryStatus = sendResult.status;
     let effectiveProviderMessageId = sendResult.providerMessageId;
     if (uncertainSendResult) {
-      const reconciliationMessage = `Resultado de Meta incierto (${sendResult.errorCode}): requiere reconciliación manual; no se reenviará automáticamente`;
+      const reconciliationMessage = metaRetryClaimed
+        ? `Resultado de Meta incierto (${sendResult.errorCode}) tras el intento 2/2: reintentos automáticos agotados; requiere conciliación manual`
+        : `Resultado de Meta incierto (${sendResult.errorCode}): tras 15 minutos se permitirá un único reintento 2/2 para priorizar entrega; existe riesgo excepcional de duplicado`;
       const { data: uncertainRows, error: uncertainDeliveryUpdateError } = await supabase.rpc(
         'finalize_uncertain_whatsapp_send_delivery',
         {
