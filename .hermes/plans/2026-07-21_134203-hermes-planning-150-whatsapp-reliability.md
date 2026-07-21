@@ -200,9 +200,9 @@ Checklist transaccional:
 
 **Objetivo:** preparar una migración reversible sin alterar producción.
 
-- [ ] Crear rama de integración `feature/hermes-planning-150-integration` desde `origin/main` limpio.
-- [ ] Capturar baseline: typecheck, build y suites de planificación/WhatsApp.
-- [ ] Corregir primero el contrato obsoleto de `test:cleaning-planning-domain-safety`.
+- [x] Crear rama de integración `feature/hermes-planning-150-integration` desde `origin/main` limpio. *(Completado: rama creada; plan base `94ac1a6d`.)*
+- [x] Capturar baseline: typecheck, build y suites de planificación/WhatsApp. *(Completado: typecheck/build y suites focalizadas verdes tras corregir el contrato obsoleto; warnings CSS/Browserslist documentados como preexistentes.)*
+- [x] Corregir primero el contrato obsoleto de `test:cleaning-planning-domain-safety`. *(Completado: `61ef7a27`; frontend siempre encola `pending` y el backend decide el delivery.)*
 - [ ] Añadir flags separados, por defecto `false`:
   - [ ] `VITE_PLANNING_BATCH_V2_READ_ENABLED`
   - [ ] `VITE_PLANNING_BATCH_V2_WRITE_ENABLED`
