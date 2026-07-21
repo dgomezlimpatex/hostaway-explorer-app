@@ -1530,7 +1530,7 @@ class OperationalPlanningService {
 
       await Promise.allSettled(((insertedBatches as any[]) || []).map(async (row) => {
         try {
-          await supabase.functions.invoke('send-planning-batch-email', {
+          const { data: sendData, error: sendError } = await supabase.functions.invoke('send-planning-batch-email', {
             body: {
               cleanerEmail: row.cleaner_email,
               cleanerName: row.cleaner_name,
@@ -1538,9 +1538,13 @@ class OperationalPlanningService {
               tasks: row.payload?.tasks || [],
             },
           });
-          await fromUntypedTable('planning_notification_batches')
+          if (sendError || sendData?.success !== true) {
+            throw sendError || new Error('El proveedor no confirmó el email de planificación.');
+          }
+          const { error: sentUpdateError } = await fromUntypedTable('planning_notification_batches')
             .update({ status: 'sent', sent_at: new Date().toISOString() })
             .eq('id', row.id);
+          if (sentUpdateError) throw sentUpdateError;
         } catch (error) {
           await fromUntypedTable('planning_notification_batches')
             .update({ status: 'failed' })

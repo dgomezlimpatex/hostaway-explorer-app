@@ -65,7 +65,7 @@ serve(async (req: Request) => {
       )
       .join('');
 
-    const response = await resend.emails.send({
+    const { data: emailData, error: emailError } = await resend.emails.send({
       from: 'LIMPATEX <alertas@limpatexgestion.es>',
       to: [cleanerEmail],
       subject: `Planificación del ${formatDate(taskDate)}`,
@@ -114,8 +114,9 @@ serve(async (req: Request) => {
         </div>
       `,
     });
+    if (emailError) throw new Error(emailError.message || 'Resend rechazó el email de planificación.');
 
-    return new Response(JSON.stringify({ success: true, id: response.data?.id }), {
+    return new Response(JSON.stringify({ success: true, id: emailData?.id }), {
       status: 200,
       headers: { 'Content-Type': 'application/json', ...corsHeaders },
     });
