@@ -1,5 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { supabase } from '@/integrations/supabase/client';
+import { applyPlanningBatch } from '@/services/planning/planningBatchClient';
+import { getPlanningBatchClientFlags } from '@/services/planning/planningBatchFlags';
 import { fromUntypedTable, rpcUntyped } from '@/lib/supabaseUntyped';
 import { mapCleanerFromDB } from '@/services/storage/mappers/cleanerMappers';
 import { mapPropertyFromDB } from '@/services/storage/mappers/propertyMappers';
@@ -1407,6 +1409,48 @@ class OperationalPlanningService {
     const preview = await this.getPreview(runId);
     if (preview.run.status !== 'draft') {
       throw new Error('Solo se pueden aprobar borradores de planificación.');
+    }
+
+    if (getPlanningBatchClientFlags().writeEnabled) {
+      if (preview.items.length === 0) {
+        throw new Error('El borrador no contiene tareas aplicables.');
+      }
+
+      const result = await applyPlanningBatch({
+        batchId: preview.run.id,
+        idempotencyKey: `planning-run:${preview.run.id}:v${preview.run.version}`,
+        sedeId: preview.run.sedeId,
+        sourceRunId: preview.run.id,
+        sourceRunVersion: preview.run.version,
+        notificationPolicy: 'require_all_recipients',
+        items: preview.items.map((item) => ({
+          task_id: item.taskId,
+          expected_planning_version: item.proposal.expectedPlanningVersion,
+          expected_status: item.proposal.expectedStatus,
+          expected_start_time: item.proposal.expectedStartTime,
+          expected_end_time: item.proposal.expectedEndTime,
+          expected_cleaner_ids: item.proposal.expectedCleanerIds,
+          date: item.proposal.taskDate,
+          start_time: item.proposal.startTime,
+          end_time: item.proposal.endTime,
+          cleaner_ids: item.proposedCleanerIds,
+        })),
+      });
+
+      if (result.status !== 'applied') {
+        const details = result.conflicts
+          .map((conflict) => conflict.message || conflict.code)
+          .filter(Boolean)
+          .join('; ');
+        throw new Error(details || `No se pudo aplicar el lote de planificación (${result.status}).`);
+      }
+
+      const confirmed = await this.getPreview(runId);
+      return {
+        run: confirmed.run,
+        appliedTasks: result.applied_task_count,
+        notificationBatches: result.notification_event_count,
+      };
     }
 
     const userId = (await supabase.auth.getUser()).data.user?.id || null;
