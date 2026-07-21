@@ -212,7 +212,7 @@ Checklist transaccional:
 - [ ] Añadir kill switches independientes para WhatsApp, Resend/correo, recordatorios y worker v2. *(Contrato fail-closed creado; pendiente conectarlos a cada consumidor.)*
 - [ ] Añadir adaptadores provider `shadow`, `test` y `live`; `shadow/test` nunca leen credenciales productivas. *(Resolución segura creada; pendientes los adapters/sinks del dispatcher.)*
 - [ ] Definir en un test cross-seam los nombres exactos de RPC, argumentos, estados y claves de retorno.
-- [ ] Confirmar que, con flags apagados, el comportamiento legacy no cambia.
+- [x] Confirmar que, con flags apagados, el comportamiento legacy no cambia. *(Verificado: helpers nuevos sin imports productivos; baseline, typecheck y build verdes.)*
 
 **Archivos probables:**
 
