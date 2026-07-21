@@ -38,6 +38,17 @@
     "test:pms-cancellation-safety": "node scripts/pmsCancellationSafetyTest.mjs",
     "test:edge-authorization-safety": "node scripts/edgeAuthorizationSafetyTest.mjs",
     "test:hostaway-dormancy": "node scripts/hostawayDormancyTest.mjs",
+    "test:planning-batch-contract": "node scripts/planningBatchContractTest.mjs",
+    "test:planning-batch-atomicity": "node scripts/planningBatchAtomicityTest.mjs",
+    "test:planning-batch-transaction": "node scripts/planningBatchAtomicityTest.mjs",
+    "test:planning-batch-load": "node scripts/planningBatchLoadScenariosTest.mjs",
+    "test:whatsapp-burst-150": "node scripts/planningBatchLoadScenariosTest.mjs && node scripts/planningProviderSafetyTest.mjs",
+    "test:planning-batch-idempotency": "node scripts/planningBatchIdempotencyTest.mjs",
+    "test:planning-batch-concurrency": "node scripts/planningBatchConcurrencyTest.mjs",
+    "test:whatsapp-deleted-task-cancellation": "node scripts/whatsappDeletedTaskCancellationTest.mjs",
+    "test:legacy-assignment-writer-guard": "node scripts/legacyAssignmentWriterGuardTest.mjs",
+    "test:planning-provider-safety": "node scripts/planningProviderSafetyTest.mjs",
+    "test:planning-hermes-150:red": "node scripts/planningHermes150RedHarness.mjs",
     "preview": "vite preview"
   },
   "dependencies": {
