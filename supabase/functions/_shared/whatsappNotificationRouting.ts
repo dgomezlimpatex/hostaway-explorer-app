@@ -1,4 +1,4 @@
-import { normalizeSpanishPhoneE164 } from './phone.ts';
+import { normalizePhoneE164 } from './phone.ts';
 
 interface CleanerLike {
   name?: string | null;
@@ -52,7 +52,7 @@ export function resolveNotificationRecipient(
     return { recipient, enabled: Boolean(recipient), kind: 'admin' };
   }
 
-  const recipient = normalizeSpanishPhoneE164(cleaner.telefono)
+  const recipient = normalizePhoneE164(cleaner.telefono)
     || clean(cleaner.whatsapp_phone_e164)
     || null;
   return {
