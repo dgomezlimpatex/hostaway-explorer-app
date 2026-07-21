@@ -228,6 +228,8 @@ Checklist transaccional:
 
 **Objetivo:** ninguna tarea eliminada deja una asignación vigente en WhatsApp.
 
+**Baseline productivo 2026-07-21 14:24 +0200:** 2 eventos `task_cancelled` en `processing` >10 minutos y sin delivery; se conciliarán únicamente tras desplegar y verificar la corrección.
+
 - [ ] Escribir test RED: borrar tarea con 1, 3 y 30 asignaciones conserva snapshot de cada cancelación.
 - [ ] Añadir snapshot a eventos `task_cancelled` antes de perder la FK.
 - [ ] Cambiar sender para construir cancelaciones desde snapshot cuando `task_id` sea null.
@@ -368,6 +370,8 @@ Checklist transaccional:
 ## Fase 7 — Teléfonos y preflight operativo
 
 **Objetivo:** no confirmar una planificación que no puede avisarse por completo.
+
+**Baseline productivo 2026-07-21 14:24 +0200:** 39 trabajadoras activas; 8 sin `telefono` y 3 con formato inválido. No se muestran números ni datos personales.
 
 - [ ] Corregir operativamente el móvil inválido actual.
 - [ ] Completar los teléfonos faltantes desde `/workers`.
