@@ -324,6 +324,8 @@ serve(async (req: Request): Promise<Response> => {
     const { data: events, error } = await supabase
       .from('notification_events')
       .select('id')
+      .eq('notification_mode', 'live')
+      .is('batch_id', null)
       .or(`status.eq.pending,and(status.eq.processing,processed_at.lt.${staleBefore})`)
       .order('created_at', { ascending: true })
       .limit(50);

@@ -7,6 +7,7 @@ import { Resend } from 'npm:resend@6.17.2';
 import { sendWhatsAppTemplateMessage } from '../_shared/whatsappClient.ts';
 import { classifyApprovalCallbackOutcome } from '../_shared/whatsappApprovalOutcome.ts';
 import { classifyResendSendResponse } from '../_shared/resendDeliverySemantics.ts';
+import { normalizeSpanishPhoneE164 } from '../_shared/phone.ts';
 import {
   buildRejectedAlertBodyParameters,
   buildRejectedAlertEmail,
@@ -96,6 +97,16 @@ serve(async (req: Request): Promise<Response> => {
     if (evErr || !event) {
       return new Response(JSON.stringify({ error: 'Evento no encontrado' }), {
         status: 404,
+        headers: { 'Content-Type': 'application/json', ...corsHeaders },
+      });
+    }
+
+    // Defensa final antes de claim/retry/fallback/proveedor. Los eventos
+    // productivos legados (sin batch) siguen live; cualquier evento Hermes,
+    // incluso si un writer intentó marcarlo live, queda bloqueado.
+    if (event.notification_mode !== 'live' || event.batch_id != null) {
+      return new Response(JSON.stringify({ ok: false, status: 'non_live_blocked' }), {
+        status: 409,
         headers: { 'Content-Type': 'application/json', ...corsHeaders },
       });
     }
@@ -328,17 +339,42 @@ serve(async (req: Request): Promise<Response> => {
       });
     }
 
-    // 2. Leer tarea y limpiadora
-    const { data: task, error: taskError } = await supabase
-      .from('tasks')
-      .select('*')
-      .eq('id', event.task_id)
-      .maybeSingle();
-    const { data: cleaner, error: cleanerError } = await supabase
-      .from('cleaners')
-      .select('*')
-      .eq('id', event.cleaner_id)
-      .maybeSingle();
+    // 2. Para eventos de batch, snapshots y routing son la fuente durable. El
+    // lookup live queda únicamente como fallback para eventos legacy.
+    const hasBatchTaskSnapshot = Boolean(
+      event.batch_id && event.snapshot && typeof event.snapshot === 'object'
+      && Object.keys(event.snapshot).length > 0,
+    );
+    let task = hasBatchTaskSnapshot ? event.snapshot : null;
+    let taskError: { message?: string } | null = null;
+    if (!task) {
+      const liveTask = await supabase
+        .from('tasks')
+        .select('*')
+        .eq('id', event.task_id)
+        .maybeSingle();
+      task = liveTask.data;
+      taskError = liveTask.error;
+    }
+
+    let cleaner = event.batch_id && event.recipient_name_snapshot
+      ? {
+        id: event.recipient_worker_id ?? event.cleaner_id,
+        name: event.recipient_name_snapshot,
+        telefono: event.recipient_phone_snapshot,
+        whatsapp_phone_e164: event.recipient_phone_snapshot,
+      }
+      : null;
+    let cleanerError: { message?: string } | null = null;
+    if (!cleaner) {
+      const liveCleaner = await supabase
+        .from('cleaners')
+        .select('*')
+        .eq('id', event.cleaner_id)
+        .maybeSingle();
+      cleaner = liveCleaner.data;
+      cleanerError = liveCleaner.error;
+    }
 
     if (taskError) throw taskError;
     if (cleanerError) throw cleanerError;
@@ -359,7 +395,13 @@ serve(async (req: Request): Promise<Response> => {
     // 3. Resolver destinatario: trabajadora para eventos normales, administración para rechazos.
     const adminPhone = Deno.env.get('WHATSAPP_ADMIN_PHONE_E164') ?? '';
     const fallbackEmail = Deno.env.get('WHATSAPP_ADMIN_FALLBACK_EMAIL') ?? '';
-    const routing = resolveNotificationRecipient(event.event_type, cleaner, adminPhone);
+    const liveRouting = resolveNotificationRecipient(event.event_type, cleaner, adminPhone);
+    const snapshotRecipient = event.batch_id
+      ? normalizeSpanishPhoneE164(event.recipient_phone_snapshot)
+      : null;
+    const routing = snapshotRecipient && liveRouting.kind !== 'admin'
+      ? { recipient: snapshotRecipient, enabled: true, kind: 'cleaner' as const }
+      : liveRouting;
     const recipient = routing.recipient;
     const enabled = routing.enabled;
 
