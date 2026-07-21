@@ -203,14 +203,14 @@ Checklist transaccional:
 - [x] Crear rama de integración `feature/hermes-planning-150-integration` desde `origin/main` limpio. *(Completado: rama creada; plan base `94ac1a6d`.)*
 - [x] Capturar baseline: typecheck, build y suites de planificación/WhatsApp. *(Completado: typecheck/build y suites focalizadas verdes tras corregir el contrato obsoleto; warnings CSS/Browserslist documentados como preexistentes.)*
 - [x] Corregir primero el contrato obsoleto de `test:cleaning-planning-domain-safety`. *(Completado: `61ef7a27`; frontend siempre encola `pending` y el backend decide el delivery.)*
-- [ ] Añadir flags separados, por defecto `false`:
-  - [ ] `VITE_PLANNING_BATCH_V2_READ_ENABLED`
-  - [ ] `VITE_PLANNING_BATCH_V2_WRITE_ENABLED`
-  - [ ] `WHATSAPP_BATCH_DISPATCH_ENABLED`
-  - [ ] `PLANNING_TRANSACTIONAL_APPLY_SHADOW`
-  - [ ] `PLANNING_NOTIFICATIONS_LIVE`
-- [ ] Añadir kill switches independientes para WhatsApp, Resend/correo, recordatorios y worker v2.
-- [ ] Añadir adaptadores provider `shadow`, `test` y `live`; `shadow/test` nunca leen credenciales productivas.
+- [x] Añadir flags separados, por defecto `false`: *(Contrato tipado y test RED→GREEN; wiring progresivo detrás del rollout.)*
+  - [x] `VITE_PLANNING_BATCH_V2_READ_ENABLED`
+  - [x] `VITE_PLANNING_BATCH_V2_WRITE_ENABLED`
+  - [x] `WHATSAPP_BATCH_DISPATCH_ENABLED`
+  - [x] `PLANNING_TRANSACTIONAL_APPLY_SHADOW`
+  - [x] `PLANNING_NOTIFICATIONS_LIVE`
+- [ ] Añadir kill switches independientes para WhatsApp, Resend/correo, recordatorios y worker v2. *(Contrato fail-closed creado; pendiente conectarlos a cada consumidor.)*
+- [ ] Añadir adaptadores provider `shadow`, `test` y `live`; `shadow/test` nunca leen credenciales productivas. *(Resolución segura creada; pendientes los adapters/sinks del dispatcher.)*
 - [ ] Definir en un test cross-seam los nombres exactos de RPC, argumentos, estados y claves de retorno.
 - [ ] Confirmar que, con flags apagados, el comportamiento legacy no cambia.
 
