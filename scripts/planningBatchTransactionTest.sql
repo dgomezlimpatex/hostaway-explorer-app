@@ -160,13 +160,27 @@ END $$;
 DROP TRIGGER planning_test_fail_75 ON public.task_assignments;
 DROP FUNCTION public.planning_test_fail_75();
 
--- 501 se rechaza; el CHECK del ledger y la función fijan 500 como máximo técnico.
-DO $$ DECLARE items jsonb; h text; ok boolean:=false; BEGIN
+-- 501 retorna validación canónica sin crear ledger ni hacer business writes.
+DO $$ DECLARE items jsonb; h text; r jsonb; batch uuid:=gen_random_uuid(); before_batches bigint; BEGIN
  SELECT jsonb_agg(jsonb_build_object('task_id',gen_random_uuid(),'cleaner_ids','[]'::jsonb)) INTO items FROM generate_series(1,501);
  h:=public.planning_batch_request_hash('10000000-0000-0000-0000-000000000001',NULL,NULL,'best_effort',items);
+ SELECT count(*) INTO before_batches FROM public.planning_apply_batches;
  PERFORM set_config('request.jwt.claim.sub','20000000-0000-0000-0000-000000000001',true); SET LOCAL ROLE authenticated;
- BEGIN PERFORM public.apply_planning_batch(gen_random_uuid(),'idem-over-500','10000000-0000-0000-0000-000000000001',NULL,NULL,h,'best_effort',items); EXCEPTION WHEN OTHERS THEN ok:=SQLERRM='ITEM_COUNT_OUT_OF_RANGE'; END; RESET ROLE;
- IF NOT ok THEN RAISE EXCEPTION '501 items no rechazados'; END IF;
+ r:=public.apply_planning_batch(batch,'idem-over-500','10000000-0000-0000-0000-000000000001',NULL,NULL,h,'best_effort',items); RESET ROLE;
+ IF r->>'status'<>'validation_failed' OR r->>'code'<>'ITEM_COUNT_OUT_OF_RANGE'
+    OR r->>'batch_id'<>batch::text OR r->>'idempotent_replay'<>'false'
+    OR r->>'applied_task_count'<>'0' OR r->>'applied_assignment_count'<>'0'
+    OR r->>'notification_event_count'<>'0' OR jsonb_typeof(r->'conflicts')<>'array'
+    OR r->'conflicts'<>jsonb_build_array(jsonb_build_object('code','ITEM_COUNT_OUT_OF_RANGE')) THEN
+  RAISE EXCEPTION '501 items shape inválido: %',r;
+ END IF;
+ IF (SELECT count(*) FROM public.planning_apply_batches)<>before_batches
+    OR EXISTS(SELECT 1 FROM public.planning_apply_batches WHERE id=batch)
+    OR EXISTS(SELECT 1 FROM public.planning_apply_batch_items WHERE batch_id=batch)
+    OR EXISTS(SELECT 1 FROM public.planning_assignment_audit WHERE batch_id=batch)
+    OR EXISTS(SELECT 1 FROM public.notification_events WHERE batch_id=batch) THEN
+  RAISE EXCEPTION '501 items dejó writes: %',r;
+ END IF;
 END $$;
 
 -- Seguridad: supervisor y manager sin sede no pueden ejecutar.

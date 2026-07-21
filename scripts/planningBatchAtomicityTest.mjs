@@ -16,8 +16,8 @@ for (const faultAt of [1, 75, 150]) {
 }
 
 const sql = combinedPlanningSql();
-assert.match(sql, /jsonb_array_length\s*\(\s*_items\s*\)\s*(?:=|<)\s*0|jsonb_array_length\s*\(\s*_items\s*\)\s*=\s*0/i);
-assert.match(sql, /jsonb_array_length\s*\(\s*_items\s*\)\s*>\s*500/i);
+assert.match(sql, /(?:jsonb_array_length\s*\(\s*_items\s*\)|v_count)\s*<\s*1/i);
+assert.match(sql, /(?:jsonb_array_length\s*\(\s*_items\s*\)|v_count)\s*>\s*500/i);
 assert.match(sql, /pg_advisory_xact_lock/i, 'el batch debe serializar sede/recursos con locks transaccionales');
 assert.match(sql, /SELECT[\s\S]*FROM\s+public\.tasks[\s\S]*ORDER\s+BY[\s\S]*FOR\s+UPDATE/i);
 assert.match(sql, /BEGIN[\s\S]*EXCEPTION\s+WHEN\s+(?:OTHERS|SQLSTATE)/i, 'las mutaciones deben vivir en una subtransacción PL/pgSQL');

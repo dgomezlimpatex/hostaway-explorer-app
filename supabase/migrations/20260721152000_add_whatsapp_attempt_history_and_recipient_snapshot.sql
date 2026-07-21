@@ -3,6 +3,16 @@
 -- legacy que ya consumieron el primer POST se materializan antes de habilitar
 -- los nuevos writers para no perder presupuesto durante el upgrade.
 
+-- recipient_worker_id es identidad histórica, no una relación viva: mantener la
+-- FK ON DELETE SET NULL borraría precisamente el destinatario que el sender debe
+-- usar después del hard-delete y tomaría un KEY SHARE durante el trigger BEFORE.
+ALTER TABLE public.notification_events
+  ADD COLUMN IF NOT EXISTS recipient_worker_id uuid,
+  ADD COLUMN IF NOT EXISTS recipient_name_snapshot text,
+  ADD COLUMN IF NOT EXISTS recipient_phone_snapshot text;
+ALTER TABLE public.notification_events
+  DROP CONSTRAINT IF EXISTS notification_events_recipient_worker_id_fkey;
+
 CREATE OR REPLACE FUNCTION public.snapshot_notification_recipient(_cleaner public.cleaners)
 RETURNS jsonb
 LANGUAGE plpgsql
@@ -157,10 +167,13 @@ BEGIN
     END IF;
 
     INSERT INTO public.notification_events (
-      event_type, entity_type, entity_id, task_id, cleaner_id, sede_id,
-      payload, snapshot, dedupe_key, status
+      event_type, entity_type, entity_id, task_id, cleaner_id,
+      recipient_worker_id, recipient_name_snapshot, recipient_phone_snapshot,
+      sede_id, payload, snapshot, dedupe_key, status
     ) VALUES (
-      'task_cancelled', 'tasks', task_row.id, task_row.id, OLD.id, task_row.sede_id,
+      'task_cancelled', 'tasks', task_row.id, NULL, NULL,
+      OLD.id, recipient_snapshot->>'name', recipient_snapshot->>'effective_phone_e164',
+      task_row.sede_id,
       jsonb_build_object(
         'source', 'tasks_before_cleaner_delete_trigger',
         'assignment_id', assignment_row.id,
@@ -223,10 +236,9 @@ BEGIN
     RETURN COALESCE(NEW, OLD);
   END IF;
 
-  IF notification_type = 'task_cancelled' THEN
-    SELECT cleaner.* INTO cleaner_row FROM public.cleaners cleaner
-    WHERE cleaner.id = assignment_row.cleaner_id;
-    event_snapshot := jsonb_build_object(
+  SELECT cleaner.* INTO cleaner_row FROM public.cleaners cleaner
+  WHERE cleaner.id = assignment_row.cleaner_id;
+  event_snapshot := jsonb_build_object(
       'task', jsonb_build_object(
         'id', task_record.id, 'property', task_record.property,
         'address', task_record.address, 'date', task_record.date,
@@ -244,8 +256,7 @@ BEGIN
           'whatsapp_phone_e164', NULL, 'effective_phone_e164', NULL,
           'whatsapp_notifications_enabled', false, 'whatsapp_opt_in', false
         ) END
-    );
-  END IF;
+  );
 
   INSERT INTO public.notification_events (
     event_type, entity_type, entity_id, task_id, cleaner_id, sede_id,

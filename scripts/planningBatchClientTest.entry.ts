@@ -1,6 +1,7 @@
 import {
   buildPlanningBatchRequestHash,
   buildPlanningBatchRpcArgs,
+  parsePlanningBatchResult,
   type PlanningBatchApplyRequest,
 } from '../src/services/planning/planningBatchClient';
 
@@ -55,4 +56,33 @@ export async function run(assert: Assert) {
   ]);
   assert.equal(args._request_hash, firstHash);
   assert.equal(args._items, baseRequest.items);
+
+  const validResult = {
+    batch_id: '50000000-0000-4000-8000-000000000001',
+    status: 'applied',
+    idempotent_replay: false,
+    applied_task_count: 1,
+    applied_assignment_count: 1,
+    notification_event_count: 2,
+    conflicts: [],
+    changed_task_count: 1,
+  };
+  assert.deepEqual(parsePlanningBatchResult(validResult), validResult);
+
+  for (const [label, invalid] of [
+    ['objeto', null],
+    ['batch UUID', { ...validResult, batch_id: 'not-a-uuid' }],
+    ['status', { ...validResult, status: 'done' }],
+    ['idempotent_replay', { ...validResult, idempotent_replay: 0 }],
+    ['applied_task_count', { ...validResult, applied_task_count: -1 }],
+    ['applied_assignment_count', { ...validResult, applied_assignment_count: 1.5 }],
+    ['notification_event_count', { ...validResult, notification_event_count: '2' }],
+    ['conflicts', { ...validResult, conflicts: {} }],
+  ] as const) {
+    assert.throws(
+      () => parsePlanningBatchResult(invalid),
+      (error: unknown) => error instanceof Error && error.message.includes(label),
+      `el error debe explicar el campo inválido: ${label}`,
+    );
+  }
 }

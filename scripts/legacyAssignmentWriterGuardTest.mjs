@@ -11,7 +11,8 @@ const guardedPaths = [
 ];
 
 const directTaskProjectionWrite = /\.from\(\s*['"]tasks['"]\s*\)[\s\S]{0,1200}?\.(?:update|insert|upsert)\s*\(\s*\{[\s\S]{0,900}?\b(?:cleaner_id|cleaner)\s*:/g;
-const allowedRpcNames = /(?:set_task_assignments|create_tasks_with_assignments|apply_planning_batch)/;
+const canonicalRpcNames = '(?:set_task_assignments|create_tasks_with_assignments|apply_planning_batch|apply_ai_actions_transactional|auto_assign_task_transactional|batch_create_tasks_transactional)';
+const allowedRpcNames = new RegExp(canonicalRpcNames);
 const violations = [];
 
 for (const path of guardedPaths) {
@@ -22,9 +23,10 @@ for (const path of guardedPaths) {
   }
 
   if (/apply-ai-actions|auto-assign-tasks|batch-create-tasks|databaseService|operationalPlanningService/.test(path)) {
+    const canonicalDelegation = new RegExp(`\\.rpc\\(\\s*['"]${canonicalRpcNames}['"]|applyPlanningBatch\\s*\\(`);
     assert.match(
       source,
-      /\.rpc\(\s*['"](?:set_task_assignments|create_tasks_with_assignments|apply_planning_batch)['"]/,
+      canonicalDelegation,
       `${path} debe delegar asignaciones a un writer canónico`,
     );
   }

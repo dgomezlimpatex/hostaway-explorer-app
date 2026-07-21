@@ -568,26 +568,34 @@ BEGIN
   RAISE EXCEPTION 'PLANNING_FORBIDDEN' USING ERRCODE='42501';
  END IF;
  IF NOT public.user_has_sede_access(v_actor,_sede_id) THEN RAISE EXCEPTION 'PLANNING_SEDE_FORBIDDEN' USING ERRCODE='42501'; END IF;
- IF _batch_id IS NULL OR length(btrim(COALESCE(_idempotency_key,'')))<8 OR length(_idempotency_key)>200 THEN RAISE EXCEPTION 'INVALID_BATCH_IDEMPOTENCY'; END IF;
+ IF _batch_id IS NULL OR length(btrim(COALESCE(_idempotency_key,'')))<8 OR length(_idempotency_key)>200 THEN
+  RETURN jsonb_build_object('status','validation_failed','code','INVALID_BATCH_IDEMPOTENCY','batch_id',COALESCE(_batch_id,'00000000-0000-0000-0000-000000000000'::uuid),'idempotent_replay',false,'applied_task_count',0,'applied_assignment_count',0,'notification_event_count',0,'conflicts',jsonb_build_array(jsonb_build_object('code','INVALID_BATCH_IDEMPOTENCY')));
+ END IF;
 
  -- El payload jsonb recibido ya está canonicalizado por PostgreSQL. Su hash
  -- efectivo se calcula siempre antes de mirar un replay; _request_hash queda
  -- como dato de compatibilidad del cliente, nunca como autoridad.
- IF jsonb_typeof(_items) IS DISTINCT FROM 'array' THEN RAISE EXCEPTION 'ITEMS_MUST_BE_ARRAY'; END IF;
+ IF jsonb_typeof(_items) IS DISTINCT FROM 'array' THEN
+  RETURN jsonb_build_object('status','validation_failed','code','ITEMS_MUST_BE_ARRAY','batch_id',_batch_id,'idempotent_replay',false,'applied_task_count',0,'applied_assignment_count',0,'notification_event_count',0,'conflicts',jsonb_build_array(jsonb_build_object('code','ITEMS_MUST_BE_ARRAY')));
+ END IF;
  v_count:=jsonb_array_length(_items);
- IF v_count<1 OR v_count>500 THEN RAISE EXCEPTION 'ITEM_COUNT_OUT_OF_RANGE'; END IF;
- IF _notification_policy NOT IN ('require_all_recipients','best_effort') THEN RAISE EXCEPTION 'INVALID_NOTIFICATION_POLICY'; END IF;
+ IF v_count<1 OR v_count>500 THEN
+  RETURN jsonb_build_object('status','validation_failed','code','ITEM_COUNT_OUT_OF_RANGE','batch_id',_batch_id,'idempotent_replay',false,'applied_task_count',0,'applied_assignment_count',0,'notification_event_count',0,'conflicts',jsonb_build_array(jsonb_build_object('code','ITEM_COUNT_OUT_OF_RANGE')));
+ END IF;
+ IF _notification_policy NOT IN ('require_all_recipients','best_effort') THEN
+  RETURN jsonb_build_object('status','validation_failed','code','INVALID_NOTIFICATION_POLICY','batch_id',_batch_id,'idempotent_replay',false,'applied_task_count',0,'applied_assignment_count',0,'notification_event_count',0,'conflicts',jsonb_build_array(jsonb_build_object('code','INVALID_NOTIFICATION_POLICY')));
+ END IF;
  v_hash:=public.planning_batch_request_hash(_sede_id,_source_run_id,_source_run_version,_notification_policy,_items);
 
  PERFORM pg_advisory_xact_lock(hashtextextended('planning-sede:'||_sede_id::text,0));
  SELECT * INTO v_existing FROM public.planning_apply_batches WHERE sede_id=_sede_id AND idempotency_key=_idempotency_key FOR UPDATE;
  IF FOUND THEN
   IF v_existing.request_hash<>v_hash OR v_existing.id<>_batch_id THEN
-   RETURN jsonb_build_object('status','validation_failed','code','IDEMPOTENCY_CONFLICT','batch_id',v_existing.id,'idempotent_replay',false);
+   RETURN jsonb_build_object('status','validation_failed','code','IDEMPOTENCY_CONFLICT','batch_id',v_existing.id,'idempotent_replay',false,'applied_task_count',0,'applied_assignment_count',0,'notification_event_count',0,'conflicts',jsonb_build_array(jsonb_build_object('code','IDEMPOTENCY_CONFLICT')));
   END IF;
   RETURN v_existing.result_summary||jsonb_build_object('status',v_existing.status,'batch_id',v_existing.id,'idempotent_replay',true);
  END IF;
- IF EXISTS(SELECT 1 FROM public.planning_apply_batches WHERE id=_batch_id) THEN RETURN jsonb_build_object('status','validation_failed','code','BATCH_ID_CONFLICT','batch_id',_batch_id,'idempotent_replay',false); END IF;
+ IF EXISTS(SELECT 1 FROM public.planning_apply_batches WHERE id=_batch_id) THEN RETURN jsonb_build_object('status','validation_failed','code','BATCH_IDEMPOTENCY_CONFLICT','batch_id',_batch_id,'idempotent_replay',false,'applied_task_count',0,'applied_assignment_count',0,'notification_event_count',0,'conflicts',jsonb_build_array(jsonb_build_object('code','BATCH_IDEMPOTENCY_CONFLICT'))); END IF;
 
  SELECT COALESCE(sum(CASE WHEN jsonb_typeof(x->'cleaner_ids')='array' THEN jsonb_array_length(x->'cleaner_ids') ELSE 0 END),0)::int INTO v_expected_assignments FROM jsonb_array_elements(_items) x;
  INSERT INTO public.planning_apply_batches(id,sede_id,source_run_id,source_run_version,idempotency_key,request_hash,request_items,actor_id,status,expected_task_count,expected_assignment_count,notification_policy)
@@ -618,7 +626,7 @@ BEGIN
    INSERT INTO public.planning_apply_batch_items(batch_id,item_ordinal,item_key,request_item,apply_status,conflict_code)
    SELECT _batch_id,o,COALESCE(x->>'task_id',x->>'recurring_task_id','invalid')||':'||o,x,'conflict','BATCH_VALIDATION_FAILED'
    FROM jsonb_array_elements(_items) WITH ORDINALITY q(x,o);
-   UPDATE public.planning_apply_batches SET status='validation_failed',failure_code='VALIDATION_FAILED',failure_summary=jsonb_build_object('conflicts',v_conflicts),completed_at=now(),result_summary=jsonb_build_object('status','validation_failed','code','VALIDATION_FAILED','conflicts',v_conflicts,'applied_task_count',0) WHERE id=_batch_id;
+   UPDATE public.planning_apply_batches SET status='validation_failed',failure_code='VALIDATION_FAILED',failure_summary=jsonb_build_object('conflicts',v_conflicts),completed_at=now(),result_summary=jsonb_build_object('status','validation_failed','code','VALIDATION_FAILED','conflicts',v_conflicts,'applied_task_count',0,'applied_assignment_count',0,'notification_event_count',0) WHERE id=_batch_id;
    RETURN (SELECT result_summary||jsonb_build_object('batch_id',id,'idempotent_replay',false) FROM public.planning_apply_batches WHERE id=_batch_id);
   END IF;
 
@@ -730,7 +738,7 @@ BEGIN
    INSERT INTO public.planning_apply_batch_items(batch_id,item_ordinal,item_key,task_id,recurring_task_id,execution_date,expected_planning_version,request_item,apply_status,conflict_code)
    SELECT _batch_id,o,COALESCE(x->>'task_id',(x->>'recurring_task_id')||':'||(x->>'execution_date'))||':'||o,NULLIF(x->>'task_id','')::uuid,NULLIF(x->>'recurring_task_id','')::uuid,NULLIF(x->>'execution_date','')::date,NULLIF(x->>'expected_planning_version','')::bigint,x,'conflict','BATCH_VALIDATION_FAILED'
    FROM jsonb_array_elements(_items) WITH ORDINALITY q(x,o);
-   UPDATE public.planning_apply_batches SET status='validation_failed',failure_code='VALIDATION_FAILED',failure_summary=jsonb_build_object('conflicts',v_conflicts),completed_at=now(),result_summary=jsonb_build_object('status','validation_failed','code','VALIDATION_FAILED','conflicts',v_conflicts,'applied_task_count',0) WHERE id=_batch_id;
+   UPDATE public.planning_apply_batches SET status='validation_failed',failure_code='VALIDATION_FAILED',failure_summary=jsonb_build_object('conflicts',v_conflicts),completed_at=now(),result_summary=jsonb_build_object('status','validation_failed','code','VALIDATION_FAILED','conflicts',v_conflicts,'applied_task_count',0,'applied_assignment_count',0,'notification_event_count',0) WHERE id=_batch_id;
    RETURN (SELECT result_summary||jsonb_build_object('batch_id',id,'idempotent_replay',false) FROM public.planning_apply_batches WHERE id=_batch_id);
   END IF;
 
@@ -798,12 +806,12 @@ BEGIN
    );
   END IF;
   SELECT count(*) INTO v_changed FROM public.planning_assignment_audit WHERE batch_id=_batch_id AND net_change<>'unchanged';
-  v_summary:=jsonb_build_object('status','applied','applied_task_count',v_count,'changed_task_count',v_changed,'assignment_count',(SELECT count(*) FROM public.task_assignments WHERE task_id IN(SELECT task_id FROM public.planning_apply_batch_items WHERE batch_id=_batch_id)),'notification_event_count',(SELECT count(*) FROM public.notification_events WHERE batch_id=_batch_id));
+  v_summary:=jsonb_build_object('status','applied','applied_task_count',v_count,'changed_task_count',v_changed,'applied_assignment_count',(SELECT count(*) FROM public.task_assignments WHERE task_id IN(SELECT task_id FROM public.planning_apply_batch_items WHERE batch_id=_batch_id)),'assignment_count',(SELECT count(*) FROM public.task_assignments WHERE task_id IN(SELECT task_id FROM public.planning_apply_batch_items WHERE batch_id=_batch_id)),'notification_event_count',(SELECT count(*) FROM public.notification_events WHERE batch_id=_batch_id),'conflicts','[]'::jsonb);
   UPDATE public.planning_apply_batches SET status='applied',result_summary=v_summary,completed_at=now() WHERE id=_batch_id;
   RETURN v_summary||jsonb_build_object('batch_id',_batch_id,'idempotent_replay',false);
  EXCEPTION WHEN OTHERS THEN
   GET STACKED DIAGNOSTICS v_error=MESSAGE_TEXT,v_error_context=PG_EXCEPTION_CONTEXT;
-  UPDATE public.planning_apply_batches SET status='technical_failed',failure_code='TECHNICAL_FAILURE',failure_summary=jsonb_build_object('sqlstate',SQLSTATE,'message',left(v_error,160),'context',left(v_error_context,500)),completed_at=now(),result_summary=jsonb_build_object('status','technical_failed','code','TECHNICAL_FAILURE','applied_task_count',0) WHERE id=_batch_id;
+  UPDATE public.planning_apply_batches SET status='technical_failed',failure_code='TECHNICAL_FAILURE',failure_summary=jsonb_build_object('sqlstate',SQLSTATE,'message',left(v_error,160),'context',left(v_error_context,500)),completed_at=now(),result_summary=jsonb_build_object('status','technical_failed','code','TECHNICAL_FAILURE','applied_task_count',0,'applied_assignment_count',0,'notification_event_count',0,'conflicts','[]'::jsonb) WHERE id=_batch_id;
   RETURN (SELECT result_summary||jsonb_build_object('batch_id',id,'idempotent_replay',false) FROM public.planning_apply_batches WHERE id=_batch_id);
  END;
 END $$;

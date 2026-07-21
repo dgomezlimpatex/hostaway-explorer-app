@@ -27,7 +27,7 @@ const amplified = buildPlanningItems(150, { workersPerTask: 3 });
 assert.equal(amplified.flatMap((item) => item.proposed_cleaner_ids).length, 450);
 assert.equal(new Set(amplified.flatMap((item) => item.proposed_cleaner_ids)).size, 450);
 
-assert.match(sql, /jsonb_array_length\s*\(\s*_items\s*\)\s*>\s*500/i, '501 debe rechazarse explícitamente');
+assert.match(sql, /(?:jsonb_array_length\s*\(\s*_items\s*\)|v_count)\s*>\s*500/i, '501 debe rechazarse explícitamente');
 assert.match(sql, /jsonb_to_recordset|jsonb_array_elements/i);
 assert.match(sql, /ON\s+CONFLICT[\s\S]*recurring_task_id[\s\S]*execution_date|UNIQUE[\s\S]*recurring_task_id[\s\S]*execution_date/i);
 assert.match(sql, /expected_task_count/i);

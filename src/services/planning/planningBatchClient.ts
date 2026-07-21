@@ -111,16 +111,73 @@ export async function buildPlanningBatchRpcArgs(request: PlanningBatchApplyReque
   };
 }
 
-function parsePlanningBatchResult(value: unknown): PlanningBatchApplyResult {
+const planningBatchStatuses: readonly PlanningBatchStatus[] = [
+  'applying', 'applied', 'validation_failed', 'technical_failed',
+];
+
+function isPlanningBatchStatus(value: unknown): value is PlanningBatchStatus {
+  return typeof value === 'string'
+    && planningBatchStatuses.some((status) => status === value);
+}
+
+function isPlanningJsonValue(value: unknown): value is PlanningJsonValue {
+  if (value === null || ['string', 'number', 'boolean'].includes(typeof value)) return true;
+  if (Array.isArray(value)) return value.every(isPlanningJsonValue);
+  return typeof value === 'object'
+    && Object.values(value).every(isPlanningJsonValue);
+}
+
+function isPlanningBatchConflict(value: unknown): value is PlanningBatchConflict {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+  const conflict = value as Record<string, unknown>;
+  return typeof conflict.code === 'string'
+    && (conflict.message === undefined || typeof conflict.message === 'string')
+    && (conflict.item_index === undefined || Number.isInteger(conflict.item_index))
+    && (conflict.task_id === undefined || typeof conflict.task_id === 'string')
+    && (conflict.cleaner_id === undefined || typeof conflict.cleaner_id === 'string')
+    && Object.values(conflict).every((entry) => entry === undefined || isPlanningJsonValue(entry));
+}
+
+function requireNonNegativeInteger(result: Record<string, unknown>, field: string): number {
+  const value = result[field];
+  if (typeof value !== 'number' || !Number.isInteger(value) || value < 0) {
+    throw new Error(`La RPC apply_planning_batch devolvió ${field} inválido: se esperaba un entero no negativo`);
+  }
+  return value;
+}
+
+export function parsePlanningBatchResult(value: unknown): PlanningBatchApplyResult {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
-    throw new Error('La RPC apply_planning_batch devolvió una respuesta inválida');
+    throw new Error('La RPC apply_planning_batch devolvió un objeto inválido');
   }
   const result = value as Record<string, unknown>;
-  const validStatuses: PlanningBatchStatus[] = ['applying', 'applied', 'validation_failed', 'technical_failed'];
-  if (typeof result.batch_id !== 'string' || !validStatuses.includes(result.status as PlanningBatchStatus)) {
-    throw new Error('La RPC apply_planning_batch devolvió un estado inválido');
+  if (typeof result.batch_id !== 'string'
+      || !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(result.batch_id)) {
+    throw new Error('La RPC apply_planning_batch devolvió batch UUID inválido');
   }
-  return result as unknown as PlanningBatchApplyResult;
+  if (!isPlanningBatchStatus(result.status)) {
+    throw new Error('La RPC apply_planning_batch devolvió status inválido');
+  }
+  if (typeof result.idempotent_replay !== 'boolean') {
+    throw new Error('La RPC apply_planning_batch devolvió idempotent_replay inválido: se esperaba boolean');
+  }
+  const appliedTaskCount = requireNonNegativeInteger(result, 'applied_task_count');
+  const appliedAssignmentCount = requireNonNegativeInteger(result, 'applied_assignment_count');
+  const notificationEventCount = requireNonNegativeInteger(result, 'notification_event_count');
+  if (!Array.isArray(result.conflicts) || !result.conflicts.every(isPlanningBatchConflict)) {
+    throw new Error('La RPC apply_planning_batch devolvió conflicts inválido: se esperaba un array de conflictos');
+  }
+
+  return {
+    ...result,
+    batch_id: result.batch_id,
+    status: result.status,
+    idempotent_replay: result.idempotent_replay,
+    applied_task_count: appliedTaskCount,
+    applied_assignment_count: appliedAssignmentCount,
+    notification_event_count: notificationEventCount,
+    conflicts: result.conflicts,
+  };
 }
 
 export async function applyPlanningBatch(request: PlanningBatchApplyRequest): Promise<PlanningBatchApplyResult> {

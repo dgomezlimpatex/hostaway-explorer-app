@@ -48,6 +48,7 @@
     "test:whatsapp-deleted-task-cancellation": "node scripts/whatsappDeletedTaskCancellationTest.mjs",
     "test:legacy-assignment-writer-guard": "node scripts/legacyAssignmentWriterGuardTest.mjs",
     "test:planning-provider-safety": "node scripts/planningProviderSafetyTest.mjs",
+    "test:planning-hermes-150": "node scripts/planningHermes150Harness.mjs",
     "test:planning-hermes-150:red": "node scripts/planningHermes150RedHarness.mjs",
     "preview": "vite preview"
   },
