@@ -8,10 +8,12 @@ const suites = [
   'planningBatchConcurrencyTest.mjs',
   'whatsappDeletedTaskCancellationTest.mjs',
   'legacyAssignmentWriterGuardTest.mjs',
+  'cleanerDeletionCanonicalTest.mjs',
   'planningProviderSafetyTest.mjs',
 ];
 
 const failures = [];
+
 for (const suite of suites) {
   const result = spawnSync(process.execPath, [`scripts/${suite}`], {
     cwd: process.cwd(),
