@@ -1,6 +1,7 @@
 import { spawnSync } from 'node:child_process';
 
 const suites = [
+  'planningBatchClientTest.mjs',
   'planningBatchContractTest.mjs',
   'planningBatchAtomicityTest.mjs',
   'planningBatchLoadScenariosTest.mjs',
