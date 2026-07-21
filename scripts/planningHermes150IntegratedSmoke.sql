@@ -13,7 +13,8 @@ INSERT INTO public.tasks(id,date,start_time,end_time,sede_id) VALUES
  ('43000000-0000-0000-0000-000000000003','2027-01-13','10:00','11:00','13000000-0000-0000-0000-000000000001'),
  ('43000000-0000-0000-0000-000000000004','2027-01-14','10:00','11:00','13000000-0000-0000-0000-000000000001'),
  ('43000000-0000-0000-0000-000000000005','2027-01-15','10:00','11:00','13000000-0000-0000-0000-000000000001'),
- ('43000000-0000-0000-0000-000000000006','2027-01-16','10:00','11:00','13000000-0000-0000-0000-000000000001');
+ ('43000000-0000-0000-0000-000000000006','2027-01-16','10:00','11:00','13000000-0000-0000-0000-000000000001'),
+ ('43000000-0000-0000-0000-000000000007','2027-01-16','10:30','11:30','13000000-0000-0000-0000-000000000001');
 
 -- Helpers exclusivamente del baseline integrado: no forman parte de la migración.
 CREATE TABLE public.planning_test_race_results(
@@ -123,6 +124,20 @@ BEGIN
         AND payload->'changed_fields' ? 'address'
     ) THEN
    RAISE EXCEPTION 'real_task_change_notification_missing';
+ END IF;
+
+ -- Con Planning 150 apagado, el writer legacy mantiene los overrides manuales:
+ -- un solapamiento se avisa en UI, pero no bloquea la asignación en base de datos.
+ PERFORM public.set_task_assignments(
+   '43000000-0000-0000-0000-000000000007',
+   ARRAY['33000000-0000-0000-0000-000000000003'::uuid]
+ );
+ IF NOT EXISTS(
+   SELECT 1 FROM public.task_assignments
+   WHERE task_id='43000000-0000-0000-0000-000000000007'
+     AND cleaner_id='33000000-0000-0000-0000-000000000003'
+ ) THEN
+   RAISE EXCEPTION 'legacy_manual_assignment_override_blocked';
  END IF;
 END $$;
 
