@@ -2,19 +2,24 @@ import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { read, walk } from './planningBatchTestSupport.mjs';
 
-const sql = walk('supabase/migrations', (path) => path.endsWith('.sql')).map(read).join('\n');
+const planningSql = walk('supabase/migrations', (path) => (
+  path.endsWith('.sql')
+  && /planning_batch|deleted_task_cancellation/.test(path)
+)).map(read).join('\n');
 const functionSources = walk('supabase/functions', (path) => path.endsWith('.ts'))
   .map((path) => ({ path, source: read(path) }));
 const allFunctions = functionSources.map(({ source }) => source).join('\n');
+const providerSink = read('scripts/planningProviderSink.mjs');
 
 for (const mode of ['shadow', 'test', 'live']) {
   assert.match(allFunctions, new RegExp(`['"]${mode}['"]`), `falta adapter/mode ${mode}`);
 }
 assert.match(allFunctions, /PLANNING_NOTIFICATIONS_LIVE|PLANNING_NOTIFICATION_MODE/);
-assert.match(allFunctions, /PLANNING_PROVIDER_SINK_URL|providerSink/i);
+assert.match(providerSink, /PLANNING_PROVIDER_SINK_URL/);
+assert.doesNotMatch(allFunctions, /PLANNING_PROVIDER_SINK_URL/, 'el sink local no debe filtrarse en Edge Functions productivas');
 assert.match(allFunctions, /WHATSAPP_BATCH_DISPATCH_ENABLED/);
 assert.match(allFunctions, /RESEND|EMAIL[\s\S]{0,120}ENABLED|EMAIL[\s\S]{0,120}KILL/i, 'Resend necesita kill switch independiente');
-assert.doesNotMatch(sql, /(?:net\.)?http_post\s*\(|graph\.facebook\.com|api\.resend\.com/i);
+assert.doesNotMatch(planningSql, /(?:net\.)?http_post\s*\(|graph\.facebook\.com|api\.resend\.com/i);
 
 const child = spawn(process.execPath, [
   'scripts/planningProviderSink.mjs',

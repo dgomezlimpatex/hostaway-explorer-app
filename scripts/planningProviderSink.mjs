@@ -40,7 +40,7 @@ try {
         PLANNING_NOTIFICATIONS_LIVE: 'false',
       },
       stdio: 'inherit',
-      shell: process.platform === 'win32',
+      shell: false,
     });
     const exitCode = await new Promise((resolve, reject) => {
       child.once('error', reject);

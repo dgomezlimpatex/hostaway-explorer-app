@@ -13,6 +13,7 @@ const suites = [
   'whatsappDeletedTaskCancellationTest.mjs',
   'legacyAssignmentWriterGuardTest.mjs',
   'cleanerDeletionCanonicalTest.mjs',
+  'planningNotificationProviderTest.mjs',
   'planningProviderSafetyTest.mjs',
 ];
 
