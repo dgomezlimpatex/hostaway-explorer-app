@@ -210,7 +210,7 @@ Checklist transaccional:
   - [x] `PLANNING_TRANSACTIONAL_APPLY_SHADOW`
   - [x] `PLANNING_NOTIFICATIONS_LIVE`
 - [ ] Añadir kill switches independientes para WhatsApp, Resend/correo, recordatorios y worker v2. *(Contrato fail-closed creado; pendiente conectarlos a cada consumidor.)*
-- [ ] Añadir adaptadores provider `shadow`, `test` y `live`; `shadow/test` nunca leen credenciales productivas. *(Resolución segura creada; pendientes los adapters/sinks del dispatcher.)*
+- [x] Añadir adaptadores provider `shadow`, `test` y `live`; `shadow/test` nunca leen credenciales productivas. *(Factory RED→GREEN: shadow/test hacen 0 lecturas de secrets y 0 creación de clientes de red.)*
 - [ ] Definir en un test cross-seam los nombres exactos de RPC, argumentos, estados y claves de retorno.
 - [x] Confirmar que, con flags apagados, el comportamiento legacy no cambia. *(Verificado: helpers nuevos sin imports productivos; baseline, typecheck y build verdes.)*
 
