@@ -8,7 +8,7 @@ export class DatabaseService {
   async getTask(taskId: string): Promise<Task | null> {
     const { data, error } = await supabase
       .from('tasks')
-      .select('*')
+      .select('*, task_assignments(*)')
       .eq('id', taskId)
       .single();
 
@@ -33,7 +33,8 @@ export class DatabaseService {
       cost: data.coste,
       paymentMethod: data.metodo_pago,
       supervisor: data.supervisor,
-      cleanerId: data.cleaner_id,
+      cleanerId: data.task_assignments?.[0]?.cleaner_id || data.cleaner_id,
+      assignments: data.task_assignments || [],
       created_at: data.created_at,
       updated_at: data.updated_at
     };
@@ -52,7 +53,17 @@ export class DatabaseService {
 
     if (error || !data) return null;
 
-    const group = data.property_groups as any;
+    const group = data.property_groups as unknown as {
+      id: string;
+      name: string;
+      description?: string;
+      check_out_time: string;
+      check_in_time: string;
+      is_active: boolean;
+      auto_assign_enabled: boolean;
+      created_at: string;
+      updated_at: string;
+    };
     return {
       id: group.id,
       name: group.name,
@@ -69,34 +80,47 @@ export class DatabaseService {
   async getExistingTasksForDate(date: string): Promise<Task[]> {
     const { data, error } = await supabase
       .from('tasks')
-      .select('*')
+      .select('*, task_assignments(*)')
       .eq('date', date);
 
     if (error || !data) return [];
 
-    return data.map(row => ({
-      id: row.id,
-      property: row.property,
-      address: row.address,
-      startTime: row.start_time,
-      endTime: row.end_time,
-      type: row.type,
-      status: row.status as 'pending' | 'in-progress' | 'completed',
-      checkOut: row.check_out,
-      checkIn: row.check_in,
-      cleaner: row.cleaner,
-      backgroundColor: row.background_color,
-      date: row.date,
-      clienteId: row.cliente_id,
-      propertyId: row.propiedad_id,
-      duration: row.duracion,
-      cost: row.coste,
-      paymentMethod: row.metodo_pago,
-      supervisor: row.supervisor,
-      cleanerId: row.cleaner_id,
-      created_at: row.created_at,
-      updated_at: row.updated_at
-    }));
+    return data.flatMap(row => {
+      const assignments = row.task_assignments || [];
+      const baseTask = {
+        id: row.id,
+        property: row.property,
+        address: row.address,
+        startTime: row.start_time,
+        endTime: row.end_time,
+        type: row.type,
+        status: row.status as 'pending' | 'in-progress' | 'completed',
+        checkOut: row.check_out,
+        checkIn: row.check_in,
+        cleaner: row.cleaner,
+        backgroundColor: row.background_color,
+        date: row.date,
+        clienteId: row.cliente_id,
+        propertyId: row.propiedad_id,
+        duration: row.duracion,
+        cost: row.coste,
+        paymentMethod: row.metodo_pago,
+        supervisor: row.supervisor,
+        assignments,
+        created_at: row.created_at,
+        updated_at: row.updated_at
+      };
+
+      if (assignments.length === 0) {
+        return [{ ...baseTask, cleanerId: row.cleaner_id }];
+      }
+
+      return assignments.map(assignment => ({
+        ...baseTask,
+        cleaner: assignment.cleaner_name,
+        cleanerId: assignment.cleaner_id
+      }));
+    });
   }
 
   async getAssignmentPatterns(groupId: string): Promise<AssignmentPattern[]> {
@@ -131,29 +155,30 @@ export class DatabaseService {
     return data;
   }
 
-  async logAssignment(taskId: string, propertyGroupId: string, result: AssignmentResult): Promise<void> {
-    await supabase
-      .from('auto_assignment_logs')
-      .insert({
-        task_id: taskId,
-        property_group_id: propertyGroupId,
-        assigned_cleaner_id: result.cleanerId,
-        algorithm_used: result.algorithm,
-        assignment_reason: result.reason,
-        confidence_score: result.confidence,
-        was_manual_override: false
-      });
-  }
+  async autoAssignTask(taskId: string): Promise<AssignmentResult> {
+    const { data, error } = await supabase.rpc('auto_assign_task_transactional', {
+      _task_id: taskId,
+      _actor_id: (await supabase.auth.getUser()).data.user?.id ?? null,
+    });
+    if (error) throw error;
 
-  async updateTaskAssignment(taskId: string, cleanerId: string, cleanerName: string | null, confidence: number): Promise<void> {
-    await supabase
-      .from('tasks')
-      .update({
-        cleaner_id: cleanerId,
-        cleaner: cleanerName,
-        auto_assigned: true,
-        assignment_confidence: confidence
-      })
-      .eq('id', taskId);
+    const result = data as unknown as {
+      success: boolean;
+      cleanerId?: string;
+      cleanerName?: string;
+      confidence?: number;
+      reason?: string;
+      algorithm?: string;
+    };
+    if (!result || typeof result.success !== 'boolean') {
+      throw new Error('Resultado semántico inválido de auto_assign_task_transactional');
+    }
+    return {
+      cleanerId: result.success ? result.cleanerId ?? null : null,
+      cleanerName: result.success ? result.cleanerName ?? null : null,
+      confidence: result.success ? Number(result.confidence ?? 0) : 0,
+      reason: result.reason ?? (result.success ? 'Assigned' : 'No available cleaners'),
+      algorithm: result.algorithm ?? 'priority-saturation-transactional-v5',
+    };
   }
 }

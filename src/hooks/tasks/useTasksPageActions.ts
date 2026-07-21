@@ -53,9 +53,9 @@ export const useTasksPageActions = (currentDate: Date = new Date()) => {
     } catch (error: any) {
       console.error('❌ Batch create failed:', error);
       toast({
-        title: "Error",
+        title: error.tasksCommitted ? "Tareas creadas con incidencia" : "Error",
         description: error.message || "No se pudieron crear las tareas.",
-        variant: "destructive",
+        variant: error.tasksCommitted ? "default" : "destructive",
       });
       throw error;
     } finally {

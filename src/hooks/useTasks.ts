@@ -10,6 +10,14 @@ import { useSedeContext } from './useSedeContext';
 import { useSede } from '@/contexts/SedeContext';
 import { logger } from '@/utils/logger';
 import { formatMadridDate } from '@/utils/date';
+import { supabase } from '@/integrations/supabase/client';
+
+class BatchCreateError extends Error {
+  constructor(message: string, public tasksCommitted: boolean) { super(message); }
+}
+const sha256Text = async (value: string) => Array.from(
+  new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(value))),
+).map((byte) => byte.toString(16).padStart(2, '0')).join('');
 
 export const useTasks = (currentDate: Date, currentView: ViewType) => {
   const queryClient = useQueryClient();
@@ -393,47 +401,63 @@ export const useTasks = (currentDate: Date, currentView: ViewType) => {
         }
       }
       
+      const apiTasks = tasks.map(task => ({
+        property: task.property,
+        address: task.address,
+        date: task.date,
+        startTime: task.startTime,
+        endTime: task.endTime,
+        type: task.type,
+        status: task.status,
+        checkIn: task.checkIn,
+        checkOut: task.checkOut,
+        clienteId: task.clienteId,
+        propertyId: task.propertyId,
+        duration: task.duration,
+        cost: task.cost,
+        paymentMethod: task.paymentMethod,
+        supervisor: task.supervisor,
+        cleanerId: task.cleanerId,
+      }));
+      const payloadSignature = JSON.stringify({ sedeId, tasks: apiTasks, sendEmails });
+      const idempotencyStorageKey = `batch-create-idempotency:${await sha256Text(payloadSignature)}`;
+      const idempotencyKey = localStorage.getItem(idempotencyStorageKey) ?? crypto.randomUUID();
+      localStorage.setItem(idempotencyStorageKey, idempotencyKey);
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) throw new BatchCreateError('La sesión ha caducado. Vuelve a iniciar sesión.', false);
+
       const response = await fetch(
         'https://qyipyygojlfhdghnraus.supabase.co/functions/v1/batch-create-tasks',
         {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF5aXB5eWdvamxmaGRnaG5yYXVzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDk1NTUyNTYsImV4cCI6MjA2NTEzMTI1Nn0.8L48rM_j_95tM37KRB6pBo4PgsLcHWoMMMO-OkPGw2Q`,
+            'Authorization': `Bearer ${session.access_token}`,
           },
           body: JSON.stringify({
-            tasks: tasks.map(task => ({
-              property: task.property,
-              address: task.address,
-              date: task.date,
-              startTime: task.startTime,
-              endTime: task.endTime,
-              type: task.type,
-              status: task.status,
-              checkIn: task.checkIn,
-              checkOut: task.checkOut,
-              clienteId: task.clienteId,
-              propertyId: task.propertyId,
-              duration: task.duration,
-              cost: task.cost,
-              paymentMethod: task.paymentMethod,
-              supervisor: task.supervisor,
-              cleanerId: task.cleanerId,
-              cleanerName: task.cleaner,
-              // Note: cleanerEmail would need to be fetched from cleaners list if needed
-            })),
+            tasks: apiTasks,
             sedeId,
             sendEmails,
+            idempotencyKey,
           }),
         }
-      );
-      
+      ).catch((error) => {
+        logger.error('Batch create sin respuesta concluyente:', error);
+        throw new BatchCreateError('No se recibió confirmación del servidor. El estado es incierto; al reintentar se reutilizará la misma clave para no duplicar tareas ni emails.', false);
+      });
+      const responseData = await response.json().catch(() => ({ error: `HTTP ${response.status}` }));
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to create batch tasks');
+        const committed = responseData.tasksCommitted === true;
+        if (committed) {
+          await queryClient.invalidateQueries({ queryKey: ['tasks'] });
+          await queryClient.refetchQueries({ queryKey: ['tasks'], type: 'active' });
+          throw new BatchCreateError(`${responseData.error || 'Error posterior a la creación'}. Las tareas sí se guardaron; revisa el estado de los emails antes de reintentar.`, true);
+        }
+        if (response.status < 500) localStorage.removeItem(idempotencyStorageKey);
+        throw new BatchCreateError(responseData.error || 'Failed to create batch tasks', false);
       }
-      
-      return await response.json();
+      localStorage.removeItem(idempotencyStorageKey);
+      return responseData;
     },
     onSuccess: (data) => {
       logger.log(`✅ Batch created ${data.created} tasks, ${data.emailsSent} emails sent`);
@@ -449,12 +473,12 @@ export const useTasks = (currentDate: Date, currentView: ViewType) => {
       
       logger.log('🔄 Cache invalidated after batch create');
     },
-    onError: (error) => {
+    onError: (error: BatchCreateError) => {
       logger.error('❌ Batch create failed:', error);
       toast({
-        title: "Error al crear tareas",
+        title: error.tasksCommitted ? "Tareas creadas con incidencia" : "Error al crear tareas",
         description: error.message || "No se pudieron crear las tareas.",
-        variant: "destructive",
+        variant: error.tasksCommitted ? "default" : "destructive",
       });
     },
   });

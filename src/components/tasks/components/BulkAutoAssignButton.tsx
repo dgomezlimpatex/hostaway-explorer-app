@@ -42,7 +42,7 @@ export const BulkAutoAssignButton = ({
         throw error;
       }
       console.log('Resultado de asignación automática:', data);
-      if (data?.success && data?.summary) {
+      if (data?.summary) {
         const {
           assigned,
           total,
@@ -54,8 +54,8 @@ export const BulkAutoAssignButton = ({
           variant: assigned > 0 ? "default" : "destructive"
         });
 
-        // Actualizar la lista de tareas
-        onAssignmentComplete();
+        // Incluso una respuesta parcial mutó tareas: refrescar para no dejar UI stale.
+        if (assigned > 0) onAssignmentComplete();
       } else {
         throw new Error(data?.error || 'Error desconocido en la asignación automática');
       }
