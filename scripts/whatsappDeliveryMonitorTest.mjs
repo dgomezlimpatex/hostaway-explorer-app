@@ -415,10 +415,10 @@ assert.match(sender, /if \(!shouldForceFallback\)/);
 assert.match(sender, /const shouldForceFallback = forceEmailFallback/);
 assert.doesNotMatch(sender, /event\.event_type === 'task_rejected_alert' && event\.status === 'failed'/);
 assert.match(sender, /whatsapp-admin-fallback\/\$\{eventId\}/);
-assert.match(sender, /finalize_whatsapp_non_delivery_result/);
+assert.match(sender, /finalize_whatsapp_send_attempt_non_delivery/);
 assert.match(
   sender,
-  /finalize_whatsapp_non_delivery_result[\s\S]{0,380}_lease_token:\s*processingLeaseToken/,
+  /finalize_whatsapp_send_attempt_non_delivery[\s\S]{0,380}_attempt_token:\s*attemptToken/,
   'todo resultado posterior al inicio debe cerrarse con el lease vigente',
 );
 assert.doesNotMatch(
@@ -467,7 +467,7 @@ assert.match(
   /rejection_notification_failed_after_sender_replay[\s\S]{0,220}mark_whatsapp_webhook_callback/,
   'el replay del emisor debe completar la alerta de rechazo antes de marcar el botón',
 );
-assert.match(sender, /finalize_whatsapp_send_delivery/);
+assert.match(sender, /finalize_whatsapp_send_attempt/);
 assert.doesNotMatch(sender, /^\s*await supabase\.from\('notification_events'\)\.update/m);
 assert.match(sender, /\.eq\('id', event\.task_id\)\s*\.maybeSingle\(\)/s);
 assert.match(sender, /\.eq\('id', event\.cleaner_id\)\s*\.maybeSingle\(\)/s);

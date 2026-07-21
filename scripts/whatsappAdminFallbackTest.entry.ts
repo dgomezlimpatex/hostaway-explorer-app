@@ -81,8 +81,8 @@ export async function run(assert: typeof import('node:assert/strict')) {
     `${process.cwd()}/supabase/functions/send-whatsapp-notification/index.ts`,
     'utf8',
   );
-  assert.match(sendFunction, /resolveNotificationRecipient\(event\.event_type, cleaner, adminPhone\)/);
-  assert.match(sendFunction, /buildRejectedAlertBodyParameters\(cleaner, task, date\)/);
+  assert.match(sendFunction, /resolveNotificationRecipient\(event\.event_type, cleanerData, adminPhone\)/);
+  assert.match(sendFunction, /buildRejectedAlertBodyParameters\(cleanerData, taskData, date\)/);
   assert.match(sendFunction, /sendAdminFallbackEmail\(/);
   assert.match(sendFunction, /shouldSendAdminEmailFallback\(event\.event_type, whatsappSucceeded, fallbackEmail\)/);
   assert.match(sendFunction, /forceEmailFallback/);

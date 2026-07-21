@@ -57,6 +57,9 @@ serve(async (req: Request): Promise<Response> => {
   }
   const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
   const supabase = createClient(supabaseUrl, serviceRoleKey);
+  let claimedEventId: string | null = null;
+  let claimedLeaseToken: string | null = null;
+  let providerPostStarted = false;
 
   const invokeDerivedNotification = async (derivedEventId: string) => {
     const response = await fetch(`${supabaseUrl}/functions/v1/send-whatsapp-notification`, {
@@ -113,6 +116,7 @@ serve(async (req: Request): Promise<Response> => {
 
     const shouldForceFallback = forceEmailFallback;
     let processingLeaseToken: string | null = null;
+    const nextProcessingAttempt = Number(event.processing_attempts ?? 0) + 1;
     let metaRetryClaimed = false;
     const finalizeClaimedEventFailure = async (errorMessage: string): Promise<boolean> => {
       // Los fallos de la ruta forzada ya parten de un evento terminal y no deben
@@ -200,6 +204,29 @@ serve(async (req: Request): Promise<Response> => {
         if (!metaRetryClaimed) processingLeaseToken = null;
       }
 
+      // El recuperador genérico ve leases abandonados a los 10 minutos, pero el
+      // segundo POST solo puede autorizarse 15 minutos después del POST original.
+      // Durante esa ventana no finalizamos ni renovamos processed_at: el reloj
+      // inmutable es provider_payload.send_started_at.
+      const firstQueuedDelivery = queuedDeliveries?.[0];
+      const firstAttemptStartedAt = Date.parse(
+        firstQueuedDelivery?.provider_payload?.send_started_at ?? '',
+      );
+      const firstAttemptCount = Number(
+        firstQueuedDelivery?.provider_payload?.meta_attempt_count ?? 1,
+      );
+      const retryNotDue = queuedDeliveryIds.length === 1
+        && hasStartedDelivery
+        && firstAttemptCount === 1
+        && Number.isFinite(firstAttemptStartedAt)
+        && firstAttemptStartedAt > Date.now() - 15 * 60 * 1000;
+      if (!metaRetryClaimed && retryNotDue) {
+        return new Response(JSON.stringify({ ok: true, status: 'retry_not_due' }), {
+          status: 202,
+          headers: { 'Content-Type': 'application/json', ...corsHeaders },
+        });
+      }
+
       if (queuedDeliveryIds.length > 0 && (hasStartedDelivery || queuedDeliveryIds.length > 1) && !metaRetryClaimed) {
         const reconciliationMessage = 'Resultado de Meta incierto: requiere reconciliación manual para evitar duplicados';
         let concurrentlyReconciled: { deliveryId: string; status: string; providerMessageId?: string } | null = null;
@@ -272,6 +299,51 @@ serve(async (req: Request): Promise<Response> => {
       if (!metaRetryClaimed) {
         const claimedAt = new Date().toISOString();
         const staleBefore = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+
+        // Un crash puede impedir que el catch libere el lease. Antes de renovar
+        // otra generación, el propio claim aplica el mismo presupuesto finito.
+        if (nextProcessingAttempt > Number(event.max_attempts ?? 3)) {
+          const exhaustedUpdate = {
+            status: 'dead_letter',
+            processed_at: claimedAt,
+            processing_lease_token: null,
+            error_message: 'Reintentos pre-delivery agotados; requiere revisión manual',
+          };
+          let exhaustedEvent: { id: string } | null = null;
+          if (event.status === 'pending') {
+            const { data, error: exhaustPendingError } = await supabase
+              .from('notification_events')
+              .update(exhaustedUpdate)
+              .eq('id', eventId)
+              .eq('status', 'pending')
+              .select('id')
+              .maybeSingle();
+            if (exhaustPendingError) throw exhaustPendingError;
+            exhaustedEvent = data;
+          } else if (
+            event.status === 'processing'
+            && event.processed_at
+            && event.processed_at < staleBefore
+          ) {
+            const { data, error: exhaustProcessingError } = await supabase
+              .from('notification_events')
+              .update(exhaustedUpdate)
+              .eq('id', eventId)
+              .eq('status', 'processing')
+              .lt('processed_at', staleBefore)
+              .select('id')
+              .maybeSingle();
+            if (exhaustProcessingError) throw exhaustProcessingError;
+            exhaustedEvent = data;
+          }
+          if (exhaustedEvent) {
+            return new Response(JSON.stringify({ ok: false, status: 'dead_letter' }), {
+              status: 200,
+              headers: { 'Content-Type': 'application/json', ...corsHeaders },
+            });
+          }
+        }
+
         processingLeaseToken = crypto.randomUUID();
         let claimedEvent: { id: string } | null = null;
 
@@ -282,6 +354,7 @@ serve(async (req: Request): Promise<Response> => {
             status: 'processing',
             processed_at: claimedAt,
             processing_lease_token: processingLeaseToken,
+            processing_attempts: nextProcessingAttempt,
             error_message: null,
           })
           .eq('id', eventId)
@@ -300,6 +373,7 @@ serve(async (req: Request): Promise<Response> => {
           .update({
             processed_at: claimedAt,
             processing_lease_token: processingLeaseToken,
+            processing_attempts: nextProcessingAttempt,
             error_message: null,
           })
           .eq('id', eventId)
@@ -324,6 +398,9 @@ serve(async (req: Request): Promise<Response> => {
 
     }
 
+    claimedEventId = eventId;
+    claimedLeaseToken = processingLeaseToken;
+
     const templateName = templateForEventType(event.event_type);
     if (!templateName) {
       const failurePersisted = await finalizeClaimedEventFailure(`Sin plantilla para event_type ${event.event_type}`);
@@ -339,15 +416,22 @@ serve(async (req: Request): Promise<Response> => {
       });
     }
 
-    // 2. Para eventos de batch, snapshots y routing son la fuente durable. El
-    // lookup live queda únicamente como fallback para eventos legacy.
-    const hasBatchTaskSnapshot = Boolean(
-      event.batch_id && event.snapshot && typeof event.snapshot === 'object'
-      && Object.keys(event.snapshot).length > 0,
-    );
-    let task = hasBatchTaskSnapshot ? event.snapshot : null;
+    // 2. Los eventos de batch y las cancelaciones hard-delete usan snapshots
+    // durables. El lookup live queda como fallback exclusivo para eventos legacy.
+    const cancellationTaskSnapshot = event.event_type === 'task_cancelled'
+      && event.snapshot?.task
+      && typeof event.snapshot.task === 'object'
+      ? event.snapshot.task
+      : null;
+    const batchTaskSnapshot = event.batch_id
+      && event.snapshot
+      && typeof event.snapshot === 'object'
+      && Object.keys(event.snapshot).length > 0
+      ? event.snapshot
+      : null;
+    let task = cancellationTaskSnapshot ?? batchTaskSnapshot;
     let taskError: { message?: string } | null = null;
-    if (!task) {
+    if (!task && event.task_id) {
       const liveTask = await supabase
         .from('tasks')
         .select('*')
@@ -356,8 +440,15 @@ serve(async (req: Request): Promise<Response> => {
       task = liveTask.data;
       taskError = liveTask.error;
     }
+    const taskData = task;
 
-    let cleaner = event.batch_id && event.recipient_name_snapshot
+    const cancellationRecipientSnapshot = event.event_type === 'task_cancelled'
+      && event.snapshot?.recipient
+      && typeof event.snapshot.recipient === 'object'
+      ? event.snapshot.recipient
+      : null;
+    const batchRecipientSnapshot = event.batch_id
+      && (event.recipient_name_snapshot || event.recipient_phone_snapshot)
       ? {
         id: event.recipient_worker_id ?? event.cleaner_id,
         name: event.recipient_name_snapshot,
@@ -365,8 +456,9 @@ serve(async (req: Request): Promise<Response> => {
         whatsapp_phone_e164: event.recipient_phone_snapshot,
       }
       : null;
+    let cleaner = cancellationRecipientSnapshot ?? batchRecipientSnapshot;
     let cleanerError: { message?: string } | null = null;
-    if (!cleaner) {
+    if (!cleaner && event.cleaner_id) {
       const liveCleaner = await supabase
         .from('cleaners')
         .select('*')
@@ -375,11 +467,12 @@ serve(async (req: Request): Promise<Response> => {
       cleaner = liveCleaner.data;
       cleanerError = liveCleaner.error;
     }
+    const cleanerData = cleaner;
 
     if (taskError) throw taskError;
     if (cleanerError) throw cleanerError;
-    if (!task || !cleaner) {
-      const failurePersisted = await finalizeClaimedEventFailure('Tarea o limpiadora no encontrada');
+    if (!taskData || !cleanerData) {
+      const failurePersisted = await finalizeClaimedEventFailure('Tarea o destinatario no encontrado');
       if (!failurePersisted) {
         return new Response(JSON.stringify({ ok: true, status: 'stale_claim' }), {
           status: 202,
@@ -395,24 +488,24 @@ serve(async (req: Request): Promise<Response> => {
     // 3. Resolver destinatario: trabajadora para eventos normales, administración para rechazos.
     const adminPhone = Deno.env.get('WHATSAPP_ADMIN_PHONE_E164') ?? '';
     const fallbackEmail = Deno.env.get('WHATSAPP_ADMIN_FALLBACK_EMAIL') ?? '';
-    const liveRouting = resolveNotificationRecipient(event.event_type, cleaner, adminPhone);
-    const snapshotRecipient = event.batch_id
+    const baseRouting = resolveNotificationRecipient(event.event_type, cleanerData, adminPhone);
+    const batchSnapshotRecipient = event.batch_id
       ? normalizeSpanishPhoneE164(event.recipient_phone_snapshot)
       : null;
-    const routing = snapshotRecipient && liveRouting.kind !== 'admin'
-      ? { recipient: snapshotRecipient, enabled: true, kind: 'cleaner' as const }
-      : liveRouting;
+    const routing = batchSnapshotRecipient && baseRouting.kind !== 'admin'
+      ? { recipient: batchSnapshotRecipient, enabled: true, kind: 'cleaner' as const }
+      : baseRouting;
     const recipient = routing.recipient;
     const enabled = routing.enabled;
 
     // 4. Construir parámetros del cuerpo según plantilla
     const def = WHATSAPP_TEMPLATES[templateName];
-    const name = cleaner.name ?? '';
-    const property = task.property ?? '';
-    const address = task.address ?? '';
-    const date = fmtMadridDate(task.date ?? '');
-    const start = task.start_time ?? task.startTime ?? '';
-    const end = task.end_time ?? task.endTime ?? '';
+    const name = cleanerData.name ?? '';
+    const property = taskData.property ?? '';
+    const address = taskData.address ?? '';
+    const date = fmtMadridDate(taskData.date ?? '');
+    const start = taskData.start_time ?? taskData.startTime ?? '';
+    const end = taskData.end_time ?? taskData.endTime ?? '';
 
     let bodyParameters: string[] = [];
     switch (templateName) {
@@ -432,7 +525,7 @@ serve(async (req: Request): Promise<Response> => {
         bodyParameters = [name, property, start];
         break;
       case 'task_rejected_admin_alert_es':
-        bodyParameters = buildRejectedAlertBodyParameters(cleaner, task, date);
+        bodyParameters = buildRejectedAlertBodyParameters(cleanerData, taskData, date);
         break;
       default:
         bodyParameters = [name, property, date, start, end].slice(0, def.bodyParamCount);
@@ -452,7 +545,7 @@ serve(async (req: Request): Promise<Response> => {
         return { attempted: false, ok: false };
       }
 
-      const emailContent = buildRejectedAlertEmail(cleaner, task, event.payload ?? {}, date);
+      const emailContent = buildRejectedAlertEmail(cleanerData, taskData, event.payload ?? {}, date);
       const { data: claims, error: claimError } = await supabase.rpc(
         'claim_whatsapp_admin_fallback',
         {
@@ -659,9 +752,9 @@ serve(async (req: Request): Promise<Response> => {
     let buttonPayloads: string[] | undefined;
     if (def.hasButtons) {
       if (templateName === 'task_late_start_reminder_es') {
-        buttonPayloads = [`late_started:${task.id}:${nonce}`, `late_issue:${task.id}:${nonce}`];
+        buttonPayloads = [`late_started:${taskData.id}:${nonce}`, `late_issue:${taskData.id}:${nonce}`];
       } else {
-        buttonPayloads = [`approve:${task.id}:${nonce}`, `reject:${task.id}:${nonce}`];
+        buttonPayloads = [`approve:${taskData.id}:${nonce}`, `reject:${taskData.id}:${nonce}`];
       }
     }
 
@@ -789,17 +882,20 @@ serve(async (req: Request): Promise<Response> => {
     // 7. Persistir intención solo si este worker conserva el lease. La RPC
     // serializa el evento y la delivery; un worker reanudado con token antiguo
     // se detiene antes de contactar Meta.
-    const { data: sendIntentStarted, error: sendIntentError } = await supabase.rpc(
-      'begin_whatsapp_send_delivery',
+    const attemptToken = crypto.randomUUID();
+    const { data: sendAttemptRows, error: sendIntentError } = await supabase.rpc(
+      'begin_whatsapp_send_attempt',
       {
         _delivery_id: delivery.id,
         _event_id: eventId,
         _lease_token: processingLeaseToken,
+        _attempt_token: attemptToken,
         _provider_payload: { bodyParameters, buttonPayloads },
       },
     );
     if (sendIntentError) throw sendIntentError;
-    if (!sendIntentStarted) {
+    const sendAttempt = sendAttemptRows?.[0];
+    if (!sendAttempt?.claimed || !sendAttempt.attempt_id) {
       return new Response(JSON.stringify({ ok: true, status: 'already_processing' }), {
         status: 202,
         headers: { 'Content-Type': 'application/json', ...corsHeaders },
@@ -815,6 +911,10 @@ serve(async (req: Request): Promise<Response> => {
       buttonPayloads,
       idempotencyKey: event.dedupe_key,
     });
+    // El cliente encapsula fetch y convierte toda incertidumbre de red en un
+    // resultado effectUncertain. Dry-run y teléfono inválido no contactan Meta;
+    // un fallo posterior de persistencia sigue siendo pre-delivery y acotable.
+    providerPostStarted = !sendResult.dryRun && sendResult.errorCode !== 'invalid_phone';
 
     const now = new Date().toISOString();
     const uncertainSendResult = sendResult.effectUncertain === true;
@@ -825,10 +925,10 @@ serve(async (req: Request): Promise<Response> => {
         ? `Resultado de Meta incierto (${sendResult.errorCode}) tras el intento 2/2: reintentos automáticos agotados; requiere conciliación manual`
         : `Resultado de Meta incierto (${sendResult.errorCode}): tras 15 minutos se permitirá un único reintento 2/2 para priorizar entrega; existe riesgo excepcional de duplicado`;
       const { data: uncertainRows, error: uncertainDeliveryUpdateError } = await supabase.rpc(
-        'finalize_uncertain_whatsapp_send_delivery',
+        'finalize_whatsapp_send_attempt_uncertain',
         {
-          _delivery_id: delivery.id,
-          _lease_token: processingLeaseToken,
+          _attempt_id: sendAttempt.attempt_id,
+          _attempt_token: attemptToken,
           _provider_response: sendResult.response ?? {},
           _error_message: reconciliationMessage,
         },
@@ -879,10 +979,10 @@ serve(async (req: Request): Promise<Response> => {
 
     if (!uncertainSendResult && sendResult.providerMessageId) {
       const { data: finalizedStatus, error: finalizeDeliveryError } = await supabase.rpc(
-        'finalize_whatsapp_send_delivery',
+        'finalize_whatsapp_send_attempt',
         {
-          _delivery_id: delivery.id,
-          _lease_token: processingLeaseToken,
+          _attempt_id: sendAttempt.attempt_id,
+          _attempt_token: attemptToken,
           _provider_message_id: sendResult.providerMessageId,
           _provider_response: sendResult.response ?? {},
           _sent_at: now,
@@ -893,10 +993,10 @@ serve(async (req: Request): Promise<Response> => {
       effectiveProviderMessageId = sendResult.providerMessageId;
     } else if (!uncertainSendResult) {
       const { data: nonDeliveryRows, error: nonDeliveryError } = await supabase.rpc(
-        'finalize_whatsapp_non_delivery_result',
+        'finalize_whatsapp_send_attempt_non_delivery',
         {
-          _delivery_id: delivery.id,
-          _lease_token: processingLeaseToken,
+          _attempt_id: sendAttempt.attempt_id,
+          _attempt_token: attemptToken,
           _result_status: sendResult.status,
           _provider_response: sendResult.response ?? {},
           _error_code: sendResult.errorCode ?? null,
@@ -1043,8 +1143,25 @@ serve(async (req: Request): Promise<Response> => {
       headers: { 'Content-Type': 'application/json', ...corsHeaders },
     });
   } catch (error) {
-    console.error('send-whatsapp-notification error', error instanceof Error ? error.message : error);
-    return new Response(JSON.stringify({ error: error instanceof Error ? error.message : 'error' }), {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    if (claimedEventId && claimedLeaseToken && !providerPostStarted) {
+      const { data: preDeliveryStatus, error: preDeliveryFinalizeError } = await supabase.rpc(
+        'finalize_whatsapp_pre_delivery_failure',
+        {
+          _event_id: claimedEventId,
+          _lease_token: claimedLeaseToken,
+          _error_message: errorMessage,
+        },
+      );
+      if (preDeliveryFinalizeError) {
+        console.error('send-whatsapp-pre-delivery-finalize error', preDeliveryFinalizeError.message);
+      } else {
+        console.error('send-whatsapp-notification pre-delivery failure', preDeliveryStatus, errorMessage);
+      }
+    } else {
+      console.error('send-whatsapp-notification error', errorMessage);
+    }
+    return new Response(JSON.stringify({ error: errorMessage }), {
       status: 500,
       headers: { 'Content-Type': 'application/json', ...corsHeaders },
     });

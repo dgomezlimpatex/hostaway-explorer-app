@@ -93,7 +93,7 @@ assert.match(
 );
 assert.match(
   sender,
-  /rpc\(\s*'begin_whatsapp_send_delivery'/,
+  /rpc\(\s*'begin_whatsapp_send_attempt'/,
   'send_started_at debe persistirse mediante una RPC que invalide workers con lease obsoleto',
 );
 assert.match(sender, /finalize_whatsapp_notification_event/);
@@ -120,16 +120,16 @@ assert.doesNotMatch(
 );
 assert.match(sender, /prepare_whatsapp_send_delivery/);
 assert.match(sender, /status:\s*'processing'/);
-assert.match(sender, /finalize_whatsapp_send_delivery/);
-assert.match(sender, /finalize_whatsapp_non_delivery_result/);
+assert.match(sender, /finalize_whatsapp_send_attempt/);
+assert.match(sender, /finalize_whatsapp_send_attempt_non_delivery/);
 assert.match(
   sender,
-  /finalize_whatsapp_send_delivery[\s\S]{0,260}_lease_token:\s*processingLeaseToken/,
+  /finalize_whatsapp_send_attempt[\s\S]{0,260}_attempt_token:\s*attemptToken/,
   'la respuesta tardía de Meta debe finalizarse con la misma generación que autorizó el POST',
 );
 assert.match(
   sender,
-  /finalize_uncertain_whatsapp_send_delivery[\s\S]{0,260}_lease_token:\s*processingLeaseToken/,
+  /finalize_whatsapp_send_attempt_uncertain[\s\S]{0,260}_attempt_token:\s*attemptToken/,
   'el cierre incierto debe demostrar qué generación terminó el contacto con Meta',
 );
 assert.match(sender, /finalize_uncertain_whatsapp_send_delivery/);
