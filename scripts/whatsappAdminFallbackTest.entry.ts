@@ -34,6 +34,16 @@ export async function run(assert: typeof import('node:assert/strict')) {
   );
   assert.deepEqual(
     resolveNotificationRecipient('task_assigned', {
+      name: 'Trabajador con teléfono actualizado en /workers',
+      telefono: '600 000 444',
+      whatsapp_phone_e164: '+34600000555',
+      whatsapp_notifications_enabled: true,
+    }, '+34999999999'),
+    { recipient: '+34600000444', enabled: true, kind: 'cleaner' },
+    'telefono de /workers debe prevalecer sobre cualquier teléfono técnico antiguo',
+  );
+  assert.deepEqual(
+    resolveNotificationRecipient('task_assigned', {
       name: 'Trabajador con canal antiguo apagado',
       whatsapp_phone_e164: '+34600000333',
       whatsapp_notifications_enabled: false,

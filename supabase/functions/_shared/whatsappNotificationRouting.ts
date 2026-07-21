@@ -52,8 +52,8 @@ export function resolveNotificationRecipient(
     return { recipient, enabled: Boolean(recipient), kind: 'admin' };
   }
 
-  const recipient = clean(cleaner.whatsapp_phone_e164)
-    || normalizeSpanishPhoneE164(cleaner.telefono)
+  const recipient = normalizeSpanishPhoneE164(cleaner.telefono)
+    || clean(cleaner.whatsapp_phone_e164)
     || null;
   return {
     recipient,
