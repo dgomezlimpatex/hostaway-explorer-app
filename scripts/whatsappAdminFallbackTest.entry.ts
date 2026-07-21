@@ -23,6 +23,25 @@ export async function run(assert: typeof import('node:assert/strict')) {
     { recipient: '+34111111111', enabled: true, kind: 'cleaner' },
   );
   assert.deepEqual(
+    resolveNotificationRecipient('task_assigned', {
+      name: 'Dan García',
+      telefono: '600 000 222',
+      whatsapp_phone_e164: null,
+      whatsapp_notifications_enabled: false,
+    }, '+349****9999'),
+    { recipient: '+34600000222', enabled: true, kind: 'cleaner' },
+    'todo trabajador con móvil válido en telefono debe recibir WhatsApp sin configuración duplicada',
+  );
+  assert.deepEqual(
+    resolveNotificationRecipient('task_assigned', {
+      name: 'Trabajador con canal antiguo apagado',
+      whatsapp_phone_e164: '+34600000333',
+      whatsapp_notifications_enabled: false,
+    }, '+349****9999'),
+    { recipient: '+34600000333', enabled: true, kind: 'cleaner' },
+    'el teléfono canónico válido basta para las notificaciones operativas',
+  );
+  assert.deepEqual(
     resolveNotificationRecipient('task_rejected_alert', cleaner, '+34999999999'),
     { recipient: '+34999999999', enabled: true, kind: 'admin' },
   );

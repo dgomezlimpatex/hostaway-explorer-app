@@ -6,7 +6,10 @@ const COUNTRY_DIAL_CODES: Record<string, string> = {
 };
 
 function getDefaultDialCode(): string {
-  const cc = (Deno.env.get('WHATSAPP_DEFAULT_COUNTRY_CODE') ?? 'ES').toUpperCase();
+  const configuredCountry = typeof Deno !== 'undefined'
+    ? Deno.env.get('WHATSAPP_DEFAULT_COUNTRY_CODE')
+    : undefined;
+  const cc = (configuredCountry ?? 'ES').toUpperCase();
   return COUNTRY_DIAL_CODES[cc] ?? '34';
 }
 

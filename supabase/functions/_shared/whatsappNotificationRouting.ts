@@ -1,5 +1,8 @@
+import { normalizeSpanishPhoneE164 } from './phone.ts';
+
 interface CleanerLike {
   name?: string | null;
+  telefono?: string | null;
   whatsapp_phone_e164?: string | null;
   whatsapp_notifications_enabled?: boolean | null;
 }
@@ -49,10 +52,12 @@ export function resolveNotificationRecipient(
     return { recipient, enabled: Boolean(recipient), kind: 'admin' };
   }
 
-  const recipient = clean(cleaner.whatsapp_phone_e164) || null;
+  const recipient = clean(cleaner.whatsapp_phone_e164)
+    || normalizeSpanishPhoneE164(cleaner.telefono)
+    || null;
   return {
     recipient,
-    enabled: Boolean(cleaner.whatsapp_notifications_enabled) && Boolean(recipient),
+    enabled: Boolean(recipient),
     kind: 'cleaner',
   };
 }
