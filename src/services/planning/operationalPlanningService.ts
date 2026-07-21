@@ -64,6 +64,7 @@ type RawPlanningTask = {
   check_out: string;
   type: string;
   status: string;
+  planning_version?: number;
   cleaner_id?: string | null;
   cleaner?: string | null;
   duracion?: number | null;
@@ -1291,6 +1292,11 @@ class OperationalPlanningService {
       const proposal: PlanningRunItemProposal = {
         taskId: task.id,
         taskDate: task.date,
+        expectedPlanningVersion: Number(task.planning_version ?? 0),
+        expectedStatus: task.status,
+        expectedStartTime: task.start_time,
+        expectedEndTime: task.end_time,
+        expectedCleanerIds: getTaskCleanerIds(task),
         propertyId: property.id,
         propertyCode: property.codigo,
         propertyName: property.nombre,
@@ -1709,7 +1715,7 @@ class OperationalPlanningService {
       supabase
         .from('tasks')
         .select(`
-          id, property, address, date, start_time, end_time, check_in, check_out, type, status, cleaner_id, cleaner, duracion, propiedad_id, cliente_id, coste, notes,
+          id, property, address, date, start_time, end_time, check_in, check_out, type, status, planning_version, cleaner_id, cleaner, duracion, propiedad_id, cliente_id, coste, notes,
           task_assignments(cleaner_id, cleaner_name),
           properties(*)
         `)
@@ -2239,6 +2245,11 @@ class OperationalPlanningService {
       const proposal: PlanningRunItemProposal = {
         taskId: task.id,
         taskDate: task.date,
+        expectedPlanningVersion: Number(task.planning_version ?? 0),
+        expectedStatus: task.status,
+        expectedStartTime: task.start_time,
+        expectedEndTime: task.end_time,
+        expectedCleanerIds: getTaskCleanerIds(task),
         propertyId: property.id,
         propertyCode: property.codigo,
         propertyName: property.nombre,

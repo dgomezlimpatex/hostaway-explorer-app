@@ -134,6 +134,11 @@ export type PlanningReplacementCandidate = PlanningProposalCleaner;
 export interface PlanningRunItemProposal {
   taskId: string;
   taskDate: string;
+  expectedPlanningVersion: number;
+  expectedStatus: string;
+  expectedStartTime: string;
+  expectedEndTime: string;
+  expectedCleanerIds: string[];
   propertyId?: string | null;
   propertyCode: string;
   propertyName: string;
