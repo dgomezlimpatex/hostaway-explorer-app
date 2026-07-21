@@ -7,6 +7,82 @@ import {
 import { readFile } from 'node:fs/promises';
 
 export async function run(assert: typeof import('node:assert/strict')) {
+  const ukrainianPhone = ['+380', '50', '123', '45', '67'].join(' ');
+  const ukrainianE164 = '+' + '380' + '501234567';
+  assert.deepEqual(
+    resolveNotificationRecipient('task_assigned', {
+      name: 'Trabajadora con teléfono ucraniano',
+      telefono: ukrainianPhone,
+      whatsapp_phone_e164: null,
+      whatsapp_notifications_enabled: false,
+    }, ''),
+    { recipient: ukrainianE164, enabled: true, kind: 'cleaner' },
+    'un teléfono internacional ucraniano válido debe conservar su prefijo y recibir WhatsApp',
+  );
+
+  const frenchPhone = ['+33', '7', '12', '34', '56', '78'].join(' ');
+  const frenchE164 = '+' + '33' + '712345678';
+  assert.deepEqual(
+    resolveNotificationRecipient('task_assigned', {
+      name: 'Trabajadora con teléfono francés',
+      telefono: frenchPhone,
+      whatsapp_phone_e164: null,
+      whatsapp_notifications_enabled: false,
+    }, ''),
+    { recipient: frenchE164, enabled: true, kind: 'cleaner' },
+    'un teléfono internacional francés válido debe conservar su prefijo y recibir WhatsApp',
+  );
+
+  assert.deepEqual(
+    resolveNotificationRecipient('task_assigned', {
+      name: 'Trabajadora con prefijo internacional 00',
+      telefono: ['0033', '7', '12', '34', '56', '78'].join(' '),
+      whatsapp_phone_e164: null,
+      whatsapp_notifications_enabled: false,
+    }, ''),
+    { recipient: frenchE164, enabled: true, kind: 'cleaner' },
+    'el prefijo internacional 00 debe normalizarse al mismo E.164 que +',
+  );
+
+  assert.deepEqual(
+    resolveNotificationRecipient('task_assigned', {
+      name: 'Trabajadora con teléfono internacional malformado',
+      telefono: ['+33abc', '7', '12', '34', '56', '78'].join(' '),
+      whatsapp_phone_e164: null,
+      whatsapp_notifications_enabled: false,
+    }, ''),
+    { recipient: null, enabled: false, kind: 'cleaner' },
+    'un teléfono con letras incrustadas debe rechazarse en vez de construir otro destinatario',
+  );
+
+  for (const malformedPhone of [
+    [ukrainianPhone, 'ext', '9'].join(' '),
+    '++' + '33' + '712345678',
+    '33+' + '712345678',
+  ]) {
+    assert.deepEqual(
+      resolveNotificationRecipient('task_assigned', {
+        name: 'Trabajadora con sintaxis telefónica no permitida',
+        telefono: malformedPhone,
+        whatsapp_phone_e164: null,
+        whatsapp_notifications_enabled: false,
+      }, ''),
+      { recipient: null, enabled: false, kind: 'cleaner' },
+      `debe rechazarse la sintaxis telefónica no permitida: ${malformedPhone}`,
+    );
+  }
+
+  assert.deepEqual(
+    resolveNotificationRecipient('task_assigned', {
+      name: 'Trabajadora con prefijo internacional ambiguo',
+      telefono: '34' + '600000222',
+      whatsapp_phone_e164: null,
+      whatsapp_notifications_enabled: false,
+    }, ''),
+    { recipient: null, enabled: false, kind: 'cleaner' },
+    'un 34 sin + ni 00 no debe interpretarse como prefijo internacional',
+  );
+
   const cleaner = {
     name: 'Trabajadora <Prueba>',
     whatsapp_phone_e164: '+34111111111',

@@ -1,5 +1,5 @@
-// Normalización de teléfonos españoles a formato E.164 para WhatsApp.
-// Espejo (Deno) de src/utils/phone/normalizePhone.ts.
+// Normalización de teléfonos a formato E.164 para WhatsApp.
+// Los números nacionales sin prefijo se interpretan como españoles por defecto.
 
 const COUNTRY_DIAL_CODES: Record<string, string> = {
   ES: '34',
@@ -13,46 +13,52 @@ function getDefaultDialCode(): string {
   return COUNTRY_DIAL_CODES[cc] ?? '34';
 }
 
-/**
- * Convierte un teléfono español a E.164 (+34XXXXXXXXX) o devuelve null si es inválido.
- * Acepta: '600111222', '+34 600 111 222', '0034600111222', '+34600111222'.
- * Rechaza: vacíos, longitudes inválidas, móviles que no empiezan por 6/7.
- */
-export function normalizeSpanishPhoneE164(raw: string | null | undefined): string | null {
-  if (!raw) return null;
-  let s = String(raw).trim();
-  if (!s) return null;
-
-  // Conservar un posible '+' inicial; eliminar todo lo no numérico.
-  const hadPlus = s.startsWith('+');
-  s = s.replace(/[^\d]/g, '');
-  if (!s) return null;
-
-  const dial = getDefaultDialCode();
-
-  // Prefijo internacional con 00 -> quitarlo.
-  if (s.startsWith('00')) {
-    s = s.slice(2);
-  } else if (hadPlus) {
-    // ya viene con código de país tras el '+'
-  }
-
-  // Si ya empieza por el código de país, quitarlo para validar el número nacional.
-  if (s.startsWith(dial) && s.length > 9) {
-    s = s.slice(dial.length);
-  }
-
-  // El número nacional español debe tener 9 dígitos.
-  if (s.length !== 9) return null;
-
-  // Móviles españoles: empiezan por 6 o 7. (Fijos 8/9 se rechazan para WhatsApp.)
-  if (!/^[67]/.test(s)) return null;
-
-  return `+${dial}${s}`;
-}
-
 /** Valida que una cadena ya esté en E.164 básico. */
 export function isE164(value: string | null | undefined): boolean {
   if (!value) return false;
-  return /^\+\d{8,15}$/.test(value.trim());
+  return /^\+[1-9]\d{7,14}$/.test(value.trim());
 }
+
+/**
+ * Normaliza teléfonos para WhatsApp:
+ * - conserva prefijos internacionales explícitos (`+` o `00`);
+ * - interpreta como español un móvil nacional de 9 cifras sin prefijo;
+ * - devuelve null cuando el formato es ambiguo o no cumple E.164.
+ */
+export function normalizePhoneE164(raw: string | null | undefined): string | null {
+  if (!raw) return null;
+  let value = String(raw).trim();
+  if (!value) return null;
+
+  const hasPlusPrefix = value.startsWith('+');
+  const hasInternational00Prefix = value.startsWith('00');
+
+  const allowedSyntax = hasPlusPrefix
+    ? /^\+[\s().-]*[1-9][\d\s().-]*$/
+    : hasInternational00Prefix
+      ? /^00[\s().-]*[1-9][\d\s().-]*$/
+      : /^[\d\s().-]+$/;
+  if (!allowedSyntax.test(value)) return null;
+
+  value = value.replace(/[^\d]/g, '');
+  if (!value) return null;
+
+  if (hasInternational00Prefix) {
+    value = value.slice(2);
+  }
+
+  if (hasPlusPrefix || hasInternational00Prefix) {
+    const international = `+${value}`;
+    return isE164(international) ? international : null;
+  }
+
+  const dial = getDefaultDialCode();
+  if (value.length !== 9 || !/^[67]/.test(value)) return null;
+  return `+${dial}${value}`;
+}
+
+/**
+ * Alias conservado para los consumidores existentes.
+ * También admite números internacionales cuando incluyen `+` o `00`.
+ */
+export const normalizeSpanishPhoneE164 = normalizePhoneE164;

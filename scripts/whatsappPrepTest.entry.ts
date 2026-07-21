@@ -132,17 +132,28 @@ export async function run(assert: typeof import('node:assert/strict')) {
   assert.equal(normalizeSpanishPhoneE164('+34 600 111 222'), expSix);
   assert.equal(normalizeSpanishPhoneE164('0034600111222'), expSix);
   assert.equal(normalizeSpanishPhoneE164('711222333'), expSeven);
+  assert.equal(
+    normalizeSpanishPhoneE164(['+380', '50', '123', '45', '67'].join(' ')),
+    '+' + '380' + '501234567',
+  );
   // Inválidos -> null
   assert.equal(normalizeSpanishPhoneE164(''), null);
   assert.equal(normalizeSpanishPhoneE164(null), null);
   assert.equal(normalizeSpanishPhoneE164('123'), null);
   assert.equal(normalizeSpanishPhoneE164('900111222'), null); // no empieza por 6/7
   assert.equal(normalizeSpanishPhoneE164('60011122233'), null); // demasiado largo
+  assert.equal(normalizeSpanishPhoneE164('34' + '600111222'), null); // prefijo ambiguo sin +/00
+  assert.equal(normalizeSpanishPhoneE164(['+380', '50', '123', '45', '67', 'ext', '9'].join(' ')), null);
+  assert.equal(normalizeSpanishPhoneE164('++' + '33' + '712345678'), null);
 
   // ── isE164 ──────────────────────────────────────────────────
   assert.equal(isE164(expSix), true);
   assert.equal(isE164('600111222'), false);
   assert.equal(isE164(''), false);
+  assert.equal(isE164('+' + '1'.repeat(7)), false); // menos de 8 dígitos
+  assert.equal(isE164('+' + '1'.repeat(15)), true);
+  assert.equal(isE164('+' + '1'.repeat(16)), false);
+  assert.equal(isE164('+' + '0' + '1'.repeat(8)), false);
 
   // ── Dedupe keys deterministas ───────────────────────────────
   assert.equal(approvalReminderDedupeKey('t1', '2026-07-01'), 'task_approval_reminder:t1:2026-07-01');
