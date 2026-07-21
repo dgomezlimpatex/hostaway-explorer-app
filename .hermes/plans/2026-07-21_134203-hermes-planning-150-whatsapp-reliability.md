@@ -376,8 +376,8 @@ Checklist transaccional:
 - [ ] Corregir operativamente el móvil inválido actual.
 - [ ] Completar los teléfonos faltantes desde `/workers`.
 - [x] Añadir validación visible al guardar la ficha. *(Completado con normalización central a E.164, rechazo visible de formatos inválidos y test RED→GREEN; cubre crear/editar/ficha.)*
-- [ ] Añadir informe de “trabajadores del lote sin WhatsApp” antes del commit.
-- [ ] Con política `require_all_recipients`, bloquear el lote completo si falta uno.
+- [ ] Añadir informe de “trabajadores del lote sin WhatsApp” antes del commit. *(Motor de dominio RED→GREEN completado; pendiente UI.)*
+- [ ] Con política `require_all_recipients`, bloquear el lote completo si falta uno. *(Preflight cliente implementado; pendiente enforcement dentro de `apply_planning_batch`.)*
 - [ ] Actualizar panel para contar `cleaners.telefono`, no solo `whatsapp_phone_e164`.
 - [ ] Mantener fallback técnico solo para registros legacy y hacerlo visible como deuda.
 - [ ] Añadir métrica de tareas futuras asignadas a trabajadores no alcanzables.
