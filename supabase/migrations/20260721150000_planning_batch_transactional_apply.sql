@@ -171,7 +171,7 @@ USING (EXISTS (SELECT 1 FROM public.planning_apply_batches b WHERE b.id=batch_id
 
 CREATE OR REPLACE FUNCTION public.planning_batch_request_hash(
   _sede_id uuid,_source_run_id uuid,_source_run_version bigint,_notification_policy text,_items jsonb
-) RETURNS text LANGUAGE sql IMMUTABLE SECURITY INVOKER SET search_path=pg_catalog,public AS $$
+) RETURNS text LANGUAGE sql IMMUTABLE SECURITY INVOKER SET search_path=pg_catalog,public,extensions AS $$
  SELECT encode(digest(convert_to(jsonb_build_object(
    'sede_id',_sede_id,'source_run_id',_source_run_id,'source_run_version',_source_run_version,
    'notification_policy',_notification_policy,'items',_items)::text,'UTF8'),'sha256'),'hex')
