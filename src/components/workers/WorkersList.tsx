@@ -5,20 +5,9 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Card, CardContent } from '@/components/ui/card';
 import { GripVertical, Mail, Phone, User, UserCheck, UserX } from 'lucide-react';
 import { Cleaner } from '@/types/calendar';
-import { useDeleteCleaner, useUpdateCleaner, useUpdateCleanersOrder } from '@/hooks/useCleaners';
+import { useUpdateCleaner, useUpdateCleanersOrder } from '@/hooks/useCleaners';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from '@/lib/utils';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from '@/components/ui/alert-dialog';
 import { DeactivateWorkerDialog } from './DeactivateWorkerDialog';
 
 interface WorkersListProps {
@@ -43,7 +32,6 @@ export const WorkersList = ({ workers, isLoading, selectedWorkerId, onViewWorker
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   const isMobile = useIsMobile();
 
-  const deleteCleaner = useDeleteCleaner();
   const updateCleaner = useUpdateCleaner();
   const updateCleanersOrder = useUpdateCleanersOrder();
 
@@ -51,9 +39,6 @@ export const WorkersList = ({ workers, isLoading, selectedWorkerId, onViewWorker
     setLocalWorkers(workers);
   }, [workers]);
 
-  const handleDelete = (workerId: string) => {
-    deleteCleaner.mutate(workerId);
-  };
 
   const handleToggleActive = (worker: Cleaner) => {
     if (worker.isActive) {
@@ -226,36 +211,7 @@ export const WorkersList = ({ workers, isLoading, selectedWorkerId, onViewWorker
                       Reactivar
                     </Button>
                   )}
-                  {!worker.externalId && (
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <Button variant="ghost" size="sm" className="h-9 rounded-lg px-2 text-xs text-destructive">
-                          Eliminar
-                        </Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>Eliminar trabajador</AlertDialogTitle>
-                          <AlertDialogDescription>
-                            Esta acción no se puede deshacer. Se eliminará permanentemente el trabajador
-                            "{worker.name}" y todas sus tareas asignadas quedaran sin asignar.
-                            <br />
-                            <br />
-                            Si solo quieres que deje de aparecer en las asignaciones, usa "Desactivar" en su lugar.
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                          <AlertDialogAction
-                            onClick={() => handleDelete(worker.id)}
-                            className="bg-destructive hover:bg-destructive/90"
-                          >
-                            Eliminar definitivamente
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
-                  )}
+
                 </div>
               </CardContent>
             </Card>
