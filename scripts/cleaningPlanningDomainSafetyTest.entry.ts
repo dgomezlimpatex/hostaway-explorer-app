@@ -141,8 +141,13 @@ export async function run(assert: Assert) {
   );
   assert.match(
     notificationSource,
-    /status: whatsappEnabled \? 'pending' : 'cancelled'/,
-    'notification orchestrator must create an auditable event even when WhatsApp sending is disabled',
+    /status: 'pending'/,
+    'notification orchestrator must always enqueue an auditable event for backend dispatch',
+  );
+  assert.doesNotMatch(
+    notificationSource,
+    /whatsappEnabled/,
+    'the browser must not decide whether an operational event is deliverable',
   );
   assert.match(
     notificationGrantMigration,
