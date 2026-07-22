@@ -1052,6 +1052,8 @@ export const useClientPortalBookings = (clientId: string | undefined) => {
         specialRequests: r.special_requests,
         status: r.status,
         taskId: r.task_id,
+        startTime: null,
+        endTime: null,
         reservationId: r.id,
         property: r.properties ? {
           id: r.properties.id,
@@ -1112,6 +1114,8 @@ export const useClientPortalBookings = (clientId: string | undefined) => {
             status: t.status,
             taskStatus: t.status,
             taskId: t.id,
+            startTime: t.start_time,
+            endTime: t.end_time,
             reservationId: null,
             property: joined ? {
               id: joined.id,
@@ -1173,11 +1177,15 @@ export const useClientPortalBookings = (clientId: string | undefined) => {
       if (manualTaskIds.length > 0) {
         const { data: linkedTasks } = await supabase
           .from('tasks')
-          .select('id, status')
+          .select('id, status, start_time, end_time')
           .in('id', manualTaskIds);
-        const statusById = new Map((linkedTasks ?? []).map((t: any) => [t.id, t.status]));
+        const taskById = new Map((linkedTasks ?? []).map((t: any) => [t.id, t]));
         manualBookings.forEach(b => {
-          if (b.taskId) b.taskStatus = statusById.get(b.taskId) ?? null;
+          if (!b.taskId) return;
+          const linkedTask = taskById.get(b.taskId);
+          b.taskStatus = linkedTask?.status ?? null;
+          b.startTime = linkedTask?.start_time ?? null;
+          b.endTime = linkedTask?.end_time ?? null;
         });
       }
 
@@ -1268,7 +1276,8 @@ export const useClientPortalSettings = (clientId: string | undefined) => {
         clientId: row.client_id,
         allowReservationCreation: row.allow_reservation_creation !== false,
         allowExtraordinaryRequests: row.allow_extraordinary_requests === true,
-        allowIncidents: (row as any).allow_incidents === true,
+        allowIncidents: row.allow_incidents === true,
+        operationalPortalEnabled: row.operational_portal_enabled === true,
       };
     },
     enabled: !!clientId,

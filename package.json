@@ -33,6 +33,7 @@
     "test:worker-deactivation-security:db": "npx supabase db query --linked --file scripts/workerDeactivationSecurityTest.sql",
     "test:mobile-calendar-multi-assignment": "bun scripts/mobileCalendarMultiAssignmentTest.ts",
     "test:client-portal-visibility": "node scripts/clientPortalVisibilityTest.mjs",
+    "test:client-portal-operational": "node scripts/clientPortalOperationalTest.mjs",
     "test:task-next-client-entry": "node scripts/taskNextClientEntryTest.mjs && node scripts/taskNextClientEntryUiContractTest.mjs",
     "test:recurring-task-schedule": "node scripts/recurringTaskScheduleTest.mjs",
     "test:pms-cancellation-safety": "node scripts/pmsCancellationSafetyTest.mjs",

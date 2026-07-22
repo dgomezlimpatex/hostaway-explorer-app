@@ -71,20 +71,20 @@ export const ReservationDetailModal = ({
     if (booking.taskStatus === 'completed') {
       return (
         <Badge className="bg-emerald-500/15 text-emerald-700 border-emerald-200 hover:bg-emerald-500/20">
-          <CheckCircle2 className="h-3 w-3 mr-1" /> Completada
+          <CheckCircle2 className="h-3 w-3 mr-1" /> Limpia
         </Badge>
       );
     }
     if (booking.taskStatus === 'in_progress') {
       return (
         <Badge className="bg-amber-500/15 text-amber-700 border-amber-200">
-          <Clock className="h-3 w-3 mr-1" /> En progreso
+          <Clock className="h-3 w-3 mr-1" /> En curso
         </Badge>
       );
     }
     return (
       <Badge variant="outline" className="text-muted-foreground">
-        <Clock className="h-3 w-3 mr-1" /> Pendiente
+        <Clock className="h-3 w-3 mr-1" /> No limpia
       </Badge>
     );
   };
@@ -127,6 +127,13 @@ export const ReservationDetailModal = ({
                 label="Fecha de limpieza"
                 value={format(cleaningDate, "EEEE, d 'de' MMMM yyyy", { locale: es })}
               />
+              {booking.startTime && (
+                <InfoRow
+                  icon={<Clock className="h-4 w-4" />}
+                  label="Hora prevista"
+                  value={`${booking.startTime.slice(0, 5)}${booking.endTime ? ` – ${booking.endTime.slice(0, 5)}` : ''}`}
+                />
+              )}
               {booking.checkInDate && booking.checkOutDate && (
                 <InfoRow
                   icon={<Calendar className="h-4 w-4" />}

@@ -1,6 +1,6 @@
 
-import { useState, useEffect, useMemo } from 'react';
-import { Building2, LogOut, Plus, Calendar, List, Sparkles, AlertTriangle, Clock, Home } from 'lucide-react';
+import { useState, useEffect, useMemo, useRef } from 'react';
+import { Building2, LogOut, Plus, Calendar, List, Sparkles, AlertTriangle, Clock, Home, ClipboardCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
@@ -13,6 +13,7 @@ import { ReservationsList } from './ReservationsList';
 import { ReservationsCalendar } from './ReservationsCalendar';
 import { ExtraordinaryRequestsTab } from './ExtraordinaryRequestsTab';
 import { IncidentsTab } from './IncidentsTab';
+import { OperationalDayView } from './OperationalDayView';
 import { Toaster } from '@/components/ui/toaster';
 import { filterClientPortalListBookings } from './clientPortalVisibility';
 
@@ -33,11 +34,21 @@ export const ClientPortalDashboard = ({
   const canCreateReservations = settings?.allowReservationCreation === true;
   const canCreateExtraordinary = settings?.allowExtraordinaryRequests === true;
   const canViewIncidents = (settings as { allowIncidents?: boolean } | undefined)?.allowIncidents === true;
+  const operationalPortalEnabled = (settings as { operationalPortalEnabled?: boolean } | undefined)?.operationalPortalEnabled === true;
 
   const [activeTab, setActiveTab] = useState<string>('list');
+  const operationalDefaultApplied = useRef(false);
 
   // If settings load and creation is disabled while user is on "add" tab, switch to list
   useEffect(() => {
+    if (operationalPortalEnabled && !operationalDefaultApplied.current) {
+      operationalDefaultApplied.current = true;
+      setActiveTab('operations');
+      return;
+    }
+    if (!operationalPortalEnabled && activeTab === 'operations') {
+      setActiveTab('list');
+    }
     if (!canCreateReservations && activeTab === 'add') {
       setActiveTab('list');
     }
@@ -47,7 +58,7 @@ export const ClientPortalDashboard = ({
     if (!canViewIncidents && activeTab === 'incidents') {
       setActiveTab('list');
     }
-  }, [canCreateReservations, canCreateExtraordinary, canViewIncidents, activeTab]);
+  }, [canCreateReservations, canCreateExtraordinary, canViewIncidents, operationalPortalEnabled, activeTab]);
 
   const { data: properties = [], isLoading: loadingProperties } = useClientProperties(clientId);
   const { data: bookings = [], isLoading: loadingBookings, refetch } = useClientPortalBookings(clientId);
@@ -91,12 +102,14 @@ export const ClientPortalDashboard = ({
   }, [bookings, listBookings.length, properties.length]);
 
   const extraTabs =
+    (operationalPortalEnabled ? 1 : 0) +
     (canCreateReservations ? 1 : 0) +
     (canCreateExtraordinary ? 1 : 0) +
     (canViewIncidents ? 1 : 0);
   const tabsCount = 2 + extraTabs;
   const gridColsClass =
-    tabsCount === 5 ? 'grid-cols-5'
+    tabsCount === 6 ? 'grid-cols-3 sm:grid-cols-6'
+    : tabsCount === 5 ? 'grid-cols-3 sm:grid-cols-5'
     : tabsCount === 4 ? 'grid-cols-4'
     : tabsCount === 3 ? 'grid-cols-3'
     : 'grid-cols-2';
@@ -114,7 +127,7 @@ export const ClientPortalDashboard = ({
               <div className="min-w-0 flex-1">
                 <h1 className="font-semibold text-base sm:text-lg truncate text-slate-950">{clientName}</h1>
                 <p className="text-xs sm:text-sm text-muted-foreground truncate">
-                  {upcomingBookings.length} reservas próximas
+                  {operationalPortalEnabled ? 'Seguimiento diario de limpiezas' : `${upcomingBookings.length} reservas próximas`}
                 </p>
               </div>
             </div>
@@ -138,10 +151,12 @@ export const ClientPortalDashboard = ({
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">Portal cliente</p>
                 <h2 className="mt-1 text-xl font-bold tracking-tight text-slate-950 sm:text-2xl">
-                  Reservas y calendario de limpiezas
+                  {operationalPortalEnabled ? 'Operativa de limpiezas' : 'Reservas y calendario de limpiezas'}
                 </h2>
                 <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
-                  Consulta reservas por propiedad, revisa limpiezas próximas y controla incidencias publicadas por Limpatex.
+                  {operationalPortalEnabled
+                    ? 'Consulta la planificación diaria, el estado de cada apartamento y las fotografías de los servicios finalizados.'
+                    : 'Consulta reservas por propiedad, revisa limpiezas próximas y controla incidencias publicadas por Limpatex.'}
                 </p>
               </div>
             </div>
@@ -156,6 +171,12 @@ export const ClientPortalDashboard = ({
         </section>
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList className={`grid w-full ${gridColsClass} mb-4 sm:mb-6 h-auto rounded-2xl bg-slate-200/60 p-1`} key={`tabs-${tabsCount}`}>
+            {operationalPortalEnabled && (
+              <TabsTrigger value="operations" className="flex flex-col sm:flex-row items-center gap-1 rounded-xl py-2 text-xs data-[state=active]:bg-white data-[state=active]:shadow-sm sm:gap-2 sm:text-sm">
+                <ClipboardCheck className="h-4 w-4" />
+                <span>Operativa</span>
+              </TabsTrigger>
+            )}
             {canCreateReservations && (
               <TabsTrigger value="add" className="flex flex-col sm:flex-row items-center gap-1 rounded-xl py-2 text-xs data-[state=active]:bg-white data-[state=active]:shadow-sm sm:gap-2 sm:text-sm">
                 <Plus className="h-4 w-4" />
@@ -183,6 +204,16 @@ export const ClientPortalDashboard = ({
               </TabsTrigger>
             )}
           </TabsList>
+
+          {operationalPortalEnabled && (
+            <TabsContent value="operations">
+              <OperationalDayView
+                clientId={clientId}
+                bookings={bookings}
+                isLoading={loadingBookings}
+              />
+            </TabsContent>
+          )}
 
           {canCreateReservations && (
             <TabsContent value="add">

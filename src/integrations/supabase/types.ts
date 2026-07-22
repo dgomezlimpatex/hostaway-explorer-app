@@ -1997,6 +1997,7 @@ export type Database = {
           allow_extraordinary_requests: boolean
           allow_incidents: boolean
           allow_reservation_creation: boolean
+          operational_portal_enabled: boolean
           cif_nif: string
           ciudad: string
           codigo_postal: string
@@ -2022,6 +2023,7 @@ export type Database = {
           allow_extraordinary_requests?: boolean
           allow_incidents?: boolean
           allow_reservation_creation?: boolean
+          operational_portal_enabled?: boolean
           cif_nif: string
           ciudad: string
           codigo_postal: string
@@ -2047,6 +2049,7 @@ export type Database = {
           allow_extraordinary_requests?: boolean
           allow_incidents?: boolean
           allow_reservation_creation?: boolean
+          operational_portal_enabled?: boolean
           cif_nif?: string
           ciudad?: string
           codigo_postal?: string
@@ -5916,6 +5919,7 @@ export type Database = {
           allow_incidents: boolean
           allow_reservation_creation: boolean
           client_id: string
+          operational_portal_enabled: boolean
         }[]
       }
       get_client_reservation_history: {
