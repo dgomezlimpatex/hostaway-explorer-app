@@ -14,7 +14,8 @@ INSERT INTO public.tasks(id,date,start_time,end_time,sede_id) VALUES
  ('43000000-0000-0000-0000-000000000004','2027-01-14','10:00','11:00','13000000-0000-0000-0000-000000000001'),
  ('43000000-0000-0000-0000-000000000005','2027-01-15','10:00','11:00','13000000-0000-0000-0000-000000000001'),
  ('43000000-0000-0000-0000-000000000006','2027-01-16','10:00','11:00','13000000-0000-0000-0000-000000000001'),
- ('43000000-0000-0000-0000-000000000007','2027-01-16','10:30','11:30','13000000-0000-0000-0000-000000000001');
+ ('43000000-0000-0000-0000-000000000007','2027-01-16','10:30','11:30','13000000-0000-0000-0000-000000000001'),
+ ('43000000-0000-0000-0000-000000000008','2027-01-17','10:00','11:00','13000000-0000-0000-0000-000000000001');
 
 -- Helpers exclusivamente del baseline integrado: no forman parte de la migración.
 CREATE TABLE public.planning_test_race_results(
@@ -138,6 +139,24 @@ BEGIN
      AND cleaner_id='33000000-0000-0000-0000-000000000003'
  ) THEN
    RAISE EXCEPTION 'legacy_manual_assignment_override_blocked';
+ END IF;
+
+ -- Cerrar/finalizar un reporte solo cambia el estado de la tarea a completed.
+ -- No es una modificación de horario y no debe crear task_modified.
+ PERFORM public.set_task_assignments(
+   '43000000-0000-0000-0000-000000000008',
+   ARRAY['33000000-0000-0000-0000-000000000003'::uuid]
+ );
+ UPDATE public.tasks
+ SET status='completed', updated_at=now()
+ WHERE id='43000000-0000-0000-0000-000000000008';
+ IF EXISTS(
+   SELECT 1 FROM public.notification_events
+   WHERE task_id='43000000-0000-0000-0000-000000000008'
+     AND cleaner_id='33000000-0000-0000-0000-000000000003'
+     AND event_type='task_modified'
+ ) THEN
+   RAISE EXCEPTION 'report_completion_created_spurious_task_modified';
  END IF;
 END $$;
 
