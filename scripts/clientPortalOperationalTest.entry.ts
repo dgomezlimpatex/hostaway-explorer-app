@@ -28,7 +28,6 @@ const booking = (
   taskStatus,
   taskId: id,
   startTime,
-  endTime: startTime ? '14:00:00' : null,
   reservationId: null,
   property: { id, codigo: propertyCode, nombre: propertyCode, direccion: '' },
 });

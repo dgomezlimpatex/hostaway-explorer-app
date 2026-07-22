@@ -131,7 +131,7 @@ export const ReservationDetailModal = ({
                 <InfoRow
                   icon={<Clock className="h-4 w-4" />}
                   label="Hora prevista"
-                  value={`${booking.startTime.slice(0, 5)}${booking.endTime ? ` – ${booking.endTime.slice(0, 5)}` : ''}`}
+                  value={booking.startTime.slice(0, 5)}
                 />
               )}
               {booking.checkInDate && booking.checkOutDate && (

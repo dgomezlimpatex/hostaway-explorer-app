@@ -205,9 +205,7 @@ export const OperationalDayView = ({ clientId, bookings, isLoading }: Operationa
                     <div>
                       <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">Hora prevista</p>
                       <p className="font-semibold tabular-nums text-slate-900">
-                        {hasPlannedTime
-                          ? `${formatPortalTaskTime(booking.startTime)}${booking.endTime ? ` – ${formatPortalTaskTime(booking.endTime)}` : ''}`
-                          : 'Sin hora definida'}
+                        {hasPlannedTime ? formatPortalTaskTime(booking.startTime) : 'Sin hora definida'}
                       </p>
                     </div>
                   </div>

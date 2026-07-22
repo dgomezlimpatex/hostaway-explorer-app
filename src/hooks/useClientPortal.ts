@@ -1020,8 +1020,8 @@ export const useClientPortalBookings = (clientId: string | undefined) => {
         const { data: pageTasks, error: tErr } = await supabase
           .from('tasks')
           .select(`
-            id, date, start_time, end_time, status, type, notes,
-            property, address, propiedad_id, cliente_id,
+            id, date, start_time, status,
+            property, address, propiedad_id,
             properties:propiedad_id (
               id, nombre, codigo, direccion, check_out_predeterminado
             )
@@ -1053,7 +1053,6 @@ export const useClientPortalBookings = (clientId: string | undefined) => {
         status: r.status,
         taskId: r.task_id,
         startTime: null,
-        endTime: null,
         reservationId: r.id,
         property: r.properties ? {
           id: r.properties.id,
@@ -1115,7 +1114,6 @@ export const useClientPortalBookings = (clientId: string | undefined) => {
             taskStatus: t.status,
             taskId: t.id,
             startTime: t.start_time,
-            endTime: t.end_time,
             reservationId: null,
             property: joined ? {
               id: joined.id,
@@ -1177,7 +1175,7 @@ export const useClientPortalBookings = (clientId: string | undefined) => {
       if (manualTaskIds.length > 0) {
         const { data: linkedTasks } = await supabase
           .from('tasks')
-          .select('id, status, start_time, end_time')
+          .select('id, status, start_time')
           .in('id', manualTaskIds);
         const taskById = new Map((linkedTasks ?? []).map((t: any) => [t.id, t]));
         manualBookings.forEach(b => {
@@ -1185,7 +1183,6 @@ export const useClientPortalBookings = (clientId: string | undefined) => {
           const linkedTask = taskById.get(b.taskId);
           b.taskStatus = linkedTask?.status ?? null;
           b.startTime = linkedTask?.start_time ?? null;
-          b.endTime = linkedTask?.end_time ?? null;
         });
       }
 
@@ -1226,7 +1223,7 @@ export const useClientPortalTaskReport = (taskId: string | null | undefined, cli
       // Fetch the latest completed report for this task
       const { data: report, error: repErr } = await supabase
         .from('task_reports')
-        .select('id, overall_status, end_time, notes')
+        .select('id')
         .eq('task_id', taskId)
         .eq('overall_status', 'completed')
         .order('updated_at', { ascending: false })
@@ -1238,7 +1235,7 @@ export const useClientPortalTaskReport = (taskId: string | null | undefined, cli
 
       const { data: media, error: medErr } = await supabase
         .from('task_media')
-        .select('id, file_url, media_type, description, timestamp, checklist_item_id')
+        .select('id, file_url, media_type, description')
         .eq('task_report_id', report.id)
         .order('timestamp', { ascending: true });
 
@@ -1247,7 +1244,6 @@ export const useClientPortalTaskReport = (taskId: string | null | undefined, cli
       return {
         status: 'ready' as const,
         media: media ?? [],
-        report,
       };
     },
     enabled: !!taskId && !!clientId,
@@ -1272,12 +1268,13 @@ export const useClientPortalSettings = (clientId: string | undefined) => {
       if (error) throw error;
       const row = Array.isArray(data) ? data[0] : data;
       if (!row) return null;
+      const publicSettings = row as typeof row & { operational_portal_enabled?: boolean };
       return {
         clientId: row.client_id,
         allowReservationCreation: row.allow_reservation_creation !== false,
         allowExtraordinaryRequests: row.allow_extraordinary_requests === true,
         allowIncidents: row.allow_incidents === true,
-        operationalPortalEnabled: row.operational_portal_enabled === true,
+        operationalPortalEnabled: publicSettings.operational_portal_enabled === true,
       };
     },
     enabled: !!clientId,
