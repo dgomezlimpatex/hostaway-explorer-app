@@ -23,6 +23,16 @@ assert.doesNotMatch(
   'PortalBooking must not carry a completion time to public UI components',
 );
 
+const detailModal = readFileSync(
+  new URL('../src/components/client-portal/ReservationDetailModal.tsx', import.meta.url),
+  'utf8',
+);
+assert.doesNotMatch(
+  detailModal,
+  /\bguestCount\b|Huéspedes|<Users\b/,
+  'Public cleaning detail must not display guest information',
+);
+
 const portalHook = readFileSync(new URL('../src/hooks/useClientPortal.ts', import.meta.url), 'utf8');
 const publicReadStart = portalHook.indexOf('export const useClientPortalBookings');
 const publicReadEnd = portalHook.indexOf('// ============= ADMIN: reservation creation toggle');

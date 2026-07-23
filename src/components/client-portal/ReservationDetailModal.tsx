@@ -7,7 +7,7 @@ import {
 } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import {
-  Calendar, MapPin, Users, MessageSquare, Camera, Loader2, Lock,
+  Calendar, MapPin, MessageSquare, Camera, Loader2, Lock,
   CheckCircle2, Clock, ImageOff, X, ChevronLeft, ChevronRight,
 } from 'lucide-react';
 import { PortalBooking } from '@/types/clientPortal';
@@ -146,13 +146,6 @@ export const ReservationDetailModal = ({
                   icon={<MapPin className="h-4 w-4" />}
                   label="Dirección"
                   value={booking.property.direccion}
-                />
-              )}
-              {booking.guestCount != null && (
-                <InfoRow
-                  icon={<Users className="h-4 w-4" />}
-                  label="Huéspedes"
-                  value={`${booking.guestCount}`}
                 />
               )}
               {booking.specialRequests && !isExternal && (
