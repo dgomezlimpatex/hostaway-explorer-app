@@ -109,9 +109,22 @@ BEGIN
    RAISE EXCEPTION 'assignment_created_spurious_task_modified';
  END IF;
 
- -- Un cambio operativo real sigue generando exactamente un aviso modificado.
+ -- Los cambios ajenos a día/horario no deben generar avisos de modificación.
  UPDATE public.tasks
  SET address='Dirección operativa actualizada', updated_at=now()
+ WHERE id='43000000-0000-0000-0000-000000000006';
+ IF EXISTS(
+   SELECT 1 FROM public.notification_events
+   WHERE task_id='43000000-0000-0000-0000-000000000006'
+     AND cleaner_id='33000000-0000-0000-0000-000000000003'
+     AND event_type='task_modified'
+ ) THEN
+   RAISE EXCEPTION 'non_schedule_change_created_task_modified';
+ END IF;
+
+ -- Un cambio real de día u horario genera exactamente un aviso modificado.
+ UPDATE public.tasks
+ SET date='2027-01-18', start_time='11:00', end_time='12:15', updated_at=now()
  WHERE id='43000000-0000-0000-0000-000000000006';
  IF (SELECT count(*) FROM public.notification_events
      WHERE task_id='43000000-0000-0000-0000-000000000006'
@@ -122,9 +135,11 @@ BEGIN
       WHERE task_id='43000000-0000-0000-0000-000000000006'
         AND cleaner_id='33000000-0000-0000-0000-000000000003'
         AND event_type='task_modified'
-        AND payload->'changed_fields' ? 'address'
+        AND payload->'changed_fields' ? 'date'
+        AND payload->'changed_fields' ? 'start_time'
+        AND payload->'changed_fields' ? 'end_time'
     ) THEN
-   RAISE EXCEPTION 'real_task_change_notification_missing';
+   RAISE EXCEPTION 'schedule_change_notification_missing';
  END IF;
 
  -- Con Planning 150 apagado, el writer legacy mantiene los overrides manuales:

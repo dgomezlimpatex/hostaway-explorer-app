@@ -26,6 +26,7 @@ files=(
   supabase/migrations/20260721164500_ignore_planning_version_in_task_modified_notifications.sql
   supabase/migrations/20260721171000_restore_legacy_assignment_overrides.sql
   supabase/migrations/20260722135500_ignore_report_completion_task_modified.sql
+  supabase/migrations/20260723141226_notify_only_schedule_task_modifications.sql
   scripts/planningHermes150IntegratedSmoke.sql
 )
 for file in "${files[@]}"; do
@@ -41,7 +42,8 @@ for migration in \
   20260721152000_add_whatsapp_attempt_history_and_recipient_snapshot.sql \
   20260721164500_ignore_planning_version_in_task_modified_notifications.sql \
   20260721171000_restore_legacy_assignment_overrides.sql \
-  20260722135500_ignore_report_completion_task_modified.sql; do
+  20260722135500_ignore_report_completion_task_modified.sql \
+  20260723141226_notify_only_schedule_task_modifications.sql; do
   docker exec "$name" psql -v ON_ERROR_STOP=1 -U postgres -d "$db" -f "/tmp/$migration" >/dev/null
 done
 docker exec "$name" psql -v ON_ERROR_STOP=1 -U postgres -d "$db" -f /tmp/planningHermes150IntegratedSmoke.sql
