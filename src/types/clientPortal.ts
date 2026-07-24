@@ -76,9 +76,9 @@ export interface PortalBooking {
   checkOutDate: string | null;
   guestCount: number | null;
   specialRequests: string | null;
-  status: 'active' | 'cancelled' | 'completed' | 'pending' | 'in_progress';
+  status: 'active' | 'cancelled' | 'completed' | 'pending' | 'in-progress' | 'in_progress';
   taskId: string | null;
-  taskStatus?: 'pending' | 'in_progress' | 'completed' | 'cancelled' | string | null;
+  taskStatus?: 'pending' | 'in-progress' | 'in_progress' | 'completed' | 'cancelled' | string | null;
   /** Planned start time from the linked Limpatex task. */
   startTime?: string | null;
   reservationId: string | null;

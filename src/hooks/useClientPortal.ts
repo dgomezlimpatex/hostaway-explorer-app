@@ -12,6 +12,10 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { useSede } from '@/contexts/SedeContext';
 import { buildReservationLogActor } from '@/lib/clientReservationLog';
+import {
+  applyPortalOperationalStatuses,
+  type PortalOperationalStatusRow,
+} from '@/components/client-portal/portalOperationalView';
 
 // Generate random 6-digit PIN
 export const generateRandomPin = (): string => {
@@ -1074,7 +1078,7 @@ export const useClientPortalBookings = (clientId: string | undefined) => {
           /^\[\s*POSIBLE\s*-\s*\]\s*/i,
           /^POSIBLE\s*-\s*/i,
           /^\(\s*EXTENSION\s*\)\s*/i,
-          /^EXTENSION\s*[:\-]?\s*/i,
+          /^EXTENSION\s*[:-]?\s*/i,
         ];
         let changed = true;
         while (changed) {
@@ -1186,7 +1190,30 @@ export const useClientPortalBookings = (clientId: string | undefined) => {
         });
       }
 
-      return [...manualBookings, ...externalBookings].sort(
+      const allBookings = [...manualBookings, ...externalBookings];
+      const portalTaskIds = allBookings
+        .map((booking) => booking.taskId)
+        .filter((taskId): taskId is string => Boolean(taskId));
+
+      let operationalBookings = allBookings;
+      if (portalTaskIds.length > 0) {
+        const { data: operationalStatuses, error: operationalStatusError } = await supabase
+          .rpc('get_client_portal_operational_statuses', {
+            _client_id: clientId,
+            _task_ids: portalTaskIds,
+          });
+
+        if (operationalStatusError) {
+          console.warn('Client portal operational status projection unavailable:', operationalStatusError);
+        } else {
+          operationalBookings = applyPortalOperationalStatuses(
+            allBookings,
+            (operationalStatuses ?? []) as PortalOperationalStatusRow[],
+          );
+        }
+      }
+
+      return operationalBookings.sort(
         (a, b) => new Date(a.cleaningDate).getTime() - new Date(b.cleaningDate).getTime()
       );
     },

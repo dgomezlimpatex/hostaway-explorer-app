@@ -2,11 +2,33 @@ import type { PortalBooking } from '@/types/clientPortal';
 
 export type PortalOperationalStatus = 'not_cleaned' | 'in_progress' | 'cleaned';
 
+export interface PortalOperationalStatusRow {
+  task_id: string;
+  operational_status: string;
+}
+
+export const applyPortalOperationalStatuses = (
+  bookings: PortalBooking[],
+  rows: PortalOperationalStatusRow[],
+): PortalBooking[] => {
+  const statusByTaskId = new Map(
+    rows
+      .filter((row) => ['pending', 'in-progress', 'in_progress', 'completed'].includes(row.operational_status))
+      .map((row) => [row.task_id, row.operational_status]),
+  );
+
+  return bookings.map((booking) => {
+    if (!booking.taskId) return booking;
+    const operationalStatus = statusByTaskId.get(booking.taskId);
+    return operationalStatus ? { ...booking, taskStatus: operationalStatus } : booking;
+  });
+};
+
 export const getPortalOperationalStatus = (
   taskStatus: PortalBooking['taskStatus'],
 ): PortalOperationalStatus => {
   if (taskStatus === 'completed') return 'cleaned';
-  if (taskStatus === 'in_progress') return 'in_progress';
+  if (taskStatus === 'in-progress' || taskStatus === 'in_progress') return 'in_progress';
   return 'not_cleaned';
 };
 

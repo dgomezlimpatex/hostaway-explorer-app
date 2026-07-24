@@ -34,6 +34,7 @@
     "test:mobile-calendar-multi-assignment": "bun scripts/mobileCalendarMultiAssignmentTest.ts",
     "test:client-portal-visibility": "node scripts/clientPortalVisibilityTest.mjs",
     "test:client-portal-operational": "node scripts/clientPortalOperationalTest.mjs",
+    "test:client-portal-operational:db": "npx supabase db query --linked --file scripts/clientPortalOperationalDatabaseTest.sql",
     "test:client-portal-no-completion-time": "node scripts/clientPortalNoCompletionTimeTest.mjs",
     "test:task-next-client-entry": "node scripts/taskNextClientEntryTest.mjs && node scripts/taskNextClientEntryUiContractTest.mjs",
     "test:recurring-task-schedule": "node scripts/recurringTaskScheduleTest.mjs",

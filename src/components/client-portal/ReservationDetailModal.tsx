@@ -13,6 +13,7 @@ import {
 import { PortalBooking } from '@/types/clientPortal';
 import { useClientPortalTaskReport } from '@/hooks/useClientPortal';
 import { cn } from '@/lib/utils';
+import { getPortalOperationalStatus } from './portalOperationalView';
 
 interface ReservationDetailModalProps {
   booking: PortalBooking | null;
@@ -60,6 +61,7 @@ export const ReservationDetailModal = ({
   if (!booking) return null;
 
   const cleaningDate = new Date(booking.cleaningDate);
+  const operationalStatus = getPortalOperationalStatus(booking.taskStatus);
   const isCompleted = booking.taskStatus === 'completed' || reportData?.status === 'ready';
   const isExternal = booking.source === 'external';
   const photosDisabled = reportData?.status === 'photos_disabled';
@@ -68,14 +70,14 @@ export const ReservationDetailModal = ({
   const showNext = () => setLightboxIndex(i => (i === null ? null : (i + 1) % photos.length));
 
   const renderStatusBadge = () => {
-    if (booking.taskStatus === 'completed') {
+    if (operationalStatus === 'cleaned') {
       return (
         <Badge className="bg-emerald-500/15 text-emerald-700 border-emerald-200 hover:bg-emerald-500/20">
           <CheckCircle2 className="h-3 w-3 mr-1" /> Limpia
         </Badge>
       );
     }
-    if (booking.taskStatus === 'in_progress') {
+    if (operationalStatus === 'in_progress') {
       return (
         <Badge className="bg-amber-500/15 text-amber-700 border-amber-200">
           <Clock className="h-3 w-3 mr-1" /> En curso
