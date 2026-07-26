@@ -39,6 +39,7 @@
     "test:task-next-client-entry": "node scripts/taskNextClientEntryTest.mjs && node scripts/taskNextClientEntryUiContractTest.mjs",
     "test:recurring-task-schedule": "node scripts/recurringTaskScheduleTest.mjs",
     "test:pms-cancellation-safety": "node scripts/pmsCancellationSafetyTest.mjs",
+    "test:avantio-timeout-resilience": "node scripts/avantioTimeoutResilienceTest.mjs",
     "test:edge-authorization-safety": "node scripts/edgeAuthorizationSafetyTest.mjs",
     "test:hostaway-dormancy": "node scripts/hostawayDormancyTest.mjs",
     "test:planning-batch-contract": "node scripts/planningBatchContractTest.mjs",

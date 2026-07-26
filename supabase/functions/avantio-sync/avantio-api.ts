@@ -1,11 +1,29 @@
 import { AvantioReservation } from './types.ts';
 
 const API_BASE_URL = 'https://api.avantio.pro/pms/v1';
-const MAX_RETRIES = 3;
+const MAX_RETRIES = 4;
 const TIMEOUT_MS = 30000;
 const FUTURE_DAYS = 30;
 const MAX_PAGES = 100;
 const PAGE_SIZE = 200;
+
+interface HttpGetOptions {
+  retries?: number;
+  timeoutMs?: number;
+  fetchImpl?: typeof fetch;
+  sleep?: (milliseconds: number) => Promise<void>;
+}
+
+class NonRetriableAvantioError extends Error {}
+
+function requestLabel(url: string): string {
+  try {
+    const parsed = new URL(url);
+    return `${parsed.pathname}${parsed.search}`;
+  } catch {
+    return url;
+  }
+}
 
 function formatDateSimple(dateString: string | undefined | null): string {
   if (!dateString) return '';
@@ -42,51 +60,69 @@ function norm(s: any): string {
   return (s || '').toString().trim();
 }
 
-async function httpGet(url: string, headers: Record<string, string>, retries = MAX_RETRIES): Promise<any> {
-  for (let attempt = 1; attempt <= retries; attempt++) {
-    try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), TIMEOUT_MS);
+export async function httpGet(
+  url: string,
+  headers: Record<string, string>,
+  options: HttpGetOptions = {},
+): Promise<any> {
+  const retries = options.retries ?? MAX_RETRIES;
+  const timeoutMs = options.timeoutMs ?? TIMEOUT_MS;
+  const fetchImpl = options.fetchImpl ?? fetch;
+  const sleep = options.sleep ?? ((milliseconds: number) => new Promise(resolve => setTimeout(resolve, milliseconds)));
+  const label = requestLabel(url);
 
-      const response = await fetch(url, {
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+    try {
+      const response = await fetchImpl(url, {
         method: 'GET',
         headers,
-        signal: controller.signal
+        signal: controller.signal,
       });
-
-      clearTimeout(timeoutId);
 
       if (response.ok) {
         const text = await response.text();
         try { return JSON.parse(text); } catch { return null; }
       }
 
+      const errorText = await response.text();
+      const message = `API Error ${response.status}: ${errorText.slice(0, 400)}`;
       if (response.status >= 400 && response.status < 500 && response.status !== 429) {
-        const errorText = await response.text();
-        throw new Error(`API Error ${response.status}: ${errorText.slice(0, 400)}`);
+        throw new NonRetriableAvantioError(message);
       }
-
-      if (attempt < retries) {
-        const waitTime = Math.pow(2, attempt) * 1000;
-        console.log(`⏳ Reintentando en ${waitTime}ms... (intento ${attempt}/${retries})`);
-        await new Promise(resolve => setTimeout(resolve, waitTime));
-      }
+      throw new Error(message);
     } catch (error) {
-      if (error.name === 'AbortError') {
-        console.log(`⏱️ Timeout en intento ${attempt}/${retries}`);
-      } else if (attempt === retries) {
-        throw error;
+      if (error instanceof NonRetriableAvantioError) throw error;
+
+      const isTimeout = error instanceof Error && error.name === 'AbortError';
+      const finalError = isTimeout
+        ? new Error(`Avantio request timed out after ${attempt} attempt${attempt === 1 ? '' : 's'} (${timeoutMs}ms each): GET ${label}`)
+        : error instanceof Error
+          ? error
+          : new Error(String(error));
+
+      if (attempt >= retries) {
+        if (isTimeout) {
+          throw new Error(`Avantio request timed out after ${retries} attempts (${timeoutMs}ms each): GET ${label}`);
+        }
+        throw finalError;
       }
 
-      if (attempt < retries) {
-        const waitTime = Math.pow(2, attempt) * 1000;
-        await new Promise(resolve => setTimeout(resolve, waitTime));
-      } else {
-        throw error;
-      }
+      const waitTime = Math.pow(2, attempt) * 1000;
+      console.log(
+        isTimeout
+          ? `⏱️ Timeout Avantio en ${label}; reintento ${attempt + 1}/${retries} en ${waitTime}ms`
+          : `⏳ Error temporal Avantio en ${label}; reintento ${attempt + 1}/${retries} en ${waitTime}ms: ${finalError.message}`,
+      );
+      await sleep(waitTime);
+    } finally {
+      clearTimeout(timeoutId);
     }
   }
-  throw new Error('Max retries exceeded');
+
+  throw new Error(`Avantio request failed after ${retries} attempts: GET ${label}`);
 }
 
 /**
