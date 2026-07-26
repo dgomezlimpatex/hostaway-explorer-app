@@ -7,13 +7,19 @@ const FUTURE_DAYS = 30;
 const MAX_PAGES = 100;
 const PAGE_SIZE = 200;
 
-interface HttpGetOptions {
+export interface HttpGetOptions {
   retries?: number;
   timeoutMs?: number;
+  deadlineAt?: number;
   fetchImpl?: typeof fetch;
   sleep?: (milliseconds: number) => Promise<void>;
 }
 
+export interface AvantioFetchOptions {
+  deadlineAt?: number;
+}
+
+export class AvantioSourceBudgetExceededError extends Error {}
 class NonRetriableAvantioError extends Error {}
 
 function requestLabel(url: string): string {
@@ -70,10 +76,19 @@ export async function httpGet(
   const fetchImpl = options.fetchImpl ?? fetch;
   const sleep = options.sleep ?? ((milliseconds: number) => new Promise(resolve => setTimeout(resolve, milliseconds)));
   const label = requestLabel(url);
+  const budgetError = () => new AvantioSourceBudgetExceededError(
+    `Global Avantio source budget exhausted before completing GET ${label}`,
+  );
 
   for (let attempt = 1; attempt <= retries; attempt++) {
+    const remainingMs = options.deadlineAt === undefined
+      ? Number.POSITIVE_INFINITY
+      : options.deadlineAt - Date.now();
+    if (remainingMs <= 0) throw budgetError();
+
+    const attemptTimeoutMs = Math.max(1, Math.min(timeoutMs, remainingMs));
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+    const timeoutId = setTimeout(() => controller.abort(), attemptTimeoutMs);
 
     try {
       const response = await fetchImpl(url, {
@@ -97,20 +112,26 @@ export async function httpGet(
       if (error instanceof NonRetriableAvantioError) throw error;
 
       const isTimeout = error instanceof Error && error.name === 'AbortError';
+      const deadlineExpired = options.deadlineAt !== undefined && Date.now() >= options.deadlineAt;
+      if (deadlineExpired) throw budgetError();
+
       const finalError = isTimeout
-        ? new Error(`Avantio request timed out after ${attempt} attempt${attempt === 1 ? '' : 's'} (${timeoutMs}ms each): GET ${label}`)
+        ? new Error(`Avantio request timed out after ${attempt} attempt${attempt === 1 ? '' : 's'} (${attemptTimeoutMs}ms last attempt): GET ${label}`)
         : error instanceof Error
           ? error
           : new Error(String(error));
 
       if (attempt >= retries) {
         if (isTimeout) {
-          throw new Error(`Avantio request timed out after ${retries} attempts (${timeoutMs}ms each): GET ${label}`);
+          throw new Error(`Avantio request timed out after ${retries} attempts (${attemptTimeoutMs}ms last attempt): GET ${label}`);
         }
         throw finalError;
       }
 
       const waitTime = Math.pow(2, attempt) * 1000;
+      if (options.deadlineAt !== undefined && Date.now() + waitTime >= options.deadlineAt) {
+        throw budgetError();
+      }
       console.log(
         isTimeout
           ? `⏱️ Timeout Avantio en ${label}; reintento ${attempt + 1}/${retries} en ${waitTime}ms`
@@ -128,9 +149,9 @@ export async function httpGet(
 /**
  * Get booking detail - used only to resolve accommodation name for unknown accommodationIds
  */
-async function getBookingDetail(token: string, bookingId: string): Promise<any> {
+async function getBookingDetail(token: string, bookingId: string, options: AvantioFetchOptions): Promise<any> {
   const url = `${API_BASE_URL}/bookings/${encodeURIComponent(String(bookingId))}`;
-  const result = await httpGet(url, headersAvantio(token));
+  const result = await httpGet(url, headersAvantio(token), { deadlineAt: options.deadlineAt });
   return result ? (result.data || result) : null;
 }
 
@@ -145,14 +166,15 @@ const accommodationCache: Map<string, { name: string; internalName: string }> = 
 async function resolveAccommodationInfo(
   token: string, 
   accommodationId: string,
-  sampleBookingId: string
+  sampleBookingId: string,
+  options: AvantioFetchOptions,
 ): Promise<{ name: string; internalName: string }> {
   if (accommodationCache.has(accommodationId)) {
     return accommodationCache.get(accommodationId)!;
   }
 
   // Fetch ONE booking detail to get accommodation name
-  const detail = await getBookingDetail(token, sampleBookingId);
+  const detail = await getBookingDetail(token, sampleBookingId, options);
   const name = norm(detail?.accommodation?.name || detail?.accommodation?.internalName || '');
   const internalName = norm(detail?.accommodation?.internalName || '');
   
@@ -171,7 +193,10 @@ async function resolveAccommodationInfo(
  * 2. Extract dates from list (available in list response)
  * 3. Only make detail calls per unique accommodationId (cached) to get accommodation name
  */
-export async function fetchAllAvantioReservations(token: string): Promise<AvantioReservation[]> {
+export async function fetchAllAvantioReservations(
+  token: string,
+  options: AvantioFetchOptions = {},
+): Promise<AvantioReservation[]> {
   const cleanToken = token.replace(/^["'\s]+|["'\s]+$/g, '');
   const today = todayISO();
   // CRITICAL FIX: Use yesterday as departureFrom to ensure we catch same-day checkouts
@@ -205,7 +230,7 @@ export async function fetchAllAvantioReservations(token: string): Promise<Avanti
     pages++;
     console.log(`📄 Página ${pages}: ${nextUrl}`);
 
-    const pageObj = await httpGet(nextUrl, headersAvantio(cleanToken));
+    const pageObj = await httpGet(nextUrl, headersAvantio(cleanToken), { deadlineAt: options.deadlineAt });
     if (!pageObj) break;
 
     const list = pageObj.data || [];
@@ -294,10 +319,12 @@ export async function fetchAllAvantioReservations(token: string): Promise<Avanti
   let detailCalls = 0;
   for (const [accId, sampleBookingId] of sampleBookingByAccommodation.entries()) {
     try {
-      await resolveAccommodationInfo(cleanToken, accId, sampleBookingId);
+      await resolveAccommodationInfo(cleanToken, accId, sampleBookingId, options);
       detailCalls++;
     } catch (err) {
-      console.error(`❌ Error resolviendo accommodation ${accId}: ${err.message}`);
+      if (err instanceof AvantioSourceBudgetExceededError) throw err;
+      const message = err instanceof Error ? err.message : String(err);
+      console.error(`❌ Error resolviendo accommodation ${accId}: ${message}`);
       accommodationCache.set(accId, { name: '', internalName: '' });
       detailCalls++;
     }

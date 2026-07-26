@@ -74,4 +74,60 @@ export const run = async (assert: Assert) => {
     /API Error 401/,
   );
   assert.equal(clientErrorAttempts, 1, 'non-retriable 4xx responses must fail immediately');
+
+  let rateLimitAttempts = 0;
+  const rateLimitedFetch: typeof fetch = async () => {
+    rateLimitAttempts += 1;
+    if (rateLimitAttempts < 3) return new Response('Too Many Requests', { status: 429 });
+    return new Response(JSON.stringify({ data: [{ id: 'after-rate-limit' }] }), { status: 200 });
+  };
+  const rateLimitRecovery = await httpGet(
+    'https://api.avantio.pro/pms/v1/bookings?limit=1',
+    { 'X-Avantio-Auth': 'must-not-leak' },
+    { retries: 3, fetchImpl: rateLimitedFetch, sleep: async () => undefined },
+  );
+  assert.equal(rateLimitAttempts, 3, 'HTTP 429 must be retried');
+  assert.equal(rateLimitRecovery.data[0].id, 'after-rate-limit');
+
+  let realAbortObserved = false;
+  const hangingFetch: typeof fetch = async (_input, init) => new Promise((_resolve, reject) => {
+    init?.signal?.addEventListener('abort', () => {
+      realAbortObserved = true;
+      reject(abortError());
+    }, { once: true });
+  });
+  const timeoutStartedAt = Date.now();
+  await assert.rejects(
+    () => httpGet(
+      'https://api.avantio.pro/pms/v1/bookings?limit=1',
+      { 'X-Avantio-Auth': 'must-not-leak' },
+      { retries: 1, timeoutMs: 10, fetchImpl: hangingFetch },
+    ),
+    /timed out after 1 attempt/i,
+  );
+  assert.equal(realAbortObserved, true, 'the real AbortController signal must cancel a hanging fetch');
+  assert.ok(Date.now() - timeoutStartedAt < 250, 'the request timeout must fire promptly');
+
+  let budgetAttempts = 0;
+  const budgetFetch: typeof fetch = async (_input, init) => new Promise((_resolve, reject) => {
+    budgetAttempts += 1;
+    init?.signal?.addEventListener('abort', () => reject(abortError()), { once: true });
+  });
+  const budgetStartedAt = Date.now();
+  const deadlineOptions = {
+    retries: 4,
+    timeoutMs: 1000,
+    deadlineAt: Date.now() + 25,
+    fetchImpl: budgetFetch,
+  } as unknown as Parameters<typeof httpGet>[2];
+  await assert.rejects(
+    () => httpGet(
+      'https://api.avantio.pro/pms/v1/bookings?limit=1',
+      { 'X-Avantio-Auth': 'must-not-leak' },
+      deadlineOptions,
+    ),
+    /global Avantio source budget exhausted/i,
+  );
+  assert.equal(budgetAttempts, 1, 'the global deadline must stop new attempts');
+  assert.ok(Date.now() - budgetStartedAt < 250, 'the global deadline must reserve time for log finalization');
 };

@@ -4,10 +4,14 @@ import { fetchAllAvantioReservations } from './avantio-api.ts';
 import { ReservationProcessor } from './reservation-processor.ts';
 import { createSyncLog, updateSyncLog, preloadPropertiesCache, clearPropertiesCache, preloadReservationsAndTasksCache, clearReservationsAndTasksCache } from './database-operations.ts';
 
+const SYNC_WORK_BUDGET_MS = 110000;
+const SOURCE_FETCH_BUDGET_MS = 70000;
+
 export class SyncOrchestrator {
   private supabase;
   private processor: ReservationProcessor;
   private syncLogId: string | null = null;
+  private syncDeadlineAt = 0;
   private stats: SyncStats = {
     reservations_processed: 0,
     new_reservations: 0,
@@ -38,15 +42,28 @@ export class SyncOrchestrator {
     return this.syncLogId;
   }
 
+  private assertWithinSyncBudget(phase: string): void {
+    if (this.syncDeadlineAt > 0 && Date.now() >= this.syncDeadlineAt) {
+      throw new Error(`Global Avantio sync budget exhausted before phase: ${phase}`);
+    }
+  }
+
   async performSync(token: string): Promise<void> {
+    this.syncDeadlineAt = Date.now() + SYNC_WORK_BUDGET_MS;
+    const sourceDeadlineAt = Math.min(
+      this.syncDeadlineAt,
+      Date.now() + SOURCE_FETCH_BUDGET_MS,
+    );
     console.log('🚀 Iniciando sincronización con Avantio PMS v1...');
 
     // CRITICAL: Preload all properties into in-memory cache (1 query instead of thousands)
     await preloadPropertiesCache();
 
     try {
-      // Fetch all reservations using real API (pagination + detail included)
-      const reservations = await fetchAllAvantioReservations(token);
+      // Fetch all reservations using real API (pagination + detail included).
+      // The source phase gets a smaller budget so DB processing and log finalization keep headroom.
+      const reservations = await fetchAllAvantioReservations(token, { deadlineAt: sourceDeadlineAt });
+      this.assertWithinSyncBudget('preload reservations and tasks');
 
       console.log(`📊 Total de reservas a procesar: ${reservations.length}`);
 
@@ -62,6 +79,7 @@ export class SyncOrchestrator {
 
       // Process each reservation sequentially (matches stable behaviour pre-2026-04-24)
       for (let i = 0; i < reservations.length; i++) {
+        this.assertWithinSyncBudget(`process reservation ${i + 1}/${reservations.length}`);
         try {
           await this.processor.processReservation(
             reservations[i],
@@ -77,12 +95,15 @@ export class SyncOrchestrator {
       }
 
       // DEDUP: Remove duplicate tasks for same property/date
+      this.assertWithinSyncBudget('deduplicate tasks');
       await this.deduplicateTasks();
 
       // REPAIR: Check for reservations in DB with NULL task_id that should have tasks
+      this.assertWithinSyncBudget('repair missing tasks');
       await this.repairMissingTasks();
 
       // CLEANUP: Remove tasks for REQUESTED reservations past check-in time
+      this.assertWithinSyncBudget('cleanup expired requested tasks');
       await this.cleanupExpiredRequestedTasks();
 
       console.log('✅ Sincronización completada');
@@ -122,6 +143,7 @@ export class SyncOrchestrator {
 
     let removedCount = 0;
     for (const [key, tasks] of groups) {
+      this.assertWithinSyncBudget(`deduplicate task group ${key}`);
       if (tasks.length <= 1) continue;
 
       // Keep the first one (or one with a cleaner assigned)
@@ -193,6 +215,7 @@ export class SyncOrchestrator {
     let from = 0;
     const orphanedReservations: any[] = [];
     while (true) {
+      this.assertWithinSyncBudget('page orphaned reservations');
       const { data: page, error } = await this.supabase
         .from('avantio_reservations')
         .select('*, properties!avantio_reservations_property_id_fkey(*)')
@@ -220,6 +243,7 @@ export class SyncOrchestrator {
     console.log(`⚠️ Encontradas ${orphanedReservations.length} reservas confirmadas sin tarea. Reparando...`);
 
     for (const reservation of orphanedReservations) {
+      this.assertWithinSyncBudget(`repair reservation ${reservation.avantio_reservation_id}`);
       if (!reservation.properties) continue;
       
       try {
@@ -285,6 +309,7 @@ export class SyncOrchestrator {
     let from = 0;
     const expiredRequested: any[] = [];
     while (true) {
+      this.assertWithinSyncBudget('page expired requested reservations');
       const { data: page, error } = await this.supabase
         .from('avantio_reservations')
         .select('*, properties!avantio_reservations_property_id_fkey(*)')
@@ -325,6 +350,7 @@ export class SyncOrchestrator {
     const { deleteTaskIfPending } = await import('./database-operations.ts');
 
     for (const reservation of toCleanup) {
+      this.assertWithinSyncBudget(`cleanup requested reservation ${reservation.avantio_reservation_id}`);
       try {
         // CHECK: Are there sibling reservations (non-REQUESTED, non-CANCELLED) sharing this task?
         const { data: siblings } = await this.supabase
