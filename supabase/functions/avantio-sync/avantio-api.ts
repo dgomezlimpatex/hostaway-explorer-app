@@ -146,12 +146,24 @@ export async function httpGet(
   throw new Error(`Avantio request failed after ${retries} attempts: GET ${label}`);
 }
 
+interface AvantioAccommodationDetail {
+  name?: string;
+  legalName?: string;
+  internalName?: string;
+  [key: string]: unknown;
+}
+
 /**
- * Get booking detail - used only to resolve accommodation name for unknown accommodationIds
+ * Get accommodation detail directly. This endpoint remains healthy even when
+ * Avantio's bookings service contains records that hang on detail requests.
  */
-async function getBookingDetail(token: string, bookingId: string, options: AvantioFetchOptions): Promise<any> {
-  const url = `${API_BASE_URL}/bookings/${encodeURIComponent(String(bookingId))}`;
-  const result = await httpGet(url, headersAvantio(token), { deadlineAt: options.deadlineAt });
+export async function getAccommodationDetail(
+  token: string,
+  accommodationId: string,
+  options: HttpGetOptions = {},
+): Promise<AvantioAccommodationDetail | null> {
+  const url = `${API_BASE_URL}/accommodations/${encodeURIComponent(String(accommodationId))}`;
+  const result = await httpGet(url, headersAvantio(token), options);
   return result ? (result.data || result) : null;
 }
 
@@ -160,28 +172,27 @@ const accommodationCache: Map<string, { name: string; internalName: string }> = 
 
 /**
  * Resolve accommodation name for a given accommodationId.
- * Uses cache to avoid duplicate detail calls.
- * Only makes a detail call for the FIRST booking with each unknown accommodationId.
+ * Uses the accommodation endpoint directly and caches the result.
  */
 async function resolveAccommodationInfo(
-  token: string, 
+  token: string,
   accommodationId: string,
-  sampleBookingId: string,
   options: AvantioFetchOptions,
 ): Promise<{ name: string; internalName: string }> {
   if (accommodationCache.has(accommodationId)) {
     return accommodationCache.get(accommodationId)!;
   }
 
-  // Fetch ONE booking detail to get accommodation name
-  const detail = await getBookingDetail(token, sampleBookingId, options);
-  const name = norm(detail?.accommodation?.name || detail?.accommodation?.internalName || '');
-  const internalName = norm(detail?.accommodation?.internalName || '');
-  
+  const accommodation = await getAccommodationDetail(token, accommodationId, {
+    deadlineAt: options.deadlineAt,
+  });
+  const name = norm(accommodation?.name || accommodation?.legalName || '');
+  const internalName = norm(accommodation?.internalName || accommodation?.name || '');
+
   const info = { name, internalName };
   accommodationCache.set(accommodationId, info);
   console.log(`🏠 Accommodation ${accommodationId} -> nombre="${name}", código="${internalName}"`);
-  
+
   return info;
 }
 
@@ -191,7 +202,7 @@ async function resolveAccommodationInfo(
  * Strategy:
  * 1. Use departureFrom/departureTo to filter: today → today+30
  * 2. Extract dates from list (available in list response)
- * 3. Only make detail calls per unique accommodationId (cached) to get accommodation name
+ * 3. Only make one accommodation detail call per unique accommodationId (cached) to get its name
  */
 export async function fetchAllAvantioReservations(
   token: string,
@@ -303,23 +314,14 @@ export async function fetchAllAvantioReservations(
   console.log(`📊 Fase 1 completada: ${rawItems.length} reservas en rango (descartadas ${totalDiscarded} fuera de rango, ${pages} páginas)`);
 
 
-  // Phase 2: Resolve accommodation names (one detail call per unique accommodationId)
+  // Phase 2: Resolve accommodation names (one accommodation call per unique ID)
   const uniqueAccommodationIds = new Set(rawItems.map(r => r.accommodationId).filter(Boolean));
   console.log(`🏠 ${uniqueAccommodationIds.size} alojamientos únicos a resolver`);
 
-  // Map accommodationId -> sample booking id (first booking with that accommodationId)
-  const sampleBookingByAccommodation: Map<string, string> = new Map();
-  for (const item of rawItems) {
-    if (item.accommodationId && !sampleBookingByAccommodation.has(item.accommodationId)) {
-      sampleBookingByAccommodation.set(item.accommodationId, item.id);
-    }
-  }
-
-  // Resolve each unique accommodation (detail call only once per accommodation)
   let detailCalls = 0;
-  for (const [accId, sampleBookingId] of sampleBookingByAccommodation.entries()) {
+  for (const accId of uniqueAccommodationIds) {
     try {
-      await resolveAccommodationInfo(cleanToken, accId, sampleBookingId, options);
+      await resolveAccommodationInfo(cleanToken, accId, options);
       detailCalls++;
     } catch (err) {
       if (err instanceof AvantioSourceBudgetExceededError) throw err;

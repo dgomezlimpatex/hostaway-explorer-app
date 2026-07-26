@@ -32,7 +32,9 @@ try {
     'utf8',
   );
   assert.match(apiSource, /httpGet\(nextUrl,[\s\S]*deadlineAt: options\.deadlineAt/);
-  assert.match(apiSource, /getBookingDetail\(token, sampleBookingId, options\)/);
+  assert.match(apiSource, /getAccommodationDetail\(token, accommodationId/);
+  assert.match(apiSource, /\/accommodations\/\$\{encodeURIComponent/);
+  assert.doesNotMatch(apiSource, /getBookingDetail/);
   assert.match(apiSource, /err instanceof AvantioSourceBudgetExceededError\) throw err/);
   assert.match(orchestratorSource, /const SYNC_WORK_BUDGET_MS = 110000/);
   assert.match(orchestratorSource, /const SOURCE_FETCH_BUDGET_MS = 70000/);

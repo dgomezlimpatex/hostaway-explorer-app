@@ -1,4 +1,4 @@
-import { httpGet } from '../supabase/functions/avantio-sync/avantio-api.ts';
+import { getAccommodationDetail, httpGet } from '../supabase/functions/avantio-sync/avantio-api.ts';
 
 type Assert = typeof import('node:assert/strict');
 
@@ -130,4 +130,20 @@ export const run = async (assert: Assert) => {
   );
   assert.equal(budgetAttempts, 1, 'the global deadline must stop new attempts');
   assert.ok(Date.now() - budgetStartedAt < 250, 'the global deadline must reserve time for log finalization');
+
+  let accommodationRequestUrl = '';
+  const accommodationFetch: typeof fetch = async (input) => {
+    accommodationRequestUrl = String(input);
+    return new Response(JSON.stringify({
+      data: { id: 774600, name: 'CSJ16.1', legalName: 'Casa San Juan 16.1' },
+    }), { status: 200 });
+  };
+  const accommodation = await getAccommodationDetail(
+    'must-not-leak',
+    '774600',
+    { fetchImpl: accommodationFetch },
+  );
+  assert.match(accommodationRequestUrl, /\/pms\/v1\/accommodations\/774600$/);
+  assert.doesNotMatch(accommodationRequestUrl, /\/bookings\//);
+  assert.equal(accommodation.name, 'CSJ16.1');
 };
