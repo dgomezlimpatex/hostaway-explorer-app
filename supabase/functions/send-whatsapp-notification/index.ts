@@ -8,6 +8,7 @@ import { sendWhatsAppTemplateMessage } from '../_shared/whatsappClient.ts';
 import { classifyApprovalCallbackOutcome } from '../_shared/whatsappApprovalOutcome.ts';
 import { classifyResendSendResponse } from '../_shared/resendDeliverySemantics.ts';
 import { normalizeSpanishPhoneE164 } from '../_shared/phone.ts';
+import { hasTaskReportStarted } from '../_shared/lateStartReminder.ts';
 import {
   buildRejectedAlertBodyParameters,
   buildRejectedAlertEmail,
@@ -483,6 +484,42 @@ serve(async (req: Request): Promise<Response> => {
         status: 404,
         headers: { 'Content-Type': 'application/json', ...corsHeaders },
       });
+    }
+
+    // tasks.status permanece pending mientras el reporte está en progreso.
+    // Revalida el estado real justo antes de preparar la entrega para evitar
+    // avisos falsos y cubrir el inicio ocurrido mientras el cron procesaba.
+    if (event.event_type === 'task_late_start_reminder' && event.task_id) {
+      const { data: taskReports, error: taskReportsError } = await supabase
+        .from('task_reports')
+        .select('start_time, overall_status')
+        .eq('task_id', event.task_id);
+      if (taskReportsError) throw taskReportsError;
+
+      if (hasTaskReportStarted(taskReports) && claimedLeaseToken) {
+        const { data: cancelledEvent, error: cancelError } = await supabase
+          .from('notification_events')
+          .update({
+            status: 'cancelled',
+            processed_at: new Date().toISOString(),
+            processing_lease_token: null,
+            error_message: 'Recordatorio omitido: el reporte de la tarea ya está iniciado',
+          })
+          .eq('id', eventId)
+          .eq('status', 'processing')
+          .eq('processing_lease_token', claimedLeaseToken)
+          .select('id')
+          .maybeSingle();
+        if (cancelError) throw cancelError;
+
+        return new Response(JSON.stringify({
+          ok: true,
+          status: cancelledEvent ? 'skipped:task_already_started' : 'stale_claim',
+        }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json', ...corsHeaders },
+        });
+      }
     }
 
     // 3. Resolver destinatario: trabajadora para eventos normales, administración para rechazos.

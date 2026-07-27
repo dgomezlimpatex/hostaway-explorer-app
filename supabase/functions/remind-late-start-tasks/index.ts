@@ -1,9 +1,14 @@
 // remind-late-start-tasks (cron): crea y envía recordatorios para tareas de hoy
-// (Europe/Madrid) que deberían haber empezado hace +15 min y siguen 'pending'.
+// (Europe/Madrid) que deberían haber empezado hace +30 min y siguen sin reporte iniciado.
 // Se ejecuta cada 5 min; la propia función limita la ventana a 07:00-22:00.
 
 import { serve } from 'https://deno.land/std@0.190.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.50.0';
+import {
+  hasTaskReportStarted,
+  lateStartThreshold,
+  LATE_START_GRACE_MINUTES,
+} from '../_shared/lateStartReminder.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -27,16 +32,6 @@ function nowTimeMadrid(): string {
     minute: '2-digit',
     hour12: false,
   }).format(new Date());
-}
-
-/** Resta minutos a una hora HH:MM (sin envolver de día). */
-function subtractMinutes(hhmm: string, minutes: number): string {
-  const [h, m] = hhmm.split(':').map((x) => parseInt(x, 10));
-  let total = h * 60 + m - minutes;
-  if (total < 0) total = 0;
-  const nh = Math.floor(total / 60).toString().padStart(2, '0');
-  const nm = (total % 60).toString().padStart(2, '0');
-  return `${nh}:${nm}`;
 }
 
 serve(async (req: Request): Promise<Response> => {
@@ -68,7 +63,7 @@ serve(async (req: Request): Promise<Response> => {
         headers: { 'Content-Type': 'application/json', ...corsHeaders },
       });
     }
-    const threshold = subtractMinutes(nowTimeMadrid(), 15);
+    const threshold = lateStartThreshold(nowTimeMadrid());
 
     const { data: tasks, error } = await supabase
       .from('tasks')
@@ -81,9 +76,28 @@ serve(async (req: Request): Promise<Response> => {
 
     if (error) throw error;
 
+    const candidateTasks = tasks ?? [];
+    const candidateTaskIds = candidateTasks.map((task) => task.id);
+    let eligibleTasks = candidateTasks;
+
+    if (candidateTaskIds.length > 0) {
+      const { data: reports, error: reportsError } = await supabase
+        .from('task_reports')
+        .select('task_id, start_time, overall_status')
+        .in('task_id', candidateTaskIds);
+      if (reportsError) throw reportsError;
+
+      const startedTaskIds = new Set(
+        (reports ?? [])
+          .filter((report) => hasTaskReportStarted([report]))
+          .map((report) => report.task_id),
+      );
+      eligibleTasks = candidateTasks.filter((task) => !startedTaskIds.has(task.id));
+    }
+
     let created = 0;
     let sent = 0;
-    for (const task of tasks ?? []) {
+    for (const task of eligibleTasks) {
       const dedupeKey = `task_late_start_reminder:${task.id}`;
 
       const { data: inserted, error: insErr } = await supabase
@@ -126,7 +140,10 @@ serve(async (req: Request): Promise<Response> => {
         continue;
       }
       const sendResult = await sendResponse.json().catch(() => ({}));
-      if (sendResult?.ok !== true) continue;
+      if (
+        sendResult?.ok !== true
+        || !['sent', 'delivered', 'read', 'already_sent'].includes(sendResult?.status)
+      ) continue;
 
       sent++;
       await supabase
@@ -135,7 +152,16 @@ serve(async (req: Request): Promise<Response> => {
         .eq('id', task.id);
     }
 
-    return new Response(JSON.stringify({ ok: true, date: today, threshold, candidates: tasks?.length ?? 0, created, sent }), {
+    return new Response(JSON.stringify({
+      ok: true,
+      date: today,
+      graceMinutes: LATE_START_GRACE_MINUTES,
+      threshold,
+      candidates: candidateTasks.length,
+      eligible: eligibleTasks.length,
+      created,
+      sent,
+    }), {
       status: 200,
       headers: { 'Content-Type': 'application/json', ...corsHeaders },
     });
