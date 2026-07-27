@@ -103,8 +103,8 @@ serve(async (req: Request) => {
 
             <p style="margin: 24px 0 8px; color: #334155;">Puedes acceder a tus tareas desde:</p>
             <p style="margin: 0 0 20px;">
-              <a href="https://gestionlimpatex.vercel.app/" style="color: #2563eb; font-weight: 700; text-decoration: none;">
-                https://gestionlimpatex.vercel.app/
+              <a href="https://gestionlimpatex.vercel.app/calendar" style="color: #2563eb; font-weight: 700; text-decoration: none;">
+                https://gestionlimpatex.vercel.app/calendar
               </a>
             </p>
             <p style="margin: 0; font-weight: 700; color: #0f172a;">

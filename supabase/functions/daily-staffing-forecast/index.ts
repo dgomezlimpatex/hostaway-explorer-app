@@ -233,7 +233,7 @@ const handler = async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
-  const origin = req.headers.get("origin") ?? "https://limpatexgestion.lovable.app";
+  const origin = "https://gestionlimpatex.vercel.app";
 
   // Modo prueba: { test: true, email: '...' } envía solo a un destinatario sin tocar el log
   let testMode = false;

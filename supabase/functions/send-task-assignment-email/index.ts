@@ -103,8 +103,8 @@ const handler = async (req: Request): Promise<Response> => {
             
             <p style="margin-bottom: 8px;">Puedes acceder a tus tareas o calendario desde el siguiente enlace:</p>
             <p style="margin-top: 0; margin-bottom: 20px;">
-              <a href="https://gestionlimpatex.vercel.app/" style="color: #2563eb; font-weight: bold; text-decoration: none;">
-                https://gestionlimpatex.vercel.app/
+              <a href="https://gestionlimpatex.vercel.app/calendar" style="color: #2563eb; font-weight: bold; text-decoration: none;">
+                https://gestionlimpatex.vercel.app/calendar
               </a>
             </p>
             <p style="margin-bottom: 20px; font-weight: bold;">Recuerda que es obligatorio completar los reportes de todas las tareas.</p>

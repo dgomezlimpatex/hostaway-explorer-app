@@ -34,10 +34,16 @@ const senderOccurrences = combined.match(new RegExp(senderAddress.replaceAll('.'
 assert.equal(senderOccurrences.length, 20, 'all 20 Resend sender declarations must use the verified limpatexgestion.es domain');
 assert.doesNotMatch(combined, /@gestionlimpatex\.es/, 'the unverified reversed domain gestionlimpatex.es must never be used');
 assert.doesNotMatch(combined, /@(limpatexgestion\.com|resend\.dev)/, 'legacy Resend sender domains must not remain');
+assert.doesNotMatch(combined, /https?:\/\/[^\s"']*lovable\.app/i, 'Resend emails must never link workers to a Lovable deployment');
 
+const canonicalCalendarUrl = 'https://gestionlimpatex.vercel.app/calendar';
 const assignmentEmail = read('supabase/functions/send-task-assignment-email/index.ts');
 assert.match(assignmentEmail, /if\s*\(emailResponse\.error\)/, 'task assignment email must reject Resend API errors');
 assert.match(assignmentEmail, /status:\s*500/, 'task assignment email must expose provider failures as HTTP errors');
+assert.ok(assignmentEmail.includes(canonicalCalendarUrl), 'task assignment email must link to the canonical Vercel calendar');
+
+const planningEmail = read('supabase/functions/send-planning-batch-email/index.ts');
+assert.ok(planningEmail.includes(canonicalCalendarUrl), 'planning email must link to the canonical Vercel calendar');
 
 const batchEmail = read('supabase/functions/batch-create-tasks/index.ts');
 assert.match(batchEmail, /if\s*\(emailResponse\.error\)/, 'batch task email must not count a rejected Resend request as sent');
