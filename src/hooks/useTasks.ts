@@ -1,6 +1,6 @@
 
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { Task, ViewType } from '@/types/calendar';
+import { Cleaner, Task, ViewType } from '@/types/calendar';
 import { taskStorageService } from '@/services/taskStorage';
 import { taskAssignmentService } from '@/services/storage/taskAssignmentService';
 import { useOptimizedTasks } from './useOptimizedTasks';
@@ -18,6 +18,26 @@ class BatchCreateError extends Error {
 const sha256Text = async (value: string) => Array.from(
   new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(value))),
 ).map((byte) => byte.toString(16).padStart(2, '0')).join('');
+
+const createOptimisticAssignment = (
+  taskId: string,
+  cleanerId: string,
+  cleanerName: string,
+): NonNullable<Task['assignments']> => {
+  const now = new Date().toISOString();
+  return [{
+    id: `optimistic-${taskId}-${cleanerId}`,
+    task_id: taskId,
+    cleaner_id: cleanerId,
+    cleaner_name: cleanerName,
+    assigned_at: now,
+    created_at: now,
+    updated_at: now,
+  }];
+};
+
+const getErrorMessage = (error: unknown, fallback: string): string =>
+  error instanceof Error && error.message ? error.message : fallback;
 
 export const useTasks = (currentDate: Date, currentView: ViewType) => {
   const queryClient = useQueryClient();
@@ -207,7 +227,7 @@ export const useTasks = (currentDate: Date, currentView: ViewType) => {
   });
 
   const assignTaskMutation = useMutation({
-    mutationFn: async ({ taskId, cleanerId, cleaners }: { taskId: string; cleanerId: string; cleaners: any[] }) => {
+    mutationFn: async ({ taskId, cleanerId, cleaners }: { taskId: string; cleanerId: string; cleaners: Cleaner[] }) => {
       const cleaner = cleaners.find(c => c.id === cleanerId);
       if (!cleaner) {
         throw new Error('Cleaner not found');
@@ -231,7 +251,14 @@ export const useTasks = (currentDate: Date, currentView: ViewType) => {
         (oldData: Task[] | undefined) => {
           if (!Array.isArray(oldData)) return oldData;
           return oldData.map(task =>
-            task.id === taskId ? { ...task, cleanerId, cleaner: cleaner.name } : task
+            task.id === taskId
+              ? {
+                  ...task,
+                  cleanerId,
+                  cleaner: cleaner.name,
+                  assignments: createOptimisticAssignment(taskId, cleanerId, cleaner.name),
+                }
+              : task
           );
         }
       );
@@ -241,11 +268,9 @@ export const useTasks = (currentDate: Date, currentView: ViewType) => {
     onSuccess: (data, variables) => {
       logger.log('Task assigned successfully:', data);
       
-      // Silent invalidation: marca las queries como stale pero NO refetch agresivo
-      // El próximo render natural recogerá los datos frescos
+      // Reconcile the optimistic assignment with the canonical database rows.
       queryClient.invalidateQueries({ 
         predicate: (query) => Array.isArray(query.queryKey) && query.queryKey[0] === 'tasks',
-        refetchType: 'none',
       });
       
       const cleaner = variables.cleaners.find(c => c.id === variables.cleanerId);
@@ -254,7 +279,7 @@ export const useTasks = (currentDate: Date, currentView: ViewType) => {
         description: `Se ha asignado la tarea a ${cleaner?.name}.`,
       });
     },
-    onError: (error: any, variables) => {
+    onError: (error: unknown) => {
       logger.error('Error assigning task:', error);
       
       // Revertir actualización optimista forzando refetch
@@ -264,7 +289,7 @@ export const useTasks = (currentDate: Date, currentView: ViewType) => {
       
       toast({
         title: "Error",
-        description: error.message || "No se pudo asignar la tarea.",
+        description: getErrorMessage(error, "No se pudo asignar la tarea."),
         variant: "destructive",
       });
     },
@@ -311,6 +336,7 @@ export const useTasks = (currentDate: Date, currentView: ViewType) => {
                   ...task,
                   cleanerId,
                   cleaner: cleanerName,
+                  assignments: createOptimisticAssignment(taskId, cleanerId, cleanerName),
                   ...(startTime ? { startTime } : {}),
                   ...(endTime ? { endTime } : {}),
                 }
@@ -322,13 +348,12 @@ export const useTasks = (currentDate: Date, currentView: ViewType) => {
       logger.log('⚡ Optimistic update (assign+schedule) applied');
     },
     onSuccess: () => {
-      // Silent invalidation only
+      // Reconcile the optimistic assignment with the canonical database rows.
       queryClient.invalidateQueries({
         predicate: (q) => Array.isArray(q.queryKey) && q.queryKey[0] === 'tasks',
-        refetchType: 'none',
       });
     },
-    onError: (error: any) => {
+    onError: (error: unknown) => {
       logger.error('Error in assignTaskWithSchedule:', error);
       // Revert by forcing refetch
       queryClient.invalidateQueries({
@@ -336,7 +361,7 @@ export const useTasks = (currentDate: Date, currentView: ViewType) => {
       });
       toast({
         title: 'Error',
-        description: error.message || 'No se pudo asignar la tarea.',
+        description: getErrorMessage(error, 'No se pudo asignar la tarea.'),
         variant: 'destructive',
       });
     },
@@ -373,11 +398,11 @@ export const useTasks = (currentDate: Date, currentView: ViewType) => {
       
       logger.log('⚡ Forced aggressive task unassignment cache invalidation and refetch');
     },
-    onError: (error: any) => {
+    onError: (error: unknown) => {
       logger.error('Error unassigning task:', error);
       toast({
         title: "Error",
-        description: error.message || "No se pudo desasignar la tarea.",
+        description: getErrorMessage(error, "No se pudo desasignar la tarea."),
         variant: "destructive",
       });
     },
@@ -494,7 +519,7 @@ export const useTasks = (currentDate: Date, currentView: ViewType) => {
     deleteTask: deleteTaskMutation.mutate,
     deleteAllTasks: deleteAllTasksMutation.mutate,
     assignTask: assignTaskMutation.mutate,
-    assignTaskWithSchedule: assignTaskWithScheduleMutation.mutate,
+    assignTaskWithSchedule: assignTaskWithScheduleMutation.mutateAsync,
     unassignTask: unassignTaskMutation.mutate,
     isUpdatingTask: updateTaskMutation.isPending,
     isCreatingTask: createTaskMutation.isPending,

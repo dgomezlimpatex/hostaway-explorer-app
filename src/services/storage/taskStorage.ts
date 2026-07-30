@@ -3,6 +3,10 @@ import { BaseStorageService } from './baseStorage';
 import { supabase } from '@/integrations/supabase/client';
 import { formatMadridDate } from '@/utils/date';
 import { recordAiObservedEvent } from '@/services/aiObservedEvents';
+import {
+  canCleanerAccessTaskByAssignments,
+  parseTaskAssignmentCounts,
+} from '@/utils/taskAssignments';
 
 type StockRpcClient = {
   rpc: (
@@ -13,6 +17,13 @@ type StockRpcClient = {
       user_id_param: string;
     }
   ) => Promise<{ data: unknown; error: Error | null }>;
+};
+
+type AssignmentCountRpcClient = {
+  rpc: (
+    fn: 'get_task_assignment_counts',
+    args: { _task_ids: string[] },
+  ) => Promise<{ data: unknown; error: { message: string } | null }>;
 };
 
 type TaskCreateData = Omit<Task, 'id' | 'created_at' | 'updated_at'>;
@@ -162,45 +173,48 @@ export class TaskStorageService extends BaseStorageService<Task, TaskCreateData>
     super(taskStorageConfig);
   }
 
-  private async applyAssignmentCounts(tasks: Map<string, TaskDBRow> | TaskDBRow[]): Promise<void> {
+  private async applyAssignmentCounts(
+    tasks: Map<string, TaskDBRow> | TaskDBRow[],
+    { required = false }: { required?: boolean } = {},
+  ): Promise<void> {
     const taskRows = Array.isArray(tasks) ? tasks : Array.from(tasks.values());
     const taskIds = taskRows.map((task) => task.id).filter(Boolean);
     if (taskIds.length === 0) return;
 
     try {
-      const { data, error } = await (supabase as any).rpc('get_task_assignment_counts', {
+      const { data, error } = await (supabase as unknown as AssignmentCountRpcClient).rpc('get_task_assignment_counts', {
         _task_ids: taskIds,
       });
 
-      if (error || !Array.isArray(data)) {
-        if (error) console.warn('Task assignment count RPC unavailable:', error.message);
+      if (error) {
+        if (required) throw error;
+        console.warn('Task assignment count RPC unavailable:', error);
         return;
       }
 
-      const counts = new Map<string, number>(
-        data.map((row: { task_id: string; assignment_count: number }) => [
-          row.task_id,
-          row.assignment_count,
-        ])
-      );
+      const counts = parseTaskAssignmentCounts(data, taskIds);
 
       taskRows.forEach((task) => {
-        const count = counts.get(task.id);
-        if (typeof count === 'number' && count > 0) {
-          task.assignment_count = count;
-        }
+        task.assignment_count = counts.get(task.id) ?? 0;
       });
     } catch (error) {
+      if (required) throw error;
       console.warn('Task assignment count RPC failed:', error);
     }
   }
 
   // Optimized method for cleaners - fetches only their tasks from server
-  async getTasksForCleaner(cleanerId: string, sedeId?: string): Promise<Task[]> {
+  async getTasksForCleaner(
+    cleanerId: string,
+    sedeId?: string,
+    dateFrom?: string,
+    dateTo?: string,
+  ): Promise<Task[]> {
     const effectiveSedeId = sedeId || this.getSedeIdFromStorage();
     
-    // Get today's date for filtering - only fetch from today onwards
-    const today = formatMadridDate(new Date());
+    // Keep the historical today-onwards default for direct callers, while the
+    // calendar supplies its exact visible two-day window.
+    dateFrom = dateFrom || formatMadridDate(new Date());
     
     // Query tasks where cleaner is assigned via task_assignments table
     let query = supabase
@@ -212,9 +226,13 @@ export class TaskStorageService extends BaseStorageService<Task, TaskCreateData>
         task_assignments!inner(id, task_id, cleaner_id, cleaner_name, assigned_at, assigned_by, created_at, updated_at)
       `)
       .eq('task_assignments.cleaner_id', cleanerId)
-      .gte('date', today)
+      .gte('date', dateFrom)
       .order('date', { ascending: true })
       .order('start_time', { ascending: true });
+
+    if (dateTo) {
+      query = query.lte('date', dateTo);
+    }
     
     if (effectiveSedeId && effectiveSedeId !== 'no-sede') {
       query = query.eq('sede_id', effectiveSedeId);
@@ -237,9 +255,13 @@ export class TaskStorageService extends BaseStorageService<Task, TaskCreateData>
         task_assignments(id, task_id, cleaner_id, cleaner_name, assigned_at, assigned_by, created_at, updated_at)
       `)
       .eq('cleaner_id', cleanerId)
-      .gte('date', today)
+      .gte('date', dateFrom)
       .order('date', { ascending: true })
       .order('start_time', { ascending: true });
+
+    if (dateTo) {
+      legacyQuery = legacyQuery.lte('date', dateTo);
+    }
     
     if (effectiveSedeId && effectiveSedeId !== 'no-sede') {
       legacyQuery = legacyQuery.eq('sede_id', effectiveSedeId);
@@ -249,6 +271,7 @@ export class TaskStorageService extends BaseStorageService<Task, TaskCreateData>
     
     if (legacyError) {
       console.error('Error fetching legacy tasks for cleaner:', legacyError);
+      throw legacyError;
     }
     
     // Merge and deduplicate by task id
@@ -269,23 +292,46 @@ export class TaskStorageService extends BaseStorageService<Task, TaskCreateData>
         .from('task_assignments')
         .select('id, task_id, cleaner_id, cleaner_name, assigned_at, assigned_by, created_at, updated_at')
         .in('task_id', taskIds);
-      if (!assignErr && allAssignments) {
-        const byTask = new Map<string, TaskAssignmentRow[]>();
-        allAssignments.forEach(a => {
-          const arr = byTask.get(a.task_id) || [];
-          arr.push(a);
-          byTask.set(a.task_id, arr);
-        });
-        taskMap.forEach((task, id) => {
-          const full = byTask.get(id);
-          if (full && full.length > 0) {
-            task.task_assignments = full;
-          }
-        });
+      if (assignErr) {
+        console.error('Error fetching complete task assignments for cleaner:', assignErr);
+        throw assignErr;
       }
+
+      const byTask = new Map<string, TaskAssignmentRow[]>();
+      (allAssignments || []).forEach(a => {
+        const arr = byTask.get(a.task_id) || [];
+        arr.push(a);
+        byTask.set(a.task_id, arr);
+      });
+      taskMap.forEach((task, id) => {
+        task.task_assignments = byTask.get(id) || [];
+      });
     }
-    
-    await this.applyAssignmentCounts(taskMap);
+
+    // RLS can hide another cleaner's canonical rows and return an empty array
+    // without an error. The SECURITY DEFINER count RPC distinguishes that case
+    // from a genuinely legacy task with no canonical assignments.
+    await this.applyAssignmentCounts(taskMap, { required: true });
+
+    // Canonical rows always win. cleaner_id is accepted only when the task has
+    // no canonical assignments at all, preserving truly legacy records without
+    // exposing rows whose denormalized cleaner_id is stale.
+    taskMap.forEach((task, id) => {
+      const canonicalCleanerIds = (task.task_assignments || [])
+        .map((assignment) => assignment.cleaner_id)
+        .filter(Boolean);
+      const canonicalAssignmentCount = Math.max(
+        task.assignment_count ?? 0,
+        canonicalCleanerIds.length,
+      );
+      const belongsToCleaner = canCleanerAccessTaskByAssignments({
+        visibleCanonicalCleanerIds: canonicalCleanerIds,
+        canonicalAssignmentCount,
+        legacyCleanerId: task.cleaner_id,
+      }, cleanerId);
+
+      if (!belongsToCleaner) taskMap.delete(id);
+    });
 
     // Map to Task objects
     return Array.from(taskMap.values()).map(task => this.mapTaskFromDB(task));
@@ -342,7 +388,12 @@ export class TaskStorageService extends BaseStorageService<Task, TaskCreateData>
     
     // OPTIMIZED: For cleaners, use the dedicated method
     if (options?.userRole === 'cleaner' && options?.cleanerId) {
-      return this.getTasksForCleaner(options.cleanerId, sedeId || undefined);
+      return this.getTasksForCleaner(
+        options.cleanerId,
+        sedeId || undefined,
+        options.dateFrom,
+        options.dateTo,
+      );
     }
     
     // Usar las fechas proporcionadas o calcular valores por defecto con días fijos

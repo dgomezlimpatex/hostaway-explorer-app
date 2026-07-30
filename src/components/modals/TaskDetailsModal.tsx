@@ -17,6 +17,11 @@ import {
   materializeRecurringTaskInstance,
 } from "@/services/recurringTaskInstanceService";
 
+type RecurringTaskInstance = Task & {
+  isRecurringInstance?: boolean;
+  recurringTaskId?: string;
+};
+
 interface TaskDetailsModalProps {
   task: Task | null;
   open: boolean;
@@ -33,7 +38,6 @@ export const TaskDetailsModal = ({
   task,
   open,
   onOpenChange,
-  onUpdateTask,
   onDeleteTask,
   onUnassignTask,
   onCreateTask,
@@ -47,17 +51,17 @@ export const TaskDetailsModal = ({
   const { userRole } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const isRecurringInstance = !!(task as any)?.isRecurringInstance;
+  const recurringTask = task as RecurringTaskInstance | null;
+  const isRecurringInstance = Boolean(recurringTask?.isRecurringInstance);
   const realTaskId = task?.originalTaskId || task?.id || '';
   const canEdit = (userRole === 'admin' || userRole === 'manager') && !isRecurringInstance;
   const displayTask = useMemo(() => (
     freshTask && task
       ? {
+          ...task,
           ...freshTask,
-          cleaner: task.cleaner,
-          cleanerId: task.cleanerId,
-          assignments: task.assignments || freshTask.assignments,
-          assignmentCount: task.assignmentCount || freshTask.assignmentCount,
+          assignments: freshTask.assignments?.length ? freshTask.assignments : task.assignments,
+          assignmentCount: freshTask.assignmentCount ?? task.assignmentCount,
           originalTaskId: task.originalTaskId || task.id,
         }
       : task
@@ -139,10 +143,10 @@ export const TaskDetailsModal = ({
   const handleFieldBlur = useCallback(
     (field: string, value: string) => {
       if (!canEdit || isRecurringInstance || !task) return;
-      const original = (task as any)[field];
+      const original = (task as unknown as Record<string, unknown>)[field];
       if (value === original) return; // no change
 
-      const updates: Partial<Task> = { [field]: value } as any;
+      const updates = { [field]: value } as Partial<Task>;
 
       // If startTime changed, also persist the recomputed endTime
       if (field === 'startTime') {
@@ -171,7 +175,7 @@ export const TaskDetailsModal = ({
   const handleDelete = async () => {
     if (isRecurringInstance) {
       try {
-        const recurringTaskId = (task as any).recurringTaskId;
+        const recurringTaskId = recurringTask?.recurringTaskId;
         if (recurringTaskId) {
           await markRecurringTaskInstanceHandled(recurringTaskId, task.date);
           invalidateRecurringInstanceCaches();
@@ -250,8 +254,41 @@ export const TaskDetailsModal = ({
     }
 
     try {
-      await taskAssignmentService.assignTask(realTaskId, cleanerName, cleanerId);
-      onUpdateTask(realTaskId, { cleaner: cleanerName, cleanerId });
+      const updatedTask = await taskAssignmentService.assignTask(realTaskId, cleanerName, cleanerId);
+      const now = new Date().toISOString();
+      const reconciledTask: Task = {
+        ...updatedTask,
+        cleaner: cleanerName,
+        cleanerId,
+        assignments: [{
+          id: `optimistic-${realTaskId}-${cleanerId}`,
+          task_id: realTaskId,
+          cleaner_id: cleanerId,
+          cleaner_name: cleanerName,
+          assigned_at: now,
+          created_at: now,
+          updated_at: now,
+        }],
+        assignmentCount: 1,
+        originalTaskId: task.originalTaskId || updatedTask.id,
+      };
+
+      setFreshTask(reconciledTask);
+      queryClient.setQueriesData<Task[]>(
+        { predicate: (query) => Array.isArray(query.queryKey) && query.queryKey[0] === 'tasks' },
+        (cachedTasks) => cachedTasks?.map((cachedTask) =>
+          cachedTask.id === realTaskId || cachedTask.originalTaskId === realTaskId
+            ? {
+                ...cachedTask,
+                ...reconciledTask,
+                id: cachedTask.id,
+                originalTaskId: cachedTask.originalTaskId || reconciledTask.id,
+                assignments: reconciledTask.assignments,
+              }
+            : cachedTask
+        ),
+      );
+      queryClient.invalidateQueries({ queryKey: ['tasks'] });
       toast({ title: "Tarea asignada", description: `La tarea ha sido asignada a ${cleanerName}.` });
     } catch (error) {
       console.error('Error assigning task:', error);

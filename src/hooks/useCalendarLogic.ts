@@ -5,14 +5,17 @@ import { useCalendarData } from "@/hooks/useCalendarData";
 import { useDragAndDrop } from "@/hooks/useDragAndDrop";
 import { useAllCleanersAvailability } from "@/hooks/useAllCleanersAvailability";
 import { useToast } from "@/hooks/use-toast";
-import { Task } from "@/types/calendar";
+import { Cleaner, Task } from "@/types/calendar";
 import { isCleanerAvailableAtTime } from "@/utils/availabilityUtils";
+import { isTaskAssignedToCleaner } from "@/utils/taskAssignments";
 
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 import { ABSENCE_TYPE_LABELS } from "@/types/workerAbsence";
 import { buildExtraordinaryTask, type ExtraordinaryTaskFormData } from "@/services/extraordinaryTaskBuilder";
 import { materializeRecurringTaskInstance } from "@/services/recurringTaskInstanceService";
+
+type CalendarTask = Task & { isRecurringInstance?: boolean };
 
 // Helper function to check time overlap
 const toMin = (time: string) => {
@@ -76,8 +79,8 @@ export const useCalendarLogic = () => {
   }, []);
 
   // Enhanced task assignment handler with availability and overlap check
-  const handleTaskAssign = useCallback(async (taskId: string, cleanerId: string, cleaners: any[], timeSlot?: string) => {
-    console.log('useCalendarLogic - handleTaskAssign called with:', { taskId, cleanerId, cleaners, timeSlot });
+  const handleTaskAssign = useCallback(async (taskId: string, cleanerId: string, currentCleaners: Cleaner[], timeSlot?: string) => {
+    console.log('useCalendarLogic - handleTaskAssign called with:', { taskId, cleanerId, cleaners: currentCleaners, timeSlot });
     
     const task = tasks.find(t => t.id === taskId);
     if (!task) {
@@ -116,7 +119,7 @@ export const useCalendarLogic = () => {
       
       const [newStartHour, newStartMinute] = timeSlot.split(':').map(Number);
       const newEndTotalMinutes = (newStartHour * 60 + newStartMinute) + originalDurationMinutes;
-      let newEndHour = Math.floor(newEndTotalMinutes / 60);
+      const newEndHour = Math.floor(newEndTotalMinutes / 60);
       const newEndMinute = newEndTotalMinutes % 60;
       
       // Clamp end time to 23:59 max to avoid invalid times like 24:00 or 25:00
@@ -215,14 +218,14 @@ export const useCalendarLogic = () => {
 
     // Compute cascade: shift forward any task of the same cleaner on the same day
     // that overlaps with the dropped task or with the chain of shifted tasks.
-    const cleanerObjForCascade = cleaners.find((c: any) => c.id === cleanerId);
+    const cleanerObjForCascade = currentCleaners.find((cleaner) => cleaner.id === cleanerId);
     const cleanerNameForCascade = cleanerObjForCascade?.name || '';
 
     const sameDayCleanerTasks = tasks
       .filter(t =>
         t.id !== taskId &&
         t.date === task.date &&
-        ((t as any).cleanerId === cleanerId || t.cleaner === cleanerNameForCascade)
+        isTaskAssignedToCleaner(t, cleanerId, cleanerNameForCascade)
       )
       .sort((a, b) => toMin(a.startTime) - toMin(b.startTime));
 
@@ -241,7 +244,7 @@ export const useCalendarLogic = () => {
     const MAX_END = 23 * 60 + 59;
 
     // Helper: count assigned workers (multi-worker tasks split duration evenly)
-    const getAssignedCount = (t: any): number => {
+    const getAssignedCount = (t: Task): number => {
       if (Array.isArray(t.assignments) && t.assignments.length > 0) return t.assignments.length;
       if (typeof t.cleaner === 'string' && t.cleaner.includes(',')) {
         return t.cleaner.split(',').map((s: string) => s.trim()).filter(Boolean).length;
@@ -281,8 +284,8 @@ export const useCalendarLogic = () => {
       displaced.push({
         taskId: b.id,
         property: b.property,
-        address: (b as any).address,
-        type: (b as any).type,
+        address: b.address,
+        type: b.type,
         oldStartTime: b.startTime,
         oldEndTime: b.endTime,
         newStartTime: fromMin(newStart),
@@ -310,10 +313,10 @@ export const useCalendarLogic = () => {
     }
 
     try {
-      const cleanerObj = cleaners.find((c: any) => c.id === cleanerId);
+      const cleanerObj = currentCleaners.find((cleaner) => cleaner.id === cleanerId);
       const cleanerName = cleanerObj?.name || '';
 
-      if ((task as any).isRecurringInstance) {
+      if ((task as CalendarTask).isRecurringInstance) {
         await materializeRecurringTaskInstance(task, {
           cleaner: cleanerName,
           cleanerId,
@@ -329,7 +332,7 @@ export const useCalendarLogic = () => {
         ]);
       } else {
         // SINGLE round-trip: assign + reschedule in one DB call (optimistic UI immediate)
-        assignTaskWithSchedule({
+        await assignTaskWithSchedule({
           taskId,
           cleanerId,
           cleanerName,
@@ -341,16 +344,17 @@ export const useCalendarLogic = () => {
       // Apply cascading reschedules to the displaced tasks
       if (displaced.length > 0) {
         await Promise.all(
-          displaced.map(d =>
-            supabase
+          displaced.map(async d => {
+            const { error } = await supabase
               .from('tasks')
               .update({ start_time: d.newStartTime, end_time: d.newEndTime })
-              .eq('id', d.taskId)
-          )
+              .eq('id', d.taskId);
+            if (error) throw error;
+          })
         );
 
         // Send a single consolidated email to the cleaner
-        const cleanerEmail = (cleanerObj as any)?.email;
+        const cleanerEmail = cleanerObj?.email;
         if (cleanerEmail) {
           supabase.functions
             .invoke('send-task-reschedule-batch-email', {
@@ -360,8 +364,8 @@ export const useCalendarLogic = () => {
                 date: task.date,
                 insertedTask: {
                   property: task.property,
-                  address: (task as any).address,
-                  type: (task as any).type,
+                  address: task.address,
+                  type: task.type,
                   startTime: startTime,
                   endTime: endTime,
                 },
@@ -384,13 +388,15 @@ export const useCalendarLogic = () => {
       });
     } catch (error) {
       console.error('Error assigning task:', error);
+      await queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      await queryClient.refetchQueries({ queryKey: ['tasks'], type: 'active' });
       toast({
         title: "Error",
-        description: "No se pudo asignar la tarea.",
+        description: "No se pudo completar toda la reasignación. Los datos se han recargado.",
         variant: "destructive",
       });
     }
-  }, [tasks, assignTaskWithSchedule, toast, availability, cleaners, queryClient]);
+  }, [tasks, assignTaskWithSchedule, toast, availability, queryClient]);
 
   // Initialize drag and drop with enhanced handler
   const {

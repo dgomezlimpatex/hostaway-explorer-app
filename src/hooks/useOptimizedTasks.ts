@@ -1,4 +1,4 @@
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { useMemo } from 'react';
 import { Task, ViewType } from '@/types/calendar';
 import { taskStorageService } from '@/services/taskStorage';
@@ -6,6 +6,13 @@ import { useAuth } from '@/hooks/useAuth';
 import { useCleaners } from '@/hooks/useCleaners';
 import { useSede } from '@/contexts/SedeContext';
 import { formatMadridDate } from '@/utils/date';
+import {
+  filterTasksByDateRange,
+  filterTasksByQueryRange,
+  getTaskDateRange,
+  getTaskWindowRange,
+} from '@/utils/taskQueryRange';
+import { isTaskAssignedToCleaner } from '@/utils/taskAssignments';
 
 interface UseOptimizedTasksProps {
   currentDate: Date;
@@ -18,7 +25,6 @@ export const useOptimizedTasks = ({
   currentView, 
   enabled = true 
 }: UseOptimizedTasksProps) => {
-  const queryClient = useQueryClient();
   const { userRole, user } = useAuth();
   const { cleaners } = useCleaners();
   const { activeSede, isInitialized, loading } = useSede();
@@ -32,10 +38,26 @@ export const useOptimizedTasks = ({
     return currentCleaner?.id || null;
   }, [userRole, user?.id, cleaners]);
 
-  // OPTIMIZED: Simpler query key - for cleaners we don't need date in key since we fetch all their tasks
+  // Cleaner calendars render the selected date plus tomorrow. Manager views
+  // use their own exact day/three-day/week range.
+  const dateRange = useMemo(
+    () => userRole === 'cleaner'
+      ? getTaskWindowRange(currentDate, 2)
+      : getTaskDateRange(currentDate, currentView),
+    [currentDate, currentView, userRole],
+  );
+
+  // Every visible window gets its own cache entry, including cleaner navigation.
   const queryKey = useMemo(() => {
     if (userRole === 'cleaner' && currentCleanerId) {
-      return ['tasks', 'cleaner', currentCleanerId, activeSedeId || 'pending-sede'];
+      return [
+        'tasks',
+        'cleaner',
+        currentCleanerId,
+        dateRange.dateFrom,
+        dateRange.dateTo,
+        activeSedeId || 'pending-sede',
+      ];
     }
     return [
       'tasks',
@@ -43,69 +65,7 @@ export const useOptimizedTasks = ({
       currentView,
       activeSedeId || 'pending-sede'
     ];
-  }, [currentDate, currentView, activeSedeId, userRole, currentCleanerId]);
-
-  // Robust function to add/subtract months without date overflow issues
-  const addMonths = (date: Date, months: number): Date => {
-    const result = new Date(date);
-    const targetMonth = result.getMonth() + months;
-    result.setDate(1); // Set to first day to avoid overflow
-    result.setMonth(targetMonth);
-    // Set to last day of month if original day was higher than new month's days
-    const originalDay = date.getDate();
-    const daysInNewMonth = new Date(result.getFullYear(), result.getMonth() + 1, 0).getDate();
-    result.setDate(Math.min(originalDay, daysInNewMonth));
-    return result;
-  };
-
-  // Calculate date range based on current view - OPTIMIZED to avoid hitting 1000 row limit
-  // Use smaller windows centered on the viewed date to ensure we get the right data
-  const dateRange = useMemo(() => {
-    const viewDate = new Date(currentDate);
-    let dateFrom: Date;
-    let dateTo: Date;
-    
-    switch (currentView) {
-      case 'day':
-        // For day view, load ±14 days from the viewed date (smaller window to avoid limit)
-        dateFrom = new Date(viewDate);
-        dateFrom.setDate(dateFrom.getDate() - 14);
-        dateTo = new Date(viewDate);
-        dateTo.setDate(dateTo.getDate() + 14);
-        break;
-      case 'three-day':
-        // For 3-day view, load ±14 days from the viewed date
-        dateFrom = new Date(viewDate);
-        dateFrom.setDate(dateFrom.getDate() - 14);
-        dateTo = new Date(viewDate);
-        dateTo.setDate(dateTo.getDate() + 14);
-        break;
-      case 'week':
-        // For week view, load ±21 days from the viewed date
-        dateFrom = new Date(viewDate);
-        dateFrom.setDate(dateFrom.getDate() - 21);
-        dateTo = new Date(viewDate);
-        dateTo.setDate(dateTo.getDate() + 21);
-        break;
-      default:
-        dateFrom = new Date(viewDate);
-        dateFrom.setDate(dateFrom.getDate() - 14);
-        dateTo = new Date(viewDate);
-        dateTo.setDate(dateTo.getDate() + 14);
-    }
-    
-    console.log('📅 useOptimizedTasks - calculated dateRange:', {
-      viewDate: formatMadridDate(viewDate),
-      dateFrom: formatMadridDate(dateFrom),
-      dateTo: formatMadridDate(dateTo),
-      currentView
-    });
-    
-    return {
-      dateFrom: formatMadridDate(dateFrom),
-      dateTo: formatMadridDate(dateTo)
-    };
-  }, [currentDate, currentView]);
+  }, [currentDate, currentView, activeSedeId, userRole, currentCleanerId, dateRange]);
 
   const query = useQuery({
     queryKey,
@@ -123,10 +83,15 @@ export const useOptimizedTasks = ({
         const result = await taskStorageService.getTasks({
           cleanerId: currentCleanerId,
           userRole: 'cleaner',
-          sedeId: activeSedeId
+          sedeId: activeSedeId,
+          dateFrom: dateRange.dateFrom,
+          dateTo: dateRange.dateTo,
         });
         console.log('📋 useOptimizedTasks - cleaner tasks loaded:', result.length);
-        return result;
+        const canonicalTasks = result.filter((task) =>
+          isTaskAssignedToCleaner(task, currentCleanerId)
+        );
+        return filterTasksByDateRange(canonicalTasks, dateRange);
       }
       
       // For non-cleaners, fetch tasks based on the current view date range
@@ -144,16 +109,13 @@ export const useOptimizedTasks = ({
       
       console.log('📋 useOptimizedTasks - tasks fetched:', allTasks.length);
       
-      const sedeId = activeSedeId || 'pending-sede';
-      queryClient.setQueryData(['tasks', 'all', sedeId], allTasks);
-      
       const filtered = filterTasksByView(allTasks, currentDate, currentView);
       console.log('📋 useOptimizedTasks - filtered tasks:', filtered.length);
       
       return filtered;
     },
-    staleTime: userRole === 'cleaner' ? 30000 : 0, // Cleaners can have stale data for 30s
-    gcTime: 60000,
+    staleTime: 30_000,
+    gcTime: 5 * 60_000,
     enabled: canQueryTasks && (userRole !== 'cleaner' || currentCleanerId !== null),
     refetchOnWindowFocus: true,
     refetchOnMount: true,
@@ -177,30 +139,6 @@ export const useOptimizedTasks = ({
     return filterTasksByView(validTasks, currentDate, currentView);
   }, [tasks, currentDate, currentView, userRole]);
 
-  // Prefetch for next dates (only for non-cleaners)
-  useMemo(() => {
-    if (!canQueryTasks || !activeSedeId || userRole === 'cleaner') return;
-
-    const tomorrow = new Date(currentDate);
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    
-    const nextWeek = new Date(currentDate);
-    nextWeek.setDate(nextWeek.getDate() + 7);
-
-    const sedeId = activeSedeId || 'pending-sede';
-    
-    [tomorrow, nextWeek].forEach(date => {
-      queryClient.prefetchQuery({
-        queryKey: ['tasks', formatMadridDate(date), currentView, sedeId],
-        queryFn: async () => {
-          const allTasks = queryClient.getQueryData(['tasks', 'all', sedeId]) as Task[] || 
-                          await taskStorageService.getTasks({ sedeId: activeSedeId });
-          return filterTasksByView(allTasks, date, currentView);
-        },
-        staleTime: 5 * 60 * 1000,
-      });
-    });
-  }, [currentDate, currentView, queryClient, canQueryTasks, activeSedeId, userRole]);
 
   return {
     tasks: filteredTasks,
@@ -218,39 +156,8 @@ export const useOptimizedTasks = ({
   };
 };
 
-// Helper function to filter tasks by view
+// Keep post-query filtering aligned with the exact Madrid civil-date range used
+// by the Supabase request. This avoids a second, timezone-dependent calculation.
 function filterTasksByView(tasks: Task[], currentDate: Date, currentView: ViewType): Task[] {
-  const currentDateStr = formatMadridDate(currentDate);
-  
-  switch (currentView) {
-    case 'day':
-      return tasks.filter(task => task.date === currentDateStr);
-    
-    case 'three-day': {
-      const threeDayDates = Array.from({ length: 3 }, (_, i) => {
-        const date = new Date(currentDate);
-        date.setDate(date.getDate() + i);
-        return formatMadridDate(date);
-      });
-      return tasks.filter(task => threeDayDates.includes(task.date));
-    }
-    
-    case 'week': {
-      const startOfWeek = new Date(currentDate);
-      const dayOfWeek = startOfWeek.getDay();
-      const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
-      startOfWeek.setDate(startOfWeek.getDate() + mondayOffset);
-      
-      const endOfWeek = new Date(startOfWeek);
-      endOfWeek.setDate(endOfWeek.getDate() + 6);
-      
-      const startDateStr = formatMadridDate(startOfWeek);
-      const endDateStr = formatMadridDate(endOfWeek);
-      
-      return tasks.filter(task => task.date >= startDateStr && task.date <= endDateStr);
-    }
-    
-    default:
-      return tasks;
-  }
+  return filterTasksByQueryRange(tasks, currentDate, currentView);
 }

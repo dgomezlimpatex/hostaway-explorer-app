@@ -3,6 +3,8 @@ import React, { useCallback, useRef, useEffect, useState, useMemo } from "react"
 import { taskMatches, cleanerNameMatches } from "./calendar/utils/calendarSearch";
 import { useClients } from "@/hooks/useClients";
 import { formatMadridDate } from "@/utils/date";
+import { getTaskWindowRange } from "@/utils/taskQueryRange";
+import { getTaskAssignedCleanerIds } from "@/utils/taskAssignments";
 import { ResponsiveCalendarHeader } from "./calendar/ResponsiveCalendarHeader";
 import { CalendarContainer } from "./calendar/CalendarContainer";
 import { UnavailableWorkersPanel } from "./calendar/UnavailableWorkersPanel";
@@ -69,6 +71,11 @@ const CleaningCalendar = () => {
     setIsBatchCreateModalOpen,
     setIsExtraordinaryServiceModalOpen,
   } = useCalendarLogic();
+
+  const cleanerDateRange = useMemo(
+    () => getTaskWindowRange(currentDate, 2),
+    [currentDate],
+  );
   
   // Track if we've loaded data at least once to avoid full-screen loading on refetches
   useEffect(() => {
@@ -78,8 +85,8 @@ const CleaningCalendar = () => {
   }, [tasks.length, cleaners.length]);
 
   // Separate tasks into assigned and unassigned
-  const assignedTasks = tasks.filter(task => task.cleanerId && task.cleaner);
-  const unassignedTasks = tasks.filter(task => !task.cleanerId && !task.cleaner);
+  const assignedTasks = tasks.filter(task => getTaskAssignedCleanerIds(task).length > 0 || Boolean(task.cleaner));
+  const unassignedTasks = tasks.filter(task => getTaskAssignedCleanerIds(task).length === 0 && !task.cleaner);
 
   // Admin filters (filters tasks/cleaners shown in calendar)
   const [searchTerm, setSearchTerm] = useState('');
@@ -133,16 +140,24 @@ const CleaningCalendar = () => {
     if (!hasClientFilter && !hasCleanerFilter && !hasSearch) return tasks;
 
     return tasks.filter(t => {
+      const assignedCleanerIds = getTaskAssignedCleanerIds(t);
+
       // Filtro por cliente
       if (hasClientFilter && (!t.clienteId || !clientFilterSet.has(t.clienteId))) return false;
 
       // Filtro por empleado: las sin asignar siempre pasan
-      if (hasCleanerFilter && t.cleanerId && !cleanerFilterSet.has(t.cleanerId)) return false;
+      if (
+        hasCleanerFilter
+        && assignedCleanerIds.length > 0
+        && !assignedCleanerIds.some((cleanerId) => cleanerFilterSet.has(cleanerId))
+      ) return false;
 
       // Búsqueda libre: las sin asignar siempre se muestran
       if (hasSearch) {
-        if (!t.cleanerId) return true;
-        const cleanerHit = matchingCleanerIds?.has(t.cleanerId) ?? false;
+        if (assignedCleanerIds.length === 0) return true;
+        const cleanerHit = assignedCleanerIds.some((cleanerId) =>
+          matchingCleanerIds?.has(cleanerId) ?? false
+        );
         const fieldHit = taskMatches(t, term, clientNameById);
         if (!cleanerHit && !fieldHit) return false;
       }
@@ -164,7 +179,7 @@ const CleaningCalendar = () => {
     if (!hasSearch && !hasClientFilter) return cleaners;
 
     const cleanersWithTasks = new Set(
-      filteredTasks.map(t => t.cleanerId).filter(Boolean) as string[]
+      filteredTasks.flatMap((task) => getTaskAssignedCleanerIds(task))
     );
     return cleaners.filter(c =>
       (matchingCleanerIds?.has(c.id) ?? false) || cleanersWithTasks.has(c.id)
@@ -243,12 +258,8 @@ const CleaningCalendar = () => {
       console.log('Rendering mobile cleaner view');
       
       // Calculate current day and tomorrow's tasks for the cleaner
-      const currentDateStr = formatMadridDate(currentDate);
-      
-      // Calculate tomorrow's date
-      const tomorrowDate = new Date(currentDate);
-      tomorrowDate.setDate(currentDate.getDate() + 1);
-      const tomorrowDateStr = formatMadridDate(tomorrowDate);
+      const currentDateStr = cleanerDateRange.dateFrom;
+      const tomorrowDateStr = cleanerDateRange.dateTo;
       
       // Filter tasks for current date and tomorrow - cleaner can navigate to see future tasks
       const todayTasks = tasks.filter(task => task.date === currentDateStr);
@@ -359,12 +370,8 @@ const CleaningCalendar = () => {
     console.log('🖥️ CleaningCalendar: Rendering desktop cleaner view');
     
     // Calculate today's and tomorrow's tasks for the cleaner
-    const currentDateStr = formatMadridDate(currentDate);
-    
-    // Calculate tomorrow's date more simply
-    const tomorrowDate = new Date(currentDate);
-    tomorrowDate.setDate(currentDate.getDate() + 1);
-    const tomorrowDateStr = formatMadridDate(tomorrowDate);
+    const currentDateStr = cleanerDateRange.dateFrom;
+    const tomorrowDateStr = cleanerDateRange.dateTo;
     
     const todayTasks = tasks.filter(task => task.date === currentDateStr);
     const tomorrowTasks = tasks.filter(task => task.date === tomorrowDateStr);

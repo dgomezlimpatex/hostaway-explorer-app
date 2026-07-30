@@ -15,13 +15,12 @@ import { OverlapAlert } from "./OverlapAlert";
 import { Task, Cleaner } from "@/types/calendar";
 import { CleanerAvailability } from "@/hooks/useCleanerAvailability";
 import { getTaskPosition, isTimeSlotOccupied, detectTaskOverlaps, getEffectiveTaskEndTime } from "@/utils/taskPositioning";
-import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
+
 import { useWorkersAbsenceStatus } from "@/hooks/useWorkersAbsenceStatus";
 import { usePreferredCleaners } from "@/hooks/usePropertyPreferredCleaners";
 import { useCalendarWorkload } from "@/hooks/useCalendarWorkload";
 import { useUnavailableCleaners } from "@/hooks/useUnavailableCleaners";
-import { isTaskAssignedToCleaner } from "@/utils/taskAssignments";
+import { buildTaskAssignmentsMap, isTaskAssignedToCleaner } from "@/utils/taskAssignments";
 import { materializeRecurringTaskInstance } from "@/services/recurringTaskInstanceService";
 import { type ExtraordinaryTaskFormData } from "@/services/extraordinaryTaskBuilder";
 
@@ -152,31 +151,12 @@ export const CalendarContainer = ({
     return { assignedTasks: assigned, unassignedTasks: unassigned };
   }, [tasks, currentDate]);
 
-  // Build assignments map for visible assigned tasks (task_id -> [cleaner_id])
-  const taskIds = useMemo(() => assignedTasks.map(t => t.id).sort(), [assignedTasks]);
-
-  const { data: assignmentRows = [] } = useQuery<{ task_id: string; cleaner_id: string }[]>({
-    queryKey: ['taskAssignmentsForCalendar', taskIds],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('task_assignments')
-        .select('task_id, cleaner_id')
-        .in('task_id', taskIds);
-      if (error) throw error;
-      return data as { task_id: string; cleaner_id: string }[];
-    },
-    enabled: taskIds.length > 0,
-    staleTime: 0,
-  });
-
-  const assignmentsMap = useMemo(() => {
-    const map: Record<string, string[]> = {};
-    (assignmentRows || []).forEach(row => {
-      if (!map[row.task_id]) map[row.task_id] = [];
-      map[row.task_id].push(row.cleaner_id);
-    });
-    return map;
-  }, [assignmentRows]);
+  // Assignments already come with the task query. Reuse them instead of
+  // blocking calendar rendering on a second request for the same rows.
+  const assignmentsMap = useMemo(
+    () => buildTaskAssignmentsMap(assignedTasks),
+    [assignedTasks],
+  );
 
   // Fetch absence status for all cleaners on current date
   const cleanerIds = useMemo(() => cleaners.map(c => c.id), [cleaners]);
