@@ -10,7 +10,7 @@ import type {
   PlanningBuildingCrmTeamMember,
 } from '@/types/operationalPlanning';
 import type { Property } from '@/types/property';
-import type { CleanerGroupAssignment, PropertyGroup } from '@/types/propertyGroups';
+import type { CleanerGroupAssignment, PropertyGroup, PropertyGroupAssignment } from '@/types/propertyGroups';
 
 export type BuildingCrmForecastSource = 'task' | 'hostaway' | 'avantio' | 'client' | 'little-hotelier' | 'avirato';
 
@@ -40,6 +40,18 @@ export interface BuildingCrmRawTask {
   task_assignments?: Array<{ cleaner_id: string; cleaner_name: string }> | null;
 }
 
+type BuildingCrmPropertyGroupAssignment =
+  | Pick<PropertyGroupAssignment, 'propertyGroupId' | 'propertyId'>
+  | { property_group_id: string; property_id: string };
+
+const getAssignmentPropertyGroupId = (assignment: BuildingCrmPropertyGroupAssignment): string => (
+  'propertyGroupId' in assignment ? assignment.propertyGroupId : assignment.property_group_id
+);
+
+const getAssignmentPropertyId = (assignment: BuildingCrmPropertyGroupAssignment): string => (
+  'propertyId' in assignment ? assignment.propertyId : assignment.property_id
+);
+
 export interface BuildingCrmTeamAvailability {
   cleanerId: string;
   date: string;
@@ -53,7 +65,7 @@ export interface BuildPlanningBuildingCrmProfileInput {
   dateTo: string;
   fallbackDailyCapacityMinutes: number;
   propertyGroups: PropertyGroup[];
-  propertyGroupAssignments: Array<{ property_group_id: string; property_id: string }>;
+  propertyGroupAssignments: BuildingCrmPropertyGroupAssignment[];
   properties: Property[];
   cleaners: Cleaner[];
   cleanerGroupAssignments: CleanerGroupAssignment[];
@@ -217,8 +229,8 @@ export const buildPlanningBuildingCrmProfile = (input: BuildPlanningBuildingCrmP
   const rangeDates = enumerateDateStrings(input.dateFrom, input.dateTo);
   const groupPropertyIds = new Set(
     input.propertyGroupAssignments
-      .filter((assignment) => assignment.property_group_id === group.id)
-      .map((assignment) => assignment.property_id),
+      .filter((assignment) => getAssignmentPropertyGroupId(assignment) === group.id)
+      .map(getAssignmentPropertyId),
   );
   const groupProperties = input.properties
     .filter((property) => groupPropertyIds.has(property.id))

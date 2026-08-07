@@ -181,6 +181,16 @@ export const run = async (assert: Assert) => {
   assert.equal(profile.building.id, 'group-md18');
   assert.equal(profile.building.displayName, 'Marina 18');
   assert.equal(profile.properties.length, 3);
+
+  const camelCaseAssignmentProfile = buildBaseProfile({
+    propertyGroupAssignments: [
+      { propertyGroupId: 'group-md18', propertyId: 'property-md18-1' },
+      { propertyGroupId: 'group-md18', propertyId: 'property-md18-large' },
+      { propertyGroupId: 'group-md18', propertyId: 'property-md18-missing-duration' },
+    ],
+  });
+  assert.equal(camelCaseAssignmentProfile.properties.length, 3, 'CRM must accept storage-mapped assignment fields from the detail query');
+
   assert.equal(profile.team.length, 4, 'CRM must show active team and No apta/excluded rows');
   assert.equal(profile.summary.assignedPrimaryCount, 1);
   assert.equal(profile.summary.assignedSecondaryCount, 1);
