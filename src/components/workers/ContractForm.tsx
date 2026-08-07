@@ -107,7 +107,7 @@ export const ContractForm: React.FC<ContractFormProps> = ({
       position: contract?.position || '',
       department: contract?.department || '',
       hourlyRate: contract?.hourly_rate || 0,
-      contractHoursPerWeek: contract?.contract_hours_per_week || 40,
+      contractHoursPerWeek: contract?.contract_hours_per_week ?? 40,
       benefits: contract?.benefits || [],
       notes: contract?.notes || '',
       renewalDate: contract && contract.renewal_date ? new Date(contract.renewal_date) : undefined,

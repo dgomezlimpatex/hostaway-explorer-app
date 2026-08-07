@@ -474,7 +474,7 @@ Deno.serve(async (req) => {
               last_name: s.last_name || null,
               email: contactEmail,
               telefono: registroPhone || null,
-              ...(contractHours !== undefined ? { contract_hours_per_week: contractHours } : {}),
+              contract_hours_per_week: contractHours ?? null,
               dni: s.dni || null,
               pin: s.pin || null,
               category: s.category || null,
@@ -573,41 +573,55 @@ Deno.serve(async (req) => {
         const registroEmail = getRegistroEmail(e);
         const registroPhone = getRegistroPhone(e);
         const contractHours = getContractHoursPerWeek(e);
-        const patch: Record<string, unknown> = {};
+        const profilePatch: Record<string, unknown> = {};
+        const statusPatch: Record<string, unknown> = {};
         // Campos sincronizados desde REGISTRO
-        if (fullName && fullName !== c.name) patch.name = fullName;
-        if ((e.first_name ?? null) !== c.first_name) patch.first_name = e.first_name ?? null;
-        if ((e.last_name ?? null) !== c.last_name) patch.last_name = e.last_name ?? null;
-        if ((e.dni ?? null) !== c.dni) patch.dni = e.dni ?? null;
-        if ((e.pin ?? null) !== c.pin) patch.pin = e.pin ?? null;
-        if ((e.category ?? null) !== c.category) patch.category = e.category ?? null;
-        if ((e.delegation_name ?? null) !== c.delegation_name) patch.delegation_name = e.delegation_name ?? null;
-        if ((e.office_name ?? null) !== c.office_name) patch.office_name = e.office_name ?? null;
-        if (e.hire_date && e.hire_date !== c.start_date) patch.start_date = e.hire_date;
-        if (registroEmail !== undefined && registroEmail !== c.email) patch.email = registroEmail;
-        if (registroPhone !== undefined && registroPhone !== c.telefono) patch.telefono = registroPhone;
+        if (fullName && fullName !== c.name) profilePatch.name = fullName;
+        if ((e.first_name ?? null) !== c.first_name) profilePatch.first_name = e.first_name ?? null;
+        if ((e.last_name ?? null) !== c.last_name) profilePatch.last_name = e.last_name ?? null;
+        if ((e.dni ?? null) !== c.dni) profilePatch.dni = e.dni ?? null;
+        if ((e.pin ?? null) !== c.pin) profilePatch.pin = e.pin ?? null;
+        if ((e.category ?? null) !== c.category) profilePatch.category = e.category ?? null;
+        if ((e.delegation_name ?? null) !== c.delegation_name) profilePatch.delegation_name = e.delegation_name ?? null;
+        if ((e.office_name ?? null) !== c.office_name) profilePatch.office_name = e.office_name ?? null;
+        if (e.hire_date && e.hire_date !== c.start_date) profilePatch.start_date = e.hire_date;
+        if (registroEmail !== undefined && registroEmail !== c.email) profilePatch.email = registroEmail;
+        if (registroPhone !== undefined && registroPhone !== c.telefono) profilePatch.telefono = registroPhone;
         if (contractHours !== undefined && contractHours !== c.contract_hours_per_week) {
-          patch.contract_hours_per_week = contractHours;
+          profilePatch.contract_hours_per_week = contractHours;
         }
 
         const wasActive = c.is_active !== false;
         const registroIsInactive = e.is_active === false;
-        if (registroIsInactive && wasActive) {
-          patch.is_active = false;
-          deactivated++;
+        const shouldDeactivate = registroIsInactive && wasActive;
+        if (shouldDeactivate) {
+          statusPatch.is_active = false;
         } else if (!registroIsInactive && !wasActive) {
           kept_inactive++;
         }
 
-        if (Object.keys(patch).length === 0) continue;
+        if (Object.keys(profilePatch).length === 0 && Object.keys(statusPatch).length === 0) continue;
 
+        let workerChanged = false;
         try {
-          const { error } = await admin.from('cleaners').update(patch).eq('id', c.id);
-          if (error) throw error;
-          updated++;
+          if (Object.keys(profilePatch).length > 0) {
+            const { error } = await admin.from('cleaners').update(profilePatch).eq('id', c.id);
+            if (error) throw error;
+            workerChanged = true;
+          }
+
+          // La baja se aplica aparte porque el trigger de seguridad puede bloquearla
+          // si existen tareas futuras. Los datos de contacto ya quedan persistidos.
+          if (Object.keys(statusPatch).length > 0) {
+            const { error } = await admin.from('cleaners').update(statusPatch).eq('id', c.id);
+            if (error) throw error;
+            workerChanged = true;
+            if (shouldDeactivate) deactivated++;
+          }
         } catch (e: any) {
           errors.push({ cleaner_id: c.id, external_id: c.external_id, error: e.message });
         }
+        if (workerChanged) updated++;
       }
 
       await admin.from('employee_sync_log').insert({

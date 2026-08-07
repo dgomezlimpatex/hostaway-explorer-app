@@ -59,7 +59,7 @@ const mapFromDB = (row: any): WorkerContract => ({
   overtimeRate: row.overtime_rate || 1.5,
   vacationDaysPerYear: row.vacation_days_per_year || 22,
   sickDaysPerYear: row.sick_days_per_year || 10,
-  contractHoursPerWeek: row.contract_hours_per_week || 40,
+  contractHoursPerWeek: row.contract_hours_per_week ?? 40,
   paymentFrequency: row.payment_frequency || 'monthly',
   benefits: row.benefits || {},
   notes: row.notes,

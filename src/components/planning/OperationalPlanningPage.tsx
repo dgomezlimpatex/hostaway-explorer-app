@@ -513,7 +513,7 @@ export const OperationalPlanningPage = () => {
   useEffect(() => {
     if (!selectedCoverageCleaner) return;
     setWorkerForm({
-      contractHoursPerWeek: selectedCoverageCleaner.contractHoursPerWeek || 40,
+      contractHoursPerWeek: selectedCoverageCleaner.contractHoursPerWeek ?? 40,
       planningMaxDailyMinutes: selectedCoverageCleaner.planningMaxDailyMinutes || 480,
       planningZone: selectedCoverageCleaner.planningZone || '',
       planningOperationalRestrictions: selectedCoverageCleaner.planningOperationalRestrictions || '',

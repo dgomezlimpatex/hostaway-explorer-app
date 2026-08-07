@@ -20,7 +20,7 @@ interface WorkerBasicInfoProps {
 export const WorkerBasicInfo = ({ worker }: WorkerBasicInfoProps) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editData, setEditData] = useState({
-    contractHoursPerWeek: worker.contractHoursPerWeek || 40,
+    contractHoursPerWeek: worker.contractHoursPerWeek ?? 40,
     hourlyRate: worker.hourlyRate || 0,
     contractType: worker.contractType || 'full-time',
     startDate: worker.startDate ? new Date(worker.startDate) : undefined,
@@ -33,7 +33,7 @@ export const WorkerBasicInfo = ({ worker }: WorkerBasicInfoProps) => {
   // Sincronizar editData cuando cambie el worker
   useEffect(() => {
     setEditData({
-      contractHoursPerWeek: worker.contractHoursPerWeek || 40,
+      contractHoursPerWeek: worker.contractHoursPerWeek ?? 40,
       hourlyRate: worker.hourlyRate || 0,
       contractType: worker.contractType || 'full-time',
       startDate: worker.startDate ? new Date(worker.startDate) : undefined,
@@ -59,7 +59,7 @@ export const WorkerBasicInfo = ({ worker }: WorkerBasicInfoProps) => {
 
   const handleCancel = () => {
     setEditData({
-      contractHoursPerWeek: worker.contractHoursPerWeek || 40,
+      contractHoursPerWeek: worker.contractHoursPerWeek ?? 40,
       hourlyRate: worker.hourlyRate || 0,
       contractType: worker.contractType || 'full-time',
       startDate: worker.startDate ? new Date(worker.startDate) : undefined,
@@ -129,7 +129,7 @@ export const WorkerBasicInfo = ({ worker }: WorkerBasicInfoProps) => {
               {isEditing && !worker.externalId ? (
                 <Input
                   type="number"
-                  min="1"
+                  min="0"
                   max="80"
                   value={editData.contractHoursPerWeek}
                   onChange={(e) => setEditData({
@@ -138,7 +138,7 @@ export const WorkerBasicInfo = ({ worker }: WorkerBasicInfoProps) => {
                   })}
                 />
               ) : (
-                <Input value={`${worker.contractHoursPerWeek || 40}h`} readOnly />
+                <Input value={worker.contractHoursPerWeek != null ? `${worker.contractHoursPerWeek}h` : 'No definidas'} readOnly />
               )}
             </div>
             <div>
