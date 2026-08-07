@@ -43,6 +43,7 @@ type RegistroEmployee = {
   email?: string | null;
   phone?: string | null;
   dni?: string | null;
+  contract_hours_per_week?: number | string | null;
   pin?: string | null;
   category?: string | null;
   delegation_name?: string | null;
@@ -405,6 +406,7 @@ const Integraciones = () => {
           return [{
             external_id: proposal.registro.id,
             cleaner_id: proposal.cleaner.id,
+            snapshot: proposal.registro,
             access_email: accessEmail,
             create_without_access: createWithoutAccess,
           }];
@@ -788,7 +790,7 @@ const Integraciones = () => {
                           {proposal.registro.is_active === false && <Badge variant="outline">Inactivo</Badge>}
                         </div>
                         <div className="text-xs text-muted-foreground">
-                          {proposal.registro.email || 'Sin email'} · {proposal.registro.phone || 'Sin teléfono'} · {proposal.registro.dni || 'Sin DNI'}
+                          {proposal.registro.email || 'Sin email'} · {proposal.registro.phone || 'Sin teléfono'} · {proposal.registro.dni || 'Sin DNI'} · {proposal.registro.contract_hours_per_week != null ? `${proposal.registro.contract_hours_per_week} h/sem` : 'Sin horas'}
                         </div>
                         {(proposal.registro.category || proposal.registro.delegation_name || proposal.registro.office_name) && (
                           <div className="text-xs text-muted-foreground">

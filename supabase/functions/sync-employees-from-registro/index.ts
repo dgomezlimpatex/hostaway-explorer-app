@@ -2,13 +2,20 @@
 // Modos:
 //   - preview: trae empleados de REGISTRO y propone matches por nombre normalizado. NO escribe.
 //   - link:    aplica decisiones manuales (set external_id en cleaners existentes o crea nuevos). Sí escribe.
-//   - sync:    actualiza cleaners ya vinculados (con external_id) desde REGISTRO. NUNCA toca tasks, email, telefono, sede_id.
+//   - sync:    actualiza cleaners ya vinculados (con external_id) desde REGISTRO.
+//              Incluye nombre, datos laborales, email, teléfono y horas semanales.
 //
 // Garantías:
-//   - Nunca borra cleaners. Nunca actualiza tabla tasks. Nunca sobreescribe email/telefono.
+//   - Nunca borra cleaners. Nunca actualiza tabla tasks.
+//   - Los datos de contacto y horas solo se actualizan si REGISTRO aporta un valor válido.
 //   - Solo admin/manager puede invocarla.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.50.0";
+import {
+  getContractHoursPerWeek,
+  getRegistroEmail,
+  getRegistroPhone,
+} from './employeeFields.mjs';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -24,6 +31,9 @@ type RegistroEmployee = {
   last_name?: string | null;
   email?: string | null;
   phone?: string | null;
+  telefono?: string | null;
+  mobile_phone?: string | null;
+  phone_number?: string | null;
   dni?: string | null;
   pin?: string | null;
   category?: string | null;
@@ -31,6 +41,16 @@ type RegistroEmployee = {
   office_name?: string | null;
   is_active?: boolean | null;
   hire_date?: string | null;
+  contract_hours_per_week?: number | string | null;
+  contracted_weekly_hours?: number | string | null;
+  weekly_hours?: number | string | null;
+  hours_per_week?: number | string | null;
+  contractHoursPerWeek?: number | string | null;
+  contractedWeeklyHours?: number | string | null;
+  weeklyHours?: number | string | null;
+  hoursPerWeek?: number | string | null;
+  contract?: Record<string, unknown> | null;
+  employment?: Record<string, unknown> | null;
   updated_at?: string | null;
 };
 
@@ -65,8 +85,8 @@ function publicRegistroEmployee(e: RegistroEmployee, fallbackName?: string) {
     name: fallbackName || e.name || `${e.first_name || ''} ${e.last_name || ''}`.trim(),
     first_name: e.first_name ?? null,
     last_name: e.last_name ?? null,
-    email: e.email ?? null,
-    phone: e.phone ?? null,
+    email: getRegistroEmail(e) ?? null,
+    phone: getRegistroPhone(e) ?? null,
     dni: e.dni ?? null,
     pin: e.pin ?? null,
     category: e.category ?? null,
@@ -74,6 +94,7 @@ function publicRegistroEmployee(e: RegistroEmployee, fallbackName?: string) {
     office_name: e.office_name ?? null,
     is_active: e.is_active ?? null,
     hire_date: e.hire_date ?? null,
+    contract_hours_per_week: getContractHoursPerWeek(e) ?? null,
   };
 }
 
@@ -148,7 +169,7 @@ Deno.serve(async (req) => {
 
       const { data: cleaners, error: cErr } = await admin
         .from('cleaners')
-        .select('id, name, email, external_id, is_active, sede_id, user_id');
+        .select('id, name, email, telefono, contract_hours_per_week, external_id, is_active, sede_id, user_id');
       if (cErr) throw cErr;
 
       const linkedExternalIds = new Set(
@@ -165,7 +186,7 @@ Deno.serve(async (req) => {
           return {
             registro: publicRegistroEmployee(e, eName),
             match_type: 'already_linked',
-            cleaner: { id: linked.id, name: linked.name, email: linked.email, user_id: linked.user_id, sede_id: linked.sede_id },
+            cleaner: { id: linked.id, name: linked.name, email: linked.email, telefono: linked.telefono, contract_hours_per_week: linked.contract_hours_per_week, user_id: linked.user_id, sede_id: linked.sede_id },
             confidence: 1,
           };
         }
@@ -177,7 +198,7 @@ Deno.serve(async (req) => {
           return {
             registro: publicRegistroEmployee(e, eName),
             match_type: 'exact_name',
-            cleaner: { id: exact.id, name: exact.name, email: exact.email, user_id: exact.user_id, sede_id: exact.sede_id },
+            cleaner: { id: exact.id, name: exact.name, email: exact.email, telefono: exact.telefono, contract_hours_per_week: exact.contract_hours_per_week, user_id: exact.user_id, sede_id: exact.sede_id },
             confidence: 1,
           };
         }
@@ -192,7 +213,7 @@ Deno.serve(async (req) => {
           return {
             registro: publicRegistroEmployee(e, eName),
             match_type: 'fuzzy_name',
-            cleaner: { id: best.c.id, name: best.c.name, email: best.c.email, user_id: best.c.user_id, sede_id: best.c.sede_id },
+            cleaner: { id: best.c.id, name: best.c.name, email: best.c.email, telefono: best.c.telefono, contract_hours_per_week: best.c.contract_hours_per_week, user_id: best.c.user_id, sede_id: best.c.sede_id },
             confidence: 1 - best.d * 0.2,
             distance: best.d,
           };
@@ -442,13 +463,18 @@ Deno.serve(async (req) => {
             if (!l.sede_id) throw new Error('sede_id requerido para crear nuevo cleaner');
             const s = l.snapshot || {};
             const fullName = s.name || `${s.first_name || ''} ${s.last_name || ''}`.trim() || 'Sin nombre';
-            const accessEmail = normalizeEmail(l.access_email ?? s.email ?? null);
+            const registroEmail = getRegistroEmail(s);
+            const registroPhone = getRegistroPhone(s);
+            const contractHours = getContractHoursPerWeek(s);
+            const accessEmail = normalizeEmail(l.access_email ?? null);
+            const contactEmail = accessEmail ?? registroEmail;
             const { data: insertedCleaner, error } = await admin.from('cleaners').insert({
               name: fullName,
               first_name: s.first_name || null,
               last_name: s.last_name || null,
-              email: accessEmail,
-              telefono: s.phone || null,
+              email: contactEmail,
+              telefono: registroPhone || null,
+              ...(contractHours !== undefined ? { contract_hours_per_week: contractHours } : {}),
               dni: s.dni || null,
               pin: s.pin || null,
               category: s.category || null,
@@ -470,9 +496,16 @@ Deno.serve(async (req) => {
             });
           } else {
             if (!l.cleaner_id) throw new Error('cleaner_id requerido para vincular');
+            const s = l.snapshot || {};
+            const registroEmail = getRegistroEmail(s);
+            const registroPhone = getRegistroPhone(s);
+            const contractHours = getContractHoursPerWeek(s);
             const accessEmail = normalizeEmail(l.access_email ?? null);
             const patch: Record<string, unknown> = { external_id: l.external_id };
-            if (accessEmail) patch.email = accessEmail;
+            const contactEmail = accessEmail ?? registroEmail;
+            if (contactEmail) patch.email = contactEmail;
+            if (registroPhone !== undefined) patch.telefono = registroPhone;
+            if (contractHours !== undefined) patch.contract_hours_per_week = contractHours;
             const { error } = await admin
               .from('cleaners')
               .update(patch)
@@ -525,7 +558,7 @@ Deno.serve(async (req) => {
 
       const { data: linkedCleaners, error: lcErr } = await admin
         .from('cleaners')
-        .select('id, name, first_name, last_name, dni, pin, category, delegation_name, office_name, is_active, start_date, external_id')
+        .select('id, name, first_name, last_name, email, telefono, contract_hours_per_week, dni, pin, category, delegation_name, office_name, is_active, start_date, external_id')
         .not('external_id', 'is', null);
       if (lcErr) throw lcErr;
 
@@ -537,8 +570,11 @@ Deno.serve(async (req) => {
         if (!e) continue; // No aparece → no hacemos nada
 
         const fullName = e.name || `${e.first_name || ''} ${e.last_name || ''}`.trim();
-        const patch: Record<string, any> = {};
-        // Campos SÍ sincronizados
+        const registroEmail = getRegistroEmail(e);
+        const registroPhone = getRegistroPhone(e);
+        const contractHours = getContractHoursPerWeek(e);
+        const patch: Record<string, unknown> = {};
+        // Campos sincronizados desde REGISTRO
         if (fullName && fullName !== c.name) patch.name = fullName;
         if ((e.first_name ?? null) !== c.first_name) patch.first_name = e.first_name ?? null;
         if ((e.last_name ?? null) !== c.last_name) patch.last_name = e.last_name ?? null;
@@ -548,6 +584,11 @@ Deno.serve(async (req) => {
         if ((e.delegation_name ?? null) !== c.delegation_name) patch.delegation_name = e.delegation_name ?? null;
         if ((e.office_name ?? null) !== c.office_name) patch.office_name = e.office_name ?? null;
         if (e.hire_date && e.hire_date !== c.start_date) patch.start_date = e.hire_date;
+        if (registroEmail !== undefined && registroEmail !== c.email) patch.email = registroEmail;
+        if (registroPhone !== undefined && registroPhone !== c.telefono) patch.telefono = registroPhone;
+        if (contractHours !== undefined && contractHours !== c.contract_hours_per_week) {
+          patch.contract_hours_per_week = contractHours;
+        }
 
         const wasActive = c.is_active !== false;
         const registroIsInactive = e.is_active === false;

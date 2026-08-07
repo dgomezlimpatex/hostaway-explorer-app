@@ -384,6 +384,7 @@ const WorkerProfilePanel = ({ worker }: { worker: Cleaner }) => {
               <DataRow label="DNI" value={worker.dni} />
               <DataRow label="PIN" value={worker.pin} />
               <DataRow label="Categoría" value={normalizeWorkerCategory(worker.category)} />
+              <DataRow label="Horas semanales" value={worker.contractHoursPerWeek != null ? `${worker.contractHoursPerWeek} h/sem` : '—'} />
               <DataRow label="Delegación" value={worker.delegationName} />
               <DataRow label="Oficina" value={worker.officeName} />
               <DataRow label="ID externo" value={worker.externalId} mono />

@@ -123,8 +123,10 @@ export const WorkerBasicInfo = ({ worker }: WorkerBasicInfoProps) => {
               <Input value={worker.telefono || ''} readOnly />
             </div>
             <div>
-              <Label>Horas de Contrato por Semana</Label>
-              {isEditing ? (
+              <Label className="flex items-center gap-1">
+                Horas de Contrato por Semana {worker.externalId && <span title="Sincronizado desde REGISTRO">🔒</span>}
+              </Label>
+              {isEditing && !worker.externalId ? (
                 <Input
                   type="number"
                   min="1"
