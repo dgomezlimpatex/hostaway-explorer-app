@@ -4,6 +4,8 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { useCleaners } from '@/hooks/useCleaners';
+import type { Property } from '@/types/property';
+import type { PropertyGroupAssignment } from '@/types/propertyGroups';
 import type { PlanningBuildingCrmProfile } from '@/types/operationalPlanning';
 import { BuildingCrmHeader } from './BuildingCrmHeader';
 import { BuildingTeamEditor } from './BuildingTeamEditor';
@@ -12,6 +14,8 @@ import { BuildingDataEditor } from './BuildingDataEditor';
 
 interface BuildingCrmPageProps {
   propertyGroupId: string;
+  allProperties: Property[];
+  propertyAssignments: PropertyGroupAssignment[];
   profile?: PlanningBuildingCrmProfile;
   isLoading: boolean;
   isError: boolean;
@@ -21,6 +25,8 @@ interface BuildingCrmPageProps {
 
 export const BuildingCrmPage = ({
   propertyGroupId,
+  allProperties,
+  propertyAssignments,
   profile,
   isLoading,
   isError,
@@ -81,7 +87,12 @@ export const BuildingCrmPage = ({
                 />
               </section>
               <section data-building-main-block="properties" aria-label="Propiedades del edificio">
-                <BuildingPropertiesPanel properties={profile.properties} />
+                <BuildingPropertiesPanel
+                  propertyGroupId={propertyGroupId}
+                  properties={profile.properties}
+                  allProperties={allProperties}
+                  propertyAssignments={propertyAssignments}
+                />
               </section>
             </main>
           </>

@@ -5,6 +5,7 @@ import { useCleaners } from '@/hooks/useCleaners';
 import {
   useCleanerAssignments,
   usePropertyAssignments,
+  useAllPropertyAssignments,
   usePropertyGroups,
 } from '@/hooks/usePropertyGroups';
 import { useProperties } from '@/hooks/useProperties';
@@ -15,6 +16,7 @@ const PlanningBuildingDetail = () => {
   const groupsQuery = usePropertyGroups();
   const propertiesQuery = useProperties();
   const propertyAssignmentsQuery = usePropertyAssignments(propertyGroupId);
+  const allPropertyAssignmentsQuery = useAllPropertyAssignments();
   const cleanerAssignmentsQuery = useCleanerAssignments(propertyGroupId);
   const cleanersQuery = useCleaners();
 
@@ -48,17 +50,20 @@ const PlanningBuildingDetail = () => {
   const isLoading = groupsQuery.isLoading
     || propertiesQuery.isLoading
     || propertyAssignmentsQuery.isLoading
+    || allPropertyAssignmentsQuery.isLoading
     || cleanerAssignmentsQuery.isLoading
     || cleanersQuery.isLoading;
   const firstError = groupsQuery.error
     || propertiesQuery.error
     || propertyAssignmentsQuery.error
+    || allPropertyAssignmentsQuery.error
     || cleanerAssignmentsQuery.error;
 
   const refresh = () => Promise.all([
     groupsQuery.refetch(),
     propertiesQuery.refetch(),
     propertyAssignmentsQuery.refetch(),
+    allPropertyAssignmentsQuery.refetch(),
     cleanerAssignmentsQuery.refetch(),
     cleanersQuery.refetch(),
   ]);
@@ -66,6 +71,8 @@ const PlanningBuildingDetail = () => {
   return (
     <BuildingCrmPage
       propertyGroupId={propertyGroupId}
+      allProperties={propertiesQuery.data || []}
+      propertyAssignments={allPropertyAssignmentsQuery.data || []}
       profile={profile}
       isLoading={isLoading}
       isError={Boolean(firstError)}

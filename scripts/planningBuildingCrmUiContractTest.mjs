@@ -123,6 +123,14 @@ assert.match(teamEditor, /No entra en propuestas automáticas/, 'Team editor mus
 assert.match(properties, /Duración/, 'Properties panel must show duration');
 assert.match(properties, /Necesita/, 'Properties panel must show required cleaners/personas');
 assert.match(properties, /Editar propiedad/, 'Properties panel must provide a settings/edit link without inline editing');
+assert.match(properties, /Añadir apartamentos/, 'Properties panel must expose apartment assignment from the current building CRM');
+assert.match(properties, /useAssignPropertyToGroup/, 'Apartment assignment must use the canonical property-group mutation');
+assert.match(properties, /availableProperties/, 'Apartment assignment must only offer properties not already assigned to another building');
+assert.match(properties, /Checkbox/, 'Apartment assignment must support selecting one or more apartments');
+assert.match(properties, /Dialog/, 'Apartment assignment must be reviewable in a modal before saving');
+assert.match(properties, /No hay apartamentos disponibles/, 'Apartment assignment must explain the empty available-catalog state');
+assert.match(detailPage, /useAllPropertyAssignments/, 'Building detail must load global assignments to avoid offering apartments already linked elsewhere');
+assert.match(page, /allProperties/, 'Building CRM must pass the property catalog into the properties panel');
 assert.match(setupChecklist, /Personalización del edificio/, 'Setup checklist must frame building customization explicitly');
 assert.match(setupChecklist, /Propiedades y duración[\s\S]*Equipo habitual[\s\S]*Propuesta revisable/s, 'Setup checklist must guide the three setup steps');
 assert.match(setupChecklist, /Editar equipo \/ No aptas/, 'Setup checklist must expose building team and No apta editing path');
