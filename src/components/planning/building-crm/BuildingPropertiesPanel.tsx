@@ -1,15 +1,18 @@
 import { useMemo, useState } from 'react';
-import { ExternalLink, Home, Loader2, Plus } from 'lucide-react';
+import { Check, ExternalLink, Home, Loader2, Plus, Search, Users } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
 import { useAssignPropertyToGroup } from '@/hooks/usePropertyGroups';
+import { toast } from '@/hooks/use-toast';
 import type { Property } from '@/types/property';
 import type { PropertyGroupAssignment } from '@/types/propertyGroups';
 import type { PlanningBuildingCrmProperty } from '@/types/operationalPlanning';
+import { cn } from '@/lib/utils';
 import { formatCrmHours } from './buildingCrmFormatters';
 
 interface BuildingPropertiesPanelProps {
@@ -17,6 +20,7 @@ interface BuildingPropertiesPanelProps {
   properties: PlanningBuildingCrmProperty[];
   allProperties: Property[];
   propertyAssignments: PropertyGroupAssignment[];
+  onRefresh: () => Promise<unknown>;
 }
 
 export const BuildingPropertiesPanel = ({
@@ -24,8 +28,10 @@ export const BuildingPropertiesPanel = ({
   properties,
   allProperties,
   propertyAssignments,
+  onRefresh,
 }: BuildingPropertiesPanelProps) => {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
   const [selectedProperties, setSelectedProperties] = useState<string[]>([]);
   const assignProperty = useAssignPropertyToGroup();
 
@@ -38,7 +44,41 @@ export const BuildingPropertiesPanel = ({
       .sort((a, b) => a.codigo.localeCompare(b.codigo, 'es', { numeric: true }));
   }, [allProperties, propertyAssignments]);
 
+  const filteredAvailableProperties = useMemo(() => {
+    const normalizedSearch = searchTerm.trim().toLocaleLowerCase('es');
+    if (!normalizedSearch) return availableProperties;
+
+    return availableProperties.filter((property) => [
+      property.codigo,
+      property.nombre,
+      property.direccion,
+    ].some((value) => value.toLocaleLowerCase('es').includes(normalizedSearch)));
+  }, [availableProperties, searchTerm]);
+
+  const selectedPropertyDetails = useMemo(
+    () => allProperties.filter((property) => selectedProperties.includes(property.id)),
+    [allProperties, selectedProperties],
+  );
+
+  const visiblePropertyIds = filteredAvailableProperties.map((property) => property.id);
+  const allVisibleSelected = visiblePropertyIds.length > 0
+    && visiblePropertyIds.every((propertyId) => selectedProperties.includes(propertyId));
+
+  const toggleProperty = (propertyId: string, checked: boolean) => {
+    setSelectedProperties((current) => checked
+      ? Array.from(new Set([...current, propertyId]))
+      : current.filter((id) => id !== propertyId));
+  };
+
+  const handleToggleVisibleProperties = () => {
+    setSelectedProperties((current) => {
+      if (allVisibleSelected) return current.filter((id) => !visiblePropertyIds.includes(id));
+      return Array.from(new Set([...current, ...visiblePropertyIds]));
+    });
+  };
+
   const handleOpenAddModal = () => {
+    setSearchTerm('');
     setSelectedProperties([]);
     setIsAddModalOpen(true);
   };
@@ -46,20 +86,43 @@ export const BuildingPropertiesPanel = ({
   const handleCloseAddModal = (open: boolean) => {
     if (assignProperty.isPending) return;
     setIsAddModalOpen(open);
-    if (!open) setSelectedProperties([]);
+    if (!open) {
+      setSearchTerm('');
+      setSelectedProperties([]);
+    }
   };
 
   const handleAddProperties = async () => {
     if (selectedProperties.length === 0) return;
 
+    const propertiesToAssign = [...selectedProperties];
+
     try {
-      for (const propertyId of selectedProperties) {
-        await assignProperty.mutateAsync({ groupId: propertyGroupId, propertyId });
+      for (const propertyId of propertiesToAssign) {
+        await assignProperty.mutateAsync({
+          groupId: propertyGroupId,
+          propertyId,
+          silent: true,
+        });
       }
+
+      await onRefresh().catch((refreshError) => {
+        console.error('Properties assigned but building refresh failed:', refreshError);
+      });
+
+      toast({
+        title: `${propertiesToAssign.length} apartamento${propertiesToAssign.length === 1 ? '' : 's'} guardado${propertiesToAssign.length === 1 ? '' : 's'}`,
+        description: 'El edificio se ha actualizado con las propiedades seleccionadas.',
+      });
       setSelectedProperties([]);
+      setSearchTerm('');
       setIsAddModalOpen(false);
     } catch (error) {
       console.error('Error adding properties to building:', error);
+      await onRefresh().catch((refreshError) => {
+        console.error('Building refresh failed after assignment error:', refreshError);
+      });
+      setSelectedProperties([]);
     }
   };
 
@@ -132,51 +195,147 @@ export const BuildingPropertiesPanel = ({
       </CardContent>
 
       <Dialog open={isAddModalOpen} onOpenChange={handleCloseAddModal}>
-        <DialogContent className="sm:max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Añadir apartamentos al edificio</DialogTitle>
-            <DialogDescription>
-              Selecciona uno o varios apartamentos. Los que ya pertenecen a otro edificio no aparecen en esta lista.
-            </DialogDescription>
+        <DialogContent className="flex max-h-[min(92vh,820px)] flex-col gap-0 overflow-hidden p-0 sm:max-w-5xl">
+          <DialogHeader className="border-b border-[#310984]/10 bg-gradient-to-r from-[#faf8ff] to-white px-6 py-5 sm:px-8">
+            <div className="flex flex-wrap items-start justify-between gap-3 pr-8">
+              <div>
+                <DialogTitle className="text-xl text-[#171321]">Añadir apartamentos al edificio</DialogTitle>
+                <DialogDescription className="mt-1 max-w-2xl text-sm leading-6 text-[#6b627a]">
+                  Busca por código, nombre o dirección y marca los apartamentos que quieres incorporar. Los ya asignados a otro edificio quedan fuera automáticamente.
+                </DialogDescription>
+              </div>
+              <Badge variant="outline" className="border-[#310984]/20 bg-white px-3 py-1 text-[#310984]">
+                {availableProperties.length} disponibles
+              </Badge>
+            </div>
           </DialogHeader>
 
-          {availableProperties.length === 0 ? (
-            <div className="rounded-2xl border border-dashed border-[#310984]/15 p-6 text-center text-sm text-[#6b627a]">
-              No hay apartamentos disponibles para asignar en la sede activa.
-            </div>
-          ) : (
-            <div className="max-h-80 space-y-2 overflow-y-auto pr-1">
-              {availableProperties.map((property) => {
-                const checkboxId = `building-property-${property.id}`;
-                return (
-                  <label key={property.id} htmlFor={checkboxId} className="flex cursor-pointer items-start gap-3 rounded-xl border border-[#310984]/10 bg-[#faf8ff] p-3 hover:border-[#310984]/30">
-                    <Checkbox
-                      id={checkboxId}
-                      checked={selectedProperties.includes(property.id)}
-                      onCheckedChange={(checked) => {
-                        setSelectedProperties((current) => checked
-                          ? Array.from(new Set([...current, property.id]))
-                          : current.filter((id) => id !== property.id));
-                      }}
+          <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5 sm:px-8">
+            {availableProperties.length === 0 ? (
+              <div className="flex min-h-[320px] flex-col items-center justify-center rounded-2xl border border-dashed border-[#310984]/15 bg-[#faf8ff] p-8 text-center text-sm text-[#6b627a]">
+                <Home className="mb-3 h-10 w-10 text-[#310984]/50" />
+                <p className="font-semibold text-[#171321]">No hay apartamentos disponibles</p>
+                <p className="mt-1 max-w-md">Todas las propiedades activas de la sede ya están vinculadas a un edificio o no hay propiedades en el catálogo.</p>
+              </div>
+            ) : (
+              <div className="space-y-5">
+                <div className="flex flex-col gap-3 rounded-2xl border border-[#310984]/10 bg-white p-3 shadow-sm sm:flex-row sm:items-center">
+                  <div className="relative min-w-0 flex-1">
+                    <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#6b627a]" />
+                    <Input
+                      type="search"
+                      value={searchTerm}
+                      onChange={(event) => setSearchTerm(event.target.value)}
+                      placeholder="Buscar por código, nombre o dirección…"
+                      aria-label="Buscar apartamentos disponibles"
+                      className="h-11 border-[#310984]/15 bg-[#faf8ff] pl-9 focus-visible:ring-[#310984]"
                     />
-                    <span className="min-w-0">
-                      <span className="block font-medium text-[#171321]">{property.codigo} · {property.nombre}</span>
-                      <span className="mt-1 block break-words text-xs text-[#6b627a]">{property.direccion}</span>
-                    </span>
-                  </label>
-                );
-              })}
-            </div>
-          )}
+                  </div>
+                  <div className="flex shrink-0 items-center gap-2">
+                    <Button type="button" variant="outline" size="sm" onClick={handleToggleVisibleProperties} className="h-11 border-[#310984]/15 text-[#310984]">
+                      <Check className="mr-2 h-4 w-4" />
+                      {allVisibleSelected ? 'Quitar visibles' : 'Seleccionar todos los visibles'}
+                    </Button>
+                    <Button type="button" variant="ghost" size="sm" onClick={() => setSelectedProperties([])} disabled={selectedProperties.length === 0} className="h-11 text-[#6b627a]">
+                      Limpiar
+                    </Button>
+                  </div>
+                </div>
 
-          <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-            <Button type="button" variant="outline" onClick={() => handleCloseAddModal(false)} disabled={assignProperty.isPending}>
-              Cancelar
-            </Button>
-            <Button type="button" className="bg-[#310984] text-white hover:bg-[#4c1bb0]" onClick={() => void handleAddProperties()} disabled={selectedProperties.length === 0 || assignProperty.isPending || availableProperties.length === 0}>
-              {assignProperty.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Añadir {selectedProperties.length} apartamento{selectedProperties.length === 1 ? '' : 's'}
-            </Button>
+                <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_280px]">
+                  <section aria-label="Catálogo de apartamentos disponibles" className="min-w-0">
+                    <div className="mb-3 flex items-center justify-between gap-3">
+                      <div>
+                        <p className="font-semibold text-[#171321]">Catálogo disponible</p>
+                        <p className="text-sm text-[#6b627a]">{filteredAvailableProperties.length} resultado{filteredAvailableProperties.length === 1 ? '' : 's'} visibles</p>
+                      </div>
+                      <Badge variant="outline" className="border-[#310984]/15 bg-[#faf8ff] text-[#310984]">
+                        {selectedProperties.length} seleccionados
+                      </Badge>
+                    </div>
+
+                    {filteredAvailableProperties.length === 0 ? (
+                      <div className="flex min-h-[260px] items-center justify-center rounded-2xl border border-dashed border-[#310984]/15 bg-[#faf8ff] p-8 text-center text-sm text-[#6b627a]">
+                        No encontramos apartamentos con “{searchTerm}”. Prueba otro código o dirección.
+                      </div>
+                    ) : (
+                      <div className="grid max-h-[min(54vh,560px)] gap-3 overflow-y-auto pr-1 sm:grid-cols-2">
+                        {filteredAvailableProperties.map((property) => {
+                          const checkboxId = `building-property-${property.id}`;
+                          const isSelected = selectedProperties.includes(property.id);
+
+                          return (
+                            <div
+                              key={property.id}
+                              className={cn(
+                                'flex min-h-[112px] items-start gap-3 rounded-2xl border p-4 transition-colors',
+                                isSelected
+                                  ? 'border-[#310984] bg-[#f0eaff] shadow-sm'
+                                  : 'border-[#310984]/10 bg-white hover:border-[#310984]/35 hover:bg-[#faf8ff]',
+                              )}
+                            >
+                              <Checkbox
+                                id={checkboxId}
+                                checked={isSelected}
+                                onCheckedChange={(checked) => toggleProperty(property.id, checked === true)}
+                                aria-label={`Seleccionar ${property.codigo} ${property.nombre}`}
+                                className="mt-0.5 h-5 w-5"
+                              />
+                              <label htmlFor={checkboxId} className="min-w-0 flex-1 cursor-pointer">
+                                <span className="block font-semibold leading-5 text-[#171321]">{property.codigo} · {property.nombre}</span>
+                                <span className="mt-2 block break-words text-sm leading-5 text-[#6b627a]">{property.direccion || 'Dirección no disponible'}</span>
+                              </label>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </section>
+
+                  <aside className="rounded-2xl border border-[#310984]/10 bg-[#faf8ff] p-4 lg:sticky lg:top-0 lg:self-start" aria-live="polite">
+                    <div className="flex items-center gap-2 text-[#310984]">
+                      <Users className="h-4 w-4" />
+                      <p className="font-semibold text-[#171321]">Resumen de selección</p>
+                    </div>
+                    <p className="mt-2 text-sm leading-5 text-[#6b627a]">
+                      {selectedProperties.length === 0
+                        ? 'Selecciona uno o varios apartamentos para incorporarlos al edificio.'
+                        : `${selectedProperties.length} apartamento${selectedProperties.length === 1 ? '' : 's'} preparado${selectedProperties.length === 1 ? '' : 's'} para guardar.`}
+                    </p>
+                    {selectedPropertyDetails.length > 0 && (
+                      <div className="mt-4 max-h-52 space-y-2 overflow-y-auto pr-1">
+                        {selectedPropertyDetails.map((property) => (
+                          <div key={property.id} className="rounded-xl border border-[#310984]/10 bg-white px-3 py-2">
+                            <p className="truncate text-sm font-medium text-[#171321]">{property.codigo}</p>
+                            <p className="truncate text-xs text-[#6b627a]">{property.nombre}</p>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </aside>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className="flex flex-col gap-3 border-t border-[#310984]/10 bg-white px-6 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-8">
+            <p className="text-sm text-[#6b627a]" aria-live="polite">
+              {selectedProperties.length === 0 ? 'No hay apartamentos seleccionados' : `${selectedProperties.length} seleccionados para guardar`}
+            </p>
+            <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+              <Button type="button" variant="outline" onClick={() => handleCloseAddModal(false)} disabled={assignProperty.isPending}>
+                Cancelar
+              </Button>
+              <Button
+                type="button"
+                className="min-w-[190px] bg-[#310984] text-white hover:bg-[#4c1bb0]"
+                onClick={() => void handleAddProperties()}
+                disabled={selectedProperties.length === 0 || assignProperty.isPending || availableProperties.length === 0}
+              >
+                {assignProperty.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                {assignProperty.isPending ? 'Guardando…' : `Guardar ${selectedProperties.length} apartamento${selectedProperties.length === 1 ? '' : 's'}`}
+              </Button>
+            </div>
           </div>
         </DialogContent>
       </Dialog>

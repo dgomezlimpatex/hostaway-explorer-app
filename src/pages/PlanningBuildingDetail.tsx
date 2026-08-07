@@ -77,7 +77,7 @@ const PlanningBuildingDetail = () => {
       isLoading={isLoading}
       isError={Boolean(firstError)}
       error={firstError instanceof Error ? firstError.message : null}
-      onRefresh={() => { void refresh(); }}
+      onRefresh={refresh}
     />
   );
 };

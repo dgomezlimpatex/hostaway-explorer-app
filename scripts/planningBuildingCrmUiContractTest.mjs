@@ -129,6 +129,12 @@ assert.match(properties, /availableProperties/, 'Apartment assignment must only 
 assert.match(properties, /Checkbox/, 'Apartment assignment must support selecting one or more apartments');
 assert.match(properties, /Dialog/, 'Apartment assignment must be reviewable in a modal before saving');
 assert.match(properties, /No hay apartamentos disponibles/, 'Apartment assignment must explain the empty available-catalog state');
+assert.match(properties, /type="search"/, 'Apartment assignment must provide a searchable catalog');
+assert.match(properties, /Seleccionar todos los visibles/, 'Apartment assignment must provide a visible bulk-selection action');
+assert.match(properties, /Guardar \$\{selectedProperties\.length\} apartamento/, 'Apartment assignment must use an explicit save label with the selected count');
+assert.match(properties, /silent: true/, 'Bulk assignment must suppress one toast per apartment');
+assert.match(properties, /onRefresh/, 'Apartment assignment must refresh the building after persistence');
+assert.doesNotMatch(properties, /<label key=\{property.id\} htmlFor=\{checkboxId\}/, 'Checkboxes must not be wrapped in a label that can toggle Radix twice');
 assert.match(detailPage, /useAllPropertyAssignments/, 'Building detail must load global assignments to avoid offering apartments already linked elsewhere');
 assert.match(page, /allProperties/, 'Building CRM must pass the property catalog into the properties panel');
 assert.match(setupChecklist, /Personalización del edificio/, 'Setup checklist must frame building customization explicitly');

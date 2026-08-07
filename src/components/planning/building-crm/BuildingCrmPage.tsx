@@ -20,7 +20,7 @@ interface BuildingCrmPageProps {
   isLoading: boolean;
   isError: boolean;
   error?: string | null;
-  onRefresh: () => void;
+  onRefresh: () => Promise<unknown>;
 }
 
 export const BuildingCrmPage = ({
@@ -92,6 +92,7 @@ export const BuildingCrmPage = ({
                   properties={profile.properties}
                   allProperties={allProperties}
                   propertyAssignments={propertyAssignments}
+                  onRefresh={onRefresh}
                 />
               </section>
             </main>
