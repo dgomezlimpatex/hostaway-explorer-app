@@ -134,6 +134,10 @@ assert.match(properties, /Seleccionar todos los visibles/, 'Apartment assignment
 assert.match(properties, /Guardar \$\{selectedProperties\.length\} apartamento/, 'Apartment assignment must use an explicit save label with the selected count');
 assert.match(properties, /silent: true/, 'Bulk assignment must suppress one toast per apartment');
 assert.match(properties, /onRefresh/, 'Apartment assignment must refresh the building after persistence');
+assert.match(properties, /useRemovePropertyFromGroup/, 'Building properties must use the canonical removal mutation');
+assert.match(properties, /Retirar del edificio/, 'Each assigned property must expose an explicit removal action');
+assert.match(properties, /AlertDialog/, 'Removing a property must require destructive-action confirmation');
+assert.match(properties, /assignmentId/, 'Removing a property must target the persisted assignment row');
 assert.doesNotMatch(properties, /<label key=\{property.id\} htmlFor=\{checkboxId\}/, 'Checkboxes must not be wrapped in a label that can toggle Radix twice');
 assert.match(detailPage, /useAllPropertyAssignments/, 'Building detail must load global assignments to avoid offering apartments already linked elsewhere');
 assert.match(page, /allProperties/, 'Building CRM must pass the property catalog into the properties panel');

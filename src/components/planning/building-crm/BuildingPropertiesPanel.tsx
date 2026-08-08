@@ -1,13 +1,23 @@
 import { useMemo, useState } from 'react';
-import { Check, ExternalLink, Home, Loader2, Plus, Search, Users } from 'lucide-react';
+import { Check, ExternalLink, Home, Loader2, Plus, Search, Unlink2, Users } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
-import { useAssignPropertyToGroup } from '@/hooks/usePropertyGroups';
+import { useAssignPropertyToGroup, useRemovePropertyFromGroup } from '@/hooks/usePropertyGroups';
 import { toast } from '@/hooks/use-toast';
 import type { Property } from '@/types/property';
 import type { PropertyGroupAssignment } from '@/types/propertyGroups';
@@ -33,7 +43,9 @@ export const BuildingPropertiesPanel = ({
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedProperties, setSelectedProperties] = useState<string[]>([]);
+  const [propertyToRemove, setPropertyToRemove] = useState<PlanningBuildingCrmProperty | null>(null);
   const assignProperty = useAssignPropertyToGroup();
+  const removeProperty = useRemovePropertyFromGroup();
 
   const availableProperties = useMemo(() => {
     const assignedPropertyIds = new Set(propertyAssignments.map((assignment) => assignment.propertyId));
@@ -126,6 +138,47 @@ export const BuildingPropertiesPanel = ({
     }
   };
 
+  const handleRemoveProperty = async () => {
+    if (!propertyToRemove) return;
+
+    const assignment = propertyAssignments.find((candidate) => (
+      candidate.propertyGroupId === propertyGroupId && candidate.propertyId === propertyToRemove.propertyId
+    ));
+
+    if (!assignment) {
+      toast({
+        title: 'No se encontró la asignación',
+        description: 'Actualiza la ficha del edificio e inténtalo de nuevo.',
+        variant: 'destructive',
+      });
+      setPropertyToRemove(null);
+      return;
+    }
+
+    try {
+      await removeProperty.mutateAsync({
+        assignmentId: assignment.id,
+        groupId: propertyGroupId,
+        silent: true,
+      });
+      await onRefresh().catch((refreshError) => {
+        console.error('Property removed but building refresh failed:', refreshError);
+      });
+      toast({
+        title: 'Propiedad retirada',
+        description: `${propertyToRemove.propertyCode} ya no está vinculada a este edificio.`,
+      });
+      setPropertyToRemove(null);
+    } catch (error) {
+      console.error('Error removing property from building:', error);
+      toast({
+        title: 'No se pudo retirar la propiedad',
+        description: error instanceof Error ? error.message : 'Comprueba la conexión e inténtalo de nuevo.',
+        variant: 'destructive',
+      });
+    }
+  };
+
   return (
     <Card className="border-[#310984]/10 bg-white shadow-sm shadow-[#310984]/5">
       <CardHeader className="pb-3">
@@ -182,12 +235,26 @@ export const BuildingPropertiesPanel = ({
                     Casa grande: revisar equipo estable y capacidad de pico.
                   </p>
                 )}
-                <Button asChild size="sm" variant="outline" className="mt-3 border-[#310984]/15 bg-white text-[#310984] hover:bg-[#f0eaff]">
-                  <Link to={`/properties?propertyId=${property.propertyId}`}>
-                    Editar propiedad
-                    <ExternalLink className="ml-2 h-3.5 w-3.5" />
-                  </Link>
-                </Button>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <Button asChild size="sm" variant="outline" className="flex-1 border-[#310984]/15 bg-white text-[#310984] hover:bg-[#f0eaff]">
+                    <Link to={`/properties?propertyId=${property.propertyId}`}>
+                      Editar propiedad
+                      <ExternalLink className="ml-2 h-3.5 w-3.5" />
+                    </Link>
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="border-red-200 bg-white text-red-700 hover:bg-red-50 hover:text-red-800"
+                    onClick={() => setPropertyToRemove(property)}
+                    disabled={removeProperty.isPending}
+                    aria-label={`Retirar ${property.propertyCode} del edificio`}
+                  >
+                    <Unlink2 className="mr-2 h-3.5 w-3.5" />
+                    Retirar
+                  </Button>
+                </div>
               </article>
             ))}
           </div>
@@ -339,6 +406,38 @@ export const BuildingPropertiesPanel = ({
           </div>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog
+        open={Boolean(propertyToRemove)}
+        onOpenChange={(open) => {
+          if (!open && !removeProperty.isPending) setPropertyToRemove(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Retirar esta propiedad del edificio?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {propertyToRemove
+                ? `${propertyToRemove.propertyCode} · ${propertyToRemove.propertyName} dejará de estar vinculada a este edificio. No se borrará la propiedad ni sus datos maestros.`
+                : 'La propiedad dejará de estar vinculada a este edificio.'}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={removeProperty.isPending}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={removeProperty.isPending}
+              onClick={(event) => {
+                event.preventDefault();
+                void handleRemoveProperty();
+              }}
+              className="bg-red-600 text-white hover:bg-red-700"
+            >
+              {removeProperty.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {removeProperty.isPending ? 'Retirando…' : 'Retirar del edificio'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Card>
   );
 };

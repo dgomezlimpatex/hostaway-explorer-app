@@ -24,12 +24,13 @@ export const useRemovePropertyFromGroup = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ assignmentId }: { assignmentId: string; groupId: string }) =>
+    mutationFn: ({ assignmentId }: { assignmentId: string; groupId: string; silent?: boolean }) =>
       propertyGroupStorage.removePropertyFromGroup(assignmentId),
-    onSuccess: (_, { groupId }) => {
+    onSuccess: (_, { groupId, silent }) => {
       queryClient.invalidateQueries({ queryKey: ['property-assignments', groupId] });
       queryClient.invalidateQueries({ queryKey: ['property-assignments', 'all'] });
       queryClient.invalidateQueries({ queryKey: ['operational-planning', 'buildings'] });
+      if (silent) return;
       toast({
         title: "Propiedad retirada",
         description: "La propiedad se ha retirado del grupo operativo.",
