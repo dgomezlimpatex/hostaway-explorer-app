@@ -102,5 +102,7 @@ assert.match(page, /Cada litera añade automáticamente dos camas individuales/)
 assert.match(page, /Terrazas/);
 assert.match(page, /Redondeo superior a 15 min/);
 assert.match(page, /Escenario mensual/);
+assert.match(page, /money\.format\(/);
+assert.doesNotMatch(page, /\{money\(/, 'Los importes deben usar Intl.NumberFormat.format y no invocar el formateador como función');
 
 console.log('budget-estimator-ui-contract: OK');
