@@ -79,10 +79,18 @@ assert.throws(
   'La regresión debe fallar si un manager vuelve a ver la tarjeta',
 );
 assert.match(page, /role="alert" aria-live="polite"/);
-assert.match(page, /15,50 €\/h/);
-assert.match(page, /1 €\/h de ruta/);
-assert.match(page, /19,50 €\/h/);
-assert.match(page, /Simulador sin guardado/);
+assert.match(page, /Presupuestador persistente/);
+assert.match(page, /Guardar presupuesto/);
+assert.match(page, /Estado del presupuesto/);
+assert.match(page, /Historial de versiones/);
+assert.match(page, /Clientes y propiedades/);
+assert.match(page, /Logística por actividad/);
+assert.match(page, /bolsa/);
+assert.match(page, /parada/);
+assert.match(page, /kilómetro/);
+assert.match(page, /edificio/);
+assert.match(page, /Generar PDF comercial/);
+assert.match(page, /Activar configuración/);
 assert.match(page, /Plantilla de tiempos de limpieza/);
 assert.match(page, /Cocinas/);
 assert.match(page, /Baños/);
@@ -93,13 +101,6 @@ assert.match(page, /Literas/);
 assert.match(page, /Cada litera añade automáticamente dos camas individuales/);
 assert.match(page, /Terrazas/);
 assert.match(page, /Redondeo superior a 15 min/);
-assert.match(page, /cleaningHours: timeCalculation\.data\.cleaningHours/);
-assert.doesNotMatch(page, /id="cleaning-hours"/);
-assert.match(page, /idPrefix="laundry"/);
-assert.match(page, /idPrefix="amenities"/);
-assert.match(page, /idPrefix="other"/);
-assert.ok(page.includes('id={`${idPrefix}-coste`}'));
-assert.ok(page.includes('id={`${idPrefix}-venta`}'));
 assert.match(page, /Escenario mensual/);
 
 console.log('budget-estimator-ui-contract: OK');

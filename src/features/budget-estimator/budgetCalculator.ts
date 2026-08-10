@@ -1,3 +1,10 @@
+import {
+  calculateTouristLogisticsCost,
+  DEFAULT_LOGISTICS_RATES,
+  TouristLogisticsCostResult,
+  TouristLogisticsInput,
+} from './logisticsCalculator';
+
 export interface BudgetRates {
   laborCostPerHour: number;
   routeAllocationPerHour: number;
@@ -19,6 +26,7 @@ export interface TouristApartmentBudgetInput {
   cleaningHours: number;
   monthlyRotations?: number;
   rates?: Partial<BudgetRates>;
+  logistics?: TouristLogisticsInput;
   laundry?: BudgetLineInput;
   amenities?: BudgetLineInput;
   other?: BudgetLineInput;
@@ -40,6 +48,7 @@ export interface TouristApartmentBudgetResult {
   };
   rotation: BudgetTotals;
   monthly: BudgetTotals;
+  logistics: TouristLogisticsCostResult;
 }
 
 const MAX_HOURS_PER_ROTATION = 1_000;
@@ -210,10 +219,40 @@ export function calculateTouristApartmentBudget(
   const laundry = lineToCents('lavandería', input.laundry);
   const amenities = lineToCents('amenities', input.amenities);
   const other = lineToCents('otros conceptos', input.other);
+  const logistics = input.logistics
+    ? calculateTouristLogisticsCost({
+      ...input.logistics,
+      rates: {
+        ...DEFAULT_LOGISTICS_RATES,
+        ...input.logistics.rates,
+      },
+      cleaningHours: input.logistics.cleaningHours ?? input.cleaningHours,
+      provisionalHourlyAllocation:
+        input.logistics.provisionalHourlyAllocation ?? rates.routeAllocationPerHour,
+    })
+    : calculateTouristLogisticsCost({
+      mode: 'provisional-hourly',
+      density: 'B',
+      bags: 0,
+      stops: 0,
+      kilometers: 0,
+      routeHours: 0,
+      rates: DEFAULT_LOGISTICS_RATES,
+      provisionalHourlyAllocation: 0,
+      cleaningHours: 0,
+    });
+
+  const activityLogisticsCostCents = logistics.mode === 'activity-based'
+    ? toCents('El coste logístico', logistics.totalCost)
+    : 0;
+  const activityLogisticsSaleCents = logistics.mode === 'activity-based'
+    ? toCents('El precio logístico', logistics.salePrice)
+    : 0;
 
   const rotationCostCents = addSafeIntegers(
     'El coste por rotación',
     cleaningCostCents,
+    activityLogisticsCostCents,
     laundry.cost,
     amenities.cost,
     other.cost,
@@ -221,6 +260,7 @@ export function calculateTouristApartmentBudget(
   const rotationRevenueCents = addSafeIntegers(
     'La venta por rotación',
     cleaningSaleCents,
+    activityLogisticsSaleCents,
     laundry.salePrice,
     amenities.salePrice,
     other.salePrice,
@@ -247,5 +287,6 @@ export function calculateTouristApartmentBudget(
     },
     rotation,
     monthly: buildTotalsFromCents(monthlyCostCents, monthlyRevenueCents),
+    logistics,
   };
 }
