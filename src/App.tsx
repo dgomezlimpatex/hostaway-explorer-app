@@ -54,6 +54,7 @@ const PublicLaundryScheduledView = React.lazy(() => import("./pages/PublicLaundr
 const LaundryShareManagement = React.lazy(() => import("./pages/LaundryShareManagement"));
 const LinenControlPage = React.lazy(() => import("./pages/LinenControlPage"));
 const ClientBilling = React.lazy(() => import("./pages/ClientBilling"));
+const BudgetEstimator = React.lazy(() => import("./pages/BudgetEstimator"));
 const OperationalAnalytics = React.lazy(() => import("./pages/OperationalAnalytics"));
 const ClientPortal = React.lazy(() => import("./pages/ClientPortal"));
 const ClientReservationsAdmin = React.lazy(() => import("./pages/ClientReservationsAdmin"));
@@ -290,6 +291,9 @@ function App() {
                     } />
                     <Route path="/client-billing" element={
                       <RoleProtectedRoute requiredModule="reports"><ClientBilling /></RoleProtectedRoute>
+                    } />
+                    <Route path="/presupuestador" element={
+                      <RoleProtectedRoute requiredModule="admin"><BudgetEstimator /></RoleProtectedRoute>
                     } />
                     <Route path="/operational-analytics" element={
                       <RoleProtectedRoute requiredModule="reports"><OperationalAnalytics /></RoleProtectedRoute>

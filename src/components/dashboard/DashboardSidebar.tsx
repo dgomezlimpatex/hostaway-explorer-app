@@ -29,6 +29,7 @@ import {
   Package,
   Bot,
   MessageCircle,
+  Calculator,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useRolePermissions } from '@/hooks/useRolePermissions';
@@ -189,6 +190,15 @@ const billingItems: NavigationItem[] = [
   },
 ];
 
+const budgetItems: NavigationItem[] = [
+  {
+    title: 'Presupuestador',
+    href: '/presupuestador',
+    icon: Calculator,
+    permission: 'admin-module',
+  },
+];
+
 const syncItems: NavigationItem[] = [
   {
     title: 'Avantio',
@@ -272,6 +282,7 @@ export const DashboardSidebar = () => {
       case 'hostaway': return canAccessModule('hostaway');
       case 'inventory': return canAccessModule('inventory');
       case 'logistics': return canAccessModule('logistics');
+      case 'admin-module': return canAccessModule('admin');
       case 'admin-only': return isAdminOrManager();
       case 'ai-owner': return isAiAllowedUser(user, profile);
       default: return true;
@@ -425,6 +436,7 @@ export const DashboardSidebar = () => {
           {renderNavigationSection('General', generalItems)}
           {renderNavigationSection('Gestión', managementItems)}
           {renderNavigationSection('Reportes', reportsItems)}
+          {renderNavigationSection('Presupuestos', budgetItems)}
           {renderNavigationSection('Facturación', billingItems)}
           {isAdminOrManager() && renderSyncSection('Sincronizaciones', syncItems)}
           {/* Administración - Solo para admin/manager */}

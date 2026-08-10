@@ -20,6 +20,7 @@ import {
   Sparkles,
   UserPlus,
   Users,
+  Calculator,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useRolePermissions } from '@/hooks/useRolePermissions';
@@ -95,6 +96,15 @@ const billingItems: NavigationItem[] = [
   },
 ];
 
+const budgetItems: NavigationItem[] = [
+  {
+    title: 'Presupuestador',
+    href: '/presupuestador',
+    icon: Calculator,
+    permission: 'admin-module',
+  },
+];
+
 const syncItems: NavigationItem[] = [
   { title: 'Avantio', href: '/avantio-automation', icon: Settings, permission: 'hostaway' },
   { title: 'Little Hotelier', href: '/little-hotelier', icon: Hotel, permission: 'admin-only' },
@@ -167,6 +177,8 @@ export const MobileDashboardSidebar = ({ onNavigate }: MobileDashboardSidebarPro
         return canAccessModule('inventory');
       case 'logistics':
         return canAccessModule('logistics');
+      case 'admin-module':
+        return canAccessModule('admin');
       case 'admin-only':
         return isAdminOrManager();
       case 'ai-owner':
@@ -185,41 +197,46 @@ export const MobileDashboardSidebar = ({ onNavigate }: MobileDashboardSidebarPro
     return 0;
   };
 
-  const renderNavigationSection = (title: string, items: NavigationItem[]) => (
-    <div className="mb-4">
-      <h3 className="mb-2 px-4 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-        {title}
-      </h3>
-      <div className="space-y-1 px-3">
-        {filterItemsByPermission(items).map((item) => (
-          <NavLink
-            key={item.href}
-            to={item.href}
-            onClick={onNavigate}
-            className={cn(
-              'flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors',
-              isActive(item.href)
-                ? 'bg-blue-50 text-blue-700'
-                : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900',
-            )}
-          >
-            <item.icon
+  const renderNavigationSection = (title: string, items: NavigationItem[]) => {
+    const filteredItems = filterItemsByPermission(items);
+    if (filteredItems.length === 0) return null;
+
+    return (
+      <div className="mb-4">
+        <h3 className="mb-2 px-4 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+          {title}
+        </h3>
+        <div className="space-y-1 px-3">
+          {filteredItems.map((item) => (
+            <NavLink
+              key={item.href}
+              to={item.href}
+              onClick={onNavigate}
               className={cn(
-                'h-5 w-5 shrink-0',
-                isActive(item.href) ? 'text-blue-600' : 'text-slate-400',
+                'flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors',
+                isActive(item.href)
+                  ? 'bg-blue-50 text-blue-700'
+                  : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900',
               )}
-            />
-            <span className="min-w-0 flex-1">{item.title}</span>
-            {getBadgeCount(item) > 0 && (
-              <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-red-600 px-1.5 text-[11px] font-bold leading-none text-white shadow-sm">
-                {getBadgeCount(item) > 99 ? '99+' : getBadgeCount(item)}
-              </span>
-            )}
-          </NavLink>
-        ))}
+            >
+              <item.icon
+                className={cn(
+                  'h-5 w-5 shrink-0',
+                  isActive(item.href) ? 'text-blue-600' : 'text-slate-400',
+                )}
+              />
+              <span className="min-w-0 flex-1">{item.title}</span>
+              {getBadgeCount(item) > 0 && (
+                <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-red-600 px-1.5 text-[11px] font-bold leading-none text-white shadow-sm">
+                  {getBadgeCount(item) > 99 ? '99+' : getBadgeCount(item)}
+                </span>
+              )}
+            </NavLink>
+          ))}
+        </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   return (
     <div className="flex h-full flex-col bg-white">
@@ -231,6 +248,7 @@ export const MobileDashboardSidebar = ({ onNavigate }: MobileDashboardSidebarPro
         {renderNavigationSection('General', generalItems)}
         {renderNavigationSection('Gestión', managementItems)}
         {renderNavigationSection('Reportes', reportsItems)}
+        {renderNavigationSection('Presupuestos', budgetItems)}
         {renderNavigationSection('Facturación', billingItems)}
         {renderNavigationSection('Sincronizaciones', syncItems)}
         {renderNavigationSection('Administración', adminItems)}

@@ -16,7 +16,8 @@ import {
   Link2,
   AlertTriangle,
   Hotel,
-  Building2
+  Building2,
+  Calculator,
 } from 'lucide-react';
 
 export const RoleBasedNavigation = () => {
@@ -136,6 +137,19 @@ export const RoleBasedNavigation = () => {
               gradientTo="to-red-600"
               iconColor="text-white"
               hoverBorderColor="hover:border-red-300"
+            />
+          )}
+
+          {canAccessModule('admin') && (
+            <NavigationCard
+              to="/presupuestador"
+              title="Presupuestador"
+              description="Simula costes, precio y rentabilidad de apartamentos turísticos"
+              icon={Calculator}
+              gradientFrom="bg-gradient-to-br from-[#310984]"
+              gradientTo="to-fuchsia-700"
+              iconColor="text-white"
+              hoverBorderColor="hover:border-violet-300"
             />
           )}
 
