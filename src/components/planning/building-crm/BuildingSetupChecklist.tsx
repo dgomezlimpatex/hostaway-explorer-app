@@ -127,7 +127,7 @@ export const BuildingSetupChecklist = ({ profile, proposal, onGenerateProposal }
                     : `${proposedCount} limpieza${proposedCount === 1 ? '' : 's'} lista${proposedCount === 1 ? '' : 's'} para revisar en el plan diario.`}
               </p>
               <Button asChild size="sm" variant="outline" className="mt-3 border-current/25 bg-white/75 text-current hover:bg-white">
-                <Link to="/planning?copilot=open">
+                <Link to="/planning">
                   Ver en planificación <ArrowRight className="ml-2 h-3.5 w-3.5" />
                 </Link>
               </Button>

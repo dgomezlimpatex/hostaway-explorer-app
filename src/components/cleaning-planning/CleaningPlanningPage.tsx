@@ -5,7 +5,6 @@ import { useCleaningPlanningActions } from '@/hooks/useCleaningPlanningActions';
 import { useCleaningPlanningBuildingData } from '@/hooks/useCleaningPlanningBuildingData';
 import { useCleaners } from '@/hooks/useCleaners';
 import { useSede } from '@/contexts/SedeContext';
-import { Cleaner } from '@/types/calendar';
 import {
   AssignmentProposalResult,
   AssignmentProposal,
@@ -17,24 +16,18 @@ import {
 } from '@/types/cleaningPlanning';
 import { PropertyGroup, PropertyGroupAssignment } from '@/types/propertyGroups';
 import { Sede } from '@/types/sede';
-import { isOperationalCleaner, minutesToHoursLabel } from '@/utils/cleaningPlanning';
+import { isOperationalCleaner } from '@/utils/cleaningPlanning';
 import { getTodayMadrid } from '@/utils/date';
 import { buildAssignmentProposal } from '@/utils/cleaning-planning/proposalEngine';
 import { applyBuildingOperationalWindow } from '@/utils/cleaning-planning/buildingOperationalWindow';
 import { buildProposalSignature } from '@/utils/cleaning-planning/proposalBatchApply';
-import { buildPlanningCopilotSnapshot } from '@/services/planning/copilot/planningSnapshot';
 import { extractBuildingCode } from '@/services/laundryScheduleService';
 import { isTaskAssignedToCleaner } from '@/utils/taskAssignments';
 import { AssignmentProposalPanel } from './AssignmentProposalPanel';
-import { BuildingTaskBoard } from './BuildingTaskBoard';
 import { CleanerLoadTable } from './CleanerLoadTable';
-import { CleanerPlanningColumn } from './CleanerPlanningColumn';
 import { PlanningAdvancedDetails } from './PlanningAdvancedDetails';
 import { PlanningAlertsPanel } from './PlanningAlertsPanel';
-import { PlanningCopilotPanel } from './PlanningCopilotPanel';
-import { PlanningDecisionQueue } from './PlanningDecisionQueue';
 import { PlanningFilters } from './PlanningFilters';
-import { PlanningWorkflowGuide } from './PlanningWorkflowGuide';
 import { PlanningAttentionSummary } from './PlanningAttentionSummary';
 import { PlanningStartScreen } from './PlanningStartScreen';
 import { WorkerAvailabilityPanel } from './WorkerAvailabilityPanel';
@@ -201,7 +194,7 @@ export const CleaningPlanningPage = () => {
   const { cleaners, refetch: refetchCleaners } = useCleaners();
   const { activeSede, availableSedes, setActiveSede } = useSede();
   const buildingDataQuery = useCleaningPlanningBuildingData();
-  const { applyProposal, assignTask, unassignTask, isAssigning, isApplyingProposal } = useCleaningPlanningActions();
+  const { applyProposal, isApplyingProposal } = useCleaningPlanningActions();
 
   const buildingData = buildingDataQuery.data || {
     propertyGroups: [],
@@ -243,7 +236,6 @@ export const CleaningPlanningPage = () => {
     .filter((day) => filters.cleanerId === 'all' || day.cleanerId === filters.cleanerId)
     .filter((day) => day.tasks.length > 0 || filters.taskFilter === 'all'), [enhancedCleanerDays, filters]);
 
-  const filteredCount = filteredUnassignedTasks.length + filteredCleanerDays.reduce((total, day) => total + day.tasks.length, 0);
   const filteredTasks = useMemo(
     () => [
       ...filteredUnassignedTasks,
@@ -251,8 +243,7 @@ export const CleaningPlanningPage = () => {
     ],
     [filteredCleanerDays, filteredUnassignedTasks],
   );
-  const manualReviewCount = filteredUnassignedTasks.filter((task) => task.riskFlags.length > 0).length + planning.summary.conflictTasks + planning.summary.overcapacityCleaners;
-  const buildingIssueCount = filteredTasks.filter((task) => task.riskFlags.includes('missing-building') || task.riskFlags.includes('ambiguous-building')).length;
+
   const proposalContextKey = useMemo(() => buildProposalContextKey({
     activeSedeId: activeSede?.id,
     cleanerIds: operationalCleaners.map((cleaner) => cleaner.id),
@@ -265,15 +256,6 @@ export const CleaningPlanningPage = () => {
   const proposalTasks = proposalState?.tasksSnapshot || filteredUnassignedTasks;
   const hasPartialScope = filteredUnassignedTasks.length !== enhancedUnassignedTasks.length;
   const isProposalStale = Boolean(proposalState && proposalState.contextKey !== proposalContextKey);
-  const copilotSnapshot = useMemo(() => buildPlanningCopilotSnapshot({
-    activeSede,
-    range,
-    filters,
-    visibleTasks: filteredTasks,
-    cleaners: operationalCleaners,
-    availability: effectiveAvailability,
-    activeProposal: proposal,
-  }), [activeSede, effectiveAvailability, filteredTasks, filters, operationalCleaners, proposal, range]);
 
   useEffect(() => {
     if (filters.cleanerId === 'all') return;
@@ -284,22 +266,8 @@ export const CleaningPlanningPage = () => {
     }
   }, [filters.cleanerId, operationalCleaners]);
 
-  const displayUnassignedTasks = isLoading ? '—' : planning.summary.unassignedTasks;
-  const displayUtilization = isLoading ? '—' : `${planning.summary.utilizationPercent}%`;
-  const displayManualReviewCount = isLoading ? '—' : manualReviewCount;
-  const displayFilteredCount = isLoading ? '—' : filteredCount;
-  const displayPlannedMinutes = isLoading ? '—' : minutesToHoursLabel(planning.summary.plannedMinutes);
-  const displayCapacityMinutes = isLoading ? '—' : minutesToHoursLabel(planning.summary.capacityMinutes);
   const rangeLabel = range.startDate === range.endDate ? range.startDate : `${range.startDate} → ${range.endDate}`;
 
-  const handleAssign = (taskId: string, cleaner: Cleaner) => {
-    const task = filteredTasks.find((item) => item.id === taskId);
-    if (task) assignTask({ task, cleaner });
-  };
-  const handleUnassign = (taskId: string) => {
-    const task = filteredTasks.find((item) => item.id === taskId);
-    if (task) unassignTask(task);
-  };
   const handleSedeChange = (sede: Sede) => {
     setFilters(defaultFilters);
     setProposalState(null);
@@ -345,7 +313,11 @@ export const CleaningPlanningPage = () => {
   };
 
   const advancedContent = (
-    <>
+    <div className="space-y-5">
+      <div className="rounded-2xl border border-[#310984]/10 bg-white p-4 text-sm text-[#6b627a]">
+        <p className="font-semibold text-[#171321]">Solo necesitas esto si quieres buscar o revisar detalles.</p>
+        <p className="mt-1">Para preparar el reparto del día, vuelve arriba y pulsa «Preparar reparto con Hermes».</p>
+      </div>
       <PlanningFilters
         date={date}
         preset={preset}
@@ -360,74 +332,21 @@ export const CleaningPlanningPage = () => {
         onSedeChange={handleSedeChange}
       />
 
-      <PlanningWorkflowGuide
-        visibleTasksCount={displayFilteredCount}
-        plannedHoursLabel={displayPlannedMinutes}
-        capacityHoursLabel={displayCapacityMinutes}
-        buildingIssueCount={isLoading ? '—' : buildingIssueCount}
-        hasProposal={false}
-      />
-
       {!isLoading && (
         <>
           <PlanningAttentionSummary tasks={filteredTasks} summary={planning.summary} />
-          <PlanningCopilotPanel
-            snapshot={copilotSnapshot}
-            isGenerating={buildingDataQuery.isLoading}
-            isApplying={isApplyingProposal}
-            onGenerateProposal={handleGenerateProposal}
-            onClearProposal={() => setProposalState(null)}
-          />
-          <PlanningDecisionQueue
-            tasks={filteredTasks}
-            cleaners={operationalCleaners}
-            onAssign={handleAssign}
-            onUnassign={handleUnassign}
-            isAssigning={isAssigning}
-          />
           <PlanningAdvancedDetails>
             <div className="grid gap-5 xl:grid-cols-[360px_minmax(0,1fr)]">
               <WorkerAvailabilityPanel cleaners={operationalCleaners} availabilities={effectiveAvailability} />
               <div className="space-y-5">
                 <PlanningAlertsPanel tasks={filteredTasks} summary={planning.summary} />
                 <CleanerLoadTable days={filteredCleanerDays} />
-                <BuildingTaskBoard
-                  tasks={filteredTasks}
-                  cleaners={operationalCleaners}
-                  onAssign={handleAssign}
-                  onUnassign={handleUnassign}
-                  isAssigning={isAssigning}
-                />
               </div>
             </div>
-
-            <section className="space-y-3">
-              <div>
-                <h2 className="text-xl font-semibold tracking-tight text-[#171321]">Carga asignada por limpiadora</h2>
-                <p className="text-sm text-[#6b627a]">Detalle completo para auditoría o ajustes finos.</p>
-              </div>
-              <div className="grid gap-4 xl:grid-cols-2 2xl:grid-cols-3">
-                {filteredCleanerDays.length === 0 ? (
-                  <div className="rounded-2xl border border-dashed border-[#310984]/15 bg-white p-6 text-sm text-[#6b627a] xl:col-span-2 2xl:col-span-3">
-                    <p className="font-medium text-[#171321]">No hay limpiadoras con tareas para los filtros actuales.</p>
-                    <p className="mt-1 text-xs">Limpia búsqueda/filtros, cambia rango o revisa la sede activa para volver a ver la carga asignada.</p>
-                  </div>
-                ) : filteredCleanerDays.map((day) => (
-                  <CleanerPlanningColumn
-                    key={day.cleanerId}
-                    day={day}
-                    cleaners={operationalCleaners}
-                    onAssign={handleAssign}
-                    onUnassign={handleUnassign}
-                    isAssigning={isAssigning}
-                  />
-                ))}
-              </div>
-            </section>
           </PlanningAdvancedDetails>
         </>
       )}
-    </>
+    </div>
   );
 
   return (

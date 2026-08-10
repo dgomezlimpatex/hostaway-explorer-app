@@ -78,8 +78,8 @@ export const RoleBasedNavigation = () => {
           {canAccessModule('propertyGroups') && (
             <NavigationCard
               to="/planning-settings"
-              title="Ajustes de planificación"
-              description="Configura edificios, agrupaciones y parámetros operativos de planificación"
+              title="Configuración de planificación"
+              description="Configura edificios y reglas. No es necesario entrar aquí para repartir el día."
               icon={ClipboardList}
               gradientFrom="bg-gradient-to-br from-slate-600"
               gradientTo="to-slate-800"

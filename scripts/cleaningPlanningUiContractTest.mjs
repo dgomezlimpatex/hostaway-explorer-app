@@ -20,6 +20,9 @@ const workerAvailability = read('src/components/cleaning-planning/WorkerAvailabi
 const roleNavigation = read('src/components/navigation/RoleBasedNavigation.tsx');
 const dashboardSidebar = read('src/components/dashboard/DashboardSidebar.tsx');
 const mobileSidebar = read('src/components/dashboard/MobileDashboardSidebar.tsx');
+const buildingAssignmentPanel = read('src/components/planning/building-crm/BuildingAssignmentProposalPanel.tsx');
+const buildingDecisionList = read('src/components/planning/building-crm/BuildingDecisionList.tsx');
+const buildingSetupChecklist = read('src/components/planning/building-crm/BuildingSetupChecklist.tsx');
 const copilotPanel = read('src/components/cleaning-planning/PlanningCopilotPanel.tsx');
 const dailyHeader = read('src/components/cleaning-planning/DailyPlanningHeader.tsx');
 const attentionSummary = read('src/components/cleaning-planning/PlanningAttentionSummary.tsx');
@@ -65,7 +68,7 @@ assert.match(planningStart, /¿Qué día quieres planificar\?/, 'Start screen mu
 assert.match(planningStart, /Preparar reparto con Hermes/, 'Start screen must expose the single primary planning CTA');
 assert.doesNotMatch(`${copilotPanel}
 ${proposalPanel}`, /Planificar con Hermes/, 'Advanced/proposal panels must not duplicate the primary planning CTA');
-assert.match(planningStart, /Opciones avanzadas/, 'Non-daily controls must stay behind progressive disclosure');
+assert.match(planningStart, /Más filtros y detalles técnicos/, 'Non-daily controls must stay behind progressive disclosure');
 assert.doesNotMatch(planningStart, /Planificación V2|legacy|MVP|fallback|score/i, 'Start screen must not expose technical rollout or scoring jargon');
 
 assert.match(attentionSummary, /Qué necesita atención/, 'PlanningAttentionSummary must frame issues as operational attention');
@@ -88,8 +91,9 @@ assert.match(planningPage, /proposalState\s*\?\s*\(/, 'Proposal review must repl
 assert.match(workflowGuide, /Personalizar edificios/, 'Advanced workflow guide must preserve building personalization');
 assert.match(workflowGuide, /to="\/planning\/buildings"/, 'Advanced workflow guide must link to operational buildings index');
 assert.match(planningPage, /PlanningAttentionSummary/, 'Planning page must preserve the attention summary inside advanced content');
-assert.match(planningPage, /PlanningDecisionQueue/, 'Planning page must preserve the manual decision queue inside advanced content');
-assert.match(planningPage, /PlanningAdvancedDetails[\s\S]*WorkerAvailabilityPanel[\s\S]*CleanerLoadTable[\s\S]*BuildingTaskBoard/s, 'Availability/load/building technical panels must remain inside advanced details');
+assert.doesNotMatch(planningPage, /PlanningDecisionQueue|PlanningCopilotPanel|PlanningWorkflowGuide|BuildingTaskBoard|CleanerPlanningColumn/, 'Daily page must not stack direct assignment or competing cockpit panels');
+assert.match(planningPage, /PlanningAdvancedDetails[\s\S]*WorkerAvailabilityPanel[\s\S]*PlanningAlertsPanel[\s\S]*CleanerLoadTable/s, 'Availability/load/alerts technical panels must remain inside advanced details');
+assert.doesNotMatch(planningPage, /const handleAssign|const handleUnassign|onAssign=\{handleAssign\}/, 'Daily page must not expose direct assignment writes');
 assert.doesNotMatch(planningPage, /PlanningSummaryCards/, 'The simplified default view must not render duplicated summary-card KPIs');
 assert.doesNotMatch(`${planningPage}\n${planningStart}\n${copilotPanel}\n${proposalPanel}\n${alertsPanel}`, /Planificación V2|legacy|MVP|fallback/, 'Primary planning UI must not expose technical rollout jargon');
 
@@ -119,7 +123,8 @@ assert.match(
   'Existing multi-worker tasks must render the real per-worker duration instead of the full task duration',
 );
 assert.match(proposalCalendar, /assignmentRole/, 'Traffic-light labels must use the real building-team role');
-assert.match(proposalCalendar, /md:hidden/, 'Calendar must provide a vertical mobile agenda instead of requiring horizontal timeline use');
+assert.match(proposalCalendar, /Lista del reparto propuesto/, 'Proposal must provide a simple list before the technical timeline');
+assert.match(proposalCalendar, /Ver calendario por horas/, 'Technical timeline must be explicitly optional');
 assert.match(proposalCalendar, /Cambios pendientes/, 'Calendar must summarize manual draft changes');
 assert.match(proposalCalendar, /Solape de horario/, 'Calendar must detect and expose draft overlaps');
 assert.match(proposalCalendar, /No apta para este edificio/, 'Calendar must block explicit No apta draft assignments');
@@ -146,15 +151,12 @@ assert.match(planningPage, /onSedeChange=\{handleSedeChange\}/, 'PlanningFilters
 assert.match(planningPage, /const handleRefresh = \(\) => \{/, 'Planning page must centralize refresh behavior');
 assert.match(planningPage, /buildingDataQuery\.refetch\(\)/, 'Refresh must retry building/team data as well as planning data');
 assert.match(planningPage, /isLoading=\{isLoading \|\| buildingDataQuery\.isLoading\}/, 'Start screen must receive the combined loading state');
-assert.match(planningPage, /filteredCleanerDays\.length === 0 \?/, 'Detailed cleaner section needs an actionable empty state when filters hide all workers');
+assert.match(planningPage, /Solo necesitas esto si quieres buscar o revisar detalles/, 'Advanced disclosure must explain when it is needed');
 assert.doesNotMatch(planningPage, /xl:max-h-\[calc\(100vh-2rem\)\] xl:overflow-y-auto/, 'Planning page must not create nested scrolling in the right rail');
 assert.match(planningPage, /proposalState \? \([\s\S]*<AssignmentProposalPanel[\s\S]*\) : \([\s\S]*<PlanningStartScreen/s, 'Proposal and start screen must be mutually exclusive views');
 assert.match(planningPage, /calendarTasks=\{filteredTasks\}/, 'Proposal calendar must receive all visible tasks so existing assignments and proposed work are seen together');
 assert.match(planningPage, /cleaners=\{operationalCleaners\}/, 'Proposal calendar must receive operational cleaners for responsible-person edits');
 assert.match(planningPage, /excludedCleanerAssignments=\{buildingData\.excludedCleanerAssignments\}/, 'Proposal calendar must receive No apta assignments for blocking warnings');
-assert.match(planningPage, /PlanningCopilotPanel/, 'Planning page must embed the Hermes planning copilot panel');
-assert.match(planningPage, /buildPlanningCopilotSnapshot/, 'Planning page must build an explicit copilot snapshot');
-assert.match(planningPage, /visibleTasks: filteredTasks/, 'Copilot snapshot must use the visible filtered task subset');
 assert.match(planningPage, /isTaskAssignedToCleaner\(task, filters\.cleanerId\)/, 'Cleaner filter must include multi-assigned tasks via task_assignments');
 assert.match(planningPage, /buildProposalSignature\(proposalsToApply\)/, 'Proposal apply must use shared batch signature builder over the reviewed draft');
 
@@ -245,15 +247,18 @@ assert.match(proposalCalendar, />Deshacer<\//, 'Successful moves must expose one
 assert.doesNotMatch(proposalCalendar, /droppable[^\n]*unassigned|dropId=\{`unassigned/i, 'Assigned cards must not be droppable back to uncovered');
 
 assert.match(roleNavigation, /hasPermission\('tasks', 'canEdit'\).*to="\/planning"/s, 'RoleBasedNavigation must expose official planning at /planning only to tasks/canEdit users');
-assert.match(roleNavigation, /to="\/planning-settings"[\s\S]*Ajustes de planificación/, 'RoleBasedNavigation must preserve the old planning configuration screen under /planning-settings');
+assert.match(roleNavigation, /to="\/planning-settings"[\s\S]*Configuración de planificación/, 'RoleBasedNavigation must label the old screen as configuration under /planning-settings');
 assert.match(dashboardSidebar, /permission: 'tasks-edit'/, 'DashboardSidebar planning link must use tasks-edit permission');
 assert.match(dashboardSidebar, /case 'tasks-edit': return hasRolePermission\('tasks', 'canEdit'\);/, 'DashboardSidebar tasks-edit permission must map to tasks/canEdit');
-assert.match(dashboardSidebar, /title: 'Hermes planificación'[\s\S]*href: '\/planning\?copilot=open'[\s\S]*permission: 'tasks-edit'/, 'Desktop sidebar must keep a single Hermes planning shortcut');
+assert.match(dashboardSidebar, /title: 'Planificación diaria'[\s\S]*href: '\/planning'[\s\S]*permission: 'tasks-edit'/, 'Desktop sidebar must keep a single daily planning shortcut');
 assert.doesNotMatch(dashboardSidebar, /title: 'Planificación'[\s\S]*href: '\/planning'[\s\S]*permission: 'tasks-edit'/, 'Desktop sidebar must not show the generic planning shortcut alongside Hermes');
 assert.doesNotMatch(dashboardSidebar, /title: 'Ajustes de planificación'[\s\S]*href: '\/planning-settings'[\s\S]*permission: 'propertyGroups'/, 'Desktop sidebar must not show planning settings as a daily shortcut');
-assert.match(mobileSidebar, /title: 'Hermes planificación'[\s\S]*href: '\/planning\?copilot=open'[\s\S]*permission: 'tasks-edit'/, 'Mobile sidebar must keep a single Hermes planning shortcut');
+assert.match(mobileSidebar, /title: 'Planificación diaria'[\s\S]*href: '\/planning'[\s\S]*permission: 'tasks-edit'/, 'Mobile sidebar must keep a single daily planning shortcut');
 assert.doesNotMatch(mobileSidebar, /title: 'Planificación'[\s\S]*href: '\/planning'[\s\S]*permission: 'tasks-edit'/, 'Mobile sidebar must not show the generic planning shortcut alongside Hermes');
 assert.doesNotMatch(mobileSidebar, /title: 'Ajustes de planificación'[\s\S]*href: '\/planning-settings'[\s\S]*permission: 'propertyGroups'/, 'Mobile sidebar must not show planning settings as a daily shortcut');
-assert.match(mobileSidebar, /case 'tasks-edit': return hasRolePermission\('tasks', 'canEdit'\);/, 'Mobile sidebar tasks-edit permission must map to tasks/canEdit');
+assert.match(mobileSidebar, /case 'tasks-edit': return hasRolePermission\('tasks', 'canEdit'\);/, 'MobileSidebar tasks-edit permission must map to tasks/canEdit');
+for (const source of [buildingAssignmentPanel, buildingDecisionList, buildingSetupChecklist]) {
+  assert.doesNotMatch(source, /copilot=open/, 'Building planning links must use the single daily planning route without a dead copilot mode');
+}
 
 console.log('cleaning-planning-ui-contract-tests: OK');

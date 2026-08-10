@@ -117,8 +117,8 @@ const managementItems: NavigationItem[] = [
     permission: 'properties'
   },
   {
-    title: 'Hermes planificación',
-    href: '/planning?copilot=open',
+    title: 'Planificación diaria',
+    href: '/planning',
     icon: Bot,
     permission: 'tasks-edit'
   },

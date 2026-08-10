@@ -20,7 +20,7 @@ assert.ok(visiblePrimaryControls.length <= 5, `initial screen has ${visiblePrima
 assert.match(page, /addDays\(getTodayMadrid\(\), 1\)/, 'tomorrow must be the intelligent default');
 assert.match(page, /proposalState\s*\?\s*\(/, 'proposal review must replace the initial cockpit instead of stacking below it');
 assert.match(start, /Preparar reparto con Hermes/, 'the start screen must explain that Hermes prepares a reviewable draft');
-assert.match(start, /Opciones avanzadas/, 'non-daily functions must require explicit disclosure');
+assert.match(start, /Más filtros y detalles técnicos/, 'non-daily functions must require explicit disclosure');
 assert.match(start, /Alcance parcial/, 'active filters must never look like the whole day was planned');
 assert.doesNotMatch(start, /PlanningWorkflowGuide|PlanningAttentionSummary|PlanningDecisionQueue/, 'the default start screen must not render competing panels');
 
@@ -47,8 +47,12 @@ assert.match(calendar, /onClick=.*openReassignment|openReassignment.*onClick/s, 
 assert.match(calendar, /Elegir responsable/, 'the second interaction must be choosing a valid candidate');
 assert.doesNotMatch(calendar, /:\s*'Disponible';/, 'the picker must not claim full availability before safety warnings are recalculated');
 assert.match(calendar, /assignmentRole/, 'traffic-light status must come from the real proposal role');
-assert.match(calendar, /handleCleanerChange\(reassignment\.proposalIndex, cleanerId, assignmentRole\)/, 'reassigning a draft position must refresh its real building-team role');
+assert.match(calendar, /assignmentRole: \(validation\.assignmentRole \|\| activeAssignment\?\.roleType\)/, 'reassigning a draft position must refresh its real building-team role');
 assert.match(calendar, /Sin cubrir/, 'uncovered tasks must render as explicit red cards');
 assert.doesNotMatch(calendar, /taskStorageService|multipleTaskAssignmentService|supabase\.from/, 'sandbox editing must remain local until approval');
+
+assert.doesNotMatch(page, /PlanningWorkflowGuide|PlanningCopilotPanel|PlanningDecisionQueue/, 'the daily page must not stack competing planning panels');
+assert.doesNotMatch(page, /const handleAssign|const handleUnassign|onAssign=\{handleAssign\}/, 'the daily page must not expose direct assignment writes');
+assert.match(calendar, /Ver calendario por horas/, 'the proposal must offer the technical timeline only as an optional view');
 
 console.log(`cleaning-planning-radical-simple-contract-tests: OK (${visiblePrimaryControls.length} initial controls)`);

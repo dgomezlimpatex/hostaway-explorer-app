@@ -62,8 +62,8 @@ const managementItems: NavigationItem[] = [
   { title: 'Clientes', href: '/clients', icon: Building2, permission: 'clients' },
   { title: 'Propiedades', href: '/properties', icon: MapPin, permission: 'properties' },
   {
-    title: 'Hermes planificación',
-    href: '/planning?copilot=open',
+    title: 'Planificación diaria',
+    href: '/planning',
     icon: Bot,
     permission: 'tasks-edit',
   },

@@ -59,7 +59,7 @@ const confidenceTone = (confidence: number): string => {
 
 const getPlanningHref = (profile: PlanningBuildingCrmProfile): string => {
   const firstTaskDate = getAllTasks(profile).find((task) => task.isConfirmed)?.date;
-  return firstTaskDate ? `/planning?copilot=open&date=${firstTaskDate}` : '/planning?copilot=open';
+  return firstTaskDate ? `/planning?date=${firstTaskDate}` : '/planning';
 };
 
 export const BuildingAssignmentProposalPanel = ({ profile, proposal, onGenerate, onClear }: BuildingAssignmentProposalPanelProps) => {

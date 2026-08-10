@@ -16,7 +16,7 @@ const severityMeta: Record<PlanningBuildingCrmDecision['severity'], { label: str
 };
 
 const actionHref = (decision: PlanningBuildingCrmDecision) => {
-  if (decision.actionTarget === 'planning') return decision.date ? `/planning?date=${decision.date}&copilot=open` : '/planning?copilot=open';
+  if (decision.actionTarget === 'planning') return decision.date ? `/planning?date=${decision.date}` : '/planning';
   if (decision.actionTarget === 'property') return decision.propertyId ? `/properties?propertyId=${decision.propertyId}` : '/properties';
   if (decision.actionTarget === 'team') return '/planning/buildings';
   return '/planning/buildings';

@@ -12,7 +12,7 @@ import {
   type DragMoveEvent,
   type DragStartEvent,
 } from '@dnd-kit/core';
-import { AlertTriangle, CalendarDays, CheckCircle2, Clock, GripVertical, RotateCcw, ShieldAlert, Users } from 'lucide-react';
+import { AlertTriangle, CalendarDays, CheckCircle2, ChevronDown, Clock, GripVertical, RotateCcw, ShieldAlert, Users } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -758,7 +758,7 @@ export const PlanningProposalCalendar = ({
           </div>
         )}
 
-        <div className="space-y-2 md:hidden" aria-label="Agenda del reparto propuesto">
+        <div className="space-y-2" aria-label="Lista del reparto propuesto">
           {dayItems.length === 0 && unassignedTasks.length === 0 ? (
             <div className="rounded-2xl border border-[#310984]/10 bg-white p-5 text-center text-sm text-[#6b627a]">No hay limpiezas para este día.</div>
           ) : dayItems
@@ -787,8 +787,13 @@ export const PlanningProposalCalendar = ({
             })}
         </div>
 
-        <div className="hidden overflow-x-auto rounded-3xl border border-[#310984]/10 bg-white scrollbar-gutter-stable md:block" aria-label="Calendario editable del plan recomendado">
-          <div className="flex min-w-max">
+        <details className="group rounded-2xl border border-[#310984]/10 bg-white p-3">
+          <summary className="flex min-h-[44px] cursor-pointer list-none items-center justify-between gap-3 rounded-xl px-2 py-2 text-sm font-semibold text-[#310984] outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#310984]">
+            Ver calendario por horas
+            <ChevronDown className="h-4 w-4 transition-transform group-open:rotate-180" />
+          </summary>
+          <div className="mt-3 overflow-x-auto rounded-3xl border border-[#310984]/10 bg-white scrollbar-gutter-stable" aria-label="Calendario editable del plan recomendado">
+            <div className="flex min-w-max">
             <div className="sticky left-0 z-20 w-20 shrink-0 border-r border-[#310984]/10 bg-[#f7f5fb]">
               <div className="sticky top-0 z-10 flex h-12 items-center justify-center border-b border-[#310984]/10 text-[11px] font-bold uppercase tracking-widest text-[#6b627a]">
                 Hora
@@ -885,7 +890,8 @@ export const PlanningProposalCalendar = ({
               );
             })}
           </div>
-        </div>
+          </div>
+        </details>
 
         {unassignedTasks.length > 0 && (
           <div className="rounded-2xl border border-red-200 bg-red-50 p-3">

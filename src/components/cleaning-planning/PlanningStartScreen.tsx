@@ -149,7 +149,7 @@ export const PlanningStartScreen = ({
               data-planning-initial-control
               className="flex min-h-[46px] cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm font-semibold text-[#310984] outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#310984]"
             >
-              Opciones avanzadas
+              Más filtros y detalles técnicos
               <ChevronDown className="h-4 w-4 transition-transform group-open:rotate-180" />
             </summary>
             <div className="space-y-5 border-t border-[#310984]/10 bg-[#faf8ff] p-4 md:p-5">
