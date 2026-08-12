@@ -25,6 +25,7 @@ import { useTaskMedia, useAllTaskMedia } from '@/hooks/useTaskMedia';
 import { useCleaners } from '@/hooks/useCleaners';
 import { useProperties } from '@/hooks/useProperties';
 import { taskStorageService } from '@/services/taskStorage';
+import { getReportPhotoUrls } from '@/utils/reportEvidence';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 
@@ -86,16 +87,11 @@ export const CleaningReportsGallery: React.FC<CleaningReportsGalleryProps> = ({
       // Buscar el limpiador
       const cleaner = cleaners.find(c => c.id === report.cleaner_id);
       
-      // Obtener solo las fotos de la sección "fotos" (sin checklist_item_id)
-      const photosFromMediaSection = allTaskMedia
-        .filter(media => 
-          media.task_report_id === report.id && 
-          !media.checklist_item_id && // Solo fotos de la sección "fotos", no del checklist
-          media.media_type === 'photo'
-        )
-        .map(media => media.file_url);
+      // Incluir fotos generales, del checklist y de subtareas. Todas son
+      // evidencias del reporte y deben estar disponibles para administración.
+      const photosFromReport = getReportPhotoUrls(allTaskMedia, report.id);
 
-      const allImages: string[] = [...photosFromMediaSection];
+      const allImages: string[] = [...photosFromReport];
       
       return {
         ...report,
