@@ -23,6 +23,7 @@ interface TaskReportTabsProps {
   onNotesChange: (notes: string) => void;
   task: Task;
   completionPercentage: number;
+  requiredValidationIsValid: boolean;
   reportMedia: TaskMedia[];
   onReportMediaChange: (media: TaskMedia[]) => void;
   isTaskCompleted?: boolean;
@@ -149,6 +150,7 @@ export const TaskReportTabs: React.FC<TaskReportTabsProps> = ({
   onNotesChange,
   task,
   completionPercentage,
+  requiredValidationIsValid,
   reportMedia,
   onReportMediaChange,
   isTaskCompleted = false,
@@ -160,6 +162,10 @@ export const TaskReportTabs: React.FC<TaskReportTabsProps> = ({
   onContentScroll,
 }) => {
   const { isMobile } = useDeviceType();
+  const handleTabChange = (tab: string) => {
+    onTabChange(tab);
+    onStepChange(tab === 'summary' ? 'summary' : 'checklist');
+  };
 
   // Determinar qué contenido mostrar (sin retornos condicionales tempranos)
   const showNotStartedPlaceholder = !hasStartedTask && !isTaskCompleted;
@@ -183,6 +189,7 @@ export const TaskReportTabs: React.FC<TaskReportTabsProps> = ({
           onNotesChange={onNotesChange}
           task={task}
           completionPercentage={completionPercentage}
+          requiredValidationIsValid={requiredValidationIsValid}
           reportMedia={reportMedia}
           onReportMediaChange={onReportMediaChange}
           isTaskCompleted={isTaskCompleted}
@@ -197,7 +204,7 @@ export const TaskReportTabs: React.FC<TaskReportTabsProps> = ({
         <DesktopTabsView
           key="desktop-tabs"
           activeTab={activeTab}
-          onTabChange={onTabChange}
+          onTabChange={handleTabChange}
           isLoadingTemplates={isLoadingTemplates}
           currentTemplate={currentTemplate}
           checklist={checklist}

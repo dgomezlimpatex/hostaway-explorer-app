@@ -22,6 +22,7 @@ interface SequentialTaskReportProps {
   onNotesChange: (notes: string) => void;
   task: Task;
   completionPercentage: number;
+  requiredValidationIsValid: boolean;
   reportMedia: TaskMedia[];
   onReportMediaChange: (media: TaskMedia[]) => void;
   isTaskCompleted?: boolean;
@@ -52,6 +53,7 @@ export const SequentialTaskReport: React.FC<SequentialTaskReportProps> = ({
   notes,
   task,
   completionPercentage,
+  requiredValidationIsValid,
   reportMedia,
   isTaskCompleted = false,
   hasStartedTask,
@@ -80,7 +82,7 @@ export const SequentialTaskReport: React.FC<SequentialTaskReportProps> = ({
     if (isTaskCompleted) return true;
     switch (currentStep) {
       case 'checklist':
-        return completionPercentage >= 100;
+        return requiredValidationIsValid;
       case 'summary':
         return true;
       default:
@@ -209,7 +211,7 @@ export const SequentialTaskReport: React.FC<SequentialTaskReportProps> = ({
                   currentReport={currentReport}
                 />
                 
-                {!isTaskCompleted && completionPercentage < 100 && (
+                {!isTaskCompleted && !requiredValidationIsValid && (
                   <div className="pt-3 border-t">
                     <p className="text-xs text-muted-foreground text-center">
                       Completa todas las tareas obligatorias para finalizar

@@ -41,6 +41,7 @@
     "test:mobile-calendar-multi-assignment": "bun scripts/mobileCalendarMultiAssignmentTest.ts",
     "test:client-portal-visibility": "node scripts/clientPortalVisibilityTest.mjs",
     "test:subtask-photo-gallery": "node scripts/subtaskPhotoGalleryTest.mjs",
+    "test:task-report-completion": "node scripts/taskReportCompletionTest.mjs",
     "test:client-portal-operational": "node scripts/clientPortalOperationalTest.mjs",
     "test:client-portal-operational:db": "npx supabase db query --linked --file scripts/clientPortalOperationalDatabaseTest.sql",
     "test:client-portal-no-completion-time": "node scripts/clientPortalNoCompletionTimeTest.mjs",

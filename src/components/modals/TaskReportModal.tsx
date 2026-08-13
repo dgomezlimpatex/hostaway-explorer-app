@@ -406,7 +406,10 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
     // 4. No es la carga inicial
     if (!wasCompleted && nowCompleted && currentStep === 'checklist' && hasStartedTask) {
       console.log('✅ Checklist completado, avanzando automáticamente al resumen');
-      setTimeout(() => setCurrentStep('summary'), 800);
+      setTimeout(() => {
+        setCurrentStep('summary');
+        setActiveTab('summary');
+      }, 800);
     }
   }, [completionPercentage, currentStep, isChecklistCompleted, requiredValidation.isValid, hasStartedTask]);
 
@@ -847,6 +850,7 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
             onNotesChange={setNotes}
             task={task}
             completionPercentage={completionPercentage}
+            requiredValidationIsValid={requiredValidation.isValid}
             reportMedia={reportMedia}
             onReportMediaChange={setReportMedia}
             isTaskCompleted={isTaskCompleted}
