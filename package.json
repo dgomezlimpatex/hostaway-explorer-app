@@ -34,6 +34,7 @@
     "test:whatsapp-late-start-reminder": "node scripts/whatsappLateStartReminderTest.mjs",
     "test:resend-sender": "node scripts/resendSenderContractTest.mjs",
     "test:task-assignment-selector": "node scripts/taskAssignmentSelectorContractTest.mjs",
+    "test:multi-assignment-modal-ui": "node scripts/multiAssignmentModalUiContractTest.mjs",
     "test:worker-deactivation-assignment": "node scripts/workerDeactivationAssignmentTest.mjs",
     "test:worker-deactivation-assignment:db": "npx supabase db query --linked --file scripts/workerDeactivationAssignmentDatabaseTest.sql",
     "test:worker-deactivation-security:db": "npx supabase db query --linked --file scripts/workerDeactivationSecurityTest.sql",

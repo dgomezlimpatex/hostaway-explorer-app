@@ -12,7 +12,7 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { AlertTriangle, Star, User, Users, X, Plus, Minus } from 'lucide-react';
+import { AlertTriangle, Star, User, Users, UserMinus, X, Plus, Minus } from 'lucide-react';
 import { Task } from '@/types/calendar';
 import { TaskAssignment } from '@/types/taskAssignments';
 import { useToast } from '@/hooks/use-toast';
@@ -115,6 +115,8 @@ export const AssignMultipleCleanersModal = ({
 
   const toggle = (id: string) =>
     setSelected((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+
+  const clearAll = () => setSelected([]);
 
   const handleSave = async () => {
     if (!task || !hasChanges) return;
@@ -239,11 +241,27 @@ export const AssignMultipleCleanersModal = ({
               <span className="text-xs font-semibold uppercase text-muted-foreground">
                 Seleccionados
               </span>
-              {perWorkerLabel && (
-                <span className="text-xs text-muted-foreground">
-                  ≈ {perWorkerLabel} por persona
-                </span>
-              )}
+              <div className="flex items-center gap-2">
+                {perWorkerLabel && (
+                  <span className="text-xs text-muted-foreground">
+                    ≈ {perWorkerLabel} por persona
+                  </span>
+                )}
+                {selected.length > 0 && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 px-2 text-xs text-destructive hover:text-destructive"
+                    onClick={clearAll}
+                    disabled={isLoading || loadingAssignments}
+                    aria-label="Desasignar todos los trabajadores"
+                  >
+                    <UserMinus className="mr-1 h-3.5 w-3.5" />
+                    Desasignar todos
+                  </Button>
+                )}
+              </div>
             </div>
             {loadingAssignments ? (
               <div className="text-sm text-muted-foreground">Cargando…</div>
