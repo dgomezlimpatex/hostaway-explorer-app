@@ -18,16 +18,20 @@ type ResendEmailResult = { data: { id?: string } | null; error: { message: strin
 
 const escapeHtml = (value: unknown) => String(value ?? '').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#039;');
 
-const hasServiceRoleAuthorization = (req: Request, serviceRoleKey: string) => {
+const getBearerToken = (req: Request) => {
   const authorization = req.headers.get('authorization') || '';
-  const token = authorization.replace(/^Bearer\s+/i, '').trim();
+  return authorization.replace(/^Bearer\s+/i, '').trim();
+};
+
+const hasServiceRoleAuthorization = (req: Request, serviceRoleKey: string) => {
+  const token = getBearerToken(req);
   return token.length > 0 && token === serviceRoleKey;
 };
 
-const adminGet = async (baseUrl: string, token: string, table: string, query: Record<string, string>): Promise<unknown> => {
+const adminGet = async (baseUrl: string, apiKey: string, authorizationToken: string, table: string, query: Record<string, string>): Promise<unknown> => {
   const url = new URL(`${baseUrl.replace(/\/$/, '')}/rest/v1/${table}`);
   Object.entries(query).forEach(([name, value]) => url.searchParams.set(name, value));
-  const response = await fetch(url, { headers: { apikey: token, Authorization: 'Bearer ' + token } });
+  const response = await fetch(url, { headers: { apikey: apiKey, Authorization: 'Bearer ' + authorizationToken } });
   const body = await response.json().catch(() => ({}));
   if (!response.ok) throw new Error(`Supabase GET ${table} failed (${response.status})`);
   return body;
@@ -53,15 +57,24 @@ serve(async (req) => {
 
     const url = Deno.env.get('SUPABASE_URL');
     const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    const publishableKey = Deno.env.get('SUPABASE_ANON_KEY') || Deno.env.get('SUPABASE_PUBLISHABLE_KEY');
     const resendKey = Deno.env.get('RESEND_API_KEY');
-    if (!url || !serviceRoleKey || !resendKey) throw new Error('Missing secure email configuration');
-    if (!hasServiceRoleAuthorization(req, serviceRoleKey)) return new Response(JSON.stringify({ error: 'service role authorization required' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    const bearerToken = getBearerToken(req);
+    if (!url || !serviceRoleKey || !publishableKey || !resendKey) throw new Error('Missing secure email configuration');
+    if (!bearerToken) return new Response(JSON.stringify({ error: 'authenticated authorization required' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
 
-    const body = await adminGet(url, serviceRoleKey, 'supervision_incidents', {
-      select: '*,sede:sedes(nombre),property:properties(nombre,codigo),route:supervision_routes(name,route_date)',
-      id: `eq.${incidentId}`,
-      limit: '1',
-    });
+    const isServiceRoleCall = hasServiceRoleAuthorization(req, serviceRoleKey);
+    const body = await adminGet(
+      url,
+      isServiceRoleCall ? serviceRoleKey : publishableKey,
+      bearerToken,
+      'supervision_incidents',
+      {
+        select: '*,sede:sedes(nombre),property:properties(nombre,codigo),route:supervision_routes(name,route_date)',
+        id: `eq.${incidentId}`,
+        limit: '1',
+      },
+    );
     const incident = Array.isArray(body) ? body[0] as Incident | undefined : undefined;
     if (!incident) return new Response(JSON.stringify({ error: 'Incident not found' }), { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
 

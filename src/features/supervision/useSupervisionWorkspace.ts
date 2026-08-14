@@ -2,7 +2,7 @@ import { useEffect, useMemo, useCallback } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/hooks/useAuth';
 import { useSede } from '@/contexts/SedeContext';
-import { getSupervisionTasks, fetchSupervisionWorkspace, createRoute, addStop, createReservationSnapshot, saveReview, createIncident, updateIncidentStatus, completeRoute, flushSupervisionQueue, uploadSupervisionPhoto } from './supervisionStorage';
+import { getSupervisionTasks, fetchSupervisionWorkspace, createRoute, addStop, reorderStop, createReservationSnapshot, saveReview, createIncident, updateIncidentStatus, completeRoute, flushSupervisionQueue, uploadSupervisionPhoto } from './supervisionStorage';
 import type { Task } from '@/types/calendar';
 import type { SupervisionIncident, SupervisionReview, SupervisionRoute, SupervisionStop } from './types';
 
@@ -47,6 +47,11 @@ export const useSupervisionWorkspace = (date: string) => {
 
   const addStopMutation = useMutation({
     mutationFn: (input: Omit<SupervisionStop, 'id' | 'created_at' | 'updated_at'>) => addStop(sedeId, date, input),
+    onSuccess: invalidate,
+  });
+
+  const reorderStopMutation = useMutation({
+    mutationFn: (input: { stop: SupervisionStop; direction: 'up' | 'down' }) => reorderStop(sedeId, date, input.stop, input.direction),
     onSuccess: invalidate,
   });
 
@@ -115,12 +120,13 @@ export const useSupervisionWorkspace = (date: string) => {
     refresh,
     createRoute: createRouteMutation.mutateAsync,
     addStop: addStopMutation.mutateAsync,
+    moveStop: reorderStopMutation.mutateAsync,
     saveReservation: reservationMutation.mutateAsync,
     uploadPhoto: photoMutation.mutateAsync,
     saveReview: saveReviewMutation.mutateAsync,
     createIncident: createIncidentMutation.mutateAsync,
     updateIncident: updateIncidentMutation.mutateAsync,
     completeRoute: completeRouteMutation.mutateAsync,
-    isSaving: createRouteMutation.isPending || addStopMutation.isPending || reservationMutation.isPending || photoMutation.isPending || saveReviewMutation.isPending || createIncidentMutation.isPending || updateIncidentMutation.isPending || completeRouteMutation.isPending,
+    isSaving: createRouteMutation.isPending || addStopMutation.isPending || reorderStopMutation.isPending || reservationMutation.isPending || photoMutation.isPending || saveReviewMutation.isPending || createIncidentMutation.isPending || updateIncidentMutation.isPending || completeRouteMutation.isPending,
   };
 };

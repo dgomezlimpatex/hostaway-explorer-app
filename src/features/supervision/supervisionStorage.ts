@@ -163,6 +163,46 @@ export async function addStop(sedeId: string, date: string, stop: Omit<Supervisi
   }
 }
 
+export async function reorderStop(
+  sedeId: string,
+  date: string,
+  stop: SupervisionStop,
+  direction: 'up' | 'down',
+): Promise<void> {
+  const snapshot = readLocal(sedeId, date);
+  const routeStops = snapshot.stops.filter((value) => value.route_id === stop.route_id).sort((a, b) => a.sequence - b.sequence);
+  const index = routeStops.findIndex((value) => value.id === stop.id);
+  const neighbor = routeStops[direction === 'up' ? index - 1 : index + 1];
+  if (index < 0 || !neighbor) return;
+
+  const temporarySequence = -Date.now();
+  const operations = [
+    { id: stop.id, sequence: temporarySequence },
+    { id: neighbor.id, sequence: stop.sequence },
+    { id: stop.id, sequence: neighbor.sequence },
+  ];
+  try {
+    for (const operation of operations) {
+      const { error } = await db.from('supervision_route_stops').update({ sequence: operation.sequence }).eq('id', operation.id);
+      if (error) throw error;
+    }
+  } catch (error) {
+    if (!isMissingSupervisionSchema(error) && !isNetworkError(error)) throw error;
+    for (const operation of operations) {
+      await enqueueOffline({ entity: 'stop', operation: 'update', payload: { table: 'supervision_route_stops', id: operation.id, data: { sequence: operation.sequence } } });
+    }
+  }
+
+  writeLocal(sedeId, date, {
+    ...snapshot,
+    stops: snapshot.stops.map((value) => {
+      if (value.id === stop.id) return { ...value, sequence: neighbor.sequence, updated_at: now() };
+      if (value.id === neighbor.id) return { ...value, sequence: stop.sequence, updated_at: now() };
+      return value;
+    }),
+  });
+}
+
 export async function createReservationSnapshot(sedeId: string, date: string, snapshot: Omit<SupervisionReservationSnapshot, 'id' | 'captured_at'>): Promise<SupervisionReservationSnapshot> {
   const value: SupervisionReservationSnapshot = { ...snapshot, id: makeId(), captured_at: now() };
   try {
@@ -207,7 +247,8 @@ export async function createIncident(
     if (error) throw error;
     await db.from('supervision_incident_events').insert({ incident_id: value.id, event_type: 'created', to_status: value.status, actor_user_id: value.created_by || null });
     if (value.priority === 'high' || value.priority === 'critical') {
-      void supabase.functions.invoke('send-supervision-incident-email', { body: { incidentId: value.id } });
+      const { error: notificationError } = await supabase.functions.invoke('send-supervision-incident-email', { body: { incidentId: value.id } });
+      if (notificationError) console.warn('Supervision incident notification failed:', notificationError.message);
     }
     return data as SupervisionIncident;
   } catch (error) {
@@ -323,6 +364,35 @@ export async function uploadSupervisionPhoto(sedeId: string, reviewId: string, f
   }
 }
 
+function projectTaskForSupervision(task: Task): Task {
+  return {
+    id: task.id,
+    created_at: task.created_at,
+    updated_at: task.updated_at,
+    property: task.property,
+    propertyCode: task.propertyCode,
+    propertyDurationMinutes: task.propertyDurationMinutes,
+    propertyName: task.propertyName,
+    propertyAddress: task.propertyAddress,
+    address: task.address,
+    date: task.date,
+    startTime: task.startTime,
+    endTime: task.endTime,
+    duration: task.duration,
+    checkIn: task.checkIn,
+    checkOut: task.checkOut,
+    type: task.type,
+    status: task.status,
+    cleaner: task.cleaner,
+    cleanerId: task.cleanerId,
+    propertyId: task.propertyId,
+    sedeId: task.sedeId,
+    backgroundColor: task.backgroundColor,
+    originalTaskId: task.originalTaskId,
+  };
+}
+
 export async function getSupervisionTasks(sedeId: string, date: string): Promise<Task[]> {
-  return taskStorageService.getTasksForReports({ dateFrom: date, dateTo: date, sedeId });
+  const tasks = await taskStorageService.getTasksForReports({ dateFrom: date, dateTo: date, sedeId });
+  return tasks.map(projectTaskForSupervision);
 }
