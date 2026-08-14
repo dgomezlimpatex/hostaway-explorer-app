@@ -54,3 +54,10 @@ verify_jwt = true
 
 [functions.process-pending-whatsapp-notifications]
 verify_jwt = true
+
+# Emisores internos de supervisión: el caller debe validar service_role.
+[functions.send-supervision-incident-email]
+verify_jwt = true
+
+[functions.send-supervision-daily-report]
+verify_jwt = true

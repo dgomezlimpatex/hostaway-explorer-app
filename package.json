@@ -11,6 +11,8 @@
     "lint:app": "eslint src",
     "typecheck": "tsc --noEmit --pretty false",
     "test:planning-v2-domain": "node scripts/planningV2DomainTest.mjs",
+    "test:supervision-domain": "node scripts/supervisionDomainTest.mjs",
+    "test:supervision-ui": "node scripts/supervisionUiContractTest.mjs",
     "test:cleaning-planning-proposal-engine": "node scripts/cleaningPlanningProposalEngineTest.mjs",
     "test:cleaning-planning-domain-safety": "node scripts/cleaningPlanningDomainSafetyTest.mjs",
     "test:cleaning-planning-ui": "node scripts/cleaningPlanningUiContractTest.mjs",

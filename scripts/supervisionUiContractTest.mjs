@@ -1,0 +1,27 @@
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+
+const app = readFileSync('src/App.tsx', 'utf8');
+const page = readFileSync('src/pages/Supervision.tsx', 'utf8');
+const domain = readFileSync('src/features/supervision/domain.ts', 'utf8');
+const migration = readFileSync('supabase/migrations/20260814120000_supervision_quality_mvp.sql', 'utf8');
+const mediaMigration = readFileSync('supabase/migrations/20260814122000_supervision_media_scope.sql', 'utf8');
+const storage = readFileSync('src/features/supervision/supervisionStorage.ts', 'utf8');
+const queue = readFileSync('src/features/supervision/offlineQueue.ts', 'utf8');
+assert.match(app, /path=\"\/supervision\"/);
+assert.match(page, /Supervisión y calidad/);
+assert.match(page, /Devolver para repaso/);
+assert.match(page, /Fotos opcionales/);
+assert.match(page, /Cobertura de revisión/);
+assert.match(domain, /calculateSupervisionMetrics/);
+assert.match(domain, /Sin próxima entrada conocida/);
+assert.match(page, /jsPDF/);
+assert.match(storage, /operation === 'upload'/);
+assert.match(queue, /entity: .*photo/);
+assert.match(mediaMigration, /supervision_review_media/);
+assert.match(mediaMigration, /storage\.foldername/);
+assert.match(migration, /supervision_routes/);
+assert.match(migration, /supervision_reviews/);
+assert.match(migration, /supervision_incidents/);
+assert.match(migration, /user_has_sede_access/);
+console.log('supervision-ui-contract-tests: OK');

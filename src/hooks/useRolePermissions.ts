@@ -1,4 +1,3 @@
-
 import { useAuth } from './useAuth';
 
 export type ModulePermission = {
@@ -16,15 +15,16 @@ export type RolePermissions = {
   clients: ModulePermission;
   properties: ModulePermission;
   reports: ModulePermission;
+  supervision: ModulePermission;
   hostaway: ModulePermission;
   propertyGroups: ModulePermission;
-  users: ModulePermission; // Nueva sección para gestión de usuarios
-  inventory: ModulePermission; // Nueva sección para inventario
-  logistics: ModulePermission; // Nueva sección para logística
-  admin: ModulePermission; // Nueva sección para administración general (sedes, etc.)
+  users: ModulePermission;
+  inventory: ModulePermission;
+  logistics: ModulePermission;
+  admin: ModulePermission;
 };
 
-const createPermission = (canView: boolean, canCreate: boolean = false, canEdit: boolean = false, canDelete: boolean = false): ModulePermission => ({
+const createPermission = (canView: boolean, canCreate = false, canEdit = false, canDelete = false): ModulePermission => ({
   canView,
   canCreate,
   canEdit,
@@ -40,12 +40,13 @@ const ROLE_PERMISSIONS: Record<string, RolePermissions> = {
     clients: createPermission(true, true, true, true),
     properties: createPermission(true, true, true, true),
     reports: createPermission(true, true, true, true),
+    supervision: createPermission(true, true, true, true),
     hostaway: createPermission(true, true, true, true),
     propertyGroups: createPermission(true, true, true, true),
     users: createPermission(true, true, true, true),
     inventory: createPermission(true, true, true, true),
     logistics: createPermission(true, true, true, true),
-    admin: createPermission(true, true, true, true), // Permisos completos de administración
+    admin: createPermission(true, true, true, true),
   },
   manager: {
     dashboard: createPermission(true, true, true, true),
@@ -55,12 +56,13 @@ const ROLE_PERMISSIONS: Record<string, RolePermissions> = {
     clients: createPermission(true, true, true, true),
     properties: createPermission(true, true, true, true),
     reports: createPermission(true, true, true, true),
+    supervision: createPermission(true, true, true, true),
     hostaway: createPermission(true, true, true, true),
     propertyGroups: createPermission(true, true, true, true),
     users: createPermission(true, true, true, true),
     inventory: createPermission(true, true, true, true),
     logistics: createPermission(true, true, true, true),
-    admin: createPermission(false), // Los managers no tienen acceso a administración general
+    admin: createPermission(false),
   },
   supervisor: {
     dashboard: createPermission(false),
@@ -70,6 +72,7 @@ const ROLE_PERMISSIONS: Record<string, RolePermissions> = {
     clients: createPermission(false),
     properties: createPermission(false),
     reports: createPermission(false),
+    supervision: createPermission(true, true, true, false),
     hostaway: createPermission(false),
     propertyGroups: createPermission(false),
     users: createPermission(false),
@@ -85,6 +88,7 @@ const ROLE_PERMISSIONS: Record<string, RolePermissions> = {
     clients: createPermission(false),
     properties: createPermission(false),
     reports: createPermission(false),
+    supervision: createPermission(false),
     hostaway: createPermission(false),
     propertyGroups: createPermission(false),
     users: createPermission(false),
@@ -100,6 +104,7 @@ const ROLE_PERMISSIONS: Record<string, RolePermissions> = {
     clients: createPermission(false),
     properties: createPermission(false),
     reports: createPermission(false),
+    supervision: createPermission(false),
     hostaway: createPermission(false),
     propertyGroups: createPermission(false),
     users: createPermission(false),
@@ -111,16 +116,14 @@ const ROLE_PERMISSIONS: Record<string, RolePermissions> = {
 
 export const useRolePermissions = () => {
   const { userRole } = useAuth();
-  
+
   const getPermissions = (): RolePermissions => {
     if (!userRole) {
-      // Sin rol, sin permisos
       return Object.keys(ROLE_PERMISSIONS.cleaner).reduce((acc, key) => {
         acc[key as keyof RolePermissions] = createPermission(false);
         return acc;
       }, {} as RolePermissions);
     }
-    
     return ROLE_PERMISSIONS[userRole] || ROLE_PERMISSIONS.cleaner;
   };
 
@@ -129,21 +132,10 @@ export const useRolePermissions = () => {
     return permissions[module]?.[action] ?? false;
   };
 
-  const canAccessModule = (module: keyof RolePermissions): boolean => {
-    return hasPermission(module, 'canView');
-  };
-
-  const isAdminOrManager = (): boolean => {
-    return userRole === 'admin' || userRole === 'manager';
-  };
-
-  const isSupervisor = (): boolean => {
-    return userRole === 'supervisor';
-  };
-
-  const isCleaner = (): boolean => {
-    return userRole === 'cleaner';
-  };
+  const canAccessModule = (module: keyof RolePermissions): boolean => hasPermission(module, 'canView');
+  const isAdminOrManager = (): boolean => userRole === 'admin' || userRole === 'manager';
+  const isSupervisor = (): boolean => userRole === 'supervisor';
+  const isCleaner = (): boolean => userRole === 'cleaner';
 
   return {
     permissions: getPermissions(),

@@ -15,6 +15,7 @@ import {
   RefreshCw,
   Link2,
   AlertTriangle,
+  ClipboardCheck,
   Hotel,
   Building2
 } from 'lucide-react';
@@ -162,6 +163,19 @@ export const RoleBasedNavigation = () => {
               gradientTo="to-indigo-600"
               iconColor="text-white"
               hoverBorderColor="hover:border-indigo-300"
+            />
+          )}
+
+          {canAccessModule('supervision') && (
+            <NavigationCard
+              to="/supervision"
+              title="Supervisión y calidad"
+              description="Organiza rutas, revisa apartamentos y controla incidencias por sede"
+              icon={ClipboardCheck}
+              gradientFrom="bg-gradient-to-br from-[#310984]"
+              gradientTo="to-violet-700"
+              iconColor="text-white"
+              hoverBorderColor="hover:border-violet-300"
             />
           )}
 
