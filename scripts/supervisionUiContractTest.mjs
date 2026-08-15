@@ -10,6 +10,7 @@ const hardeningMigration = readFileSync('supabase/migrations/20260815210000_supe
 const closedRouteMigration = readFileSync('supabase/migrations/20260815220000_supervision_closed_route_guard.sql', 'utf8');
 const incidentEmailFunction = readFileSync('supabase/functions/send-supervision-incident-email/index.ts', 'utf8');
 const operationalMigration = readFileSync('supabase/migrations/20260815230000_supervision_operational_guards.sql', 'utf8');
+const auditMigration = readFileSync('supabase/migrations/20260815232000_supervision_audit_immutability.sql', 'utf8');
 const notificationMigration = readFileSync('supabase/migrations/20260815223000_supervision_incident_notification_guard.sql', 'utf8');
 const dailyReportFunction = readFileSync('supabase/functions/send-supervision-daily-report/index.ts', 'utf8');
 const storage = readFileSync('src/features/supervision/supervisionStorage.ts', 'utf8');
@@ -92,6 +93,10 @@ assert.match(dailyReportFunction, /no routes for date/);
 assert.match(dailyReportFunction, /claim_supervision_daily_report/);
 assert.match(dailyReportFunction, /status: 'sent'/);
 assert.match(dailyReportFunction, /route_id,report_date/);
+assert.match(auditMigration, /REVOKE INSERT, UPDATE, DELETE ON TABLE public\.supervision_daily_reports/);
+assert.match(auditMigration, /preserve_supervision_audit_fields/);
+assert.match(auditMigration, /trg_supervision_reviews_audit_immutable/);
+assert.match(auditMigration, /trg_supervision_incidents_audit_immutable/);
 assert.match(notificationMigration, /notification_sent_at/);
 assert.match(notificationMigration, /notification_message_id/);
 assert.match(incidentEmailFunction, /callerHasOperationalRole/);
