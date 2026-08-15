@@ -44,8 +44,11 @@ function writeLocal(sedeId: string, date: string, snapshot: LocalSnapshot): void
 
 function isMissingSupervisionSchema(error: unknown): boolean {
   const value = error as { code?: string; message?: string } | null;
-  const message = `${value?.code || ''} ${value?.message || ''}`.toLowerCase();
-  return message.includes('42p01') || message.includes('pgrst205') || message.includes('supervision_');
+  const code = String(value?.code || '').toUpperCase();
+  const message = String(value?.message || '').toLowerCase();
+  return code === '42P01'
+    || code === 'PGRST205'
+    || (message.includes('relation') && message.includes('does not exist'));
 }
 
 function isNetworkError(error: unknown): boolean {
@@ -107,6 +110,7 @@ export async function fetchSupervisionWorkspace(sedeId: string, date: string): P
     () => local,
   );
 
+  if (remoteResult.mode === 'remote') writeLocal(sedeId, date, remoteResult.value);
   return { ...remoteResult.value, storageMode: remoteResult.mode, warning: remoteResult.warning };
 }
 
@@ -168,9 +172,12 @@ export async function reorderStop(
   date: string,
   stop: SupervisionStop,
   direction: 'up' | 'down',
+  knownStops: SupervisionStop[] = [],
 ): Promise<void> {
   const snapshot = readLocal(sedeId, date);
-  const routeStops = snapshot.stops.filter((value) => value.route_id === stop.route_id).sort((a, b) => a.sequence - b.sequence);
+  const routeStops = (knownStops.length > 0 ? knownStops : snapshot.stops)
+    .filter((value) => value.route_id === stop.route_id)
+    .sort((a, b) => a.sequence - b.sequence);
   const index = routeStops.findIndex((value) => value.id === stop.id);
   const neighbor = routeStops[direction === 'up' ? index - 1 : index + 1];
   if (index < 0 || !neighbor) return;
@@ -195,7 +202,7 @@ export async function reorderStop(
 
   writeLocal(sedeId, date, {
     ...snapshot,
-    stops: snapshot.stops.map((value) => {
+    stops: (snapshot.stops.length > 0 ? snapshot.stops : routeStops).map((value) => {
       if (value.id === stop.id) return { ...value, sequence: neighbor.sequence, updated_at: now() };
       if (value.id === neighbor.id) return { ...value, sequence: stop.sequence, updated_at: now() };
       return value;

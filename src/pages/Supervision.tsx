@@ -137,7 +137,7 @@ export default function SupervisionPage() {
 
   const moveStop = async (stop: SupervisionStop, direction: 'up' | 'down') => {
     try {
-      await workspace.moveStop({ stop, direction });
+      await workspace.moveStop({ stop, direction, knownStops: routeStops });
       toast({ title: direction === 'up' ? 'Parada subida' : 'Parada bajada', description: 'El orden se ha guardado y se sincronizará si estás sin conexión.' });
     } catch (error) {
       toast({ title: 'No se pudo reordenar la parada', description: error instanceof Error ? error.message : 'Error desconocido', variant: 'destructive' });

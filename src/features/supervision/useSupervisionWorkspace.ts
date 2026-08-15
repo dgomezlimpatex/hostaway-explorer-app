@@ -51,7 +51,7 @@ export const useSupervisionWorkspace = (date: string) => {
   });
 
   const reorderStopMutation = useMutation({
-    mutationFn: (input: { stop: SupervisionStop; direction: 'up' | 'down' }) => reorderStop(sedeId, date, input.stop, input.direction),
+    mutationFn: (input: { stop: SupervisionStop; direction: 'up' | 'down'; knownStops?: SupervisionStop[] }) => reorderStop(sedeId, date, input.stop, input.direction, input.knownStops),
     onSuccess: invalidate,
   });
 
