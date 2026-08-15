@@ -31,6 +31,7 @@ const Reports = React.lazy(() => import("./pages/Reports"));
 const HostawaySyncLogs = React.lazy(() => import("./pages/HostawaySyncLogs"));
 const ChecklistTemplates = React.lazy(() => import("./pages/ChecklistTemplates"));
 const CleaningReports = React.lazy(() => import("./pages/CleaningReports"));
+const Supervision = React.lazy(() => import("./pages/Supervision"));
 const InventoryDashboard = React.lazy(() => import("./pages/InventoryDashboard"));
 const InventoryStock = React.lazy(() => import("./pages/InventoryStock"));
 const InventoryMovements = React.lazy(() => import("./pages/InventoryMovements"));
@@ -264,6 +265,9 @@ function App() {
                     } />
                     <Route path="/cleaning-reports" element={
                       <RoleProtectedRoute requiredModule="reports"><CleaningReports /></RoleProtectedRoute>
+                    } />
+                    <Route path="/supervision" element={
+                      <RoleProtectedRoute requiredModule="supervision"><Supervision /></RoleProtectedRoute>
                     } />
                     <Route path="/logistics/dashboard" element={
                       <RoleProtectedRoute requiredModule="logistics"><LogisticsDashboard /></RoleProtectedRoute>

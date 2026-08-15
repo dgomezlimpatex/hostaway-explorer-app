@@ -13,6 +13,7 @@ export type RolePermissions = {
   clients: ModulePermission;
   properties: ModulePermission;
   reports: ModulePermission;
+  supervision: ModulePermission;
   hostaway: ModulePermission;
   propertyGroups: ModulePermission;
   users: ModulePermission;
@@ -36,6 +37,7 @@ const NO_PERMISSIONS = Object.keys({
   clients: true,
   properties: true,
   reports: true,
+  supervision: true,
   hostaway: true,
   propertyGroups: true,
   users: true,
@@ -56,6 +58,7 @@ export const ROLE_PERMISSIONS: Record<string, RolePermissions> = {
     clients: createPermission(true, true, true, true),
     properties: createPermission(true, true, true, true),
     reports: createPermission(true, true, true, true),
+    supervision: createPermission(true, true, true, true),
     hostaway: createPermission(true, true, true, true),
     propertyGroups: createPermission(true, true, true, true),
     users: createPermission(true, true, true, true),
@@ -71,6 +74,7 @@ export const ROLE_PERMISSIONS: Record<string, RolePermissions> = {
     clients: createPermission(true, true, true, true),
     properties: createPermission(true, true, true, true),
     reports: createPermission(true, true, true, true),
+    supervision: createPermission(true, true, true, true),
     hostaway: createPermission(true, true, true, true),
     propertyGroups: createPermission(true, true, true, true),
     users: createPermission(true, true, true, true),
@@ -86,6 +90,7 @@ export const ROLE_PERMISSIONS: Record<string, RolePermissions> = {
     clients: createPermission(false),
     properties: createPermission(false),
     reports: createPermission(false),
+    supervision: createPermission(true, true, true, false),
     hostaway: createPermission(false),
     propertyGroups: createPermission(false),
     users: createPermission(false),
@@ -101,6 +106,7 @@ export const ROLE_PERMISSIONS: Record<string, RolePermissions> = {
     clients: createPermission(false),
     properties: createPermission(false),
     reports: createPermission(false),
+    supervision: createPermission(false),
     hostaway: createPermission(false),
     propertyGroups: createPermission(false),
     users: createPermission(false),
@@ -116,6 +122,7 @@ export const ROLE_PERMISSIONS: Record<string, RolePermissions> = {
     clients: createPermission(false),
     properties: createPermission(false),
     reports: createPermission(false),
+    supervision: createPermission(false),
     hostaway: createPermission(false),
     propertyGroups: createPermission(false),
     users: createPermission(false),

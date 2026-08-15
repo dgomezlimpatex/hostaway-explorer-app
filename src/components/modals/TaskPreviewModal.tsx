@@ -6,7 +6,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { MapPin, Clock, Bed, Bath, Calendar, User, FileText, Edit, UserPlus, ExternalLink, StickyNote } from 'lucide-react';
 import { Task } from '@/types/calendar';
 import { Property } from '@/types/property';
-import { useAuth } from '@/hooks/useAuth';
+import { useRolePermissions } from '@/hooks/useRolePermissions';
 import { useDeviceType } from '@/hooks/use-mobile';
 import { useTaskReport } from '@/hooks/useTaskReports';
 import { useTaskPreview } from '@/hooks/useTaskPreview';
@@ -30,14 +30,13 @@ export const TaskPreviewModal: React.FC<TaskPreviewModalProps> = ({
   onAssignCleaner,
   onViewReport
 }) => {
-  const { userRole } = useAuth();
+  const { hasPermission, isCleaner } = useRolePermissions();
   const { isMobile } = useDeviceType();
   const { data: existingReport } = useTaskReport(task?.id || '');
   const { property } = useTaskPreview(task);
 
   if (!task) return null;
 
-  const isCleaner = userRole === 'cleaner';
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -80,8 +79,8 @@ export const TaskPreviewModal: React.FC<TaskPreviewModalProps> = ({
   const today = new Date();
   const taskDate = new Date(task.date + 'T00:00:00');
   const isTaskFromToday = taskDate.toDateString() === today.toDateString();
-  const canEditTask = ['admin', 'manager'].includes(userRole || '');
-  const canAssignCleaner = ['admin', 'manager'].includes(userRole || '');
+  const canEditTask = hasPermission('tasks', 'canEdit');
+  const canAssignCleaner = hasPermission('tasks', 'canEdit');
   const hasReport = !!existingReport;
 
   const googleMapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(task.address)}`;

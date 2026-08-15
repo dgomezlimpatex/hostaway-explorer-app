@@ -10,6 +10,7 @@ import { useCleaners } from '@/hooks/useCleaners';
 import { useMemo } from 'react';
 import { formatMadridDate } from '@/utils/date';
 import { isTaskAssignedToCleaner } from '@/utils/taskAssignments';
+import { OperationalModeSwitcher } from '@/components/auth/OperationalModeSwitcher';
 
 interface CleanerDashboardProps {
   userFullName?: string | null;
@@ -55,7 +56,10 @@ export const CleanerDashboard = ({ userFullName, userEmail }: CleanerDashboardPr
                 Limpiador/a
               </span>
             </div>
-            <UserMenu />
+            <div className="flex items-center gap-3">
+              <OperationalModeSwitcher />
+              <UserMenu />
+            </div>
           </div>
         </div>
       </header>

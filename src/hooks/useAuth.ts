@@ -3,6 +3,11 @@ import { useState, useEffect, createContext, useContext } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import type { Database } from '@/integrations/supabase/types';
+import {
+  canUseOperationalMode,
+  getDefaultOperationalMode,
+  type OperationalMode,
+} from '@/auth/operationalMode';
 
 // Password validation utility
 const validatePassword = (password: string): string[] => {
@@ -73,6 +78,10 @@ interface AuthContextType {
   session: Session | null;
   profile: Profile | null;
   userRole: AppRole | null;
+  userRoles: AppRole[];
+  operationalMode: OperationalMode;
+  canSwitchOperationalMode: boolean;
+  setOperationalMode: (mode: OperationalMode) => void;
   isLoading: boolean;
   signIn: (email: string, password: string) => Promise<{ error: any }>;
   signUp: (email: string, password: string, fullName?: string) => Promise<{ error: any }>;
@@ -95,6 +104,8 @@ export const useAuthProvider = (): AuthContextType => {
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [userRole, setUserRole] = useState<AppRole | null>(null);
+  const [userRoles, setUserRoles] = useState<AppRole[]>([]);
+  const [operationalMode, setOperationalModeState] = useState<OperationalMode>('supervision');
   const [isLoading, setIsLoading] = useState(true);
 
   // Add state to prevent multiple processing calls
@@ -173,12 +184,34 @@ export const useAuthProvider = (): AuthContextType => {
         console.log('🎭 Role data found:', roleData);
       }
 
+      const { data: userRoleRows, error: userRolesError } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', userId);
+
+      if (userRolesError) {
+        console.error('❌ Error fetching user roles:', userRolesError);
+      }
+
+      const resolvedRoles = (userRoleRows?.map((row) => row.role) || (roleData ? [roleData] : [])) as AppRole[];
+      const resolvedDefaultMode = getDefaultOperationalMode(resolvedRoles, roleData);
+      const storedMode = typeof window !== 'undefined'
+        ? window.localStorage.getItem(`limpatex-operational-mode:${userId}`)
+        : null;
+      const nextMode = storedMode === 'cleaning' || storedMode === 'supervision'
+        ? storedMode
+        : resolvedDefaultMode;
+
       setProfile(profileData);
       setUserRole(roleData || null);
+      setUserRoles(resolvedRoles);
+      setOperationalModeState(canUseOperationalMode(resolvedRoles, nextMode) ? nextMode : resolvedDefaultMode);
     } catch (error) {
       console.error('❌ Error in processUser:', error);
       setProfile(null);
       setUserRole(null);
+      setUserRoles([]);
+      setOperationalModeState('supervision');
     } finally {
       setProcessingUser(null);
     }
@@ -203,6 +236,8 @@ export const useAuthProvider = (): AuthContextType => {
         } else {
           setProfile(null);
           setUserRole(null);
+          setUserRoles([]);
+          setOperationalModeState('supervision');
           setProcessingUser(null);
         }
         
@@ -278,7 +313,20 @@ export const useAuthProvider = (): AuthContextType => {
     setSession(null);
     setProfile(null);
     setUserRole(null);
+    setUserRoles([]);
+    setOperationalModeState('supervision');
     setIsLoading(false);
+  };
+
+  const canSwitchOperationalMode =
+    canUseOperationalMode(userRoles, 'supervision') && canUseOperationalMode(userRoles, 'cleaning');
+
+  const setOperationalMode = (mode: OperationalMode) => {
+    if (!canUseOperationalMode(userRoles, mode)) return;
+    setOperationalModeState(mode);
+    if (user?.id && typeof window !== 'undefined') {
+      window.localStorage.setItem(`limpatex-operational-mode:${user.id}`, mode);
+    }
   };
 
   const updateProfile = async (updates: Partial<Profile>) => {
@@ -301,6 +349,10 @@ export const useAuthProvider = (): AuthContextType => {
     session,
     profile,
     userRole,
+    userRoles,
+    operationalMode,
+    canSwitchOperationalMode,
+    setOperationalMode,
     isLoading,
     signIn,
     signUp,
