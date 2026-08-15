@@ -5,6 +5,7 @@ import { useSede } from '@/contexts/SedeContext';
 import { getSupervisionTasks, fetchSupervisionWorkspace, createRoute, addStop, reorderStop, createReservationSnapshot, saveReview, createIncident, updateIncidentStatus, completeRoute, flushSupervisionQueue, uploadSupervisionPhoto } from './supervisionStorage';
 import type { Task } from '@/types/calendar';
 import type { SupervisionIncident, SupervisionReview, SupervisionRoute, SupervisionStop } from './types';
+import { setSupervisionQueueOwner } from './offlineQueue';
 
 const EMPTY_INCIDENTS: SupervisionIncident[] = [];
 const EMPTY_STOPS: SupervisionStop[] = [];
@@ -15,18 +16,22 @@ export const useSupervisionWorkspace = (date: string) => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const sedeId = activeSede?.id || '';
-  const enabled = Boolean(sedeId && date);
-  const queryKey = useMemo(() => ['supervision-workspace', sedeId, date], [sedeId, date]);
+  const userId = user?.id || '';
+  const enabled = Boolean(sedeId && date && userId);
+  const queryKey = useMemo(() => ['supervision-workspace', userId, sedeId, date], [userId, sedeId, date]);
 
   const workspaceQuery = useQuery({
     queryKey,
-    queryFn: () => fetchSupervisionWorkspace(sedeId, date),
+    queryFn: () => {
+      setSupervisionQueueOwner(userId);
+      return fetchSupervisionWorkspace(sedeId, date);
+    },
     enabled,
     staleTime: 10_000,
   });
 
   const tasksQuery = useQuery({
-    queryKey: ['supervision-tasks', sedeId, date],
+    queryKey: ['supervision-tasks', userId, sedeId, date],
     queryFn: () => getSupervisionTasks(sedeId, date),
     enabled,
     staleTime: 60_000,
@@ -37,8 +42,8 @@ export const useSupervisionWorkspace = (date: string) => {
   }, [queryClient, queryKey]);
   const invalidate = useCallback(() => {
     void queryClient.invalidateQueries({ queryKey });
-    void queryClient.invalidateQueries({ queryKey: ['supervision-tasks', sedeId, date] });
-  }, [queryClient, queryKey, sedeId, date]);
+    void queryClient.invalidateQueries({ queryKey: ['supervision-tasks', userId, sedeId, date] });
+  }, [queryClient, queryKey, userId, sedeId, date]);
 
   const createRouteMutation = useMutation({
     mutationFn: (input: { name: string }) => createRoute(sedeId, date, input.name, user?.id),
@@ -84,6 +89,10 @@ export const useSupervisionWorkspace = (date: string) => {
     mutationFn: (route: SupervisionRoute) => completeRoute(sedeId, date, route),
     onSuccess: invalidate,
   });
+
+  useEffect(() => {
+    setSupervisionQueueOwner(user?.id || null);
+  }, [user?.id]);
 
   useEffect(() => {
     const sync = () => { void flushSupervisionQueue().then((result) => { if (result.synced > 0) invalidate(); }); };

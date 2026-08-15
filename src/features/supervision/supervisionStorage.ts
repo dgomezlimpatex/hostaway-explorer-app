@@ -9,11 +9,15 @@ import type {
   SupervisionStop,
   SupervisionWorkspaceData,
 } from './types';
-import { enqueueOffline, listOfflineQueue, markOfflineQueueFailure, removeOfflineQueueItem, type OfflineQueueItem } from './offlineQueue';
+import { enqueueOffline, getSupervisionQueueOwner, listOfflineQueue, markOfflineQueueFailure, removeOfflineQueueItem, type OfflineQueueItem } from './offlineQueue';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- generated Supabase types are refreshed after migration deployment.
 const db = supabase as any;
 const LOCAL_PREFIX = 'limpatex-supervision-snapshot';
+const localKey = (sedeId: string, date: string) => {
+  const ownerUserId = getSupervisionQueueOwner();
+  return ownerUserId ? `${LOCAL_PREFIX}:${ownerUserId}:${sedeId}:${date}` : null;
+};
 
 interface LocalSnapshot {
   routes: SupervisionRoute[];
@@ -25,13 +29,14 @@ interface LocalSnapshot {
 
 const now = () => new Date().toISOString();
 const makeId = () => crypto.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2)}`;
-const localKey = (sedeId: string, date: string) => `${LOCAL_PREFIX}:${sedeId}:${date}`;
 
 const emptySnapshot = (): LocalSnapshot => ({ routes: [], stops: [], reviews: [], reservations: [], incidents: [] });
 
 function readLocal(sedeId: string, date: string): LocalSnapshot {
+  const key = localKey(sedeId, date);
+  if (!key) return emptySnapshot();
   try {
-    const parsed = JSON.parse(localStorage.getItem(localKey(sedeId, date)) || 'null');
+    const parsed = JSON.parse(localStorage.getItem(key) || 'null');
     return parsed ? { ...emptySnapshot(), ...parsed } : emptySnapshot();
   } catch {
     return emptySnapshot();
@@ -39,7 +44,8 @@ function readLocal(sedeId: string, date: string): LocalSnapshot {
 }
 
 function writeLocal(sedeId: string, date: string, snapshot: LocalSnapshot): void {
-  localStorage.setItem(localKey(sedeId, date), JSON.stringify(snapshot));
+  const key = localKey(sedeId, date);
+  if (key) localStorage.setItem(key, JSON.stringify(snapshot));
 }
 
 function isMissingSupervisionSchema(error: unknown): boolean {
@@ -188,22 +194,19 @@ export async function reorderStop(
   const neighbor = routeStops[direction === 'up' ? index - 1 : index + 1];
   if (index < 0 || !neighbor) return;
 
-  const temporarySequence = -1;
-  const operations = [
-    { id: stop.id, sequence: temporarySequence },
-    { id: neighbor.id, sequence: stop.sequence },
-    { id: stop.id, sequence: neighbor.sequence },
-  ];
   try {
-    for (const operation of operations) {
-      const { error } = await db.from('supervision_route_stops').update({ sequence: operation.sequence }).eq('id', operation.id);
-      if (error) throw error;
-    }
+    const { error } = await db.rpc('reorder_supervision_stop', { _stop_id: stop.id, _neighbor_id: neighbor.id });
+    if (error) throw error;
   } catch (error) {
     if (!isMissingSupervisionSchema(error) && !isNetworkError(error)) throw error;
-    for (const operation of operations) {
-      await enqueueOffline({ entity: 'stop', operation: 'update', payload: { table: 'supervision_route_stops', id: operation.id, data: { sequence: operation.sequence } } });
-    }
+    await enqueueOffline({
+      entity: 'stop',
+      operation: 'rpc',
+      payload: {
+        function: 'reorder_supervision_stop',
+        args: { _stop_id: stop.id, _neighbor_id: neighbor.id },
+      },
+    });
   }
 
   writeLocal(sedeId, date, {
@@ -332,7 +335,12 @@ export async function flushSupervisionQueue(): Promise<{ synced: number; failed:
   for (const item of items) {
     try {
       const payload = item.payload.data as Record<string, unknown> | undefined;
-      if (item.operation === 'insert' && payload) {
+      if (item.operation === 'rpc') {
+        const functionName = String(item.payload.function || '');
+        if (!functionName) throw new Error('Operación RPC offline sin función');
+        const { error } = await db.rpc(functionName, item.payload.args || {});
+        if (error) throw error;
+      } else if (item.operation === 'insert' && payload) {
         const table = String(item.payload.table || '');
         const { error } = await db.from(table).insert(payload);
         if (error && !String(error.message).toLowerCase().includes('duplicate')) throw error;
