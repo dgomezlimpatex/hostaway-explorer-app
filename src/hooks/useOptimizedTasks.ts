@@ -3,6 +3,7 @@ import { useMemo } from 'react';
 import { Task, ViewType } from '@/types/calendar';
 import { taskStorageService } from '@/services/taskStorage';
 import { useAuth } from '@/hooks/useAuth';
+import { useRolePermissions } from '@/hooks/useRolePermissions';
 import { useCleaners } from '@/hooks/useCleaners';
 import { useSede } from '@/contexts/SedeContext';
 import { formatMadridDate } from '@/utils/date';
@@ -20,6 +21,8 @@ export const useOptimizedTasks = ({
 }: UseOptimizedTasksProps) => {
   const queryClient = useQueryClient();
   const { userRole, user } = useAuth();
+  const { isCleaner } = useRolePermissions();
+  const cleanerView = isCleaner();
   const { cleaners } = useCleaners();
   const { activeSede, isInitialized, loading } = useSede();
   const activeSedeId = activeSede?.id || null;
@@ -27,14 +30,14 @@ export const useOptimizedTasks = ({
 
   // Get current user's cleaner ID if they are a cleaner
   const currentCleanerId = useMemo(() => {
-    if (userRole !== 'cleaner' || !user?.id || !cleaners) return null;
+    if (!cleanerView || !user?.id || !cleaners) return null;
     const currentCleaner = cleaners.find(cleaner => cleaner.user_id === user.id);
     return currentCleaner?.id || null;
-  }, [userRole, user?.id, cleaners]);
+  }, [cleanerView, user?.id, cleaners]);
 
   // OPTIMIZED: Simpler query key - for cleaners we don't need date in key since we fetch all their tasks
   const queryKey = useMemo(() => {
-    if (userRole === 'cleaner' && currentCleanerId) {
+    if (cleanerView && currentCleanerId) {
       return ['tasks', 'cleaner', currentCleanerId, activeSedeId || 'pending-sede'];
     }
     return [
@@ -43,7 +46,7 @@ export const useOptimizedTasks = ({
       currentView,
       activeSedeId || 'pending-sede'
     ];
-  }, [currentDate, currentView, activeSedeId, userRole, currentCleanerId]);
+  }, [currentDate, currentView, activeSedeId, cleanerView, currentCleanerId]);
 
   // Robust function to add/subtract months without date overflow issues
   const addMonths = (date: Date, months: number): Date => {
@@ -119,7 +122,7 @@ export const useOptimizedTasks = ({
       });
       
       // OPTIMIZED: For cleaners, use server-side filtering
-      if (userRole === 'cleaner' && currentCleanerId) {
+      if (cleanerView && currentCleanerId) {
         const result = await taskStorageService.getTasks({
           cleanerId: currentCleanerId,
           userRole: 'cleaner',
@@ -152,9 +155,9 @@ export const useOptimizedTasks = ({
       
       return filtered;
     },
-    staleTime: userRole === 'cleaner' ? 30000 : 0, // Cleaners can have stale data for 30s
+    staleTime: cleanerView ? 30000 : 0, // Cleaners can have stale data for 30s
     gcTime: 60000,
-    enabled: canQueryTasks && (userRole !== 'cleaner' || currentCleanerId !== null),
+    enabled: canQueryTasks && (!cleanerView || currentCleanerId !== null),
     refetchOnWindowFocus: true,
     refetchOnMount: true,
   });
@@ -170,16 +173,16 @@ export const useOptimizedTasks = ({
     const validTasks = tasks.filter(task => task && task.date);
     
     // For cleaners, don't apply view-based filtering - let them see all their tasks
-    if (userRole === 'cleaner') {
+    if (cleanerView) {
       return validTasks;
     }
     
     return filterTasksByView(validTasks, currentDate, currentView);
-  }, [tasks, currentDate, currentView, userRole]);
+  }, [tasks, currentDate, currentView, cleanerView]);
 
   // Prefetch for next dates (only for non-cleaners)
   useMemo(() => {
-    if (!canQueryTasks || !activeSedeId || userRole === 'cleaner') return;
+    if (!canQueryTasks || !activeSedeId || cleanerView) return;
 
     const tomorrow = new Date(currentDate);
     tomorrow.setDate(tomorrow.getDate() + 1);
@@ -200,7 +203,7 @@ export const useOptimizedTasks = ({
         staleTime: 5 * 60 * 1000,
       });
     });
-  }, [currentDate, currentView, queryClient, canQueryTasks, activeSedeId, userRole]);
+  }, [currentDate, currentView, queryClient, canQueryTasks, activeSedeId, cleanerView]);
 
   return {
     tasks: filteredTasks,

@@ -1,4 +1,5 @@
 import { useAuth } from './useAuth';
+import { getEffectiveRole } from '@/auth/operationalMode';
 
 export type ModulePermission = {
   canView: boolean;
@@ -115,16 +116,23 @@ const ROLE_PERMISSIONS: Record<string, RolePermissions> = {
 };
 
 export const useRolePermissions = () => {
-  const { userRole } = useAuth();
+  const {
+    userRole,
+    userRoles,
+    operationalMode,
+    canSwitchOperationalMode,
+    setOperationalMode,
+  } = useAuth();
 
   const getPermissions = (): RolePermissions => {
-    if (!userRole) {
+    const effectiveRole = getEffectiveRole(userRoles, userRole, operationalMode);
+    if (!effectiveRole) {
       return Object.keys(ROLE_PERMISSIONS.cleaner).reduce((acc, key) => {
         acc[key as keyof RolePermissions] = createPermission(false);
         return acc;
       }, {} as RolePermissions);
     }
-    return ROLE_PERMISSIONS[userRole] || ROLE_PERMISSIONS.cleaner;
+    return ROLE_PERMISSIONS[effectiveRole] || ROLE_PERMISSIONS.cleaner;
   };
 
   const hasPermission = (module: keyof RolePermissions, action: keyof ModulePermission): boolean => {
@@ -133,9 +141,10 @@ export const useRolePermissions = () => {
   };
 
   const canAccessModule = (module: keyof RolePermissions): boolean => hasPermission(module, 'canView');
-  const isAdminOrManager = (): boolean => userRole === 'admin' || userRole === 'manager';
-  const isSupervisor = (): boolean => userRole === 'supervisor';
-  const isCleaner = (): boolean => userRole === 'cleaner';
+  const effectiveRole = (): string | null => getEffectiveRole(userRoles, userRole, operationalMode);
+  const isAdminOrManager = (): boolean => effectiveRole() === 'admin' || effectiveRole() === 'manager';
+  const isSupervisor = (): boolean => effectiveRole() === 'supervisor';
+  const isCleaner = (): boolean => effectiveRole() === 'cleaner';
 
   return {
     permissions: getPermissions(),
@@ -145,5 +154,9 @@ export const useRolePermissions = () => {
     isSupervisor,
     isCleaner,
     userRole,
+    userRoles,
+    operationalMode,
+    canSwitchOperationalMode,
+    setOperationalMode,
   };
 };
