@@ -11,11 +11,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { useToast } from '@/hooks/use-toast';
 import { useSupervisionWorkspace } from '@/features/supervision/useSupervisionWorkspace';
+import { formatMadridDate } from '@/utils/date';
 import { buildChecklistSnapshot, calculateExpectedTableware, calculateSupervisionMetrics, getEntryMessage, getLatestOpenIncidentsByStop, getLatestReviewsByStop, getReviewStatusLabel, INCIDENT_CATEGORIES, INCIDENT_PRIORITY_LABELS, scoreCandidate, sortCandidates } from '@/features/supervision/domain';
 import type { SupervisionIncidentPriority, SupervisionReviewType, SupervisionStop } from '@/features/supervision/types';
 import type { Task } from '@/types/calendar';
 
-const isoToday = () => new Date().toISOString().slice(0, 10);
+const isoToday = () => formatMadridDate(new Date());
 const displayDate = (value: string) => new Date(`${value}T12:00:00`).toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 const formatTime = (value?: string | null) => value ? (value.includes('T') ? value.slice(11, 16) : value.slice(0, 5)) : '—';
 

@@ -31,6 +31,35 @@ const adminGet = async (baseUrl: string, token: string, table: string, query: Re
   return body;
 };
 
+const adminRpc = async (baseUrl: string, token: string, functionName: string, payload: JsonRecord): Promise<unknown> => {
+  const response = await fetch(`${baseUrl.replace(/\/$/, '')}/rest/v1/rpc/${functionName}`, {
+    method: 'POST',
+    headers: { apikey: token, Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  const body = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(`Supabase RPC ${functionName} failed (${response.status})`);
+  return body;
+};
+
+const adminPatch = async (baseUrl: string, token: string, table: string, query: Record<string, string>, row: JsonRecord): Promise<unknown> => {
+  const endpoint = new URL(`${baseUrl.replace(/\/$/, '')}/rest/v1/${table}`);
+  Object.entries(query).forEach(([name, value]) => endpoint.searchParams.set(name, value));
+  const response = await fetch(endpoint, {
+    method: 'PATCH',
+    headers: {
+      apikey: token,
+      Authorization: 'Bearer ' + token,
+      'Content-Type': 'application/json',
+      Prefer: 'return=representation',
+    },
+    body: JSON.stringify(row),
+  });
+  const body = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(`Supabase PATCH ${table} failed (${response.status})`);
+  return body;
+};
+
 const adminUpsert = async (baseUrl: string, token: string, table: string, row: JsonRecord, conflictColumn: string) => {
   const url = new URL(`${baseUrl.replace(/\/$/, '')}/rest/v1/${table}`);
   url.searchParams.set('on_conflict', conflictColumn);
@@ -81,6 +110,10 @@ const base64 = (value: string) => btoa(value);
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
+  let claimToken: string | null = null;
+  let claimDate: string | null = null;
+  let claimUrl: string | null = null;
+  let claimServiceRoleKey: string | null = null;
   try {
     const payload = await req.json().catch(() => ({}));
     const force = payload.force === true;
@@ -88,6 +121,8 @@ serve(async (req) => {
     const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
     const resendKey = Deno.env.get('RESEND_API_KEY');
     if (!url || !serviceRoleKey || !resendKey) throw new Error('Missing secure daily report configuration');
+    claimUrl = url;
+    claimServiceRoleKey = serviceRoleKey;
     if (!hasServiceRoleAuthorization(req, serviceRoleKey)) return new Response(JSON.stringify({ error: 'service role authorization required' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
 
     const madrid = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Madrid', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).formatToParts(new Date());
@@ -99,10 +134,13 @@ serve(async (req) => {
     const routes = Array.isArray(routesBody) ? routesBody as Route[] : [];
     const recipient = Deno.env.get('SUPERVISION_REPORT_RECIPIENT') || 'dgomez@limpatex.com';
 
-    if (!force) {
-      const sentBody = await adminGet(url, serviceRoleKey, 'supervision_daily_reports', { select: 'id', report_date: `eq.${date}`, email_status: 'eq.sent', limit: '1' });
-      if (Array.isArray(sentBody) && sentBody.length > 0) return new Response(JSON.stringify({ skipped: true, reason: 'report already sent for date' }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
-    }
+    if (routes.length === 0) return new Response(JSON.stringify({ skipped: true, reason: 'no routes for date' }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+
+    const claimBody = await adminRpc(url, serviceRoleKey, 'claim_supervision_daily_report', { _report_date: date, _email_to: recipient, _route_count: routes.length });
+    const claim = Array.isArray(claimBody) ? claimBody[0] as { claimed?: boolean; claim_token?: string; reason?: string } | undefined : undefined;
+    if (!claim?.claimed || !claim.claim_token) return new Response(JSON.stringify({ skipped: true, reason: claim?.reason || 'report claim not acquired' }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    claimToken = claim.claim_token;
+    claimDate = date;
 
     const reportLines: string[] = [`LIMPATEX · INFORME DIARIO DE SUPERVISION · ${date}`, `Destinatario: ${recipient}`, ''];
     const htmlSections: string[] = [];
@@ -132,10 +170,18 @@ serve(async (req) => {
     });
     if (resendError) throw new Error(`Resend rejected daily report: ${resendError.message || 'unknown provider error'}`);
 
-    for (const route of routes) await adminUpsert(url, serviceRoleKey, 'supervision_daily_reports', { route_id: route.id, sede_id: route.sede_id, report_date: date, email_to: recipient, email_status: 'sent', sent_at: new Date().toISOString(), error_message: null }, 'route_id');
+    const markedSent = await adminPatch(url, serviceRoleKey, 'supervision_daily_report_runs', { report_date: `eq.${date}`, claim_token: `eq.${claimToken}`, status: 'eq.sending' }, { status: 'sent', provider_message_id: resendData?.id || null, sent_at: new Date().toISOString(), updated_at: new Date().toISOString(), error_message: null });
+    if (!Array.isArray(markedSent) || markedSent.length === 0) throw new Error('Daily report claim could not be marked as sent');
+    claimToken = null;
+
+    for (const route of routes) await adminUpsert(url, serviceRoleKey, 'supervision_daily_reports', { route_id: route.id, sede_id: route.sede_id, report_date: date, email_to: recipient, email_status: 'sent', sent_at: new Date().toISOString(), error_message: null }, 'route_id,report_date');
     return new Response(JSON.stringify({ ok: true, routes: routes.length, messageId: resendData?.id }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
   } catch (error) {
-    console.error('supervision daily report failed', error instanceof Error ? error.message : String(error));
-    return new Response(JSON.stringify({ error: error instanceof Error ? error.message : 'Unexpected error' }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    const message = error instanceof Error ? error.message : 'Unexpected error';
+    if (claimToken && claimDate && claimUrl && claimServiceRoleKey) {
+      await adminPatch(claimUrl, claimServiceRoleKey, 'supervision_daily_report_runs', { report_date: `eq.${claimDate}`, claim_token: `eq.${claimToken}`, status: 'eq.sending' }, { status: 'failed', error_message: message.slice(0, 1000), updated_at: new Date().toISOString() }).catch(() => undefined);
+    }
+    console.error('supervision daily report failed', message);
+    return new Response(JSON.stringify({ error: message }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
   }
 });
