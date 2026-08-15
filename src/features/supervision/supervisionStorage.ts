@@ -182,7 +182,7 @@ export async function reorderStop(
   const neighbor = routeStops[direction === 'up' ? index - 1 : index + 1];
   if (index < 0 || !neighbor) return;
 
-  const temporarySequence = -Date.now();
+  const temporarySequence = -1;
   const operations = [
     { id: stop.id, sequence: temporarySequence },
     { id: neighbor.id, sequence: stop.sequence },
