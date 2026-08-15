@@ -419,6 +419,29 @@ export class TaskStorageService extends BaseStorageService<Task, TaskCreateData>
     return (data || []).map(task => this.mapTaskFromDB(task));
   }
 
+  async getTasksForSupervision(options: { dateFrom: string; dateTo: string; sedeId: string }): Promise<Task[]> {
+    const { data, error } = await supabase
+      .from('tasks')
+      .select(`
+        id, created_at, updated_at, property, address, start_time, end_time,
+        type, status, check_out, check_in, cleaner, background_color, date,
+        propiedad_id, sede_id, duracion,
+        properties!tasks_propiedad_id_fkey(codigo, duracion_servicio, nombre, direccion),
+        task_assignments(id, task_id, cleaner_id, cleaner_name, assigned_at, assigned_by, created_at, updated_at)
+      `)
+      .gte('date', options.dateFrom)
+      .lte('date', options.dateTo)
+      .eq('sede_id', options.sedeId)
+      .order('date', { ascending: true })
+      .order('start_time', { ascending: true });
+
+    if (error) {
+      console.error('Error fetching supervision tasks:', error);
+      throw error;
+    }
+    return (data || []).map((task) => this.mapTaskFromDB(task as TaskDBRow));
+  }
+
   // Nuevo método para reportes: obtiene tareas en un rango específico sin límites
   async getTasksForReports(options: {
     dateFrom: string;
