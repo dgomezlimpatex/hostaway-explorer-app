@@ -134,6 +134,25 @@ export function getReviewStatusLabel(review: SupervisionReview | undefined): str
   return 'Revisado';
 }
 
+export function getLatestReviewsByStop(reviews: SupervisionReview[]): Map<string, SupervisionReview> {
+  const latestByStop = new Map<string, SupervisionReview>();
+  for (const review of reviews) {
+    const previous = latestByStop.get(review.route_stop_id);
+    if (!previous || review.created_at > previous.created_at) latestByStop.set(review.route_stop_id, review);
+  }
+  return latestByStop;
+}
+
+export function getLatestOpenIncidentsByStop(incidents: SupervisionIncident[]): Map<string, SupervisionIncident> {
+  const latestByStop = new Map<string, SupervisionIncident>();
+  for (const incident of incidents) {
+    if (!incident.route_stop_id || ['resolved', 'archived'].includes(incident.status)) continue;
+    const previous = latestByStop.get(incident.route_stop_id);
+    if (!previous || incident.created_at > previous.created_at) latestByStop.set(incident.route_stop_id, incident);
+  }
+  return latestByStop;
+}
+
 export function calculateSupervisionMetrics(stops: SupervisionStop[], reviews: SupervisionReview[], incidents: SupervisionIncident[]): SupervisionMetrics {
   const latestByStop = new Map<string, SupervisionReview>();
   for (const review of reviews) {

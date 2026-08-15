@@ -1,6 +1,6 @@
 import type { SupervisionIncident, SupervisionReview, SupervisionStop } from '@/features/supervision/types';
 import type { Task } from '@/types/calendar';
-import { buildChecklistSnapshot, calculateCapacity, calculateExpectedTableware, calculateSupervisionMetrics, getEntryMessage, scoreCandidate, sortCandidates } from '@/features/supervision/domain';
+import { buildChecklistSnapshot, calculateCapacity, calculateExpectedTableware, calculateSupervisionMetrics, getEntryMessage, getLatestOpenIncidentsByStop, getLatestReviewsByStop, scoreCandidate, sortCandidates } from '@/features/supervision/domain';
 
 export function run(assert: typeof import('node:assert/strict')) {
   assert.equal(calculateCapacity({ double: 1, sofa: 1, single: 1 }), 5);
@@ -18,6 +18,13 @@ export function run(assert: typeof import('node:assert/strict')) {
   const low = scoreCandidate(task, { reviewedRecently: true });
   assert.ok(high.score > low.score);
   assert.equal(sortCandidates([low, high])[0], high);
+  const newerReview = { id: 'review-new', route_stop_id: 'stop-1', created_at: '2026-08-14T11:00:00Z' } as SupervisionReview;
+  const olderReview = { id: 'review-old', route_stop_id: 'stop-1', created_at: '2026-08-14T10:00:00Z' } as SupervisionReview;
+  assert.equal(getLatestReviewsByStop([newerReview, olderReview]).get('stop-1')?.id, 'review-new');
+  const openIncident = { id: 'incident-new', route_stop_id: 'stop-1', status: 'open', created_at: '2026-08-14T11:00:00Z' } as SupervisionIncident;
+  const oldIncident = { id: 'incident-old', route_stop_id: 'stop-1', status: 'open', created_at: '2026-08-14T10:00:00Z' } as SupervisionIncident;
+  assert.equal(getLatestOpenIncidentsByStop([openIncident, oldIncident]).get('stop-1')?.id, 'incident-new');
+  assert.equal(getLatestOpenIncidentsByStop([{ ...openIncident, status: 'resolved' }]).size, 0);
   const metrics = calculateSupervisionMetrics(
     [{ id: 'stop-1' }, { id: 'stop-2' }] as SupervisionStop[],
     [{ route_stop_id: 'stop-1', created_at: '2026-08-14T10:00:00Z', review_type: 'full', state: 'reviewed' }] as SupervisionReview[],

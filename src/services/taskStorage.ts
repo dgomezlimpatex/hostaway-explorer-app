@@ -23,7 +23,12 @@ export const taskStorageService = {
     return result;
   },
   
-  // Método optimizado para reportes con filtros en base de datos
+  getTasksForSupervision: async (options: {
+    dateFrom: string;
+    dateTo: string;
+    sedeId: string;
+  }): Promise<Task[]> => baseTaskStorage.getTasksForSupervision(options),
+
   getTasksForReports: async (options: {
     dateFrom: string;
     dateTo: string;
