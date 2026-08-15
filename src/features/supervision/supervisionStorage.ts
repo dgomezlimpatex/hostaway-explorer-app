@@ -146,7 +146,10 @@ export async function createRoute(sedeId: string, date: string, name: string, re
   try {
     const { data, error } = await db.from('supervision_routes').insert({ ...route }).select('*').single();
     if (error) throw error;
-    return data as SupervisionRoute;
+    const result = data as SupervisionRoute;
+    const snapshot = readLocal(sedeId, date);
+    writeLocal(sedeId, date, { ...snapshot, routes: upsertLocal(snapshot.routes, result) });
+    return result;
   } catch (error) {
     if (!isMissingSupervisionSchema(error) && !isNetworkError(error)) throw error;
     await queueAndLocal(sedeId, date, 'route', 'insert', { table: 'supervision_routes', data: route }, 'routes', route);
@@ -159,7 +162,10 @@ export async function addStop(sedeId: string, date: string, stop: Omit<Supervisi
   try {
     const { data, error } = await db.from('supervision_route_stops').insert({ ...value }).select('*').single();
     if (error) throw error;
-    return data as SupervisionStop;
+    const result = data as SupervisionStop;
+    const snapshot = readLocal(sedeId, date);
+    writeLocal(sedeId, date, { ...snapshot, stops: upsertLocal(snapshot.stops, result) });
+    return result;
   } catch (error) {
     if (!isMissingSupervisionSchema(error) && !isNetworkError(error)) throw error;
     await queueAndLocal(sedeId, date, 'stop', 'insert', { table: 'supervision_route_stops', data: value }, 'stops', value);
@@ -215,7 +221,10 @@ export async function createReservationSnapshot(sedeId: string, date: string, sn
   try {
     const { data, error } = await db.from('supervision_reservation_snapshots').insert({ ...value }).select('*').single();
     if (error) throw error;
-    return data as SupervisionReservationSnapshot;
+    const result = data as SupervisionReservationSnapshot;
+    const snapshot = readLocal(sedeId, date);
+    writeLocal(sedeId, date, { ...snapshot, reservations: upsertLocal(snapshot.reservations, result) });
+    return result;
   } catch (error) {
     if (!isMissingSupervisionSchema(error) && !isNetworkError(error)) throw error;
     await queueAndLocal(sedeId, date, 'stop', 'insert', { table: 'supervision_reservation_snapshots', data: value }, 'reservations', value);
@@ -228,12 +237,23 @@ export async function saveReview(sedeId: string, date: string, review: Omit<Supe
   try {
     const { data, error } = await db.from('supervision_reviews').insert({ ...value }).select('*').single();
     if (error) throw error;
-    await db.from('supervision_route_stops').update({ status: value.state === 'returned_for_rework' ? 'needs_rework' : 'reviewed' }).eq('id', value.route_stop_id);
-    await db.from('supervision_review_events').insert({ review_id: value.id, to_state: value.state, reason: value.rework_reason || null, actor_user_id: value.reviewer_user_id || null });
-    return data as SupervisionReview;
+    const { error: stopError } = await db.from('supervision_route_stops').update({ status: value.state === 'returned_for_rework' ? 'needs_rework' : 'reviewed' }).eq('id', value.route_stop_id);
+    if (stopError) throw stopError;
+    const { error: eventError } = await db.from('supervision_review_events').insert({ review_id: value.id, to_state: value.state, reason: value.rework_reason || null, actor_user_id: value.reviewer_user_id || null });
+    if (eventError) throw eventError;
+    const result = data as SupervisionReview;
+    const snapshot = readLocal(sedeId, date);
+    writeLocal(sedeId, date, {
+      ...snapshot,
+      reviews: upsertLocal(snapshot.reviews, result),
+      stops: snapshot.stops.map((stop) => stop.id === value.route_stop_id ? { ...stop, status: value.state === 'returned_for_rework' ? 'needs_rework' : 'reviewed' } : stop),
+    });
+    return result;
   } catch (error) {
     if (!isMissingSupervisionSchema(error) && !isNetworkError(error)) throw error;
     await queueAndLocal(sedeId, date, 'review', 'insert', { table: 'supervision_reviews', data: value }, 'reviews', value);
+    await enqueueOffline({ entity: 'review', operation: 'update', payload: { table: 'supervision_route_stops', id: value.route_stop_id, data: { status: value.state === 'returned_for_rework' ? 'needs_rework' : 'reviewed' } } });
+    await enqueueOffline({ entity: 'review', operation: 'insert', payload: { table: 'supervision_review_events', data: { review_id: value.id, to_state: value.state, reason: value.rework_reason || null, actor_user_id: value.reviewer_user_id || null } } });
     const snapshot = readLocal(sedeId, date);
     writeLocal(sedeId, date, {
       ...snapshot,
@@ -252,15 +272,20 @@ export async function createIncident(
   try {
     const { data, error } = await db.from('supervision_incidents').insert({ ...value }).select('*').single();
     if (error) throw error;
-    await db.from('supervision_incident_events').insert({ incident_id: value.id, event_type: 'created', to_status: value.status, actor_user_id: value.created_by || null });
+    const { error: eventError } = await db.from('supervision_incident_events').insert({ incident_id: value.id, event_type: 'created', to_status: value.status, actor_user_id: value.created_by || null });
+    if (eventError) throw eventError;
     if (value.priority === 'high' || value.priority === 'critical') {
       const { error: notificationError } = await supabase.functions.invoke('send-supervision-incident-email', { body: { incidentId: value.id } });
       if (notificationError) console.warn('Supervision incident notification failed:', notificationError.message);
     }
-    return data as SupervisionIncident;
+    const result = data as SupervisionIncident;
+    const snapshot = readLocal(sedeId, date);
+    writeLocal(sedeId, date, { ...snapshot, incidents: upsertLocal(snapshot.incidents, result) });
+    return result;
   } catch (error) {
     if (!isMissingSupervisionSchema(error) && !isNetworkError(error)) throw error;
     await queueAndLocal(sedeId, date, 'incident', 'insert', { table: 'supervision_incidents', data: value }, 'incidents', value);
+    await enqueueOffline({ entity: 'incident', operation: 'insert', payload: { table: 'supervision_incident_events', data: { incident_id: value.id, event_type: 'created', to_status: value.status, actor_user_id: value.created_by || null } } });
     return value;
   }
 }
@@ -270,11 +295,16 @@ export async function updateIncidentStatus(sedeId: string, date: string, inciden
   try {
     const { data, error } = await db.from('supervision_incidents').update({ status, updated_at: value.updated_at }).eq('id', incident.id).select('*').single();
     if (error) throw error;
-    await db.from('supervision_incident_events').insert({ incident_id: incident.id, event_type: 'status_change', from_status: incident.status, to_status: status });
-    return data as SupervisionIncident;
+    const { error: eventError } = await db.from('supervision_incident_events').insert({ incident_id: incident.id, event_type: 'status_change', from_status: incident.status, to_status: status });
+    if (eventError) throw eventError;
+    const result = data as SupervisionIncident;
+    const snapshot = readLocal(sedeId, date);
+    writeLocal(sedeId, date, { ...snapshot, incidents: upsertLocal(snapshot.incidents, result) });
+    return result;
   } catch (error) {
     if (!isMissingSupervisionSchema(error) && !isNetworkError(error)) throw error;
     await queueAndLocal(sedeId, date, 'incident', 'update', { table: 'supervision_incidents', id: incident.id, data: { status } }, 'incidents', value);
+    await enqueueOffline({ entity: 'incident', operation: 'insert', payload: { table: 'supervision_incident_events', data: { incident_id: incident.id, event_type: 'status_change', from_status: incident.status, to_status: status } } });
     return value;
   }
 }
@@ -284,7 +314,10 @@ export async function completeRoute(sedeId: string, date: string, route: Supervi
   try {
     const { data, error } = await db.from('supervision_routes').update({ status: value.status, completed_at: value.completed_at }).eq('id', route.id).select('*').single();
     if (error) throw error;
-    return data as SupervisionRoute;
+    const result = data as SupervisionRoute;
+    const snapshot = readLocal(sedeId, date);
+    writeLocal(sedeId, date, { ...snapshot, routes: upsertLocal(snapshot.routes, result) });
+    return result;
   } catch (error) {
     if (!isMissingSupervisionSchema(error) && !isNetworkError(error)) throw error;
     await queueAndLocal(sedeId, date, 'route', 'update', { table: 'supervision_routes', id: route.id, data: { status: value.status, completed_at: value.completed_at } }, 'routes', value);
@@ -305,8 +338,9 @@ export async function flushSupervisionQueue(): Promise<{ synced: number; failed:
         if (error && !String(error.message).toLowerCase().includes('duplicate')) throw error;
       } else if (item.operation === 'update') {
         const table = String(item.payload.table || '');
-        const { error } = await db.from(table).update(item.payload.data || {}).eq('id', item.payload.id);
+        const { data: updatedRows, error } = await db.from(table).update(item.payload.data || {}).eq('id', item.payload.id).select('id');
         if (error) throw error;
+        if (!updatedRows || updatedRows.length === 0) throw new Error(`No se actualizó ninguna fila en ${table}`);
       } else if (item.operation === 'upload') {
         const photo = item.payload as { path: string; dataUrl: string; reviewId: string; sedeId: string; fileName: string; originalBytes: number };
         const blob = await fetch(photo.dataUrl).then((response) => response.blob());

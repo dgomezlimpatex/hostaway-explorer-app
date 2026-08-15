@@ -39,13 +39,17 @@ export async function enqueueOffline(item: Omit<OfflineQueueItem, 'id' | 'create
     fallbackWrite([...fallbackRead(), value]);
     return value;
   }
-  await new Promise<void>((resolve) => {
-    const tx = db.transaction(STORE_NAME, 'readwrite');
-    tx.objectStore(STORE_NAME).put(value);
-    tx.oncomplete = () => resolve();
-    tx.onerror = () => resolve();
-  });
-  db.close();
+  try {
+    await new Promise<void>((resolve, reject) => {
+      const tx = db.transaction(STORE_NAME, 'readwrite');
+      tx.objectStore(STORE_NAME).put(value);
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error || new Error('No se pudo guardar la operación offline'));
+      tx.onabort = () => reject(tx.error || new Error('La transacción offline fue cancelada'));
+    });
+  } finally {
+    db.close();
+  }
   return value;
 }
 
@@ -67,13 +71,17 @@ export async function removeOfflineQueueItem(id: string): Promise<void> {
     fallbackWrite(fallbackRead().filter((item) => item.id !== id));
     return;
   }
-  await new Promise<void>((resolve) => {
-    const tx = db.transaction(STORE_NAME, 'readwrite');
-    tx.objectStore(STORE_NAME).delete(id);
-    tx.oncomplete = () => resolve();
-    tx.onerror = () => resolve();
-  });
-  db.close();
+  try {
+    await new Promise<void>((resolve, reject) => {
+      const tx = db.transaction(STORE_NAME, 'readwrite');
+      tx.objectStore(STORE_NAME).delete(id);
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error || new Error('No se pudo eliminar la operación offline'));
+      tx.onabort = () => reject(tx.error || new Error('La transacción offline fue cancelada'));
+    });
+  } finally {
+    db.close();
+  }
 }
 
 export async function markOfflineQueueFailure(item: OfflineQueueItem, error: unknown): Promise<void> {
@@ -83,11 +91,15 @@ export async function markOfflineQueueFailure(item: OfflineQueueItem, error: unk
     fallbackWrite(fallbackRead().map((value) => value.id === item.id ? next : value));
     return;
   }
-  await new Promise<void>((resolve) => {
-    const tx = db.transaction(STORE_NAME, 'readwrite');
-    tx.objectStore(STORE_NAME).put(next);
-    tx.oncomplete = () => resolve();
-    tx.onerror = () => resolve();
-  });
-  db.close();
+  try {
+    await new Promise<void>((resolve, reject) => {
+      const tx = db.transaction(STORE_NAME, 'readwrite');
+      tx.objectStore(STORE_NAME).put(next);
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error || new Error('No se pudo actualizar la operación offline'));
+      tx.onabort = () => reject(tx.error || new Error('La transacción offline fue cancelada'));
+    });
+  } finally {
+    db.close();
+  }
 }
