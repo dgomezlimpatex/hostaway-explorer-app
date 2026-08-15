@@ -1,5 +1,5 @@
 import React from 'react';
-import { useAuth } from '@/hooks/useAuth';
+import { useRolePermissions } from '@/hooks/useRolePermissions';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { TasksList } from '../TasksList';
 import { TaskFilters } from '../TaskFilters';
@@ -25,7 +25,7 @@ interface TasksPageContentProps {
   isLoading: boolean;
   currentPage: number;
   totalPages: number;
-  onFiltersChange: (filters: any) => void;
+  onFiltersChange: (filters: TasksPageContentProps['filters']) => void;
   onShowHistory: (task: Task) => void;
   onCreateReport: (task: Task) => void;
   onOpenGroupedReport?: (task: Task) => void;
@@ -51,9 +51,9 @@ export const TasksPageContent = ({
   onPageChange,
   onRefetch,
 }: TasksPageContentProps) => {
-  const { userRole } = useAuth();
+  const { isCleaner } = useRolePermissions();
   const { isMobile } = useDeviceType();
-  const isCleaner = userRole === 'cleaner';
+  const cleanerView = isCleaner();
   const searchFilteredTasks = sortedTasks;
 
   // Mobile-first layout: Task list comes first
@@ -61,10 +61,10 @@ export const TasksPageContent = ({
     return (
       <div className="container mx-auto p-3 space-y-4">
         {/* Estadísticas - Solo mostrar para tareas actuales y no para limpiadoras */}
-        {!showPastTasks && !isCleaner && <TaskStatsCard tasks={searchFilteredTasks} />}
+        {!showPastTasks && !cleanerView && <TaskStatsCard tasks={searchFilteredTasks} />}
 
         {/* Para limpiadoras: mostrar tareas separadas por secciones */}
-        {isCleaner && !showPastTasks ? (
+        {cleanerView && !showPastTasks ? (
           <div className="space-y-4">
             {/* Tareas de hoy */}
             {(() => {
@@ -145,10 +145,10 @@ export const TasksPageContent = ({
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-lg">
-                  {isCleaner 
+                  {cleanerView
                     ? 'Mis Tareas'
                     : (showPastTasks ? 'Historial de Tareas' : 'Lista de Tareas')
-                  } {!isCleaner && `(${sortedTasks.length})`}
+                  } {!cleanerView && `(${sortedTasks.length})`}
                 </CardTitle>
                 {totalPages > 1 && (
                   <span className="text-xs text-gray-500">
@@ -179,7 +179,7 @@ export const TasksPageContent = ({
         )}
 
         {/* Sidebar widgets - AFTER task list on mobile */}
-        {!showPastTasks && !isCleaner && (
+        {!showPastTasks && !cleanerView && (
           <div className="space-y-4">
             <TaskFilters filters={filters} onFiltersChange={onFiltersChange} />
             <CalendarIntegrationWidget tasks={tasks} />
@@ -194,10 +194,10 @@ export const TasksPageContent = ({
   return (
     <div className="container mx-auto p-6 space-y-6">
       {/* Estadísticas - Solo mostrar para tareas actuales y no para limpiadoras */}
-      {!showPastTasks && !isCleaner && <TaskStatsCard tasks={searchFilteredTasks} />}
+      {!showPastTasks && !cleanerView && <TaskStatsCard tasks={searchFilteredTasks} />}
 
-      <div className={`grid grid-cols-1 ${isCleaner ? 'lg:grid-cols-1' : 'lg:grid-cols-4'} gap-6`}>
-        {!showPastTasks && !isCleaner && (
+      <div className={`grid grid-cols-1 ${cleanerView ? 'lg:grid-cols-1' : 'lg:grid-cols-4'} gap-6`}>
+        {!showPastTasks && !cleanerView && (
           <div className="lg:col-span-1 space-y-6">
             <TaskFilters filters={filters} onFiltersChange={onFiltersChange} />
             <CalendarIntegrationWidget tasks={tasks} />
@@ -205,9 +205,9 @@ export const TasksPageContent = ({
           </div>
         )}
         
-        <div className={isCleaner ? "lg:col-span-1" : (showPastTasks ? "lg:col-span-4" : "lg:col-span-3")}>
+        <div className={cleanerView ? "lg:col-span-1" : (showPastTasks ? "lg:col-span-4" : "lg:col-span-3")}>
           {/* Para limpiadoras: mostrar tareas separadas por secciones también en desktop */}
-          {isCleaner && !showPastTasks ? (
+          {cleanerView && !showPastTasks ? (
             <div className="space-y-6">
               {/* Tareas de hoy */}
               {(() => {
@@ -288,10 +288,10 @@ export const TasksPageContent = ({
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <CardTitle>
-                    {isCleaner 
+                    {cleanerView
                       ? 'Mis Tareas'
                       : (showPastTasks ? 'Historial de Tareas' : 'Lista de Tareas')
-                    } {!isCleaner && `(${sortedTasks.length})`}
+                    } {!cleanerView && `(${sortedTasks.length})`}
                   </CardTitle>
                   {totalPages > 1 && (
                     <span className="text-sm text-gray-500">

@@ -3,6 +3,7 @@ import { useMemo } from 'react';
 import { Task, ViewType } from '@/types/calendar';
 import { taskStorageService } from '@/services/taskStorage';
 import { useAuth } from '@/hooks/useAuth';
+import { useRolePermissions } from '@/hooks/useRolePermissions';
 import { useCleaners } from '@/hooks/useCleaners';
 import { useSede } from '@/contexts/SedeContext';
 import { formatMadridDate } from '@/utils/date';
@@ -26,6 +27,8 @@ export const useOptimizedTasks = ({
   enabled = true 
 }: UseOptimizedTasksProps) => {
   const { userRole, user } = useAuth();
+  const { isCleaner } = useRolePermissions();
+  const cleanerView = isCleaner();
   const { cleaners } = useCleaners();
   const { activeSede, isInitialized, loading } = useSede();
   const activeSedeId = activeSede?.id || null;
@@ -33,23 +36,23 @@ export const useOptimizedTasks = ({
 
   // Get current user's cleaner ID if they are a cleaner
   const currentCleanerId = useMemo(() => {
-    if (userRole !== 'cleaner' || !user?.id || !cleaners) return null;
+    if (!cleanerView || !user?.id || !cleaners) return null;
     const currentCleaner = cleaners.find(cleaner => cleaner.user_id === user.id);
     return currentCleaner?.id || null;
-  }, [userRole, user?.id, cleaners]);
+  }, [cleanerView, user?.id, cleaners]);
 
   // Cleaner calendars render the selected date plus tomorrow. Manager views
   // use their own exact day/three-day/week range.
   const dateRange = useMemo(
-    () => userRole === 'cleaner'
+    () => cleanerView
       ? getTaskWindowRange(currentDate, 2)
       : getTaskDateRange(currentDate, currentView),
-    [currentDate, currentView, userRole],
+    [currentDate, currentView, cleanerView],
   );
 
   // Every visible window gets its own cache entry, including cleaner navigation.
   const queryKey = useMemo(() => {
-    if (userRole === 'cleaner' && currentCleanerId) {
+    if (cleanerView && currentCleanerId) {
       return [
         'tasks',
         'cleaner',
@@ -65,7 +68,7 @@ export const useOptimizedTasks = ({
       currentView,
       activeSedeId || 'pending-sede'
     ];
-  }, [currentDate, currentView, activeSedeId, userRole, currentCleanerId, dateRange]);
+  }, [currentDate, currentView, activeSedeId, cleanerView, currentCleanerId, dateRange]);
 
   const query = useQuery({
     queryKey,
@@ -79,7 +82,7 @@ export const useOptimizedTasks = ({
       });
       
       // OPTIMIZED: For cleaners, use server-side filtering
-      if (userRole === 'cleaner' && currentCleanerId) {
+      if (cleanerView && currentCleanerId) {
         const result = await taskStorageService.getTasks({
           cleanerId: currentCleanerId,
           userRole: 'cleaner',
@@ -116,7 +119,7 @@ export const useOptimizedTasks = ({
     },
     staleTime: 30_000,
     gcTime: 5 * 60_000,
-    enabled: canQueryTasks && (userRole !== 'cleaner' || currentCleanerId !== null),
+    enabled: canQueryTasks && (!cleanerView || currentCleanerId !== null),
     refetchOnWindowFocus: true,
     refetchOnMount: true,
   });
@@ -132,12 +135,12 @@ export const useOptimizedTasks = ({
     const validTasks = tasks.filter(task => task && task.date);
     
     // For cleaners, don't apply view-based filtering - let them see all their tasks
-    if (userRole === 'cleaner') {
+    if (cleanerView) {
       return validTasks;
     }
     
     return filterTasksByView(validTasks, currentDate, currentView);
-  }, [tasks, currentDate, currentView, userRole]);
+  }, [tasks, currentDate, currentView, cleanerView]);
 
 
   return {

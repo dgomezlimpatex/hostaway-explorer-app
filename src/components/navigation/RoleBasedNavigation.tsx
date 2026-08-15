@@ -1,6 +1,7 @@
 
 import { NavigationCard } from '@/components/dashboard/NavigationCard';
 import { useRolePermissions } from '@/hooks/useRolePermissions';
+import { OperationalModeSwitcher } from '@/components/auth/OperationalModeSwitcher';
 import { 
   Calendar, 
   ClipboardList, 
@@ -34,6 +35,9 @@ export const RoleBasedNavigation = () => {
           <p className="text-xl text-gray-600">
             Selecciona la sección a la que deseas acceder
           </p>
+          <div className="mt-4 flex justify-center">
+            <OperationalModeSwitcher />
+          </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-6xl mx-auto">

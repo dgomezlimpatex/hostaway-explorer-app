@@ -1,4 +1,5 @@
 import { useAuth } from './useAuth';
+import { getEffectiveRole } from '@/auth/operationalMode';
 import {
   getRolePermissions,
   type ModulePermission,
@@ -8,9 +9,19 @@ import {
 export type { ModulePermission, RolePermissions } from '@/lib/rolePermissions';
 
 export const useRolePermissions = () => {
-  const { userRole } = useAuth();
+  const {
+    userRole,
+    userRoles,
+    operationalMode,
+    canSwitchOperationalMode,
+    setOperationalMode,
+  } = useAuth();
 
-  const getPermissions = (): RolePermissions => getRolePermissions(userRole);
+  const effectiveRole = (): string | null => (
+    getEffectiveRole(userRoles, userRole, operationalMode)
+  );
+
+  const getPermissions = (): RolePermissions => getRolePermissions(effectiveRole());
 
   const hasPermission = (
     module: keyof RolePermissions,
@@ -21,9 +32,9 @@ export const useRolePermissions = () => {
     hasPermission(module, 'canView')
   );
 
-  const isAdminOrManager = (): boolean => userRole === 'admin' || userRole === 'manager';
-  const isSupervisor = (): boolean => userRole === 'supervisor';
-  const isCleaner = (): boolean => userRole === 'cleaner';
+  const isAdminOrManager = (): boolean => effectiveRole() === 'admin' || effectiveRole() === 'manager';
+  const isSupervisor = (): boolean => effectiveRole() === 'supervisor';
+  const isCleaner = (): boolean => effectiveRole() === 'cleaner';
 
   return {
     permissions: getPermissions(),
@@ -33,5 +44,9 @@ export const useRolePermissions = () => {
     isSupervisor,
     isCleaner,
     userRole,
+    userRoles,
+    operationalMode,
+    canSwitchOperationalMode,
+    setOperationalMode,
   };
 };
