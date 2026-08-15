@@ -393,6 +393,6 @@ function projectTaskForSupervision(task: Task): Task {
 }
 
 export async function getSupervisionTasks(sedeId: string, date: string): Promise<Task[]> {
-  const tasks = await taskStorageService.getTasksForReports({ dateFrom: date, dateTo: date, sedeId });
+  const tasks = await taskStorageService.getTasksForSupervision({ dateFrom: date, dateTo: date, sedeId });
   return tasks.map(projectTaskForSupervision);
 }
