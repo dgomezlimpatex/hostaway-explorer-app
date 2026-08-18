@@ -175,7 +175,9 @@ export async function getAccommodationDetail(
 ): Promise<AvantioAccommodationDetail | null> {
   const url = `${API_BASE_URL}/accommodations/${encodeURIComponent(String(accommodationId))}`;
   const result = await httpGet(url, headersAvantio(token), options);
-  return result ? (result.data || result) : null;
+  const payload = result?.data ?? result;
+  if (!payload || typeof payload !== 'object') return null;
+  return payload as AvantioAccommodationDetail;
 }
 
 // Cache: accommodationId -> { name, internalName }

@@ -1,4 +1,4 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.50.0";
+import { createClient } from "npm:@supabase/supabase-js@2.50.0";
 import { SyncOrchestrator } from './sync-orchestrator.ts';
 import { ResponseBuilder } from './response-builder.ts';
 
@@ -78,11 +78,10 @@ Deno.serve(async (req) => {
     await orchestrator.initializeSyncLog(triggerMeta);
     const syncLogId = orchestrator.getSyncLogId();
 
-    // Run the heavy work in the background — function returns immediately
-    // EdgeRuntime.waitUntil keeps the worker alive until the promise settles
-    // without blocking the HTTP response (avoids wall-clock + CPU limits on the request).
-    // @ts-ignore - EdgeRuntime is available in Supabase Edge Functions runtime
-    EdgeRuntime.waitUntil((async () => {
+    // Run the heavy work in the background when the runtime exposes waitUntil.
+    // Some Supabase runtime versions do not expose EdgeRuntime, so fall back to
+    // awaiting the same job instead of throwing before returning the response.
+    const syncWork = (async () => {
       try {
         await orchestrator.performSync(avantioApiToken);
         await orchestrator.finalizeSyncLog(true);
@@ -95,7 +94,20 @@ Deno.serve(async (req) => {
           console.error('❌ Error finalizando log:', finalizeError);
         }
       }
-    })());
+    })();
+
+    type EdgeRuntimeWithWaitUntil = {
+      waitUntil?: (promise: Promise<unknown>) => void;
+    };
+    const edgeRuntime = (globalThis as typeof globalThis & {
+      EdgeRuntime?: EdgeRuntimeWithWaitUntil;
+    }).EdgeRuntime;
+
+    if (typeof edgeRuntime?.waitUntil === 'function') {
+      edgeRuntime.waitUntil(syncWork);
+    } else {
+      await syncWork;
+    }
 
     // Return 202 Accepted with sync_log_id so the client can poll for status
     return new Response(

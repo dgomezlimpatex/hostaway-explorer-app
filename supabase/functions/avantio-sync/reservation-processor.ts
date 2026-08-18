@@ -1,4 +1,4 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.50.0";
+import { createClient } from "npm:@supabase/supabase-js@2.50.0";
 import { AvantioReservation, SyncStats } from './types.ts';
 import { 
   findPropertyByAvantioId, 
@@ -593,7 +593,7 @@ export class ReservationProcessor {
     if (dedupError) {
       // Código 23505 = unique_violation → ya se envió esta alerta hoy
       if (dedupError.code === '23505') {
-        console.log(`🔇 Alerta duplicada bloqueada (ya enviada): ${property.nombre} → checkout ${tomorrowStr}`);
+        console.log(`🔇 Alerta duplicada bloqueada (ya enviada): ${property.nombre} → checkout ${reservation.departureDate}`);
         return;
       }
       console.error(`⚠️ Error en deduplicación de alertas:`, dedupError);

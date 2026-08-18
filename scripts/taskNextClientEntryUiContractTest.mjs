@@ -9,6 +9,7 @@ const service = read('src/services/clientPortal/nextClientEntry.ts');
 const migration = read('supabase/migrations/20260713120000_admin_next_client_entry.sql');
 const avantioMigration = read('supabase/migrations/20260713130000_include_avantio_in_admin_next_entry.sql');
 const requestedAvantioMigration = read('supabase/migrations/20260818130000_allow_requested_avantio_next_entry.sql');
+const refinedAvantioMigration = read('supabase/migrations/20260818150000_refine_admin_next_avantio_entry.sql');
 
 assert.match(form, /userRole === ['"]admin['"][\s\S]*<NextClientEntrySection/, 'the section must render only for admin');
 assert.doesNotMatch(form, /userRole !== ['"]cleaner['"][\s\S]*<NextClientEntrySection/, 'a broad non-cleaner check is not sufficient');
@@ -45,5 +46,12 @@ assert.match(requestedAvantioMigration, /['"]pending['"]/, 'pending Avantio entr
 assert.match(requestedAvantioMigration, /['"]tentative['"]/, 'tentative Avantio entries must remain excluded');
 assert.match(requestedAvantioMigration, /ORDER BY[\s\S]*check_in_date\s+ASC/i, 'the nearest entry across all active sources must be returned');
 assert.match(requestedAvantioMigration, /has_role\(auth\.uid\(\),\s*'admin'::public\.app_role\)/, 'the extended RPC must remain admin-only');
+
+assert.match(refinedAvantioMigration, /public\.avantio_reservations/, 'the refined RPC must keep Avantio as a source');
+assert.match(refinedAvantioMigration, /arrival_date\s*>\s*_from_date/i, 'the next entry must be strictly after the current task date');
+assert.match(refinedAvantioMigration, /REQUESTED\/provisional/i, 'provisional REQUESTED Avantio entries must be documented as excluded');
+assert.match(refinedAvantioMigration, /['"]confirmed['"]/i, 'confirmed Avantio entries must remain eligible');
+assert.match(refinedAvantioMigration, /cancellation_date\s+IS\s+NULL/i, 'cancelled Avantio rows must remain excluded');
+assert.match(refinedAvantioMigration, /ORDER BY[\s\S]*check_in_date\s+ASC/i, 'the nearest confirmed future entry must be returned');
 
 console.log('task-next-client-entry-ui-contract-tests: OK');
