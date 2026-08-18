@@ -1,4 +1,5 @@
-import { getAccommodationDetail, httpGet } from '../supabase/functions/avantio-sync/avantio-api.ts';
+import { fetchAllAvantioReservations, getAccommodationDetail, httpGet } from '../supabase/functions/avantio-sync/avantio-api.ts';
+import { shouldCreateTaskForReservation } from '../supabase/functions/avantio-sync/reservation-validator.ts';
 
 type Assert = typeof import('node:assert/strict');
 
@@ -146,4 +147,64 @@ export const run = async (assert: Assert) => {
   assert.match(accommodationRequestUrl, /\/pms\/v1\/accommodations\/774600$/);
   assert.doesNotMatch(accommodationRequestUrl, /\/bookings\//);
   assert.equal(accommodation.name, 'CSJ16.1');
+
+  const today = new Date();
+  today.setUTCHours(0, 0, 0, 0);
+  const addDays = (days: number) => {
+    const date = new Date(today);
+    date.setUTCDate(date.getUTCDate() + days);
+    return date.toISOString().slice(0, 10);
+  };
+  const bookingUrls: string[] = [];
+  const futureArrivalFetch: typeof fetch = async (input) => {
+    const url = String(input);
+    if (url.includes('/bookings?')) {
+      bookingUrls.push(url);
+      const currentReservation = {
+        id: 'current-checkout',
+        accommodationId: '678795',
+        status: 'CONFIRMED',
+        dates: { arrival: addDays(-5), departure: addDays(5) },
+      };
+      const futureArrival = {
+        id: 'future-arrival',
+        accommodationId: '678795',
+        status: 'REQUESTED',
+        dates: { arrival: addDays(7), departure: addDays(45) },
+      };
+      return new Response(JSON.stringify({ data: [currentReservation, futureArrival] }), { status: 200 });
+    }
+    return new Response(JSON.stringify({ data: { name: 'Blue Ocean Penthouse', internalName: 'RMA.7D' } }), { status: 200 });
+  };
+
+  const synced = await fetchAllAvantioReservations('must-not-leak', {
+    fetchImpl: futureArrivalFetch,
+    deadlineAt: Date.now() + 5000,
+  });
+  assert.equal(synced.length, 2, 'checkout and future-arrival windows must be deduplicated by reservation ID');
+  assert.ok(bookingUrls.some(url => url.includes('departureFrom=') && url.includes('departureTo=')));
+  assert.ok(bookingUrls.some(url => url.includes('arrivalFrom=') && url.includes('arrivalTo=')));
+  assert.equal(synced.find(item => item.id === 'future-arrival')?.arrivalDate, addDays(7));
+  assert.equal(
+    shouldCreateTaskForReservation({
+      id: 'far-checkout',
+      accommodationId: '678795',
+      accommodationName: 'Blue Ocean Penthouse',
+      accommodationInternalName: 'RMA.7D',
+      status: 'CONFIRMED',
+      arrivalDate: addDays(7),
+      departureDate: addDays(45),
+      reservationDate: addDays(0),
+      cancellationDate: '',
+      nights: 38,
+      adults: 2,
+      children: 0,
+      guestName: 'Huésped de prueba',
+      totalAmount: 0,
+      currency: 'EUR',
+      notes: '',
+    }),
+    false,
+    'a future arrival outside the task horizon must be stored without creating a cleaning task',
+  );
 };

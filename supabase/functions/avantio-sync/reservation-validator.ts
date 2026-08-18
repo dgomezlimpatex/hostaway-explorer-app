@@ -1,8 +1,12 @@
 import { AvantioReservation } from './types.ts';
 
+export const TASK_CREATION_HORIZON_DAYS = 30;
+
 /**
  * Determines if a task should be created for a reservation.
- * Creates task for ALL non-cancelled reservations with future checkout.
+ * Creates tasks only for non-cancelled reservations whose checkout is inside
+ * the operational sync horizon. Reservations arriving in that horizon may be
+ * stored for future-entry display even when their checkout is later.
  */
 export function shouldCreateTaskForReservation(reservation: AvantioReservation): boolean {
   const statusUpper = reservation.status.toUpperCase();
@@ -23,7 +27,6 @@ export function shouldCreateTaskForReservation(reservation: AvantioReservation):
     return false;
   }
   
-  // Checkout must be in the future
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const checkoutDate = new Date(reservation.departureDate);
@@ -31,7 +34,12 @@ export function shouldCreateTaskForReservation(reservation: AvantioReservation):
   if (checkoutDate < today) {
     return false;
   }
+
+  const lastTaskDate = new Date(today);
+  lastTaskDate.setDate(lastTaskDate.getDate() + TASK_CREATION_HORIZON_DAYS);
+  if (checkoutDate > lastTaskDate) {
+    return false;
+  }
   
-  // All other reservations get a cleaning task
   return true;
 }

@@ -36,6 +36,10 @@ try {
   assert.match(apiSource, /\/accommodations\/\$\{encodeURIComponent/);
   assert.doesNotMatch(apiSource, /getBookingDetail/);
   assert.match(apiSource, /err instanceof AvantioSourceBudgetExceededError\) throw err/);
+  assert.match(apiSource, /fromParam: 'arrivalFrom'/);
+  assert.match(apiSource, /toParam: 'arrivalTo'/);
+  assert.match(apiSource, /rawItemsById = new Map/);
+  assert.match(apiSource, /window\.label === 'arrival'/);
   assert.match(orchestratorSource, /const SYNC_WORK_BUDGET_MS = 110000/);
   assert.match(orchestratorSource, /const SOURCE_FETCH_BUDGET_MS = 70000/);
   assert.match(orchestratorSource, /fetchAllAvantioReservations\(token, \{ deadlineAt: sourceDeadlineAt \}\)/);

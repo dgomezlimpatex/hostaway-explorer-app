@@ -8,11 +8,12 @@ Esta integración permite sincronizar automáticamente las reservas de Avantio c
 
 ### Sincronización de Reservas
 
-1. **Rango de sincronización**: Se obtienen las reservas con checkout en los próximos 30 días
-2. **Creación de tareas**: Por cada reserva confirmada, se crea una tarea de limpieza para el día del checkout
-3. **Identificación**: Cada reserva se identifica por el ID único de Avantio y el nombre del huésped
-4. **Gestión de cambios**: Si una reserva cambia de fecha, la tarea se actualiza automáticamente
-5. **Cancelaciones**: Las reservas canceladas eliminan automáticamente sus tareas asociadas
+1. **Rangos de sincronización**: se obtienen las reservas con checkout en los próximos 30 días y también las reservas cuya entrada esté en los próximos 30 días.
+2. **Creación de tareas**: por cada reserva no cancelada y confirmada cuyo checkout esté dentro de los próximos 30 días, se crea o actualiza una tarea de limpieza para el día del checkout.
+3. **Próxima entrada administrativa**: las reservas Avantio futuras se conservan aunque tengan estado `REQUESTED` o un checkout posterior al horizonte de tareas; la tarjeta administrativa usa su fecha de entrada y excluye las canceladas.
+4. **Identificación**: cada reserva se identifica por el ID único de Avantio y el nombre del huésped.
+5. **Gestión de cambios**: si una reserva cambia de fecha, la reserva sincronizada y la tarea correspondiente se actualizan automáticamente.
+6. **Cancelaciones**: las reservas canceladas eliminan automáticamente sus tareas asociadas cuando la tarea todavía es pendiente.
 
 ### Horarios de Sincronización
 
