@@ -26,6 +26,11 @@ export async function run(assert: AssertLike) {
     '18/07/2026',
     'a later entry shows its Spanish calendar date',
   );
+  assert.equal(
+    formatNextClientEntryLabel('2026-09-01', '2026-08-23'),
+    '01/09/2026',
+    'an entry several days later still shows its Spanish calendar date',
+  );
 
   const calls: Array<{ propertyId: string; fromDate: string }> = [];
   const entry = await loadNextClientEntry(

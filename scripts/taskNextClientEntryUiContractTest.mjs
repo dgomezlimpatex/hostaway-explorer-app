@@ -8,6 +8,7 @@ const section = read('src/components/modals/task-details/components/NextClientEn
 const service = read('src/services/clientPortal/nextClientEntry.ts');
 const migration = read('supabase/migrations/20260713120000_admin_next_client_entry.sql');
 const avantioMigration = read('supabase/migrations/20260713130000_include_avantio_in_admin_next_entry.sql');
+const requestedAvantioMigration = read('supabase/migrations/20260818130000_allow_requested_avantio_next_entry.sql');
 
 assert.match(form, /userRole === ['"]admin['"][\s\S]*<NextClientEntrySection/, 'the section must render only for admin');
 assert.doesNotMatch(form, /userRole !== ['"]cleaner['"][\s\S]*<NextClientEntrySection/, 'a broad non-cleaner check is not sufficient');
@@ -35,5 +36,14 @@ for (const excludedStatus of ['cancelled', 'canceled', 'unavailable', 'unavaliab
 }
 assert.match(avantioMigration, /ORDER BY[\s\S]*check_in_date\s+ASC/i, 'the nearest entry across all sources must be returned');
 assert.match(avantioMigration, /has_role\(auth\.uid\(\),\s*'admin'::public\.app_role\)/, 'the updated RPC must remain admin-only');
+assert.match(requestedAvantioMigration, /public\.avantio_reservations/, 'Avantio reservations must remain a source');
+assert.match(requestedAvantioMigration, /arrival_date\s+AS\s+check_in_date/i, 'Avantio entries must expose their arrival date');
+assert.match(requestedAvantioMigration, /arrival_date\s+>=\s+_from_date/i, 'Avantio entries must start on the task date');
+assert.match(requestedAvantioMigration, /cancellation_date\s+IS\s+NULL/i, 'cancelled Avantio rows must be ignored even if their status is stale');
+assert.doesNotMatch(requestedAvantioMigration, /['"]requested['"]/i, 'REQUESTED Avantio entries must remain eligible for the informational card');
+assert.match(requestedAvantioMigration, /['"]pending['"]/, 'pending Avantio entries must remain excluded');
+assert.match(requestedAvantioMigration, /['"]tentative['"]/, 'tentative Avantio entries must remain excluded');
+assert.match(requestedAvantioMigration, /ORDER BY[\s\S]*check_in_date\s+ASC/i, 'the nearest entry across all active sources must be returned');
+assert.match(requestedAvantioMigration, /has_role\(auth\.uid\(\),\s*'admin'::public\.app_role\)/, 'the extended RPC must remain admin-only');
 
 console.log('task-next-client-entry-ui-contract-tests: OK');
