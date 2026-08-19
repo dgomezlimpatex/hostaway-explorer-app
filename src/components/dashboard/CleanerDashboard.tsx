@@ -10,6 +10,7 @@ import { useCleaners } from '@/hooks/useCleaners';
 import { useMemo } from 'react';
 import { formatMadridDate } from '@/utils/date';
 import { isTaskAssignedToCleaner } from '@/utils/taskAssignments';
+import { getEffectiveTaskEndTime } from '@/utils/taskPositioning';
 
 interface CleanerDashboardProps {
   userFullName?: string | null;
@@ -112,7 +113,9 @@ export const CleanerDashboard = ({ userFullName, userEmail }: CleanerDashboardPr
                     >
                       <div className="flex items-center gap-2 min-w-0">
                         <Clock className="h-3.5 w-3.5 text-gray-400 flex-shrink-0" />
-                        <span className="text-sm text-gray-600 flex-shrink-0">{task.startTime}</span>
+                        <span className="text-sm text-gray-600 flex-shrink-0">
+                          {task.startTime}–{getEffectiveTaskEndTime(task)}
+                        </span>
                         <span className="text-sm font-medium text-gray-900 truncate">{task.property}</span>
                       </div>
                       <Badge

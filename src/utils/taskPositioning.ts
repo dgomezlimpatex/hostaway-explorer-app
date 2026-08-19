@@ -1,4 +1,6 @@
 
+import { getTaskWorkerPlannedDurationMinutes } from './cleaning-planning/capacity';
+
 // Helper function to convert time string to minutes
 const timeToMinutes = (time: string) => {
   const [hours, minutes] = time.split(':').map(Number);
@@ -43,11 +45,12 @@ export const getEffectiveTaskEndTime = (task: any, assignmentsMap?: Record<strin
   if (count <= 1) return task.endTime;
 
   const startMin = timeToMinutes(task.startTime);
-  let endMin = timeToMinutes(task.endTime);
-  if (endMin <= startMin) endMin += 24 * 60; // crosses midnight
-  const totalMin = Math.max(0, endMin - startMin);
-  const perWorker = Math.max(15, Math.round(totalMin / count));
-  const newEnd = (startMin + perWorker) % (24 * 60);
+  const perWorker = getTaskWorkerPlannedDurationMinutes({
+    ...task,
+    assignmentCount: count,
+  });
+  if (perWorker <= 0) return task.endTime;
+  const newEnd = (startMin + Math.max(15, perWorker)) % (24 * 60);
   return minutesToTime(newEnd);
 };
 

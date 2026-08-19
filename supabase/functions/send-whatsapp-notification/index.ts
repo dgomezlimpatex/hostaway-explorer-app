@@ -19,6 +19,7 @@ import {
   templateForEventType,
   WHATSAPP_TEMPLATES,
 } from '../_shared/whatsappTemplates.ts';
+import { getTaskWorkerSchedule } from '../_shared/taskWorkerSchedule.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -535,14 +536,33 @@ serve(async (req: Request): Promise<Response> => {
     const recipient = routing.recipient;
     const enabled = routing.enabled;
 
+    // El número de trabajadores se obtiene de la tabla canónica. Los eventos
+    // de asignación se procesan después del INSERT, por lo que ya incluyen al
+    // trabajador actual. Para snapshots de cancelación usamos el valor durable.
+    let workerCount = Number(taskData.worker_count ?? taskData.workerCount ?? 0);
+    if (event.task_id) {
+      const { data: assignments, error: assignmentsError } = await supabase
+        .from('task_assignments')
+        .select('cleaner_id')
+        .eq('task_id', event.task_id);
+      if (assignmentsError) throw assignmentsError;
+      const liveWorkerCount = (assignments ?? []).filter((assignment) => Boolean(assignment.cleaner_id)).length;
+      if (liveWorkerCount > 0) workerCount = liveWorkerCount;
+    }
+    const workerSchedule = getTaskWorkerSchedule({
+      startTime: taskData.start_time ?? taskData.startTime,
+      endTime: taskData.end_time ?? taskData.endTime,
+      durationMinutes: taskData.duracion ?? taskData.duration_minutes ?? taskData.durationMinutes,
+    }, workerCount > 0 ? workerCount : 1);
+
     // 4. Construir parámetros del cuerpo según plantilla
     const def = WHATSAPP_TEMPLATES[templateName];
     const name = cleanerData.name ?? '';
     const property = taskData.property ?? '';
     const address = taskData.address ?? '';
     const date = fmtMadridDate(taskData.date ?? '');
-    const start = taskData.start_time ?? taskData.startTime ?? '';
-    const end = taskData.end_time ?? taskData.endTime ?? '';
+    const start = workerSchedule.startTime;
+    const end = workerSchedule.endTime;
 
     let bodyParameters: string[] = [];
     switch (templateName) {

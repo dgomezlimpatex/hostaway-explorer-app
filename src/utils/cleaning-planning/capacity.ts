@@ -39,8 +39,12 @@ export const getTaskAssignmentCleanerIds = (
 ): string[] => getTaskAssignedCleanerIds(task);
 
 export const getTaskWorkerCount = (
-  task: Pick<Task, 'cleanerId' | 'assignments' | 'requiredCleaners'>,
+  task: Pick<Task, 'cleanerId' | 'assignments' | 'assignmentCount' | 'requiredCleaners'>,
 ): number => {
+  if (typeof task.assignmentCount === 'number' && Number.isFinite(task.assignmentCount) && task.assignmentCount > 0) {
+    return Math.ceil(task.assignmentCount);
+  }
+
   const assignedCount = getTaskAssignmentCleanerIds(task).length;
   if (assignedCount > 0) return assignedCount;
   const required = Number(task.requiredCleaners || 0);
@@ -48,7 +52,7 @@ export const getTaskWorkerCount = (
 };
 
 export const getTaskWorkerPlannedDurationMinutes = (
-  task: Pick<Task, 'duration' | 'propertyDurationMinutes' | 'startTime' | 'endTime' | 'cleanerId' | 'assignments' | 'requiredCleaners'>,
+  task: Pick<Task, 'duration' | 'propertyDurationMinutes' | 'startTime' | 'endTime' | 'cleanerId' | 'assignments' | 'assignmentCount' | 'requiredCleaners'>,
 ): number => {
   const totalMinutes = getTaskPlannedDurationMinutes(task).minutes;
   const workerCount = Math.max(1, getTaskWorkerCount(task));

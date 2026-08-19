@@ -2,6 +2,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.50.0';
 import { Resend } from "npm:resend@2.0.0";
+import { getTaskWorkerSchedule } from '../_shared/taskWorkerSchedule.ts';
 
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
@@ -22,6 +23,8 @@ interface TaskAssignmentEmailRequest {
     endTime: string;
     type?: string;
     notes?: string;
+    durationMinutes?: number | null;
+    workerCount?: number | null;
   };
 }
 
@@ -40,6 +43,7 @@ const handler = async (req: Request): Promise<Response> => {
 
   try {
     const { taskId, cleanerEmail, cleanerName, taskData }: TaskAssignmentEmailRequest = await req.json();
+    const workerSchedule = getTaskWorkerSchedule(taskData, taskData.workerCount ?? 1);
 
     console.log('Sending task assignment email to:', cleanerEmail, 'for task:', taskId);
 
@@ -83,7 +87,7 @@ const handler = async (req: Request): Promise<Response> => {
                 </tr>
                 <tr>
                   <td style="padding: 8px 0; font-weight: bold; color: #4b5563;">⏰ Horario:</td>
-                  <td style="padding: 8px 0; color: #111827;">${taskData.startTime} - ${taskData.endTime}</td>
+                  <td style="padding: 8px 0; color: #111827;">${workerSchedule.startTime} - ${workerSchedule.endTime}</td>
                 </tr>
                 ${taskData.type ? `
                 <tr>

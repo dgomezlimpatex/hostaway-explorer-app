@@ -10,6 +10,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useDeviceType } from '@/hooks/use-mobile';
 import { useTaskReport } from '@/hooks/useTaskReports';
 import { useTaskPreview } from '@/hooks/useTaskPreview';
+import { getEffectiveTaskDurationMinutes, getEffectiveTaskEndTime } from '@/utils/taskPositioning';
 
 interface TaskPreviewModalProps {
   task: Task | null;
@@ -38,6 +39,15 @@ export const TaskPreviewModal: React.FC<TaskPreviewModalProps> = ({
   if (!task) return null;
 
   const isCleaner = userRole === 'cleaner';
+  const displayEndTime = isCleaner ? getEffectiveTaskEndTime(task) : task.endTime;
+  const displayDurationMinutes = isCleaner
+    ? getEffectiveTaskDurationMinutes(task)
+    : (() => {
+        const [startHour, startMinute] = task.startTime.split(':').map(Number);
+        const [endHour, endMinute] = task.endTime.split(':').map(Number);
+        const minutes = (endHour * 60 + endMinute) - (startHour * 60 + startMinute);
+        return minutes > 0 ? minutes : 0;
+      })();
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -66,9 +76,7 @@ export const TaskPreviewModal: React.FC<TaskPreviewModalProps> = ({
   const formatTime = (time: string) => time.split(':').slice(0, 2).join(':');
 
   const calculateDuration = () => {
-    const [startHour, startMinute] = task.startTime.split(':').map(Number);
-    const [endHour, endMinute] = task.endTime.split(':').map(Number);
-    const durationMinutes = (endHour * 60 + endMinute) - (startHour * 60 + startMinute);
+    const durationMinutes = displayDurationMinutes;
     if (durationMinutes >= 60) {
       const hours = Math.floor(durationMinutes / 60);
       const mins = durationMinutes % 60;
@@ -148,7 +156,7 @@ export const TaskPreviewModal: React.FC<TaskPreviewModalProps> = ({
               <div className="flex items-center gap-3">
                 <span className="text-lg font-bold text-slate-800">{formatTime(task.startTime)}</span>
                 <span className="text-slate-300">—</span>
-                <span className="text-lg font-bold text-slate-800">{formatTime(task.endTime)}</span>
+                <span className="text-lg font-bold text-slate-800">{formatTime(displayEndTime)}</span>
                 <span className="px-2.5 py-1 bg-purple-50 text-purple-600 rounded-full text-xs font-bold">
                   {calculateDuration()}
                 </span>

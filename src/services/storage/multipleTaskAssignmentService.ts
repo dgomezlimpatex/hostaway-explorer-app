@@ -61,23 +61,24 @@ export class MultipleTaskAssignmentService {
     // En batch se puede desactivar y notificar al final, evitando avisos de una
     // aplicación parcial si otra tarea falla después.
     if (shouldNotify && (added.length > 0 || removed.length > 0)) {
-      await this.notifyAssignmentDiff(actualTaskId, added, removed);
+      await this.notifyAssignmentDiff(actualTaskId, added, removed, result.final?.length || 0);
     }
 
     return { added, removed, final: result.final || [] };
   }
 
-  async notifyAssignmentDiff(taskId: string, added: CleanerLite[], removed: CleanerLite[]): Promise<void> {
+  async notifyAssignmentDiff(taskId: string, added: CleanerLite[], removed: CleanerLite[], workerCount = 1): Promise<void> {
     const actualTaskId = stripVirtualId(taskId);
     // WhatsApp se encola de forma canónica mediante el trigger de
     // task_assignments. Aquí mantenemos únicamente el correo legado.
-    await this.sendAssignmentEmails(actualTaskId, added, removed);
+    await this.sendAssignmentEmails(actualTaskId, added, removed, workerCount);
   }
 
   private async sendAssignmentEmails(
     taskId: string,
     added: CleanerLite[],
-    removed: CleanerLite[]
+    removed: CleanerLite[],
+    workerCount: number,
   ): Promise<void> {
     const { data: task, error: taskError } = await supabase
       .from('tasks')
@@ -90,53 +91,18 @@ export class MultipleTaskAssignmentService {
       return;
     }
 
-    // Compute per-worker time window. When multiple workers are assigned,
-    // the total scheduled duration is split evenly among them, so each
-    // worker's email reflects the real hours they will actually work.
-    const { data: currentAssignments } = await supabase
-      .from('task_assignments')
-      .select('cleaner_id')
-      .eq('task_id', taskId);
-
-    const assignedIds: string[] = (currentAssignments || [])
-      .map((assignment) => assignment.cleaner_id)
-      .filter((cleanerId): cleanerId is string => Boolean(cleanerId));
-    const workerCount = Math.max(assignedIds.length, 1);
-
-    const toMin = (t: string) => {
-      const [h, m] = (t || '00:00').split(':').map(Number);
-      return (h || 0) * 60 + (m || 0);
-    };
-    const toTime = (mins: number) => {
-      const h = Math.floor(mins / 60);
-      const m = mins % 60;
-      return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
-    };
-
-    const startMin = toMin(task.start_time);
-    const endMin = toMin(task.end_time);
-    const totalMin = Math.max(endMin - startMin, 0);
-    const perWorkerMin = Math.round(totalMin / workerCount);
-
-    const buildTaskData = (_cleanerId?: string) => {
-      const startTime = task.start_time;
-      let endTime = task.end_time;
-      if (workerCount > 1) {
-        // All workers start at the same time and work in parallel; each one
-        // covers only `totalDuration / N` of the scheduled window.
-        const e = startMin + perWorkerMin;
-        endTime = toTime(e);
-      }
-      return {
-        property: task.property,
-        address: task.address,
-        date: task.date,
-        startTime,
-        endTime,
-        type: task.type || 'Limpieza general',
-        notes: task.supervisor ? `Supervisor: ${task.supervisor}` : undefined,
-      };
-    };
+    const effectiveWorkerCount = Math.max(1, workerCount);
+    const buildTaskData = () => ({
+      property: task.property,
+      address: task.address,
+      date: task.date,
+      startTime: task.start_time,
+      endTime: task.end_time,
+      durationMinutes: task.duracion,
+      workerCount: effectiveWorkerCount,
+      type: task.type || 'Limpieza general',
+      notes: task.supervisor ? `Supervisor: ${task.supervisor}` : undefined,
+    });
 
     const sends: Promise<unknown>[] = [];
 
@@ -145,7 +111,7 @@ export class MultipleTaskAssignmentService {
       sends.push(
         supabase.functions
           .invoke('send-task-assignment-email', {
-            body: { taskId: task.id, cleanerEmail: c.email, cleanerName: c.name, taskData: buildTaskData(c.id) },
+            body: { taskId: task.id, cleanerEmail: c.email, cleanerName: c.name, taskData: buildTaskData() },
           })
           .catch((e) => console.error('assignment email failed', c.email, e))
       );
@@ -160,7 +126,7 @@ export class MultipleTaskAssignmentService {
               taskId: task.id,
               cleanerEmail: c.email,
               cleanerName: c.name,
-              taskData: buildTaskData(c.id),
+              taskData: buildTaskData(),
               reason: 'unassigned',
             },
           })

@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.50.0';
 import { Resend } from "npm:resend@2.0.0";
+import { getTaskWorkerSchedule } from '../_shared/taskWorkerSchedule.ts';
 
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
@@ -21,6 +22,8 @@ interface TaskScheduleChangeEmailRequest {
     endTime: string;
     type?: string;
     notes?: string;
+    durationMinutes?: number | null;
+    workerCount?: number | null;
   };
   changes: {
     oldDate?: string;
@@ -44,6 +47,13 @@ const handler = async (req: Request): Promise<Response> => {
 
   try {
     const { taskId, cleanerEmail, cleanerName, taskData, changes }: TaskScheduleChangeEmailRequest = await req.json();
+    const workerCount = taskData.workerCount ?? 1;
+    const workerSchedule = getTaskWorkerSchedule(taskData, workerCount);
+    const previousWorkerSchedule = getTaskWorkerSchedule({
+      startTime: changes.oldStartTime ?? taskData.startTime,
+      endTime: changes.oldEndTime ?? taskData.endTime,
+      durationMinutes: taskData.durationMinutes,
+    }, workerCount);
 
     console.log('Sending task schedule change email to:', cleanerEmail, 'for task:', taskId);
 
@@ -80,19 +90,19 @@ const handler = async (req: Request): Promise<Response> => {
       `;
     }
     
-    if (changes.oldStartTime && changes.oldStartTime !== taskData.startTime) {
+    if (changes.oldStartTime && previousWorkerSchedule.startTime !== workerSchedule.startTime) {
       changesHtml += `
         <tr>
           <td style="padding: 8px 0; font-weight: bold; color: #dc2626;">⏰ Hora inicio anterior:</td>
-          <td style="padding: 8px 0; color: #dc2626; text-decoration: line-through;">${changes.oldStartTime}</td>
+          <td style="padding: 8px 0; color: #dc2626; text-decoration: line-through;">${previousWorkerSchedule.startTime}</td>
         </tr>
       `;
     }
-    if (changes.oldEndTime && changes.oldEndTime !== taskData.endTime) {
+    if (changes.oldEndTime && previousWorkerSchedule.endTime !== workerSchedule.endTime) {
       changesHtml += `
         <tr>
           <td style="padding: 8px 0; font-weight: bold; color: #dc2626;">⏰ Hora fin anterior:</td>
-          <td style="padding: 8px 0; color: #dc2626; text-decoration: line-through;">${changes.oldEndTime}</td>
+          <td style="padding: 8px 0; color: #dc2626; text-decoration: line-through;">${previousWorkerSchedule.endTime}</td>
         </tr>
       `;
     }
@@ -129,7 +139,7 @@ const handler = async (req: Request): Promise<Response> => {
                 </tr>
                 <tr style="background-color: #dcfce7;">
                   <td style="padding: 8px 0; font-weight: bold; color: #16a34a;">⏰ Nuevo horario:</td>
-                  <td style="padding: 8px 0; color: #16a34a; font-weight: bold;">${taskData.startTime} - ${taskData.endTime}</td>
+                  <td style="padding: 8px 0; color: #16a34a; font-weight: bold;">${workerSchedule.startTime} - ${workerSchedule.endTime}</td>
                 </tr>
                 ${taskData.type ? `
                 <tr>

@@ -191,9 +191,12 @@ export class TaskAssignmentService {
 
     // El trigger central de Supabase crea task_modified para todos los trabajadores.
     // Aquí se conserva únicamente el correo histórico de cambios horarios.
-    if (originalTask?.cleanerId && this.hasScheduleChanged(originalTask, updatedTask)) {
+    if (originalTask && this.hasScheduleChanged(originalTask, updatedTask)) {
       try {
-        await this.sendTaskScheduleChangeEmail(updatedTask, originalTask.cleanerId, originalTask);
+        const cleanerIds = await this.getCurrentCleanerIds(taskId, updatedTask);
+        await Promise.all(cleanerIds.map((cleanerId) =>
+          this.sendTaskScheduleChangeEmail(updatedTask, cleanerId, originalTask, cleanerIds.length)
+        ));
         console.log('Task schedule change email sent successfully');
       } catch (error) {
         console.error('Failed to send schedule change email:', error);
@@ -306,7 +309,9 @@ export class TaskAssignmentService {
         startTime: taskForEmail.startTime,
         endTime: taskForEmail.endTime,
         type: taskForEmail.type || 'Limpieza general',
-        notes: taskForEmail.supervisor ? `Supervisor: ${taskForEmail.supervisor}` : undefined
+        notes: taskForEmail.supervisor ? `Supervisor: ${taskForEmail.supervisor}` : undefined,
+        durationMinutes: freshTaskData?.duracion ?? task.duration,
+        workerCount: 1
       };
 
       console.log('📧 Final email taskData:', taskData);
@@ -333,7 +338,7 @@ export class TaskAssignmentService {
     }
   }
 
-  private async sendTaskScheduleChangeEmail(task: Task, cleanerId: string, originalTask: Task): Promise<void> {
+  private async sendTaskScheduleChangeEmail(task: Task, cleanerId: string, originalTask: Task, workerCount = 1): Promise<void> {
     try {
       // IMPORTANT: Fetch fresh task data from database to ensure we have the latest times
       const { data: freshTaskData, error: taskError } = await supabase
@@ -394,7 +399,9 @@ export class TaskAssignmentService {
         startTime: taskForEmail.startTime,
         endTime: taskForEmail.endTime,
         type: taskForEmail.type || 'Limpieza general',
-        notes: taskForEmail.supervisor ? `Supervisor: ${taskForEmail.supervisor}` : undefined
+        notes: taskForEmail.supervisor ? `Supervisor: ${taskForEmail.supervisor}` : undefined,
+        durationMinutes: freshTaskData?.duracion ?? task.duration,
+        workerCount: Math.max(1, workerCount)
       };
 
       const changes = {
@@ -489,7 +496,9 @@ export class TaskAssignmentService {
         startTime: taskForEmail.startTime,
         endTime: taskForEmail.endTime,
         type: taskForEmail.type || 'Limpieza general',
-        notes: taskForEmail.supervisor ? `Supervisor: ${taskForEmail.supervisor}` : undefined
+        notes: taskForEmail.supervisor ? `Supervisor: ${taskForEmail.supervisor}` : undefined,
+        durationMinutes: freshTaskData?.duracion ?? task.duration,
+        workerCount: 1
       };
 
       console.log('📧 Final unassignment email taskData:', taskData);
