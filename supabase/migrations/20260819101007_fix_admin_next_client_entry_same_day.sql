@@ -6,6 +6,7 @@ CREATE OR REPLACE FUNCTION public.get_admin_next_client_entry(
 )
 RETURNS TABLE(check_in_date date, updated_at timestamp with time zone)
 LANGUAGE plpgsql
+STABLE
 SECURITY DEFINER
 SET search_path = ''
 AS $function$
@@ -41,5 +42,5 @@ BEGIN
 END;
 $function$;
 
-REVOKE ALL ON FUNCTION public.get_admin_next_client_entry(uuid, date) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.get_admin_next_client_entry(uuid, date) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.get_admin_next_client_entry(uuid, date) TO authenticated;
