@@ -145,9 +145,24 @@ export const orderClassicLaundryTaskIds = async ({
 
   const orderRows = (orderResult.data || []) as any[];
   const specificOrderRows = orderRows.filter((row) => row.delivery_day === routeDay);
-  const applicableOrderRows = routeDay === GLOBAL_ROUTE_DAY || specificOrderRows.length > 0
-    ? specificOrderRows
-    : orderRows.filter((row) => row.delivery_day === GLOBAL_ROUTE_DAY);
+  const globalOrderRows = orderRows.filter((row) => row.delivery_day === GLOBAL_ROUTE_DAY);
+  const globalPositionByProperty = new Map<string, number>(
+    globalOrderRows.map((row) => [row.property_id, row.position]),
+  );
+  const taskData = (tasksResult.data || []) as any[];
+  const globalOrderCoversLink = taskData.length > 0 && taskData.every((task) => (
+    task.propiedad_id && globalPositionByProperty.has(task.propiedad_id)
+  ));
+
+  // A complete base order is authoritative for new links. This prevents an
+  // old day-specific snapshot from overriding the route order the manager
+  // explicitly configured for all routes. Day-specific rows remain useful as
+  // a fallback while the base order is still incomplete.
+  const applicableOrderRows = routeDay === GLOBAL_ROUTE_DAY || globalOrderCoversLink
+    ? globalOrderRows
+    : specificOrderRows.length > 0
+      ? specificOrderRows
+      : globalOrderRows;
   const positionByProperty = new Map<string, number>(
     applicableOrderRows.map((row) => [row.property_id, row.position]),
   );
