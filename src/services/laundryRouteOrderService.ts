@@ -1,6 +1,9 @@
 import { supabase } from '@/integrations/supabase/client';
 
+export const GLOBAL_ROUTE_DAY = -1;
+
 export const CLASSIC_ROUTE_DAYS = [
+  { value: GLOBAL_ROUTE_DAY, label: 'Todas las rutas', shortLabel: 'Todas' },
   { value: 1, label: 'Lunes', shortLabel: 'Lun' },
   { value: 3, label: 'Miércoles', shortLabel: 'Mié' },
   { value: 5, label: 'Viernes', shortLabel: 'Vie' },
@@ -40,12 +43,18 @@ export const fetchLaundryRouteOrder = async (
   const { data, error } = await routeOrderTable()
     .select('id, sede_id, delivery_day, property_id, position')
     .eq('sede_id', sedeId)
-    .eq('delivery_day', deliveryDay)
+    .in('delivery_day', deliveryDay === GLOBAL_ROUTE_DAY ? [GLOBAL_ROUTE_DAY] : [deliveryDay, GLOBAL_ROUTE_DAY])
     .order('position', { ascending: true });
 
   if (error) throw error;
 
-  return ((data || []) as any[]).map((row) => ({
+  const rows = (data || []) as any[];
+  const specificRows = rows.filter((row) => row.delivery_day === deliveryDay);
+  const applicableRows = deliveryDay === GLOBAL_ROUTE_DAY || specificRows.length > 0
+    ? specificRows
+    : rows.filter((row) => row.delivery_day === GLOBAL_ROUTE_DAY);
+
+  return applicableRows.map((row) => ({
     id: row.id,
     sedeId: row.sede_id,
     deliveryDay: row.delivery_day,
@@ -124,7 +133,7 @@ export const orderClassicLaundryTaskIds = async ({
     routeOrderTable()
       .select('property_id, position')
       .eq('sede_id', sedeId)
-      .eq('delivery_day', routeDay),
+      .in('delivery_day', routeDay === GLOBAL_ROUTE_DAY ? [GLOBAL_ROUTE_DAY] : [routeDay, GLOBAL_ROUTE_DAY]),
   ]);
 
   if (tasksResult.error || orderResult.error) {
@@ -132,8 +141,13 @@ export const orderClassicLaundryTaskIds = async ({
     return uniqueTaskIds;
   }
 
+  const orderRows = (orderResult.data || []) as any[];
+  const specificOrderRows = orderRows.filter((row) => row.delivery_day === routeDay);
+  const applicableOrderRows = routeDay === GLOBAL_ROUTE_DAY || specificOrderRows.length > 0
+    ? specificOrderRows
+    : orderRows.filter((row) => row.delivery_day === GLOBAL_ROUTE_DAY);
   const positionByProperty = new Map<string, number>(
-    ((orderResult.data || []) as any[]).map((row) => [row.property_id, row.position]),
+    applicableOrderRows.map((row) => [row.property_id, row.position]),
   );
   const taskRows = ((tasksResult.data || []) as any[]).sort((a, b) => {
     const dateCompare = String(a.date || '').localeCompare(String(b.date || ''));

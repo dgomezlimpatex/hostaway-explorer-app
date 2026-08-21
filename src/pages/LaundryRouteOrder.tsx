@@ -32,7 +32,7 @@ const LaundryRouteOrder = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const propertiesQuery = useProperties();
-  const [selectedDay, setSelectedDay] = useState<number>(1);
+  const [selectedDay, setSelectedDay] = useState<number>(-1);
   const [orderedIds, setOrderedIds] = useState<string[]>([]);
   const [savedIds, setSavedIds] = useState<string[]>([]);
   const [search, setSearch] = useState('');
@@ -142,6 +142,9 @@ const LaundryRouteOrder = () => {
   };
 
   const selectedDayLabel = CLASSIC_ROUTE_DAYS.find((day) => day.value === selectedDay)?.label || 'ruta';
+  const selectedRouteTitle = selectedDay === -1
+    ? 'Orden base para todas las rutas'
+    : `Ruta del ${selectedDayLabel}`;
   const hasChanges = JSON.stringify(orderedIds) !== JSON.stringify(savedIds);
   const isLoading = propertiesQuery.isLoading || routeOrderQuery.isLoading;
   const unconfiguredCount = Math.max(activeProperties.length - configuredPropertyIds.size, 0);
@@ -205,8 +208,8 @@ const LaundryRouteOrder = () => {
         <div className="grid gap-5 lg:grid-cols-[292px_minmax(0,1fr)]">
           <Card className="h-fit lg:sticky lg:top-24">
             <CardHeader className="pb-3">
-              <CardTitle className="text-sm">Día de reparto</CardTitle>
-              <CardDescription className="text-xs">Configura cada recorrido por separado.</CardDescription>
+              <CardTitle className="text-sm">Orden de las rutas</CardTitle>
+              <CardDescription className="text-xs">Usa un orden común o crea una excepción.</CardDescription>
             </CardHeader>
             <CardContent className="grid grid-cols-2 gap-2 lg:grid-cols-1">
               {CLASSIC_ROUTE_DAYS.map((day) => (
@@ -214,11 +217,11 @@ const LaundryRouteOrder = () => {
                   key={day.value}
                   type="button"
                   onClick={() => setSelectedDay(day.value)}
-                  className={`rounded-lg border px-3 py-2 text-left text-sm font-semibold transition-colors ${selectedDay === day.value ? 'border-primary bg-primary text-primary-foreground' : 'border-border hover:bg-muted'}`}
+                  className={`rounded-lg border px-3 py-2 text-left text-sm font-semibold transition-colors ${day.value === -1 ? 'col-span-2 lg:col-span-1' : ''} ${selectedDay === day.value ? 'border-primary bg-primary text-primary-foreground' : 'border-border hover:bg-muted'}`}
                 >
                   <span className="block">{day.label}</span>
                   <span className={`text-[11px] font-normal ${selectedDay === day.value ? 'text-primary-foreground/75' : 'text-muted-foreground'}`}>
-                    {day.value === 1 ? 'Servicios del lunes' : day.value === 3 ? 'Servicios de martes y miércoles' : day.value === 5 ? 'Servicios de jueves y viernes' : 'Servicios de sábado y domingo'}
+                    {day.value === -1 ? 'Orden base para todos los días' : day.value === 1 ? 'Servicios del lunes' : day.value === 3 ? 'Servicios de martes y miércoles' : day.value === 5 ? 'Servicios de jueves y viernes' : 'Servicios de sábado y domingo'}
                   </span>
                 </button>
               ))}
@@ -229,7 +232,7 @@ const LaundryRouteOrder = () => {
             <CardHeader className="border-b border-border/60 bg-muted/10 pb-4">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
                 <div>
-                  <CardTitle className="text-lg">Ruta del {selectedDayLabel}</CardTitle>
+                  <CardTitle className="text-lg">{selectedRouteTitle}</CardTitle>
                   <CardDescription>
                     {search ? `${visibleIds.length} resultados de ${orderedIds.length}` : `${orderedIds.length} propiedades activas`} · {hasChanges ? 'Cambios sin guardar' : 'Orden guardado'}
                   </CardDescription>
