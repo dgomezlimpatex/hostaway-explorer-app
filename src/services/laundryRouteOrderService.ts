@@ -107,7 +107,9 @@ export const saveLaundryRouteOrder = async ({
 };
 
 /**
- * Orders a classic link snapshot while keeping dates chronological.
+ * Orders a classic link snapshot by the configured route first.
+ * Dates are used as a tie-breaker so multi-day routes keep each property's
+ * services chronological without breaking the manually defined route.
  * Unconfigured properties are intentionally placed after configured ones.
  */
 export const orderClassicLaundryTaskIds = async ({
@@ -150,12 +152,12 @@ export const orderClassicLaundryTaskIds = async ({
     applicableOrderRows.map((row) => [row.property_id, row.position]),
   );
   const taskRows = ((tasksResult.data || []) as any[]).sort((a, b) => {
-    const dateCompare = String(a.date || '').localeCompare(String(b.date || ''));
-    if (dateCompare !== 0) return dateCompare;
-
     const positionA = positionByProperty.get(a.propiedad_id) ?? Number.MAX_SAFE_INTEGER;
     const positionB = positionByProperty.get(b.propiedad_id) ?? Number.MAX_SAFE_INTEGER;
     if (positionA !== positionB) return positionA - positionB;
+
+    const dateCompare = String(a.date || '').localeCompare(String(b.date || ''));
+    if (dateCompare !== 0) return dateCompare;
 
     const timeCompare = String(a.start_time || '').localeCompare(String(b.start_time || ''));
     if (timeCompare !== 0) return timeCompare;
