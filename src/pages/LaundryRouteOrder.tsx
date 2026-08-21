@@ -6,6 +6,8 @@ import {
   ArrowLeft,
   ArrowUp,
   Check,
+  ChevronDown,
+  ChevronRight,
   GripVertical,
   Info,
   Loader2,
@@ -48,6 +50,7 @@ const LaundryRouteOrder = () => {
   const [savedIds, setSavedIds] = useState<string[]>([]);
   const [search, setSearch] = useState('');
   const [draggingBlockKey, setDraggingBlockKey] = useState<string | null>(null);
+  const [expandedBlockKeys, setExpandedBlockKeys] = useState<Set<string>>(() => new Set());
 
   const routeOrderQuery = useQuery({
     queryKey: ['laundry-classic-route-order', activeSede?.id, selectedDay],
@@ -212,16 +215,12 @@ const LaundryRouteOrder = () => {
     });
   };
 
-  const moveProperty = (propertyId: string, direction: -1 | 1) => {
-    setOrderedIds((current) => {
-      const blocks = routeBlocks.map((block) => ({ ...block, propertyIds: [...block.propertyIds] }));
-      const block = blocks.find((candidate) => candidate.propertyIds.includes(propertyId));
-      if (!block) return current;
-      const index = block.propertyIds.indexOf(propertyId);
-      const nextIndex = index + direction;
-      if (index < 0 || nextIndex < 0 || nextIndex >= block.propertyIds.length) return current;
-      [block.propertyIds[index], block.propertyIds[nextIndex]] = [block.propertyIds[nextIndex], block.propertyIds[index]];
-      return flattenBlocks(blocks);
+  const toggleBlock = (blockKey: string) => {
+    setExpandedBlockKeys((current) => {
+      const next = new Set(current);
+      if (next.has(blockKey)) next.delete(blockKey);
+      else next.add(blockKey);
+      return next;
     });
   };
 
@@ -266,7 +265,7 @@ const LaundryRouteOrder = () => {
                 <div>
                   <CardTitle className="text-lg">¿En qué orden se hace la ruta?</CardTitle>
                   <CardDescription className="mt-1 max-w-2xl">
-                    Organiza las propiedades como las recorre el repartidor. El enlace clásico respetará este orden después de la fecha.
+                    Organiza los edificios como los recorre el repartidor. El enlace clásico respetará este orden después de la fecha.
                   </CardDescription>
                 </div>
               </div>
@@ -287,7 +286,7 @@ const LaundryRouteOrder = () => {
             </div>
             <div className="mt-4 flex items-start gap-2 rounded-lg border border-primary/15 bg-primary/5 p-3 text-xs text-muted-foreground">
               <Info className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
-              <span>Solo aparecen propiedades activas con lavandería activada. Las propiedades nuevas o sin ordenar se añaden al final; los grupos se guardan como bloques dentro del enlace clásico.</span>
+              <span>Solo aparecen propiedades activas con lavandería activada. Ordena los edificios como bloques; sus propiedades se mantienen dentro del edificio y se ocultan para facilitar la ruta.</span>
             </div>
           </CardHeader>
         </Card>
@@ -326,7 +325,7 @@ const LaundryRouteOrder = () => {
                 </div>
                 <div className="relative w-full sm:w-64">
                   <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                  <Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar propiedad..." className="pl-9" />
+                  <Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar edificio o propiedad..." className="pl-9" />
                 </div>
               </div>
             </CardHeader>
@@ -353,17 +352,25 @@ const LaundryRouteOrder = () => {
                         className={`rounded-xl border bg-card p-3 transition-all ${draggingBlockKey === block.key ? 'opacity-50' : 'hover:border-primary/40 hover:shadow-sm'}`}
                       >
                         <div className="flex items-center gap-3">
-                          <GripVertical className="hidden h-5 w-5 shrink-0 cursor-grab text-muted-foreground sm:block" />
-                          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-bold text-primary">{absoluteIndex + 1}</span>
-                          <div className="min-w-0 flex-1">
-                            <div className="flex flex-wrap items-center gap-2">
-                              <span className="font-semibold">{block.title}</span>
-                              <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-primary">
-                                {block.propertyIds.length} {block.propertyIds.length === 1 ? 'propiedad' : 'propiedades'}
-                              </span>
+                          <button
+                            type="button"
+                            onClick={() => toggleBlock(block.key)}
+                            aria-expanded={expandedBlockKeys.has(block.key)}
+                            className="flex min-w-0 flex-1 items-center gap-3 text-left"
+                          >
+                            {expandedBlockKeys.has(block.key) ? <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />}
+                            <GripVertical className="hidden h-5 w-5 shrink-0 cursor-grab text-muted-foreground sm:block" />
+                            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-bold text-primary">{absoluteIndex + 1}</span>
+                            <div className="min-w-0 flex-1">
+                              <div className="flex flex-wrap items-center gap-2">
+                                <span className="font-semibold">{block.title}</span>
+                                <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-primary">
+                                  {block.propertyIds.length} {block.propertyIds.length === 1 ? 'propiedad' : 'propiedades'}
+                                </span>
+                              </div>
+                              <p className="truncate text-xs text-muted-foreground">{block.subtitle}</p>
                             </div>
-                            <p className="truncate text-xs text-muted-foreground">{block.subtitle}</p>
-                          </div>
+                          </button>
                           <div className="flex shrink-0 items-center gap-1">
                             <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => moveBlock(block.key, -1)} disabled={absoluteIndex === 0} aria-label="Subir edificio">
                               <ArrowUp className="h-4 w-4" />
@@ -374,8 +381,9 @@ const LaundryRouteOrder = () => {
                           </div>
                         </div>
 
-                        <div className="mt-3 space-y-1.5 border-t border-border/60 pt-3">
-                          {block.propertyIds.map((propertyId, propertyIndex) => {
+                        {expandedBlockKeys.has(block.key) && (
+                          <div className="mt-3 space-y-1.5 border-t border-border/60 pt-3">
+                            {block.propertyIds.map((propertyId, propertyIndex) => {
                             const property = propertyById.get(propertyId);
                             if (!property) return null;
                             return (
@@ -385,18 +393,11 @@ const LaundryRouteOrder = () => {
                                   <p className="truncate text-sm font-medium">{property.codigo}</p>
                                   <p className="truncate text-[11px] text-muted-foreground">{property.nombre}{property.direccion ? ` · ${property.direccion}` : ''}</p>
                                 </div>
-                                <div className="flex shrink-0 items-center gap-0.5">
-                                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => moveProperty(property.id, -1)} disabled={propertyIndex === 0} aria-label={`Subir ${property.codigo}`}>
-                                    <ArrowUp className="h-3.5 w-3.5" />
-                                  </Button>
-                                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => moveProperty(property.id, 1)} disabled={propertyIndex === block.propertyIds.length - 1} aria-label={`Bajar ${property.codigo}`}>
-                                    <ArrowDown className="h-3.5 w-3.5" />
-                                  </Button>
-                                </div>
                               </div>
                             );
-                          })}
-                        </div>
+                            })}
+                          </div>
+                        )}
                       </div>
                     );
                   })}
