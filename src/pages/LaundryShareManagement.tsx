@@ -546,7 +546,7 @@ const LaundryShareManagement = () => {
     <div className="min-h-screen bg-muted/30">
       {/* Sticky header */}
       <div className="sticky top-0 z-30 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 border-b border-border/60">
-        <div className="container mx-auto px-4 max-w-4xl">
+        <div className="container mx-auto px-4 max-w-7xl">
           <div className="flex items-center justify-between gap-3 py-4">
             <div className="flex items-center gap-3 min-w-0">
               <button
@@ -564,20 +564,27 @@ const LaundryShareManagement = () => {
                 </p>
               </div>
             </div>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <button className="p-2.5 bg-card hover:bg-muted rounded-xl border border-border shadow-sm text-muted-foreground hover:text-foreground transition-all shrink-0">
-                  <MoreHorizontal className="w-4 h-4" />
-                </button>
-              </DropdownMenuTrigger>
+            <div className="flex items-center gap-2 shrink-0">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => navigate('/lavanderia/orden')}
+                className="h-10 gap-2 rounded-xl bg-card px-3 shadow-sm"
+              >
+                <Route className="h-4 w-4 text-primary" />
+                <span className="hidden sm:inline">Orden de rutas</span>
+                <span className="sm:hidden">Rutas</span>
+              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button className="p-2.5 bg-card hover:bg-muted rounded-xl border border-border shadow-sm text-muted-foreground hover:text-foreground transition-all shrink-0">
+                    <MoreHorizontal className="w-4 h-4" />
+                  </button>
+                </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-52">
                 <DropdownMenuItem onClick={() => setConfigModalOpen(true)}>
                   <Calendar className="h-4 w-4 mr-2" />
                   Configurar horarios
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => navigate('/lavanderia/orden')}>
-                  <Route className="h-4 w-4 mr-2" />
-                  Orden de rutas
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => setShowExpired(v => !v)} disabled={expiredLinks.length === 0}>
                   {showExpired ? <ChevronUp className="h-4 w-4 mr-2" /> : <ChevronDown className="h-4 w-4 mr-2" />}
@@ -593,12 +600,13 @@ const LaundryShareManagement = () => {
                   Limpiar expirados
                 </DropdownMenuItem>
               </DropdownMenuContent>
-            </DropdownMenu>
+              </DropdownMenu>
+            </div>
           </div>
         </div>
       </div>
 
-      <div className="container mx-auto py-6 px-4 max-w-4xl space-y-6">
+      <div className="container mx-auto py-6 px-4 max-w-7xl space-y-6">
 
         {/* Delivery schedule */}
         <div className="rounded-2xl border border-border bg-card p-5">

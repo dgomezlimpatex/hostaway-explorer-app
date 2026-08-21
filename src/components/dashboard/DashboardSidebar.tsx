@@ -30,7 +30,6 @@ import {
   Bot,
   MessageCircle,
   Calculator,
-  Route,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useRolePermissions } from '@/hooks/useRolePermissions';
@@ -139,12 +138,6 @@ const managementItems: NavigationItem[] = [
     title: 'Lavandería',
     href: '/lavanderia/gestion',
     icon: Shirt,
-    permission: 'reports'
-  },
-  {
-    title: 'Orden de rutas',
-    href: '/lavanderia/orden',
-    icon: Route,
     permission: 'reports'
   },
   {

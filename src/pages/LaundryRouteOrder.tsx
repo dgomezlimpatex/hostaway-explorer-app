@@ -50,6 +50,15 @@ const LaundryRouteOrder = () => {
       .sort((a, b) => a.codigo.localeCompare(b.codigo, 'es', { numeric: true }));
   }, [propertiesQuery.data]);
 
+  const configuredPropertyIds = useMemo(() => {
+    const activeIds = new Set(activeProperties.map((property) => property.id));
+    return new Set(
+      (routeOrderQuery.data || [])
+        .filter((item) => activeIds.has(item.propertyId))
+        .map((item) => item.propertyId),
+    );
+  }, [activeProperties, routeOrderQuery.data]);
+
   useEffect(() => {
     if (!routeOrderQuery.data || !propertiesQuery.data) return;
     const activeIds = new Set(activeProperties.map((property) => property.id));
@@ -135,11 +144,12 @@ const LaundryRouteOrder = () => {
   const selectedDayLabel = CLASSIC_ROUTE_DAYS.find((day) => day.value === selectedDay)?.label || 'ruta';
   const hasChanges = JSON.stringify(orderedIds) !== JSON.stringify(savedIds);
   const isLoading = propertiesQuery.isLoading || routeOrderQuery.isLoading;
+  const unconfiguredCount = Math.max(activeProperties.length - configuredPropertyIds.size, 0);
 
   return (
     <div className="min-h-screen bg-muted/30">
       <header className="sticky top-0 z-20 border-b border-border/60 bg-background/95 backdrop-blur">
-        <div className="mx-auto flex max-w-5xl items-center justify-between gap-3 px-4 py-4">
+        <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-4 lg:px-6">
           <div className="flex min-w-0 items-center gap-3">
             <Button variant="outline" size="icon" onClick={() => navigate('/lavanderia/gestion')}>
               <ArrowLeft className="h-4 w-4" />
@@ -157,16 +167,32 @@ const LaundryRouteOrder = () => {
         </div>
       </header>
 
-      <main className="mx-auto max-w-5xl space-y-5 px-4 py-6">
-        <Card>
-          <CardHeader className="pb-4">
-            <div className="flex items-start gap-3">
-              <div className="rounded-xl bg-primary/10 p-2.5 text-primary"><Route className="h-5 w-5" /></div>
-              <div>
-                <CardTitle className="text-lg">¿En qué orden se hace la ruta?</CardTitle>
-                <CardDescription className="mt-1">
-                  Organiza las propiedades como las recorre el repartidor. El enlace clásico respetará este orden después de la fecha.
-                </CardDescription>
+      <main className="mx-auto max-w-7xl space-y-5 px-4 py-6 lg:px-6">
+        <Card className="overflow-hidden">
+          <CardHeader className="border-b border-border/60 bg-card pb-5">
+            <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+              <div className="flex items-start gap-3">
+                <div className="rounded-xl bg-primary/10 p-2.5 text-primary"><Route className="h-5 w-5" /></div>
+                <div>
+                  <CardTitle className="text-lg">¿En qué orden se hace la ruta?</CardTitle>
+                  <CardDescription className="mt-1 max-w-2xl">
+                    Organiza las propiedades como las recorre el repartidor. El enlace clásico respetará este orden después de la fecha.
+                  </CardDescription>
+                </div>
+              </div>
+              <div className="grid grid-cols-3 gap-2 xl:min-w-[390px]">
+                <div className="rounded-xl border border-border/70 bg-muted/30 px-3 py-2">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Activas</p>
+                  <p className="mt-1 text-xl font-bold tracking-tight">{activeProperties.length}</p>
+                </div>
+                <div className="rounded-xl border border-emerald-200 bg-emerald-50/70 px-3 py-2 dark:border-emerald-900 dark:bg-emerald-950/30">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-300">Ordenadas</p>
+                  <p className="mt-1 text-xl font-bold tracking-tight text-emerald-800 dark:text-emerald-200">{configuredPropertyIds.size}</p>
+                </div>
+                <div className="rounded-xl border border-amber-200 bg-amber-50/70 px-3 py-2 dark:border-amber-900 dark:bg-amber-950/30">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-amber-700 dark:text-amber-300">Al final</p>
+                  <p className="mt-1 text-xl font-bold tracking-tight text-amber-800 dark:text-amber-200">{unconfiguredCount}</p>
+                </div>
               </div>
             </div>
             <div className="mt-4 flex items-start gap-2 rounded-lg border border-primary/15 bg-primary/5 p-3 text-xs text-muted-foreground">
@@ -176,8 +202,8 @@ const LaundryRouteOrder = () => {
           </CardHeader>
         </Card>
 
-        <div className="grid gap-5 lg:grid-cols-[220px_1fr]">
-          <Card className="h-fit">
+        <div className="grid gap-5 lg:grid-cols-[292px_minmax(0,1fr)]">
+          <Card className="h-fit lg:sticky lg:top-24">
             <CardHeader className="pb-3">
               <CardTitle className="text-sm">Día de reparto</CardTitle>
               <CardDescription className="text-xs">Configura cada recorrido por separado.</CardDescription>
@@ -199,13 +225,13 @@ const LaundryRouteOrder = () => {
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader className="border-b border-border/60 pb-4">
+          <Card className="min-w-0 overflow-hidden">
+            <CardHeader className="border-b border-border/60 bg-muted/10 pb-4">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
                 <div>
                   <CardTitle className="text-lg">Ruta del {selectedDayLabel}</CardTitle>
                   <CardDescription>
-                    {orderedIds.length} propiedades activas · {hasChanges ? 'Cambios sin guardar' : 'Orden guardado'}
+                    {search ? `${visibleIds.length} resultados de ${orderedIds.length}` : `${orderedIds.length} propiedades activas`} · {hasChanges ? 'Cambios sin guardar' : 'Orden guardado'}
                   </CardDescription>
                 </div>
                 <div className="relative w-full sm:w-64">
@@ -214,7 +240,7 @@ const LaundryRouteOrder = () => {
                 </div>
               </div>
             </CardHeader>
-            <CardContent className="pt-4">
+            <CardContent className="pt-4 lg:max-h-[calc(100vh-320px)] lg:overflow-y-auto">
               {isLoading ? (
                 <div className="flex items-center justify-center py-16 text-muted-foreground"><RefreshCw className="mr-2 h-5 w-5 animate-spin" /> Cargando propiedades...</div>
               ) : visibleIds.length === 0 ? (
