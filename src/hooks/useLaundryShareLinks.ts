@@ -108,6 +108,20 @@ export const useLaundryShareLinks = () => {
       if (!userData.user) throw new Error('Usuario no autenticado');
 
       const token = generateToken();
+      const routeOrderApplied = params.routeOrderApplied
+        ?? params.workflowVersion !== 'route_v2';
+      const deliveryDay = params.deliveryDay
+        ?? (params.filters?.deliveryDate
+          ? getDateDayOfWeek(params.filters.deliveryDate)
+          : null);
+      const snapshotTaskIds = routeOrderApplied
+        ? await orderClassicLaundryTaskIds({
+            taskIds: params.taskIds,
+            sedeId: params.sedeId,
+            dateStart: params.dateStart,
+            deliveryDay,
+          })
+        : params.taskIds;
       
       const insertData = {
         token,
@@ -115,16 +129,15 @@ export const useLaundryShareLinks = () => {
         sede_id: params.sedeId,
         date_start: params.dateStart,
         date_end: params.dateEnd,
-        delivery_day: params.deliveryDay ?? null,
+        delivery_day: deliveryDay,
         expires_at: params.isPermanent ? null : params.expiresAt,
         is_permanent: params.isPermanent,
-        snapshot_task_ids: params.taskIds,
+        snapshot_task_ids: snapshotTaskIds,
         original_task_ids: params.allTaskIds, // Store all tasks at creation time
         filters: params.filters || {},
         link_type: params.linkType || 'legacy',
         workflow_version: params.workflowVersion || 'legacy',
-        route_order_applied: params.routeOrderApplied
-          ?? params.workflowVersion !== 'route_v2',
+        route_order_applied: routeOrderApplied,
       };
 
       const { data, error } = await (supabase as any)
