@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { useSede } from '@/contexts/SedeContext';
 import { useProperties } from '@/hooks/useProperties';
+import { useAllPropertyAssignments, usePropertyGroups } from '@/hooks/usePropertyGroups';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -26,17 +27,27 @@ import {
   saveLaundryRouteOrder,
 } from '@/services/laundryRouteOrderService';
 
+interface RouteBlock {
+  key: string;
+  groupId: string | null;
+  title: string;
+  subtitle: string;
+  propertyIds: string[];
+}
+
 const LaundryRouteOrder = () => {
   const navigate = useNavigate();
   const { activeSede } = useSede();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const propertiesQuery = useProperties();
+  const propertyGroupsQuery = usePropertyGroups();
+  const propertyAssignmentsQuery = useAllPropertyAssignments();
   const [selectedDay, setSelectedDay] = useState<number>(-1);
   const [orderedIds, setOrderedIds] = useState<string[]>([]);
   const [savedIds, setSavedIds] = useState<string[]>([]);
   const [search, setSearch] = useState('');
-  const [draggingId, setDraggingId] = useState<string | null>(null);
+  const [draggingBlockKey, setDraggingBlockKey] = useState<string | null>(null);
 
   const routeOrderQuery = useQuery({
     queryKey: ['laundry-classic-route-order', activeSede?.id, selectedDay],
@@ -46,9 +57,44 @@ const LaundryRouteOrder = () => {
 
   const activeProperties = useMemo(() => {
     return (propertiesQuery.data || [])
-      .filter((property) => property.isActive !== false && property.clientIsActive !== false)
+      .filter((property) => {
+        const laundryEnabled = property.linenControlEnabled ?? property.clientLinenControlEnabled ?? false;
+        return property.isActive !== false
+          && property.clientIsActive !== false
+          && laundryEnabled;
+      })
       .sort((a, b) => a.codigo.localeCompare(b.codigo, 'es', { numeric: true }));
   }, [propertiesQuery.data]);
+
+  const propertyById = useMemo(
+    () => new Map(activeProperties.map((property) => [property.id, property])),
+    [activeProperties],
+  );
+
+  const activeGroupById = useMemo(
+    () => new Map(
+      (propertyGroupsQuery.data || [])
+        .filter((group) => group.isActive)
+        .map((group) => [group.id, group]),
+    ),
+    [propertyGroupsQuery.data],
+  );
+
+  const groupIdByPropertyId = useMemo(() => {
+    const activePropertyIds = new Set(activeProperties.map((property) => property.id));
+    const assignments = new Map<string, string>();
+    (propertyAssignmentsQuery.data || []).forEach((assignment) => {
+      if (
+        assignment.propertyId
+        && assignment.propertyGroupId
+        && activePropertyIds.has(assignment.propertyId)
+        && activeGroupById.has(assignment.propertyGroupId)
+      ) {
+        assignments.set(assignment.propertyId, assignment.propertyGroupId);
+      }
+    });
+    return assignments;
+  }, [activeGroupById, activeProperties, propertyAssignmentsQuery.data]);
 
   const configuredPropertyIds = useMemo(() => {
     const activeIds = new Set(activeProperties.map((property) => property.id));
@@ -63,6 +109,7 @@ const LaundryRouteOrder = () => {
     if (!routeOrderQuery.data || !propertiesQuery.data) return;
     const activeIds = new Set(activeProperties.map((property) => property.id));
     const configuredIds = routeOrderQuery.data
+      .slice()
       .sort((a, b) => a.position - b.position)
       .map((item) => item.propertyId)
       .filter((id) => activeIds.has(id));
@@ -101,43 +148,80 @@ const LaundryRouteOrder = () => {
     },
   });
 
-  const propertyById = useMemo(
-    () => new Map(activeProperties.map((property) => [property.id, property])),
-    [activeProperties],
-  );
+  const routeBlocks = useMemo<RouteBlock[]>(() => {
+    const blocks = new Map<string, RouteBlock>();
 
-  const visibleIds = useMemo(() => {
-    const query = search.trim().toLocaleLowerCase();
-    if (!query) return orderedIds;
-    return orderedIds.filter((id) => {
-      const property = propertyById.get(id);
-      return property?.codigo.toLocaleLowerCase().includes(query)
-        || property?.nombre.toLocaleLowerCase().includes(query)
-        || property?.direccion.toLocaleLowerCase().includes(query);
+    orderedIds.forEach((propertyId) => {
+      const property = propertyById.get(propertyId);
+      if (!property) return;
+
+      const groupId = groupIdByPropertyId.get(propertyId) || null;
+      const key = groupId ? `group:${groupId}` : `property:${propertyId}`;
+      const group = groupId ? activeGroupById.get(groupId) : null;
+      const title = group?.displayName || group?.name || property.codigo;
+      const subtitle = group
+        ? `${group.internalCode ? `${group.internalCode} · ` : ''}${group.name}`
+        : property.nombre;
+
+      if (!blocks.has(key)) {
+        blocks.set(key, { key, groupId, title, subtitle, propertyIds: [] });
+      }
+      blocks.get(key)!.propertyIds.push(propertyId);
     });
-  }, [orderedIds, propertyById, search]);
 
-  const moveProperty = (propertyId: string, direction: -1 | 1) => {
+    return Array.from(blocks.values());
+  }, [activeGroupById, groupIdByPropertyId, orderedIds, propertyById]);
+
+  const visibleBlocks = useMemo(() => {
+    const query = search.trim().toLocaleLowerCase();
+    if (!query) return routeBlocks;
+    return routeBlocks.filter((block) => {
+      if (`${block.title} ${block.subtitle}`.toLocaleLowerCase().includes(query)) return true;
+      return block.propertyIds.some((propertyId) => {
+        const property = propertyById.get(propertyId);
+        return `${property?.codigo || ''} ${property?.nombre || ''} ${property?.direccion || ''}`
+          .toLocaleLowerCase()
+          .includes(query);
+      });
+    });
+  }, [propertyById, routeBlocks, search]);
+
+  const flattenBlocks = (blocks: RouteBlock[]) => blocks.flatMap((block) => block.propertyIds);
+
+  const moveBlock = (blockKey: string, direction: -1 | 1) => {
     setOrderedIds((current) => {
-      const index = current.indexOf(propertyId);
+      const blocks = routeBlocks.map((block) => ({ ...block, propertyIds: [...block.propertyIds] }));
+      const index = blocks.findIndex((block) => block.key === blockKey);
       const nextIndex = index + direction;
-      if (index < 0 || nextIndex < 0 || nextIndex >= current.length) return current;
-      const next = [...current];
-      [next[index], next[nextIndex]] = [next[nextIndex], next[index]];
-      return next;
+      if (index < 0 || nextIndex < 0 || nextIndex >= blocks.length) return current;
+      [blocks[index], blocks[nextIndex]] = [blocks[nextIndex], blocks[index]];
+      return flattenBlocks(blocks);
     });
   };
 
-  const moveBefore = (sourceId: string, targetId: string) => {
-    if (sourceId === targetId) return;
+  const moveBlockBefore = (sourceKey: string, targetKey: string) => {
+    if (sourceKey === targetKey) return;
     setOrderedIds((current) => {
-      const sourceIndex = current.indexOf(sourceId);
-      const targetIndex = current.indexOf(targetId);
+      const blocks = routeBlocks.map((block) => ({ ...block, propertyIds: [...block.propertyIds] }));
+      const sourceIndex = blocks.findIndex((block) => block.key === sourceKey);
+      const targetIndex = blocks.findIndex((block) => block.key === targetKey);
       if (sourceIndex < 0 || targetIndex < 0) return current;
-      const next = [...current];
-      next.splice(sourceIndex, 1);
-      next.splice(next.indexOf(targetId), 0, sourceId);
-      return next;
+      const [source] = blocks.splice(sourceIndex, 1);
+      blocks.splice(blocks.findIndex((block) => block.key === targetKey), 0, source);
+      return flattenBlocks(blocks);
+    });
+  };
+
+  const moveProperty = (propertyId: string, direction: -1 | 1) => {
+    setOrderedIds((current) => {
+      const blocks = routeBlocks.map((block) => ({ ...block, propertyIds: [...block.propertyIds] }));
+      const block = blocks.find((candidate) => candidate.propertyIds.includes(propertyId));
+      if (!block) return current;
+      const index = block.propertyIds.indexOf(propertyId);
+      const nextIndex = index + direction;
+      if (index < 0 || nextIndex < 0 || nextIndex >= block.propertyIds.length) return current;
+      [block.propertyIds[index], block.propertyIds[nextIndex]] = [block.propertyIds[nextIndex], block.propertyIds[index]];
+      return flattenBlocks(blocks);
     });
   };
 
@@ -146,7 +230,10 @@ const LaundryRouteOrder = () => {
     ? 'Orden base para todas las rutas'
     : `Ruta del ${selectedDayLabel}`;
   const hasChanges = JSON.stringify(orderedIds) !== JSON.stringify(savedIds);
-  const isLoading = propertiesQuery.isLoading || routeOrderQuery.isLoading;
+  const isLoading = propertiesQuery.isLoading
+    || routeOrderQuery.isLoading
+    || propertyGroupsQuery.isLoading
+    || propertyAssignmentsQuery.isLoading;
   const unconfiguredCount = Math.max(activeProperties.length - configuredPropertyIds.size, 0);
 
   return (
@@ -185,7 +272,7 @@ const LaundryRouteOrder = () => {
               </div>
               <div className="grid grid-cols-3 gap-2 xl:min-w-[390px]">
                 <div className="rounded-xl border border-border/70 bg-muted/30 px-3 py-2">
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Activas</p>
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Con lavandería</p>
                   <p className="mt-1 text-xl font-bold tracking-tight">{activeProperties.length}</p>
                 </div>
                 <div className="rounded-xl border border-emerald-200 bg-emerald-50/70 px-3 py-2 dark:border-emerald-900 dark:bg-emerald-950/30">
@@ -200,7 +287,7 @@ const LaundryRouteOrder = () => {
             </div>
             <div className="mt-4 flex items-start gap-2 rounded-lg border border-primary/15 bg-primary/5 p-3 text-xs text-muted-foreground">
               <Info className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
-              <span>Las propiedades nuevas o sin ordenar se añaden al final. Los enlaces ya compartidos conservan su orden hasta que se actualicen.</span>
+              <span>Solo aparecen propiedades activas con lavandería activada. Las propiedades nuevas o sin ordenar se añaden al final; los grupos se guardan como bloques dentro del enlace clásico.</span>
             </div>
           </CardHeader>
         </Card>
@@ -234,7 +321,7 @@ const LaundryRouteOrder = () => {
                 <div>
                   <CardTitle className="text-lg">{selectedRouteTitle}</CardTitle>
                   <CardDescription>
-                    {search ? `${visibleIds.length} resultados de ${orderedIds.length}` : `${orderedIds.length} propiedades activas`} · {hasChanges ? 'Cambios sin guardar' : 'Orden guardado'}
+                    {search ? `${visibleBlocks.length} bloques encontrados` : `${routeBlocks.length} bloques · ${orderedIds.length} propiedades`} · {hasChanges ? 'Cambios sin guardar' : 'Orden guardado'}
                   </CardDescription>
                 </div>
                 <div className="relative w-full sm:w-64">
@@ -246,42 +333,69 @@ const LaundryRouteOrder = () => {
             <CardContent className="pt-4 lg:max-h-[calc(100vh-320px)] lg:overflow-y-auto">
               {isLoading ? (
                 <div className="flex items-center justify-center py-16 text-muted-foreground"><RefreshCw className="mr-2 h-5 w-5 animate-spin" /> Cargando propiedades...</div>
-              ) : visibleIds.length === 0 ? (
-                <div className="rounded-xl border border-dashed p-8 text-center text-sm text-muted-foreground">No hay propiedades activas que coincidan con la búsqueda.</div>
+              ) : visibleBlocks.length === 0 ? (
+                <div className="rounded-xl border border-dashed p-8 text-center text-sm text-muted-foreground">No hay bloques ni propiedades con lavandería activa que coincidan con la búsqueda.</div>
               ) : (
                 <div className="space-y-2">
-                  {visibleIds.map((propertyId) => {
-                    const property = propertyById.get(propertyId);
-                    if (!property) return null;
-                    const absoluteIndex = orderedIds.indexOf(propertyId);
+                  {visibleBlocks.map((block) => {
+                    const absoluteIndex = routeBlocks.indexOf(block);
                     return (
                       <div
-                        key={property.id}
+                        key={block.key}
                         draggable
-                        onDragStart={() => setDraggingId(property.id)}
-                        onDragEnd={() => setDraggingId(null)}
+                        onDragStart={() => setDraggingBlockKey(block.key)}
+                        onDragEnd={() => setDraggingBlockKey(null)}
                         onDragOver={(event) => event.preventDefault()}
                         onDrop={() => {
-                          if (draggingId) moveBefore(draggingId, property.id);
-                          setDraggingId(null);
+                          if (draggingBlockKey) moveBlockBefore(draggingBlockKey, block.key);
+                          setDraggingBlockKey(null);
                         }}
-                        className={`flex items-center gap-3 rounded-xl border bg-card px-3 py-3 transition-all ${draggingId === property.id ? 'opacity-50' : 'hover:border-primary/40 hover:shadow-sm'}`}
+                        className={`rounded-xl border bg-card p-3 transition-all ${draggingBlockKey === block.key ? 'opacity-50' : 'hover:border-primary/40 hover:shadow-sm'}`}
                       >
-                        <GripVertical className="hidden h-5 w-5 shrink-0 cursor-grab text-muted-foreground sm:block" />
-                        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-bold text-primary">{absoluteIndex + 1}</span>
-                        <div className="min-w-0 flex-1">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <span className="font-semibold">{property.codigo}</span>
+                        <div className="flex items-center gap-3">
+                          <GripVertical className="hidden h-5 w-5 shrink-0 cursor-grab text-muted-foreground sm:block" />
+                          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-bold text-primary">{absoluteIndex + 1}</span>
+                          <div className="min-w-0 flex-1">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className="font-semibold">{block.title}</span>
+                              <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-primary">
+                                {block.propertyIds.length} {block.propertyIds.length === 1 ? 'propiedad' : 'propiedades'}
+                              </span>
+                            </div>
+                            <p className="truncate text-xs text-muted-foreground">{block.subtitle}</p>
                           </div>
-                          <p className="truncate text-xs text-muted-foreground">{property.nombre}{property.direccion ? ` · ${property.direccion}` : ''}</p>
+                          <div className="flex shrink-0 items-center gap-1">
+                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => moveBlock(block.key, -1)} disabled={absoluteIndex === 0} aria-label="Subir edificio">
+                              <ArrowUp className="h-4 w-4" />
+                            </Button>
+                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => moveBlock(block.key, 1)} disabled={absoluteIndex === routeBlocks.length - 1} aria-label="Bajar edificio">
+                              <ArrowDown className="h-4 w-4" />
+                            </Button>
+                          </div>
                         </div>
-                        <div className="flex shrink-0 items-center gap-1">
-                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => moveProperty(property.id, -1)} disabled={absoluteIndex === 0} aria-label="Subir propiedad">
-                            <ArrowUp className="h-4 w-4" />
-                          </Button>
-                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => moveProperty(property.id, 1)} disabled={absoluteIndex === orderedIds.length - 1} aria-label="Bajar propiedad">
-                            <ArrowDown className="h-4 w-4" />
-                          </Button>
+
+                        <div className="mt-3 space-y-1.5 border-t border-border/60 pt-3">
+                          {block.propertyIds.map((propertyId, propertyIndex) => {
+                            const property = propertyById.get(propertyId);
+                            if (!property) return null;
+                            return (
+                              <div key={property.id} className="flex items-center gap-2 rounded-lg bg-muted/30 px-2.5 py-2">
+                                <span className="w-5 text-center text-[11px] font-bold text-muted-foreground">{propertyIndex + 1}</span>
+                                <div className="min-w-0 flex-1">
+                                  <p className="truncate text-sm font-medium">{property.codigo}</p>
+                                  <p className="truncate text-[11px] text-muted-foreground">{property.nombre}{property.direccion ? ` · ${property.direccion}` : ''}</p>
+                                </div>
+                                <div className="flex shrink-0 items-center gap-0.5">
+                                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => moveProperty(property.id, -1)} disabled={propertyIndex === 0} aria-label={`Subir ${property.codigo}`}>
+                                    <ArrowUp className="h-3.5 w-3.5" />
+                                  </Button>
+                                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => moveProperty(property.id, 1)} disabled={propertyIndex === block.propertyIds.length - 1} aria-label={`Bajar ${property.codigo}`}>
+                                    <ArrowDown className="h-3.5 w-3.5" />
+                                  </Button>
+                                </div>
+                              </div>
+                            );
+                          })}
                         </div>
                       </div>
                     );

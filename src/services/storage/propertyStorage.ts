@@ -35,7 +35,8 @@ class PropertyStorageService extends BaseStorageService<Property, CreateProperty
         *,
         clients:cliente_id (
           nombre,
-          is_active
+          is_active,
+          linen_control_enabled
         )
       `);
 
@@ -61,7 +62,8 @@ class PropertyStorageService extends BaseStorageService<Property, CreateProperty
         *,
         clients:cliente_id (
           nombre,
-          is_active
+          is_active,
+          linen_control_enabled
         )
       `)
       .eq('cliente_id', clienteId);

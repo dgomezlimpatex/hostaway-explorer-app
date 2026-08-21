@@ -4,9 +4,11 @@ import { Property, CreatePropertyData } from '@/types/property';
 type PropertyClientRelation = {
   nombre?: string | null;
   is_active?: boolean | null;
+  linen_control_enabled?: boolean | null;
 } | Array<{
   nombre?: string | null;
   is_active?: boolean | null;
+  linen_control_enabled?: boolean | null;
 }> | null | undefined;
 
 const getPropertyClientRelation = (clients: PropertyClientRelation) =>
@@ -62,6 +64,7 @@ export const mapPropertyFromDB = (row: any): Property => {
     isActive: row.is_active,
     clientIsActive: client?.is_active ?? null,
     clientName: client?.nombre ?? null,
+    clientLinenControlEnabled: client?.linen_control_enabled ?? null,
     excludeFromExport: row.exclude_from_export || false,
     fechaCreacion: row.fecha_creacion,
     fechaActualizacion: row.fecha_actualizacion

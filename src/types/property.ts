@@ -67,6 +67,7 @@ export interface Property extends BaseEntity {
   isActive: boolean | null;
   clientIsActive?: boolean | null;
   clientName?: string | null;
+  clientLinenControlEnabled?: boolean | null;
   
   // Export exclusion
   excludeFromExport: boolean;
