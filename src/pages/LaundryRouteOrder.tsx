@@ -99,6 +99,33 @@ const LaundryRouteOrder = () => {
     return assignments;
   }, [activeGroupById, activeProperties, propertyAssignmentsQuery.data]);
 
+  const inferredCodeGroupByPropertyId = useMemo(() => {
+    const candidates = new Map<string, string[]>();
+    const prefixByPropertyId = new Map<string, string>();
+
+    activeProperties.forEach((property) => {
+      const code = property.codigo.trim().toLocaleUpperCase();
+      const match = code.match(/^(.+?)[._-](\d+[A-Z]?)$/);
+      if (!match) return;
+
+      const prefix = match[1];
+      prefixByPropertyId.set(property.id, prefix);
+      candidates.set(prefix, [...(candidates.get(prefix) || []), property.id]);
+    });
+
+    const sharedPrefixes = new Set(
+      Array.from(candidates.entries())
+        .filter(([, propertyIds]) => propertyIds.length > 1)
+        .map(([prefix]) => prefix),
+    );
+
+    return new Map(
+      Array.from(prefixByPropertyId.entries())
+        .filter(([, prefix]) => sharedPrefixes.has(prefix))
+        .map(([propertyId, prefix]) => [propertyId, prefix]),
+    );
+  }, [activeProperties]);
+
   const configuredPropertyIds = useMemo(() => {
     const activeIds = new Set(activeProperties.map((property) => property.id));
     return new Set(
@@ -159,12 +186,19 @@ const LaundryRouteOrder = () => {
       if (!property) return;
 
       const groupId = groupIdByPropertyId.get(propertyId) || null;
-      const key = groupId ? `group:${groupId}` : `property:${propertyId}`;
+      const inferredPrefix = inferredCodeGroupByPropertyId.get(propertyId) || null;
+      const key = groupId
+        ? `group:${groupId}`
+        : inferredPrefix
+          ? `code:${inferredPrefix}`
+          : `property:${propertyId}`;
       const group = groupId ? activeGroupById.get(groupId) : null;
-      const title = group?.displayName || group?.name || property.codigo;
+      const title = group?.displayName || group?.name || inferredPrefix || property.codigo;
       const subtitle = group
         ? `${group.internalCode ? `${group.internalCode} · ` : ''}${group.name}`
-        : property.nombre;
+        : inferredPrefix
+          ? 'Agrupado automáticamente por código'
+          : property.nombre;
 
       if (!blocks.has(key)) {
         blocks.set(key, { key, groupId, title, subtitle, propertyIds: [] });
@@ -173,7 +207,7 @@ const LaundryRouteOrder = () => {
     });
 
     return Array.from(blocks.values());
-  }, [activeGroupById, groupIdByPropertyId, orderedIds, propertyById]);
+  }, [activeGroupById, groupIdByPropertyId, inferredCodeGroupByPropertyId, orderedIds, propertyById]);
 
   const visibleBlocks = useMemo(() => {
     const query = search.trim().toLocaleLowerCase();
@@ -286,7 +320,7 @@ const LaundryRouteOrder = () => {
             </div>
             <div className="mt-4 flex items-start gap-2 rounded-lg border border-primary/15 bg-primary/5 p-3 text-xs text-muted-foreground">
               <Info className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
-              <span>Solo aparecen propiedades activas con lavandería activada. Ordena los edificios como bloques; sus propiedades se mantienen dentro del edificio y se ocultan para facilitar la ruta.</span>
+              <span>Solo aparecen propiedades activas con lavandería activada. Ordena los edificios como bloques; sus propiedades se mantienen dentro del edificio y se ocultan para facilitar la ruta. Los códigos compartidos como CGA8.1, CGA8.2 y CGA8.3 se agrupan automáticamente como CGA8.</span>
             </div>
           </CardHeader>
         </Card>
