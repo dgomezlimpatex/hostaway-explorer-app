@@ -133,7 +133,7 @@ export const orderClassicLaundryTaskIds = async ({
       .select('id, date, start_time, propiedad_id, property, properties:propiedad_id(codigo)')
       .in('id', uniqueTaskIds),
     routeOrderTable()
-      .select('property_id, position')
+      .select('property_id, position, delivery_day')
       .eq('sede_id', sedeId)
       .in('delivery_day', routeDay === GLOBAL_ROUTE_DAY ? [GLOBAL_ROUTE_DAY] : [routeDay, GLOBAL_ROUTE_DAY]),
   ]);
