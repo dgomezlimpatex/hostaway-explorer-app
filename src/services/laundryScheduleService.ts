@@ -184,7 +184,10 @@ export const extractBuildingCode = (propertyCode: string): string => {
 /**
  * Group apartments by building
  */
-export const groupApartmentsByBuilding = (apartments: LaundryApartment[]): BuildingGroup[] => {
+export const groupApartmentsByBuilding = (
+  apartments: LaundryApartment[],
+  preserveInputOrder = false,
+): BuildingGroup[] => {
   const groups: Map<string, LaundryApartment[]> = new Map();
 
   apartments.forEach(apt => {
@@ -195,17 +198,18 @@ export const groupApartmentsByBuilding = (apartments: LaundryApartment[]): Build
     groups.get(buildingCode)!.push(apt);
   });
 
-  // Convert to array and sort
-  return Array.from(groups.entries())
-    .map(([buildingCode, apts]) => ({
+  const result = Array.from(groups.entries()).map(([buildingCode, apts]) => ({
       buildingCode,
       buildingName: `Edificio ${buildingCode}`,
-      apartments: apts.sort((a, b) => 
-        a.propertyCode.localeCompare(b.propertyCode, 'es', { numeric: true })
-      ),
+      apartments: preserveInputOrder
+        ? apts
+        : apts.sort((a, b) => a.propertyCode.localeCompare(b.propertyCode, 'es', { numeric: true })),
       totalApartments: apts.length,
-    }))
-    .sort((a, b) => a.buildingCode.localeCompare(b.buildingCode));
+    }));
+
+  return preserveInputOrder
+    ? result
+    : result.sort((a, b) => a.buildingCode.localeCompare(b.buildingCode));
 };
 
 /**

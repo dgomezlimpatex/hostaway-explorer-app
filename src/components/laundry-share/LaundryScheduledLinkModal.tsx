@@ -176,6 +176,7 @@ export const LaundryScheduledLinkModal = ({
         taskIds,
         allTaskIds: taskIds,
         sedeId: activeSede.id,
+        deliveryDay: parsedDate?.getDay() ?? null,
         linkType: 'scheduled',
         workflowVersion,
         filters: {

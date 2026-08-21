@@ -177,6 +177,16 @@ const PublicLaundryView = () => {
       } as LaundryTask;
     });
 
+    if (shareLink.routeOrderApplied) {
+      const snapshotPosition = new Map(shareLink.snapshotTaskIds.map((taskId, index) => [taskId, index]));
+      mappedTasks.sort((a, b) => {
+        const dateCompare = a.date.localeCompare(b.date);
+        if (dateCompare !== 0) return dateCompare;
+        return (snapshotPosition.get(a.id) ?? Number.MAX_SAFE_INTEGER)
+          - (snapshotPosition.get(b.id) ?? Number.MAX_SAFE_INTEGER);
+      });
+    }
+
     return mappedTasks;
   }, [tasksData, shareLink, stockConsumablesByTask]);
 

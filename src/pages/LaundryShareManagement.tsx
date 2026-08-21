@@ -24,6 +24,7 @@ import {
   Search,
   Check,
   Loader2,
+  Route,
 } from 'lucide-react';
 import { useLaundryShareLinks, LaundryShareLink } from '@/hooks/useLaundryShareLinks';
 import { useLaundryTracking } from '@/hooks/useLaundryTracking';
@@ -573,6 +574,10 @@ const LaundryShareManagement = () => {
                 <DropdownMenuItem onClick={() => setConfigModalOpen(true)}>
                   <Calendar className="h-4 w-4 mr-2" />
                   Configurar horarios
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => navigate('/lavanderia/orden')}>
+                  <Route className="h-4 w-4 mr-2" />
+                  Orden de rutas
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => setShowExpired(v => !v)} disabled={expiredLinks.length === 0}>
                   {showExpired ? <ChevronUp className="h-4 w-4 mr-2" /> : <ChevronDown className="h-4 w-4 mr-2" />}

@@ -9,6 +9,7 @@ import { useLaundryShareLinks } from '@/hooks/useLaundryShareLinks';
 import { copyShareLinkToClipboard, getShareLinkUrl, calculateExpirationDate, fetchLaundryTasksForDateRange } from '@/services/laundryShareService';
 import { useToast } from '@/hooks/use-toast';
 import { useSede } from '@/contexts/SedeContext';
+import { orderClassicLaundryTaskIds } from '@/services/laundryRouteOrderService';
 
 interface LaundryShareLinkModalProps {
   open: boolean;
@@ -62,6 +63,11 @@ export const LaundryShareLinkModal = ({
       // Fetch current task IDs for snapshot (only from current sede)
       const currentSedeIds = [activeSede.id];
       const allTaskIds = await fetchLaundryTasksForDateRange(dateStart, dateEnd, currentSedeIds);
+      const orderedTaskIds = await orderClassicLaundryTaskIds({
+        taskIds: allTaskIds,
+        sedeId: activeSede.id,
+        dateStart,
+      });
       
       const expiresAt = calculateExpirationDate(expiration);
       
@@ -70,10 +76,11 @@ export const LaundryShareLinkModal = ({
         dateEnd,
         expiresAt,
         isPermanent: expiration === 'permanent',
-        taskIds: allTaskIds, // Initially all tasks are included
-        allTaskIds, // Store all tasks for future comparison
+        taskIds: orderedTaskIds, // Initially all tasks are included in route order
+        allTaskIds: orderedTaskIds, // Store all tasks for future comparison
         sedeId: activeSede.id, // Associate with current sede
         filters: { sedeIds: currentSedeIds },
+        routeOrderApplied: true,
       });
 
       const url = getShareLinkUrl(result.token);

@@ -52,6 +52,7 @@ const AvantioAutomation = React.lazy(() => import("./pages/AvantioAutomation"));
 const PublicLaundryView = React.lazy(() => import("./pages/PublicLaundryView"));
 const PublicLaundryScheduledView = React.lazy(() => import("./pages/PublicLaundryScheduledView"));
 const LaundryShareManagement = React.lazy(() => import("./pages/LaundryShareManagement"));
+const LaundryRouteOrder = React.lazy(() => import("./pages/LaundryRouteOrder"));
 const LinenControlPage = React.lazy(() => import("./pages/LinenControlPage"));
 const ClientBilling = React.lazy(() => import("./pages/ClientBilling"));
 const BudgetEstimator = React.lazy(() => import("./pages/BudgetEstimator"));
@@ -285,6 +286,9 @@ function App() {
                     } />
                     <Route path="/lavanderia/gestion" element={
                       <RoleProtectedRoute requiredModule="reports"><LaundryShareManagement /></RoleProtectedRoute>
+                    } />
+                    <Route path="/lavanderia/orden" element={
+                      <RoleProtectedRoute requiredModule="reports"><LaundryRouteOrder /></RoleProtectedRoute>
                     } />
                     <Route path="/control-mudas" element={
                       <RoleProtectedRoute requiredModule="reports"><LinenControlPage /></RoleProtectedRoute>

@@ -161,9 +161,18 @@ const PublicLaundryScheduledView = () => {
 
       if (error) throw error;
       
+      const snapshotPosition = shareLink.routeOrderApplied
+        ? new Map(shareLink.snapshotTaskIds.map((taskId, index) => [taskId, index]))
+        : null;
+
       return (data || [])
         .filter(task => shareLink.snapshotTaskIds.includes(task.id) && !isNotCountCleaner(task.cleaner))
         .sort((a, b) => {
+          if (snapshotPosition) {
+            return (snapshotPosition.get(a.id) ?? Number.MAX_SAFE_INTEGER)
+              - (snapshotPosition.get(b.id) ?? Number.MAX_SAFE_INTEGER);
+          }
+
           const codeA = (a.properties as PublicLaundryScheduledProperty | null)?.codigo || a.property || '';
           const codeB = (b.properties as PublicLaundryScheduledProperty | null)?.codigo || b.property || '';
           return codeA.localeCompare(codeB, 'es', { numeric: true });
@@ -235,8 +244,8 @@ const PublicLaundryScheduledView = () => {
 
   // Group by building
   const buildingGroups = useMemo(() => 
-    groupApartmentsByBuilding(apartments), 
-    [apartments]
+    groupApartmentsByBuilding(apartments, shareLink?.routeOrderApplied === true),
+    [apartments, shareLink?.routeOrderApplied]
   );
 
   // Calculate stats

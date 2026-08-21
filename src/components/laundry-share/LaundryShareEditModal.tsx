@@ -12,6 +12,7 @@ import { useToast } from '@/hooks/use-toast';
 import { LaundryShareLink } from '@/hooks/useLaundryShareLinks';
 import { isNotCountCleaner } from '@/utils/laundryExclusions';
 import { fetchLaundryTasksForDateRange } from '@/services/laundryShareService';
+import { orderClassicLaundryTaskIds } from '@/services/laundryRouteOrderService';
 
 interface LaundryShareEditModalProps {
   open: boolean;
@@ -152,11 +153,19 @@ export const LaundryShareEditModal = ({
       const modalTaskIds = tasks.map(t => t.id);
       const allCurrentTaskIds = Array.from(new Set([...modalTaskIds, ...autoMergeTaskIds]));
 
-      const { error } = await supabase
+      const orderedIncludedTaskIds = await orderClassicLaundryTaskIds({
+        taskIds: includedTaskIds,
+        sedeId: shareLink.sedeId,
+        dateStart: shareLink.dateStart,
+        deliveryDay: shareLink.deliveryDay,
+      });
+
+      const { error } = await (supabase as any)
         .from('laundry_share_links')
         .update({
-          snapshot_task_ids: includedTaskIds,
+          snapshot_task_ids: orderedIncludedTaskIds,
           original_task_ids: allCurrentTaskIds,
+          route_order_applied: shareLink.workflowVersion !== 'route_v2',
         })
         .eq('id', shareLink.id);
 
