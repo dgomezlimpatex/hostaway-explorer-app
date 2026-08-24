@@ -36,6 +36,7 @@ const requiredFiles = [
   'src/components/planning/building-crm/SupervisionBuildingAssignmentEditor.tsx',
   'src/components/planning/building-crm/SupervisionBuildingPolicyEditor.tsx',
   'src/components/planning/building-crm/SupervisionStockLocationEditor.tsx',
+  'src/components/supervision/StockCheckSheet.tsx',
   'src/services/planning/buildingCrmAggregator.ts',
 ];
 
