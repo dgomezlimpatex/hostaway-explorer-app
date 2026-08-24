@@ -29,6 +29,7 @@ export interface BuildingAgendaReservation {
   checkInDate: string;
   checkOutDate: string;
   status?: string | null;
+  source?: string | null;
 }
 
 export interface BuildingAgendaOccupancy {
