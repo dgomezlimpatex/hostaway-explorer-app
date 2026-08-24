@@ -36,6 +36,7 @@ const routeAssignmentGuardMigration = readFileSync('supabase/migrations/20260824
 const stockLocationsMigration = readFileSync('supabase/migrations/20260824150000_supervision_stock_locations_checks.sql', 'utf8');
 const stockDeltaFixMigration = readFileSync('supabase/migrations/20260824151000_supervision_stock_count_delta_fix.sql', 'utf8');
 const stockLocationGuardMigration = readFileSync('supabase/migrations/20260824152000_supervision_stock_location_guard.sql', 'utf8');
+const emptyBuildingAssignmentFixMigration = readFileSync('supabase/migrations/20260824153000_supervision_empty_building_assignment_fix.sql', 'utf8');
 assert.match(app, /path=\"\/supervision\"/);
 assert.match(app, /excludedRoles=\{\['supervisor'\]\}/g);
 assert.match(dashboardSidebar, /title: 'Supervisión y calidad'/);
@@ -75,6 +76,9 @@ assert.match(stockDeltaFixMigration, /physical_delta/);
 assert.match(stockDeltaFixMigration, /physical_quantity/);
 assert.match(stockLocationGuardMigration, /default central warehouse cannot be assigned to a building/);
 assert.match(stockLocationGuardMigration, /stock warehouse and building must belong to the same sede/);
+assert.match(emptyBuildingAssignmentFixMigration, /CREATE OR REPLACE FUNCTION public\.supervision_building_has_sede_access/);
+assert.doesNotMatch(emptyBuildingAssignmentFixMigration, /AND EXISTS \(/);
+assert.match(emptyBuildingAssignmentFixMigration, /trg_validate_supervision_building_property_sede/);
 assert.match(page, /Supervisión y calidad/);
 assert.match(page, /Devolver para repaso/);
 assert.match(page, /Fotos opcionales/);
