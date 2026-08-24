@@ -18,6 +18,7 @@ interface ApartmentReviewSheetProps {
   onSaveReview: (review: Omit<SupervisionReview, 'id' | 'created_at' | 'updated_at'>) => Promise<SupervisionReview>;
   onUploadPhoto: (input: { reviewId: string; file: File }) => Promise<string>;
   onCreateIncident: (incident: Omit<SupervisionIncident, 'id' | 'created_at' | 'updated_at'>) => Promise<SupervisionIncident>;
+  onCompleteWorkItem?: (workItemId: string) => Promise<unknown>;
   onClose: () => void;
   onSaved: () => void;
 }
@@ -99,6 +100,7 @@ export const ApartmentReviewSheet = ({
           created_by: userId,
         });
       }
+      if (item.workItemId && onCompleteWorkItem) await onCompleteWorkItem(item.workItemId);
       onSaved();
     } finally {
       setIsSubmitting(false);

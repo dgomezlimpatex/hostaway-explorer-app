@@ -21,6 +21,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { useCleaningPlanningBuildingData } from '@/hooks/useCleaningPlanningBuildingData';
+import { useSupervisionBuildingCoverage } from '@/hooks/useSupervisionBuildingCoverage';
 import { propertyGroupStorage } from '@/services/storage/propertyGroupStorage';
 import type { PropertyGroup } from '@/types/propertyGroups';
 
@@ -70,6 +71,7 @@ const initialBuildingForm = { name: '', internalCode: '', checkOutTime: '11:00',
 
 const PlanningBuildingsIndex = () => {
   const { data, isLoading, isError, error, refetch, isFetching } = useCleaningPlanningBuildingData();
+  const { data: supervisionCoverage = {} } = useSupervisionBuildingCoverage();
   const { toast } = useToast();
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
@@ -92,11 +94,11 @@ const PlanningBuildingsIndex = () => {
         const excludedCount = cleanerAssignments.filter((assignment) => assignment.propertyGroupId === group.id && assignment.roleType === 'excluded').length;
         const setup = getSetupState(group, propertyCount, teamCount);
         const searchable = [group.name, group.displayName, group.internalCode, group.zone, group.clientName, group.planningNotes].map(normalize).join(' ');
-        return { group, propertyCount, teamCount, excludedCount, setup, matches: !query || searchable.includes(query) };
+        return { group, propertyCount, teamCount, excludedCount, setup, coverage: supervisionCoverage[group.id], matches: !query || searchable.includes(query) };
       })
       .filter((item) => item.matches)
       .sort((a, b) => a.setup.rank - b.setup.rank || (a.group.displayName || a.group.name).localeCompare(b.group.displayName || b.group.name, 'es', { numeric: true }));
-  }, [cleanerAssignments, propertyAssignments, propertyGroups, searchTerm]);
+  }, [cleanerAssignments, propertyAssignments, propertyGroups, searchTerm, supervisionCoverage]);
 
   const handleCreateBuilding = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -280,7 +282,7 @@ const PlanningBuildingsIndex = () => {
           </Card>
         ) : (
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-            {buildingCards.map(({ group, propertyCount, teamCount, excludedCount, setup }) => (
+            {buildingCards.map(({ group, propertyCount, teamCount, excludedCount, setup, coverage }) => (
               <Card key={group.id} className="group border-[#310984]/10 bg-white shadow-sm shadow-[#310984]/5 transition hover:-translate-y-0.5 hover:shadow-lg hover:shadow-[#310984]/10">
                 <CardHeader className="pb-3">
                   <div className="flex items-start justify-between gap-3">
@@ -312,6 +314,7 @@ const PlanningBuildingsIndex = () => {
                       <p className="text-lg font-semibold text-[#171321]">{teamCount}</p>
                     </div>
                   </div>
+                  <div className="rounded-2xl border border-violet-100 bg-violet-50/60 p-3 text-xs text-violet-950"><p className="font-semibold">Supervisión de hoy</p><p className="mt-1">{coverage?.assignedSupervisors || 0} supervisoras · {coverage?.pending || 0} pendientes · {coverage?.completed || 0} completadas</p>{(coverage?.deferred || 0) > 0 && <p className="mt-1 text-amber-800">{coverage?.deferred} aplazadas</p>}{(coverage?.blocked || 0) > 0 && <p className="mt-1 text-red-800">{coverage?.blocked} bloqueadas</p>}</div>
                   <div className="flex flex-col gap-2 sm:flex-row">
                     <Button asChild className="min-h-11 flex-1 bg-[#310984] text-white hover:bg-[#4c1bb0]">
                       <Link to={`/planning/buildings/${group.id}`}>

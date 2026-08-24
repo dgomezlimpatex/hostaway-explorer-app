@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/hooks/useAuth';
 import { useSede } from '@/contexts/SedeContext';
 import { createIncident, saveReview, uploadSupervisionPhoto } from './supervisionStorage';
-import { ensureAutomaticBuildingRoute, fetchBuildingSupervisionWorkspace } from './buildingSupervisionStorage';
+import { ensureAutomaticBuildingRoute, fetchBuildingSupervisionWorkspace, updateSupervisionWorkItemStatus } from './buildingSupervisionStorage';
 import type { SupervisionIncident, SupervisionReview } from './types';
 import type { BuildingAgendaBuildingResult } from './buildingAgenda';
 
@@ -51,6 +51,11 @@ export const useBuildingSupervisionWorkspace = (date: string) => {
     onSuccess: invalidate,
   });
 
+  const workItemStatusMutation = useMutation({
+    mutationFn: (input: { workItemId: string; status: import('./buildingAgenda').BuildingAgendaStatus; reason?: string | null }) => updateSupervisionWorkItemStatus(input.workItemId, input.status, input.reason),
+    onSuccess: invalidate,
+  });
+
   return {
     ...workspaceQuery.data,
     activeSede,
@@ -63,7 +68,8 @@ export const useBuildingSupervisionWorkspace = (date: string) => {
     prepareBuilding: prepareBuildingMutation.mutateAsync,
     saveReview: saveReviewMutation.mutateAsync,
     createIncident: incidentMutation.mutateAsync,
+    updateWorkItemStatus: workItemStatusMutation.mutateAsync,
     uploadPhoto: photoMutation.mutateAsync,
-    isSaving: prepareBuildingMutation.isPending || saveReviewMutation.isPending || incidentMutation.isPending || photoMutation.isPending,
+    isSaving: prepareBuildingMutation.isPending || saveReviewMutation.isPending || incidentMutation.isPending || workItemStatusMutation.isPending || photoMutation.isPending,
   };
 };
