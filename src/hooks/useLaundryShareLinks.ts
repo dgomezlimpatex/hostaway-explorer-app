@@ -108,12 +108,17 @@ export const useLaundryShareLinks = () => {
       if (!userData.user) throw new Error('Usuario no autenticado');
 
       const token = generateToken();
-      const routeOrderApplied = params.routeOrderApplied
-        ?? params.workflowVersion !== 'route_v2';
+      const workflowVersion = params.workflowVersion || 'legacy';
+      const isClassicLink = workflowVersion !== 'route_v2';
+      // Classic links must always preserve the configured route order. Keeping
+      // this invariant here protects every creation path, including quick links.
+      const routeOrderApplied = isClassicLink;
       const deliveryDay = params.deliveryDay
         ?? (params.filters?.deliveryDate
           ? getDateDayOfWeek(params.filters.deliveryDate)
-          : null);
+          : isClassicLink
+            ? getDateDayOfWeek(params.dateStart)
+            : null);
       const snapshotTaskIds = routeOrderApplied
         ? await orderClassicLaundryTaskIds({
             taskIds: params.taskIds,
@@ -136,7 +141,7 @@ export const useLaundryShareLinks = () => {
         original_task_ids: params.allTaskIds, // Store all tasks at creation time
         filters: params.filters || {},
         link_type: params.linkType || 'legacy',
-        workflow_version: params.workflowVersion || 'legacy',
+        workflow_version: workflowVersion,
         route_order_applied: routeOrderApplied,
       };
 

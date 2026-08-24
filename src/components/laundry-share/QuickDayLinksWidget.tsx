@@ -282,6 +282,8 @@ export const QuickDayLinksWidget = () => {
         linkType: 'scheduled',
         workflowVersion: 'legacy',
         sedeId: activeSede.id,
+        deliveryDay: getDay(date),
+        routeOrderApplied: true,
       });
 
       await refetch();

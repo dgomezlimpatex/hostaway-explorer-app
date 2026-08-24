@@ -179,6 +179,7 @@ export const LaundryScheduledLinkModal = ({
         deliveryDay: parsedDate?.getDay() ?? null,
         linkType: 'scheduled',
         workflowVersion,
+        routeOrderApplied: workflowVersion !== 'route_v2',
         filters: {
           workflowVersion,
           collectionDates: fetchDates,

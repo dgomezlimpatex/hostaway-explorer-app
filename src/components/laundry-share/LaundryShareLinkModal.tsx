@@ -9,7 +9,7 @@ import { useLaundryShareLinks } from '@/hooks/useLaundryShareLinks';
 import { copyShareLinkToClipboard, getShareLinkUrl, calculateExpirationDate, fetchLaundryTasksForDateRange } from '@/services/laundryShareService';
 import { useToast } from '@/hooks/use-toast';
 import { useSede } from '@/contexts/SedeContext';
-import { orderClassicLaundryTaskIds } from '@/services/laundryRouteOrderService';
+import { getDateDayOfWeek, orderClassicLaundryTaskIds } from '@/services/laundryRouteOrderService';
 
 interface LaundryShareLinkModalProps {
   open: boolean;
@@ -79,6 +79,7 @@ export const LaundryShareLinkModal = ({
         taskIds: orderedTaskIds, // Initially all tasks are included in route order
         allTaskIds: orderedTaskIds, // Store all tasks for future comparison
         sedeId: activeSede.id, // Associate with current sede
+        deliveryDay: getDateDayOfWeek(dateStart),
         filters: { sedeIds: currentSedeIds },
         routeOrderApplied: true,
       });
