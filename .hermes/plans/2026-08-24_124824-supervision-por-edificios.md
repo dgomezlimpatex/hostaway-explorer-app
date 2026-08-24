@@ -133,6 +133,12 @@ No modificar `src/integrations/supabase/types.ts` manualmente.
 
 ---
 
+## Estado de ejecución
+
+- Ola 1: integrada, verificada y desplegada.
+- Ola 2: integrada en `dbc37960`, migraciones `20260824140000`/`20260824141000` aplicadas y frontend desplegado en Vercel.
+- Pendiente: QA autenticado, móvil/offline/fotos con datos controlados.
+
 ## Ola 2 — Programación y generación durable
 
 - `supervision_building_policies` con frecuencias de revisión rápida/completa.
