@@ -372,19 +372,31 @@ export const useTasks = (currentDate: Date, currentView: ViewType) => {
       logger.log('unassignTaskMutation - unassigning task:', taskId);
       return await taskAssignmentService.unassignTask(taskId);
     },
+    onMutate: async (taskId) => {
+      await queryClient.cancelQueries({ queryKey: ['tasks'] });
+
+      queryClient.setQueriesData(
+        { predicate: (query) => Array.isArray(query.queryKey) && query.queryKey[0] === 'tasks' },
+        (oldData: Task[] | undefined) => {
+          if (!Array.isArray(oldData)) return oldData;
+          return oldData.map((task) => {
+            if (task.id !== taskId && task.originalTaskId !== taskId) return task;
+            return {
+              ...task,
+              cleaner: undefined,
+              cleanerId: undefined,
+              assignments: [],
+              assignmentCount: 0,
+            };
+          });
+        },
+      );
+    },
     onSuccess: (data, taskId) => {
       logger.log('Task unassigned successfully:', data);
       
       // Invalidación agresiva de TODAS las queries relacionadas con tasks
       queryClient.invalidateQueries({ 
-        predicate: (query) => {
-          return Array.isArray(query.queryKey) && 
-                 query.queryKey[0] === 'tasks';
-        }
-      });
-      
-      // Forzar refetch inmediato
-      queryClient.refetchQueries({ 
         predicate: (query) => {
           return Array.isArray(query.queryKey) && 
                  query.queryKey[0] === 'tasks';
@@ -400,6 +412,9 @@ export const useTasks = (currentDate: Date, currentView: ViewType) => {
     },
     onError: (error: unknown) => {
       logger.error('Error unassigning task:', error);
+      queryClient.invalidateQueries({
+        predicate: (query) => Array.isArray(query.queryKey) && query.queryKey[0] === 'tasks',
+      });
       toast({
         title: "Error",
         description: getErrorMessage(error, "No se pudo desasignar la tarea."),

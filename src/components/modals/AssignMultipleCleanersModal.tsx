@@ -131,9 +131,6 @@ export const AssignMultipleCleanersModal = ({
         queryClient.invalidateQueries({ queryKey: ['tasks'] }),
         queryClient.invalidateQueries({ queryKey: ['taskAssignmentsForCalendar'] }),
       ]);
-      queryClient.refetchQueries({ queryKey: ['tasks'] });
-      queryClient.refetchQueries({ queryKey: ['taskAssignmentsForCalendar'] });
-
       const parts: string[] = [];
       if (result.added.length) parts.push(`+${result.added.map((c) => c.name).join(', ')}`);
       if (result.removed.length) parts.push(`−${result.removed.map((c) => c.name).join(', ')}`);

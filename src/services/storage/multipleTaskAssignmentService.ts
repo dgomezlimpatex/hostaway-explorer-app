@@ -61,7 +61,13 @@ export class MultipleTaskAssignmentService {
     // En batch se puede desactivar y notificar al final, evitando avisos de una
     // aplicación parcial si otra tarea falla después.
     if (shouldNotify && (added.length > 0 || removed.length > 0)) {
-      await this.notifyAssignmentDiff(actualTaskId, added, removed, result.final?.length || 0);
+      // La transaccion ya esta confirmada en Supabase. No bloqueamos la
+      // interfaz esperando a Resend/Edge Functions; los avisos continuan en
+      // segundo plano.
+      void this.notifyAssignmentDiff(actualTaskId, added, removed, result.final?.length || 0)
+        .catch((notificationError) => {
+          console.error('No se pudieron enviar los avisos de asignacion:', notificationError);
+        });
     }
 
     return { added, removed, final: result.final || [] };

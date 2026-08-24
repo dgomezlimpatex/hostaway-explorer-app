@@ -1,6 +1,7 @@
 
 import { supabase } from '@/integrations/supabase/client';
 import { Task } from '@/types/calendar';
+import { TaskAssignment } from '@/types/taskAssignments';
 import { taskStorageService } from './taskStorage';
 import { recordAiObservedEvent } from '@/services/aiObservedEvents';
 import { multipleTaskAssignmentService } from './multipleTaskAssignmentService';
@@ -8,6 +9,30 @@ import { executeCanonicalTaskAssignmentChange } from '@/utils/taskAssignmentExec
 import { createTaskNotificationEvent } from '@/services/notifications/notificationOrchestrator';
 
 export class TaskAssignmentService {
+  private mergeAssignmentResult(
+    task: Task,
+    result: { final?: Array<{ id: string; name: string }> },
+  ): Task {
+    const now = new Date().toISOString();
+    const assignments: TaskAssignment[] = (result.final || []).map((worker) => ({
+      id: `assignment-${task.id}-${worker.id}`,
+      task_id: task.id,
+      cleaner_id: worker.id,
+      cleaner_name: worker.name,
+      assigned_at: now,
+      created_at: now,
+      updated_at: now,
+    }));
+
+    return {
+      ...task,
+      cleaner: assignments[0]?.cleaner_name,
+      cleanerId: assignments[0]?.cleaner_id,
+      assignments,
+      assignmentCount: assignments.length,
+    };
+  }
+
   private async getCurrentCleanerIds(taskId: string, task?: Task | null): Promise<string[]> {
     const assignments = await multipleTaskAssignmentService.getTaskAssignments(taskId);
     const cleanerIds = Array.from(new Set(assignments.map((assignment) => assignment.cleaner_id).filter(Boolean)));
@@ -22,7 +47,7 @@ export class TaskAssignmentService {
       const currentTask = await taskStorageService.getById(taskId);
       const previousCleanerIds = await this.getCurrentCleanerIds(taskId, currentTask);
 
-      await executeCanonicalTaskAssignmentChange({
+      const assignmentResult = await executeCanonicalTaskAssignmentChange({
         taskId,
         nextCleanerIds: [cleanerId],
         previousCleanerIds,
@@ -31,8 +56,7 @@ export class TaskAssignmentService {
         updateSchedule: (id, startTime, endTime) => taskStorageService.updateTask(id, { startTime, endTime }),
       });
 
-      const updatedTask = await taskStorageService.getById(taskId);
-      if (!updatedTask) throw new Error('No se pudo recargar la tarea después de asignarla.');
+      const updatedTask = this.mergeAssignmentResult(currentTask, assignmentResult);
 
       void recordAiObservedEvent({
         eventType: 'task_assigned',
@@ -77,7 +101,7 @@ export class TaskAssignmentService {
     const previousCleanerIds = await this.getCurrentCleanerIds(taskId, currentTask);
     const hasScheduleChange = Boolean(startTime && endTime);
 
-    await executeCanonicalTaskAssignmentChange({
+    const assignmentResult = await executeCanonicalTaskAssignmentChange({
       taskId,
       nextCleanerIds: [cleanerId],
       previousCleanerIds,
@@ -93,8 +117,10 @@ export class TaskAssignmentService {
       }),
     });
 
-    const updatedTask = await taskStorageService.getById(taskId);
-    if (!updatedTask) throw new Error('No se pudo recargar la tarea después de reasignarla.');
+    const updatedTask = this.mergeAssignmentResult({
+      ...currentTask,
+      ...(hasScheduleChange ? { startTime, endTime } : {}),
+    }, assignmentResult);
 
     void recordAiObservedEvent({
       eventType: 'task_assigned_with_schedule',
@@ -122,7 +148,7 @@ export class TaskAssignmentService {
 
     const previousCleanerIds = await this.getCurrentCleanerIds(taskId, currentTask);
 
-    await executeCanonicalTaskAssignmentChange({
+    const assignmentResult = await executeCanonicalTaskAssignmentChange({
       taskId,
       nextCleanerIds: [],
       previousCleanerIds,
@@ -131,8 +157,7 @@ export class TaskAssignmentService {
       updateSchedule: (id, startTime, endTime) => taskStorageService.updateTask(id, { startTime, endTime }),
     });
 
-    const updatedTask = await taskStorageService.getById(taskId);
-    if (!updatedTask) throw new Error('No se pudo recargar la tarea después de desasignarla.');
+    const updatedTask = this.mergeAssignmentResult(currentTask, assignmentResult);
 
     void recordAiObservedEvent({
       eventType: 'task_unassigned',
