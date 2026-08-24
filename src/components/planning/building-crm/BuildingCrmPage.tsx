@@ -11,6 +11,7 @@ import { BuildingCrmHeader } from './BuildingCrmHeader';
 import { BuildingTeamEditor } from './BuildingTeamEditor';
 import { BuildingPropertiesPanel } from './BuildingPropertiesPanel';
 import { BuildingDataEditor } from './BuildingDataEditor';
+import { SupervisionBuildingAssignmentEditor } from './SupervisionBuildingAssignmentEditor';
 
 interface BuildingCrmPageProps {
   propertyGroupId: string;
@@ -85,6 +86,9 @@ export const BuildingCrmPage = ({
                   isLoadingCleaners={isLoadingCleaners}
                   onSaved={onRefresh}
                 />
+                <div className="mt-4">
+                  <SupervisionBuildingAssignmentEditor propertyGroupId={propertyGroupId} />
+                </div>
               </section>
               <section data-building-main-block="properties" aria-label="Propiedades del edificio">
                 <BuildingPropertiesPanel

@@ -33,6 +33,7 @@ const requiredFiles = [
   'src/components/planning/building-crm/BuildingTeamEditor.tsx',
   'src/components/planning/building-crm/BuildingAssignmentProposalPanel.tsx',
   'src/components/planning/building-crm/BuildingDataEditor.tsx',
+  'src/components/planning/building-crm/SupervisionBuildingAssignmentEditor.tsx',
   'src/services/planning/buildingCrmAggregator.ts',
 ];
 
@@ -52,6 +53,7 @@ const properties = read('src/components/planning/building-crm/BuildingProperties
 const setupChecklist = read('src/components/planning/building-crm/BuildingSetupChecklist.tsx');
 const assignmentPanel = read('src/components/planning/building-crm/BuildingAssignmentProposalPanel.tsx');
 const buildingDataEditor = read('src/components/planning/building-crm/BuildingDataEditor.tsx');
+const supervisionAssignmentEditor = read('src/components/planning/building-crm/SupervisionBuildingAssignmentEditor.tsx');
 
 assert.match(operationalTypes, /export interface PlanningBuildingCrmProfile/, 'Types must define PlanningBuildingCrmProfile');
 assert.match(operationalTypes, /PlanningBuildingCrmSummary/, 'Types must define summary contract');
@@ -120,6 +122,9 @@ assert.match(teamEditor, /Editar[\s\S]*Quitar/s, 'Team editor must allow editing
 assert.match(teamEditor, /Titular[\s\S]*Suplente[\s\S]*Backup[\s\S]*No apta/s, 'Team editor must expose titulares, suplentes, backups and No apta roles');
 assert.match(teamEditor, /useAssignCleanerToGroup[\s\S]*useUpdateCleanerAssignment[\s\S]*useRemoveCleanerFromGroup/s, 'Team editor must persist through the canonical property-group assignment mutations');
 assert.match(teamEditor, /No entra en propuestas automáticas/, 'Team editor must explain that No apta workers are excluded from proposals');
+assert.match(page, /SupervisionBuildingAssignmentEditor/, 'Building CRM must expose supervisor assignment inside the team block');
+assert.match(supervisionAssignmentEditor, /Asignar/, 'Supervisor assignment editor must expose an assignment action');
+assert.match(supervisionAssignmentEditor, /supervisor_user_id|supervisorUserId/, 'Supervisor assignment editor must use real supervisor identities');
 assert.match(properties, /Duración/, 'Properties panel must show duration');
 assert.match(properties, /Necesita/, 'Properties panel must show required cleaners/personas');
 assert.match(properties, /Editar propiedad/, 'Properties panel must provide a settings/edit link without inline editing');
