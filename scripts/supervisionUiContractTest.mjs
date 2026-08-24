@@ -30,6 +30,8 @@ const buildingSupervisionStorage = readFileSync('src/features/supervision/buildi
 const supervisionBuildingsPage = readFileSync('src/pages/SupervisionBuildings.tsx', 'utf8');
 const buildingAssignmentsMigration = readFileSync('supabase/migrations/20260824130000_supervision_building_assignments.sql', 'utf8');
 const buildingRoutesMigration = readFileSync('supabase/migrations/20260824131000_supervision_building_routes.sql', 'utf8');
+const workItemsMigration = readFileSync('supabase/migrations/20260824140000_supervision_work_items.sql', 'utf8');
+const routeAssignmentGuardMigration = readFileSync('supabase/migrations/20260824141000_supervision_route_assignment_guard.sql', 'utf8');
 assert.match(app, /path=\"\/supervision\"/);
 assert.match(app, /excludedRoles=\{\['supervisor'\]\}/g);
 assert.match(dashboardSidebar, /title: 'Supervisión y calidad'/);
@@ -48,6 +50,13 @@ assert.match(buildingAssignmentsMigration, /supervision assignee must have super
 assert.match(buildingAssignmentsMigration, /user_has_sede_access/);
 assert.match(buildingRoutesMigration, /property_group_id/);
 assert.match(buildingRoutesMigration, /supervision_routes_building_date_key/);
+assert.match(workItemsMigration, /supervision_building_policies/);
+assert.match(workItemsMigration, /supervision_work_items/);
+assert.match(workItemsMigration, /generation_key TEXT NOT NULL UNIQUE/);
+assert.match(workItemsMigration, /upsert_supervision_work_items/);
+assert.match(workItemsMigration, /update_supervision_work_item_status/);
+assert.match(workItemsMigration, /status IN \('pending', 'in_progress', 'completed', 'deferred', 'blocked', 'cancelled'\)/);
+assert.match(routeAssignmentGuardMigration, /supervision_user_has_building_assignment/);
 assert.match(page, /Supervisión y calidad/);
 assert.match(page, /Devolver para repaso/);
 assert.match(page, /Fotos opcionales/);

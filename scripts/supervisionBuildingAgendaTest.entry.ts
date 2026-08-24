@@ -18,10 +18,13 @@ export function run(assert: typeof import('node:assert/strict')) {
       { id: 't3', propertyId: 'p3', date: '2026-08-24', status: 'pending' },
     ],
     reviews: [
-      { id: 'r1', propertyId: 'p2', state: 'reviewed', review_type: 'quick', created_at: '2026-08-24T10:00:00Z' },
+      { id: 'r1', propertyId: 'p2', state: 'reviewed', review_type: 'full', created_at: '2026-08-20T10:00:00Z' },
     ],
     incidents: [
       { id: 'i1', propertyId: 'p1', status: 'open', priority: 'critical', created_at: '2026-08-24T11:00:00Z' },
+    ],
+    workItems: [
+      { id: 'w1', generationKey: 'b1:p2:quick', propertyGroupId: 'b1', propertyId: 'p2', taskId: 't2', workType: 'quick', status: 'completed' },
     ],
   });
 
@@ -30,8 +33,8 @@ export function run(assert: typeof import('node:assert/strict')) {
   assert.equal(agenda.buildings[0].items[0].type, 'incident');
   assert.equal(agenda.buildings[0].items[0].priority, 100);
   assert.equal(agenda.buildings[0].items[1].status, 'completed');
-  assert.equal(agenda.buildings[1].items.length, 0);
-  assert.equal(agenda.pendingCount, 1);
+  assert.equal(agenda.buildings[1].items[0].type, 'full');
+  assert.equal(agenda.pendingCount, 2);
   assert.equal(agenda.completedCount, 1);
 
   const reworkAgenda = buildBuildingSupervisionAgenda({

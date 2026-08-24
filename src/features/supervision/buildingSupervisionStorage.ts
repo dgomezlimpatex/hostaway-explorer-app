@@ -2,7 +2,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { taskStorageService } from '@/services/taskStorage';
 import type { Task } from '@/types/calendar';
 import type { SupervisionIncident, SupervisionReview, SupervisionRoute, SupervisionStop } from './types';
-import { buildBuildingSupervisionAgenda, type BuildingAgendaBuildingResult, type BuildingAgendaProperty, type BuildingSupervisionAgenda } from './buildingAgenda';
+import { buildBuildingSupervisionAgenda, type BuildingAgendaBuildingResult, type BuildingAgendaPolicy, type BuildingAgendaProperty, type BuildingAgendaWorkItemState, type BuildingSupervisionAgenda } from './buildingAgenda';
 
 // New supervision tables are intentionally kept local to this feature until generated types are refreshed.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -26,6 +26,8 @@ export interface BuildingSupervisionWorkspace {
   tasks: Task[];
   reviews: SupervisionReview[];
   incidents: SupervisionIncident[];
+  policies: Record<string, BuildingAgendaPolicy>;
+  workItems: BuildingAgendaWorkItemState[];
   storageMode: 'remote' | 'offline';
 }
 
@@ -91,6 +93,92 @@ export async function removeSupervisorFromBuilding(assignmentId: string): Promis
   if (error) throw error;
 }
 
+const workTypeByAgendaType: Record<string, string> = {
+  quick: 'apartment_quick',
+  full: 'apartment_full',
+  rework: 'rework',
+  incident: 'incident',
+};
+
+export async function ensureSupervisionWorkItems(input: {
+  date: string;
+  agenda: BuildingSupervisionAgenda;
+  assignments: SupervisionBuildingAssignment[];
+  userId: string;
+}): Promise<BuildingAgendaWorkItemState[]> {
+  const payload = input.agenda.buildings.flatMap((building) => {
+    const primary = input.assignments
+      .filter((assignment) => assignment.property_group_id === building.id)
+      .sort((a, b) => a.priority - b.priority)[0];
+    return building.items.map((item) => ({
+      generation_key: item.key,
+      property_group_id: item.buildingId,
+      property_id: item.propertyId,
+      task_id: item.taskId || null,
+      assigned_supervisor_user_id: primary?.supervisor_user_id || input.userId,
+      work_type: workTypeByAgendaType[item.type],
+      scheduled_date: input.date,
+      priority: item.priority,
+      reasons: item.reasons,
+      status: item.status === 'completed' ? 'completed' : 'pending',
+    }));
+  });
+  if (payload.length === 0) return [];
+  const { data, error } = await db.rpc('upsert_supervision_work_items', { _items: payload });
+  if (error) throw error;
+  return (data || []).map((item: Record<string, unknown>) => ({
+    id: String(item.id), generationKey: String(item.generation_key), propertyGroupId: String(item.property_group_id),
+    propertyId: item.property_id ? String(item.property_id) : null, taskId: item.task_id ? String(item.task_id) : null,
+    workType: String(item.work_type).replace('apartment_', '') as BuildingAgendaWorkItemState['workType'],
+    status: String(item.status) as BuildingAgendaWorkItemState['status'],
+    deferReason: item.defer_reason ? String(item.defer_reason) : null, blockedReason: item.blocked_reason ? String(item.blocked_reason) : null,
+  }));
+}
+
+export async function updateSupervisionWorkItemStatus(workItemId: string, status: BuildingAgendaWorkItemState['status'], reason?: string | null): Promise<BuildingAgendaWorkItemState> {
+  const { data, error } = await db.rpc('update_supervision_work_item_status', { _work_item_id: workItemId, _status: status, _reason: reason || null });
+  if (error) throw error;
+  const item = data as Record<string, unknown>;
+  return {
+    id: String(item.id), generationKey: String(item.generation_key), propertyGroupId: String(item.property_group_id),
+    propertyId: item.property_id ? String(item.property_id) : null, taskId: item.task_id ? String(item.task_id) : null,
+    workType: String(item.work_type).replace('apartment_', '') as BuildingAgendaWorkItemState['workType'],
+    status: String(item.status) as BuildingAgendaWorkItemState['status'],
+    deferReason: item.defer_reason ? String(item.defer_reason) : null, blockedReason: item.blocked_reason ? String(item.blocked_reason) : null,
+  };
+}
+
+export interface SupervisionBuildingPolicy {
+  id?: string;
+  property_group_id: string;
+  quick_review_every_days: number;
+  full_review_every_days: number;
+  full_review_requires_cleaning: boolean;
+  review_open_incidents: boolean;
+  review_returned_work: boolean;
+  is_active: boolean;
+}
+
+export async function getSupervisionBuildingPolicy(propertyGroupId: string): Promise<SupervisionBuildingPolicy> {
+  const { data, error } = await db.from('supervision_building_policies').select('*').eq('property_group_id', propertyGroupId).maybeSingle();
+  if (error) throw error;
+  return (data || { property_group_id: propertyGroupId, quick_review_every_days: 1, full_review_every_days: 7, full_review_requires_cleaning: false, review_open_incidents: true, review_returned_work: true, is_active: true }) as SupervisionBuildingPolicy;
+}
+
+export async function upsertSupervisionBuildingPolicy(input: SupervisionBuildingPolicy): Promise<SupervisionBuildingPolicy> {
+  const { data, error } = await db.from('supervision_building_policies').upsert({
+    property_group_id: input.property_group_id,
+    quick_review_every_days: input.quick_review_every_days,
+    full_review_every_days: input.full_review_every_days,
+    full_review_requires_cleaning: input.full_review_requires_cleaning,
+    review_open_incidents: input.review_open_incidents,
+    review_returned_work: input.review_returned_work,
+    is_active: input.is_active,
+  }, { onConflict: 'property_group_id' }).select('*').single();
+  if (error) throw error;
+  return data as SupervisionBuildingPolicy;
+}
+
 export async function fetchBuildingSupervisionWorkspace(
   sedeId: string,
   userId: string,
@@ -108,7 +196,7 @@ export async function fetchBuildingSupervisionWorkspace(
   const activeAssignments = assignments.filter((assignment) => isActiveAssignment(assignment, date));
   const buildingIds = [...new Set(activeAssignments.map((assignment) => assignment.property_group_id))];
   if (buildingIds.length === 0) {
-    return { agenda: { date, buildings: [], pendingCount: 0, completedCount: 0, blockedCount: 0 }, assignments: activeAssignments, tasks: [], reviews: [], incidents: [], storageMode: 'remote' };
+    return { agenda: { date, buildings: [], pendingCount: 0, completedCount: 0, blockedCount: 0 }, assignments: activeAssignments, tasks: [], reviews: [], incidents: [], policies: {}, workItems: [], storageMode: 'remote' };
   }
 
   const [groupsResult, propertyAssignmentsResult] = await Promise.all([
@@ -124,6 +212,28 @@ export async function fetchBuildingSupervisionWorkspace(
     ? await db.from('properties').select('id,codigo,nombre,is_active').in('id', propertyIds)
     : { data: [], error: null };
   if (propertiesResult.error) throw propertiesResult.error;
+
+  const [policiesResult, workItemsResult] = await Promise.all([
+    db.from('supervision_building_policies').select('property_group_id,quick_review_every_days,full_review_every_days,full_review_requires_cleaning,review_open_incidents,review_returned_work').in('property_group_id', buildingIds).eq('is_active', true),
+    db.from('supervision_work_items').select('id,generation_key,property_group_id,property_id,task_id,work_type,status,defer_reason,blocked_reason').in('property_group_id', buildingIds).eq('scheduled_date', date),
+  ]);
+  if (policiesResult.error) throw policiesResult.error;
+  if (workItemsResult.error) throw workItemsResult.error;
+
+  const policies = Object.fromEntries(((policiesResult.data || []) as Array<Record<string, unknown>>).map((policy) => [String(policy.property_group_id), {
+    propertyGroupId: String(policy.property_group_id),
+    quickReviewEveryDays: Number(policy.quick_review_every_days || 1),
+    fullReviewEveryDays: Number(policy.full_review_every_days || 7),
+    fullReviewRequiresCleaning: Boolean(policy.full_review_requires_cleaning),
+    reviewOpenIncidents: policy.review_open_incidents !== false,
+    reviewReturnedWork: policy.review_returned_work !== false,
+  }]));
+  const workItems = (workItemsResult.data || []).map((item: Record<string, unknown>) => ({
+    id: String(item.id), generationKey: String(item.generation_key), propertyGroupId: String(item.property_group_id),
+    propertyId: item.property_id ? String(item.property_id) : null, taskId: item.task_id ? String(item.task_id) : null,
+    workType: String(item.work_type) as BuildingAgendaWorkItemState['workType'], status: String(item.status) as BuildingAgendaWorkItemState['status'],
+    deferReason: item.defer_reason ? String(item.defer_reason) : null, blockedReason: item.blocked_reason ? String(item.blocked_reason) : null,
+  }));
 
   const tasks = await taskStorageService.getTasksForSupervision({ dateFrom: date, dateTo: date, sedeId });
   const [reviewsResult, incidentsResult] = await Promise.all([
@@ -147,14 +257,29 @@ export async function fetchBuildingSupervisionWorkspace(
     tasks: tasks.map((task) => ({ id: task.id, propertyId: task.propertyId, date: task.date, status: task.status, propertyName: task.propertyName, checkIn: task.checkIn })),
     reviews: (reviewsResult.data || []) as SupervisionReview[],
     incidents: (incidentsResult.data || []) as SupervisionIncident[],
+    policies,
+  });
+  const generatedWorkItems = await ensureSupervisionWorkItems({ date, agenda, assignments: activeAssignments, userId });
+  const allWorkItems = [...workItems.filter((item) => !generatedWorkItems.some((generated) => generated.id === item.id)), ...generatedWorkItems];
+  const finalAgenda = buildBuildingSupervisionAgenda({
+    date,
+    buildings: buildings.map((building) => ({ id: building.id, name: building.name, displayName: building.display_name })),
+    properties: agendaProperties,
+    tasks: tasks.map((task) => ({ id: task.id, propertyId: task.propertyId, date: task.date, status: task.status, propertyName: task.propertyName, checkIn: task.checkIn })),
+    reviews: (reviewsResult.data || []) as SupervisionReview[],
+    incidents: (incidentsResult.data || []) as SupervisionIncident[],
+    policies,
+    workItems: allWorkItems,
   });
 
   return {
-    agenda,
+    agenda: finalAgenda,
     assignments: activeAssignments,
     tasks,
     reviews: (reviewsResult.data || []) as SupervisionReview[],
     incidents: (incidentsResult.data || []) as SupervisionIncident[],
+    policies,
+    workItems: allWorkItems,
     storageMode: 'remote',
   };
 }

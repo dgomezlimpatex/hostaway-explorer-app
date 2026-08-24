@@ -34,6 +34,7 @@ const requiredFiles = [
   'src/components/planning/building-crm/BuildingAssignmentProposalPanel.tsx',
   'src/components/planning/building-crm/BuildingDataEditor.tsx',
   'src/components/planning/building-crm/SupervisionBuildingAssignmentEditor.tsx',
+  'src/components/planning/building-crm/SupervisionBuildingPolicyEditor.tsx',
   'src/services/planning/buildingCrmAggregator.ts',
 ];
 
@@ -54,6 +55,7 @@ const setupChecklist = read('src/components/planning/building-crm/BuildingSetupC
 const assignmentPanel = read('src/components/planning/building-crm/BuildingAssignmentProposalPanel.tsx');
 const buildingDataEditor = read('src/components/planning/building-crm/BuildingDataEditor.tsx');
 const supervisionAssignmentEditor = read('src/components/planning/building-crm/SupervisionBuildingAssignmentEditor.tsx');
+const supervisionPolicyEditor = read('src/components/planning/building-crm/SupervisionBuildingPolicyEditor.tsx');
 
 assert.match(operationalTypes, /export interface PlanningBuildingCrmProfile/, 'Types must define PlanningBuildingCrmProfile');
 assert.match(operationalTypes, /PlanningBuildingCrmSummary/, 'Types must define summary contract');
@@ -125,6 +127,9 @@ assert.match(teamEditor, /No entra en propuestas automáticas/, 'Team editor mus
 assert.match(page, /SupervisionBuildingAssignmentEditor/, 'Building CRM must expose supervisor assignment inside the team block');
 assert.match(supervisionAssignmentEditor, /Asignar/, 'Supervisor assignment editor must expose an assignment action');
 assert.match(supervisionAssignmentEditor, /supervisor_user_id|supervisorUserId/, 'Supervisor assignment editor must use real supervisor identities');
+assert.match(supervisionPolicyEditor, /Programa de supervisión/, 'Building CRM must expose the supervision program editor');
+assert.match(supervisionPolicyEditor, /quick_review_every_days/, 'Policy editor must expose quick review frequency');
+assert.match(supervisionPolicyEditor, /full_review_every_days/, 'Policy editor must expose full review frequency');
 assert.match(properties, /Duración/, 'Properties panel must show duration');
 assert.match(properties, /Necesita/, 'Properties panel must show required cleaners/personas');
 assert.match(properties, /Editar propiedad/, 'Properties panel must provide a settings/edit link without inline editing');

@@ -8,6 +8,7 @@ import type { BuildingAgendaBuildingResult, BuildingAgendaItem } from '@/feature
 interface BuildingSupervisionCardProps {
   building: BuildingAgendaBuildingResult;
   onReview: (item: BuildingAgendaItem) => void;
+  onDefer: (item: BuildingAgendaItem) => void;
   isPreparing: boolean;
 }
 
@@ -18,9 +19,9 @@ const typeLabel: Record<BuildingAgendaItem['type'], string> = {
   incident: 'Incidencia',
 };
 
-export const BuildingSupervisionCard = ({ building, onReview, isPreparing }: BuildingSupervisionCardProps) => {
+export const BuildingSupervisionCard = ({ building, onReview, onDefer, isPreparing }: BuildingSupervisionCardProps) => {
   const [expanded, setExpanded] = useState(true);
-  const pending = building.items.filter((item) => item.status === 'pending');
+  const pending = building.items.filter((item) => !['completed', 'cancelled'].includes(item.status));
   const completed = building.items.filter((item) => item.status === 'completed');
 
   return (
@@ -58,7 +59,7 @@ export const BuildingSupervisionCard = ({ building, onReview, isPreparing }: Bui
                   <p className="mt-1 text-xs text-slate-500">{item.reasons.join(' · ')}</p>
                 </div>
               </div>
-              {item.status === 'completed' ? <Badge variant="outline" className="w-fit border-emerald-200 bg-emerald-50 text-emerald-800">Completada</Badge> : <Button size="sm" onClick={() => onReview(item)} disabled={isPreparing}>{isPreparing ? 'Preparando…' : 'Revisar'}</Button>}
+              {item.status === 'completed' ? <Badge variant="outline" className="w-fit border-emerald-200 bg-emerald-50 text-emerald-800">Completada</Badge> : item.status === 'blocked' ? <Badge variant="outline" className="w-fit border-red-200 bg-red-50 text-red-800">Bloqueada</Badge> : <div className="flex flex-wrap gap-2"><Button size="sm" onClick={() => onReview(item)} disabled={isPreparing}>{isPreparing ? 'Preparando…' : item.status === 'deferred' ? 'Retomar' : 'Revisar'}</Button><Button size="sm" variant="outline" onClick={() => onDefer(item)} disabled={isPreparing}>Aplazar</Button></div>}
             </div>
           ))}
         </div>}
