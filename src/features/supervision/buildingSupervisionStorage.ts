@@ -270,7 +270,7 @@ export async function fetchBuildingSupervisionWorkspace(
   const [policiesResult, workItemsResult, reservationsResult] = await Promise.all([
     db.from('supervision_building_policies').select('property_group_id,quick_review_every_days,full_review_every_days,full_review_requires_cleaning,review_open_incidents,review_returned_work').in('property_group_id', buildingIds).eq('is_active', true),
     db.from('supervision_work_items').select('id,generation_key,property_group_id,property_id,task_id,work_type,status,defer_reason,blocked_reason').in('property_group_id', buildingIds).eq('scheduled_date', date),
-    propertyIds.length > 0 ? db.from('client_reservations').select('id,property_id,check_in_date,check_out_date,status').in('property_id', propertyIds).neq('status', 'cancelled').order('check_in_date', { ascending: true }) : Promise.resolve({ data: [], error: null }),
+    propertyIds.length > 0 ? db.rpc('get_supervision_property_reservations', { _property_ids: propertyIds }) : Promise.resolve({ data: [], error: null }),
   ]);
   if (policiesResult.error) throw policiesResult.error;
   if (workItemsResult.error) throw workItemsResult.error;
@@ -310,12 +310,13 @@ export async function fetchBuildingSupervisionWorkspace(
       checkOutTime: property.check_out_predeterminado || building?.check_out_time || '11:00',
     }] : [];
   });
-  const reservations: BuildingAgendaReservation[] = ((reservationsResult.data || []) as Array<{ id: string; property_id: string; check_in_date: string; check_out_date: string; status?: string | null }>).map((reservation) => ({
-    id: reservation.id,
+  const reservations: BuildingAgendaReservation[] = ((reservationsResult.data || []) as Array<{ id?: string; property_id: string; check_in_date: string; check_out_date: string; status?: string | null; source?: string | null }>).map((reservation, index) => ({
+    id: reservation.id || `${reservation.source || 'reservation'}:${reservation.property_id}:${reservation.check_in_date}:${reservation.check_out_date}:${index}`,
     propertyId: reservation.property_id,
     checkInDate: reservation.check_in_date,
     checkOutDate: reservation.check_out_date,
     status: reservation.status,
+    source: reservation.source,
   }));
 
   const agenda = buildBuildingSupervisionAgenda({
