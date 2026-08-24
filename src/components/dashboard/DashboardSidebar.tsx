@@ -30,6 +30,7 @@ import {
   Bot,
   MessageCircle,
   Calculator,
+  ClipboardCheck,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useRolePermissions } from '@/hooks/useRolePermissions';
@@ -105,6 +106,12 @@ const managementItems: NavigationItem[] = [
     permission: 'workers'
   },
   {
+    title: 'Supervisión y calidad',
+    href: '/supervision',
+    icon: ClipboardCheck,
+    permission: 'supervision'
+  },
+  {
     title: 'Clientes',
     href: '/clients',
     icon: Building2,
@@ -165,13 +172,13 @@ const reportsItems: NavigationItem[] = [
     title: 'Previsión de personal',
     href: '/forecast',
     icon: TrendingUp,
-    permission: 'workers'
+    permission: 'workers-forecast'
   },
   {
     title: 'Alertas de previsión',
     href: '/forecast/settings',
     icon: AlertTriangle,
-    permission: 'workers'
+    permission: 'workers-forecast'
   },
   {
     title: 'Plantillas de Checklist',
@@ -251,7 +258,7 @@ const adminItems: NavigationItem[] = [
 
 export const DashboardSidebar = () => {
   const location = useLocation();
-  const { canAccessModule, hasPermission: hasRolePermission, isAdminOrManager } = useRolePermissions();
+  const { canAccessModule, hasPermission: hasRolePermission, isAdminOrManager, isSupervisor } = useRolePermissions();
   const { state } = useSidebar();
   const { signOut, profile, user } = useAuth();
   const shouldShowIncidentBadge = isAdminOrManager();
@@ -275,10 +282,12 @@ export const DashboardSidebar = () => {
       case 'tasks': return canAccessModule('tasks');
       case 'tasks-edit': return hasRolePermission('tasks', 'canEdit');
       case 'workers': return canAccessModule('workers');
+      case 'workers-forecast': return canAccessModule('workers') && !isSupervisor();
       case 'clients': return canAccessModule('clients');
       case 'properties': return canAccessModule('properties');
       case 'propertyGroups': return canAccessModule('propertyGroups');
       case 'reports': return canAccessModule('reports');
+      case 'supervision': return canAccessModule('supervision');
       case 'hostaway': return canAccessModule('hostaway');
       case 'inventory': return canAccessModule('inventory');
       case 'logistics': return canAccessModule('logistics');

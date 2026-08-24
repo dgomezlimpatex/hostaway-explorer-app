@@ -21,6 +21,7 @@ import {
   UserPlus,
   Users,
   Calculator,
+  ClipboardCheck,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useRolePermissions } from '@/hooks/useRolePermissions';
@@ -59,6 +60,7 @@ const generalItems: NavigationItem[] = [
 
 const managementItems: NavigationItem[] = [
   { title: 'Trabajadores', href: '/workers', icon: Users, permission: 'workers' },
+  { title: 'Supervisión y calidad', href: '/supervision', icon: ClipboardCheck, permission: 'supervision' },
   { title: 'Clientes', href: '/clients', icon: Building2, permission: 'clients' },
   { title: 'Propiedades', href: '/properties', icon: MapPin, permission: 'properties' },
   {
@@ -139,7 +141,7 @@ interface MobileDashboardSidebarProps {
 
 export const MobileDashboardSidebar = ({ onNavigate }: MobileDashboardSidebarProps) => {
   const location = useLocation();
-  const { canAccessModule, hasPermission: hasRolePermission, isAdminOrManager } = useRolePermissions();
+  const { canAccessModule, hasPermission: hasRolePermission, isAdminOrManager, isSupervisor } = useRolePermissions();
   const { user, profile } = useAuth();
   const shouldShowIncidentBadge = isAdminOrManager();
   const { data: incidentStats } = useIncidentStats(shouldShowIncidentBadge);
@@ -163,6 +165,8 @@ export const MobileDashboardSidebar = ({ onNavigate }: MobileDashboardSidebarPro
       case 'tasks-edit': return hasRolePermission('tasks', 'canEdit');
       case 'workers':
         return canAccessModule('workers');
+      case 'workers-forecast':
+        return canAccessModule('workers') && !isSupervisor();
       case 'clients':
         return canAccessModule('clients');
       case 'properties':
@@ -171,6 +175,8 @@ export const MobileDashboardSidebar = ({ onNavigate }: MobileDashboardSidebarPro
         return canAccessModule('propertyGroups');
       case 'reports':
         return canAccessModule('reports');
+      case 'supervision':
+        return canAccessModule('supervision');
       case 'hostaway':
         return canAccessModule('hostaway');
       case 'inventory':

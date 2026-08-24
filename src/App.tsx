@@ -306,10 +306,10 @@ function App() {
                       <RoleProtectedRoute requiredModule="workers"><WorkloadDashboard /></RoleProtectedRoute>
                     } />
                     <Route path="/forecast" element={
-                      <RoleProtectedRoute requiredModule="workers"><StaffingForecast /></RoleProtectedRoute>
+                      <RoleProtectedRoute requiredModule="workers" excludedRoles={['supervisor']}><StaffingForecast /></RoleProtectedRoute>
                     } />
                     <Route path="/forecast/settings" element={
-                      <RoleProtectedRoute requiredModule="workers"><ForecastSettings /></RoleProtectedRoute>
+                      <RoleProtectedRoute requiredModule="workers" excludedRoles={['supervisor']}><ForecastSettings /></RoleProtectedRoute>
                     } />
                     <Route path="/integraciones" element={
                       <RoleProtectedRoute requiredModule="admin"><Integraciones /></RoleProtectedRoute>
