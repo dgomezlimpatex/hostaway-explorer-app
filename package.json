@@ -10,6 +10,7 @@
     "lint": "eslint .",
     "lint:app": "eslint src",
     "typecheck": "tsc --noEmit --pretty false",
+    "test:user-management-ui": "node scripts/userManagementUiContractTest.mjs",
     "test:registro-worker-sync": "node scripts/registroEmployeeSyncTest.mjs",
     "test:budget-estimator": "node scripts/budgetEstimatorTest.mjs && node scripts/budgetEstimatorUiContractTest.mjs",
     "test:budget-estimator-logistics": "node scripts/budgetEstimatorLogisticsTest.mjs",

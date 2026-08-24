@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useInvitations, useCreateInvitation, useRevokeInvitation } from '@/hooks/useInvitations';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useCleaners } from '@/hooks/useCleaners';
 import { useSedes } from '@/hooks/useSedes';
+import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -32,7 +33,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { UserPlus, Mail, Clock, CheckCircle, XCircle, AlertTriangle, Copy, ArrowLeft, Users, Trash2, UserCheck } from 'lucide-react';
+import { UserPlus, Mail, Clock, CheckCircle, XCircle, AlertTriangle, Copy, ArrowLeft, Users, Trash2, UserCheck, Search, Building2, ShieldCheck, Check, Info, KeyRound } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Link } from 'react-router-dom';
 import type { Database } from '@/integrations/supabase/types';
@@ -48,16 +49,37 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Checkbox } from '@/components/ui/checkbox';
 
 type AppRole = Database['public']['Enums']['app_role'];
 
+type UserRoleAssignment = {
+  id: string;
+  role: AppRole;
+  created_at: string;
+};
+
 type ActiveUserRow = {
   user_id: string;
-  role: AppRole;
+  roles: UserRoleAssignment[];
+  primaryRole: AppRole;
+  created_at: string;
   profiles: {
     email: string;
     full_name?: string | null;
   };
+};
+
+type UserSedeAccessRow = {
+  user_id: string;
+  sede_id: string;
+  can_access: boolean;
+  sedes?: {
+    id: string;
+    nombre: string;
+    codigo: string;
+    ciudad: string;
+  } | null;
 };
 
 type InvitationRow = {
@@ -73,6 +95,30 @@ const roleLabels: Record<AppRole, string> = {
   client: 'Cliente',
   logistics: 'Logística',
 };
+
+const roleDescriptions: Record<AppRole, string> = {
+  admin: 'Acceso completo y administración de usuarios.',
+  manager: 'Gestión operativa, trabajadores y clientes.',
+  supervisor: 'Supervisión de tareas y control operativo.',
+  cleaner: 'Acceso a tareas y partes de limpieza asignados.',
+  client: 'Acceso limitado al portal de cliente.',
+  logistics: 'Gestión de inventario y logística.',
+};
+
+const rolePriority: Record<AppRole, number> = {
+  admin: 1,
+  manager: 2,
+  supervisor: 3,
+  cleaner: 4,
+  client: 5,
+  logistics: 6,
+};
+
+const roleOptions = Object.keys(roleLabels) as AppRole[];
+
+const getPrimaryRole = (roles: UserRoleAssignment[]): AppRole => (
+  [...roles].sort((a, b) => rolePriority[a.role] - rolePriority[b.role])[0]?.role || 'client'
+);
 
 const statusLabels = {
   pending: 'Pendiente',
@@ -100,7 +146,13 @@ export const UserManagement = () => {
   const [email, setEmail] = useState('');
   const [role, setRole] = useState<AppRole>('cleaner');
   const [sedeId, setSedeId] = useState<string>('');
+  const [userSearch, setUserSearch] = useState('');
+  const [roleFilter, setRoleFilter] = useState<AppRole | 'all'>('all');
+  const [roleManagerUserId, setRoleManagerUserId] = useState<string | null>(null);
+  const [draftRoles, setDraftRoles] = useState<AppRole[]>([]);
+  const [sedeManagerUserId, setSedeManagerUserId] = useState<string | null>(null);
   const { toast } = useToast();
+  const { user: currentUser, userRole: currentUserRole } = useAuth();
   const queryClient = useQueryClient();
 
   const { data: invitations, isLoading } = useInvitations();
@@ -109,37 +161,112 @@ export const UserManagement = () => {
   const createInvitation = useCreateInvitation();
   const revokeInvitation = useRevokeInvitation();
 
-  // Query para obtener usuarios activos
-  const { data: activeUsers, isLoading: isLoadingUsers } = useQuery({
+  // Query para obtener usuarios activos con todos sus roles
+  const { data: activeUsers, isLoading: isLoadingUsers } = useQuery<ActiveUserRow[]>({
     queryKey: ['active-users'],
     queryFn: async () => {
-      // Primero obtener los user_roles
       const { data: userRoles, error: rolesError } = await supabase
         .from('user_roles')
-        .select('user_id, role, created_at');
-      
+        .select('id, user_id, role, created_at')
+        .order('created_at', { ascending: true });
+
       if (rolesError) throw rolesError;
-      
-      // Luego obtener los profiles para cada user_id
+      if (!userRoles?.length) return [];
+
+      const userIds = [...new Set(userRoles.map((userRole) => userRole.user_id))];
       const { data: profiles, error: profilesError } = await supabase
         .from('profiles')
         .select('id, email, full_name')
-        .in('id', userRoles.map(ur => ur.user_id));
-      
+        .in('id', userIds);
+
       if (profilesError) throw profilesError;
-      
-      // Combinar los datos
-      const combinedData = userRoles.map(userRole => ({
-        ...userRole,
-        profiles: profiles.find(p => p.id === userRole.user_id) || { email: '', full_name: '' }
+
+      const groupedUsers = new Map<string, ActiveUserRow>();
+      userRoles.forEach((userRole) => {
+        const existingUser = groupedUsers.get(userRole.user_id);
+        const profile = profiles?.find((item) => item.id === userRole.user_id) || { email: '', full_name: '' };
+        const roleAssignment: UserRoleAssignment = {
+          id: userRole.id,
+          role: userRole.role,
+          created_at: userRole.created_at,
+        };
+
+        if (existingUser) {
+          existingUser.roles.push(roleAssignment);
+          existingUser.primaryRole = getPrimaryRole(existingUser.roles);
+          return;
+        }
+
+        groupedUsers.set(userRole.user_id, {
+          user_id: userRole.user_id,
+          roles: [roleAssignment],
+          primaryRole: userRole.role,
+          created_at: userRole.created_at,
+          profiles: {
+            email: profile.email || '',
+            full_name: profile.full_name,
+          },
+        });
+      });
+
+      return [...groupedUsers.values()].map((user) => ({
+        ...user,
+        primaryRole: getPrimaryRole(user.roles),
+        roles: [...user.roles].sort((a, b) => rolePriority[a.role] - rolePriority[b.role]),
       }));
-      
-      return combinedData;
-    }
+    },
+  });
+
+  const userRoleMutation = useMutation({
+    mutationFn: async ({
+      userId,
+      currentRoles,
+      nextRoles,
+    }: {
+      userId: string;
+      currentRoles: UserRoleAssignment[];
+      nextRoles: AppRole[];
+    }) => {
+      if (nextRoles.length === 0) {
+        throw new Error('Un usuario debe conservar al menos un rol.');
+      }
+
+      const currentRoleSet = new Set(currentRoles.map((item) => item.role));
+      const nextRoleSet = new Set(nextRoles);
+      const rolesToAdd = nextRoles.filter((item) => !currentRoleSet.has(item));
+      const roleIdsToRemove = currentRoles
+        .filter((item) => !nextRoleSet.has(item.role))
+        .map((item) => item.id);
+
+      if (rolesToAdd.length > 0) {
+        const { error } = await supabase
+          .from('user_roles')
+          .insert(rolesToAdd.map((newRole) => ({ user_id: userId, role: newRole })));
+        if (error) throw error;
+      }
+
+      if (roleIdsToRemove.length > 0) {
+        const { error } = await supabase
+          .from('user_roles')
+          .delete()
+          .in('id', roleIdsToRemove);
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['active-users'] });
+      setRoleManagerUserId(null);
+      toast({ title: 'Roles actualizados', description: 'La combinación de permisos se ha guardado.' });
+    },
+    onError: (error) => {
+      console.error('Error updating user roles:', error);
+      queryClient.invalidateQueries({ queryKey: ['active-users'] });
+      toast({ title: 'No se pudieron actualizar los roles', description: error instanceof Error ? error.message : 'Revisa tus permisos e inténtalo de nuevo.', variant: 'destructive' });
+    },
   });
 
   // Query para obtener asignaciones de sede de usuarios
-  const { data: userSedeAccess, isLoading: isLoadingSedeAccess } = useQuery({
+  const { data: userSedeAccess, isLoading: isLoadingSedeAccess } = useQuery<UserSedeAccessRow[]>({
     queryKey: ['user-sede-access'],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -329,6 +456,10 @@ export const UserManagement = () => {
   };
 
   const handleDeleteUser = (userId: string) => {
+    if (userId === currentUser?.id) {
+      toast({ title: 'No puedes eliminar tu propia cuenta', description: 'Usa otra cuenta administradora para realizar esta acción.', variant: 'destructive' });
+      return;
+    }
     deleteUserMutation.mutate(userId);
   };
 
@@ -337,36 +468,90 @@ export const UserManagement = () => {
   };
 
   // Helper para obtener sedes asignadas a un usuario
-  const getUserAssignedSedes = (userId: string) => {
-    return userSedeAccess?.filter(access => access.user_id === userId) || [];
-  };
+  const getUserAssignedSedes = (userId: string) => (
+    userSedeAccess?.filter((access) => access.user_id === userId && access.can_access) || []
+  );
 
   // Helper para verificar si un usuario tiene acceso a una sede específica
-  const hasSedeAccess = (userId: string, sedeId: string) => {
-    return userSedeAccess?.some(access => 
-      access.user_id === userId && 
-      access.sede_id === sedeId && 
-      access.can_access
-    ) || false;
+  const hasSedeAccess = (userId: string, sedeId: string) => (
+    userSedeAccess?.some((access) => (
+      access.user_id === userId && access.sede_id === sedeId && access.can_access
+    )) || false
+  );
+
+  const filteredActiveUsers = useMemo(() => {
+    const normalizedSearch = userSearch.trim().toLowerCase();
+    return (activeUsers || []).filter((user) => {
+      const matchesRole = roleFilter === 'all' || user.roles.some((item) => item.role === roleFilter);
+      const matchesSearch = !normalizedSearch
+        || user.profiles.email.toLowerCase().includes(normalizedSearch)
+        || (user.profiles.full_name || '').toLowerCase().includes(normalizedSearch);
+      return matchesRole && matchesSearch;
+    });
+  }, [activeUsers, roleFilter, userSearch]);
+
+  const roleManagerUser = activeUsers?.find((user) => user.user_id === roleManagerUserId);
+  const sedeManagerUser = activeUsers?.find((user) => user.user_id === sedeManagerUserId);
+  const canEditRoles = currentUserRole === 'admin';
+  const canEditSedes = currentUserRole === 'admin' || currentUserRole === 'manager';
+
+  const isUserAdmin = (userId: string) => (
+    activeUsers?.some((user) => user.user_id === userId && user.roles.some((item) => item.role === 'admin')) || false
+  );
+
+  const openRoleManager = (user: ActiveUserRow) => {
+    if (!canEditRoles) {
+      toast({ title: 'Solo administradores', description: 'La asignación de roles requiere una cuenta administradora.', variant: 'destructive' });
+      return;
+    }
+    setRoleManagerUserId(user.user_id);
+    setDraftRoles(user.roles.map((item) => item.role));
   };
 
-  // Verificar si un usuario es admin
-  const isUserAdmin = (userId: string) => {
-    return activeUsers?.some(user => 
-      user.user_id === userId && user.role === 'admin'
-    ) || false;
+  const handleSaveRoles = () => {
+    if (!roleManagerUser || draftRoles.length === 0) {
+      toast({ title: 'Debe conservar al menos un rol', description: 'No se puede guardar un usuario sin permisos.', variant: 'destructive' });
+      return;
+    }
+
+    const adminCount = (activeUsers || []).filter((user) => isUserAdmin(user.user_id)).length;
+    const removesOnlyAdmin = isUserAdmin(roleManagerUser.user_id)
+      && !draftRoles.includes('admin')
+      && adminCount <= 1;
+
+    if (removesOnlyAdmin) {
+      toast({ title: 'No se puede retirar el último administrador', description: 'Asigna primero el rol de administrador a otra persona.', variant: 'destructive' });
+      return;
+    }
+
+    userRoleMutation.mutate({
+      userId: roleManagerUser.user_id,
+      currentRoles: roleManagerUser.roles,
+      nextRoles: draftRoles,
+    });
   };
 
-  // Manejar asignación de sede
+  const handleOpenSedeManager = (user: ActiveUserRow) => {
+    if (!canEditSedes) {
+      toast({ title: 'Sin permiso para editar sedes', description: 'Tu cuenta puede consultar la pantalla, pero no modificar accesos.', variant: 'destructive' });
+      return;
+    }
+    setSedeManagerUserId(user.user_id);
+  };
+
+  // Las mutaciones del hook son asíncronas: refrescar después de terminar evita que la tabla muestre datos antiguos.
   const handleGrantSedeAccess = (userId: string, sedeId: string) => {
-    grantSedeAccess({ userId, sedeId });
-    queryClient.invalidateQueries({ queryKey: ['user-sede-access'] });
+    grantSedeAccess(
+      { userId, sedeId },
+      { onSuccess: () => queryClient.invalidateQueries({ queryKey: ['user-sede-access'] }) },
+    );
   };
 
-  // Manejar revocación de sede
   const handleRevokeSedeAccess = (userId: string, sedeId: string) => {
-    revokeSedeAccess({ userId, sedeId });
-    queryClient.invalidateQueries({ queryKey: ['user-sede-access'] });
+    revokeSedeAccess(
+      { userId, sedeId },
+      { onSuccess: () => queryClient.invalidateQueries({ queryKey: ['user-sede-access'] }) },
+    );
   };
 
   const copyInvitationLink = (invitation: InvitationRow) => {
@@ -496,7 +681,13 @@ export const UserManagement = () => {
         </Dialog>
       </div>
 
-      <Tabs defaultValue="invitations" className="space-y-6">
+      <div className="grid gap-4 sm:grid-cols-3">
+        <div className="rounded-xl border bg-white p-4 shadow-sm"><p className="text-sm text-gray-500">Usuarios activos</p><p className="mt-1 text-2xl font-semibold text-gray-900">{activeUsers?.length || 0}</p></div>
+        <div className="rounded-xl border bg-white p-4 shadow-sm"><p className="text-sm text-gray-500">Administradores y managers</p><p className="mt-1 text-2xl font-semibold text-gray-900">{activeUsers?.filter((user) => user.roles.some((item) => item.role === 'admin' || item.role === 'manager')).length || 0}</p></div>
+        <div className="rounded-xl border bg-white p-4 shadow-sm"><p className="text-sm text-gray-500">Sedes disponibles</p><p className="mt-1 text-2xl font-semibold text-gray-900">{allSedes?.length || 0}</p></div>
+      </div>
+
+      <Tabs defaultValue="users" className="space-y-6">
         <TabsList>
           <TabsTrigger value="invitations">Invitaciones</TabsTrigger>
           <TabsTrigger value="users">Usuarios Activos</TabsTrigger>
@@ -595,161 +786,174 @@ export const UserManagement = () => {
         <TabsContent value="users" className="space-y-6">
           <div className="bg-white rounded-lg shadow">
             <div className="px-6 py-4 border-b border-gray-200">
-              <h3 className="text-lg font-medium text-gray-900">Usuarios Activos</h3>
-              <p className="text-sm text-gray-600 mt-1">Usuarios que ya han aceptado sus invitaciones</p>
+              <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+                <div>
+                  <h3 className="text-lg font-medium text-gray-900">Usuarios Activos</h3>
+                  <p className="text-sm text-gray-600 mt-1">Consulta el acceso de cada persona y edita roles o sedes sin salir de esta pantalla.</p>
+                </div>
+                <div className="flex flex-col gap-2 sm:flex-row">
+                  <div className="relative">
+                    <Search className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
+                    <Input value={userSearch} onChange={(event) => setUserSearch(event.target.value)} placeholder="Buscar usuarios" className="pl-9 sm:w-64" />
+                  </div>
+                  <Select value={roleFilter} onValueChange={(value) => setRoleFilter(value as AppRole | 'all')}>
+                    <SelectTrigger className="sm:w-44"><SelectValue placeholder="Todos los roles" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Todos los roles</SelectItem>
+                      {roleOptions.map((key) => <SelectItem key={key} value={key}>{roleLabels[key]}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
             </div>
             
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Usuario</TableHead>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Rol</TableHead>
-                  <TableHead>Fecha de Registro</TableHead>
-                  <TableHead>Sedes Asignadas</TableHead>
-                  <TableHead>Estado en Trabajadores</TableHead>
-                  <TableHead>Acciones</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {activeUsers?.map((user) => {
-                  const isInCleaners = isUserInCleaners(user.user_id);
-                  const canAddToCleaner = (user.role === 'cleaner' || user.role === 'admin') && !isInCleaners;
-                  
-                  return (
-                    <TableRow key={user.user_id}>
-                      <TableCell className="font-medium">
-                        <div className="flex items-center">
-                          <Users className="h-4 w-4 mr-2 text-gray-400" />
-                          {user.profiles.full_name || 'Sin nombre'}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center">
-                          <Mail className="h-4 w-4 mr-2 text-gray-400" />
-                          {user.profiles.email}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="outline">
-                          {roleLabels[user.role]}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        {new Date(user.created_at).toLocaleDateString('es-ES')}
-                      </TableCell>
-                      <TableCell>
-                        <div className="space-y-2">
-                          <div className="flex flex-wrap gap-1">
-                            {getUserAssignedSedes(user.user_id).map((access) => (
-                              <Badge key={access.sede_id} variant="secondary" className="text-xs">
-                                {access.sedes?.nombre} ({access.sedes?.codigo})
-                              </Badge>
-                            ))}
-                            {getUserAssignedSedes(user.user_id).length === 0 && (
-                              <span className="text-gray-400 text-sm">Sin sedes asignadas</span>
-                            )}
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="min-w-[220px]">Usuario</TableHead>
+                    <TableHead className="min-w-[220px]">Roles</TableHead>
+                    <TableHead className="min-w-[230px]">Sedes con acceso</TableHead>
+                    <TableHead className="min-w-[180px]">Trabajadores</TableHead>
+                    <TableHead className="min-w-[280px] text-right">Acciones</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredActiveUsers.map((user) => {
+                    const userSedes = getUserAssignedSedes(user.user_id);
+                    const hasGlobalSedeAccess = isUserAdmin(user.user_id);
+                    const hasCleanerRole = user.roles.some((item) => item.role === 'cleaner' || item.role === 'admin');
+                    const isInCleaners = isUserInCleaners(user.user_id);
+                    const canAddToCleaner = hasCleanerRole && !isInCleaners;
+
+                    return (
+                      <TableRow key={user.user_id} className="align-top">
+                        <TableCell>
+                          <div className="flex items-start gap-3">
+                            <div className="mt-0.5 rounded-full bg-[#eee8ff] p-2 text-[#310984]"><Users className="h-4 w-4" /></div>
+                            <div className="min-w-0">
+                              <p className="font-semibold text-gray-900">{user.profiles.full_name || 'Sin nombre'}</p>
+                              <p className="mt-1 flex items-center gap-1 text-sm text-gray-500"><Mail className="h-3.5 w-3.5" />{user.profiles.email}</p>
+                              <p className="mt-1 text-xs text-gray-400">Alta: {new Date(user.created_at).toLocaleDateString('es-ES')}</p>
+                            </div>
                           </div>
-                          <div className="flex flex-wrap gap-1">
-                            <Select onValueChange={(sedeId) => handleGrantSedeAccess(user.user_id, sedeId)}>
-                              <SelectTrigger className="h-6 text-xs w-auto">
-                                <SelectValue placeholder="Asignar sede" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {allSedes?.filter(sede => !hasSedeAccess(user.user_id, sede.id)).map((sede) => (
-                                  <SelectItem key={sede.id} value={sede.id}>
-                                    {sede.nombre} ({sede.codigo})
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                            {getUserAssignedSedes(user.user_id).map((access) => (
-                              <Button
-                                key={access.sede_id}
-                                variant="outline"
-                                size="sm"
-                                className="h-6 px-2 text-xs text-red-600 hover:text-red-700"
-                                onClick={() => handleRevokeSedeAccess(user.user_id, access.sede_id)}
-                                disabled={isRevokingAccess}
-                              >
-                                ✕ {access.sedes?.codigo}
-                              </Button>
-                            ))}
+                        </TableCell>
+                        <TableCell>
+                          <div className="space-y-2">
+                            <div className="flex flex-wrap gap-1.5">
+                              {user.roles.map((assignment) => (
+                                <Badge key={assignment.id} variant={assignment.role === user.primaryRole ? 'default' : 'secondary'} className="text-xs">
+                                  {roleLabels[assignment.role]}
+                                  {assignment.role === user.primaryRole && <span className="ml-1 opacity-75">· principal</span>}
+                                </Badge>
+                              ))}
+                            </div>
+                            <p className="flex items-start gap-1 text-xs text-gray-500"><Info className="mt-0.5 h-3.5 w-3.5 shrink-0" />El rol principal determina el menú y los permisos actuales.</p>
                           </div>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        {(user.role === 'cleaner' || user.role === 'admin') && (
-                          <div className="flex items-center">
-                            <UserCheck className={`h-4 w-4 mr-2 ${isInCleaners ? 'text-green-600' : 'text-gray-400'}`} />
-                            <span className={isInCleaners ? 'text-green-600' : 'text-gray-600'}>
-                              {isInCleaners ? 'En lista de trabajadores' : 'No añadido'}
-                            </span>
-                          </div>
-                        )}
-                        {(user.role !== 'cleaner' && user.role !== 'admin') && (
-                          <span className="text-gray-400">No aplicable</span>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex space-x-2">
-                          {canAddToCleaner && (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleAddCleaner(user)}
-                              disabled={addCleanerMutation.isPending}
-                            >
-                              <UserPlus className="h-4 w-4 mr-1" />
-                              Añadir a Trabajadores
-                            </Button>
+                        </TableCell>
+                        <TableCell>
+                          {hasGlobalSedeAccess ? (
+                            <div className="space-y-1"><Badge className="bg-violet-100 text-violet-800 hover:bg-violet-100">Todas las sedes</Badge><p className="text-xs text-gray-500">Por tener rol de administrador</p></div>
+                          ) : (
+                            <div className="space-y-2">
+                              <div className="flex flex-wrap gap-1.5">
+                                {userSedes.slice(0, 3).map((access) => <Badge key={access.sede_id} variant="outline" className="text-xs">{access.sedes?.nombre || access.sede_id}</Badge>)}
+                                {userSedes.length > 3 && <Badge variant="secondary" className="text-xs">+{userSedes.length - 3}</Badge>}
+                                {userSedes.length === 0 && <span className="text-sm font-medium text-amber-700">Sin sedes asignadas</span>}
+                              </div>
+                              {userSedes.length === 0 && <p className="text-xs text-amber-700">No podrá ver trabajo de ninguna sede.</p>}
+                            </div>
                           )}
-                          <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className="text-red-600 hover:text-red-700"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                              <AlertDialogHeader>
-                                <AlertDialogTitle>¿Eliminar usuario?</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                  Esta acción eliminará permanentemente al usuario "{user.profiles.email}" del sistema.
-                                  {user.role === 'cleaner' && ' También será removido de la lista de trabajadores.'}
-                                  Esta acción no se puede deshacer.
-                                </AlertDialogDescription>
-                              </AlertDialogHeader>
-                              <AlertDialogFooter>
-                                <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                                <AlertDialogAction
-                                  onClick={() => handleDeleteUser(user.user_id)}
-                                  className="bg-red-600 hover:bg-red-700"
-                                  disabled={deleteUserMutation.isPending}
-                                >
-                                  Eliminar Usuario
-                                </AlertDialogAction>
-                              </AlertDialogFooter>
-                            </AlertDialogContent>
-                          </AlertDialog>
-                        </div>
-                      </TableCell>
-                    </TableRow>
+                        </TableCell>
+                        <TableCell>
+                          {hasCleanerRole ? (
+                            <div className="flex items-center gap-2">
+                              <UserCheck className={`h-4 w-4 ${isInCleaners ? 'text-emerald-600' : 'text-gray-400'}`} />
+                              <span className={isInCleaners ? 'text-sm text-emerald-700' : 'text-sm text-gray-600'}>{isInCleaners ? 'En lista de trabajadores' : 'No añadido'}</span>
+                            </div>
+                          ) : <span className="text-sm text-gray-400">No aplicable</span>}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex flex-wrap justify-end gap-2">
+                            <Button variant="outline" size="sm" onClick={() => openRoleManager(user)} disabled={!canEditRoles || userRoleMutation.isPending} title={!canEditRoles ? 'Solo un administrador puede cambiar roles' : 'Añadir o quitar roles'}>
+                              <ShieldCheck className="mr-1.5 h-4 w-4" /> Roles
+                            </Button>
+                            <Button variant="outline" size="sm" onClick={() => handleOpenSedeManager(user)} disabled={!canEditSedes || isGrantingAccess || isRevokingAccess} title={!canEditSedes ? 'No tienes permiso para editar sedes' : 'Gestionar sedes'}>
+                              <Building2 className="mr-1.5 h-4 w-4" /> Sedes
+                            </Button>
+                            {canAddToCleaner && <Button variant="outline" size="sm" onClick={() => handleAddCleaner(user)} disabled={addCleanerMutation.isPending}><UserPlus className="mr-1.5 h-4 w-4" /> Trabajador</Button>}
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button variant="outline" size="sm" className="text-red-600 hover:text-red-700" disabled={user.user_id === currentUser?.id} title={user.user_id === currentUser?.id ? 'No puedes eliminar tu propia cuenta' : 'Eliminar usuario'}><Trash2 className="h-4 w-4" /></Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>¿Eliminar usuario?</AlertDialogTitle>
+                                  <AlertDialogDescription>Se eliminará permanentemente <strong>{user.profiles.email}</strong> y sus permisos. Esta acción no se puede deshacer.</AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter><AlertDialogCancel>Cancelar</AlertDialogCancel><AlertDialogAction onClick={() => handleDeleteUser(user.user_id)} className="bg-red-600 hover:bg-red-700" disabled={deleteUserMutation.isPending}>Eliminar usuario</AlertDialogAction></AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                  {filteredActiveUsers.length === 0 && <TableRow><TableCell colSpan={5} className="py-12 text-center text-gray-500">No hay usuarios que coincidan con los filtros.</TableCell></TableRow>}
+                </TableBody>
+              </Table>
+            </div>
+          </div>
+          <Dialog open={!!roleManagerUserId} onOpenChange={(open) => !open && setRoleManagerUserId(null)}>
+            <DialogContent className="max-w-lg">
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2"><KeyRound className="h-5 w-5 text-[#310984]" />Gestionar roles</DialogTitle>
+                <DialogDescription>
+                  {roleManagerUser?.profiles.full_name || roleManagerUser?.profiles.email}. Puedes combinar varios roles; el principal se elige automáticamente por prioridad.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="rounded-lg border border-violet-100 bg-violet-50 p-3 text-sm text-violet-900"><Info className="mr-2 inline h-4 w-4" />Los permisos de la aplicación actual se basan en el rol marcado como principal.</div>
+              <div className="max-h-[52vh] space-y-2 overflow-y-auto py-1">
+                {roleOptions.map((roleOption) => {
+                  const isSelected = draftRoles.includes(roleOption);
+                  const isPrimary = roleManagerUser?.primaryRole === roleOption;
+                  return (
+                    <label key={roleOption} className={`flex cursor-pointer items-start gap-3 rounded-xl border p-3 transition-colors ${isSelected ? 'border-[#310984] bg-[#faf8ff]' : 'border-gray-200 hover:bg-gray-50'}`}>
+                      <Checkbox checked={isSelected} onCheckedChange={(checked) => setDraftRoles((current) => checked ? [...new Set([...current, roleOption])] : current.filter((item) => item !== roleOption))} disabled={userRoleMutation.isPending} aria-label={`Asignar rol ${roleLabels[roleOption]}`} />
+                      <span className="min-w-0 flex-1"><span className="flex items-center gap-2 font-medium text-gray-900">{roleLabels[roleOption]}{isPrimary && <Badge variant="secondary" className="text-[10px]">Principal</Badge>}</span><span className="mt-1 block text-xs text-gray-500">{roleDescriptions[roleOption]}</span></span>
+                      {isSelected && <Check className="mt-0.5 h-4 w-4 text-[#310984]" />}
+                    </label>
                   );
                 })}
-                {activeUsers?.length === 0 && (
-                  <TableRow>
-                    <TableCell colSpan={7} className="text-center py-8 text-gray-500">
-                      No hay usuarios activos registrados
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </div>
+              </div>
+              <DialogFooter><Button variant="outline" onClick={() => setRoleManagerUserId(null)}>Cancelar</Button><Button onClick={handleSaveRoles} disabled={userRoleMutation.isPending || draftRoles.length === 0}>{userRoleMutation.isPending ? 'Guardando...' : 'Guardar roles'}</Button></DialogFooter>
+            </DialogContent>
+          </Dialog>
+          <Dialog open={!!sedeManagerUserId} onOpenChange={(open) => !open && setSedeManagerUserId(null)}>
+            <DialogContent className="max-w-lg">
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2"><Building2 className="h-5 w-5 text-[#310984]" />Gestionar sedes</DialogTitle>
+                <DialogDescription>{sedeManagerUser?.profiles.full_name || sedeManagerUser?.profiles.email}. Marca las sedes a las que podrá acceder.</DialogDescription>
+              </DialogHeader>
+              {sedeManagerUserId && isUserAdmin(sedeManagerUserId) ? (
+                <div className="rounded-lg border border-violet-100 bg-violet-50 p-4 text-sm text-violet-900"><ShieldCheck className="mr-2 inline h-4 w-4" /><strong>Acceso global:</strong> los administradores pueden acceder automáticamente a todas las sedes activas. No necesitas marcar ninguna.</div>
+              ) : (
+                <>
+                  <div className="flex items-center justify-between rounded-lg bg-gray-50 px-3 py-2 text-sm"><span className="text-gray-600">Sedes asignadas</span><strong className="text-gray-900">{sedeManagerUserId ? getUserAssignedSedes(sedeManagerUserId).length : 0} de {allSedes?.length || 0}</strong></div>
+                  <div className="max-h-[52vh] space-y-2 overflow-y-auto py-1">
+                    {allSedes?.map((sede) => (
+                      <label key={sede.id} className="flex cursor-pointer items-center justify-between rounded-xl border border-gray-200 p-3 transition-colors hover:border-[#310984] hover:bg-[#faf8ff]">
+                        <span><span className="block font-medium text-gray-900">{sede.nombre}</span><span className="text-xs text-gray-500">{sede.codigo} · {sede.ciudad}</span></span>
+                        <Checkbox checked={sedeManagerUserId ? hasSedeAccess(sedeManagerUserId, sede.id) : false} onCheckedChange={(checked) => sedeManagerUserId && (checked ? handleGrantSedeAccess(sedeManagerUserId, sede.id) : handleRevokeSedeAccess(sedeManagerUserId, sede.id))} disabled={isGrantingAccess || isRevokingAccess} aria-label={`Dar acceso a ${sede.nombre}`} />
+                      </label>
+                    ))}
+                  </div>
+                  <p className="text-xs text-gray-500"><Info className="mr-1 inline h-3.5 w-3.5" />Los cambios de sede se guardan al marcar o desmarcar una opción.</p>
+                </>
+              )}
+              <DialogFooter><Button onClick={() => setSedeManagerUserId(null)}>Cerrar</Button></DialogFooter>
+            </DialogContent>
+          </Dialog>
         </TabsContent>
       </Tabs>
     </div>
