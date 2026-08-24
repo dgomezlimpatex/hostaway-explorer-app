@@ -28,6 +28,7 @@ export interface BuildingSupervisionWorkspace {
   incidents: SupervisionIncident[];
   policies: Record<string, BuildingAgendaPolicy>;
   workItems: BuildingAgendaWorkItemState[];
+  stockLevels: Record<string, BuildingStockLevel[]>;
   storageMode: 'remote' | 'offline';
 }
 
@@ -45,6 +46,57 @@ const mapProperty = (row: { id: string; codigo?: string | null; nombre?: string 
   active: row.is_active !== false,
 });
 
+export interface BuildingStockLevel {
+  id: string;
+  product_id: string;
+  warehouse_id: string;
+  current_quantity: number;
+  minimum_quantity: number;
+  target_quantity: number;
+  product?: { id: string; name: string; unit_of_measure?: string | null; category?: { name?: string | null } | null } | null;
+  warehouse?: { id: string; name: string; property_group_id?: string | null; location_type?: string | null } | null;
+}
+
+export interface SupervisionStockCheckLine {
+  id: string;
+  check_id: string;
+  stock_level_id: string;
+  product_id: string;
+  expected_quantity: number;
+  observed_quantity: number | null;
+  difference: number | null;
+  notes?: string | null;
+  product?: { name: string; unit_of_measure?: string | null } | null;
+}
+
+export async function getBuildingStockLevels(propertyGroupId: string): Promise<BuildingStockLevel[]> {
+  const { data: warehouse, error: warehouseError } = await db.from('stock_warehouses').select('id,name,property_group_id,location_type').eq('property_group_id', propertyGroupId).eq('location_type', 'building_storage').eq('is_active', true).maybeSingle();
+  if (warehouseError) throw warehouseError;
+  if (!warehouse) return [];
+  const { data, error } = await db.from('stock_levels').select('id,product_id,warehouse_id,current_quantity,minimum_quantity,target_quantity,product:stock_products!inner(id,name,unit_of_measure,category:stock_categories(name)),warehouse:stock_warehouses!inner(id,name,property_group_id,location_type)').eq('warehouse_id', warehouse.id).eq('product.is_active', true).order('product_id');
+  if (error) throw error;
+  return (data || []) as BuildingStockLevel[];
+}
+
+export async function beginBuildingStockCheck(propertyGroupId: string, date: string, checkType: 'restock' | 'inventory' = 'inventory'): Promise<{ id: string; lines: SupervisionStockCheckLine[] }> {
+  const { data: warehouse, error: warehouseError } = await db.from('stock_warehouses').select('id').eq('property_group_id', propertyGroupId).eq('location_type', 'building_storage').eq('is_active', true).maybeSingle();
+  if (warehouseError) throw warehouseError;
+  if (!warehouse) throw new Error('Este edificio todavía no tiene un trastero de stock asignado.');
+  const { data: checkId, error } = await db.rpc('begin_supervision_stock_check', { _warehouse_id: warehouse.id, _property_group_id: propertyGroupId, _scheduled_date: date, _check_type: checkType });
+  if (error) throw error;
+  const { data: lines, error: linesError } = await db.from('supervision_stock_check_lines').select('id,check_id,stock_level_id,product_id,expected_quantity,observed_quantity,difference,notes,product:stock_products!inner(name,unit_of_measure)').eq('check_id', checkId).order('product_id');
+  if (linesError) throw linesError;
+  return { id: String(checkId), lines: (lines || []) as SupervisionStockCheckLine[] };
+}
+
+export async function completeBuildingStockCheck(checkId: string, lines: Array<{ id: string; observed_quantity: number; notes?: string | null }>, notes?: string | null): Promise<void> {
+  for (const line of lines) {
+    const { error } = await db.from('supervision_stock_check_lines').update({ observed_quantity: Math.max(0, Number(line.observed_quantity) || 0), notes: line.notes || null, updated_at: new Date().toISOString() }).eq('id', line.id).eq('check_id', checkId);
+    if (error) throw error;
+  }
+  const { error } = await db.rpc('complete_supervision_stock_check', { _check_id: checkId, _notes: notes || null });
+  if (error) throw error;
+}
 export interface SupervisionUser {
   id: string;
   full_name?: string | null;
@@ -196,7 +248,7 @@ export async function fetchBuildingSupervisionWorkspace(
   const activeAssignments = assignments.filter((assignment) => isActiveAssignment(assignment, date));
   const buildingIds = [...new Set(activeAssignments.map((assignment) => assignment.property_group_id))];
   if (buildingIds.length === 0) {
-    return { agenda: { date, buildings: [], pendingCount: 0, completedCount: 0, blockedCount: 0 }, assignments: activeAssignments, tasks: [], reviews: [], incidents: [], policies: {}, workItems: [], storageMode: 'remote' };
+    return { agenda: { date, buildings: [], pendingCount: 0, completedCount: 0, blockedCount: 0 }, assignments: activeAssignments, tasks: [], reviews: [], incidents: [], policies: {}, workItems: [], stockLevels: {}, storageMode: 'remote' };
   }
 
   const [groupsResult, propertyAssignmentsResult] = await Promise.all([
@@ -280,6 +332,7 @@ export async function fetchBuildingSupervisionWorkspace(
     incidents: (incidentsResult.data || []) as SupervisionIncident[],
     policies,
     workItems: allWorkItems,
+    stockLevels: Object.fromEntries(await Promise.all(buildingIds.map(async (buildingId) => [buildingId, await getBuildingStockLevels(buildingId)]))),
     storageMode: 'remote',
   };
 }

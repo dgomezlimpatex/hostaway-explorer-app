@@ -10,6 +10,8 @@ export interface StockWarehouse {
   is_active: boolean;
   is_default: boolean;
   sort_order: number;
+  property_group_id?: string | null;
+  location_type?: 'central' | 'building_storage' | string;
   created_at: string;
   updated_at: string;
 }
