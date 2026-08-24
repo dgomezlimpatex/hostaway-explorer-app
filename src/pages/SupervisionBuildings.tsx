@@ -32,6 +32,8 @@ const SupervisionBuildings = () => {
   const openReview = async (item: BuildingAgendaItem) => {
     const building = workspace.agenda?.buildings.find((candidate) => candidate.id === item.buildingId);
     if (!building) return;
+    const property = building.properties.find((candidate) => candidate.id === item.propertyId);
+    if (property?.occupancy?.status !== 'vacant') return;
     setPreparingBuildingId(building.id);
     try {
       if (item.workItemId) await workspace.updateWorkItemStatus({ workItemId: item.workItemId, status: 'in_progress' });
