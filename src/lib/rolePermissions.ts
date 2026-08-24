@@ -89,7 +89,9 @@ export const ROLE_PERMISSIONS: Record<string, RolePermissions> = {
     hostaway: createPermission(false),
     propertyGroups: createPermission(false),
     users: createPermission(false),
-    inventory: createPermission(true),
+    // El inventario general queda desactivado para supervisión por ahora.
+    // Las comprobaciones de checklist siguen disponibles dentro de /supervision.
+    inventory: createPermission(false),
     logistics: createPermission(true),
     admin: createPermission(false),
   },

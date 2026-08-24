@@ -1,14 +1,15 @@
 
 import React from 'react';
 import { Navigate } from 'react-router-dom';
-import { useRolePermissions } from '@/hooks/useRolePermissions';
+import { useRolePermissions, type RolePermissions } from '@/hooks/useRolePermissions';
 import { useAuth } from '@/hooks/useAuth';
 import { Loader2, AlertTriangle } from 'lucide-react';
 
 interface RoleProtectedRouteProps {
   children: React.ReactNode;
-  requiredModule?: string;
+  requiredModule?: keyof RolePermissions;
   requiredAction?: 'canView' | 'canCreate' | 'canEdit' | 'canDelete';
+  excludedRoles?: string[];
   fallbackPath?: string;
 }
 
@@ -16,6 +17,7 @@ export const RoleProtectedRoute: React.FC<RoleProtectedRouteProps> = ({
   children,
   requiredModule,
   requiredAction = 'canView',
+  excludedRoles = [],
   fallbackPath = '/',
 }) => {
   const { hasPermission, userRole } = useRolePermissions();
@@ -36,7 +38,7 @@ export const RoleProtectedRoute: React.FC<RoleProtectedRouteProps> = ({
   }
 
   // Verificar permisos
-  const hasAccess = hasPermission(requiredModule as any, requiredAction);
+  const hasAccess = !excludedRoles.includes(userRole) && hasPermission(requiredModule, requiredAction);
 
   if (!hasAccess) {
     return <Navigate to={fallbackPath} replace />;

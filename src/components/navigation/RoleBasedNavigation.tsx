@@ -188,7 +188,7 @@ export const RoleBasedNavigation = () => {
             <NavigationCard
               to="/supervision"
               title="Supervisión y calidad"
-              description="Organiza rutas, revisa apartamentos y controla incidencias por sede"
+              description="Rutas, checklist, comprobaciones, fotos e incidencias por sede"
               icon={ClipboardCheck}
               gradientFrom="bg-gradient-to-br from-[#310984]"
               gradientTo="to-violet-700"
