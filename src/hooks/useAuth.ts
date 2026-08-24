@@ -193,7 +193,16 @@ export const useAuthProvider = (): AuthContextType => {
         console.error('❌ Error fetching user roles:', userRolesError);
       }
 
-      const resolvedRoles = (userRoleRows?.map((row) => row.role) || (roleData ? [roleData] : [])) as AppRole[];
+      const knownRoles: AppRole[] = ['admin', 'manager', 'supervisor', 'cleaner', 'client', 'logistics'];
+      const roleChecks = await Promise.all(knownRoles.map(async (role) => {
+        const { data, error } = await supabase.rpc('has_role', { _user_id: userId, _role: role });
+        return !error && data ? role : null;
+      }));
+      const resolvedRoles = [...new Set([
+        ...(userRoleRows || []).map((row) => row.role),
+        ...roleChecks.filter((role): role is AppRole => role !== null),
+        ...(roleData ? [roleData] : []),
+      ])] as AppRole[];
       const resolvedDefaultMode = getDefaultOperationalMode(resolvedRoles, roleData);
       const storedMode = typeof window !== 'undefined'
         ? window.localStorage.getItem(`limpatex-operational-mode:${userId}`)

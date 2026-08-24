@@ -25,5 +25,8 @@ export const getEffectiveRole = (
   mode: OperationalMode,
 ): string | null => {
   if (mode === 'cleaning' && canUseOperationalMode(roles, 'cleaning')) return 'cleaner';
+  if (mode === 'supervision' && roles.includes('admin')) return 'admin';
+  if (mode === 'supervision' && roles.includes('manager')) return 'manager';
+  if (mode === 'supervision' && roles.includes('supervisor')) return 'supervisor';
   return primaryRole || roles[0] || null;
 };

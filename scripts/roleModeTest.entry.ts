@@ -8,6 +8,8 @@ export function run(assert: typeof import('node:assert/strict')) {
   assert.equal(canUseOperationalMode(dualRoles, 'supervision'), true);
   assert.equal(canUseOperationalMode(dualRoles, 'cleaning'), true);
   assert.equal(getEffectiveRole(dualRoles, 'supervisor', 'supervision'), 'supervisor');
+  assert.equal(getEffectiveRole(['cleaner', 'supervisor'], 'cleaner', 'supervision'), 'supervisor');
+  assert.equal(getEffectiveRole(['cleaner', 'supervisor'], 'cleaner', 'cleaning'), 'cleaner');
   assert.equal(getEffectiveRole(dualRoles, 'supervisor', 'cleaning'), 'cleaner');
 
   assert.equal(getDefaultOperationalMode(['cleaner'], 'cleaner'), 'cleaning');

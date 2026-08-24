@@ -20,7 +20,7 @@ export const RoleProtectedRoute: React.FC<RoleProtectedRouteProps> = ({
   excludedRoles = [],
   fallbackPath = '/',
 }) => {
-  const { hasPermission, userRole } = useRolePermissions();
+  const { hasPermission, effectiveRole } = useRolePermissions();
   const { isLoading } = useAuth();
 
   // Si no hay módulo requerido, mostrar contenido
@@ -29,7 +29,7 @@ export const RoleProtectedRoute: React.FC<RoleProtectedRouteProps> = ({
   }
 
   // Mientras se carga el rol, mostrar loading en lugar de redirigir
-  if (!userRole) {
+  if (!effectiveRole) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
@@ -38,7 +38,7 @@ export const RoleProtectedRoute: React.FC<RoleProtectedRouteProps> = ({
   }
 
   // Verificar permisos
-  const hasAccess = !excludedRoles.includes(userRole) && hasPermission(requiredModule, requiredAction);
+  const hasAccess = !excludedRoles.includes(effectiveRole) && hasPermission(requiredModule, requiredAction);
 
   if (!hasAccess) {
     return <Navigate to={fallbackPath} replace />;

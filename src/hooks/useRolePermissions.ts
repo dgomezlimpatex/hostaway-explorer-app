@@ -40,6 +40,7 @@ export const useRolePermissions = () => {
     isAdminOrManager,
     isSupervisor,
     isCleaner,
+    effectiveRole,
     userRole,
     userRoles,
     operationalMode,
