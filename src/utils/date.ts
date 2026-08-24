@@ -16,12 +16,24 @@ export const formatMadridDate = (date: Date): string => {
   const month = parts.find((p) => p.type === 'month')?.value;
   const day = parts.find((p) => p.type === 'day')?.value;
 
-  if (!year || !month || !day) {
-    // Fallback (should be extremely rare)
-    return date.toISOString().split('T')[0];
-  }
-
+  if (!year || !month || !day) return date.toISOString().split('T')[0];
   return `${year}-${month}-${day}`;
+};
+
+export const formatMadridDateTime = (date: Date): string => {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Europe/Madrid',
+    year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', hourCycle: 'h23',
+  }).formatToParts(date);
+  const get = (type: string) => parts.find((part) => part.type === type)?.value;
+  const year = get('year');
+  const month = get('month');
+  const day = get('day');
+  const hour = get('hour');
+  const minute = get('minute');
+  if (!year || !month || !day || !hour || !minute) return `${formatMadridDate(date)}T12:00`;
+  return `${year}-${month}-${day}T${hour}:${minute}`;
 };
 
 /**
@@ -47,7 +59,5 @@ export const getTodayMadrid = (): Date => {
   const minute = Number(get('minute') ?? '0');
 
   if (!year || !month || !day) return new Date();
-  // Build a Date at noon Madrid-local-clock-time so DST shifts can never push
-  // it across day boundaries when re-read by getDate()/setDate().
   return new Date(year, month - 1, day, Math.max(12, hour), minute, 0, 0);
 };

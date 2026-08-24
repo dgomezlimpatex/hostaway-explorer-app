@@ -17,6 +17,7 @@
     "test:budget-estimator-pdf": "node scripts/budgetEstimatorPdfTest.mjs",
     "test:planning-v2-domain": "node scripts/planningV2DomainTest.mjs",
     "test:supervision-building-agenda": "node scripts/supervisionBuildingAgendaTest.mjs",
+    "test:supervision-occupancy": "node scripts/supervisionOccupancyTest.mjs",
     "test:supervision-domain": "node scripts/supervisionDomainTest.mjs",
     "test:supervision-ui": "node scripts/supervisionUiContractTest.mjs",
     "test:role-modes": "node scripts/roleModeTest.mjs",

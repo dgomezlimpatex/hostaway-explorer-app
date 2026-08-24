@@ -1,8 +1,9 @@
 import { supabase } from '@/integrations/supabase/client';
 import { taskStorageService } from '@/services/taskStorage';
+import { formatMadridDateTime } from '@/utils/date';
 import type { Task } from '@/types/calendar';
 import type { SupervisionIncident, SupervisionReview, SupervisionRoute, SupervisionStop } from './types';
-import { buildBuildingSupervisionAgenda, type BuildingAgendaBuildingResult, type BuildingAgendaPolicy, type BuildingAgendaProperty, type BuildingAgendaWorkItemState, type BuildingSupervisionAgenda } from './buildingAgenda';
+import { buildBuildingSupervisionAgenda, type BuildingAgendaBuildingResult, type BuildingAgendaPolicy, type BuildingAgendaProperty, type BuildingAgendaReservation, type BuildingAgendaWorkItemState, type BuildingSupervisionAgenda } from './buildingAgenda';
 
 // New supervision tables are intentionally kept local to this feature until generated types are refreshed.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -26,6 +27,7 @@ export interface BuildingSupervisionWorkspace {
   tasks: Task[];
   reviews: SupervisionReview[];
   incidents: SupervisionIncident[];
+  reservations: BuildingAgendaReservation[];
   policies: Record<string, BuildingAgendaPolicy>;
   workItems: BuildingAgendaWorkItemState[];
   stockLevels: Record<string, BuildingStockLevel[]>;
@@ -248,11 +250,11 @@ export async function fetchBuildingSupervisionWorkspace(
   const activeAssignments = assignments.filter((assignment) => isActiveAssignment(assignment, date));
   const buildingIds = [...new Set(activeAssignments.map((assignment) => assignment.property_group_id))];
   if (buildingIds.length === 0) {
-    return { agenda: { date, buildings: [], pendingCount: 0, completedCount: 0, blockedCount: 0 }, assignments: activeAssignments, tasks: [], reviews: [], incidents: [], policies: {}, workItems: [], stockLevels: {}, storageMode: 'remote' };
+    return { agenda: { date, buildings: [], pendingCount: 0, completedCount: 0, blockedCount: 0 }, assignments: activeAssignments, tasks: [], reviews: [], incidents: [], reservations: [], policies: {}, workItems: [], stockLevels: {}, storageMode: 'remote' };
   }
 
   const [groupsResult, propertyAssignmentsResult] = await Promise.all([
-    db.from('property_groups').select('id,name,display_name').in('id', buildingIds).eq('is_active', true).order('name'),
+    db.from('property_groups').select('id,name,display_name,check_in_time,check_out_time').in('id', buildingIds).eq('is_active', true).order('name'),
     db.from('property_group_assignments').select('property_group_id,property_id').in('property_group_id', buildingIds),
   ]);
   if (groupsResult.error) throw groupsResult.error;
@@ -261,16 +263,18 @@ export async function fetchBuildingSupervisionWorkspace(
   const propertyAssignments = (propertyAssignmentsResult.data || []) as Array<{ property_group_id: string; property_id: string }>;
   const propertyIds = [...new Set(propertyAssignments.map((assignment) => assignment.property_id))];
   const propertiesResult = propertyIds.length > 0
-    ? await db.from('properties').select('id,codigo,nombre,is_active').in('id', propertyIds)
+    ? await db.from('properties').select('id,codigo,nombre,is_active,check_out_predeterminado').in('id', propertyIds)
     : { data: [], error: null };
   if (propertiesResult.error) throw propertiesResult.error;
 
-  const [policiesResult, workItemsResult] = await Promise.all([
+  const [policiesResult, workItemsResult, reservationsResult] = await Promise.all([
     db.from('supervision_building_policies').select('property_group_id,quick_review_every_days,full_review_every_days,full_review_requires_cleaning,review_open_incidents,review_returned_work').in('property_group_id', buildingIds).eq('is_active', true),
     db.from('supervision_work_items').select('id,generation_key,property_group_id,property_id,task_id,work_type,status,defer_reason,blocked_reason').in('property_group_id', buildingIds).eq('scheduled_date', date),
+    propertyIds.length > 0 ? db.from('client_reservations').select('id,property_id,check_in_date,check_out_date,status').in('property_id', propertyIds).neq('status', 'cancelled').order('check_in_date', { ascending: true }) : Promise.resolve({ data: [], error: null }),
   ]);
   if (policiesResult.error) throw policiesResult.error;
   if (workItemsResult.error) throw workItemsResult.error;
+  if (reservationsResult.error) throw reservationsResult.error;
 
   const policies = Object.fromEntries(((policiesResult.data || []) as Array<Record<string, unknown>>).map((policy) => [String(policy.property_group_id), {
     propertyGroupId: String(policy.property_group_id),
@@ -295,31 +299,47 @@ export async function fetchBuildingSupervisionWorkspace(
   if (reviewsResult.error) throw reviewsResult.error;
   if (incidentsResult.error) throw incidentsResult.error;
 
-  const propertiesById = new Map<string, { id: string; codigo?: string | null; nombre?: string | null; is_active?: boolean | null }>((propertiesResult.data || []).map((property: { id: string; codigo?: string | null; nombre?: string | null; is_active?: boolean | null }) => [property.id, property]));
+  const propertiesById = new Map<string, { id: string; codigo?: string | null; nombre?: string | null; is_active?: boolean | null; check_out_predeterminado?: string | null }>((propertiesResult.data || []).map((property: { id: string; codigo?: string | null; nombre?: string | null; is_active?: boolean | null; check_out_predeterminado?: string | null }) => [property.id, property]));
+  const buildings = (groupsResult.data || []) as Array<{ id: string; name: string; display_name?: string | null; check_in_time?: string | null; check_out_time?: string | null }>;
+  const buildingsById = new Map(buildings.map((building) => [building.id, building]));
   const agendaProperties: BuildingAgendaProperty[] = propertyAssignments.flatMap((assignment) => {
     const property = propertiesById.get(assignment.property_id);
-    return property ? [mapProperty(property, assignment.property_group_id)] : [];
+    const building = buildingsById.get(assignment.property_group_id);
+    return property ? [{
+      ...mapProperty(property, assignment.property_group_id),
+      checkOutTime: property.check_out_predeterminado || building?.check_out_time || '11:00',
+    }] : [];
   });
-  const buildings = (groupsResult.data || []) as Array<{ id: string; name: string; display_name?: string | null }>;
+  const reservations: BuildingAgendaReservation[] = ((reservationsResult.data || []) as Array<{ id: string; property_id: string; check_in_date: string; check_out_date: string; status?: string | null }>).map((reservation) => ({
+    id: reservation.id,
+    propertyId: reservation.property_id,
+    checkInDate: reservation.check_in_date,
+    checkOutDate: reservation.check_out_date,
+    status: reservation.status,
+  }));
 
   const agenda = buildBuildingSupervisionAgenda({
     date,
-    buildings: buildings.map((building) => ({ id: building.id, name: building.name, displayName: building.display_name })),
+    now: formatMadridDateTime(new Date()),
+    buildings: buildings.map((building) => ({ id: building.id, name: building.name, displayName: building.display_name, checkInTime: building.check_in_time, checkOutTime: building.check_out_time })),
     properties: agendaProperties,
     tasks: tasks.map((task) => ({ id: task.id, propertyId: task.propertyId, date: task.date, status: task.status, propertyName: task.propertyName, checkIn: task.checkIn })),
     reviews: (reviewsResult.data || []) as SupervisionReview[],
     incidents: (incidentsResult.data || []) as SupervisionIncident[],
+    reservations,
     policies,
   });
   const generatedWorkItems = await ensureSupervisionWorkItems({ date, agenda, assignments: activeAssignments, userId });
   const allWorkItems = [...workItems.filter((item) => !generatedWorkItems.some((generated) => generated.id === item.id)), ...generatedWorkItems];
   const finalAgenda = buildBuildingSupervisionAgenda({
     date,
-    buildings: buildings.map((building) => ({ id: building.id, name: building.name, displayName: building.display_name })),
+    now: formatMadridDateTime(new Date()),
+    buildings: buildings.map((building) => ({ id: building.id, name: building.name, displayName: building.display_name, checkInTime: building.check_in_time, checkOutTime: building.check_out_time })),
     properties: agendaProperties,
     tasks: tasks.map((task) => ({ id: task.id, propertyId: task.propertyId, date: task.date, status: task.status, propertyName: task.propertyName, checkIn: task.checkIn })),
     reviews: (reviewsResult.data || []) as SupervisionReview[],
     incidents: (incidentsResult.data || []) as SupervisionIncident[],
+    reservations,
     policies,
     workItems: allWorkItems,
   });
@@ -330,6 +350,7 @@ export async function fetchBuildingSupervisionWorkspace(
     tasks,
     reviews: (reviewsResult.data || []) as SupervisionReview[],
     incidents: (incidentsResult.data || []) as SupervisionIncident[],
+    reservations,
     policies,
     workItems: allWorkItems,
     stockLevels: Object.fromEntries(await Promise.all(buildingIds.map(async (buildingId) => [buildingId, await getBuildingStockLevels(buildingId)]))),

@@ -20,6 +20,8 @@ export const useBuildingSupervisionWorkspace = (date: string) => {
     queryFn: () => fetchBuildingSupervisionWorkspace(sedeId, userId, date),
     enabled,
     staleTime: 15_000,
+    refetchInterval: 60_000,
+    refetchOnWindowFocus: true,
   });
 
   const invalidate = () => {
