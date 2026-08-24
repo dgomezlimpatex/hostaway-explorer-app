@@ -137,6 +137,7 @@ No modificar `src/integrations/supabase/types.ts` manualmente.
 
 - Ola 1: integrada, verificada y desplegada.
 - Ola 2: integrada en `dbc37960`, migraciones `20260824140000`/`20260824141000` aplicadas y frontend desplegado en Vercel.
+- Ola 3: inventario por trastero y recuento físico integrado en `d34a1c82`, migraciones `20260824150000`/`20260824151000` aplicadas y frontend desplegado.
 - Pendiente: QA autenticado, móvil/offline/fotos con datos controlados.
 
 ## Ola 2 — Programación y generación durable

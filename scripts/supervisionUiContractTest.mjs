@@ -33,6 +33,7 @@ const buildingRoutesMigration = readFileSync('supabase/migrations/20260824131000
 const workItemsMigration = readFileSync('supabase/migrations/20260824140000_supervision_work_items.sql', 'utf8');
 const routeAssignmentGuardMigration = readFileSync('supabase/migrations/20260824141000_supervision_route_assignment_guard.sql', 'utf8');
 const stockLocationsMigration = readFileSync('supabase/migrations/20260824150000_supervision_stock_locations_checks.sql', 'utf8');
+const stockDeltaFixMigration = readFileSync('supabase/migrations/20260824151000_supervision_stock_count_delta_fix.sql', 'utf8');
 assert.match(app, /path=\"\/supervision\"/);
 assert.match(app, /excludedRoles=\{\['supervisor'\]\}/g);
 assert.match(dashboardSidebar, /title: 'Supervisión y calidad'/);
@@ -65,6 +66,8 @@ assert.match(stockLocationsMigration, /begin_supervision_stock_check/);
 assert.match(stockLocationsMigration, /complete_supervision_stock_check/);
 assert.match(stockLocationsMigration, /stock_warehouses_supervisor_read_scoped/);
 assert.match(stockLocationsMigration, /stock_levels_supervisor_read_scoped/);
+assert.match(stockDeltaFixMigration, /physical_delta/);
+assert.match(stockDeltaFixMigration, /physical_quantity/);
 assert.match(page, /Supervisión y calidad/);
 assert.match(page, /Devolver para repaso/);
 assert.match(page, /Fotos opcionales/);
