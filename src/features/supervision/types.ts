@@ -14,6 +14,7 @@ export interface SupervisionRoute {
   sede_id: string;
   route_date: string;
   name: string;
+  property_group_id?: string | null;
   reviewer_user_id?: string | null;
   status: SupervisionRouteStatus;
   started_at?: string | null;

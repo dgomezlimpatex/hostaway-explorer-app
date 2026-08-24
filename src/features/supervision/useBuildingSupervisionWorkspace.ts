@@ -1,0 +1,69 @@
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useAuth } from '@/hooks/useAuth';
+import { useSede } from '@/contexts/SedeContext';
+import { createIncident, saveReview, uploadSupervisionPhoto } from './supervisionStorage';
+import { ensureAutomaticBuildingRoute, fetchBuildingSupervisionWorkspace } from './buildingSupervisionStorage';
+import type { SupervisionIncident, SupervisionReview } from './types';
+import type { BuildingAgendaBuildingResult } from './buildingAgenda';
+
+export const useBuildingSupervisionWorkspace = (date: string) => {
+  const { activeSede } = useSede();
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+  const sedeId = activeSede?.id || '';
+  const userId = user?.id || '';
+  const enabled = Boolean(sedeId && userId && date);
+  const queryKey = ['building-supervision-workspace', userId, sedeId, date];
+
+  const workspaceQuery = useQuery({
+    queryKey,
+    queryFn: () => fetchBuildingSupervisionWorkspace(sedeId, userId, date),
+    enabled,
+    staleTime: 15_000,
+  });
+
+  const invalidate = () => {
+    void queryClient.invalidateQueries({ queryKey });
+    void queryClient.invalidateQueries({ queryKey: ['supervision-workspace'] });
+  };
+
+  const prepareBuildingMutation = useMutation({
+    mutationFn: (building: BuildingAgendaBuildingResult) => ensureAutomaticBuildingRoute({
+      sedeId,
+      date,
+      building,
+      tasks: workspaceQuery.data?.tasks || [],
+    }),
+  });
+
+  const saveReviewMutation = useMutation({
+    mutationFn: (input: Omit<SupervisionReview, 'id' | 'created_at' | 'updated_at'>) => saveReview(sedeId, date, input),
+    onSuccess: invalidate,
+  });
+
+  const incidentMutation = useMutation({
+    mutationFn: (input: Omit<SupervisionIncident, 'id' | 'created_at' | 'updated_at'>) => createIncident(sedeId, date, input),
+    onSuccess: invalidate,
+  });
+
+  const photoMutation = useMutation({
+    mutationFn: (input: { reviewId: string; file: File }) => uploadSupervisionPhoto(sedeId, input.reviewId, input.file),
+    onSuccess: invalidate,
+  });
+
+  return {
+    ...workspaceQuery.data,
+    activeSede,
+    user,
+    sedeId,
+    isLoading: workspaceQuery.isLoading,
+    isFetching: workspaceQuery.isFetching,
+    error: workspaceQuery.error,
+    refresh: () => queryClient.invalidateQueries({ queryKey }),
+    prepareBuilding: prepareBuildingMutation.mutateAsync,
+    saveReview: saveReviewMutation.mutateAsync,
+    createIncident: incidentMutation.mutateAsync,
+    uploadPhoto: photoMutation.mutateAsync,
+    isSaving: prepareBuildingMutation.isPending || saveReviewMutation.isPending || incidentMutation.isPending || photoMutation.isPending,
+  };
+};
