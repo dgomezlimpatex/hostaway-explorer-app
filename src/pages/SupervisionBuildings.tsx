@@ -11,6 +11,8 @@ import type { BuildingAgendaBuildingResult, BuildingAgendaItem } from '@/feature
 import type { SupervisionRoute, SupervisionStop } from '@/features/supervision/types';
 import { BuildingSupervisionCard } from '@/components/supervision/BuildingSupervisionCard';
 import { ApartmentReviewSheet } from '@/components/supervision/ApartmentReviewSheet';
+import { StockCheckSheet } from '@/components/supervision/StockCheckSheet';
+import type { SupervisionStockCheckLine } from '@/features/supervision/buildingSupervisionStorage';
 
 const displayDate = (value: string) => new Date(`${value}T12:00:00`).toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 
@@ -24,6 +26,7 @@ const SupervisionBuildings = () => {
   const [date, setDate] = useState(formatMadridDate(new Date()));
   const [selectedReview, setSelectedReview] = useState<ReviewSelection | null>(null);
   const [preparingBuildingId, setPreparingBuildingId] = useState<string | null>(null);
+  const [stockCheck, setStockCheck] = useState<{ buildingName: string; warehouseName: string; checkId: string; lines: SupervisionStockCheckLine[] } | null>(null);
   const workspace = useBuildingSupervisionWorkspace(date);
 
   const openReview = async (item: BuildingAgendaItem) => {
@@ -41,6 +44,13 @@ const SupervisionBuildings = () => {
     }
   };
 
+  const openStockCheck = async (building: BuildingAgendaBuildingResult) => {
+    const levels = workspace.stockLevels?.[building.id] || [];
+    if (levels.length === 0) return;
+    const check = await workspace.beginStockCheck({ propertyGroupId: building.id, date, checkType: 'inventory' });
+    setStockCheck({ buildingName: building.displayName || building.name, warehouseName: levels[0]?.warehouse?.name || 'Trastero', checkId: check.id, lines: check.lines });
+  };
+
   const deferItem = async (item: BuildingAgendaItem) => {
     if (!item.workItemId) return;
     const reason = window.prompt('¿Por qué se aplaza esta comprobación?');
@@ -54,8 +64,9 @@ const SupervisionBuildings = () => {
   const agenda = workspace.agenda || { date, buildings: [], pendingCount: 0, completedCount: 0, blockedCount: 0 };
 
   return (
-    <div className="min-h-screen bg-slate-50 p-3 sm:p-6">
-      <div className="mx-auto max-w-6xl space-y-5">
+    <>
+      <div className="min-h-screen bg-slate-50 p-3 sm:p-6">
+        <div className="mx-auto max-w-6xl space-y-5">
         <header className="rounded-3xl bg-[#310984] p-5 text-white shadow-lg sm:p-7">
           <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
             <div><p className="text-xs font-semibold uppercase tracking-[0.18em] text-violet-200">Centro operativo</p><h1 className="mt-1 text-3xl font-bold">Mi supervisión</h1><p className="mt-2 max-w-2xl text-sm text-violet-100">El sistema agrupa automáticamente tus edificios y te muestra solo las comprobaciones que necesitan atención.</p></div>
@@ -75,13 +86,15 @@ const SupervisionBuildings = () => {
           <Card><CardContent className="p-4"><p className="text-xs text-slate-500">Incidencias prioritarias</p><p className="mt-1 text-2xl font-bold text-red-700">{agenda.buildings.reduce((sum, building) => sum + building.items.filter((item) => item.type === 'incident').length, 0)}</p></CardContent></Card>
         </section>
 
-        {agenda.buildings.length === 0 ? <Card><CardContent className="flex min-h-[260px] flex-col items-center justify-center gap-3 p-8 text-center"><Building2 className="h-12 w-12 text-[#310984]/40" /><h2 className="text-lg font-semibold text-slate-950">Todavía no tienes edificios asignados</h2><p className="max-w-md text-sm text-slate-500">Cuando administración te asigne un edificio, sus propiedades y comprobaciones aparecerán aquí automáticamente.</p></CardContent></Card> : <section className="space-y-4"><div className="flex items-center justify-between"><div><h2 className="text-xl font-bold text-slate-950">Tus edificios</h2><p className="text-sm text-slate-500">No tienes que crear rutas ni añadir apartamentos manualmente.</p></div><Badge variant="outline" className="border-[#310984]/20 bg-white text-[#310984]"><ClipboardCheck className="mr-1 h-4 w-4" />Agenda automática</Badge></div>{agenda.buildings.map((building: BuildingAgendaBuildingResult) => <BuildingSupervisionCard key={building.id} building={building} onReview={(item) => void openReview(item)} onDefer={(item) => void deferItem(item)} isPreparing={preparingBuildingId === building.id} />)}</section>}
+        {agenda.buildings.length === 0 ? <Card><CardContent className="flex min-h-[260px] flex-col items-center justify-center gap-3 p-8 text-center"><Building2 className="h-12 w-12 text-[#310984]/40" /><h2 className="text-lg font-semibold text-slate-950">Todavía no tienes edificios asignados</h2><p className="max-w-md text-sm text-slate-500">Cuando administración te asigne un edificio, sus propiedades y comprobaciones aparecerán aquí automáticamente.</p></CardContent></Card> : <section className="space-y-4"><div className="flex items-center justify-between"><div><h2 className="text-xl font-bold text-slate-950">Tus edificios</h2><p className="text-sm text-slate-500">No tienes que crear rutas ni añadir apartamentos manualmente.</p></div><Badge variant="outline" className="border-[#310984]/20 bg-white text-[#310984]"><ClipboardCheck className="mr-1 h-4 w-4" />Agenda automática</Badge></div>{agenda.buildings.map((building: BuildingAgendaBuildingResult) => <BuildingSupervisionCard key={building.id} building={building} onReview={(item) => void openReview(item)} onDefer={(item) => void deferItem(item)} onStockCheck={() => void openStockCheck(building)} stockLevels={workspace.stockLevels?.[building.id] || []} isPreparing={preparingBuildingId === building.id} />)}</section>}
 
         <Card className="border-violet-100 bg-violet-50/60"><CardContent className="flex gap-3 p-4 text-sm text-violet-950"><CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-[#310984]" /><div><p className="font-semibold">¿Cómo se decide qué aparece?</p><p className="mt-1 text-violet-900/80">Las propiedades proceden de los edificios configurados. Se priorizan limpiezas terminadas, entradas próximas, devoluciones para repaso e incidencias abiertas.</p></div></CardContent></Card>
       </div>
+    </div>
 
       {selectedReview && workspace.user && <ApartmentReviewSheet item={selectedReview.item} route={selectedReview.route} stop={selectedReview.stop} userId={workspace.user.id} isSaving={workspace.isSaving} onSaveReview={workspace.saveReview} onUploadPhoto={workspace.uploadPhoto} onCreateIncident={workspace.createIncident} onCompleteWorkItem={(workItemId) => workspace.updateWorkItemStatus({ workItemId, status: 'completed' })} onClose={() => setSelectedReview(null)} onSaved={() => setSelectedReview(null)} />}
-    </div>
+      {stockCheck && <StockCheckSheet buildingName={stockCheck.buildingName} warehouseName={stockCheck.warehouseName} lines={stockCheck.lines} isSaving={workspace.isSaving} onComplete={(lines, notes) => workspace.completeStockCheck({ checkId: stockCheck.checkId, lines, notes })} onClose={() => setStockCheck(null)} />}
+    </>
   );
 };
 

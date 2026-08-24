@@ -1,14 +1,17 @@
-import { AlertTriangle, Building2, CheckCircle2, ClipboardCheck, ChevronDown, Clock3, Home } from 'lucide-react';
+import { AlertTriangle, Building2, CheckCircle2, ClipboardCheck, ChevronDown, Clock3, Home, Package } from 'lucide-react';
 import { useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import type { BuildingAgendaBuildingResult, BuildingAgendaItem } from '@/features/supervision/buildingAgenda';
+import type { BuildingStockLevel } from '@/features/supervision/buildingSupervisionStorage';
 
 interface BuildingSupervisionCardProps {
   building: BuildingAgendaBuildingResult;
   onReview: (item: BuildingAgendaItem) => void;
   onDefer: (item: BuildingAgendaItem) => void;
+  onStockCheck: () => void;
+  stockLevels: BuildingStockLevel[];
   isPreparing: boolean;
 }
 
@@ -19,7 +22,7 @@ const typeLabel: Record<BuildingAgendaItem['type'], string> = {
   incident: 'Incidencia',
 };
 
-export const BuildingSupervisionCard = ({ building, onReview, onDefer, isPreparing }: BuildingSupervisionCardProps) => {
+export const BuildingSupervisionCard = ({ building, onReview, onDefer, onStockCheck, stockLevels, isPreparing }: BuildingSupervisionCardProps) => {
   const [expanded, setExpanded] = useState(true);
   const pending = building.items.filter((item) => !['completed', 'cancelled'].includes(item.status));
   const completed = building.items.filter((item) => item.status === 'completed');
@@ -42,10 +45,7 @@ export const BuildingSupervisionCard = ({ building, onReview, onDefer, isPrepari
         </div>
       </CardHeader>
       <CardContent className="p-0">
-        <div className="flex items-center justify-between border-b border-slate-100 px-5 py-3">
-          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Comprobaciones de hoy</p>
-          <Button variant="ghost" size="sm" onClick={() => setExpanded((value) => !value)}>{expanded ? 'Ocultar' : 'Mostrar'} <ChevronDown className={`ml-1 h-4 w-4 transition-transform ${expanded ? 'rotate-180' : ''}`} /></Button>
-        </div>
+        <div className="flex items-center justify-between border-b border-slate-100 px-5 py-3"><p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Comprobaciones de hoy</p><div className="flex items-center gap-2"><Button variant="outline" size="sm" onClick={onStockCheck} disabled={stockLevels.length === 0}><Package className="mr-1 h-4 w-4" />{stockLevels.length ? 'Revisar stock' : 'Sin trastero'}</Button><Button variant="ghost" size="sm" onClick={() => setExpanded((value) => !value)}>{expanded ? 'Ocultar' : 'Mostrar'} <ChevronDown className={`ml-1 h-4 w-4 transition-transform ${expanded ? 'rotate-180' : ''}`} /></Button></div></div>
         {expanded && <div className="divide-y divide-slate-100">
           {building.items.length === 0 && <div className="flex items-center gap-3 p-5 text-sm text-slate-500"><Home className="h-5 w-5 text-slate-400" />No hay comprobaciones automáticas pendientes para este edificio hoy.</div>}
           {building.items.map((item) => (

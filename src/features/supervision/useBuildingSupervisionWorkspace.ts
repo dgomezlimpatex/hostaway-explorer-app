@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/hooks/useAuth';
 import { useSede } from '@/contexts/SedeContext';
 import { createIncident, saveReview, uploadSupervisionPhoto } from './supervisionStorage';
-import { ensureAutomaticBuildingRoute, fetchBuildingSupervisionWorkspace, updateSupervisionWorkItemStatus } from './buildingSupervisionStorage';
+import { ensureAutomaticBuildingRoute, fetchBuildingSupervisionWorkspace, updateSupervisionWorkItemStatus, beginBuildingStockCheck, completeBuildingStockCheck } from './buildingSupervisionStorage';
 import type { SupervisionIncident, SupervisionReview } from './types';
 import type { BuildingAgendaBuildingResult } from './buildingAgenda';
 
@@ -56,6 +56,14 @@ export const useBuildingSupervisionWorkspace = (date: string) => {
     onSuccess: invalidate,
   });
 
+  const stockCheckMutation = useMutation({
+    mutationFn: ({ propertyGroupId, date, checkType }: { propertyGroupId: string; date: string; checkType?: 'restock' | 'inventory' }) => beginBuildingStockCheck(propertyGroupId, date, checkType),
+  });
+  const completeStockCheckMutation = useMutation({
+    mutationFn: ({ checkId, lines, notes }: { checkId: string; lines: Array<{ id: string; observed_quantity: number; notes?: string | null }>; notes?: string | null }) => completeBuildingStockCheck(checkId, lines, notes),
+    onSuccess: invalidate,
+  });
+
   return {
     ...workspaceQuery.data,
     activeSede,
@@ -69,7 +77,9 @@ export const useBuildingSupervisionWorkspace = (date: string) => {
     saveReview: saveReviewMutation.mutateAsync,
     createIncident: incidentMutation.mutateAsync,
     updateWorkItemStatus: workItemStatusMutation.mutateAsync,
+    beginStockCheck: stockCheckMutation.mutateAsync,
+    completeStockCheck: completeStockCheckMutation.mutateAsync,
     uploadPhoto: photoMutation.mutateAsync,
-    isSaving: prepareBuildingMutation.isPending || saveReviewMutation.isPending || incidentMutation.isPending || workItemStatusMutation.isPending || photoMutation.isPending,
+    isSaving: prepareBuildingMutation.isPending || saveReviewMutation.isPending || incidentMutation.isPending || workItemStatusMutation.isPending || stockCheckMutation.isPending || completeStockCheckMutation.isPending || photoMutation.isPending,
   };
 };
