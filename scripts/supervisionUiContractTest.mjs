@@ -60,7 +60,7 @@ assert.match(buildingSupervisionStorage, /check_out_date/);
 assert.match(supervisionOccupancyTest, /betweenReservations/);
 assert.match(supervisionCard, /Ocupado · no revisar/);
 assert.match(supervisionCard, /próxima entrada/);
-assert.match(supervisionCard, /Solo se pueden abrir revisiones cuando el apartamento está vacío/);
+assert.doesNotMatch(supervisionCard, /portal del cliente|revisiones cuando el apartamento/);
 assert.match(stockCheckSheet, /Cantidad observada/);
 assert.match(stockCheckSheet, /Cerrar inventario/);
 assert.match(buildingAgenda, /buildBuildingSupervisionAgenda/);

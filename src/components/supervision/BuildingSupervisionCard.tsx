@@ -91,7 +91,6 @@ export const BuildingSupervisionCard = ({ building, onReview, onDefer, onStockCh
             </div>;
           })}
         </div>}
-        <div className="flex flex-wrap gap-2 border-t border-slate-100 bg-slate-50 px-5 py-3 text-xs text-slate-500"><span>Ocupación consultada en las reservas del portal del cliente</span><span>·</span><span>Solo se pueden abrir revisiones cuando el apartamento está vacío</span></div>
       </CardContent>
     </Card>
   );
