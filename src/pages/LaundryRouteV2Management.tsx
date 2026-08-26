@@ -26,6 +26,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
+import { isRouteV2Owner } from '@/utils/routeV2Access';
 
 type RouteEvent = {
   id: string;
@@ -61,8 +62,6 @@ type RouteLink = {
 };
 
 type RouteManagementResponse = { links: RouteLink[] };
-
-const OWNER_EMAIL = 'dgomezlimpatex@gmail.com';
 
 const formatDate = (value: string) => new Intl.DateTimeFormat('es-ES', {
   weekday: 'long',
@@ -123,7 +122,7 @@ const LaundryRouteV2Management = () => {
   const [authorizationLink, setAuthorizationLink] = useState<RouteLink | null>(null);
   const [authorizationReason, setAuthorizationReason] = useState('');
   const [copiedToken, setCopiedToken] = useState<string | null>(null);
-  const isOwner = user?.email?.trim().toLowerCase() === OWNER_EMAIL;
+  const isOwner = isRouteV2Owner(user?.email);
 
   const queryKey = useMemo(() => ['laundry-route-v2-management', activeSede?.id], [activeSede?.id]);
   const routesQuery = useQuery({

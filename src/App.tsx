@@ -9,6 +9,7 @@ import { AuthProvider } from "@/contexts/AuthProvider";
 import { SedeContextProvider } from "@/contexts/SedeContextProvider";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { RoleProtectedRoute } from "@/components/auth/RoleProtectedRoute";
+import { OwnerOnlyRoute } from "@/components/auth/OwnerOnlyRoute";
 import { useSessionTimeout } from "@/hooks/useSessionTimeout";
 import { LazyLoadErrorBoundary } from "@/components/common/LazyLoadErrorBoundary";
 import { AppLayout } from "@/components/layout/AppLayout";
@@ -297,7 +298,9 @@ function App() {
                       <RoleProtectedRoute requiredModule="reports"><LaundryShareManagement /></RoleProtectedRoute>
                     } />
                     <Route path="/lavanderia/nuevo-sistema" element={
-                      <RoleProtectedRoute requiredModule="reports"><LaundryRouteV2Management /></RoleProtectedRoute>
+                      <OwnerOnlyRoute>
+                        <RoleProtectedRoute requiredModule="reports"><LaundryRouteV2Management /></RoleProtectedRoute>
+                      </OwnerOnlyRoute>
                     } />
                     <Route path="/lavanderia/orden" element={
                       <RoleProtectedRoute requiredModule="reports"><LaundryRouteOrder /></RoleProtectedRoute>

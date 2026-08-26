@@ -882,6 +882,14 @@ serve(async (req) => {
     }
 
     if (action === "list") {
+      if (actor.kind === "user") {
+        const { data: userData } = actor.userId
+          ? await supabase.auth.admin.getUserById(actor.userId)
+          : { data: null };
+        if (userData?.user?.email?.trim().toLowerCase() !== "dgomezlimpatex@gmail.com") {
+          return json({ error: "Este nuevo sistema de ruta está disponible solo para Daniel" }, 403);
+        }
+      }
       if (!requestedSedeId) return json({ links: [], events: [] });
       if (!(await canAccessSede(supabase, actor, requestedSedeId))) return json({ error: "Sin acceso a esta sede" }, 403);
       // Reading the panel also refreshes the three managed routes so that a new,

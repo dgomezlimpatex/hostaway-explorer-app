@@ -10,6 +10,7 @@ import {
   Clock,
   MapPin,
   Plus,
+  Route,
   Sparkles,
   Users,
 } from 'lucide-react';
@@ -47,6 +48,7 @@ interface MobileManagerDashboardProps {
   onOpenCreateModal: () => void;
   onOpenBatchModal: () => void;
   onOpenExtraordinaryServiceModal: () => void;
+  showRouteV2: boolean;
   showWorkloadWidget: boolean;
   showLinenWidget: boolean;
   workloadWidget?: ReactNode;
@@ -115,6 +117,7 @@ export function MobileManagerDashboard({
   onOpenCreateModal,
   onOpenBatchModal,
   onOpenExtraordinaryServiceModal,
+  showRouteV2,
   showWorkloadWidget,
   showLinenWidget,
   workloadWidget,
@@ -186,6 +189,16 @@ export function MobileManagerDashboard({
             <Sparkles className="h-5 w-5 text-emerald-600" />
             Extraordinaria
           </Button>
+          {showRouteV2 && (
+            <Button
+              onClick={() => navigate('/lavanderia/nuevo-sistema')}
+              variant="outline"
+              className="h-20 flex-col gap-1 rounded-xl bg-white"
+            >
+              <Route className="h-5 w-5 text-violet-700" />
+              Nuevo sistema de ruta
+            </Button>
+          )}
           <Button
             onClick={() => navigate('/calendar')}
             variant="outline"

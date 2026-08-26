@@ -38,6 +38,7 @@ import { useRolePermissions } from '@/hooks/useRolePermissions';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { isAiAllowedUser } from '@/utils/aiAccess';
+import { isRouteV2Owner } from '@/utils/routeV2Access';
 import { useIncidentStats } from '@/hooks/useIncidents';
 import { useWhatsAppDeliveryHealth } from '@/hooks/useWhatsAppDeliveryHealth';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
@@ -152,7 +153,7 @@ const managementItems: NavigationItem[] = [
     title: 'Nuevo sistema de ruta',
     href: '/lavanderia/nuevo-sistema',
     icon: Route,
-    permission: 'reports'
+    permission: 'route-v2-owner'
   },
   {
     title: 'Inventario',
@@ -301,6 +302,7 @@ export const DashboardSidebar = () => {
       case 'admin-module': return canAccessModule('admin');
       case 'admin-only': return isAdminOrManager();
       case 'ai-owner': return isAiAllowedUser(user, profile);
+      case 'route-v2-owner': return isRouteV2Owner(user?.email);
       default: return true;
     }
   };

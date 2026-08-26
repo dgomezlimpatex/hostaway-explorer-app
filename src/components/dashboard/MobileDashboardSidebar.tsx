@@ -28,6 +28,7 @@ import { cn } from '@/lib/utils';
 import { useRolePermissions } from '@/hooks/useRolePermissions';
 import { useAuth } from '@/hooks/useAuth';
 import { isAiAllowedUser } from '@/utils/aiAccess';
+import { isRouteV2Owner } from '@/utils/routeV2Access';
 import { useIncidentStats } from '@/hooks/useIncidents';
 import { useWhatsAppDeliveryHealth } from '@/hooks/useWhatsAppDeliveryHealth';
 
@@ -77,7 +78,7 @@ const managementItems: NavigationItem[] = [
     permission: 'tasks-edit',
   },
   { title: 'Lavandería', href: '/lavanderia/gestion', icon: Package, permission: 'reports' },
-  { title: 'Nuevo sistema de ruta', href: '/lavanderia/nuevo-sistema', icon: Route, permission: 'reports' },
+  { title: 'Nuevo sistema de ruta', href: '/lavanderia/nuevo-sistema', icon: Route, permission: 'route-v2-owner' },
   { title: 'Inventario', href: '/inventory', icon: Package, permission: 'inventory' },
 ];
 
@@ -191,6 +192,8 @@ export const MobileDashboardSidebar = ({ onNavigate }: MobileDashboardSidebarPro
         return isAdminOrManager();
       case 'ai-owner':
         return isAiAllowedUser(user, profile);
+      case 'route-v2-owner':
+        return isRouteV2Owner(user?.email);
       default:
         return true;
     }

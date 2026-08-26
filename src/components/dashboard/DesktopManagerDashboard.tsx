@@ -10,6 +10,7 @@ import {
   Clock3,
   Layers3,
   Plus,
+  Route,
   Sparkles,
   Users,
   Wand2,
@@ -49,6 +50,7 @@ interface DesktopManagerDashboardProps {
   onOpenCreateModal: () => void;
   onOpenBatchModal: () => void;
   onOpenExtraordinaryServiceModal: () => void;
+  showRouteV2: boolean;
   showWorkloadWidget: boolean;
   showLinenWidget: boolean;
   workloadWidget: React.ReactNode;
@@ -88,6 +90,7 @@ const DesktopManagerDashboard = ({
   onOpenCreateModal,
   onOpenBatchModal,
   onOpenExtraordinaryServiceModal,
+  showRouteV2,
   showWorkloadWidget,
   showLinenWidget,
   workloadWidget,
@@ -130,6 +133,13 @@ const DesktopManagerDashboard = ({
       onClick: onOpenExtraordinaryServiceModal,
       className: 'border-emerald-200 bg-emerald-50 text-emerald-800 hover:bg-emerald-100',
     },
+    ...(showRouteV2 ? [{
+      title: 'Nuevo sistema de ruta',
+      description: 'Probar el nuevo flujo de lavandería',
+      icon: Route,
+      onClick: () => navigate('/lavanderia/nuevo-sistema'),
+      className: 'border-violet-200 bg-violet-50 text-violet-800 hover:bg-violet-100',
+    }] : []),
   ];
 
   const healthCards = [
@@ -242,7 +252,7 @@ const DesktopManagerDashboard = ({
                 </div>
               </div>
 
-              <div className="mt-3 grid grid-cols-3 gap-2">
+              <div className={cn('mt-3 grid gap-2', showRouteV2 ? 'grid-cols-2' : 'grid-cols-3')}>
                 {actionCards.map((action) => {
                   const Icon = action.icon;
 

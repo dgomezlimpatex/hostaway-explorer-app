@@ -6,6 +6,8 @@ import { useRolePermissions } from '@/hooks/useRolePermissions';
 import { useTasksPageActions } from '@/hooks/tasks/useTasksPageActions';
 import { useDeviceType } from '@/hooks/use-mobile';
 import { useIncidentStats } from '@/hooks/useIncidents';
+import { useAuth } from '@/hooks/useAuth';
+import { isRouteV2Owner } from '@/utils/routeV2Access';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { CreateTaskModal } from '@/components/modals/CreateTaskModal';
 import { BatchCreateTaskModal } from '@/components/modals/BatchCreateTaskModal';
@@ -31,6 +33,8 @@ export const ManagerDashboard = () => {
   const [isExtraordinaryServiceModalOpen, setIsExtraordinaryServiceModalOpen] = useState(false);
   const { canAccessModule } = useRolePermissions();
   const { isMobile } = useDeviceType();
+  const { user } = useAuth();
+  const showRouteV2 = isRouteV2Owner(user?.email);
 
   const {
     isCreateModalOpen,
@@ -133,6 +137,7 @@ export const ManagerDashboard = () => {
           onOpenCreateModal={handleOpenCreateModal}
           onOpenBatchModal={handleOpenBatchModal}
           onOpenExtraordinaryServiceModal={handleOpenExtraordinaryServiceModal}
+          showRouteV2={showRouteV2}
           showWorkloadWidget={canAccessModule('workers')}
           showLinenWidget={canAccessModule('reports')}
           workloadWidget={
@@ -191,6 +196,7 @@ export const ManagerDashboard = () => {
         onOpenCreateModal={handleOpenCreateModal}
         onOpenBatchModal={handleOpenBatchModal}
         onOpenExtraordinaryServiceModal={handleOpenExtraordinaryServiceModal}
+        showRouteV2={showRouteV2}
         showWorkloadWidget={canAccessModule('workers')}
         showLinenWidget={canAccessModule('reports')}
         workloadWidget={<WorkloadWidget />}
