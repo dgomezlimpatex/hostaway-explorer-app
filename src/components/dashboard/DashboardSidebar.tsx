@@ -36,6 +36,7 @@ import { cn } from '@/lib/utils';
 import { useRolePermissions } from '@/hooks/useRolePermissions';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
+import { OperationalModeSwitcher } from '@/components/auth/OperationalModeSwitcher';
 import { isAiAllowedUser } from '@/utils/aiAccess';
 import { useIncidentStats } from '@/hooks/useIncidents';
 import { useWhatsAppDeliveryHealth } from '@/hooks/useWhatsAppDeliveryHealth';
@@ -439,6 +440,12 @@ export const DashboardSidebar = () => {
             <GlobalSearch />
           )}
         </div>
+
+        {!isCollapsed && (
+          <div className="px-3 pt-3">
+            <OperationalModeSwitcher />
+          </div>
+        )}
 
         {/* Navigation Sections */}
         <div className="flex-1 overflow-y-auto py-4 space-y-2">

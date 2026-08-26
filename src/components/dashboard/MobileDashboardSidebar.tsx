@@ -26,6 +26,7 @@ import {
 import { cn } from '@/lib/utils';
 import { useRolePermissions } from '@/hooks/useRolePermissions';
 import { useAuth } from '@/hooks/useAuth';
+import { OperationalModeSwitcher } from '@/components/auth/OperationalModeSwitcher';
 import { isAiAllowedUser } from '@/utils/aiAccess';
 import { useIncidentStats } from '@/hooks/useIncidents';
 import { useWhatsAppDeliveryHealth } from '@/hooks/useWhatsAppDeliveryHealth';
@@ -248,6 +249,9 @@ export const MobileDashboardSidebar = ({ onNavigate }: MobileDashboardSidebarPro
     <div className="flex h-full flex-col bg-white">
       <div className="border-b border-slate-200 px-4 py-4">
         <GlobalSearch />
+        <div className="mt-3">
+          <OperationalModeSwitcher />
+        </div>
       </div>
 
       <div className="flex-1 overflow-y-auto py-4">

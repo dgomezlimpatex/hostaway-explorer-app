@@ -7,7 +7,7 @@ import { useTaskReport } from '@/hooks/useTaskReports';
 import { useGroupedTaskReport } from '@/hooks/useGroupedTaskReports';
 import { multipleTaskAssignmentService } from '@/services/storage/multipleTaskAssignmentService';
 import { Task } from '@/types/calendar';
-import { useAuth } from '@/hooks/useAuth';
+import { useRolePermissions } from "@/hooks/useRolePermissions";
 import { useQuery } from '@tanstack/react-query';
 
 interface TaskReportButtonProps {
@@ -23,7 +23,7 @@ export const TaskReportButton: React.FC<TaskReportButtonProps> = ({
   onOpenGroupedReport,
   className = "",
 }) => {
-  const { userRole } = useAuth();
+  const { effectiveRole } = useRolePermissions();
   const { data: existingReport, isLoading } = useTaskReport(task.id);
   
   // Check for multiple assignments
@@ -38,8 +38,8 @@ export const TaskReportButton: React.FC<TaskReportButtonProps> = ({
   const isMultipleReportsScenario = hasMultipleAssignments && groupedReport && groupedReport.total_reports > 0;
 
   // Solo mostrar para roles autorizados
-  const canAccess = ['admin', 'manager', 'supervisor'].includes(userRole || '') || 
-                   (userRole === 'cleaner' && task.cleanerId);
+  const canAccess = ['admin', 'manager', 'supervisor'].includes(effectiveRole || '') ||
+                   (effectiveRole === 'cleaner' && task.cleanerId);
 
   if (!canAccess) {
     return null;
@@ -64,7 +64,7 @@ export const TaskReportButton: React.FC<TaskReportButtonProps> = ({
 
   const getButtonConfig = () => {
     // If this is a multiple assignments scenario, show grouped view for supervisors/admins
-    if (isMultipleReportsScenario && ['admin', 'manager', 'supervisor'].includes(userRole || '')) {
+    if (isMultipleReportsScenario && ['admin', 'manager', 'supervisor'].includes(effectiveRole || '')) {
       return {
         text: `Ver Reportes (${groupedReport.total_reports})`,
         variant: "outline",
@@ -76,10 +76,10 @@ export const TaskReportButton: React.FC<TaskReportButtonProps> = ({
     
     if (!hasReport) {
       return {
-        text: userRole === 'cleaner' ? (isTaskFromToday ? "Crear Reporte" : "Tarea Futura") : "Sin Reporte",
-        variant: userRole === 'cleaner' ? (isTaskFromToday ? "default" : "ghost") : "ghost",
+        text: effectiveRole === 'cleaner' ? (isTaskFromToday ? "Crear Reporte" : "Tarea Futura") : "Sin Reporte",
+        variant: effectiveRole === 'cleaner' ? (isTaskFromToday ? "default" : "ghost") : "ghost",
         icon: Camera,
-        disabled: userRole !== 'cleaner' || !isTaskFromToday,
+        disabled: effectiveRole !== 'cleaner' || !isTaskFromToday,
         isGrouped: false
       };
     }

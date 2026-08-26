@@ -11,7 +11,7 @@ import { Clock, Plus, CheckCircle, XCircle, Edit } from "lucide-react";
 import { format, startOfMonth, endOfMonth } from "date-fns";
 import { es } from "date-fns/locale";
 import { useTimeLogs, useCreateTimeLog, useUpdateTimeLog, useApproveTimeLog, useRejectTimeLog } from '@/hooks/useTimeLogs';
-import { useAuth } from '@/hooks/useAuth';
+import { useRolePermissions } from '@/hooks/useRolePermissions';
 
 interface WorkerTimeTrackingProps {
   workerId: string;
@@ -37,8 +37,8 @@ export const WorkerTimeTracking = ({ workerId }: WorkerTimeTrackingProps) => {
     notes: ''
   });
 
-  const { userRole } = useAuth();
-  const canManageTimeLogs = ['admin', 'manager', 'supervisor'].includes(userRole || '');
+  const { effectiveRole } = useRolePermissions();
+  const canManageTimeLogs = ['admin', 'manager', 'supervisor'].includes(effectiveRole || '');
 
   // Obtener el rango del mes
   const monthStart = startOfMonth(selectedMonth);

@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { FileText, Camera } from 'lucide-react';
 import { useTaskReport } from '@/hooks/useTaskReports';
 import { Task } from '@/types/calendar';
-import { useAuth } from '@/hooks/useAuth';
+import { useRolePermissions } from '@/hooks/useRolePermissions';
 
 interface CreateReportButtonProps {
   task: Task;
@@ -15,7 +15,7 @@ export const CreateReportButton: React.FC<CreateReportButtonProps> = ({
   task,
   onCreateReport,
 }) => {
-  const { userRole } = useAuth();
+  const { effectiveRole } = useRolePermissions();
   const { data: existingReport, isLoading } = useTaskReport(task.id);
 
   // Check if task is from today - stricter validation
@@ -24,7 +24,7 @@ export const CreateReportButton: React.FC<CreateReportButtonProps> = ({
   const isTaskFromToday = taskDate.toDateString() === today.toDateString();
 
   // Solo mostrar para limpiadoras y si la tarea está asignada
-  if (userRole !== 'cleaner' || !task.cleanerId) {
+  if (effectiveRole !== 'cleaner' || !task.cleanerId) {
     return null;
   }
 

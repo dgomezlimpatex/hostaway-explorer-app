@@ -1,6 +1,6 @@
 import React from 'react';
 import { Bed, Bath, Sofa, Clock, Wallet } from 'lucide-react';
-import { useAuth } from '@/hooks/useAuth';
+import { useRolePermissions } from '@/hooks/useRolePermissions';
 
 interface PropertyDetailsSectionProps {
   propertyData: any;
@@ -22,7 +22,7 @@ const Stat = ({ icon, label, value, iconColor }: StatProps) => (
 );
 
 export const PropertyDetailsSection = ({ propertyData }: PropertyDetailsSectionProps) => {
-  const { userRole } = useAuth();
+  const { effectiveRole } = useRolePermissions();
   if (!propertyData) return null;
 
   return (
@@ -71,7 +71,7 @@ export const PropertyDetailsSection = ({ propertyData }: PropertyDetailsSectionP
           value={`${propertyData.duracion_servicio} min`}
           iconColor="text-indigo-500"
         />
-        {userRole !== 'cleaner' && (
+        {effectiveRole !== 'cleaner' && (
           <Stat
             icon={<Wallet className="h-4 w-4" />}
             label="Coste"

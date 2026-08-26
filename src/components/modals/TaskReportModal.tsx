@@ -8,7 +8,7 @@ import { usePropertyChecklistAssignment } from '@/hooks/usePropertyChecklists';
 import { useToast } from '@/hooks/use-toast';
 import { useQueryClient } from '@tanstack/react-query';
 import { useDeviceType } from '@/hooks/use-mobile';
-import { useAuth } from '@/hooks/useAuth';
+import { useRolePermissions } from '@/hooks/useRolePermissions';
 import { useCleaners } from '@/hooks/useCleaners';
 import { useProcessAutomaticConsumption } from '@/hooks/useAmenityMappings';
 import { useOptimizedAutoSave } from '@/hooks/useOptimizedAutoSave';
@@ -71,7 +71,8 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
   const { data: existingReport, isLoading: isLoadingReport } = useTaskReport(realTaskId);
   const { data: templates, isLoading: isLoadingTemplates } = useChecklistTemplates();
   const { data: propertyChecklistAssignment } = usePropertyChecklistAssignment(task?.propertyId || '');
-  const { user, userRole } = useAuth();
+  const { user } = useAuth();
+  const { effectiveRole } = useRolePermissions();
   const { cleaners } = useCleaners();
 
   const [currentReport, setCurrentReport] = useState<TaskReport | null>(null);
@@ -110,7 +111,7 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
     if (ownCleaner?.id) return ownCleaner.id;
 
     // Fallback for admins/managers/supervisors: use the task's assigned cleaner
-    const isPrivileged = userRole === 'admin' || userRole === 'manager' || userRole === 'supervisor';
+    const isPrivileged = effectiveRole === 'admin' || effectiveRole === 'manager' || effectiveRole === 'supervisor';
     if (isPrivileged) {
       // Prefer the cleaner already linked to the existing report (if any)
       if (existingReport?.cleaner_id) return existingReport.cleaner_id;
@@ -125,7 +126,7 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
     }
 
     return null;
-  }, [user?.id, userRole, cleaners, existingReport?.cleaner_id, task?.cleanerId, task?.cleaner]);
+  }, [user?.id, effectiveRole, cleaners, existingReport?.cleaner_id, task?.cleanerId, task?.cleaner]);
 
   // CRITICAL: Force reset all state when the task changes (prevents data leak between tasks)
   useEffect(() => {
@@ -251,7 +252,7 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
   }, [task]);
 
   // Admin/manager can finalize tasks regardless of date
-  const canBypassDateLock = userRole === 'admin' || userRole === 'manager';
+  const canBypassDateLock = effectiveRole === 'admin' || effectiveRole === 'manager';
 
   // Detectar si la tarea está completada
   const reportStatus = currentReport?.overall_status || 'pending';

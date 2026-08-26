@@ -17,7 +17,7 @@ import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { useCalendarLogic } from "@/hooks/useCalendarLogic";
 import { useCalendarNavigation } from "@/hooks/useCalendarNavigation";
 import { useDeviceType } from "@/hooks/use-mobile";
-import { useAuth } from "@/hooks/useAuth";
+import { useRolePermissions } from "@/hooks/useRolePermissions";
 import { useAuthGuard } from "@/hooks/useAuthGuard";
 import { useSede } from "@/contexts/SedeContext";
 import { Loader2 } from "lucide-react";
@@ -25,7 +25,7 @@ import type { Client } from "@/types/client";
 
 const CleaningCalendar = () => {
   const { isMobile } = useDeviceType();
-  const { userRole } = useAuth();
+  const { effectiveRole } = useRolePermissions();
   const hasLoadedOnce = useRef(false);
   const { isLoading: authGuardLoading, hasFullAccess, hasSedeAccess } = useAuthGuard();
   const { isInitialized: sedeInitialized, loading: sedeLoading, activeSede } = useSede();
@@ -92,7 +92,7 @@ const CleaningCalendar = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedClientFilters, setSelectedClientFilters] = useState<string[]>([]);
   const [selectedCleanerFilters, setSelectedCleanerFilters] = useState<string[]>([]);
-  const isAdminSearchEnabled = userRole !== 'cleaner';
+  const isAdminSearchEnabled = effectiveRole !== 'cleaner';
   const { data: clientsData = [] } = useClients();
   const clientsList = clientsData as Client[];
 
@@ -245,7 +245,7 @@ const CleaningCalendar = () => {
 
   console.log('🎯 CleaningCalendar: Determining view to render', {
     isMobile,
-    userRole,
+    effectiveRole,
     tasksLength: tasks?.length || 0,
     cleanersLength: cleaners?.length || 0,
     isLoading
@@ -254,7 +254,7 @@ const CleaningCalendar = () => {
   // Mobile views - render specific mobile interfaces
   if (isMobile) {
     console.log('📱 CleaningCalendar: Rendering mobile view');
-    if (userRole === 'cleaner') {
+    if (effectiveRole === 'cleaner') {
       console.log('Rendering mobile cleaner view');
       
       // Calculate current day and tomorrow's tasks for the cleaner
@@ -366,7 +366,7 @@ const CleaningCalendar = () => {
   }
 
   // Desktop views
-  if (userRole === 'cleaner') {
+  if (effectiveRole === 'cleaner') {
     console.log('🖥️ CleaningCalendar: Rendering desktop cleaner view');
     
     // Calculate today's and tomorrow's tasks for the cleaner
@@ -425,7 +425,7 @@ const CleaningCalendar = () => {
 
   // Desktop manager/admin view
   console.log('🖥️ CleaningCalendar: Rendering desktop manager/admin view', {
-    userRole,
+    effectiveRole,
     tasksLength: tasks.length,
     cleanersLength: cleaners.length,
     currentDateStr: formatMadridDate(currentDate)

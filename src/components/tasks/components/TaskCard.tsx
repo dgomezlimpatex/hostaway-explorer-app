@@ -11,7 +11,7 @@ import { TaskCardServiceInfo } from './TaskCardServiceInfo';
 import { TaskCardActions } from './TaskCardActions';
 import { CleanerTaskCard } from '@/components/calendar/cleaner/CleanerTaskCard';
 import { useDeviceType } from '@/hooks/use-mobile';
-import { useAuth } from '@/hooks/useAuth';
+import { useRolePermissions } from '@/hooks/useRolePermissions';
 
 interface TaskCardProps {
   task: Task;
@@ -41,12 +41,12 @@ export const TaskCard: React.FC<TaskCardProps> = ({
   showActions = true,
 }) => {
   const { isMobile, isTablet } = useDeviceType();
-  const { userRole } = useAuth();
+  const { effectiveRole } = useRolePermissions();
   const [showReportModal, setShowReportModal] = useState(false);
   const [showPreviewModal, setShowPreviewModal] = useState(false);
 
   // Use CleanerTaskCard for all cleaner users (mobile and desktop)
-  if (userRole === 'cleaner') {
+  if (effectiveRole === 'cleaner') {
     const handleTaskClick = () => {
       setShowPreviewModal(true);
     };

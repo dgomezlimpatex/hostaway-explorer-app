@@ -1,5 +1,4 @@
 import React from 'react';
-import { useAuth } from '@/hooks/useAuth';
 import { useRolePermissions } from '@/hooks/useRolePermissions';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -32,13 +31,11 @@ export const TasksPageHeader = ({
   onAssignmentComplete
 }: TasksPageHeaderProps) => {
   const {
-    userRole
-  } = useAuth();
-  const {
     hasPermission,
     isCleaner,
     isSupervisor,
-    isAdminOrManager
+    isAdminOrManager,
+    effectiveRole
   } = useRolePermissions();
   const {
     isMobile,
@@ -120,7 +117,7 @@ export const TasksPageHeader = ({
               
               <div className="flex items-center gap-2 flex-wrap">
                 <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                  {userRole?.charAt(0).toUpperCase()}{userRole?.slice(1)}
+                  {effectiveRole?.charAt(0).toUpperCase()}{effectiveRole?.slice(1)}
                 </span>
                 {isSupervisor() && <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
                     Solo lectura

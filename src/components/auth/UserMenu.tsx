@@ -1,6 +1,7 @@
 
 import React from 'react';
 import { useAuth } from '@/hooks/useAuth';
+import { useRolePermissions } from '@/hooks/useRolePermissions';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -14,7 +15,8 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { User, LogOut, Settings } from 'lucide-react';
 
 export const UserMenu = () => {
-  const { user, profile, userRole, signOut } = useAuth();
+  const { user, profile, signOut } = useAuth();
+  const { effectiveRole } = useRolePermissions();
 
   if (!user || !profile) return null;
 
@@ -57,7 +59,7 @@ export const UserMenu = () => {
               {profile.email}
             </p>
             <p className="text-xs leading-none text-muted-foreground">
-              {getRoleLabel(userRole)}
+              {getRoleLabel(effectiveRole)}
             </p>
           </div>
         </DropdownMenuLabel>

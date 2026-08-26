@@ -16,7 +16,7 @@ import {
   ListTodo
 } from 'lucide-react';
 import { AdditionalTask, Task } from '@/types/calendar';
-import { useAuth } from '@/hooks/useAuth';
+import { useRolePermissions } from '@/hooks/useRolePermissions';
 import { cn } from '@/lib/utils';
 
 interface AdditionalTasksSectionProps {
@@ -32,12 +32,12 @@ export const AdditionalTasksSection = ({
   onRemoveSubtask,
   isEditing = false
 }: AdditionalTasksSectionProps) => {
-  const { userRole, user } = useAuth();
+  const { effectiveRole, user } = useRolePermissions();
   const [isAdding, setIsAdding] = useState(false);
   const [newTaskText, setNewTaskText] = useState('');
   const [requiresPhoto, setRequiresPhoto] = useState(false);
 
-  const canManageSubtasks = userRole === 'admin' || userRole === 'manager';
+  const canManageSubtasks = effectiveRole === 'admin' || effectiveRole === 'manager';
   const additionalTasks = task.additionalTasks || [];
   
   const pendingCount = additionalTasks.filter(t => !t.completed).length;

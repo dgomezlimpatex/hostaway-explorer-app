@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback, useMemo } from 'react';
 import { Dialog, DialogContent, DialogFooter, DialogHeader } from "@/components/ui/dialog";
 import { Task } from "@/types/calendar";
 import { useToast } from "@/hooks/use-toast";
-import { useAuth } from "@/hooks/useAuth";
+import { useRolePermissions } from "@/hooks/useRolePermissions";
 import { useQueryClient } from '@tanstack/react-query';
 import { TaskReportModal } from "./TaskReportModal";
 import { AssignMultipleCleanersModal } from "./AssignMultipleCleanersModal";
@@ -48,13 +48,13 @@ export const TaskDetailsModal = ({
   const [showReportModal, setShowReportModal] = useState(false);
   const [showAssignMultipleModal, setShowAssignMultipleModal] = useState(false);
   const [freshTask, setFreshTask] = useState<Task | null>(null);
-  const { userRole } = useAuth();
+  const { effectiveRole } = useRolePermissions();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const recurringTask = task as RecurringTaskInstance | null;
   const isRecurringInstance = Boolean(recurringTask?.isRecurringInstance);
   const realTaskId = task?.originalTaskId || task?.id || '';
-  const canEdit = (userRole === 'admin' || userRole === 'manager') && !isRecurringInstance;
+  const canEdit = (effectiveRole === 'admin' || effectiveRole === 'manager') && !isRecurringInstance;
   const displayTask = useMemo(() => (
     freshTask && task
       ? {

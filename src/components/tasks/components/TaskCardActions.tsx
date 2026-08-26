@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Edit, Trash, Users } from 'lucide-react';
 import { Task } from '@/types/calendar';
 import { TaskReportButton } from './TaskReportButton';
-import { useAuth } from '@/hooks/useAuth';
+import { useRolePermissions } from '@/hooks/useRolePermissions';
 
 interface TaskCardActionsProps {
   task: Task;
@@ -29,8 +29,8 @@ export const TaskCardActions: React.FC<TaskCardActionsProps> = ({
   onAssignMultipleCleaners,
   showActions = true,
 }) => {
-  const { userRole } = useAuth();
-  const canManageTasks = userRole === 'admin' || userRole === 'manager';
+  const { effectiveRole } = useRolePermissions();
+  const canManageTasks = effectiveRole === 'admin' || effectiveRole === 'manager';
 
   const handleEdit = () => {
     console.log('🔍 TaskCardActions handleEdit clicked');

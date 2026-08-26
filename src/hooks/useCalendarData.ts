@@ -4,7 +4,7 @@ import { useCleaners } from './useCleaners';
 import { useTasks } from './useTasks';
 import { useCalendarNavigation } from './useCalendarNavigation';
 import { useRecurringTaskInstances } from './useRecurringTaskInstances';
-import { useAuth } from './useAuth';
+import { useRolePermissions } from './useRolePermissions';
 import { Cleaner, Task } from '@/types/calendar';
 import { filterTasksByQueryRange, getTaskDateRange, getTaskWindowRange } from '@/utils/taskQueryRange';
 
@@ -18,7 +18,7 @@ export const useCalendarData = () => {
     goToToday
   } = useCalendarNavigation();
 
-  const { userRole, user } = useAuth();
+  const { effectiveRole, user } = useRolePermissions();
   const { cleaners: allCleaners, isInitialLoading: isInitialLoadingCleaners } = useCleaners();
   
   // Filter out inactive cleaners for calendar display
@@ -26,10 +26,10 @@ export const useCalendarData = () => {
 
   // Get current user's cleaner ID if they are a cleaner
   const currentCleanerId = useMemo(() => {
-    if (userRole !== 'cleaner' || !user?.id || !allCleaners) return null;
+    if (effectiveRole !== 'cleaner' || !user?.id || !allCleaners) return null;
     const currentCleaner = allCleaners.find(cleaner => cleaner.user_id === user.id);
     return currentCleaner?.id || null;
-  }, [userRole, user?.id, allCleaners]);
+  }, [effectiveRole, user?.id, allCleaners]);
   
   const {
     tasks: realTasks,
@@ -53,17 +53,17 @@ export const useCalendarData = () => {
   // Cleaner calendars render the selected date plus tomorrow. Other roles
   // render the exact active day/three-day/week range.
   const dateRange = useMemo(
-    () => userRole === 'cleaner'
+    () => effectiveRole === 'cleaner'
       ? getTaskWindowRange(currentDate, 2)
       : getTaskDateRange(currentDate, currentView),
-    [currentDate, currentView, userRole],
+    [currentDate, currentView, effectiveRole],
   );
 
   // Fetch virtual recurring task instances
   const { virtualTasks: allVirtualTasks } = useRecurringTaskInstances({
     dateFrom: dateRange.dateFrom,
     dateTo: dateRange.dateTo,
-    cleanerId: userRole === 'cleaner' ? currentCleanerId : undefined,
+    cleanerId: effectiveRole === 'cleaner' ? currentCleanerId : undefined,
   });
 
   // Merge real tasks with virtual recurring instances
@@ -71,7 +71,7 @@ export const useCalendarData = () => {
     if (allVirtualTasks.length === 0) return realTasks;
     
     // Filter virtual tasks by current view (same as real tasks)
-    const filteredVirtual = userRole === 'cleaner' 
+    const filteredVirtual = effectiveRole === 'cleaner'
       ? allVirtualTasks 
       : filterTasksByQueryRange(allVirtualTasks, currentDate, currentView);
     
@@ -97,7 +97,7 @@ export const useCalendarData = () => {
     });
     
     return [...realTasks, ...newVirtualTasks];
-  }, [realTasks, allVirtualTasks, currentDate, currentView, userRole]);
+  }, [realTasks, allVirtualTasks, currentDate, currentView, effectiveRole]);
 
   // Wrapper for assign task to include cleaners data
   const assignTask = ({ taskId, cleanerId, cleaners: cleanersArray }: { taskId: string; cleanerId: string; cleaners: Cleaner[] }) => {

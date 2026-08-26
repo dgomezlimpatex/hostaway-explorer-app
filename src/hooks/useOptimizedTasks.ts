@@ -26,8 +26,8 @@ export const useOptimizedTasks = ({
   currentView,
   enabled = true,
 }: UseOptimizedTasksProps) => {
-  const { userRole, user } = useAuth();
-  const { isCleaner } = useRolePermissions();
+  const { user } = useAuth();
+  const { isCleaner, effectiveRole } = useRolePermissions();
   const cleanerView = isCleaner();
   const { cleaners } = useCleaners();
   const { activeSede, isInitialized, loading } = useSede();
@@ -119,7 +119,7 @@ export const useOptimizedTasks = ({
       rawTasksCount: tasks?.length || 0,
       filteredTasksCount: filteredTasks?.length || 0,
       currentDateStr: formatMadridDate(currentDate),
-      userRole,
+      userRole: effectiveRole,
       activeSede: activeSedeId,
     },
   };

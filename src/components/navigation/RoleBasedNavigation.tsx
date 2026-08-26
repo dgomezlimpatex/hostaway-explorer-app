@@ -35,7 +35,7 @@ export const RoleBasedNavigation = () => {
           <p className="text-xl text-gray-600">
             Selecciona la sección a la que deseas acceder
           </p>
-          <div className="mt-4 flex justify-center">
+          <div className="mt-4 flex justify-center md:hidden">
             <OperationalModeSwitcher />
           </div>
         </div>

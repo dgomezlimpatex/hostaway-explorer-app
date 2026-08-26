@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Trash2, UserX, UserPlus, Users } from "lucide-react";
 import { Task } from "@/types/calendar";
-import { useAuth } from "@/hooks/useAuth";
+import { useRolePermissions } from "@/hooks/useRolePermissions";
 import { useTaskReport } from "@/hooks/useTaskReports";
 import { useCleaners } from "@/hooks/useCleaners";
 
@@ -23,12 +23,12 @@ export const TaskDetailsActions = ({
   onAssignMultiple,
   onOpenReport,
 }: TaskDetailsActionsProps) => {
-  const { userRole } = useAuth();
+  const { effectiveRole } = useRolePermissions();
   const { data: existingReport } = useTaskReport(task.id);
   const { cleaners } = useCleaners();
-  const canManageTasks = userRole === 'admin' || userRole === 'manager';
-  const canCreateReport = userRole === 'cleaner' && task?.cleanerId;
-  const canViewReport = ['admin', 'manager', 'supervisor'].includes(userRole || '') || (userRole === 'cleaner' && !!task?.cleanerId);
+  const canManageTasks = effectiveRole === 'admin' || effectiveRole === 'manager';
+  const canCreateReport = effectiveRole === 'cleaner' && task?.cleanerId;
+  const canViewReport = ['admin', 'manager', 'supervisor'].includes(effectiveRole || '') || (effectiveRole === 'cleaner' && !!task?.cleanerId);
 
   const getReportButtonText = () => {
     if (!existingReport) return "Crear Reporte";

@@ -57,7 +57,9 @@ export const CleanerDashboard = ({ userFullName, userEmail }: CleanerDashboardPr
               </span>
             </div>
             <div className="flex items-center gap-3">
-              <OperationalModeSwitcher />
+              <div className="md:hidden">
+                <OperationalModeSwitcher />
+              </div>
               <UserMenu />
             </div>
           </div>

@@ -30,7 +30,7 @@ export const TaskPreviewModal: React.FC<TaskPreviewModalProps> = ({
   onAssignCleaner,
   onViewReport
 }) => {
-  const { hasPermission, isCleaner } = useRolePermissions();
+  const { hasPermission, isCleaner, effectiveRole } = useRolePermissions();
   const { isMobile } = useDeviceType();
   const { data: existingReport } = useTaskReport(task?.id || '');
   const { property } = useTaskPreview(task);
@@ -353,7 +353,7 @@ export const TaskPreviewModal: React.FC<TaskPreviewModalProps> = ({
             <CardContent className="p-4 space-y-3">
               <h3 className="font-semibold text-base">Información del Servicio</h3>
               <div className="grid grid-cols-1 gap-3 text-sm">
-                {['admin', 'manager'].includes(userRole || '') && (
+                {['admin', 'manager'].includes(effectiveRole || '') && (
                   <>
                     <div className="flex justify-between"><span className="font-medium">Tipo de servicio:</span><span className="text-muted-foreground">{task.type}</span></div>
                     {task.cost && <div className="flex justify-between"><span className="font-medium">Coste:</span><span className="text-muted-foreground">€{task.cost}</span></div>}

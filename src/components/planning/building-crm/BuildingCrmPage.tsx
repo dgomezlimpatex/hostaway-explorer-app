@@ -14,6 +14,7 @@ import { BuildingDataEditor } from './BuildingDataEditor';
 import { SupervisionBuildingAssignmentEditor } from './SupervisionBuildingAssignmentEditor';
 import { SupervisionBuildingPolicyEditor } from './SupervisionBuildingPolicyEditor';
 import { SupervisionStockLocationEditor } from './SupervisionStockLocationEditor';
+import { PropertyStorageAccessEditor } from './PropertyStorageAccessEditor';
 
 interface BuildingCrmPageProps {
   propertyGroupId: string;
@@ -104,6 +105,9 @@ export const BuildingCrmPage = ({
                   propertyAssignments={propertyAssignments}
                   onRefresh={onRefresh}
                 />
+                <div className="mt-4">
+                  <PropertyStorageAccessEditor propertyGroupId={propertyGroupId} properties={profile.properties} />
+                </div>
               </section>
             </main>
           </>

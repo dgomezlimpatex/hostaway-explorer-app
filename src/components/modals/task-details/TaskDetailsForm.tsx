@@ -11,7 +11,7 @@ import { PropertyNotesSection } from "./components/PropertyNotesSection";
 import { TaskNotesSection } from "./components/TaskNotesSection";
 import { ExtraordinaryServiceBillingSection } from "./components/ExtraordinaryServiceBillingSection";
 import { AdditionalTasksSection } from "./AdditionalTasksSection";
-import { useAuth } from "@/hooks/useAuth";
+import { useRolePermissions } from "@/hooks/useRolePermissions";
 import { useAdditionalTasks } from "@/hooks/useAdditionalTasks";
 import { FieldSaveStatus } from "@/hooks/useInlineFieldSave";
 import { getEffectiveTaskDurationMinutes, getTaskAssignedCount } from "@/utils/taskPositioning";
@@ -44,13 +44,13 @@ export const TaskDetailsForm = ({
   onScheduleSave,
   statusByField,
 }: TaskDetailsFormProps) => {
-  const { userRole } = useAuth();
+  const { effectiveRole } = useRolePermissions();
   const { addSubtask, removeSubtask } = useAdditionalTasks();
   const [propertyData, setPropertyData] = useState<PropertyDetails | null>(null);
   const [clientData, setClientData] = useState<ClientDetails | null>(null);
   const [loading, setLoading] = useState(true);
   const workerDisplayDurationMinutes =
-    userRole === 'cleaner' && getTaskAssignedCount(task) > 1
+    effectiveRole === 'cleaner' && getTaskAssignedCount(task) > 1
       ? getEffectiveTaskDurationMinutes(task)
       : undefined;
 
@@ -68,7 +68,7 @@ export const TaskDetailsForm = ({
         try {
           const propertyQuery = supabase
             .from('properties')
-            .select(userRole === 'cleaner' ? '*' : `*, clients!inner(*)`)
+            .select(effectiveRole === 'cleaner' ? '*' : `*, clients!inner(*)`)
             .eq('id', task.propertyId);
 
           const { data: property } = await propertyQuery.maybeSingle();
@@ -89,7 +89,7 @@ export const TaskDetailsForm = ({
     };
 
     fetchPropertyAndClientInfo();
-  }, [task.propertyId, userRole]);
+  }, [task.propertyId, effectiveRole]);
 
   if (loading) {
     return (
@@ -138,7 +138,7 @@ export const TaskDetailsForm = ({
         />
       )}
 
-      {userRole === 'admin' && task.propertyId && (
+      {effectiveRole === 'admin' && task.propertyId && (
         <>
           <div className="h-px bg-border/60" />
           <NextClientEntrySection propertyId={task.propertyId} taskDate={formData.date ?? task.date} />
@@ -177,7 +177,7 @@ export const TaskDetailsForm = ({
         </>
       )}
 
-      {userRole !== 'cleaner' && clientData && (
+      {effectiveRole !== 'cleaner' && clientData && (
         <>
           <div className="h-px bg-border/60" />
           <ClientInfoSection clientData={clientData} />

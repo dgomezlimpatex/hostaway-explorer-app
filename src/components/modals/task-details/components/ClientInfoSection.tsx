@@ -1,6 +1,6 @@
 import React from 'react';
 import { User } from 'lucide-react';
-import { useAuth } from '@/hooks/useAuth';
+import { useRolePermissions } from '@/hooks/useRolePermissions';
 
 interface ClientInfoSectionProps {
   clientData: any;
@@ -19,7 +19,7 @@ const Row = ({ label, value }: RowProps) => (
 );
 
 export const ClientInfoSection = ({ clientData }: ClientInfoSectionProps) => {
-  const { userRole } = useAuth();
+  const { effectiveRole } = useRolePermissions();
   if (!clientData) return null;
 
   return (
@@ -33,7 +33,7 @@ export const ClientInfoSection = ({ clientData }: ClientInfoSectionProps) => {
 
       <div className="rounded-md bg-muted/30 px-3 divide-y divide-border/50">
         <Row label="Tipo de servicio" value={clientData.tipo_servicio || '—'} />
-        {userRole !== 'cleaner' && (
+        {effectiveRole !== 'cleaner' && (
           <Row label="Método de pago" value={clientData.metodo_pago || '—'} />
         )}
         <Row label="Supervisor" value={clientData.supervisor || '—'} />

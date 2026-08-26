@@ -36,6 +36,7 @@ const requiredFiles = [
   'src/components/planning/building-crm/SupervisionBuildingAssignmentEditor.tsx',
   'src/components/planning/building-crm/SupervisionBuildingPolicyEditor.tsx',
   'src/components/planning/building-crm/SupervisionStockLocationEditor.tsx',
+  'src/components/planning/building-crm/PropertyStorageAccessEditor.tsx',
   'src/components/supervision/StockCheckSheet.tsx',
   'src/services/planning/buildingCrmAggregator.ts',
 ];
@@ -59,6 +60,7 @@ const buildingDataEditor = read('src/components/planning/building-crm/BuildingDa
 const supervisionAssignmentEditor = read('src/components/planning/building-crm/SupervisionBuildingAssignmentEditor.tsx');
 const supervisionPolicyEditor = read('src/components/planning/building-crm/SupervisionBuildingPolicyEditor.tsx');
 const supervisionStockLocationEditor = read('src/components/planning/building-crm/SupervisionStockLocationEditor.tsx');
+const propertyStorageAccessEditor = read('src/components/planning/building-crm/PropertyStorageAccessEditor.tsx');
 
 assert.match(operationalTypes, /export interface PlanningBuildingCrmProfile/, 'Types must define PlanningBuildingCrmProfile');
 assert.match(operationalTypes, /PlanningBuildingCrmSummary/, 'Types must define summary contract');
@@ -135,6 +137,10 @@ assert.match(supervisionPolicyEditor, /quick_review_every_days/, 'Policy editor 
 assert.match(supervisionPolicyEditor, /full_review_every_days/, 'Policy editor must expose full review frequency');
 assert.match(supervisionStockLocationEditor, /Trastero de stock del edificio/, 'Building CRM must expose stock location mapping');
 assert.match(supervisionStockLocationEditor, /property_group_id/, 'Stock location must map a warehouse to the building');
+assert.match(propertyStorageAccessEditor, /Acceso al trastero por apartamento/, 'Building CRM must expose apartment storage access');
+assert.match(propertyStorageAccessEditor, /Comparte el trastero del edificio/, 'Storage access must expose shared building storage');
+assert.match(propertyStorageAccessEditor, /Sin acceso a trastero/, 'Storage access must expose no-access exception');
+assert.match(propertyStorageAccessEditor, /physicalWarehouseIds/, 'Storage access must count physical warehouses once');
 assert.match(properties, /Duración/, 'Properties panel must show duration');
 assert.match(properties, /Necesita/, 'Properties panel must show required cleaners/personas');
 assert.match(properties, /Editar propiedad/, 'Properties panel must provide a settings/edit link without inline editing');

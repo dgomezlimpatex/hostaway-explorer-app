@@ -4,12 +4,12 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Cleaner } from '@/types/calendar';
 import { cleanerStorage, CreateCleanerData } from '@/services/storage/cleanerStorage';
 import { toast } from '@/hooks/use-toast';
-import { useAuth } from '@/hooks/useAuth';
+import { useRolePermissions } from '@/hooks/useRolePermissions';
 import { useSede } from '@/contexts/SedeContext';
 import { useCacheInvalidation } from './useCacheInvalidation';
 
 export const useCleaners = () => {
-  const { userRole, user } = useAuth();
+  const { effectiveRole, user } = useRolePermissions();
   const { activeSede, isInitialized, loading } = useSede();
   
   const query = useQuery({
@@ -22,14 +22,14 @@ export const useCleaners = () => {
 
   // Filter cleaners based on user role
   const cleaners = React.useMemo(() => {
-    if (userRole === 'cleaner' && user?.id) {
+    if (effectiveRole === 'cleaner' && user?.id) {
       // Cleaners only see themselves
       return allCleaners.filter(cleaner => cleaner.user_id === user.id);
     }
     
     // Admins, managers, supervisors see all cleaners
     return allCleaners;
-  }, [allCleaners, userRole, user?.id]);
+  }, [allCleaners, effectiveRole, user?.id]);
 
   return {
     cleaners,

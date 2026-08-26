@@ -1,7 +1,7 @@
 
 import { useState, useMemo, useCallback, useRef } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { useAuth } from '@/hooks/useAuth';
+import { useRolePermissions } from '@/hooks/useRolePermissions';
 import { useTasks } from '@/hooks/useTasks';
 import { useOptimizedPagination } from '@/hooks/useOptimizedPagination';
 import { useCleaners } from '@/hooks/useCleaners';
@@ -18,7 +18,7 @@ interface LocalTaskFilters {
 }
 
 export const useTasksPageState = () => {
-  const { userRole, user, profile } = useAuth();
+  const { effectiveRole, user, profile } = useRolePermissions();
   const { cleaners } = useCleaners();
   const queryClient = useQueryClient();
   const { invalidateTasks } = useCacheInvalidation();
@@ -41,10 +41,10 @@ export const useTasksPageState = () => {
 
   // Get current user's cleaner ID
   const currentUserCleanerId = useMemo(() => {
-    if (userRole !== 'cleaner' || !user?.id) return null;
+    if (effectiveRole !== 'cleaner' || !user?.id) return null;
     const currentCleaner = cleaners.find(cleaner => cleaner.user_id === user.id);
     return currentCleaner?.id || null;
-  }, [cleaners, user?.id, userRole]);
+  }, [cleaners, user?.id, effectiveRole]);
 
   // Create a proper refetch function using React Query with debouncing
   const refetch = useCallback(() => {
@@ -66,18 +66,18 @@ export const useTasksPageState = () => {
     const result = filterTasks(tasks, {
       searchTerm,
       showPastTasks,
-      userRole,
+      effectiveRole,
       currentUserName: profile?.full_name || profile?.email,
       currentUserId: currentUserCleanerId,
       ...filters 
     });
     
     return result;
-  }, [tasks, searchTerm, showPastTasks, userRole, filters, profile, currentUserCleanerId]);
+  }, [tasks, searchTerm, showPastTasks, effectiveRole, filters, profile, currentUserCleanerId]);
 
   const sortedTasks = useMemo(() => {
-    return sortTasks(filteredTasks, showPastTasks, userRole);
-  }, [filteredTasks, showPastTasks, userRole]);
+    return sortTasks(filteredTasks, showPastTasks, effectiveRole);
+  }, [filteredTasks, showPastTasks, effectiveRole]);
 
   // Pagination
   const {

@@ -2,7 +2,7 @@ import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { CreditCard, Mail, Phone, MapPin, User } from 'lucide-react';
-import { useAuth } from '@/hooks/useAuth';
+import { useRolePermissions } from '@/hooks/useRolePermissions';
 import { Task } from '@/types/calendar';
 
 interface ExtraordinaryServiceBillingSectionProps {
@@ -10,10 +10,10 @@ interface ExtraordinaryServiceBillingSectionProps {
 }
 
 export const ExtraordinaryServiceBillingSection = ({ task }: ExtraordinaryServiceBillingSectionProps) => {
-  const { userRole } = useAuth();
+  const { effectiveRole } = useRolePermissions();
   
   // Only show to admin and managers
-  if (userRole !== 'admin' && userRole !== 'manager') {
+  if (effectiveRole !== 'admin' && effectiveRole !== 'manager') {
     return null;
   }
 
