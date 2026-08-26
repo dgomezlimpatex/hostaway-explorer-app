@@ -1,51 +1,48 @@
-import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useSede } from '@/contexts/SedeContext';
-import { useAuth } from '@/hooks/useAuth';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { 
-  Plus, 
-  Copy, 
-  Trash2, 
-  ExternalLink, 
-  Calendar,
-  Truck,
-  Clock,
-  RefreshCw,
-  Pencil,
+import { format, parseISO } from 'date-fns';
+import { es } from 'date-fns/locale';
+import {
   AlertTriangle,
-  
   ArrowLeft,
-  LinkIcon,
-  Sparkles,
+  Calendar,
+  CheckCircle2,
   ChevronDown,
   ChevronUp,
-  MoreHorizontal,
-  Search,
-  Check,
+  Clock3,
+  Copy,
+  ExternalLink,
+  Link2,
   Loader2,
+  MoreHorizontal,
+  Pencil,
+  Plus,
+  RefreshCw,
   Route,
+  Settings2,
+  Trash2,
+  Truck,
 } from 'lucide-react';
+import { useSede } from '@/contexts/SedeContext';
+import { useAuth } from '@/hooks/useAuth';
+import { useToast } from '@/hooks/use-toast';
+import { useLaundryDeliverySchedule } from '@/hooks/useLaundrySchedule';
 import { useLaundryShareLinks, LaundryShareLink } from '@/hooks/useLaundryShareLinks';
 import { useLaundryTracking } from '@/hooks/useLaundryTracking';
-import { LaundryShareEditModal } from '@/components/laundry-share/LaundryShareEditModal';
-import { LaundryScheduledLinkModal } from '@/components/laundry-share/LaundryScheduledLinkModal';
-import { LaundryScheduleConfigModal } from '@/components/laundry-share/LaundryScheduleConfigModal';
-
-import { 
-  copyShareLinkToClipboard, 
-  getShareLinkUrl, 
-  formatDateRange, 
-  formatExpirationStatus,
+import { supabase } from '@/integrations/supabase/client';
+import {
+  formatDateRange,
+  getShareLinkUrl,
   isShareLinkExpired,
+  copyShareLinkToClipboard,
   detectTaskChanges,
   fetchLaundryTasksForDateRange,
 } from '@/services/laundryShareService';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { useToast } from '@/hooks/use-toast';
 import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
+import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -68,60 +65,178 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { cn } from '@/lib/utils';
-import { useLaundryDeliverySchedule } from '@/hooks/useLaundrySchedule';
+import { LaundryShareEditModal } from '@/components/laundry-share/LaundryShareEditModal';
+import { LaundryScheduledLinkModal } from '@/components/laundry-share/LaundryScheduledLinkModal';
+import { LaundryScheduleConfigModal } from '@/components/laundry-share/LaundryScheduleConfigModal';
 
-// ============================================================
-// Sub-components
-// ============================================================
+const ROUTE_OWNER_EMAIL = 'dgomezlimpatex@gmail.com';
 
-const ShareLinkProperties = ({ 
-  dateStart, 
-  dateEnd,
-  snapshotTaskIds 
-}: { 
-  dateStart: string; 
-  dateEnd: string;
-  snapshotTaskIds: string[];
-}) => {
-  const { data: properties, isLoading } = useQuery({
-    queryKey: ['share-link-properties', dateStart, dateEnd, snapshotTaskIds],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('tasks')
-        .select('id, property, properties(codigo)')
-        .gte('date', dateStart)
-        .lte('date', dateEnd);
+const formatDeliveryDateLabel = (value: string, short = false) => {
+  try {
+    return format(
+      parseISO(`${value}T12:00:00`),
+      short ? 'EEE d MMM' : "EEEE d 'de' MMMM yyyy",
+      { locale: es },
+    );
+  } catch {
+    return value;
+  }
+};
 
-      if (error) throw error;
-      const snapshotSet = new Set(snapshotTaskIds);
-      const includedTasks = (data || []).filter(t => snapshotSet.has(t.id));
-      const uniqueCodes = [...new Set(includedTasks.map(t => 
-        (t.properties as any)?.codigo || t.property
-      ))].sort((a, b) => a.localeCompare(b, 'es', { numeric: true }));
-      return uniqueCodes;
-    },
+const getDeliveryDate = (link: LaundryShareLink) =>
+  link.deliveryDate || link.filters?.deliveryDate || link.dateEnd;
+
+const formatTime = (value: string | null) => {
+  if (!value) return 'Pendiente';
+  return new Date(value).toLocaleTimeString('es-ES', {
+    hour: '2-digit',
+    minute: '2-digit',
   });
+};
 
-  if (isLoading) return <span className="text-xs text-muted-foreground">…</span>;
-  if (!properties || properties.length === 0) return null;
+const ManagedDeliveryCard = ({
+  link,
+  isToday,
+  canManage,
+  onEdit,
+  onCopy,
+  onOpen,
+  onDelete,
+}: {
+  link: LaundryShareLink;
+  isToday: boolean;
+  canManage: boolean;
+  onEdit: () => void;
+  onCopy: () => void;
+  onOpen: () => void;
+  onDelete: () => void;
+}) => {
+  const { stats } = useLaundryTracking(link.id);
+  const total = link.snapshotTaskIds?.length || 0;
+  const completed = stats.prepared + stats.delivered;
+  const progress = total > 0 ? Math.min(100, Math.round((completed / total) * 100)) : 0;
+  const deliveryDate = getDeliveryDate(link);
+  const syncError = link.syncStatus === 'error';
 
   return (
-    <div className="flex flex-wrap gap-1.5">
-      {properties.slice(0, 8).map((code, i) => (
-        <span
-          key={i}
-          className="px-2 py-0.5 bg-muted text-muted-foreground text-[10px] font-bold rounded uppercase tracking-wider"
-        >
-          {code}
+    <article className={cn(
+      'rounded-2xl border bg-card p-4 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md',
+      isToday ? 'border-primary/40 ring-1 ring-primary/10' : 'border-border/80',
+    )}>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex min-w-0 items-center gap-3">
+          <div className={cn(
+            'flex h-12 w-12 shrink-0 flex-col items-center justify-center rounded-xl border',
+            isToday ? 'border-primary/20 bg-primary/10 text-primary' : 'border-border bg-muted/50 text-foreground',
+          )}>
+            <span className="text-[10px] font-bold uppercase leading-none tracking-wide">
+              {formatDeliveryDateLabel(deliveryDate, true).split(' ')[0]}
+            </span>
+            <span className="mt-1 text-lg font-bold leading-none">
+              {formatDeliveryDateLabel(deliveryDate, true).split(' ')[1]}
+            </span>
+          </div>
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <h3 className="truncate text-sm font-bold text-foreground sm:text-base">
+                {isToday ? 'Reparto de hoy' : formatDeliveryDateLabel(deliveryDate)}
+              </h3>
+              {isToday && (
+                <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-primary">
+                  Hoy
+                </span>
+              )}
+            </div>
+            <p className="mt-1 text-xs text-muted-foreground">
+              {total} {total === 1 ? 'bolsa' : 'bolsas'} · {completed} preparadas · {stats.delivered} entregadas
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2 sm:justify-end">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={onOpen}
+            className="h-9 flex-1 gap-1.5 rounded-lg px-3 text-xs sm:flex-none"
+          >
+            <ExternalLink className="h-3.5 w-3.5" />
+            Abrir
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={onCopy}
+            className="h-9 flex-1 gap-1.5 rounded-lg px-3 text-xs sm:flex-none"
+          >
+            <Copy className="h-3.5 w-3.5" />
+            Copiar
+          </Button>
+          {canManage && (
+            <TooltipProvider delayDuration={150}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={onEdit}
+                    className="h-9 w-9 shrink-0 rounded-lg text-muted-foreground hover:text-foreground"
+                    aria-label="Gestionar excepciones"
+                  >
+                    <Pencil className="h-3.5 w-3.5" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Gestionar excepciones</TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )}
+          {canManage && (
+            <TooltipProvider delayDuration={150}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={onDelete}
+                    className="h-9 w-9 shrink-0 rounded-lg text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                    aria-label="Desactivar enlace"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Desactivar enlace</TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )}
+        </div>
+      </div>
+
+      <div className="mt-4 flex items-center gap-3">
+        <div className="h-2 flex-1 overflow-hidden rounded-full bg-muted">
+          <div
+            className={cn(
+              'h-full rounded-full transition-[width] duration-300',
+              progress === 100 ? 'bg-emerald-500' : 'bg-primary',
+            )}
+            style={{ width: `${progress}%` }}
+          />
+        </div>
+        <span className="min-w-10 text-right text-xs font-bold tabular-nums text-foreground">{progress}%</span>
+      </div>
+      <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-muted-foreground">
+        <span className="inline-flex items-center gap-1">
+          <Clock3 className="h-3 w-3" />
+          {link.lastSyncedAt ? `Actualizado ${formatTime(link.lastSyncedAt)}` : 'Pendiente de sincronizar'}
         </span>
-      ))}
-      {properties.length > 8 && (
-        <span className="px-2 py-0.5 border border-border text-muted-foreground/70 text-[10px] font-bold rounded uppercase tracking-wider">
-          +{properties.length - 8} más
+        <span className={cn(
+          'inline-flex items-center gap-1 font-semibold',
+          syncError ? 'text-destructive' : 'text-emerald-600 dark:text-emerald-400',
+        )}>
+          <span className={cn('h-1.5 w-1.5 rounded-full', syncError ? 'bg-destructive' : 'bg-emerald-500')} />
+          {syncError ? 'Revisar sincronización' : 'Enlace actualizado'}
         </span>
-      )}
-    </div>
+      </div>
+    </article>
   );
 };
 
@@ -141,57 +256,9 @@ const useTaskChanges = (link: LaundryShareLink) => {
   });
 };
 
-// Health dot (status at a glance)
-const HealthDot = ({ link, changes }: { link: LaundryShareLink; changes?: ChangesInfo }) => {
-  const { stats } = useLaundryTracking(link.id);
-  const total = link.snapshotTaskIds?.length || 0;
-  const hasChanges = changes && (changes.newTasks.length > 0 || changes.removedTasks.length > 0);
-
-  let color = 'bg-muted-foreground/40';
-  let label = 'Sin actividad';
-
-  if (hasChanges) {
-    color = 'bg-amber-500';
-    label = 'Cambios pendientes';
-  } else if (total > 0 && stats.delivered === total) {
-    color = 'bg-emerald-500';
-    label = 'Completado';
-  } else if (stats.prepared + stats.delivered > 0) {
-    color = 'bg-blue-500';
-    label = 'En preparación';
-  }
-
-  return (
-    <TooltipProvider>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <span className={cn('inline-block h-2 w-2 rounded-full shrink-0', color)} />
-        </TooltipTrigger>
-        <TooltipContent side="left">{label}</TooltipContent>
-      </Tooltip>
-    </TooltipProvider>
-  );
-};
-
-// ============================================================
-// LinkCard — list-style row, always-visible actions
-// ============================================================
-
-const LinkCard = ({ 
-  link, 
-  highlight,
-  defaultOpen = false,
-  onEdit, 
-  onCopy, 
-  onOpen, 
-  onDelete,
-  onApplyChanges,
-  onAutoMergeNewTasks,
-  canManage,
-}: {
+type HistoricLinkRowProps = {
   link: LaundryShareLink;
-  highlight?: boolean;
-  defaultOpen?: boolean;
+  canManage: boolean;
   onEdit: () => void;
   onCopy: () => void;
   onOpen: () => void;
@@ -202,227 +269,201 @@ const LinkCard = ({
     existingSnapshotIds: string[],
     originalTaskIds: string[],
   ) => Promise<void>;
-  canManage: boolean;
-}) => {
-  const { data: changes } = useTaskChanges(link);
-  const { stats } = useLaundryTracking(link.id);
-  const [isOpen, setIsOpen] = useState(defaultOpen);
-  const total = link.snapshotTaskIds?.length || 0;
-  const preparedCount = stats.prepared + stats.delivered;
-  const deliveredPercent = total > 0 ? Math.round((stats.delivered / total) * 100) : 0;
-  const hasNewTasks = !!changes && changes.newTasks.length > 0;
-  const hasRemovedTasks = !!changes && changes.removedTasks.length > 0;
+};
 
-  // Auto-merge new tasks into snapshot in background (preserves manual edits)
-  const autoMergedRef = useRef<string>('');
+const HistoricLinkRow = ({
+  link,
+  canManage,
+  onEdit,
+  onCopy,
+  onOpen,
+  onDelete,
+  onApplyChanges,
+  onAutoMergeNewTasks,
+}: HistoricLinkRowProps) => (
+  <HistoricLinkRowContent
+    link={link}
+    canManage={canManage}
+    onEdit={onEdit}
+    onCopy={onCopy}
+    onOpen={onOpen}
+    onDelete={onDelete}
+    onApplyChanges={onApplyChanges}
+    onAutoMergeNewTasks={onAutoMergeNewTasks}
+  />
+);
+
+type HistoricLinkRowContentProps = {
+  link: LaundryShareLink;
+  canManage: boolean;
+  onEdit: () => void;
+  onCopy: () => void;
+  onOpen: () => void;
+  onDelete: () => void;
+  onApplyChanges: (currentTaskIds: string[]) => void;
+  onAutoMergeNewTasks: (
+    currentTaskIds: string[],
+    existingSnapshotIds: string[],
+    originalTaskIds: string[],
+  ) => Promise<void>;
+};
+
+const HistoricLinkRowContent = ({
+  link,
+  canManage,
+  onEdit,
+  onCopy,
+  onOpen,
+  onDelete,
+  onApplyChanges,
+  onAutoMergeNewTasks,
+}: HistoricLinkRowContentProps) => {
+  const { data: changes } = useTaskChanges(link);
+  const [applying, setApplying] = useState(false);
+  const autoMergedRef = useRef('');
+  const hasRemovedTasks = !!changes?.removedTasks.length;
+  const hasNewTasks = !!changes?.newTasks.length;
+
   useEffect(() => {
-    if (link.autoManaged || !hasNewTasks || !changes) return;
-    const signature = `${link.id}:${changes.newTasks.sort().join(',')}`;
+    if (!hasNewTasks || !changes) return;
+    const signature = `${link.id}:${changes.newTasks.slice().sort().join(',')}`;
     if (autoMergedRef.current === signature) return;
     autoMergedRef.current = signature;
 
-    (async () => {
+    const mergeNewTasks = async () => {
       const sedeIds = link.filters?.sedeIds || (link.filters?.sedeId ? [link.filters.sedeId] : undefined);
-      const currentIds = await fetchLaundryTasksForDateRange(link.dateStart, link.dateEnd, sedeIds);
-      await onAutoMergeNewTasks(currentIds, link.snapshotTaskIds, link.originalTaskIds);
-    })();
-  }, [hasNewTasks, changes, link.id, link.dateStart, link.dateEnd, link.filters, link.snapshotTaskIds, link.originalTaskIds, onAutoMergeNewTasks]);
+      const currentTaskIds = await fetchLaundryTasksForDateRange(link.dateStart, link.dateEnd, sedeIds);
+      await onAutoMergeNewTasks(currentTaskIds, link.snapshotTaskIds, link.originalTaskIds);
+    };
 
-  const [applying, setApplying] = useState(false);
-  const handleApplyRemoved = async () => {
+    void mergeNewTasks();
+  }, [changes, hasNewTasks, link.dateEnd, link.dateStart, link.filters, link.id, link.originalTaskIds, link.snapshotTaskIds, onAutoMergeNewTasks]);
+
+  const applyRemovedTasks = async () => {
     if (!changes) return;
     setApplying(true);
     try {
       const sedeIds = link.filters?.sedeIds || (link.filters?.sedeId ? [link.filters.sedeId] : undefined);
-      const currentIds = await fetchLaundryTasksForDateRange(link.dateStart, link.dateEnd, sedeIds);
-      onApplyChanges(currentIds);
+      const currentTaskIds = await fetchLaundryTasksForDateRange(link.dateStart, link.dateEnd, sedeIds);
+      onApplyChanges(currentTaskIds);
     } finally {
       setApplying(false);
     }
   };
 
-  const preparedOnlyPercent = total > 0 ? Math.round((stats.prepared / total) * 100) : 0;
-  const isCompleted = total > 0 && stats.delivered === total;
-
   return (
-    <Collapsible 
-      open={isOpen} 
-      onOpenChange={setIsOpen}
-      className={cn(
-        'bg-card border border-border rounded-2xl shadow-sm overflow-hidden group transition-all hover:shadow-md',
-        highlight && 'ring-2 ring-primary/40 border-primary/40',
-        isOpen && 'shadow-md',
-      )}
-    >
-      {/* Collapsed/Always-visible header */}
-      <div className="flex items-center gap-3 p-4">
-        <CollapsibleTrigger asChild>
-          <button className="flex items-center gap-3 flex-1 min-w-0 text-left">
-            <HealthDot link={link} changes={changes} />
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-2">
-                <h3 className="font-bold text-foreground text-sm md:text-base leading-tight truncate">
-                  {formatDateRange(link.dateStart, link.dateEnd)}
-                </h3>
-                {total > 0 && (
-                  <span className={cn(
-                    'text-[11px] font-extrabold shrink-0',
-                    isCompleted ? 'text-emerald-600 dark:text-emerald-400' : 'text-muted-foreground',
-                  )}>
-                    {deliveredPercent}%
-                  </span>
-                )}
-              </div>
-              <div className="flex items-center gap-3 mt-0.5 text-[11px] text-muted-foreground font-medium">
-                <span className="inline-flex items-center gap-1">
-                  <Clock className="h-3 w-3" />
-                  {formatExpirationStatus(link.expiresAt, link.isPermanent)}
-                </span>
-                {total > 0 && (
-                  <span>{total} apt · {preparedCount} prep · {stats.delivered} entreg</span>
-                )}
-                {link.autoManaged && (
-                  <span className={cn(
-                    'font-semibold',
-                    link.syncStatus === 'error' ? 'text-destructive' : 'text-emerald-600 dark:text-emerald-400',
-                  )}>
-                    {link.syncStatus === 'error'
-                      ? 'Sincronización con error'
-                      : link.lastSyncedAt
-                        ? `Actualizado ${new Date(link.lastSyncedAt).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}`
-                        : 'Pendiente de sincronizar'}
-                  </span>
-                )}
-              </div>
-            </div>
-            <ChevronDown className={cn(
-              'h-4 w-4 text-muted-foreground transition-transform shrink-0',
-              isOpen && 'rotate-180'
-            )} />
-          </button>
-        </CollapsibleTrigger>
-        <div className="flex items-center gap-2 shrink-0">
-          {canManage && hasRemovedTasks && (
-            <button
-              onClick={handleApplyRemoved}
-              disabled={applying}
-              className="px-2 py-1 bg-amber-50 text-amber-700 rounded-md text-[10px] font-bold border border-amber-100 flex items-center gap-1 hover:bg-amber-100 transition-colors dark:bg-amber-500/10 dark:text-amber-300 dark:border-amber-500/20"
-              title="Hay tareas que ya no existen. Pulsa para sincronizar."
-            >
-              {applying ? (
-                <Loader2 className="h-3 w-3 animate-spin" />
-              ) : (
+    <div className="flex flex-col gap-3 rounded-xl border border-border/70 bg-card px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex min-w-0 items-center gap-3">
+        <Link2 className="h-4 w-4 shrink-0 text-muted-foreground" />
+        <div className="min-w-0">
+          <div className="flex items-center gap-2">
+            <p className="truncate text-sm font-semibold text-foreground">{formatDateRange(link.dateStart, link.dateEnd)}</p>
+            {canManage && hasRemovedTasks && (
+              <Button variant="outline" size="sm" onClick={() => void applyRemovedTasks()} disabled={applying} className="h-7 gap-1 px-2 text-[10px] font-bold text-amber-700 hover:text-amber-800">
                 <AlertTriangle className="h-3 w-3" />
-              )}
-              {applying ? '...' : changes!.removedTasks.length}
-            </button>
-          )}
+                {applying ? '...' : `${changes?.removedTasks.length} retiradas`}
+              </Button>
+            )}
+          </div>
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            Enlace anterior · {link.snapshotTaskIds?.length || 0} bolsas{hasNewTasks ? ' · Nuevas tareas añadidas automáticamente' : ''}
+          </p>
         </div>
       </div>
-
-      {/* Compact progress bar (always visible when has tasks) */}
-      {total > 0 && (
-        <div className="px-4 pb-3">
-          <div className="w-full h-1.5 bg-muted rounded-full overflow-hidden flex">
-            <div 
-              className="bg-blue-500 h-full transition-all" 
-              style={{ width: `${preparedOnlyPercent}%` }}
-            />
-            <div 
-              className="bg-emerald-500 h-full border-l border-background transition-all"
-              style={{ width: `${deliveredPercent}%` }}
-            />
-          </div>
-        </div>
-      )}
-
-      <CollapsibleContent>
-        {/* Properties */}
-        <div className="px-5 pb-4">
-          <ShareLinkProperties 
-            dateStart={link.dateStart} 
-            dateEnd={link.dateEnd} 
-            snapshotTaskIds={link.snapshotTaskIds}
-          />
-        </div>
-
-        {/* Actions toolbar */}
-        <div className="px-5 pb-3 flex items-center gap-2">
-          <TooltipProvider delayDuration={100}>
-            {canManage && (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                <Button variant="outline" size="sm" className="h-8 text-xs" onClick={onEdit}>
-                  <Pencil className="h-3.5 w-3.5 mr-1.5" />
-                  {link.autoManaged ? 'Excepciones' : 'Editar'}
-                </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  {link.autoManaged ? 'Gestionar tareas excluidas de la sincronización' : 'Editar tareas incluidas'}
-                </TooltipContent>
-              </Tooltip>
-            )}
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button variant="outline" size="sm" className="h-8 text-xs" onClick={onOpen}>
-                  <ExternalLink className="h-3.5 w-3.5 mr-1.5" />
-                  Abrir
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>Abrir enlace</TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-        </div>
-
-        {/* Footer: URL + actions */}
-        <div className="px-5 py-3 bg-muted/30 border-t border-border/60 flex items-center justify-between gap-3">
-          <button 
-            onClick={onCopy}
-            className="flex items-center gap-2 truncate flex-1 min-w-0 group/link text-left"
-          >
-            <LinkIcon className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-            <span className="text-[11px] font-mono text-muted-foreground truncate group-hover/link:text-primary transition-colors">
-              {getShareLinkUrl(link.token, link.linkType === 'scheduled').replace('https://', '')}
-            </span>
-          </button>
-          <div className="flex items-center gap-1.5 shrink-0">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={onCopy}
-              className="h-7 px-3 text-[11px] font-bold rounded-lg hover:border-primary/40 hover:text-primary"
-            >
-              <Copy className="h-3 w-3 mr-1" />
-              Copiar
-            </Button>
-            {canManage && (
-            <TooltipProvider delayDuration={100}>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon" 
-                    className="h-7 w-7 min-h-0 min-w-0 text-muted-foreground hover:text-destructive"
-                    onClick={onDelete}
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>Desactivar</TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-            )}
-          </div>
-        </div>
-      </CollapsibleContent>
-    </Collapsible>
+      <div className="flex items-center gap-2 sm:shrink-0">
+        <Button variant="outline" size="sm" onClick={onOpen} className="h-9 flex-1 gap-1.5 text-xs sm:flex-none">
+          <ExternalLink className="h-3.5 w-3.5" /> Abrir
+        </Button>
+        <Button variant="outline" size="sm" onClick={onCopy} className="h-9 flex-1 gap-1.5 text-xs sm:flex-none">
+          <Copy className="h-3.5 w-3.5" /> Copiar
+        </Button>
+        {canManage && (
+          <Button variant="ghost" size="icon" onClick={onEdit} className="h-9 w-9 text-muted-foreground" aria-label="Editar enlace">
+            <Pencil className="h-3.5 w-3.5" />
+          </Button>
+        )}
+        {canManage && (
+          <Button variant="ghost" size="icon" onClick={onDelete} className="h-9 w-9 text-muted-foreground hover:text-destructive" aria-label="Desactivar enlace">
+            <Trash2 className="h-3.5 w-3.5" />
+          </Button>
+        )}
+      </div>
+    </div>
   );
 };
 
+const PrimaryDeliveryHero = ({
+  link,
+  todayStr,
+  managedCount,
+  onOpen,
+  onCopy,
+}: {
+  link: LaundryShareLink;
+  todayStr: string;
+  managedCount: number;
+  onOpen: () => void;
+  onCopy: () => void;
+}) => {
+  const { stats } = useLaundryTracking(link.id);
+  const total = link.snapshotTaskIds?.length || 0;
+  const completed = stats.prepared + stats.delivered;
+  const progress = total > 0 ? Math.min(100, Math.round((completed / total) * 100)) : 0;
+  const deliveryDate = getDeliveryDate(link);
+  const isToday = deliveryDate === todayStr;
 
-// ============================================================
-// Main page
-// ============================================================
+  return (
+    <>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-background/60">Operativa de lavandería</p>
+          <h2 className="mt-2 text-2xl font-bold tracking-tight sm:text-3xl">
+            {isToday ? 'Reparto de hoy' : 'Próximo reparto'}
+          </h2>
+          <p className="mt-1 text-sm capitalize text-background/70">{formatDeliveryDateLabel(deliveryDate)}</p>
+        </div>
+        <div className="hidden rounded-xl border border-background/15 bg-background/10 px-3 py-2 text-right sm:block">
+          <p className="text-[10px] uppercase tracking-wide text-background/60">Enlaces activos</p>
+          <p className="mt-1 text-xl font-bold tabular-nums">{managedCount}</p>
+        </div>
+      </div>
+
+      <div className="mt-6 grid grid-cols-3 gap-2 sm:max-w-md">
+        <div className="rounded-xl border border-background/15 bg-background/10 px-3 py-2.5">
+          <p className="text-[10px] uppercase tracking-wide text-background/60">Bolsas</p>
+          <p className="mt-1 text-lg font-bold tabular-nums">{total}</p>
+        </div>
+        <div className="rounded-xl border border-background/15 bg-background/10 px-3 py-2.5">
+          <p className="text-[10px] uppercase tracking-wide text-background/60">Preparadas</p>
+          <p className="mt-1 text-lg font-bold tabular-nums">{stats.prepared}</p>
+        </div>
+        <div className="rounded-xl border border-background/15 bg-background/10 px-3 py-2.5">
+          <p className="text-[10px] uppercase tracking-wide text-background/60">Entregadas</p>
+          <p className="mt-1 text-lg font-bold tabular-nums">{stats.delivered}</p>
+        </div>
+      </div>
+
+      <div className="mt-5">
+        <div className="flex items-center justify-between text-xs text-background/70">
+          <span>Progreso de la ruta</span>
+          <span className="font-bold tabular-nums text-background">{progress}%</span>
+        </div>
+        <div className="mt-2 h-2 overflow-hidden rounded-full bg-background/15">
+          <div className="h-full rounded-full bg-primary-foreground transition-[width] duration-300" style={{ width: `${progress}%` }} />
+        </div>
+      </div>
+
+      <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:items-center">
+        <Button onClick={onOpen} className="h-10 gap-2 rounded-lg bg-background px-4 text-sm font-semibold text-foreground hover:bg-background/90">
+          <ExternalLink className="h-4 w-4" /> Abrir enlace
+        </Button>
+        <Button variant="ghost" onClick={onCopy} className="h-10 gap-2 rounded-lg text-background hover:bg-background/10 hover:text-background">
+          <Copy className="h-4 w-4" /> Copiar enlace
+        </Button>
+      </div>
+    </>
+  );
+};
 
 const LaundryShareManagement = () => {
   const { toast } = useToast();
@@ -430,94 +471,70 @@ const LaundryShareManagement = () => {
   const { activeSede } = useSede();
   const { user } = useAuth();
   const { schedules } = useLaundryDeliverySchedule();
-  const { shareLinks, isLoading, refetch, deactivateShareLink, applyTaskChanges } = useLaundryShareLinks();
-  const isRouteOwner = user?.email?.toLowerCase() === 'dgomezlimpatex@gmail.com';
+  const {
+    shareLinks,
+    isLoading,
+    refetch,
+    deactivateShareLink,
+    applyTaskChanges,
+  } = useLaundryShareLinks();
+  const isRouteOwner = user?.email?.trim().toLowerCase() === ROUTE_OWNER_EMAIL;
+
   const [scheduledModalOpen, setScheduledModalOpen] = useState(false);
   const [configModalOpen, setConfigModalOpen] = useState(false);
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedLink, setSelectedLink] = useState<LaundryShareLink | null>(null);
+  const [showHistoric, setShowHistoric] = useState(false);
   const [showExpired, setShowExpired] = useState(false);
   const [search, setSearch] = useState('');
-  const [highlightedId, setHighlightedId] = useState<string | null>(null);
   const [isSyncing, setIsSyncing] = useState(false);
 
-  const handleSyncNow = async () => {
-    if (!isRouteOwner || !activeSede?.id) return;
-    setIsSyncing(true);
-    try {
-      const { error } = await supabase.functions.invoke('manage-laundry-classic-links', {
-        body: { action: 'reconcile', sedeId: activeSede.id, source: 'manual' },
-      });
-      if (error) throw error;
-      await refetch();
-      toast({ title: 'Enlaces actualizados', description: 'Se han revisado los próximos repartos.' });
-    } catch (error) {
-      console.error('Error syncing protocolized laundry links:', error);
-      toast({ title: 'No se pudo actualizar', description: 'Revisa los logs de la sincronización.', variant: 'destructive' });
-    } finally {
-      setIsSyncing(false);
-    }
-  };
+  const todayStr = useMemo(() => {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  }, []);
 
-  // Track newly created links to highlight them briefly
-  const linkIds = useMemo(() => (shareLinks || []).map(l => l.id).join(','), [shareLinks]);
-  useEffect(() => {
-    if (!shareLinks || shareLinks.length === 0) return;
-    const sorted = [...shareLinks].sort((a, b) => 
-      new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+  const activeLinks = useMemo(
+    () => (shareLinks || []).filter(link => !isShareLinkExpired(link.expiresAt)),
+    [shareLinks],
+  );
+  const expiredLinks = useMemo(
+    () => (shareLinks || []).filter(link => isShareLinkExpired(link.expiresAt)),
+    [shareLinks],
+  );
+  const managedLinks = useMemo(
+    () => activeLinks
+      .filter(link => link.autoManaged && link.linkType === 'scheduled' && link.workflowVersion !== 'route_v2')
+      .sort((a, b) => getDeliveryDate(a).localeCompare(getDeliveryDate(b))),
+    [activeLinks],
+  );
+  const upcomingManagedLinks = useMemo(
+    () => managedLinks.filter(link => getDeliveryDate(link) >= todayStr),
+    [managedLinks, todayStr],
+  );
+  const primaryLink = upcomingManagedLinks[0] || managedLinks[0] || null;
+  const followingLinks = upcomingManagedLinks
+    .filter(link => link.id !== primaryLink?.id)
+    .slice(0, 2);
+  const historicLinks = useMemo(() => {
+    const legacyLinks = activeLinks.filter(link => !link.autoManaged && link.workflowVersion !== 'route_v2');
+    const query = search.trim().toLowerCase();
+    if (!query) return legacyLinks;
+    return legacyLinks.filter(link =>
+      formatDateRange(link.dateStart, link.dateEnd).toLowerCase().includes(query)
+      || link.token.toLowerCase().includes(query),
     );
-    const newest = sorted[0];
-    if (newest && Date.now() - new Date(newest.createdAt).getTime() < 5000) {
-      setHighlightedId(newest.id);
-      const t = setTimeout(() => setHighlightedId(null), 5000);
-      return () => clearTimeout(t);
-    }
-  }, [linkIds, shareLinks]);
-
-  const handleCopyLink = async (token: string) => {
-    const success = await copyShareLinkToClipboard(token, true);
-    if (success) {
-      toast({
-        title: 'Enlace copiado',
-        description: 'Ya puedes compartirlo por WhatsApp',
-        action: (
-          <button
-            onClick={() => window.open(getShareLinkUrl(token, true), '_blank')}
-            className="text-xs font-medium underline"
-          >
-            Abrir
-          </button>
-        ),
-      });
-    }
-  };
-
-  const handleEditClick = (link: LaundryShareLink) => {
-    setSelectedLink(link);
-    setEditModalOpen(true);
-  };
-
-  const handleDeleteClick = (link: LaundryShareLink) => {
-    setSelectedLink(link);
-    setDeleteDialogOpen(true);
-  };
-
-  const handleConfirmDelete = async () => {
-    if (selectedLink) {
-      await deactivateShareLink.mutateAsync(selectedLink.id);
-      setDeleteDialogOpen(false);
-      setSelectedLink(null);
-    }
-  };
+  }, [activeLinks, search]);
+  const activeScheduleNames = useMemo(
+    () => (schedules || []).filter(schedule => schedule.isActive),
+    [schedules],
+  );
 
   const handleApplyChanges = async (linkId: string, currentTaskIds: string[]) => {
     await applyTaskChanges.mutateAsync({ linkId, currentTaskIds });
   };
 
-  // Auto-merge: silently add new tasks to snapshot without removing existing ones.
-  // Receives `originalTaskIds` so the merge only re-adds tasks that didn't exist
-  // in the previous baseline — preserving any manual exclusion the admin made.
   const handleAutoMergeNewTasks = useCallback(
     async (
       linkId: string,
@@ -534,376 +551,296 @@ const LaundryShareManagement = () => {
         silent: true,
       });
     },
-    [applyTaskChanges]
+    [applyTaskChanges],
   );
 
-  const handleCleanExpired = async () => {
-    const ids = expiredLinks.map(l => l.id);
-    await Promise.all(ids.map(id => deactivateShareLink.mutateAsync(id)));
-    toast({
-      title: 'Enlaces eliminados',
-      description: `${ids.length} enlaces expirados eliminados`,
-    });
+  const handleSyncNow = async () => {
+    if (!isRouteOwner || !activeSede?.id) return;
+    setIsSyncing(true);
+    try {
+      const { error } = await supabase.functions.invoke('manage-laundry-classic-links', {
+        body: { action: 'reconcile', sedeId: activeSede.id, source: 'manual' },
+      });
+      if (error) throw error;
+      await refetch();
+      toast({ title: 'Enlaces actualizados', description: 'Se han revisado los próximos repartos.' });
+    } catch (error) {
+      console.error('Error syncing protocolized laundry links:', error);
+      toast({ title: 'No se pudo actualizar', description: 'Revisa la configuración e inténtalo de nuevo.', variant: 'destructive' });
+    } finally {
+      setIsSyncing(false);
+    }
   };
 
-  const openExternalLink = (token: string) => {
-    window.open(getShareLinkUrl(token, true), '_blank');
+  const handleCopyLink = async (token: string) => {
+    if (!await copyShareLinkToClipboard(token, true)) return;
+    toast({ title: 'Enlace copiado', description: 'Ya puedes compartirlo por WhatsApp.' });
   };
 
-  const allActive = shareLinks?.filter(l => !isShareLinkExpired(l.expiresAt)) || [];
-  const expiredLinks = shareLinks?.filter(l => isShareLinkExpired(l.expiresAt)) || [];
+  const openLink = (token: string) => window.open(getShareLinkUrl(token, true), '_blank');
 
-  // Split active into today vs past (by dateStart)
-  const todayStr = useMemo(() => {
-    const d = new Date();
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-  }, []);
+  const openEdit = (link: LaundryShareLink) => {
+    setSelectedLink(link);
+    setEditModalOpen(true);
+  };
 
-  // Search filter on active links
-  const activeLinks = useMemo(() => {
-    if (!search.trim()) return allActive;
-    const q = search.toLowerCase();
-    return allActive.filter(l => 
-      formatDateRange(l.dateStart, l.dateEnd).toLowerCase().includes(q) ||
+  const openDelete = (link: LaundryShareLink) => {
+    setSelectedLink(link);
+    setDeleteDialogOpen(true);
+  };
 
-      l.token.toLowerCase().includes(q)
-    );
-  }, [allActive, search]);
-
-  // Today's link covers today, past = older than today (dateStart < today)
-  const todayLinks = useMemo(
-    () => activeLinks.filter(l => l.dateStart <= todayStr && l.dateEnd >= todayStr),
-    [activeLinks, todayStr]
-  );
-  const pastLinks = useMemo(
-    () => activeLinks.filter(l => l.dateEnd < todayStr),
-    [activeLinks, todayStr]
-  );
-  const upcomingLinks = useMemo(
-    () => activeLinks.filter(l => l.dateStart > todayStr),
-    [activeLinks, todayStr]
-  );
-
-  const showSearch = allActive.length > 5;
-
+  const confirmDelete = async () => {
+    if (!selectedLink) return;
+    await deactivateShareLink.mutateAsync(selectedLink.id);
+    setDeleteDialogOpen(false);
+    setSelectedLink(null);
+  };
 
   return (
     <div className="min-h-screen bg-muted/30">
-      {/* Sticky header */}
-      <div className="sticky top-0 z-30 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 border-b border-border/60">
-        <div className="container mx-auto px-4 max-w-7xl">
-          <div className="flex items-center justify-between gap-3 py-4">
-            <div className="flex items-center gap-3 min-w-0">
-              <button
-                onClick={() => navigate('/')}
-                className="p-2.5 bg-card hover:bg-muted rounded-xl transition-all border border-border shadow-sm shrink-0 group"
-              >
-                <ArrowLeft className="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors" />
-              </button>
+      <header className="sticky top-0 z-30 border-b border-border/70 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
+        <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3 sm:px-6">
+          <div className="flex min-w-0 items-center gap-3">
+            <Button variant="outline" size="icon" onClick={() => navigate('/')} className="h-9 w-9 shrink-0 rounded-lg" aria-label="Volver al inicio">
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
+            <div className="flex min-w-0 items-center gap-2.5">
+              <div className="hidden h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary sm:flex">
+                <Truck className="h-4 w-4" />
+              </div>
               <div className="min-w-0">
-                <h1 className="text-xl md:text-2xl font-bold text-foreground leading-tight tracking-tight truncate">
-                  Enlaces de Lavandería
-                </h1>
-                <p className="text-xs md:text-sm text-muted-foreground font-medium truncate">
-                  {activeSede?.nombre || 'Todas las sedes'} · Centro Operativo
-                </p>
+                <h1 className="truncate text-base font-bold tracking-tight text-foreground sm:text-lg">Enlaces de lavandería</h1>
+                <p className="truncate text-[11px] text-muted-foreground">{activeSede?.nombre || 'Todas las sedes'} · Operativa diaria</p>
               </div>
             </div>
-            <div className="flex items-center gap-2 shrink-0">
-              {isRouteOwner && <Button
-                variant="outline"
-                size="sm"
-                onClick={() => navigate('/lavanderia/orden')}
-                className="h-10 gap-2 rounded-xl bg-card px-3 shadow-sm"
-              >
-                <Route className="h-4 w-4 text-primary" />
+          </div>
+
+          <div className="flex items-center gap-1.5">
+            {isRouteOwner && (
+              <Button variant="outline" size="sm" onClick={() => navigate('/lavanderia/orden')} className="h-9 gap-1.5 rounded-lg px-2.5 text-xs sm:px-3">
+                <Route className="h-3.5 w-3.5 text-primary" />
                 <span className="hidden sm:inline">Orden de rutas</span>
                 <span className="sm:hidden">Rutas</span>
-              </Button>}
-              {isRouteOwner && <DropdownMenu>
+              </Button>
+            )}
+            {isRouteOwner && (
+              <Button variant="outline" size="icon" onClick={handleSyncNow} disabled={isSyncing} className="h-9 w-9 rounded-lg" aria-label="Sincronizar enlaces">
+                <RefreshCw className={cn('h-3.5 w-3.5', isSyncing && 'animate-spin')} />
+              </Button>
+            )}
+            {isRouteOwner && (
+              <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <button className="p-2.5 bg-card hover:bg-muted rounded-xl border border-border shadow-sm text-muted-foreground hover:text-foreground transition-all shrink-0">
-                    <MoreHorizontal className="w-4 h-4" />
-                  </button>
+                  <Button variant="outline" size="icon" className="h-9 w-9 rounded-lg" aria-label="Más opciones">
+                    <MoreHorizontal className="h-4 w-4" />
+                  </Button>
                 </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-52">
-                <DropdownMenuItem onClick={() => setConfigModalOpen(true)}>
-                  <Calendar className="h-4 w-4 mr-2" />
-                  Configurar horarios
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setShowExpired(v => !v)} disabled={expiredLinks.length === 0}>
-                  {showExpired ? <ChevronUp className="h-4 w-4 mr-2" /> : <ChevronDown className="h-4 w-4 mr-2" />}
-                  {showExpired ? 'Ocultar' : 'Ver'} expirados ({expiredLinks.length})
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem 
-                  onClick={handleCleanExpired} 
-                  disabled={expiredLinks.length === 0}
-                  className="text-destructive focus:text-destructive"
-                >
-                  <Trash2 className="h-4 w-4 mr-2" />
-                  Limpiar expirados
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-              </DropdownMenu>}
-              {isRouteOwner && (
-                <Button variant="outline" size="sm" onClick={handleSyncNow} disabled={isSyncing} className="h-10 gap-2 rounded-xl bg-card px-3 shadow-sm">
-                  <RefreshCw className={cn('h-4 w-4', isSyncing && 'animate-spin')} />
-                  <span className="hidden md:inline">Sincronizar</span>
-                </Button>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="container mx-auto py-6 px-4 max-w-7xl space-y-6">
-
-        {/* Delivery schedule */}
-        <div className="rounded-2xl border border-border bg-card p-5">
-          <div className="flex items-center justify-between mb-3">
-            <div>
-              <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Días de reparto</p>
-              <p className="text-xs text-muted-foreground mt-0.5">Calendario actual de entregas</p>
-            </div>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {(schedules || []).filter((schedule) => schedule.isActive).map((schedule) => (
-              <div
-                key={schedule.id}
-                className="flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold border bg-primary/10 text-primary border-primary/20"
-              >
-                <span className="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold bg-primary text-primary-foreground">
-                  {schedule.name.trim().charAt(0).toUpperCase()}
-                </span>
-                {schedule.name}
-              </div>
-            ))}
-            {(!schedules || schedules.filter((schedule) => schedule.isActive).length === 0) && (
-              <span className="text-xs text-muted-foreground">No hay días de reparto activos.</span>
+                <DropdownMenuContent align="end" className="w-56">
+                  <DropdownMenuItem onClick={() => setConfigModalOpen(true)}>
+                    <Settings2 className="mr-2 h-4 w-4" /> Configurar días de reparto
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setShowExpired(value => !value)} disabled={expiredLinks.length === 0}>
+                    {showExpired ? <ChevronUp className="mr-2 h-4 w-4" /> : <ChevronDown className="mr-2 h-4 w-4" />}
+                    {showExpired ? 'Ocultar' : 'Ver'} expirados ({expiredLinks.length})
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => void Promise.all(expiredLinks.map(link => deactivateShareLink.mutateAsync(link.id)))} disabled={expiredLinks.length === 0} className="text-destructive focus:text-destructive">
+                    <Trash2 className="mr-2 h-4 w-4" /> Limpiar expirados
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             )}
           </div>
         </div>
+      </header>
 
-        
-
-        {/* Generate scheduled link — primary CTA */}
-        <button 
-          onClick={() => setScheduledModalOpen(true)} 
-          className="group w-full py-5 border-2 border-dashed border-border rounded-2xl flex items-center justify-center gap-3 text-muted-foreground font-bold hover:border-primary/50 hover:text-primary hover:bg-primary/5 transition-all"
-        >
-          <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center group-hover:bg-primary/10 transition-colors">
-            <Plus className="w-5 h-5" strokeWidth={2.5} />
-          </div>
-          Generar nuevo enlace de reparto
-        </button>
-
-        {/* Active Links */}
-        <div className="space-y-4">
-          <div className="flex items-center justify-between border-b border-border pb-3">
-            <div className="flex items-center gap-2.5">
-              <div className="w-2 h-2 rounded-full bg-primary" />
-              <span className="text-xs font-bold uppercase tracking-[0.1em] text-muted-foreground">
-                Enlaces Activos
-                {allActive.length > 0 && (
-                  <span className="ml-1 text-foreground">· {allActive.length}</span>
-                )}
-              </span>
-            </div>
-            <button
-              onClick={() => refetch()}
-              className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground hover:text-primary transition-colors"
-            >
-              <RefreshCw className="w-3.5 h-3.5" />
-              Actualizar
-            </button>
-          </div>
-
-
-          {showSearch && (
-            <div className="relative">
-              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-              <Input
-                placeholder="Buscar por fecha o token..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="h-8 pl-8 text-xs"
+      <main className="mx-auto max-w-6xl space-y-5 px-4 py-5 sm:px-6 sm:py-7">
+        <section className="grid gap-5 lg:grid-cols-[minmax(0,1.55fr)_minmax(280px,0.85fr)]">
+          <div className="rounded-2xl bg-foreground p-5 text-background shadow-sm sm:p-6">
+            {primaryLink ? (
+              <PrimaryDeliveryHero
+                link={primaryLink}
+                todayStr={todayStr}
+                managedCount={managedLinks.length}
+                onOpen={() => openLink(primaryLink.token)}
+                onCopy={() => void handleCopyLink(primaryLink.token)}
               />
+            ) : (
+              <>
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-background/60">Operativa de lavandería</p>
+                  <h2 className="mt-2 text-2xl font-bold tracking-tight sm:text-3xl">Sin reparto preparado</h2>
+                </div>
+                <div className="mt-6 rounded-xl border border-dashed border-background/25 bg-background/5 p-4 text-sm text-background/70">
+                  El sistema creará los próximos enlaces automáticamente. También puedes generar uno de un día activo.
+                  <div className="mt-4">
+                    <Button onClick={() => setScheduledModalOpen(true)} className="h-10 rounded-lg bg-background text-foreground hover:bg-background/90">
+                      <Plus className="mr-2 h-4 w-4" /> Generar enlace
+                    </Button>
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+
+          <aside className="rounded-2xl border border-border bg-card p-5 shadow-sm sm:p-6">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-primary">Control rápido</p>
+                <h2 className="mt-2 text-lg font-bold tracking-tight">Rutas preparadas</h2>
+                <p className="mt-1 text-xs leading-relaxed text-muted-foreground">Enlaces únicos, actualizados automáticamente y listos para compartir.</p>
+              </div>
+              <CheckCircle2 className="h-5 w-5 shrink-0 text-emerald-500" />
             </div>
-          )}
+            <div className="mt-5 grid grid-cols-2 gap-2">
+              <div className="rounded-xl bg-muted/60 px-3 py-2.5">
+                <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Automáticos</p>
+                <p className="mt-1 text-lg font-bold tabular-nums text-foreground">{managedLinks.length}</p>
+              </div>
+              <div className="rounded-xl bg-muted/60 px-3 py-2.5">
+                <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Próximos</p>
+                <p className="mt-1 text-lg font-bold tabular-nums text-foreground">{upcomingManagedLinks.length}</p>
+              </div>
+            </div>
+            <div className="mt-5 border-t border-border pt-4">
+              <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">Días activos</p>
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {activeScheduleNames.length > 0 ? activeScheduleNames.map(schedule => (
+                  <span key={schedule.id} className="rounded-full border border-primary/20 bg-primary/5 px-2.5 py-1 text-xs font-semibold text-primary">
+                    {schedule.name}
+                  </span>
+                )) : <span className="text-xs text-muted-foreground">No hay días configurados</span>}
+              </div>
+            </div>
+            <Button variant="outline" onClick={() => setScheduledModalOpen(true)} className="mt-5 h-10 w-full gap-2 rounded-lg text-sm">
+              <Plus className="h-4 w-4" /> Generar enlace puntual
+            </Button>
+          </aside>
+        </section>
+
+        <section className="space-y-3">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-primary">Ventana operativa</p>
+              <h2 className="mt-1 text-xl font-bold tracking-tight text-foreground">Próximos repartos</h2>
+              <p className="mt-1 text-sm text-muted-foreground">Los tres siguientes enlaces se mantienen actualizados sin cambiar su enlace.</p>
+            </div>
+            <Button variant="ghost" size="sm" onClick={() => void refetch()} className="h-9 w-fit gap-1.5 px-2 text-xs text-muted-foreground hover:text-foreground">
+              <RefreshCw className="h-3.5 w-3.5" /> Actualizar vista
+            </Button>
+          </div>
 
           {isLoading ? (
-            <div className="flex items-center justify-center py-10">
-              <RefreshCw className="h-5 w-5 animate-spin text-muted-foreground" />
+            <div className="flex min-h-28 items-center justify-center rounded-2xl border border-dashed border-border bg-card">
+              <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
             </div>
-          ) : activeLinks.length > 0 ? (
-            <div className="space-y-5">
-              {/* Today */}
-              {todayLinks.length > 0 && (
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2 px-1">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-primary">Hoy</span>
-                    <div className="h-px flex-1 bg-border" />
-                  </div>
-                  {todayLinks.map((link) => (
-                    <LinkCard
-                      key={link.id}
-                      link={link}
-                      highlight={highlightedId === link.id}
-                      defaultOpen
-                      onEdit={() => handleEditClick(link)}
-                      onCopy={() => handleCopyLink(link.token)}
-                      onOpen={() => openExternalLink(link.token)}
-                      onDelete={() => handleDeleteClick(link)}
-                      onApplyChanges={(ids) => handleApplyChanges(link.id, ids)}
-                      onAutoMergeNewTasks={(ids, existing, original) => handleAutoMergeNewTasks(link.id, ids, existing, original)}
-                      canManage={isRouteOwner}
-                    />
-                  ))}
-                </div>
-              )}
-
-              {/* Upcoming */}
-              {upcomingLinks.length > 0 && (
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2 px-1">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Próximos · {upcomingLinks.length}</span>
-                    <div className="h-px flex-1 bg-border" />
-                  </div>
-                  {upcomingLinks.map((link) => (
-                    <LinkCard
-                      key={link.id}
-                      link={link}
-                      highlight={highlightedId === link.id}
-                      onEdit={() => handleEditClick(link)}
-                      onCopy={() => handleCopyLink(link.token)}
-                      onOpen={() => openExternalLink(link.token)}
-                      onDelete={() => handleDeleteClick(link)}
-                      onApplyChanges={(ids) => handleApplyChanges(link.id, ids)}
-                      onAutoMergeNewTasks={(ids, existing, original) => handleAutoMergeNewTasks(link.id, ids, existing, original)}
-                      canManage={isRouteOwner}
-                    />
-                  ))}
-                </div>
-              )}
-
-              {/* Past */}
-              {pastLinks.length > 0 && (
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2 px-1">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Pasados · {pastLinks.length}</span>
-                    <div className="h-px flex-1 bg-border" />
-                  </div>
-                  {pastLinks.map((link) => (
-                    <LinkCard
-                      key={link.id}
-                      link={link}
-                      highlight={highlightedId === link.id}
-                      onEdit={() => handleEditClick(link)}
-                      onCopy={() => handleCopyLink(link.token)}
-                      onOpen={() => openExternalLink(link.token)}
-                      onDelete={() => handleDeleteClick(link)}
-                      onApplyChanges={(ids) => handleApplyChanges(link.id, ids)}
-                      onAutoMergeNewTasks={(ids, existing, original) => handleAutoMergeNewTasks(link.id, ids, existing, original)}
-                      canManage={isRouteOwner}
-                    />
-                  ))}
-                </div>
-              )}
-
-              {todayLinks.length === 0 && upcomingLinks.length === 0 && pastLinks.length === 0 && (
-                <div className="rounded-lg border border-dashed py-8 text-center">
-                  <p className="text-sm text-muted-foreground">Sin enlaces activos en los filtros</p>
-                </div>
-              )}
+          ) : followingLinks.length > 0 ? (
+            <div className="grid gap-3 lg:grid-cols-2">
+              {followingLinks.map(link => (
+                <ManagedDeliveryCard
+                  key={link.id}
+                  link={link}
+                  isToday={getDeliveryDate(link) === todayStr}
+                  canManage={isRouteOwner}
+                  onEdit={() => openEdit(link)}
+                  onCopy={() => void handleCopyLink(link.token)}
+                  onOpen={() => openLink(link.token)}
+                  onDelete={() => openDelete(link)}
+                />
+              ))}
             </div>
-          ) : search ? (
-            <div className="rounded-lg border border-dashed py-8 text-center">
-              <p className="text-sm text-muted-foreground">Sin resultados para "{search}"</p>
+          ) : primaryLink ? (
+            <div className="rounded-2xl border border-dashed border-border bg-card px-4 py-5 text-sm text-muted-foreground">
+              El siguiente enlace aparecerá aquí cuando el sistema prepare una nueva ruta.
             </div>
           ) : (
-            <div className="rounded-lg border border-dashed py-8 px-4 text-center">
-              <div className="inline-flex p-2.5 rounded-full bg-muted/60 mb-2">
-                <Truck className="h-5 w-5 text-muted-foreground/60" />
-              </div>
-              <p className="text-sm font-medium mb-0.5">Sin enlaces activos</p>
-              <p className="text-xs text-muted-foreground">
-                Genera tu primer enlace de reparto desde el botón superior
-              </p>
+            <div className="rounded-2xl border border-dashed border-border bg-card px-4 py-6 text-sm text-muted-foreground">
+              Aún no hay enlaces automáticos. Pulsa «Generar enlace puntual» para preparar un día activo.
             </div>
           )}
-        </div>
+        </section>
 
-
-        {/* Expired Links (collapsible) */}
-        {isRouteOwner && expiredLinks.length > 0 && (
-          <Collapsible open={showExpired} onOpenChange={setShowExpired}>
-            <CollapsibleTrigger asChild>
-              <button className="flex items-center gap-1.5 w-full py-1.5 text-[11px] font-medium uppercase tracking-wider text-muted-foreground hover:text-foreground transition-colors">
-                {showExpired ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
-                <span>Expirados · {expiredLinks.length}</span>
-              </button>
-            </CollapsibleTrigger>
-            <CollapsibleContent className="space-y-1 pt-1">
-              {expiredLinks.map((link) => (
-                <div 
-                  key={link.id} 
-                  className="flex items-center justify-between px-3 py-2 rounded-md bg-muted/30 opacity-60 hover:opacity-100 transition-opacity"
-                >
-                  <div className="flex items-center gap-2 min-w-0">
-                    <Calendar className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                    <span className="text-xs truncate">{formatDateRange(link.dateStart, link.dateEnd)}</span>
+        <section className="rounded-2xl border border-border bg-card shadow-sm">
+          <Collapsible open={showHistoric} onOpenChange={setShowHistoric}>
+            <div className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between sm:px-5">
+              <CollapsibleTrigger asChild>
+                <button className="flex min-w-0 items-center gap-3 text-left">
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground">
+                    <Link2 className="h-4 w-4" />
                   </div>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-7 w-7 min-h-0 min-w-0 text-destructive hover:text-destructive hover:bg-destructive/10"
-                    onClick={() => handleDeleteClick(link)}
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </Button>
-                </div>
-              ))}
+                  <span className="min-w-0">
+                    <span className="block text-sm font-bold text-foreground">Enlaces anteriores</span>
+                    <span className="mt-0.5 block text-xs text-muted-foreground">Se mantienen disponibles, pero no forman parte de la operativa automática.</span>
+                  </span>
+                  {showHistoric ? <ChevronUp className="h-4 w-4 shrink-0 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />}
+                </button>
+              </CollapsibleTrigger>
+              <span className="text-xs font-semibold text-muted-foreground">{historicLinks.length} enlaces</span>
+            </div>
+            <CollapsibleContent>
+              <div className="space-y-3 border-t border-border p-4 sm:p-5">
+                {historicLinks.length > 0 && (
+                  <div className="relative">
+                    <Input value={search} onChange={event => setSearch(event.target.value)} placeholder="Buscar por fecha o token..." className="h-10 text-sm" />
+                  </div>
+                )}
+                {historicLinks.length > 0 ? historicLinks.map(link => (
+                  <HistoricLinkRow
+                    key={link.id}
+                    link={link}
+                    canManage={isRouteOwner}
+                    onEdit={() => openEdit(link)}
+                    onCopy={() => void handleCopyLink(link.token)}
+                    onOpen={() => openLink(link.token)}
+                    onDelete={() => openDelete(link)}
+                    onApplyChanges={(ids) => void handleApplyChanges(link.id, ids)}
+                    onAutoMergeNewTasks={(ids, existing, original) => handleAutoMergeNewTasks(link.id, ids, existing, original)}
+                  />
+                )) : (
+                  <p className="py-3 text-sm text-muted-foreground">No hay enlaces anteriores activos.</p>
+                )}
+              </div>
             </CollapsibleContent>
           </Collapsible>
+        </section>
+
+        {isRouteOwner && expiredLinks.length > 0 && (
+          <section className="rounded-2xl border border-border bg-card shadow-sm">
+            <Collapsible open={showExpired} onOpenChange={setShowExpired}>
+              <CollapsibleTrigger asChild>
+                <button className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left sm:px-5">
+                  <span className="flex items-center gap-2 text-sm font-semibold text-muted-foreground"><Trash2 className="h-4 w-4" /> Enlaces expirados ({expiredLinks.length})</span>
+                  {showExpired ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
+                </button>
+              </CollapsibleTrigger>
+              <CollapsibleContent className="space-y-2 border-t border-border p-4 sm:p-5">
+                {expiredLinks.map(link => (
+                  <div key={link.id} className="flex items-center justify-between gap-3 rounded-lg bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
+                    <span className="truncate">{formatDateRange(link.dateStart, link.dateEnd)}</span>
+                    <Button variant="ghost" size="icon" onClick={() => openDelete(link)} className="h-8 w-8 shrink-0 text-muted-foreground hover:text-destructive" aria-label="Desactivar enlace expirado">
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                ))}
+              </CollapsibleContent>
+            </Collapsible>
+          </section>
         )}
-      </div>
+      </main>
 
-      {/* Modals */}
-      <LaundryScheduledLinkModal
-        open={scheduledModalOpen}
-        onOpenChange={setScheduledModalOpen}
-      />
-
-      {isRouteOwner && (
-        <LaundryScheduleConfigModal
-          open={configModalOpen}
-          onOpenChange={setConfigModalOpen}
-        />
-      )}
-
-      <LaundryShareEditModal
-        open={editModalOpen}
-        onOpenChange={setEditModalOpen}
-        shareLink={selectedLink}
-      />
+      <LaundryScheduledLinkModal open={scheduledModalOpen} onOpenChange={setScheduledModalOpen} />
+      {isRouteOwner && <LaundryScheduleConfigModal open={configModalOpen} onOpenChange={setConfigModalOpen} />}
+      <LaundryShareEditModal open={editModalOpen} onOpenChange={setEditModalOpen} shareLink={selectedLink} />
 
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>¿Desactivar este enlace?</AlertDialogTitle>
-            <AlertDialogDescription>
-              El enlace dejará de funcionar y los repartidores no podrán acceder.
-            </AlertDialogDescription>
+            <AlertDialogDescription>El enlace dejará de funcionar y el equipo de ruta no podrá acceder.</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleConfirmDelete}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              Desactivar
-            </AlertDialogAction>
+            <AlertDialogAction onClick={() => void confirmDelete()} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Desactivar</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
