@@ -8,8 +8,11 @@ import { Card, CardContent } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import {
   AlertTriangle,
+  Building2,
   CheckCircle2,
+  ChevronDown,
   Loader2,
+  MapPin,
   PackageCheck,
   Shirt,
   Truck,
@@ -64,7 +67,7 @@ type RouteWorkflow = {
     nextRouteName: string;
     nextRouteDates: string[];
   };
-  blockingStep: 'urgent' | 'prepare_next' | 'deliver';
+  blockingStep: 'urgent' | 'deliver' | 'prepare_next' | 'complete';
   authorizedToContinue?: boolean;
   authorization?: {
     reason: string;
@@ -385,11 +388,23 @@ const recalculateWorkflowStats = (workflow: RouteWorkflow): RouteWorkflow => {
   const allUrgentBags = workflow.currentRouteBags.filter((bag) => bag.bagStatus.status === 'pending' || bag.noveltyResolved === false);
   const urgentBags = workflow.authorizedToContinue ? [] : allUrgentBags;
   const nextPendingBags = workflow.nextRouteBags.filter((bag) => bag.bagStatus.status === 'pending');
+  const routePending = workflow.currentRouteBags
+    .filter((bag) => !bag.isCancelled)
+    .some((bag) => (
+      bag.deliveryTracking.collectionStatus !== 'collected'
+      || bag.deliveryTracking.deliveryStatus !== 'delivered'
+    ));
 
   return {
     ...workflow,
     urgentBags,
-    blockingStep: urgentBags.length > 0 ? 'urgent' : nextPendingBags.length > 0 ? 'prepare_next' : 'deliver',
+    blockingStep: urgentBags.length > 0
+      ? 'urgent'
+      : routePending
+        ? 'deliver'
+        : nextPendingBags.length > 0
+          ? 'prepare_next'
+          : 'complete',
     stats: {
       urgentPending: allUrgentBags.length,
       nextTotal: workflow.nextRouteBags.length,
@@ -400,6 +415,25 @@ const recalculateWorkflowStats = (workflow: RouteWorkflow): RouteWorkflow => {
       delivered: workflow.currentRouteBags.filter((bag) => bag.deliveryTracking.deliveryStatus === 'delivered').length,
     },
   };
+};
+
+const extractRouteBuildingCode = (propertyCode: string) => {
+  const normalized = propertyCode.trim().replace(/\s*-\s*hu[eé]sped.*$/i, '');
+  const match = normalized.match(/^([A-Za-z]+\d*)/);
+  return (match?.[1] || normalized || 'SIN EDIFICIO').toUpperCase();
+};
+
+const groupRouteBagsByBuilding = (bags: RouteBag[]) => {
+  const groups = new Map<string, RouteBag[]>();
+
+  bags.forEach((bag) => {
+    const buildingCode = extractRouteBuildingCode(bag.propertyCode);
+    const current = groups.get(buildingCode) || [];
+    current.push(bag);
+    groups.set(buildingCode, current);
+  });
+
+  return Array.from(groups, ([buildingCode, groupedBags]) => ({ buildingCode, bags: groupedBags }));
 };
 
 const updateWorkflowBag = (
@@ -499,10 +533,12 @@ export const LaundryRouteV2View = ({ token }: LaundryRouteV2ViewProps) => {
   const [issueTaskId, setIssueTaskId] = useState<string | null>(null);
   const [issueReason, setIssueReason] = useState('');
   const [completeFlashTaskId, setCompleteFlashTaskId] = useState<string | null>(null);
-  const [pendingTaskIds, setPendingTaskIds] = useState<Set<string>>(() => new Set());
-  const pendingTaskIdsRef = useRef<Set<string>>(new Set());
+  const [pendingActionKeys, setPendingActionKeys] = useState<Set<string>>(() => new Set());
+  const pendingActionKeysRef = useRef<Set<string>>(new Set());
+  const [collapsedBuildings, setCollapsedBuildings] = useState<Set<string>>(() => new Set());
   const queryKey = useMemo(() => ['laundry-route-v2', token], [token]);
-  const isTaskPending = (taskId: string) => pendingTaskIds.has(taskId);
+  const actionKey = (taskId: string, action: RouteAction) => `${taskId}:${action}`;
+  const isActionPending = (taskId: string, action: RouteAction) => pendingActionKeys.has(actionKey(taskId, action));
 
   const {
     data: workflow,
@@ -522,7 +558,7 @@ export const LaundryRouteV2View = ({ token }: LaundryRouteV2ViewProps) => {
       void queryClient.cancelQueries({ queryKey });
       const previousWorkflow = queryClient.getQueryData<RouteWorkflow>(queryKey);
       const previousBag = findWorkflowBag(previousWorkflow, taskId);
-      setPendingTaskIds((current) => new Set(current).add(taskId));
+      setPendingActionKeys((current) => new Set(current).add(actionKey(taskId, action)));
 
       if (action === 'prepare') {
         setCompleteFlashTaskId(taskId);
@@ -600,10 +636,10 @@ export const LaundryRouteV2View = ({ token }: LaundryRouteV2ViewProps) => {
         );
       }
 
-      return { previousBag, taskId };
+      return { previousBag, taskId, action };
     },
     onSuccess: (updatedWorkflow, variables) => {
-      if (variables.action === 'prepare') {
+      if (variables.action === 'prepare' || variables.action === 'collect' || variables.action === 'deliver') {
         return;
       }
       if (variables.action === 'issue' || variables.action === 'critical_block') {
@@ -618,10 +654,30 @@ export const LaundryRouteV2View = ({ token }: LaundryRouteV2ViewProps) => {
         );
       }
     },
-    onError: (err, _variables, context) => {
+    onError: (err, variables, context) => {
       if (context?.previousBag) {
         queryClient.setQueryData<RouteWorkflow>(queryKey, (current) =>
-          updateWorkflowBag(current, context.taskId, () => context.previousBag),
+          updateWorkflowBag(current, context.taskId, (bag) => {
+            if (variables.action === 'collect') {
+              return {
+                ...bag,
+                deliveryTracking: {
+                  ...bag.deliveryTracking,
+                  collectionStatus: context.previousBag.deliveryTracking.collectionStatus,
+                },
+              };
+            }
+            if (variables.action === 'deliver') {
+              return {
+                ...bag,
+                deliveryTracking: {
+                  ...bag.deliveryTracking,
+                  deliveryStatus: context.previousBag.deliveryTracking.deliveryStatus,
+                },
+              };
+            }
+            return context.previousBag;
+          }),
         );
       }
       if (context?.taskId) {
@@ -634,18 +690,20 @@ export const LaundryRouteV2View = ({ token }: LaundryRouteV2ViewProps) => {
       });
     },
     onSettled: (_data, _error, variables) => {
-      pendingTaskIdsRef.current.delete(variables.taskId);
-      setPendingTaskIds((current) => {
+      const key = actionKey(variables.taskId, variables.action);
+      pendingActionKeysRef.current.delete(key);
+      setPendingActionKeys((current) => {
         const next = new Set(current);
-        next.delete(variables.taskId);
+        next.delete(key);
         return next;
       });
     },
   });
 
   const runAction = (variables: { action: RouteAction; taskId: string; reason?: string }) => {
-    if (pendingTaskIdsRef.current.has(variables.taskId)) return;
-    pendingTaskIdsRef.current.add(variables.taskId);
+    const key = actionKey(variables.taskId, variables.action);
+    if (pendingActionKeysRef.current.has(key)) return;
+    pendingActionKeysRef.current.add(key);
     actionMutation.mutate(variables);
   };
 
@@ -683,7 +741,7 @@ export const LaundryRouteV2View = ({ token }: LaundryRouteV2ViewProps) => {
   const urgentBag = workflow.urgentBags[0] || null;
   const nextResolved = workflow.nextRouteBags.filter((bag) => bag.bagStatus.status !== 'pending').length;
   const nextCurrentPosition = nextPendingBag ? nextResolved + 1 : workflow.nextRouteBags.length;
-  const flowBlocked = workflow.blockingStep !== 'deliver';
+  const deliveryGroups = groupRouteBagsByBuilding(workflow.currentRouteBags.filter((bag) => !bag.isCancelled));
   const urgentProgress = {
     pending: workflow.stats.urgentPending,
     total: workflow.currentRouteBags.length,
@@ -739,7 +797,7 @@ export const LaundryRouteV2View = ({ token }: LaundryRouteV2ViewProps) => {
                     <Button
                       size="lg"
                       onClick={() => runAction({ action: 'confirm_no_carry', taskId: urgentBag.taskId })}
-                      disabled={isTaskPending(urgentBag.taskId)}
+                      disabled={isActionPending(urgentBag.taskId, 'confirm_no_carry')}
                       className="h-12 rounded-xl bg-[#c4512e] text-sm font-black hover:bg-[#a94427]"
                     >
                       <CheckCircle2 className="mr-2 h-4 w-4" />
@@ -750,7 +808,7 @@ export const LaundryRouteV2View = ({ token }: LaundryRouteV2ViewProps) => {
                         variant="outline"
                         size="lg"
                         onClick={() => runAction({ action: 'undo_bag', taskId: urgentBag.taskId })}
-                        disabled={isTaskPending(urgentBag.taskId)}
+                        disabled={isActionPending(urgentBag.taskId, 'undo_bag')}
                         className="h-12 rounded-xl text-sm font-semibold"
                       >
                         Bolsa deshecha
@@ -779,7 +837,7 @@ export const LaundryRouteV2View = ({ token }: LaundryRouteV2ViewProps) => {
                     <Button variant="outline" onClick={() => setIssueTaskId(null)}>
                       Cancelar
                     </Button>
-                    <Button variant="destructive" onClick={handleIssue} disabled={isTaskPending(urgentBag.taskId)}>
+                    <Button variant="destructive" onClick={handleIssue} disabled={isActionPending(urgentBag.taskId, 'issue')}>
                       Guardar incidencia
                     </Button>
                   </div>
@@ -809,7 +867,7 @@ export const LaundryRouteV2View = ({ token }: LaundryRouteV2ViewProps) => {
           </section>
         )}
 
-        {!urgentBag && nextPendingBag && (
+        {!urgentBag && workflow.blockingStep === 'prepare_next' && nextPendingBag && (
           <section className="space-y-2">
             <div className="rounded-xl border border-[#dfd2bf] bg-[#fbf6ec] px-3 py-2">
               <p className="text-[10px] font-black uppercase tracking-wide text-[#a18465]">
@@ -847,7 +905,7 @@ export const LaundryRouteV2View = ({ token }: LaundryRouteV2ViewProps) => {
                     <Button variant="outline" onClick={() => setIssueTaskId(null)}>
                       Cancelar
                     </Button>
-                    <Button variant="destructive" onClick={handleIssue} disabled={isTaskPending(nextPendingBag.taskId)}>
+                    <Button variant="destructive" onClick={handleIssue} disabled={isActionPending(nextPendingBag.taskId, 'issue')}>
                       Guardar incidencia
                     </Button>
                   </div>
@@ -877,67 +935,113 @@ export const LaundryRouteV2View = ({ token }: LaundryRouteV2ViewProps) => {
           </section>
         )}
 
-        {!flowBlocked && (
+        {!urgentBag && workflow.blockingStep === 'deliver' && (
           <section className="space-y-2">
-            <div className="rounded-lg border border-green-200 bg-green-50 p-2.5 text-green-950">
+            <div className="rounded-lg border border-[#dfd2bf] bg-[#fbf6ec] p-2.5 text-[#17130f]">
               <div className="flex items-center gap-1.5">
-                <CheckCircle2 className="h-4 w-4" />
-                <h2 className="text-sm font-black">Preparación completada</h2>
+                <Truck className="h-4 w-4 text-[#c4512e]" />
+                <h2 className="text-sm font-black">Recogida y entrega de hoy</h2>
               </div>
               <p className="mt-1 text-xs">
-                Ya puedes recoger ropa sucia y entregar la limpia de la ruta actual.
+                Recoge la ropa sucia y entrega las bolsas limpias preparadas anteriormente.
               </p>
             </div>
 
             <div className="space-y-2">
-              {workflow.currentRouteBags.filter((bag) => !bag.isCancelled).map((bag) => {
-                const collected = bag.deliveryTracking.collectionStatus === 'collected';
-                const delivered = bag.deliveryTracking.deliveryStatus === 'delivered';
+              {deliveryGroups.map((group) => {
+                const collapsed = collapsedBuildings.has(group.buildingCode);
+                const completed = group.bags.filter((bag) => (
+                  bag.deliveryTracking.collectionStatus === 'collected'
+                  && bag.deliveryTracking.deliveryStatus === 'delivered'
+                )).length;
                 return (
-                  <Card key={bag.taskId} className="bg-white">
-                    <CardContent className="p-3 space-y-3">
-                      <div className="flex items-start justify-between gap-2">
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <p className="text-lg font-black">{bag.propertyCode}</p>
-                            {bag.bagStatus.status === 'issue' && <Badge variant="destructive">INCIDENCIA</Badge>}
-                          </div>
-                          <p className="text-xs text-muted-foreground">{formatDate(bag.date)} · {bag.cleaner || 'Sin trabajador'}</p>
-                        </div>
-                        <Badge variant={delivered ? 'default' : 'outline'}>
-                          {delivered ? 'ENTREGADA' : 'PENDIENTE'}
-                        </Badge>
-                      </div>
+                  <Card key={group.buildingCode} className="overflow-hidden border-[#dfd2bf] bg-white">
+                    <button
+                      type="button"
+                      onClick={() => setCollapsedBuildings((current) => {
+                        const next = new Set(current);
+                        if (next.has(group.buildingCode)) next.delete(group.buildingCode);
+                        else next.add(group.buildingCode);
+                        return next;
+                      })}
+                      className="flex w-full items-center gap-2 px-3 py-3 text-left"
+                    >
+                      <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-[#f1e8dc] text-[#7d3fc1]">
+                        <Building2 className="h-4 w-4" />
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block text-sm font-black text-[#17130f]">{group.buildingCode}</span>
+                        <span className="block text-[11px] text-muted-foreground">
+                          {group.bags.length} {group.bags.length === 1 ? 'apartamento' : 'apartamentos'} · {completed}/{group.bags.length} completados
+                        </span>
+                      </span>
+                      <ChevronDown className={cn('h-4 w-4 transition-transform', !collapsed && 'rotate-180')} />
+                    </button>
 
-                      {bag.bagStatus.status === 'issue' && bag.bagStatus.issueReason && (
-                        <div className="rounded-md bg-red-50 p-2 text-xs text-red-800">
-                          Incidencia: {bag.bagStatus.issueReason}
-                        </div>
-                      )}
+                    {!collapsed && (
+                      <CardContent className="space-y-2 border-t border-[#eee4d8] p-2">
+                        {group.bags.map((bag) => {
+                          const collected = bag.deliveryTracking.collectionStatus === 'collected';
+                          const delivered = bag.deliveryTracking.deliveryStatus === 'delivered';
+                          return (
+                            <div key={bag.taskId} className="space-y-2 rounded-xl bg-[#faf8f4] p-2.5">
+                              <div className="flex items-start justify-between gap-2">
+                                <div className="min-w-0">
+                                  <div className="flex items-center gap-2">
+                                    <p className="text-base font-black text-[#101424]">{bag.propertyCode}</p>
+                                    {bag.bagStatus.status === 'issue' && <Badge variant="destructive">INCIDENCIA</Badge>}
+                                  </div>
+                                  <p className="mt-0.5 flex items-start gap-1 text-xs text-muted-foreground">
+                                    <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                                    <span>{bag.address || 'Dirección no disponible'}</span>
+                                  </p>
+                                </div>
+                                <Badge variant={collected && delivered ? 'default' : 'outline'}>
+                                  {collected && delivered ? 'COMPLETADA' : 'PENDIENTE'}
+                                </Badge>
+                              </div>
 
-                      <div className="grid grid-cols-2 gap-2">
-                        <Button
-                          variant={collected ? 'secondary' : 'outline'}
-                          disabled={collected || isTaskPending(bag.taskId)}
-                          onClick={() => runAction({ action: 'collect', taskId: bag.taskId })}
-                        >
-                          <Shirt className="mr-2 h-4 w-4" />
-                          {collected ? 'Recogida' : 'Recoger'}
-                        </Button>
-                        <Button
-                          disabled={delivered || isTaskPending(bag.taskId)}
-                          onClick={() => runAction({ action: 'deliver', taskId: bag.taskId })}
-                        >
-                          <Truck className="mr-2 h-4 w-4" />
-                          {delivered ? 'Entregada' : 'Entregar'}
-                        </Button>
-                      </div>
-                    </CardContent>
+                              {bag.bagStatus.status === 'issue' && bag.bagStatus.issueReason && (
+                                <div className="rounded-md bg-red-50 p-2 text-xs text-red-800">
+                                  Incidencia: {bag.bagStatus.issueReason}
+                                </div>
+                              )}
+
+                              <div className="grid grid-cols-2 gap-2">
+                                <Button
+                                  variant={collected ? 'secondary' : 'outline'}
+                                  disabled={collected}
+                                  onClick={() => runAction({ action: 'collect', taskId: bag.taskId })}
+                                >
+                                  <Shirt className="mr-2 h-4 w-4" />
+                                  {collected ? 'Recogida' : 'Recoger'}
+                                </Button>
+                                <Button
+                                  disabled={delivered}
+                                  onClick={() => runAction({ action: 'deliver', taskId: bag.taskId })}
+                                >
+                                  <Truck className="mr-2 h-4 w-4" />
+                                  {delivered ? 'Entregada' : 'Entregar'}
+                                </Button>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </CardContent>
+                    )}
                   </Card>
                 );
               })}
             </div>
           </section>
+        )}
+
+        {!urgentBag && workflow.blockingStep === 'complete' && (
+          <div className="rounded-xl border border-green-200 bg-green-50 p-4 text-center text-green-950">
+            <CheckCircle2 className="mx-auto h-7 w-7" />
+            <h2 className="mt-2 text-base font-black">Ruta completada</h2>
+            <p className="mt-1 text-xs">La recogida, la entrega y la preparación de la siguiente ruta están terminadas.</p>
+          </div>
         )}
       </main>
     </div>

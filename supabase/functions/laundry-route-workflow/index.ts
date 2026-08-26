@@ -807,11 +807,19 @@ async function loadWorkflow(
   const authorizedToContinue = authorizationCoversBags(authorization, actualUrgentBags);
   const urgentBags = authorizedToContinue ? [] : actualUrgentBags;
   const nextPendingBags = nextRouteBags.filter((bag) => bag.bagStatus.status === "pending");
+  const routePending = currentRouteBags
+    .filter((bag) => !bag.isCancelled)
+    .some((bag) => (
+      bag.deliveryTracking.collectionStatus !== "collected"
+      || bag.deliveryTracking.deliveryStatus !== "delivered"
+    ));
   const blockingStep = urgentBags.length > 0
     ? "urgent"
+    : routePending
+      ? "deliver"
       : nextPendingBags.length > 0
-      ? "prepare_next"
-      : "deliver";
+        ? "prepare_next"
+        : "complete";
 
   return {
     workflowVersion,
@@ -865,12 +873,26 @@ function recalculateWorkflowStats(workflow: JsonRecord): JsonRecord {
     : null;
   const authorizedToContinue = authorizationCoversBags(authorization, urgentBags);
   const visibleUrgentBags = authorizedToContinue ? [] : urgentBags;
+  const routePending = currentRouteBags
+    .filter((bag) => bag.isCancelled !== true)
+    .some((bag) => {
+      const tracking = bag.deliveryTracking && typeof bag.deliveryTracking === "object"
+        ? bag.deliveryTracking as JsonRecord
+        : {};
+      return tracking.collectionStatus !== "collected" || tracking.deliveryStatus !== "delivered";
+    });
 
   return {
     ...workflow,
     urgentBags: visibleUrgentBags,
     authorizedToContinue,
-    blockingStep: visibleUrgentBags.length > 0 ? "urgent" : nextPendingBags.length > 0 ? "prepare_next" : "deliver",
+    blockingStep: visibleUrgentBags.length > 0
+      ? "urgent"
+      : routePending
+        ? "deliver"
+        : nextPendingBags.length > 0
+          ? "prepare_next"
+          : "complete",
     stats: {
       urgentPending: urgentBags.length,
       nextTotal: nextRouteBags.length,
