@@ -695,17 +695,31 @@ async function completeRouteBuilding(
   issueTaskIds: Set<string>,
 ) {
   const now = new Date().toISOString();
-  const payload = taskIds.map((taskId) => ({
+  const regularPayload = taskIds
+    .filter((taskId) => !issueTaskIds.has(taskId))
+    .map((taskId) => ({
+      task_id: taskId,
+      last_share_link_id: shareLinkId,
+      route_collection_status: "collected",
+      route_delivery_status: "delivered",
+      updated_at: now,
+    }));
+  const issuePayload = taskIds
+    .filter((taskId) => issueTaskIds.has(taskId))
+    .map((taskId) => ({
     task_id: taskId,
     last_share_link_id: shareLinkId,
     route_collection_status: "collected",
-    ...(issueTaskIds.has(taskId) ? {} : { route_delivery_status: "delivered" }),
     updated_at: now,
   }));
-  const { error } = await supabase
-    .from("laundry_bag_preparations")
-    .upsert(payload, { onConflict: "task_id" });
-  if (error) throw error;
+
+  for (const payload of [regularPayload, issuePayload]) {
+    if (payload.length === 0) continue;
+    const { error } = await supabase
+      .from("laundry_bag_preparations")
+      .upsert(payload, { onConflict: "task_id" });
+    if (error) throw error;
+  }
 }
 
 async function upsertDeliveryTracking(
@@ -1148,6 +1162,20 @@ Deno.serve(async (req) => {
           })
           .map((bag: JsonRecord) => String(bag.taskId)));
         await completeRouteBuilding(supabase, String(workflow.link.id), taskIds, issueTaskIds);
+        const issueBags = (workflow.currentRouteBags ?? [])
+          .filter((bag: JsonRecord) => issueTaskIds.has(String(bag.taskId)));
+        await Promise.all(issueBags.map((bag: JsonRecord) => {
+          const bagStatus = bag.bagStatus && typeof bag.bagStatus === "object"
+            ? bag.bagStatus as JsonRecord
+            : {};
+          return recordIssueForNextRoute(
+            supabase,
+            workflow as JsonRecord,
+            String(bag.taskId),
+            String(bagStatus.issueReason ?? "Incidencia pendiente de la ruta anterior"),
+            contentFromMappedBag(bag),
+          );
+        }));
         return json({
           success: true,
           workflow: applyBuildingCompletionToWorkflow(workflow as JsonRecord, taskIds),
@@ -1192,6 +1220,15 @@ Deno.serve(async (req) => {
           return json({ error: "Una bolsa con incidencia solo se puede recoger" }, 400);
         }
         await updateRouteDeliveryStatus(supabase, String(workflow.link.id), taskId, action);
+        if (action === "collect" && targetBagStatus.status === "issue") {
+          await recordIssueForNextRoute(
+            supabase,
+            workflow as JsonRecord,
+            taskId,
+            String(targetBagStatus.issueReason ?? "Incidencia pendiente de la ruta anterior"),
+            contentSnapshot,
+          );
+        }
       }
 
       const eventType = action === "prepare"
