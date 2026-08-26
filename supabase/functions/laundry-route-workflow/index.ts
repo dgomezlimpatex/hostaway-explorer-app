@@ -455,7 +455,7 @@ function mapTask(
     cleaner: frozenContent?.cleaner ?? task.cleaner ?? null,
     isNew: !originalTaskIds.has(taskId),
     noveltyType: routeNoveltyType,
-    noveltyResolved: noveltyType === "carryover"
+    noveltyResolved: routeNoveltyType === "carryover"
       ? preparation?.status === "prepared"
       : preparation?.route_novelty_resolved !== false,
     isCancelled: routeNoveltyType === "cancelled_before" || routeNoveltyType === "cancelled_after",
@@ -531,7 +531,9 @@ function mapEventBag(
     cleaner: content.cleaner ?? null,
     isNew: !originalTaskIds.has(taskId),
     noveltyType,
-    noveltyResolved: preparation?.route_novelty_resolved !== false,
+    noveltyResolved: noveltyType === "carryover"
+      ? preparation?.status === "prepared"
+      : preparation?.route_novelty_resolved !== false,
     isCancelled: noveltyType === "cancelled_before" || noveltyType === "cancelled_after",
     cancellationStage: noveltyType === "cancelled_after" ? "after_preparation" : "before_preparation",
     bagStatus: {
@@ -848,13 +850,15 @@ async function loadWorkflow(
     .filter((event) => event.event_type === "task_cancelled" && !currentTaskSet.has(String(event.task_id ?? "")))
     .map((event) => mapEventBag(event, preparations.get(String(event.task_id ?? "")), originalSet))
     .filter((bag) => !bag.noveltyResolved);
-  const carryoverEvents = Array.from(new Map(
-    routeEvents
-      .filter((event) => event.event_type === "bag_issue"
-        && event.novelty_type === "carryover"
-        && !currentTaskSet.has(String(event.task_id ?? "")))
-      .map((event) => [String(event.task_id ?? ""), event]),
-  ).values());
+  const carryoverEventsByTask = new Map<string, JsonRecord>();
+  routeEvents.forEach((event) => {
+    if (event.event_type === "bag_issue"
+      && event.novelty_type === "carryover"
+      && !currentTaskSet.has(String(event.task_id ?? ""))) {
+      carryoverEventsByTask.set(String(event.task_id ?? ""), event);
+    }
+  });
+  const carryoverEvents = Array.from(carryoverEventsByTask.values());
   const carryoverBags = carryoverEvents
     .map((event) => mapEventBag(event, preparations.get(String(event.task_id ?? "")), originalSet))
     .filter((bag) => !bag.noveltyResolved);
