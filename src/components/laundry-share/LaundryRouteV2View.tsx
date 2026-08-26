@@ -720,6 +720,7 @@ export const LaundryRouteV2View = ({ token }: LaundryRouteV2ViewProps) => {
       const previousWorkflow = queryClient.getQueryData<RouteWorkflow>(queryKey);
       const selectedTaskIds = new Set(taskIds);
       setPendingBuildingCodes((current) => new Set(current).add(buildingCode));
+      setCollapsedBuildings((current) => new Set(current).add(buildingCode));
       queryClient.setQueryData<RouteWorkflow>(queryKey, (current) => {
         if (!current) return current;
         return {
@@ -744,6 +745,13 @@ export const LaundryRouteV2View = ({ token }: LaundryRouteV2ViewProps) => {
     onError: (err, _variables, context) => {
       if (context?.previousWorkflow) {
         queryClient.setQueryData<RouteWorkflow>(queryKey, context.previousWorkflow);
+      }
+      if (context?.buildingCode) {
+        setCollapsedBuildings((current) => {
+          const next = new Set(current);
+          next.delete(context.buildingCode);
+          return next;
+        });
       }
       toast({
         title: 'No se pudo completar el edificio',
@@ -1065,7 +1073,7 @@ export const LaundryRouteV2View = ({ token }: LaundryRouteV2ViewProps) => {
                           ) : (
                             <CheckCircle2 className="mr-2 h-4 w-4" />
                           )}
-                          Recoger y entregar todo
+                          Recoger y entregar edificio
                         </Button>
                       </div>
                     )}
