@@ -22,6 +22,7 @@ import {
   Users,
   Calculator,
   ClipboardCheck,
+  Route,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useRolePermissions } from '@/hooks/useRolePermissions';
@@ -76,6 +77,7 @@ const managementItems: NavigationItem[] = [
     permission: 'tasks-edit',
   },
   { title: 'Lavandería', href: '/lavanderia/gestion', icon: Package, permission: 'reports' },
+  { title: 'Nuevo sistema de ruta', href: '/lavanderia/nuevo-sistema', icon: Route, permission: 'reports' },
   { title: 'Inventario', href: '/inventory', icon: Package, permission: 'inventory' },
 ];
 

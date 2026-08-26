@@ -42,6 +42,11 @@ verify_jwt = false
 [functions.manage-laundry-classic-links]
 verify_jwt = false
 
+# Nuevo sistema de ruta: los enlaces publicos usan token; las acciones
+# administrativas vuelven a validar el usuario dentro de la funcion.
+[functions.manage-laundry-route-v2-links]
+verify_jwt = false
+
 # Meta verifica y entrega eventos sin un JWT de Supabase.
 # La función valida el verify token (GET) y la firma HMAC de Meta (POST).
 [functions.whatsapp-webhook]

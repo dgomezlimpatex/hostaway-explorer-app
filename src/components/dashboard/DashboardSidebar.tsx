@@ -31,6 +31,7 @@ import {
   MessageCircle,
   Calculator,
   ClipboardCheck,
+  Route,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useRolePermissions } from '@/hooks/useRolePermissions';
@@ -145,6 +146,12 @@ const managementItems: NavigationItem[] = [
     title: 'Lavandería',
     href: '/lavanderia/gestion',
     icon: Shirt,
+    permission: 'reports'
+  },
+  {
+    title: 'Nuevo sistema de ruta',
+    href: '/lavanderia/nuevo-sistema',
+    icon: Route,
     permission: 'reports'
   },
   {

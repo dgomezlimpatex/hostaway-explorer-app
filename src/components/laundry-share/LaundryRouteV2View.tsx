@@ -5,7 +5,6 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
-import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import {
   AlertTriangle,
@@ -21,7 +20,7 @@ import { cn } from '@/lib/utils';
 type BagStatus = 'pending' | 'prepared' | 'issue';
 type DeliveryStatus = 'pending' | 'prepared' | 'delivered';
 type CollectionStatus = 'pending' | 'collected';
-type RouteAction = 'prepare' | 'issue' | 'collect' | 'deliver';
+type RouteAction = 'prepare' | 'issue' | 'critical_block' | 'collect' | 'deliver' | 'confirm_no_carry' | 'undo_bag';
 
 type RouteBag = {
   taskId: string;
@@ -32,6 +31,10 @@ type RouteBag = {
   serviceTime: string;
   cleaner: string | null;
   isNew: boolean;
+  noveltyType?: 'normal' | 'new' | 'changed' | 'carryover' | 'cancelled_before' | 'cancelled_after' | 'undone';
+  noveltyResolved?: boolean;
+  isCancelled?: boolean;
+  cancellationStage?: 'before_preparation' | 'after_preparation' | null;
   bagStatus: {
     status: BagStatus;
     issueReason: string | null;
@@ -62,6 +65,12 @@ type RouteWorkflow = {
     nextRouteDates: string[];
   };
   blockingStep: 'urgent' | 'prepare_next' | 'deliver';
+  authorizedToContinue?: boolean;
+  authorization?: {
+    reason: string;
+    actor_name: string | null;
+    created_at: string;
+  } | null;
   urgentBags: RouteBag[];
   nextRouteBags: RouteBag[];
   currentRouteBags: RouteBag[];
@@ -365,7 +374,8 @@ const BagAssemblyGuide = ({ bag }: { bag: RouteBag }) => {
 };
 
 const recalculateWorkflowStats = (workflow: RouteWorkflow): RouteWorkflow => {
-  const urgentBags = workflow.currentRouteBags.filter((bag) => bag.bagStatus.status === 'pending');
+  const allUrgentBags = workflow.currentRouteBags.filter((bag) => bag.bagStatus.status === 'pending' || bag.noveltyResolved === false);
+  const urgentBags = workflow.authorizedToContinue ? [] : allUrgentBags;
   const nextPendingBags = workflow.nextRouteBags.filter((bag) => bag.bagStatus.status === 'pending');
 
   return {
@@ -373,7 +383,7 @@ const recalculateWorkflowStats = (workflow: RouteWorkflow): RouteWorkflow => {
     urgentBags,
     blockingStep: urgentBags.length > 0 ? 'urgent' : nextPendingBags.length > 0 ? 'prepare_next' : 'deliver',
     stats: {
-      urgentPending: urgentBags.length,
+      urgentPending: allUrgentBags.length,
       nextTotal: workflow.nextRouteBags.length,
       nextPrepared: workflow.nextRouteBags.filter((bag) => bag.bagStatus.status === 'prepared').length,
       nextIssues: workflow.nextRouteBags.filter((bag) => bag.bagStatus.status === 'issue').length,
@@ -474,6 +484,7 @@ export const LaundryRouteV2View = ({ token }: LaundryRouteV2ViewProps) => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [issueTaskId, setIssueTaskId] = useState<string | null>(null);
+  const [issueAction, setIssueAction] = useState<'issue' | 'critical_block'>('issue');
   const [issueReason, setIssueReason] = useState('');
   const [completeFlashTaskId, setCompleteFlashTaskId] = useState<string | null>(null);
   const queryKey = useMemo(() => ['laundry-route-v2', token], [token]);
@@ -507,13 +518,15 @@ export const LaundryRouteV2View = ({ token }: LaundryRouteV2ViewProps) => {
                 status: 'prepared',
                 issueReason: null,
               },
+              noveltyResolved: true,
+              isCancelled: false,
             })),
           );
           setCompleteFlashTaskId((current) => (current === taskId ? null : current));
         }, 680);
       }
 
-      if (action === 'issue') {
+      if (action === 'issue' || action === 'critical_block') {
         queryClient.setQueryData<RouteWorkflow>(queryKey, (current) =>
           updateWorkflowBag(current, taskId, (bag) => ({
             ...bag,
@@ -522,6 +535,26 @@ export const LaundryRouteV2View = ({ token }: LaundryRouteV2ViewProps) => {
               status: 'issue',
               issueReason: reason || null,
             },
+            noveltyResolved: false,
+          })),
+        );
+      }
+
+      if (action === 'confirm_no_carry') {
+        queryClient.setQueryData<RouteWorkflow>(queryKey, (current) =>
+          updateWorkflowBag(current, taskId, (bag) => ({ ...bag, noveltyResolved: true })),
+        );
+      }
+
+      if (action === 'undo_bag') {
+        queryClient.setQueryData<RouteWorkflow>(queryKey, (current) =>
+          updateWorkflowBag(current, taskId, (bag) => ({
+            ...bag,
+            noveltyResolved: false,
+            noveltyType: 'undone',
+            isCancelled: false,
+            cancellationStage: null,
+            bagStatus: { ...bag.bagStatus, status: 'pending' },
           })),
         );
       }
@@ -632,7 +665,13 @@ export const LaundryRouteV2View = ({ token }: LaundryRouteV2ViewProps) => {
       });
       return;
     }
-    actionMutation.mutate({ action: 'issue', taskId: issueTaskId, reason: issueReason.trim() });
+    actionMutation.mutate({ action: issueAction, taskId: issueTaskId, reason: issueReason.trim() });
+  };
+
+  const openIssueForm = (taskId: string, action: 'issue' | 'critical_block' = 'issue') => {
+    setIssueTaskId(taskId);
+    setIssueAction(action);
+    setIssueReason('');
   };
 
   return (
@@ -653,20 +692,58 @@ export const LaundryRouteV2View = ({ token }: LaundryRouteV2ViewProps) => {
               progress={urgentProgress}
               isCompleteFlash={completeFlashTaskId === urgentBag.taskId}
             >
-              {issueTaskId === urgentBag.taskId ? (
+              {urgentBag.isCancelled ? (
                 <div className="space-y-2">
-                  <Textarea
+                  <div className="rounded-lg border border-red-200 bg-red-50 p-2 text-xs text-red-900">
+                    <p className="font-black">NO LLEVAR ESTA BOLSA</p>
+                    <p className="mt-0.5">La tarea fue cancelada {urgentBag.cancellationStage === 'after_preparation' ? 'después de preparar la bolsa' : 'antes de preparar la bolsa'}.</p>
+                  </div>
+                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                    <Button
+                      size="lg"
+                      onClick={() => actionMutation.mutate({ action: 'confirm_no_carry', taskId: urgentBag.taskId })}
+                      disabled={actionMutation.isPending}
+                      className="h-12 rounded-xl bg-[#c4512e] text-sm font-black hover:bg-[#a94427]"
+                    >
+                      <CheckCircle2 className="mr-2 h-4 w-4" />
+                      Confirmar no llevar
+                    </Button>
+                    {urgentBag.cancellationStage === 'after_preparation' && (
+                      <Button
+                        variant="outline"
+                        size="lg"
+                        onClick={() => actionMutation.mutate({ action: 'undo_bag', taskId: urgentBag.taskId })}
+                        disabled={actionMutation.isPending}
+                        className="h-12 rounded-xl text-sm font-semibold"
+                      >
+                        Bolsa deshecha
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              ) : issueTaskId === urgentBag.taskId ? (
+                <div className="space-y-2">
+                  <p className="text-xs font-semibold text-[#8d351e]">
+                    {issueAction === 'critical_block' ? 'Indica el motivo del bloqueo crítico.' : 'Indica por qué no se puede preparar.'}
+                  </p>
+                  <select
                     value={issueReason}
                     onChange={(event) => setIssueReason(event.target.value)}
-                    placeholder="Motivo de la incidencia..."
-                    className="bg-white"
-                  />
+                    className="h-11 w-full rounded-md border border-input bg-white px-3 text-sm"
+                  >
+                    <option value="">Selecciona el motivo...</option>
+                    <option value="Falta de stock de ropa">Falta de stock de ropa</option>
+                    <option value="Incidencia en almacén">Incidencia en almacén</option>
+                    <option value="Bolsa dañada">Bolsa dañada</option>
+                    <option value="Problema con la tarea">Problema con la tarea</option>
+                    <option value="Otro motivo">Otro motivo</option>
+                  </select>
                   <div className="grid grid-cols-2 gap-2">
                     <Button variant="outline" onClick={() => setIssueTaskId(null)}>
                       Cancelar
                     </Button>
                     <Button variant="destructive" onClick={handleIssue} disabled={actionMutation.isPending}>
-                      Guardar incidencia
+                      {issueAction === 'critical_block' ? 'Registrar bloqueo' : 'Guardar incidencia'}
                     </Button>
                   </div>
                 </div>
@@ -684,12 +761,22 @@ export const LaundryRouteV2View = ({ token }: LaundryRouteV2ViewProps) => {
                   <Button
                     variant="outline"
                     size="lg"
-                    onClick={() => setIssueTaskId(urgentBag.taskId)}
+                    onClick={() => openIssueForm(urgentBag.taskId)}
                     disabled={actionMutation.isPending || completeFlashTaskId === urgentBag.taskId}
                     className="h-9 rounded-xl border-0 bg-transparent text-sm font-semibold text-[#c4512e] hover:bg-[#f1dfcf]"
                   >
                     <XCircle className="mr-2 h-4 w-4" />
                     Marcar incidencia
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="lg"
+                    onClick={() => openIssueForm(urgentBag.taskId, 'critical_block')}
+                    disabled={actionMutation.isPending || completeFlashTaskId === urgentBag.taskId}
+                    className="h-9 rounded-xl border-amber-300 bg-amber-50 text-sm font-semibold text-amber-900 hover:bg-amber-100"
+                  >
+                    <AlertTriangle className="mr-2 h-4 w-4" />
+                    Registrar bloqueo crítico
                   </Button>
                 </div>
               )}
@@ -719,12 +806,18 @@ export const LaundryRouteV2View = ({ token }: LaundryRouteV2ViewProps) => {
             >
               {issueTaskId === nextPendingBag.taskId ? (
                 <div className="space-y-2">
-                  <Textarea
+                  <select
                     value={issueReason}
                     onChange={(event) => setIssueReason(event.target.value)}
-                    placeholder="Motivo de la incidencia..."
-                    className="bg-white"
-                  />
+                    className="h-11 w-full rounded-md border border-input bg-white px-3 text-sm"
+                  >
+                    <option value="">Selecciona el motivo...</option>
+                    <option value="Falta de stock de ropa">Falta de stock de ropa</option>
+                    <option value="Incidencia en almacén">Incidencia en almacén</option>
+                    <option value="Bolsa dañada">Bolsa dañada</option>
+                    <option value="Problema con la tarea">Problema con la tarea</option>
+                    <option value="Otro motivo">Otro motivo</option>
+                  </select>
                   <div className="grid grid-cols-2 gap-2">
                     <Button variant="outline" onClick={() => setIssueTaskId(null)}>
                       Cancelar
@@ -748,7 +841,7 @@ export const LaundryRouteV2View = ({ token }: LaundryRouteV2ViewProps) => {
                   <Button
                     variant="outline"
                     size="lg"
-                    onClick={() => setIssueTaskId(nextPendingBag.taskId)}
+                    onClick={() => openIssueForm(nextPendingBag.taskId)}
                     disabled={actionMutation.isPending || completeFlashTaskId === nextPendingBag.taskId}
                     className="h-9 rounded-xl border-0 bg-transparent text-sm font-semibold text-[#c4512e] hover:bg-[#f1dfcf]"
                   >
@@ -774,7 +867,7 @@ export const LaundryRouteV2View = ({ token }: LaundryRouteV2ViewProps) => {
             </div>
 
             <div className="space-y-2">
-              {workflow.currentRouteBags.map((bag) => {
+              {workflow.currentRouteBags.filter((bag) => !bag.isCancelled).map((bag) => {
                 const collected = bag.deliveryTracking.collectionStatus === 'collected';
                 const delivered = bag.deliveryTracking.deliveryStatus === 'delivered';
                 return (
