@@ -386,16 +386,18 @@ const BagAssemblyGuide = ({ bag }: { bag: RouteBag }) => {
   );
 };
 
+const isRouteBagComplete = (bag: RouteBag) => (
+  bag.deliveryTracking.collectionStatus === 'collected'
+  && (bag.bagStatus.status === 'issue' || bag.deliveryTracking.deliveryStatus === 'delivered')
+);
+
 const recalculateWorkflowStats = (workflow: RouteWorkflow): RouteWorkflow => {
   const allUrgentBags = workflow.currentRouteBags.filter((bag) => bag.bagStatus.status === 'pending' || bag.noveltyResolved === false);
   const urgentBags = workflow.authorizedToContinue ? [] : allUrgentBags;
   const nextPendingBags = workflow.nextRouteBags.filter((bag) => bag.bagStatus.status === 'pending');
   const routePending = workflow.currentRouteBags
     .filter((bag) => !bag.isCancelled)
-    .some((bag) => (
-      bag.deliveryTracking.collectionStatus !== 'collected'
-      || bag.deliveryTracking.deliveryStatus !== 'delivered'
-    ));
+    .some((bag) => !isRouteBagComplete(bag));
 
   return {
     ...workflow,
@@ -731,7 +733,9 @@ export const LaundryRouteV2View = ({ token }: LaundryRouteV2ViewProps) => {
               deliveryTracking: {
                 ...bag.deliveryTracking,
                 collectionStatus: 'collected',
-                deliveryStatus: 'delivered',
+                deliveryStatus: bag.bagStatus.status === 'issue'
+                  ? bag.deliveryTracking.deliveryStatus
+                  : 'delivered',
               },
             }
             : bag),
@@ -1013,10 +1017,7 @@ export const LaundryRouteV2View = ({ token }: LaundryRouteV2ViewProps) => {
             <div className="space-y-2">
               {deliveryGroups.map((group) => {
                 const collapsed = collapsedBuildings.has(group.buildingCode);
-                const completed = group.bags.filter((bag) => (
-                  bag.deliveryTracking.collectionStatus === 'collected'
-                  && bag.deliveryTracking.deliveryStatus === 'delivered'
-                )).length;
+                const completed = group.bags.filter(isRouteBagComplete).length;
                 const buildingComplete = completed === group.bags.length;
                 const buildingPending = pendingBuildingCodes.has(group.buildingCode);
                 return (
@@ -1086,6 +1087,7 @@ export const LaundryRouteV2View = ({ token }: LaundryRouteV2ViewProps) => {
                         {group.bags.map((bag) => {
                           const collected = bag.deliveryTracking.collectionStatus === 'collected';
                           const delivered = bag.deliveryTracking.deliveryStatus === 'delivered';
+                          const hasIssue = bag.bagStatus.status === 'issue';
                           return (
                             <div key={bag.taskId} className="space-y-2 rounded-xl bg-[#faf8f4] p-2.5">
                               <div className="flex items-start gap-2">
@@ -1107,7 +1109,7 @@ export const LaundryRouteV2View = ({ token }: LaundryRouteV2ViewProps) => {
                                 </div>
                               )}
 
-                              <div className="grid grid-cols-2 gap-2">
+                              <div className={cn('grid gap-2', hasIssue ? 'grid-cols-1' : 'grid-cols-2')}>
                                 <Button
                                   variant={collected ? 'secondary' : 'outline'}
                                   disabled={collected}
@@ -1116,13 +1118,15 @@ export const LaundryRouteV2View = ({ token }: LaundryRouteV2ViewProps) => {
                                   <Shirt className="mr-2 h-4 w-4" />
                                   {collected ? 'Recogida' : 'Recoger'}
                                 </Button>
-                                <Button
-                                  disabled={delivered}
-                                  onClick={() => runAction({ action: 'deliver', taskId: bag.taskId })}
-                                >
-                                  <Truck className="mr-2 h-4 w-4" />
-                                  {delivered ? 'Entregada' : 'Entregar'}
-                                </Button>
+                                {!hasIssue && (
+                                  <Button
+                                    disabled={delivered}
+                                    onClick={() => runAction({ action: 'deliver', taskId: bag.taskId })}
+                                  >
+                                    <Truck className="mr-2 h-4 w-4" />
+                                    {delivered ? 'Entregada' : 'Entregar'}
+                                  </Button>
+                                )}
                               </div>
                             </div>
                           );

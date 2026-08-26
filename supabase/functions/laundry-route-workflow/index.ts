@@ -692,13 +692,14 @@ async function completeRouteBuilding(
   supabase: ReturnType<typeof createClient>,
   shareLinkId: string,
   taskIds: string[],
+  issueTaskIds: Set<string>,
 ) {
   const now = new Date().toISOString();
   const payload = taskIds.map((taskId) => ({
     task_id: taskId,
     last_share_link_id: shareLinkId,
     route_collection_status: "collected",
-    route_delivery_status: "delivered",
+    ...(issueTaskIds.has(taskId) ? {} : { route_delivery_status: "delivered" }),
     updated_at: now,
   }));
   const { error } = await supabase
@@ -891,7 +892,7 @@ async function loadWorkflow(
     .filter((bag) => !bag.isCancelled)
     .some((bag) => (
       bag.deliveryTracking.collectionStatus !== "collected"
-      || bag.deliveryTracking.deliveryStatus !== "delivered"
+      || (bag.bagStatus.status !== "issue" && bag.deliveryTracking.deliveryStatus !== "delivered")
     ));
   const blockingStep = urgentBags.length > 0
     ? "urgent"
@@ -959,7 +960,11 @@ function recalculateWorkflowStats(workflow: JsonRecord): JsonRecord {
       const tracking = bag.deliveryTracking && typeof bag.deliveryTracking === "object"
         ? bag.deliveryTracking as JsonRecord
         : {};
-      return tracking.collectionStatus !== "collected" || tracking.deliveryStatus !== "delivered";
+      const bagStatus = bag.bagStatus && typeof bag.bagStatus === "object"
+        ? bag.bagStatus as JsonRecord
+        : {};
+      return tracking.collectionStatus !== "collected"
+        || (bagStatus.status !== "issue" && tracking.deliveryStatus !== "delivered");
     });
 
   return {
@@ -1083,12 +1088,15 @@ function applyBuildingCompletionToWorkflow(workflow: JsonRecord, taskIds: string
       const tracking = bag.deliveryTracking && typeof bag.deliveryTracking === "object"
         ? bag.deliveryTracking as JsonRecord
         : {};
+      const bagStatus = bag.bagStatus && typeof bag.bagStatus === "object"
+        ? bag.bagStatus as JsonRecord
+        : {};
       return {
         ...bag,
         deliveryTracking: {
           ...tracking,
           collectionStatus: "collected",
-          deliveryStatus: "delivered",
+          deliveryStatus: bagStatus.status === "issue" ? tracking.deliveryStatus : "delivered",
         },
       };
     })
@@ -1131,7 +1139,15 @@ Deno.serve(async (req) => {
         if (taskIds.some((selectedTaskId) => !currentTaskIds.has(selectedTaskId))) {
           return json({ error: "Alguna tarea no pertenece a la ruta actual" }, 400);
         }
-        await completeRouteBuilding(supabase, String(workflow.link.id), taskIds);
+        const issueTaskIds = new Set((workflow.currentRouteBags ?? [])
+          .filter((bag: JsonRecord) => {
+            const bagStatus = bag.bagStatus && typeof bag.bagStatus === "object"
+              ? bag.bagStatus as JsonRecord
+              : {};
+            return taskIds.includes(String(bag.taskId)) && bagStatus.status === "issue";
+          })
+          .map((bag: JsonRecord) => String(bag.taskId)));
+        await completeRouteBuilding(supabase, String(workflow.link.id), taskIds, issueTaskIds);
         return json({
           success: true,
           workflow: applyBuildingCompletionToWorkflow(workflow as JsonRecord, taskIds),
@@ -1169,6 +1185,12 @@ Deno.serve(async (req) => {
       } else if (action === "collect" || action === "deliver") {
         const currentTaskIds = new Set((workflow.currentRouteBags ?? []).map((bag: JsonRecord) => String(bag.taskId)));
         if (!currentTaskIds.has(taskId)) return json({ error: "Solo se puede recoger o entregar la ruta actual" }, 400);
+        const targetBagStatus = targetBag?.bagStatus && typeof targetBag.bagStatus === "object"
+          ? targetBag.bagStatus as JsonRecord
+          : {};
+        if (action === "deliver" && targetBagStatus.status === "issue") {
+          return json({ error: "Una bolsa con incidencia solo se puede recoger" }, 400);
+        }
         await updateRouteDeliveryStatus(supabase, String(workflow.link.id), taskId, action);
       }
 
