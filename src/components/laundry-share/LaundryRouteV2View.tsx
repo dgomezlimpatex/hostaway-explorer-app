@@ -588,7 +588,9 @@ export const LaundryRouteV2View = ({ token }: LaundryRouteV2ViewProps) => {
               status: 'issue',
               issueReason: reason || null,
             },
-            noveltyResolved: false,
+            // The issue remains recorded globally, but it is resolved for this
+            // route so the operator can continue with the next bag.
+            noveltyResolved: true,
           })),
         );
       }

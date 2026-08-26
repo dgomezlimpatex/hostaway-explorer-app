@@ -469,9 +469,13 @@ async function reconcileLink(
     const isChanged = Boolean(snapshot && getString(snapshot.task_signature) !== signature);
     const wasCancelled = preparation?.route_novelty_type === "cancelled_before"
       || preparation?.route_novelty_type === "cancelled_after";
+    const isCurrentRouteTask = currentTasks.some((currentTask) => getString(currentTask.id) === taskId);
+    const isIssueCarryover = preparation?.status === "issue"
+      && isCurrentRouteTask
+      && getString(preparation.last_share_link_id) !== getString(link.id);
     if (isNew) addedCount += 1;
     if (isChanged) changedCount += 1;
-    if (preparation?.status === "issue" && currentTasks.some((currentTask) => getString(currentTask.id) === taskId)) carryoverCount += 1;
+    if (isIssueCarryover) carryoverCount += 1;
 
     if (!snapshot) {
       const { error } = await supabase.from("laundry_route_v2_bag_snapshots").insert({
@@ -505,7 +509,6 @@ async function reconcileLink(
       preparations.set(taskId, inserted as JsonRecord);
     } else {
       const patch: JsonRecord = {
-        last_share_link_id: link.id,
         route_last_seen_signature: signature,
         updated_at: now,
       };
@@ -527,7 +530,7 @@ async function reconcileLink(
         patch.route_novelty_type = "changed";
         patch.route_novelty_resolved = false;
         if (preparation.status === "prepared") patch.status = "pending";
-      } else if (preparation.status === "issue" && currentTasks.some((currentTask) => getString(currentTask.id) === taskId)) {
+      } else if (isIssueCarryover) {
         patch.route_novelty_type = "carryover";
         patch.route_novelty_resolved = false;
       }
@@ -541,7 +544,7 @@ async function reconcileLink(
       preparations.set(taskId, updated as JsonRecord);
     }
 
-    const noveltyType: RouteNovelty = wasCancelled ? "changed" : isNew ? "new" : isChanged ? "changed" : preparation?.status === "issue" ? "carryover" : "normal";
+    const noveltyType: RouteNovelty = wasCancelled ? "changed" : isNew ? "new" : isChanged ? "changed" : isIssueCarryover ? "carryover" : "normal";
     if (isNew || isChanged || wasCancelled) {
       changedEvents.push(recordEvent(supabase, {
         sede_id: sedeId,

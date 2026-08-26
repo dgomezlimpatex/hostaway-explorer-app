@@ -316,6 +316,49 @@ async function recordEvent(
   if (error) throw error;
 }
 
+async function recordIssueForNextRoute(
+  supabase: ReturnType<typeof createClient>,
+  workflow: JsonRecord,
+  taskId: string,
+  issueReason: string,
+  content: JsonRecord | undefined,
+) {
+  const route = getObject(workflow.route);
+  const link = getObject(workflow.link);
+  const nextDeliveryDate = String(route?.nextDeliveryDate ?? "");
+  if (!nextDeliveryDate) return;
+
+  let nextLinkQuery = supabase
+    .from("laundry_share_links")
+    .select("id, sede_id, delivery_date")
+    .eq("workflow_version", "route_v2")
+    .eq("is_active", true)
+    .eq("delivery_date", nextDeliveryDate);
+  nextLinkQuery = link?.sedeId
+    ? nextLinkQuery.eq("sede_id", String(link.sedeId))
+    : nextLinkQuery.is("sede_id", null);
+
+  const { data: nextLink, error } = await nextLinkQuery
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error) throw error;
+  if (!nextLink) return;
+
+  await recordEvent(supabase, {
+    sede_id: nextLink.sede_id,
+    share_link_id: nextLink.id,
+    delivery_date: nextDeliveryDate,
+    task_id: taskId,
+    event_type: "bag_issue",
+    novelty_type: "carryover",
+    property_code: content?.propertyCode ?? null,
+    event_key: `bag-carryover:${nextLink.id}:${taskId}`,
+    payload: { issueReason, content: content ?? null },
+    actor_name: "Equipo de ruta",
+  });
+}
+
 async function loadLatestRouteAuthorization(
   supabase: ReturnType<typeof createClient>,
   shareLinkId: string,
@@ -412,7 +455,9 @@ function mapTask(
     cleaner: frozenContent?.cleaner ?? task.cleaner ?? null,
     isNew: !originalTaskIds.has(taskId),
     noveltyType: routeNoveltyType,
-    noveltyResolved: preparation?.route_novelty_resolved !== false,
+    noveltyResolved: noveltyType === "carryover"
+      ? preparation?.status === "prepared"
+      : preparation?.route_novelty_resolved !== false,
     isCancelled: routeNoveltyType === "cancelled_before" || routeNoveltyType === "cancelled_after",
     cancellationStage: routeNoveltyType === "cancelled_after" ? "after_preparation" : routeNoveltyType === "cancelled_before" ? "before_preparation" : null,
     bagStatus: {
@@ -570,7 +615,9 @@ async function upsertPreparation(
     payload.issue_at = now;
     payload.issue_by_name = "Lavanderia";
     payload.issue_reason = String(issueReason ?? "").trim();
-    payload.route_novelty_resolved = false;
+    // The bag is deferred, not blocked in the route where the issue is filed.
+    // The route manager will reactivate it as a carryover on its next route.
+    payload.route_novelty_resolved = true;
   }
 
   const { error } = await supabase
@@ -801,7 +848,17 @@ async function loadWorkflow(
     .filter((event) => event.event_type === "task_cancelled" && !currentTaskSet.has(String(event.task_id ?? "")))
     .map((event) => mapEventBag(event, preparations.get(String(event.task_id ?? "")), originalSet))
     .filter((bag) => !bag.noveltyResolved);
-  currentRouteBags.push(...cancellationBags);
+  const carryoverEvents = Array.from(new Map(
+    routeEvents
+      .filter((event) => event.event_type === "bag_issue"
+        && event.novelty_type === "carryover"
+        && !currentTaskSet.has(String(event.task_id ?? "")))
+      .map((event) => [String(event.task_id ?? ""), event]),
+  ).values());
+  const carryoverBags = carryoverEvents
+    .map((event) => mapEventBag(event, preparations.get(String(event.task_id ?? "")), originalSet))
+    .filter((bag) => !bag.noveltyResolved);
+  currentRouteBags.push(...cancellationBags, ...carryoverBags);
 
   const actualUrgentBags = currentRouteBags.filter((bag) => bag.bagStatus.status === "pending" || bag.noveltyResolved === false);
   const authorizedToContinue = authorizationCoversBags(authorization, actualUrgentBags);
@@ -948,7 +1005,7 @@ function applyActionToWorkflow(
           status: "issue",
           issueReason,
         },
-        noveltyResolved: false,
+        noveltyResolved: true,
       };
     }
 
@@ -1037,6 +1094,7 @@ Deno.serve(async (req) => {
       } else if (action === "issue" || action === "critical_block") {
         if (issueReason.length < 3) return json({ error: "El motivo de incidencia es obligatorio" }, 400);
         await upsertPreparation(supabase, String(workflow.link.id), taskId, "issue", issueReason, contentSnapshot);
+        await recordIssueForNextRoute(supabase, workflow as JsonRecord, taskId, issueReason, contentSnapshot);
       } else if (action === "confirm_no_carry" || action === "undo_bag") {
         if (action === "confirm_no_carry" && (!targetBag?.isCancelled || targetBag.cancellationStage === "after_preparation")) {
           return json({ error: "Esta bolsa debe marcarse como deshecha" }, 400);
