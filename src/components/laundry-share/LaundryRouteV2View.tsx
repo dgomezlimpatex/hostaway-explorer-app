@@ -23,7 +23,7 @@ import { cn } from '@/lib/utils';
 type BagStatus = 'pending' | 'prepared' | 'issue';
 type DeliveryStatus = 'pending' | 'prepared' | 'delivered';
 type CollectionStatus = 'pending' | 'collected';
-type RouteAction = 'prepare' | 'issue' | 'critical_block' | 'collect' | 'deliver' | 'confirm_no_carry' | 'undo_bag';
+type RouteAction = 'prepare' | 'issue' | 'critical_block' | 'collect' | 'deliver' | 'confirm_no_carry' | 'undo_bag' | 'complete_building';
 
 type RouteBag = {
   taskId: string;
@@ -97,12 +97,14 @@ const invokeWorkflow = async (
   action?: RouteAction,
   taskId?: string,
   issueReason?: string,
+  taskIds?: string[],
 ): Promise<RouteWorkflow> => {
   const { data, error } = await supabase.functions.invoke('laundry-route-workflow', {
     body: {
       token,
       action: action || 'load',
       taskId,
+      taskIds,
       issueReason,
     },
   });
@@ -535,6 +537,7 @@ export const LaundryRouteV2View = ({ token }: LaundryRouteV2ViewProps) => {
   const [completeFlashTaskId, setCompleteFlashTaskId] = useState<string | null>(null);
   const [pendingActionKeys, setPendingActionKeys] = useState<Set<string>>(() => new Set());
   const pendingActionKeysRef = useRef<Set<string>>(new Set());
+  const [pendingBuildingCodes, setPendingBuildingCodes] = useState<Set<string>>(() => new Set());
   const [collapsedBuildings, setCollapsedBuildings] = useState<Set<string>>(() => new Set());
   const queryKey = useMemo(() => ['laundry-route-v2', token], [token]);
   const actionKey = (taskId: string, action: RouteAction) => `${taskId}:${action}`;
@@ -708,6 +711,56 @@ export const LaundryRouteV2View = ({ token }: LaundryRouteV2ViewProps) => {
     pendingActionKeysRef.current.add(key);
     actionMutation.mutate(variables);
   };
+
+  const completeBuildingMutation = useMutation({
+    mutationFn: ({ taskIds }: { buildingCode: string; taskIds: string[] }) =>
+      invokeWorkflow(token, 'complete_building', undefined, undefined, taskIds),
+    onMutate: async ({ buildingCode, taskIds }) => {
+      await queryClient.cancelQueries({ queryKey });
+      const previousWorkflow = queryClient.getQueryData<RouteWorkflow>(queryKey);
+      const selectedTaskIds = new Set(taskIds);
+      setPendingBuildingCodes((current) => new Set(current).add(buildingCode));
+      queryClient.setQueryData<RouteWorkflow>(queryKey, (current) => {
+        if (!current) return current;
+        return {
+          ...current,
+          currentRouteBags: current.currentRouteBags.map((bag) => selectedTaskIds.has(bag.taskId)
+            ? {
+              ...bag,
+              deliveryTracking: {
+                ...bag.deliveryTracking,
+                collectionStatus: 'collected',
+                deliveryStatus: 'delivered',
+              },
+            }
+            : bag),
+        };
+      });
+      return { previousWorkflow, buildingCode };
+    },
+    onSuccess: (updatedWorkflow) => {
+      queryClient.setQueryData<RouteWorkflow>(queryKey, updatedWorkflow);
+    },
+    onError: (err, _variables, context) => {
+      if (context?.previousWorkflow) {
+        queryClient.setQueryData<RouteWorkflow>(queryKey, context.previousWorkflow);
+      }
+      toast({
+        title: 'No se pudo completar el edificio',
+        description: err instanceof Error ? err.message : 'IntÃ©ntalo de nuevo',
+        variant: 'destructive',
+      });
+    },
+    onSettled: (_data, _error, _variables, context) => {
+      const buildingCode = context?.buildingCode;
+      if (!buildingCode) return;
+      setPendingBuildingCodes((current) => {
+        const next = new Set(current);
+        next.delete(buildingCode);
+        return next;
+      });
+    },
+  });
 
   const nextPendingBag = useMemo(
     () => workflow?.nextRouteBags.find((bag) => bag.bagStatus.status === 'pending') || null,
@@ -956,8 +1009,18 @@ export const LaundryRouteV2View = ({ token }: LaundryRouteV2ViewProps) => {
                   bag.deliveryTracking.collectionStatus === 'collected'
                   && bag.deliveryTracking.deliveryStatus === 'delivered'
                 )).length;
+                const buildingComplete = completed === group.bags.length;
+                const buildingPending = pendingBuildingCodes.has(group.buildingCode);
                 return (
-                  <Card key={group.buildingCode} className="overflow-hidden border-[#dfd2bf] bg-white">
+                  <Card
+                    key={group.buildingCode}
+                    className={cn(
+                      'overflow-hidden transition-colors',
+                      buildingComplete
+                        ? 'border-green-200 bg-green-50'
+                        : 'border-[#dfd2bf] bg-white',
+                    )}
+                  >
                     <button
                       type="button"
                       onClick={() => setCollapsedBuildings((current) => {
@@ -968,26 +1031,56 @@ export const LaundryRouteV2View = ({ token }: LaundryRouteV2ViewProps) => {
                       })}
                       className="flex w-full items-center gap-2 px-3 py-3 text-left"
                     >
-                      <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-[#f1e8dc] text-[#7d3fc1]">
+                      <span className={cn(
+                        'grid h-8 w-8 shrink-0 place-items-center rounded-lg',
+                        buildingComplete ? 'bg-green-100 text-green-700' : 'bg-[#f1e8dc] text-[#7d3fc1]',
+                      )}>
                         <Building2 className="h-4 w-4" />
                       </span>
                       <span className="min-w-0 flex-1">
                         <span className="block text-sm font-black text-[#17130f]">{group.buildingCode}</span>
-                        <span className="block text-[11px] text-muted-foreground">
-                          {group.bags.length} {group.bags.length === 1 ? 'apartamento' : 'apartamentos'} · {completed}/{group.bags.length} completados
+                        <span className={cn(
+                          'block text-[11px] font-semibold',
+                          buildingComplete ? 'text-green-700' : 'text-muted-foreground',
+                        )}>
+                          {completed}/{group.bags.length} apartamentos
                         </span>
                       </span>
                       <ChevronDown className={cn('h-4 w-4 transition-transform', !collapsed && 'rotate-180')} />
                     </button>
 
+                    {!buildingComplete && (
+                      <div className="px-3 pb-3">
+                        <Button
+                          type="button"
+                          className="h-12 w-full rounded-xl bg-[#3d0b9f] text-sm font-black hover:bg-[#2f087a]"
+                          disabled={buildingPending}
+                          onClick={() => completeBuildingMutation.mutate({
+                            buildingCode: group.buildingCode,
+                            taskIds: group.bags.map((bag) => bag.taskId),
+                          })}
+                        >
+                          {buildingPending ? (
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          ) : (
+                            <CheckCircle2 className="mr-2 h-4 w-4" />
+                          )}
+                          Recoger y entregar todo
+                        </Button>
+                      </div>
+                    )}
+
                     {!collapsed && (
-                      <CardContent className="space-y-2 border-t border-[#eee4d8] p-2">
+                      <CardContent className={cn(
+                        'space-y-2 border-t p-2',
+                        buildingComplete ? 'border-green-200' : 'border-[#eee4d8]',
+                      )}>
                         {group.bags.map((bag) => {
                           const collected = bag.deliveryTracking.collectionStatus === 'collected';
                           const delivered = bag.deliveryTracking.deliveryStatus === 'delivered';
                           return (
                             <div key={bag.taskId} className="space-y-2 rounded-xl bg-[#faf8f4] p-2.5">
-                              <div className="flex items-start justify-between gap-2">
+                              <div className="flex items-start gap-2">
                                 <div className="min-w-0">
                                   <div className="flex items-center gap-2">
                                     <p className="text-base font-black text-[#101424]">{bag.propertyCode}</p>
@@ -998,9 +1091,6 @@ export const LaundryRouteV2View = ({ token }: LaundryRouteV2ViewProps) => {
                                     <span>{bag.address || 'Dirección no disponible'}</span>
                                   </p>
                                 </div>
-                                <Badge variant={collected && delivered ? 'default' : 'outline'}>
-                                  {collected && delivered ? 'COMPLETADA' : 'PENDIENTE'}
-                                </Badge>
                               </div>
 
                               {bag.bagStatus.status === 'issue' && bag.bagStatus.issueReason && (

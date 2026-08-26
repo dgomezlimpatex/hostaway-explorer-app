@@ -7,7 +7,7 @@ const corsHeaders = {
 };
 
 type JsonRecord = Record<string, unknown>;
-type RouteAction = "load" | "prepare" | "issue" | "critical_block" | "collect" | "deliver" | "confirm_no_carry" | "undo_bag";
+type RouteAction = "load" | "prepare" | "issue" | "critical_block" | "collect" | "deliver" | "confirm_no_carry" | "undo_bag" | "complete_building";
 
 const ROUTE_V2_DAYS = new Set([0, 1, 3, 5]);
 
@@ -688,6 +688,25 @@ async function updateRouteDeliveryStatus(
   if (error) throw error;
 }
 
+async function completeRouteBuilding(
+  supabase: ReturnType<typeof createClient>,
+  shareLinkId: string,
+  taskIds: string[],
+) {
+  const now = new Date().toISOString();
+  const payload = taskIds.map((taskId) => ({
+    task_id: taskId,
+    last_share_link_id: shareLinkId,
+    route_collection_status: "collected",
+    route_delivery_status: "delivered",
+    updated_at: now,
+  }));
+  const { error } = await supabase
+    .from("laundry_bag_preparations")
+    .upsert(payload, { onConflict: "task_id" });
+  if (error) throw error;
+}
+
 async function upsertDeliveryTracking(
   supabase: ReturnType<typeof createClient>,
   shareLinkId: string,
@@ -1056,6 +1075,27 @@ function applyActionToWorkflow(
   });
 }
 
+function applyBuildingCompletionToWorkflow(workflow: JsonRecord, taskIds: string[]): JsonRecord {
+  const selectedTaskIds = new Set(taskIds);
+  const currentRouteBags = Array.isArray(workflow.currentRouteBags)
+    ? (workflow.currentRouteBags as JsonRecord[]).map((bag) => {
+      if (!selectedTaskIds.has(String(bag.taskId))) return bag;
+      const tracking = bag.deliveryTracking && typeof bag.deliveryTracking === "object"
+        ? bag.deliveryTracking as JsonRecord
+        : {};
+      return {
+        ...bag,
+        deliveryTracking: {
+          ...tracking,
+          collectionStatus: "collected",
+          deliveryStatus: "delivered",
+        },
+      };
+    })
+    : [];
+  return recalculateWorkflowStats({ ...workflow, currentRouteBags });
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
   if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
@@ -1068,6 +1108,9 @@ Deno.serve(async (req) => {
     const token = typeof body.token === "string" ? body.token.trim() : "";
     const action = (typeof body.action === "string" ? body.action : "load") as RouteAction;
     const taskId = typeof body.taskId === "string" ? body.taskId : null;
+    const taskIds = Array.isArray(body.taskIds)
+      ? Array.from(new Set(body.taskIds.filter((value: unknown): value is string => typeof value === "string" && value.length > 0)))
+      : [];
     const issueReason = typeof body.issueReason === "string" ? body.issueReason.trim() : "";
 
     if (!token) return json({ error: "Token requerido" }, 400);
@@ -1079,6 +1122,22 @@ Deno.serve(async (req) => {
       if (workflow.workflowVersion !== "route_v2" || !("link" in workflow)) {
         return json({ error: "El enlace no usa el flujo nuevo" }, 400);
       }
+
+      if (action === "complete_building") {
+        if (taskIds.length === 0 || taskIds.length > 100) {
+          return json({ error: "Seleccion de apartamentos no valida" }, 400);
+        }
+        const currentTaskIds = new Set((workflow.currentRouteBags ?? []).map((bag: JsonRecord) => String(bag.taskId)));
+        if (taskIds.some((selectedTaskId) => !currentTaskIds.has(selectedTaskId))) {
+          return json({ error: "Alguna tarea no pertenece a la ruta actual" }, 400);
+        }
+        await completeRouteBuilding(supabase, String(workflow.link.id), taskIds);
+        return json({
+          success: true,
+          workflow: applyBuildingCompletionToWorkflow(workflow as JsonRecord, taskIds),
+        });
+      }
+
       if (!taskId) return json({ error: "taskId requerido" }, 400);
 
       const allowedTaskIds = new Set([
