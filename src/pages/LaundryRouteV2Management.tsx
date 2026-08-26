@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -122,6 +122,8 @@ const LaundryRouteV2Management = () => {
   const [authorizationLink, setAuthorizationLink] = useState<RouteLink | null>(null);
   const [authorizationReason, setAuthorizationReason] = useState('');
   const [copiedToken, setCopiedToken] = useState<string | null>(null);
+  const [isBackgroundSyncing, setIsBackgroundSyncing] = useState(false);
+  const backgroundSyncStartedRef = useRef<Set<string>>(new Set());
   const isOwner = isRouteV2Owner(user?.email);
 
   const queryKey = useMemo(() => ['laundry-route-v2-management', activeSede?.id], [activeSede?.id]);
@@ -133,7 +135,20 @@ const LaundryRouteV2Management = () => {
       return response.links || [];
     },
     refetchInterval: 60_000,
+    placeholderData: (previousData) => previousData,
   });
+
+  useEffect(() => {
+    const sedeId = activeSede?.id;
+    if (!sedeId || !routesQuery.data || backgroundSyncStartedRef.current.has(sedeId)) return;
+
+    backgroundSyncStartedRef.current.add(sedeId);
+    setIsBackgroundSyncing(true);
+    void invokeManagement({ action: 'reconcile', sedeId })
+      .then(() => queryClient.invalidateQueries({ queryKey }))
+      .catch((error) => console.error('Background route synchronization failed', error))
+      .finally(() => setIsBackgroundSyncing(false));
+  }, [activeSede?.id, queryClient, queryKey, routesQuery.data]);
 
   const refreshMutation = useMutation({
     mutationFn: () => invokeManagement({ action: 'force_reconcile', sedeId: activeSede?.id }),
@@ -189,7 +204,7 @@ const LaundryRouteV2Management = () => {
           <div className="flex items-center gap-2">
             <Badge variant="outline" className="hidden gap-1.5 sm:flex"><LockKeyhole className="h-3.5 w-3.5" /> Separado del clásico</Badge>
             <Button variant="outline" size="icon" onClick={() => routesQuery.refetch()} disabled={routesQuery.isFetching} aria-label="Actualizar rutas">
-              <RefreshCw className={cn('h-4 w-4', routesQuery.isFetching && 'animate-spin')} />
+              <RefreshCw className={cn('h-4 w-4', (routesQuery.isFetching || isBackgroundSyncing) && 'animate-spin')} />
             </Button>
           </div>
         </div>
@@ -266,7 +281,7 @@ const LaundryRouteV2Management = () => {
                     {link.sync_error && <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700"><strong>Error:</strong> {link.sync_error}</div>}
 
                     <div className="flex flex-col gap-2 border-t pt-3 sm:flex-row sm:items-center sm:justify-between">
-                      <p className="flex items-center gap-1.5 text-xs text-muted-foreground"><FileClock className="h-3.5 w-3.5" /> Actualización automática cada 15 minutos</p>
+                      <p className="flex items-center gap-1.5 text-xs text-muted-foreground"><FileClock className="h-3.5 w-3.5" /> {isBackgroundSyncing ? 'Actualizando datos en segundo plano...' : 'Actualización automática cada 15 minutos'}</p>
                       <div className="flex flex-wrap gap-2">
                         <Button variant="outline" size="sm" className="gap-1.5" onClick={() => copyLink(link.token)}><Copy className="h-3.5 w-3.5" /> {copiedToken === link.token ? 'Copiado' : 'Copiar'}</Button>
                         <Button size="sm" className="gap-1.5" onClick={() => window.open(getPublicUrl(link.token), '_blank')}><ExternalLink className="h-3.5 w-3.5" /> Abrir enlace</Button>

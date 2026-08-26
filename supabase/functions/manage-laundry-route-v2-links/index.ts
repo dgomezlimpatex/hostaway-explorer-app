@@ -734,6 +734,7 @@ async function reconcileSpecificLink(
 }
 
 async function listSedeLinks(supabase: ReturnType<typeof createClient>, sedeId: string) {
+  const today = getMadridDate();
   const { data, error } = await supabase
     .from("laundry_share_links")
     .select("id, token, sede_id, delivery_date, delivery_day, sync_status, sync_error, last_synced_at, updated_at, filters, snapshot_task_ids")
@@ -741,7 +742,9 @@ async function listSedeLinks(supabase: ReturnType<typeof createClient>, sedeId: 
     .eq("workflow_version", "route_v2")
     .eq("auto_managed", true)
     .eq("is_active", true)
-    .order("delivery_date", { ascending: true });
+    .gte("delivery_date", today)
+    .order("delivery_date", { ascending: true })
+    .limit(3);
   if (error) throw error;
   const linkIds = (data ?? []).map((row) => String(row.id));
   const taskIds = Array.from(new Set((data ?? []).flatMap((row) => Array.isArray(row.snapshot_task_ids) ? row.snapshot_task_ids.map(String) : [])));
@@ -891,9 +894,8 @@ Deno.serve(async (req) => {
       }
       if (!requestedSedeId) return json({ links: [], events: [] });
       if (!(await canAccessSede(supabase, actor, requestedSedeId))) return json({ error: "Sin acceso a esta sede" }, 403);
-      // Reading the panel also refreshes the three managed routes so that a new,
-      // changed or cancelled task is visible without manual link generation.
-      await reconcileSede(supabase, requestedSedeId, actor);
+      // Return existing routes immediately. Reconciliation runs separately so
+      // the panel never waits for the full task scan before rendering.
       return json({ success: true, links: await listSedeLinks(supabase, requestedSedeId) });
     }
 
