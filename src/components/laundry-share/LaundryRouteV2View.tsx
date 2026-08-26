@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -500,6 +500,7 @@ export const LaundryRouteV2View = ({ token }: LaundryRouteV2ViewProps) => {
   const [issueReason, setIssueReason] = useState('');
   const [completeFlashTaskId, setCompleteFlashTaskId] = useState<string | null>(null);
   const [pendingTaskIds, setPendingTaskIds] = useState<Set<string>>(() => new Set());
+  const pendingTaskIdsRef = useRef<Set<string>>(new Set());
   const queryKey = useMemo(() => ['laundry-route-v2', token], [token]);
   const isTaskPending = (taskId: string) => pendingTaskIds.has(taskId);
 
@@ -517,8 +518,8 @@ export const LaundryRouteV2View = ({ token }: LaundryRouteV2ViewProps) => {
   const actionMutation = useMutation({
     mutationFn: ({ action, taskId, reason }: { action: RouteAction; taskId: string; reason?: string }) =>
       invokeWorkflow(token, action, taskId, reason),
-    onMutate: async ({ action, taskId, reason }) => {
-      await queryClient.cancelQueries({ queryKey });
+    onMutate: ({ action, taskId, reason }) => {
+      void queryClient.cancelQueries({ queryKey });
       const previousWorkflow = queryClient.getQueryData<RouteWorkflow>(queryKey);
       const previousBag = findWorkflowBag(previousWorkflow, taskId);
       setPendingTaskIds((current) => new Set(current).add(taskId));
@@ -633,6 +634,7 @@ export const LaundryRouteV2View = ({ token }: LaundryRouteV2ViewProps) => {
       });
     },
     onSettled: (_data, _error, variables) => {
+      pendingTaskIdsRef.current.delete(variables.taskId);
       setPendingTaskIds((current) => {
         const next = new Set(current);
         next.delete(variables.taskId);
@@ -640,6 +642,12 @@ export const LaundryRouteV2View = ({ token }: LaundryRouteV2ViewProps) => {
       });
     },
   });
+
+  const runAction = (variables: { action: RouteAction; taskId: string; reason?: string }) => {
+    if (pendingTaskIdsRef.current.has(variables.taskId)) return;
+    pendingTaskIdsRef.current.add(variables.taskId);
+    actionMutation.mutate(variables);
+  };
 
   const nextPendingBag = useMemo(
     () => workflow?.nextRouteBags.find((bag) => bag.bagStatus.status === 'pending') || null,
@@ -695,7 +703,7 @@ export const LaundryRouteV2View = ({ token }: LaundryRouteV2ViewProps) => {
       });
       return;
     }
-    actionMutation.mutate({ action: 'issue', taskId: issueTaskId, reason: issueReason.trim() });
+    runAction({ action: 'issue', taskId: issueTaskId, reason: issueReason.trim() });
   };
 
   const openIssueForm = (taskId: string) => {
@@ -730,7 +738,7 @@ export const LaundryRouteV2View = ({ token }: LaundryRouteV2ViewProps) => {
                   <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                     <Button
                       size="lg"
-                      onClick={() => actionMutation.mutate({ action: 'confirm_no_carry', taskId: urgentBag.taskId })}
+                      onClick={() => runAction({ action: 'confirm_no_carry', taskId: urgentBag.taskId })}
                       disabled={isTaskPending(urgentBag.taskId)}
                       className="h-12 rounded-xl bg-[#c4512e] text-sm font-black hover:bg-[#a94427]"
                     >
@@ -741,7 +749,7 @@ export const LaundryRouteV2View = ({ token }: LaundryRouteV2ViewProps) => {
                       <Button
                         variant="outline"
                         size="lg"
-                        onClick={() => actionMutation.mutate({ action: 'undo_bag', taskId: urgentBag.taskId })}
+                        onClick={() => runAction({ action: 'undo_bag', taskId: urgentBag.taskId })}
                         disabled={isTaskPending(urgentBag.taskId)}
                         className="h-12 rounded-xl text-sm font-semibold"
                       >
@@ -780,8 +788,7 @@ export const LaundryRouteV2View = ({ token }: LaundryRouteV2ViewProps) => {
                 <div className="grid grid-cols-1 gap-2">
                   <Button
                     size="lg"
-                    onClick={() => actionMutation.mutate({ action: 'prepare', taskId: urgentBag.taskId })}
-                    disabled={isTaskPending(urgentBag.taskId) || completeFlashTaskId === urgentBag.taskId}
+                    onClick={() => runAction({ action: 'prepare', taskId: urgentBag.taskId })}
                     className="h-12 rounded-xl bg-[#c4512e] text-sm font-black hover:bg-[#a94427]"
                   >
                     <PackageCheck className="mr-2 h-4 w-4" />
@@ -791,7 +798,6 @@ export const LaundryRouteV2View = ({ token }: LaundryRouteV2ViewProps) => {
                     variant="outline"
                     size="lg"
                     onClick={() => openIssueForm(urgentBag.taskId)}
-                    disabled={isTaskPending(urgentBag.taskId) || completeFlashTaskId === urgentBag.taskId}
                     className="h-9 rounded-xl border-0 bg-transparent text-sm font-semibold text-[#c4512e] hover:bg-[#f1dfcf]"
                   >
                     <XCircle className="mr-2 h-4 w-4" />
@@ -850,8 +856,7 @@ export const LaundryRouteV2View = ({ token }: LaundryRouteV2ViewProps) => {
                 <div className="grid grid-cols-1 gap-2">
                   <Button
                     size="lg"
-                    onClick={() => actionMutation.mutate({ action: 'prepare', taskId: nextPendingBag.taskId })}
-                    disabled={isTaskPending(nextPendingBag.taskId) || completeFlashTaskId === nextPendingBag.taskId}
+                    onClick={() => runAction({ action: 'prepare', taskId: nextPendingBag.taskId })}
                     className="h-12 rounded-xl bg-[#c4512e] text-sm font-black hover:bg-[#a94427]"
                   >
                     <PackageCheck className="mr-2 h-4 w-4" />
@@ -861,7 +866,6 @@ export const LaundryRouteV2View = ({ token }: LaundryRouteV2ViewProps) => {
                     variant="outline"
                     size="lg"
                     onClick={() => openIssueForm(nextPendingBag.taskId)}
-                    disabled={isTaskPending(nextPendingBag.taskId) || completeFlashTaskId === nextPendingBag.taskId}
                     className="h-9 rounded-xl border-0 bg-transparent text-sm font-semibold text-[#c4512e] hover:bg-[#f1dfcf]"
                   >
                     <XCircle className="mr-2 h-4 w-4" />
@@ -915,14 +919,14 @@ export const LaundryRouteV2View = ({ token }: LaundryRouteV2ViewProps) => {
                         <Button
                           variant={collected ? 'secondary' : 'outline'}
                           disabled={collected || isTaskPending(bag.taskId)}
-                          onClick={() => actionMutation.mutate({ action: 'collect', taskId: bag.taskId })}
+                          onClick={() => runAction({ action: 'collect', taskId: bag.taskId })}
                         >
                           <Shirt className="mr-2 h-4 w-4" />
                           {collected ? 'Recogida' : 'Recoger'}
                         </Button>
                         <Button
                           disabled={delivered || isTaskPending(bag.taskId)}
-                          onClick={() => actionMutation.mutate({ action: 'deliver', taskId: bag.taskId })}
+                          onClick={() => runAction({ action: 'deliver', taskId: bag.taskId })}
                         >
                           <Truck className="mr-2 h-4 w-4" />
                           {delivered ? 'Entregada' : 'Entregar'}
