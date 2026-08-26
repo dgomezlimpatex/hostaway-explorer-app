@@ -725,7 +725,7 @@ export const LaundryRouteV2View = ({ token }: LaundryRouteV2ViewProps) => {
       setCollapsedBuildings((current) => new Set(current).add(buildingCode));
       queryClient.setQueryData<RouteWorkflow>(queryKey, (current) => {
         if (!current) return current;
-        return {
+        return recalculateWorkflowStats({
           ...current,
           currentRouteBags: current.currentRouteBags.map((bag) => selectedTaskIds.has(bag.taskId)
             ? {
@@ -739,12 +739,9 @@ export const LaundryRouteV2View = ({ token }: LaundryRouteV2ViewProps) => {
               },
             }
             : bag),
-        };
+        });
       });
       return { previousWorkflow, buildingCode };
-    },
-    onSuccess: (updatedWorkflow) => {
-      queryClient.setQueryData<RouteWorkflow>(queryKey, updatedWorkflow);
     },
     onError: (err, _variables, context) => {
       if (context?.previousWorkflow) {
