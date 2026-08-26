@@ -2,7 +2,7 @@
 // notification_events.id. En modo preparación queda registrada como 'skipped'.
 
 import { serve } from 'https://deno.land/std@0.190.0/http/server.ts';
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.50.0';
+import { createClient } from 'npm:@supabase/supabase-js@2.50.0';
 import { Resend } from 'npm:resend@6.17.2';
 import { sendWhatsAppTemplateMessage } from '../_shared/whatsappClient.ts';
 import { classifyApprovalCallbackOutcome } from '../_shared/whatsappApprovalOutcome.ts';

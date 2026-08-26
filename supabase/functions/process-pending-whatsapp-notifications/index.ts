@@ -3,7 +3,7 @@
 // identificar su entrega.
 
 import { serve } from 'https://deno.land/std@0.190.0/http/server.ts';
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.50.0';
+import { createClient } from 'npm:@supabase/supabase-js@2.50.0';
 import {
   classifyApprovalCallbackOutcome,
   TERMINAL_APPROVAL_CALLBACK_OUTCOMES,
@@ -16,6 +16,11 @@ const json = (body: unknown, status = 200) => new Response(JSON.stringify(body),
 
 const supportedStatuses = new Set(['sent', 'delivered', 'read', 'failed']);
 const supportedActions = new Set(['approve', 'reject', 'late_started', 'late_issue']);
+const MAX_WORKER_DURATION_MS = 4200;
+const MIN_REMAINING_WORK_MS = 800;
+const MAX_EVENT_BATCH = 3;
+const MAX_RECONCILIATION_ACTIONS = 2;
+const MAX_CALLBACKS = 5;
 serve(async (req: Request): Promise<Response> => {
   if (req.method !== 'POST') return json({ error: 'method_not_allowed' }, 405);
 
@@ -26,6 +31,16 @@ serve(async (req: Request): Promise<Response> => {
     return json({ error: 'forbidden' }, 403);
   }
   const supabase = createClient(supabaseUrl, serviceRoleKey);
+  const workerStartedAt = Date.now();
+  const remainingWorkMs = () => MAX_WORKER_DURATION_MS - (Date.now() - workerStartedAt);
+  const canStartWork = () => remainingWorkMs() > MIN_REMAINING_WORK_MS;
+  let currentStage = 'initialized';
+  type EdgeRuntimeWithWaitUntil = {
+    waitUntil?: (promise: Promise<unknown>) => void;
+  };
+  const edgeRuntime = (globalThis as typeof globalThis & {
+    EdgeRuntime?: EdgeRuntimeWithWaitUntil;
+  }).EdgeRuntime;
 
   const markCallback = async (
     callbackId: string,
@@ -49,28 +64,92 @@ serve(async (req: Request): Promise<Response> => {
     forceEmailFallback = false,
     fallbackWhatsappDeliveryId: string | null = null,
   ) => {
-    const response = await fetch(`${supabaseUrl}/functions/v1/send-whatsapp-notification`, {
-      method: 'POST',
-      headers: { ['Author' + 'ization']: authValue, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ eventId, forceEmailFallback, fallbackWhatsappDeliveryId }),
-    });
-    const result = await response.json().catch(() => ({}));
-    const completedStatuses = new Set(['sent', 'fallback_sent', 'already_sent']);
-    return response.ok && result?.ok === true && completedStatuses.has(result?.status);
+    try {
+      const response = await fetch(`${supabaseUrl}/functions/v1/send-whatsapp-notification`, {
+        method: 'POST',
+        headers: { ['Author' + 'ization']: authValue, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ eventId, forceEmailFallback, fallbackWhatsappDeliveryId }),
+      });
+      const result = await response.json().catch(() => ({}));
+      const completedStatuses = new Set(['sent', 'fallback_sent', 'already_sent']);
+      return response.ok && result?.ok === true && completedStatuses.has(result?.status);
+    } catch (error) {
+      console.error('whatsapp_sender_request_failed', {
+        eventId,
+        message: error instanceof Error ? error.message : String(error),
+      });
+      return false;
+    }
+  };
+
+  const processEventBatch = async (eventIds: string[]) => {
+    let dispatched = 0;
+    let awaited = 0;
+    let failed = 0;
+    for (const eventId of eventIds) {
+      if (!canStartWork()) break;
+      const senderWork = invokeSender(eventId);
+      if (typeof edgeRuntime?.waitUntil === 'function') {
+        edgeRuntime.waitUntil(senderWork);
+        dispatched++;
+        continue;
+      }
+      const completed = await senderWork;
+      awaited++;
+      if (!completed) failed++;
+    }
+    return { dispatched, awaited, failed };
   };
 
   try {
+    // Los avisos operativos tienen prioridad. El worker anterior reclamaba
+    // mantenimiento y hasta 50 eventos secuencialmente en una petición con
+    // timeout corto de pg_net, dejando la cola nueva sin tocar.
+    currentStage = 'load_pending_events';
+    const staleBefore = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+    const { data: events, error: eventsError } = await supabase
+      .from('notification_events')
+      .select('id')
+      .eq('notification_mode', 'live')
+      .is('batch_id', null)
+      .or(`status.eq.pending,and(status.eq.processing,processed_at.lt.${staleBefore})`)
+      .order('created_at', { ascending: true })
+      .limit(MAX_EVENT_BATCH);
+    if (eventsError) throw eventsError;
+    currentStage = 'load_retry_candidates';
+    const { data: retryEvents, error: retryEventsError } = await supabase.rpc(
+      'get_bounded_whatsapp_retry_event_ids',
+      { _limit: MAX_EVENT_BATCH },
+    );
+    if (retryEventsError) throw retryEventsError;
+    const pendingEventIds = (events ?? []).map((event) => event.id);
+    const retryEventIds = (retryEvents ?? []).map((event: { event_id: string }) => event.event_id);
+    const candidateEventIds = [...new Set([...pendingEventIds, ...retryEventIds])].slice(0, MAX_EVENT_BATCH);
+    currentStage = 'process_event_batch';
+    const eventBatch = await processEventBatch(candidateEventIds);
+    console.info('whatsapp_event_batch_finished', {
+      candidates: candidateEventIds.length,
+      dispatched: eventBatch.dispatched,
+      awaited: eventBatch.awaited,
+      failed: eventBatch.failed,
+      remainingWorkMs: remainingWorkMs(),
+    });
+
     // Las decisiones manuales se guardan primero y este worker service-role las
     // ejecuta. El navegador nunca llama directamente al emisor privilegiado.
-    const { data: reconciliationActions, error: reconciliationActionsError } = await supabase.rpc(
-      'claim_notification_send_reconciliation_actions',
-      { _limit: 20 },
-    );
+    currentStage = 'claim_reconciliation_actions';
+    const { data: reconciliationActions, error: reconciliationActionsError } = canStartWork()
+      ? await supabase.rpc(
+        'claim_notification_send_reconciliation_actions',
+        { _limit: MAX_RECONCILIATION_ACTIONS },
+      )
+      : { data: [], error: null };
     if (reconciliationActionsError) throw reconciliationActionsError;
 
     let reconciliationActionsCompleted = 0;
     let reconciliationActionsFailed = 0;
     for (const action of reconciliationActions ?? []) {
+      if (!canStartWork()) break;
       let completed = false;
       let detail = 'Resolución aplicada';
       try {
@@ -153,10 +232,10 @@ serve(async (req: Request): Promise<Response> => {
     // La misma tarea cron reintenta de forma durable callbacks que antes no
     // tenían una correlación inequívoca. Tras 20 intentos o 24 horas pasan a
     // revisión manual y permanecen visibles en el monitor administrativo.
-    const { data: callbacks, error: callbacksError } = await supabase.rpc(
-      'claim_whatsapp_webhook_callbacks',
-      { _limit: 50 },
-    );
+    currentStage = 'claim_webhook_callbacks';
+    const { data: callbacks, error: callbacksError } = canStartWork()
+      ? await supabase.rpc('claim_whatsapp_webhook_callbacks', { _limit: MAX_CALLBACKS })
+      : { data: [], error: null };
     if (callbacksError) throw callbacksError;
 
     let callbacksReconciled = 0;
@@ -165,6 +244,7 @@ serve(async (req: Request): Promise<Response> => {
     let callbackFailures = 0;
 
     for (const callback of callbacks ?? []) {
+      if (!canStartWork()) break;
       const callbackClaimToken = callback.callback_claim_token ?? null;
       const markClaimedCallback = (
         outcome: string,
@@ -320,32 +400,6 @@ serve(async (req: Request): Promise<Response> => {
       }
     }
 
-    const staleBefore = new Date(Date.now() - 10 * 60 * 1000).toISOString();
-    const { data: events, error } = await supabase
-      .from('notification_events')
-      .select('id')
-      .eq('notification_mode', 'live')
-      .is('batch_id', null)
-      .or(`status.eq.pending,and(status.eq.processing,processed_at.lt.${staleBefore})`)
-      .order('created_at', { ascending: true })
-      .limit(50);
-    if (error) throw error;
-    const { data: retryEvents, error: retryEventsError } = await supabase.rpc(
-      'get_bounded_whatsapp_retry_event_ids',
-      { _limit: 50 },
-    );
-    if (retryEventsError) throw retryEventsError;
-    const pendingEventIds = (events ?? []).map((event) => event.id);
-    const retryEventIds = (retryEvents ?? []).map((event: { event_id: string }) => event.event_id);
-    const candidateEventIds = [...new Set([...pendingEventIds, ...retryEventIds])].slice(0, 50);
-
-    let accepted = 0;
-    let failed = 0;
-    for (const eventId of candidateEventIds) {
-      if (await invokeSender(eventId)) accepted++;
-      else failed++;
-    }
-
     return json({
       ok: true,
       reconciliationActions: reconciliationActions?.length ?? 0,
@@ -357,11 +411,17 @@ serve(async (req: Request): Promise<Response> => {
       callbacksManualReview,
       callbackFailures,
       candidates: candidateEventIds.length,
-      accepted,
-      failed,
+      dispatched: eventBatch.dispatched,
+      awaited: eventBatch.awaited,
+      failed: eventBatch.failed,
+      remainingWorkMs: remainingWorkMs(),
     });
   } catch (error) {
-    console.error('process-pending-whatsapp-notifications error', error instanceof Error ? error.message : error);
-    return json({ error: error instanceof Error ? error.message : 'error' }, 500);
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    console.error('process-pending-whatsapp-notifications error', {
+      stage: currentStage,
+      message: errorMessage,
+    });
+    return json({ ok: false, stage: currentStage, error: errorMessage }, 500);
   }
 });
