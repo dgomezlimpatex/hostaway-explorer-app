@@ -484,7 +484,6 @@ export const LaundryRouteV2View = ({ token }: LaundryRouteV2ViewProps) => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [issueTaskId, setIssueTaskId] = useState<string | null>(null);
-  const [issueAction, setIssueAction] = useState<'issue' | 'critical_block'>('issue');
   const [issueReason, setIssueReason] = useState('');
   const [completeFlashTaskId, setCompleteFlashTaskId] = useState<string | null>(null);
   const queryKey = useMemo(() => ['laundry-route-v2', token], [token]);
@@ -665,12 +664,11 @@ export const LaundryRouteV2View = ({ token }: LaundryRouteV2ViewProps) => {
       });
       return;
     }
-    actionMutation.mutate({ action: issueAction, taskId: issueTaskId, reason: issueReason.trim() });
+    actionMutation.mutate({ action: 'issue', taskId: issueTaskId, reason: issueReason.trim() });
   };
 
-  const openIssueForm = (taskId: string, action: 'issue' | 'critical_block' = 'issue') => {
+  const openIssueForm = (taskId: string) => {
     setIssueTaskId(taskId);
-    setIssueAction(action);
     setIssueReason('');
   };
 
@@ -724,7 +722,7 @@ export const LaundryRouteV2View = ({ token }: LaundryRouteV2ViewProps) => {
               ) : issueTaskId === urgentBag.taskId ? (
                 <div className="space-y-2">
                   <p className="text-xs font-semibold text-[#8d351e]">
-                    {issueAction === 'critical_block' ? 'Indica el motivo del bloqueo crítico.' : 'Indica por qué no se puede preparar.'}
+                    Indica por qué no se puede preparar.
                   </p>
                   <select
                     value={issueReason}
@@ -743,7 +741,7 @@ export const LaundryRouteV2View = ({ token }: LaundryRouteV2ViewProps) => {
                       Cancelar
                     </Button>
                     <Button variant="destructive" onClick={handleIssue} disabled={actionMutation.isPending}>
-                      {issueAction === 'critical_block' ? 'Registrar bloqueo' : 'Guardar incidencia'}
+                      Guardar incidencia
                     </Button>
                   </div>
                 </div>
@@ -767,16 +765,6 @@ export const LaundryRouteV2View = ({ token }: LaundryRouteV2ViewProps) => {
                   >
                     <XCircle className="mr-2 h-4 w-4" />
                     Marcar incidencia
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="lg"
-                    onClick={() => openIssueForm(urgentBag.taskId, 'critical_block')}
-                    disabled={actionMutation.isPending || completeFlashTaskId === urgentBag.taskId}
-                    className="h-9 rounded-xl border-amber-300 bg-amber-50 text-sm font-semibold text-amber-900 hover:bg-amber-100"
-                  >
-                    <AlertTriangle className="mr-2 h-4 w-4" />
-                    Registrar bloqueo crítico
                   </Button>
                 </div>
               )}
