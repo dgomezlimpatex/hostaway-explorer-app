@@ -849,18 +849,18 @@ export const LaundryRouteV2View = ({ token }: LaundryRouteV2ViewProps) => {
                   <Button
                     size="lg"
                     onClick={() => runAction({ action: 'prepare', taskId: urgentBag.taskId })}
-                    className="h-12 rounded-xl bg-[#c4512e] text-sm font-black hover:bg-[#a94427]"
+                    className="h-[clamp(4rem,10dvh,6rem)] touch-manipulation rounded-xl bg-[#c4512e] text-base font-black hover:bg-[#a94427] active:scale-[0.99]"
                   >
-                    <PackageCheck className="mr-2 h-4 w-4" />
+                    <PackageCheck className="mr-2 h-5 w-5" />
                     Bolsa preparada
                   </Button>
                   <Button
                     variant="outline"
                     size="lg"
                     onClick={() => openIssueForm(urgentBag.taskId)}
-                    className="h-9 rounded-xl border-0 bg-transparent text-sm font-semibold text-[#c4512e] hover:bg-[#f1dfcf]"
+                    className="h-[clamp(3.5rem,8dvh,4.5rem)] touch-manipulation rounded-xl border border-[#dfb69f] bg-white/60 text-base font-bold text-[#c4512e] hover:bg-[#f1dfcf] active:scale-[0.99]"
                   >
-                    <XCircle className="mr-2 h-4 w-4" />
+                    <XCircle className="mr-2 h-5 w-5" />
                     Marcar incidencia
                   </Button>
                 </div>
@@ -917,18 +917,18 @@ export const LaundryRouteV2View = ({ token }: LaundryRouteV2ViewProps) => {
                   <Button
                     size="lg"
                     onClick={() => runAction({ action: 'prepare', taskId: nextPendingBag.taskId })}
-                    className="h-12 rounded-xl bg-[#c4512e] text-sm font-black hover:bg-[#a94427]"
+                    className="h-[clamp(4rem,10dvh,6rem)] touch-manipulation rounded-xl bg-[#c4512e] text-base font-black hover:bg-[#a94427] active:scale-[0.99]"
                   >
-                    <PackageCheck className="mr-2 h-4 w-4" />
+                    <PackageCheck className="mr-2 h-5 w-5" />
                     Bolsa preparada
                   </Button>
                   <Button
                     variant="outline"
                     size="lg"
                     onClick={() => openIssueForm(nextPendingBag.taskId)}
-                    className="h-9 rounded-xl border-0 bg-transparent text-sm font-semibold text-[#c4512e] hover:bg-[#f1dfcf]"
+                    className="h-[clamp(3.5rem,8dvh,4.5rem)] touch-manipulation rounded-xl border border-[#dfb69f] bg-white/60 text-base font-bold text-[#c4512e] hover:bg-[#f1dfcf] active:scale-[0.99]"
                   >
-                    <XCircle className="mr-2 h-4 w-4" />
+                    <XCircle className="mr-2 h-5 w-5" />
                     Marcar incidencia
                   </Button>
                 </div>
