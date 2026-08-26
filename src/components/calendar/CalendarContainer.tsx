@@ -22,7 +22,6 @@ import { useCalendarWorkload } from "@/hooks/useCalendarWorkload";
 import { useUnavailableCleaners } from "@/hooks/useUnavailableCleaners";
 import { buildTaskAssignmentsMap, isTaskAssignedToCleaner } from "@/utils/taskAssignments";
 import { materializeRecurringTaskInstance } from "@/services/recurringTaskInstanceService";
-import { type ExtraordinaryTaskFormData } from "@/services/extraordinaryTaskBuilder";
 
 type CalendarDragState = {
   isDragging: boolean;
@@ -54,8 +53,6 @@ export interface CalendarContainerProps {
   setIsCreateModalOpen: (open: boolean) => void;
   isBatchCreateModalOpen: boolean;
   setIsBatchCreateModalOpen: (open: boolean) => void;
-  isExtraordinaryServiceModalOpen: boolean;
-  setIsExtraordinaryServiceModalOpen: (open: boolean) => void;
   selectedTask: Task | null;
   isTaskModalOpen: boolean;
   setIsTaskModalOpen: (open: boolean) => void;
@@ -69,7 +66,6 @@ export interface CalendarContainerProps {
   handleTaskClick: (task: Task) => void;
   handleCreateTask: (taskData: Omit<Task, 'id'>) => Promise<void>;
   handleBatchCreateTasks: (tasksData: Omit<Task, 'id'>[]) => Promise<void>;
-  handleCreateExtraordinaryService: (serviceData: ExtraordinaryTaskFormData) => Promise<void>;
   handleUpdateTask: (taskId: string, updates: Partial<Task>) => Promise<void>;
   handleDeleteTask: (taskId: string) => Promise<void>;
   handleUnassignTask: (taskId: string) => Promise<void>;
@@ -88,8 +84,6 @@ export const CalendarContainer = ({
   setIsCreateModalOpen,
   isBatchCreateModalOpen,
   setIsBatchCreateModalOpen,
-  isExtraordinaryServiceModalOpen,
-  setIsExtraordinaryServiceModalOpen,
   selectedTask,
   isTaskModalOpen,
   setIsTaskModalOpen,
@@ -103,7 +97,6 @@ export const CalendarContainer = ({
   handleTaskClick,
   handleCreateTask,
   handleBatchCreateTasks,
-  handleCreateExtraordinaryService,
   handleUpdateTask,
   handleDeleteTask,
   handleUnassignTask,
@@ -412,15 +405,12 @@ export const CalendarContainer = ({
         setIsCreateModalOpen={setIsCreateModalOpen}
         isBatchCreateModalOpen={isBatchCreateModalOpen}
         setIsBatchCreateModalOpen={setIsBatchCreateModalOpen}
-        isExtraordinaryServiceModalOpen={isExtraordinaryServiceModalOpen}
-        setIsExtraordinaryServiceModalOpen={setIsExtraordinaryServiceModalOpen}
         selectedTask={selectedTask}
         isTaskModalOpen={isTaskModalOpen}
         setIsTaskModalOpen={setIsTaskModalOpen}
         currentDate={currentDate}
         onCreateTask={handleCreateTask}
         onBatchCreateTasks={handleBatchCreateTasks}
-        onCreateExtraordinaryService={handleCreateExtraordinaryService}
         onUpdateTask={handleUpdateTask}
         onDeleteTask={handleDeleteTask}
         onUnassignTask={handleUnassignTask}

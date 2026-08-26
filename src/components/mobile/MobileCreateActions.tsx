@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { CalendarPlus, Layers, Plus, Sparkles } from 'lucide-react';
+import { CalendarPlus, Layers, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -13,7 +13,6 @@ import {
 interface MobileCreateActionsProps {
   onNewTask?: () => void;
   onNewBatchTask?: () => void;
-  onNewExtraordinaryService?: () => void;
   trigger?: ReactNode;
   align?: 'start' | 'center' | 'end';
 }
@@ -21,11 +20,10 @@ interface MobileCreateActionsProps {
 export function MobileCreateActions({
   onNewTask,
   onNewBatchTask,
-  onNewExtraordinaryService,
   trigger,
   align = 'center',
 }: MobileCreateActionsProps) {
-  const hasAnyAction = !!onNewTask || !!onNewBatchTask || !!onNewExtraordinaryService;
+  const hasAnyAction = !!onNewTask || !!onNewBatchTask;
 
   return (
     <DropdownMenu>
@@ -47,10 +45,6 @@ export function MobileCreateActions({
         <DropdownMenuItem disabled={!onNewBatchTask} onSelect={onNewBatchTask}>
           <Layers className="mr-2 h-4 w-4 text-indigo-600" />
           Tareas multiples
-        </DropdownMenuItem>
-        <DropdownMenuItem disabled={!onNewExtraordinaryService} onSelect={onNewExtraordinaryService}>
-          <Sparkles className="mr-2 h-4 w-4 text-emerald-600" />
-          Tarea extraordinaria
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

@@ -12,8 +12,6 @@ import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { CreateTaskModal } from '@/components/modals/CreateTaskModal';
 import { BatchCreateTaskModal } from '@/components/modals/BatchCreateTaskModal';
 import { TaskDetailsModal } from '@/components/modals/TaskDetailsModal';
-import { CreateExtraordinaryServiceModal } from '@/components/modals/CreateExtraordinaryServiceModal';
-import { buildExtraordinaryTask, type ExtraordinaryTaskFormData } from '@/services/extraordinaryTaskBuilder';
 import DesktopManagerDashboard from './DesktopManagerDashboard';
 import { MobileManagerDashboard } from './MobileManagerDashboard';
 
@@ -30,7 +28,6 @@ export const ManagerDashboard = () => {
   const [selectedDate] = useState(new Date());
   const [selectedTask, setSelectedTask] = useState(null);
   const [isTaskDetailsOpen, setIsTaskDetailsOpen] = useState(false);
-  const [isExtraordinaryServiceModalOpen, setIsExtraordinaryServiceModalOpen] = useState(false);
   const { canAccessModule } = useRolePermissions();
   const { isMobile } = useDeviceType();
   const { user } = useAuth();
@@ -110,20 +107,6 @@ export const ManagerDashboard = () => {
     setIsTaskDetailsOpen(false);
   }, []);
 
-  const handleCreateExtraordinaryService = useCallback(async (serviceData: ExtraordinaryTaskFormData) => {
-    try {
-      const taskData = buildExtraordinaryTask(serviceData);
-      await handleCreateTask(taskData);
-      setIsExtraordinaryServiceModalOpen(false);
-    } catch (error) {
-      console.error('ManagerDashboard - Error creating extraordinary service:', error);
-    }
-  }, [handleCreateTask]);
-
-  const handleOpenExtraordinaryServiceModal = useCallback(() => {
-    setIsExtraordinaryServiceModalOpen(true);
-  }, []);
-
   if (isMobile) {
     return (
       <>
@@ -136,7 +119,6 @@ export const ManagerDashboard = () => {
           onTaskClick={handleTaskClick}
           onOpenCreateModal={handleOpenCreateModal}
           onOpenBatchModal={handleOpenBatchModal}
-          onOpenExtraordinaryServiceModal={handleOpenExtraordinaryServiceModal}
           showRouteV2={showRouteV2}
           showWorkloadWidget={canAccessModule('workers')}
           showLinenWidget={canAccessModule('reports')}
@@ -174,12 +156,6 @@ export const ManagerDashboard = () => {
           />
         )}
 
-        <CreateExtraordinaryServiceModal
-          open={isExtraordinaryServiceModalOpen}
-          onOpenChange={setIsExtraordinaryServiceModalOpen}
-          onCreateService={handleCreateExtraordinaryService}
-          currentDate={selectedDate}
-        />
       </>
     );
   }
@@ -195,7 +171,6 @@ export const ManagerDashboard = () => {
         onTaskClick={handleTaskClick}
         onOpenCreateModal={handleOpenCreateModal}
         onOpenBatchModal={handleOpenBatchModal}
-        onOpenExtraordinaryServiceModal={handleOpenExtraordinaryServiceModal}
         showRouteV2={showRouteV2}
         showWorkloadWidget={canAccessModule('workers')}
         showLinenWidget={canAccessModule('reports')}
@@ -225,12 +200,6 @@ export const ManagerDashboard = () => {
         />
       )}
 
-      <CreateExtraordinaryServiceModal
-        open={isExtraordinaryServiceModalOpen}
-        onOpenChange={setIsExtraordinaryServiceModalOpen}
-        onCreateService={handleCreateExtraordinaryService}
-        currentDate={selectedDate}
-      />
     </>
   );
 };

@@ -3,7 +3,6 @@ import { NavLink, useLocation } from 'react-router-dom';
 import { GlobalSearch } from '@/components/navigation/GlobalSearch';
 import {
   AlertTriangle,
-  BarChart3,
   Bot,
   Building2,
   Calendar,
@@ -17,7 +16,6 @@ import {
   Package,
   Receipt,
   Settings,
-  Sparkles,
   UserPlus,
   Users,
   Calculator,
@@ -27,7 +25,6 @@ import {
 import { cn } from '@/lib/utils';
 import { useRolePermissions } from '@/hooks/useRolePermissions';
 import { useAuth } from '@/hooks/useAuth';
-import { isAiAllowedUser } from '@/utils/aiAccess';
 import { isRouteV2Owner } from '@/utils/routeV2Access';
 import { useIncidentStats } from '@/hooks/useIncidents';
 import { useWhatsAppDeliveryHealth } from '@/hooks/useWhatsAppDeliveryHealth';
@@ -57,7 +54,6 @@ const generalItems: NavigationItem[] = [
     permission: 'admin-only',
     badge: 'whatsapp-delivery-errors',
   },
-  { title: 'Copiloto IA', href: '/ai-assistant', icon: Bot, permission: 'ai-owner' },
 ];
 
 const managementItems: NavigationItem[] = [
@@ -82,8 +78,7 @@ const managementItems: NavigationItem[] = [
   { title: 'Inventario', href: '/inventory', icon: Package, permission: 'inventory' },
 ];
 
-const reportsItems: NavigationItem[] = [
-  { title: 'Reportes', href: '/reports', icon: BarChart3, permission: 'reports' },
+const checklistItems: NavigationItem[] = [
   {
     title: 'Plantillas de Checklist',
     href: '/checklist-templates',
@@ -126,11 +121,6 @@ const adminItems: NavigationItem[] = [
   { title: 'Gestión de Sedes', href: '/sede-management', icon: Building2 },
   { title: 'Portales de clientes', href: '/admin/client-portals', icon: Layers },
   {
-    title: 'Tareas Extraordinarias',
-    href: '/admin/extraordinary-requests',
-    icon: Sparkles,
-  },
-  {
     title: 'Integraciones · REGISTRO',
     href: '/integraciones',
     icon: Link2,
@@ -144,8 +134,8 @@ interface MobileDashboardSidebarProps {
 
 export const MobileDashboardSidebar = ({ onNavigate }: MobileDashboardSidebarProps) => {
   const location = useLocation();
-  const { canAccessModule, hasPermission: hasRolePermission, isAdminOrManager, isSupervisor } = useRolePermissions();
-  const { user, profile } = useAuth();
+  const { canAccessModule, hasPermission: hasRolePermission, isAdminOrManager } = useRolePermissions();
+  const { user } = useAuth();
   const shouldShowIncidentBadge = isAdminOrManager();
   const { data: incidentStats } = useIncidentStats(shouldShowIncidentBadge);
   const { data: whatsappHealth } = useWhatsAppDeliveryHealth(shouldShowIncidentBadge);
@@ -168,8 +158,6 @@ export const MobileDashboardSidebar = ({ onNavigate }: MobileDashboardSidebarPro
       case 'tasks-edit': return hasRolePermission('tasks', 'canEdit');
       case 'workers':
         return canAccessModule('workers');
-      case 'workers-forecast':
-        return canAccessModule('workers') && !isSupervisor();
       case 'clients':
         return canAccessModule('clients');
       case 'properties':
@@ -190,8 +178,6 @@ export const MobileDashboardSidebar = ({ onNavigate }: MobileDashboardSidebarPro
         return canAccessModule('admin');
       case 'admin-only':
         return isAdminOrManager();
-      case 'ai-owner':
-        return isAiAllowedUser(user, profile);
       case 'route-v2-owner':
         return isRouteV2Owner(user?.email);
       default:
@@ -258,7 +244,7 @@ export const MobileDashboardSidebar = ({ onNavigate }: MobileDashboardSidebarPro
       <div className="flex-1 overflow-y-auto py-4">
         {renderNavigationSection('General', generalItems)}
         {renderNavigationSection('Gestión', managementItems)}
-        {renderNavigationSection('Reportes', reportsItems)}
+        {renderNavigationSection('Plantillas', checklistItems)}
         {renderNavigationSection('Presupuestos', budgetItems)}
         {renderNavigationSection('Facturación', billingItems)}
         {renderNavigationSection('Sincronizaciones', syncItems)}

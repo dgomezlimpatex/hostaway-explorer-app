@@ -13,7 +13,6 @@ import {
   Route,
   Sparkles,
   Users,
-  Wand2,
 } from 'lucide-react';
 
 import { SedeSelector } from '@/components/sede/SedeSelector';
@@ -49,7 +48,6 @@ interface DesktopManagerDashboardProps {
   onTaskClick: (task: Task) => void;
   onOpenCreateModal: () => void;
   onOpenBatchModal: () => void;
-  onOpenExtraordinaryServiceModal: () => void;
   showRouteV2: boolean;
   showWorkloadWidget: boolean;
   showLinenWidget: boolean;
@@ -89,7 +87,6 @@ const DesktopManagerDashboard = ({
   onTaskClick,
   onOpenCreateModal,
   onOpenBatchModal,
-  onOpenExtraordinaryServiceModal,
   showRouteV2,
   showWorkloadWidget,
   showLinenWidget,
@@ -125,13 +122,6 @@ const DesktopManagerDashboard = ({
       icon: Layers3,
       onClick: onOpenBatchModal,
       className: 'border-indigo-200 bg-indigo-50 text-indigo-800 hover:bg-indigo-100',
-    },
-    {
-      title: 'Extraordinaria',
-      description: 'Servicio no asociado',
-      icon: Wand2,
-      onClick: onOpenExtraordinaryServiceModal,
-      className: 'border-emerald-200 bg-emerald-50 text-emerald-800 hover:bg-emerald-100',
     },
     ...(showRouteV2 ? [{
       title: 'Nuevo sistema de ruta',

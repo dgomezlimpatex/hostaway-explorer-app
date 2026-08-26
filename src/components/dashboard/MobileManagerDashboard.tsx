@@ -11,7 +11,6 @@ import {
   MapPin,
   Plus,
   Route,
-  Sparkles,
   Users,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
@@ -47,7 +46,6 @@ interface MobileManagerDashboardProps {
   onTaskClick: (task: Task) => void;
   onOpenCreateModal: () => void;
   onOpenBatchModal: () => void;
-  onOpenExtraordinaryServiceModal: () => void;
   showRouteV2: boolean;
   showWorkloadWidget: boolean;
   showLinenWidget: boolean;
@@ -116,7 +114,6 @@ export function MobileManagerDashboard({
   onTaskClick,
   onOpenCreateModal,
   onOpenBatchModal,
-  onOpenExtraordinaryServiceModal,
   showRouteV2,
   showWorkloadWidget,
   showLinenWidget,
@@ -180,14 +177,6 @@ export function MobileManagerDashboard({
           <Button onClick={onOpenCreateModal} className="h-20 flex-col gap-1 rounded-xl">
             <Plus className="h-5 w-5" />
             Nueva tarea
-          </Button>
-          <Button
-            onClick={onOpenExtraordinaryServiceModal}
-            variant="outline"
-            className="h-20 flex-col gap-1 rounded-xl bg-white"
-          >
-            <Sparkles className="h-5 w-5 text-emerald-600" />
-            Extraordinaria
           </Button>
           {showRouteV2 && (
             <Button
@@ -326,7 +315,6 @@ export function MobileManagerDashboard({
       <MobileBottomNav
         onNewTask={onOpenCreateModal}
         onNewBatchTask={onOpenBatchModal}
-        onNewExtraordinaryService={onOpenExtraordinaryServiceModal}
       />
     </div>
   );

@@ -1299,7 +1299,6 @@ export const useClientPortalSettings = (clientId: string | undefined) => {
       return {
         clientId: row.client_id,
         allowReservationCreation: row.allow_reservation_creation !== false,
-        allowExtraordinaryRequests: row.allow_extraordinary_requests === true,
         allowIncidents: row.allow_incidents === true,
         operationalPortalEnabled: publicSettings.operational_portal_enabled === true,
       };
@@ -1343,6 +1342,39 @@ export const useToggleClientReservationCreation = () => {
       toast({
         title: 'Error',
         description: 'No se pudo actualizar el permiso de creación de reservas.',
+        variant: 'destructive',
+      });
+    },
+  });
+};
+
+export const useToggleClientIncidents = () => {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: async ({ clientId, enabled }: { clientId: string; enabled: boolean }) => {
+      const { error } = await supabase
+        .from('clients')
+        .update({ allow_incidents: enabled })
+        .eq('id', clientId);
+      if (error) throw error;
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['admin-client-portals'] });
+      queryClient.invalidateQueries({ queryKey: ['client-portal-settings', variables.clientId] });
+      toast({
+        title: variables.enabled ? 'Incidencias habilitadas' : 'Incidencias deshabilitadas',
+        description: variables.enabled
+          ? 'Las limpiadoras podran reportar incidencias y el cliente las vera en su portal.'
+          : 'El cliente ya no vera la pestana de incidencias.',
+      });
+    },
+    onError: (error) => {
+      console.error('Toggle incidents error:', error);
+      toast({
+        title: 'Error',
+        description: 'No se pudo actualizar el permiso de incidencias.',
         variant: 'destructive',
       });
     },
@@ -1403,7 +1435,7 @@ export const useAdminClientPortals = () => {
     queryFn: async () => {
       let query = supabase
         .from('clients')
-        .select('id, nombre, is_active, photos_visible_to_client, allow_reservation_creation, allow_extraordinary_requests, allow_incidents, sede_id')
+        .select('id, nombre, is_active, photos_visible_to_client, allow_reservation_creation, allow_incidents, sede_id')
         .neq('is_active', false)
         .order('nombre', { ascending: true });
       if (activeSedeId) query = query.eq('sede_id', activeSedeId);
@@ -1431,7 +1463,6 @@ export const useAdminClientPortals = () => {
           clientActive: c.is_active,
           photosVisibleToClient: !!c.photos_visible_to_client,
           allowReservationCreation: c.allow_reservation_creation !== false,
-          allowExtraordinaryRequests: (c as any).allow_extraordinary_requests === true,
           allowIncidents: (c as any).allow_incidents === true,
           access: a ? {
             id: a.id,

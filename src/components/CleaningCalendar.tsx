@@ -44,7 +44,6 @@ const CleaningCalendar = () => {
     isTaskModalOpen,
     isCreateModalOpen,
     isBatchCreateModalOpen,
-    isExtraordinaryServiceModalOpen,
     dragState,
     handleDragStart,
     handleDragEnd,
@@ -57,10 +56,8 @@ const CleaningCalendar = () => {
     goToToday,
     handleNewTask,
     handleNewBatchTask,
-    handleNewExtraordinaryService,
     handleCreateTask,
     handleBatchCreateTasks,
-    handleCreateExtraordinaryService,
     handleTaskClick,
     handleUpdateTask,
     handleDeleteTask,
@@ -69,7 +66,6 @@ const CleaningCalendar = () => {
     setIsTaskModalOpen,
     setIsCreateModalOpen,
     setIsBatchCreateModalOpen,
-    setIsExtraordinaryServiceModalOpen,
   } = useCalendarLogic();
 
   const cleanerDateRange = useMemo(
@@ -299,15 +295,12 @@ const CleaningCalendar = () => {
             setIsCreateModalOpen={() => {}} // No-op for cleaners
             isBatchCreateModalOpen={false} // Cleaners can't create batch tasks
             setIsBatchCreateModalOpen={() => {}} // No-op for cleaners
-            isExtraordinaryServiceModalOpen={false} // Cleaners can't create extraordinary services
-            setIsExtraordinaryServiceModalOpen={() => {}} // No-op for cleaners
             selectedTask={selectedTask}
             isTaskModalOpen={isTaskModalOpen}
             setIsTaskModalOpen={setIsTaskModalOpen}
             currentDate={currentDate}
             onCreateTask={() => {}} // No-op for cleaners
             onBatchCreateTasks={() => {}} // No-op for cleaners
-            onCreateExtraordinaryService={() => {}} // No-op for cleaners
             onUpdateTask={handleUpdateTask}
             onDeleteTask={() => {}} // Cleaners can't delete tasks
             onUnassignTask={() => {}} // Cleaners can't unassign tasks
@@ -337,7 +330,6 @@ const CleaningCalendar = () => {
               onTaskClick={handleTaskClick}
               onNewTask={handleNewTask}
               onNewBatchTask={handleNewBatchTask}
-              onNewExtraordinaryService={handleNewExtraordinaryService}
             />
           </div>
           
@@ -347,15 +339,12 @@ const CleaningCalendar = () => {
             setIsCreateModalOpen={setIsCreateModalOpen}
             isBatchCreateModalOpen={isBatchCreateModalOpen}
             setIsBatchCreateModalOpen={setIsBatchCreateModalOpen}
-            isExtraordinaryServiceModalOpen={isExtraordinaryServiceModalOpen}
-            setIsExtraordinaryServiceModalOpen={setIsExtraordinaryServiceModalOpen}
             selectedTask={selectedTask}
             isTaskModalOpen={isTaskModalOpen}
             setIsTaskModalOpen={setIsTaskModalOpen}
             currentDate={currentDate}
             onCreateTask={handleCreateTask}
             onBatchCreateTasks={handleBatchCreateTasks}
-            onCreateExtraordinaryService={handleCreateExtraordinaryService}
             onUpdateTask={handleUpdateTask}
             onDeleteTask={handleDeleteTask}
             onUnassignTask={handleUnassignTask}
@@ -406,15 +395,12 @@ const CleaningCalendar = () => {
           setIsCreateModalOpen={() => {}} // No-op for cleaners
           isBatchCreateModalOpen={false} // Cleaners can't create batch tasks
           setIsBatchCreateModalOpen={() => {}} // No-op for cleaners
-          isExtraordinaryServiceModalOpen={false} // Cleaners can't create extraordinary services
-          setIsExtraordinaryServiceModalOpen={() => {}} // No-op for cleaners
           selectedTask={selectedTask}
           isTaskModalOpen={isTaskModalOpen}
           setIsTaskModalOpen={setIsTaskModalOpen}
           currentDate={currentDate}
           onCreateTask={() => {}} // No-op for cleaners
           onBatchCreateTasks={() => {}} // No-op for cleaners
-          onCreateExtraordinaryService={() => {}} // No-op for cleaners
           onUpdateTask={handleUpdateTask}
           onDeleteTask={() => {}} // Cleaners can't delete tasks
           onUnassignTask={() => {}} // Cleaners can't unassign tasks
@@ -450,7 +436,6 @@ const CleaningCalendar = () => {
           onViewChange={setCurrentView}
           onNewTask={handleNewTask}
           onNewBatchTask={handleNewBatchTask}
-          onNewExtraordinaryService={handleNewExtraordinaryService}
           showSearch={isAdminSearchEnabled}
           searchTerm={searchTerm}
           onSearchChange={setSearchTerm}
@@ -485,8 +470,6 @@ const CleaningCalendar = () => {
             setIsCreateModalOpen={setIsCreateModalOpen}
             isBatchCreateModalOpen={isBatchCreateModalOpen}
             setIsBatchCreateModalOpen={setIsBatchCreateModalOpen}
-            isExtraordinaryServiceModalOpen={isExtraordinaryServiceModalOpen}
-            setIsExtraordinaryServiceModalOpen={setIsExtraordinaryServiceModalOpen}
             selectedTask={selectedTask}
             isTaskModalOpen={isTaskModalOpen}
             setIsTaskModalOpen={setIsTaskModalOpen}
@@ -500,7 +483,6 @@ const CleaningCalendar = () => {
             handleTaskClick={handleTaskClick}
             handleCreateTask={handleCreateTask}
             handleBatchCreateTasks={handleBatchCreateTasks}
-            handleCreateExtraordinaryService={handleCreateExtraordinaryService}
             handleUpdateTask={handleUpdateTask}
             handleDeleteTask={handleDeleteTask}
             handleUnassignTask={handleUnassignTask}

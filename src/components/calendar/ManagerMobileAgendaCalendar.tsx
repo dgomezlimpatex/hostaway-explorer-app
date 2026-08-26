@@ -30,7 +30,6 @@ interface ManagerMobileAgendaCalendarProps {
   onTaskClick: (task: Task) => void;
   onNewTask: () => void;
   onNewBatchTask: () => void;
-  onNewExtraordinaryService: () => void;
 }
 
 type AgendaFilter = 'all' | 'unassigned' | string;
@@ -98,7 +97,6 @@ export function ManagerMobileAgendaCalendar({
   onTaskClick,
   onNewTask,
   onNewBatchTask,
-  onNewExtraordinaryService,
 }: ManagerMobileAgendaCalendarProps) {
   const navigate = useNavigate();
   const [selectedFilter, setSelectedFilter] = useState<AgendaFilter>('all');
@@ -270,7 +268,6 @@ export function ManagerMobileAgendaCalendar({
       <MobileBottomNav
         onNewTask={onNewTask}
         onNewBatchTask={onNewBatchTask}
-        onNewExtraordinaryService={onNewExtraordinaryService}
       />
     </div>
   );

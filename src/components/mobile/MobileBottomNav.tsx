@@ -16,7 +16,6 @@ import { MobileCreateActions } from './MobileCreateActions';
 interface MobileBottomNavProps {
   onNewTask?: () => void;
   onNewBatchTask?: () => void;
-  onNewExtraordinaryService?: () => void;
 }
 
 const navItemClass = ({ isActive }: { isActive: boolean }) =>
@@ -28,11 +27,10 @@ const navItemClass = ({ isActive }: { isActive: boolean }) =>
 export function MobileBottomNav({
   onNewTask,
   onNewBatchTask,
-  onNewExtraordinaryService,
 }: MobileBottomNavProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const { pathname } = useLocation();
-  const hasCreateActions = !!onNewTask || !!onNewBatchTask || !!onNewExtraordinaryService;
+  const hasCreateActions = !!onNewTask || !!onNewBatchTask;
 
   return (
     <nav className="fixed inset-x-0 bottom-0 z-50 border-t bg-background/95 px-3 pb-[calc(env(safe-area-inset-bottom)+0.5rem)] pt-2 shadow-[0_-8px_24px_rgba(15,23,42,0.08)] backdrop-blur md:hidden">
@@ -52,7 +50,6 @@ export function MobileBottomNav({
             <MobileCreateActions
               onNewTask={onNewTask}
               onNewBatchTask={onNewBatchTask}
-              onNewExtraordinaryService={onNewExtraordinaryService}
               trigger={
                 <Button
                   className="mx-auto -mt-7 flex h-14 w-14 rounded-full shadow-lg"

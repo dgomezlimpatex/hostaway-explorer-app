@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ChevronLeft, ChevronRight, CalendarDays, Plus, ArrowLeft, Users, Sparkles, Search, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, CalendarDays, Plus, ArrowLeft, Users, Search, X } from "lucide-react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { cn } from "@/lib/utils";
@@ -17,7 +17,6 @@ interface ResponsiveCalendarHeaderProps {
   onViewChange: (view: ViewType) => void;
   onNewTask: () => void;
   onNewBatchTask?: () => void;
-  onNewExtraordinaryService?: () => void;
   searchTerm?: string;
   onSearchChange?: (term: string) => void;
   showSearch?: boolean;
@@ -38,7 +37,6 @@ export const ResponsiveCalendarHeader = ({
   onViewChange,
   onNewTask,
   onNewBatchTask,
-  onNewExtraordinaryService,
   searchTerm = '',
   onSearchChange,
   showSearch = false,
@@ -133,16 +131,6 @@ export const ResponsiveCalendarHeader = ({
               <Plus className="h-4 w-4" />
               {!isMobile && <span>Nueva Tarea</span>}
             </Button>
-            {onNewExtraordinaryService && (
-              <Button
-                onClick={onNewExtraordinaryService}
-                size={isMobile ? "sm" : "default"}
-                className="gap-1.5 bg-emerald-500 hover:bg-emerald-600 text-white border-0 rounded-xl shadow-md"
-              >
-                <Sparkles className="h-4 w-4" />
-                {!isMobile && <span>Servicio Extra</span>}
-              </Button>
-            )}
           </div>
         </div>
       </div>

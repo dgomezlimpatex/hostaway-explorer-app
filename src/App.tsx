@@ -28,7 +28,6 @@ const Tasks = React.lazy(() => import("./pages/Tasks"));
 const Clients = React.lazy(() => import("./pages/Clients"));
 const Properties = React.lazy(() => import("./pages/Properties"));
 const Workers = React.lazy(() => import("./pages/Workers"));
-const Reports = React.lazy(() => import("./pages/Reports"));
 const HostawaySyncLogs = React.lazy(() => import("./pages/HostawaySyncLogs"));
 const ChecklistTemplates = React.lazy(() => import("./pages/ChecklistTemplates"));
 const CleaningReports = React.lazy(() => import("./pages/CleaningReports"));
@@ -64,15 +63,10 @@ const OperationalAnalytics = React.lazy(() => import("./pages/OperationalAnalyti
 const ClientPortal = React.lazy(() => import("./pages/ClientPortal"));
 const ClientReservationsAdmin = React.lazy(() => import("./pages/ClientReservationsAdmin"));
 const ClientPortalsAdmin = React.lazy(() => import("./pages/ClientPortalsAdmin"));
-const ExtraordinaryRequestTypesAdmin = React.lazy(() => import("./pages/ExtraordinaryRequestTypesAdmin"));
-const ExtraordinaryRequestsAdmin = React.lazy(() => import("./pages/ExtraordinaryRequestsAdmin"));
 const WorkloadDashboard = React.lazy(() => import("./pages/WorkloadDashboard"));
-const StaffingForecast = React.lazy(() => import("./pages/StaffingForecast"));
-const ForecastSettings = React.lazy(() => import("./pages/ForecastSettings"));
 const Integraciones = React.lazy(() => import("./pages/Integraciones"));
 const LittleHotelierAdmin = React.lazy(() => import("./pages/LittleHotelierAdmin"));
 const AviratoAdmin = React.lazy(() => import("./pages/AviratoAdmin"));
-const AIAssistant = React.lazy(() => import("./pages/AIAssistant"));
 const CleaningPlanning = React.lazy(() => import("./pages/CleaningPlanning"));
 const PlanningPage = React.lazy(() => import("./pages/PlanningPage"));
 const PlanningBuildingsIndex = React.lazy(() => import("./pages/PlanningBuildingsIndex"));
@@ -228,12 +222,6 @@ function App() {
                     <Route path="/admin/client-portals" element={
                       <RoleProtectedRoute requiredModule="clients"><ClientPortalsAdmin /></RoleProtectedRoute>
                     } />
-                    <Route path="/admin/extraordinary-types" element={
-                      <RoleProtectedRoute requiredModule="clients"><ExtraordinaryRequestTypesAdmin /></RoleProtectedRoute>
-                    } />
-                    <Route path="/admin/extraordinary-requests" element={
-                      <RoleProtectedRoute requiredModule="clients"><ExtraordinaryRequestsAdmin /></RoleProtectedRoute>
-                    } />
                     <Route path="/workers" element={
                       <RoleProtectedRoute requiredModule="workers"><Workers /></RoleProtectedRoute>
                     } />
@@ -254,9 +242,6 @@ function App() {
                     } />
                     <Route path="/recurring-tasks" element={
                       <RoleProtectedRoute requiredModule="tasks" requiredAction="canCreate"><RecurringTasksPage /></RoleProtectedRoute>
-                    } />
-                    <Route path="/reports" element={
-                      <RoleProtectedRoute requiredModule="reports"><Reports /></RoleProtectedRoute>
                     } />
                     <Route path="/hostaway-sync-logs" element={
                       <RoleProtectedRoute requiredModule="hostaway"><HostawaySyncLogs /></RoleProtectedRoute>
@@ -320,12 +305,6 @@ function App() {
                     <Route path="/workload" element={
                       <RoleProtectedRoute requiredModule="workers"><WorkloadDashboard /></RoleProtectedRoute>
                     } />
-                    <Route path="/forecast" element={
-                      <RoleProtectedRoute requiredModule="workers" excludedRoles={['supervisor']}><StaffingForecast /></RoleProtectedRoute>
-                    } />
-                    <Route path="/forecast/settings" element={
-                      <RoleProtectedRoute requiredModule="workers" excludedRoles={['supervisor']}><ForecastSettings /></RoleProtectedRoute>
-                    } />
                     <Route path="/integraciones" element={
                       <RoleProtectedRoute requiredModule="admin"><Integraciones /></RoleProtectedRoute>
                     } />
@@ -338,9 +317,12 @@ function App() {
                     <Route path="/integraciones/avirato" element={
                       <RoleProtectedRoute requiredModule="admin"><AviratoAdmin /></RoleProtectedRoute>
                     } />
-                    <Route path="/ai-assistant" element={
-                      <RoleProtectedRoute requiredModule="admin"><AIAssistant /></RoleProtectedRoute>
-                    } />
+                    <Route path="/reports" element={<Navigate to="/" replace />} />
+                    <Route path="/forecast" element={<Navigate to="/" replace />} />
+                    <Route path="/forecast/settings" element={<Navigate to="/" replace />} />
+                    <Route path="/ai-assistant" element={<Navigate to="/" replace />} />
+                    <Route path="/admin/extraordinary-types" element={<Navigate to="/" replace />} />
+                    <Route path="/admin/extraordinary-requests" element={<Navigate to="/" replace />} />
                   </Route>
 
                   <Route path="*" element={<FullPageSuspense><NotFound /></FullPageSuspense>} />

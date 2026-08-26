@@ -12,7 +12,6 @@ import { isTaskAssignedToCleaner } from "@/utils/taskAssignments";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 import { ABSENCE_TYPE_LABELS } from "@/types/workerAbsence";
-import { buildExtraordinaryTask, type ExtraordinaryTaskFormData } from "@/services/extraordinaryTaskBuilder";
 import { materializeRecurringTaskInstance } from "@/services/recurringTaskInstanceService";
 
 type CalendarTask = Task & { isRecurringInstance?: boolean };
@@ -58,7 +57,6 @@ export const useCalendarLogic = () => {
   const queryClient = useQueryClient();
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isBatchCreateModalOpen, setIsBatchCreateModalOpen] = useState(false);
-  const [isExtraordinaryServiceModalOpen, setIsExtraordinaryServiceModalOpen] = useState(false);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
   
@@ -413,11 +411,6 @@ export const useCalendarLogic = () => {
     setIsCreateModalOpen(true);
   }, []);
 
-  const handleNewExtraordinaryService = useCallback(() => {
-    console.log('🔵 useCalendarLogic - handleNewExtraordinaryService called, opening modal');
-    setIsExtraordinaryServiceModalOpen(true);
-  }, []);
-
   const handleNewBatchTask = useCallback(() => {
     console.log('🔵 useCalendarLogic - handleNewBatchTask called, opening modal');
     setIsBatchCreateModalOpen(true);
@@ -438,27 +431,6 @@ export const useCalendarLogic = () => {
       toast({
         title: "Error",
         description: "No se pudo crear la tarea.",
-        variant: "destructive",
-      });
-    }
-  }, [createTask, toast]);
-
-  const handleCreateExtraordinaryService = useCallback(async (serviceData: ExtraordinaryTaskFormData) => {
-    const taskData = buildExtraordinaryTask(serviceData);
-
-    try {
-      const result = await createTask(taskData);
-      console.log('useCalendarLogic - createExtraordinaryService successful:', result);
-      toast({
-        title: "Tarea extraordinaria creada",
-        description: `"${serviceData.serviceName}" se ha creado correctamente.`,
-      });
-      setIsExtraordinaryServiceModalOpen(false);
-    } catch (error) {
-      console.error('useCalendarLogic - createExtraordinaryService error:', error);
-      toast({
-        title: "Error",
-        description: "No se pudo crear la tarea extraordinaria.",
         variant: "destructive",
       });
     }
@@ -568,8 +540,6 @@ export const useCalendarLogic = () => {
     setIsCreateModalOpen,
     isBatchCreateModalOpen,
     setIsBatchCreateModalOpen,
-    isExtraordinaryServiceModalOpen,
-    setIsExtraordinaryServiceModalOpen,
     selectedTask,
     isTaskModalOpen,
     setIsTaskModalOpen,
@@ -588,10 +558,8 @@ export const useCalendarLogic = () => {
     goToToday,
     handleNewTask,
     handleNewBatchTask,
-    handleNewExtraordinaryService,
     handleCreateTask,
     handleBatchCreateTasks,
-    handleCreateExtraordinaryService,
     handleTaskClick,
     handleUpdateTask,
     handleDeleteTask,

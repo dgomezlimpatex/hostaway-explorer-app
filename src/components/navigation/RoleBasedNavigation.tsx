@@ -7,7 +7,6 @@ import {
   ClipboardList, 
   Users, 
   MapPin, 
-  BarChart3, 
   Settings,
   UserPlus,
   Layers,
@@ -171,19 +170,6 @@ export const RoleBasedNavigation = () => {
             />
           )}
 
-          {canAccessModule('reports') && (
-            <NavigationCard
-              to="/reports"
-              title="Reportes"
-              description="Visualiza estadísticas y reportes del negocio"
-              icon={BarChart3}
-              gradientFrom="bg-gradient-to-br from-indigo-500"
-              gradientTo="to-indigo-600"
-              iconColor="text-white"
-              hoverBorderColor="hover:border-indigo-300"
-            />
-          )}
-
           {canAccessModule('supervision') && (
             <NavigationCard
               to="/supervision"
@@ -199,9 +185,9 @@ export const RoleBasedNavigation = () => {
 
           {canAccessModule('reports') && (
             <NavigationCard
-              to="/cleaning-reports"
-              title="Reportes de Limpieza"
-              description="Revisa partes de limpieza e incidencias pendientes de aprobar"
+              to="/cleaning-reports?tab=incidents"
+              title="Incidencias"
+              description="Revisa y gestiona incidencias pendientes de aprobar"
               icon={AlertTriangle}
               gradientFrom="bg-gradient-to-br from-amber-500"
               gradientTo="to-orange-600"
