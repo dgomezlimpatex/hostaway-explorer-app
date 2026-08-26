@@ -146,23 +146,16 @@ export const orderClassicLaundryTaskIds = async ({
   const orderRows = (orderResult.data || []) as any[];
   const specificOrderRows = orderRows.filter((row) => row.delivery_day === routeDay);
   const globalOrderRows = orderRows.filter((row) => row.delivery_day === GLOBAL_ROUTE_DAY);
-  const globalPositionByProperty = new Map<string, number>(
-    globalOrderRows.map((row) => [row.property_id, row.position]),
-  );
-  const taskData = (tasksResult.data || []) as any[];
-  const globalOrderCoversLink = taskData.length > 0 && taskData.every((task) => (
-    task.propiedad_id && globalPositionByProperty.has(task.propiedad_id)
-  ));
 
-  // A complete base order is authoritative for new links. This prevents an
-  // old day-specific snapshot from overriding the route order the manager
-  // explicitly configured for all routes. Day-specific rows remain useful as
-  // a fallback while the base order is still incomplete.
-  const applicableOrderRows = routeDay === GLOBAL_ROUTE_DAY || globalOrderCoversLink
+  // The base order is the manager's route definition for every day. It must
+  // remain authoritative even while new properties are being added to it;
+  // otherwise a partially configured base order can unexpectedly fall back to
+  // an old day-specific order (or to alphabetical order in the public link).
+  // Day-specific rows are only used for legacy installations without a base
+  // order at all.
+  const applicableOrderRows = globalOrderRows.length > 0
     ? globalOrderRows
-    : specificOrderRows.length > 0
-      ? specificOrderRows
-      : globalOrderRows;
+    : specificOrderRows;
   const positionByProperty = new Map<string, number>(
     applicableOrderRows.map((row) => [row.property_id, row.position]),
   );
