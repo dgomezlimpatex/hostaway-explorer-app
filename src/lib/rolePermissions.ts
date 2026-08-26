@@ -18,6 +18,7 @@ export type RolePermissions = {
   users: ModulePermission;
   inventory: ModulePermission;
   logistics: ModulePermission;
+  supervision: ModulePermission;
   admin: ModulePermission;
 };
 
@@ -41,6 +42,7 @@ const NO_PERMISSIONS = Object.keys({
   users: true,
   inventory: true,
   logistics: true,
+  supervision: true,
   admin: true,
 }).reduce((permissions, key) => {
   permissions[key as keyof RolePermissions] = createPermission(false);
@@ -61,6 +63,7 @@ export const ROLE_PERMISSIONS: Record<string, RolePermissions> = {
     users: createPermission(true, true, true, true),
     inventory: createPermission(true, true, true, true),
     logistics: createPermission(true, true, true, true),
+    supervision: createPermission(true, true, true, false),
     admin: createPermission(true, true, true, true),
   },
   manager: {
@@ -76,6 +79,7 @@ export const ROLE_PERMISSIONS: Record<string, RolePermissions> = {
     users: createPermission(true, true, true, true),
     inventory: createPermission(true, true, true, true),
     logistics: createPermission(true, true, true, true),
+    supervision: createPermission(true, true, true, false),
     admin: createPermission(false),
   },
   supervisor: {
@@ -93,6 +97,7 @@ export const ROLE_PERMISSIONS: Record<string, RolePermissions> = {
     // Las comprobaciones de checklist siguen disponibles dentro de /supervision.
     inventory: createPermission(false),
     logistics: createPermission(true),
+    supervision: createPermission(true, true, true, false),
     admin: createPermission(false),
   },
   cleaner: {
@@ -108,6 +113,7 @@ export const ROLE_PERMISSIONS: Record<string, RolePermissions> = {
     users: createPermission(false),
     inventory: createPermission(false),
     logistics: createPermission(false),
+    supervision: createPermission(false),
     admin: createPermission(false),
   },
   logistics: {
@@ -123,6 +129,7 @@ export const ROLE_PERMISSIONS: Record<string, RolePermissions> = {
     users: createPermission(false),
     inventory: createPermission(false),
     logistics: createPermission(true, true, true, true),
+    supervision: createPermission(false),
     admin: createPermission(false),
   },
 };
