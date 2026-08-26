@@ -129,13 +129,16 @@ const hasKitchenClothStockItem = (items: RouteBag['stockConsumables']) =>
   });
 
 type BagLayerId =
-  | 'small_towels'
+  | 'trash_bags'
   | 'bath_mats'
+  | 'small_towels'
+  | 'pillow_cases'
   | 'sheets'
   | 'large_towels'
-  | 'amenities'
   | 'kitchen_cloths'
-  | 'paper_trash'
+  | 'amenities'
+  | 'toilet_paper'
+  | 'kitchen_paper'
   | 'other';
 
 type BagGuideItem = {
@@ -157,19 +160,24 @@ type BagGuideLayer = {
 };
 
 const bagLayerDefinitions: Array<Omit<BagGuideLayer, 'items'>> = [
-  { id: 'small_towels', step: 1, title: 'Toallas pequeñas', hint: 'Fondo de la bolsa' },
-  { id: 'bath_mats', step: 2, title: 'Alfombrines', hint: 'Sobre toallas peq.' },
-  { id: 'sheets', step: 3, title: 'Sábanas y fundas', hint: 'Capa central' },
-  { id: 'large_towels', step: 4, title: 'Toallas grandes', hint: 'Sobre sábanas' },
-  { id: 'amenities', step: 5, title: 'Amenities', hint: 'Parte superior' },
-  { id: 'kitchen_cloths', step: 6, title: 'Paño cocina', hint: 'Arriba' },
-  { id: 'paper_trash', step: 7, title: 'Papel y bolsas', hint: 'Último' },
-  { id: 'other', step: 8, title: 'Otros consumibles', hint: 'Revisar antes de cerrar' },
+  { id: 'trash_bags', step: 1, title: 'Bolsas de basura', hint: 'Fondo de la bolsa' },
+  { id: 'bath_mats', step: 2, title: 'Alfombrines de ducha', hint: 'Sobre las bolsas' },
+  { id: 'small_towels', step: 3, title: 'Toallas pequeñas', hint: 'Sobre los alfombrines' },
+  { id: 'pillow_cases', step: 4, title: 'Fundas de almohada', hint: 'Antes de las sábanas' },
+  { id: 'sheets', step: 5, title: 'Sábanas', hint: 'Todas las tipologías' },
+  { id: 'large_towels', step: 6, title: 'Toallas grandes', hint: 'Sobre las sábanas' },
+  { id: 'kitchen_cloths', step: 7, title: 'Paño de cocina', hint: 'Parte superior' },
+  { id: 'amenities', step: 8, title: 'Amenities', hint: 'Los tres tipos' },
+  { id: 'toilet_paper', step: 9, title: 'Papel higiénico', hint: 'Casi al final' },
+  { id: 'kitchen_paper', step: 10, title: 'Papel de cocina', hint: 'Último' },
+  { id: 'other', step: 11, title: 'Otros consumibles', hint: 'Revisar antes de cerrar' },
 ];
 
 const classifyStockConsumable = (value: string): BagLayerId => {
   const name = normalizeItemName(value);
-  if (name.includes('papel') || name.includes('basura')) return 'paper_trash';
+  if (name.includes('bolsa') && name.includes('basura')) return 'trash_bags';
+  if (name.includes('papel') && name.includes('higienico')) return 'toilet_paper';
+  if (name.includes('papel') && name.includes('cocina')) return 'kitchen_paper';
   if (name.includes('pano') || name.includes('bayeta')) return 'kitchen_cloths';
   if (name.includes('amenit') || name.includes('kit')) return 'amenities';
   return 'other';
@@ -240,13 +248,17 @@ const buildBagGuideLayers = (bag: RouteBag): BagGuideLayer[] => {
     itemsByLayer[layer].push({ quantity, label: formatQuantityLabel(quantity, label) });
   };
 
+  pushItem('bath_mats', bag.textiles.bathMats, {
+    singular: 'Alfombrín',
+    plural: 'Alfombrines',
+  });
   pushItem('small_towels', bag.textiles.towelsSmall, {
     singular: 'Toalla pequeña',
     plural: 'Toallas pequeñas',
   });
-  pushItem('bath_mats', bag.textiles.bathMats, {
-    singular: 'Alfombrín',
-    plural: 'Alfombrines',
+  pushItem('pillow_cases', bag.textiles.pillowCases, {
+    singular: 'Funda de almohada',
+    plural: 'Fundas de almohada',
   });
   pushItem('sheets', bag.textiles.sheets, {
     singular: 'Sábana matrimonio',
@@ -259,10 +271,6 @@ const buildBagGuideLayers = (bag: RouteBag): BagGuideLayer[] => {
   pushItem('sheets', bag.textiles.sheetsSuite, {
     singular: 'Sábana suite',
     plural: 'Sábanas suite',
-  });
-  pushItem('sheets', bag.textiles.pillowCases, {
-    singular: 'Funda almohada',
-    plural: 'Fundas almohada',
   });
   pushItem('large_towels', bag.textiles.towelsLarge, {
     singular: 'Toalla grande',
@@ -277,12 +285,12 @@ const buildBagGuideLayers = (bag: RouteBag): BagGuideLayer[] => {
       pushItem('kitchen_cloths', kitchenClothsQuantity, 'Paños de cocina');
     }
   } else {
-    pushItem('paper_trash', bag.amenities.trashBags, 'Bolsas basura');
+    pushItem('trash_bags', bag.amenities.trashBags, 'Bolsas basura');
     pushItem('amenities', bag.amenities.bathroomAmenities, 'Amenities de baño');
     pushItem('amenities', bag.amenities.kitchenAmenities, 'Amenities de cocina');
     pushItem('amenities', bag.amenities.foodKit, 'Amenities de alimentación');
-    pushItem('paper_trash', bag.amenities.toiletPaper, 'Papel higiénico');
-    pushItem('paper_trash', bag.amenities.kitchenPaper, 'Papel de cocina');
+    pushItem('toilet_paper', bag.amenities.toiletPaper, 'Papel higiénico');
+    pushItem('kitchen_paper', bag.amenities.kitchenPaper, 'Papel de cocina');
     pushItem('amenities', bag.amenities.shampoo, 'Champú');
     pushItem('amenities', bag.amenities.conditioner, 'Acondicionador');
     pushItem('amenities', bag.amenities.showerGel, 'Gel ducha');
