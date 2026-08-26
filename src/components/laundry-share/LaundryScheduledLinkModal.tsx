@@ -1,19 +1,24 @@
-import { useState, useEffect, useRef, useMemo } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { useEffect, useMemo, useState } from 'react';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { Input } from '@/components/ui/input';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { Copy, Check, Loader2, Calendar, Truck, Package, ExternalLink } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Calendar, Check, Copy, ExternalLink, Loader2, Package, Truck } from 'lucide-react';
+import { addDays, format, getDay } from 'date-fns';
+import { es } from 'date-fns/locale';
 import { useLaundryShareLinks } from '@/hooks/useLaundryShareLinks';
-import { isShareLinkExpired } from '@/services/laundryShareService';
-import { copyShareLinkToClipboard, getShareLinkUrl } from '@/services/laundryShareService';
+import { copyShareLinkToClipboard, getShareLinkUrl, isShareLinkExpired } from '@/services/laundryShareService';
 import { fetchTasksForDates } from '@/services/laundryScheduleService';
 import { useToast } from '@/hooks/use-toast';
 import { useSede } from '@/contexts/SedeContext';
-import { format, addDays } from 'date-fns';
-import { es } from 'date-fns/locale';
-import { useLaundryDeliverySchedule, calculateCollectionDates } from '@/hooks/useLaundrySchedule';
+import { calculateCollectionDates, useLaundryDeliverySchedule } from '@/hooks/useLaundrySchedule';
 
 interface LaundryScheduledLinkModalProps {
   open: boolean;
@@ -21,9 +26,22 @@ interface LaundryScheduledLinkModalProps {
   preselectedDate?: Date;
 }
 
-// Default link duration (días)
 const DEFAULT_EXPIRATION_DAYS = 30;
-type LaundryWorkflowVersion = 'legacy' | 'route_v2';
+const MAX_OPTIONS = 10;
+
+const toDateKey = (date: Date) => format(date, 'yyyy-MM-dd');
+
+const getNextActiveDates = (from: Date, schedules: ReturnType<typeof useLaundryDeliverySchedule>['schedules']) => {
+  if (!schedules?.length) return [];
+
+  const activeDays = new Set(schedules.filter(schedule => schedule.isActive).map(schedule => schedule.dayOfWeek));
+  const dates: Date[] = [];
+  for (let offset = 0; offset <= 21 && dates.length < MAX_OPTIONS; offset += 1) {
+    const date = addDays(from, offset);
+    if (activeDays.has(getDay(date))) dates.push(date);
+  }
+  return dates;
+};
 
 export const LaundryScheduledLinkModal = ({
   open,
@@ -34,166 +52,131 @@ export const LaundryScheduledLinkModal = ({
   const { activeSede } = useSede();
   const { shareLinks, createShareLink } = useLaundryShareLinks();
   const { schedules } = useLaundryDeliverySchedule();
-
-  // Find existing active link covering the selected day
-  const existingLinkForDay = (date: string) =>
-    (shareLinks || []).find(
-      (l) =>
-        !isShareLinkExpired(l.expiresAt) &&
-        l.dateStart <= date &&
-        l.dateEnd >= date
-    );
-
-  const [deliveryDate, setDeliveryDate] = useState<string>(() =>
-    format(preselectedDate || new Date(), 'yyyy-MM-dd')
-  );
+  const [deliveryDate, setDeliveryDate] = useState('');
   const [generatedLink, setGeneratedLink] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
-  const [previewData, setPreviewData] = useState<{ count: number; loading: boolean }>({ count: 0, loading: false });
-  const [workflowVersion, setWorkflowVersion] = useState<LaundryWorkflowVersion>('legacy');
+  const [previewCount, setPreviewCount] = useState(0);
+  const [previewLoading, setPreviewLoading] = useState(false);
 
-  const lastFetchKey = useRef<string>('');
+  const activeDates = useMemo(() => {
+    const start = preselectedDate && preselectedDate >= new Date()
+      ? preselectedDate
+      : new Date();
+    return getNextActiveDates(start, schedules);
+  }, [preselectedDate, schedules]);
 
-  const parsedDate = deliveryDate ? new Date(deliveryDate + 'T00:00:00') : null;
+  const selectedDate = useMemo(
+    () => activeDates.find(date => toDateKey(date) === deliveryDate) || null,
+    [activeDates, deliveryDate],
+  );
 
-  // Compute all dates to include in the link based on schedule config
-  // for the delivery day-of-week. Falls back to just the delivery date.
-  const fetchDates = useMemo<string[]>(() => {
-    if (!parsedDate) return [];
-    const dow = parsedDate.getDay();
-    const schedule = (schedules || []).find(s => s.dayOfWeek === dow);
-    const dates = new Set<string>([deliveryDate]);
-    if (schedule && schedule.collectionDays?.length) {
-      const collectionDates = calculateCollectionDates(parsedDate, schedule);
-      collectionDates.forEach(d => dates.add(format(d, 'yyyy-MM-dd')));
-    }
-    return Array.from(dates).sort();
-  }, [deliveryDate, schedules, parsedDate]);
+  const selectedSchedule = useMemo(
+    () => schedules?.find(schedule => schedule.isActive && schedule.dayOfWeek === (selectedDate ? getDay(selectedDate) : -1)),
+    [schedules, selectedDate],
+  );
 
-  const nextRouteInfo = useMemo(() => {
-    if (!parsedDate || !schedules?.length) return null;
-    const activeSchedules = [...schedules]
-      .filter((schedule) => schedule.isActive)
-      .sort((a, b) => a.sortOrder - b.sortOrder);
-    const currentIndex = activeSchedules.findIndex((schedule) => schedule.dayOfWeek === parsedDate.getDay());
-    if (currentIndex < 0 || activeSchedules.length === 0) return null;
-    const nextSchedule = activeSchedules[(currentIndex + 1) % activeSchedules.length];
-    const daysForward = (nextSchedule.dayOfWeek - parsedDate.getDay() + 7) % 7 || 7;
-    const nextDeliveryDate = addDays(parsedDate, daysForward);
-    const nextRouteDates = calculateCollectionDates(nextDeliveryDate, nextSchedule)
-      .map((date) => format(date, 'yyyy-MM-dd'));
-    return {
-      schedule: nextSchedule,
-      deliveryDate: nextDeliveryDate,
-      deliveryDateString: format(nextDeliveryDate, 'yyyy-MM-dd'),
-      routeDates: nextRouteDates,
-    };
-  }, [parsedDate, schedules]);
+  const collectionDates = useMemo(() => {
+    if (!selectedDate || !selectedSchedule) return [];
+    return calculateCollectionDates(selectedDate, selectedSchedule).map(toDateKey);
+  }, [selectedDate, selectedSchedule]);
 
-  // Reset state when modal opens
+  const existingLink = useMemo(() => {
+    if (!deliveryDate) return undefined;
+    return (shareLinks || []).find(link =>
+      link.linkType === 'scheduled' &&
+      link.workflowVersion !== 'route_v2' &&
+      !isShareLinkExpired(link.expiresAt) &&
+      (link.deliveryDate === deliveryDate || link.filters?.deliveryDate === deliveryDate),
+    );
+  }, [deliveryDate, shareLinks]);
+
   useEffect(() => {
-    if (open) {
-      setGeneratedLink(null);
-      setCopied(false);
-      setPreviewData({ count: 0, loading: false });
-      lastFetchKey.current = '';
-      setDeliveryDate(format(preselectedDate || new Date(), 'yyyy-MM-dd'));
-      setWorkflowVersion('legacy');
-    }
-  }, [open, preselectedDate]);
+    if (!open) return;
+    setGeneratedLink(null);
+    setCopied(false);
+    setPreviewCount(0);
+    const requested = preselectedDate ? toDateKey(preselectedDate) : '';
+    const first = activeDates.find(date => toDateKey(date) === requested) || activeDates[0];
+    setDeliveryDate(first ? toDateKey(first) : '');
+  }, [open, preselectedDate, activeDates]);
 
-  // Load preview count when date changes
   useEffect(() => {
-    if (!deliveryDate || !activeSede?.id || !open || fetchDates.length === 0) return;
+    if (!open || !activeSede?.id || !collectionDates.length) {
+      setPreviewCount(0);
+      return;
+    }
 
-    const fetchKey = `${fetchDates.join(',')}-${activeSede.id}`;
-    if (fetchKey === lastFetchKey.current) return;
-    lastFetchKey.current = fetchKey;
+    let cancelled = false;
+    setPreviewLoading(true);
+    fetchTasksForDates(collectionDates, activeSede.id)
+      .then(tasks => {
+        if (!cancelled) setPreviewCount(tasks.length);
+      })
+      .catch(error => {
+        console.error('Error loading laundry link preview:', error);
+        if (!cancelled) setPreviewCount(0);
+      })
+      .finally(() => {
+        if (!cancelled) setPreviewLoading(false);
+      });
 
-    const loadPreview = async () => {
-      setPreviewData({ count: 0, loading: true });
-      try {
-        const tasks = await fetchTasksForDates(fetchDates, activeSede.id);
-        setPreviewData({ count: tasks.length, loading: false });
-      } catch (error) {
-        console.error('Error loading preview:', error);
-        setPreviewData({ count: 0, loading: false });
-      }
+    return () => {
+      cancelled = true;
     };
-
-    loadPreview();
-  }, [deliveryDate, activeSede?.id, open, fetchDates]);
+  }, [open, activeSede?.id, collectionDates]);
 
   const handleGenerate = async () => {
-    if (!activeSede?.id || !deliveryDate) {
+    if (!activeSede?.id || !selectedDate || !selectedSchedule || !collectionDates.length) {
       toast({
-        title: 'Error',
-        description: 'No hay fecha de reparto seleccionada',
+        title: 'Día no disponible',
+        description: 'Selecciona uno de los próximos días activos de reparto.',
         variant: 'destructive',
       });
       return;
     }
-
-    // Block creation if a link already covers this day
-    if (existingLinkForDay(deliveryDate)) {
+    if (existingLink) {
       toast({
-        title: 'Ya existe un enlace para este día',
-        description: 'Solo se permite un enlace por día. Edita o desactiva el existente.',
+        title: 'Ya existe el enlace',
+        description: 'Para este día ya hay un enlace activo. Puedes abrirlo o copiarlo desde la lista.',
         variant: 'destructive',
       });
       return;
     }
-
 
     setIsGenerating(true);
     try {
-      const tasks = await fetchTasksForDates(fetchDates, activeSede.id);
-      const taskIds = tasks.map(t => t.taskId);
-
-      if (taskIds.length === 0) {
-        toast({
-          title: 'Sin tareas',
-          description: 'No hay tareas de lavandería para las fechas seleccionadas',
-          variant: 'destructive',
-        });
-        setIsGenerating(false);
-        return;
-      }
-
-      const expiresAt = addDays(new Date(), DEFAULT_EXPIRATION_DAYS).toISOString();
-
-      const dateStart = fetchDates[0];
-      const dateEnd = fetchDates[fetchDates.length - 1] > deliveryDate
-        ? fetchDates[fetchDates.length - 1]
-        : deliveryDate;
-
+      const tasks = await fetchTasksForDates(collectionDates, activeSede.id);
+      const taskIds = tasks.map(task => task.taskId);
       const result = await createShareLink.mutateAsync({
-        dateStart,
-        dateEnd,
-        expiresAt,
+        dateStart: collectionDates[0],
+        dateEnd: collectionDates[collectionDates.length - 1],
+        deliveryDate: toDateKey(selectedDate),
+        expiresAt: addDays(new Date(), DEFAULT_EXPIRATION_DAYS).toISOString(),
         isPermanent: false,
         taskIds,
         allTaskIds: taskIds,
         sedeId: activeSede.id,
-        deliveryDay: parsedDate?.getDay() ?? null,
+        deliveryDay: getDay(selectedDate),
         linkType: 'scheduled',
-        workflowVersion,
-        routeOrderApplied: workflowVersion !== 'route_v2',
+        workflowVersion: 'legacy',
+        routeOrderApplied: true,
         filters: {
-          workflowVersion,
-          collectionDates: fetchDates,
-          routeDates: fetchDates,
-          deliveryDate,
-          nextDeliveryDate: nextRouteInfo?.deliveryDateString,
-          nextRouteDates: nextRouteInfo?.routeDates || [],
+          sedeId: activeSede.id,
+          workflowVersion: 'legacy',
+          deliveryDate: toDateKey(selectedDate),
+          collectionDates,
+          routeDates: collectionDates,
         },
       });
-
-      const url = getShareLinkUrl(result.token, true);
-      setGeneratedLink(url);
+      setGeneratedLink(getShareLinkUrl(result.token, true));
     } catch (error) {
-      console.error('Error generating link:', error);
+      console.error('Error generating classic laundry link:', error);
+      toast({
+        title: 'No se pudo generar el enlace',
+        description: error instanceof Error ? error.message : 'Revisa la configuración de reparto e inténtalo de nuevo.',
+        variant: 'destructive',
+      });
     } finally {
       setIsGenerating(false);
     }
@@ -202,14 +185,10 @@ export const LaundryScheduledLinkModal = ({
   const handleCopy = async () => {
     if (!generatedLink) return;
     const token = generatedLink.split('/').pop() || '';
-    const success = await copyShareLinkToClipboard(token, true);
-    if (success) {
+    if (await copyShareLinkToClipboard(token, true)) {
       setCopied(true);
-      toast({
-        title: 'Enlace copiado',
-        description: 'Ya puedes compartirlo por WhatsApp u otro medio',
-      });
-      setTimeout(() => setCopied(false), 2000);
+      toast({ title: 'Enlace copiado', description: 'Ya puedes compartirlo por WhatsApp.' });
+      window.setTimeout(() => setCopied(false), 2000);
     }
   };
 
@@ -219,190 +198,77 @@ export const LaundryScheduledLinkModal = ({
     onOpenChange(false);
   };
 
-
-
-
   return (
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Truck className="h-5 w-5" />
-            Generar Enlace de Reparto
+            Generar enlace de reparto
           </DialogTitle>
           <DialogDescription>
-            Crea un enlace para que el repartidor vea qué ropa recoger y entregar.
+            Elige un día activo. El enlace clásico se actualizará automáticamente y mantendrá el orden de ruta.
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-5 py-4">
+        <div className="space-y-4 py-4">
           {!generatedLink ? (
             <>
-              {/* Delivery schedule */}
-              <div className="rounded-lg border border-border bg-card p-3">
-                <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground mb-2">
-                  Días de reparto
-                </p>
-                <div className="flex flex-wrap gap-1.5">
-                  {[
-                    { label: 'Lun', short: 'L', dow: 1, active: true },
-                    { label: 'Mar', short: 'M', dow: 2, active: false },
-                    { label: 'Mié', short: 'X', dow: 3, active: true },
-                    { label: 'Jue', short: 'J', dow: 4, active: false },
-                    { label: 'Vie', short: 'V', dow: 5, active: true },
-                    { label: 'Sáb', short: 'S', dow: 6, active: false },
-                    { label: 'Dom', short: 'D', dow: 0, active: true },
-                  ].map((day) => {
-                    const isSelected = parsedDate?.getDay() === day.dow;
-                    return (
-                      <div
-                        key={day.label}
-                        className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border transition-all ${
-                          day.active
-                            ? isSelected
-                              ? 'bg-primary text-primary-foreground border-primary ring-2 ring-primary/30'
-                              : 'bg-primary/10 text-primary border-primary/20'
-                            : 'bg-muted/40 text-muted-foreground/60 border-transparent line-through'
-                        }`}
-                      >
-                        <span className={`w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-bold ${
-                          day.active
-                            ? isSelected
-                              ? 'bg-primary-foreground/20 text-primary-foreground'
-                              : 'bg-primary text-primary-foreground'
-                            : 'bg-muted text-muted-foreground/70'
-                        }`}>{day.short}</span>
-                        {day.label}
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Date picker */}
               <div className="space-y-2">
-                <Label htmlFor="delivery-date">Fecha de reparto</Label>
-                <Input
-                  id="delivery-date"
-                  type="date"
-                  value={deliveryDate}
-                  onChange={(e) => setDeliveryDate(e.target.value)}
-                />
+                <Label htmlFor="delivery-date">Próximos días de reparto</Label>
+                <Select value={deliveryDate} onValueChange={setDeliveryDate} disabled={!activeDates.length}>
+                  <SelectTrigger id="delivery-date">
+                    <SelectValue placeholder="No hay días activos configurados" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {activeDates.map(date => {
+                      const schedule = schedules?.find(item => item.dayOfWeek === getDay(date) && item.isActive);
+                      return (
+                        <SelectItem key={toDateKey(date)} value={toDateKey(date)}>
+                          <span className="capitalize">{schedule?.name || 'Reparto'} · {format(date, "EEEE d 'de' MMMM", { locale: es })}</span>
+                        </SelectItem>
+                      );
+                    })}
+                  </SelectContent>
+                </Select>
               </div>
 
-              <div className="space-y-2">
-                <Label>Método del enlace</Label>
-                <RadioGroup
-                  value={workflowVersion}
-                  onValueChange={(value) => setWorkflowVersion(value as LaundryWorkflowVersion)}
-                  className="grid gap-2"
-                >
-                  <Label
-                    htmlFor="workflow-legacy"
-                    className="flex cursor-pointer items-start gap-3 rounded-lg border p-3 hover:bg-muted/50"
-                  >
-                    <RadioGroupItem value="legacy" id="workflow-legacy" className="mt-0.5" />
-                    <span className="space-y-1">
-                      <span className="block text-sm font-semibold">Método clásico</span>
-                      <span className="block text-xs font-normal text-muted-foreground">
-                        Lista completa para preparar, recoger y entregar como hasta ahora.
-                      </span>
-                    </span>
-                  </Label>
-                  <Label
-                    htmlFor="workflow-route-v2"
-                    className="flex cursor-pointer items-start gap-3 rounded-lg border p-3 hover:bg-muted/50"
-                  >
-                    <RadioGroupItem value="route_v2" id="workflow-route-v2" className="mt-0.5" />
-                    <span className="space-y-1">
-                      <span className="block text-sm font-semibold">Nuevo método piloto</span>
-                      <span className="block text-xs font-normal text-muted-foreground">
-                        Flujo guiado con urgencias y preparación secuencial de la siguiente ruta.
-                      </span>
-                    </span>
-                  </Label>
-                </RadioGroup>
-              </div>
-
-
-              {/* Preview */}
-              {parsedDate && (
-                <div className="rounded-lg bg-muted p-4 space-y-2">
-                  <div className="flex items-center gap-2">
+              {selectedDate && selectedSchedule && (
+                <div className="rounded-xl border bg-muted/40 p-4 space-y-2">
+                  <div className="flex items-center gap-2 font-semibold capitalize">
                     <Calendar className="h-4 w-4 text-primary" />
-                    <span className="font-medium capitalize">
-                      {format(parsedDate, "EEEE d 'de' MMMM yyyy", { locale: es })}
-                    </span>
+                    {selectedSchedule.name} · {format(selectedDate, "EEEE d 'de' MMMM yyyy", { locale: es })}
                   </div>
-                  {fetchDates.length > 1 && (
-                    <div className="text-xs text-muted-foreground capitalize">
-                      Incluye servicios de:{' '}
-                      {fetchDates
-                        .map(d => format(new Date(d + 'T00:00:00'), "EEE d MMM", { locale: es }))
-                        .join(' + ')}
-                    </div>
-                  )}
+                  <p className="text-xs text-muted-foreground capitalize">
+                    Incluye las tareas de {collectionDates.map(date => format(new Date(`${date}T12:00:00`), 'EEE d MMM', { locale: es })).join(' + ')}.
+                  </p>
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
                     <Package className="h-4 w-4" />
-                    {previewData.loading ? (
-                      <span className="flex items-center gap-1">
-                        <Loader2 className="h-3 w-3 animate-spin" />
-                        Calculando...
-                      </span>
-                    ) : (
-                      <span>{previewData.count} apartamentos con servicio</span>
-                    )}
+                    {previewLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : `${previewCount} apartamentos con servicio`}
                   </div>
-                  {workflowVersion === 'route_v2' && nextRouteInfo && (
-                    <div className="rounded-md border border-blue-200 bg-blue-50 p-2 text-xs text-blue-900">
-                      <strong>Preparación siguiente:</strong>{' '}
-                      {nextRouteInfo.schedule.name}{' '}
-                      {format(nextRouteInfo.deliveryDate, "EEE d MMM", { locale: es })} · tareas de{' '}
-                      {nextRouteInfo.routeDates
-                        .map(d => format(new Date(d + 'T00:00:00'), "EEE d MMM", { locale: es }))
-                        .join(' + ')}
-                    </div>
-                  )}
                 </div>
               )}
 
-              {existingLinkForDay(deliveryDate) && (
-                <div className="rounded-lg border border-amber-200 bg-amber-50 dark:bg-amber-500/10 dark:border-amber-500/30 p-3 text-xs text-amber-800 dark:text-amber-300">
-                  Ya existe un enlace activo para este día. Solo se permite un enlace por día — edita o desactiva el existente.
+              {existingLink && (
+                <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
+                  Este día ya tiene un enlace activo. No se creará otro para evitar duplicados.
                 </div>
               )}
 
               <p className="text-xs text-muted-foreground">
-                El enlace estará activo durante {DEFAULT_EXPIRATION_DAYS} días.
+                Los enlaces permanecen activos durante {DEFAULT_EXPIRATION_DAYS} días y conservan el historial de la ruta.
               </p>
-
             </>
           ) : (
-            /* Generated link display */
             <div className="space-y-3">
               <Label>Enlace generado</Label>
               <div className="flex gap-2">
-                <Input
-                  value={generatedLink}
-                  readOnly
-                  className="font-mono text-sm"
-                />
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={handleCopy}
-                  className="shrink-0"
-                >
-                  {copied ? (
-                    <Check className="h-4 w-4 text-green-600" />
-                  ) : (
-                    <Copy className="h-4 w-4" />
-                  )}
+                <div className="flex-1 rounded-md border bg-muted/30 px-3 py-2 text-xs font-mono truncate">{generatedLink}</div>
+                <Button variant="outline" size="icon" onClick={handleCopy} aria-label="Copiar enlace">
+                  {copied ? <Check className="h-4 w-4 text-emerald-600" /> : <Copy className="h-4 w-4" />}
                 </Button>
               </div>
-              <p className="text-sm text-muted-foreground">
-                Comparte este enlace con el repartidor por WhatsApp o cualquier otro medio.
-              </p>
+              <p className="text-sm text-muted-foreground">Compártelo con el equipo de ruta.</p>
             </div>
           )}
         </div>
@@ -410,49 +276,18 @@ export const LaundryScheduledLinkModal = ({
         <DialogFooter>
           {!generatedLink ? (
             <>
-              <Button variant="outline" onClick={handleClose}>
-                Cancelar
-              </Button>
-              <Button
-                onClick={handleGenerate}
-                disabled={isGenerating || !deliveryDate || previewData.count === 0 || !!existingLinkForDay(deliveryDate)}
-              >
-
-                {isGenerating ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Generando...
-                  </>
-                ) : (
-                  'Generar Enlace'
-                )}
+              <Button variant="outline" onClick={handleClose}>Cancelar</Button>
+              <Button onClick={handleGenerate} disabled={isGenerating || !selectedDate || !selectedSchedule || !!existingLink}>
+                {isGenerating ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Generando...</> : 'Generar enlace'}
               </Button>
             </>
           ) : (
-            <div className="flex items-center gap-2 w-full justify-end">
-              <Button variant="outline" onClick={handleClose}>
-                Cerrar
+            <div className="flex w-full justify-end gap-2">
+              <Button variant="outline" onClick={handleClose}>Cerrar</Button>
+              <Button variant="outline" onClick={() => window.open(generatedLink, '_blank')}>
+                <ExternalLink className="mr-2 h-4 w-4" />Abrir
               </Button>
-              <Button
-                variant="outline"
-                onClick={() => generatedLink && window.open(generatedLink, '_blank')}
-              >
-                <ExternalLink className="mr-2 h-4 w-4" />
-                Abrir
-              </Button>
-              <Button onClick={handleCopy}>
-                {copied ? (
-                  <>
-                    <Check className="mr-2 h-4 w-4" />
-                    Copiado
-                  </>
-                ) : (
-                  <>
-                    <Copy className="mr-2 h-4 w-4" />
-                    Copiar
-                  </>
-                )}
-              </Button>
+              <Button onClick={handleCopy}>{copied ? 'Copiado' : 'Copiar'}</Button>
             </div>
           )}
         </DialogFooter>

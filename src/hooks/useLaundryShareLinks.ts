@@ -17,10 +17,16 @@ export interface LaundryShareLink {
   isActive: boolean;
   snapshotTaskIds: string[];
   originalTaskIds: string[]; // All tasks at creation time (for detecting truly new tasks)
+  manualExcludedTaskIds: string[];
   filters: Record<string, any>;
   linkType: string | null; // 'scheduled' or 'legacy' or null
   workflowVersion: string | null;
   routeOrderApplied: boolean;
+  deliveryDate: string | null;
+  autoManaged: boolean;
+  lastSyncedAt: string | null;
+  syncStatus: 'pending' | 'ok' | 'error' | null;
+  syncError: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -37,6 +43,7 @@ interface CreateShareLinkParams {
   workflowVersion?: string;
   deliveryDay?: number | null;
   routeOrderApplied?: boolean;
+  deliveryDate?: string;
 }
 
 // Generate a random token for share links
@@ -68,10 +75,16 @@ const mapToShareLink = (row: any): LaundryShareLink => {
   isActive: row.is_active,
   snapshotTaskIds: row.snapshot_task_ids || [],
   originalTaskIds: row.original_task_ids || row.snapshot_task_ids || [], // Fallback to snapshot for old links
+  manualExcludedTaskIds: row.manual_excluded_task_ids || [],
   filters,
   linkType: row.link_type,
   workflowVersion: row.workflow_version || 'legacy',
   routeOrderApplied: row.route_order_applied === true,
+  deliveryDate: row.delivery_date || filters.deliveryDate || null,
+  autoManaged: row.auto_managed === true,
+  lastSyncedAt: row.last_synced_at || null,
+  syncStatus: row.sync_status || null,
+  syncError: row.sync_error || null,
   createdAt: row.created_at,
   updatedAt: row.updated_at,
   };
@@ -107,9 +120,30 @@ export const useLaundryShareLinks = () => {
       const { data: userData } = await supabase.auth.getUser();
       if (!userData.user) throw new Error('Usuario no autenticado');
 
-      const token = generateToken();
       const workflowVersion = params.workflowVersion || 'legacy';
       const isClassicLink = workflowVersion !== 'route_v2';
+
+      // All new scheduled classic links go through the server reconciliation
+      // function. This keeps route days, tokens, exclusions and ordering under
+      // one authority, including quick-link and legacy modal entry points.
+      if (params.linkType === 'scheduled' && isClassicLink) {
+        const deliveryDate = params.deliveryDate
+          || params.filters?.deliveryDate
+          || params.dateEnd;
+        const { data, error } = await supabase.functions.invoke('manage-laundry-classic-links', {
+          body: {
+            action: 'ensure_link',
+            sedeId: params.sedeId,
+            deliveryDate,
+          },
+        });
+
+        if (error) throw error;
+        if (!data?.shareLink) throw new Error('La sincronizacion no devolvio el enlace.');
+        return mapToShareLink(data.shareLink);
+      }
+
+      const token = generateToken();
       // Classic links must always preserve the configured route order. Keeping
       // this invariant here protects every creation path, including quick links.
       const routeOrderApplied = isClassicLink;
@@ -314,7 +348,22 @@ export const useLaundryShareLinkByToken = (token: string | undefined) => {
         throw new Error('Este enlace ha expirado');
       }
 
-      return mapToShareLink(data);
+      const mappedLink = mapToShareLink(data);
+
+      // Managed classic links reconcile again when opened, so a task added or
+      // removed after the last 15-minute run is reflected immediately. Old
+      // links and route_v2 keep the existing read-only path.
+      if (mappedLink.autoManaged) {
+        const { data: refreshed, error: refreshError } = await supabase.functions.invoke(
+          'manage-laundry-classic-links',
+          { body: { action: 'refresh', token } },
+        );
+        if (!refreshError && refreshed?.shareLink) {
+          return mapToShareLink(refreshed.shareLink);
+        }
+      }
+
+      return mappedLink;
     },
     enabled: !!token,
     retry: false,

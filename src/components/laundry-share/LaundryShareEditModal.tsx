@@ -160,11 +160,17 @@ export const LaundryShareEditModal = ({
         deliveryDay: shareLink.deliveryDay,
       });
 
+      const includedSet = new Set(includedTaskIds);
+      const manualExcludedTaskIds = shareLink.autoManaged
+        ? allCurrentTaskIds.filter((taskId) => !includedSet.has(taskId))
+        : undefined;
+
       const { error } = await (supabase as any)
         .from('laundry_share_links')
         .update({
           snapshot_task_ids: orderedIncludedTaskIds,
           original_task_ids: allCurrentTaskIds,
+          ...(manualExcludedTaskIds ? { manual_excluded_task_ids: manualExcludedTaskIds } : {}),
           route_order_applied: shareLink.workflowVersion !== 'route_v2',
         })
         .eq('id', shareLink.id);

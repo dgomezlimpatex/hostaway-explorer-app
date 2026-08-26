@@ -17,6 +17,7 @@ import {
   Search,
 } from 'lucide-react';
 import { useSede } from '@/contexts/SedeContext';
+import { useAuth } from '@/hooks/useAuth';
 import { useProperties } from '@/hooks/useProperties';
 import { useAllPropertyAssignments, usePropertyGroups } from '@/hooks/usePropertyGroups';
 import { useToast } from '@/hooks/use-toast';
@@ -39,6 +40,7 @@ interface RouteBlock {
 
 const LaundryRouteOrder = () => {
   const navigate = useNavigate();
+  const { user, isLoading: isAuthLoading } = useAuth();
   const { activeSede } = useSede();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -51,6 +53,8 @@ const LaundryRouteOrder = () => {
   const [search, setSearch] = useState('');
   const [draggingBlockKey, setDraggingBlockKey] = useState<string | null>(null);
   const [expandedBlockKeys, setExpandedBlockKeys] = useState<Set<string>>(() => new Set());
+
+  const isRouteOwner = user?.email?.trim().toLowerCase() === 'dgomezlimpatex@gmail.com';
 
   const routeOrderQuery = useQuery({
     queryKey: ['laundry-classic-route-order', activeSede?.id, selectedDay],
@@ -268,6 +272,34 @@ const LaundryRouteOrder = () => {
     || propertyGroupsQuery.isLoading
     || propertyAssignmentsQuery.isLoading;
   const unconfiguredCount = Math.max(activeProperties.length - configuredPropertyIds.size, 0);
+
+  if (isAuthLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-muted/30">
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  if (!isRouteOwner) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-muted/30 p-6">
+        <Card className="w-full max-w-md">
+          <CardHeader>
+            <CardTitle>Configuración restringida</CardTitle>
+            <CardDescription>
+              Solo Daniel puede modificar los días y el orden de las rutas de lavandería.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button onClick={() => navigate('/lavanderia/gestion')} className="w-full">
+              Volver a enlaces de lavandería
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-muted/30">

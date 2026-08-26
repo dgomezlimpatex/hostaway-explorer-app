@@ -177,15 +177,17 @@ const PublicLaundryView = () => {
       } as LaundryTask;
     });
 
-    if (shareLink.routeOrderApplied) {
-      const snapshotPosition = new Map(shareLink.snapshotTaskIds.map((taskId, index) => [taskId, index]));
-      mappedTasks.sort((a, b) => {
-        const positionCompare = (snapshotPosition.get(a.id) ?? Number.MAX_SAFE_INTEGER)
-          - (snapshotPosition.get(b.id) ?? Number.MAX_SAFE_INTEGER);
-        if (positionCompare !== 0) return positionCompare;
-        return a.date.localeCompare(b.date);
-      });
-    }
+    // The snapshot is the protocolized route order. It must win over the
+    // database response order, the task date, and alphabetical property names.
+    const snapshotPosition = new Map(shareLink.snapshotTaskIds.map((taskId, index) => [taskId, index]));
+    mappedTasks.sort((a, b) => {
+      const positionCompare = (snapshotPosition.get(a.id) ?? Number.MAX_SAFE_INTEGER)
+        - (snapshotPosition.get(b.id) ?? Number.MAX_SAFE_INTEGER);
+      if (positionCompare !== 0) return positionCompare;
+      const dateCompare = a.date.localeCompare(b.date);
+      if (dateCompare !== 0) return dateCompare;
+      return a.propertyCode.localeCompare(b.propertyCode, 'es', { numeric: true });
+    });
 
     return mappedTasks;
   }, [tasksData, shareLink, stockConsumablesByTask]);

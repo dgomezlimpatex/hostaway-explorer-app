@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSede } from '@/contexts/SedeContext';
+import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { 
@@ -68,6 +69,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
+import { useLaundryDeliverySchedule } from '@/hooks/useLaundrySchedule';
 
 // ============================================================
 // Sub-components
@@ -135,6 +137,7 @@ const useTaskChanges = (link: LaundryShareLink) => {
     queryFn: () => detectTaskChanges(link.originalTaskIds, link.snapshotTaskIds, link.dateStart, link.dateEnd, sedeIds),
     staleTime: 30000,
     refetchInterval: 60000,
+    enabled: !link.autoManaged,
   });
 };
 
@@ -184,7 +187,8 @@ const LinkCard = ({
   onDelete,
   onApplyChanges,
   onAutoMergeNewTasks,
-}: { 
+  canManage,
+}: {
   link: LaundryShareLink;
   highlight?: boolean;
   defaultOpen?: boolean;
@@ -198,6 +202,7 @@ const LinkCard = ({
     existingSnapshotIds: string[],
     originalTaskIds: string[],
   ) => Promise<void>;
+  canManage: boolean;
 }) => {
   const { data: changes } = useTaskChanges(link);
   const { stats } = useLaundryTracking(link.id);
@@ -211,7 +216,7 @@ const LinkCard = ({
   // Auto-merge new tasks into snapshot in background (preserves manual edits)
   const autoMergedRef = useRef<string>('');
   useEffect(() => {
-    if (!hasNewTasks || !changes) return;
+    if (link.autoManaged || !hasNewTasks || !changes) return;
     const signature = `${link.id}:${changes.newTasks.sort().join(',')}`;
     if (autoMergedRef.current === signature) return;
     autoMergedRef.current = signature;
@@ -276,6 +281,18 @@ const LinkCard = ({
                 {total > 0 && (
                   <span>{total} apt · {preparedCount} prep · {stats.delivered} entreg</span>
                 )}
+                {link.autoManaged && (
+                  <span className={cn(
+                    'font-semibold',
+                    link.syncStatus === 'error' ? 'text-destructive' : 'text-emerald-600 dark:text-emerald-400',
+                  )}>
+                    {link.syncStatus === 'error'
+                      ? 'Sincronización con error'
+                      : link.lastSyncedAt
+                        ? `Actualizado ${new Date(link.lastSyncedAt).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}`
+                        : 'Pendiente de sincronizar'}
+                  </span>
+                )}
               </div>
             </div>
             <ChevronDown className={cn(
@@ -285,7 +302,7 @@ const LinkCard = ({
           </button>
         </CollapsibleTrigger>
         <div className="flex items-center gap-2 shrink-0">
-          {hasRemovedTasks && (
+          {canManage && hasRemovedTasks && (
             <button
               onClick={handleApplyRemoved}
               disabled={applying}
@@ -332,15 +349,19 @@ const LinkCard = ({
         {/* Actions toolbar */}
         <div className="px-5 pb-3 flex items-center gap-2">
           <TooltipProvider delayDuration={100}>
-            <Tooltip>
-              <TooltipTrigger asChild>
+            {canManage && (
+              <Tooltip>
+                <TooltipTrigger asChild>
                 <Button variant="outline" size="sm" className="h-8 text-xs" onClick={onEdit}>
                   <Pencil className="h-3.5 w-3.5 mr-1.5" />
-                  Editar
+                  {link.autoManaged ? 'Excepciones' : 'Editar'}
                 </Button>
-              </TooltipTrigger>
-              <TooltipContent>Editar tareas incluidas</TooltipContent>
-            </Tooltip>
+                </TooltipTrigger>
+                <TooltipContent>
+                  {link.autoManaged ? 'Gestionar tareas excluidas de la sincronización' : 'Editar tareas incluidas'}
+                </TooltipContent>
+              </Tooltip>
+            )}
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button variant="outline" size="sm" className="h-8 text-xs" onClick={onOpen}>
@@ -361,7 +382,7 @@ const LinkCard = ({
           >
             <LinkIcon className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
             <span className="text-[11px] font-mono text-muted-foreground truncate group-hover/link:text-primary transition-colors">
-              {getShareLinkUrl(link.token).replace('https://', '')}
+              {getShareLinkUrl(link.token, link.linkType === 'scheduled').replace('https://', '')}
             </span>
           </button>
           <div className="flex items-center gap-1.5 shrink-0">
@@ -374,11 +395,12 @@ const LinkCard = ({
               <Copy className="h-3 w-3 mr-1" />
               Copiar
             </Button>
+            {canManage && (
             <TooltipProvider delayDuration={100}>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Button 
-                    variant="ghost" 
+                  <Button
+                    variant="ghost"
                     size="icon" 
                     className="h-7 w-7 min-h-0 min-w-0 text-muted-foreground hover:text-destructive"
                     onClick={onDelete}
@@ -389,6 +411,7 @@ const LinkCard = ({
                 <TooltipContent>Desactivar</TooltipContent>
               </Tooltip>
             </TooltipProvider>
+            )}
           </div>
         </div>
       </CollapsibleContent>
@@ -405,7 +428,10 @@ const LaundryShareManagement = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
   const { activeSede } = useSede();
+  const { user } = useAuth();
+  const { schedules } = useLaundryDeliverySchedule();
   const { shareLinks, isLoading, refetch, deactivateShareLink, applyTaskChanges } = useLaundryShareLinks();
+  const isRouteOwner = user?.email?.toLowerCase() === 'dgomezlimpatex@gmail.com';
   const [scheduledModalOpen, setScheduledModalOpen] = useState(false);
   const [configModalOpen, setConfigModalOpen] = useState(false);
   const [editModalOpen, setEditModalOpen] = useState(false);
@@ -414,6 +440,25 @@ const LaundryShareManagement = () => {
   const [showExpired, setShowExpired] = useState(false);
   const [search, setSearch] = useState('');
   const [highlightedId, setHighlightedId] = useState<string | null>(null);
+  const [isSyncing, setIsSyncing] = useState(false);
+
+  const handleSyncNow = async () => {
+    if (!isRouteOwner || !activeSede?.id) return;
+    setIsSyncing(true);
+    try {
+      const { error } = await supabase.functions.invoke('manage-laundry-classic-links', {
+        body: { action: 'reconcile', sedeId: activeSede.id, source: 'manual' },
+      });
+      if (error) throw error;
+      await refetch();
+      toast({ title: 'Enlaces actualizados', description: 'Se han revisado los próximos repartos.' });
+    } catch (error) {
+      console.error('Error syncing protocolized laundry links:', error);
+      toast({ title: 'No se pudo actualizar', description: 'Revisa los logs de la sincronización.', variant: 'destructive' });
+    } finally {
+      setIsSyncing(false);
+    }
+  };
 
   // Track newly created links to highlight them briefly
   const linkIds = useMemo(() => (shareLinks || []).map(l => l.id).join(','), [shareLinks]);
@@ -565,7 +610,7 @@ const LaundryShareManagement = () => {
               </div>
             </div>
             <div className="flex items-center gap-2 shrink-0">
-              <Button
+              {isRouteOwner && <Button
                 variant="outline"
                 size="sm"
                 onClick={() => navigate('/lavanderia/orden')}
@@ -574,8 +619,8 @@ const LaundryShareManagement = () => {
                 <Route className="h-4 w-4 text-primary" />
                 <span className="hidden sm:inline">Orden de rutas</span>
                 <span className="sm:hidden">Rutas</span>
-              </Button>
-              <DropdownMenu>
+              </Button>}
+              {isRouteOwner && <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <button className="p-2.5 bg-card hover:bg-muted rounded-xl border border-border shadow-sm text-muted-foreground hover:text-foreground transition-all shrink-0">
                     <MoreHorizontal className="w-4 h-4" />
@@ -600,7 +645,13 @@ const LaundryShareManagement = () => {
                   Limpiar expirados
                 </DropdownMenuItem>
               </DropdownMenuContent>
-              </DropdownMenu>
+              </DropdownMenu>}
+              {isRouteOwner && (
+                <Button variant="outline" size="sm" onClick={handleSyncNow} disabled={isSyncing} className="h-10 gap-2 rounded-xl bg-card px-3 shadow-sm">
+                  <RefreshCw className={cn('h-4 w-4', isSyncing && 'animate-spin')} />
+                  <span className="hidden md:inline">Sincronizar</span>
+                </Button>
+              )}
             </div>
           </div>
         </div>
@@ -617,29 +668,20 @@ const LaundryShareManagement = () => {
             </div>
           </div>
           <div className="flex flex-wrap gap-2">
-            {[
-              { label: 'Lunes', short: 'L', active: true },
-              { label: 'Martes', short: 'M', active: false },
-              { label: 'Miércoles', short: 'X', active: true },
-              { label: 'Jueves', short: 'J', active: false },
-              { label: 'Viernes', short: 'V', active: true },
-              { label: 'Sábado', short: 'S', active: false },
-              { label: 'Domingo', short: 'D', active: true },
-            ].map((day) => (
+            {(schedules || []).filter((schedule) => schedule.isActive).map((schedule) => (
               <div
-                key={day.label}
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold border ${
-                  day.active
-                    ? 'bg-primary/10 text-primary border-primary/20'
-                    : 'bg-muted/40 text-muted-foreground/60 border-transparent line-through'
-                }`}
+                key={schedule.id}
+                className="flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold border bg-primary/10 text-primary border-primary/20"
               >
-                <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${
-                  day.active ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground/70'
-                }`}>{day.short}</span>
-                {day.label}
+                <span className="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold bg-primary text-primary-foreground">
+                  {schedule.name.trim().charAt(0).toUpperCase()}
+                </span>
+                {schedule.name}
               </div>
             ))}
+            {(!schedules || schedules.filter((schedule) => schedule.isActive).length === 0) && (
+              <span className="text-xs text-muted-foreground">No hay días de reparto activos.</span>
+            )}
           </div>
         </div>
 
@@ -715,6 +757,7 @@ const LaundryShareManagement = () => {
                       onDelete={() => handleDeleteClick(link)}
                       onApplyChanges={(ids) => handleApplyChanges(link.id, ids)}
                       onAutoMergeNewTasks={(ids, existing, original) => handleAutoMergeNewTasks(link.id, ids, existing, original)}
+                      canManage={isRouteOwner}
                     />
                   ))}
                 </div>
@@ -738,6 +781,7 @@ const LaundryShareManagement = () => {
                       onDelete={() => handleDeleteClick(link)}
                       onApplyChanges={(ids) => handleApplyChanges(link.id, ids)}
                       onAutoMergeNewTasks={(ids, existing, original) => handleAutoMergeNewTasks(link.id, ids, existing, original)}
+                      canManage={isRouteOwner}
                     />
                   ))}
                 </div>
@@ -761,6 +805,7 @@ const LaundryShareManagement = () => {
                       onDelete={() => handleDeleteClick(link)}
                       onApplyChanges={(ids) => handleApplyChanges(link.id, ids)}
                       onAutoMergeNewTasks={(ids, existing, original) => handleAutoMergeNewTasks(link.id, ids, existing, original)}
+                      canManage={isRouteOwner}
                     />
                   ))}
                 </div>
@@ -791,7 +836,7 @@ const LaundryShareManagement = () => {
 
 
         {/* Expired Links (collapsible) */}
-        {expiredLinks.length > 0 && (
+        {isRouteOwner && expiredLinks.length > 0 && (
           <Collapsible open={showExpired} onOpenChange={setShowExpired}>
             <CollapsibleTrigger asChild>
               <button className="flex items-center gap-1.5 w-full py-1.5 text-[11px] font-medium uppercase tracking-wider text-muted-foreground hover:text-foreground transition-colors">
@@ -830,10 +875,12 @@ const LaundryShareManagement = () => {
         onOpenChange={setScheduledModalOpen}
       />
 
-      <LaundryScheduleConfigModal
-        open={configModalOpen}
-        onOpenChange={setConfigModalOpen}
-      />
+      {isRouteOwner && (
+        <LaundryScheduleConfigModal
+          open={configModalOpen}
+          onOpenChange={setConfigModalOpen}
+        />
+      )}
 
       <LaundryShareEditModal
         open={editModalOpen}

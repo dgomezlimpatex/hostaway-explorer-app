@@ -187,7 +187,7 @@ export const QuickDayLinksWidget = () => {
     const dow = getDay(today);
     const schedule = schedules?.find(s => s.dayOfWeek === dow && s.isActive);
     if (!schedule || schedule.collectionDays.length === 0) {
-      return { collectionDates: [todayStr], collectionDateStrs: [todayStr], label: undefined };
+      return { collectionDates: [], collectionDateStrs: [], label: undefined, schedule: undefined };
     }
     const dates = getCollectionDatesForDelivery(today, schedule.collectionDays);
     const strs = dates.map(d => format(d, 'yyyy-MM-dd'));
@@ -199,7 +199,7 @@ export const QuickDayLinksWidget = () => {
     const dow = getDay(tomorrow);
     const schedule = schedules?.find(s => s.dayOfWeek === dow && s.isActive);
     if (!schedule || schedule.collectionDays.length === 0) {
-      return { collectionDates: [tomorrowStr], collectionDateStrs: [tomorrowStr], label: undefined };
+      return { collectionDates: [], collectionDateStrs: [], label: undefined, schedule: undefined };
     }
     const dates = getCollectionDatesForDelivery(tomorrow, schedule.collectionDays);
     const strs = dates.map(d => format(d, 'yyyy-MM-dd'));
@@ -211,30 +211,38 @@ export const QuickDayLinksWidget = () => {
   const { data: todayTasks, isLoading: loadingToday } = useQuery({
     queryKey: ['quick-day-tasks', todayStr, activeSede?.id, todayScheduleInfo.collectionDateStrs],
     queryFn: () => fetchTasksForDates(todayScheduleInfo.collectionDateStrs, activeSede?.id || ''),
-    enabled: !!activeSede?.id,
+    enabled: !!activeSede?.id && !!todayScheduleInfo.schedule,
   });
 
   const { data: tomorrowTasks, isLoading: loadingTomorrow } = useQuery({
     queryKey: ['quick-day-tasks', tomorrowStr, activeSede?.id, tomorrowScheduleInfo.collectionDateStrs],
     queryFn: () => fetchTasksForDates(tomorrowScheduleInfo.collectionDateStrs, activeSede?.id || ''),
-    enabled: !!activeSede?.id,
+    enabled: !!activeSede?.id && !!tomorrowScheduleInfo.schedule,
   });
 
   // Find existing scheduled links for today and tomorrow
-  const scheduledLinks = shareLinks?.filter(l => l.linkType === 'scheduled') || [];
+  const scheduledLinks = shareLinks?.filter(
+    l => l.linkType === 'scheduled' && l.workflowVersion !== 'route_v2',
+  ) || [];
   
-  const todayLink = scheduledLinks.find(l => 
+  const todayLink = scheduledLinks.find(l =>
+    l.deliveryDate === todayStr && l.autoManaged
+  ) || scheduledLinks.find(l =>
     l.dateStart === todayStr && l.dateEnd === todayStr
   ) || scheduledLinks.find(l => {
     // Also match links where the delivery date (dateEnd) is today
     const strs = todayScheduleInfo.collectionDateStrs;
+    if (!strs.length) return false;
     return l.dateStart === strs[0] && l.dateEnd === strs[strs.length - 1];
   });
   
-  const tomorrowLink = scheduledLinks.find(l => 
+  const tomorrowLink = scheduledLinks.find(l =>
+    l.deliveryDate === tomorrowStr && l.autoManaged
+  ) || scheduledLinks.find(l =>
     l.dateStart === tomorrowStr && l.dateEnd === tomorrowStr
   ) || scheduledLinks.find(l => {
     const strs = tomorrowScheduleInfo.collectionDateStrs;
+    if (!strs.length) return false;
     return l.dateStart === strs[0] && l.dateEnd === strs[strs.length - 1];
   });
 
@@ -245,6 +253,14 @@ export const QuickDayLinksWidget = () => {
     
     try {
       const info = dayType === 'today' ? todayScheduleInfo : tomorrowScheduleInfo;
+      if (!info.schedule || info.collectionDateStrs.length === 0) {
+        toast({
+          title: 'Día no disponible',
+          description: 'Este día no está configurado como día de reparto.',
+          variant: 'destructive',
+        });
+        return;
+      }
       const tasks = await fetchTasksForDates(info.collectionDateStrs, activeSede.id);
       
       if (tasks.length === 0) {
@@ -304,30 +320,44 @@ export const QuickDayLinksWidget = () => {
     }
   };
 
+  const hasAvailableDay = !!todayScheduleInfo.schedule || !!tomorrowScheduleInfo.schedule;
+
+  if (!hasAvailableDay) {
+    return (
+      <div className="rounded-lg border border-dashed border-border px-3 py-2 text-xs text-muted-foreground">
+        Hoy y mañana no son días de reparto configurados.
+      </div>
+    );
+  }
+
   return (
-    <div className="flex flex-col sm:flex-row gap-2">
-      <QuickDayCard
-        label="Hoy"
-        date={today}
-        existingLink={todayLink}
-        onCreateLink={() => handleCreateLink(today, 'today')}
-        isCreating={creatingFor === 'today'}
-        taskCount={todayTasks?.length || 0}
-        isLoadingTasks={loadingToday}
-        collectionDateLabels={todayScheduleInfo.label}
-        accentColor="blue"
-      />
-      <QuickDayCard
-        label="Mañana"
-        date={tomorrow}
-        existingLink={tomorrowLink}
-        onCreateLink={() => handleCreateLink(tomorrow, 'tomorrow')}
-        isCreating={creatingFor === 'tomorrow'}
-        taskCount={tomorrowTasks?.length || 0}
-        isLoadingTasks={loadingTomorrow}
-        collectionDateLabels={tomorrowScheduleInfo.label}
-        accentColor="violet"
-      />
+    <div className="flex flex-col gap-2 sm:flex-row">
+      {todayScheduleInfo.schedule && (
+        <QuickDayCard
+          label="Hoy"
+          date={today}
+          existingLink={todayLink}
+          onCreateLink={() => handleCreateLink(today, 'today')}
+          isCreating={creatingFor === 'today'}
+          taskCount={todayTasks?.length || 0}
+          isLoadingTasks={loadingToday}
+          collectionDateLabels={todayScheduleInfo.label}
+          accentColor="blue"
+        />
+      )}
+      {tomorrowScheduleInfo.schedule && (
+        <QuickDayCard
+          label="Mañana"
+          date={tomorrow}
+          existingLink={tomorrowLink}
+          onCreateLink={() => handleCreateLink(tomorrow, 'tomorrow')}
+          isCreating={creatingFor === 'tomorrow'}
+          taskCount={tomorrowTasks?.length || 0}
+          isLoadingTasks={loadingTomorrow}
+          collectionDateLabels={tomorrowScheduleInfo.label}
+          accentColor="violet"
+        />
+      )}
     </div>
   );
 };
