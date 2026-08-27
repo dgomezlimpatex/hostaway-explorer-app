@@ -25,6 +25,10 @@ type DeliveryStatus = 'pending' | 'prepared' | 'delivered';
 type CollectionStatus = 'pending' | 'collected';
 type RouteAction = 'prepare' | 'issue' | 'critical_block' | 'collect' | 'deliver' | 'confirm_no_carry' | 'undo_bag' | 'complete_building';
 
+// El reparto queda conservado para reactivarlo más adelante. Mientras esta
+// bandera esté desactivada, el flujo pasa de novedades a la siguiente ruta.
+const ROUTE_DELIVERY_ENABLED = false;
+
 type RouteBag = {
   taskId: string;
   propertyCode: string;
@@ -395,7 +399,7 @@ const recalculateWorkflowStats = (workflow: RouteWorkflow): RouteWorkflow => {
   const allUrgentBags = workflow.currentRouteBags.filter((bag) => bag.bagStatus.status === 'pending' || bag.noveltyResolved === false);
   const urgentBags = workflow.authorizedToContinue ? [] : allUrgentBags;
   const nextPendingBags = workflow.nextRouteBags.filter((bag) => bag.bagStatus.status === 'pending');
-  const routePending = workflow.currentRouteBags
+  const routePending = ROUTE_DELIVERY_ENABLED && workflow.currentRouteBags
     .filter((bag) => !bag.isCancelled)
     .some((bag) => !isRouteBagComplete(bag));
 
@@ -999,7 +1003,7 @@ export const LaundryRouteV2View = ({ token }: LaundryRouteV2ViewProps) => {
           </section>
         )}
 
-        {!urgentBag && workflow.blockingStep === 'deliver' && (
+        {ROUTE_DELIVERY_ENABLED && !urgentBag && workflow.blockingStep === 'deliver' && (
           <section className="space-y-2">
             <div className="rounded-lg border border-[#dfd2bf] bg-[#fbf6ec] p-2.5 text-[#17130f]">
               <div className="flex items-center gap-1.5">

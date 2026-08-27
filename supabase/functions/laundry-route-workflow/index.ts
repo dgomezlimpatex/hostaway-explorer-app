@@ -10,6 +10,9 @@ type JsonRecord = Record<string, unknown>;
 type RouteAction = "load" | "prepare" | "issue" | "critical_block" | "collect" | "deliver" | "confirm_no_carry" | "undo_bag" | "complete_building";
 
 const ROUTE_V2_DAYS = new Set([0, 1, 3, 5]);
+// Conservamos la recogida y entrega para una futura reactivación, pero por
+// ahora no forma parte del avance obligatorio del nuevo sistema de ruta.
+const ROUTE_DELIVERY_ENABLED = false;
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -902,7 +905,7 @@ async function loadWorkflow(
   const authorizedToContinue = authorizationCoversBags(authorization, actualUrgentBags);
   const urgentBags = authorizedToContinue ? [] : actualUrgentBags;
   const nextPendingBags = nextRouteBags.filter((bag) => bag.bagStatus.status === "pending");
-  const routePending = currentRouteBags
+  const routePending = ROUTE_DELIVERY_ENABLED && currentRouteBags
     .filter((bag) => !bag.isCancelled)
     .some((bag) => (
       bag.deliveryTracking.collectionStatus !== "collected"
@@ -968,7 +971,7 @@ function recalculateWorkflowStats(workflow: JsonRecord): JsonRecord {
     : null;
   const authorizedToContinue = authorizationCoversBags(authorization, urgentBags);
   const visibleUrgentBags = authorizedToContinue ? [] : urgentBags;
-  const routePending = currentRouteBags
+  const routePending = ROUTE_DELIVERY_ENABLED && currentRouteBags
     .filter((bag) => bag.isCancelled !== true)
     .some((bag) => {
       const tracking = bag.deliveryTracking && typeof bag.deliveryTracking === "object"
