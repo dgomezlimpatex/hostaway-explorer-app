@@ -127,6 +127,8 @@ assert.match(planningPage, /max-w-\[1920px\]/, 'The reviewed planning workspace 
 assert.match(proposalPanel, /max-w-\[1920px\]/, 'The approval bar must align with the wider planning workspace');
 assert.match(proposalCalendar, /PIXELS_PER_MINUTE = 1\.4/, 'The desktop timeline must reserve enough horizontal space for readable tasks');
 assert.match(proposalCalendar, /MIN_CARD_WIDTH = 112/, 'Short tasks must keep a readable minimum card width');
+assert.match(proposalCalendar, /2xl:grid-cols-\[minmax\(0,1fr\)_280px\]/, 'The calendar must own the main desktop column instead of sharing it with a permanent left rail');
+assert.match(proposalCalendar, /sm:grid-cols-2 xl:grid-cols-3/, 'Uncovered tasks must move to a compact horizontal tray above the calendar');
 assert.match(proposalCalendar, /Lista del reparto propuesto/, 'Proposal must provide a simple list before the technical timeline');
 assert.match(proposalCalendar, /Ver calendario por horas/, 'Technical timeline must be explicitly optional');
 assert.match(proposalCalendar, /Cambios pendientes/, 'Calendar must summarize manual draft changes');

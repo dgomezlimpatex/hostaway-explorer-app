@@ -1224,8 +1224,8 @@ export const PlanningProposalCalendar = ({
             ))}
         </div>
 
-        <div className="hidden min-h-[620px] gap-3 lg:grid lg:grid-cols-[220px_minmax(0,1fr)] 2xl:grid-cols-[220px_minmax(0,1fr)_280px]">
-          <aside className="self-start rounded-2xl border border-red-200 bg-[#fffafa] shadow-sm 2xl:sticky 2xl:top-4">
+        <div className="hidden min-h-[620px] gap-3 lg:grid lg:grid-cols-1 2xl:grid-cols-[minmax(0,1fr)_280px]">
+          <aside className="rounded-2xl border border-red-200 bg-[#fffafa] shadow-sm lg:col-start-1 lg:row-start-1">
             <div className="flex items-center justify-between border-b border-red-100 px-4 py-3">
               <div>
                 <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-red-600">
@@ -1239,7 +1239,7 @@ export const PlanningProposalCalendar = ({
                 {unassignedTasks.length}
               </span>
             </div>
-            <div className="max-h-[560px] space-y-2 overflow-y-auto p-3">
+            <div className="grid max-h-[240px] gap-2 overflow-y-auto p-3 sm:grid-cols-2 xl:grid-cols-3">
               {unassignedTasks.length === 0 ? (
                 <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-center text-sm text-emerald-800">
                   <CheckCircle2 className="mx-auto mb-2 h-5 w-5" /> Todo
@@ -1285,7 +1285,7 @@ export const PlanningProposalCalendar = ({
 
           <section
             aria-label="Ver calendario por horas"
-            className="min-w-0 overflow-hidden rounded-2xl border border-[#310984]/10 bg-white shadow-sm"
+            className="min-w-0 overflow-hidden rounded-2xl border border-[#310984]/10 bg-white shadow-sm lg:col-start-1 lg:row-start-2"
           >
             <div className="flex items-center justify-between border-b border-[#310984]/10 px-4 py-3">
               <div>
@@ -1481,7 +1481,7 @@ export const PlanningProposalCalendar = ({
             </div>
           </section>
 
-          <aside className="hidden self-start overflow-hidden rounded-2xl border border-[#310984]/10 bg-white shadow-sm 2xl:sticky 2xl:top-4 2xl:block">
+          <aside className="hidden self-start overflow-hidden rounded-2xl border border-[#310984]/10 bg-white shadow-sm 2xl:sticky 2xl:top-4 2xl:col-start-2 2xl:row-span-2 2xl:row-start-1 2xl:block">
             <div className="bg-[#16042f] px-4 py-4 text-white">
               <p className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.16em] text-cyan-200">
                 <Sparkles className="h-4 w-4" /> Decisión de Hermes
