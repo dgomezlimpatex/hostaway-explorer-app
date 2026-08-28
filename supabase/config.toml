@@ -37,6 +37,12 @@ verify_jwt = false
 [functions.laundry-route-workflow]
 verify_jwt = false
 
+[functions.laundry-route-access]
+verify_jwt = false
+
+[functions.manage-laundry-route-workers]
+verify_jwt = true
+
 # Public links can refresh their managed snapshot by token. Administrative
 # actions are checked again inside the function.
 [functions.manage-laundry-classic-links]

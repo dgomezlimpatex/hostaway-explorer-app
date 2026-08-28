@@ -34,6 +34,7 @@ import { supabase } from '@/integrations/supabase/client';
 
 type Decision = 'link' | 'create' | 'ignore';
 type ProposalFilter = 'pending' | 'new' | 'similar' | 'exact' | 'linked' | 'selected' | 'all';
+type ImportAccessRole = 'cleaner' | 'supervisor' | 'admin' | 'route_worker';
 
 type RegistroEmployee = {
   id: string;
@@ -92,6 +93,7 @@ type SyncLog = {
 type AccessConfirmation = {
   email: string;
   createWithoutAccess: boolean;
+  role: ImportAccessRole;
 };
 
 type InvitationDetail = {
@@ -107,11 +109,19 @@ type LinkResponse = {
   linked: number;
   created: number;
   invitations_sent?: number;
+  route_workers_enabled?: number;
   invitation_details?: InvitationDetail[];
   errors?: Array<unknown>;
 };
 
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+const ACCESS_ROLE_OPTIONS: Array<{ value: ImportAccessRole; label: string; description: string }> = [
+  { value: 'cleaner', label: 'Operario/a de limpieza', description: 'Acceso a sus tareas y reportes.' },
+  { value: 'supervisor', label: 'Supervisor/a', description: 'Acceso a limpieza y supervisión.' },
+  { value: 'admin', label: 'Administrador/a', description: 'Acceso administrativo completo.' },
+  { value: 'route_worker', label: 'Repartidor/a', description: 'Solo accede a rutas route_v2 con el PIN de REGISTRO.' },
+];
 
 const getErrorMessage = (error: unknown) => {
   if (error instanceof Error) return error.message;
@@ -325,6 +335,7 @@ const Integraciones = () => {
       [id]: {
         email: current[id]?.email || '',
         createWithoutAccess: current[id]?.createWithoutAccess || false,
+        role: current[id]?.role || 'cleaner',
         ...patch,
       },
     }));
@@ -363,6 +374,7 @@ const Integraciones = () => {
       defaults[proposal.registro.id] = {
         email,
         createWithoutAccess: !email,
+        role: 'cleaner',
       };
     });
     setAccessConfirmations(defaults);
@@ -373,9 +385,21 @@ const Integraciones = () => {
     const normalized: Record<string, AccessConfirmation> = {};
 
     for (const proposal of selectedActionableProposals) {
-      const current = accessConfirmations[proposal.registro.id] || { email: '', createWithoutAccess: true };
+      const current = accessConfirmations[proposal.registro.id] || {
+        email: '',
+        createWithoutAccess: true,
+        role: 'cleaner' as const,
+      };
       const email = current.email.trim().toLowerCase();
-      if (email && !emailRegex.test(email)) {
+      if (current.role === 'route_worker' && !String(proposal.registro.pin ?? '').trim()) {
+        toast({
+          title: 'PIN de REGISTRO necesario',
+          description: `${proposal.registro.name || 'El trabajador'} no tiene un PIN disponible en REGISTRO.`,
+          variant: 'destructive',
+        });
+        return;
+      }
+      if (current.role !== 'route_worker' && email && !emailRegex.test(email)) {
         toast({
           title: 'Email no válido',
           description: `Revisa el email de ${proposal.registro.name || 'la trabajadora seleccionada'}.`,
@@ -384,8 +408,9 @@ const Integraciones = () => {
         return;
       }
       normalized[proposal.registro.id] = {
-        email,
-        createWithoutAccess: current.createWithoutAccess || !email,
+        email: current.role === 'route_worker' ? '' : email,
+        createWithoutAccess: current.role === 'route_worker' || current.createWithoutAccess || !email,
+        role: current.role,
       };
     }
 
@@ -401,6 +426,7 @@ const Integraciones = () => {
         const access = confirmations[proposal.registro.id];
         const accessEmail = access?.email?.trim().toLowerCase() || null;
         const createWithoutAccess = access?.createWithoutAccess || !accessEmail;
+        const accessRole = access?.role || 'cleaner';
         if (decision === 'ignore') return [];
         if (decision === 'link' && proposal.cleaner) {
           return [{
@@ -409,6 +435,7 @@ const Integraciones = () => {
             snapshot: proposal.registro,
             access_email: accessEmail,
             create_without_access: createWithoutAccess,
+            access_role: accessRole,
           }];
         }
         if (decision === 'create') {
@@ -420,6 +447,7 @@ const Integraciones = () => {
             snapshot: proposal.registro,
             access_email: accessEmail,
             create_without_access: createWithoutAccess,
+            access_role: accessRole,
           }];
         }
         return [];
@@ -436,7 +464,7 @@ const Integraciones = () => {
     onSuccess: (data) => {
       toast({
         title: 'Trabajadores aplicados',
-        description: `Vinculados: ${data.linked}. Creados: ${data.created}. Invitaciones: ${data.invitations_sent || 0}.`,
+        description: `Vinculados: ${data.linked}. Creados: ${data.created}. Invitaciones: ${data.invitations_sent || 0}. Repartidores: ${data.route_workers_enabled || 0}.`,
       });
       setInvitationDetails(data.invitation_details || []);
       setIsAccessDialogOpen(false);
@@ -510,6 +538,8 @@ const Integraciones = () => {
       invited: 'Invitación enviada',
       resent_pending: 'Invitación reenviada',
       already_has_access: 'Ya tenía acceso',
+      role_assigned: 'Rol asignado',
+      route_access_enabled: 'Acceso de ruta activado',
       no_email: 'Creada sin acceso',
       no_sede: 'Sin sede',
       email_failed: 'Email fallido',
@@ -571,9 +601,9 @@ const Integraciones = () => {
       <Dialog open={isAccessDialogOpen} onOpenChange={setIsAccessDialogOpen}>
         <DialogContent className="max-w-3xl">
           <DialogHeader>
-            <DialogTitle>Confirmar acceso a la aplicación</DialogTitle>
+            <DialogTitle>Confirmar rol y acceso</DialogTitle>
             <DialogDescription>
-              Revisa el email de acceso antes de crear o vincular trabajadoras desde REGISTRO. Si no indicas email, se crearán sin acceso.
+              Elige el rol de cada persona. Los repartidores accederán solo al nuevo sistema de ruta con su PIN de REGISTRO.
             </DialogDescription>
           </DialogHeader>
 
@@ -584,7 +614,9 @@ const Integraciones = () => {
               const confirmation = accessConfirmations[proposal.registro.id] || {
                 email: '',
                 createWithoutAccess: true,
+                role: 'cleaner' as const,
               };
+              const isRouteWorker = confirmation.role === 'route_worker';
 
               return (
                 <div key={proposal.registro.id} className="rounded-lg border p-3">
@@ -604,12 +636,44 @@ const Integraciones = () => {
                         </div>
                       )}
                     </div>
-                    <Badge variant={confirmation.createWithoutAccess ? 'outline' : 'secondary'}>
-                      {confirmation.createWithoutAccess ? 'Sin acceso' : 'Enviar invitación'}
+                    <Badge variant={isRouteWorker || !confirmation.createWithoutAccess ? 'secondary' : 'outline'}>
+                      {isRouteWorker ? 'Acceso con PIN' : confirmation.createWithoutAccess ? 'Sin acceso' : 'Enviar invitación'}
                     </Badge>
                   </div>
 
-                  <div className="mt-3 grid gap-3 md:grid-cols-[1fr_auto] md:items-end">
+                  <div className="mt-3 grid gap-3 md:grid-cols-2">
+                    <div className="space-y-1">
+                      <Label>Rol en GESTIÓN</Label>
+                      <Select
+                        value={confirmation.role}
+                        onValueChange={(value) =>
+                          setAccessConfirmation(proposal.registro.id, {
+                            role: value as ImportAccessRole,
+                            createWithoutAccess: value === 'route_worker' ? true : confirmation.createWithoutAccess,
+                          })
+                        }
+                      >
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          {ACCESS_ROLE_OPTIONS.map((option) => (
+                            <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <p className="text-xs text-muted-foreground">
+                        {ACCESS_ROLE_OPTIONS.find((option) => option.value === confirmation.role)?.description}
+                      </p>
+                    </div>
+
+                    {isRouteWorker ? (
+                      <div className="rounded-lg border border-[#d9cdf3] bg-[#f6f2ff] p-3">
+                        <p className="text-xs font-bold uppercase tracking-wide text-[#310984]">PIN de REGISTRO</p>
+                        <p className="mt-1 text-sm font-semibold text-slate-950">
+                          {proposal.registro.pin ? 'PIN disponible' : 'Sin PIN disponible'}
+                        </p>
+                        <p className="mt-1 text-xs text-slate-600">No se enviará email ni tendrá acceso al resto de la aplicación.</p>
+                      </div>
+                    ) : (
                     <div className="space-y-1">
                       <Label>Email de acceso</Label>
                       <Input
@@ -625,6 +689,11 @@ const Integraciones = () => {
                         }
                       />
                     </div>
+                    )}
+                  </div>
+
+                  {!isRouteWorker && (
+                  <div className="mt-3 flex justify-end">
                     <label className="flex items-center gap-2 rounded-md border px-3 py-2 text-sm">
                       <Checkbox
                         checked={confirmation.createWithoutAccess}
@@ -637,6 +706,7 @@ const Integraciones = () => {
                       Crear sin acceso
                     </label>
                   </div>
+                  )}
                 </div>
               );
             })}
@@ -647,7 +717,7 @@ const Integraciones = () => {
               Cancelar
             </Button>
             <Button type="button" onClick={confirmAccessAndApply} disabled={linkMutation.isPending}>
-              {linkMutation.isPending ? 'Aplicando...' : 'Crear/vincular e invitar'}
+              {linkMutation.isPending ? 'Aplicando...' : 'Crear o vincular'}
             </Button>
           </DialogFooter>
         </DialogContent>

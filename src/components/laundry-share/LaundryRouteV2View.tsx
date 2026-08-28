@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -6,11 +6,16 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import {
   AlertTriangle,
   CheckCircle2,
   Loader2,
+  LockKeyhole,
+  LogOut,
   PackageCheck,
   Shirt,
   Truck,
@@ -22,6 +27,26 @@ type BagStatus = 'pending' | 'prepared' | 'issue';
 type DeliveryStatus = 'pending' | 'prepared' | 'delivered';
 type CollectionStatus = 'pending' | 'collected';
 type RouteAction = 'prepare' | 'issue' | 'collect' | 'deliver';
+
+type RouteWorkerOption = {
+  id: string;
+  cleanerId: string;
+  name: string;
+  sedeId: string;
+};
+
+type RouteWorkerIdentity = {
+  routeWorkerId: string;
+  cleanerId: string;
+  workerName: string;
+  sedeId: string;
+};
+
+type RouteAccessState = {
+  sessionToken: string;
+  expiresAt: string;
+  worker: RouteWorkerIdentity;
+};
 
 type RouteBag = {
   taskId: string;
@@ -82,6 +107,7 @@ interface LaundryRouteV2ViewProps {
 
 const invokeWorkflow = async (
   token: string,
+  sessionToken?: string,
   action?: RouteAction,
   taskId?: string,
   issueReason?: string,
@@ -89,6 +115,7 @@ const invokeWorkflow = async (
   const { data, error } = await supabase.functions.invoke('laundry-route-workflow', {
     body: {
       token,
+      sessionToken,
       action: action || 'load',
       taskId,
       issueReason,
@@ -98,6 +125,21 @@ const invokeWorkflow = async (
   if (error) throw error;
   if (!data?.success) throw new Error(data?.error || 'No se pudo cargar el reparto');
   return data.workflow as RouteWorkflow;
+};
+
+const invokeRouteAccess = async <T,>(body: Record<string, unknown>): Promise<T> => {
+  const { data, error } = await supabase.functions.invoke('laundry-route-access', { body });
+  if (error) {
+    let message = error.message;
+    const context = (error as { context?: Response }).context;
+    if (context && typeof context.clone === 'function') {
+      const payload = await context.clone().json().catch(() => null);
+      if (payload?.error) message = String(payload.error);
+    }
+    throw new Error(message);
+  }
+  if ((data as { error?: string } | null)?.error) throw new Error((data as { error: string }).error);
+  return data as T;
 };
 
 const formatDate = (date: string) =>
@@ -473,10 +515,79 @@ const BagCard = ({
 export const LaundryRouteV2View = ({ token }: LaundryRouteV2ViewProps) => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const accessStorageKey = useMemo(() => `laundry-route-access:${token}`, [token]);
+  const [routeAccess, setRouteAccess] = useState<RouteAccessState | null>(() => {
+    try {
+      const stored = window.localStorage.getItem(`laundry-route-access:${token}`);
+      return stored ? JSON.parse(stored) as RouteAccessState : null;
+    } catch {
+      return null;
+    }
+  });
+  const [selectedWorkerId, setSelectedWorkerId] = useState('');
+  const [pin, setPin] = useState('');
   const [issueTaskId, setIssueTaskId] = useState<string | null>(null);
   const [issueReason, setIssueReason] = useState('');
   const [completeFlashTaskId, setCompleteFlashTaskId] = useState<string | null>(null);
   const queryKey = useMemo(() => ['laundry-route-v2', token], [token]);
+
+  const { data: accessInfo, isLoading: isLoadingAccess, error: accessInfoError } = useQuery({
+    queryKey: ['laundry-route-access-list', token],
+    queryFn: () => invokeRouteAccess<{ success: true; required: boolean; workers: RouteWorkerOption[] }>({
+      action: 'list',
+      token,
+    }),
+    retry: 1,
+    staleTime: 60_000,
+  });
+
+  const accessRequired = accessInfo?.required === true;
+  const { data: validatedAccess, isLoading: isValidatingAccess } = useQuery({
+    queryKey: ['laundry-route-access-session', token, routeAccess?.sessionToken],
+    queryFn: () => invokeRouteAccess<{ success: true; worker: RouteWorkerIdentity }>({
+      action: 'validate',
+      token,
+      sessionToken: routeAccess?.sessionToken,
+    }),
+    enabled: accessRequired && Boolean(routeAccess?.sessionToken),
+    retry: false,
+  });
+
+  useEffect(() => {
+    if (!routeAccess?.expiresAt) return;
+    if (new Date(routeAccess.expiresAt).getTime() > Date.now()) return;
+    window.localStorage.removeItem(accessStorageKey);
+    setRouteAccess(null);
+  }, [accessStorageKey, routeAccess?.expiresAt]);
+
+  const loginMutation = useMutation({
+    mutationFn: () => invokeRouteAccess<RouteAccessState & { success: true }>({
+      action: 'login',
+      token,
+      workerId: selectedWorkerId,
+      pin,
+    }),
+    onSuccess: (data) => {
+      const nextAccess: RouteAccessState = {
+        sessionToken: data.sessionToken,
+        expiresAt: data.expiresAt,
+        worker: data.worker,
+      };
+      window.localStorage.setItem(accessStorageKey, JSON.stringify(nextAccess));
+      setRouteAccess(nextAccess);
+      setPin('');
+      queryClient.invalidateQueries({ queryKey: ['laundry-route-access-session', token] });
+    },
+    onError: (loginError) => {
+      toast({
+        title: 'No se pudo acceder',
+        description: loginError instanceof Error ? loginError.message : 'Comprueba el PIN',
+        variant: 'destructive',
+      });
+    },
+  });
+
+  const hasValidAccess = !accessRequired || Boolean(validatedAccess?.worker);
 
   const {
     data: workflow,
@@ -485,13 +596,14 @@ export const LaundryRouteV2View = ({ token }: LaundryRouteV2ViewProps) => {
     refetch,
   } = useQuery({
     queryKey,
-    queryFn: () => invokeWorkflow(token),
+    queryFn: () => invokeWorkflow(token, routeAccess?.sessionToken),
+    enabled: Boolean(accessInfo) && hasValidAccess,
     refetchOnWindowFocus: true,
   });
 
   const actionMutation = useMutation({
     mutationFn: ({ action, taskId, reason }: { action: RouteAction; taskId: string; reason?: string }) =>
-      invokeWorkflow(token, action, taskId, reason),
+      invokeWorkflow(token, routeAccess?.sessionToken, action, taskId, reason),
     onMutate: async ({ action, taskId, reason }) => {
       await queryClient.cancelQueries({ queryKey });
       const previousWorkflow = queryClient.getQueryData<RouteWorkflow>(queryKey);
@@ -583,6 +695,100 @@ export const LaundryRouteV2View = ({ token }: LaundryRouteV2ViewProps) => {
     [workflow?.nextRouteBags],
   );
 
+  const logoutRouteWorker = async () => {
+    const sessionToken = routeAccess?.sessionToken;
+    window.localStorage.removeItem(accessStorageKey);
+    setRouteAccess(null);
+    queryClient.removeQueries({ queryKey });
+    if (sessionToken) {
+      await invokeRouteAccess({ action: 'logout', token, sessionToken }).catch(() => undefined);
+    }
+  };
+
+  if (isLoadingAccess || (accessRequired && routeAccess && isValidatingAccess)) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[#eee8dc] p-4">
+        <div className="space-y-3 text-center">
+          <Loader2 className="mx-auto h-9 w-9 animate-spin text-[#c4512e]" />
+          <p className="text-sm font-semibold text-[#6f5947]">Comprobando acceso a la ruta...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (accessInfoError) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[#eee8dc] p-4">
+        <div className="max-w-sm space-y-3 rounded-2xl border border-red-200 bg-white p-6 text-center shadow-sm">
+          <AlertTriangle className="mx-auto h-10 w-10 text-red-600" />
+          <h1 className="text-xl font-black text-slate-950">No se pudo comprobar el acceso</h1>
+          <p className="text-sm text-slate-600">{accessInfoError instanceof Error ? accessInfoError.message : 'Inténtalo de nuevo.'}</p>
+          <Button onClick={() => window.location.reload()} className="w-full">Reintentar</Button>
+        </div>
+      </div>
+    );
+  }
+
+  if (accessRequired && !hasValidAccess) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[#eee8dc] p-4">
+        <Card className="w-full max-w-sm overflow-hidden border-[#dfcdb7] bg-[#fffaf2] shadow-xl">
+          <CardContent className="space-y-5 p-6">
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#c4512e] text-white">
+              <LockKeyhole className="h-6 w-6" />
+            </div>
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#a18465]">Nuevo sistema de ruta</p>
+              <h1 className="mt-1 text-2xl font-black text-[#17130f]">Identifícate para continuar</h1>
+              <p className="mt-1 text-sm text-[#6f5947]">Selecciona tu nombre e introduce el PIN que tienes asignado en REGISTRO.</p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="route-worker">Repartidor</Label>
+              <Select value={selectedWorkerId} onValueChange={setSelectedWorkerId}>
+                <SelectTrigger id="route-worker" className="h-12 bg-white">
+                  <SelectValue placeholder="Selecciona tu nombre" />
+                </SelectTrigger>
+                <SelectContent>
+                  {(accessInfo?.workers ?? []).map((worker) => (
+                    <SelectItem key={worker.id} value={worker.id}>{worker.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="route-pin">PIN de REGISTRO</Label>
+              <Input
+                id="route-pin"
+                type="password"
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                value={pin}
+                onChange={(event) => setPin(event.target.value.replace(/\D/g, '').slice(0, 12))}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter' && selectedWorkerId && pin.length >= 3) loginMutation.mutate();
+                }}
+                placeholder="Introduce tu PIN"
+                className="h-14 bg-white text-center text-xl font-black tracking-[0.25em]"
+              />
+            </div>
+
+            <Button
+              size="lg"
+              className="h-14 w-full rounded-xl bg-[#c4512e] text-base font-black hover:bg-[#a94427]"
+              disabled={!selectedWorkerId || pin.length < 3 || loginMutation.isPending}
+              onClick={() => loginMutation.mutate()}
+            >
+              {loginMutation.isPending ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <LockKeyhole className="mr-2 h-5 w-5" />}
+              Acceder a la ruta
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50">
@@ -638,6 +844,18 @@ export const LaundryRouteV2View = ({ token }: LaundryRouteV2ViewProps) => {
   return (
     <div className="min-h-screen bg-[#eee8dc]">
       <main className="mx-auto max-w-md space-y-2 px-4 py-3 pb-6">
+        {accessRequired && routeAccess?.worker && (
+          <div className="flex items-center justify-between rounded-xl border border-[#dfd2bf] bg-[#fffaf2] px-3 py-2">
+            <div className="min-w-0">
+              <p className="text-[9px] font-black uppercase tracking-[0.18em] text-[#a18465]">Ruta iniciada por</p>
+              <p className="truncate text-sm font-black text-[#17130f]">{routeAccess.worker.workerName}</p>
+            </div>
+            <Button variant="ghost" size="sm" onClick={logoutRouteWorker} className="text-[#8d351e]">
+              <LogOut className="mr-1.5 h-4 w-4" />
+              Cambiar
+            </Button>
+          </div>
+        )}
         {urgentBag && (
           <section className="space-y-2">
             <div className="rounded-xl border border-[#e2a993] bg-[#f7ded3] px-3 py-2 text-[#8d351e]">

@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Dialog,
   DialogContent,
@@ -21,6 +22,7 @@ import {
   Mail,
   Phone,
   Save,
+  Truck,
   UserRoundCheck,
   X,
 } from 'lucide-react';
@@ -33,6 +35,8 @@ import { ContractManagement } from './ContractManagement';
 import { AbsencesTab } from './absences/AbsencesTab';
 import { DeactivateWorkerDialog } from './DeactivateWorkerDialog';
 import { cn } from '@/lib/utils';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 
 interface WorkerDetailModalProps {
   worker: Cleaner | null;
@@ -392,6 +396,8 @@ const WorkerProfilePanel = ({ worker }: { worker: Cleaner }) => {
           </CardContent>
         </Card>
 
+        <RouteWorkerAccessCard worker={worker} />
+
         <Card className="border-0 bg-[#f4f0ff] shadow-sm">
           <CardContent className="space-y-2 p-4">
             <h3 className="text-sm font-black text-[#310984]">Acciones frecuentes</h3>
@@ -410,6 +416,115 @@ const WorkerProfilePanel = ({ worker }: { worker: Cleaner }) => {
         }}
       />
     </>
+  );
+};
+
+type RouteWorkerAccessStatus = {
+  success: true;
+  access: {
+    id: string;
+    is_active: boolean;
+    last_access_at: string | null;
+    pin_synced_at: string | null;
+  } | null;
+  hasRegistroPin: boolean;
+  isLinkedToRegistro: boolean;
+  workerIsActive: boolean;
+};
+
+const invokeRouteWorkerManagement = async <T,>(body: Record<string, unknown>): Promise<T> => {
+  const { data, error } = await supabase.functions.invoke('manage-laundry-route-workers', { body });
+  if (error) {
+    let message = error.message;
+    const context = (error as { context?: Response }).context;
+    if (context && typeof context.clone === 'function') {
+      const payload = await context.clone().json().catch(() => null);
+      if (payload?.error) message = String(payload.error);
+    }
+    throw new Error(message);
+  }
+  return data as T;
+};
+
+const RouteWorkerAccessCard = ({ worker }: { worker: Cleaner }) => {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const queryKey = ['laundry-route-worker-access', worker.id];
+  const { data: status, isLoading } = useQuery({
+    queryKey,
+    queryFn: () => invokeRouteWorkerManagement<RouteWorkerAccessStatus>({
+      action: 'status',
+      cleanerId: worker.id,
+    }),
+  });
+
+  const toggleAccess = useMutation({
+    mutationFn: (enabled: boolean) => invokeRouteWorkerManagement<{ success: true; active: boolean }>({
+      action: 'set_active',
+      cleanerId: worker.id,
+      enabled,
+    }),
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey });
+      toast({
+        title: result.active ? 'Rol de repartidor activado' : 'Rol de repartidor desactivado',
+        description: result.active
+          ? 'Ya puede entrar en el nuevo sistema de ruta con su PIN de REGISTRO.'
+          : 'Sus sesiones de ruta han quedado cerradas.',
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: 'No se pudo cambiar el acceso',
+        description: error instanceof Error ? error.message : 'Inténtalo de nuevo.',
+        variant: 'destructive',
+      });
+    },
+  });
+
+  const isEnabled = status?.access?.is_active === true;
+  const canEnable = status?.hasRegistroPin && status?.workerIsActive;
+
+  return (
+    <Card className="border-0 shadow-sm">
+      <CardContent className="space-y-3 p-4">
+        <div className="flex items-start gap-3">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#f4f0ff] text-[#310984]">
+            <Truck className="h-5 w-5" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <h3 className="text-sm font-black uppercase tracking-[0.14em] text-slate-700">Nuevo sistema de ruta</h3>
+              <Badge className={isEnabled ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-700'}>
+                {isEnabled ? 'Repartidor activo' : 'Sin acceso'}
+              </Badge>
+            </div>
+            <p className="mt-1 text-xs text-slate-500">Acceso exclusivo a enlaces route_v2 mediante el PIN sincronizado desde REGISTRO.</p>
+          </div>
+        </div>
+
+        {!isLoading && !status?.hasRegistroPin && (
+          <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
+            No se puede activar: este trabajador no tiene PIN en REGISTRO.
+          </div>
+        )}
+
+        <Button
+          type="button"
+          variant={isEnabled ? 'outline' : 'default'}
+          className="w-full"
+          disabled={isLoading || toggleAccess.isPending || (!isEnabled && !canEnable)}
+          onClick={() => toggleAccess.mutate(!isEnabled)}
+        >
+          <Truck className="mr-2 h-4 w-4" />
+          {toggleAccess.isPending
+            ? 'Guardando...'
+            : isEnabled
+              ? 'Quitar rol de repartidor'
+              : 'Asignar rol de repartidor'}
+        </Button>
+      </CardContent>
+    </Card>
   );
 };
 const Field = ({
