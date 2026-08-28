@@ -7,7 +7,6 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import {
   AlertTriangle,
@@ -29,13 +28,6 @@ type BagStatus = 'pending' | 'prepared' | 'issue';
 type DeliveryStatus = 'pending' | 'prepared' | 'delivered';
 type CollectionStatus = 'pending' | 'collected';
 type RouteAction = 'prepare' | 'issue' | 'critical_block' | 'collect' | 'deliver' | 'confirm_no_carry' | 'undo_bag' | 'complete_building';
-
-type RouteWorkerOption = {
-  id: string;
-  cleanerId: string;
-  name: string;
-  sedeId: string;
-};
 
 type RouteWorkerIdentity = {
   routeWorkerId: string;
@@ -589,7 +581,6 @@ export const LaundryRouteV2View = ({ token }: LaundryRouteV2ViewProps) => {
       return null;
     }
   });
-  const [selectedWorkerId, setSelectedWorkerId] = useState('');
   const [pin, setPin] = useState('');
   const [issueTaskId, setIssueTaskId] = useState<string | null>(null);
   const [issueReason, setIssueReason] = useState('');
@@ -604,7 +595,7 @@ export const LaundryRouteV2View = ({ token }: LaundryRouteV2ViewProps) => {
 
   const { data: accessInfo, isLoading: isLoadingAccess, error: accessInfoError } = useQuery({
     queryKey: ['laundry-route-access-list', token],
-    queryFn: () => invokeRouteAccess<{ success: true; required: boolean; workers: RouteWorkerOption[] }>({
+    queryFn: () => invokeRouteAccess<{ success: true; required: boolean }>({
       action: 'list',
       token,
     }),
@@ -635,7 +626,6 @@ export const LaundryRouteV2View = ({ token }: LaundryRouteV2ViewProps) => {
     mutationFn: () => invokeRouteAccess<RouteAccessState & { success: true }>({
       action: 'login',
       token,
-      workerId: selectedWorkerId,
       pin,
     }),
     onSuccess: (data) => {
@@ -937,21 +927,7 @@ export const LaundryRouteV2View = ({ token }: LaundryRouteV2ViewProps) => {
             <div>
               <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#a18465]">Nuevo sistema de ruta</p>
               <h1 className="mt-1 text-2xl font-black text-[#17130f]">Identificate para continuar</h1>
-              <p className="mt-1 text-sm text-[#6f5947]">Selecciona tu nombre e introduce el PIN que tienes asignado en REGISTRO.</p>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="route-worker">Repartidor</Label>
-              <Select value={selectedWorkerId} onValueChange={setSelectedWorkerId}>
-                <SelectTrigger id="route-worker" className="h-12 bg-white">
-                  <SelectValue placeholder="Selecciona tu nombre" />
-                </SelectTrigger>
-                <SelectContent>
-                  {(accessInfo?.workers ?? []).map((worker) => (
-                    <SelectItem key={worker.id} value={worker.id}>{worker.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <p className="mt-1 text-sm text-[#6f5947]">Introduce el PIN que tienes asignado en REGISTRO.</p>
             </div>
 
             <div className="space-y-2">
@@ -961,10 +937,11 @@ export const LaundryRouteV2View = ({ token }: LaundryRouteV2ViewProps) => {
                 type="password"
                 inputMode="numeric"
                 autoComplete="one-time-code"
+                autoFocus
                 value={pin}
                 onChange={(event) => setPin(event.target.value.replace(/\D/g, '').slice(0, 12))}
                 onKeyDown={(event) => {
-                  if (event.key === 'Enter' && selectedWorkerId && pin.length >= 3) loginMutation.mutate();
+                  if (event.key === 'Enter' && pin.length >= 3) loginMutation.mutate();
                 }}
                 placeholder="Introduce tu PIN"
                 className="h-14 bg-white text-center text-xl font-black tracking-[0.25em]"
@@ -974,7 +951,7 @@ export const LaundryRouteV2View = ({ token }: LaundryRouteV2ViewProps) => {
             <Button
               size="lg"
               className="h-14 w-full rounded-xl bg-[#c4512e] text-base font-black hover:bg-[#a94427]"
-              disabled={!selectedWorkerId || pin.length < 3 || loginMutation.isPending}
+              disabled={pin.length < 3 || loginMutation.isPending}
               onClick={() => loginMutation.mutate()}
             >
               {loginMutation.isPending ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <LockKeyhole className="mr-2 h-5 w-5" />}

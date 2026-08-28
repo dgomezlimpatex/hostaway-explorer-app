@@ -5,6 +5,13 @@ export type RouteWorkerIdentity = {
   sedeId: string;
 };
 
+export type RouteWorkerOption = {
+  id: string;
+  cleanerId: string;
+  name: string;
+  sedeId: string;
+};
+
 type SupabaseLike = any;
 
 function singleRelation<T>(value: T | T[] | null | undefined): T | null {
@@ -40,7 +47,10 @@ export async function getRouteLink(supabase: SupabaseLike, token: string) {
   return { link } as const;
 }
 
-export async function listActiveRouteWorkers(supabase: SupabaseLike, sedeId: string) {
+export async function listActiveRouteWorkers(
+  supabase: SupabaseLike,
+  sedeId: string,
+): Promise<RouteWorkerOption[]> {
   const { data, error } = await supabase
     .from('laundry_route_workers')
     .select('id, cleaner_id, sede_id, cleaners!inner(id, name, is_active)')

@@ -43,7 +43,7 @@ Deno.serve(async (req) => {
 
     if (action === 'list') {
       const workers = await listActiveRouteWorkers(supabase, link.sede_id);
-      return json({ success: true, required: workers.length > 0, workers });
+      return json({ success: true, required: workers.length > 0 });
     }
 
     if (action === 'validate') {
@@ -66,10 +66,9 @@ Deno.serve(async (req) => {
 
     if (action !== 'login') return json({ error: 'Accion no valida' }, 400);
 
-    const workerId = String(body.workerId ?? '').trim();
     const pin = String(body.pin ?? '').trim();
-    if (!workerId || !/^\d{3,12}$/.test(pin)) {
-      return json({ error: 'Selecciona tu nombre e introduce un PIN valido' }, 400);
+    if (!/^\d{3,12}$/.test(pin)) {
+      return json({ error: 'Introduce un PIN valido' }, 400);
     }
 
     const ip = (req.headers.get('x-forwarded-for') || req.headers.get('cf-connecting-ip') || 'unknown')
@@ -89,32 +88,29 @@ Deno.serve(async (req) => {
       return json({ error: 'Demasiados intentos. Espera 15 minutos antes de volver a probar.' }, 429);
     }
 
-    const { data: routeWorker, error: workerError } = await supabase
-      .from('laundry_route_workers')
-      .select('id, cleaner_id, sede_id, is_active, cleaners!inner(id, name, is_active)')
-      .eq('id', workerId)
-      .eq('sede_id', link.sede_id)
-      .eq('is_active', true)
-      .eq('cleaners.is_active', true)
-      .maybeSingle();
-    if (workerError) throw workerError;
-
-    const { data: pinValid, error: pinError } = routeWorker
-      ? await supabase.rpc('verify_laundry_route_worker_pin', {
-          _route_worker_id: routeWorker.id,
-          _pin: pin,
-        })
-      : { data: false, error: null };
-    if (pinError) throw pinError;
+    const workers = await listActiveRouteWorkers(supabase, link.sede_id);
+    const pinChecks = await Promise.all(workers.map(async (worker) => {
+      const { data, error } = await supabase.rpc('verify_laundry_route_worker_pin', {
+        _route_worker_id: worker.id,
+        _pin: pin,
+      });
+      if (error) throw error;
+      return data ? worker : null;
+    }));
+    const matchingWorkers = pinChecks.filter((worker) => worker !== null);
+    const routeWorker = matchingWorkers.length === 1 ? matchingWorkers[0] : null;
 
     await supabase.from('laundry_route_access_attempts').insert({
       share_link_id: link.id,
       route_worker_id: routeWorker?.id ?? null,
       ip_fingerprint: ipFingerprint,
-      successful: Boolean(pinValid),
+      successful: Boolean(routeWorker),
     });
 
-    if (!routeWorker || !pinValid) return json({ error: 'PIN incorrecto' }, 401);
+    if (matchingWorkers.length > 1) {
+      return json({ error: 'Este PIN esta duplicado. Contacta con el administrador.' }, 409);
+    }
+    if (!routeWorker) return json({ error: 'PIN incorrecto' }, 401);
 
     const rawSessionToken = randomToken();
     const twelveHours = Date.now() + 12 * 60 * 60 * 1000;
@@ -128,9 +124,7 @@ Deno.serve(async (req) => {
     });
     if (sessionError) throw sessionError;
 
-    const cleanerRelation = routeWorker.cleaners as unknown;
-    const cleaner = Array.isArray(cleanerRelation) ? cleanerRelation[0] : cleanerRelation;
-    const workerName = String((cleaner as { name?: string } | null)?.name ?? 'Repartidor');
+    const workerName = routeWorker.name;
     await Promise.all([
       supabase.from('laundry_route_workers').update({ last_access_at: new Date().toISOString() }).eq('id', routeWorker.id),
       supabase.from('laundry_route_worker_events').insert({
@@ -147,9 +141,9 @@ Deno.serve(async (req) => {
       expiresAt,
       worker: {
         routeWorkerId: routeWorker.id,
-        cleanerId: routeWorker.cleaner_id,
+        cleanerId: routeWorker.cleanerId,
         workerName,
-        sedeId: routeWorker.sede_id,
+        sedeId: routeWorker.sedeId,
       },
     });
   } catch (error) {
