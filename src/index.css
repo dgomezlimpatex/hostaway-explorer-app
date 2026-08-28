@@ -255,6 +255,288 @@
   }
 }
 
+.loader {
+  position: relative;
+  width: 80px;
+  height: 50px;
+}
+
+.loader-text {
+  position: absolute;
+  top: 0;
+  padding: 0;
+  margin: 0;
+  color: #c8b6ff;
+  animation: text_713 3.5s ease both infinite;
+  font-size: 0.8rem;
+  letter-spacing: 1px;
+}
+
+.load {
+  position: absolute;
+  bottom: 0;
+  display: block;
+  width: 16px;
+  height: 16px;
+  border-radius: 50px;
+  background-color: #9a79ff;
+  transform: translateX(64px);
+  animation: loading_713 3.5s ease both infinite;
+}
+
+.load::before {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+  background-color: #d1c2ff;
+  content: '';
+  animation: loading2_713 3.5s ease both infinite;
+}
+
+@keyframes text_713 {
+  0% {
+    letter-spacing: 1px;
+    transform: translateX(0px);
+  }
+  40% {
+    letter-spacing: 2px;
+    transform: translateX(26px);
+  }
+  80% {
+    letter-spacing: 1px;
+    transform: translateX(32px);
+  }
+  90% {
+    letter-spacing: 2px;
+    transform: translateX(0px);
+  }
+  100% {
+    letter-spacing: 1px;
+    transform: translateX(0px);
+  }
+}
+
+@keyframes loading_713 {
+  0% {
+    width: 16px;
+    transform: translateX(0px);
+  }
+  40% {
+    width: 100%;
+    transform: translateX(0px);
+  }
+  80% {
+    width: 16px;
+    transform: translateX(64px);
+  }
+  90% {
+    width: 100%;
+    transform: translateX(0px);
+  }
+  100% {
+    width: 16px;
+    transform: translateX(0px);
+  }
+}
+
+@keyframes loading2_713 {
+  0% {
+    width: 16px;
+    transform: translateX(0px);
+  }
+  40% {
+    width: 80%;
+    transform: translateX(0%);
+  }
+  80% {
+    width: 100%;
+    transform: translateX(0px);
+  }
+  90% {
+    width: 80%;
+    transform: translateX(15px);
+  }
+  100% {
+    width: 16px;
+    transform: translateX(0px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .loader-text,
+  .load,
+  .load::before {
+    animation: none;
+  }
+}
+
+.cleaner-dashboard-shell {
+  background:
+    radial-gradient(circle at 0% 0%, rgba(226, 218, 250, 0.72), transparent 28rem),
+    radial-gradient(circle at 100% 62%, rgba(255, 225, 213, 0.48), transparent 26rem),
+    #f9f8fc;
+}
+
+.cleaner-dashboard-header {
+  border-bottom: 1px solid rgba(225, 220, 235, 0.75);
+  background: rgba(251, 250, 255, 0.82);
+  box-shadow: 0 10px 30px rgba(49, 9, 132, 0.04);
+  backdrop-filter: blur(18px);
+}
+
+.cleaner-dashboard-hero {
+  background:
+    linear-gradient(115deg, #310984 0%, #4f219d 58%, #6f42bb 100%);
+}
+
+.cleaner-dashboard-hero::before {
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(rgba(255, 255, 255, 0.14) 1px, transparent 1px);
+  background-size: 22px 22px;
+  content: '';
+  mask-image: linear-gradient(115deg, rgba(0, 0, 0, 0.8), transparent 68%);
+  opacity: 0.45;
+}
+
+.cleaner-dashboard-hero-orb {
+  position: absolute;
+  border-radius: 9999px;
+  pointer-events: none;
+}
+
+.cleaner-dashboard-hero-orb-one {
+  top: -5rem;
+  right: 12%;
+  width: 16rem;
+  height: 16rem;
+  border: 1px solid rgba(255, 255, 255, 0.13);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.cleaner-dashboard-hero-orb-two {
+  right: -4rem;
+  bottom: -8rem;
+  width: 20rem;
+  height: 20rem;
+  background: rgba(255, 209, 189, 0.12);
+  filter: blur(2px);
+}
+
+.cleaner-progress-ring {
+  background: conic-gradient(
+    from -45deg,
+    #ffd1bd 0deg var(--cleaner-progress-angle),
+    rgba(255, 255, 255, 0.18) var(--cleaner-progress-angle) 360deg
+  );
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.12), 0 16px 36px rgba(28, 4, 78, 0.18);
+}
+
+.cleaner-page-enter {
+  animation: cleanerPageEnter 520ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.cleaner-section-kicker {
+  color: #8b77a5;
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.17em;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+.cleaner-surface {
+  border: 1px solid rgba(231, 226, 239, 0.9);
+  background: rgba(255, 255, 255, 0.86);
+  box-shadow: 0 16px 40px rgba(50, 27, 92, 0.06);
+}
+
+.cleaner-calendar-card {
+  border: 1px solid rgba(215, 202, 239, 0.9);
+  background:
+    radial-gradient(circle at 100% 0%, rgba(255, 209, 189, 0.45), transparent 13rem),
+    linear-gradient(145deg, #eee8ff 0%, #faf8ff 64%, #fff8f4 100%);
+  box-shadow: 0 16px 40px rgba(81, 47, 130, 0.09);
+}
+
+.cleaner-calendar-decoration {
+  position: absolute;
+  right: -1.2rem;
+  bottom: -1.75rem;
+  display: flex;
+  align-items: flex-end;
+  gap: 0.5rem;
+  transform: rotate(-12deg);
+  opacity: 0.48;
+}
+
+.cleaner-calendar-decoration span {
+  display: block;
+  width: 1.1rem;
+  border-radius: 0.5rem 0.5rem 0.15rem 0.15rem;
+  background: #b7a0df;
+}
+
+.cleaner-calendar-decoration span:nth-child(1) { height: 4rem; }
+.cleaner-calendar-decoration span:nth-child(2) { height: 6.5rem; background: #8e6ec2; }
+.cleaner-calendar-decoration span:nth-child(3) { height: 5rem; background: #f1b19a; }
+
+.cleaner-primary-cta {
+  background: linear-gradient(100deg, #4b1b98 0%, #7547c4 100%);
+  transition: transform 200ms ease, box-shadow 200ms ease, filter 200ms ease;
+}
+
+.cleaner-reminder {
+  border: 1px solid rgba(229, 221, 242, 0.95);
+  background: rgba(255, 255, 255, 0.62);
+}
+
+.cleaner-dashboard-progress {
+  min-width: 0;
+  transition: width 320ms ease;
+}
+
+@media (hover: hover) {
+  .cleaner-primary-cta:hover {
+    filter: brightness(1.06);
+    transform: translateY(-1px);
+    box-shadow: 0 16px 28px rgba(91, 43, 181, 0.24);
+  }
+
+  .cleaner-task-row {
+    transition: background-color 180ms ease, border-color 180ms ease, box-shadow 180ms ease, transform 180ms ease;
+  }
+
+  .cleaner-task-row:hover {
+    border-color: #ddd2f2;
+    background: #ffffff;
+    box-shadow: 0 8px 20px rgba(81, 47, 130, 0.07);
+    transform: translateY(-1px);
+  }
+}
+
+@keyframes cleanerPageEnter {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cleaner-page-enter,
+  .cleaner-primary-cta,
+  .cleaner-dashboard-progress,
+  .cleaner-task-row {
+    animation: none;
+    transition: none;
+  }
+}
+
 @keyframes fadeIn {
   from {
     opacity: 0;
