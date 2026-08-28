@@ -10,7 +10,7 @@
 //   - Los datos de contacto y horas solo se actualizan si REGISTRO aporta un valor válido.
 //   - Solo admin/manager puede invocarla.
 
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.50.0";
+import { createClient } from "npm:@supabase/supabase-js@2.50.0";
 import {
   getContractHoursPerWeek,
   getRegistroEmail,
@@ -127,9 +127,9 @@ Deno.serve(async (req) => {
     const userId = claims.claims.sub as string;
 
     const admin = createClient(supabaseUrl, serviceKey);
-    const { data: roleRow } = await admin
-      .from('user_roles').select('role').eq('user_id', userId).maybeSingle();
-    if (!roleRow || !['admin', 'manager'].includes(roleRow.role)) {
+    const { data: callerRoles } = await admin
+      .from('user_roles').select('role').eq('user_id', userId);
+    if (!(callerRoles ?? []).some((row: { role: string }) => ['admin', 'manager'].includes(row.role))) {
       return new Response(JSON.stringify({ error: 'Forbidden: admin/manager only' }), {
         status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
@@ -274,10 +274,12 @@ Deno.serve(async (req) => {
         sede_id?: string;
         access_email?: string | null;
         create_without_access?: boolean;
+        access_role?: 'cleaner' | 'supervisor' | 'admin' | 'route_worker';
       }> = body.links || [];
 
       let linked = 0, created = 0;
       let invitations_sent = 0;
+      let route_workers_enabled = 0;
       const errors: any[] = [];
       const invitation_details: Array<{
         external_id: string;
@@ -302,6 +304,7 @@ Deno.serve(async (req) => {
         email: string | null | undefined;
         sedeId: string | null;
         skipInvitation?: boolean;
+        role: 'cleaner' | 'supervisor' | 'admin';
       }) {
         const emailLower = normalizeEmail(params.email);
         const externalId = params.externalId;
@@ -319,13 +322,16 @@ Deno.serve(async (req) => {
             .eq('email', emailLower)
             .maybeSingle();
           if (existingProfile) {
-            const { data: existingRole } = await admin
+            const { data: existingRoles } = await admin
               .from('user_roles')
               .select('role')
-              .eq('user_id', existingProfile.id)
-              .maybeSingle();
+              .eq('user_id', existingProfile.id);
 
-            if (existingRole) {
+            if ((existingRoles ?? []).length > 0) {
+              await admin.from('user_roles').upsert({
+                user_id: existingProfile.id,
+                role: params.role,
+              }, { onConflict: 'user_id,role' });
               if (params.cleanerId) {
                 await admin
                   .from('cleaners')
@@ -346,7 +352,7 @@ Deno.serve(async (req) => {
                 external_id: externalId,
                 cleaner_id: params.cleanerId ?? null,
                 email: emailLower,
-                outcome: 'already_has_access',
+                outcome: 'role_assigned',
               });
               return;
             }
@@ -361,12 +367,13 @@ Deno.serve(async (req) => {
             .gt('expires_at', new Date().toISOString())
             .maybeSingle();
           if (pending) {
+            await admin.from('user_invitations').update({ role: params.role }).eq('id', pending.id);
             const invitationUrl = buildInvitationUrl(String(pending.invitation_token), emailLower);
             const { error: emailErr } = await admin.functions.invoke('send-invitation-email', {
               body: {
                 email: emailLower,
                 inviterName: 'LIMPATEX',
-                role: 'cleaner',
+                role: params.role,
                 token: pending.invitation_token,
                 appUrl,
               },
@@ -406,7 +413,7 @@ Deno.serve(async (req) => {
             .insert({
               invitation_token: token,
               email: emailLower,
-              role: 'cleaner',
+              role: params.role,
               invited_by: userId,
               expires_at: expiresAt,
               status: 'pending',
@@ -420,7 +427,7 @@ Deno.serve(async (req) => {
             body: {
               email: emailLower,
               inviterName: 'LIMPATEX',
-              role: 'cleaner',
+              role: params.role,
               token,
               appUrl,
             },
@@ -455,9 +462,53 @@ Deno.serve(async (req) => {
         }
       }
 
+      async function enableRouteWorker(params: {
+        externalId: string;
+        cleanerId: string;
+        sedeId: string | null;
+        pin: string | null | undefined;
+      }) {
+        const pin = String(params.pin ?? '').trim();
+        if (!params.sedeId) throw new Error('El repartidor necesita una sede');
+        if (!pin) throw new Error('El repartidor no tiene PIN en REGISTRO');
+
+        const { data: sameSedeWorkers, error: duplicateError } = await admin
+          .from('laundry_route_workers')
+          .select('cleaner_id, cleaners!inner(pin)')
+          .eq('sede_id', params.sedeId)
+          .eq('is_active', true)
+          .neq('cleaner_id', params.cleanerId);
+        if (duplicateError) throw duplicateError;
+        if ((sameSedeWorkers ?? []).some((row: any) => String(row.cleaners?.pin ?? '').trim() === pin)) {
+          throw new Error('Hay otro repartidor activo con el mismo PIN en esta sede');
+        }
+
+        const { error } = await admin.from('laundry_route_workers').upsert({
+          cleaner_id: params.cleanerId,
+          sede_id: params.sedeId,
+          is_active: true,
+          created_by: userId,
+        }, { onConflict: 'cleaner_id' });
+        if (error) throw error;
+        route_workers_enabled++;
+        invitation_details.push({
+          external_id: params.externalId,
+          cleaner_id: params.cleanerId,
+          email: null,
+          outcome: 'route_access_enabled',
+        });
+      }
+
       for (const l of links) {
         try {
           if (!l.external_id) throw new Error('external_id requerido');
+          const accessRole = l.access_role ?? 'cleaner';
+          const appAccessRole: 'cleaner' | 'supervisor' | 'admin' = accessRole === 'route_worker'
+            ? 'cleaner'
+            : accessRole;
+          if (accessRole === 'admin' && !(callerRoles ?? []).some((row: { role: string }) => row.role === 'admin')) {
+            throw new Error('Solo un administrador puede crear otro administrador');
+          }
 
           if (l.create_new) {
             if (!l.sede_id) throw new Error('sede_id requerido para crear nuevo cleaner');
@@ -477,7 +528,11 @@ Deno.serve(async (req) => {
               contract_hours_per_week: contractHours ?? null,
               dni: s.dni || null,
               pin: s.pin || null,
-              category: s.category || null,
+              category: accessRole === 'supervisor'
+                ? 'Supervisor'
+                : accessRole === 'admin'
+                  ? 'Administrador'
+                  : s.category || null,
               delegation_name: s.delegation_name || null,
               office_name: s.office_name || null,
               external_id: l.external_id,
@@ -487,13 +542,23 @@ Deno.serve(async (req) => {
             }).select('id').single();
             if (error) throw error;
             created++;
-            await maybeInviteEmail({
-              externalId: l.external_id,
-              cleanerId: insertedCleaner?.id ?? null,
-              email: accessEmail,
-              sedeId: l.sede_id,
-              skipInvitation: l.create_without_access,
-            });
+            if (accessRole === 'route_worker') {
+              await enableRouteWorker({
+                externalId: l.external_id,
+                cleanerId: insertedCleaner.id,
+                sedeId: l.sede_id,
+                pin: s.pin,
+              });
+            } else {
+              await maybeInviteEmail({
+                externalId: l.external_id,
+                cleanerId: insertedCleaner?.id ?? null,
+                email: accessEmail,
+                sedeId: l.sede_id,
+                skipInvitation: l.create_without_access,
+                role: appAccessRole,
+              });
+            }
           } else {
             if (!l.cleaner_id) throw new Error('cleaner_id requerido para vincular');
             const s = l.snapshot || {};
@@ -506,6 +571,9 @@ Deno.serve(async (req) => {
             if (contactEmail) patch.email = contactEmail;
             if (registroPhone !== undefined) patch.telefono = registroPhone;
             if (contractHours !== undefined) patch.contract_hours_per_week = contractHours;
+            if (s.pin !== undefined) patch.pin = s.pin || null;
+            if (accessRole === 'supervisor') patch.category = 'Supervisor';
+            if (accessRole === 'admin') patch.category = 'Administrador';
             const { error } = await admin
               .from('cleaners')
               .update(patch)
@@ -516,16 +584,35 @@ Deno.serve(async (req) => {
             // Tras vincular, consultar email/sede del cleaner para intentar invitar
             const { data: c } = await admin
               .from('cleaners')
-              .select('email, sede_id, user_id')
+              .select('email, sede_id, user_id, pin')
               .eq('id', l.cleaner_id)
               .maybeSingle();
-            if (c && !c.user_id) {
+            if (c && accessRole === 'route_worker') {
+              await enableRouteWorker({
+                externalId: l.external_id,
+                cleanerId: l.cleaner_id,
+                sedeId: c.sede_id,
+                pin: c.pin,
+              });
+            } else if (c && !c.user_id) {
               await maybeInviteEmail({
                 externalId: l.external_id,
                 cleanerId: l.cleaner_id,
                 email: accessEmail ?? c.email,
                 sedeId: c.sede_id,
                 skipInvitation: l.create_without_access,
+                role: appAccessRole,
+              });
+            } else if (c?.user_id && accessRole !== 'route_worker') {
+              await admin.from('user_roles').upsert({
+                user_id: c.user_id,
+                role: appAccessRole,
+              }, { onConflict: 'user_id,role' });
+              invitation_details.push({
+                external_id: l.external_id,
+                cleaner_id: l.cleaner_id,
+                email: c.email,
+                outcome: 'role_assigned',
               });
             }
           }
@@ -546,7 +633,7 @@ Deno.serve(async (req) => {
         errors,
       });
 
-      return new Response(JSON.stringify({ ok: true, linked, created, invitations_sent, invitation_details, errors }), {
+      return new Response(JSON.stringify({ ok: true, linked, created, invitations_sent, route_workers_enabled, invitation_details, errors }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
     }

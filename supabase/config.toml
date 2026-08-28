@@ -25,17 +25,27 @@ verify_jwt = true
 [functions.little-hotelier-sync]
 verify_jwt = false
 
+[functions.ai-assistant]
+verify_jwt = false
+
+[functions.apply-ai-actions]
+verify_jwt = false
+
+[functions.ai-learning-review]
+verify_jwt = false
+
 [functions.laundry-route-workflow]
 verify_jwt = false
+
+[functions.laundry-route-access]
+verify_jwt = false
+
+[functions.manage-laundry-route-workers]
+verify_jwt = true
 
 # Public links can refresh their managed snapshot by token. Administrative
 # actions are checked again inside the function.
 [functions.manage-laundry-classic-links]
-verify_jwt = false
-
-# Nuevo sistema de ruta: los enlaces publicos usan token; las acciones
-# administrativas vuelven a validar el usuario dentro de la funcion.
-[functions.manage-laundry-route-v2-links]
 verify_jwt = false
 
 # Meta verifica y entrega eventos sin un JWT de Supabase.
