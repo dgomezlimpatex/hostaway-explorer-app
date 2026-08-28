@@ -123,6 +123,10 @@ assert.match(
   'Existing multi-worker tasks must render the real per-worker duration instead of the full task duration',
 );
 assert.match(proposalCalendar, /assignmentRole/, 'Traffic-light labels must use the real building-team role');
+assert.match(planningPage, /max-w-\[1920px\]/, 'The reviewed planning workspace must use the available desktop width');
+assert.match(proposalPanel, /max-w-\[1920px\]/, 'The approval bar must align with the wider planning workspace');
+assert.match(proposalCalendar, /PIXELS_PER_MINUTE = 1\.4/, 'The desktop timeline must reserve enough horizontal space for readable tasks');
+assert.match(proposalCalendar, /MIN_CARD_WIDTH = 112/, 'Short tasks must keep a readable minimum card width');
 assert.match(proposalCalendar, /Lista del reparto propuesto/, 'Proposal must provide a simple list before the technical timeline');
 assert.match(proposalCalendar, /Ver calendario por horas/, 'Technical timeline must be explicitly optional');
 assert.match(proposalCalendar, /Cambios pendientes/, 'Calendar must summarize manual draft changes');

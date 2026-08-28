@@ -98,8 +98,8 @@ interface CalendarItem {
   assignmentRole?: AssignmentProposal['assignmentRole'];
 }
 
-const PIXELS_PER_MINUTE = 1.1;
-const MIN_CARD_WIDTH = 96;
+const PIXELS_PER_MINUTE = 1.4;
+const MIN_CARD_WIDTH = 112;
 const SNAP_MINUTES = 15;
 const QUARTER_HOUR_GRID_SIZE = SNAP_MINUTES * PIXELS_PER_MINUTE;
 const UNASSIGNED_PLACEMENT_ID = '__unassigned__';
@@ -1224,7 +1224,7 @@ export const PlanningProposalCalendar = ({
             ))}
         </div>
 
-        <div className="hidden min-h-[620px] gap-3 lg:grid lg:grid-cols-[250px_minmax(650px,1fr)] 2xl:grid-cols-[260px_minmax(720px,1fr)_300px]">
+        <div className="hidden min-h-[620px] gap-3 lg:grid lg:grid-cols-[220px_minmax(0,1fr)] 2xl:grid-cols-[220px_minmax(0,1fr)_280px]">
           <aside className="self-start rounded-2xl border border-red-200 bg-[#fffafa] shadow-sm 2xl:sticky 2xl:top-4">
             <div className="flex items-center justify-between border-b border-red-100 px-4 py-3">
               <div>
@@ -1300,7 +1300,7 @@ export const PlanningProposalCalendar = ({
             <div className="overflow-x-auto">
               <div className="min-w-max">
                 <div className="flex h-11 border-b border-[#310984]/10 bg-[#faf9fd]">
-                  <div className="sticky left-0 z-20 flex w-[190px] shrink-0 items-center border-r border-[#310984]/10 bg-[#faf9fd] px-4 text-[11px] font-bold uppercase tracking-[0.14em] text-[#6b627a]">
+                  <div className="sticky left-0 z-20 flex w-[170px] shrink-0 items-center border-r border-[#310984]/10 bg-[#faf9fd] px-3 text-[11px] font-bold uppercase tracking-[0.14em] text-[#6b627a]">
                     Trabajadora
                   </div>
                   <div className="relative" style={{ width: timelineWidth }}>
@@ -1350,7 +1350,7 @@ export const PlanningProposalCalendar = ({
                         key={cleaner.id}
                         className="flex min-h-[92px] border-b border-[#310984]/8 last:border-b-0"
                       >
-                        <div className="sticky left-0 z-10 flex w-[190px] shrink-0 items-center gap-3 border-r border-[#310984]/10 bg-white px-3">
+                        <div className="sticky left-0 z-10 flex w-[170px] shrink-0 items-center gap-2 border-r border-[#310984]/10 bg-white px-3">
                           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#efe9fb] text-xs font-bold text-[#310984]">
                             {cleaner.name
                               .split(' ')

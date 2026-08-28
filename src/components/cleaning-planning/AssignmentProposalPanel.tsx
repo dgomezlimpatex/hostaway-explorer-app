@@ -277,7 +277,7 @@ export const AssignmentProposalPanel = ({
       </details>
 
       <div className="fixed inset-x-0 bottom-0 z-40 border-t border-[#310984]/10 bg-white/95 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] shadow-[0_-10px_30px_rgba(49,9,132,0.12)] backdrop-blur md:p-4">
-        <div className="mx-auto flex max-w-[1500px] flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div className="mx-auto flex w-full max-w-[1920px] flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-between">
           <Button type="button" variant="outline" className="min-h-[48px] border-[#310984]/15 text-[#310984]" disabled={isApplying} onClick={handleDiscard}>
             Descartar propuesta
           </Button>

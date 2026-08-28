@@ -352,7 +352,7 @@ export const CleaningPlanningPage = () => {
   return (
     <div className="min-h-screen bg-[#f7f5fb] p-3 text-[#171321] md:p-6">
       {proposalState ? (
-        <div className="mx-auto max-w-[1500px]">
+        <div className="mx-auto w-full max-w-[1920px]">
           <AssignmentProposalPanel
             proposal={proposal}
             tasks={proposalTasks}
