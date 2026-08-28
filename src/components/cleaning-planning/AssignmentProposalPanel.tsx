@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { format, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { AlertTriangle, CheckCircle2, ChevronDown, Clock3, Sparkles, XCircle } from 'lucide-react';
+import { ChevronDown, Clock3, Sparkles, XCircle } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useSidebar } from '@/components/ui/sidebar';
@@ -180,12 +180,6 @@ export const AssignmentProposalPanel = ({
   if (!proposal) return null;
 
   const hasBlockingIssue = isStale || blockingWarnings.length > 0;
-  const summaryTone = applyError || isStale || blockingWarnings.length > 0 || uncoveredCount > 0
-    ? 'border-red-200 bg-red-50 text-red-900'
-    : softWarnings.length > 0
-      ? 'border-amber-200 bg-amber-50 text-amber-900'
-      : 'border-emerald-200 bg-emerald-50 text-emerald-900';
-
   return (
     <main className="space-y-4 pb-24 md:space-y-5 md:pb-28" aria-busy={isApplying}>
       <header className="rounded-3xl border border-[#310984]/10 bg-white p-4 shadow-lg shadow-[#310984]/8 md:p-6">
@@ -203,37 +197,26 @@ export const AssignmentProposalPanel = ({
         </div>
       </header>
 
-      <section className={`rounded-2xl border p-4 ${summaryTone}`} aria-live="polite">
-        {applyError ? (
-          <div className="flex items-start gap-2">
-            <XCircle className="mt-0.5 h-5 w-5 shrink-0" />
-            <div><p className="font-semibold">No pudimos guardar el reparto.</p><p className="text-sm">{applyError}</p></div>
-          </div>
-        ) : isStale ? (
-          <div className="flex items-start gap-2">
-            <XCircle className="mt-0.5 h-5 w-5 shrink-0" />
-            <div><p className="font-semibold">Los datos cambiaron.</p><p className="text-sm">Vuelve a planificar para no pisar cambios recientes.</p></div>
-          </div>
-        ) : blockingWarnings.length > 0 ? (
-          <div className="flex items-start gap-2">
-            <XCircle className="mt-0.5 h-5 w-5 shrink-0" />
-            <div><p className="font-semibold">Hay {blockingWarnings.length} bloqueo{blockingWarnings.length === 1 ? '' : 's'} por corregir.</p><p className="text-sm">Revisa las tarjetas marcadas antes de guardar.</p></div>
-          </div>
-        ) : uncoveredCount > 0 ? (
-          <div className="flex items-start gap-2">
-            <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0" />
-            <div>
-              <p className="font-semibold">{uncoveredCount} limpieza{uncoveredCount === 1 ? '' : 's'} sin cubrir.</p>
-              <p className="text-sm">Puedes corregirlas o guardar solo las {coveredCount} cubiertas.</p>
+      {(applyError || isStale || blockingWarnings.length > 0) && (
+        <section className="rounded-2xl border border-red-200 bg-red-50 p-4 text-red-900" aria-live="polite">
+          {applyError ? (
+            <div className="flex items-start gap-2">
+              <XCircle className="mt-0.5 h-5 w-5 shrink-0" />
+              <div><p className="font-semibold">No pudimos guardar el reparto.</p><p className="text-sm">{applyError}</p></div>
             </div>
-          </div>
-        ) : (
-          <div className="flex items-start gap-2">
-            <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0" />
-            <div><p className="font-semibold">Todo cubierto.</p><p className="text-sm">Revisa el reparto y aprueba cuando esté correcto.</p></div>
-          </div>
-        )}
-      </section>
+          ) : isStale ? (
+            <div className="flex items-start gap-2">
+              <XCircle className="mt-0.5 h-5 w-5 shrink-0" />
+              <div><p className="font-semibold">Los datos cambiaron.</p><p className="text-sm">Vuelve a planificar para no pisar cambios recientes.</p></div>
+            </div>
+          ) : (
+            <div className="flex items-start gap-2">
+              <XCircle className="mt-0.5 h-5 w-5 shrink-0" />
+              <div><p className="font-semibold">Hay {blockingWarnings.length} bloqueo{blockingWarnings.length === 1 ? '' : 's'} por corregir.</p><p className="text-sm">Revisa las tarjetas marcadas antes de guardar.</p></div>
+            </div>
+          )}
+        </section>
+      )}
 
       <div className={isApplying ? 'pointer-events-none opacity-70' : ''} aria-disabled={isApplying}>
         <PlanningProposalCalendar

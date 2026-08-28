@@ -15,16 +15,12 @@ import {
 import {
   AlertTriangle,
   Building2,
-  CalendarDays,
   CheckCircle2,
   Clock,
   GripVertical,
-  MapPin,
   RotateCcw,
   ShieldAlert,
-  Sparkles,
 } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -774,6 +770,7 @@ export const PlanningProposalCalendar = ({
       proposalIndex === undefined ? undefined : draftProposals[proposalIndex];
     setPlacementCleanerId(proposal?.cleanerId || '');
     setPlacementStartTime(fromMinutes(getTaskStart(task, proposal)));
+    setSelectedTask({ taskId, proposalIndex });
     setReassignment({ taskId, proposalIndex });
   };
 
@@ -826,39 +823,6 @@ export const PlanningProposalCalendar = ({
       isStale,
     ],
   ); // eslint-disable-line react-hooks/exhaustive-deps
-  const selectedAlternatives = useMemo(
-    () => candidateListFor(selectedTask).slice(0, 3),
-    [
-      selectedTask,
-      cleaners,
-      draftProposals,
-      effectiveAvailability,
-      activeCleanerAssignments,
-      calendarTasks,
-      isStale,
-    ],
-  ); // eslint-disable-line react-hooks/exhaustive-deps
-
-  useEffect(() => {
-    const stillVisible =
-      selectedTask &&
-      (dayItems.some(
-        (item) =>
-          item.taskId === selectedTask.taskId &&
-          item.proposalIndex === selectedTask.proposalIndex,
-      ) ||
-        unassignedTasks.some((task) => task.id === selectedTask.taskId));
-    if (stillVisible) return;
-    const first = dayItems.find((item) => item.editable);
-    setSelectedTask(
-      first
-        ? { taskId: first.taskId, proposalIndex: first.proposalIndex }
-        : unassignedTasks[0]
-          ? { taskId: unassignedTasks[0].id }
-          : null,
-    );
-  }, [dayItems, selectedTask, unassignedTasks]);
-
   const applyPlacement = (
     directPlacement = reassignment,
     cleanerId = placementCleanerId,
@@ -984,18 +948,6 @@ export const PlanningProposalCalendar = ({
     setReassignment(null);
   };
 
-  const selectedItem = dayItems.find(
-    (item) =>
-      item.taskId === selectedTask?.taskId &&
-      item.proposalIndex === selectedTask?.proposalIndex,
-  );
-  const selectedPlanningTask = selectedTask
-    ? taskById.get(selectedTask.taskId)
-    : undefined;
-  const selectedProposal =
-    selectedTask?.proposalIndex === undefined
-      ? undefined
-      : draftProposals[selectedTask.proposalIndex];
   const dayBlockingWarnings = warnings.filter(
     (warning) => warning.severity === 'blocking',
   );
@@ -1016,77 +968,6 @@ export const PlanningProposalCalendar = ({
       onDragEnd={handleDragEnd}
     >
       <div className="space-y-4">
-        <section className="overflow-hidden rounded-2xl border border-[#310984]/10 bg-white shadow-sm">
-          <div className="flex flex-col gap-3 border-b border-[#310984]/10 px-4 py-3 xl:flex-row xl:items-center xl:justify-between">
-            <div className="flex min-w-0 items-center gap-3">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#310984] text-white">
-                <CalendarDays className="h-5 w-5" />
-              </div>
-              <div>
-                <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-[#7a6d91]">
-                  Reparto del día
-                </p>
-                <h2 className="text-lg font-bold text-[#171321]">
-                  Planificación diaria
-                </h2>
-                <p className="text-xs text-[#6b627a]">
-                  No se guarda nada hasta guardar el reparto.
-                </p>
-              </div>
-            </div>
-            <div className="flex flex-wrap items-center gap-2">
-              <Badge
-                variant="outline"
-                className="border-emerald-200 bg-emerald-50 px-3 text-emerald-800"
-              >
-                {dayItems.filter((item) => item.source !== 'existing').length}{' '}
-                propuestas
-              </Badge>
-              <Badge
-                variant="outline"
-                className="border-red-200 bg-red-50 px-3 text-red-800"
-              >
-                {unassignedTasks.length} sin cubrir
-              </Badge>
-              <Badge
-                variant="outline"
-                className="border-amber-200 bg-amber-50 px-3 text-amber-800"
-              >
-                {dayBlockingWarnings.length + daySoftWarnings.length} avisos
-              </Badge>
-              <Badge
-                variant="outline"
-                className="border-[#310984]/15 bg-[#faf8ff] px-3 text-[#310984]"
-              >
-                Cambios pendientes: {manualChangeCount}
-              </Badge>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="border-[#310984]/15 text-[#310984]"
-                onClick={resetDraft}
-              >
-                <RotateCcw className="mr-2 h-4 w-4" /> Restablecer
-              </Button>
-            </div>
-          </div>
-          <div className="flex gap-2 overflow-x-auto px-4 py-3">
-            {dates.map((date) => (
-              <Button
-                key={date}
-                type="button"
-                size="sm"
-                variant={date === selectedDate ? 'default' : 'outline'}
-                className={`shrink-0 rounded-full ${date === selectedDate ? 'bg-[#310984] text-white hover:bg-[#23066a]' : 'border-[#310984]/15 text-[#310984]'}`}
-                onClick={() => setSelectedDate(date)}
-              >
-                {date}
-              </Button>
-            ))}
-          </div>
-        </section>
-
         {isStale && (
           <div className="rounded-2xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
             Este plan está desactualizado. Regenera antes de guardar.
@@ -1224,7 +1105,7 @@ export const PlanningProposalCalendar = ({
             ))}
         </div>
 
-        <div className="hidden min-h-[620px] gap-3 lg:grid lg:grid-cols-1 2xl:grid-cols-[minmax(0,1fr)_280px]">
+        <div className="hidden min-h-[620px] gap-3 lg:grid lg:grid-cols-1">
           <aside className="rounded-2xl border border-red-200 bg-[#fffafa] shadow-sm lg:col-start-1 lg:row-start-1">
             <div className="flex items-center justify-between border-b border-red-100 px-4 py-3">
               <div>
@@ -1256,7 +1137,7 @@ export const PlanningProposalCalendar = ({
                       <button
                         type="button"
                         className="min-w-0 flex-1 p-1 text-left"
-                        onClick={() => setSelectedTask({ taskId: task.id })}
+                        onClick={() => openReassignment(task.id)}
                       >
                         <p className="truncate text-sm font-bold text-[#171321]">
                           {task.propertyCode || task.property}
@@ -1295,7 +1176,20 @@ export const PlanningProposalCalendar = ({
                   para reasignar.
                 </p>
               </div>
-              <p className="text-xs font-semibold text-[#6b627a]">15 min</p>
+              <div className="flex items-center gap-3">
+                <p className="text-xs font-semibold text-[#6b627a]">15 min</p>
+                {manualChangeCount > 0 && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="border-[#310984]/15 text-[#310984]"
+                    onClick={resetDraft}
+                  >
+                    <RotateCcw className="mr-2 h-4 w-4" /> Restablecer cambios
+                  </Button>
+                )}
+              </div>
             </div>
             <div className="overflow-x-auto">
               <div className="min-w-max">
@@ -1436,10 +1330,10 @@ export const PlanningProposalCalendar = ({
                                     type="button"
                                     className="min-w-0 flex-1 p-2 text-left"
                                     onClick={() =>
-                                      setSelectedTask({
-                                        taskId: item.taskId,
-                                        proposalIndex: item.proposalIndex,
-                                      })
+                                      openReassignment(
+                                        item.taskId,
+                                        item.proposalIndex,
+                                      )
                                     }
                                   >
                                     <p className="truncate text-xs font-black">
@@ -1481,128 +1375,6 @@ export const PlanningProposalCalendar = ({
             </div>
           </section>
 
-          <aside className="hidden self-start overflow-hidden rounded-2xl border border-[#310984]/10 bg-white shadow-sm 2xl:sticky 2xl:top-4 2xl:col-start-2 2xl:row-span-2 2xl:row-start-1 2xl:block">
-            <div className="bg-[#16042f] px-4 py-4 text-white">
-              <p className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.16em] text-cyan-200">
-                <Sparkles className="h-4 w-4" /> Decisión de Hermes
-              </p>
-              <h3 className="mt-1 truncate text-base font-bold">
-                {selectedPlanningTask
-                  ? selectedPlanningTask.propertyCode ||
-                    selectedPlanningTask.property
-                  : 'Selecciona una tarea'}
-              </h3>
-            </div>
-            {!selectedPlanningTask ? (
-              <div className="p-5 text-sm text-[#6b627a]">
-                Pulsa una limpieza para revisar la decisión.
-              </div>
-            ) : (
-              <div className="space-y-4 p-4">
-                <div>
-                  <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-[#7a6d91]">
-                    Asignación actual
-                  </p>
-                  <p className="mt-1 font-bold text-[#171321]">
-                    {selectedItem?.cleanerName || 'Sin cubrir'}
-                  </p>
-                  <p className="mt-1 flex items-center gap-1 text-xs text-[#6b627a]">
-                    <Clock className="h-3.5 w-3.5" />{' '}
-                    {selectedItem
-                      ? `${fromMinutes(selectedItem.startMinute)}-${fromMinutes(selectedItem.endMinute)}`
-                      : `${selectedPlanningTask.displayStartTime}-${selectedPlanningTask.displayEndTime}`}
-                  </p>
-                </div>
-                <div className="rounded-xl border border-[#310984]/10 bg-[#faf8ff] p-3">
-                  <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-[#310984]">
-                    Por qué
-                  </p>
-                  <ul className="mt-2 space-y-2 text-xs leading-5 text-[#554b65]">
-                    {(selectedProposal?.reasons?.length
-                      ? selectedProposal.reasons
-                      : ['Necesita una decisión manual antes de guardar.']
-                    )
-                      .slice(0, 4)
-                      .map((reason) => (
-                        <li key={reason} className="flex gap-2">
-                          <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-600" />{' '}
-                          {reason}
-                        </li>
-                      ))}
-                  </ul>
-                </div>
-                <div>
-                  <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-[#7a6d91]">
-                    Alternativas
-                  </p>
-                  <div className="mt-2 space-y-2">
-                    {selectedAlternatives.length === 0 ? (
-                      <p className="text-xs text-[#6b627a]">
-                        No hay alternativas disponibles.
-                      </p>
-                    ) : (
-                      selectedAlternatives.map(({ cleaner, validation }) => (
-                        <button
-                          key={cleaner.id}
-                          type="button"
-                          className="flex w-full items-center justify-between rounded-xl border border-[#310984]/10 p-3 text-left hover:border-[#310984]/30 hover:bg-[#faf8ff]"
-                          onClick={() =>
-                            applyPlacement(
-                              selectedTask,
-                              cleaner.id,
-                              fromMinutes(
-                                selectedItem?.startMinute ||
-                                  getTaskStart(selectedPlanningTask),
-                              ),
-                            )
-                          }
-                        >
-                          <span className="min-w-0">
-                            <span className="block truncate text-xs font-bold text-[#171321]">
-                              {cleaner.name}
-                            </span>
-                            <span className="text-[10px] text-[#6b627a]">
-                              {validation.assignmentRole === 'primary'
-                                ? 'Titular'
-                                : validation.assignmentRole === 'secondary'
-                                  ? 'Suplente'
-                                  : validation.assignmentRole === 'backup'
-                                    ? 'Backup'
-                                    : 'Apoyo'}
-                            </span>
-                          </span>
-                          <span
-                            className={`text-[10px] font-bold ${validation.valid ? 'text-emerald-700' : 'text-amber-700'}`}
-                          >
-                            {validation.valid ? 'Recomendada' : 'Con aviso'}
-                          </span>
-                        </button>
-                      ))
-                    )}
-                  </div>
-                </div>
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="w-full border-[#310984]/20 text-[#310984]"
-                  onClick={() =>
-                    openReassignment(
-                      selectedTask!.taskId,
-                      selectedTask!.proposalIndex,
-                    )
-                  }
-                >
-                  Editar hora o responsable
-                </Button>
-                {selectedPlanningTask.address && (
-                  <p className="flex items-start gap-2 border-t border-[#310984]/10 pt-3 text-xs text-[#6b627a]">
-                    <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0" />{' '}
-                    {selectedPlanningTask.address}
-                  </p>
-                )}
-              </div>
-            )}
-          </aside>
         </div>
 
         {unassignedTasks.length > 0 && (

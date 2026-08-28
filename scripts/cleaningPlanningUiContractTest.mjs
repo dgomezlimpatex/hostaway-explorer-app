@@ -111,8 +111,8 @@ assert.match(proposalPanel, /sessionStorage/, 'Draft edits must autosave locally
 assert.match(proposalPanel, /blockingWarnings\.length === 0/, 'Proposal apply must be blocked while the calendar draft has blocking warnings');
 assert.match(proposalPanel, /buildProposalSignature\(proposal\.proposals\)/, 'Stored drafts must be scoped to the original proposal signature');
 
-assert.match(proposalCalendar, /Reparto del día/, 'PlanningProposalCalendar must use direct operational wording');
-assert.match(proposalCalendar, /no se guarda nada hasta guardar el reparto/i, 'PlanningProposalCalendar must explain that edits are not persisted yet');
+assert.doesNotMatch(proposalCalendar, /Reparto del día|Planificación diaria/, 'The calendar must not repeat the proposal heading');
+assert.match(proposalPanel, /Nada se guarda hasta pulsar/, 'The proposal header must explain that edits are not persisted yet');
 assert.match(proposalCalendar, /openReassignment/, 'Calendar task cards must open responsible-person editing');
 assert.match(proposalCalendar, /Elegir responsable/, 'Reassignment must finish by choosing one valid candidate');
 assert.match(proposalCalendar, /Sin asignar/, 'Reassignment must offer an explicit option to leave the task unassigned');
@@ -129,11 +129,12 @@ assert.match(proposalPanel, /useSidebar\(\)/, 'The approval bar must follow the 
 assert.match(proposalPanel, /sidebarState === 'expanded' \? '18rem' : '4rem'/, 'The approval bar must not overlap either sidebar width');
 assert.match(proposalCalendar, /PIXELS_PER_MINUTE = 1\.4/, 'The desktop timeline must reserve enough horizontal space for readable tasks');
 assert.match(proposalCalendar, /MIN_CARD_WIDTH = 112/, 'Short tasks must keep a readable minimum card width');
-assert.match(proposalCalendar, /2xl:grid-cols-\[minmax\(0,1fr\)_280px\]/, 'The calendar must own the main desktop column instead of sharing it with a permanent left rail');
+assert.match(proposalCalendar, /lg:grid lg:grid-cols-1/, 'The calendar must use the full desktop workspace without a decision sidebar');
 assert.match(proposalCalendar, /sm:grid-cols-2 xl:grid-cols-3/, 'Uncovered tasks must move to a compact horizontal tray above the calendar');
 assert.match(proposalCalendar, /Lista del reparto propuesto/, 'Proposal must provide a simple list before the technical timeline');
 assert.match(proposalCalendar, /Ver calendario por horas/, 'Technical timeline must be explicitly optional');
-assert.match(proposalCalendar, /Cambios pendientes/, 'Calendar must summarize manual draft changes');
+assert.match(proposalCalendar, /manualChangeCount > 0/, 'Reset controls must appear only when the draft has manual changes');
+assert.doesNotMatch(proposalCalendar, /Planificación diaria|Decisión de Hermes/, 'Redundant planning headers and the Hermes decision rail must stay out of the review workspace');
 assert.match(proposalCalendar, /Solape de horario/, 'Calendar must detect and expose draft overlaps');
 assert.match(proposalCalendar, /No apta para este edificio/, 'Calendar must block explicit No apta draft assignments');
 assert.match(proposalCalendar, /Fuera del equipo habitual/, 'Calendar must warn when a manual assignment leaves the building team');
