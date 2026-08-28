@@ -138,7 +138,7 @@ assert.match(proposalCalendar, /Deshacer/, 'Every successful drag must expose on
 assert.match(proposalCalendar, /Sin cubrir/, 'Unassigned tasks must remain in a visible dedicated tray');
 assert.match(
   proposalCalendar,
-  /const unassignedTasks = useMemo\([\s\S]*?\.sort\(\(left, right\) => \(left\.propertyCode \|\| left\.property\)\.localeCompare\([\s\S]*?right\.propertyCode \|\| right\.property[\s\S]*?numeric: true[\s\S]*?sensitivity: 'base'/,
+  /const unassignedTasks = useMemo\([\s\S]*?\.sort\(\(left, right\) =>[\s\S]*?\(left\.propertyCode \|\| left\.property\)\.localeCompare\([\s\S]*?right\.propertyCode \|\| right\.property[\s\S]*?numeric: true[\s\S]*?sensitivity: 'base'/,
   'Uncovered sandbox tasks must be sorted naturally and alphabetically by property code',
 );
 assert.match(proposalPanel, /effectiveAvailability/, 'The sandbox must receive the same effective availability used by the proposal engine');
@@ -215,35 +215,35 @@ assert.match(proposalCalendar, /validateDraftAssignmentMove/, 'Every DnD and fal
 assert.doesNotMatch(proposalCalendar, /reassignmentCandidates[\s\S]*\.filter\(\(candidate\) => candidate\.validation\.valid\)/, 'Manual placement must not hide active workers merely because engine rules recommend against them');
 assert.match(proposalCalendar, /Colocar tarea/, 'Dropping or selecting a task must open a manual placement dialog');
 assert.match(proposalCalendar, /getDropStartMinute/, 'Timeline drops must convert the final pointer position into a start minute');
-assert.match(proposalCalendar, /getActivatorClientY/, 'Timeline DnD must read the real mouse or touch activation coordinate');
-assert.match(proposalCalendar, /activatorClientY \+ delta\.y/, 'Timeline DnD must derive the final pointer from activation coordinate plus DnD movement');
-assert.doesNotMatch(proposalCalendar, /active\.rect\.current\.translated\?\.top/, 'Timeline DnD must not infer the dropped time from the draggable handle top edge');
-assert.match(proposalCalendar, /Math\.max\(timelineStartMinute, Math\.min\(timelineEndMinute, snappedMinute\)\)/, 'Dropped times must stay inside the visible timeline bounds');
+assert.match(proposalCalendar, /getActivatorClientX/, 'Horizontal timeline DnD must read the real mouse or touch activation coordinate');
+assert.match(proposalCalendar, /pointerX \+ delta\.x/, 'Horizontal timeline DnD must derive the final pointer from activation coordinate plus DnD movement');
+assert.doesNotMatch(proposalCalendar, /active\.rect\.current\.translated\?\.left/, 'Timeline DnD must not infer the dropped time from the draggable handle edge');
+assert.match(proposalCalendar, /Math\.max\([\s\S]*?timelineStartMinute,[\s\S]*?Math\.min\(timelineEndMinute, snappedMinute\)[\s\S]*?\)/, 'Dropped times must stay inside the visible timeline bounds');
 assert.match(proposalCalendar, /SNAP_MINUTES = 15/, 'Timeline drops must snap direct placement to practical 15-minute intervals');
 assert.match(proposalCalendar, /QUARTER_HOUR_GRID_SIZE = SNAP_MINUTES \* PIXELS_PER_MINUTE/, 'Visible quarter-hour grid must share the exact scale used by drag snapping');
 assert.match(proposalCalendar, /data-quarter-hour-grid/, 'Each worker timeline must expose a visible 15-minute placement grid');
-assert.match(proposalCalendar, /backgroundSize: `100% \$\{QUARTER_HOUR_GRID_SIZE\}px, 100% \$\{60 \* PIXELS_PER_MINUTE\}px`/, 'Worker columns must draw quarter-hour subdivisions plus stronger hourly lines');
+assert.match(proposalCalendar, /backgroundSize: `\$\{QUARTER_HOUR_GRID_SIZE\}px 100%, \$\{60 \* PIXELS_PER_MINUTE\}px 100%`/, 'Worker rows must draw quarter-hour subdivisions plus stronger hourly lines');
 assert.match(proposalCalendar, /type DragMoveEvent/, 'Timeline DnD must track pointer movement while a task is selected');
 assert.match(proposalCalendar, /onDragMove=\{handleDragMove\}/, 'Timeline DnD must update its hovered quarter-hour continuously');
 assert.match(proposalCalendar, /data-dnd-quarter-hover/, 'Timeline DnD must render one explicit quarter-hour hover indicator');
-assert.match(proposalCalendar, /height: QUARTER_HOUR_GRID_SIZE/, 'The hover indicator must cover exactly one 15-minute grid block');
+assert.match(proposalCalendar, /width: QUARTER_HOUR_GRID_SIZE/, 'The hover indicator must cover exactly one 15-minute grid block');
 assert.doesNotMatch(proposalCalendar, /\$\{isOver \? 'ring-4' : ''\}/, 'Desktop timeline DnD must not highlight the entire worker column');
-assert.match(proposalCalendar, /handleDragEnd[\s\S]*applyPlacement\([\s\S]*fromMinutes\(dropStartMinute\)/, 'Dropping on a worker timeline must apply the responsible person and dropped time immediately');
+assert.match(proposalCalendar, /handleDragEnd[\s\S]*applyPlacement\([\s\S]*fromMinutes\(dropMinute\)/, 'Dropping on a worker timeline must apply the responsible person and dropped time immediately');
 assert.doesNotMatch(proposalCalendar, /handleDragEnd[\s\S]*setReassignment\(\{ taskId: payload\.taskId, proposalIndex: payload\.proposalIndex \}\)/, 'Timeline drag must not open the placement dialog after drop');
 assert.match(proposalCalendar, /Hora de inicio/, 'Manual placement must allow choosing the start time');
 assert.match(proposalCalendar, /type="time"/, 'Manual placement start must use a native time input');
-assert.match(proposalCalendar, /Aplicar como excepción/, 'Manual placement must allow overriding soft engine conflicts explicitly');
+assert.match(proposalCalendar, /Con aviso/, 'Manual placement must identify soft engine conflicts before applying them');
 assert.match(proposalCalendar, /manualOverrideWarnings/, 'Overridden engine conflicts must remain attached to the draft as operational warnings');
 assert.match(proposalCalendar, /title: 'Excepción manual'[\s\S]*message,/, 'Manual override reasons must remain visible in the reviewed draft');
 assert.match(proposalCalendar, /severity: 'warning',[\s\S]*title: 'Solape de horario'/, 'A consciously chosen manual overlap must warn without blocking final approval');
-assert.match(proposalCalendar, /Excepción permitida/, 'Non-recommended drag destinations must be shown as allowed exceptions, not rejected destinations');
+assert.match(proposalCalendar, /Con aviso/, 'Non-recommended destinations must be shown as allowed placements with a warning');
 assert.match(proposalCalendar, /No apta para este edificio/, 'Explicit No apta exclusions must remain blocking');
-assert.match(proposalCalendar, /proposedStartTime: directStartTime/, 'The selected or dropped start time must be written into the draft proposal');
-assert.match(proposalCalendar, /proposedEndTime: fromMinutes\(toMinutes\(directStartTime\) \+ durationMinutes\)/, 'The manual end time must be calculated from selected or dropped start plus real task duration');
-assert.match(proposalCalendar, /assignmentRole:[\s\S]*proposedStartTime: directStartTime[\s\S]*durationMinutes,[\s\S]*capacityAfterAssignment:/, 'Manual moves must copy role, selected times, duration and capacity into the draft');
+assert.match(proposalCalendar, /proposedStartTime: startTime/, 'The selected or dropped start time must be written into the draft proposal');
+assert.match(proposalCalendar, /proposedEndTime: fromMinutes\(toMinutes\(startTime\) \+ durationMinutes\)/, 'The manual end time must be calculated from selected or dropped start plus real task duration');
+assert.match(proposalCalendar, /assignmentRole:[\s\S]*proposedStartTime: startTime[\s\S]*durationMinutes,[\s\S]*capacityAfterAssignment:/, 'Manual moves must copy role, selected times, duration and capacity into the draft');
 assert.doesNotMatch(proposalCalendar, /sourceCleanerId === cleanerId/, 'Dropping on the same worker must still allow changing its time block');
 assert.match(proposalCalendar, /isStale[\s\S]*Regenera antes de mover/, 'Stale proposals must block drag mutations');
-assert.match(proposalCalendar, />Deshacer<\//, 'Successful moves must expose one-click undo');
+assert.match(proposalCalendar, /Deshacer/, 'Successful moves must expose one-click undo');
 assert.doesNotMatch(proposalCalendar, /droppable[^\n]*unassigned|dropId=\{`unassigned/i, 'Assigned cards must not be droppable back to uncovered');
 
 assert.match(roleNavigation, /hasPermission\('tasks', 'canEdit'\).*to="\/planning"/s, 'RoleBasedNavigation must expose official planning at /planning only to tasks/canEdit users');

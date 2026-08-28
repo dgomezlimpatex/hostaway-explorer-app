@@ -47,7 +47,7 @@ assert.match(calendar, /onClick=.*openReassignment|openReassignment.*onClick/s, 
 assert.match(calendar, /Elegir responsable/, 'the second interaction must be choosing a valid candidate');
 assert.doesNotMatch(calendar, /:\s*'Disponible';/, 'the picker must not claim full availability before safety warnings are recalculated');
 assert.match(calendar, /assignmentRole/, 'traffic-light status must come from the real proposal role');
-assert.match(calendar, /assignmentRole: \(validation\.assignmentRole \|\| activeAssignment\?\.roleType\)/, 'reassigning a draft position must refresh its real building-team role');
+assert.match(calendar, /assignmentRole: \(validation\.assignmentRole \|\|[\s\S]*?activeAssignment\?\.roleType\)/, 'reassigning a draft position must refresh its real building-team role');
 assert.match(calendar, /Sin cubrir/, 'uncovered tasks must render as explicit red cards');
 assert.doesNotMatch(calendar, /taskStorageService|multipleTaskAssignmentService|supabase\.from/, 'sandbox editing must remain local until approval');
 
