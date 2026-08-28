@@ -125,6 +125,8 @@ assert.match(
 assert.match(proposalCalendar, /assignmentRole/, 'Traffic-light labels must use the real building-team role');
 assert.match(planningPage, /max-w-\[1920px\]/, 'The reviewed planning workspace must use the available desktop width');
 assert.match(proposalPanel, /max-w-\[1920px\]/, 'The approval bar must align with the wider planning workspace');
+assert.match(proposalPanel, /useSidebar\(\)/, 'The approval bar must follow the current desktop sidebar state');
+assert.match(proposalPanel, /sidebarState === 'expanded' \? '18rem' : '4rem'/, 'The approval bar must not overlap either sidebar width');
 assert.match(proposalCalendar, /PIXELS_PER_MINUTE = 1\.4/, 'The desktop timeline must reserve enough horizontal space for readable tasks');
 assert.match(proposalCalendar, /MIN_CARD_WIDTH = 112/, 'Short tasks must keep a readable minimum card width');
 assert.match(proposalCalendar, /2xl:grid-cols-\[minmax\(0,1fr\)_280px\]/, 'The calendar must own the main desktop column instead of sharing it with a permanent left rail');
