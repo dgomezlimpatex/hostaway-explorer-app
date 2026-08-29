@@ -136,15 +136,15 @@ export const CleanerDashboard = ({ userFullName, userEmail }: CleanerDashboardPr
 
             <div className="flex shrink-0 items-center gap-3">
               <div
-                className="cleaner-progress-ring flex h-20 w-20 shrink-0 items-center justify-center rounded-full sm:h-24 sm:w-24"
+                className="cleaner-progress-ring flex h-24 w-24 shrink-0 items-center justify-center rounded-full sm:h-28 sm:w-28"
                 style={heroProgressStyle}
                 role="img"
                 aria-label={`Progreso de la jornada: ${completedCount} de ${plannedCount} tareas completadas`}
               >
-                <div className="cleaner-progress-ring-inner flex h-[calc(100%-12px)] w-[calc(100%-12px)] flex-col items-center justify-center rounded-full bg-[#3c176f] text-center">
-                  <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-white/55">Hechas</span>
-                  <span className="mt-0.5 text-2xl font-semibold tracking-[-0.06em] text-white">{completedCount}</span>
-                  <span className="text-xs font-medium text-white/60">de {plannedCount}</span>
+                <div className="cleaner-progress-ring-inner flex h-[calc(100%_-_10px)] w-[calc(100%_-_10px)] flex-col items-center justify-center rounded-full bg-[#3c176f] px-2 text-center">
+                  <span className="text-[9px] font-bold uppercase leading-none tracking-[0.18em] text-white/60">Hechas</span>
+                  <span className="mt-1 text-[1.75rem] font-semibold leading-none tracking-[-0.06em] text-white">{completedCount}</span>
+                  <span className="mt-1 text-[11px] font-semibold leading-none text-white/65">de {plannedCount}</span>
                 </div>
               </div>
               <div className="hidden max-w-[8rem] md:block">
