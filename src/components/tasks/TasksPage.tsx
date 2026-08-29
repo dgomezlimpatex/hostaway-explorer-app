@@ -11,6 +11,7 @@ import { useTasksPageState } from '@/hooks/tasks/useTasksPageState';
 import { useTasksPageActions } from '@/hooks/tasks/useTasksPageActions';
 import { useRolePermissions } from '@/hooks/useRolePermissions';
 import { Task } from '@/types/calendar';
+import { CleanerTodayTasksPage } from './CleanerTodayTasksPage';
 
 const TasksPage = memo(() => {
   const { isCleaner } = useRolePermissions();
@@ -90,6 +91,24 @@ const TasksPage = memo(() => {
     setSelectedTaskForMultipleAssignment(null);
     refetch();
   }, [refetch]);
+
+  if (cleanerView && !showPastTasks) {
+    return (
+      <>
+        <CleanerTodayTasksPage
+          tasks={tasks}
+          isLoading={isLoading}
+          onOpenReport={handleCreateReport}
+        />
+
+        <TaskReportModal
+          task={selectedTaskForReport}
+          open={isReportModalOpen}
+          onOpenChange={setIsReportModalOpen}
+        />
+      </>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
