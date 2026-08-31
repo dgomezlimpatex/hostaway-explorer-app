@@ -38,15 +38,21 @@ export function getTaskWorkerSchedule(
   task: WorkerScheduleInput,
   workerCount = 1,
 ): WorkerSchedule {
-  const startMinutes = parseTime(task.startTime) ?? 0;
+  const parsedStartMinutes = parseTime(task.startTime);
+  const startMinutes = parsedStartMinutes ?? 0;
   const endMinutes = parseTime(task.endTime);
-  const windowDuration = endMinutes === null
+  const windowDuration = parsedStartMinutes === null || endMinutes === null
     ? 0
     : ((endMinutes - startMinutes) + MINUTES_PER_DAY) % MINUTES_PER_DAY || MINUTES_PER_DAY;
   const declaredDuration = Number(task.durationMinutes);
-  const totalDuration = Number.isFinite(declaredDuration) && declaredDuration > 0
-    ? Math.round(declaredDuration)
-    : windowDuration;
+  // The explicit task schedule is authoritative. `durationMinutes` can still
+  // contain a property's old estimate after a manager edits the task times.
+  // Only use it when there is no usable schedule window.
+  const totalDuration = windowDuration > 0
+    ? windowDuration
+    : Number.isFinite(declaredDuration) && declaredDuration > 0
+      ? Math.round(declaredDuration)
+      : 0;
   const normalizedWorkerCount = Number.isFinite(workerCount) && workerCount > 0
     ? Math.max(1, Math.ceil(workerCount))
     : 1;

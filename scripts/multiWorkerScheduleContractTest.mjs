@@ -16,7 +16,7 @@ const assignmentSnapshotMigration = read('supabase/migrations/20260819120000_sna
 
 assert.match(previewModal, /getEffectiveTaskEndTime/, 'la vista de detalle del trabajador debe usar el fin individual');
 assert.match(previewModal, /getEffectiveTaskDurationMinutes/, 'la vista de detalle del trabajador debe mostrar la duración individual');
-assert.match(taskPositioning, /getTaskWorkerPlannedDurationMinutes/, 'el calendario debe usar la duración por trabajador de la fuente común');
+assert.match(taskPositioning, /getScheduledWindowDurationMinutes/, 'el calendario debe calcular la duración por trabajador desde la ventana horaria explícita');
 assert.match(multipleAssignmentService, /workerCount/, 'el correo de asignación múltiple debe transportar el número real de trabajadores al cálculo común');
 assert.match(whatsappSender, /taskWorkerSchedule/, 'WhatsApp debe usar el helper común de horario');
 assert.match(assignmentEmail, /taskWorkerSchedule/, 'Gmail de asignación debe recalcular el horario individual');
@@ -26,5 +26,7 @@ assert.match(sharedSchedule, /durationMinutes/, 'el helper backend debe distingu
 assert.match(assignmentSnapshotMigration, /worker_count/, 'el snapshot de asignación debe conservar el número de trabajadores');
 assert.match(assignmentSnapshotMigration, /duracion/, 'el snapshot de asignación debe conservar la duración total');
 assert.match(assignmentSnapshotMigration, /TG_OP = 'DELETE'/, 'la cancelación debe conservar el conteo anterior al borrado');
+
+assert.match(sharedSchedule, /windowDuration > 0/, 'el helper backend debe priorizar la ventana horaria explicita sobre la estimacion obsoleta');
 
 console.log('multi-worker-schedule-contract: OK');

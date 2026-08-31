@@ -7,7 +7,6 @@ import {
   ClipboardList, 
   Users, 
   MapPin, 
-  BarChart3, 
   Settings,
   UserPlus,
   Layers,
@@ -19,7 +18,6 @@ import {
   ClipboardCheck,
   Hotel,
   Building2,
-  Calculator,
 } from 'lucide-react';
 
 export const RoleBasedNavigation = () => {
@@ -145,19 +143,6 @@ export const RoleBasedNavigation = () => {
             />
           )}
 
-          {canAccessModule('admin') && (
-            <NavigationCard
-              to="/presupuestador"
-              title="Presupuestador"
-              description="Simula costes, precio y rentabilidad de apartamentos turísticos"
-              icon={Calculator}
-              gradientFrom="bg-gradient-to-br from-[#310984]"
-              gradientTo="to-fuchsia-700"
-              iconColor="text-white"
-              hoverBorderColor="hover:border-violet-300"
-            />
-          )}
-
           {isAdminOrManager() && (
             <NavigationCard
               to="/recurring-tasks"
@@ -168,19 +153,6 @@ export const RoleBasedNavigation = () => {
               gradientTo="to-teal-600"
               iconColor="text-white"
               hoverBorderColor="hover:border-teal-300"
-            />
-          )}
-
-          {canAccessModule('reports') && (
-            <NavigationCard
-              to="/reports"
-              title="Reportes"
-              description="Visualiza estadísticas y reportes del negocio"
-              icon={BarChart3}
-              gradientFrom="bg-gradient-to-br from-indigo-500"
-              gradientTo="to-indigo-600"
-              iconColor="text-white"
-              hoverBorderColor="hover:border-indigo-300"
             />
           )}
 
@@ -199,9 +171,9 @@ export const RoleBasedNavigation = () => {
 
           {canAccessModule('reports') && (
             <NavigationCard
-              to="/cleaning-reports"
-              title="Reportes de Limpieza"
-              description="Revisa partes de limpieza e incidencias pendientes de aprobar"
+              to="/cleaning-reports?tab=incidents"
+              title="Incidencias"
+              description="Revisa y gestiona incidencias pendientes de aprobar"
               icon={AlertTriangle}
               gradientFrom="bg-gradient-to-br from-amber-500"
               gradientTo="to-orange-600"

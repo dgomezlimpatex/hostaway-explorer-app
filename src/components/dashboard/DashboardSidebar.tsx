@@ -6,7 +6,6 @@ import {
   Calendar, 
   Users, 
   MapPin, 
-  BarChart3,
   UserPlus,
   Layers,
   FileText,
@@ -18,25 +17,23 @@ import {
   Shirt,
   Bed,
   Receipt,
-  TrendingUp,
   Search,
   RefreshCw,
   Settings,
   Link2,
-  Sparkles,
   Hotel,
   ChevronRight,
   Package,
   Bot,
   MessageCircle,
   Calculator,
+  Route,
   ClipboardCheck,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useRolePermissions } from '@/hooks/useRolePermissions';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
-import { isAiAllowedUser } from '@/utils/aiAccess';
 import { useIncidentStats } from '@/hooks/useIncidents';
 import { useWhatsAppDeliveryHealth } from '@/hooks/useWhatsAppDeliveryHealth';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
@@ -90,12 +87,6 @@ const generalItems: NavigationItem[] = [
     permission: 'admin-only',
     badge: 'whatsapp-delivery-errors',
   },
-  {
-    title: 'Copiloto IA',
-    href: '/ai-assistant',
-    icon: Bot,
-    permission: 'ai-owner'
-  },
 ];
 
 const managementItems: NavigationItem[] = [
@@ -148,6 +139,12 @@ const managementItems: NavigationItem[] = [
     permission: 'reports'
   },
   {
+    title: 'Nueva ruta de lavandería',
+    href: '/lavanderia/orden',
+    icon: Route,
+    permission: 'reports'
+  },
+  {
     title: 'Inventario',
     href: '/inventory',
     icon: Package,
@@ -161,25 +158,7 @@ const managementItems: NavigationItem[] = [
   },
 ];
 
-const reportsItems: NavigationItem[] = [
-  {
-    title: 'Reportes',
-    href: '/reports',
-    icon: BarChart3,
-    permission: 'reports'
-  },
-  {
-    title: 'Previsión de personal',
-    href: '/forecast',
-    icon: TrendingUp,
-    permission: 'workers-forecast'
-  },
-  {
-    title: 'Alertas de previsión',
-    href: '/forecast/settings',
-    icon: AlertTriangle,
-    permission: 'workers-forecast'
-  },
+const checklistItems: NavigationItem[] = [
   {
     title: 'Plantillas de Checklist',
     href: '/checklist-templates',
@@ -194,15 +173,6 @@ const billingItems: NavigationItem[] = [
     href: '/client-billing',
     icon: Receipt,
     permission: 'reports'
-  },
-];
-
-const budgetItems: NavigationItem[] = [
-  {
-    title: 'Presupuestador',
-    href: '/presupuestador',
-    icon: Calculator,
-    permission: 'admin-module',
   },
 ];
 
@@ -244,11 +214,6 @@ const adminItems: NavigationItem[] = [
     icon: Layers,
   },
   {
-    title: 'Tareas Extraordinarias',
-    href: '/admin/extraordinary-requests',
-    icon: Sparkles,
-  },
-  {
     title: 'Integraciones · REGISTRO',
     href: '/integraciones',
     icon: Link2,
@@ -258,9 +223,9 @@ const adminItems: NavigationItem[] = [
 
 export const DashboardSidebar = () => {
   const location = useLocation();
-  const { canAccessModule, hasPermission: hasRolePermission, isAdminOrManager, isSupervisor } = useRolePermissions();
+  const { canAccessModule, hasPermission: hasRolePermission, isAdminOrManager } = useRolePermissions();
   const { state } = useSidebar();
-  const { signOut, profile, user } = useAuth();
+  const { signOut, profile } = useAuth();
   const shouldShowIncidentBadge = isAdminOrManager();
   const { data: incidentStats } = useIncidentStats(shouldShowIncidentBadge);
   const { data: whatsappHealth } = useWhatsAppDeliveryHealth(shouldShowIncidentBadge);
@@ -282,7 +247,6 @@ export const DashboardSidebar = () => {
       case 'tasks': return canAccessModule('tasks');
       case 'tasks-edit': return hasRolePermission('tasks', 'canEdit');
       case 'workers': return canAccessModule('workers');
-      case 'workers-forecast': return canAccessModule('workers') && !isSupervisor();
       case 'clients': return canAccessModule('clients');
       case 'properties': return canAccessModule('properties');
       case 'propertyGroups': return canAccessModule('propertyGroups');
@@ -293,7 +257,6 @@ export const DashboardSidebar = () => {
       case 'logistics': return canAccessModule('logistics');
       case 'admin-module': return canAccessModule('admin');
       case 'admin-only': return isAdminOrManager();
-      case 'ai-owner': return isAiAllowedUser(user, profile);
       default: return true;
     }
   };
@@ -444,8 +407,7 @@ export const DashboardSidebar = () => {
         <div className="flex-1 overflow-y-auto py-4 space-y-2">
           {renderNavigationSection('General', generalItems)}
           {renderNavigationSection('Gestión', managementItems)}
-          {renderNavigationSection('Reportes', reportsItems)}
-          {renderNavigationSection('Presupuestos', budgetItems)}
+          {renderNavigationSection('Plantillas', checklistItems)}
           {renderNavigationSection('Facturación', billingItems)}
           {isAdminOrManager() && renderSyncSection('Sincronizaciones', syncItems)}
           {/* Administración - Solo para admin/manager */}

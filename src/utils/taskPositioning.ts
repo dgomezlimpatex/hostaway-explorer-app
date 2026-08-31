@@ -1,10 +1,18 @@
 
-import { getTaskWorkerPlannedDurationMinutes } from './cleaning-planning/capacity';
-
 // Helper function to convert time string to minutes
 const timeToMinutes = (time: string) => {
   const [hours, minutes] = time.split(':').map(Number);
   return hours * 60 + minutes;
+};
+
+const getScheduledWindowDurationMinutes = (startTime: string, endTime: string): number => {
+  const startMinutes = timeToMinutes(startTime);
+  const endMinutes = timeToMinutes(endTime);
+  const duration = endMinutes - startMinutes;
+
+  if (duration > 0) return duration;
+  if (duration < 0) return duration + 24 * 60;
+  return 0;
 };
 
 const minutesToTime = (mins: number) => {
@@ -37,19 +45,17 @@ const isTaskAssignedToCleaner = (task: any, cleanerId: string, cleanerName?: str
 };
 
 export const getEffectiveTaskEndTime = (task: any, assignmentsMap?: Record<string, string[]>): string => {
-  // For multi-worker tasks every worker actually works only a fraction of the
-  // total scheduled window (all in parallel, same start). The visible block on
-  // the calendar — and the slots considered "occupied" — should reflect that
-  // shorter per-worker duration, not the full window.
+  // The calendar represents the explicit task schedule. Property duration is
+  // only an estimate and must not replace a manually edited start/end window.
+  // For multi-worker tasks, that scheduled window is split between workers.
   const count = getTaskAssignedCount(task, assignmentsMap);
   if (count <= 1) return task.endTime;
 
   const startMin = timeToMinutes(task.startTime);
-  const perWorker = getTaskWorkerPlannedDurationMinutes({
-    ...task,
-    assignmentCount: count,
-  });
-  if (perWorker <= 0) return task.endTime;
+  const scheduledDuration = getScheduledWindowDurationMinutes(task.startTime, task.endTime);
+  if (scheduledDuration <= 0) return task.endTime;
+
+  const perWorker = Math.max(15, Math.ceil(scheduledDuration / count));
   const newEnd = (startMin + Math.max(15, perWorker)) % (24 * 60);
   return minutesToTime(newEnd);
 };
