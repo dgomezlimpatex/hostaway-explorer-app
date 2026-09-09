@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import {
   AlertTriangle,
@@ -11,7 +11,6 @@ import {
   LockKeyhole,
   RefreshCw,
   Route,
-  ShieldCheck,
   Truck,
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
@@ -128,14 +127,6 @@ const LaundryRouteV2Management = () => {
       .finally(() => setIsBackgroundSyncing(false));
   }, [activeSede?.id, queryClient, queryKey, routesQuery.data]);
 
-  const refreshMutation = useMutation({
-    mutationFn: () => invokeManagement({ action: 'force_reconcile', sedeId: activeSede?.id }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey });
-      toast({ title: 'Rutas actualizadas', description: 'Se han revisado los próximos repartos.' });
-    },
-    onError: (error) => toast({ title: 'No se pudo sincronizar', description: error instanceof Error ? error.message : 'Inténtalo de nuevo.', variant: 'destructive' }),
-  });
 
   const copyLink = async (token: string) => {
     await navigator.clipboard.writeText(getPublicUrl(token));
@@ -174,27 +165,6 @@ const LaundryRouteV2Management = () => {
 
       <main className="mx-auto max-w-6xl space-y-5 px-4 py-5 sm:px-6">
         {isOwner && activeSede?.id && <LaundryPreparationTimings key={activeSede.id} sedeId={activeSede.id} />}
-        <section className="rounded-2xl border border-primary/15 bg-primary/[0.04] p-4 sm:p-5">
-          <div className="flex flex-col justify-between gap-4 md:flex-row md:items-end">
-            <div className="max-w-2xl">
-              <p className="text-xs font-bold uppercase tracking-[0.16em] text-primary">Protocolo operativo</p>
-              <h2 className="mt-1 text-2xl font-bold tracking-tight">Tres rutas listas, siempre actualizadas</h2>
-              <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                Este panel mantiene los próximos repartos del nuevo sistema. Las tareas nuevas, cancelaciones y cambios de contenido se aplican directamente al enlace, sin revisión ni aprobación.
-              </p>
-            </div>
-            {isOwner ? (
-              <Button onClick={() => refreshMutation.mutate()} disabled={refreshMutation.isPending || !activeSede?.id} className="gap-2">
-                <RefreshCw className={cn('h-4 w-4', refreshMutation.isPending && 'animate-spin')} />
-                Sincronizar ahora
-              </Button>
-            ) : (
-              <div className="flex items-center gap-2 rounded-lg border bg-background px-3 py-2 text-xs text-muted-foreground">
-                <ShieldCheck className="h-4 w-4 text-primary" /> Solo Daniel modifica el protocolo
-              </div>
-            )}
-          </div>
-        </section>
 
         {!activeSede?.id ? (
           <Card><CardContent className="p-8 text-center text-sm text-muted-foreground">Selecciona una sede para ver sus rutas.</CardContent></Card>

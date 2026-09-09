@@ -33,6 +33,8 @@ try {
       await page.evaluate(({previous,next})=>{window.fixture={id:'test',token:'test',deliveryDate:'2026-09-09',nextDeliveryDate:'2026-09-11',routeName:'Miércoles',sync_status:'ok',last_synced_at:'2026-09-09T11:00:00Z',totalBags:47,pendingPreparationCount:previous,nextPendingPreparationCount:next};},{previous,next});
       await page.addScriptTag({content:bundle.outputFiles[0].text});
       const summary=page.locator('[data-laundry-bag-summary]');await summary.waitFor();
+      assert.equal(await page.getByText('Protocolo operativo',{exact:true}).count(),0);
+      assert.equal(await page.getByRole('button',{name:'Sincronizar ahora',exact:true}).count(),0);
       const cards=summary.locator(':scope > div');assert.equal(await cards.count(),3);
       const cardText=async(index)=>(await cards.nth(index).innerText()).replace(/\n+/g,'\n');
       assert.equal(await cardText(0),`BOLSAS TOTALES\n${(previous??0)+(next??0)} por preparar`);
