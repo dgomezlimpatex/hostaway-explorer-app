@@ -424,7 +424,7 @@ export const CleaningPlanningPage = () => {
           isLoading={isLoading || buildingDataQuery.isLoading}
           isError={isError}
           buildingDataError={buildingDataQuery.isError}
-          canGenerateProposal={filteredUnassignedTasks.length > 0 && buildingDataReady && !isError && !buildingDataQuery.isError}
+          canGenerateProposal={filteredTasks.length > 0 && buildingDataReady && !isError && !buildingDataQuery.isError}
           onDateChange={setDate}
           onSedeChange={handleSedeChange}
           onGenerateProposal={handleGenerateProposal}

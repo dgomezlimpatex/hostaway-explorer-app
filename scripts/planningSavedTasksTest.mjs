@@ -18,5 +18,6 @@ const panel=readFileSync('src/components/cleaning-planning/AssignmentProposalPan
 assert.match(panel,/new Set\(calendarTasks/,'Saved tasks are included in the save batch');
 const page=readFileSync('src/components/cleaning-planning/CleaningPlanningPage.tsx','utf8');
 assert.match(page,/expectedTasks: filteredTasks/);
+assert.match(page,/canGenerateProposal=\{filteredTasks.length > 0/,'Fully planned days can be opened again');
 assert.doesNotMatch(page,/if \(!proposal \|\| proposal.proposals.length === 0/);
 console.log('PASS: saved reassignment, schedule-only changes, concurrent edit protection and saved-task save scope');
