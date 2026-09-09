@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { usePlanningCalendarWeek } from '@/hooks/usePlanningCalendarWeek';
 import { planningCalendarWeeklyHours } from '@/utils/planningCalendarWeeklyHours';
+import { planningTaskLanes } from '@/utils/planningTaskLanes';
 import {
   DndContext,
   KeyboardSensor,
@@ -97,7 +98,7 @@ interface CalendarItem {
 }
 
 const PIXELS_PER_MINUTE = 1.4;
-const MIN_CARD_WIDTH = 112;
+const MIN_CARD_WIDTH = 140;
 const SNAP_MINUTES = 15;
 const QUARTER_HOUR_GRID_SIZE = SNAP_MINUTES * PIXELS_PER_MINUTE;
 const UNASSIGNED_PLACEMENT_ID = '__unassigned__';
@@ -1320,6 +1321,7 @@ export const PlanningProposalCalendar = ({
                       .sort(
                         (left, right) => left.startMinute - right.startMinute,
                       );
+                    const layout = planningTaskLanes(cleanerItems, bounds.start, PIXELS_PER_MINUTE, MIN_CARD_WIDTH);
                     const availability = effectiveAvailability.find(
                       (item) =>
                         item.date === selectedDate &&
@@ -1371,8 +1373,9 @@ export const PlanningProposalCalendar = ({
                         >
                           <div
                             data-quarter-hour-grid
-                            className="relative h-[92px]"
+                            className="relative"
                             style={{
+                              height: layout.height,
                               width: timelineWidth,
                               backgroundImage:
                                 'linear-gradient(to right, rgba(49,9,132,0.045) 1px, transparent 1px), linear-gradient(to right, rgba(49,9,132,0.12) 1px, transparent 1px)',
@@ -1391,18 +1394,7 @@ export const PlanningProposalCalendar = ({
                                 }}
                               />
                             )}
-                            {cleanerItems.map((item) => {
-                              const left = Math.max(
-                                0,
-                                (item.startMinute - bounds.start) *
-                                  PIXELS_PER_MINUTE,
-                              );
-                              const width = Math.max(
-                                MIN_CARD_WIDTH,
-                                (item.endMinute - item.startMinute) *
-                                  PIXELS_PER_MINUTE -
-                                  5,
-                              );
+                            {layout.cards.map(({ item, left, width, lane, overlaps }) => {
                               const selected =
                                 selectedTask?.taskId === item.taskId &&
                                 selectedTask.proposalIndex ===
@@ -1416,8 +1408,9 @@ export const PlanningProposalCalendar = ({
                               return (
                                 <div
                                   key={item.id}
-                                  className={`absolute top-2 flex h-[76px] overflow-hidden rounded-xl border shadow-sm ${tone} ${selected ? 'ring-2 ring-[#310984] ring-offset-1' : ''}`}
-                                  style={{ left, width }}
+                                  title={overlaps ? 'Coincide en horario con otra tarea de este trabajador' : undefined}
+                                  className={`absolute flex h-[76px] overflow-hidden rounded-xl border shadow-sm ${tone} ${selected ? 'ring-2 ring-[#310984] ring-offset-1' : ''}`}
+                                  style={{ left, width, top: 8 + lane * 84 }}
                                 >
                                   <button
                                     type="button"
@@ -1429,9 +1422,12 @@ export const PlanningProposalCalendar = ({
                                       )
                                     }
                                   >
-                                    <p className="truncate text-xs font-black">
+                                    <p className="flex items-center gap-1 text-[15px] font-semibold leading-tight text-[#171321]">
+                                      {overlaps && <AlertTriangle aria-label="Solapamiento de horario" className="h-3 w-3 shrink-0 text-amber-700" />}
+                                      <span className="truncate" title={item.task.propertyCode || item.task.property}>
                                       {item.task.propertyCode ||
                                         item.task.property}
+                                      </span>
                                     </p>
                                     <p className="mt-1 truncate text-[10px] opacity-75">
                                       {item.task.detectedBuilding

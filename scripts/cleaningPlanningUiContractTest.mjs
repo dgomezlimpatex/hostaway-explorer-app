@@ -128,7 +128,7 @@ assert.match(proposalPanel, /max-w-\[1920px\]/, 'The approval bar must align wit
 assert.match(proposalPanel, /useSidebar\(\)/, 'The approval bar must follow the current desktop sidebar state');
 assert.match(proposalPanel, /sidebarState === 'expanded' \? '18rem' : '4rem'/, 'The approval bar must not overlap either sidebar width');
 assert.match(proposalCalendar, /PIXELS_PER_MINUTE = 1\.4/, 'The desktop timeline must reserve enough horizontal space for readable tasks');
-assert.match(proposalCalendar, /MIN_CARD_WIDTH = 112/, 'Short tasks must keep a readable minimum card width');
+assert.match(proposalCalendar, /MIN_CARD_WIDTH = 140/, 'Short tasks must keep a readable minimum card width');
 assert.match(proposalCalendar, /source: 'existing'/, 'Previously assigned tasks must remain visible in the planning calendar');
 assert.match(proposalCalendar, /editedExistingTaskIds/, 'Previously assigned tasks must have an explicit editable state in the review draft');
 assert.match(proposalCalendar, /makeExistingProposal/, 'Opening a previously assigned task must convert its current assignment into an editable proposal');
