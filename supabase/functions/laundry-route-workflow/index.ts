@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.50.0";
+import { bagRequirementsChanged } from "../_shared/laundryBagRequirements.ts";
 import {
   listActiveRouteWorkers,
   type RouteWorkerIdentity,
@@ -125,6 +126,7 @@ async function fetchTasksForDates(
       propiedad_id,
       sede_id,
       type,
+      status,
       properties:propiedad_id (
         id,
         codigo,
@@ -176,6 +178,7 @@ async function fetchTasksForDates(
   if (error) throw error;
 
   return ((data ?? []) as JsonRecord[])
+    .filter((task) => String(task.status ?? '').toLowerCase() !== 'cancelled')
     .filter((task) => !isNotCountCleaner(task.cleaner))
     .filter((task) => propertyIsLaundryEnabled(getProperty(task)))
     .sort((a, b) => {
@@ -301,7 +304,7 @@ function mapTask(
   const deliveryTracking = tracking.get(taskId);
   const bagStatus = String(preparation?.status ?? "pending");
 
-  return {
+  const bag = {
     taskId,
     propertyId,
     propertyCode: String(property?.codigo ?? task.property ?? ""),
@@ -358,6 +361,12 @@ function mapTask(
     },
     stockConsumables: stockConsumablesByProperty.get(propertyId) ?? [],
   };
+  const previous = preparation?.content_snapshot;
+  if (bagStatus === 'prepared' && previous && typeof previous === 'object'
+    && bagRequirementsChanged(previous as JsonRecord, bag)) {
+    bag.bagStatus.status = 'pending';
+  }
+  return bag;
 }
 
 async function upsertPreparation(
@@ -367,6 +376,7 @@ async function upsertPreparation(
   status: "prepared" | "issue",
   issueReason?: string,
   actor?: RouteWorkerIdentity | null,
+  contentSnapshot?: JsonRecord,
 ) {
   const now = new Date().toISOString();
   const payload: JsonRecord = {
@@ -374,6 +384,8 @@ async function upsertPreparation(
     status,
     last_share_link_id: shareLinkId,
     updated_at: now,
+    route_novelty_resolved: true,
+    ...(contentSnapshot ? { content_snapshot: contentSnapshot, snapshot_locked_at: now } : {}),
   };
 
   if (status === "prepared") {
@@ -564,11 +576,11 @@ async function loadWorkflow(
 
   const existingSnapshotIds = stringArray(link.snapshot_task_ids);
   const existingOriginalIds = stringArray(link.original_task_ids);
-  const snapshotSet = new Set([...existingSnapshotIds, ...currentTaskIds]);
+  const snapshotSet = new Set([...currentTaskIds, ...nextTaskIds]);
   const nextSnapshot = Array.from(snapshotSet);
   const nextOriginal = existingOriginalIds.length > 0 ? existingOriginalIds : currentTaskIds;
   if (
-    nextSnapshot.length !== existingSnapshotIds.length ||
+    JSON.stringify(nextSnapshot.slice().sort()) !== JSON.stringify(existingSnapshotIds.slice().sort()) ||
     nextOriginal.length !== existingOriginalIds.length
   ) {
     await supabase
@@ -768,7 +780,8 @@ serve(async (req) => {
       if (!allowedTaskIds.has(taskId)) return json({ error: "La tarea no pertenece a esta ruta" }, 400);
 
       if (action === "prepare") {
-        await upsertPreparation(supabase, String(workflow.link.id), taskId, "prepared", undefined, access.actor);
+        const bag = [...workflow.currentRouteBags, ...workflow.nextRouteBags].find((item) => item.taskId === taskId);
+        await upsertPreparation(supabase, String(workflow.link.id), taskId, "prepared", undefined, access.actor, bag);
       } else if (action === "issue") {
         if (issueReason.length < 3) return json({ error: "El motivo de incidencia es obligatorio" }, 400);
         await upsertPreparation(supabase, String(workflow.link.id), taskId, "issue", issueReason, access.actor);

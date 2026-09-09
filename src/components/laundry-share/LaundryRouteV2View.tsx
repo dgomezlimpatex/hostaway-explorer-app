@@ -431,8 +431,8 @@ const isRouteBagComplete = (bag: RouteBag) => (
 );
 
 const recalculateWorkflowStats = (workflow: RouteWorkflow): RouteWorkflow => {
-  const allUrgentBags = workflow.currentRouteBags.filter((bag) => bag.bagStatus.status === 'pending' || bag.noveltyResolved === false);
-  const urgentBags = workflow.authorizedToContinue ? [] : allUrgentBags;
+  const allUrgentBags = workflow.currentRouteBags.filter((bag) => bag.bagStatus.status === 'pending');
+  const urgentBags = allUrgentBags;
   const nextPendingBags = workflow.nextRouteBags.filter((bag) => bag.bagStatus.status === 'pending');
   const routePending = ROUTE_DELIVERY_ENABLED && workflow.currentRouteBags
     .filter((bag) => !bag.isCancelled)
@@ -660,7 +660,8 @@ export const LaundryRouteV2View = ({ token }: LaundryRouteV2ViewProps) => {
     queryKey,
     queryFn: () => invokeWorkflow(token, routeAccess?.sessionToken),
     enabled: Boolean(accessInfo) && hasValidAccess,
-    refetchOnWindowFocus: true,
+    refetchOnWindowFocus: pendingActionKeys.size === 0 && !issueTaskId,
+    refetchInterval: pendingActionKeys.size === 0 && !issueTaskId ? 60_000 : false,
   });
 
   const actionMutation = useMutation({

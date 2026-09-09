@@ -4,9 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import {
   AlertTriangle,
   CalendarDays,
-  CheckCircle2,
   ChevronDown,
-  ChevronUp,
   Copy,
   ExternalLink,
   FileClock,
@@ -23,8 +21,6 @@ import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
 import { isRouteV2Owner } from '@/utils/routeV2Access';
 import { LaundryPreparationTimings } from '@/components/laundry-share/LaundryPreparationTimings';
@@ -83,19 +79,6 @@ const formatDateTime = (value: string | null) => {
   }).format(new Date(value));
 };
 
-const eventLabel: Record<string, string> = {
-  route_created: 'Ruta creada',
-  route_refreshed: 'Ruta actualizada',
-  task_added: 'Reserva nueva',
-  task_changed: 'Tarea modificada',
-  task_cancelled: 'Cancelación',
-  bag_issue: 'Incidencia de preparación',
-  bag_undo: 'Bolsa deshecha',
-  bag_no_carry: 'No llevar',
-  critical_block: 'Bloqueo crítico',
-  admin_authorized: 'Ruta autorizada',
-};
-
 const invokeManagement = async (body: Record<string, unknown>) => {
   const { data, error } = await supabase.functions.invoke('manage-laundry-route-v2-links', { body });
   if (error) throw error;
@@ -107,9 +90,6 @@ const getPublicUrl = (token: string) => `${window.location.origin}/reparto/${tok
 
 const routeStatus = (link: RouteLink) => {
   if (link.sync_status === 'error') return { label: 'Error de sincronización', className: 'border-red-200 bg-red-50 text-red-700' };
-  const noveltyCount = Math.max(link.pendingNovelties.length, link.unresolvedNoveltyCount || 0);
-  if (noveltyCount > 0) return { label: `${noveltyCount} novedad${noveltyCount === 1 ? '' : 'es'}`, className: 'border-amber-200 bg-amber-50 text-amber-800' };
-  if ((link.pendingPreparationCount || 0) > 0) return { label: `${link.pendingPreparationCount} novedades pendientes`, className: 'border-sky-200 bg-sky-50 text-sky-700' };
   return { label: 'Al día', className: 'border-emerald-200 bg-emerald-50 text-emerald-700' };
 };
 
@@ -119,9 +99,6 @@ const LaundryRouteV2Management = () => {
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [authorizationLink, setAuthorizationLink] = useState<RouteLink | null>(null);
-  const [authorizationReason, setAuthorizationReason] = useState('');
   const [copiedToken, setCopiedToken] = useState<string | null>(null);
   const [isBackgroundSyncing, setIsBackgroundSyncing] = useState(false);
   const backgroundSyncStartedRef = useRef<Set<string>>(new Set());
@@ -160,22 +137,6 @@ const LaundryRouteV2Management = () => {
     onError: (error) => toast({ title: 'No se pudo sincronizar', description: error instanceof Error ? error.message : 'Inténtalo de nuevo.', variant: 'destructive' }),
   });
 
-  const authorizeMutation = useMutation({
-    mutationFn: () => invokeManagement({
-      action: 'authorize_continue',
-      shareLinkId: authorizationLink?.id,
-      reason: authorizationReason.trim(),
-      affectedTaskIds: authorizationLink?.pendingTaskIds || authorizationLink?.pendingNovelties.map((event) => event.task_id).filter(Boolean) || [],
-    }),
-    onSuccess: () => {
-      setAuthorizationLink(null);
-      setAuthorizationReason('');
-      queryClient.invalidateQueries({ queryKey });
-      toast({ title: 'Ruta autorizada', description: 'La autorización ha quedado registrada.' });
-    },
-    onError: (error) => toast({ title: 'No se pudo autorizar', description: error instanceof Error ? error.message : 'Inténtalo de nuevo.', variant: 'destructive' }),
-  });
-
   const copyLink = async (token: string) => {
     await navigator.clipboard.writeText(getPublicUrl(token));
     setCopiedToken(token);
@@ -199,7 +160,7 @@ const LaundryRouteV2Management = () => {
             <div className="min-w-0">
               <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-primary">Lavandería</p>
               <h1 className="truncate text-xl font-bold tracking-tight">Nuevo sistema de ruta</h1>
-              <p className="truncate text-xs text-muted-foreground">Enlaces automáticos y novedades del reparto</p>
+              <p className="truncate text-xs text-muted-foreground">Enlaces de reparto actualizados automáticamente</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -219,7 +180,7 @@ const LaundryRouteV2Management = () => {
               <p className="text-xs font-bold uppercase tracking-[0.16em] text-primary">Protocolo operativo</p>
               <h2 className="mt-1 text-2xl font-bold tracking-tight">Tres rutas listas, siempre actualizadas</h2>
               <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                Este panel mantiene los próximos repartos del nuevo sistema. Las tareas nuevas, cambios y cancelaciones se detectan al actualizar la ruta o al abrir el enlace.
+                Este panel mantiene los próximos repartos del nuevo sistema. Las tareas nuevas, cancelaciones y cambios de contenido se aplican directamente al enlace, sin revisión ni aprobación.
               </p>
             </div>
             {isOwner ? (
@@ -247,11 +208,9 @@ const LaundryRouteV2Management = () => {
           <section className="space-y-3">
             {routes.map((link) => {
               const status = routeStatus(link);
-              const isExpanded = expandedId === link.id;
               const totalTasks = link.totalBags ?? link.snapshot_task_ids?.length ?? 0;
-              const events = link.pendingNovelties || [];
               return (
-                <Card key={link.id} className={cn('overflow-hidden transition-shadow', events.length > 0 && 'border-amber-200 shadow-sm')}>
+                <Card key={link.id} className="overflow-hidden">
                   <CardHeader className="pb-3">
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                       <div className="flex min-w-0 items-start gap-3">
@@ -266,9 +225,6 @@ const LaundryRouteV2Management = () => {
                       </div>
                       <div className="flex shrink-0 items-center gap-2 text-xs text-muted-foreground">
                         <span className="rounded-md bg-muted px-2 py-1 font-medium">{totalTasks} bolsas</span>
-                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setExpandedId(isExpanded ? null : link.id)} aria-label={isExpanded ? 'Ocultar detalle' : 'Ver detalle'}>
-                          {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                        </Button>
                       </div>
                     </div>
                   </CardHeader>
@@ -276,8 +232,8 @@ const LaundryRouteV2Management = () => {
                     <div className="grid gap-2 sm:grid-cols-4">
                       <div className="rounded-lg bg-muted/50 px-3 py-2"><p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Bolsas incluidas</p><p className="mt-0.5 text-sm font-semibold">{totalTasks} bolsas</p></div>
                       <div className="rounded-lg bg-muted/50 px-3 py-2"><p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Siguiente ruta</p><p className="mt-0.5 text-sm font-semibold">{link.nextPendingPreparationCount || 0} por preparar</p></div>
-                      <div className="rounded-lg bg-muted/50 px-3 py-2"><p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Última revisión</p><p className="mt-0.5 text-sm font-semibold">{formatDateTime(link.last_synced_at)}</p></div>
-                      <div className="rounded-lg bg-muted/50 px-3 py-2"><p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Estado</p><p className="mt-0.5 flex items-center gap-1.5 text-sm font-semibold"><span className={cn('h-2 w-2 rounded-full', link.sync_status === 'error' ? 'bg-red-500' : events.length || (link.pendingPreparationCount || 0) > 0 ? 'bg-amber-500' : 'bg-emerald-500')} />{link.sync_status === 'error' ? 'Revisar error' : events.length || (link.pendingPreparationCount || 0) > 0 ? 'Requiere revisión' : 'Sin novedades'}</p></div>
+                      <div className="rounded-lg bg-muted/50 px-3 py-2"><p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Última actualización</p><p className="mt-0.5 text-sm font-semibold">{formatDateTime(link.last_synced_at)}</p></div>
+                      <div className="rounded-lg bg-muted/50 px-3 py-2"><p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Estado</p><p className="mt-0.5 flex items-center gap-1.5 text-sm font-semibold"><span className={cn('h-2 w-2 rounded-full', link.sync_status === 'error' ? 'bg-red-500' : 'bg-emerald-500')} />{link.sync_status === 'error' ? 'Error de sincronización' : 'Actualización automática'}</p></div>
                     </div>
 
                     {link.sync_error && <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700"><strong>Error:</strong> {link.sync_error}</div>}
@@ -290,25 +246,6 @@ const LaundryRouteV2Management = () => {
                       </div>
                     </div>
 
-                    {isExpanded && (
-                      <div className="space-y-3 border-t pt-3">
-                        <div className="flex items-center justify-between gap-3"><div><p className="text-sm font-semibold">Novedades y actividad</p><p className="text-xs text-muted-foreground">Las novedades no se pierden: quedan registradas en la ruta.</p></div>{events.length > 0 && <Badge variant="outline" className="border-amber-200 bg-amber-50 text-amber-800">{events.length} pendientes</Badge>}</div>
-                        {events.length === 0 && (link.pendingPreparationCount || 0) === 0 ? <div className="rounded-lg border border-dashed p-4 text-center text-sm text-muted-foreground"><CheckCircle2 className="mx-auto mb-1 h-5 w-5 text-emerald-500" />No hay novedades pendientes.</div> : <div className="space-y-2">{events.length === 0 && <div className="rounded-lg border border-amber-200 bg-amber-50/60 px-3 py-2 text-sm text-amber-900">Hay {link.pendingPreparationCount} bolsas de la ruta actual pendientes.</div>}{events.map((event) => <div key={event.id} className="flex flex-col gap-2 rounded-lg border border-amber-200 bg-amber-50/60 px-3 py-2 sm:flex-row sm:items-center sm:justify-between"><div className="min-w-0"><p className="text-sm font-medium text-foreground">{eventLabel[event.event_type] || 'Novedad de ruta'}{event.property_code ? ` · ${event.property_code}` : ''}</p><p className="text-xs text-muted-foreground">{formatDateTime(event.created_at)}{event.novelty_type ? ` · ${event.novelty_type}` : ''}</p></div>{isOwner && <Button variant="outline" size="sm" onClick={() => { setAuthorizationLink(link); setAuthorizationReason(''); }}>Autorizar continuar</Button>}</div>)}{isOwner && ((link.pendingPreparationCount || 0) > 0 || events.length > 0) && <Button variant="outline" size="sm" onClick={() => { setAuthorizationLink(link); setAuthorizationReason(''); }}>Autorizar ruta incompleta</Button>}</div>}
-                        {link.recentEvents?.length > 0 && (
-                          <div className="space-y-2 border-t pt-3">
-                            <p className="text-sm font-semibold">Historial reciente</p>
-                            <div className="space-y-1.5">
-                              {link.recentEvents.slice(0, 8).map((event) => (
-                                <div key={event.id} className="flex items-center justify-between gap-3 rounded-md bg-muted/40 px-3 py-2 text-xs">
-                                  <span className="min-w-0 truncate">{eventLabel[event.event_type] || 'Actividad de ruta'}{event.property_code ? ` · ${event.property_code}` : ''}</span>
-                                  <span className="shrink-0 text-muted-foreground">{formatDateTime(event.created_at)}</span>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    )}
                   </CardContent>
                 </Card>
               );
@@ -317,17 +254,6 @@ const LaundryRouteV2Management = () => {
         )}
       </main>
 
-      <Dialog open={Boolean(authorizationLink)} onOpenChange={(open) => !open && setAuthorizationLink(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Autorizar ruta incompleta</DialogTitle>
-            <DialogDescription>Esta autorización permite continuar de forma excepcional. Las bolsas afectadas seguirán pendientes y quedarán registradas para la siguiente ruta.</DialogDescription>
-          </DialogHeader>
-          <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900"><strong>{authorizationLink?.pendingTaskIds?.length || authorizationLink?.pendingNovelties.length || 0}</strong> bolsas quedarán asociadas a la autorización.</div>
-          <Textarea value={authorizationReason} onChange={(event) => setAuthorizationReason(event.target.value)} placeholder="Indica por qué autorizas continuar..." className="min-h-24" />
-          <DialogFooter><Button variant="outline" onClick={() => setAuthorizationLink(null)}>Cancelar</Button><Button onClick={() => authorizeMutation.mutate()} disabled={authorizationReason.trim().length < 3 || authorizeMutation.isPending}>{authorizeMutation.isPending ? 'Guardando...' : 'Autorizar continuación'}</Button></DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 };
