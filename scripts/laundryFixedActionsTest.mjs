@@ -47,6 +47,12 @@ try {
     await prepare.waitFor();
     const positions = async () => [await prepare.boundingBox(), await issue.boundingBox()];
     const initial = await positions();
+    const contentBefore = await page.locator('[data-bag-contents]').boundingBox();
+    const dockBefore = await page.locator('[data-laundry-actions]').boundingBox();
+    assert.ok(Math.abs(contentBefore.y + contentBefore.height - (dockBefore.y - 12)) < 2, 'List must fill the available height');
+    assert.equal(await page.locator('[data-laundry-scroll]').evaluate(el => getComputedStyle(el).overflowY), 'clip');
+    const longFont = await page.locator('[data-bag-contents]').evaluate(el => parseFloat(getComputedStyle(el).fontSize));
+    assert.ok(await page.locator('[data-bag-contents]').evaluate(container => Array.from(container.querySelectorAll('[data-bag-item]')).every(row => Array.from(row.children).every(child => child.scrollHeight <= row.clientHeight - 4 && child.scrollWidth <= child.clientWidth + 1))), 'Every label and quantity must fit without clipping');
     assert.ok(initial[1].y + initial[1].height <= viewport.height);
     assert.equal(await page.locator('[data-bag-progress]').innerText(),'0 de 3 bolsas preparadas','Incidents are not prepared bags');
     if(viewport.height>=640) {
@@ -57,9 +63,15 @@ try {
       await page.screenshot({path:`${process.env.TEMP}/laundry-compact-${viewport.width}-${viewport.height}.png`});
     }
     await page.locator('[data-laundry-scroll]').evaluate(el => {el.scrollTop = el.scrollHeight;});
+    await page.mouse.move(150,200);
+    await page.mouse.wheel(0,600);
+    assert.equal(await page.locator('[data-laundry-scroll]').evaluate(el => el.scrollTop),0,'Scrolling is disabled');
+    assert.equal(await page.evaluate(()=>window.scrollY),0);
     assert.deepEqual(await positions(), initial, 'Scrolling must not move either action');
     await prepare.click();
     await page.getByRole('heading',{name:'SHORT',exact:true}).waitFor();
+    const shortFont = await page.locator('[data-bag-contents]').evaluate(el => parseFloat(getComputedStyle(el).fontSize));
+    assert.ok(shortFont >= longFont, 'Short bags must expand their text');
     assert.equal(await page.locator('[data-bag-progress]').innerText(),'1 de 3 bolsas preparadas');
     assert.equal(await page.locator('[data-laundry-scroll]').evaluate(el => el.scrollTop), 0);
     assert.deepEqual(await positions(), initial, 'Short bags must keep both actions in place');

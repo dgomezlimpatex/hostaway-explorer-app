@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -288,7 +288,7 @@ const buildBagGuideLayers = (bag: RouteBag): BagGuideLayer[] => {
 
   const kitchenClothsQuantity = bag.amenities.kitchenCloths || 0;
   const pushItem = (layer: BagLayerId, quantity: number, label: QuantityLabel | string) => {
-    if (quantity <= 0) return;
+    if (!Number.isFinite(quantity) || quantity <= 0) return;
     itemsByLayer[layer].push({ quantity, label: formatQuantityLabel(quantity, label) });
   };
 
@@ -357,53 +357,63 @@ const buildBagGuideLayers = (bag: RouteBag): BagGuideLayer[] => {
 };
 
 const BagAssemblyGuide = ({ bag }: { bag: RouteBag }) => {
-  const layers = buildBagGuideLayers(bag);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const items = buildBagGuideLayers(bag).flatMap((layer) =>
+    layer.items.map((item, index) => ({ ...item, step: index === 0 ? layer.step : null })),
+  );
 
-  if (layers.length === 0) {
-    return (
-      <div className="rounded-xl bg-white/80 p-3">
-        <p className="flex items-center gap-2 text-xs font-black uppercase tracking-wide text-[#7a604b]">
-          <Shirt className="h-4 w-4" />
-          Contenido de la bolsa
-        </p>
-        <p className="mt-2 text-sm text-[#7a604b]">Sin consumos configurados</p>
-      </div>
-    );
+  useLayoutEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+    const fit = () => {
+      const setColumns = (columns: number) => {
+        container.style.gridTemplateColumns = `repeat(${columns}, minmax(0, 1fr))`;
+        container.style.gridTemplateRows = `repeat(${Math.max(1, Math.ceil(items.length / columns))}, minmax(0, 1fr))`;
+      };
+      const fits = () => Array.from(container.querySelectorAll<HTMLElement>('[data-bag-item]')).every((row) =>
+        Array.from(row.children).every((child) => {
+          const element = child as HTMLElement;
+          return element.scrollHeight <= row.clientHeight - 4 && element.scrollWidth <= element.clientWidth + 1;
+        }),
+      );
+      // Maximise readable type for the actual viewport and each bag's labels.
+      let best = { columns: 1, size: 6 };
+      for (const columns of container.clientWidth >= 560 ? [1, 2, 3, 4] : [1]) {
+        setColumns(columns);
+        let low = 6;
+        let high = 28;
+        for (let attempt = 0; attempt < 9; attempt += 1) {
+          const size = (low + high) / 2;
+          container.style.setProperty('--bag-font', `${size}px`);
+          if (fits()) low = size;
+          else high = size;
+        }
+        if (low > best.size) best = { columns, size: low };
+      }
+      setColumns(best.columns);
+      container.style.setProperty('--bag-font', `${best.size}px`);
+    };
+    const observer = new ResizeObserver(fit);
+    observer.observe(container);
+    fit();
+    return () => observer.disconnect();
+  }, [bag, items.length]);
+
+  if (items.length === 0) {
+    return <div className="grid min-h-0 flex-1 place-items-center rounded-xl bg-white text-sm text-[#7a604b]">Sin consumos configurados</div>;
   }
 
   return (
-    <div data-bag-contents className="overflow-hidden rounded-xl border border-[#e8e1d7] bg-white">
-      <div className="divide-y divide-[#eee8df]">
-        {layers.map((layer) => (
-          <div
-            key={layer.id}
-            className="px-2 py-0.5"
-          >
-            <div className="flex items-start gap-2">
-              <span className="grid h-[18px] w-5 shrink-0 place-items-center text-[10px] font-medium text-[#8c8378]">
-                {layer.step}º
-              </span>
-
-              <div className="grid min-w-0 flex-1">
-                {layer.items.map((guideItem, index) => (
-                  <span
-                    key={`${layer.id}-${guideItem.label}-${index}`}
-                    className="flex min-w-0 items-center gap-2 text-[13px] leading-4 text-[#27231e]"
-                  >
-                    <span className="grid min-h-[18px] min-w-6 shrink-0 place-items-center text-[17px] font-bold leading-[18px] tabular-nums text-[#17130f]">
-                      {guideItem.quantity}
-                    </span>
-                    <span className="min-w-0 break-words">
-                      {guideItem.label.charAt(0).toLocaleUpperCase('es') + guideItem.label.slice(1).toLocaleLowerCase('es')}
-                    </span>
-                  </span>
-                ))}
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
-
+    <div ref={containerRef} data-bag-contents className="grid min-h-0 flex-1 grid-flow-col overflow-clip rounded-xl border border-[#e8e1d7] bg-white" style={{ fontSize: 'var(--bag-font, 16px)' }}>
+      {items.map((item, index) => (
+        <div key={index} data-bag-item className="grid min-h-0 min-w-0 grid-cols-[1.2em_1.7em_minmax(0,1fr)] items-center gap-1 border-b border-[#eee8df] px-2 py-0.5 last:border-b-0">
+          <span className="text-center text-[#8c8378]" style={{ fontSize: '0.65em', lineHeight: 1.1 }}>{item.step ? `${item.step}º` : ''}</span>
+          <span className="text-center font-bold tabular-nums text-[#17130f]" style={{ fontSize: '1.35em', lineHeight: 1.05 }}>{item.quantity}</span>
+          <span className="min-w-0 break-words text-[#27231e]" style={{ lineHeight: 1.12 }}>
+            {item.label.charAt(0).toLocaleUpperCase('es') + item.label.slice(1).toLocaleLowerCase('es')}
+          </span>
+        </div>
+      ))}
     </div>
   );
 };
@@ -485,6 +495,7 @@ const BagCard = ({
   bag,
   progress,
   isCompleteFlash = false,
+  onDockHeight,
   children,
 }: {
   bag: RouteBag;
@@ -493,14 +504,24 @@ const BagCard = ({
     total: number;
   };
   isCompleteFlash?: boolean;
+  onDockHeight: (height: number) => void;
   children: ReactNode;
 }) => {
+  const dockRef = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    const dock = dockRef.current;
+    if (!dock) return;
+    const observer = new ResizeObserver(() => onDockHeight(dock.getBoundingClientRect().height));
+    observer.observe(dock);
+    onDockHeight(dock.getBoundingClientRect().height);
+    return () => observer.disconnect();
+  }, [onDockHeight]);
   const progressCompleted = progress.prepared;
   const progressPercent = progress.total > 0 ? (progressCompleted / progress.total) * 100 : 0;
 
   return (
     <Card className={cn(
-      'relative rounded-none border-0 bg-transparent shadow-none transition-colors duration-200',
+      'relative flex min-h-0 flex-1 rounded-none border-0 bg-transparent shadow-none transition-colors duration-200',
       isCompleteFlash && 'laundry-bag-complete-card border-emerald-400 bg-emerald-50',
     )}>
       {isCompleteFlash && (
@@ -513,8 +534,8 @@ const BagCard = ({
           </div>
         </div>
       )}
-      <CardContent className="space-y-2 p-0">
-        <div className="flex items-center justify-between gap-2">
+      <CardContent className="flex min-h-0 flex-1 flex-col gap-2 p-0">
+        <div className="flex shrink-0 items-center justify-between gap-2">
           <div className="min-w-0 flex-1">
             <p className="text-[9px] font-semibold uppercase tracking-wider text-[#a18465]">Bolsa actual</p>
             <div className="flex items-center gap-1.5">
@@ -535,7 +556,7 @@ const BagCard = ({
           </div>
         </div>
 
-        <p className="flex items-center gap-1.5 text-xs font-semibold text-[#a94427]">
+        <p className="flex shrink-0 items-center gap-1.5 text-xs font-semibold text-[#a94427]">
           <Layers className="h-3.5 w-3.5" aria-hidden="true" />
           Coloca de abajo hacia arriba
         </p>
@@ -543,7 +564,7 @@ const BagCard = ({
         <BagAssemblyGuide bag={bag} />
 
         {createPortal(
-          <div data-laundry-actions className="fixed inset-x-0 bottom-0 z-30 border-t border-[#e8e1d7] bg-[#faf7f1] px-4 pt-3 font-sans shadow-[0_-4px_20px_rgba(39,35,30,0.04)]" style={{ paddingBottom: 'max(12px, env(safe-area-inset-bottom))' }}>
+          <div ref={dockRef} data-laundry-actions className="fixed inset-x-0 bottom-0 z-30 border-t border-[#e8e1d7] bg-[#faf7f1] px-4 pt-3 font-sans shadow-[0_-4px_20px_rgba(39,35,30,0.04)]" style={{ paddingBottom: 'max(12px, env(safe-area-inset-bottom))' }}>
             <div className="mx-auto max-w-[416px]">{children}</div>
           </div>,
           document.body,
@@ -868,7 +889,22 @@ export const LaundryRouteV2View = ({ token }: LaundryRouteV2ViewProps) => {
   );
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const [dockHeight, setDockHeight] = useState(144);
   const activeBagId = workflow?.urgentBags[0]?.taskId || nextPendingBag?.taskId;
+  const hasWorkflow = Boolean(workflow);
+  useEffect(() => {
+    if (!hasWorkflow) return;
+    const elements = [document.documentElement, document.body];
+    const previous = elements.map((element) => ({ overflow: element.style.overflow, overscrollBehavior: element.style.overscrollBehavior }));
+    elements.forEach((element) => {
+      element.style.overflow = 'hidden';
+      element.style.overscrollBehavior = 'none';
+    });
+    return () => elements.forEach((element, index) => {
+      element.style.overflow = previous[index].overflow;
+      element.style.overscrollBehavior = previous[index].overscrollBehavior;
+    });
+  }, [hasWorkflow]);
   useEffect(() => {
     // Start each new bag at its heading without moving the fixed action dock.
     if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0;
@@ -1011,10 +1047,10 @@ export const LaundryRouteV2View = ({ token }: LaundryRouteV2ViewProps) => {
   };
 
   return (
-    <div ref={scrollContainerRef} className="h-dvh overflow-y-auto bg-[#faf7f1] font-sans" data-laundry-scroll>
-      <main className="mx-auto max-w-md space-y-2 px-4 py-1.5" style={{ paddingBottom: 'calc(156px + env(safe-area-inset-bottom))' }}>
+    <div ref={scrollContainerRef} className="fixed inset-x-0 top-0 h-dvh overflow-clip overscroll-none bg-[#faf7f1] font-sans" data-laundry-scroll>
+      <main className="mx-auto flex h-full max-w-md flex-col gap-2 px-4 py-1.5 landscape:max-w-3xl" style={{ paddingBottom: dockHeight + 12 }}>
         {accessRequired && routeAccess?.worker && (
-          <div className="flex items-center justify-between gap-2 border-b border-[#e8e1d7] pb-1">
+          <div className="flex shrink-0 items-center justify-between gap-2 border-b border-[#e8e1d7] pb-1">
             <div className="min-w-0">
               <p className="text-[10px] leading-3 text-[#766b5e]">Ruta iniciada por</p>
               <p className="truncate text-xs font-semibold leading-4 text-[#17130f]">{routeAccess.worker.workerName}</p>
@@ -1026,10 +1062,11 @@ export const LaundryRouteV2View = ({ token }: LaundryRouteV2ViewProps) => {
           </div>
         )}
         {urgentBag && (
-          <section className="space-y-2">
+          <section className="flex min-h-0 flex-1 flex-col gap-2">
             <BagCard
               bag={urgentBag}
               progress={urgentProgress}
+              onDockHeight={setDockHeight}
               isCompleteFlash={completeFlashTaskId === urgentBag.taskId}
             >
               {urgentBag.isCancelled ? (
@@ -1088,7 +1125,7 @@ export const LaundryRouteV2View = ({ token }: LaundryRouteV2ViewProps) => {
                   </div>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 gap-2">
+                <div className="grid grid-cols-1 items-center gap-2 [@media(max-height:450px)_and_(orientation:landscape)]:grid-cols-2">
                   <Button
                     size="lg"
                     onClick={() => runAction({ action: 'prepare', taskId: urgentBag.taskId })}
@@ -1113,7 +1150,7 @@ export const LaundryRouteV2View = ({ token }: LaundryRouteV2ViewProps) => {
         )}
 
         {!urgentBag && workflow.blockingStep === 'prepare_next' && nextPendingBag && (
-          <section className="space-y-2">
+          <section className="flex min-h-0 flex-1 flex-col gap-2">
             <p className="text-[11px] leading-4 text-[#7a604b]">
               Siguiente ruta: {workflow.route.nextRouteName} · {formatDate(workflow.route.nextDeliveryDate)}
             </p>
@@ -1121,6 +1158,7 @@ export const LaundryRouteV2View = ({ token }: LaundryRouteV2ViewProps) => {
             <BagCard
               bag={nextPendingBag}
               progress={nextProgress}
+              onDockHeight={setDockHeight}
               isCompleteFlash={completeFlashTaskId === nextPendingBag.taskId}
             >
               {issueTaskId === nextPendingBag.taskId ? (
@@ -1147,7 +1185,7 @@ export const LaundryRouteV2View = ({ token }: LaundryRouteV2ViewProps) => {
                   </div>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 gap-2">
+                <div className="grid grid-cols-1 items-center gap-2 [@media(max-height:450px)_and_(orientation:landscape)]:grid-cols-2">
                   <Button
                     size="lg"
                     onClick={() => runAction({ action: 'prepare', taskId: nextPendingBag.taskId })}
