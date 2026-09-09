@@ -27,6 +27,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
 import { isRouteV2Owner } from '@/utils/routeV2Access';
+import { LaundryPreparationTimings } from '@/components/laundry-share/LaundryPreparationTimings';
 
 type RouteEvent = {
   id: string;
@@ -211,6 +212,7 @@ const LaundryRouteV2Management = () => {
       </header>
 
       <main className="mx-auto max-w-6xl space-y-5 px-4 py-5 sm:px-6">
+        {isOwner && activeSede?.id && <LaundryPreparationTimings key={activeSede.id} sedeId={activeSede.id} />}
         <section className="rounded-2xl border border-primary/15 bg-primary/[0.04] p-4 sm:p-5">
           <div className="flex flex-col justify-between gap-4 md:flex-row md:items-end">
             <div className="max-w-2xl">
