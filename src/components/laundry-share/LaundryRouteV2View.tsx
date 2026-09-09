@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -14,13 +15,13 @@ import {
   CheckCircle2,
   ChevronDown,
   Loader2,
+  Layers,
   LockKeyhole,
   LogOut,
   MapPin,
   PackageCheck,
   Shirt,
   Truck,
-  XCircle,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -373,29 +374,29 @@ const BagAssemblyGuide = ({ bag }: { bag: RouteBag }) => {
   }
 
   return (
-    <div className="space-y-1.5">
-      <div className="grid gap-1.5">
+    <div className="overflow-hidden rounded-2xl border border-[#e8e1d7] bg-white">
+      <div className="divide-y divide-[#eee8df]">
         {visibleLayers.map((layer) => (
           <div
             key={layer.id}
-            className="rounded-xl border border-[#e7d8c7] bg-white px-2.5 py-2 shadow-sm"
+            className="px-3 py-2.5"
           >
-            <div className="flex items-center gap-2">
-              <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-[#c4512e] text-[13px] font-black text-white shadow-sm">
+            <div className="flex items-start gap-3">
+              <span className="grid h-8 w-7 shrink-0 place-items-center text-xs font-medium text-[#8c8378]">
                 {layer.step}º
               </span>
 
-              <div className="flex min-w-0 flex-1 flex-wrap gap-1">
+              <div className="grid min-w-0 flex-1 gap-2">
                 {layer.items.map((guideItem, index) => (
                   <span
                     key={`${layer.id}-${guideItem.label}-${index}`}
-                    className="inline-flex min-w-0 items-center rounded-md bg-[#f5efe5] pr-2 text-[12px] font-black uppercase leading-6 tracking-tight text-[#17130f]"
+                    className="flex min-w-0 items-center gap-3 text-[15px] leading-5 text-[#27231e]"
                   >
-                    <span className="mr-1.5 grid h-6 min-w-6 place-items-center rounded bg-[#1f1a14] px-1 text-[12px] font-black text-white">
+                    <span className="grid min-h-8 min-w-7 shrink-0 place-items-center text-2xl font-bold tabular-nums text-[#17130f]">
                       {guideItem.quantity}
                     </span>
-                    <span className="truncate">
-                      {guideItem.label}
+                    <span className="min-w-0 break-words">
+                      {guideItem.label.charAt(0).toLocaleUpperCase('es') + guideItem.label.slice(1).toLocaleLowerCase('es')}
                     </span>
                   </span>
                 ))}
@@ -499,13 +500,11 @@ const findWorkflowBag = (workflow: RouteWorkflow | undefined, taskId: string) =>
 
 const BagCard = ({
   bag,
-  tone,
   progress,
   isCompleteFlash = false,
   children,
 }: {
   bag: RouteBag;
-  tone: 'urgent' | 'next';
   progress: {
     pending: number;
     total: number;
@@ -518,8 +517,7 @@ const BagCard = ({
 
   return (
     <Card className={cn(
-      'relative overflow-hidden rounded-[1.6rem] border bg-[#fbf6ec] shadow-sm transition-colors duration-200',
-      tone === 'urgent' ? 'border-[#e2b29b]' : 'border-[#dac8b2]',
+      'relative rounded-none border-0 bg-transparent shadow-none transition-colors duration-200',
       isCompleteFlash && 'laundry-bag-complete-card border-emerald-400 bg-emerald-50',
     )}>
       {isCompleteFlash && (
@@ -532,21 +530,18 @@ const BagCard = ({
           </div>
         </div>
       )}
-      <CardContent className="space-y-2.5 p-3">
-        <div className="flex items-end justify-between gap-3">
+      <CardContent className="space-y-5 p-0">
+        <div className="space-y-4">
           <div className="min-w-0 flex-1">
             <p className="text-[10px] font-black uppercase tracking-[0.18em] text-[#a18465]">Bolsa actual</p>
             <div className="flex items-center gap-1.5">
-              <h2 className="text-3xl font-black leading-none tracking-tight text-[#070b18]">{bag.propertyCode}</h2>
+              <h2 className="break-words text-4xl font-bold leading-tight tracking-tight text-[#17130f]">{bag.propertyCode}</h2>
               {bag.isNew && <Badge className="bg-[#c4512e] text-white">Nueva</Badge>}
             </div>
           </div>
-          <div className="w-[124px] shrink-0 text-right">
-            <p className="text-[11px] font-black uppercase leading-tight text-[#17130f]">
-              {progress.pending} pendientes
-            </p>
-            <p className="text-[8px] font-black uppercase tracking-wider text-[#a18465]">
-              {progressCompleted}/{progress.total} preparadas
+          <div>
+            <p className="text-sm text-[#766b5e]">
+              {progressCompleted} de {progress.total} bolsas resueltas · {progress.pending} pendientes
             </p>
             <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-[#e8d9c6]">
               <div
@@ -557,13 +552,19 @@ const BagCard = ({
           </div>
         </div>
 
-        <p className="text-[11px] font-black uppercase tracking-wide text-[#c4512e]">
+        <p className="flex items-center gap-2 text-sm font-semibold text-[#a94427]">
+          <Layers className="h-4 w-4" aria-hidden="true" />
           Coloca de abajo hacia arriba
         </p>
 
         <BagAssemblyGuide bag={bag} />
 
-        {children}
+        {createPortal(
+          <div data-laundry-actions className="fixed inset-x-0 bottom-0 z-30 border-t border-[#e8e1d7] bg-[#faf7f1] px-4 pt-3 font-sans shadow-[0_-4px_20px_rgba(39,35,30,0.04)]" style={{ paddingBottom: 'max(12px, env(safe-area-inset-bottom))' }}>
+            <div className="mx-auto max-w-[416px]">{children}</div>
+          </div>,
+          document.body,
+        )}
       </CardContent>
     </Card>
   );
@@ -882,6 +883,13 @@ export const LaundryRouteV2View = ({ token }: LaundryRouteV2ViewProps) => {
     [workflow?.nextRouteBags],
   );
 
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const activeBagId = workflow?.urgentBags[0]?.taskId || nextPendingBag?.taskId;
+  useEffect(() => {
+    // Start each new bag at its heading without moving the fixed action dock.
+    if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0;
+  }, [activeBagId]);
+
   const logoutRouteWorker = async () => {
     const sessionToken = routeAccess?.sessionToken;
     window.localStorage.removeItem(accessStorageKey);
@@ -1021,13 +1029,13 @@ export const LaundryRouteV2View = ({ token }: LaundryRouteV2ViewProps) => {
   };
 
   return (
-    <div className="min-h-screen bg-[#eee8dc]">
-      <main className="mx-auto max-w-md space-y-2 px-4 py-3 pb-6">
+    <div ref={scrollContainerRef} className="h-dvh overflow-y-auto bg-[#faf7f1] font-sans" data-laundry-scroll>
+      <main className="mx-auto max-w-md space-y-5 px-4 py-3" style={{ paddingBottom: 'calc(220px + env(safe-area-inset-bottom))' }}>
         {accessRequired && routeAccess?.worker && (
-          <div className="flex items-center justify-between rounded-xl border border-[#dfd2bf] bg-[#fffaf2] px-3 py-2">
+          <div className="flex items-center justify-between border-b border-[#e8e1d7] pb-3">
             <div className="min-w-0">
-              <p className="text-[9px] font-black uppercase tracking-[0.18em] text-[#a18465]">Ruta iniciada por</p>
-              <p className="truncate text-sm font-black text-[#17130f]">{routeAccess.worker.workerName}</p>
+              <p className="text-xs text-[#766b5e]">Ruta iniciada por</p>
+              <p className="truncate text-sm font-semibold text-[#17130f]">{routeAccess.worker.workerName}</p>
             </div>
             <Button variant="ghost" size="sm" onClick={logoutRouteWorker} className="text-[#8d351e]">
               <LogOut className="mr-1.5 h-4 w-4" />
@@ -1037,16 +1045,8 @@ export const LaundryRouteV2View = ({ token }: LaundryRouteV2ViewProps) => {
         )}
         {urgentBag && (
           <section className="space-y-2">
-            <div className="rounded-xl border border-[#e2a993] bg-[#f7ded3] px-3 py-2 text-[#8d351e]">
-              <p className="flex items-center gap-2 text-xs font-black leading-tight">
-                <AlertTriangle className="h-4 w-4 shrink-0" />
-                Hay {workflow.stats.urgentPending} {workflow.stats.urgentPending === 1 ? 'bolsa pendiente' : 'bolsas pendientes'} de preparar hoy.
-              </p>
-            </div>
-
             <BagCard
               bag={urgentBag}
-              tone="urgent"
               progress={urgentProgress}
               isCompleteFlash={completeFlashTaskId === urgentBag.taskId}
             >
@@ -1110,7 +1110,7 @@ export const LaundryRouteV2View = ({ token }: LaundryRouteV2ViewProps) => {
                   <Button
                     size="lg"
                     onClick={() => runAction({ action: 'prepare', taskId: urgentBag.taskId })}
-                    className="h-[clamp(4rem,10dvh,6rem)] touch-manipulation rounded-xl bg-[#c4512e] text-base font-black hover:bg-[#a94427] active:scale-[0.99]"
+                    className="h-16 touch-manipulation rounded-xl bg-[#c4512e] text-base font-semibold hover:bg-[#a94427]"
                   >
                     <PackageCheck className="mr-2 h-5 w-5" />
                     Bolsa preparada
@@ -1119,9 +1119,9 @@ export const LaundryRouteV2View = ({ token }: LaundryRouteV2ViewProps) => {
                     variant="outline"
                     size="lg"
                     onClick={() => openIssueForm(urgentBag.taskId)}
-                    className="h-[clamp(3.5rem,8dvh,4.5rem)] touch-manipulation rounded-xl border border-[#dfb69f] bg-white/60 text-base font-bold text-[#c4512e] hover:bg-[#f1dfcf] active:scale-[0.99]"
+                    className="h-12 touch-manipulation rounded-xl border-transparent bg-transparent text-sm font-medium text-[#a94427] hover:bg-[#f1e8dc]"
                   >
-                    <XCircle className="mr-2 h-5 w-5" />
+                    <AlertTriangle className="mr-2 h-4 w-4" />
                     Marcar incidencia
                   </Button>
                 </div>
@@ -1146,7 +1146,6 @@ export const LaundryRouteV2View = ({ token }: LaundryRouteV2ViewProps) => {
 
             <BagCard
               bag={nextPendingBag}
-              tone="next"
               progress={nextProgress}
               isCompleteFlash={completeFlashTaskId === nextPendingBag.taskId}
             >
@@ -1178,7 +1177,7 @@ export const LaundryRouteV2View = ({ token }: LaundryRouteV2ViewProps) => {
                   <Button
                     size="lg"
                     onClick={() => runAction({ action: 'prepare', taskId: nextPendingBag.taskId })}
-                    className="h-[clamp(4rem,10dvh,6rem)] touch-manipulation rounded-xl bg-[#c4512e] text-base font-black hover:bg-[#a94427] active:scale-[0.99]"
+                    className="h-16 touch-manipulation rounded-xl bg-[#c4512e] text-base font-semibold hover:bg-[#a94427]"
                   >
                     <PackageCheck className="mr-2 h-5 w-5" />
                     Bolsa preparada
@@ -1187,9 +1186,9 @@ export const LaundryRouteV2View = ({ token }: LaundryRouteV2ViewProps) => {
                     variant="outline"
                     size="lg"
                     onClick={() => openIssueForm(nextPendingBag.taskId)}
-                    className="h-[clamp(3.5rem,8dvh,4.5rem)] touch-manipulation rounded-xl border border-[#dfb69f] bg-white/60 text-base font-bold text-[#c4512e] hover:bg-[#f1dfcf] active:scale-[0.99]"
+                    className="h-12 touch-manipulation rounded-xl border-transparent bg-transparent text-sm font-medium text-[#a94427] hover:bg-[#f1e8dc]"
                   >
-                    <XCircle className="mr-2 h-5 w-5" />
+                    <AlertTriangle className="mr-2 h-4 w-4" />
                     Marcar incidencia
                   </Button>
                 </div>
