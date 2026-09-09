@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import {
   DndContext,
   KeyboardSensor,
@@ -420,6 +420,8 @@ export const PlanningProposalCalendar = ({
     [calendarTasks, draftProposals],
   );
   const [selectedDate, setSelectedDate] = useState(() => dates[0] || '');
+  const hoursScrollRef = useRef<HTMLDivElement>(null);
+  const timelineScrollRef = useRef<HTMLDivElement>(null);
   const [reassignment, setReassignment] = useState<SelectedTask | null>(null);
   const [selectedTask, setSelectedTask] = useState<SelectedTask | null>(null);
   const [placementCleanerId, setPlacementCleanerId] = useState('');
@@ -1233,7 +1235,7 @@ export const PlanningProposalCalendar = ({
 
           <section
             aria-label="Ver calendario por horas"
-            className="min-w-0 overflow-hidden rounded-2xl border border-[#310984]/10 bg-white shadow-sm lg:col-start-2 lg:row-start-1"
+            className="min-w-0 rounded-2xl border border-[#310984]/10 bg-white shadow-sm lg:col-start-2 lg:row-start-1"
           >
             <div className="flex items-center justify-between border-b border-[#310984]/10 px-4 py-3">
               <div>
@@ -1258,7 +1260,15 @@ export const PlanningProposalCalendar = ({
                 )}
               </div>
             </div>
-            <div className="overflow-x-auto">
+            <div data-planning-hours-sticky className="sticky top-0 z-30 bg-[#faf9fd] shadow-sm">
+              <div
+                ref={hoursScrollRef}
+                data-planning-hours-scroll
+                className="overflow-x-hidden"
+                onScroll={(event) => {
+                  if (timelineScrollRef.current) timelineScrollRef.current.scrollLeft = event.currentTarget.scrollLeft;
+                }}
+              >
               <div className="min-w-max">
                 <div className="flex h-11 border-b border-[#310984]/10 bg-[#faf9fd]">
                   <div className="sticky left-0 z-20 flex w-[170px] shrink-0 items-center border-r border-[#310984]/10 bg-[#faf9fd] px-3 text-[11px] font-bold uppercase tracking-[0.14em] text-[#6b627a]">
@@ -1278,6 +1288,18 @@ export const PlanningProposalCalendar = ({
                     ))}
                   </div>
                 </div>
+              </div>
+              </div>
+            </div>
+            <div
+              ref={timelineScrollRef}
+              data-planning-timeline-scroll
+              className="overflow-x-auto rounded-b-2xl"
+              onScroll={(event) => {
+                if (hoursScrollRef.current) hoursScrollRef.current.scrollLeft = event.currentTarget.scrollLeft;
+              }}
+            >
+              <div className="min-w-max">
                 {visibleCleaners.length === 0 ? (
                   <div className="flex min-h-[300px] items-center justify-center text-sm text-[#6b627a]">
                     No hay trabajadoras disponibles.
