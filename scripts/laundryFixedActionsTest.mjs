@@ -38,13 +38,15 @@ try {
       window.mockWorkflow = async (name, body) => {
         if(name === 'laundry-route-access') return {success:true,required:true,worker};
         if(body.action === 'prepare' || body.action === 'issue') bags.find(b => b.taskId === body.taskId).bagStatus.status = body.action === 'prepare' ? 'prepared' : 'issue';
-        return {workflowVersion:'route_v2',route:{nextRouteName:'Siguiente',nextDeliveryDate:'2026-09-10'},currentRouteBags:[...bags.slice(0,2),recordedIssue],urgentBags:bags.slice(0,2).filter(b => b.bagStatus.status === 'pending'),nextRouteBags:bags.slice(2),blockingStep:'prepare_next',stats:{urgentPending:bags.slice(0,2).filter(b => b.bagStatus.status === 'pending').length,nextTotal:1}};
+        const parts=Object.fromEntries(new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Madrid',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date()).map(part=>[part.type,part.value]));
+        return {workflowVersion:'route_v2',route:{deliveryDate:`${parts.year}-${parts.month}-${parts.day}`,nextRouteName:'Siguiente',nextDeliveryDate:'2026-09-10'},currentRouteBags:[...bags.slice(0,2),recordedIssue],urgentBags:bags.slice(0,2).filter(b => b.bagStatus.status === 'pending'),nextRouteBags:bags.slice(2),blockingStep:'prepare_next',stats:{urgentPending:bags.slice(0,2).filter(b => b.bagStatus.status === 'pending').length,nextTotal:1}};
       };
     });
     await page.addScriptTag({ content: bundle.outputFiles[0].text });
     const prepare = page.getByRole('button', {name:'Bolsa preparada',exact:true});
     const issue = page.getByRole('button', {name:'Marcar incidencia',exact:true});
     await prepare.waitFor();
+    assert.equal(await page.locator('[data-bag-route]').innerText(),'Para entregar hoy · Pendientes de la ruta anterior');
     const positions = async () => [await prepare.boundingBox(), await issue.boundingBox()];
     const initial = await positions();
     const contentBefore = await page.locator('[data-bag-contents]').boundingBox();
@@ -79,6 +81,7 @@ try {
     await page.getByRole('combobox').selectOption('Bolsa dañada');
     await page.getByRole('button',{name:'Guardar incidencia'}).click();
     await page.getByRole('heading',{name:'NEXT',exact:true}).waitFor();
+    assert.match(await page.locator('[data-bag-route]').innerText(),/^Para la siguiente ruta ·/);
     assert.equal(await page.locator('[data-bag-progress]').innerText(),'0 de 1 bolsas preparadas');
     if(viewport.height>=640) {
       const content=await page.locator('[data-bag-contents]').boundingBox();

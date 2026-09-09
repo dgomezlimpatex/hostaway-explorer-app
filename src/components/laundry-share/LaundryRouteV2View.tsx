@@ -24,6 +24,7 @@ import {
   Truck,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { formatMadridDate } from '@/utils/date';
 
 type BagStatus = 'pending' | 'prepared' | 'issue';
 type DeliveryStatus = 'pending' | 'prepared' | 'delivered';
@@ -1063,6 +1064,9 @@ export const LaundryRouteV2View = ({ token }: LaundryRouteV2ViewProps) => {
         )}
         {urgentBag && (
           <section className="flex min-h-0 flex-1 flex-col gap-2">
+            <p data-bag-route className="shrink-0 rounded-md bg-[#f1e8dc] px-2 py-1 text-xs font-semibold leading-4 text-[#8d351e]">
+              {workflow.route.deliveryDate === formatMadridDate(new Date()) ? 'Para entregar hoy' : `Entrega: ${formatDate(workflow.route.deliveryDate)}`} · Pendientes de la ruta anterior
+            </p>
             <BagCard
               bag={urgentBag}
               progress={urgentProgress}
@@ -1151,8 +1155,8 @@ export const LaundryRouteV2View = ({ token }: LaundryRouteV2ViewProps) => {
 
         {!urgentBag && workflow.blockingStep === 'prepare_next' && nextPendingBag && (
           <section className="flex min-h-0 flex-1 flex-col gap-2">
-            <p className="text-[11px] leading-4 text-[#7a604b]">
-              Siguiente ruta: {workflow.route.nextRouteName} · {formatDate(workflow.route.nextDeliveryDate)}
+            <p data-bag-route className="shrink-0 rounded-md bg-[#f1e8dc] px-2 py-1 text-xs font-semibold leading-4 text-[#8d351e]">
+              Para la siguiente ruta · {formatDate(workflow.route.nextDeliveryDate)}
             </p>
 
             <BagCard
