@@ -208,7 +208,9 @@ const LaundryRouteV2Management = () => {
           <section className="space-y-3">
             {routes.map((link) => {
               const status = routeStatus(link);
-              const totalTasks = link.totalBags ?? link.snapshot_task_ids?.length ?? 0;
+              const previousPending = link.pendingPreparationCount ?? 0;
+              const nextPending = link.nextPendingPreparationCount ?? 0;
+              const totalPending = previousPending + nextPending;
               return (
                 <Card key={link.id} className="overflow-hidden">
                   <CardHeader className="pb-3">
@@ -224,22 +226,24 @@ const LaundryRouteV2Management = () => {
                         </div>
                       </div>
                       <div className="flex shrink-0 items-center gap-2 text-xs text-muted-foreground">
-                        <span className="rounded-md bg-muted px-2 py-1 font-medium">{totalTasks} bolsas</span>
+                        <span className="rounded-md bg-muted px-2 py-1 font-medium">{totalPending} por preparar</span>
                       </div>
                     </div>
                   </CardHeader>
                   <CardContent className="space-y-3 pt-0">
-                    <div className="grid gap-2 sm:grid-cols-4">
-                      <div className="rounded-lg bg-muted/50 px-3 py-2"><p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Bolsas incluidas</p><p className="mt-0.5 text-sm font-semibold">{totalTasks} bolsas</p></div>
-                      <div className="rounded-lg bg-muted/50 px-3 py-2"><p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Siguiente ruta</p><p className="mt-0.5 text-sm font-semibold">{link.nextPendingPreparationCount || 0} por preparar</p></div>
-                      <div className="rounded-lg bg-muted/50 px-3 py-2"><p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Última actualización</p><p className="mt-0.5 text-sm font-semibold">{formatDateTime(link.last_synced_at)}</p></div>
-                      <div className="rounded-lg bg-muted/50 px-3 py-2"><p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Estado</p><p className="mt-0.5 flex items-center gap-1.5 text-sm font-semibold"><span className={cn('h-2 w-2 rounded-full', link.sync_status === 'error' ? 'bg-red-500' : 'bg-emerald-500')} />{link.sync_status === 'error' ? 'Error de sincronización' : 'Actualización automática'}</p></div>
+                    <div className="grid gap-2 sm:grid-cols-3" data-laundry-bag-summary>
+                      <div className="rounded-lg bg-muted/50 px-3 py-2"><p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Bolsas totales</p><p className="mt-0.5 text-sm font-semibold">{totalPending} por preparar</p></div>
+                      <div className="rounded-lg bg-muted/50 px-3 py-2"><p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Bolsas del día anterior</p><p className="mt-0.5 text-sm font-semibold">{previousPending} pendientes</p></div>
+                      <div className="rounded-lg bg-muted/50 px-3 py-2"><p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Bolsas para la siguiente ruta</p><p className="mt-0.5 text-sm font-semibold">{nextPending} por preparar</p></div>
                     </div>
 
                     {link.sync_error && <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700"><strong>Error:</strong> {link.sync_error}</div>}
 
                     <div className="flex flex-col gap-2 border-t pt-3 sm:flex-row sm:items-center sm:justify-between">
-                      <p className="flex items-center gap-1.5 text-xs text-muted-foreground"><FileClock className="h-3.5 w-3.5" /> {isBackgroundSyncing ? 'Actualizando datos en segundo plano...' : 'Actualización automática cada 15 minutos'}</p>
+                      <div className="space-y-1 text-xs text-muted-foreground">
+                        <p className="flex items-center gap-1.5"><FileClock className="h-3.5 w-3.5" /> {isBackgroundSyncing ? 'Actualizando datos en segundo plano...' : 'Actualización automática cada 15 minutos'}</p>
+                        <p>Última actualización: {formatDateTime(link.last_synced_at)}</p>
+                      </div>
                       <div className="flex flex-wrap gap-2">
                         <Button variant="outline" size="sm" className="gap-1.5" onClick={() => copyLink(link.token)}><Copy className="h-3.5 w-3.5" /> {copiedToken === link.token ? 'Copiado' : 'Copiar'}</Button>
                         <Button size="sm" className="gap-1.5" onClick={() => window.open(getPublicUrl(link.token), '_blank')}><ExternalLink className="h-3.5 w-3.5" /> Abrir enlace</Button>
