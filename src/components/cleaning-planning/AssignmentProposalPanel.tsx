@@ -139,10 +139,10 @@ export const AssignmentProposalPanel = ({
   const coveredTaskIds = useMemo(() => {
     const proposalCountByTask = new Map<string, number>();
     draftProposals.forEach((item) => proposalCountByTask.set(item.taskId, (proposalCountByTask.get(item.taskId) || 0) + 1));
-    return new Set(tasks
+    return new Set(calendarTasks
       .filter((task) => (proposalCountByTask.get(task.id) || 0) >= Math.max(1, task.requiredCleaners || 1))
       .map((task) => task.id));
-  }, [draftProposals, tasks]);
+  }, [draftProposals, calendarTasks]);
   const coveredCount = coveredTaskIds.size;
   const completeDraftProposals = useMemo(
     () => draftProposals.filter((item) => coveredTaskIds.has(item.taskId)),

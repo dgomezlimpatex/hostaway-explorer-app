@@ -321,10 +321,11 @@ export const CleaningPlanningPage = () => {
   }, [calendarNavigation,isLoading,isError,buildingDataReady,buildingDataQuery.isError,range.startDate,range.endDate,date,dayKey,filteredUnassignedTasks,operationalCleaners,effectiveAvailability,buildingData.cleanerAssignments,proposalContextKey]);
 
   const handleApplyProposal = async (draftProposals?: AssignmentProposal[]) => {
-    if (!proposal || proposal.proposals.length === 0 || isProposalStale) return;
+    if (!proposal || isProposalStale) return;
     setIsSavingDay(true);
     try {
     const proposalsToApply = draftProposals && draftProposals.length > 0 ? draftProposals : proposal.proposals;
+    if (proposalsToApply.length === 0) return;
     const proposalSignature = buildProposalSignature(proposalsToApply);
     const freshTasksResult = await refetch();
     if (freshTasksResult.isError || !freshTasksResult.data) {
@@ -335,7 +336,7 @@ export const CleaningPlanningPage = () => {
       proposalSignature,
       activeSedeId: activeSede?.id,
       activeCleanerIds: operationalCleaners.map((cleaner) => cleaner.id),
-      expectedTasks: proposalTasks,
+      expectedTasks: filteredTasks,
       freshTasks: freshTasksResult.data,
     });
     dayProposals.current.delete(dayKey);

@@ -80,7 +80,7 @@ type DragPayload = {
   proposalIndex?: number;
   sourceCleanerId?: string;
 };
-type SelectedTask = { taskId: string; proposalIndex?: number };
+type SelectedTask = { taskId: string; proposalIndex?: number; sourceCleanerId?: string };
 
 interface CalendarItem {
   id: string;
@@ -500,7 +500,7 @@ export const PlanningProposalCalendar = ({
             cleanerById.get(cleanerId)?.name || task.cleaner || 'Sin nombre',
           startMinute: getTaskStart(task),
           endMinute: getTaskEnd(task),
-          editable: false,
+          editable: true,
           isManualChange: false,
         });
       });
@@ -769,7 +769,7 @@ export const PlanningProposalCalendar = ({
             fallbackMinute,
           );
     applyPlacement(
-      { taskId: payload.taskId, proposalIndex: payload.proposalIndex },
+      { taskId: payload.taskId, proposalIndex: payload.proposalIndex, sourceCleanerId: payload.sourceCleanerId },
       destinationId.slice(cleanerPrefix.length),
       fromMinutes(dropMinute),
     );
@@ -815,7 +815,7 @@ export const PlanningProposalCalendar = ({
       },
     };
   };
-  const openReassignment = (taskId: string, proposalIndex?: number) => {
+  const openReassignment = (taskId: string, proposalIndex?: number, sourceCleanerId?: string) => {
     if (isStale) return;
     const task = taskById.get(taskId);
     if (!task) return;
@@ -839,7 +839,7 @@ export const PlanningProposalCalendar = ({
       nextProposalIndex = next.findIndex(
         (proposal) =>
           proposal.taskId === taskId &&
-          proposal.cleanerId === (existingCleanerIds[0] || task.cleanerId),
+          proposal.cleanerId === (sourceCleanerId || existingCleanerIds[0] || task.cleanerId),
       );
       setEditedExistingTaskIds((current) => new Set(current).add(taskId));
       onDraftProposalsChange(next);
@@ -847,7 +847,7 @@ export const PlanningProposalCalendar = ({
     const proposal =
       nextProposalIndex === undefined ? undefined :
         (draftProposals[nextProposalIndex] ||
-          makeExistingProposal(task, getAssignedCleanerIds(task, cleaners)[0] || task.cleanerId || '', 0));
+          makeExistingProposal(task, sourceCleanerId || getAssignedCleanerIds(task, cleaners)[0] || task.cleanerId || '', 0));
     setPlacementCleanerId(proposal?.cleanerId || '');
     setPlacementStartTime(fromMinutes(getTaskStart(task, proposal)));
     setSelectedTask({ taskId, proposalIndex: nextProposalIndex });
@@ -991,15 +991,27 @@ export const PlanningProposalCalendar = ({
         remainingMinutes: 0,
       },
     };
+    // Dragging a saved assignment must preserve its coworkers in the replacement batch.
+    const base = [...draftProposals];
+    let targetIndex = directPlacement.proposalIndex;
+    if (targetIndex === undefined && directPlacement.sourceCleanerId) {
+      getAssignedCleanerIds(task, cleaners).forEach((id, index) => {
+        if (!base.some(proposal => proposal.taskId === task.id && proposal.cleanerId === id)) {
+          base.push(makeExistingProposal(task, id, index));
+        }
+      });
+      const found = base.findIndex(proposal => proposal.taskId === task.id && proposal.cleanerId === directPlacement.sourceCleanerId);
+      if (found >= 0) targetIndex = found;
+    }
     const next =
-      directPlacement.proposalIndex !== undefined
-        ? draftProposals.map((proposal, index) =>
-            index === directPlacement.proposalIndex
+      targetIndex !== undefined
+        ? base.map((proposal, index) =>
+            index === targetIndex
               ? { ...proposal, ...fields }
               : proposal,
           )
         : [
-            ...draftProposals,
+            ...base,
             {
               taskId: task.id,
               ...fields,
@@ -1019,7 +1031,7 @@ export const PlanningProposalCalendar = ({
     onDraftProposalsChange(next);
     setSelectedTask({
       taskId: task.id,
-      proposalIndex: directPlacement.proposalIndex ?? next.length - 1,
+      proposalIndex: targetIndex ?? next.length - 1,
     });
     setMoveNotice({
       message: `${task.property} colocada con ${cleaner.name} a las ${startTime}.`,
@@ -1149,7 +1161,7 @@ export const PlanningProposalCalendar = ({
                   className="min-w-0 flex-1 p-2 text-left"
                   onClick={() =>
                     item.editable &&
-                    openReassignment(item.taskId, item.proposalIndex)
+                    openReassignment(item.taskId, item.proposalIndex, item.cleanerId)
                   }
                 >
                   <span
@@ -1172,7 +1184,7 @@ export const PlanningProposalCalendar = ({
                 </button>
                 {item.editable && (
                   <DraggableHandle
-                    id={`mobile:${item.proposalIndex}`}
+                    id={`mobile:${item.id}`}
                     payload={{
                       taskId: item.taskId,
                       proposalIndex: item.proposalIndex,
@@ -1420,6 +1432,7 @@ export const PlanningProposalCalendar = ({
                                       openReassignment(
                                         item.taskId,
                                         item.proposalIndex,
+                                        item.cleanerId,
                                       )
                                     }
                                   >
@@ -1443,7 +1456,7 @@ export const PlanningProposalCalendar = ({
                                   </button>
                                   {item.editable && (
                                     <DraggableHandle
-                                      id={`desktop:${item.proposalIndex}`}
+                                      id={`desktop:${item.id}`}
                                       compact={width < 140}
                                       payload={{
                                         taskId: item.taskId,
