@@ -110,6 +110,7 @@ async function fetchTasksForDates(
   supabase: SupabaseClientLike,
   dates: string[],
   sedeId: string | null,
+  deliveryDay = -1,
 ) {
   if (dates.length === 0) return [];
 
@@ -177,6 +178,22 @@ async function fetchTasksForDates(
   const { data, error } = await query;
   if (error) throw error;
 
+  // Use the same authoritative base order as the route management page.
+  // Day-specific orders are only a fallback for installations without a base order.
+  const positions = new Map<string, number>();
+  if (sedeId) {
+    const { data: orderData, error: orderError } = await supabase
+      .from("laundry_classic_route_order")
+      .select("property_id, position, delivery_day")
+      .eq("sede_id", sedeId)
+      .in("delivery_day", [-1, deliveryDay]);
+    if (orderError) throw orderError;
+    const rows = (orderData ?? []) as JsonRecord[];
+    const baseRows = rows.filter((row) => Number(row.delivery_day) === -1);
+    const applicable = baseRows.length ? baseRows : rows.filter((row) => Number(row.delivery_day) === deliveryDay);
+    applicable.forEach((row) => positions.set(String(row.property_id), numberValue(row.position)));
+  }
+
   return ((data ?? []) as JsonRecord[])
     .filter((task) => String(task.status ?? '').toLowerCase() !== 'cancelled')
     .filter((task) => !isNotCountCleaner(task.cleaner))
@@ -186,7 +203,13 @@ async function fetchTasksForDates(
       const propB = getProperty(b);
       const codeA = String(propA?.codigo ?? a.property ?? "");
       const codeB = String(propB?.codigo ?? b.property ?? "");
-      return codeA.localeCompare(codeB, "es", { numeric: true });
+      const posA = positions.get(String(propA?.id ?? a.propiedad_id)) ?? Number.MAX_SAFE_INTEGER;
+      const posB = positions.get(String(propB?.id ?? b.propiedad_id)) ?? Number.MAX_SAFE_INTEGER;
+      return posA - posB
+        || String(a.date ?? "").localeCompare(String(b.date ?? ""))
+        || String(a.start_time ?? "").localeCompare(String(b.start_time ?? ""))
+        || codeA.localeCompare(codeB, "es", { numeric: true })
+        || String(a.id).localeCompare(String(b.id));
     });
 }
 
@@ -566,8 +589,8 @@ async function loadWorkflow(
     : calculateRouteDates(nextDate, nextSchedule.collectionDays);
 
   const [currentTasks, nextTasks] = await Promise.all([
-    fetchTasksForDates(supabase, currentRouteDates, sedeId),
-    fetchTasksForDates(supabase, nextRouteDates, sedeId),
+    fetchTasksForDates(supabase, currentRouteDates, sedeId, getDayOfWeek(deliveryDate)),
+    fetchTasksForDates(supabase, nextRouteDates, sedeId, getDayOfWeek(nextDate)),
   ]);
 
   const currentTaskIds = currentTasks.map((task) => String(task.id));

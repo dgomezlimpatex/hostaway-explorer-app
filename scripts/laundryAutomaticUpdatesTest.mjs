@@ -85,3 +85,34 @@ assert.equal(stockChanged.bagStatus.status,'pending','Stock-rule changes also re
 const page = readFileSync('src/pages/LaundryRouteV2Management.tsx','utf8');
 assert.doesNotMatch(page,/Autorizar continuar|Novedades y actividad|authorize_continue|Requiere revisión/);
 console.log('PASS: additions, cancellations, material/stock changes, metadata-only updates, idempotency, audit preservation, no approvals');
+
+// Every delivery day must honor the configured base order, not apartment codes.
+const routeTask = (id, propertyId, code, date = '2026-09-09', time = '11:00') => ({
+  ...clone(task), id, date, start_time: time,
+  properties: {...clone(task.properties), id: propertyId, codigo: code},
+});
+tables.tasks = [
+  routeTask('a', 'a', 'AA1'), routeTask('z-late', 'z', 'ZZ1', '2026-09-10'),
+  routeTask('z-pm', 'z', 'ZZ1', '2026-09-09', '15:00'), routeTask('z-am', 'z', 'ZZ1'),
+  routeTask('unknown', 'unknown', 'AB1'),
+];
+tables.laundry_classic_route_order = [
+  {sede_id:'sede', delivery_day:-1, property_id:'z', position:0},
+  {sede_id:'sede', delivery_day:-1, property_id:'a', position:1},
+  {sede_id:'sede', delivery_day:3, property_id:'a', position:0},
+  {sede_id:'another-sede', delivery_day:-1, property_id:'unknown', position:-1},
+];
+const ordered = async day => (await workflow.fetchTasksForDates(db, ['2026-09-09','2026-09-10'], 'sede', day)).map(row => row.id);
+for (let day = 0; day < 7; day++) {
+  assert.deepEqual(await ordered(day), ['z-am','z-pm','z-late','a','unknown'], `Base order on day ${day}; same-property services chronological; unconfigured last`);
+}
+tables.laundry_classic_route_order = tables.laundry_classic_route_order.filter(row => row.delivery_day !== -1);
+assert.equal((await ordered(3))[0], 'a', 'Legacy day-specific fallback');
+tables.laundry_classic_route_order = [{sede_id:'sede', delivery_day:-1, property_id:'z', position:0}];
+assert.equal((await ordered(3))[0], 'z-am', 'Partial base order remains authoritative');
+tables.laundry_classic_route_order.push({sede_id:'sede', delivery_day:-1, property_id:'a', position:-1});
+assert.equal((await ordered(3))[0], 'a', 'Changed route order is read on the next load');
+const workflowSource = readFileSync('supabase/functions/laundry-route-workflow/index.ts','utf8');
+assert.match(workflowSource, /fetchTasksForDates\(supabase, currentRouteDates, sedeId, getDayOfWeek\(deliveryDate\)\)/);
+assert.match(workflowSource, /fetchTasksForDates\(supabase, nextRouteDates, sedeId, getDayOfWeek\(nextDate\)\)/);
+console.log('PASS: configured order across all seven days, both route groups, legacy fallback, partial order, sede isolation, live reorder');
