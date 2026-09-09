@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { usePlanningCalendarWeek } from '@/hooks/usePlanningCalendarWeek';
+import { planningCalendarWeeklyHours } from '@/utils/planningCalendarWeeklyHours';
 import {
   DndContext,
   KeyboardSensor,
@@ -36,7 +38,6 @@ import {
   EffectiveWorkerAvailability,
 } from '@/types/cleaningPlanning';
 import { CleanerGroupAssignment } from '@/types/propertyGroups';
-import { minutesToHoursLabel } from '@/utils/cleaningPlanning';
 import { isTaskAssignedToCleaner } from '@/utils/taskAssignments';
 import {
   getTaskWorkerCount,
@@ -420,6 +421,7 @@ export const PlanningProposalCalendar = ({
     [calendarTasks, draftProposals],
   );
   const [selectedDate, setSelectedDate] = useState(() => dates[0] || '');
+  const weeklyQuery = usePlanningCalendarWeek(selectedDate);
   const hoursScrollRef = useRef<HTMLDivElement>(null);
   const timelineScrollRef = useRef<HTMLDivElement>(null);
   const [reassignment, setReassignment] = useState<SelectedTask | null>(null);
@@ -532,6 +534,11 @@ export const PlanningProposalCalendar = ({
     taskById,
     editedExistingTaskIds,
   ]);
+
+  const weeklyHours = useMemo(() => planningCalendarWeeklyHours(
+    weeklyQuery.data ?? [], cleaners, new Set(calendarTasks.map(task => task.id)), calendarItems,
+    weeklyQuery.startDate, weeklyQuery.endDate,
+  ), [weeklyQuery.data, weeklyQuery.startDate, weeklyQuery.endDate, cleaners, calendarTasks, calendarItems]);
 
   const warnings = useMemo(
     () =>
@@ -1271,7 +1278,7 @@ export const PlanningProposalCalendar = ({
               >
               <div className="min-w-max">
                 <div className="flex h-11 border-b border-[#310984]/10 bg-[#faf9fd]">
-                  <div className="sticky left-0 z-20 flex w-[170px] shrink-0 items-center border-r border-[#310984]/10 bg-[#faf9fd] px-3 text-[11px] font-bold uppercase tracking-[0.14em] text-[#6b627a]">
+                  <div className="sticky left-0 z-20 flex w-[300px] shrink-0 items-center border-r border-[#310984]/10 bg-[#faf9fd] px-3 text-[11px] font-bold uppercase tracking-[0.14em] text-[#6b627a]">
                     Trabajadora
                   </div>
                   <div className="relative" style={{ width: timelineWidth }}>
@@ -1316,24 +1323,17 @@ export const PlanningProposalCalendar = ({
                         item.date === selectedDate &&
                         item.cleanerId === cleaner.id,
                     );
-                    const usedMinutes = cleanerItems.reduce(
-                      (sum, item) => sum + item.endMinute - item.startMinute,
-                      0,
-                    );
-                    const capacityPercent = Math.min(
-                      100,
-                      Math.round(
-                        (usedMinutes /
-                          Math.max(1, availability?.availableMinutes || 480)) *
-                          100,
-                      ),
-                    );
+                    const assignedHours = weeklyHours.get(cleaner.id) ?? 0;
+                    const contractHours = Math.max(0, Number(cleaner.contractHoursPerWeek) || 0);
+                    const capacityPercent = contractHours > 0 ? Math.min(100, assignedHours / contractHours * 100) : 0;
+                    const weeklyReady = !weeklyQuery.isPending && !weeklyQuery.isError;
+                    const hoursLabel = (hours:number) => hours.toLocaleString('es-ES',{maximumFractionDigits:2});
                     return (
                       <div
                         key={cleaner.id}
                         className="flex min-h-[92px] border-b border-[#310984]/8 last:border-b-0"
                       >
-                        <div className="sticky left-0 z-10 flex w-[170px] shrink-0 items-center gap-2 border-r border-[#310984]/10 bg-white px-3">
+                        <div className="sticky left-0 z-10 flex w-[300px] shrink-0 items-center gap-2 border-r border-[#310984]/10 bg-white px-3 py-2">
                           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#efe9fb] text-xs font-bold text-[#310984]">
                             {cleaner.name
                               .split(' ')
@@ -1342,20 +1342,22 @@ export const PlanningProposalCalendar = ({
                               .join('')}
                           </div>
                           <div className="min-w-0 flex-1">
-                            <p className="truncate text-sm font-bold text-[#171321]">
+                            <p className="break-words text-sm font-bold leading-tight text-[#171321]">
                               {cleaner.name}
                             </p>
                             <p
+                              title={`Semana ${weeklyQuery.startDate} — ${weeklyQuery.endDate}. Horas asignadas, incluida esta propuesta, / horas de contrato de la ficha.`}
                               className={`text-[11px] font-semibold ${availability?.isAvailable === false ? 'text-red-600' : 'text-emerald-700'}`}
                             >
-                              {availability?.isAvailable === false
-                                ? 'No disponible'
-                                : `${minutesToHoursLabel(usedMinutes)} planificadas`}
+                              {weeklyQuery.isError ? 'No se pudo cargar la semana' : !weeklyReady ? 'Cargando semana…'
+                                : `${hoursLabel(assignedHours)} / ${contractHours > 0 ? hoursLabel(contractHours) : '—'} h · semana`}
                             </p>
+                            {weeklyReady && contractHours === 0 && <p className="text-[10px] text-[#6b627a]">Sin horas de contrato</p>}
+                            {availability?.isAvailable === false && <p className="text-[10px] text-red-600">No disponible hoy</p>}
                             <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-[#eeeaf5]">
                               <div
-                                className={`h-full rounded-full ${capacityPercent > 90 ? 'bg-amber-500' : 'bg-emerald-500'}`}
-                                style={{ width: `${capacityPercent}%` }}
+                                className={`h-full rounded-full ${assignedHours > contractHours && contractHours > 0 ? 'bg-red-500' : capacityPercent >= 85 ? 'bg-amber-500' : 'bg-emerald-500'}`}
+                                style={{ width: `${weeklyReady ? capacityPercent : 0}%` }}
                               />
                             </div>
                           </div>
