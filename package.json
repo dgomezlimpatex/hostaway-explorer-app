@@ -27,6 +27,7 @@
     "test:cleaning-planning-ui": "node scripts/cleaningPlanningUiContractTest.mjs",
     "test:cleaning-planning-radical-simple": "node scripts/cleaningPlanningRadicalSimpleContractTest.mjs",
     "test:cleaning-planning-apply-compatibility": "node scripts/cleaningPlanningApplyCompatibilityTest.mjs",
+    "test:planning-weekly-workload": "node scripts/planningWeeklyWorkloadTest.mjs",
     "test:planning-building-crm": "node scripts/planningBuildingCrmServiceTest.mjs",
     "test:planning-building-crm-ui": "node scripts/planningBuildingCrmUiContractTest.mjs",
     "test:whatsapp-prep": "node scripts/whatsappPrepTest.mjs",

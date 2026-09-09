@@ -38,6 +38,7 @@ export const CreateWorkerModal = ({ open, onOpenChange }: CreateWorkerModalProps
     email: '',
     telefono: '',
     isActive: true,
+    contractHoursPerWeek: 0,
     category: 'Operario de limpieza',
     startDate: '',
   });
@@ -71,6 +72,7 @@ export const CreateWorkerModal = ({ open, onOpenChange }: CreateWorkerModalProps
             email: '',
             telefono: '',
             isActive: true,
+            contractHoursPerWeek: 0,
             category: 'Operario de limpieza',
             startDate: '',
           });
@@ -177,6 +179,21 @@ export const CreateWorkerModal = ({ open, onOpenChange }: CreateWorkerModalProps
               onChange={(e) => handleChange('telefono', e.target.value)}
               placeholder="123456789"
             />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="contractHoursPerWeek">Horas semanales por contrato</Label>
+            <Input
+              id="contractHoursPerWeek"
+              type="number"
+              min="0"
+              max="80"
+              step="0.25"
+              value={formData.contractHoursPerWeek ?? 0}
+              onChange={(e) => handleChange('contractHoursPerWeek', Number(e.target.value) || 0)}
+              placeholder="0"
+            />
+            <p className="text-xs text-muted-foreground">Si no indicas horas, se guardará 0.</p>
           </div>
 
           <div className="grid grid-cols-2 gap-4">

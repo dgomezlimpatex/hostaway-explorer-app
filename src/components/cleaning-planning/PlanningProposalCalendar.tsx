@@ -197,12 +197,12 @@ const toMinutes = (value?: string): number => {
   if (!match) return 9 * 60;
   return Math.max(
     0,
-    Math.min(23 * 60 + 59, Number(match[1]) * 60 + Number(match[2])),
+    Math.min(24 * 60, Number(match[1]) * 60 + Number(match[2])),
   );
 };
 
 const fromMinutes = (value: number): string => {
-  const clamped = Math.max(0, Math.min(23 * 60 + 59, value));
+  const clamped = Math.max(0, Math.min(24 * 60, value));
   return `${Math.floor(clamped / 60)
     .toString()
     .padStart(2, '0')}:${(clamped % 60).toString().padStart(2, '0')}`;
@@ -424,6 +424,9 @@ export const PlanningProposalCalendar = ({
   const [selectedTask, setSelectedTask] = useState<SelectedTask | null>(null);
   const [placementCleanerId, setPlacementCleanerId] = useState('');
   const [placementStartTime, setPlacementStartTime] = useState('09:00');
+  const [editedExistingTaskIds, setEditedExistingTaskIds] = useState<Set<string>>(
+    () => new Set(),
+  );
   const [activeDrag, setActiveDrag] = useState<DragPayload | null>(null);
   const [dragHover, setDragHover] = useState<{
     cleanerId: string;
@@ -477,7 +480,7 @@ export const PlanningProposalCalendar = ({
   const calendarItems = useMemo<CalendarItem[]>(() => {
     const items: CalendarItem[] = [];
     calendarTasks.forEach((task) => {
-      if (draftedTaskIds.has(task.id)) return;
+      if (draftedTaskIds.has(task.id) || editedExistingTaskIds.has(task.id)) return;
       getAssignedCleanerIds(task, cleaners).forEach((cleanerId) => {
         items.push({
           id: `existing:${task.id}:${cleanerId}`,
@@ -525,6 +528,7 @@ export const PlanningProposalCalendar = ({
     draftProposals,
     originalProposals,
     taskById,
+    editedExistingTaskIds,
   ]);
 
   const warnings = useMemo(
@@ -618,7 +622,7 @@ export const PlanningProposalCalendar = ({
       ),
       end: Math.min(
         23 * 60 + 59,
-        Math.ceil(Math.max(...(ends.length ? ends : [18 * 60]), 18 * 60) / 60) *
+        Math.ceil(Math.max(...(ends.length ? ends : [24 * 60]), 24 * 60) / 60) *
           60,
       ),
     };
@@ -758,20 +762,83 @@ export const PlanningProposalCalendar = ({
     );
   };
 
-  const resetDraft = () =>
+  const resetDraft = () => {
+    setEditedExistingTaskIds(new Set());
     onDraftProposalsChange(
       originalProposals.map((proposal) => ({ ...proposal })),
     );
+  };
+  const makeExistingProposal = (
+    task: CleaningPlanningTask,
+    cleanerId: string,
+    assignmentIndex: number,
+  ): AssignmentProposal => {
+    const cleaner = cleanerById.get(cleanerId);
+    const durationMinutes = getTaskWorkerPlannedDurationMinutes(task);
+    return {
+      taskId: task.id,
+      cleanerId,
+      cleanerName: cleaner?.name || task.cleaner || 'Sin nombre',
+      propertyGroupId:
+        task.detectedBuilding?.status === 'detected'
+          ? task.detectedBuilding.propertyGroupId
+          : undefined,
+      propertyGroupName:
+        task.detectedBuilding?.status === 'detected'
+          ? task.detectedBuilding.propertyGroupName
+          : undefined,
+      assignmentRole: assignmentIndex === 0 ? 'primary' : 'secondary',
+      durationMinutes,
+      proposedStartTime: task.startTime,
+      proposedEndTime: task.endTime,
+      requiredCleaners: Math.max(1, task.requiredCleaners || 1),
+      assignmentIndex,
+      confidence: 1,
+      reasons: ['Asignación existente editable durante la revisión'],
+      warnings: [],
+      capacityAfterAssignment: {
+        assignedMinutes: 0,
+        remainingMinutes: 0,
+      },
+    };
+  };
   const openReassignment = (taskId: string, proposalIndex?: number) => {
     if (isStale) return;
     const task = taskById.get(taskId);
     if (!task) return;
+    let nextProposalIndex = proposalIndex;
+    if (proposalIndex === undefined) {
+      const existingCleanerIds = getAssignedCleanerIds(task, cleaners);
+      const existingProposals = existingCleanerIds.map((cleanerId, assignmentIndex) =>
+        makeExistingProposal(task, cleanerId, assignmentIndex),
+      );
+      const next = [
+        ...draftProposals,
+        ...existingProposals.filter(
+          (candidate) =>
+            !draftProposals.some(
+              (proposal) =>
+                proposal.taskId === candidate.taskId &&
+                proposal.cleanerId === candidate.cleanerId,
+            ),
+        ),
+      ];
+      nextProposalIndex = next.findIndex(
+        (proposal) =>
+          proposal.taskId === taskId &&
+          proposal.cleanerId === (existingCleanerIds[0] || task.cleanerId),
+      );
+      setEditedExistingTaskIds((current) => new Set(current).add(taskId));
+      onDraftProposalsChange(next);
+    }
     const proposal =
-      proposalIndex === undefined ? undefined : draftProposals[proposalIndex];
+      nextProposalIndex === undefined ? undefined :
+        (draftProposals[nextProposalIndex] ||
+          makeExistingProposal(task, getAssignedCleanerIds(task, cleaners)[0] || task.cleanerId || '', 0));
     setPlacementCleanerId(proposal?.cleanerId || '');
     setPlacementStartTime(fromMinutes(getTaskStart(task, proposal)));
-    setSelectedTask({ taskId, proposalIndex });
-    setReassignment({ taskId, proposalIndex });
+    setSelectedTask({ taskId, proposalIndex: nextProposalIndex });
+    setReassignment({ taskId, proposalIndex: nextProposalIndex });
   };
 
   const reassignmentTask = reassignment

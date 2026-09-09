@@ -4,6 +4,7 @@ import { useCleaningPlanning } from '@/hooks/useCleaningPlanning';
 import { useCleaningPlanningActions } from '@/hooks/useCleaningPlanningActions';
 import { useCleaningPlanningBuildingData } from '@/hooks/useCleaningPlanningBuildingData';
 import { useCleaners } from '@/hooks/useCleaners';
+import { usePlanningWeeklyWorkload } from '@/hooks/usePlanningWeeklyWorkload';
 import { useSede } from '@/contexts/SedeContext';
 import {
   AssignmentProposalResult,
@@ -193,6 +194,7 @@ export const CleaningPlanningPage = () => {
   const { planning, range, effectiveAvailability, isLoading, isError, refetch } = useCleaningPlanning({ date, preset });
   const { cleaners, refetch: refetchCleaners } = useCleaners();
   const { activeSede, availableSedes, setActiveSede } = useSede();
+  const weeklyWorkload = usePlanningWeeklyWorkload({ date, sedeId: activeSede?.id });
   const buildingDataQuery = useCleaningPlanningBuildingData();
   const { applyProposal, isApplyingProposal } = useCleaningPlanningActions();
 
@@ -387,6 +389,11 @@ export const CleaningPlanningPage = () => {
           onGenerateProposal={handleGenerateProposal}
           onRetry={handleRefresh}
           advancedContent={advancedContent}
+          weeklyWorkload={weeklyWorkload.data}
+          weeklyWorkloadStartDate={weeklyWorkload.startDate}
+          weeklyWorkloadEndDate={weeklyWorkload.endDate}
+          weeklyWorkloadLoading={weeklyWorkload.isLoading}
+          weeklyWorkloadError={weeklyWorkload.isError}
         />
       )}
     </div>

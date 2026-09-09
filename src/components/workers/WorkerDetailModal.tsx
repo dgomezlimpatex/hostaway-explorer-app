@@ -16,7 +16,6 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
-  BriefcaseBusiness,
   CalendarX2,
   CheckCircle2,
   Mail,
@@ -29,9 +28,7 @@ import {
 import { Cleaner } from '@/types/calendar';
 import { CreateCleanerData } from '@/services/cleanerStorage';
 import { useUpdateCleaner } from '@/hooks/useCleaners';
-import { useCleanerContracts } from '@/hooks/useWorkerContracts';
 import { TaskTimeBreakdown } from './TaskTimeBreakdown';
-import { ContractManagement } from './ContractManagement';
 import { AbsencesTab } from './absences/AbsencesTab';
 import { DeactivateWorkerDialog } from './DeactivateWorkerDialog';
 import { cn } from '@/lib/utils';
@@ -58,6 +55,7 @@ type WorkerFormData = Pick<
   | 'isActive'
   | 'category'
   | 'startDate'
+  | 'contractHoursPerWeek'
 >;
 
 const WORKER_CATEGORY_OPTIONS = [
@@ -90,6 +88,7 @@ const getInitialFormData = (worker: Cleaner): WorkerFormData => ({
   isActive: worker.isActive,
   category: normalizeWorkerCategory(worker.category),
   startDate: worker.startDate || '',
+  contractHoursPerWeek: worker.contractHoursPerWeek ?? 0,
 });
 
 export const WorkerDetailModal = ({ worker, open, onOpenChange }: WorkerDetailModalProps) => {
@@ -106,14 +105,12 @@ export const WorkerDetailModal = ({ worker, open, onOpenChange }: WorkerDetailMo
 
 export const WorkerDetailPanel = ({ worker, className, inDialog = false }: WorkerDetailPanelProps) => {
   const [activeTab, setActiveTab] = useState('profile');
-  const { data: contracts = [] } = useCleanerContracts(worker.id);
-  const activeContract = contracts.find((contract) => contract.isActive);
 
   useEffect(() => {
     setActiveTab('profile');
   }, [worker.id]);
 
-  const displayHours = activeContract?.contractHoursPerWeek ?? worker.contractHoursPerWeek ?? 0;
+  const displayHours = worker.contractHoursPerWeek ?? 0;
 
   return (
     <div className={cn('flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border bg-white shadow-sm', className)}>
@@ -143,18 +140,17 @@ export const WorkerDetailPanel = ({ worker, className, inDialog = false }: Worke
           </div>
 
           <div className="grid gap-2 xl:min-w-[160px]">
-            <MetricPill label="Contrato" value={`${displayHours || 0} h`} />
+            <MetricPill label="Horas semanales" value={`${displayHours} h`} />
           </div>
         </div>
       </WorkerDetailHeaderContainer>
 
       <div className="min-h-0 flex-1 overflow-y-auto bg-slate-50 p-3 sm:p-5">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-          <TabsList className="sticky top-0 z-10 grid h-auto grid-cols-2 rounded-2xl bg-white p-1 shadow-sm sm:grid-cols-4">
+          <TabsList className="sticky top-0 z-10 grid h-auto grid-cols-2 rounded-2xl bg-white p-1 shadow-sm sm:grid-cols-3">
             <TabsTrigger value="profile" className="rounded-xl py-2.5">Ficha</TabsTrigger>
             <TabsTrigger value="tasks" className="rounded-xl py-2.5">Tareas</TabsTrigger>
             <TabsTrigger value="absences" className="rounded-xl py-2.5">Ausencias</TabsTrigger>
-            <TabsTrigger value="contracts" className="rounded-xl py-2.5">Contratos</TabsTrigger>
           </TabsList>
 
           <TabsContent value="profile" className="mt-0">
@@ -170,12 +166,6 @@ export const WorkerDetailPanel = ({ worker, className, inDialog = false }: Worke
           <TabsContent value="absences" className="mt-0">
             <SectionShell title="Ausencias y cobertura" description="Crea bajas, días libres y limpiezas de mantenimiento sin salir de la ficha.">
               <AbsencesTab cleanerId={worker.id} cleanerName={worker.name} />
-            </SectionShell>
-          </TabsContent>
-
-          <TabsContent value="contracts" className="mt-0">
-            <SectionShell title="Contratos" description="Gestiona contratos vigentes, vencidos y borradores.">
-              <ContractManagement cleanerId={worker.id} cleanerName={worker.name} isManager />
             </SectionShell>
           </TabsContent>
         </Tabs>
@@ -256,7 +246,7 @@ const WorkerProfilePanel = ({ worker }: { worker: Cleaner }) => {
     return JSON.stringify(initial) !== JSON.stringify(formData);
   }, [formData, worker]);
 
-  const updateField = (field: keyof WorkerFormData, value: string | boolean) => {
+  const updateField = (field: keyof WorkerFormData, value: string | boolean | number) => {
     setFormData((current) => ({ ...current, [field]: value }));
   };
 
@@ -273,6 +263,7 @@ const WorkerProfilePanel = ({ worker }: { worker: Cleaner }) => {
           email: formData.email?.trim(),
           telefono: formData.telefono?.trim(),
           category: formData.category?.trim(),
+          contractHoursPerWeek: formData.contractHoursPerWeek ?? 0,
           ...(!worker.isActive && formData.isActive ? { isActive: true } : {}),
           startDate: formData.startDate || undefined,
         },
@@ -293,7 +284,7 @@ const WorkerProfilePanel = ({ worker }: { worker: Cleaner }) => {
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <h3 className="text-lg font-black text-slate-950">Datos editables</h3>
-              <p className="text-sm text-slate-500">Datos básicos de identificación y acceso. Contratos y ausencias se gestionan en sus pestañas.</p>
+              <p className="text-sm text-slate-500">Datos básicos de identificación, horas y acceso. Las ausencias se gestionan en su pestaña.</p>
             </div>
             <div className="flex gap-2">
               {hasChanges && (
@@ -337,6 +328,18 @@ const WorkerProfilePanel = ({ worker }: { worker: Cleaner }) => {
 
             <Field label="Fecha de inicio">
               <Input type="date" value={formData.startDate || ''} onChange={(event) => updateField('startDate', event.target.value)} className="h-11" />
+            </Field>
+
+            <Field label="Horas semanales por contrato" hint="Si no indicas nada, se guarda como 0.">
+              <Input
+                type="number"
+                min="0"
+                max="80"
+                step="0.25"
+                value={formData.contractHoursPerWeek ?? 0}
+                onChange={(event) => updateField('contractHoursPerWeek', Number(event.target.value) || 0)}
+                className="h-11"
+              />
             </Field>
           </div>
 
@@ -388,7 +391,7 @@ const WorkerProfilePanel = ({ worker }: { worker: Cleaner }) => {
               <DataRow label="DNI" value={worker.dni} />
               <DataRow label="PIN" value={worker.pin} />
               <DataRow label="Categoría" value={normalizeWorkerCategory(worker.category)} />
-              <DataRow label="Horas semanales" value={worker.contractHoursPerWeek != null ? `${worker.contractHoursPerWeek} h/sem` : '—'} />
+              <DataRow label="Horas semanales por contrato" value={`${worker.contractHoursPerWeek ?? 0} h/sem`} />
               <DataRow label="Delegación" value={worker.delegationName} />
               <DataRow label="Oficina" value={worker.officeName} />
               <DataRow label="ID externo" value={worker.externalId} mono />
@@ -402,7 +405,7 @@ const WorkerProfilePanel = ({ worker }: { worker: Cleaner }) => {
           <CardContent className="space-y-2 p-4">
             <h3 className="text-sm font-black text-[#310984]">Acciones frecuentes</h3>
             <QuickHint icon={CalendarX2} text="Ausencias: abre la pestaña Ausencias y pulsa Nueva ausencia." />
-            <QuickHint icon={BriefcaseBusiness} text="Contratos: abre Contratos y pulsa Nuevo contrato." />
+
           </CardContent>
         </Card>
       </aside>

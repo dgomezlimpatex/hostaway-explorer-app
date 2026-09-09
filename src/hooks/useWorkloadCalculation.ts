@@ -122,7 +122,14 @@ export const useWorkloadCalculation = (options: UseWorkloadCalculationOptions) =
   const { data: contracts = [], isLoading: contractsLoading } = useWorkerContracts();
 
   return useQuery({
-    queryKey: ['workload', startDate, endDate, cleanerId, contracts.length],
+    queryKey: [
+      'workload',
+      startDate,
+      endDate,
+      cleanerId,
+      cleaners.map(c => `${c.id}:${c.contractHoursPerWeek ?? 0}`).join('|'),
+      contracts.map(c => `${c.cleanerId}:${c.contractHoursPerWeek}:${c.isActive}`).join('|'),
+    ],
     queryFn: async (): Promise<WorkloadSummary[]> => {
       const start = new Date(startDate);
       const end = new Date(endDate);
@@ -141,8 +148,7 @@ export const useWorkloadCalculation = (options: UseWorkloadCalculationOptions) =
         // Tasks: all assigned, not cancelled
         supabase
           .from('tasks')
-          .select('cleaner_id, start_time, end_time, duracion, status')
-          .in('cleaner_id', cleanerIds)
+          .select('cleaner_id, start_time, end_time, duracion, status, task_assignments(cleaner_id)')
           .gte('date', startDate)
           .lte('date', endDate)
           .neq('status', 'cancelled'),
@@ -234,7 +240,14 @@ export const useWorkloadCalculation = (options: UseWorkloadCalculationOptions) =
         const contractHoursForPeriod = contractHoursPerWeek * weeksInPeriod;
 
         // Calculate tourist hours from tasks
-        const cleanerTasks = tasks.filter(t => t.cleaner_id === cleaner.id);
+        const cleanerTasks = tasks.filter(t => {
+          const assignmentIds = (t.task_assignments || [])
+            .map(assignment => assignment.cleaner_id)
+            .filter(Boolean);
+          return assignmentIds.length > 0
+            ? assignmentIds.includes(cleaner.id)
+            : t.cleaner_id === cleaner.id;
+        });
         let touristMinutes = 0;
         
         for (const task of cleanerTasks) {
@@ -292,7 +305,10 @@ export const useWorkloadCalculation = (options: UseWorkloadCalculationOptions) =
       return summaries;
     },
     enabled: !!startDate && !!endDate && cleaners.length > 0 && !contractsLoading,
-    staleTime: 30000, // 30 seconds
+    staleTime: 0,
+    // Realtime is used below for immediate updates; this is a safe fallback
+    // when the browser or Supabase temporarily loses the realtime connection.
+    refetchInterval: 15000,
   });
 };
 

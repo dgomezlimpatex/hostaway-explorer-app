@@ -62,7 +62,7 @@ export const WorkersColumn = ({ cleaners, onDragOver, onDrop, absenceStatus, isD
   };
 
   return (
-    <div className="w-52 bg-gray-50 border-r border-gray-200 flex-shrink-0 overflow-hidden">
+    <div className="w-64 bg-gray-50 border-r border-gray-200 flex-shrink-0 overflow-hidden">
       {cleaners.map((cleaner, index) => {
         const status = absenceStatus?.[cleaner.id];
         const isAbsent = status?.isAbsent;
@@ -76,7 +76,7 @@ export const WorkersColumn = ({ cleaners, onDragOver, onDrop, absenceStatus, isD
           <div 
             key={cleaner.id} 
             className={cn(
-              "h-16 border-b border-gray-200 px-2 py-1.5 flex items-center transition-all duration-200 cursor-pointer relative",
+              "h-16 border-b border-gray-200 px-3 py-1.5 flex items-center transition-all duration-200 cursor-pointer relative",
               !isAbsent && !isPreferred && !isDimmed && (index % 2 === 0 ? "bg-white hover:bg-gray-100" : "bg-gray-50 hover:bg-gray-100"),
               isPreferred && "bg-yellow-50 ring-2 ring-yellow-400 ring-inset shadow-inner",
               isDimmed && "opacity-40"
@@ -100,7 +100,7 @@ export const WorkersColumn = ({ cleaners, onDragOver, onDrop, absenceStatus, isD
             <div className="flex items-center gap-2 flex-1 min-w-0 overflow-hidden pl-1">
               <div className="relative flex-shrink-0">
                 <div
-                  className="w-8 h-8 rounded-full flex items-center justify-center text-white font-semibold text-[11px] shadow-sm ring-2 ring-white"
+                  className="w-9 h-9 rounded-full flex items-center justify-center text-white font-semibold text-xs shadow-sm ring-2 ring-white"
                   style={{ backgroundColor: `hsl(${(cleaner.name.charCodeAt(0) * 37) % 360}, 60%, 50%)` }}
                 >
                   {cleaner.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
@@ -146,7 +146,7 @@ export const WorkersColumn = ({ cleaners, onDragOver, onDrop, absenceStatus, isD
                 )}
               </div>
               <div className="min-w-0 flex-1 overflow-hidden">
-                <div className="font-medium text-gray-900 text-[12px] flex items-center gap-1 min-w-0 leading-tight">
+                <div className="font-semibold text-gray-900 text-[13px] flex items-center gap-1 min-w-0 leading-tight">
                   {isPreferred && <Star className="h-3 w-3 text-yellow-500 flex-shrink-0 fill-yellow-500" />}
                   <span className="truncate">{cleaner.name}</span>
                 </div>
@@ -164,21 +164,21 @@ export const WorkersColumn = ({ cleaners, onDragOver, onDrop, absenceStatus, isD
                   <TooltipProvider>
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <div className="flex items-center gap-1.5 mt-0.5">
+                        <div className="mt-1 flex items-center gap-2">
                           {workload.contractHoursPerWeek > 0 ? (
                             <>
                               <Progress 
                                 value={Math.min(workload.percentageComplete, 100)} 
-                                className="h-1 flex-1 bg-gray-200"
+                                className="h-2 flex-1 bg-gray-200"
                                 indicatorClassName={getProgressBarColor(workload.status)}
                               />
-                              <span className="text-[9px] text-gray-500 whitespace-nowrap font-medium">
-                                {workload.totalWorked.toFixed(1)}/{workload.contractHoursPerWeek}h
+                              <span className="text-xs text-gray-700 whitespace-nowrap font-bold tabular-nums">
+                                {workload.totalWorked.toFixed(1)} / {workload.contractHoursPerWeek} h
                               </span>
                             </>
                           ) : (
-                            <span className="text-[9px] text-gray-400">
-                              {workload.totalWorked.toFixed(1)}h (sin contrato)
+                            <span className="rounded-md bg-slate-100 px-1.5 py-0.5 text-xs font-semibold text-slate-600">
+                              {workload.totalWorked.toFixed(1)} h · Sin contrato
                             </span>
                           )}
                         </div>
