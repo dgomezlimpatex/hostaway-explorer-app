@@ -1,6 +1,7 @@
 
 import { supabase } from '@/integrations/supabase/client';
 import { TaskChecklistTemplate } from '@/types/taskReports';
+import { normalizeChecklistCategories } from '@/utils/normalizeChecklistCategories';
 
 export class ChecklistTemplatesStorageService {
   async getChecklistTemplates(): Promise<TaskChecklistTemplate[]> {
@@ -18,7 +19,7 @@ export class ChecklistTemplatesStorageService {
     // Transform JSON data to proper types
     return (data || []).map(item => ({
       ...item,
-      checklist_items: item.checklist_items as any
+      checklist_items: normalizeChecklistCategories(item.checklist_items)
     }));
   }
 
@@ -40,7 +41,7 @@ export class ChecklistTemplatesStorageService {
 
     return {
       ...data,
-      checklist_items: data.checklist_items as any
+      checklist_items: normalizeChecklistCategories(data.checklist_items)
     };
   }
 
@@ -64,7 +65,7 @@ export class ChecklistTemplatesStorageService {
 
     return {
       ...data,
-      checklist_items: data.checklist_items as any
+      checklist_items: normalizeChecklistCategories(data.checklist_items)
     };
   }
 
@@ -89,7 +90,7 @@ export class ChecklistTemplatesStorageService {
 
     return {
       ...data,
-      checklist_items: data.checklist_items as any
+      checklist_items: normalizeChecklistCategories(data.checklist_items)
     };
   }
 
