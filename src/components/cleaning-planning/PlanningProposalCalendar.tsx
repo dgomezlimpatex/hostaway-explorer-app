@@ -1172,8 +1172,8 @@ export const PlanningProposalCalendar = ({
             ))}
         </div>
 
-        <div className="hidden min-h-[620px] gap-3 lg:grid lg:grid-cols-1">
-          <aside className="rounded-2xl border border-red-200 bg-[#fffafa] shadow-sm lg:col-start-1 lg:row-start-1">
+        <div data-planning-board className="hidden min-h-[620px] items-start gap-3 lg:grid lg:grid-cols-[240px_minmax(0,1fr)] xl:grid-cols-[280px_minmax(0,1fr)]">
+          <aside aria-label="Tareas sin cubrir" data-planning-unassigned className="sticky top-4 flex max-h-[calc(100dvh-12rem)] min-h-0 flex-col self-start rounded-2xl border border-red-200 bg-[#fffafa] shadow-sm lg:col-start-1 lg:row-start-1">
             <div className="flex items-center justify-between border-b border-red-100 px-4 py-3">
               <div>
                 <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-red-600">
@@ -1187,7 +1187,7 @@ export const PlanningProposalCalendar = ({
                 {unassignedTasks.length}
               </span>
             </div>
-            <div className="grid max-h-[240px] gap-2 overflow-y-auto p-3 sm:grid-cols-2 xl:grid-cols-3">
+            <div data-planning-unassigned-list className="grid min-h-0 gap-2 overflow-y-auto overscroll-contain p-3">
               {unassignedTasks.length === 0 ? (
                 <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-center text-sm text-emerald-800">
                   <CheckCircle2 className="mx-auto mb-2 h-5 w-5" /> Todo
@@ -1233,7 +1233,7 @@ export const PlanningProposalCalendar = ({
 
           <section
             aria-label="Ver calendario por horas"
-            className="min-w-0 overflow-hidden rounded-2xl border border-[#310984]/10 bg-white shadow-sm lg:col-start-1 lg:row-start-2"
+            className="min-w-0 overflow-hidden rounded-2xl border border-[#310984]/10 bg-white shadow-sm lg:col-start-2 lg:row-start-1"
           >
             <div className="flex items-center justify-between border-b border-[#310984]/10 px-4 py-3">
               <div>
