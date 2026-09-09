@@ -75,18 +75,6 @@ Deno.serve(async (req) => {
       .split(',')[0]
       .trim();
     const ipFingerprint = await sha256(`${link.id}:${ip}`);
-    const fifteenMinutesAgo = new Date(Date.now() - 15 * 60 * 1000).toISOString();
-    const { count: failedAttempts, error: attemptsError } = await supabase
-      .from('laundry_route_access_attempts')
-      .select('id', { count: 'exact', head: true })
-      .eq('share_link_id', link.id)
-      .eq('ip_fingerprint', ipFingerprint)
-      .eq('successful', false)
-      .gte('attempted_at', fifteenMinutesAgo);
-    if (attemptsError) throw attemptsError;
-    if ((failedAttempts ?? 0) >= 5) {
-      return json({ error: 'Demasiados intentos. Espera 15 minutos antes de volver a probar.' }, 429);
-    }
 
     const workers = await listActiveRouteWorkers(supabase, link.sede_id);
     const pinChecks = await Promise.all(workers.map(async (worker) => {
