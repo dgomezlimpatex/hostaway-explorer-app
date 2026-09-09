@@ -60,6 +60,7 @@ export interface PlanningProposalDraftWarning {
 }
 
 interface PlanningProposalCalendarProps {
+  selectedDay?: string;
   originalProposals: AssignmentProposal[];
   draftProposals: AssignmentProposal[];
   tasks: CleaningPlanningTask[];
@@ -405,6 +406,7 @@ const buildDraftWarnings = ({
 };
 
 export const PlanningProposalCalendar = ({
+  selectedDay,
   originalProposals,
   draftProposals,
   calendarTasks,
@@ -417,8 +419,8 @@ export const PlanningProposalCalendar = ({
   onDraftWarningsChange,
 }: PlanningProposalCalendarProps) => {
   const dates = useMemo(
-    () => uniqueDates(calendarTasks, draftProposals),
-    [calendarTasks, draftProposals],
+    () => selectedDay ? [selectedDay] : uniqueDates(calendarTasks, draftProposals),
+    [calendarTasks, draftProposals, selectedDay],
   );
   const [selectedDate, setSelectedDate] = useState(() => dates[0] || '');
   const weeklyQuery = usePlanningCalendarWeek(selectedDate);

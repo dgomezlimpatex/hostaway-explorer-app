@@ -13,6 +13,8 @@ import { buildProposalSignature } from '@/utils/cleaning-planning/proposalBatchA
 import { PlanningProposalCalendar, PlanningProposalDraftWarning } from './PlanningProposalCalendar';
 
 interface AssignmentProposalPanelProps {
+  draftScopeKey?: string;
+  selectedDay?: string;
   proposal: AssignmentProposalResult | null;
   tasks: CleaningPlanningTask[];
   calendarTasks?: CleaningPlanningTask[];
@@ -51,6 +53,8 @@ const readStoredDraft = (key: string, sourceSignature: string): AssignmentPropos
 };
 
 export const AssignmentProposalPanel = ({
+  draftScopeKey = '',
+  selectedDay,
   proposal,
   tasks,
   calendarTasks = tasks,
@@ -75,8 +79,8 @@ export const AssignmentProposalPanel = ({
   const applyInFlightRef = useRef(false);
 
   const sourceSignature = useMemo(
-    () => (proposal ? buildProposalSignature(proposal.proposals) : ''),
-    [proposal],
+    () => (proposal ? `${draftScopeKey}:${buildProposalSignature(proposal.proposals)}` : ''),
+    [proposal, draftScopeKey],
   );
   const storageKey = useMemo(
     () => (sourceSignature ? storageKeyForSignature(sourceSignature) : ''),
@@ -92,7 +96,20 @@ export const AssignmentProposalPanel = ({
       return;
     }
 
-    setDraftProposals(readStoredDraft(storageKey, sourceSignature) || proposal.proposals.map((item) => ({ ...item })));
+    let restored = readStoredDraft(storageKey, sourceSignature);
+    // Preserve drafts opened before date-scoped navigation was introduced.
+    const previousSignature = buildProposalSignature(proposal.proposals);
+    if (!restored && previousSignature) {
+      const previousKey = storageKeyForSignature(previousSignature);
+      restored = readStoredDraft(previousKey, previousSignature);
+      if (restored) {
+        try {
+          sessionStorage.setItem(storageKey, JSON.stringify({sourceSignature, proposals:restored}));
+          sessionStorage.removeItem(previousKey);
+        } catch { /* Keep the restored draft usable if storage is unavailable. */ }
+      }
+    }
+    setDraftProposals(restored || proposal.proposals.map((item) => ({ ...item })));
     setDraftWarnings([]);
     setDraftSafetyReady(false);
     setDraftSourceSignature(sourceSignature);
@@ -148,12 +165,13 @@ export const AssignmentProposalPanel = ({
   );
 
   const dateLabel = useMemo(() => {
+    if (selectedDay) return format(parseISO(selectedDay), "EEEE, d 'de' MMMM", { locale: es });
     const dates = Array.from(new Set(tasks.map((task) => task.date))).sort();
     if (dates.length === 0) return 'el periodo elegido';
     const formatDate = (value: string) => format(parseISO(value), "EEEE, d 'de' MMMM", { locale: es });
     if (dates.length === 1) return formatDate(dates[0]);
     return `${formatDate(dates[0])} – ${formatDate(dates[dates.length - 1])}`;
-  }, [tasks]);
+  }, [tasks, selectedDay]);
 
   const handleApply = async () => {
     if (!canApply || applyInFlightRef.current) return;
@@ -220,6 +238,7 @@ export const AssignmentProposalPanel = ({
 
       <div className={isApplying ? 'pointer-events-none opacity-70' : ''} aria-disabled={isApplying}>
         <PlanningProposalCalendar
+          selectedDay={selectedDay}
           originalProposals={proposal.proposals}
           draftProposals={draftProposals}
           tasks={tasks}
