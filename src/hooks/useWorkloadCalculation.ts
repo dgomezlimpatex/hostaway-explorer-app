@@ -236,7 +236,10 @@ export const useWorkloadCalculation = (options: UseWorkloadCalculationOptions) =
       const summaries: WorkloadSummary[] = targetCleaners.map(cleaner => {
         // Get contract for this cleaner
         const contract = contracts.find(c => c.cleanerId === cleaner.id && c.isActive);
-        const contractHoursPerWeek = contract?.contractHoursPerWeek ?? cleaner.contractHoursPerWeek ?? 0;
+        // The weekly hours edited in the worker profile take precedence over legacy contracts.
+        const contractHoursPerWeek = cleaner.contractHoursPerWeek > 0
+          ? cleaner.contractHoursPerWeek
+          : contract?.contractHoursPerWeek ?? cleaner.contractHoursPerWeek ?? 0;
         const contractHoursForPeriod = contractHoursPerWeek * weeksInPeriod;
 
         // Calculate tourist hours from tasks
