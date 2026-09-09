@@ -3,8 +3,6 @@ import { AlertTriangle, CalendarDays, ChevronDown, RefreshCw, Sparkles } from 'l
 import { Button } from '@/components/ui/button';
 import { Sede } from '@/types/sede';
 import { formatMadridDate } from '@/utils/date';
-import { PlanningWeeklyWorkload } from '@/utils/planningWeeklyWorkload';
-import { PlanningWeeklyWorkloadPanel } from './PlanningWeeklyWorkloadPanel';
 
 interface PlanningStartScreenProps {
   date: Date;
@@ -22,11 +20,6 @@ interface PlanningStartScreenProps {
   onGenerateProposal: () => void;
   onRetry: () => void;
   advancedContent: ReactNode;
-  weeklyWorkload: PlanningWeeklyWorkload[];
-  weeklyWorkloadStartDate: string;
-  weeklyWorkloadEndDate: string;
-  weeklyWorkloadLoading?: boolean;
-  weeklyWorkloadError?: boolean;
 }
 
 const parsePlanningDate = (value: string): Date | null => {
@@ -51,11 +44,6 @@ export const PlanningStartScreen = ({
   onGenerateProposal,
   onRetry,
   advancedContent,
-  weeklyWorkload,
-  weeklyWorkloadStartDate,
-  weeklyWorkloadEndDate,
-  weeklyWorkloadLoading,
-  weeklyWorkloadError,
 }: PlanningStartScreenProps) => {
   const hasSeveralSedes = availableSedes.length > 1;
   const hasBlockingError = isError || buildingDataError;
@@ -155,14 +143,6 @@ export const PlanningStartScreen = ({
             <Sparkles className="mr-2 h-5 w-5" />
             {isLoading ? 'Cargando limpiezas…' : 'Preparar reparto con Hermes'}
           </Button>
-
-          <PlanningWeeklyWorkloadPanel
-            rows={weeklyWorkload}
-            startDate={weeklyWorkloadStartDate}
-            endDate={weeklyWorkloadEndDate}
-            isLoading={weeklyWorkloadLoading}
-            isError={weeklyWorkloadError}
-          />
 
           <details className="group rounded-2xl border border-[#310984]/10 bg-white">
             <summary

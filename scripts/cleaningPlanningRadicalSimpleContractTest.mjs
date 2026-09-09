@@ -12,6 +12,8 @@ const start = read(startPath);
 const page = read('src/components/cleaning-planning/CleaningPlanningPage.tsx');
 const proposal = read('src/components/cleaning-planning/AssignmentProposalPanel.tsx');
 const calendar = read('src/components/cleaning-planning/PlanningProposalCalendar.tsx');
+assert.doesNotMatch(start, /PlanningWeeklyWorkloadPanel|weeklyWorkload/, 'daily planning must not display the removed weekly workload section');
+assert.doesNotMatch(page, /usePlanningWeeklyWorkload|weeklyWorkload/, 'daily planning must not fetch data for the removed section');
 
 const visiblePrimaryControls = start.match(/data-planning-initial-control/g) || [];
 assert.ok(visiblePrimaryControls.length > 0, 'initial controls must be explicitly measurable in code');
