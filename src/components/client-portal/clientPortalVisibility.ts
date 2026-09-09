@@ -1,22 +1,17 @@
 import type { PortalBooking } from '../../types/clientPortal';
+import { formatMadridDate } from '../../utils/date';
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
-export const CLIENT_PORTAL_PAST_VISIBILITY_DAYS = 7;
+export const CLIENT_PORTAL_PAST_VISIBILITY_DAYS = 30;
 
-const toLocalMidnightMs = (date: Date): number =>
-  new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
+// Encode civil dates in UTC for arithmetic only, avoiding browser timezone and DST shifts.
+export const getPortalBookingCleaningDayMs = (cleaningDate: string): number =>
+  Date.parse(`${cleaningDate.slice(0, 10)}T00:00:00Z`);
 
-const parseDateOnlyAsLocalDate = (value: string): Date => {
-  const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(value);
-  if (!match) return new Date(value);
-
-  const [, year, month, day] = match;
-  return new Date(Number(year), Number(month) - 1, Number(day));
-};
-
-export const getPortalBookingCleaningDayMs = (cleaningDate: string): number => {
-  const raw = parseDateOnlyAsLocalDate(cleaningDate);
-  return toLocalMidnightMs(raw);
+export const getClientPortalHistoryCutoff = (now: Date = new Date()): string => {
+  const todayMs = getPortalBookingCleaningDayMs(formatMadridDate(now));
+  return new Date(todayMs - CLIENT_PORTAL_PAST_VISIBILITY_DAYS * MS_PER_DAY)
+    .toISOString().slice(0, 10);
 };
 
 /**
@@ -27,10 +22,9 @@ export const filterClientPortalListBookings = (
   bookings: PortalBooking[],
   now: Date = new Date(),
 ): PortalBooking[] => {
-  const todayMs = toLocalMidnightMs(now);
-  const sevenDaysAgoMs = todayMs - CLIENT_PORTAL_PAST_VISIBILITY_DAYS * MS_PER_DAY;
+  const cutoffMs = getPortalBookingCleaningDayMs(getClientPortalHistoryCutoff(now));
 
   return bookings.filter((booking) =>
-    getPortalBookingCleaningDayMs(booking.cleaningDate) >= sevenDaysAgoMs,
+    getPortalBookingCleaningDayMs(booking.cleaningDate) >= cutoffMs,
   );
 };
