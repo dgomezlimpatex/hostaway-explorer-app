@@ -5,7 +5,7 @@ const { planningTaskLanes } = await import(`data:text/javascript;base64,${Buffer
 const item = (id, startMinute, endMinute) => ({ id, startMinute, endMinute });
 for (const items of [[], [item('a', 600, 660)], [item('a', 600, 720), item('b', 610, 630), item('c', 620, 640)], [item('a', 600, 615), item('b', 615, 630)], [item('a', 600, 720), item('b', 720, 840)]]) {
   const before = JSON.stringify(items);
-  const { cards, height } = planningTaskLanes(items, 480, 1.4, 140);
+  const { cards, height } = planningTaskLanes(items, 480, 1.4);
   assert.equal(JSON.stringify(items), before, 'Never alters scheduled times or input order');
   assert.equal(cards.length, items.length);
   for (const a of cards) {
@@ -15,9 +15,13 @@ for (const items of [[], [item('a', 600, 660)], [item('a', 600, 720), item('b', 
     }
   }
 }
-const adjacent = planningTaskLanes([item('a',600,615), item('b',615,630)],480,1.4,140);
-assert.equal(adjacent.height,176);
+const adjacent = planningTaskLanes([item('a',600,615), item('b',615,630)],480,1.4);
+assert.equal(adjacent.height,92);
+assert.ok(adjacent.cards.every(card => card.lane === 0));
+const screenshot = planningTaskLanes([item('201',630,663),item('301',673,706),item('302',716,786),item('401',796,866),item('502',876,946)],480,1.4);
+assert.ok(screenshot.cards.every(card => card.lane === 0), 'All five consecutive screenshot tasks stay on one row');
 assert.ok(adjacent.cards.every(card => !card.overlaps), 'Visual width collisions are not temporal conflicts');
-const overlap = planningTaskLanes([item('a',600,720), item('b',610,630)],480,1.4,140);
+const overlap = planningTaskLanes([item('a',600,720), item('b',610,630)],480,1.4);
+assert.equal(overlap.height,176);
 assert.ok(overlap.cards.every(card => card.overlaps));
 console.log('PASS: nested and visual overlaps, adjacent tasks, empty rows, unchanged times, accessible non-overlapping card rectangles');

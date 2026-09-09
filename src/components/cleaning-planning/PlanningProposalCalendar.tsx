@@ -98,7 +98,6 @@ interface CalendarItem {
 }
 
 const PIXELS_PER_MINUTE = 1.4;
-const MIN_CARD_WIDTH = 140;
 const SNAP_MINUTES = 15;
 const QUARTER_HOUR_GRID_SIZE = SNAP_MINUTES * PIXELS_PER_MINUTE;
 const UNASSIGNED_PLACEMENT_ID = '__unassigned__';
@@ -107,10 +106,12 @@ const DraggableHandle = ({
   id,
   payload,
   disabled,
+  compact = false,
 }: {
   id: string;
   payload: DragPayload;
   disabled?: boolean;
+  compact?: boolean;
 }) => {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id,
@@ -123,7 +124,7 @@ const DraggableHandle = ({
       type="button"
       aria-label="Arrastrar para cambiar responsable u horario"
       data-dnd-handle
-      className={`min-h-[36px] min-w-[32px] touch-none rounded-lg p-1 text-[#310984] hover:bg-[#efe9fb] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#310984] ${isDragging ? 'opacity-40' : ''}`}
+      className={`${compact ? 'h-5 w-full shrink-0' : 'min-h-[36px] min-w-[32px] shrink-0 p-1'} touch-none rounded-lg text-[#310984] hover:bg-[#efe9fb] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#310984] ${isDragging ? 'opacity-40' : ''}`}
       onClick={(event) => event.stopPropagation()}
       {...listeners}
       {...attributes}
@@ -1321,7 +1322,7 @@ export const PlanningProposalCalendar = ({
                       .sort(
                         (left, right) => left.startMinute - right.startMinute,
                       );
-                    const layout = planningTaskLanes(cleanerItems, bounds.start, PIXELS_PER_MINUTE, MIN_CARD_WIDTH);
+                    const layout = planningTaskLanes(cleanerItems, bounds.start, PIXELS_PER_MINUTE);
                     const availability = effectiveAvailability.find(
                       (item) =>
                         item.date === selectedDate &&
@@ -1408,13 +1409,13 @@ export const PlanningProposalCalendar = ({
                               return (
                                 <div
                                   key={item.id}
-                                  title={overlaps ? 'Coincide en horario con otra tarea de este trabajador' : undefined}
-                                  className={`absolute flex h-[76px] overflow-hidden rounded-xl border shadow-sm ${tone} ${selected ? 'ring-2 ring-[#310984] ring-offset-1' : ''}`}
+                                  title={`${item.task.propertyCode || item.task.property} · ${fromMinutes(item.startMinute)}-${fromMinutes(item.endMinute)}${overlaps ? ' · Coincide en horario con otra tarea de este trabajador' : ''}`}
+                                  className={`absolute flex ${width < 140 ? 'flex-col' : ''} h-[76px] overflow-hidden rounded-xl border shadow-sm ${tone} ${selected ? 'ring-2 ring-[#310984] ring-offset-1' : ''}`}
                                   style={{ left, width, top: 8 + lane * 84 }}
                                 >
                                   <button
                                     type="button"
-                                    className="min-w-0 flex-1 p-2 text-left"
+                                    className="min-h-0 min-w-0 flex-1 overflow-hidden p-1 text-left"
                                     onClick={() =>
                                       openReassignment(
                                         item.taskId,
@@ -1429,7 +1430,7 @@ export const PlanningProposalCalendar = ({
                                         item.task.property}
                                       </span>
                                     </p>
-                                    <p className="mt-1 truncate text-[10px] opacity-75">
+                                    <p className={`${width < 140 ? 'hidden' : ''} mt-1 truncate text-[10px] opacity-75`}>
                                       {item.task.detectedBuilding
                                         ?.propertyGroupName ||
                                         item.task.property}
@@ -1443,6 +1444,7 @@ export const PlanningProposalCalendar = ({
                                   {item.editable && (
                                     <DraggableHandle
                                       id={`desktop:${item.proposalIndex}`}
+                                      compact={width < 140}
                                       payload={{
                                         taskId: item.taskId,
                                         proposalIndex: item.proposalIndex,
