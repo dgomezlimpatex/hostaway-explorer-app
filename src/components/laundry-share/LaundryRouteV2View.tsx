@@ -358,8 +358,6 @@ const buildBagGuideLayers = (bag: RouteBag): BagGuideLayer[] => {
 
 const BagAssemblyGuide = ({ bag }: { bag: RouteBag }) => {
   const layers = buildBagGuideLayers(bag);
-  const visibleLayers = layers.filter((layer) => layer.id !== 'other');
-  const otherLayer = layers.find((layer) => layer.id === 'other');
 
   if (layers.length === 0) {
     return (
@@ -374,25 +372,25 @@ const BagAssemblyGuide = ({ bag }: { bag: RouteBag }) => {
   }
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-[#e8e1d7] bg-white">
+    <div data-bag-contents className="overflow-hidden rounded-xl border border-[#e8e1d7] bg-white">
       <div className="divide-y divide-[#eee8df]">
-        {visibleLayers.map((layer) => (
+        {layers.map((layer) => (
           <div
             key={layer.id}
-            className="px-3 py-2.5"
+            className="px-2 py-0.5"
           >
-            <div className="flex items-start gap-3">
-              <span className="grid h-8 w-7 shrink-0 place-items-center text-xs font-medium text-[#8c8378]">
+            <div className="flex items-start gap-2">
+              <span className="grid h-[18px] w-5 shrink-0 place-items-center text-[10px] font-medium text-[#8c8378]">
                 {layer.step}º
               </span>
 
-              <div className="grid min-w-0 flex-1 gap-2">
+              <div className="grid min-w-0 flex-1">
                 {layer.items.map((guideItem, index) => (
                   <span
                     key={`${layer.id}-${guideItem.label}-${index}`}
-                    className="flex min-w-0 items-center gap-3 text-[15px] leading-5 text-[#27231e]"
+                    className="flex min-w-0 items-center gap-2 text-[13px] leading-4 text-[#27231e]"
                   >
-                    <span className="grid min-h-8 min-w-7 shrink-0 place-items-center text-2xl font-bold tabular-nums text-[#17130f]">
+                    <span className="grid min-h-[18px] min-w-6 shrink-0 place-items-center text-[17px] font-bold leading-[18px] tabular-nums text-[#17130f]">
                       {guideItem.quantity}
                     </span>
                     <span className="min-w-0 break-words">
@@ -406,21 +404,6 @@ const BagAssemblyGuide = ({ bag }: { bag: RouteBag }) => {
         ))}
       </div>
 
-      {otherLayer && (
-        <div className="rounded-xl border border-amber-200 bg-amber-50 p-2">
-          <p className="text-[11px] font-black uppercase text-amber-900">Otros consumibles</p>
-          <div className="mt-1 flex flex-wrap gap-1">
-            {otherLayer.items.map((guideItem, index) => (
-              <span
-                key={`other-${guideItem.label}-${index}`}
-                className="rounded bg-white px-1.5 py-0.5 text-[11px] font-bold uppercase text-amber-950"
-              >
-                {guideItem.quantity} {guideItem.label}
-              </span>
-            ))}
-          </div>
-        </div>
-      )}
     </div>
   );
 };
@@ -506,13 +489,13 @@ const BagCard = ({
 }: {
   bag: RouteBag;
   progress: {
-    pending: number;
+    prepared: number;
     total: number;
   };
   isCompleteFlash?: boolean;
   children: ReactNode;
 }) => {
-  const progressCompleted = Math.max(progress.total - progress.pending, 0);
+  const progressCompleted = progress.prepared;
   const progressPercent = progress.total > 0 ? (progressCompleted / progress.total) * 100 : 0;
 
   return (
@@ -530,20 +513,20 @@ const BagCard = ({
           </div>
         </div>
       )}
-      <CardContent className="space-y-5 p-0">
-        <div className="space-y-4">
+      <CardContent className="space-y-2 p-0">
+        <div className="flex items-center justify-between gap-2">
           <div className="min-w-0 flex-1">
-            <p className="text-[10px] font-black uppercase tracking-[0.18em] text-[#a18465]">Bolsa actual</p>
+            <p className="text-[9px] font-semibold uppercase tracking-wider text-[#a18465]">Bolsa actual</p>
             <div className="flex items-center gap-1.5">
-              <h2 className="break-words text-4xl font-bold leading-tight tracking-tight text-[#17130f]">{bag.propertyCode}</h2>
+              <h2 className="min-w-0 break-words text-2xl font-bold leading-tight tracking-tight text-[#17130f]">{bag.propertyCode}</h2>
               {bag.isNew && <Badge className="bg-[#c4512e] text-white">Nueva</Badge>}
             </div>
           </div>
-          <div>
-            <p className="text-sm text-[#766b5e]">
-              {progressCompleted} de {progress.total} bolsas resueltas · {progress.pending} pendientes
+          <div className="w-[148px] shrink-0 text-right">
+            <p data-bag-progress className="text-[11px] leading-4 text-[#766b5e]">
+              {progressCompleted} de {progress.total} bolsas preparadas
             </p>
-            <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-[#e8d9c6]">
+            <div className="mt-1 h-1 overflow-hidden rounded-full bg-[#e8d9c6]">
               <div
                 className="h-full rounded-full bg-[#c4512e] transition-all duration-300"
                 style={{ width: `${progressPercent}%` }}
@@ -552,8 +535,8 @@ const BagCard = ({
           </div>
         </div>
 
-        <p className="flex items-center gap-2 text-sm font-semibold text-[#a94427]">
-          <Layers className="h-4 w-4" aria-hidden="true" />
+        <p className="flex items-center gap-1.5 text-xs font-semibold text-[#a94427]">
+          <Layers className="h-3.5 w-3.5" aria-hidden="true" />
           Coloca de abajo hacia arriba
         </p>
 
@@ -999,15 +982,13 @@ export const LaundryRouteV2View = ({ token }: LaundryRouteV2ViewProps) => {
   }
 
   const urgentBag = workflow.urgentBags[0] || null;
-  const nextResolved = workflow.nextRouteBags.filter((bag) => bag.bagStatus.status !== 'pending').length;
-  const nextCurrentPosition = nextPendingBag ? nextResolved + 1 : workflow.nextRouteBags.length;
   const deliveryGroups = groupRouteBagsByBuilding(workflow.currentRouteBags.filter((bag) => !bag.isCancelled));
   const urgentProgress = {
-    pending: workflow.stats.urgentPending,
+    prepared: workflow.currentRouteBags.filter((bag) => bag.bagStatus.status === 'prepared').length,
     total: workflow.currentRouteBags.length,
   };
   const nextProgress = {
-    pending: workflow.nextRouteBags.filter((bag) => bag.bagStatus.status === 'pending').length,
+    prepared: workflow.nextRouteBags.filter((bag) => bag.bagStatus.status === 'prepared').length,
     total: workflow.stats.nextTotal,
   };
 
@@ -1031,14 +1012,14 @@ export const LaundryRouteV2View = ({ token }: LaundryRouteV2ViewProps) => {
 
   return (
     <div ref={scrollContainerRef} className="h-dvh overflow-y-auto bg-[#faf7f1] font-sans" data-laundry-scroll>
-      <main className="mx-auto max-w-md space-y-5 px-4 py-3" style={{ paddingBottom: 'calc(220px + env(safe-area-inset-bottom))' }}>
+      <main className="mx-auto max-w-md space-y-2 px-4 py-1.5" style={{ paddingBottom: 'calc(156px + env(safe-area-inset-bottom))' }}>
         {accessRequired && routeAccess?.worker && (
-          <div className="flex items-center justify-between border-b border-[#e8e1d7] pb-3">
+          <div className="flex items-center justify-between gap-2 border-b border-[#e8e1d7] pb-1">
             <div className="min-w-0">
-              <p className="text-xs text-[#766b5e]">Ruta iniciada por</p>
-              <p className="truncate text-sm font-semibold text-[#17130f]">{routeAccess.worker.workerName}</p>
+              <p className="text-[10px] leading-3 text-[#766b5e]">Ruta iniciada por</p>
+              <p className="truncate text-xs font-semibold leading-4 text-[#17130f]">{routeAccess.worker.workerName}</p>
             </div>
-            <Button variant="ghost" size="sm" onClick={logoutRouteWorker} className="text-[#8d351e]">
+            <Button variant="ghost" size="sm" onClick={logoutRouteWorker} className="h-11 shrink-0 px-2 text-xs text-[#8d351e]">
               <LogOut className="mr-1.5 h-4 w-4" />
               Cambiar
             </Button>
@@ -1133,17 +1114,9 @@ export const LaundryRouteV2View = ({ token }: LaundryRouteV2ViewProps) => {
 
         {!urgentBag && workflow.blockingStep === 'prepare_next' && nextPendingBag && (
           <section className="space-y-2">
-            <div className="rounded-xl border border-[#dfd2bf] bg-[#fbf6ec] px-3 py-2">
-              <p className="text-[10px] font-black uppercase tracking-wide text-[#a18465]">
-                Preparación de la siguiente ruta
-              </p>
-              <h2 className="text-sm font-black text-[#17130f]">
-                Bolsa {nextCurrentPosition} de {workflow.stats.nextTotal}
-              </h2>
-              <p className="text-[11px] text-[#7a604b]">
-                Se prepara para {workflow.route.nextRouteName} {formatDate(workflow.route.nextDeliveryDate)}.
-              </p>
-            </div>
+            <p className="text-[11px] leading-4 text-[#7a604b]">
+              Siguiente ruta: {workflow.route.nextRouteName} · {formatDate(workflow.route.nextDeliveryDate)}
+            </p>
 
             <BagCard
               bag={nextPendingBag}
