@@ -1,0 +1,13 @@
+/* Scoped to inventory: shared app typography, surfaces and responsive data tables. */
+.inventory-workspace .shadow-sm { box-shadow: 0 2px 8px hsl(var(--foreground) / .025); }
+.inventory-workspace table { font-size: .8125rem; }
+.inventory-workspace thead { background: hsl(var(--muted) / .65); }
+.inventory-workspace th { white-space: nowrap; font-size: .6875rem; letter-spacing: .025em; }
+.inventory-workspace td { padding-top: .9rem; padding-bottom: .9rem; }
+.inventory-workspace tbody tr:hover { background: hsl(var(--primary) / .025); }
+.inventory-workspace h3 { font-size: 1rem; line-height: 1.5; }
+.inventory-workspace input, .inventory-workspace [role=combobox] { min-height: 2.5rem; }
+@media (max-width: 640px) {
+  .inventory-workspace td { min-width: 6rem; }
+  .inventory-workspace td:first-child { min-width: 10rem; }
+}

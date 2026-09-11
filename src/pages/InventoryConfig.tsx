@@ -95,8 +95,8 @@ export default function InventoryConfig() {
 
   return (
     <StockLayout
-      title="Configuracion de consumo"
-      description="Controla el piloto de stock, reglas por propiedad y activacion del descuento automatico."
+      title="Configuración de inventario"
+      description="Define cómo se descuenta el stock y revisa la configuración de consumo por propiedad."
       showWarehouseSelect={false}
     >
       <div className="space-y-4">
@@ -104,26 +104,26 @@ export default function InventoryConfig() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <ShieldCheck className="h-5 w-5" />
-              Piloto de consumo automatico
+              Consumo automático
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid gap-3 md:grid-cols-3">
               <StatusMetric label="Sede activa" value={activeSede?.nombre || '-'} />
               <StatusMetric label="Propiedades con consumo" value={`${diagnostics.propertiesWithPositiveConsumption}/${activeProperties.length}`} />
-              <StatusMetric label="Reglas explicitas positivas" value={diagnostics.positiveRules} />
+              <StatusMetric label="Reglas de consumo activas" value={diagnostics.positiveRules} />
             </div>
 
             <div className="grid gap-3 md:grid-cols-2">
               <SwitchRow
-                title="Modo preparacion"
-                description="Impide descuentos automaticos mientras se cargan stock inicial, minimos y objetivos."
+                title="Modo de preparación"
+                description="Impide descuentos automáticos mientras se cargan stock inicial, mínimos y objetivos."
                 checked={settings?.preparation_mode ?? true}
                 disabled={settingsLoading || updateSettings.isPending}
                 onCheckedChange={(checked) => handleUpdateSettings({ preparation_mode: checked })}
               />
               <SwitchRow
-                title="Descuento automatico"
+                title="Descuento automático"
                 description="Permite descontar stock al completar tareas solo si el modo preparacion esta desactivado."
                 checked={settings?.auto_consumption_enabled ?? false}
                 disabled={settingsLoading || updateSettings.isPending}
@@ -199,7 +199,7 @@ export default function InventoryConfig() {
           />
         </div>
 
-        <Card>
+        <Card className="rounded-2xl border-border/60 shadow-sm">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <PackageSearch className="h-5 w-5" />
@@ -208,7 +208,7 @@ export default function InventoryConfig() {
           </CardHeader>
           <CardContent className="flex flex-col gap-3 text-sm text-muted-foreground md:flex-row md:items-center md:justify-between">
             <p>
-              Carga stock actual, minimos y objetivos desde <strong>Stock global</strong>. Cuando el piloto este validado, desactiva modo preparacion y activa descuento automatico para esta sede.
+              Carga stock actual, mínimos y objetivos desde <strong>Stock global</strong>. Cuando el piloto este validado, desactiva modo preparacion y activa descuento automático para esta sede.
             </p>
             <Button asChild>
               <Link to="/inventory/stock">
@@ -268,7 +268,7 @@ function DiagnosticCard({
   danger: boolean;
 }) {
   return (
-    <Card>
+    <Card className="rounded-2xl border-border/60 shadow-sm">
       <CardContent className="p-4">
         <div className="flex items-start justify-between gap-3">
           <div>
@@ -303,7 +303,7 @@ function ActionList({
   loading?: boolean;
 }) {
   return (
-    <Card>
+    <Card className="rounded-2xl border-border/60 shadow-sm">
       <CardHeader className="flex flex-row items-center justify-between gap-3">
         <CardTitle className="text-base">{title}</CardTitle>
         <Button asChild variant="outline" size="sm">

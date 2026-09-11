@@ -130,7 +130,13 @@ function App() {
                     </ProtectedRoute>
                   } />
 
-                  {/* Inventario: tiene su propio layout interno */}
+                  {/* Layout persistente con sidebar - todas las páginas admin */}
+                  <Route element={
+                    <ProtectedRoute>
+                      <AppLayout />
+                    </ProtectedRoute>
+                  }>
+                  {/* Inventario integrado en el layout persistente */}
                   <Route path="/inventory" element={
                     <ProtectedRoute>
                       <RoleProtectedRoute requiredModule="inventory">
@@ -188,12 +194,6 @@ function App() {
                     </ProtectedRoute>
                   } />
 
-                  {/* Layout persistente con sidebar - todas las páginas admin */}
-                  <Route element={
-                    <ProtectedRoute>
-                      <AppLayout />
-                    </ProtectedRoute>
-                  }>
                     <Route path="/" element={<Index />} />
                     <Route path="/user-management" element={
                       <RoleProtectedRoute requiredModule="users"><UserManagement /></RoleProtectedRoute>

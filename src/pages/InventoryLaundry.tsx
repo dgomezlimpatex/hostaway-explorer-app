@@ -4,7 +4,7 @@ export default function InventoryLaundry() {
   return (
     <InventoryStock
       kind="laundry"
-      title="Lavanderia"
+      title="Lavandería"
       description="Stock de lenceria y textiles filtrado por almacenes."
     />
   );

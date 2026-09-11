@@ -1,3 +1,4 @@
+import { formatMadridDate } from '@/utils/date';
 import { useMemo, useState } from 'react';
 import { Download, FileSpreadsheet, PackageCheck, TrendingDown, WalletCards } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
@@ -33,15 +34,15 @@ const movementLabels: Record<StockMovementType, string> = {
   entrada: 'Entrada',
   salida: 'Salida',
   ajuste: 'Ajuste',
-  consumo_automatico: 'Consumo automatico',
+  consumo_automatico: 'Consumo automático',
   transferencia: 'Transferencia',
 };
 
 type MovementFilter = StockMovementType | 'all';
 
 export default function InventoryReports() {
-  const today = new Date().toISOString().slice(0, 10);
-  const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().slice(0, 10);
+  const today = formatMadridDate(new Date());
+  const monthStart = today.slice(0, 7) + '-01';
   const [dateFrom, setDateFrom] = useState(monthStart);
   const [dateTo, setDateTo] = useState(today);
   const [movementType, setMovementType] = useState<MovementFilter>('all');
@@ -54,11 +55,11 @@ export default function InventoryReports() {
   const { data: warehouses = [] } = useStockWarehouses();
 
   const filteredMovements = useMemo(() => {
-    const from = dateFrom ? new Date(`${dateFrom}T00:00:00`) : null;
-    const to = dateTo ? new Date(`${dateTo}T23:59:59`) : null;
+    const from = dateFrom;
+    const to = dateTo;
 
     return movements.filter((movement) => {
-      const createdAt = new Date(movement.created_at);
+      const createdAt = formatMadridDate(new Date(movement.created_at));
       if (from && createdAt < from) return false;
       if (to && createdAt > to) return false;
       if (movementType !== 'all' && movement.movement_type !== movementType) return false;
@@ -109,7 +110,7 @@ export default function InventoryReports() {
   const totalReorderValue = report.reorder.reduce((sum, item) => sum + item.estimatedCost, 0);
 
   const exportRows = filteredMovements.map((movement) => ({
-    fecha: new Date(movement.created_at).toLocaleString('es-ES'),
+    fecha: new Date(movement.created_at).toLocaleString('es-ES', { timeZone: 'Europe/Madrid' }),
     producto: movement.product?.name || '',
     tipo: movementLabels[movement.movement_type],
     almacen_origen: movement.warehouse?.name || '',
@@ -158,23 +159,23 @@ export default function InventoryReports() {
       objetivo: item.level.target_quantity,
       reponer: item.needed,
       coste_estimado: item.estimatedCost,
-    }))), 'Reposicion');
+    }))), 'Reposición');
     XLSX.writeFile(workbook, `stock-reporte-${dateFrom}-${dateTo}.xlsx`);
   };
 
   return (
     <StockLayout
-      title="Reportes de stock"
-      description="Consumo, movimientos, bajo minimo y reposicion estimada."
+      title="Informes de inventario"
+      description="Consumo, movimientos, bajo mínimo y reposición estimada."
       showWarehouseSelect={false}
     >
-      <div className="space-y-4">
-        <Card>
-          <CardContent className="grid gap-3 p-4 md:grid-cols-6">
-            <Input type="date" value={dateFrom} onChange={(event) => setDateFrom(event.target.value)} />
-            <Input type="date" value={dateTo} onChange={(event) => setDateTo(event.target.value)} />
+      <div className="space-y-4"><p className="rounded-xl border border-primary/15 bg-primary/5 p-3 text-xs text-muted-foreground">Movimientos: hasta los 1.000 últimos registros, filtrados por fechas en horario de Madrid. La reposición refleja las existencias actuales.</p>
+        <Card className="rounded-2xl border-border/60 shadow-sm">
+          <CardContent className="grid gap-3 p-4 sm:grid-cols-2 xl:grid-cols-3">
+            <Input aria-label="Desde" type="date" value={dateFrom} onChange={(event) => setDateFrom(event.target.value)} />
+            <Input aria-label="Hasta" type="date" value={dateTo} onChange={(event) => setDateTo(event.target.value)} />
             <Select value={movementType} onValueChange={(value) => setMovementType(value as MovementFilter)}>
-              <SelectTrigger><SelectValue placeholder="Tipo" /></SelectTrigger>
+              <SelectTrigger aria-label="Tipo"><SelectValue placeholder="Tipo" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Todos los movimientos</SelectItem>
                 {Object.entries(movementLabels).map(([value, label]) => (
@@ -183,7 +184,7 @@ export default function InventoryReports() {
               </SelectContent>
             </Select>
             <Select value={productId} onValueChange={setProductId}>
-              <SelectTrigger><SelectValue placeholder="Producto" /></SelectTrigger>
+              <SelectTrigger aria-label="Producto"><SelectValue placeholder="Producto" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Todos los productos</SelectItem>
                 {products.map((product) => (
@@ -192,7 +193,7 @@ export default function InventoryReports() {
               </SelectContent>
             </Select>
             <Select value={warehouseId} onValueChange={setWarehouseId}>
-              <SelectTrigger><SelectValue placeholder="Almacen" /></SelectTrigger>
+              <SelectTrigger aria-label="Almacén"><SelectValue placeholder="Almacén" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Todos los almacenes</SelectItem>
                 {warehouses.map((warehouse) => (
@@ -216,12 +217,12 @@ export default function InventoryReports() {
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           <Metric title="Movimientos" value={filteredMovements.length} icon={PackageCheck} />
           <Metric title="Consumos auto" value={report.automaticConsumption.length} icon={TrendingDown} />
-          <Metric title="Bajo minimo" value={report.lowStock.length} icon={TrendingDown} />
-          <Metric title="Valor reposicion" value={formatCurrency(totalReorderValue)} icon={WalletCards} />
+          <Metric title="Bajo mínimo" value={report.lowStock.length} icon={TrendingDown} />
+          <Metric title="Valor reposición" value={formatCurrency(totalReorderValue)} icon={WalletCards} />
         </div>
 
         <div className="grid gap-4 xl:grid-cols-2">
-          <Card>
+          <Card className="rounded-2xl border-border/60 shadow-sm">
             <CardHeader>
               <CardTitle>Consumo por producto</CardTitle>
             </CardHeader>
@@ -238,17 +239,17 @@ export default function InventoryReports() {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="rounded-2xl border-border/60 shadow-sm">
             <CardHeader>
-              <CardTitle>Reposicion sugerida</CardTitle>
+              <CardTitle>Reposición sugerida</CardTitle>
             </CardHeader>
             <CardContent className="p-0">
               <SimpleTable
                 emptyText="No hay productos por debajo de objetivo."
-                headers={['Producto', 'Almacen', 'Reponer', 'Coste']}
+                headers={['Producto', 'Almacén', 'Reponer', 'Coste']}
                 rows={report.reorder.slice(0, 12).map((item) => [
                   item.level.product?.name || 'Producto',
-                  item.level.warehouse?.name || 'Almacen',
+                  item.level.warehouse?.name || 'Almacén',
                   formatQuantity(item.needed),
                   formatCurrency(item.estimatedCost),
                 ])}
@@ -257,7 +258,7 @@ export default function InventoryReports() {
           </Card>
         </div>
 
-        <Card>
+        <Card className="rounded-2xl border-border/60 shadow-sm">
           <CardHeader>
             <CardTitle>Movimientos recientes</CardTitle>
           </CardHeader>
@@ -269,7 +270,7 @@ export default function InventoryReports() {
                     <TableHead>Fecha</TableHead>
                     <TableHead>Producto</TableHead>
                     <TableHead>Tipo</TableHead>
-                    <TableHead>Almacen</TableHead>
+                    <TableHead>Almacén</TableHead>
                     <TableHead className="text-right">Cantidad</TableHead>
                     <TableHead>Motivo</TableHead>
                   </TableRow>
@@ -286,7 +287,7 @@ export default function InventoryReports() {
                         <TableCell>{movement.product?.name || 'Producto'}</TableCell>
                         <TableCell><Badge variant="outline">{movementLabels[movement.movement_type]}</Badge></TableCell>
                         <TableCell>
-                          {movement.warehouse?.name || 'Almacen'}
+                          {movement.warehouse?.name || 'Almacén'}
                           {movement.to_warehouse ? ` -> ${movement.to_warehouse.name}` : ''}
                         </TableCell>
                         <TableCell className="text-right font-mono">{formatQuantity(movement.quantity)}</TableCell>
@@ -318,7 +319,7 @@ function Metric({
   icon: React.ComponentType<{ className?: string }>;
 }) {
   return (
-    <Card>
+    <Card className="rounded-2xl border-border/60 shadow-sm">
       <CardContent className="flex items-center justify-between gap-3 p-4">
         <div>
           <p className="text-sm text-muted-foreground">{title}</p>

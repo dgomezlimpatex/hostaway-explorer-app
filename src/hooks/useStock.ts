@@ -57,14 +57,18 @@ export const useSelectedStockWarehouse = () => {
 
   useEffect(() => {
     if (!activeSede?.id) return;
-    const stored = localStorage.getItem(selectedWarehouseKey(activeSede.id));
-    setSelectedWarehouseIdState(stored || 'all');
+    const sync = () => setSelectedWarehouseIdState(localStorage.getItem(selectedWarehouseKey(activeSede.id)) || 'all');
+    sync();
+    window.addEventListener('stock-warehouse-change', sync);
+    window.addEventListener('storage', sync);
+    return () => { window.removeEventListener('stock-warehouse-change', sync); window.removeEventListener('storage', sync); };
   }, [activeSede?.id]);
 
   const setSelectedWarehouseId = (warehouseId: string) => {
     setSelectedWarehouseIdState(warehouseId);
     if (activeSede?.id) {
       localStorage.setItem(selectedWarehouseKey(activeSede.id), warehouseId);
+      window.dispatchEvent(new Event('stock-warehouse-change'));
     }
   };
 

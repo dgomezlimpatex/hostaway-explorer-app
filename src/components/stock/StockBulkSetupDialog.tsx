@@ -90,7 +90,7 @@ export function StockBulkSetupDialog({ open, onOpenChange, levels }: StockBulkSe
       const costPerUnit = draft.cost_per_unit === '' ? null : toNumber(draft.cost_per_unit);
 
       if (targetQuantity < minimumQuantity) {
-        toast.error(`Objetivo inferior al minimo en ${level.product?.name || 'producto'}.`);
+        toast.error(`Objetivo inferior al mínimo en ${level.product?.name || 'producto'}.`);
         return;
       }
 
@@ -136,7 +136,7 @@ export function StockBulkSetupDialog({ open, onOpenChange, levels }: StockBulkSe
         <DialogHeader>
           <DialogTitle>Carga operativa de stock</DialogTitle>
           <DialogDescription>
-            Actualiza cantidades, minimos, objetivos y costes. Los cambios de cantidad generan movimientos de ajuste.
+            Actualiza cantidades, mínimos, objetivos y costes. Los cambios de cantidad generan movimientos de ajuste.
           </DialogDescription>
         </DialogHeader>
 
@@ -156,9 +156,9 @@ export function StockBulkSetupDialog({ open, onOpenChange, levels }: StockBulkSe
               <thead className="bg-muted/60 text-left">
                 <tr>
                   <th className="px-3 py-2 font-medium">Producto</th>
-                  <th className="px-3 py-2 font-medium">Almacen</th>
+                  <th className="px-3 py-2 font-medium">Almacén</th>
                   <th className="px-3 py-2 font-medium">Actual</th>
-                  <th className="px-3 py-2 font-medium">Minimo</th>
+                  <th className="px-3 py-2 font-medium">Mínimo</th>
                   <th className="px-3 py-2 font-medium">Objetivo</th>
                   <th className="px-3 py-2 font-medium">Coste unidad</th>
                 </tr>
@@ -174,7 +174,7 @@ export function StockBulkSetupDialog({ open, onOpenChange, levels }: StockBulkSe
                           {level.product?.category?.name || 'Sin tipo'} · {level.product?.unit_of_measure || 'unidades'}
                         </div>
                       </td>
-                      <td className="px-3 py-2">{level.warehouse?.name || 'Almacen'}</td>
+                      <td className="px-3 py-2">{level.warehouse?.name || 'Almacén'}</td>
                       <td className="px-3 py-2">
                         <Input
                           type="number"

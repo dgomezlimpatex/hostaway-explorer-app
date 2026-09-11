@@ -48,6 +48,8 @@ export default function InventoryWarehouses() {
   const updateWarehouse = useUpdateStockWarehouse();
   const deleteWarehouse = useDeleteStockWarehouse();
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [search, setSearch] = useState('');
+  const visibleWarehouses = warehouses.filter(warehouse => [warehouse.name, warehouse.address].some(value => value?.toLowerCase().includes(search.toLowerCase())));
   const [warehouseToEdit, setWarehouseToEdit] = useState<StockWarehouse | null>(null);
   const [deleteOpen, setDeleteOpen] = useState(false);
 
@@ -86,18 +88,19 @@ export default function InventoryWarehouses() {
   return (
     <StockLayout
       title="Almacenes"
-      description="Gestiona almacenes por sede y define el almacen principal."
+      description="Gestiona almacenes por sede y define el almacén principal."
       showWarehouseSelect={false}
       actions={
         canCreateWarehouse ? (
           <Button onClick={openCreateDialog}>
             <Plus className="mr-2 h-4 w-4" />
-            Nuevo almacen
+            Nuevo almacén
           </Button>
         ) : undefined
       }
     >
-      <Card>
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border bg-background p-4"><div><p className="text-sm font-semibold">{warehouses.length} almacenes en la sede</p><p className="mt-1 text-xs text-muted-foreground">El principal se utiliza como almacén predeterminado.</p></div><Input className="sm:w-72" aria-label="Buscar almacenes" placeholder="Buscar por nombre o dirección…" value={search} onChange={event => setSearch(event.target.value)} /></div>
+      <Card className="rounded-2xl border-border/60 shadow-sm">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Building2 className="h-5 w-5" />
@@ -109,8 +112,8 @@ export default function InventoryWarehouses() {
             <TableHeader>
               <TableRow>
                 <TableHead>Nombre</TableHead>
-                <TableHead>Direccion</TableHead>
-                <TableHead>Default</TableHead>
+                <TableHead>Dirección</TableHead>
+                <TableHead>Principal</TableHead>
                 <TableHead>Estado</TableHead>
                 <TableHead className="text-right">Acciones</TableHead>
               </TableRow>
@@ -122,22 +125,22 @@ export default function InventoryWarehouses() {
                     Cargando almacenes...
                   </TableCell>
                 </TableRow>
-              ) : warehouses.length === 0 ? (
+              ) : visibleWarehouses.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={5} className="h-24 text-center">
                     No hay almacenes configurados.
                   </TableCell>
                 </TableRow>
               ) : (
-                warehouses.map((warehouse) => (
+                visibleWarehouses.map((warehouse) => (
                   <TableRow key={warehouse.id}>
                     <TableCell className="font-medium">{warehouse.name}</TableCell>
                     <TableCell>{warehouse.address || '-'}</TableCell>
-                    <TableCell>{warehouse.is_default ? 'Si' : 'No'}</TableCell>
+                    <TableCell>{warehouse.is_default ? 'Sí' : '—'}</TableCell>
                     <TableCell>{warehouse.is_active ? 'Activo' : 'Inactivo'}</TableCell>
                     <TableCell className="text-right">
                       {canEditWarehouse && (
-                        <div className="flex justify-end gap-2">
+                        <div className="flex flex-wrap justify-end gap-2">
                           <Button variant="outline" size="sm" onClick={() => openEditDialog(warehouse)}>
                             <Edit className="mr-2 h-4 w-4" />
                             Editar
@@ -148,7 +151,7 @@ export default function InventoryWarehouses() {
                               size="sm"
                               onClick={() => updateWarehouse.mutate({ id: warehouse.id, updates: { is_default: true } })}
                             >
-                              Marcar default
+                              Hacer principal
                             </Button>
                           )}
                         </div>
@@ -169,9 +172,9 @@ export default function InventoryWarehouses() {
           if (!open) setWarehouseToEdit(null);
         }}
       >
-        <DialogContent>
+        <DialogContent className="max-h-[90dvh] overflow-y-auto rounded-2xl">
           <DialogHeader>
-            <DialogTitle>{warehouseToEdit ? 'Editar almacen' : 'Nuevo almacen'}</DialogTitle>
+            <DialogTitle>{warehouseToEdit ? 'Editar almacén' : 'Nuevo almacén'}</DialogTitle>
           </DialogHeader>
           <form key={warehouseToEdit?.id || 'new-warehouse'} onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
@@ -179,12 +182,12 @@ export default function InventoryWarehouses() {
               <Input id="name" name="name" defaultValue={warehouseToEdit?.name || ''} required />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="address">Direccion</Label>
+              <Label htmlFor="address">Dirección</Label>
               <Input id="address" name="address" defaultValue={warehouseToEdit?.address || ''} />
             </div>
             <label className="flex items-center gap-2 text-sm">
               <input name="is_default" type="checkbox" className="h-4 w-4" defaultChecked={warehouseToEdit?.is_default || false} />
-              Marcar como almacen principal
+              Marcar como almacén principal
             </label>
             <DialogFooter className="gap-2 sm:justify-between">
               {warehouseToEdit && (
@@ -194,7 +197,7 @@ export default function InventoryWarehouses() {
                   disabled={warehouseToEdit.is_default}
                   onClick={() => setDeleteOpen(true)}
                 >
-                  Eliminar almacen
+                  Eliminar almacén
                 </Button>
               )}
               <div className="flex flex-col-reverse gap-2 sm:flex-row">
@@ -202,13 +205,13 @@ export default function InventoryWarehouses() {
                   Cancelar
                 </Button>
                 <Button type="submit" disabled={createWarehouse.isPending || updateWarehouse.isPending}>
-                  {warehouseToEdit ? 'Guardar cambios' : 'Crear almacen'}
+                  {warehouseToEdit ? 'Guardar cambios' : 'Crear almacén'}
                 </Button>
               </div>
             </DialogFooter>
             {warehouseToEdit?.is_default && (
               <p className="text-xs text-muted-foreground">
-                Para eliminar este almacen, marca antes otro almacen como principal.
+                Para eliminar este almacén, marca antes otro almacén como principal.
               </p>
             )}
           </form>
@@ -218,7 +221,7 @@ export default function InventoryWarehouses() {
       <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Eliminar almacen</AlertDialogTitle>
+            <AlertDialogTitle>Eliminar almacén</AlertDialogTitle>
             <AlertDialogDescription>
               Se eliminara "{warehouseToEdit?.name}" de las vistas activas. El historico y los movimientos se conservan.
             </AlertDialogDescription>
