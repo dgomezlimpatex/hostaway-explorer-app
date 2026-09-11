@@ -575,6 +575,33 @@ const BagCard = ({
   );
 };
 
+const PreparationPhaseHeader = ({ urgent, pending, deliveryDate }: {
+  urgent: boolean;
+  pending: number;
+  deliveryDate: string;
+}) => {
+  const { toast } = useToast();
+  const previousUrgent = useRef(urgent);
+  useEffect(() => {
+    if (previousUrgent.current && !urgent) {
+      toast({ title: 'Pendientes de hoy terminadas', description: 'Ahora preparas las bolsas de la siguiente ruta.' });
+    }
+    previousUrgent.current = urgent;
+  }, [urgent, toast]);
+  const deliveryIsToday = deliveryDate === formatMadridDate(new Date());
+  return (
+    <section aria-label="Fase de preparación" className={cn('shrink-0 rounded-xl border p-2.5', urgent ? 'border-orange-300 bg-orange-50 text-orange-950' : 'border-blue-300 bg-blue-50 text-blue-950')}>
+      <ol className="mb-2 grid grid-cols-2 gap-2 text-[11px] font-semibold">
+        <li aria-current={urgent ? 'step' : undefined} className={cn('rounded-md px-2 py-1', urgent ? 'bg-orange-600 text-white' : 'text-blue-800')}>① Pendientes para hoy</li>
+        <li aria-current={!urgent ? 'step' : undefined} className={cn('rounded-md px-2 py-1', !urgent ? 'bg-blue-600 text-white' : 'text-orange-800')}>② Siguiente ruta</li>
+      </ol>
+      <h2 className="text-sm font-black leading-tight">{urgent ? 'PREPARANDO BOLSAS PARA HOY' : 'PREPARANDO LA SIGUIENTE RUTA'}</h2>
+      <p className="mt-1 text-[11px] leading-tight">{urgent ? 'Pendientes de la ruta anterior y nuevas reservas' : 'Bolsas para el próximo día de reparto'}</p>
+      <p className="mt-1.5 text-xs font-bold">{pending} {pending === 1 ? 'bolsa pendiente' : 'bolsas pendientes'} · Entrega {deliveryIsToday ? 'hoy, ' : ''}{formatDate(deliveryDate)}</p>
+    </section>
+  );
+};
+
 const PreparationBuildingList = ({ bags, currentIds, busy, onPrepare }: {
   bags: RouteBag[];
   currentIds: Set<string>;
@@ -1106,13 +1133,11 @@ export const LaundryRouteV2View = ({ token }: LaundryRouteV2ViewProps) => {
             </Button>
           </div>
         )}
+        {preparationBags.length > 0 && <PreparationPhaseHeader urgent={Boolean(urgentBag)} pending={preparationBags.length} deliveryDate={urgentBag ? workflow.route.deliveryDate : workflow.route.nextDeliveryDate} />}
         {preparationBags.length > 0 && <Button variant="outline" className="w-full shrink-0" aria-pressed={showBuildings} onClick={() => setShowBuildings(!showBuildings)}>{showBuildings ? 'Ver bolsas una a una' : 'Ver bolsas por edificio'}</Button>}
-        {buildingViewActive && <div key={urgentBag ? 'urgent' : 'prepare_next'} className="min-h-0 flex-1 overflow-y-auto pb-3"><p className="mb-2 rounded-md bg-[#f1e8dc] px-2 py-1 text-xs font-semibold text-[#8d351e]">{urgentBag ? 'Pendientes para la ruta de hoy' : 'Bolsas para la siguiente ruta'}</p><PreparationBuildingList bags={preparationBags} currentIds={new Set(workflow.currentRouteBags.map((bag) => bag.taskId))} busy={pendingActionKeys.size > 0} onPrepare={(taskId) => runAction({ action: 'prepare', taskId })} /></div>}
+        {buildingViewActive && <div key={urgentBag ? 'urgent' : 'prepare_next'} className="min-h-0 flex-1 overflow-y-auto pb-3"><PreparationBuildingList bags={preparationBags} currentIds={new Set(workflow.currentRouteBags.map((bag) => bag.taskId))} busy={pendingActionKeys.size > 0} onPrepare={(taskId) => runAction({ action: 'prepare', taskId })} /></div>}
         {!buildingViewActive && urgentBag && (
           <section className="flex min-h-0 flex-1 flex-col gap-2">
-            <p data-bag-route className="shrink-0 rounded-md bg-[#f1e8dc] px-2 py-1 text-xs font-semibold leading-4 text-[#8d351e]">
-              {workflow.route.deliveryDate === formatMadridDate(new Date()) ? 'Para entregar hoy' : `Entrega: ${formatDate(workflow.route.deliveryDate)}`} · Pendientes de la ruta anterior
-            </p>
             <BagCard
               bag={urgentBag}
               progress={urgentProgress}
@@ -1201,9 +1226,6 @@ export const LaundryRouteV2View = ({ token }: LaundryRouteV2ViewProps) => {
 
         {!buildingViewActive && !urgentBag && workflow.blockingStep === 'prepare_next' && nextPendingBag && (
           <section className="flex min-h-0 flex-1 flex-col gap-2">
-            <p data-bag-route className="shrink-0 rounded-md bg-[#f1e8dc] px-2 py-1 text-xs font-semibold leading-4 text-[#8d351e]">
-              Para la siguiente ruta · {formatDate(workflow.route.nextDeliveryDate)}
-            </p>
 
             <BagCard
               bag={nextPendingBag}
