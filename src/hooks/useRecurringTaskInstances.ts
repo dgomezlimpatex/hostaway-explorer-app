@@ -4,6 +4,7 @@ import { Task } from '@/types/calendar';
 import { useSede } from '@/contexts/SedeContext';
 import { useMemo } from 'react';
 import { calculateOccurrences } from '../../supabase/functions/_shared/recurringSchedule';
+import { buildRecurringExecutionSet, recurringExecutionBounds } from '@/utils/recurringExecutions';
 
 interface UseRecurringTaskInstancesProps {
   dateFrom: string;
@@ -62,12 +63,13 @@ export const useRecurringTaskInstances = ({ dateFrom, dateTo, cleanerId }: UseRe
     queryKey: ['recurring-task-executions', recurringTaskIds, dateFrom, dateTo],
     queryFn: async () => {
       if (recurringTaskIds.length === 0) return [];
+      const bounds = recurringExecutionBounds(dateFrom, dateTo);
       const { data, error } = await supabase
         .from('recurring_task_executions')
         .select('recurring_task_id, execution_date')
         .in('recurring_task_id', recurringTaskIds)
-        .gte('execution_date', dateFrom)
-        .lte('execution_date', dateTo)
+        .gte('execution_date', bounds.from)
+        .lt('execution_date', bounds.until)
         .eq('success', true);
       if (error) throw error;
       return data || [];
@@ -77,16 +79,7 @@ export const useRecurringTaskInstances = ({ dateFrom, dateTo, cleanerId }: UseRe
   });
 
   // Build set of already-executed (taskId, date) pairs
-  const executedSet = useMemo(() => {
-    const set = new Set<string>();
-    executedDates.forEach(e => {
-      const executionDate = typeof e.execution_date === 'string'
-        ? e.execution_date.slice(0, 10)
-        : e.execution_date;
-      set.add(`${e.recurring_task_id}_${executionDate}`);
-    });
-    return set;
-  }, [executedDates]);
+  const executedSet = useMemo(() => buildRecurringExecutionSet(executedDates), [executedDates]);
 
   // Generate virtual task instances
   const virtualTasks = useMemo(() => {

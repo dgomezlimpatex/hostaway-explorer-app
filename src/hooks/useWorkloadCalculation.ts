@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useCleaners } from './useCleaners';
+import { buildRecurringExecutionSet, recurringExecutionBounds } from '@/utils/recurringExecutions';
 import { WorkloadSummary, HourAdjustment } from '@/types/workload';
 import { WorkerMaintenanceCleaning } from '@/types/workerAbsence';
 import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, eachDayOfInterval, getDay } from 'date-fns';
@@ -186,17 +187,17 @@ export const useWorkloadCalculation = (options: UseWorkloadCalculationOptions) =
       let executedSet = new Set<string>();
       
       if (recurringTaskIds.length > 0) {
-        const { data: executions } = await supabase
+        const bounds = recurringExecutionBounds(startDate, endDate);
+        const { data: executions, error: executionsError } = await supabase
           .from('recurring_task_executions')
           .select('recurring_task_id, execution_date')
           .in('recurring_task_id', recurringTaskIds)
-          .gte('execution_date', startDate)
-          .lte('execution_date', endDate)
+          .gte('execution_date', bounds.from)
+          .lt('execution_date', bounds.until)
           .eq('success', true);
         
-        if (executions) {
-          executions.forEach(e => executedSet.add(`${e.recurring_task_id}_${e.execution_date}`));
-        }
+        if (executionsError) throw executionsError;
+        executedSet = buildRecurringExecutionSet(executions || []);
       }
 
       const maintenanceCleanings: WorkerMaintenanceCleaning[] = (maintenanceResult.data || []).map(row => ({
