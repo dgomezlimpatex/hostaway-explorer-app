@@ -588,25 +588,25 @@ const PreparationBuildingList = ({ bags, currentIds, busy, onPrepare }: {
     groups.set(building, [...(groups.get(building) || []), bag]);
   }
   return <section className="space-y-2" aria-label="Bolsas por edificio">
-    <p className="text-xs text-[#6f5947]">Repartíos los edificios y abrid cualquier bolsa para prepararla. Los estados se actualizan cada 10 segundos.</p>
+    <p className="text-xs text-[#6f5947]">Abrid un edificio para ver el contenido de todas sus bolsas. Los estados se actualizan cada 10 segundos.</p>
     {!groups.size && <p className="p-3 text-sm">No hay bolsas para preparar.</p>}
     {[...groups].sort(([a], [b]) => a.localeCompare(b, 'es', { numeric: true })).map(([building, items]) => (
       <details key={building} className="rounded-xl border border-[#dfd2bf] bg-[#fffaf2]">
         <summary className="cursor-pointer p-3 font-bold">{building}<span className="ml-2 text-xs font-normal">{items.length} pendientes</span></summary>
         <div className="space-y-2 px-3 pb-3">
           {[...items].sort((a, b) => a.propertyCode.localeCompare(b.propertyCode, 'es', { numeric: true }) || a.date.localeCompare(b.date)).map((bag) => (
-            <details key={bag.taskId} className="rounded-lg border bg-white">
-              <summary className="cursor-pointer p-3 text-sm">
+            <article key={bag.taskId} className="rounded-lg border bg-white">
+              <header className="p-3 text-sm">
                 <strong>{bag.propertyCode}</strong> · {formatDate(bag.date)}
                 <span className="mt-1 block text-xs">{currentIds.has(bag.taskId) ? 'Ruta actual' : 'Siguiente ruta'} · {bag.bagStatus.status === 'prepared' ? '✓ Preparada' : bag.bagStatus.status === 'issue' ? 'Incidencia' : 'Pendiente'}</span>
-              </summary>
+              </header>
               <div className="space-y-3 px-3 pb-3">
                 <p className="text-xs">{bag.propertyName}</p>
                 <div className="space-y-1">{buildBagGuideLayers(bag).flatMap((layer) => layer.items.map((item, index) => <div key={layer.id + '-' + index} className="flex gap-2 rounded bg-[#faf7f1] p-2 text-sm"><strong>{item.quantity}</strong><span>{item.label}</span></div>))}</div>
                 {bag.bagStatus.issueReason && <p className="text-sm text-red-700">{bag.bagStatus.issueReason}</p>}
                 <Button className="min-h-12 w-full" disabled={busy || bag.bagStatus.status === 'prepared'} onClick={() => onPrepare(bag.taskId)}><PackageCheck className="mr-2 h-4 w-4" />{bag.bagStatus.status === 'prepared' ? 'Preparada' : 'Marcar bolsa preparada'}</Button>
               </div>
-            </details>
+            </article>
           ))}
         </div>
       </details>
