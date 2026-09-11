@@ -28,6 +28,8 @@ const Tasks = React.lazy(() => import("./pages/Tasks"));
 const Clients = React.lazy(() => import("./pages/Clients"));
 const Properties = React.lazy(() => import("./pages/Properties"));
 const Workers = React.lazy(() => import("./pages/Workers"));
+const PersonnelProfile = React.lazy(() => import("./features/personnel/PersonnelProfile"));
+const PersonnelHours = React.lazy(() => import("./features/personnel/HoursControl"));
 const HostawaySyncLogs = React.lazy(() => import("./pages/HostawaySyncLogs"));
 const ChecklistTemplates = React.lazy(() => import("./pages/ChecklistTemplates"));
 const CleaningReports = React.lazy(() => import("./pages/CleaningReports"));
@@ -225,6 +227,9 @@ function App() {
                     <Route path="/workers" element={
                       <RoleProtectedRoute requiredModule="workers"><Workers /></RoleProtectedRoute>
                     } />
+                    <Route path="/workers/hours" element={<RoleProtectedRoute requiredModule="workers" excludedRoles={['supervisor','cleaner','client']}><PersonnelHours /></RoleProtectedRoute>} />
+                    <Route path="/workers/:workerId/hours" element={<RoleProtectedRoute requiredModule="workers" excludedRoles={['supervisor','cleaner','client']}><PersonnelHours /></RoleProtectedRoute>} />
+                    <Route path="/workers/:workerId" element={<RoleProtectedRoute requiredModule="workers"><PersonnelProfile /></RoleProtectedRoute>} />
                     <Route path="/planning" element={
                       <RoleProtectedRoute requiredModule="tasks" requiredAction="canEdit"><CleaningPlanning /></RoleProtectedRoute>
                     } />
@@ -303,7 +308,7 @@ function App() {
                       <RoleProtectedRoute requiredModule="reports"><OperationalAnalytics /></RoleProtectedRoute>
                     } />
                     <Route path="/workload" element={
-                      <RoleProtectedRoute requiredModule="workers"><WorkloadDashboard /></RoleProtectedRoute>
+                      <RoleProtectedRoute requiredModule="workers"><Navigate to="/workers/hours?view=weekly" replace /></RoleProtectedRoute>
                     } />
                     <Route path="/integraciones" element={
                       <RoleProtectedRoute requiredModule="admin"><Integraciones /></RoleProtectedRoute>

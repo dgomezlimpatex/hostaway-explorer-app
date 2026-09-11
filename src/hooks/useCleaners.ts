@@ -36,6 +36,7 @@ export const useCleaners = () => {
     isLoading,
     isInitialLoading: isLoading && query.fetchStatus !== 'idle',
     refetch: query.refetch,
+    error: query.error,
   };
 };
 

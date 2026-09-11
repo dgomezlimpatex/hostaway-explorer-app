@@ -231,7 +231,7 @@ const SectionShell = ({
   </div>
 );
 
-const WorkerProfilePanel = ({ worker }: { worker: Cleaner }) => {
+export const WorkerProfilePanel = ({ worker }: { worker: Cleaner }) => {
   const [formData, setFormData] = useState<WorkerFormData>(() => getInitialFormData(worker));
   const [deactivateOpen, setDeactivateOpen] = useState(false);
   const updateCleaner = useUpdateCleaner();
