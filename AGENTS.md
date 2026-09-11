@@ -34,3 +34,4 @@ This app is already used in production. Keep changes small, reversible, and veri
 - Before schema changes, inspect existing migrations and RLS policies.
 - Keep migrations explicit and reviewable.
 - Verify with at least `npm run build` and `npx tsc --noEmit --pretty false` before shipping.
+- Production route links use `https://gestionlimpatex.vercel.app`. Before deploying, inspect this domain's active deployment and preserve its source changes. After deploying, verify BOTH `gestionlimpatex.vercel.app` and `gestionlimpatex-limpatex.vercel.app` point to the intended deployment; explicitly update any stale alias. Checking only a generated deployment URL is insufficient.

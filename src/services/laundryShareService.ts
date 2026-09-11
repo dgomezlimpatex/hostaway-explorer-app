@@ -3,7 +3,8 @@ import { isNotCountCleaner } from '@/utils/laundryExclusions';
 
 // Get the base URL for share links
 export const getShareLinkUrl = (token: string, scheduled: boolean = false): string => {
-  const baseUrl = window.location.origin;
+  // Shared routes must follow production, even when copied from a preview URL.
+  const baseUrl = 'https://gestionlimpatex.vercel.app';
   const path = scheduled ? 'reparto' : 'lavanderia';
   return `${baseUrl}/${path}/${token}`;
 };

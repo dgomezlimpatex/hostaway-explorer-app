@@ -23,6 +23,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import { isRouteV2Owner } from '@/utils/routeV2Access';
 import { LaundryPreparationTimings } from '@/components/laundry-share/LaundryPreparationTimings';
+import { getShareLinkUrl } from '@/services/laundryShareService';
 
 type RouteEvent = {
   id: string;
@@ -85,7 +86,7 @@ const invokeManagement = async (body: Record<string, unknown>) => {
   return data as RouteManagementResponse & Record<string, unknown>;
 };
 
-const getPublicUrl = (token: string) => `${window.location.origin}/reparto/${token}`;
+const getPublicUrl = (token: string) => getShareLinkUrl(token, true);
 
 const routeStatus = (link: RouteLink) => {
   if (link.sync_status === 'error') return { label: 'Error de sincronización', className: 'border-red-200 bg-red-50 text-red-700' };
