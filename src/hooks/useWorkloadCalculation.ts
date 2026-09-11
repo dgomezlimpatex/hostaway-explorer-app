@@ -23,7 +23,7 @@ const calculateMaintenanceHoursForPeriod = (
   const daysInPeriod = eachDayOfInterval({ start: startDate, end: endDate });
   
   for (const cleaning of maintenanceCleanings) {
-    if (!cleaning.isActive) continue;
+    if (!cleaning.isActive || cleaning.scheduleType === 'unavailability') continue;
     
     for (const day of daysInPeriod) {
       const dayOfWeek = getDay(day); // 0 = Sunday
@@ -201,6 +201,7 @@ export const useWorkloadCalculation = (options: UseWorkloadCalculationOptions) =
       }
 
       const maintenanceCleanings: WorkerMaintenanceCleaning[] = (maintenanceResult.data || []).map(row => ({
+        scheduleType: (row as typeof row & { schedule_type?: WorkerMaintenanceCleaning['scheduleType'] }).schedule_type,
         id: row.id,
         cleanerId: row.cleaner_id,
         daysOfWeek: row.days_of_week,

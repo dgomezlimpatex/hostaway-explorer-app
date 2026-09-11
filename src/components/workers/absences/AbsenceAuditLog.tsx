@@ -63,7 +63,7 @@ export const AbsenceAuditLog: React.FC<AbsenceAuditLogProps> = ({ cleanerId }) =
     if (log.referenceType === 'maintenance_cleaning') {
       const location = data.location_name as string;
       const days = (data.days_of_week as number[])?.map(d => DAY_OF_WEEK_SHORT[d]).join(', ');
-      return `🧹 ${location} (${days})`;
+      return `${data.schedule_type === "unavailability" ? "⛔ No disponible" : "🧹 " + location} (${days})`;
     }
 
     return '';

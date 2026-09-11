@@ -25,6 +25,7 @@ import {
 import { EditMaintenanceModal } from './EditMaintenanceModal';
 
 interface MaintenanceCleaningsSectionProps {
+  availability?: boolean;
   cleanerId: string;
   cleanerName: string;
   maintenanceCleanings: WorkerMaintenanceCleaning[];
@@ -36,6 +37,7 @@ export const MaintenanceCleaningsSection: React.FC<MaintenanceCleaningsSectionPr
   cleanerName,
   maintenanceCleanings,
   onAddNew,
+  availability = false,
 }) => {
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [editItem, setEditItem] = useState<WorkerMaintenanceCleaning | null>(null);
@@ -79,10 +81,10 @@ export const MaintenanceCleaningsSection: React.FC<MaintenanceCleaningsSectionPr
             <div>
               <CardTitle className="text-base flex items-center gap-2">
                 <Building2 className="h-4 w-4" />
-                Limpiezas de Mantenimiento
+                {availability ? 'Disponibilidad semanal' : 'Limpiezas de mantenimiento'}
               </CardTitle>
               <CardDescription>
-                Compromisos de limpieza externos fijos semanales
+                {availability ? 'Indica las franjas en las que no puede trabajar. No suman horas de trabajo.' : 'Limpiezas semanales que sí suman horas de trabajo.'}
               </CardDescription>
             </div>
             <Button variant="outline" size="sm" onClick={onAddNew}>
@@ -95,14 +97,14 @@ export const MaintenanceCleaningsSection: React.FC<MaintenanceCleaningsSectionPr
           {maintenanceCleanings.length === 0 ? (
             <div className="text-center py-6 text-muted-foreground">
               <Building2 className="h-8 w-8 mx-auto mb-2 opacity-50" />
-              <p className="text-sm">No hay limpiezas de mantenimiento configuradas</p>
+              <p className="text-sm">{availability ? 'Sin restricciones horarias. Se respetan los días libres y las ausencias.' : 'No hay limpiezas de mantenimiento configuradas'}</p>
               <Button 
                 variant="link" 
                 size="sm" 
                 onClick={onAddNew}
                 className="mt-1"
               >
-                Añadir primera limpieza
+                {availability ? 'Añadir horario no disponible' : 'Añadir primera limpieza'}
               </Button>
             </div>
           ) : (
@@ -110,8 +112,8 @@ export const MaintenanceCleaningsSection: React.FC<MaintenanceCleaningsSectionPr
               {maintenanceCleanings.map(item => (
                 <div 
                   key={item.id}
-                  className={`flex items-center justify-between p-3 rounded-lg border ${
-                    item.isActive ? 'bg-yellow-50 dark:bg-yellow-900/10 border-yellow-200 dark:border-yellow-800' : 'bg-muted/50 border-muted'
+                  className={`flex flex-wrap gap-3 items-center justify-between p-3 rounded-xl border ${
+                    item.isActive && availability ? 'bg-slate-50 border-slate-200' : item.isActive ? 'bg-yellow-50 dark:bg-yellow-900/10 border-yellow-200 dark:border-yellow-800' : 'bg-muted/50 border-muted'
                   }`}
                 >
                   <div className="flex-1">
@@ -121,7 +123,7 @@ export const MaintenanceCleaningsSection: React.FC<MaintenanceCleaningsSectionPr
                         <Badge variant="outline" className="text-xs">Inactivo</Badge>
                       )}
                     </div>
-                    <div className="flex items-center gap-4 mt-1 text-sm text-muted-foreground">
+                    <div className="flex flex-wrap items-center gap-4 mt-1 text-sm text-muted-foreground">
                       <span className="flex items-center gap-1">
                         <Clock className="h-3 w-3" />
                         {formatTime(item.startTime)} - {formatTime(item.endTime)}
@@ -135,6 +137,7 @@ export const MaintenanceCleaningsSection: React.FC<MaintenanceCleaningsSectionPr
                   
                   <div className="flex items-center gap-2">
                     <Switch
+                      aria-label={`Activar ${item.locationName}`}
                       checked={item.isActive}
                       onCheckedChange={() => handleToggleActive(item)}
                       disabled={updateMutation.isPending}
@@ -142,6 +145,7 @@ export const MaintenanceCleaningsSection: React.FC<MaintenanceCleaningsSectionPr
                     <Button 
                       variant="ghost" 
                       size="icon"
+                      aria-label={`Editar ${item.locationName}`}
                       onClick={() => setEditItem(item)}
                     >
                       <Edit2 className="h-4 w-4" />
@@ -149,6 +153,7 @@ export const MaintenanceCleaningsSection: React.FC<MaintenanceCleaningsSectionPr
                     <Button 
                       variant="ghost" 
                       size="icon"
+                      aria-label={`Eliminar ${item.locationName}`}
                       onClick={() => setDeleteId(item.id)}
                       className="text-destructive hover:text-destructive"
                     >
@@ -166,9 +171,9 @@ export const MaintenanceCleaningsSection: React.FC<MaintenanceCleaningsSectionPr
       <AlertDialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>¿Eliminar limpieza de mantenimiento?</AlertDialogTitle>
+            <AlertDialogTitle>{availability ? '¿Eliminar horario no disponible?' : '¿Eliminar limpieza de mantenimiento?'}</AlertDialogTitle>
             <AlertDialogDescription>
-              Esta acción no se puede deshacer. Se eliminará permanentemente esta limpieza de mantenimiento.
+              Se eliminará esta franja semanal.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

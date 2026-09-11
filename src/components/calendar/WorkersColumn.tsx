@@ -66,7 +66,8 @@ export const WorkersColumn = ({ cleaners, onDragOver, onDrop, absenceStatus, isD
       {cleaners.map((cleaner, index) => {
         const status = absenceStatus?.[cleaner.id];
         const isAbsent = status?.isAbsent;
-        const hasMaintenance = status?.maintenanceCleanings && status.maintenanceCleanings.length > 0;
+        const hasMaintenance = status?.maintenanceCleanings?.some(m => m.scheduleType !== 'unavailability');
+        const hasUnavailability = status?.maintenanceCleanings?.some(m => m.scheduleType === 'unavailability');
         const hasHourlyAbsence = status?.hourlyAbsences && status.hourlyAbsences.length > 0;
         const isPreferred = isDragging && preferredCleanerIds && preferredCleanerIds.has(cleaner.id);
         const isDimmed = isDragging && preferredCleanerIds && preferredCleanerIds.size > 0 && !preferredCleanerIds.has(cleaner.id);
@@ -105,7 +106,7 @@ export const WorkersColumn = ({ cleaners, onDragOver, onDrop, absenceStatus, isD
                 >
                   {cleaner.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
                 </div>
-                {(isAbsent || hasMaintenance || hasHourlyAbsence) && (
+                {(isAbsent || hasMaintenance || hasHourlyAbsence || hasUnavailability) && (
                   <TooltipProvider>
                     <Tooltip>
                       <TooltipTrigger asChild>
@@ -129,9 +130,9 @@ export const WorkersColumn = ({ cleaners, onDragOver, onDrop, absenceStatus, isD
                           {isAbsent && (
                             <div className="font-medium">{getAbsenceLabel(status)}</div>
                           )}
-                          {hasMaintenance && status?.maintenanceCleanings?.map((m, i) => (
+                          {status?.maintenanceCleanings?.map((m, i) => (
                             <div key={i} className="text-muted-foreground">
-                              🧹 {m.locationName} ({m.startTime.slice(0,5)} - {m.endTime.slice(0,5)})
+                              {m.scheduleType === 'unavailability' ? '⛔ No disponible' : `🧹 ${m.locationName}`} ({m.startTime.slice(0,5)} - {m.endTime.slice(0,5)})
                             </div>
                           ))}
                           {hasHourlyAbsence && status?.hourlyAbsences?.map((h, i) => (

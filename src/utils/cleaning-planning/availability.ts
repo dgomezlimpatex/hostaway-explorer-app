@@ -178,14 +178,35 @@ export const buildEffectiveAvailabilityForDate = ({
     ...dayMaintenance.map((maintenance) => ({
       startTime: maintenance.startTime,
       endTime: maintenance.endTime,
-      reason: maintenance.locationName ? `Mantenimiento: ${maintenance.locationName}` : 'Mantenimiento fijo',
+      reason: maintenance.scheduleType === 'unavailability' ? 'No disponible' : maintenance.locationName ? `Mantenimiento: ${maintenance.locationName}` : 'Mantenimiento fijo',
     })),
     ...extraordinaryWindows,
   ];
   const blockedWindows = [...unavailableWindows, ...assignedTaskWindows];
 
-  const blockedMinutes = unavailableWindows.reduce((total, window) => total + getWindowDurationMinutes(window.startTime, window.endTime), 0);
-  const availableMinutes = Math.max(0, baseMinutes - blockedMinutes);
+  const restrictions = dayMaintenance.filter(item => item.scheduleType === 'unavailability');
+  // Personal restrictions reduce the usable time window, not hours worked or
+  // estimated contract capacity. An afternoon restriction leaves the morning usable.
+  const toMinutes = (time: string) => {
+    const [hours, minutes] = time.split(':').map(Number);
+    return hours * 60 + minutes;
+  };
+  let freeWindows = [[toMinutes(baseStartTime), toMinutes(baseEndTime)]];
+  for (const restriction of restrictions) {
+    const start = toMinutes(restriction.startTime);
+    const end = toMinutes(restriction.endTime);
+    freeWindows = freeWindows.flatMap(([from, to]) => {
+      if (end <= from || start >= to) return [[from, to]];
+      return [[from, Math.min(to, start)], [Math.max(from, end), to]].filter(([a, b]) => b > a);
+    });
+  }
+  const restrictionDuration = restrictions.reduce((sum, item) => sum + getWindowDurationMinutes(item.startTime, item.endTime), 0);
+  const blockedMinutes = unavailableWindows.reduce((total, window) => total + getWindowDurationMinutes(window.startTime, window.endTime), 0) - restrictionDuration;
+  const freeMinutes = freeWindows.reduce((sum, [from, to]) => sum + to - from, 0);
+  const availableMinutes = restrictions.length
+    ? Math.min(Math.max(0, baseMinutes - blockedMinutes), freeMinutes)
+    : Math.max(0, baseMinutes - blockedMinutes);
+  const toTime = (minutes: number) => `${String(Math.floor(minutes / 60)).padStart(2, '0')}:${String(minutes % 60).padStart(2, '0')}`;
   const remainingMinutes = Math.max(0, availableMinutes - assignedMinutes);
 
   return {
@@ -193,7 +214,7 @@ export const buildEffectiveAvailabilityForDate = ({
     date,
     isAvailable: availableMinutes > 0,
     source: cleanerWeeklyAvailability ? 'weekly' : 'contract_fallback',
-    availableWindows: availableMinutes > 0 ? [{ startTime: baseStartTime, endTime: baseEndTime }] : [],
+    availableWindows: availableMinutes > 0 ? freeWindows.map(([from, to]) => ({ startTime: toTime(from), endTime: toTime(to) })) : [],
     blockedWindows,
     availableMinutes,
     assignedMinutes,

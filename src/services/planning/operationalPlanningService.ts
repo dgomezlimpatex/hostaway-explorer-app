@@ -319,6 +319,7 @@ function mapFixedDayOff(row: any): WorkerFixedDayOff {
 
 function mapMaintenance(row: any): WorkerMaintenanceCleaning {
   return {
+    scheduleType: row.schedule_type || 'maintenance',
     id: row.id,
     cleanerId: row.cleaner_id,
     daysOfWeek: row.days_of_week,
@@ -1669,7 +1670,7 @@ class OperationalPlanningService {
         maxDailyMinutes: cleaner.planningMaxDailyMinutes ?? settings.fallbackDailyCapacityMinutes,
         activeAbsenceCount: dataset.absences.filter((absence) => absence.cleanerId === cleaner.id).length,
         fixedDaysOffCount: dataset.fixedDaysOff.filter((entry) => entry.cleanerId === cleaner.id && entry.isActive).length,
-        maintenanceCount: dataset.maintenanceCleanings.filter((entry) => entry.cleanerId === cleaner.id && entry.isActive).length,
+        maintenanceCount: dataset.maintenanceCleanings.filter((entry) => entry.cleanerId === cleaner.id && entry.isActive && entry.scheduleType !== "unavailability").length,
         primaryBuildingCount: buildingAssignments.filter((entry) => (entry.roleType || 'primary') === 'primary').length,
         secondaryBuildingCount: buildingAssignments.filter((entry) => entry.roleType === 'secondary').length,
         backupBuildingCount: buildingAssignments.filter((entry) => entry.roleType === 'backup').length,

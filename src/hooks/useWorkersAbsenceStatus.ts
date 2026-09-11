@@ -10,6 +10,7 @@ export interface WorkerAbsenceStatus {
   absenceColor?: string;
   isFixedDayOff?: boolean;
   maintenanceCleanings?: {
+    scheduleType?: 'maintenance' | 'unavailability';
     locationName: string;
     startTime: string;
     endTime: string;
@@ -105,6 +106,7 @@ export const useWorkersAbsenceStatus = (cleanerIds: string[], date: Date) => {
       maintenanceResult.data?.forEach(maintenance => {
         if (statusMap[maintenance.cleaner_id]) {
           statusMap[maintenance.cleaner_id].maintenanceCleanings?.push({
+            scheduleType: (maintenance as typeof maintenance & { schedule_type?: 'maintenance' | 'unavailability' }).schedule_type,
             locationName: maintenance.location_name,
             startTime: maintenance.start_time,
             endTime: maintenance.end_time

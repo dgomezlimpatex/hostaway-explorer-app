@@ -22,6 +22,7 @@ interface AbsencesTabProps {
 
 export const AbsencesTab: React.FC<AbsencesTabProps> = ({ cleanerId, cleanerName }) => {
   const [showCreateAbsenceModal, setShowCreateAbsenceModal] = useState(false);
+  const [showCreateAvailabilityModal, setShowCreateAvailabilityModal] = useState(false);
   const [showCreateMaintenanceModal, setShowCreateMaintenanceModal] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [selectedEndDate, setSelectedEndDate] = useState<Date | null>(null);
@@ -32,7 +33,7 @@ export const AbsencesTab: React.FC<AbsencesTabProps> = ({ cleanerId, cleanerName
   const today = new Date().toISOString().slice(0, 10);
   const activeOrUpcomingAbsences = absences.filter((absence) => absence.endDate >= today);
   const activeFixedDays = fixedDaysOff.filter((day) => day.isActive);
-  const activeMaintenance = maintenanceCleanings.filter((cleaning) => cleaning.isActive);
+  const activeMaintenance = maintenanceCleanings.filter((cleaning) => cleaning.isActive && cleaning.scheduleType !== 'unavailability');
 
   const handleDateClick = (date: Date) => {
     setSelectedDate(date);
@@ -54,9 +55,10 @@ export const AbsencesTab: React.FC<AbsencesTabProps> = ({ cleanerId, cleanerName
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h3 className="text-lg font-black text-slate-950">Ausencias</h3>
-          <p className="text-sm text-slate-500">Bajas, días libres y limpiezas de mantenimiento de {cleanerName}.</p>
+          <p className="text-sm text-slate-500">Disponibilidad, días libres y limpiezas de mantenimiento de {cleanerName}.</p>
         </div>
         <div className="grid grid-cols-2 gap-2 sm:flex">
+          <Button variant="outline" size="sm" className="rounded-xl" onClick={() => setShowCreateAvailabilityModal(true)}><Clock className="h-4 w-4 mr-1" />Disponibilidad</Button>
           <Button 
             variant="outline" 
             size="sm"
@@ -111,7 +113,7 @@ export const AbsencesTab: React.FC<AbsencesTabProps> = ({ cleanerId, cleanerName
           </TabsTrigger>
           <TabsTrigger value="fixed" className="flex items-center gap-1 rounded-xl py-2.5">
             <Clock className="h-4 w-4" />
-            Días fijos
+            Disponibilidad
           </TabsTrigger>
           <TabsTrigger value="list" className="flex items-center gap-1 rounded-xl py-2.5">
             <Building2 className="h-4 w-4" />
@@ -140,10 +142,13 @@ export const AbsencesTab: React.FC<AbsencesTabProps> = ({ cleanerId, cleanerName
             cleanerId={cleanerId}
             fixedDaysOff={fixedDaysOff}
           />
+          <MaintenanceCleaningsSection availability cleanerId={cleanerId} cleanerName={cleanerName}
+            maintenanceCleanings={maintenanceCleanings.filter(item => item.scheduleType === 'unavailability')}
+            onAddNew={() => setShowCreateAvailabilityModal(true)} />
           <MaintenanceCleaningsSection 
             cleanerId={cleanerId}
             cleanerName={cleanerName}
-            maintenanceCleanings={maintenanceCleanings}
+            maintenanceCleanings={maintenanceCleanings.filter(item => item.scheduleType !== 'unavailability')}
             onAddNew={() => setShowCreateMaintenanceModal(true)}
           />
         </TabsContent>
@@ -161,6 +166,7 @@ export const AbsencesTab: React.FC<AbsencesTabProps> = ({ cleanerId, cleanerName
         </TabsContent>
       </Tabs>
 
+      <CreateMaintenanceModal scheduleType="unavailability" open={showCreateAvailabilityModal} onOpenChange={setShowCreateAvailabilityModal} cleanerId={cleanerId} cleanerName={cleanerName} />
       {/* Modals */}
       <CreateAbsenceModal 
         open={showCreateAbsenceModal}

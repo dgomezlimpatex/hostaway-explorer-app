@@ -3,6 +3,8 @@ import { build } from 'esbuild';
 
 const result = await build({
   stdin: { contents: `export { useWorkloadCalculation } from './src/hooks/useWorkloadCalculation';
+    export { checkWorkerConflicts } from './src/hooks/useWorkerAvailabilityCheck';
+    export { buildEffectiveAvailabilityForDate } from './src/utils/cleaning-planning/availability';
     export * from './src/utils/recurringExecutions';`, resolveDir: process.cwd() },
   bundle: true, write: false, platform: 'node', format: 'esm',
   plugins: [{ name: 'read-only-fixtures', setup(builder) {
@@ -25,7 +27,7 @@ const result = await build({
       }};` }));
   }}],
 });
-const { useWorkloadCalculation, buildRecurringExecutionSet } = await import('data:text/javascript;base64,' + Buffer.from(result.outputFiles[0].text).toString('base64'));
+const { useWorkloadCalculation, buildRecurringExecutionSet, checkWorkerConflicts, buildEffectiveAvailabilityForDate } = await import('data:text/javascript;base64,' + Buffer.from(result.outputFiles[0].text).toString('base64'));
 
 for (const timezone of ['Europe/Madrid', 'UTC', 'America/New_York']) {
   process.env.TZ = timezone;
@@ -54,6 +56,22 @@ globalThis.fixture.recurring_task_executions.shift();
 [summary] = await calculate();
 assert.equal(summary.recurringHours, 4.5);
 assert.equal(summary.totalWorked, 69); // Ungenerated Monday still counts, exactly once.
+globalThis.fixture.worker_maintenance_cleanings[0].schedule_type = 'unavailability';
+[summary] = await calculate();
+assert.equal(summary.maintenanceHours, 0);
+assert.equal(summary.totalWorked, 27.75);
+globalThis.fixture.worker_maintenance_cleanings.push({cleaner_id:'worker',is_active:true,days_of_week:[1],start_time:'08:00',end_time:'09:00',schedule_type:'maintenance'});
+[summary] = await calculate();
+assert.equal(summary.maintenanceHours, 1); // Real maintenance still counts.
+const unavailable = {scheduleType:'unavailability',isActive:true,daysOfWeek:[1,2,3,4,5],startTime:'14:45',endTime:'23:00',locationName:'Externo'};
+assert.equal(checkWorkerConflicts(new Date('2026-09-11T12:00:00'), '14:00', '14:45', [], [], [unavailable]).available, true);
+const conflict = checkWorkerConflicts(new Date('2026-09-11T12:00:00'), '14:30', '15:00', [], [], [unavailable]);
+assert.equal(conflict.available, false);
+assert.equal(conflict.conflicts[0].reason, 'No disponible');
+assert.equal(checkWorkerConflicts(new Date('2026-09-13T12:00:00'), '15:00', '16:00', [], [], [unavailable]).available, true);
+const morning = buildEffectiveAvailabilityForDate({cleaner:{id:'worker'},date:'2026-09-11',maintenanceCleanings:[{...unavailable,cleanerId:'worker'}],fallbackCapacityMinutes:240});
+assert.equal(morning.availableMinutes, 240);
+assert.deepEqual(morning.availableWindows, [{startTime:'09:00',endTime:'14:45'}]);
 globalThis.executionError = new Error('Execution lookup failed');
 await assert.rejects(calculate, /Execution lookup failed/);
 console.log('Recurring hours: materialized and projected tasks counted once; Madrid, DST, query boundaries and error handling passed.');

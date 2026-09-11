@@ -323,7 +323,7 @@ export const AbsenceCalendarView: React.FC<AbsenceCalendarViewProps> = ({
                   <span className="text-[10px] leading-none">📅</span>
                 )}
                 {hasMaintenance && !absence && !isFixedOff && (
-                  <span className="text-[10px] leading-none">🧹</span>
+                  <span className="text-[10px] leading-none">{maintenanceList.every(m => m.scheduleType === 'unavailability') ? '⛔' : '🧹'}</span>
                 )}
               </button>
             );
@@ -381,17 +381,17 @@ export const AbsenceCalendarView: React.FC<AbsenceCalendarViewProps> = ({
                     {/* Limpiezas de mantenimiento */}
                     {maintenanceList.length > 0 && (
                       <div className="space-y-2">
-                        <h4 className="text-xs font-semibold text-muted-foreground uppercase">Limpiezas de mantenimiento</h4>
+                        <h4 className="text-xs font-semibold text-muted-foreground uppercase">Franjas semanales</h4>
                         {maintenanceList.map((maint) => (
                           <div 
                             key={maint.id} 
                             className="flex items-start gap-2 p-2 rounded-md bg-yellow-50 dark:bg-yellow-900/20 text-sm"
                           >
-                            <span>🧹</span>
+                            <span>{maint.scheduleType === 'unavailability' ? '⛔' : '🧹'}</span>
                             <div className="flex-1">
                               <div className="font-medium flex items-center gap-1">
                                 <MapPin className="h-3 w-3" />
-                                {maint.locationName}
+                                {maint.scheduleType === 'unavailability' ? 'No disponible' : maint.locationName}
                               </div>
                               <div className="flex items-center gap-1 text-xs text-muted-foreground mt-0.5">
                                 <Clock className="h-3 w-3" />

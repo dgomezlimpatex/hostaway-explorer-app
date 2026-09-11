@@ -97,7 +97,7 @@ export const checkWorkerConflicts = (
     if (timeRangesOverlap(taskStartTime, taskEndTime, maintenance.startTime, maintenance.endTime)) {
       conflicts.push({
         type: 'maintenance',
-        reason: maintenance.locationName,
+        reason: maintenance.scheduleType === 'unavailability' ? 'No disponible' : maintenance.locationName,
         timeRange: formatTimeRange(maintenance.startTime, maintenance.endTime),
         locationName: maintenance.locationName,
       });
@@ -191,9 +191,9 @@ export const getWorkerAbsenceInfo = (
     hourlyBlockages.push({
       startTime: maintenance.startTime,
       endTime: maintenance.endTime,
-      reason: maintenance.locationName,
+      reason: maintenance.scheduleType === 'unavailability' ? 'No disponible' : maintenance.locationName,
       type: 'maintenance',
-      color: '#EAB308', // Yellow for maintenance
+      color: maintenance.scheduleType === 'unavailability' ? '#64748B' : '#EAB308',
     });
   }
 

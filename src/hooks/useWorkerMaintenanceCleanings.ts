@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import type { TablesInsert } from '@/integrations/supabase/types';
 import { 
   WorkerMaintenanceCleaning, 
   CreateWorkerMaintenanceCleaningInput,
@@ -9,6 +10,7 @@ import { toast } from 'sonner';
 
 // Map database row to TypeScript type
 const mapMaintenanceCleaningFromDB = (row: any): WorkerMaintenanceCleaning => ({
+  scheduleType: row.schedule_type || 'maintenance',
   id: row.id,
   cleanerId: row.cleaner_id,
   daysOfWeek: row.days_of_week,
@@ -71,7 +73,8 @@ export const useCreateWorkerMaintenanceCleaning = () => {
           end_time: input.endTime,
           location_name: input.locationName,
           notes: input.notes || null,
-        })
+          ...{ schedule_type: input.scheduleType || 'maintenance' },
+        } as TablesInsert<'worker_maintenance_cleanings'>)
         .select()
         .single();
 
@@ -81,7 +84,8 @@ export const useCreateWorkerMaintenanceCleaning = () => {
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['worker-maintenance-cleanings', variables.cleanerId] });
       queryClient.invalidateQueries({ queryKey: ['all-worker-maintenance-cleanings'] });
-      toast.success('Limpieza de mantenimiento creada');
+      for (const key of ['workload', 'workers-absence-status', 'cleaning-planning-worker-maintenance-cleanings', 'planning-weekly-workload', 'operational-planning']) queryClient.invalidateQueries({ queryKey: [key] });
+      toast.success(variables.scheduleType === 'unavailability' ? 'Disponibilidad guardada' : 'Limpieza de mantenimiento creada');
     },
     onError: (error: Error) => {
       console.error('Error creating maintenance cleaning:', error);
@@ -104,6 +108,7 @@ export const useUpdateWorkerMaintenanceCleaning = () => {
       if (input.locationName !== undefined) updateData.location_name = input.locationName;
       if (input.notes !== undefined) updateData.notes = input.notes;
       if (input.isActive !== undefined) updateData.is_active = input.isActive;
+      if (input.scheduleType !== undefined) updateData.schedule_type = input.scheduleType;
 
       const { data, error } = await supabase
         .from('worker_maintenance_cleanings')
@@ -118,7 +123,8 @@ export const useUpdateWorkerMaintenanceCleaning = () => {
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['worker-maintenance-cleanings', data.cleanerId] });
       queryClient.invalidateQueries({ queryKey: ['all-worker-maintenance-cleanings'] });
-      toast.success('Limpieza de mantenimiento actualizada');
+      for (const key of ['workload', 'workers-absence-status', 'cleaning-planning-worker-maintenance-cleanings', 'planning-weekly-workload', 'operational-planning']) queryClient.invalidateQueries({ queryKey: [key] });
+      toast.success(data.scheduleType === 'unavailability' ? 'Disponibilidad actualizada' : 'Limpieza de mantenimiento actualizada');
     },
     onError: (error: Error) => {
       console.error('Error updating maintenance cleaning:', error);
@@ -144,7 +150,8 @@ export const useDeleteWorkerMaintenanceCleaning = () => {
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['worker-maintenance-cleanings', variables.cleanerId] });
       queryClient.invalidateQueries({ queryKey: ['all-worker-maintenance-cleanings'] });
-      toast.success('Limpieza de mantenimiento eliminada');
+      for (const key of ['workload', 'workers-absence-status', 'cleaning-planning-worker-maintenance-cleanings', 'planning-weekly-workload', 'operational-planning']) queryClient.invalidateQueries({ queryKey: [key] });
+      toast.success('Franja eliminada');
     },
     onError: (error: Error) => {
       console.error('Error deleting maintenance cleaning:', error);

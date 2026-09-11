@@ -30,6 +30,7 @@ export interface WorkerFixedDayOff {
 }
 
 export interface WorkerMaintenanceCleaning {
+  scheduleType?: 'maintenance' | 'unavailability';
   id: string;
   cleanerId: string;
   daysOfWeek: number[]; // Array of days [1, 3] = Monday, Wednesday
@@ -72,6 +73,7 @@ export interface UpdateWorkerAbsenceInput extends Partial<CreateWorkerAbsenceInp
 }
 
 export interface CreateWorkerMaintenanceCleaningInput {
+  scheduleType?: 'maintenance' | 'unavailability';
   cleanerId: string;
   daysOfWeek: number[];
   startTime: string;

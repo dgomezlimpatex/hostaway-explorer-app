@@ -29,6 +29,7 @@ export const EditMaintenanceModal: React.FC<EditMaintenanceModalProps> = ({
   maintenance,
   cleanerName,
 }) => {
+  const isAvailability = maintenance.scheduleType === 'unavailability';
   const updateMutation = useUpdateWorkerMaintenanceCleaning();
   
   const [formData, setFormData] = useState({
@@ -51,13 +52,13 @@ export const EditMaintenanceModal: React.FC<EditMaintenanceModalProps> = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (formData.daysOfWeek.length === 0) {
+    if (formData.daysOfWeek.length === 0 || formData.endTime <= formData.startTime) {
       return;
     }
     
     updateMutation.mutate({
       id: maintenance.id,
-      locationName: formData.locationName,
+      locationName: isAvailability ? formData.locationName.trim() || 'No disponible' : formData.locationName,
       daysOfWeek: formData.daysOfWeek,
       startTime: formData.startTime,
       endTime: formData.endTime,
@@ -74,30 +75,31 @@ export const EditMaintenanceModal: React.FC<EditMaintenanceModalProps> = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="max-h-[90dvh] overflow-y-auto rounded-2xl sm:max-w-[460px]">
         <DialogHeader>
-          <DialogTitle>Editar Limpieza de Mantenimiento</DialogTitle>
+          <DialogTitle>{isAvailability ? 'Editar disponibilidad' : 'Editar limpieza de mantenimiento'}</DialogTitle>
           <DialogDescription>
-            Modificar compromiso de limpieza para {cleanerName}
+            {isAvailability ? 'Selecciona los días y la franja en la que no puede trabajar. No suma horas de trabajo.' : 'Limpieza semanal que sí suma horas de trabajo.'} · {cleanerName}
           </DialogDescription>
         </DialogHeader>
         
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Location name */}
           <div className="space-y-2">
-            <Label htmlFor="locationName">Nombre del lugar *</Label>
+            <Label htmlFor="locationName">{isAvailability ? 'Motivo (opcional)' : 'Nombre del lugar *'}</Label>
             <Input
               id="locationName"
               value={formData.locationName}
               onChange={(e) => setFormData(prev => ({ ...prev, locationName: e.target.value }))}
-              placeholder="Ej: Farmacia García, Oficina Centro..."
-              required
+              placeholder={isAvailability ? 'Ej.: no disponible por las tardes' : 'Ej.: Farmacia García'}
+              required={!isAvailability}
             />
           </div>
 
           {/* Days of week */}
           <div className="space-y-2">
             <Label>Días de la semana *</Label>
+            <div className="flex gap-2"><Button type="button" size="sm" variant="outline" onClick={() => setFormData(prev => ({...prev, daysOfWeek: [1,2,3,4,5]}))}>Lunes a viernes</Button><Button type="button" size="sm" variant="ghost" onClick={() => setFormData(prev => ({...prev, daysOfWeek: [1,2,3,4,5,6,0]}))}>Todos</Button></div>
             <div className="grid grid-cols-2 gap-2 mt-2">
               {orderedDays.map(day => (
                 <div key={day} className="flex items-center space-x-2">
@@ -144,6 +146,7 @@ export const EditMaintenanceModal: React.FC<EditMaintenanceModalProps> = ({
             </div>
           </div>
 
+          {formData.endTime <= formData.startTime && <p className="text-sm text-destructive">La hora de fin debe ser posterior al inicio.</p>}
           {/* Notes */}
           <div className="space-y-2">
             <Label htmlFor="notes">Notas (opcional)</Label>
@@ -162,7 +165,7 @@ export const EditMaintenanceModal: React.FC<EditMaintenanceModalProps> = ({
             </Button>
             <Button 
               type="submit" 
-              disabled={updateMutation.isPending || formData.daysOfWeek.length === 0 || !formData.locationName}
+              disabled={updateMutation.isPending || formData.daysOfWeek.length === 0 || (!isAvailability && !formData.locationName.trim()) || formData.endTime <= formData.startTime}
             >
               {updateMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
               Guardar Cambios

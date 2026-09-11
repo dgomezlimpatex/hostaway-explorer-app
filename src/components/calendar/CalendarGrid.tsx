@@ -284,9 +284,9 @@ const CleanerRow = memo(({
          key: `maint-${i}-${m.startTime}`,
          startTime: m.startTime,
          endTime: m.endTime,
-         color: MAINTENANCE_COLOR,
-         label: m.locationName || 'Mantenimiento',
-         icon: '🧹',
+         color: m.scheduleType === 'unavailability' ? '#64748B' : MAINTENANCE_COLOR,
+         label: m.scheduleType === 'unavailability' ? 'No disponible' : m.locationName || 'Mantenimiento',
+         icon: m.scheduleType === 'unavailability' ? '⛔' : '🧹',
          type: 'maintenance',
        });
      });
