@@ -588,7 +588,6 @@ const PreparationBuildingList = ({ bags, currentIds, busy, onPrepare }: {
     groups.set(building, [...(groups.get(building) || []), bag]);
   }
   return <section className="space-y-2" aria-label="Bolsas por edificio">
-    <p className="text-xs text-[#6f5947]">Abrid un edificio para ver el contenido de todas sus bolsas. Los estados se actualizan cada 10 segundos.</p>
     {!groups.size && <p className="p-3 text-sm">No hay bolsas para preparar.</p>}
     {[...groups].sort(([a], [b]) => a.localeCompare(b, 'es', { numeric: true })).map(([building, items]) => (
       <details key={building} className="rounded-xl border border-[#dfd2bf] bg-[#fffaf2]">
