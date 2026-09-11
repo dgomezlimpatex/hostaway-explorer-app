@@ -9,6 +9,10 @@ import {
 } from '@/types/workerAbsence';
 import { toast } from 'sonner';
 
+const scheduleErrorMessage = (error: Error) => error.message.includes('PLANNING_MAINTENANCE_CONFLICT')
+  ? 'Hay tareas asignadas desde hoy que coinciden con esta franja. Revisa sus horarios antes de guardar.'
+  : 'No se ha podido guardar el horario. Revisa los datos e inténtalo de nuevo.';
+
 // Map database row to TypeScript type
 const mapMaintenanceCleaningFromDB = (row: any): WorkerMaintenanceCleaning => ({
   scheduleType: row.schedule_type || 'maintenance',
@@ -90,7 +94,7 @@ export const useCreateWorkerMaintenanceCleaning = () => {
     },
     onError: (error: Error) => {
       console.error('Error creating maintenance cleaning:', error);
-      toast.error('Error al crear la limpieza de mantenimiento');
+      toast.error(scheduleErrorMessage(error));
     },
   });
 };
@@ -132,9 +136,7 @@ export const useSaveIndividualAvailability = () => {
       }
       toast.success('Horarios por día guardados');
     },
-    onError: (error: Error) => toast.error(error.message.includes('PLANNING_MAINTENANCE_CONFLICT')
-      ? 'Hay tareas asignadas que coinciden con estos horarios. Revisa los solapamientos.'
-      : 'No se han guardado los horarios. Revisa las franjas e inténtalo de nuevo.'),
+    onError: (error: Error) => toast.error(scheduleErrorMessage(error)),
   });
 };
 
@@ -172,7 +174,7 @@ export const useUpdateWorkerMaintenanceCleaning = () => {
     },
     onError: (error: Error) => {
       console.error('Error updating maintenance cleaning:', error);
-      toast.error('Error al actualizar la limpieza de mantenimiento');
+      toast.error(scheduleErrorMessage(error));
     },
   });
 };
