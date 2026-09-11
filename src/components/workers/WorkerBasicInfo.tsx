@@ -20,7 +20,7 @@ interface WorkerBasicInfoProps {
 export const WorkerBasicInfo = ({ worker }: WorkerBasicInfoProps) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editData, setEditData] = useState({
-    contractHoursPerWeek: worker.contractHoursPerWeek ?? 40,
+    contractHoursPerWeek: worker.contractHoursPerWeek ?? 0,
     hourlyRate: worker.hourlyRate || 0,
     contractType: worker.contractType || 'full-time',
     startDate: worker.startDate ? new Date(worker.startDate) : undefined,
@@ -33,7 +33,7 @@ export const WorkerBasicInfo = ({ worker }: WorkerBasicInfoProps) => {
   // Sincronizar editData cuando cambie el worker
   useEffect(() => {
     setEditData({
-      contractHoursPerWeek: worker.contractHoursPerWeek ?? 40,
+      contractHoursPerWeek: worker.contractHoursPerWeek ?? 0,
       hourlyRate: worker.hourlyRate || 0,
       contractType: worker.contractType || 'full-time',
       startDate: worker.startDate ? new Date(worker.startDate) : undefined,
@@ -59,7 +59,7 @@ export const WorkerBasicInfo = ({ worker }: WorkerBasicInfoProps) => {
 
   const handleCancel = () => {
     setEditData({
-      contractHoursPerWeek: worker.contractHoursPerWeek ?? 40,
+      contractHoursPerWeek: worker.contractHoursPerWeek ?? 0,
       hourlyRate: worker.hourlyRate || 0,
       contractType: worker.contractType || 'full-time',
       startDate: worker.startDate ? new Date(worker.startDate) : undefined,

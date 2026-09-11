@@ -1,7 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { endOfWeek, format, startOfWeek } from 'date-fns';
 import { useCleaners } from './useCleaners';
-import { useWorkerContracts } from './useWorkerContracts';
 import { taskStorageService } from '@/services/storage/taskStorage';
 import { Cleaner } from '@/types/calendar';
 import { buildPlanningWeeklyWorkload, PlanningWeeklyWorkload } from '@/utils/planningWeeklyWorkload';
@@ -15,7 +14,6 @@ const toDateKey = (date: Date): string => format(date, 'yyyy-MM-dd');
 
 export const usePlanningWeeklyWorkload = ({ date, sedeId }: UsePlanningWeeklyWorkloadOptions) => {
   const { cleaners = [], isLoading: cleanersLoading } = useCleaners();
-  const { data: contracts = [], isLoading: contractsLoading } = useWorkerContracts();
   const weekStart = startOfWeek(date, { weekStartsOn: 1 });
   const weekEnd = endOfWeek(date, { weekStartsOn: 1 });
   const startDate = toDateKey(weekStart);
@@ -28,7 +26,6 @@ export const usePlanningWeeklyWorkload = ({ date, sedeId }: UsePlanningWeeklyWor
       endDate,
       sedeId || 'all',
       cleaners.map((cleaner) => `${cleaner.id}:${cleaner.contractHoursPerWeek ?? 0}`).join('|'),
-      contracts.map((contract) => `${contract.cleanerId}:${contract.contractHoursPerWeek}:${contract.isActive}`).join('|'),
     ],
     queryFn: async () => {
       const tasks = await taskStorageService.getTasks({
@@ -37,9 +34,9 @@ export const usePlanningWeeklyWorkload = ({ date, sedeId }: UsePlanningWeeklyWor
         sedeId,
       });
 
-      return buildPlanningWeeklyWorkload(tasks, cleaners as Cleaner[], contracts);
+      return buildPlanningWeeklyWorkload(tasks, cleaners as Cleaner[]);
     },
-    enabled: Boolean(startDate && endDate) && !cleanersLoading && !contractsLoading,
+    enabled: Boolean(startDate && endDate) && !cleanersLoading,
     staleTime: 30000,
   });
 

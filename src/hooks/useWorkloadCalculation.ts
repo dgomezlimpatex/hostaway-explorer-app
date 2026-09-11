@@ -1,7 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useCleaners } from './useCleaners';
-import { useWorkerContracts } from './useWorkerContracts';
 import { WorkloadSummary, HourAdjustment } from '@/types/workload';
 import { WorkerMaintenanceCleaning } from '@/types/workerAbsence';
 import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, eachDayOfInterval, getDay } from 'date-fns';
@@ -119,7 +118,6 @@ interface UseWorkloadCalculationOptions {
 export const useWorkloadCalculation = (options: UseWorkloadCalculationOptions) => {
   const { startDate, endDate, cleanerId } = options;
   const { cleaners } = useCleaners();
-  const { data: contracts = [], isLoading: contractsLoading } = useWorkerContracts();
 
   return useQuery({
     queryKey: [
@@ -128,7 +126,6 @@ export const useWorkloadCalculation = (options: UseWorkloadCalculationOptions) =
       endDate,
       cleanerId,
       cleaners.map(c => `${c.id}:${c.contractHoursPerWeek ?? 0}`).join('|'),
-      contracts.map(c => `${c.cleanerId}:${c.contractHoursPerWeek}:${c.isActive}`).join('|'),
     ],
     queryFn: async (): Promise<WorkloadSummary[]> => {
       const start = new Date(startDate);
@@ -234,12 +231,8 @@ export const useWorkloadCalculation = (options: UseWorkloadCalculationOptions) =
 
       // Calculate workload for each cleaner
       const summaries: WorkloadSummary[] = targetCleaners.map(cleaner => {
-        // Get contract for this cleaner
-        const contract = contracts.find(c => c.cleanerId === cleaner.id && c.isActive);
-        // Profile hours, including an explicit zero, take precedence over legacy contracts.
-        const contractHoursPerWeek = cleaner.contractHoursPerWeek
-          ?? contract?.contractHoursPerWeek
-          ?? 0;
+        // The worker profile is the only source of weekly hours, including zero.
+        const contractHoursPerWeek = cleaner.contractHoursPerWeek ?? 0;
         const contractHoursForPeriod = contractHoursPerWeek * weeksInPeriod;
 
         // Calculate tourist hours from tasks
@@ -307,7 +300,7 @@ export const useWorkloadCalculation = (options: UseWorkloadCalculationOptions) =
 
       return summaries;
     },
-    enabled: !!startDate && !!endDate && cleaners.length > 0 && !contractsLoading,
+    enabled: !!startDate && !!endDate && cleaners.length > 0,
     staleTime: 0,
     // Realtime is used below for immediate updates; this is a safe fallback
     // when the browser or Supabase temporarily loses the realtime connection.

@@ -5,7 +5,6 @@ import { Badge } from "@/components/ui/badge";
 import { Clock, TrendingUp, AlertTriangle, Calendar, BarChart3 } from "lucide-react";
 import { WorkerHoursOverview as WorkerHoursOverviewType } from '@/types/calendar';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { useCleanerContracts } from '@/hooks/useWorkerContracts';
 import { useTaskTimeSync } from '@/hooks/useTaskTimeSync';
 import { format, subMonths, startOfMonth, endOfMonth } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -23,10 +22,7 @@ export const WorkerHoursOverview = ({
   workerId,
   showProjections = true 
 }: WorkerHoursOverviewProps) => {
-  const { data: contracts = [] } = useCleanerContracts(workerId);
-  const activeContract = contracts.find(contract => contract.isActive);
-  
-  const progressPercentage = (overview.workedHours / overview.contractHours) * 100;
+  const progressPercentage = overview.contractHours > 0 ? (overview.workedHours / overview.contractHours) * 100 : 0;
   const isOvertime = overview.overtimeHours > 0;
   const isUnderHours = overview.workedHours < overview.contractHours * 0.9;
 
@@ -37,7 +33,7 @@ export const WorkerHoursOverview = ({
     
     for (let i = 5; i >= 0; i--) {
       const monthDate = subMonths(currentDate, i);
-      const contractHours = (activeContract?.contractHoursPerWeek ?? 40) * 4.345; // Correct monthly hours calculation
+      const contractHours = overview.contractHours * 4.345;
       
       // For now, show 0 for past months since we don't have historical data
       // This should be replaced with real data fetching from time logs
@@ -58,7 +54,7 @@ export const WorkerHoursOverview = ({
     }
     
     return months;
-  }, [activeContract, overview]);
+  }, [overview]);
 
   const getEfficiencyColor = (efficiency: number) => {
     if (efficiency >= 90 && efficiency <= 110) return 'text-green-600';

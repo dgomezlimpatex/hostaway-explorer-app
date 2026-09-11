@@ -56,8 +56,16 @@ export function run() {
     [{ cleanerId: 'ana', contractHoursPerWeek: 10, isActive: true }],
   );
   const ana = contractOverride.find((row) => row.cleanerId === 'ana');
-  assert.equal(ana?.contractHours, 10);
-  assert.equal(ana?.remainingHours, 5);
+  assert.equal(ana?.contractHours, 20);
+  assert.equal(ana?.remainingHours, 15);
+  assert.equal(ana?.status, 'on-track');
+
+  for (const profileHours of [0, undefined]) {
+    const rows = buildPlanningWeeklyWorkload([], [{ ...cleaners[0], contractHoursPerWeek: profileHours }],
+      [{ cleanerId: 'laura', contractHoursPerWeek: 40, isActive: true }]);
+    assert.equal(rows[0].contractHours, 0);
+    assert.equal(rows[0].status, 'no-contract');
+  }
 
   const profileFallback = buildPlanningWeeklyWorkload(
     [task({ id: 'profile-fallback', cleanerId: 'laura', assignments: [], propertyDurationMinutes: 60 })],

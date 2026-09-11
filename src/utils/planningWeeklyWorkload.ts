@@ -29,7 +29,8 @@ export interface PlanningWeeklyWorkload {
 export const buildPlanningWeeklyWorkload = (
   tasks: Task[],
   cleaners: Cleaner[],
-  contracts: PlanningWeeklyContract[] = [],
+  // Kept for compatibility with older callers; historical contracts never affect hours.
+  _contracts: PlanningWeeklyContract[] = [],
 ): PlanningWeeklyWorkload[] => {
   const minutesByCleaner = new Map<string, number>();
   const taskCountByCleaner = new Map<string, number>();
@@ -56,10 +57,7 @@ export const buildPlanningWeeklyWorkload = (
   return cleaners
     .filter((cleaner) => cleaner.isActive)
     .map((cleaner) => {
-      const contract = contracts.find((item) => item.cleanerId === cleaner.id && item.isActive);
-      const contractHours = Number(contract?.contractHoursPerWeek ?? 0);
-      const cleanerContractHours = Number(cleaner.contractHoursPerWeek ?? 0);
-      const resolvedContractHours = contractHours > 0 ? contractHours : cleanerContractHours;
+      const resolvedContractHours = Number(cleaner.contractHoursPerWeek ?? 0);
       const assignedHours = (minutesByCleaner.get(cleaner.id) || 0) / 60;
       const remainingHours = Math.max(0, resolvedContractHours - assignedHours);
       const overtimeHours = Math.max(0, assignedHours - resolvedContractHours);
@@ -74,7 +72,7 @@ export const buildPlanningWeeklyWorkload = (
         overtimeHours,
         assignedTaskCount: taskCountByCleaner.get(cleaner.id) || 0,
         missingDurationTaskCount: missingDurationByCleaner.get(cleaner.id) || 0,
-        status: contractHours <= 0 ? 'no-contract' : percentage > 100 ? 'overtime' : percentage >= 85 ? 'near-limit' : 'on-track',
+        status: resolvedContractHours <= 0 ? 'no-contract' : percentage > 100 ? 'overtime' : percentage >= 85 ? 'near-limit' : 'on-track',
       };
     })
     .sort((left, right) => right.assignedHours - left.assignedHours || left.cleanerName.localeCompare(right.cleanerName, 'es'));
