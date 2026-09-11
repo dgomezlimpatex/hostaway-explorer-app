@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import type { TablesInsert } from '@/integrations/supabase/types';
+import { validDaySchedules } from '@/utils/weeklyScheduleDays';
 import { 
   WorkerMaintenanceCleaning, 
   CreateWorkerMaintenanceCleaningInput,
@@ -91,6 +92,49 @@ export const useCreateWorkerMaintenanceCleaning = () => {
       console.error('Error creating maintenance cleaning:', error);
       toast.error('Error al crear la limpieza de mantenimiento');
     },
+  });
+};
+
+// Update maintenance cleaning
+export const useSaveIndividualAvailability = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: {
+      id?: string;
+      cleanerId: string;
+      locationName: string;
+      notes: string | null;
+      schedules: { daysOfWeek: number[]; startTime: string; endTime: string }[];
+    }) => {
+      if (!validDaySchedules(input.schedules)) throw new Error('Revisa las horas de cada día');
+      const entries = input.schedules.map(row => ({
+        days_of_week: row.daysOfWeek, start_time: row.startTime, end_time: row.endTime,
+        location_name: input.locationName, notes: input.notes,
+      }));
+      if (input.id) {
+        // Additive RPC migration; keep the generated schema file untouched.
+        const { error } = await supabase.rpc('replace_worker_schedule_days' as never,
+          { p_id: input.id, p_entries: entries } as never);
+        if (error) throw error;
+      } else {
+        // A single insert is atomic: all selected days are saved, or none.
+        const rows: TablesInsert<'worker_maintenance_cleanings'>[] = entries.map(entry => ({
+          ...entry, cleaner_id: input.cleanerId, schedule_type: 'unavailability',
+        }));
+        const { error } = await supabase.from('worker_maintenance_cleanings').insert(rows);
+        if (error) throw error;
+      }
+    },
+    onSuccess: (_, input) => {
+      queryClient.invalidateQueries({ queryKey: ['worker-maintenance-cleanings', input.cleanerId] });
+      for (const key of ['all-worker-maintenance-cleanings', 'workload', 'workers-absence-status', 'cleaning-planning-worker-maintenance-cleanings', 'planning-weekly-workload', 'operational-planning', 'worker-absence-audit-log']) {
+        queryClient.invalidateQueries({ queryKey: [key] });
+      }
+      toast.success('Horarios por día guardados');
+    },
+    onError: (error: Error) => toast.error(error.message.includes('PLANNING_MAINTENANCE_CONFLICT')
+      ? 'Hay tareas asignadas que coinciden con estos horarios. Revisa los solapamientos.'
+      : 'No se han guardado los horarios. Revisa las franjas e inténtalo de nuevo.'),
   });
 };
 

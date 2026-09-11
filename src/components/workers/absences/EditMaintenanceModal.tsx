@@ -14,6 +14,9 @@ import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { WorkerMaintenanceCleaning, DAY_OF_WEEK_LABELS } from '@/types/workerAbsence';
 import { useUpdateWorkerMaintenanceCleaning } from '@/hooks/useWorkerMaintenanceCleanings';
+import { DayScheduleFields } from './DayScheduleFields';
+import { buildDaySchedules, validDaySchedules, DayTimes } from '@/utils/weeklyScheduleDays';
+import { useSaveIndividualAvailability } from '@/hooks/useWorkerMaintenanceCleanings';
 import { Loader2 } from 'lucide-react';
 
 interface EditMaintenanceModalProps {
@@ -29,6 +32,9 @@ export const EditMaintenanceModal: React.FC<EditMaintenanceModalProps> = ({
   maintenance,
   cleanerName,
 }) => {
+  const [individual, setIndividual] = useState(false);
+  const [dayTimes, setDayTimes] = useState<DayTimes>({});
+  const individualMutation = useSaveIndividualAvailability();
   const isAvailability = maintenance.scheduleType === 'unavailability';
   const updateMutation = useUpdateWorkerMaintenanceCleaning();
   
@@ -40,6 +46,8 @@ export const EditMaintenanceModal: React.FC<EditMaintenanceModalProps> = ({
     notes: maintenance.notes || '',
   });
 
+  const dayRows = buildDaySchedules(formData.daysOfWeek, dayTimes, formData.startTime, formData.endTime);
+  const invalidTimes = isAvailability && individual ? !validDaySchedules(dayRows) : !formData.startTime || !formData.endTime || formData.endTime <= formData.startTime;
   const handleDayToggle = (day: number) => {
     setFormData(prev => ({
       ...prev,
@@ -52,10 +60,17 @@ export const EditMaintenanceModal: React.FC<EditMaintenanceModalProps> = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (formData.daysOfWeek.length === 0 || formData.endTime <= formData.startTime) {
+    if (formData.daysOfWeek.length === 0 || invalidTimes) {
       return;
     }
     
+    if (isAvailability && individual) {
+      individualMutation.mutate({ cleanerId: maintenance.cleanerId, id: maintenance.id,
+        locationName: formData.locationName.trim() || 'No disponible', notes: formData.notes || null,
+        schedules: dayRows,
+      }, { onSuccess: () => { onOpenChange(false); setDayTimes({}); setIndividual(false); } });
+      return;
+    }
     updateMutation.mutate({
       id: maintenance.id,
       locationName: isAvailability ? formData.locationName.trim() || 'No disponible' : formData.locationName,
@@ -122,6 +137,8 @@ export const EditMaintenanceModal: React.FC<EditMaintenanceModalProps> = ({
             )}
           </div>
 
+          {isAvailability && <DayScheduleFields days={formData.daysOfWeek} times={dayTimes} startTime={formData.startTime} endTime={formData.endTime} individual={individual} onIndividual={setIndividual} onTimes={setDayTimes} />}
+          {(!isAvailability || !individual) && <>
           {/* Time range */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
@@ -147,6 +164,7 @@ export const EditMaintenanceModal: React.FC<EditMaintenanceModalProps> = ({
           </div>
 
           {formData.endTime <= formData.startTime && <p className="text-sm text-destructive">La hora de fin debe ser posterior al inicio.</p>}
+          </>}
           {/* Notes */}
           <div className="space-y-2">
             <Label htmlFor="notes">Notas (opcional)</Label>
@@ -165,7 +183,7 @@ export const EditMaintenanceModal: React.FC<EditMaintenanceModalProps> = ({
             </Button>
             <Button 
               type="submit" 
-              disabled={updateMutation.isPending || formData.daysOfWeek.length === 0 || (!isAvailability && !formData.locationName.trim()) || formData.endTime <= formData.startTime}
+              disabled={updateMutation.isPending || formData.daysOfWeek.length === 0 || (!isAvailability && !formData.locationName.trim()) || invalidTimes || individualMutation.isPending}
             >
               {updateMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
               Guardar Cambios
