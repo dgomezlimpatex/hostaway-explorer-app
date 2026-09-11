@@ -592,7 +592,7 @@ const PreparationBuildingList = ({ bags, currentIds, busy, onPrepare }: {
     {!groups.size && <p className="p-3 text-sm">No hay bolsas para preparar.</p>}
     {[...groups].sort(([a], [b]) => a.localeCompare(b, 'es', { numeric: true })).map(([building, items]) => (
       <details key={building} className="rounded-xl border border-[#dfd2bf] bg-[#fffaf2]">
-        <summary className="cursor-pointer p-3 font-bold">{building}<span className="ml-2 text-xs font-normal">{items.filter((bag) => bag.bagStatus.status === 'prepared').length}/{items.length} preparadas</span></summary>
+        <summary className="cursor-pointer p-3 font-bold">{building}<span className="ml-2 text-xs font-normal">{items.length} pendientes</span></summary>
         <div className="space-y-2 px-3 pb-3">
           {[...items].sort((a, b) => a.propertyCode.localeCompare(b.propertyCode, 'es', { numeric: true }) || a.date.localeCompare(b.date)).map((bag) => (
             <details key={bag.taskId} className="rounded-lg border bg-white">
@@ -1059,6 +1059,11 @@ export const LaundryRouteV2View = ({ token }: LaundryRouteV2ViewProps) => {
   }
 
   const urgentBag = workflow.urgentBags[0] || null;
+  const preparationBags = (urgentBag
+    ? workflow.urgentBags
+    : workflow.blockingStep === 'prepare_next' ? workflow.nextRouteBags : []
+  ).filter((bag) => !bag.isCancelled && bag.bagStatus.status === 'pending');
+  const buildingViewActive = showBuildings && preparationBags.length > 0;
   const deliveryGroups = groupRouteBagsByBuilding(workflow.currentRouteBags.filter((bag) => !bag.isCancelled));
   const urgentProgress = {
     prepared: workflow.currentRouteBags.filter((bag) => bag.bagStatus.status === 'prepared').length,
@@ -1089,7 +1094,7 @@ export const LaundryRouteV2View = ({ token }: LaundryRouteV2ViewProps) => {
 
   return (
     <div ref={scrollContainerRef} className="fixed inset-x-0 top-0 h-dvh overflow-clip overscroll-none bg-[#faf7f1] font-sans" data-laundry-scroll>
-      <main className="mx-auto flex h-full max-w-md flex-col gap-2 px-4 py-1.5 landscape:max-w-3xl" style={{ paddingBottom: showBuildings ? 12 : dockHeight + 12 }}>
+      <main className="mx-auto flex h-full max-w-md flex-col gap-2 px-4 py-1.5 landscape:max-w-3xl" style={{ paddingBottom: buildingViewActive ? 12 : dockHeight + 12 }}>
         {accessRequired && routeAccess?.worker && (
           <div className="flex shrink-0 items-center justify-between gap-2 border-b border-[#e8e1d7] pb-1">
             <div className="min-w-0">
@@ -1102,9 +1107,9 @@ export const LaundryRouteV2View = ({ token }: LaundryRouteV2ViewProps) => {
             </Button>
           </div>
         )}
-        <Button variant="outline" className="w-full shrink-0" aria-pressed={showBuildings} onClick={() => setShowBuildings(!showBuildings)}>{showBuildings ? 'Ver bolsas una a una' : 'Ver bolsas por edificio'}</Button>
-        {showBuildings && <div className="min-h-0 flex-1 overflow-y-auto pb-3"><PreparationBuildingList bags={[...workflow.currentRouteBags, ...workflow.nextRouteBags]} currentIds={new Set(workflow.currentRouteBags.map((bag) => bag.taskId))} busy={pendingActionKeys.size > 0} onPrepare={(taskId) => runAction({ action: 'prepare', taskId })} /></div>}
-        {!showBuildings && urgentBag && (
+        {preparationBags.length > 0 && <Button variant="outline" className="w-full shrink-0" aria-pressed={showBuildings} onClick={() => setShowBuildings(!showBuildings)}>{showBuildings ? 'Ver bolsas una a una' : 'Ver bolsas por edificio'}</Button>}
+        {buildingViewActive && <div key={urgentBag ? 'urgent' : 'prepare_next'} className="min-h-0 flex-1 overflow-y-auto pb-3"><p className="mb-2 rounded-md bg-[#f1e8dc] px-2 py-1 text-xs font-semibold text-[#8d351e]">{urgentBag ? 'Pendientes para la ruta de hoy' : 'Bolsas para la siguiente ruta'}</p><PreparationBuildingList bags={preparationBags} currentIds={new Set(workflow.currentRouteBags.map((bag) => bag.taskId))} busy={pendingActionKeys.size > 0} onPrepare={(taskId) => runAction({ action: 'prepare', taskId })} /></div>}
+        {!buildingViewActive && urgentBag && (
           <section className="flex min-h-0 flex-1 flex-col gap-2">
             <p data-bag-route className="shrink-0 rounded-md bg-[#f1e8dc] px-2 py-1 text-xs font-semibold leading-4 text-[#8d351e]">
               {workflow.route.deliveryDate === formatMadridDate(new Date()) ? 'Para entregar hoy' : `Entrega: ${formatDate(workflow.route.deliveryDate)}`} · Pendientes de la ruta anterior
@@ -1195,7 +1200,7 @@ export const LaundryRouteV2View = ({ token }: LaundryRouteV2ViewProps) => {
           </section>
         )}
 
-        {!showBuildings && !urgentBag && workflow.blockingStep === 'prepare_next' && nextPendingBag && (
+        {!buildingViewActive && !urgentBag && workflow.blockingStep === 'prepare_next' && nextPendingBag && (
           <section className="flex min-h-0 flex-1 flex-col gap-2">
             <p data-bag-route className="shrink-0 rounded-md bg-[#f1e8dc] px-2 py-1 text-xs font-semibold leading-4 text-[#8d351e]">
               Para la siguiente ruta · {formatDate(workflow.route.nextDeliveryDate)}
@@ -1255,7 +1260,7 @@ export const LaundryRouteV2View = ({ token }: LaundryRouteV2ViewProps) => {
           </section>
         )}
 
-        {!showBuildings && ROUTE_DELIVERY_ENABLED && !urgentBag && workflow.blockingStep === 'deliver' && (
+        {!buildingViewActive && ROUTE_DELIVERY_ENABLED && !urgentBag && workflow.blockingStep === 'deliver' && (
           <section className="space-y-2">
             <div className="rounded-lg border border-[#dfd2bf] bg-[#fbf6ec] p-2.5 text-[#17130f]">
               <div className="flex items-center gap-1.5">
@@ -1393,7 +1398,7 @@ export const LaundryRouteV2View = ({ token }: LaundryRouteV2ViewProps) => {
           </section>
         )}
 
-        {!showBuildings && !urgentBag && workflow.blockingStep === 'complete' && (
+        {!buildingViewActive && !urgentBag && workflow.blockingStep === 'complete' && (
           <div className="rounded-xl border border-green-200 bg-green-50 p-4 text-center text-green-950">
             <CheckCircle2 className="mx-auto h-7 w-7" />
             <h2 className="mt-2 text-base font-black">Ruta completada</h2>
