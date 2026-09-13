@@ -17,7 +17,7 @@ export function SidebarEdgeToggle() {
       aria-controls="app-sidebar"
       className={cn(
         'fixed top-1/2 z-40 hidden h-14 w-7 -translate-y-1/2 items-center justify-center rounded-r-xl border border-[#310984]/15 bg-white text-[#310984] shadow-[2px_2px_12px_rgba(49,9,132,0.12)] md:flex',
-        'transition-[left,background-color,box-shadow] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] hover:bg-[#EEE8F8] hover:shadow-[2px_2px_16px_rgba(49,9,132,0.2)] motion-reduce:transition-none',
+        'transition-[left,background-color,box-shadow] duration-300 [transition-timing-function:cubic-bezier(0.22,1,0.36,1)] hover:bg-[#EEE8F8] hover:shadow-[2px_2px_16px_rgba(49,9,132,0.2)] motion-reduce:transition-none',
         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7652C8] focus-visible:ring-offset-2',
       )}
       style={{ left: open ? 'var(--sidebar-width)' : '0px' }}

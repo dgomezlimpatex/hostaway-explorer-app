@@ -222,7 +222,7 @@ const Sidebar = React.forwardRef<
         {/* This is what handles the sidebar gap on desktop */}
         <div
           className={cn(
-            "duration-300 relative h-svh w-[--sidebar-width] bg-transparent transition-[width] ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none",
+            "duration-300 relative h-svh w-[--sidebar-width] bg-transparent transition-[width] [transition-timing-function:cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none",
             "group-data-[collapsible=offcanvas]:w-0",
             "group-data-[side=right]:rotate-180",
             variant === "floating" || variant === "inset"
@@ -232,7 +232,7 @@ const Sidebar = React.forwardRef<
         />
         <div
           className={cn(
-            "duration-300 fixed inset-y-0 z-10 hidden h-svh w-[--sidebar-width] transition-[transform,width] ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none md:flex group-data-[collapsible=offcanvas]:pointer-events-none group-data-[collapsible=offcanvas]:shadow-none",
+            "duration-300 fixed inset-y-0 z-10 hidden h-svh w-[--sidebar-width] transition-[transform,width] [transition-timing-function:cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none md:flex group-data-[collapsible=offcanvas]:pointer-events-none group-data-[collapsible=offcanvas]:shadow-none",
             side === "left"
               ? "left-0 group-data-[collapsible=offcanvas]:-translate-x-full"
               : "right-0 group-data-[collapsible=offcanvas]:translate-x-full",
