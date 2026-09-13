@@ -1,5 +1,6 @@
 import React, { Suspense } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
+import { SidebarEdgeToggle } from '@/components/layout/SidebarEdgeToggle';
 import { SidebarProvider } from '@/components/ui/sidebar';
 import { DashboardSidebar } from '@/components/dashboard/DashboardSidebar';
 import { MobileBottomNav } from '@/components/mobile/MobileBottomNav';
@@ -22,10 +23,10 @@ export const AppLayout = () => {
   const showGlobalMobileNav = isMobile && location.pathname !== '/';
 
   return (
-    <SidebarProvider>
+    <SidebarProvider style={{ "--sidebar-width": "18rem" } as React.CSSProperties}>
       <div className="min-h-screen w-full bg-transparent">
         <div className="flex min-h-screen w-full">
-          {!isMobile && <DashboardSidebar />}
+          {!isMobile && <><DashboardSidebar /><SidebarEdgeToggle /></>}
           <main className={cn('flex-1 min-w-0 bg-transparent', location.pathname === '/planning' && !isMobile ? 'overflow-visible' : 'overflow-auto', showGlobalMobileNav && 'pb-24')}>
             <Suspense
               fallback={

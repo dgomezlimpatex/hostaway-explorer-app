@@ -17,7 +17,6 @@ import {
   Shirt,
   Bed,
   Receipt,
-  Search,
   RefreshCw,
   Settings,
   Link2,
@@ -51,7 +50,6 @@ import {
   SidebarMenuSub,
   SidebarMenuSubButton,
   SidebarMenuSubItem,
-  useSidebar,
 } from '@/components/ui/sidebar';
 
 interface NavigationItem {
@@ -234,13 +232,11 @@ const adminItems: NavigationItem[] = [
 export const DashboardSidebar = () => {
   const location = useLocation();
   const { canAccessModule, hasPermission: hasRolePermission, isAdminOrManager } = useRolePermissions();
-  const { state } = useSidebar();
   const { signOut, profile, user } = useAuth();
   const shouldShowIncidentBadge = isAdminOrManager();
   const { data: incidentStats } = useIncidentStats(shouldShowIncidentBadge);
   const { data: whatsappHealth } = useWhatsAppDeliveryHealth(shouldShowIncidentBadge);
 
-  const isCollapsed = state === 'collapsed';
 
   const isActive = (href: string) => {
     const path = href.split('?')[0];
@@ -309,12 +305,11 @@ export const DashboardSidebar = () => {
                       'h-5 w-5',
                       isActive(item.href) ? 'text-[#310984]' : 'text-white/48'
                     )} />
-                    {!isCollapsed && <span>{item.title}</span>}
+                    <span>{item.title}</span>
                     {getBadgeCount(item) > 0 && (
                       <span
                         className={cn(
-                          'ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-red-600 px-1.5 text-[11px] font-bold leading-none text-white shadow-sm',
-                          isCollapsed && 'absolute -right-1 -top-1 h-4 min-w-4 px-1 text-[10px]'
+                          'ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-red-600 px-1.5 text-[11px] font-bold leading-none text-white shadow-sm'
                         )}
                       >
                         {getBadgeCount(item) > 99 ? '99+' : getBadgeCount(item)}
@@ -348,10 +343,8 @@ export const DashboardSidebar = () => {
                 <CollapsibleTrigger asChild>
                   <SidebarMenuButton>
                     <RefreshCw className="h-5 w-5 text-gray-400" />
-                    {!isCollapsed && <span>Sincronizaciones</span>}
-                    {!isCollapsed && (
-                      <ChevronRight className="ml-auto transition-transform group-data-[state=open]/collapsible:rotate-90 h-4 w-4 text-gray-400" />
-                    )}
+                    <span>Sincronizaciones</span>
+                    <ChevronRight className="ml-auto transition-transform group-data-[state=open]/collapsible:rotate-90 h-4 w-4 text-gray-400" />
                   </SidebarMenuButton>
                 </CollapsibleTrigger>
                 <CollapsibleContent>
@@ -377,11 +370,10 @@ export const DashboardSidebar = () => {
   };
 
   return (
-    <Sidebar className={cn('border-r border-white/10 bg-[#160329] text-white shadow-[24px_0_80px_rgba(49,9,132,0.25)]', isCollapsed ? 'w-16' : 'w-72')} collapsible="icon">
+    <Sidebar id="app-sidebar" className="border-r border-white/10 bg-[#160329] text-white shadow-[24px_0_80px_rgba(49,9,132,0.25)]" collapsible="offcanvas">
       <SidebarContent className="flex h-full flex-col bg-[radial-gradient(circle_at_top_left,rgba(255,255,255,0.16),transparent_18rem)]">
         {/* Header */}
-        {!isCollapsed && (
-          <div className="border-b border-white/10 p-4">
+        <div className="border-b border-white/10 p-4">
             <div className="rounded-3xl border border-white/10 bg-white/8 p-3 shadow-2xl shadow-black/10 backdrop-blur">
               <div className="flex items-center gap-3">
                 <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-[#d9ccff] via-white to-cyan-200 text-lg font-black text-[#310984] shadow-lg shadow-cyan-950/20">
@@ -394,24 +386,10 @@ export const DashboardSidebar = () => {
               </div>
             </div>
           </div>
-        )}
 
         {/* Global Search */}
         <div className="px-3 pt-3">
-          {isCollapsed ? (
-            <GlobalSearch
-              trigger={
-                <button
-                className="flex h-10 w-10 items-center justify-center rounded-2xl border border-white/10 bg-white/10 transition-colors hover:bg-white/15"
-                  onClick={() => {}}
-                >
-                  <Search className="h-4 w-4 text-white/65" />
-                </button>
-              }
-            />
-          ) : (
-            <GlobalSearch />
-          )}
+          <GlobalSearch />
         </div>
 
         {/* Navigation Sections */}
@@ -429,7 +407,7 @@ export const DashboardSidebar = () => {
 
       {/* Footer with Logout Button */}
       <SidebarFooter className="border-t border-white/10 p-4">
-        {!isCollapsed && profile && (
+        {profile && (
           <div className="mb-3 rounded-2xl border border-white/10 bg-white/8 p-3">
             <p className="truncate text-xs font-semibold text-white/80">{profile.full_name || 'Usuario'}</p>
             <p className="truncate text-xs text-white/45">{profile.email}</p>
@@ -437,12 +415,12 @@ export const DashboardSidebar = () => {
         )}
         <Button
           variant="ghost"
-          size={isCollapsed ? "icon" : "sm"}
+          size="sm"
           onClick={signOut}
           className="w-full justify-start rounded-2xl text-rose-100 hover:bg-rose-500/15 hover:text-white"
         >
           <LogOut className="h-4 w-4" />
-          {!isCollapsed && <span className="ml-2">Cerrar sesión</span>}
+          <span className="ml-2">Cerrar sesión</span>
         </Button>
       </SidebarFooter>
     </Sidebar>
