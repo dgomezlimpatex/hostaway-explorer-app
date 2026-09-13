@@ -3,7 +3,6 @@ import { Link } from "react-router-dom";
 import { Plus, Search, ArrowUpDown, ArrowUpRight } from "lucide-react";
 import { useCleaners, useUpdateCleanersOrder } from "@/hooks/useCleaners";
 import { useAuth } from "@/hooks/useAuth";
-import { useAllWorkerMaintenanceCleanings } from "@/hooks/useWorkerMaintenanceCleanings";
 import { WorkersList } from "@/components/workers/WorkersList";
 import { CreateWorkerModal } from "@/components/workers/CreateWorkerModal";
 import { PersonnelShell, initials, usePersonnelParams } from "./PersonnelShell";
@@ -19,7 +18,6 @@ export default function PersonnelDirectory() {
   const { cleaners, isLoading, error, refetch } = useCleaners();
   const { userRole } = useAuth();
   const canManage = userRole === "admin" || userRole === "manager";
-  const { data: schedules = [] } = useAllWorkerMaintenanceCleanings();
   const { params, change } = usePersonnelParams();
   const [create, setCreate] = useState(false),
     [ordering, setOrdering] = useState(false);
@@ -189,8 +187,6 @@ export default function PersonnelDirectory() {
                   <th>Puesto</th>
                   <th>Estado</th>
                   <th>Jornada semanal</th>
-                  <th>Disponibilidad</th>
-                  <th className="optional">Acceso</th>
                   <th>
                     <span className="sr-only">Acciones</span>
                   </th>
@@ -198,11 +194,6 @@ export default function PersonnelDirectory() {
               </thead>
               <tbody>
                 {filtered.map((c) => {
-                  const unavailable = schedules.filter(
-                    (s) =>
-                      s.cleanerId === c.id &&
-                      s.scheduleType === "unavailability",
-                  );
                   return (
                     <tr key={c.id}>
                       <td>
@@ -231,20 +222,6 @@ export default function PersonnelDirectory() {
                       </td>
                       <td data-label="Jornada semanal">
                         {hoursText(c.contractHoursPerWeek ?? 0)}
-                      </td>
-                      <td data-label="Disponibilidad">
-                        <Link
-                          to={`/workers/${c.id}?tab=availability&back=${back}`}
-                        >
-                          {unavailable.length
-                            ? `${unavailable.length} ${unavailable.length === 1 ? "franja no disponible" : "franjas no disponibles"}`
-                            : "Consultar horario"}
-                        </Link>
-                      </td>
-                      <td className="optional">
-                        <span className={`p-tag ${c.user_id ? "" : "warning"}`}>
-                          {c.user_id ? "Habilitado" : "Sin acceso"}
-                        </span>
                       </td>
                       <td className="row-actions">
                         {canManage && (
