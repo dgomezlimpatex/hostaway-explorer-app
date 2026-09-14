@@ -12,6 +12,7 @@ const css = await readFile(new URL('../src/index.css', import.meta.url), 'utf8')
 const checks = [
   ['search covers property and client fields', /property\.direccion[\s\S]*getClientName\(property\)/.test(page)],
   ['status and client filters remain', /status === 'all'[\s\S]*clientFilter === 'all'/.test(page)],
+  ['active properties are the default view', /useState\('active'\)/.test(page) && /setStatus\('active'\)/.test(page) && /showStats=\{false\}/.test(page)],
   ['loading, error and empty states remain', /Cargando propiedades[\s\S]*hasError[\s\S]*DirectoryEmpty/.test(page)],
   ['client grouping remains', /clienteId \|\| 'unassigned'/.test(list)],
   ['selection is keyboard-visible and announced', /aria-pressed=\{selected\}/.test(list) && /focus-visible:ring/.test(list)],

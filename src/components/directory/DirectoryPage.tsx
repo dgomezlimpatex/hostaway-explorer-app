@@ -20,9 +20,9 @@ const tones = {
   neutral: 'border-slate-200 bg-white text-slate-950',
 };
 
-export function DirectoryPage({ title, eyebrow, description, icon: Icon, actions, stats, children, className }: {
+export function DirectoryPage({ title, eyebrow, description, icon: Icon, actions, stats = [], children, className, showStats = true }: {
   title: string; eyebrow: string; description: string; icon: LucideIcon;
-  actions: ReactNode; stats: DirectoryStat[]; children: ReactNode; className?: string;
+  actions: ReactNode; stats?: DirectoryStat[]; children: ReactNode; className?: string; showStats?: boolean;
 }) {
   return (
     <div className={cn('min-h-dvh overflow-x-hidden bg-slate-50 pb-24 text-slate-950 lg:pb-6', className)}>
@@ -42,7 +42,7 @@ export function DirectoryPage({ title, eyebrow, description, icon: Icon, actions
         </div>
       </header>
       <div className="mx-auto max-w-[1800px] space-y-4 p-4 sm:p-6">
-        <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
+        {showStats && <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
           {stats.map(stat => (
             <Card key={stat.label} className={cn('p-4 shadow-sm', tones[stat.tone])}>
               <p className="text-[11px] font-semibold uppercase tracking-[0.14em] opacity-70">{stat.label}</p>
@@ -50,7 +50,7 @@ export function DirectoryPage({ title, eyebrow, description, icon: Icon, actions
               <p className="text-xs opacity-70">{stat.helper}</p>
             </Card>
           ))}
-        </div>
+        </div>}
         {children}
       </div>
     </div>
