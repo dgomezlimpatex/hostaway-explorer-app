@@ -56,7 +56,7 @@ function PropertiesWorkspace() {
   return (
     <DirectoryPage className="properties-page" showStats={false} title="Propiedades" eyebrow="Alojamientos" description="Características, limpiezas y checklists en una única ficha." icon={Home} actions={<CreatePropertyModal />}>
       <div className="grid items-stretch gap-4 lg:grid-cols-[320px_minmax(0,1fr)] 2xl:grid-cols-[440px_minmax(0,1fr)]">
-        <Card aria-label="Directorio de propiedades" className="flex min-h-0 min-w-0 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm lg:h-[calc(100dvh-270px)] lg:min-h-[640px]">
+        <Card aria-label="Directorio de propiedades" className="flex min-h-0 min-w-0 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm lg:h-[calc(100dvh-180px)] lg:min-h-0">
           <div className="space-y-4 p-4 sm:p-5">
             <div className="flex items-start justify-between gap-2">
               <div><h2 className="font-semibold tracking-tight">Directorio de propiedades</h2><p className="mt-1 text-sm text-slate-500">Despliega un cliente y selecciona su propiedad.</p></div>

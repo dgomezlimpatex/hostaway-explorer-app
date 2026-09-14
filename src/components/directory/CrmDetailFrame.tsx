@@ -20,7 +20,7 @@ export function CrmDetailFrame({ title, subtitle, avatar, status, metricLabel, m
   const [activeTab, setActiveTab] = useState(tabs[0].id);
   const isProperties = variant === 'properties';
   return (
-    <div className="flex min-h-0 min-w-0 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm lg:h-[calc(100dvh-270px)] lg:min-h-[640px]">
+    <div className={isProperties ? 'flex min-h-0 min-w-0 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm lg:h-[calc(100dvh-180px)] lg:min-h-0' : 'flex min-h-0 min-w-0 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm lg:h-[calc(100dvh-270px)] lg:min-h-[640px]'}>
       <header className={isProperties ? 'shrink-0 border-b-4 border-[#310984] bg-slate-950 p-4 text-white sm:p-6' : 'shrink-0 border-b bg-gradient-to-br from-slate-950 via-slate-900 to-[#310984] p-4 text-white sm:p-6'}>
         <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
           <div className="flex min-w-0 items-center gap-3">

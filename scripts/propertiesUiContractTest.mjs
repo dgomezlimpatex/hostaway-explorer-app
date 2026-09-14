@@ -21,6 +21,7 @@ const checks = [
   ['responsive frame prevents horizontal overflow', /overflow-x-hidden/.test(directory) && /overflow-y-auto/.test(page) && /min-w-0/.test(frame) && /min-h-11/.test(frame)],
   ['properties use readable local typography', /properties-page/.test(page) && /Source Sans 3/.test(css) && /Manrope/.test(css)],
   ['properties opt into a non-gradient detail variant', /variant=\"properties\"/.test(detail) && /isProperties/.test(frame) && /bg-slate-950/.test(frame)],
+  ['properties panels use the available viewport height', /100dvh-180px/.test(page) && /100dvh-180px/.test(frame) && /lg:min-h-0/.test(page)],
 ];
 
 for (const [name, passed] of checks) {
