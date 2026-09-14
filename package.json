@@ -71,7 +71,8 @@
     "test:planning-provider-safety": "node scripts/planningProviderSafetyTest.mjs",
     "test:planning-hermes-150": "node scripts/planningHermes150Harness.mjs",
     "test:planning-hermes-150:red": "node scripts/planningHermes150RedHarness.mjs",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test:properties-ui": "node scripts/propertiesUiContractTest.mjs"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

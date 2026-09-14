@@ -10,21 +10,22 @@ export interface DirectoryStat {
   label: string;
   value: number | string;
   helper: string;
-  tone: 'sky' | 'green' | 'muted' | 'violet';
+  tone: 'sky' | 'green' | 'muted' | 'violet' | 'neutral';
 }
 const tones = {
   sky: 'border-sky-200 bg-sky-50 text-sky-950',
   green: 'border-emerald-200 bg-emerald-50 text-emerald-950',
   muted: 'border-slate-200 bg-white text-slate-950',
   violet: 'border-violet-200 bg-violet-50 text-violet-950',
+  neutral: 'border-slate-200 bg-white text-slate-950',
 };
 
-export function DirectoryPage({ title, eyebrow, description, icon: Icon, actions, stats, children }: {
+export function DirectoryPage({ title, eyebrow, description, icon: Icon, actions, stats, children, className }: {
   title: string; eyebrow: string; description: string; icon: LucideIcon;
-  actions: ReactNode; stats: DirectoryStat[]; children: ReactNode;
+  actions: ReactNode; stats: DirectoryStat[]; children: ReactNode; className?: string;
 }) {
   return (
-    <div className="min-h-dvh bg-slate-50 pb-24 text-slate-950 lg:pb-6">
+    <div className={cn('min-h-dvh overflow-x-hidden bg-slate-50 pb-24 text-slate-950 lg:pb-6', className)}>
       <header className="border-b border-slate-200 bg-white px-4 py-4 sm:px-6">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-3">
@@ -32,8 +33,8 @@ export function DirectoryPage({ title, eyebrow, description, icon: Icon, actions
               <Link to="/"><ArrowLeft className="mr-2 h-4 w-4" />Volver al menú</Link>
             </Button>
             <div>
-              <p className="text-xs font-black uppercase tracking-[0.18em] text-[#310984]">{eyebrow}</p>
-              <h1 className="mt-0.5 flex items-center gap-2 text-2xl font-black"><Icon className="h-6 w-6" />{title}</h1>
+              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#310984]">{eyebrow}</p>
+              <h1 className="mt-0.5 flex items-center gap-2 text-2xl font-semibold tracking-tight"><Icon aria-hidden="true" className="h-6 w-6 text-slate-500" />{title}</h1>
               <p className="mt-1 text-sm text-slate-500">{description}</p>
             </div>
           </div>
@@ -44,8 +45,8 @@ export function DirectoryPage({ title, eyebrow, description, icon: Icon, actions
         <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
           {stats.map(stat => (
             <Card key={stat.label} className={cn('p-4 shadow-sm', tones[stat.tone])}>
-              <p className="text-[11px] font-black uppercase tracking-[0.16em] opacity-70">{stat.label}</p>
-              <p className="mt-1 text-2xl font-black tabular-nums">{stat.value}</p>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.14em] opacity-70">{stat.label}</p>
+              <p className="mt-1 text-2xl font-semibold tabular-nums">{stat.value}</p>
               <p className="text-xs opacity-70">{stat.helper}</p>
             </Card>
           ))}

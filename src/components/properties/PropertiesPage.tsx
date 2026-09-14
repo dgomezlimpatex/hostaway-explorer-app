@@ -54,17 +54,17 @@ function PropertiesWorkspace() {
   const detail = (property: Property) => <PropertyDetailPanel key={property.id} property={property} clientName={getClientName(property)} active={active(property)} />;
 
   return (
-    <DirectoryPage title="Propiedades" eyebrow="Alojamientos" description="Características, limpiezas y checklists en una única ficha." icon={Home} actions={<CreatePropertyModal />} stats={[
-      { label: 'Total', value: count(properties.length), helper: 'propiedades en la sede', tone: 'sky' },
-      { label: 'Activas', value: count(activeCount), helper: 'disponibles para servicio', tone: 'green' },
+    <DirectoryPage className="properties-page" title="Propiedades" eyebrow="Alojamientos" description="Características, limpiezas y checklists en una única ficha." icon={Home} actions={<CreatePropertyModal />} stats={[
+      { label: 'Total', value: count(properties.length), helper: 'propiedades en la sede', tone: 'neutral' },
+      { label: 'Activas', value: count(activeCount), helper: 'disponibles para servicio', tone: 'neutral' },
       { label: 'Inactivas', value: count(properties.length - activeCount), helper: 'fuera de servicio', tone: 'muted' },
-      { label: 'Clientes', value: count(clientOptions.length), helper: 'con propiedades', tone: 'violet' },
+      { label: 'Clientes', value: count(clientOptions.length), helper: 'con propiedades', tone: 'neutral' },
     ]}>
       <div className="grid items-stretch gap-4 lg:grid-cols-[320px_minmax(0,1fr)] 2xl:grid-cols-[440px_minmax(0,1fr)]">
-        <Card className="flex min-h-0 min-w-0 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm lg:h-[calc(100dvh-270px)] lg:min-h-[640px]">
+        <Card aria-label="Directorio de propiedades" className="flex min-h-0 min-w-0 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm lg:h-[calc(100dvh-270px)] lg:min-h-[640px]">
           <div className="space-y-4 p-4 sm:p-5">
             <div className="flex items-start justify-between gap-2">
-              <div><h2 className="font-bold">Directorio de propiedades</h2><p className="mt-1 text-sm text-slate-500">Despliega un cliente y selecciona su propiedad.</p></div>
+              <div><h2 className="font-semibold tracking-tight">Directorio de propiedades</h2><p className="mt-1 text-sm text-slate-500">Despliega un cliente y selecciona su propiedad.</p></div>
               {hasFilters && <Button variant="ghost" size="sm" onClick={reset}>Limpiar</Button>}
             </div>
             <DirectorySearch value={search} onChange={setSearch} placeholder="Buscar nombre, código, dirección o cliente" />

@@ -1,4 +1,9 @@
 
+@import "@fontsource/manrope/latin-600.css";
+@import "@fontsource/manrope/latin-700.css";
+@import "@fontsource/source-sans-3/latin-400.css";
+@import "@fontsource/source-sans-3/latin-600.css";
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -144,6 +149,20 @@
   html {
     scroll-behavior: smooth;
     -webkit-overflow-scrolling: touch;
+  }
+}
+
+@layer components {
+  .properties-page {
+    font-family: "Source Sans 3", sans-serif;
+    font-size: 1rem;
+    line-height: 1.45;
+  }
+
+  .properties-page h1,
+  .properties-page h2,
+  .properties-page h3 {
+    font-family: Manrope, sans-serif;
   }
 }
 
