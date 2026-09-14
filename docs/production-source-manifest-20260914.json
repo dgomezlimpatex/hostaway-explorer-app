@@ -1,0 +1,5577 @@
+{
+  "deployment": "dpl_AnvaJq91u2jQRmPtXXc6yXE3GUjR",
+  "files": [
+    {
+      "path": ".hermes/plans/2026-06-29_082544-planificacion-limpiezas.md",
+      "sha1": "9486d0e16953a9db112a24f8132d127c2675bd54"
+    },
+    {
+      "path": ".hermes/plans/2026-06-29_193912-sistema-planificacion-personal-propiedades.md",
+      "sha1": "3da841438278e7b6763bffe382c3c020bc5766bb"
+    },
+    {
+      "path": ".hermes/plans/2026-07-01_001250-checklist-implementacion-planificacion-v2.md",
+      "sha1": "01c28d6e16e0e8d3741bd0d7532a845b147119c8"
+    },
+    {
+      "path": ".hermes/plans/2026-07-11-hermes-radical-simple-audit.md",
+      "sha1": "2901602b5609648ea4cedfac1c1c93c7c774fdf2"
+    },
+    {
+      "path": ".hermes/plans/2026-07-11-hermes-radical-simple-decisions-spec.md",
+      "sha1": "8c59cd2220b0be9d37fb2fc19b4447c93b0e07ac"
+    },
+    {
+      "path": ".hermes/plans/2026-07-11-hermes-radical-simple-verification.md",
+      "sha1": "e5a4ed860ce26b3d2a67d97fca8dd4a615ac8658"
+    },
+    {
+      "path": ".hermes/plans/2026-07-21_134203-hermes-planning-150-whatsapp-reliability.md",
+      "sha1": "408efa01bf06a66dd962a9e4512ae39e89012229"
+    },
+    {
+      "path": ".hermes/plans/2026-08-24_124824-supervision-por-edificios.md",
+      "sha1": "265ee7983aed4173feff5e1b5b2d76b5563a3e8d"
+    },
+    {
+      "path": ".hermes/plans/hermes-radical-simple-engine-baseline.sha256",
+      "sha1": "a6564ac4bab0048ba469d494ee2fe7fa62a02904"
+    },
+    {
+      "path": ".hermes/plans/planning-simplification.md",
+      "sha1": "932d876f879d03294acde838c927ab5519a15ccd"
+    },
+    {
+      "path": ".lovable/plan.md",
+      "sha1": "50ff6047248313ffe00cfa01864d11bb42a5b447"
+    },
+    {
+      "path": "AGENTS.md",
+      "sha1": "475e98e769954306e12746d48998eda41f1b5ee1"
+    },
+    {
+      "path": "ANALISIS_COMPLETO_APLICACION.md",
+      "sha1": "a0522c330eda5be3c5b9df1bdf0cc8bbfdfdc363"
+    },
+    {
+      "path": "DOCUMENTACION/INTEGRACION_AVANTIO.md",
+      "sha1": "59209cff0b9e66c2ef2ee63a071e1ecbc5229bb6"
+    },
+    {
+      "path": "DOCUMENTACION/SISTEMA_CONTROL_MUDAS.md",
+      "sha1": "b7af5041d7d3d280008e1ca68933b837eb2e8cce"
+    },
+    {
+      "path": "FUTURAS_IMPLEMENTACIONES/SINCRONIZACION_OCTORATE/README.md",
+      "sha1": "b3fd460846f4c437469a069ad2c51463323893a3"
+    },
+    {
+      "path": "INVENTARIO_ROADMAP_ACTUALIZADO.md",
+      "sha1": "7b9d5867d4379218b28e0a34acb38a91615c4be6"
+    },
+    {
+      "path": "INVENTARIO_SISTEMA_TECNICO.md",
+      "sha1": "ff20463c12807dd3a35479331f0b718f7d5554f5"
+    },
+    {
+      "path": "INVENTORY_WAREHOUSES_IMPLEMENTATION_CHECKLIST.md",
+      "sha1": "17fa5368c16d2290fda9ad2509012553a086dd83"
+    },
+    {
+      "path": "LOGISTICA_ROADMAP.md",
+      "sha1": "b05e619e6840152e4b10bcb26a5095d0872f8613"
+    },
+    {
+      "path": "OPTIMIZACIONES_RENDIMIENTO.md",
+      "sha1": "2040c046d416c50a45cd936d8d0833affe99bac9"
+    },
+    {
+      "path": "README.md",
+      "sha1": "b2eb2fce68d98293e4a757ba13100aa2d1ad1f68"
+    },
+    {
+      "path": "SEDE_IMPLEMENTATION_CHECKLIST.md",
+      "sha1": "04dc20a2ad79cc5bfd1eb7c0f6ef85e6eb1245d2"
+    },
+    {
+      "path": "SISTEMA_ASIGNACION_AUTOMATICA.md",
+      "sha1": "eb2cd52aed0cfb1fee5ba6a0a8018ea2a9e5065f"
+    },
+    {
+      "path": "SISTEMA_SINCRONIZACION_HOSTAWAY.md",
+      "sha1": "1723daaa4dcecb2b7d1f60b9545d54e1919f3644"
+    },
+    {
+      "path": "bun.lock",
+      "sha1": "49df0fc67e81482e2733c614e1ba62b7cccbcb8b"
+    },
+    {
+      "path": "bun.lockb",
+      "sha1": "07b6973f3231f121a4cf286fdf1469e9f0b59e58"
+    },
+    {
+      "path": "components.json",
+      "sha1": "4c27963fd3116e30df580f2e19be8c545634d69a"
+    },
+    {
+      "path": "public/favicon.ico",
+      "sha1": "db98fcaaf06be921ed2b8f25ac80f0add9f4a787"
+    },
+    {
+      "path": "public/limpatex-logo.png",
+      "sha1": "139ab927123a140d22f7e1eb7c76bcb39e156e42"
+    },
+    {
+      "path": "public/lovable-uploads/432bdd80-12cc-4848-8d56-97be07c9668f.png",
+      "sha1": "139ab927123a140d22f7e1eb7c76bcb39e156e42"
+    },
+    {
+      "path": "public/og-limpatex.jpg",
+      "sha1": "b2ebc30d844fa8f072b0cd5a99a21bb97786ab54"
+    },
+    {
+      "path": "public/placeholder.svg",
+      "sha1": "ddc7d9ff1d2e3615f892ead918090e044e0afc6d"
+    },
+    {
+      "path": "public/robots.txt",
+      "sha1": "84b541ad2ac3769230dd79747493d192ea4f7a94"
+    },
+    {
+      "path": "docs/auditoria-redesign-mejoras.md",
+      "sha1": "9324d3cef476a75204fd24dc5d8e5432982455d5"
+    },
+    {
+      "path": "docs/google-sheets-sync-plan.md",
+      "sha1": "10c67c968ed1b1e4c29fbb58cd0d3a6f88d335ab"
+    },
+    {
+      "path": "docs/planning-sandbox-dnd.md",
+      "sha1": "86d3f8623aca69d38ae1cb9409aef64144adfe4c"
+    },
+    {
+      "path": "docs/registro-worker-access-analysis.md",
+      "sha1": "167572d83ea5f8730d40765fec431b777b544b69"
+    },
+    {
+      "path": "eslint.config.js",
+      "sha1": "9750e5c623c7749495c141589b092530306b79f8"
+    },
+    {
+      "path": "index.html",
+      "sha1": "e76468e08a81573b9df7e7e45d814fefdcfdc969"
+    },
+    {
+      "path": "package-lock.json",
+      "sha1": "5a248a2667ed62ec3c45e3acdbb5c2821c947bae"
+    },
+    {
+      "path": "package.json",
+      "sha1": "26d8025ff104440581d6445512bc8568baa601fe"
+    },
+    {
+      "path": "postcss.config.js",
+      "sha1": "d81f6023fc07196029b1c879d8e04502d9b33f2f"
+    },
+    {
+      "path": "scripts/PLANNING_HERMES_150_RED.md",
+      "sha1": "fe8455f04de9146feabce7f5c682d62418071795"
+    },
+    {
+      "path": "scripts/avantioTimeoutResilienceTest.entry.ts",
+      "sha1": "c65bf704afcdc04ea585ce3f5f65e25d4b3608c5"
+    },
+    {
+      "path": "scripts/avantioTimeoutResilienceTest.mjs",
+      "sha1": "2aaa6925f936e2e1f9ff7495ecba247a18ff8a1d"
+    },
+    {
+      "path": "scripts/budgetEstimatorLogisticsTest.entry.ts",
+      "sha1": "e664557adf530b02d1f7af4860a60f4a68d8a01c"
+    },
+    {
+      "path": "scripts/budgetEstimatorLogisticsTest.mjs",
+      "sha1": "ce02b0162f5d11132d28cb43609c5b64bc2f118b"
+    },
+    {
+      "path": "scripts/budgetEstimatorPdfTest.entry.ts",
+      "sha1": "6a05f2490c464ef89b24df4d849c894b4f6d525f"
+    },
+    {
+      "path": "scripts/budgetEstimatorPdfTest.mjs",
+      "sha1": "1e9263f70620eb86eeaa6cc1de11a848986904b5"
+    },
+    {
+      "path": "scripts/budgetEstimatorSchemaContractTest.entry.ts",
+      "sha1": "385d75ddfdfbbbcdf662b77992d389344d917d82"
+    },
+    {
+      "path": "scripts/budgetEstimatorSchemaContractTest.mjs",
+      "sha1": "0bcff2ec0398f861019809425e161d5a1f449003"
+    },
+    {
+      "path": "scripts/budgetEstimatorTest.entry.ts",
+      "sha1": "b32e9095c34000a33ece6b32ae384c571a44ce94"
+    },
+    {
+      "path": "scripts/budgetEstimatorTest.mjs",
+      "sha1": "34cde9f0e65a1bc485a0547eea9049c3f3a4ea73"
+    },
+    {
+      "path": "scripts/budgetEstimatorUiContractTest.mjs",
+      "sha1": "911e5b77d9a3110701ea71b68271a56887f11d4c"
+    },
+    {
+      "path": "scripts/calendarAssignmentReuseTest.mjs",
+      "sha1": "6531f8f48a332839953bd303c96c4fa488a23a99"
+    },
+    {
+      "path": "scripts/canonicalAssignmentWritersContractTest.mjs",
+      "sha1": "3a0be2eb25e898abbee33888c9c54560cb3a61bd"
+    },
+    {
+      "path": "scripts/canonicalAssignmentWritersDatabaseBaseline.sql",
+      "sha1": "bc0141f82d35628d4b0b58a599e69ab020b343dd"
+    },
+    {
+      "path": "scripts/canonicalAssignmentWritersDatabaseTest.sh",
+      "sha1": "7221bf8655ad72f76ca43ee072455f0d043281d8"
+    },
+    {
+      "path": "scripts/canonicalAssignmentWritersDatabaseTest.sql",
+      "sha1": "f4dd0c75be0351cc34f6c5abc308e640030450a0"
+    },
+    {
+      "path": "scripts/cleanerDeletionCanonicalTest.mjs",
+      "sha1": "05022bc5318b61cbb4622ee5e19cd26251c0021c"
+    },
+    {
+      "path": "scripts/cleaningPlanningApplyCompatibilityTest.entry.ts",
+      "sha1": "37fbe5c59ba74896eb26ba9ff29bd896d833e764"
+    },
+    {
+      "path": "scripts/cleaningPlanningApplyCompatibilityTest.mjs",
+      "sha1": "d7cee78872158061497c4b639d04e825315ae512"
+    },
+    {
+      "path": "scripts/cleaningPlanningDomainSafetyTest.entry.ts",
+      "sha1": "509544c6b59a7c1cfcd0ac113221badc8ceebe30"
+    },
+    {
+      "path": "scripts/cleaningPlanningDomainSafetyTest.mjs",
+      "sha1": "12f19a1397de93fbf767b0f93d200be18a0a556b"
+    },
+    {
+      "path": "scripts/cleaningPlanningOperationalFixturesTest.entry.ts",
+      "sha1": "403c83e277d760f982c6fe2a1a4b201041149582"
+    },
+    {
+      "path": "scripts/cleaningPlanningOperationalFixturesTest.mjs",
+      "sha1": "fe66cc1c56e355c929a8e6e401a0d12b19c61f2e"
+    },
+    {
+      "path": "scripts/cleaningPlanningProposalEngineTest.entry.ts",
+      "sha1": "1a90b4ab757229530db8d661c9fe815e07e24531"
+    },
+    {
+      "path": "scripts/cleaningPlanningProposalEngineTest.mjs",
+      "sha1": "9f22b8a2e54b0839c4c1cd1ea6aeeaf70b023bef"
+    },
+    {
+      "path": "scripts/cleaningPlanningRadicalSimpleContractTest.mjs",
+      "sha1": "091b1c92e782e8e2f397a8eae4cd3153085a553f"
+    },
+    {
+      "path": "scripts/cleaningPlanningUiContractTest.mjs",
+      "sha1": "e2589b367cc5fa39ab32f8587d172146c5cfc234"
+    },
+    {
+      "path": "scripts/clientPortalNoCompletionTimeTest.mjs",
+      "sha1": "fc5068f2f064e753ebc7ae6d9ba4c34ce5fab0d3"
+    },
+    {
+      "path": "scripts/clientPortalOperationalDatabaseTest.sql",
+      "sha1": "b0ebcc15e9e25e055482d9746408b1982640f3dc"
+    },
+    {
+      "path": "scripts/clientPortalOperationalTest.entry.ts",
+      "sha1": "8df98e0788be8b38e9f55af91ba6c2e81fbec54d"
+    },
+    {
+      "path": "scripts/clientPortalOperationalTest.mjs",
+      "sha1": "d05e4de47d81bef4679c1e17a1520151186b0c05"
+    },
+    {
+      "path": "scripts/clientPortalVisibilityTest.entry.ts",
+      "sha1": "c1c425682e55e7d5dc4b4c0688035596d30f28dd"
+    },
+    {
+      "path": "scripts/clientPortalVisibilityTest.mjs",
+      "sha1": "37b5f3459331d359b3ea5d484ed650e2b64cb613"
+    },
+    {
+      "path": "scripts/edgeAuthorizationSafetyTest.entry.ts",
+      "sha1": "3047be74ccdab767a19cefc67c464ba245583650"
+    },
+    {
+      "path": "scripts/edgeAuthorizationSafetyTest.mjs",
+      "sha1": "972cd7fea3220337390ff15584ddc3d34a031d1c"
+    },
+    {
+      "path": "scripts/hostawayDormancyTest.entry.ts",
+      "sha1": "9e395b6e2a4fd3b5bb412403c766c7944d19f1d3"
+    },
+    {
+      "path": "scripts/hostawayDormancyTest.mjs",
+      "sha1": "5dbd0292b8a44e6f276b964eeba4bce049efe8b6"
+    },
+    {
+      "path": "scripts/laundryAutomaticUpdatesTest.mjs",
+      "sha1": "15ff81fb4a5eeca2b91bda518466134af29090c2"
+    },
+    {
+      "path": "scripts/laundryBagSummaryTest.mjs",
+      "sha1": "84826daee62a7cde89e82afa7e24f3dcbb506f58"
+    },
+    {
+      "path": "scripts/laundryFixedActionsTest.mjs",
+      "sha1": "35f8ad19e4b0160c156f30497b51b5edfd14a5ce"
+    },
+    {
+      "path": "scripts/laundryPinAttemptsTest.mjs",
+      "sha1": "d27e66b94dd5ca4553fd65041b3a9a27ac897729"
+    },
+    {
+      "path": "scripts/legacyAssignmentWriterGuardTest.mjs",
+      "sha1": "4db165b7955a394acdd6412713ad0e22a1637714"
+    },
+    {
+      "path": "scripts/manualSendReconciliationDatabaseTest.sql",
+      "sha1": "bf9091223ec90ae8fd0cf8cfa5298ee6e6801bc2"
+    },
+    {
+      "path": "scripts/mobileCalendarMultiAssignmentTest.ts",
+      "sha1": "20718eaa0d079113800ddc964d46af44a95772d8"
+    },
+    {
+      "path": "scripts/multiAssignmentModalUiContractTest.mjs",
+      "sha1": "a38f78d1530f9abb086f0be785ffcb9da2e5b2f4"
+    },
+    {
+      "path": "scripts/multiWorkerScheduleContractTest.mjs",
+      "sha1": "559fc036b440cada6f44b0a5cc349c35ad002634"
+    },
+    {
+      "path": "scripts/multiWorkerScheduleTest.entry.ts",
+      "sha1": "12ba678f43ac6954ec8e8b0d3ea0a9b590065f1e"
+    },
+    {
+      "path": "scripts/multiWorkerScheduleTest.mjs",
+      "sha1": "f6aec65d3b04fb10d380e9505d2a6f0100d8e2df"
+    },
+    {
+      "path": "scripts/personnelHoursTest.mjs",
+      "sha1": "a6dabf99dd8624218c3e6f5dd1451fe919869915"
+    },
+    {
+      "path": "scripts/personnelPreview.mjs",
+      "sha1": "0df173bc935ac21465db19ba6c8a2cf6a312fdac"
+    },
+    {
+      "path": "scripts/planningBatchAdversarialTest.sql",
+      "sha1": "afbf8662350a1113869bf572b4c71ac70b87cd34"
+    },
+    {
+      "path": "scripts/planningBatchApprovalClientTest.mjs",
+      "sha1": "504b265b0b46207063cb55c7ef75a1e24fbfff93"
+    },
+    {
+      "path": "scripts/planningBatchAtomicityTest.mjs",
+      "sha1": "7439754a925e1516f2d31e8d47ce6fb49cdc06ed"
+    },
+    {
+      "path": "scripts/planningBatchClientTest.entry.ts",
+      "sha1": "ccebeabd7bf3eebc006d5505d873876baa3a8897"
+    },
+    {
+      "path": "scripts/planningBatchClientTest.mjs",
+      "sha1": "4376cde4041c92ad467252de8cd9703aade274f0"
+    },
+    {
+      "path": "scripts/planningBatchConcurrencySetup.sql",
+      "sha1": "ea6a476bc4ac671a96ffdf7656ac5c8cc9f0335f"
+    },
+    {
+      "path": "scripts/planningBatchConcurrencyTest.mjs",
+      "sha1": "1e406680a7598dca885a43d012eb0bbacf1db266"
+    },
+    {
+      "path": "scripts/planningBatchConcurrencyTest.sh",
+      "sha1": "9aa2eebf85a6584da37ca43376722f651771a8b6"
+    },
+    {
+      "path": "scripts/planningBatchContractTest.mjs",
+      "sha1": "fe4816a526200deeec446ec2206a6704a89c5578"
+    },
+    {
+      "path": "scripts/planningBatchDatabaseTest.sh",
+      "sha1": "3f8cea4b9ff9c5d5939308e9e6adc2c5693950db"
+    },
+    {
+      "path": "scripts/planningBatchIdempotencyTest.mjs",
+      "sha1": "373ac79eef6fa14743744a51b35960c311afefd8"
+    },
+    {
+      "path": "scripts/planningBatchLoadScenariosTest.mjs",
+      "sha1": "543feb934806ea5654807bf151b022478da8791c"
+    },
+    {
+      "path": "scripts/planningBatchSenderSafetyTest.mjs",
+      "sha1": "5e4479526c7ace3202745afe0cc3709155dea9bb"
+    },
+    {
+      "path": "scripts/planningBatchTestBaseline.sql",
+      "sha1": "a43e7bd3019d82118f27adb2edfb19e0d9e53063"
+    },
+    {
+      "path": "scripts/planningBatchTestSupport.mjs",
+      "sha1": "9c518b8d0af303acf9ce175f2b2b0bd69dd4d934"
+    },
+    {
+      "path": "scripts/planningBatchTransactionTest.sql",
+      "sha1": "ac5b6b86530d41f8cd635b4b7d4c76d8350ddc88"
+    },
+    {
+      "path": "scripts/planningBuildingCrmServiceTest.entry.ts",
+      "sha1": "b36c18b604e15ff9d8bd00ced4c7e13312b120f2"
+    },
+    {
+      "path": "scripts/planningBuildingCrmServiceTest.mjs",
+      "sha1": "27faf6d891032a3bb8b98c2505027f0643fa4fbc"
+    },
+    {
+      "path": "scripts/planningBuildingCrmUiContractTest.mjs",
+      "sha1": "0574e49dc712749ab595c6397e5e9ddd8d173aea"
+    },
+    {
+      "path": "scripts/planningCalendarWeeklyHoursTest.mjs",
+      "sha1": "e9f1c3987eff8ea6dc02dcd3b645345e53ea1f24"
+    },
+    {
+      "path": "scripts/planningCleanerDeleteRaceTest.sh",
+      "sha1": "c76fc11102ad8ce18a4be5f2d15ebec20197b62b"
+    },
+    {
+      "path": "scripts/planningDayNavigationTest.mjs",
+      "sha1": "b0a44f082d84e925ee8301925d4885e01c98338d"
+    },
+    {
+      "path": "scripts/planningEmailDeliverySemanticsTest.mjs",
+      "sha1": "4898203486ae9ca85c9f94d0ef8938912084eea5"
+    },
+    {
+      "path": "scripts/planningFeatureFlagsTest.entry.ts",
+      "sha1": "92f3c9152097d769c33ff855c8bc275d5543c5e9"
+    },
+    {
+      "path": "scripts/planningFeatureFlagsTest.mjs",
+      "sha1": "f77184f258987341f564cd6cd90aa4ad5a87a0e6"
+    },
+    {
+      "path": "scripts/planningHermes150Harness.mjs",
+      "sha1": "81804bca5ce66335dc89a0e71bb26ca89ee6a37a"
+    },
+    {
+      "path": "scripts/planningHermes150IntegratedBaseline.sql",
+      "sha1": "b686d39778439e2f8bb3b57e317c5c290eccf2bd"
+    },
+    {
+      "path": "scripts/planningHermes150IntegratedDatabaseTest.sh",
+      "sha1": "8283861ec867ba4d45de22a04e91a95e70630e4a"
+    },
+    {
+      "path": "scripts/planningHermes150IntegratedSmoke.sql",
+      "sha1": "5878a56eaa5d3e872998a94a544f3c20845526c0"
+    },
+    {
+      "path": "scripts/planningHermes150RedHarness.mjs",
+      "sha1": "76d53258eb1f20d09a28a676fe932aae6df8a501"
+    },
+    {
+      "path": "scripts/planningNotificationProviderTest.entry.ts",
+      "sha1": "f6e9a0283f021e9027eee4d4462ff4824e2db68a"
+    },
+    {
+      "path": "scripts/planningNotificationProviderTest.mjs",
+      "sha1": "0072930f7c1139bba5438a85fc02fee7340d0785"
+    },
+    {
+      "path": "scripts/planningProviderSafetyTest.mjs",
+      "sha1": "49468f7d015019cdef42ac576fc224c811033400"
+    },
+    {
+      "path": "scripts/planningProviderSink.mjs",
+      "sha1": "eb0231600db6e72c361b0fcb6edab5943ab8d496"
+    },
+    {
+      "path": "scripts/planningRecipientPreflightTest.entry.ts",
+      "sha1": "a431e869edd3f5405d5793f8430fc96cd65c6b2a"
+    },
+    {
+      "path": "scripts/planningRecipientPreflightTest.mjs",
+      "sha1": "8b9c9f343cb65692cd12e7d6cc1a5959aba04556"
+    },
+    {
+      "path": "scripts/planningRunSnapshotTest.mjs",
+      "sha1": "4656ab61532f151d76aafd7d0e4ffb278ad0bb8c"
+    },
+    {
+      "path": "scripts/planningSavedTasksTest.mjs",
+      "sha1": "1ef96e50d1a3348b4d0a1521179477da1e8734e5"
+    },
+    {
+      "path": "scripts/planningStickyTrayTest.mjs",
+      "sha1": "e3e4b7d35c37c99d77f4212b95abdea0fc5a6663"
+    },
+    {
+      "path": "scripts/planningTaskLanesTest.mjs",
+      "sha1": "2d97288834362654de8c45cfaa6c7ab8af9a05bf"
+    },
+    {
+      "path": "scripts/planningV2DomainTest.entry.ts",
+      "sha1": "ba4732bf7b0fd5966cb145be0d908c30a6110703"
+    },
+    {
+      "path": "scripts/planningV2DomainTest.mjs",
+      "sha1": "c52461e7b03f15e5abca2b6d6d8f4361f8c10cc3"
+    },
+    {
+      "path": "scripts/planningWeeklyWorkloadTest.entry.ts",
+      "sha1": "90d9a171800a92c3fc6cceb0bdebd456b69941d7"
+    },
+    {
+      "path": "scripts/planningWeeklyWorkloadTest.mjs",
+      "sha1": "ba7e0cc2dc5d2bc96f9ef58192a47d8193cfaef2"
+    },
+    {
+      "path": "scripts/pmsCancellationSafetyTest.entry.ts",
+      "sha1": "7bf616a6b40eb06c00f85b4215a6e5195de747c7"
+    },
+    {
+      "path": "scripts/pmsCancellationSafetyTest.mjs",
+      "sha1": "9b04cd43f135b85250ec2ac7542e9b8fc4e84907"
+    },
+    {
+      "path": "scripts/propertyChecklistNormalizationTest.mjs",
+      "sha1": "ee278514195a8f14d59e07435dd3de35109b27c8"
+    },
+    {
+      "path": "scripts/recurringHoursTest.mjs",
+      "sha1": "002e2f9395c87769c7c3ed2522b95fa3bba7a806"
+    },
+    {
+      "path": "scripts/recurringTaskScheduleTest.entry.ts",
+      "sha1": "44f68229a98da006bb8e99fd60c3fde7a4d00f15"
+    },
+    {
+      "path": "scripts/recurringTaskScheduleTest.mjs",
+      "sha1": "bdc12b77d98de483ef9002431f9209224cc2d8db"
+    },
+    {
+      "path": "scripts/registroEmployeeSyncTest.mjs",
+      "sha1": "1cf12fab5b6ca8d3291ed99b84e6748b66a434b7"
+    },
+    {
+      "path": "scripts/resendSenderContractTest.mjs",
+      "sha1": "5e6deddc8cf2a3ae2449eceb2712b2728a7e38ee"
+    },
+    {
+      "path": "scripts/roleModeTest.entry.ts",
+      "sha1": "4b3863d810efbbf1950aa74f6442619dfb805269"
+    },
+    {
+      "path": "scripts/roleModeTest.mjs",
+      "sha1": "b365d39d5fdd4621bd03fc428be46f051957fd45"
+    },
+    {
+      "path": "scripts/subtaskPhotoGalleryTest.entry.ts",
+      "sha1": "a1df7abf412e2aa18592fefa429cf2eb3842b493"
+    },
+    {
+      "path": "scripts/subtaskPhotoGalleryTest.mjs",
+      "sha1": "01974be37f82b6d2576312f5c3b3b249f4bc03f5"
+    },
+    {
+      "path": "scripts/supervisionBuildingAgendaTest.entry.ts",
+      "sha1": "342258b8fb1a8bdcd3e8f940257b8e6f79bd668d"
+    },
+    {
+      "path": "scripts/supervisionBuildingAgendaTest.mjs",
+      "sha1": "fba4bcd25f65c43909cf8db2d2e702b5f4e875a7"
+    },
+    {
+      "path": "scripts/supervisionDomainTest.entry.ts",
+      "sha1": "8e242f2155b29b58d8ff087418380bc8962619ab"
+    },
+    {
+      "path": "scripts/supervisionDomainTest.mjs",
+      "sha1": "76b6dec8f01251a5d079dfbf6ce9684dcc502069"
+    },
+    {
+      "path": "scripts/supervisionOccupancyTest.entry.ts",
+      "sha1": "1b541dd800e7157eb97e483577364a92a0c8dca3"
+    },
+    {
+      "path": "scripts/supervisionOccupancyTest.mjs",
+      "sha1": "358847450078e091d568349c32e4cbc373edb8e3"
+    },
+    {
+      "path": "scripts/supervisionUiContractTest.mjs",
+      "sha1": "a5ae734c4f68911373a1a454a3b3a277ab069fe8"
+    },
+    {
+      "path": "scripts/taskAssignmentSelectorContractTest.mjs",
+      "sha1": "2a177a3dd5a8590a3f755acd1b0846ae422dd38e"
+    },
+    {
+      "path": "scripts/taskLoadingHookContractTest.mjs",
+      "sha1": "c9e2cfb617465aaeb28227670636f3c55d93e1bb"
+    },
+    {
+      "path": "scripts/taskLoadingPerformanceTest.ts",
+      "sha1": "47b87ae71422769f539f9533ffbef1ea041e4db7"
+    },
+    {
+      "path": "scripts/taskNextClientEntryTest.entry.ts",
+      "sha1": "6ed03587d78a720d989132884654c7ff2a345c08"
+    },
+    {
+      "path": "scripts/taskNextClientEntryTest.mjs",
+      "sha1": "6beb0f3f13b8e66e939444d7e5caa28aa39d1d2d"
+    },
+    {
+      "path": "scripts/taskNextClientEntryUiContractTest.mjs",
+      "sha1": "4384721bfd680d107ee9b39c7f290ae7627ca42e"
+    },
+    {
+      "path": "scripts/taskReportCompletionTest.mjs",
+      "sha1": "35798084fed42b53d833528c7bdeb2db92909aba"
+    },
+    {
+      "path": "scripts/userManagementUiContractTest.mjs",
+      "sha1": "5f35bf4d572530d88ce4316facb93ee500bc0775"
+    },
+    {
+      "path": "scripts/whatsappAdminFallbackTest.entry.ts",
+      "sha1": "1b5d2600bcdfcc2805f2fe76bb880aa9c9f1315c"
+    },
+    {
+      "path": "scripts/whatsappAdminFallbackTest.mjs",
+      "sha1": "13172edcc51e07bbf0270924b76b166570e1a87c"
+    },
+    {
+      "path": "scripts/whatsappCancellationConcurrencySetup.sql",
+      "sha1": "e1d2161b038466e2cb0c4dbe6766256cf6f32c06"
+    },
+    {
+      "path": "scripts/whatsappCancellationDatabaseBaseline.sql",
+      "sha1": "c05afa2af6501ae4598e6f1d7e64919f50b0c74d"
+    },
+    {
+      "path": "scripts/whatsappCancellationDatabaseTest.sh",
+      "sha1": "a4729bc25d64f35f25b8f7f98d1ea6e7fb88587f"
+    },
+    {
+      "path": "scripts/whatsappCancellationFailClosedTest.mjs",
+      "sha1": "2493691908c7c3edcb5eb6cb5fab73dd9b323531"
+    },
+    {
+      "path": "scripts/whatsappCancellationRecipientDatabaseTest.sql",
+      "sha1": "d64c6fc2f697961a5bd58f05edab9e0288fb26a9"
+    },
+    {
+      "path": "scripts/whatsappDeletedTaskCancellationTest.mjs",
+      "sha1": "0d8c8a806abbaecc67a6643fbcf20fcdc753a938"
+    },
+    {
+      "path": "scripts/whatsappDeliveryMonitorTest.mjs",
+      "sha1": "f088e7a744411eca4b200d6ad711732c4cdbcf71"
+    },
+    {
+      "path": "scripts/whatsappDeliveryPipelineTest.mjs",
+      "sha1": "55bfc8df5c5b9afe42e195abad283ad5a07857ae"
+    },
+    {
+      "path": "scripts/whatsappLateStartReminderTest.mjs",
+      "sha1": "8e3dd4df7ca9c0b3e16a88c0dd93fcd1193aaa48"
+    },
+    {
+      "path": "scripts/whatsappMetaAttemptHistoryDatabaseTest.sql",
+      "sha1": "1b7f0c7e5e67f1f82aaecad2eed477b90a866ac1"
+    },
+    {
+      "path": "scripts/whatsappOperationalTemplates.mjs",
+      "sha1": "44353d835551b119197831b13d490fc7cb13bf0a"
+    },
+    {
+      "path": "scripts/whatsappOperationalTemplatesTest.mjs",
+      "sha1": "c598591ddd6cdecd04668dee19d57e78f6eab439"
+    },
+    {
+      "path": "scripts/whatsappPrepTest.entry.ts",
+      "sha1": "74dc3afb726197272d5f158db90711ee739b7aad"
+    },
+    {
+      "path": "scripts/whatsappPrepTest.mjs",
+      "sha1": "70fbd00bc5d9bd67ccb3f2c84d0a99eed8ccef3b"
+    },
+    {
+      "path": "scripts/whatsappScheduleModificationTest.mjs",
+      "sha1": "2503d043fc98ea85fcb76347fc3c6c4d7e2802d3"
+    },
+    {
+      "path": "scripts/whatsappTaskModificationTriggerTest.mjs",
+      "sha1": "d76374995980df559a399829573b25e2f49d986c"
+    },
+    {
+      "path": "scripts/whatsappWebhookApprovalTest.entry.ts",
+      "sha1": "5d5f3a355a4aa77d79b8d9da2c5c9d567dd7b9c9"
+    },
+    {
+      "path": "scripts/whatsappWebhookApprovalTest.mjs",
+      "sha1": "0e59aad01bc59cc9061a78ec0627832a71576cce"
+    },
+    {
+      "path": "scripts/workerDeactivationAssignmentDatabaseTest.sql",
+      "sha1": "04a4e64178380e8f3ecd44e1daae88021ce3db32"
+    },
+    {
+      "path": "scripts/workerDeactivationAssignmentTest.mjs",
+      "sha1": "19f1a3d4ab3540c5fabd72aa0fabd5f690b7cb32"
+    },
+    {
+      "path": "scripts/workerDeactivationSecurityTest.sql",
+      "sha1": "49bc45ffac6033399ba2ac0720a9c60742b33b66"
+    },
+    {
+      "path": "scripts/workerPhoneValidationTest.entry.ts",
+      "sha1": "f45f81c24c2bd0330dfde1dfb2d7d9ea93dda359"
+    },
+    {
+      "path": "scripts/workerPhoneValidationTest.mjs",
+      "sha1": "02a35e071cc83b335eed87304e3d0c444abab5c6"
+    },
+    {
+      "path": "scripts/workloadContractHoursTest.mjs",
+      "sha1": "53d058b0a0cda73ea674becee72c4f3936910cf7"
+    },
+    {
+      "path": "src/App.css",
+      "sha1": "9b98f10ee20fb339590aee4a531790ba3ea0d314"
+    },
+    {
+      "path": "src/App.tsx",
+      "sha1": "12022b32c529873766608a417d94822932141e3f"
+    },
+    {
+      "path": "src/auth/operationalMode.ts",
+      "sha1": "347e6f5fc36c775c68a18fbc4661fe96e1e63f9b"
+    },
+    {
+      "path": "src/components/CleaningCalendar.tsx",
+      "sha1": "bb396c3125548e2a82735ad80f46f9cf1a5170d4"
+    },
+    {
+      "path": "src/components/CleaningList.tsx",
+      "sha1": "b68dc10c74d56bef84152e960799eb2e20498562"
+    },
+    {
+      "path": "src/components/StatsCards.tsx",
+      "sha1": "9fe5d450a87f95fffcd60795fab35424b1b1a2db"
+    },
+    {
+      "path": "src/components/admin/SystemMetrics.tsx",
+      "sha1": "f638baf4684bf4952a55ff4cfcfb7a43779b3e67"
+    },
+    {
+      "path": "src/components/admin/UserManagement.tsx",
+      "sha1": "6b19b58ef3d19bfdb6ceee0037cbf621aa07330c"
+    },
+    {
+      "path": "src/components/admin/security/SecurityConfigPanel.tsx",
+      "sha1": "5d206180e53f1330f36d41ceb4c0f8ea967a0689"
+    },
+    {
+      "path": "src/components/admin/security/SecurityStatusWidget.tsx",
+      "sha1": "6187f2cdd3721cbdf660c6d058fe3bad8810c292"
+    },
+    {
+      "path": "src/components/admin/sede/SedeAuditDashboard.tsx",
+      "sha1": "17dc45fd1ae6cc66eada5cafe2da25ad9c218913"
+    },
+    {
+      "path": "src/components/admin/sede/SedeTestingDashboard.tsx",
+      "sha1": "6775847d98352de32d66a0f2dcbbd098a6965721"
+    },
+    {
+      "path": "src/components/admin/sede/SedeValidationPanel.tsx",
+      "sha1": "150320adbb339c0dd06fa44288b897aa42add745"
+    },
+    {
+      "path": "src/components/analytics/AnalyticsSummaryCards.tsx",
+      "sha1": "b2ffd524ae43cc43597851aca288018090e04782"
+    },
+    {
+      "path": "src/components/analytics/CleanerPerformancePanel.tsx",
+      "sha1": "92fdbd992f33d58d41c7c73d3b28e384a216477f"
+    },
+    {
+      "path": "src/components/analytics/CleanerTasksDetailModal.tsx",
+      "sha1": "48296e9b804745696f4a86019132d15f9e50506d"
+    },
+    {
+      "path": "src/components/analytics/CorrelationsPanel.tsx",
+      "sha1": "7338e158bea3eb3c670c6850291a5ac8ba9417fb"
+    },
+    {
+      "path": "src/components/analytics/PropertyEstimationsPanel.tsx",
+      "sha1": "231743f93637a5272c4373c29103924b077227da"
+    },
+    {
+      "path": "src/components/analytics/PropertyTasksDetailModal.tsx",
+      "sha1": "3cd2688886e8115d7d682e4bc1bdbfb1b273cf36"
+    },
+    {
+      "path": "src/components/analytics/TemporalPatternsPanel.tsx",
+      "sha1": "59da0dc9404ddb8c14a24ed4342b8d9199d4643a"
+    },
+    {
+      "path": "src/components/auth/AuthPage.tsx",
+      "sha1": "4dcbecda34aa487bfd70b6702b55aae679db659c"
+    },
+    {
+      "path": "src/components/auth/OperationalModeSwitcher.tsx",
+      "sha1": "1d120b6c14372882ff7dc18cdb86763301ed1865"
+    },
+    {
+      "path": "src/components/auth/OwnerOnlyRoute.tsx",
+      "sha1": "892e6c8275cb49bf213a3aa089f1f21468dc6b93"
+    },
+    {
+      "path": "src/components/auth/ProtectedRoute.tsx",
+      "sha1": "59632fb03b5ba5b807af71763b90ee209ef68942"
+    },
+    {
+      "path": "src/components/auth/RoleProtectedRoute.tsx",
+      "sha1": "775764bc5fc2372f5a90be5444d4090d117bd9e5"
+    },
+    {
+      "path": "src/components/auth/UserMenu.tsx",
+      "sha1": "813a508ef88ab51b1fff9b6e5e0cd38f17150c1e"
+    },
+    {
+      "path": "src/components/billing/ClientBillingFilters.tsx",
+      "sha1": "675e1a23b6d3a590d89383f1248906a40387fe72"
+    },
+    {
+      "path": "src/components/billing/ClientBillingReportTable.tsx",
+      "sha1": "33910ead2cf71c398761a2d36b2cd836e1c96f1b"
+    },
+    {
+      "path": "src/components/buildings/BuildingDetailPanel.tsx",
+      "sha1": "652767a4749458eebc23de71b177ede498b844cf"
+    },
+    {
+      "path": "src/components/buildings/buildingPresentation.ts",
+      "sha1": "7d8e9b80cfd8ff101b5efed53e072e3bce261d14"
+    },
+    {
+      "path": "src/components/calendar/CalendarContainer.tsx",
+      "sha1": "5b072578d9688c369704a7133781d1659cfa444c"
+    },
+    {
+      "path": "src/components/calendar/CalendarFooterSummary.tsx",
+      "sha1": "12c98a79bad9bb6955cabb301fa20dc9d25ea8e7"
+    },
+    {
+      "path": "src/components/calendar/CalendarGrid.tsx",
+      "sha1": "857e5b0d77727f371fb6a4ddf5f39be60fcf283d"
+    },
+    {
+      "path": "src/components/calendar/CalendarHeader.tsx",
+      "sha1": "521f8dedad1ba2e6d9c6ad898cf5058e36d028be"
+    },
+    {
+      "path": "src/components/calendar/CalendarLayout.tsx",
+      "sha1": "026a6ff8548d6ed976c8489684bb887ec933d7a5"
+    },
+    {
+      "path": "src/components/calendar/CalendarModals.tsx",
+      "sha1": "db06ce2521f3929132d28af84eb0729591a9a735"
+    },
+    {
+      "path": "src/components/calendar/CleanerDesktopCalendar.tsx",
+      "sha1": "58a60bac9831792491892ab9a251867f7e6262d5"
+    },
+    {
+      "path": "src/components/calendar/CleanerMobileCalendar.tsx",
+      "sha1": "b545df8f07e93f10be150c5d83c5a3d9839993fd"
+    },
+    {
+      "path": "src/components/calendar/ConflictWarningModal.tsx",
+      "sha1": "32810431684246ab8ae67af651df9d6244d588c0"
+    },
+    {
+      "path": "src/components/calendar/DebugInfo.tsx",
+      "sha1": "699d93a3ecd73a01d1ff43c7a130483572c53215"
+    },
+    {
+      "path": "src/components/calendar/DragPreview.tsx",
+      "sha1": "029161341394ada51ff9b0810acdec6c924ccc03"
+    },
+    {
+      "path": "src/components/calendar/EnhancedTaskCard.tsx",
+      "sha1": "56fad1412c81f11139e4e53c19ac6a99f1355cee"
+    },
+    {
+      "path": "src/components/calendar/LazyCalendarComponents.tsx",
+      "sha1": "33cebe6ab00aa721d295f4a92fa852d8aef57dda"
+    },
+    {
+      "path": "src/components/calendar/ManagerMobileAgendaCalendar.tsx",
+      "sha1": "2ac948a4771939f36449d9f2578d662adc938bb4"
+    },
+    {
+      "path": "src/components/calendar/ManagerMobileCalendar.tsx",
+      "sha1": "37bcea52b9cda6651a14056cecb938bc1a064407"
+    },
+    {
+      "path": "src/components/calendar/MemoizedCalendarComponents.tsx",
+      "sha1": "bd5efc4655a35d0677ed1f30493c134399a8ff60"
+    },
+    {
+      "path": "src/components/calendar/MultiSelectFilter.tsx",
+      "sha1": "23b8d2484d2dccd156acbac76d2e99c8e325eccc"
+    },
+    {
+      "path": "src/components/calendar/OverlapAlert.tsx",
+      "sha1": "74f03b304a136772f49d23b0818fb6cc7d972b1e"
+    },
+    {
+      "path": "src/components/calendar/ResponsiveCalendarHeader.tsx",
+      "sha1": "b21053065113640d0a06fca48116f7a8e03afa04"
+    },
+    {
+      "path": "src/components/calendar/StatusLegend.tsx",
+      "sha1": "6dc7dda629f812754556fa84526402b8c461d415"
+    },
+    {
+      "path": "src/components/calendar/TaskCard.tsx",
+      "sha1": "faa2eac85349c4b2f8fb2881dd8d6b9de62009e6"
+    },
+    {
+      "path": "src/components/calendar/TimeSlot.tsx",
+      "sha1": "95a525e4f03b6b8994123ca3e2c944b419031ff3"
+    },
+    {
+      "path": "src/components/calendar/TimelineHeader.tsx",
+      "sha1": "23d9448fc5f1845df40a7a07ea8d73dfb2db82a5"
+    },
+    {
+      "path": "src/components/calendar/UnassignedTasks.tsx",
+      "sha1": "adb8379778294e4c309864c410d5a3d7ba0c5db0"
+    },
+    {
+      "path": "src/components/calendar/UnavailableWorkersPanel.tsx",
+      "sha1": "59694b6d2bf34b292b4c083e1c2305e8781639a3"
+    },
+    {
+      "path": "src/components/calendar/WorkersColumn.tsx",
+      "sha1": "14b1ca68974baf11e0b8d2b84e35c3a900f36d64"
+    },
+    {
+      "path": "src/components/calendar/cleaner/CleanerDateHeader.tsx",
+      "sha1": "3bc43d3a8cb4f8b28e364c1f24aeb92df1b71d09"
+    },
+    {
+      "path": "src/components/calendar/cleaner/CleanerTaskCard.tsx",
+      "sha1": "0bbb79a31f6d415c1d10697459df4a81135e15b2"
+    },
+    {
+      "path": "src/components/calendar/cleaner/CleanerTaskSummary.tsx",
+      "sha1": "616aae5da1e603ea6a25a24d3e185a7e0bed5398"
+    },
+    {
+      "path": "src/components/calendar/cleaner/CleanerViewToggle.tsx",
+      "sha1": "a229498ed546c300b8ecc96bf594030950f03a4e"
+    },
+    {
+      "path": "src/components/calendar/cleaner/CleanerWeeklyView.tsx",
+      "sha1": "3af4d688baf8376313d9fa16e440d5e6f8d221a2"
+    },
+    {
+      "path": "src/components/calendar/utils/calendarSearch.ts",
+      "sha1": "98cbccbda869d4e83fe92fa8083f62b03250fe59"
+    },
+    {
+      "path": "src/components/checklist-templates/ChecklistTemplateForm.tsx",
+      "sha1": "8b5e97b8a0c99c64bae4af545e9e7747ad2f8a00"
+    },
+    {
+      "path": "src/components/checklist-templates/ChecklistTemplatesList.tsx",
+      "sha1": "4d2f7be6c4824de83df7c0fe09cfdf31ef4f3923"
+    },
+    {
+      "path": "src/components/checklist-templates/ChecklistTemplatesPage.tsx",
+      "sha1": "d637fbcb2c7c2d98412fd46c6d39ac0330a0f7c3"
+    },
+    {
+      "path": "src/components/checklist-templates/CreateTemplateModal.tsx",
+      "sha1": "e371a0235fd3c0009d7772341bd569ca21af94e4"
+    },
+    {
+      "path": "src/components/checklist-templates/EditTemplateModal.tsx",
+      "sha1": "e44c3ab8f7a9645bd5b73a0ed86789b229080070"
+    },
+    {
+      "path": "src/components/cleaning-planning/AssignmentProposalPanel.tsx",
+      "sha1": "5d40d421a33f80443e9e59936de07d1628f77c17"
+    },
+    {
+      "path": "src/components/cleaning-planning/BuildingTaskBoard.tsx",
+      "sha1": "6354870e788c6d29683e38c558b7cd6299846e20"
+    },
+    {
+      "path": "src/components/cleaning-planning/CleanerLoadTable.tsx",
+      "sha1": "31aa63225606db4c40224f6adf80cbe07aeb89f6"
+    },
+    {
+      "path": "src/components/cleaning-planning/CleanerPlanningColumn.tsx",
+      "sha1": "7d0cd907ba8d154b438af1c136d1faf75bddec4e"
+    },
+    {
+      "path": "src/components/cleaning-planning/CleaningPlanningPage.tsx",
+      "sha1": "29c7e2049bb3c92cd87bc632861ba3809b5d7fb4"
+    },
+    {
+      "path": "src/components/cleaning-planning/DailyPlanningHeader.tsx",
+      "sha1": "21376e487f854ea47a4d26be8beabd4f63eaab20"
+    },
+    {
+      "path": "src/components/cleaning-planning/PlanningAdvancedDetails.tsx",
+      "sha1": "78e84a33a8222d3b5d9a97d07062555f7f6db1c3"
+    },
+    {
+      "path": "src/components/cleaning-planning/PlanningAlertsPanel.tsx",
+      "sha1": "613a88027079ca722483d0e3dc11d0cc8dea7ebd"
+    },
+    {
+      "path": "src/components/cleaning-planning/PlanningAttentionSummary.tsx",
+      "sha1": "936223e5372df80b27eaaf60912fa4ae33a85394"
+    },
+    {
+      "path": "src/components/cleaning-planning/PlanningCopilotPanel.tsx",
+      "sha1": "724e4d33d7bfc35cdb2d74906add87cda9feb188"
+    },
+    {
+      "path": "src/components/cleaning-planning/PlanningDayNavigation.tsx",
+      "sha1": "a046d5c1969d11f4ee580d8290478a476242e2f6"
+    },
+    {
+      "path": "src/components/cleaning-planning/PlanningDecisionQueue.tsx",
+      "sha1": "30a5f29a3e59e4b911f037bc4fc01e85e80c3c59"
+    },
+    {
+      "path": "src/components/cleaning-planning/PlanningFilters.tsx",
+      "sha1": "182593f2378efd13b824fd87f894dd454dc6231b"
+    },
+    {
+      "path": "src/components/cleaning-planning/PlanningProposalCalendar.tsx",
+      "sha1": "5e5e1fddfac37f6233bd0bc892796f3343e69715"
+    },
+    {
+      "path": "src/components/cleaning-planning/PlanningStartScreen.tsx",
+      "sha1": "015b50dcac3d4a7407a0f66dac9782cc07b5f022"
+    },
+    {
+      "path": "src/components/cleaning-planning/PlanningSummaryCards.tsx",
+      "sha1": "919afa28a016f17005c104be945fee3fa386a7eb"
+    },
+    {
+      "path": "src/components/cleaning-planning/PlanningTaskCard.tsx",
+      "sha1": "5c704b114535384fc034f65e5dd3347f9d4f2918"
+    },
+    {
+      "path": "src/components/cleaning-planning/PlanningWeeklyWorkloadPanel.tsx",
+      "sha1": "cef06cc59446c87899bc0256ebfaf716b483389e"
+    },
+    {
+      "path": "src/components/cleaning-planning/PlanningWorkflowGuide.tsx",
+      "sha1": "09135fd9a928541567e9a02af9ac86ed98bea73b"
+    },
+    {
+      "path": "src/components/cleaning-planning/UnassignedTasksPanel.tsx",
+      "sha1": "52f72bdcfb430a8448ed9bd06416b851ea6adcc9"
+    },
+    {
+      "path": "src/components/cleaning-planning/WorkerAvailabilityPanel.tsx",
+      "sha1": "190c6dd0829813c8588616f2194418e9c3cfcdec"
+    },
+    {
+      "path": "src/components/cleaning-reports/CleaningReportsAnalytics.tsx",
+      "sha1": "3cc409b9530053ad186ce4378728ce270081e4f9"
+    },
+    {
+      "path": "src/components/cleaning-reports/CleaningReportsDashboard.tsx",
+      "sha1": "429a51392973a89d1b2b29d40d36be33c30a7ea6"
+    },
+    {
+      "path": "src/components/cleaning-reports/CleaningReportsFilters.tsx",
+      "sha1": "26d233c1954795ef018e6e972c51f485fcf3a89d"
+    },
+    {
+      "path": "src/components/cleaning-reports/CleaningReportsGallery.tsx",
+      "sha1": "4202b2f9b13c7b618afb9b751946eac16b9a7ea6"
+    },
+    {
+      "path": "src/components/cleaning-reports/CleaningReportsIncidents.tsx",
+      "sha1": "c4a087ba0b0b8ed1c8dc1bcdd8849cfd7bd120ee"
+    },
+    {
+      "path": "src/components/cleaning-reports/LazyCleaningReportsComponents.tsx",
+      "sha1": "9dec109d17dd767f458dafbfbe64e20fa4499549"
+    },
+    {
+      "path": "src/components/cleaning-reports/incident-components/IncidentBadges.tsx",
+      "sha1": "e5868c4bf0a7c4eb670771105164905e5b9b6c26"
+    },
+    {
+      "path": "src/components/cleaning-reports/incident-components/IncidentLoadingSkeleton.tsx",
+      "sha1": "06e66d8bcb2c7ef0cb3cfa98a236fc0b09bf6ca5"
+    },
+    {
+      "path": "src/components/cleaning-reports/incident-components/IncidentModal.tsx",
+      "sha1": "1138171eb2074cf6ef5e1472bade3d1cdc15dce7"
+    },
+    {
+      "path": "src/components/cleaning-reports/incident-components/IncidentStatsCards.tsx",
+      "sha1": "4b2c5b4b9ca2f25b88891a3231896ef0b556fc5f"
+    },
+    {
+      "path": "src/components/cleaning-reports/incident-components/IncidentsList.tsx",
+      "sha1": "f05dea95e91a3f354cbcdc8d4aefbcec9a28aa0f"
+    },
+    {
+      "path": "src/components/cleaning-reports/incident-components/index.ts",
+      "sha1": "3e88bb63f22fb6aaf494a89830b22d93f6a83599"
+    },
+    {
+      "path": "src/components/client-portal/ClientPortalAuth.tsx",
+      "sha1": "d72994b6c2ad0363c00fd33494081e815cb8fa68"
+    },
+    {
+      "path": "src/components/client-portal/ClientPortalDashboard.tsx",
+      "sha1": "454a9a6546a155c304336478981425965ae0146f"
+    },
+    {
+      "path": "src/components/client-portal/ClientPortalSection.tsx",
+      "sha1": "80485afd9b816c93031135f3e2fd98aa9dd866e1"
+    },
+    {
+      "path": "src/components/client-portal/ClientReservationHistoryModal.tsx",
+      "sha1": "5b6a773a327761a3c375c7b46bd4b5ed912dde04"
+    },
+    {
+      "path": "src/components/client-portal/EditReservationForm.tsx",
+      "sha1": "88e06ff30fa8b2aaa68070dd99595f09c8ce979a"
+    },
+    {
+      "path": "src/components/client-portal/IncidentsTab.tsx",
+      "sha1": "049937dfdc6d591bc6bb4e0230c8adf5dd335878"
+    },
+    {
+      "path": "src/components/client-portal/OperationalDayView.tsx",
+      "sha1": "bc00d0d1d3e17a6dc35375c5aa0f8958af0c8e53"
+    },
+    {
+      "path": "src/components/client-portal/QuickAddReservations.tsx",
+      "sha1": "49ff9485ff3a027fc2fff2750ed5dbb947942501"
+    },
+    {
+      "path": "src/components/client-portal/ReservationDetailModal.tsx",
+      "sha1": "9a9e66a319e04eb6d85714df7c47c5ca04c05248"
+    },
+    {
+      "path": "src/components/client-portal/ReservationsCalendar.tsx",
+      "sha1": "c975457009b06c80c1a70059661f3dab29c6a6fb"
+    },
+    {
+      "path": "src/components/client-portal/ReservationsList.tsx",
+      "sha1": "89513fc4bbcee2292013751ddc78889f6c306d91"
+    },
+    {
+      "path": "src/components/client-portal/calendar/CalendarLegend.tsx",
+      "sha1": "9ee1fef35a9c06f3939fd7ee591d2a6fd7686892"
+    },
+    {
+      "path": "src/components/client-portal/calendar/MonthlyView.tsx",
+      "sha1": "665cc88aeec75cb31c18b33d42a7639097504adf"
+    },
+    {
+      "path": "src/components/client-portal/calendar/TimelineView.tsx",
+      "sha1": "2145a5e03e922120a9c72f25e64f7ddcf7a5903c"
+    },
+    {
+      "path": "src/components/client-portal/calendar/propertyColors.ts",
+      "sha1": "39ddc7f504f833cd34ae5b08b3450485766cc2c8"
+    },
+    {
+      "path": "src/components/client-portal/clientPortalVisibility.ts",
+      "sha1": "959f86f7cfde885d714773c4d87fdda385b0d164"
+    },
+    {
+      "path": "src/components/client-portal/portalOperationalView.ts",
+      "sha1": "d92052f53426eb1650f056216606260ed1db897d"
+    },
+    {
+      "path": "src/components/clients/ClientDetailPanel.tsx",
+      "sha1": "c5df1a1fda11cb29c11fced867d744e503afb02e"
+    },
+    {
+      "path": "src/components/clients/ClientList.tsx",
+      "sha1": "048b27ed6e3ed7a775624ac3129e933320af7a80"
+    },
+    {
+      "path": "src/components/clients/ClientsPage.tsx",
+      "sha1": "c194d1b62c6a99bc89e71aca22f7a0886ef051fe"
+    },
+    {
+      "path": "src/components/clients/CreateClientModal.tsx",
+      "sha1": "c647cce56235b92176886f2484ba0b18410b37f9"
+    },
+    {
+      "path": "src/components/clients/EditClientModal.tsx",
+      "sha1": "ca57d8171f14bddae5b9745f77ef8092306a2c61"
+    },
+    {
+      "path": "src/components/clients/clientPresentation.ts",
+      "sha1": "c833fa896fe80103d25dd4b1517f8c31d87e327c"
+    },
+    {
+      "path": "src/components/clients/forms/AddressSection.tsx",
+      "sha1": "ee3a17cba290c8c7fb4ec8cceffa420ecf51e878"
+    },
+    {
+      "path": "src/components/clients/forms/ClientFormSchema.ts",
+      "sha1": "e1efda7448ce7a702ca414c9dc4534068455bf12"
+    },
+    {
+      "path": "src/components/clients/forms/ContactInfoSection.tsx",
+      "sha1": "6ecf5a3cf508ccd08a70d0d339c47f90ebf4b30a"
+    },
+    {
+      "path": "src/components/clients/forms/PersonalInfoSection.tsx",
+      "sha1": "8f52a658002630e55153ccaf02e1a9c60b54ff67"
+    },
+    {
+      "path": "src/components/clients/forms/ServiceInfoSection.tsx",
+      "sha1": "4b0b91a594855b792f974f36fceaa46de5fb2155"
+    },
+    {
+      "path": "src/components/common/LazyLoadErrorBoundary.tsx",
+      "sha1": "881b6497c6a0b9c45cb3570943f7dac91767d218"
+    },
+    {
+      "path": "src/components/common/NoSedeWarning.tsx",
+      "sha1": "61c4a66a2966f89c68bf9fd0da9bc7f66ff72847"
+    },
+    {
+      "path": "src/components/common/SystemHealthMonitor.tsx",
+      "sha1": "bb9eb45f949e1560212b28bcb210993a27c4676b"
+    },
+    {
+      "path": "src/components/dashboard/CleanerDashboard.tsx",
+      "sha1": "a9caa40b21f866406e4ac88442c6cb17993077f4"
+    },
+    {
+      "path": "src/components/dashboard/CleanerEntryLoading.tsx",
+      "sha1": "f189e96c6352ab1b4a8b7fb80fa6f2acb247d935"
+    },
+    {
+      "path": "src/components/dashboard/DashboardSidebar.tsx",
+      "sha1": "d45185d260e80642e856d275610422a4dc2be2e9"
+    },
+    {
+      "path": "src/components/dashboard/DesktopManagerDashboard.tsx",
+      "sha1": "70a5b25c1f74a6cd85174d57b376c948478d4f6d"
+    },
+    {
+      "path": "src/components/dashboard/MainDashboard.tsx",
+      "sha1": "81b765c36873de05c4b3f9c562e669093b0aed51"
+    },
+    {
+      "path": "src/components/dashboard/ManagerDashboard.tsx",
+      "sha1": "a694717412e48d709c2d7334846979e229291ad8"
+    },
+    {
+      "path": "src/components/dashboard/MobileDashboardHeader.tsx",
+      "sha1": "92ad59698aed7edd091bfbc8faaf6542933078cb"
+    },
+    {
+      "path": "src/components/dashboard/MobileDashboardSidebar.tsx",
+      "sha1": "80a59e433554799a44b4e94170f2bcb029468c2f"
+    },
+    {
+      "path": "src/components/dashboard/MobileManagerDashboard.tsx",
+      "sha1": "60965379c4708b764596c74deec740e3dc8758a7"
+    },
+    {
+      "path": "src/components/dashboard/NavigationCard.tsx",
+      "sha1": "524fdd7ecd63f58a466e0a771bc62cbcae23caf6"
+    },
+    {
+      "path": "src/components/dashboard/WelcomePage.tsx",
+      "sha1": "555ef6a25b7a6d169735867c885c0d3fd93dd48d"
+    },
+    {
+      "path": "src/components/dashboard/components/DashboardMetricsCards.tsx",
+      "sha1": "37657ce38517a21e00df1791eac81304b130533f"
+    },
+    {
+      "path": "src/components/dashboard/components/LinenControlWidget.tsx",
+      "sha1": "d1996d37ff8df92fff987f2e94f642cc5667e266"
+    },
+    {
+      "path": "src/components/dashboard/components/TodayTasksSection.tsx",
+      "sha1": "65f2c1bfce3820aa37368dba7de02c0e664f84fe"
+    },
+    {
+      "path": "src/components/directory/CrmDetailFrame.tsx",
+      "sha1": "03175d3a537a239f83f2eac6d950c3eaf4279c6b"
+    },
+    {
+      "path": "src/components/directory/DirectoryPage.tsx",
+      "sha1": "0e9ba065baf70654201166608eccf45df452efde"
+    },
+    {
+      "path": "src/components/directory/directorySearch.ts",
+      "sha1": "1ce9d4dcb8305f21ce87d6933605a6f83ae12116"
+    },
+    {
+      "path": "src/components/hostaway/HostawayIntegrationWidget.tsx",
+      "sha1": "0b914bf481166d13d4e92929b449cf70716f5695"
+    },
+    {
+      "path": "src/components/hostaway/HostawayScheduleManager.tsx",
+      "sha1": "260fa9608912946e4c207c2a54322e396a9fcdda"
+    },
+    {
+      "path": "src/components/incidents/IncidentReportTrigger.tsx",
+      "sha1": "2346533925ecdbe929e7b6b7f1842c6628c70556"
+    },
+    {
+      "path": "src/components/incidents/ReportIncidentDialog.tsx",
+      "sha1": "7a58016968d7dba0166931bc0e204b7027c1c044"
+    },
+    {
+      "path": "src/components/incidents/admin/CreateManualIncidentDialog.tsx",
+      "sha1": "69d5df54c4c6f5c616cae660ab6bee7c734bb215"
+    },
+    {
+      "path": "src/components/incidents/admin/IncidentsAdminInbox.tsx",
+      "sha1": "2940dc798c6e6c5e47a6e6f5b45c9c7a1427b608"
+    },
+    {
+      "path": "src/components/inventory/AmenityMappingTable.tsx",
+      "sha1": "0aa7f8470ede63aa7336cef55a0e9f1cfc4b2ae7"
+    },
+    {
+      "path": "src/components/inventory/AutoConsumptionStatus.tsx",
+      "sha1": "615b41044ca6dae15e4bdb2c312d42c2f2089fa2"
+    },
+    {
+      "path": "src/components/inventory/ConsumptionConfigTable.tsx",
+      "sha1": "f6cc864bbda3ec63bf12fb471a3f85ed5d3ddfba"
+    },
+    {
+      "path": "src/components/inventory/CreateConsumptionConfigDialog.tsx",
+      "sha1": "bc5adb47a7dca015e1e1702692d4dd0c742a45e3"
+    },
+    {
+      "path": "src/components/inventory/CreateMovementDialog.tsx",
+      "sha1": "bb28a38440058437eefe28c6d9288ffca13605cc"
+    },
+    {
+      "path": "src/components/inventory/CreateProductDialog.tsx",
+      "sha1": "2e1950e7a1a335febb881ac8c1a587bcb25ab534"
+    },
+    {
+      "path": "src/components/inventory/EditConsumptionConfigDialog.tsx",
+      "sha1": "f8585efa10d4391fdd2991b6f4774775e7fbbf37"
+    },
+    {
+      "path": "src/components/inventory/InventoryAlertSystem.tsx",
+      "sha1": "cc9b350d11c8ff21fde0d28dda01117055f1b50e"
+    },
+    {
+      "path": "src/components/inventory/InventoryAnalytics.tsx",
+      "sha1": "7c730ca9008d2b2cd08028c89cf44f5f21e26619"
+    },
+    {
+      "path": "src/components/inventory/InventoryConsumptionIntegration.tsx",
+      "sha1": "9c23d6247ebb1865c7b99547fd4f21de29084af9"
+    },
+    {
+      "path": "src/components/inventory/InventoryDashboardWidget.tsx",
+      "sha1": "f3b9c15ad4e64261bc914dee32a8b3785d6c8962"
+    },
+    {
+      "path": "src/components/inventory/InventoryExportUtils.tsx",
+      "sha1": "f8113df7ae414bfebc0544c4f110876e61380ed9"
+    },
+    {
+      "path": "src/components/inventory/InventoryLayout.tsx",
+      "sha1": "5ed0ba9716f118e2594a46121882ab9f2056d21e"
+    },
+    {
+      "path": "src/components/inventory/InventoryPredictions.tsx",
+      "sha1": "5afba6066b0d88dbfc08d794f83da88ec318324b"
+    },
+    {
+      "path": "src/components/inventory/InventoryStockTable.tsx",
+      "sha1": "5bd8fdc922987fe8d7633892a89fa310f3c96c6b"
+    },
+    {
+      "path": "src/components/inventory/InventoryTaskIntegration.tsx",
+      "sha1": "79c2394dc6050ca008885cd82db7f2caa1b6491b"
+    },
+    {
+      "path": "src/components/inventory/MovementsTable.tsx",
+      "sha1": "9973c0e15ddaa3720666b2bdf41cc7b3eb4e95d0"
+    },
+    {
+      "path": "src/components/inventory/NotificationCenter.tsx",
+      "sha1": "42e9e60dfeebf4e76854f68a2c3062963638fde8"
+    },
+    {
+      "path": "src/components/inventory/StockAdjustmentDialog.tsx",
+      "sha1": "c4ac035474f3435a6b5719a17398e729ec20ddf1"
+    },
+    {
+      "path": "src/components/inventory/StockValidationDialog.tsx",
+      "sha1": "8464aa73302c3883cd04d4a9238601b8414c4d13"
+    },
+    {
+      "path": "src/components/invitation/InvitationVerificationLoader.tsx",
+      "sha1": "f9849aa96bbacc17bd85ff1ab3896779161986dd"
+    },
+    {
+      "path": "src/components/invitation/ProcessingLoader.tsx",
+      "sha1": "7affd842c76f0e891c74653a89808014af4fbdf8"
+    },
+    {
+      "path": "src/components/invitation/SignInForm.tsx",
+      "sha1": "52f9942dd498820e90614b9fcc89d151b0973db4"
+    },
+    {
+      "path": "src/components/invitation/SignUpForm.tsx",
+      "sha1": "1f77abb3ba665eefe3625d340cad24f1a417ed65"
+    },
+    {
+      "path": "src/components/invitation/SuccessMessage.tsx",
+      "sha1": "4f0cd7eb2631cc5ef561496dbb050f402c4bd774"
+    },
+    {
+      "path": "src/components/laundry-share/BuildingCollectionGroup.tsx",
+      "sha1": "8d7be2543e36da35f9e63a94e790f1f77c7aa028"
+    },
+    {
+      "path": "src/components/laundry-share/BuildingDeliveryGroup.tsx",
+      "sha1": "8c564a4144aeecb06824624df63cf2376d75905c"
+    },
+    {
+      "path": "src/components/laundry-share/LaundryDeliveryCard.tsx",
+      "sha1": "1fc727739a951aa23434fdde3c347ea6d3f2b19d"
+    },
+    {
+      "path": "src/components/laundry-share/LaundryPreparationTimings.tsx",
+      "sha1": "6941ce9200d4124ef45e4ec4d357a352966161c1"
+    },
+    {
+      "path": "src/components/laundry-share/LaundryRouteV2View.tsx",
+      "sha1": "8b818eddc17315290d6b144a1f14d1949d0864fc"
+    },
+    {
+      "path": "src/components/laundry-share/LaundryScheduleConfigModal.tsx",
+      "sha1": "96a04f74fa7725193feb3a22ae0c2d84d0fee04e"
+    },
+    {
+      "path": "src/components/laundry-share/LaundryScheduledLinkModal.tsx",
+      "sha1": "32f15dbf22b2050afead9b1d69107514c1b659a3"
+    },
+    {
+      "path": "src/components/laundry-share/LaundryShareEditModal.tsx",
+      "sha1": "2ea964f577675b0fb3d97dd117e5a6f917f8c278"
+    },
+    {
+      "path": "src/components/laundry-share/LaundryShareLinkModal.tsx",
+      "sha1": "de94d4e0f91a05874b0f0a92ec1afed0d4b696c6"
+    },
+    {
+      "path": "src/components/laundry-share/QuickDayLinksWidget.tsx",
+      "sha1": "d42022a1e479d7e4e304e2f5dfe443da1a42f3e0"
+    },
+    {
+      "path": "src/components/layout/AppHeader.tsx",
+      "sha1": "6fd2f891ddf3fdac719a440364613a7ca8c6d6ad"
+    },
+    {
+      "path": "src/components/layout/AppLayout.tsx",
+      "sha1": "86d3c8d0c88f6782316f4197d998f9908b4b5ac9"
+    },
+    {
+      "path": "src/components/layout/ProtectedRoute.tsx",
+      "sha1": "423944fc7be93d3257e95d51ad7fd2e1024652bc"
+    },
+    {
+      "path": "src/components/layout/SidebarEdgeToggle.tsx",
+      "sha1": "ca743a24afd4af5cb8c24248630659762c0b18f3"
+    },
+    {
+      "path": "src/components/logistics/LogisticsCard.tsx",
+      "sha1": "86aa997a59722263c2e93d8248ab36def547203e"
+    },
+    {
+      "path": "src/components/logistics/LogisticsDashboard.tsx",
+      "sha1": "d17bc4f5a1d5eaffb0fe3045d6680497649f9d5e"
+    },
+    {
+      "path": "src/components/logistics/LogisticsLayout.tsx",
+      "sha1": "c11dafcf0d9edfded7199c86a9fc17e3fd0aeebe"
+    },
+    {
+      "path": "src/components/logistics/LogisticsReporting.tsx",
+      "sha1": "ed5aa6b0a1d375c0a8b039a68fe7199df0949826"
+    },
+    {
+      "path": "src/components/logistics/LogisticsStatsGrid.tsx",
+      "sha1": "b73b5d9b319b9426491fd1d6ad31785b23d20e51"
+    },
+    {
+      "path": "src/components/logistics/PackingModeView.tsx",
+      "sha1": "86af1834759e4c6af9c388015150a3fa59c498e0"
+    },
+    {
+      "path": "src/components/logistics/PropertyPackageCard.tsx",
+      "sha1": "42b8a9a2960fb4ec0f69933179c7d537e478543f"
+    },
+    {
+      "path": "src/components/mobile/MobileBottomNav.tsx",
+      "sha1": "d3611924f85837970b667ab2f74b769b15bf38a8"
+    },
+    {
+      "path": "src/components/mobile/MobileCreateActions.tsx",
+      "sha1": "b70ce49aa62210fe50ecb0774c7187367ae8f0fa"
+    },
+    {
+      "path": "src/components/mobile/MobileDebugPanel.tsx",
+      "sha1": "ad290958f6820218850095ab7fc3106f73f5d169"
+    },
+    {
+      "path": "src/components/mobile/MobileErrorBoundary.tsx",
+      "sha1": "8dd363951bca96d740da223f2f9457130eb03296"
+    },
+    {
+      "path": "src/components/mobile/MobileErrorDisplay.tsx",
+      "sha1": "ea2aae9bd1e790330d2351a88da5ded1a7e0f825"
+    },
+    {
+      "path": "src/components/mobile/MobileErrorProvider.tsx",
+      "sha1": "a52482df8355d2aaba5ffa37ebac58460b4d967a"
+    },
+    {
+      "path": "src/components/modals/AssignCleanerModal.tsx",
+      "sha1": "1f59d423c92167bb7b8626afe0a909a50f2daeca"
+    },
+    {
+      "path": "src/components/modals/AssignMultipleCleanersModal.tsx",
+      "sha1": "4511e8e395b87a0f055b24459e4a2d64f465b688"
+    },
+    {
+      "path": "src/components/modals/BatchCreateTaskModal.tsx",
+      "sha1": "100c37d5ba935f878cd75ed95ae44d62fa4b485e"
+    },
+    {
+      "path": "src/components/modals/ClientPropertySelector.tsx",
+      "sha1": "58ae98ec02198d9a9a67cc001fa8d7fe2fb8e291"
+    },
+    {
+      "path": "src/components/modals/CreateRecurringTaskModal.tsx",
+      "sha1": "5ed92650dce3a31c49ca12ac3e6bd20bc0d0e6df"
+    },
+    {
+      "path": "src/components/modals/CreateTaskModal.tsx",
+      "sha1": "58abec58960f13802b760d056baff97bf9b15125"
+    },
+    {
+      "path": "src/components/modals/GroupedTaskReportModal.tsx",
+      "sha1": "311b1f8dc570aa2fbd575ca9dda4fb83c780f94c"
+    },
+    {
+      "path": "src/components/modals/TaskDetailsModal.tsx",
+      "sha1": "ec846d93ab5436357045ed1451c000422216ebe9"
+    },
+    {
+      "path": "src/components/modals/TaskPreviewModal.tsx",
+      "sha1": "7cc63f870068f2c7c638b569056b14a5669b0077"
+    },
+    {
+      "path": "src/components/modals/TaskReportModal.tsx",
+      "sha1": "f11887c2da32c33b0c6b31af2d0256ad48346c29"
+    },
+    {
+      "path": "src/components/modals/batch-create/BatchCleanerAssignment.tsx",
+      "sha1": "eb68c287a82894b1876dd669892f3e1ebcc77ec4"
+    },
+    {
+      "path": "src/components/modals/batch-create/BatchTaskForm.tsx",
+      "sha1": "9ee3d24a7abaef6a83404fb4f19f01bbdb599a9e"
+    },
+    {
+      "path": "src/components/modals/batch-create/MultiPropertySelector.tsx",
+      "sha1": "1a22ff24080abdfe38f0d3f447d5f300607443b0"
+    },
+    {
+      "path": "src/components/modals/batch-create/PropertyGridSelector.tsx",
+      "sha1": "dcd41c423a7cd8d3428adcc934f60bc0cde53ae1"
+    },
+    {
+      "path": "src/components/modals/batch-create/PropertyGridToolbar.tsx",
+      "sha1": "19c5cf94f93b59304827093e5929685d85e9bfe8"
+    },
+    {
+      "path": "src/components/modals/batch-create/useBatchCreateTask.ts",
+      "sha1": "149d2c7fe675264ea010794500303dfa08430580"
+    },
+    {
+      "path": "src/components/modals/create-task/CheckInOutSection.tsx",
+      "sha1": "e120a6e9e9cb4d5abbfa72b1371f122a6ada6e91"
+    },
+    {
+      "path": "src/components/modals/create-task/CleanerSection.tsx",
+      "sha1": "3acab26b1b876c0804de3c02f4811d68cacb823b"
+    },
+    {
+      "path": "src/components/modals/create-task/CostPaymentSection.tsx",
+      "sha1": "c4954e362589e11d6a6e7633fabca79c0b3c0a4f"
+    },
+    {
+      "path": "src/components/modals/create-task/NotesSection.tsx",
+      "sha1": "b26f008d0665c81a791a72af2f6819777449593e"
+    },
+    {
+      "path": "src/components/modals/create-task/TimeFieldsSection.tsx",
+      "sha1": "09c4cf5fb8798fe2534f3958da36484438f71eca"
+    },
+    {
+      "path": "src/components/modals/create-task/TypeStatusSection.tsx",
+      "sha1": "8aef0981059c70a2537c0519de43fe8e53435f20"
+    },
+    {
+      "path": "src/components/modals/create-task/useCreateTaskForm.ts",
+      "sha1": "7b4c7a39a3d0f45151953608c75d3e1fa264d587"
+    },
+    {
+      "path": "src/components/modals/recurring-task/BasicInfoSection.tsx",
+      "sha1": "1c4f17d55f930e74d0114d440c8118d200a2474a"
+    },
+    {
+      "path": "src/components/modals/recurring-task/RecurrenceSection.tsx",
+      "sha1": "713a29f896da028c7d62092b05e39478b1bd4b6f"
+    },
+    {
+      "path": "src/components/modals/recurring-task/ScheduleSection.tsx",
+      "sha1": "a3ed1e71496b7c6d43f9b49dd10e9e7bbc6e49af"
+    },
+    {
+      "path": "src/components/modals/recurring-task/useRecurringTaskForm.ts",
+      "sha1": "df4795dead7ef6de4b6fa928431e7269c02132cd"
+    },
+    {
+      "path": "src/components/modals/task-details/AdditionalTasksSection.tsx",
+      "sha1": "6241d9123c2f2c784c4f7854e61ae12030faf5fe"
+    },
+    {
+      "path": "src/components/modals/task-details/TaskDetailsActions.tsx",
+      "sha1": "448c3a16fb0b60f2bd0b2b515471a5eba184c4d7"
+    },
+    {
+      "path": "src/components/modals/task-details/TaskDetailsConfirmDialogs.tsx",
+      "sha1": "dfd2da04162d9b5172701bf7e344864135cd5f92"
+    },
+    {
+      "path": "src/components/modals/task-details/TaskDetailsForm.tsx",
+      "sha1": "36dd31431dffc99a5891502c9b8fc96acef29905"
+    },
+    {
+      "path": "src/components/modals/task-details/TaskDetailsHeader.tsx",
+      "sha1": "ff510665c94c9b5190e911cf34959c3002a19b9d"
+    },
+    {
+      "path": "src/components/modals/task-details/components/AmenitiesSection.tsx",
+      "sha1": "ed72802982354fdb166964d64efb8c4482098935"
+    },
+    {
+      "path": "src/components/modals/task-details/components/ClientInfoSection.tsx",
+      "sha1": "b370b19e96d7143cc0ef30e5954b30b696dd4574"
+    },
+    {
+      "path": "src/components/modals/task-details/components/ExtraordinaryServiceBillingSection.tsx",
+      "sha1": "09b38e23c3c176ac46ab565e97d8b82b7a218160"
+    },
+    {
+      "path": "src/components/modals/task-details/components/NextClientEntrySection.tsx",
+      "sha1": "bba19e1323601e916dadbc8a76086f50f944a103"
+    },
+    {
+      "path": "src/components/modals/task-details/components/PropertyDetailsSection.tsx",
+      "sha1": "6cfa5b8932915983288c3cfb5034434f8e5c9316"
+    },
+    {
+      "path": "src/components/modals/task-details/components/PropertyNotesSection.tsx",
+      "sha1": "a8fe59dd25b1921ac9b0d69b658235826924c1de"
+    },
+    {
+      "path": "src/components/modals/task-details/components/TaskDetailsHeader.tsx",
+      "sha1": "fbbad570db212be99bb3e8b471b9c9379cd79a88"
+    },
+    {
+      "path": "src/components/modals/task-details/components/TaskNotesSection.tsx",
+      "sha1": "92a5a9d20d9e38a070fa954ec7374f1fafb8a982"
+    },
+    {
+      "path": "src/components/modals/task-details/components/TaskScheduleSection.tsx",
+      "sha1": "57dd62a4c0f1ab8b3a9693c14ddc5ea616b50ec4"
+    },
+    {
+      "path": "src/components/modals/task-details/components/TaskStatusSection.tsx",
+      "sha1": "e20c1c8053ba91ba276afbf7c79079fc9dca3c50"
+    },
+    {
+      "path": "src/components/modals/task-report/ChecklistSection.tsx",
+      "sha1": "1308af73302b1ecceec70ad181831d1625d5db7b"
+    },
+    {
+      "path": "src/components/modals/task-report/MediaCapture.tsx",
+      "sha1": "be0db784ec23821f033a11c67969d7b15c9ae9a0"
+    },
+    {
+      "path": "src/components/modals/task-report/NotesSection.tsx",
+      "sha1": "b5d94d57660c892325b12bc1d068a31e9bc1a32a"
+    },
+    {
+      "path": "src/components/modals/task-report/ReportSummary.tsx",
+      "sha1": "06b63813f7505e0e24ff285902e01d6f550c92b9"
+    },
+    {
+      "path": "src/components/modals/task-report/SequentialTaskReport.tsx",
+      "sha1": "192001ecc55f49aec96fedd6e1eb6e4b9b8fe71d"
+    },
+    {
+      "path": "src/components/modals/task-report/TaskReportFooter.tsx",
+      "sha1": "3460d862ee935293f680739e700d9a835d16a09c"
+    },
+    {
+      "path": "src/components/modals/task-report/TaskReportHeader.tsx",
+      "sha1": "d327a68e61e5b33c09c0735cb96f1516418ed455"
+    },
+    {
+      "path": "src/components/modals/task-report/TaskReportTabs.tsx",
+      "sha1": "e2e80a085f895effa48b46955a108382d7206c96"
+    },
+    {
+      "path": "src/components/modals/task-report/components/MediaGrid.tsx",
+      "sha1": "de56b051181a3288793d7cc9eb84a76f76c5fa14"
+    },
+    {
+      "path": "src/components/modals/task-report/components/MediaInfo.tsx",
+      "sha1": "ae0dd1ca7fc533f96e787c7e56e7c139d2ea68af"
+    },
+    {
+      "path": "src/components/modals/task-report/components/MediaPreview.tsx",
+      "sha1": "276adfe22871bcd77cc12259fc90d26347ba049f"
+    },
+    {
+      "path": "src/components/modals/task-report/components/MediaUploadButtons.tsx",
+      "sha1": "8ce0f957cd8b358294b4da4b270408b4f509ebc7"
+    },
+    {
+      "path": "src/components/modals/task-report/hooks/useMediaUpload.ts",
+      "sha1": "24878f606b4aec11a8e861cb0f83b4af2f8833a0"
+    },
+    {
+      "path": "src/components/navigation/GlobalSearch.tsx",
+      "sha1": "3a632d6cd5b4a1ebe29ba6a76499c483d869e410"
+    },
+    {
+      "path": "src/components/navigation/RoleBasedNavigation.tsx",
+      "sha1": "ecc2fbe3fc9fb488e604a04f99e454d184bfc763"
+    },
+    {
+      "path": "src/components/notifications/TaskApprovalBadge.tsx",
+      "sha1": "832f2d62c7125858d84f59e19bd5b3ccbadd17c8"
+    },
+    {
+      "path": "src/components/notifications/WhatsAppStatusPanel.tsx",
+      "sha1": "fc89b9bd6d49056bf5216cf42d20680132e70832"
+    },
+    {
+      "path": "src/components/optimizations/PerformanceEnhancements.tsx",
+      "sha1": "a7e3fe99d1768e140f771db664a36b97d2ec60fb"
+    },
+    {
+      "path": "src/components/planning/MonthlyPropertyForecast.tsx",
+      "sha1": "ceaaff9c9e281e708512ef7210caa4fc84001496"
+    },
+    {
+      "path": "src/components/planning/OperationalPlanningPage.tsx",
+      "sha1": "145afd4ec999ce146e5d36f88c7d35d3866cf5b5"
+    },
+    {
+      "path": "src/components/planning/building-crm/BuildingAssignmentProposalPanel.tsx",
+      "sha1": "74fc812759fbb7ae2b53252e1057c895539baf00"
+    },
+    {
+      "path": "src/components/planning/building-crm/BuildingCrmHeader.tsx",
+      "sha1": "fac1d311c46df7684689d957fdab39ca39b5a229"
+    },
+    {
+      "path": "src/components/planning/building-crm/BuildingCrmKpis.tsx",
+      "sha1": "86972289bdb06efa973f4744a4b619512cd5484e"
+    },
+    {
+      "path": "src/components/planning/building-crm/BuildingCrmPage.tsx",
+      "sha1": "3f50de9cb1340c628c8a506a36d745d7e94cd050"
+    },
+    {
+      "path": "src/components/planning/building-crm/BuildingDataEditor.tsx",
+      "sha1": "7e0b99226ae432068bb3d14a81664db09053a862"
+    },
+    {
+      "path": "src/components/planning/building-crm/BuildingDecisionList.tsx",
+      "sha1": "2a6374c98f8ff508467d8bd230c85ef9aa0a1131"
+    },
+    {
+      "path": "src/components/planning/building-crm/BuildingDemandCalendar.tsx",
+      "sha1": "588d052493522fd59fa51f563d93e48cc1d23904"
+    },
+    {
+      "path": "src/components/planning/building-crm/BuildingPropertiesPanel.tsx",
+      "sha1": "621d34bf031eae94009977088e379123e498874e"
+    },
+    {
+      "path": "src/components/planning/building-crm/BuildingSetupChecklist.tsx",
+      "sha1": "9a5e73e023419169d543553e74dad94c1e7124f7"
+    },
+    {
+      "path": "src/components/planning/building-crm/BuildingTeamEditor.tsx",
+      "sha1": "ff2c19ab0a2d567a6cdb6aab88db0cc1c55a6983"
+    },
+    {
+      "path": "src/components/planning/building-crm/BuildingTeamPanel.tsx",
+      "sha1": "e31e29cc686b4f695077573b8def6d9d078c0c29"
+    },
+    {
+      "path": "src/components/planning/building-crm/SupervisionBuildingAssignmentEditor.tsx",
+      "sha1": "fa583094147a57a28de7a6e00b2502854e17c310"
+    },
+    {
+      "path": "src/components/planning/building-crm/SupervisionBuildingPolicyEditor.tsx",
+      "sha1": "47d6df3b8559f7710cadaeafef3fa9066127c82b"
+    },
+    {
+      "path": "src/components/planning/building-crm/SupervisionStockLocationEditor.tsx",
+      "sha1": "f772bcde4526875503edc7e34b1b8ed4b73ecc32"
+    },
+    {
+      "path": "src/components/planning/building-crm/buildingCrmFormatters.ts",
+      "sha1": "ba44cdbdd331b8276208686829b89e362be32b55"
+    },
+    {
+      "path": "src/components/properties/AssignChecklistModal.tsx",
+      "sha1": "1b7152cadda5a04818a2d01f67f00e2818e446cd"
+    },
+    {
+      "path": "src/components/properties/CopyChecklistFromProperty.tsx",
+      "sha1": "fe4863ad64835286fe8d08a4e2b7d08cfe0d32ce"
+    },
+    {
+      "path": "src/components/properties/CreatePropertyModal.tsx",
+      "sha1": "40badcf13237c00ea7f7c32efb5ff490dd928a51"
+    },
+    {
+      "path": "src/components/properties/EditPropertyModal.tsx",
+      "sha1": "495c1fe3d977a8a494f58baddbe4fe1522b5c946"
+    },
+    {
+      "path": "src/components/properties/PropertiesPage.tsx",
+      "sha1": "ab9b244586ddc9499f5ebd322770a5b69c035a54"
+    },
+    {
+      "path": "src/components/properties/PropertyChecklistEditor.tsx",
+      "sha1": "4554d36ac5dcc6382768ae670d9a6b3670815672"
+    },
+    {
+      "path": "src/components/properties/PropertyChecklistInfo.tsx",
+      "sha1": "90459b55aaa05a6c090460837b75b10ac151bcd7"
+    },
+    {
+      "path": "src/components/properties/PropertyConsumptionsPanel.tsx",
+      "sha1": "402e89f51928fc0b9ed4a6a7dcc88c53ddd236d5"
+    },
+    {
+      "path": "src/components/properties/PropertyDetailPanel.tsx",
+      "sha1": "ca190a2d64b40524a4a07a35fc7477436b94e189"
+    },
+    {
+      "path": "src/components/properties/PropertyList.tsx",
+      "sha1": "bea220d24e2d547ebae50f25419fa14d32440cf2"
+    },
+    {
+      "path": "src/components/properties/PropertyPreferredCleaners.tsx",
+      "sha1": "76bec85b0aa9de491f74c71c960ace57fb4485f4"
+    },
+    {
+      "path": "src/components/properties/duplicatePropertyData.ts",
+      "sha1": "d8e3701f316e594ea7e26ca3cbac5ccdc050fa77"
+    },
+    {
+      "path": "src/components/properties/forms/AmenitiesSection.tsx",
+      "sha1": "c1d49bdbc60dd401f8295fb218d5a818657fda07"
+    },
+    {
+      "path": "src/components/properties/forms/BasicInfoSection.tsx",
+      "sha1": "afd1f83bcae1f32b497919db5c574d2cad59da1f"
+    },
+    {
+      "path": "src/components/properties/forms/CharacteristicsSection.tsx",
+      "sha1": "5a7b925dd2db7ced66af6489178e848ea98d0ed9"
+    },
+    {
+      "path": "src/components/properties/forms/ClientSelectionSection.tsx",
+      "sha1": "8e968469db4a3e576a17c1e10dd6d661808c8f6f"
+    },
+    {
+      "path": "src/components/properties/forms/NotesSection.tsx",
+      "sha1": "786fab4086ef37a2bf4d79fd70f868b2fe0e52f4"
+    },
+    {
+      "path": "src/components/properties/forms/PropertyFormSchema.ts",
+      "sha1": "7b36b2f178de0cfcfde88b14a840e7c0bc4eb747"
+    },
+    {
+      "path": "src/components/properties/forms/ServiceSection.tsx",
+      "sha1": "c0562b0c58e9372abc261f9b2d3aec7022470b8f"
+    },
+    {
+      "path": "src/components/properties/forms/StockConsumptionSection.tsx",
+      "sha1": "4b23bbfcded259aefc836231d28a1589d1125c97"
+    },
+    {
+      "path": "src/components/properties/forms/TextileSection.tsx",
+      "sha1": "7c5cd30e952c909cdc30bece6dba1a0b8cbd2192"
+    },
+    {
+      "path": "src/components/properties/forms/propertyStockConsumption.ts",
+      "sha1": "3cf69b1b54580fb5d6267b2bd2fe23687461bb45"
+    },
+    {
+      "path": "src/components/properties/propertyPresentation.ts",
+      "sha1": "ae3303112c17a67ef2a4f29de4d2255705ad1348"
+    },
+    {
+      "path": "src/components/property-groups/CleanerAssignmentSection.tsx",
+      "sha1": "4acdcaab1164e37aa64f33895410cd2f52696eee"
+    },
+    {
+      "path": "src/components/property-groups/PropertyAssignmentSection.tsx",
+      "sha1": "9dbb1b91456989b20b74957a6e882131d36721a6"
+    },
+    {
+      "path": "src/components/property-groups/PropertyGroupDetails.tsx",
+      "sha1": "d483745f993519bb985c67e43003d240687e8bcf"
+    },
+    {
+      "path": "src/components/property-groups/PropertyGroupModal.tsx",
+      "sha1": "bb766ab088e1a84d3c7344c4fa040be2211c36f0"
+    },
+    {
+      "path": "src/components/property-groups/PropertyGroupsPage.tsx",
+      "sha1": "727b70d58e1846a24cef16024762350f00a47981"
+    },
+    {
+      "path": "src/components/recurring-tasks/EditRecurringTaskModal.tsx",
+      "sha1": "8e997bc5ed1701301564a3860861074ac69eb5f0"
+    },
+    {
+      "path": "src/components/recurring-tasks/RecurringTasksList.tsx",
+      "sha1": "513e2c680cb61782c4b1d46e74f462840d7ddd26"
+    },
+    {
+      "path": "src/components/recurring-tasks/RecurringTasksMetrics.tsx",
+      "sha1": "c6711b14b8cb9f8162091729ac335149c883d829"
+    },
+    {
+      "path": "src/components/recurring-tasks/UpcomingTasksPreview.tsx",
+      "sha1": "e214c086db1b26b6ba729fe923c956323aeea6c9"
+    },
+    {
+      "path": "src/components/reports/EditableTaskTable.tsx",
+      "sha1": "2c59c47d72aa056f8f73c35ff0d1efb1f158db8e"
+    },
+    {
+      "path": "src/components/reports/LaundryReportTable.tsx",
+      "sha1": "676f3aef507058035766340a5815ccd7c9a49156"
+    },
+    {
+      "path": "src/components/reports/ReportExportTokenManager.tsx",
+      "sha1": "38098545d5d6b24e839f9eb8fe71f27110c48ada"
+    },
+    {
+      "path": "src/components/reports/ReportFilters.tsx",
+      "sha1": "3f9e3c962fe837da1a97e810907edecaa2831e12"
+    },
+    {
+      "path": "src/components/reports/ReportTables.tsx",
+      "sha1": "91f24e90b33f9c22755c1cc87c951ad803414967"
+    },
+    {
+      "path": "src/components/security/SecurityStatus.tsx",
+      "sha1": "56d31f04eb4f96cbcd4678baff15031297fe6359"
+    },
+    {
+      "path": "src/components/sede/SedeSelector.tsx",
+      "sha1": "3e8d47a9cc4d50a653c17f1f9b26e961326fc69a"
+    },
+    {
+      "path": "src/components/stock/MobileStockBottomNav.tsx",
+      "sha1": "8f093f34fd1cc64c8053389225ed7381bae76f67"
+    },
+    {
+      "path": "src/components/stock/StockAdjustmentDialog.tsx",
+      "sha1": "9e0ce364a93ea7c9c76982aafa1c3fd63284994a"
+    },
+    {
+      "path": "src/components/stock/StockBulkSetupDialog.tsx",
+      "sha1": "f2eeb66f4e3055dbdeaa506f289fed27ea4f7ccc"
+    },
+    {
+      "path": "src/components/stock/StockCategoryManager.tsx",
+      "sha1": "c440ce6ee76a70abf8f89ef4fbffcf0b265f7244"
+    },
+    {
+      "path": "src/components/stock/StockLayout.tsx",
+      "sha1": "e72a4e7ea2b7fa7e3e938f9adff8e7cc07ac59cf"
+    },
+    {
+      "path": "src/components/stock/StockLevelTable.tsx",
+      "sha1": "4e7db3a98e034fe58f88f4bf4f7a8449a937c41c"
+    },
+    {
+      "path": "src/components/stock/StockProductDialog.tsx",
+      "sha1": "c7663704689d04e9d741fada9f4f21a0ba7c6f46"
+    },
+    {
+      "path": "src/components/stock/StockTransferDialog.tsx",
+      "sha1": "f26316c22c14f6d5819c8512f317d05072c8178f"
+    },
+    {
+      "path": "src/components/stock/StockWarehouseSelect.tsx",
+      "sha1": "c6fadf29ab14b66a2888492c25850b2cd4f5a6d3"
+    },
+    {
+      "path": "src/components/stock/inventory.css",
+      "sha1": "4f53c591a93723fa98d10146f397db25f27bd55b"
+    },
+    {
+      "path": "src/components/supervision/ApartmentReviewSheet.tsx",
+      "sha1": "d8bd65de6e65a86b2c1dda7fa3b05d84b37bc035"
+    },
+    {
+      "path": "src/components/supervision/BuildingSupervisionCard.tsx",
+      "sha1": "f9a85f0deae21f597dc731529e71d4347ab14a21"
+    },
+    {
+      "path": "src/components/supervision/StockCheckSheet.tsx",
+      "sha1": "8bf56253c548e9a2940a9ed92094c97bbcc9a406"
+    },
+    {
+      "path": "src/components/tasks/CleanerTodayTasksPage.tsx",
+      "sha1": "c6d851f4f10b7440c74c565ec11e47169bb02109"
+    },
+    {
+      "path": "src/components/tasks/TaskFilters.tsx",
+      "sha1": "78971360ed21fbbccf30e3055399c5d14c4f411d"
+    },
+    {
+      "path": "src/components/tasks/TasksList.tsx",
+      "sha1": "103642d26826f2b6a313f14e63dcf968c54e9cbd"
+    },
+    {
+      "path": "src/components/tasks/TasksPage.tsx",
+      "sha1": "e28709ffc72f9eed5c4eadd134807c7123643a23"
+    },
+    {
+      "path": "src/components/tasks/VirtualizedTasksList.tsx",
+      "sha1": "8607f8e08c0fa525eb0f0dbaae8c8d098ac3ae98"
+    },
+    {
+      "path": "src/components/tasks/components/BulkAutoAssignButton.tsx",
+      "sha1": "a4e05452b427f6d45ab1aeb18feca0a9bbaaab7c"
+    },
+    {
+      "path": "src/components/tasks/components/CalendarIntegrationWidget.tsx",
+      "sha1": "b06a59ea825e35e2f93316629b93eea789e3a079"
+    },
+    {
+      "path": "src/components/tasks/components/CreateReportButton.tsx",
+      "sha1": "5ac4c1e5955be90090d4bb520907e6f3bf646f14"
+    },
+    {
+      "path": "src/components/tasks/components/MemoizedTaskComponents.tsx",
+      "sha1": "d60bd3e7563918ba7c61cdefc50b4892ceae0a0c"
+    },
+    {
+      "path": "src/components/tasks/components/RecurringTasksWidget.tsx",
+      "sha1": "f1e7c689e2afae12fa0f26406aae1242f5655e6c"
+    },
+    {
+      "path": "src/components/tasks/components/TaskCard.tsx",
+      "sha1": "defdf21b09b8becca69ea7c6e88c64461539d942"
+    },
+    {
+      "path": "src/components/tasks/components/TaskCardActions.tsx",
+      "sha1": "8ad80f33bd99d592d2c53009364206dc9767524b"
+    },
+    {
+      "path": "src/components/tasks/components/TaskCardCleanerInfo.tsx",
+      "sha1": "dc835219688ea59071855047f42238f8497a4d7a"
+    },
+    {
+      "path": "src/components/tasks/components/TaskCardHeader.tsx",
+      "sha1": "4b8fa09d3569919f57cc864002f8736e0042cc67"
+    },
+    {
+      "path": "src/components/tasks/components/TaskCardServiceInfo.tsx",
+      "sha1": "41965e833b910e944ed40e40e053f4cda202c836"
+    },
+    {
+      "path": "src/components/tasks/components/TaskCardTimeInfo.tsx",
+      "sha1": "f63a4d1db293fea7ec7dc04df9fa37b38b5dd710"
+    },
+    {
+      "path": "src/components/tasks/components/TaskHistoryModal.tsx",
+      "sha1": "dc4a170212beac978ce357dacc1dec5cedb54140"
+    },
+    {
+      "path": "src/components/tasks/components/TaskReportButton.tsx",
+      "sha1": "8e8dade7d4641de59e9e956d1e1e815c6aa1da8f"
+    },
+    {
+      "path": "src/components/tasks/components/TaskStatsCard.tsx",
+      "sha1": "75c1789b66788d15f727c5cd7fc3c409063490d0"
+    },
+    {
+      "path": "src/components/tasks/components/TasksPageContent.tsx",
+      "sha1": "ceffa92024935491d79c6a52b084fb40f85ec114"
+    },
+    {
+      "path": "src/components/tasks/components/TasksPageHeader.tsx",
+      "sha1": "6cbcb3e8347e89992ba2ed92b9531e8006756df8"
+    },
+    {
+      "path": "src/components/tasks/components/TasksPagination.tsx",
+      "sha1": "73dfad235f1aeccc13692d4466e2e984b232c670"
+    },
+    {
+      "path": "src/components/tasks/hooks/useTaskActions.ts",
+      "sha1": "783c2c8c41b7ea35514f1d2b0379397f78664b3c"
+    },
+    {
+      "path": "src/components/tasks/utils/taskFilters.ts",
+      "sha1": "885e3f63e6e6c86f6708f3f2b54b0bd5e219d10d"
+    },
+    {
+      "path": "src/components/ui/accordion.tsx",
+      "sha1": "e6f7592c40bb90375061b385cb686ac5b35800af"
+    },
+    {
+      "path": "src/components/ui/alert-dialog.tsx",
+      "sha1": "3ceb1e217b2e4060a8b007e0ffa042658598aba7"
+    },
+    {
+      "path": "src/components/ui/alert.tsx",
+      "sha1": "6b3cf33f1e99781e4626b9157a26b76ffba1ef87"
+    },
+    {
+      "path": "src/components/ui/aspect-ratio.tsx",
+      "sha1": "f21529a010100ec900e04fd692fdbde2be6d3e9c"
+    },
+    {
+      "path": "src/components/ui/avatar.tsx",
+      "sha1": "9fba5369e74a3ac408041614af3a60e51796b30f"
+    },
+    {
+      "path": "src/components/ui/badge.tsx",
+      "sha1": "e4014da86d8478d8f7f20ee6e55eb23fe4f46f76"
+    },
+    {
+      "path": "src/components/ui/breadcrumb.tsx",
+      "sha1": "5e195af6ae0ab035ce26b6747e03bba8397c06bb"
+    },
+    {
+      "path": "src/components/ui/button.tsx",
+      "sha1": "398f2265069e37acf94fa1fbc8812d74f0cc9656"
+    },
+    {
+      "path": "src/components/ui/calendar.tsx",
+      "sha1": "acc11540b33b1b821b923f6009e8def2f35e6166"
+    },
+    {
+      "path": "src/components/ui/card.tsx",
+      "sha1": "fa962dcf843a39e6ee1da3abe39d845689d4cadd"
+    },
+    {
+      "path": "src/components/ui/carousel.tsx",
+      "sha1": "193bd1585f3f4383d7f77ed4098c8e5dea41f5e4"
+    },
+    {
+      "path": "src/components/ui/chart.tsx",
+      "sha1": "b31916973cef16afdc404cdc87e2762a28497ba8"
+    },
+    {
+      "path": "src/components/ui/checkbox.tsx",
+      "sha1": "ea0047f15b399c248a46d0d3b4b9a5990852ea91"
+    },
+    {
+      "path": "src/components/ui/collapsible.tsx",
+      "sha1": "c615c7eaf737c96c42ce415be742a47a5bd1d4a4"
+    },
+    {
+      "path": "src/components/ui/command.tsx",
+      "sha1": "26010bb36b0ecfb69a712478639fd453d74c52eb"
+    },
+    {
+      "path": "src/components/ui/context-menu.tsx",
+      "sha1": "8025754cd13484d9e69a13c8100d02c506b82f00"
+    },
+    {
+      "path": "src/components/ui/dialog.tsx",
+      "sha1": "79e39956f428afae259def154f33b36c75945f4c"
+    },
+    {
+      "path": "src/components/ui/drawer.tsx",
+      "sha1": "70bc4349b7c090197e8c960c5c34c533cf16f9e4"
+    },
+    {
+      "path": "src/components/ui/dropdown-menu.tsx",
+      "sha1": "d4d57ad34a19dd658c8f15b25932711704c1aae9"
+    },
+    {
+      "path": "src/components/ui/form.tsx",
+      "sha1": "fccf27a33cf27914cd6a0b36264a738c422e8d66"
+    },
+    {
+      "path": "src/components/ui/hover-card.tsx",
+      "sha1": "c108c1b6fb6bad33f42ed3a89057bcaaf85165f9"
+    },
+    {
+      "path": "src/components/ui/input-otp.tsx",
+      "sha1": "a08b2f2a2170c0dd7bbfb5904a323596112fa403"
+    },
+    {
+      "path": "src/components/ui/input.tsx",
+      "sha1": "4b351bb6d8450f5bc1c0716f43181215c49f8dd2"
+    },
+    {
+      "path": "src/components/ui/label.tsx",
+      "sha1": "792bb2b5dec491e8b330af60abf082c6dfca853f"
+    },
+    {
+      "path": "src/components/ui/loading-spinner.tsx",
+      "sha1": "ac19667bd11e0196e6c6b114393594c78adb6c71"
+    },
+    {
+      "path": "src/components/ui/menubar.tsx",
+      "sha1": "d25b3f8cde90b0d343cbadaa3dbae177edd806cc"
+    },
+    {
+      "path": "src/components/ui/navigation-menu.tsx",
+      "sha1": "b3443669c2a2ff4dc2f596c5b592dd26462bbeef"
+    },
+    {
+      "path": "src/components/ui/network-status-indicator.tsx",
+      "sha1": "cdcdcd167022347fc946bfe28f17ca62bef9c9c0"
+    },
+    {
+      "path": "src/components/ui/offline-sync-indicator.tsx",
+      "sha1": "70ddf6258d5090556f7cdc8c4ebe8dcd51eb2b56"
+    },
+    {
+      "path": "src/components/ui/operational-shell.tsx",
+      "sha1": "3dc4acf3f45839e6bbb5433e956fdc95ec40d3e0"
+    },
+    {
+      "path": "src/components/ui/pagination.tsx",
+      "sha1": "96e9080b720f3b32fcabbe1dc7dc11caf650788f"
+    },
+    {
+      "path": "src/components/ui/popover.tsx",
+      "sha1": "439707ec2d2f1436e86c80fb69ff528556727b73"
+    },
+    {
+      "path": "src/components/ui/progress.tsx",
+      "sha1": "534499f8fa87fb283030c962f951aa3a3f12fcb6"
+    },
+    {
+      "path": "src/components/ui/radio-group.tsx",
+      "sha1": "8542cb482b79fa56323ec3a05f094fea34b81514"
+    },
+    {
+      "path": "src/components/ui/resizable.tsx",
+      "sha1": "f1b601151a023d272471851a0aac8b5f0233a2b9"
+    },
+    {
+      "path": "src/components/ui/scroll-area.tsx",
+      "sha1": "80369c607e21dfe45884a39189ac7fcf3de5a938"
+    },
+    {
+      "path": "src/components/ui/select.tsx",
+      "sha1": "ba0f8c87379e11840892edc6deafc1ed3951c4fe"
+    },
+    {
+      "path": "src/components/ui/separator.tsx",
+      "sha1": "b446b35328897a3651f7dea9eb837a8e6c0c4c51"
+    },
+    {
+      "path": "src/components/ui/sheet.tsx",
+      "sha1": "4a84cd095021dad5f8960b0da031b41794c89e85"
+    },
+    {
+      "path": "src/components/ui/sidebar.tsx",
+      "sha1": "4ce02b31b1c97a0368548ceb6223b7d8c6fb8043"
+    },
+    {
+      "path": "src/components/ui/skeleton.tsx",
+      "sha1": "e7b7f6fec44ca34371c93bc15984d72149aa6e51"
+    },
+    {
+      "path": "src/components/ui/slider.tsx",
+      "sha1": "c584f13d17956f84cadcc14282db966f9d3544ab"
+    },
+    {
+      "path": "src/components/ui/sonner.tsx",
+      "sha1": "2be4ff04607c47e2a0753b3a53b3985f12592ab0"
+    },
+    {
+      "path": "src/components/ui/stat-card.tsx",
+      "sha1": "42075214659d1fa0f34db46b042338fa504c0982"
+    },
+    {
+      "path": "src/components/ui/status-indicator.tsx",
+      "sha1": "6dde17fd089ea8a7ad07c5e0fa1bd37cd24aa7b6"
+    },
+    {
+      "path": "src/components/ui/switch.tsx",
+      "sha1": "5ea7985abb3e9fa1e3c011752d9a1b9839360e7e"
+    },
+    {
+      "path": "src/components/ui/table.tsx",
+      "sha1": "39b2bced1b18b5db2d14d0b9a11d26d1330827ad"
+    },
+    {
+      "path": "src/components/ui/tabs.tsx",
+      "sha1": "a9b6a43315061d45d688e87f81b6b282f34c85a8"
+    },
+    {
+      "path": "src/components/ui/textarea.tsx",
+      "sha1": "e9ea96df6fac32fc8120d3be74fa1f00441e4fd8"
+    },
+    {
+      "path": "src/components/ui/toast.tsx",
+      "sha1": "e0d5cc3254bbd8d235bb4022c90cae8ebca44314"
+    },
+    {
+      "path": "src/components/ui/toaster.tsx",
+      "sha1": "76de68b3af213ded74c09e43293d1980b4da4254"
+    },
+    {
+      "path": "src/components/ui/toggle-group.tsx",
+      "sha1": "7912e256ec2a4deda8d13384bea82591da7ea9d7"
+    },
+    {
+      "path": "src/components/ui/toggle.tsx",
+      "sha1": "977f38e1d6e52d671ed1dc703629885d9d136539"
+    },
+    {
+      "path": "src/components/ui/tooltip.tsx",
+      "sha1": "f4249b305100240b9413de5aafdc3a6f4df01aff"
+    },
+    {
+      "path": "src/components/ui/use-toast.ts",
+      "sha1": "40f18ccf54766039dd8a4639777854a10380a6ab"
+    },
+    {
+      "path": "src/components/ui/virtualized-table.tsx",
+      "sha1": "baeae2c6ec0c1b84cf092530d30ec306606567c2"
+    },
+    {
+      "path": "src/components/workers/AlertsPanel.tsx",
+      "sha1": "ceaf2a2783c998f3d5f276110802360a11cf40d6"
+    },
+    {
+      "path": "src/components/workers/AvailabilityModal.tsx",
+      "sha1": "5b26fda9ee3b39118a7e4d6f2d0fa834bb44a460"
+    },
+    {
+      "path": "src/components/workers/ContractDetail.tsx",
+      "sha1": "f0da4177ee1d4232aa7a666ab7805ca6b21954a8"
+    },
+    {
+      "path": "src/components/workers/ContractForm.tsx",
+      "sha1": "665fa1d10e696bf8ff6015204ff708ba813f7be2"
+    },
+    {
+      "path": "src/components/workers/ContractManagement.tsx",
+      "sha1": "97172451e251fdeb14c0eaf1ae48ddb8e5ac07a8"
+    },
+    {
+      "path": "src/components/workers/CreateWorkerModal.tsx",
+      "sha1": "7fbc2979ef2903c636e95c9c8e489aad591ca63d"
+    },
+    {
+      "path": "src/components/workers/DeactivateWorkerDialog.tsx",
+      "sha1": "fafdc35cd398952b10a6ba8c8aa082f9aece9b5f"
+    },
+    {
+      "path": "src/components/workers/EditWorkerModal.tsx",
+      "sha1": "627c04d158acb1684d2bc8b9b57f37caf39160a7"
+    },
+    {
+      "path": "src/components/workers/SalaryCalculation.tsx",
+      "sha1": "33c309d6752b5e809352cc3827f4a1cf0edf1782"
+    },
+    {
+      "path": "src/components/workers/TaskTimeBreakdown.tsx",
+      "sha1": "6df3430cb8b743e1d148eca899ff6dcc3c7c2319"
+    },
+    {
+      "path": "src/components/workers/VacationRequestDetail.tsx",
+      "sha1": "71429bc43dfaee06c83c1bac0bcbe09e60f96070"
+    },
+    {
+      "path": "src/components/workers/VacationRequestForm.tsx",
+      "sha1": "4b52af80e1b6ad6bce53bb33cb6e28bacf5319a2"
+    },
+    {
+      "path": "src/components/workers/VacationRequestsList.tsx",
+      "sha1": "68a133246cbf32c8f04e713146a4428ac95da549"
+    },
+    {
+      "path": "src/components/workers/WorkerBasicInfo.tsx",
+      "sha1": "07282400e23f1ffc0e2b025430776573443ecf3b"
+    },
+    {
+      "path": "src/components/workers/WorkerDetailModal.tsx",
+      "sha1": "299928dee49ebaea970c7f16dafd6ef3264ed374"
+    },
+    {
+      "path": "src/components/workers/WorkerHoursOverview.tsx",
+      "sha1": "07b6709a0abf47e426b8c039b2259e81b08b311d"
+    },
+    {
+      "path": "src/components/workers/WorkerScheduleCalendar.tsx",
+      "sha1": "3b4801c0988201f639906d3bd7d64475c72cd37e"
+    },
+    {
+      "path": "src/components/workers/WorkerTimeTracking.tsx",
+      "sha1": "aa1427db634588c7975f2cd58e482174d698cb06"
+    },
+    {
+      "path": "src/components/workers/WorkersList.tsx",
+      "sha1": "2f49fd839107e19972205560c3770f47eb39a67e"
+    },
+    {
+      "path": "src/components/workers/WorkersPage.tsx",
+      "sha1": "fd3cb909731b5d4711a2ce888796de43199906ba"
+    },
+    {
+      "path": "src/components/workers/absences/AbsenceAuditLog.tsx",
+      "sha1": "fa3f2290656d076691cf9d09c14f6c02d06a9a13"
+    },
+    {
+      "path": "src/components/workers/absences/AbsenceCalendarView.tsx",
+      "sha1": "54250b843cf666d10ea751dd286b944aa6f28e5d"
+    },
+    {
+      "path": "src/components/workers/absences/AbsencesList.tsx",
+      "sha1": "bb29c5c2ec894b054cbf59b631f01f8aa0af4ef7"
+    },
+    {
+      "path": "src/components/workers/absences/AbsencesTab.tsx",
+      "sha1": "8c41d8721a146b04310c35b3fd998a9eef34ad17"
+    },
+    {
+      "path": "src/components/workers/absences/CreateAbsenceModal.tsx",
+      "sha1": "f35cd4bb951c7675267b0bb5281e7b8aa755409b"
+    },
+    {
+      "path": "src/components/workers/absences/CreateMaintenanceModal.tsx",
+      "sha1": "313cfe01cebc9a7edaee800a2a4faef4d3c16ef7"
+    },
+    {
+      "path": "src/components/workers/absences/DayScheduleFields.tsx",
+      "sha1": "b4694e096a8a3ebf3053936aabcb4240c0760936"
+    },
+    {
+      "path": "src/components/workers/absences/EditAbsenceModal.tsx",
+      "sha1": "c33860c47e790abf3234122c027afa8c4f239eee"
+    },
+    {
+      "path": "src/components/workers/absences/EditMaintenanceModal.tsx",
+      "sha1": "643843bd3b20146929943abf276ba0e8d6bbb31b"
+    },
+    {
+      "path": "src/components/workers/absences/FixedDaysOffSection.tsx",
+      "sha1": "db8b1fbeffb2c94e20daf39145c2f8c1b8bc92db"
+    },
+    {
+      "path": "src/components/workers/absences/MaintenanceCleaningsSection.tsx",
+      "sha1": "8d555182f793931c0d52701e67abeb65d266b07a"
+    },
+    {
+      "path": "src/components/workers/absences/index.ts",
+      "sha1": "e7d8a75ba8ead769133e98bc0b0659c3caa2f374"
+    },
+    {
+      "path": "src/components/workload/HourAdjustmentModal.tsx",
+      "sha1": "24594d21e035a72cdd96cdaa83ea318aa1088f7f"
+    },
+    {
+      "path": "src/components/workload/WorkloadOverviewCard.tsx",
+      "sha1": "2180056c6e50705acb16c5d82088957156c72125"
+    },
+    {
+      "path": "src/components/workload/WorkloadTable.tsx",
+      "sha1": "daaa28f91a5d1f203581b7ac00d5c80b4fa079d1"
+    },
+    {
+      "path": "src/components/workload/WorkloadWidget.tsx",
+      "sha1": "a4517d66bf21c264e504873c3157b44e78924914"
+    },
+    {
+      "path": "src/contexts/AuthProvider.tsx",
+      "sha1": "5b6286370b3686ad230b7e471b9a9f08e58c1a8d"
+    },
+    {
+      "path": "src/contexts/SedeContext.tsx",
+      "sha1": "a5382b545a8c811275d0d0d3d1e815aa5b44b763"
+    },
+    {
+      "path": "src/contexts/SedeContextProvider.tsx",
+      "sha1": "d018a06422a31b0d3f6a47a953a0b17fc34e14d7"
+    },
+    {
+      "path": "src/features/budget-estimator/BudgetEstimatorPage.tsx",
+      "sha1": "9b2c44407497a46845889bc0b80e92760737f2ce"
+    },
+    {
+      "path": "src/features/budget-estimator/budgetCalculator.ts",
+      "sha1": "c124681fa9de1cd7387df9ff9fa957ff43cdc644"
+    },
+    {
+      "path": "src/features/budget-estimator/budgetEstimatorService.ts",
+      "sha1": "5d2f281f3a99ae5256b8cab226f4fb24b946580e"
+    },
+    {
+      "path": "src/features/budget-estimator/budgetPdf.ts",
+      "sha1": "5aa4d2a31bde5ff6120641329f9baf259a3ac357"
+    },
+    {
+      "path": "src/features/budget-estimator/cleaningTimeEstimator.ts",
+      "sha1": "e1547e71840d79650a66a29c163133e245823873"
+    },
+    {
+      "path": "src/features/budget-estimator/logisticsCalculator.ts",
+      "sha1": "9e9c68e1097efc9145a77ee51faf59fe4d83cfbd"
+    },
+    {
+      "path": "src/features/personnel/HoursControl.tsx",
+      "sha1": "3368dfbf1e534fa912379c0be34c2830918abca0"
+    },
+    {
+      "path": "src/features/personnel/PersonnelAbsences.tsx",
+      "sha1": "32b154ec0c5d9bd21badce1181c1bfe51aa307b5"
+    },
+    {
+      "path": "src/features/personnel/PersonnelAdjustments.tsx",
+      "sha1": "6de33d3cb5cc4e670cbe141730e7e97a235598f9"
+    },
+    {
+      "path": "src/features/personnel/PersonnelDirectory.tsx",
+      "sha1": "2bb71766e23139f8eb4a49709a2e38acbcf6f6f9"
+    },
+    {
+      "path": "src/features/personnel/PersonnelProfile.tsx",
+      "sha1": "a39c039c9dc62bff951f8548b9d58b909565d41c"
+    },
+    {
+      "path": "src/features/personnel/PersonnelShell.tsx",
+      "sha1": "5adda344d450c30196bdce0274a057a6bf510f81"
+    },
+    {
+      "path": "src/features/personnel/hours.ts",
+      "sha1": "4b0aec2a97eaad11b5551d2c29a02b5841c01c26"
+    },
+    {
+      "path": "src/features/personnel/pagination.ts",
+      "sha1": "4475f2478c80fd2e0bb8de2122320e1ed3322e10"
+    },
+    {
+      "path": "src/features/personnel/personnel.css",
+      "sha1": "90c23bb13f238c8de54084a2cb516c12fa2a1b84"
+    },
+    {
+      "path": "src/features/personnel/usePersonnelHours.ts",
+      "sha1": "f81e56464743a228f79d4c5328ea1327d314b39c"
+    },
+    {
+      "path": "src/features/supervision/buildingAgenda.ts",
+      "sha1": "98e57ada96f273bfb6373a42e17781972d8f6515"
+    },
+    {
+      "path": "src/features/supervision/buildingSupervisionStorage.ts",
+      "sha1": "d260ace6f394f30b18c37777364228c86dcefa40"
+    },
+    {
+      "path": "src/features/supervision/domain.ts",
+      "sha1": "f27e9b9a4cbd6596ff2a5f73c314facf2093c9dd"
+    },
+    {
+      "path": "src/features/supervision/offlineQueue.ts",
+      "sha1": "51c4b2ff799bfeba62ba5bacd1e37e1b83141b61"
+    },
+    {
+      "path": "src/features/supervision/supervisionStorage.ts",
+      "sha1": "94f3c4f065013841cbcd91cff6fb78dfb7a4e6f4"
+    },
+    {
+      "path": "src/features/supervision/types.ts",
+      "sha1": "bb3ffb0ffd51aa90846ed7a2743cda96727d2dfe"
+    },
+    {
+      "path": "src/features/supervision/useBuildingSupervisionWorkspace.ts",
+      "sha1": "73b97ae824e4a22a8b3097907ab26aeef1f6c8e0"
+    },
+    {
+      "path": "src/features/supervision/useSupervisionWorkspace.ts",
+      "sha1": "74a2feb06651eb807349f300921406a5bb4f6e9f"
+    },
+    {
+      "path": "src/hooks/analytics/useOperationalAnalytics.ts",
+      "sha1": "29525ba55d81368b26919c902ddd44f5f57f8a30"
+    },
+    {
+      "path": "src/hooks/invitation/useInvitationFlow.ts",
+      "sha1": "addc7317a16b027318734b10312f788820156eed"
+    },
+    {
+      "path": "src/hooks/invitations/types.ts",
+      "sha1": "2a57a5ff3dfc30a313400b90f305b4adaa49ad5d"
+    },
+    {
+      "path": "src/hooks/invitations/useAcceptInvitation.ts",
+      "sha1": "4e7d63b0a575ea44d54f8311f6a2b4bc0ff62975"
+    },
+    {
+      "path": "src/hooks/invitations/useCreateInvitation.ts",
+      "sha1": "012f5dca6f69260fb8624164cb9ab27fe9b8c6f2"
+    },
+    {
+      "path": "src/hooks/invitations/useInvitationsList.ts",
+      "sha1": "5cdf35a87ca51a6d715da6f6d4530e013d8c3c0b"
+    },
+    {
+      "path": "src/hooks/invitations/useRevokeInvitation.ts",
+      "sha1": "27f52f7cacda2625b7abcb0cbefff7189dd98f02"
+    },
+    {
+      "path": "src/hooks/invitations/useVerifyInvitation.ts",
+      "sha1": "31b801853d20e9220c305cd94487aaebb3176fda"
+    },
+    {
+      "path": "src/hooks/reports/useBillingReport.ts",
+      "sha1": "efb7709d8629b1578a9d98e0376d13bf7a3fee97"
+    },
+    {
+      "path": "src/hooks/reports/useClientBillingReport.ts",
+      "sha1": "5459eb9770212de5439ea90d614efffdf2d74bcd"
+    },
+    {
+      "path": "src/hooks/reports/useEditableReportData.ts",
+      "sha1": "414a2e59a29654ad4038d8c3a5ed9f6fc49fab4d"
+    },
+    {
+      "path": "src/hooks/reports/useLaundryReport.ts",
+      "sha1": "e6fa3e0c1b71e3079bbbeb7b0812f054fb84cdb2"
+    },
+    {
+      "path": "src/hooks/reports/useReportData.ts",
+      "sha1": "0d80820902356377058a59e09e874fc23456d2e3"
+    },
+    {
+      "path": "src/hooks/reports/useReportFactory.ts",
+      "sha1": "a1e974a98932298ecb5aadea415311574fa96a15"
+    },
+    {
+      "path": "src/hooks/reports/useSummaryReport.ts",
+      "sha1": "8a623c7a0211f55faf9bc7d607b6b1a266e79442"
+    },
+    {
+      "path": "src/hooks/reports/useTaskReport.ts",
+      "sha1": "cd6ea9accd866ad16c2ef0858cffddb291e58389"
+    },
+    {
+      "path": "src/hooks/tasks/useTasksPageActions.ts",
+      "sha1": "a82e9cec7ad3f711b4a6e5ce3f694119e2aa22b0"
+    },
+    {
+      "path": "src/hooks/tasks/useTasksPageState.ts",
+      "sha1": "f069ab231711fbad8a63cd0daa7c47ab5d5ee92d"
+    },
+    {
+      "path": "src/hooks/use-mobile.tsx",
+      "sha1": "149f1b56ceaa4cb2e28c8a53a9e19ea78c111953"
+    },
+    {
+      "path": "src/hooks/use-toast.ts",
+      "sha1": "d72b5c8ad0706e95d4c650147a691e037bb33350"
+    },
+    {
+      "path": "src/hooks/useAdditionalTasks.ts",
+      "sha1": "615001b8a646646f3a428156f73efe14b3b5c07d"
+    },
+    {
+      "path": "src/hooks/useAdminPortalBypass.ts",
+      "sha1": "30a5b3a1e7dc447b688456957bdbc7f3489cadbb"
+    },
+    {
+      "path": "src/hooks/useAllCleanersAvailability.ts",
+      "sha1": "0a31fa2ce7d9bd8d2c7902b1ab4f079c3f67cf79"
+    },
+    {
+      "path": "src/hooks/useAmenityMappings.ts",
+      "sha1": "79f5e58093bb94815199e624c572cce77fb5a99b"
+    },
+    {
+      "path": "src/hooks/useAuth.ts",
+      "sha1": "d4fba81258b131ab1766ae7b5dbc3ff71839dc61"
+    },
+    {
+      "path": "src/hooks/useAuthGuard.ts",
+      "sha1": "bd43d5ef3ba1a9018d719c401bb9e4961fab76c3"
+    },
+    {
+      "path": "src/hooks/useAutomaticConsumption.ts",
+      "sha1": "adc82094971f5f93dc4cd92cbab240b99a664522"
+    },
+    {
+      "path": "src/hooks/useCacheInvalidation.ts",
+      "sha1": "afbf27d68f676d4234b5720bc9c81a4a94a7a46e"
+    },
+    {
+      "path": "src/hooks/useCalendarData.ts",
+      "sha1": "13d9f8f1348bb806f25261fdc8743721e25dfef9"
+    },
+    {
+      "path": "src/hooks/useCalendarLogic.ts",
+      "sha1": "4fd41707ca72bb91f01738a3644a66d7c6a3961c"
+    },
+    {
+      "path": "src/hooks/useCalendarNavigation.ts",
+      "sha1": "b87dca1bc2d270b01b89511a69886977b3119830"
+    },
+    {
+      "path": "src/hooks/useCalendarWorkload.ts",
+      "sha1": "097b9c88152324e9850630b50ce3d8f2ad508d03"
+    },
+    {
+      "path": "src/hooks/useChecklistTemplates.ts",
+      "sha1": "9d9679a355dc8e636bf6c84f1a9257f365742ea1"
+    },
+    {
+      "path": "src/hooks/useCleanerAvailability.ts",
+      "sha1": "50b2155b83517641d010fb8cfb1ea2bc7b6ea772"
+    },
+    {
+      "path": "src/hooks/useCleanerMobileNavigation.ts",
+      "sha1": "8ba84f2b9f8fd24f4b81ab2fa1b9d3e450255657"
+    },
+    {
+      "path": "src/hooks/useCleanerTaskSummary.ts",
+      "sha1": "fa142a3a115775908f3d26b07b056819305872f2"
+    },
+    {
+      "path": "src/hooks/useCleaners.ts",
+      "sha1": "b7022ea67dc6e91613c8a6887efc10019352b5f1"
+    },
+    {
+      "path": "src/hooks/useCleaningIncidents.ts",
+      "sha1": "1141a7c5bbdbc0569abac825f86e343900345f23"
+    },
+    {
+      "path": "src/hooks/useCleaningPlanning.ts",
+      "sha1": "e2ed9a8b5d9a2e7ef693ed614460efbfa55ecabe"
+    },
+    {
+      "path": "src/hooks/useCleaningPlanningActions.ts",
+      "sha1": "99b44b9eb8bb4632798601589beeac9fa4bfdcc7"
+    },
+    {
+      "path": "src/hooks/useCleaningPlanningBuildingData.ts",
+      "sha1": "2ba86f6d6301492b53a10327061dca637cc65d95"
+    },
+    {
+      "path": "src/hooks/useClientData.ts",
+      "sha1": "0979a169bf81fb9b126ae9f99d1bc3bf0515e8cd"
+    },
+    {
+      "path": "src/hooks/useClientPortal.ts",
+      "sha1": "cf4cd19c840ce81a16d56b48cab9d324daed91d2"
+    },
+    {
+      "path": "src/hooks/useClients.ts",
+      "sha1": "6b77eea6c0761785c9764d513e908fd2eca75d79"
+    },
+    {
+      "path": "src/hooks/useConsumptionConfig.ts",
+      "sha1": "0107c17d78ab01db0340f44fc5c4a25eae6e10f2"
+    },
+    {
+      "path": "src/hooks/useDeactivateCleaner.ts",
+      "sha1": "c0d0f8c059fdf3b45dac31b2ee96bfd0339c03e8"
+    },
+    {
+      "path": "src/hooks/useDragAndDrop.ts",
+      "sha1": "d5d6af0fa9982a3aa9e6547c196bc953b81bcb3f"
+    },
+    {
+      "path": "src/hooks/useFileUploadSecurity.ts",
+      "sha1": "57b73e68eee53efbad40ab2e92ed89be24342ec8"
+    },
+    {
+      "path": "src/hooks/useGlobalSearch.ts",
+      "sha1": "908b2606c40341b3a94bc01b266197c26b1a4d32"
+    },
+    {
+      "path": "src/hooks/useGroupedTaskReports.ts",
+      "sha1": "d355da3ced232981da9a5fc5c55364820b553cc2"
+    },
+    {
+      "path": "src/hooks/useHistoricalDayPattern.ts",
+      "sha1": "499ed86be05504ccc4b92a23555153941f942d37"
+    },
+    {
+      "path": "src/hooks/useIncidents.ts",
+      "sha1": "90eccef3136bc58633f21096d6990f602e49e926"
+    },
+    {
+      "path": "src/hooks/useInlineFieldSave.ts",
+      "sha1": "0686fc606a35c699bb7c1cb71005e6b7019d00a1"
+    },
+    {
+      "path": "src/hooks/useInputValidation.ts",
+      "sha1": "c971d4208308580ee721a4d06df84a595cd7eae1"
+    },
+    {
+      "path": "src/hooks/useInventory.ts",
+      "sha1": "0100fb13cc0ac69950cb25d8f895e6f6317104d9"
+    },
+    {
+      "path": "src/hooks/useInventoryPredictions.ts",
+      "sha1": "8dd7ae931a81fb0f998184ba386f91c13e8cbd1e"
+    },
+    {
+      "path": "src/hooks/useInvitations.ts",
+      "sha1": "9525e78fe93641a3d5d553c6773744ca933dc3e7"
+    },
+    {
+      "path": "src/hooks/useLaundrySchedule.ts",
+      "sha1": "ab14c06f4a8ab0fe10b21ac83b30ff1d9ac25537"
+    },
+    {
+      "path": "src/hooks/useLaundryShareLinks.ts",
+      "sha1": "eab1fd21c42e5df816ed19d607b394c3530568dc"
+    },
+    {
+      "path": "src/hooks/useLaundryTracking.ts",
+      "sha1": "6b306af5b3976c1acce865fa2676342b1d4e912e"
+    },
+    {
+      "path": "src/hooks/useLinenControl.ts",
+      "sha1": "923812eaced5dbf42ad376a611d94d0c7723c11f"
+    },
+    {
+      "path": "src/hooks/useLogisticsOffline.ts",
+      "sha1": "374553d3738e7199db53d40e99a705d11d3f701e"
+    },
+    {
+      "path": "src/hooks/useLogisticsPerformance.ts",
+      "sha1": "a7aabd5d16ba26c5d6610e97b15b208610d84cb4"
+    },
+    {
+      "path": "src/hooks/useLogisticsReporting.ts",
+      "sha1": "a445abb74146b702ff856676938c90773b4430e2"
+    },
+    {
+      "path": "src/hooks/useMediaManagement.ts",
+      "sha1": "c8ed0461f93523bbcd46a512c40f6be4a265beaa"
+    },
+    {
+      "path": "src/hooks/useMobileErrorHandler.ts",
+      "sha1": "a7450de873ddb3a94d01f27558396522a5dff983"
+    },
+    {
+      "path": "src/hooks/useMovements.ts",
+      "sha1": "5b9f508f52aa5b70d49a2d6bc586759183ab8e0f"
+    },
+    {
+      "path": "src/hooks/useNetworkStatus.ts",
+      "sha1": "2b0861e65ff5b686d2b00aa823d41dc71c5a8daa"
+    },
+    {
+      "path": "src/hooks/useOperationalPlanning.ts",
+      "sha1": "b0c0c0629b26782f1e69c18dca0c751102b85c93"
+    },
+    {
+      "path": "src/hooks/useOptimizedAutoSave.ts",
+      "sha1": "b3e4da8ab9660f101bc2e82c2f6fce42eabaf3ca"
+    },
+    {
+      "path": "src/hooks/useOptimizedCleaningReports.ts",
+      "sha1": "e1880baadde35d01651e8d6bd61ebe4da1efad88"
+    },
+    {
+      "path": "src/hooks/useOptimizedPagination.ts",
+      "sha1": "db7c49fac90e816ceb9f698a9f1bc916a893ac1d"
+    },
+    {
+      "path": "src/hooks/useOptimizedTaskReports.ts",
+      "sha1": "e7a0cf8cc60074d9f3aaf8cabb7e075c2b568f7e"
+    },
+    {
+      "path": "src/hooks/useOptimizedTaskStorage.ts",
+      "sha1": "83b4d761613047bb9f658403a832b0e9777e7fa0"
+    },
+    {
+      "path": "src/hooks/useOptimizedTasks.ts",
+      "sha1": "13d855542cfd7a9cb3573d1a0997d9eb001eea77"
+    },
+    {
+      "path": "src/hooks/usePerformanceOptimization.ts",
+      "sha1": "2ae644864cbd72d1be4255726e4c3d238b9916de"
+    },
+    {
+      "path": "src/hooks/usePicklistExport.ts",
+      "sha1": "4c3e540fc7b64f021a40dcd071bdb245b18a9bc3"
+    },
+    {
+      "path": "src/hooks/usePlanningCalendarWeek.ts",
+      "sha1": "8db0266ac5e24dd3c14fb31b51c15553849aa5b0"
+    },
+    {
+      "path": "src/hooks/usePlanningStaffing.ts",
+      "sha1": "9aa0b7af080cf2d4bff091ee0e97580caec472b5"
+    },
+    {
+      "path": "src/hooks/usePlanningWeeklyWorkload.ts",
+      "sha1": "787598c5354755ea41259de2f4cd42bf03734fb6"
+    },
+    {
+      "path": "src/hooks/usePortalIncidents.ts",
+      "sha1": "3541d7029d23901720ee64fbb97bb5dd7ebed28d"
+    },
+    {
+      "path": "src/hooks/useProcessRecurringTasks.ts",
+      "sha1": "501525d39739328f722ac8a4672e80d80611d1bc"
+    },
+    {
+      "path": "src/hooks/useProperties.ts",
+      "sha1": "78dc8e8988de0dca92e0c5ff800ab50beb20436a"
+    },
+    {
+      "path": "src/hooks/usePropertyChecklists.ts",
+      "sha1": "763b81537e22fb323c60449ec4ecf3c9436e6025"
+    },
+    {
+      "path": "src/hooks/usePropertyGroups.ts",
+      "sha1": "dc50b2ba68af1e1bbab10d57440ff8142fc5cba2"
+    },
+    {
+      "path": "src/hooks/usePropertyPreferredCleaners.ts",
+      "sha1": "5720b9f2c5388f11cb8cf4b6e4e5259bfc795766"
+    },
+    {
+      "path": "src/hooks/useRecurringTaskInstances.ts",
+      "sha1": "e32db3e231512ab16bea097f77b3c97d7531a077"
+    },
+    {
+      "path": "src/hooks/useRecurringTasks.ts",
+      "sha1": "cb59a497a140a30469d4ec2fb2c383da127d5b6a"
+    },
+    {
+      "path": "src/hooks/useReportValidation.ts",
+      "sha1": "cdf0bb149413220bed4778d5f90a44287d1d943b"
+    },
+    {
+      "path": "src/hooks/useReports.ts",
+      "sha1": "18f1955392dbd12d687333711da482f02cbe2449"
+    },
+    {
+      "path": "src/hooks/useRolePermissions.ts",
+      "sha1": "7f40a4f71c04d3511a23bde5d65fdb4c18a1c223"
+    },
+    {
+      "path": "src/hooks/useSalaryCalculation.ts",
+      "sha1": "e745f19f9f0b0794fa02aae7e64c0345db0c7719"
+    },
+    {
+      "path": "src/hooks/useSedeContext.ts",
+      "sha1": "a30b319446b36661616e5b8440345d61c3426a15"
+    },
+    {
+      "path": "src/hooks/useSedes.ts",
+      "sha1": "69af48acce23ea76d583c35c917bc870287e61ce"
+    },
+    {
+      "path": "src/hooks/useSessionTimeout.ts",
+      "sha1": "42a017fe48c49a46ceb9da7dfabd22e6c639f575"
+    },
+    {
+      "path": "src/hooks/useStaffingCandidates.ts",
+      "sha1": "55a2858fcaa268836cbd41101647517124b31007"
+    },
+    {
+      "path": "src/hooks/useStaffingTargets.ts",
+      "sha1": "d9f7cf1582f387889f623dfff33a95ddf15ec0ce"
+    },
+    {
+      "path": "src/hooks/useStock.ts",
+      "sha1": "7d4956e69430a6ddf48699f1d9ac3b347336c89a"
+    },
+    {
+      "path": "src/hooks/useSupervisionAssignments.ts",
+      "sha1": "58a5800dabe9a3b4c4e2f828782ec476e374eb2c"
+    },
+    {
+      "path": "src/hooks/useSupervisionBuildingCoverage.ts",
+      "sha1": "c94a37c2303abee66e0a58c06c6b1d5a1cfe19f6"
+    },
+    {
+      "path": "src/hooks/useSupervisionBuildingPolicy.ts",
+      "sha1": "4eb5e317415cc74e5e5ee6fd497312d50b504258"
+    },
+    {
+      "path": "src/hooks/useSwipeGesture.ts",
+      "sha1": "5c8faf162e0d77e2afb3b6a77914c3e377c4f2e1"
+    },
+    {
+      "path": "src/hooks/useTaskMedia.ts",
+      "sha1": "37f49405bdb660c1bf8694f9e1d9be83e2fe4fde"
+    },
+    {
+      "path": "src/hooks/useTaskPreview.ts",
+      "sha1": "28ff0bcb50960ee38870ef4569123cbcc7d666bd"
+    },
+    {
+      "path": "src/hooks/useTaskQuickActions.ts",
+      "sha1": "726c3ff94f92625841286b8ff76eea3b713a5e0a"
+    },
+    {
+      "path": "src/hooks/useTaskReports.ts",
+      "sha1": "e153c627a2bd7a5cd8b5cdad5076d5c715eb0122"
+    },
+    {
+      "path": "src/hooks/useTaskTimeSync.ts",
+      "sha1": "6d90aa5ba46640510565d432b89a3b1692d78870"
+    },
+    {
+      "path": "src/hooks/useTasks.ts",
+      "sha1": "2971c76d155cfcea7feed0ef993000d56c75f4c3"
+    },
+    {
+      "path": "src/hooks/useTheme.ts",
+      "sha1": "d4c1b87b33a381eb630215f479aee8966b051f30"
+    },
+    {
+      "path": "src/hooks/useTimeLogs.ts",
+      "sha1": "dbb75052dca66518c330800598150052b0cb524e"
+    },
+    {
+      "path": "src/hooks/useUnavailableCleaners.ts",
+      "sha1": "ecf14247afe481d1957778a86b56ee7f5906131b"
+    },
+    {
+      "path": "src/hooks/useVacationRequests.ts",
+      "sha1": "fcfe7e6207d4cfe0fd2c8d90f0c35ba369ed4b61"
+    },
+    {
+      "path": "src/hooks/useVirtualization.ts",
+      "sha1": "417abac6a7db9dac3764b7e402397f3a272c8581"
+    },
+    {
+      "path": "src/hooks/useWhatsAppDeliveryHealth.ts",
+      "sha1": "504ce6eb91be7408da3b011412407cdd4118b1dc"
+    },
+    {
+      "path": "src/hooks/useWorkSchedule.ts",
+      "sha1": "2251b2c4bb10f34bcee6629bde5ca8df37d2726d"
+    },
+    {
+      "path": "src/hooks/useWorkerAbsenceAuditLog.ts",
+      "sha1": "6473fbac0affec2d6ea974f680aad0a81f9db8a3"
+    },
+    {
+      "path": "src/hooks/useWorkerAbsences.ts",
+      "sha1": "9aba5886b8baa107adedf495800b282c61856877"
+    },
+    {
+      "path": "src/hooks/useWorkerAlerts.ts",
+      "sha1": "a7a3cbc53e4561018f15c1b165ff502e16388fa0"
+    },
+    {
+      "path": "src/hooks/useWorkerAvailabilityCheck.ts",
+      "sha1": "ea2b9ae0735b43854449bbc1ac8c806cc7a3d91f"
+    },
+    {
+      "path": "src/hooks/useWorkerContracts.ts",
+      "sha1": "3a89a8466068c0f151780343a6299ab668fac353"
+    },
+    {
+      "path": "src/hooks/useWorkerFixedDaysOff.ts",
+      "sha1": "9a2fd2d880d3d4f4cd4c303662074fd502cc2872"
+    },
+    {
+      "path": "src/hooks/useWorkerHourAdjustments.ts",
+      "sha1": "a1c30d3ee1e81676e831dafc120b6f810230a319"
+    },
+    {
+      "path": "src/hooks/useWorkerMaintenanceCleanings.ts",
+      "sha1": "69a1a2a472a4dcf3cd7fc194aa739bd6c0f6a3ea"
+    },
+    {
+      "path": "src/hooks/useWorkersAbsenceStatus.ts",
+      "sha1": "ce6c9595e4a1d0f29ee18e5f2056ccda7d7e1de4"
+    },
+    {
+      "path": "src/hooks/useWorkloadCalculation.ts",
+      "sha1": "e7ac6434ec7f4dcd3d67980e17dd9a4398216b51"
+    },
+    {
+      "path": "src/index.css",
+      "sha1": "5693e7b22aabd786a0a2a092a010e1b7ca725869"
+    },
+    {
+      "path": "src/integrations/supabase/client.ts",
+      "sha1": "eb195d767bb0a89719e23327428840c11be54ca5"
+    },
+    {
+      "path": "src/integrations/supabase/types.ts",
+      "sha1": "910e977557c2e628c11aa2e3822d58b3de91fe60"
+    },
+    {
+      "path": "src/lib/clientReservationLog.ts",
+      "sha1": "957da5db506806a6285a240593a1e1e0ec16c5da"
+    },
+    {
+      "path": "src/lib/rolePermissions.ts",
+      "sha1": "16b852b569bbd5d73c178ae22b85789abdfe52bc"
+    },
+    {
+      "path": "src/lib/supabaseUntyped.ts",
+      "sha1": "13886b617d2771c1628998f0cbb46f8a73a2496a"
+    },
+    {
+      "path": "src/lib/utils.ts",
+      "sha1": "9fa901a0e17d477494bafed3c8c97c4224e40c9b"
+    },
+    {
+      "path": "src/main.tsx",
+      "sha1": "0f6dab5a91c4ab38c2715d8e7148ed53b00637a6"
+    },
+    {
+      "path": "src/pages/AcceptInvitation.tsx",
+      "sha1": "ad795da1325e753065406e51183678462334c86b"
+    },
+    {
+      "path": "src/pages/Auth.tsx",
+      "sha1": "f0a09530d328390ad88076420beddafbdf400df1"
+    },
+    {
+      "path": "src/pages/AvantioAutomation.tsx",
+      "sha1": "c017b0c631f2fb2be1858e3e5d2154849574c9b5"
+    },
+    {
+      "path": "src/pages/AviratoAdmin.tsx",
+      "sha1": "d7724a414ec0c6e1f61353902af2da44b6c71c2b"
+    },
+    {
+      "path": "src/pages/BudgetEstimator.tsx",
+      "sha1": "8408e0e58cc31402114d75b0e39d3ace8689875c"
+    },
+    {
+      "path": "src/pages/Calendar.tsx",
+      "sha1": "c900c24cf766599e04563df42bc9dc4afed8a4e8"
+    },
+    {
+      "path": "src/pages/ChecklistTemplates.tsx",
+      "sha1": "15b1fd42904e0776ebe06b282a9eb219e2e793d5"
+    },
+    {
+      "path": "src/pages/CleaningPlanning.tsx",
+      "sha1": "1ecd06b366b2418bed1f6f78f589220c01d320e6"
+    },
+    {
+      "path": "src/pages/CleaningReports.tsx",
+      "sha1": "f36f02c360c66286c7527bc96462e8d438aa109a"
+    },
+    {
+      "path": "src/pages/ClientBilling.tsx",
+      "sha1": "99ea7df2d4c79a06d4c21877216ee37ad7898672"
+    },
+    {
+      "path": "src/pages/ClientPortal.tsx",
+      "sha1": "6c74fbaa701ac0594ebbf40867bab8428a6d3b1a"
+    },
+    {
+      "path": "src/pages/ClientPortalsAdmin.tsx",
+      "sha1": "0e607b6fbca47985fa322ea1fc9b08123618d785"
+    },
+    {
+      "path": "src/pages/ClientReservationsAdmin.tsx",
+      "sha1": "88acc1820e7e42dac63349c3aaf4d21be4fef1cf"
+    },
+    {
+      "path": "src/pages/Clients.tsx",
+      "sha1": "6145f7a132f4765c6d002fb2d69b412c5806458b"
+    },
+    {
+      "path": "src/pages/ForgotPassword.tsx",
+      "sha1": "0d642895f9f9affbdb7c256b6c200fb3b841938d"
+    },
+    {
+      "path": "src/pages/HostawayAutomation.tsx",
+      "sha1": "dad11c62a921776fa136be50546b9aac6774c069"
+    },
+    {
+      "path": "src/pages/HostawaySyncLogs.tsx",
+      "sha1": "77f538a1fdfb1efec0f671c68c59b2186bae75a1"
+    },
+    {
+      "path": "src/pages/Index.tsx",
+      "sha1": "cee28e241b3700e48b0ed1f2ebb7c863e0e6104b"
+    },
+    {
+      "path": "src/pages/Integraciones.tsx",
+      "sha1": "f880a46c208a146e737d1223f498cb393470bb8a"
+    },
+    {
+      "path": "src/pages/InventoryAmenities.tsx",
+      "sha1": "a28b42adf2a1687bdc7da23fc0cc9e3e40346198"
+    },
+    {
+      "path": "src/pages/InventoryConfig.tsx",
+      "sha1": "246e5142f77d92ca8a93ee84ffdd58b7d943664b"
+    },
+    {
+      "path": "src/pages/InventoryDashboard.tsx",
+      "sha1": "9e65a54f32bac1c9c3bab9cb6138a37aac5202a6"
+    },
+    {
+      "path": "src/pages/InventoryLaundry.tsx",
+      "sha1": "76218d1d00a2be2b2f013d778f142b9d36dd200a"
+    },
+    {
+      "path": "src/pages/InventoryMovements.tsx",
+      "sha1": "e0bd059269b98bc3339debf3f7c2a8bc8065109a"
+    },
+    {
+      "path": "src/pages/InventoryReports.tsx",
+      "sha1": "e6cc001bcb9b33978a70cda55cdd4d0613cd6782"
+    },
+    {
+      "path": "src/pages/InventoryStock.tsx",
+      "sha1": "e82d941865b0bd474c26c9ed4f98ebd70a0121b4"
+    },
+    {
+      "path": "src/pages/InventoryWarehouses.tsx",
+      "sha1": "b7d0b393447b1c7b7255a7dadfed71655e8d6716"
+    },
+    {
+      "path": "src/pages/LaundryRouteOrder.tsx",
+      "sha1": "8f0d8cc95decf079408822dc26334aeab018e472"
+    },
+    {
+      "path": "src/pages/LaundryRouteV2Management.tsx",
+      "sha1": "b204cc6e2b4f4396bca34c695ae77a235eb4bf01"
+    },
+    {
+      "path": "src/pages/LaundryShareManagement.tsx",
+      "sha1": "ada841590aab8557413fe4e374829d0d1b2a34c4"
+    },
+    {
+      "path": "src/pages/LinenControlPage.tsx",
+      "sha1": "ef2f463151f5ab6ea210a1be55ba130457d3c7f7"
+    },
+    {
+      "path": "src/pages/LittleHotelierAdmin.tsx",
+      "sha1": "dfd7246f241925ae4a37c15ec99c9f37f75d7540"
+    },
+    {
+      "path": "src/pages/LogisticsDashboard.tsx",
+      "sha1": "7ee6152293e445316d9dc0139117c1ce8e184a2f"
+    },
+    {
+      "path": "src/pages/LogisticsDeliveries.tsx",
+      "sha1": "a9f0e6daa99c7c5ec8c58e9a561f1e9137981da2"
+    },
+    {
+      "path": "src/pages/LogisticsPicklistDetails.tsx",
+      "sha1": "bb0c6263695a8336356533b91b67b20d78d46c35"
+    },
+    {
+      "path": "src/pages/LogisticsPicklistEdit.tsx",
+      "sha1": "88f2700d027eb4c5a49bcb33c0450c57b95f75a0"
+    },
+    {
+      "path": "src/pages/LogisticsPicklists.tsx",
+      "sha1": "a00dec899a92dff9fbb9c8a99a9a1faaefed297f"
+    },
+    {
+      "path": "src/pages/LogisticsReports.tsx",
+      "sha1": "02de057f4bddf826736b1fdeac33b15acba1a72c"
+    },
+    {
+      "path": "src/pages/NotFound.tsx",
+      "sha1": "fb67d937077073ac4c78b8df19086135f60efcf7"
+    },
+    {
+      "path": "src/pages/OperationalAnalytics.tsx",
+      "sha1": "cdea1803b95ee404493a96950589b4b1745a5ebc"
+    },
+    {
+      "path": "src/pages/PlanningBuildingDetail.tsx",
+      "sha1": "94b42800ab04ee5e4cae89bacf68c98219bee5de"
+    },
+    {
+      "path": "src/pages/PlanningBuildingsIndex.tsx",
+      "sha1": "2963a2b1f72651c8f0ac5bc30231c208ac59031e"
+    },
+    {
+      "path": "src/pages/PlanningPage.tsx",
+      "sha1": "a7b2c84f58f1e99b2ea912bb55d76b07add35e4e"
+    },
+    {
+      "path": "src/pages/Properties.tsx",
+      "sha1": "bda4b6824f08fb256866064cb096fc3a72027375"
+    },
+    {
+      "path": "src/pages/PropertyGroups.tsx",
+      "sha1": "499a2124cfddee83fdfb2b62b864fa8e73b440cd"
+    },
+    {
+      "path": "src/pages/PublicLaundryScheduledView.tsx",
+      "sha1": "1de541ac6c37691616a701d24b0972d1ec45aabe"
+    },
+    {
+      "path": "src/pages/PublicLaundryView.tsx",
+      "sha1": "00003da7f14ae47ff295a3c73f4481783df11919"
+    },
+    {
+      "path": "src/pages/RecurringTasksPage.tsx",
+      "sha1": "a81fbda6c2778c42746edc846b8176cf65a8f1c8"
+    },
+    {
+      "path": "src/pages/ResetPassword.tsx",
+      "sha1": "17841c425f4ce8fe6b8e3b348c5fcea7132e4a16"
+    },
+    {
+      "path": "src/pages/SecurityManagement.tsx",
+      "sha1": "275741441da9f9731d524984f09a43d33aa8921e"
+    },
+    {
+      "path": "src/pages/SedeManagement.tsx",
+      "sha1": "608e2563e1a5b8c8ac9224c763dce6da3a40f549"
+    },
+    {
+      "path": "src/pages/Supervision.tsx",
+      "sha1": "ba7dffa4aac7ce7935626d03be49716c524a7d2a"
+    },
+    {
+      "path": "src/pages/SupervisionBuildings.tsx",
+      "sha1": "27c454bb9d7206b7f2e62f7e393d447d26e54c6d"
+    },
+    {
+      "path": "src/pages/Tasks.tsx",
+      "sha1": "2edf010dab43ea3300bfdb77dfeb53181f5aa938"
+    },
+    {
+      "path": "src/pages/UserManagement.tsx",
+      "sha1": "c9877c0e1e6c4663ebbe9ef88249998e8152a908"
+    },
+    {
+      "path": "src/pages/WhatsAppNotifications.tsx",
+      "sha1": "597fbbf9988c953c067b3d6043f8ec9601a1a54c"
+    },
+    {
+      "path": "src/pages/Workers.tsx",
+      "sha1": "38f84d8a6b55c821b36069adc779526bdf46e30c"
+    },
+    {
+      "path": "src/pages/WorkloadDashboard.tsx",
+      "sha1": "62615eed24020b4ba93ebad771796c9a2a33d656"
+    },
+    {
+      "path": "src/pages/admin/SedeAuditPage.tsx",
+      "sha1": "630b0c07a8d3fc62fcf18e5f2a3abf08532c12e8"
+    },
+    {
+      "path": "src/pages/admin/SedeTestingPage.tsx",
+      "sha1": "90db3c1dd04714007d1cce2fc564e52acecd2dc9"
+    },
+    {
+      "path": "src/services/aiObservedEvents.ts",
+      "sha1": "bb956a0dcef56a9091c7a52622b58a25bbbc8c88"
+    },
+    {
+      "path": "src/services/analyticsExport.ts",
+      "sha1": "0de6b199d92d1141899cc2312ca1115097edb814"
+    },
+    {
+      "path": "src/services/autoAssignment/assignmentAlgorithm.ts",
+      "sha1": "4f8bf2338610b5a6b4978be35aa4dcfd7f5587ad"
+    },
+    {
+      "path": "src/services/autoAssignment/autoAssignmentEngine.ts",
+      "sha1": "a9e89aee65bd2cd2c1ac3b35eec447279e8b8e9e"
+    },
+    {
+      "path": "src/services/autoAssignment/availabilityChecker.ts",
+      "sha1": "af64b58040ad53bbcb7baa613b2e1abac43495ca"
+    },
+    {
+      "path": "src/services/autoAssignment/contextBuilder.ts",
+      "sha1": "c0e031d92f862e66bd12d9887b5ff3d37bfecee7"
+    },
+    {
+      "path": "src/services/autoAssignment/databaseService.ts",
+      "sha1": "b00e587b150dd68d71960c8498af7f2b1195b420"
+    },
+    {
+      "path": "src/services/autoAssignment/types.ts",
+      "sha1": "39e57038cf3e22bf9784b2d3d5f0eaae675711e0"
+    },
+    {
+      "path": "src/services/autoAssignmentEngine.ts",
+      "sha1": "3a2559e2bc45aa0be94880f0ad93e6655a203da3"
+    },
+    {
+      "path": "src/services/autoAssignmentIntegration.ts",
+      "sha1": "3163a02305a8f7f7ea7f8e641016f8854141478f"
+    },
+    {
+      "path": "src/services/avantioSync.ts",
+      "sha1": "97b2b71803b015910f875055e43e9d66b78e8e3b"
+    },
+    {
+      "path": "src/services/cleanerStorage.ts",
+      "sha1": "e968b10ec5098f7d0f49cb97ab6721758ddcb829"
+    },
+    {
+      "path": "src/services/clientBillingCsvExport.ts",
+      "sha1": "9d9462c58868d60682f9f1358e256324cb6c9bc7"
+    },
+    {
+      "path": "src/services/clientBillingExcelExport.ts",
+      "sha1": "8e4f636560e3e0d9cf4318e894c8f5cce00f6dcd"
+    },
+    {
+      "path": "src/services/clientPortal/nextClientEntry.ts",
+      "sha1": "074fe4293678d203ab434d97c17b861e495b95c9"
+    },
+    {
+      "path": "src/services/clientPortal/nextClientEntryDomain.ts",
+      "sha1": "808d04c753537946d35c438684ee9e3a41a38cff"
+    },
+    {
+      "path": "src/services/clientStorage.ts",
+      "sha1": "b091e4804cda400bcb83b5aa5bdbd284208fabde"
+    },
+    {
+      "path": "src/services/csvExport.ts",
+      "sha1": "aeaab9adb823fdca5d8c0921b5516f695369f218"
+    },
+    {
+      "path": "src/services/excelExport.ts",
+      "sha1": "137f957879af938f07b803504f007dd6137808b1"
+    },
+    {
+      "path": "src/services/hostawaySync.ts",
+      "sha1": "48350a1d0e6a88915ce8c5b07f7c4a41cf311ac2"
+    },
+    {
+      "path": "src/services/laundryRouteOrderService.ts",
+      "sha1": "1e1fed7fa4d49fa7c04f758f9b45ccf789a12946"
+    },
+    {
+      "path": "src/services/laundryScheduleService.ts",
+      "sha1": "f17a487071918d4e667f539b2287e2179eed4e50"
+    },
+    {
+      "path": "src/services/laundryShareService.ts",
+      "sha1": "f6c160f9577a6e64b9d95a1d6ca131811816fff9"
+    },
+    {
+      "path": "src/services/notifications/approvalPatches.ts",
+      "sha1": "c5f4664114e7c78251ae78e7e63636678797c15d"
+    },
+    {
+      "path": "src/services/notifications/notificationOrchestrator.ts",
+      "sha1": "e7a5dd415ec6753544b140f4e27b0eee04112d72"
+    },
+    {
+      "path": "src/services/notifications/taskApprovalService.ts",
+      "sha1": "2ca5ede10e45cca6c6b6213e234a038988bc2b32"
+    },
+    {
+      "path": "src/services/planning/assignmentScoring.ts",
+      "sha1": "2f744b7e054f42ce4b3aaf4de28f561b41b1b770"
+    },
+    {
+      "path": "src/services/planning/buildingCrmAggregator.ts",
+      "sha1": "7ea5f07603a160cf17d67096150725cadae2fe91"
+    },
+    {
+      "path": "src/services/planning/cleanerCapacity.ts",
+      "sha1": "0b91d8775c889cb731eae7bc547d6df9b24cee13"
+    },
+    {
+      "path": "src/services/planning/copilot/planningAudit.ts",
+      "sha1": "356d472e7b499fe183195217c616fee132ea6e6b"
+    },
+    {
+      "path": "src/services/planning/copilot/planningCopilotLocal.ts",
+      "sha1": "131bfe441c7ec6f3c0de6207a2cf9af3f20ddbcc"
+    },
+    {
+      "path": "src/services/planning/copilot/planningSnapshot.ts",
+      "sha1": "6bac3b29c3228dac6db6424ea3f4d6f765714731"
+    },
+    {
+      "path": "src/services/planning/operationalPlanningService.ts",
+      "sha1": "2ff2b8b8ece6bb5ffce92f84004a186b1dfd2aef"
+    },
+    {
+      "path": "src/services/planning/planningBatchClient.ts",
+      "sha1": "94dec070bce7386e1a763ac798249b71d75614f5"
+    },
+    {
+      "path": "src/services/planning/planningBatchFlags.ts",
+      "sha1": "f1f65d8cd2b95e5ca1770dd70d1bfeaced25b884"
+    },
+    {
+      "path": "src/services/planning/planningRecipientPreflight.ts",
+      "sha1": "f8382717093b0c7d91d11b846c7949ca9a83a35b"
+    },
+    {
+      "path": "src/services/planning/planningWindows.ts",
+      "sha1": "d1af334e1049800afebb5d7f4c9095307481bc89"
+    },
+    {
+      "path": "src/services/planning/propertyCodeGrouping.ts",
+      "sha1": "ed261c32ef85d8d00687b91a4c196358949911cb"
+    },
+    {
+      "path": "src/services/planning/propertyStaffingService.ts",
+      "sha1": "9aedccf527c086d45c4e149c2045378661db5415"
+    },
+    {
+      "path": "src/services/propertyStorage.ts",
+      "sha1": "99a397d23ab607fb7c752bcd26fb0e03ab626441"
+    },
+    {
+      "path": "src/services/recurringTaskInstanceService.ts",
+      "sha1": "a695f9316359817bced6bee9476af350ce1d7a33"
+    },
+    {
+      "path": "src/services/recurringTaskStorage.ts",
+      "sha1": "15d6025b7e5829c84e787eac4a585417d0509af5"
+    },
+    {
+      "path": "src/services/reports/billingReportGenerator.ts",
+      "sha1": "86450c83c93142d2f616dec82506928fbd9f2995"
+    },
+    {
+      "path": "src/services/reports/dateFilters.ts",
+      "sha1": "a1997047406752f77fa939ae246383ae9f73e76a"
+    },
+    {
+      "path": "src/services/reports/laundryReportGenerator.ts",
+      "sha1": "4cdbf3f514468fbb15aeb3635715b8e06720bd10"
+    },
+    {
+      "path": "src/services/reports/summaryReportGenerator.ts",
+      "sha1": "ff497ff25b46e2514c4de2c68996dd6b825d6589"
+    },
+    {
+      "path": "src/services/reports/taskReportGenerator.ts",
+      "sha1": "a391f14c66725af3705e051ea555686273906d91"
+    },
+    {
+      "path": "src/services/salaryCalculationService.ts",
+      "sha1": "2e0c9b1c6cd5221d176749fbd117bc71fed58f9a"
+    },
+    {
+      "path": "src/services/storage/amenityMappingStorage.ts",
+      "sha1": "93f81a4c660fe3c597801b72ab4f3cee7715c456"
+    },
+    {
+      "path": "src/services/storage/baseStorage.ts",
+      "sha1": "7a1a8700ddb0dbcae60a77b87150495df3c03e05"
+    },
+    {
+      "path": "src/services/storage/checklistTemplatesStorage.ts",
+      "sha1": "d5cb13a7c6cb224b381e62eaa6d126837e15e40d"
+    },
+    {
+      "path": "src/services/storage/cleanerStorage.ts",
+      "sha1": "12da350b44168aa51e65a4a2eb55dd418d13ab87"
+    },
+    {
+      "path": "src/services/storage/clientStorage.ts",
+      "sha1": "c36f2ad424c125892f7ffaba5fc1980363655a64"
+    },
+    {
+      "path": "src/services/storage/inventoryStorage.ts",
+      "sha1": "dc7f3427c8f896adf018c0289156d86ecf27fc0e"
+    },
+    {
+      "path": "src/services/storage/mappers/cleanerMappers.ts",
+      "sha1": "528add2a8856455f6a957ed40c3e3a40998b4c34"
+    },
+    {
+      "path": "src/services/storage/mappers/clientMappers.ts",
+      "sha1": "cdc1a83d6c9210096fc0bdf52e5cd86564b1c3bb"
+    },
+    {
+      "path": "src/services/storage/mappers/propertyMappers.ts",
+      "sha1": "06a8b22a6e6540986b0a33c0c329c1aad83aedcb"
+    },
+    {
+      "path": "src/services/storage/multipleTaskAssignmentService.ts",
+      "sha1": "852c57820f2a34deb03a7368c1aa1880b9aa7b58"
+    },
+    {
+      "path": "src/services/storage/propertyChecklistStorage.ts",
+      "sha1": "37b2a5aa381a1afa0c2abd12f60e408e592ed396"
+    },
+    {
+      "path": "src/services/storage/propertyGroupStorage.ts",
+      "sha1": "f448a6a69bdffe757e47bac174068d954dc0f115"
+    },
+    {
+      "path": "src/services/storage/propertyPreferredCleanersStorage.ts",
+      "sha1": "15622f41dc62ae7a9b3b7492e7d56b44838756df"
+    },
+    {
+      "path": "src/services/storage/propertyStorage.ts",
+      "sha1": "ead6ade4092ba24ff0c0397198cc8da31639af64"
+    },
+    {
+      "path": "src/services/storage/sedeStorage.ts",
+      "sha1": "255554fb45a2e0ec9d6ace3e6f4aa90b4188f68a"
+    },
+    {
+      "path": "src/services/storage/stockStorage.ts",
+      "sha1": "20a937966230a58c0915368110e8fd3721f9b07c"
+    },
+    {
+      "path": "src/services/storage/taskAssignmentService.ts",
+      "sha1": "db2176242560faf753ddd6dbe3d41c04dd1c0805"
+    },
+    {
+      "path": "src/services/storage/taskCleanupService.ts",
+      "sha1": "22aeeb6f53f19cccb5338e2fc1c2b17c1faf6c5e"
+    },
+    {
+      "path": "src/services/storage/taskMediaStorage.ts",
+      "sha1": "c25441dc5eaf69af6bd119bea9a5188a413e8d6a"
+    },
+    {
+      "path": "src/services/storage/taskReportsStorage.ts",
+      "sha1": "d1b074f797d716d5011a0cbc0804ffc56669f55d"
+    },
+    {
+      "path": "src/services/storage/taskReportsStorageCore.ts",
+      "sha1": "6944db84fdb5a023118fb3a771061cc90ee66778"
+    },
+    {
+      "path": "src/services/storage/taskStorage.ts",
+      "sha1": "546237a14e6374cff9ec30630868d709035fbfe7"
+    },
+    {
+      "path": "src/services/storage/timeLogsStorage.ts",
+      "sha1": "0f8786f3dae5cc8f028e5282a5be2086607e2d62"
+    },
+    {
+      "path": "src/services/storage/vacationRequestsStorage.ts",
+      "sha1": "6b0ee34b7affbc831004c94e4e47f6b5d65cdcea"
+    },
+    {
+      "path": "src/services/storage/workScheduleStorage.ts",
+      "sha1": "e9fbcda2707eb99ab6817c1b2dfd9a5f6d4a70e1"
+    },
+    {
+      "path": "src/services/storage/workerContractsStorage.ts",
+      "sha1": "9aa6d0ecca4e182cc51a47c0405560fed7087470"
+    },
+    {
+      "path": "src/services/taskStorage.ts",
+      "sha1": "04a5a2e59b96009b6f551027c063f26fca327eeb"
+    },
+    {
+      "path": "src/services/whatsapp/whatsappConfig.ts",
+      "sha1": "6d990d3d1418539e1530f7bdd009f3443e7ec53e"
+    },
+    {
+      "path": "src/types/avantio.ts",
+      "sha1": "9085a1a6c123ba3747d0ba0b81f64cd82d3de0d3"
+    },
+    {
+      "path": "src/types/calendar.ts",
+      "sha1": "8c5822f78e21f9386f7ad2f77af172b313598665"
+    },
+    {
+      "path": "src/types/cleaningPlanning.ts",
+      "sha1": "d390adacb3183c74a03d8f0499081bcd43d2b5f6"
+    },
+    {
+      "path": "src/types/client.ts",
+      "sha1": "16aafd57afa477fe9f5a150a2292e878d920018c"
+    },
+    {
+      "path": "src/types/clientPortal.ts",
+      "sha1": "4f5368b02591392ff663eaca6a3c6bef004c2256"
+    },
+    {
+      "path": "src/types/common.ts",
+      "sha1": "cd276110ff3314c537f0346ec785ace91cb2e72c"
+    },
+    {
+      "path": "src/types/filters.ts",
+      "sha1": "f585471f2d6834f1101cfb0f395318658fb9f1b6"
+    },
+    {
+      "path": "src/types/groupedTaskReports.ts",
+      "sha1": "ed5d88e77db2901085996644b96b5de29acb2168"
+    },
+    {
+      "path": "src/types/hostaway.ts",
+      "sha1": "de69b3a34b5f7075360494298737dfa2b7394c39"
+    },
+    {
+      "path": "src/types/hostawaySchedule.ts",
+      "sha1": "b169a7220ee8b2734abe8f9350f900038fc6d4f1"
+    },
+    {
+      "path": "src/types/inventory.ts",
+      "sha1": "d366de184e3f8643dfd011e1fca122092d656507"
+    },
+    {
+      "path": "src/types/notifications.ts",
+      "sha1": "2d9e89fe6e7b3677c4f7d6c887b639553e719494"
+    },
+    {
+      "path": "src/types/operationalPlanning.ts",
+      "sha1": "d13d91556ae78afa9284b49529db6241b48ae6b2"
+    },
+    {
+      "path": "src/types/planningCopilot.ts",
+      "sha1": "55c6bb25a76c92d23f2afc27a7251e920b878a0e"
+    },
+    {
+      "path": "src/types/planningV2.ts",
+      "sha1": "ad51580571f1d72beefc17eb6c4f71545a3edeff"
+    },
+    {
+      "path": "src/types/property.ts",
+      "sha1": "f98530491f753a41d532fd85ac006c803881eabe"
+    },
+    {
+      "path": "src/types/propertyGroups.ts",
+      "sha1": "efc1bac3320739183693a54ad99387e703569b15"
+    },
+    {
+      "path": "src/types/recurring.ts",
+      "sha1": "0f6e75caf0c9e9eb7b9602577ba5e199b8f88320"
+    },
+    {
+      "path": "src/types/reports.ts",
+      "sha1": "88bce7da0ca919e385bf34b6b9e6465324ac2368"
+    },
+    {
+      "path": "src/types/sede.ts",
+      "sha1": "1f2c7bad86ea41f390903e82f858b9939dcfacd1"
+    },
+    {
+      "path": "src/types/stock.ts",
+      "sha1": "f24fa0ca2855c0897d023286532c398b74eae221"
+    },
+    {
+      "path": "src/types/taskAssignments.ts",
+      "sha1": "b9cec08ef11241924bf1d7d244d01786c1355ccf"
+    },
+    {
+      "path": "src/types/taskReports.ts",
+      "sha1": "8383c184d9415bd6868bdf33a834a83d2e0f3d03"
+    },
+    {
+      "path": "src/types/workerAbsence.ts",
+      "sha1": "c3da164f7b6895a8932884583c0aebedd81b550b"
+    },
+    {
+      "path": "src/types/workload.ts",
+      "sha1": "17199397b36944cbcf97323bbf9265b05f7817f7"
+    },
+    {
+      "path": "src/utils/availabilityUtils.ts",
+      "sha1": "6f854898aaa8b1570fc2a446f8912381cab94e28"
+    },
+    {
+      "path": "src/utils/cleaning-planning/availability.ts",
+      "sha1": "ffdabd510558a2b84d38b57ef2278c38f652fb6b"
+    },
+    {
+      "path": "src/utils/cleaning-planning/buildingDetection.ts",
+      "sha1": "563e87114fde088c1d1b974f670148d9dad1f9c5"
+    },
+    {
+      "path": "src/utils/cleaning-planning/buildingOperationalWindow.ts",
+      "sha1": "8fdf0d5964926a0d77e01830cfd854f940e6ba95"
+    },
+    {
+      "path": "src/utils/cleaning-planning/capacity.ts",
+      "sha1": "b884ab5ed280ef2dd1e105de2c8550ce550b18e9"
+    },
+    {
+      "path": "src/utils/cleaning-planning/planScoring.ts",
+      "sha1": "53c6edc3fb5d2acd70468e3bee8e087683f45d57"
+    },
+    {
+      "path": "src/utils/cleaning-planning/planningBundles.ts",
+      "sha1": "d7d81fdcaaa5ca3a837389438a3b8581de45ad63"
+    },
+    {
+      "path": "src/utils/cleaning-planning/proposalBatchApply.ts",
+      "sha1": "bda98968879ba93b3729d2c645a01e8a9150c28f"
+    },
+    {
+      "path": "src/utils/cleaning-planning/proposalBatchExecution.ts",
+      "sha1": "07a6cced71956bf046affc39a93dae333d4f8177"
+    },
+    {
+      "path": "src/utils/cleaning-planning/proposalEngine.ts",
+      "sha1": "b69446df997b9005ddc640ab664c67233a9187c0"
+    },
+    {
+      "path": "src/utils/cleaningPlanning.ts",
+      "sha1": "ef267741bd7addf4c1073feae426d3b961450371"
+    },
+    {
+      "path": "src/utils/clientColors.ts",
+      "sha1": "e8ebe07158039d6e0c02c18d35481929dfe96073"
+    },
+    {
+      "path": "src/utils/date.ts",
+      "sha1": "2f17f0f168a539313215b9e1b60f26727243ce15"
+    },
+    {
+      "path": "src/utils/errorHandler.ts",
+      "sha1": "c9a0adf6c4b2b48203180e4ba7f3f92f7cb62c1f"
+    },
+    {
+      "path": "src/utils/imageCompression.ts",
+      "sha1": "a44a2e22549ccb556b0e47615429db9335b5625f"
+    },
+    {
+      "path": "src/utils/invitationDebug.ts",
+      "sha1": "ba00c05407ed1f40bd5d3aea25db2a7c6f4ca268"
+    },
+    {
+      "path": "src/utils/laundryExclusions.ts",
+      "sha1": "d411a71e9ec246dac1b6a591daed5e6e120bd498"
+    },
+    {
+      "path": "src/utils/logger.ts",
+      "sha1": "3554ad4f9a73e2c3a24a901188f65875198c6331"
+    },
+    {
+      "path": "src/utils/mediaCleanup.ts",
+      "sha1": "ad0e4423c2ed674360a6d014548ff06e6f2a4c75"
+    },
+    {
+      "path": "src/utils/mobileErrorTester.ts",
+      "sha1": "c811ffec90064db8141b878e85949cb50350c6a5"
+    },
+    {
+      "path": "src/utils/normalizeChecklistCategories.ts",
+      "sha1": "53282a93a5a7793acc0adf93f881ca06fbdee4a7"
+    },
+    {
+      "path": "src/utils/offlineStorage.ts",
+      "sha1": "92e9b0298e93a61f361614f7d3f91a7fe0f50dd8"
+    },
+    {
+      "path": "src/utils/phone/normalizePhone.ts",
+      "sha1": "0406bfcb79dc12a641ec929a91497b42a13adb01"
+    },
+    {
+      "path": "src/utils/phone/workerPhone.ts",
+      "sha1": "24d3da813f611de89b79c9c58b85682f751b9705"
+    },
+    {
+      "path": "src/utils/planningCalendarWeeklyHours.ts",
+      "sha1": "18f78e1a0fc56e1bf6648987e5eb0fdd14c421be"
+    },
+    {
+      "path": "src/utils/planningTaskLanes.ts",
+      "sha1": "b3af8f72977359af86e396de63b1ba8ac1785094"
+    },
+    {
+      "path": "src/utils/planningWeeklyWorkload.ts",
+      "sha1": "23197563634673cd9fd4769ffbf169c00c1fd669"
+    },
+    {
+      "path": "src/utils/recurringExecutions.ts",
+      "sha1": "a26f7bd3ce075d44f78c7691ba025dc84cc47356"
+    },
+    {
+      "path": "src/utils/reportDebugger.ts",
+      "sha1": "6110744d2cd63cdc81cc282ae9069e337f51dd01"
+    },
+    {
+      "path": "src/utils/reportEvidence.ts",
+      "sha1": "d3181212482d76eeffc6dae17656da527f910be9"
+    },
+    {
+      "path": "src/utils/routeV2Access.ts",
+      "sha1": "06e5061a1fc2282c40f51c7f8d6daf0d901d2fa0"
+    },
+    {
+      "path": "src/utils/taskAssignmentExecution.ts",
+      "sha1": "2f28c0c997d70f252dd3a9afa938df6cfc16905d"
+    },
+    {
+      "path": "src/utils/taskAssignments.ts",
+      "sha1": "17286687e84f40d6242394a80160ac1373b00f45"
+    },
+    {
+      "path": "src/utils/taskPositioning.ts",
+      "sha1": "8a9585e9167f50619f01be10a8188a46887f62af"
+    },
+    {
+      "path": "src/utils/taskQueryRange.ts",
+      "sha1": "f87c7afc666846cca4adda889e0faac544179e84"
+    },
+    {
+      "path": "src/utils/weeklyScheduleDays.ts",
+      "sha1": "c059b7de959acc3d2dc7bfcf9ebd30be367a5a2b"
+    },
+    {
+      "path": "src/vite-env.d.ts",
+      "sha1": "71c844db2f4fe9a46327322efd94b15f066a8bdb"
+    },
+    {
+      "path": "supabase/config.toml",
+      "sha1": "6db501665b2f9622cd1a009d4fd9bcc634f8e476"
+    },
+    {
+      "path": "supabase/functions/_shared/disabledIntegration.ts",
+      "sha1": "107c4654f4d93b069853b6a8ff5619837a24c0aa"
+    },
+    {
+      "path": "supabase/functions/_shared/edgeAuthorization.ts",
+      "sha1": "8c95ff71d0d06e178d7e7107c0605368ec92b025"
+    },
+    {
+      "path": "supabase/functions/_shared/featureFlags.ts",
+      "sha1": "93956f70a1d8ff0be690455acb9924f4550c3b50"
+    },
+    {
+      "path": "supabase/functions/_shared/lateStartReminder.ts",
+      "sha1": "247858659ca63c707e3283c895e557b105bad84b"
+    },
+    {
+      "path": "supabase/functions/_shared/laundryBagRequirements.ts",
+      "sha1": "0949c6815346cf4c8d2fd6f5ca4b5f7703da5afb"
+    },
+    {
+      "path": "supabase/functions/_shared/laundryRouteAccess.ts",
+      "sha1": "364ea568b5e2aa776005ce1032cbab9504cdf1f0"
+    },
+    {
+      "path": "supabase/functions/_shared/phone.ts",
+      "sha1": "97cd9bec39cb442858f60c0acb36abde88cb4899"
+    },
+    {
+      "path": "supabase/functions/_shared/planningBatchFeatureFlags.ts",
+      "sha1": "b259a89ee06fbd5cf2a5106491e315dd97215a88"
+    },
+    {
+      "path": "supabase/functions/_shared/planningNotificationProvider.ts",
+      "sha1": "8c09eda3733047281ec097f38cb3fe3a93781ea1"
+    },
+    {
+      "path": "supabase/functions/_shared/recurringSchedule.ts",
+      "sha1": "4781ceb770751161313fc419a194046e229e305c"
+    },
+    {
+      "path": "supabase/functions/_shared/resendDeliverySemantics.ts",
+      "sha1": "281bc489d00f56877fe1762ccbfe26b14279ce98"
+    },
+    {
+      "path": "supabase/functions/_shared/taskCancellationPolicy.ts",
+      "sha1": "89561abd69ce1983281a7ebf90bb677ae8f9c7ec"
+    },
+    {
+      "path": "supabase/functions/_shared/taskWorkerSchedule.ts",
+      "sha1": "068efa943e96ea992a6edcd5fd666c7cc6765f41"
+    },
+    {
+      "path": "supabase/functions/_shared/whatsappApproval.ts",
+      "sha1": "2f6a1826f950152e72834b54ec3778334f6bbdd5"
+    },
+    {
+      "path": "supabase/functions/_shared/whatsappApprovalOutcome.ts",
+      "sha1": "bd2cb97bae0a2d5e389917861ed57c4cc5151e86"
+    },
+    {
+      "path": "supabase/functions/_shared/whatsappClient.ts",
+      "sha1": "a2e31e38620b2ca0124594bd63081fe0522695ed"
+    },
+    {
+      "path": "supabase/functions/_shared/whatsappDeliverySemantics.ts",
+      "sha1": "17ca50e088ec7eccd833ed4628bb93a6d6d0af26"
+    },
+    {
+      "path": "supabase/functions/_shared/whatsappNotificationRouting.ts",
+      "sha1": "f926e57613ee089f5d68381a64a47acd962dcfb5"
+    },
+    {
+      "path": "supabase/functions/_shared/whatsappTemplates.ts",
+      "sha1": "892f49f9be9bac6e4bff751c816c3ab9fa21bf57"
+    },
+    {
+      "path": "supabase/functions/admin-portal-bypass/index.ts",
+      "sha1": "00f036617831c3c2b572a0258c0c4b0fb5e73b9e"
+    },
+    {
+      "path": "supabase/functions/auto-assign-tasks/index.ts",
+      "sha1": "4ef91db505fa77f9c1b9aa04d19ea1d931165d2f"
+    },
+    {
+      "path": "supabase/functions/avantio-sync/avantio-api.ts",
+      "sha1": "e7743736bf076ab1cd5c838a7c3c18505371828c"
+    },
+    {
+      "path": "supabase/functions/avantio-sync/database-operations.ts",
+      "sha1": "1438e9c98f2426a795e91fec6d2b60fa7381a202"
+    },
+    {
+      "path": "supabase/functions/avantio-sync/index.ts",
+      "sha1": "c5928c57d550588b24d77e4fe2eb314c80b8a168"
+    },
+    {
+      "path": "supabase/functions/avantio-sync/reservation-processor.ts",
+      "sha1": "440dd0032b5e3c2d534bebfa40eec405a9420dc3"
+    },
+    {
+      "path": "supabase/functions/avantio-sync/reservation-validator.ts",
+      "sha1": "ffaf6807ab57df795ab46dc27998094c50f7b21d"
+    },
+    {
+      "path": "supabase/functions/avantio-sync/response-builder.ts",
+      "sha1": "710ff17f23ee05fbe109a3e0b43e39c06b85d94f"
+    },
+    {
+      "path": "supabase/functions/avantio-sync/sync-orchestrator.ts",
+      "sha1": "6a5c80f4eaf12c59741b34e42ceb3b612169572b"
+    },
+    {
+      "path": "supabase/functions/avantio-sync/types.ts",
+      "sha1": "5ea1d0c28093d3e6c32394b8528e602918d1af33"
+    },
+    {
+      "path": "supabase/functions/avirato-sync/index.ts",
+      "sha1": "efab394ebb44f1c61c223e3061d14e6b402ff28b"
+    },
+    {
+      "path": "supabase/functions/batch-create-tasks/index.ts",
+      "sha1": "ca8931cdadcf530d1f017afd7d16576748ed0f17"
+    },
+    {
+      "path": "supabase/functions/daily-report-csv/index.ts",
+      "sha1": "a312afab9209520cf3b880596defc5d441fc01c6"
+    },
+    {
+      "path": "supabase/functions/delete-user/index.ts",
+      "sha1": "639f2ff1387937b145aa447d9bda0fc4e050c7ba"
+    },
+    {
+      "path": "supabase/functions/hostaway-sync-with-retry/index.ts",
+      "sha1": "b049bf945441c16f88628a1b856195ce96bdba70"
+    },
+    {
+      "path": "supabase/functions/hostaway-sync/database-operations.ts",
+      "sha1": "8511599cb1f615a19c00231d0cfc071052c85428"
+    },
+    {
+      "path": "supabase/functions/hostaway-sync/date-utils.ts",
+      "sha1": "67e63f018b0f742d013be077aa283597659c396b"
+    },
+    {
+      "path": "supabase/functions/hostaway-sync/duplicate-prevention.ts",
+      "sha1": "323303534dfd495f62ff23bab6232291763ef50c"
+    },
+    {
+      "path": "supabase/functions/hostaway-sync/email-service.ts",
+      "sha1": "bee4e15030634becaae86a1ad87bbfdd16923d63"
+    },
+    {
+      "path": "supabase/functions/hostaway-sync/hostaway-api.ts",
+      "sha1": "58dd35db47bade72717d745989fe771af3dd0385"
+    },
+    {
+      "path": "supabase/functions/hostaway-sync/improved-reservation-processor.ts",
+      "sha1": "0f5ae541642add074312b595cbad6c0a01c7cf44"
+    },
+    {
+      "path": "supabase/functions/hostaway-sync/index.ts",
+      "sha1": "c70f367cc1ac71b4961d80df8442620ff665603c"
+    },
+    {
+      "path": "supabase/functions/hostaway-sync/reservation-processor.ts",
+      "sha1": "6d9de8d7eae6f98ad93c1fa4bcc93ba5f0b9235a"
+    },
+    {
+      "path": "supabase/functions/hostaway-sync/reservation-status-handler.ts",
+      "sha1": "34b4ea4660e03f267d31d4b9d9b0db6f7d1598ca"
+    },
+    {
+      "path": "supabase/functions/hostaway-sync/reservation-validator.ts",
+      "sha1": "c55768e664e96d8318ae3510419408b6d8178496"
+    },
+    {
+      "path": "supabase/functions/hostaway-sync/response-builder.ts",
+      "sha1": "144c14156d6bdecb8a413a2cd037573e95d90d55"
+    },
+    {
+      "path": "supabase/functions/hostaway-sync/sync-orchestrator.ts",
+      "sha1": "185bf14f5ae69d8d769bf52fbb00a1b71263260f"
+    },
+    {
+      "path": "supabase/functions/hostaway-sync/task-service.ts",
+      "sha1": "071ccf2518b0c37a19269b37d380a2630411646d"
+    },
+    {
+      "path": "supabase/functions/hostaway-sync/types.ts",
+      "sha1": "41fc12f8bcd17c95509cf724d1f5c0fc5ac3bf62"
+    },
+    {
+      "path": "supabase/functions/insert-properties/index.ts",
+      "sha1": "c49982e928bb3211f05b70dcda7811cdfe825da9"
+    },
+    {
+      "path": "supabase/functions/laundry-route-access/index.ts",
+      "sha1": "17bd3f3d49c6bc96275314379b49cbbbf7877870"
+    },
+    {
+      "path": "supabase/functions/laundry-route-workflow/index.ts",
+      "sha1": "1751212b6109694158f1c0f2b2cd9bf1a2a02b89"
+    },
+    {
+      "path": "supabase/functions/little-hotelier-sync/index.ts",
+      "sha1": "92c12eacdb28bc08194e078cda887cb5be2699d7"
+    },
+    {
+      "path": "supabase/functions/logistics-operations/index.ts",
+      "sha1": "0bf0262c4f3c79c04eae87881581797cafa44df8"
+    },
+    {
+      "path": "supabase/functions/manage-avantio-cron/index.ts",
+      "sha1": "df1c550fa3ce6d4c7c04222817331db5496f17a8"
+    },
+    {
+      "path": "supabase/functions/manage-avirato-cron/index.ts",
+      "sha1": "bf49f46c6e9733a75dbb123ab61f221330e696da"
+    },
+    {
+      "path": "supabase/functions/manage-hostaway-cron/index.ts",
+      "sha1": "f5d91cd73501be00e9bec1ac7e0561d252457dd6"
+    },
+    {
+      "path": "supabase/functions/manage-laundry-classic-links/index.ts",
+      "sha1": "3221adc534080889df373215365ccd025b4e53de"
+    },
+    {
+      "path": "supabase/functions/manage-laundry-route-v2-links/index.ts",
+      "sha1": "1889268478bf48fcae6ee52a67cc0764787b90b4"
+    },
+    {
+      "path": "supabase/functions/manage-laundry-route-workers/index.ts",
+      "sha1": "2248775fe25f75446d1f94930ba014b9fa5d2a72"
+    },
+    {
+      "path": "supabase/functions/process-pending-whatsapp-notifications/index.ts",
+      "sha1": "f2e583fdc26eedaffa19f903368c527465159fad"
+    },
+    {
+      "path": "supabase/functions/process-recurring-tasks/index.ts",
+      "sha1": "a908eedc04a5b9560eb2d3521b48950f46a63abc"
+    },
+    {
+      "path": "supabase/functions/remind-late-start-tasks/index.ts",
+      "sha1": "f81747e2e684cc8c65b27341c00beda2c9530dcf"
+    },
+    {
+      "path": "supabase/functions/remind-unapproved-tasks/index.ts",
+      "sha1": "df21cb5bde7adb754c32df709bbc015db7bf46da"
+    },
+    {
+      "path": "supabase/functions/send-avantio-error-email/index.ts",
+      "sha1": "85e1efca7fe67d4421a1ba1c2a916a8edfd9babb"
+    },
+    {
+      "path": "supabase/functions/send-incident-notification-email/index.ts",
+      "sha1": "e78195315f32593d6ac088f883eea4fdf73342dd"
+    },
+    {
+      "path": "supabase/functions/send-invitation-email/index.ts",
+      "sha1": "743f29685f73dae9bf35b4b9206982bc55ad8606"
+    },
+    {
+      "path": "supabase/functions/send-one-night-alert/index.ts",
+      "sha1": "889d5f54819c41f1af7a136e971f189bf7088a98"
+    },
+    {
+      "path": "supabase/functions/send-planning-batch-email/index.ts",
+      "sha1": "2f3c5bd0402a8bea780cc59a08a2e11ac0f9897d"
+    },
+    {
+      "path": "supabase/functions/send-portal-change-notification/index.ts",
+      "sha1": "bfd3ba2a994d3eb8576a3fa48ab484875f3231bc"
+    },
+    {
+      "path": "supabase/functions/send-recurring-task-email/index.ts",
+      "sha1": "0ec2035604953eff5144cda4640ed2b2a220b855"
+    },
+    {
+      "path": "supabase/functions/send-reservation-digest-email/index.ts",
+      "sha1": "a3725c9e34feba65ceb297660c4f7572c1b289aa"
+    },
+    {
+      "path": "supabase/functions/send-subtask-notification-email/index.ts",
+      "sha1": "d1ddcdabf7376a1861299aab51dbc4b293e599ab"
+    },
+    {
+      "path": "supabase/functions/send-supervision-daily-report/index.ts",
+      "sha1": "a2717c1f67276dcd877e77604504164e63a7acdd"
+    },
+    {
+      "path": "supabase/functions/send-supervision-incident-email/index.ts",
+      "sha1": "84d48a9e28297a52e0b585f2f1d5389b0fa59929"
+    },
+    {
+      "path": "supabase/functions/send-sync-error-email/index.ts",
+      "sha1": "73e85a64fd717db6fb0c5216ba7391348397fd56"
+    },
+    {
+      "path": "supabase/functions/send-task-assignment-email/index.ts",
+      "sha1": "dcb1bd39c8c92d950a80b28b7358d0573df57e0f"
+    },
+    {
+      "path": "supabase/functions/send-task-reschedule-batch-email/index.ts",
+      "sha1": "e52bd2d25c13121b0d9840cab872a25a6b0c5194"
+    },
+    {
+      "path": "supabase/functions/send-task-schedule-change-email/index.ts",
+      "sha1": "6ee20ec92d46b03dc4e91ef3bb723ec115d184d5"
+    },
+    {
+      "path": "supabase/functions/send-task-unassignment-email/index.ts",
+      "sha1": "ebfadf17a14da4d640059f22000533794f8c9562"
+    },
+    {
+      "path": "supabase/functions/send-whatsapp-notification/index.ts",
+      "sha1": "a87c70fed02b589df2eb68b92711e553876eba52"
+    },
+    {
+      "path": "supabase/functions/setup-automation/index.ts",
+      "sha1": "6877eaa43cc275e54b080aa79a65f2cbf75e4e66"
+    },
+    {
+      "path": "supabase/functions/sync-employees-from-registro/employeeFields.mjs",
+      "sha1": "0ad48670e2268424ec3da54b772e94b00b5909cc"
+    },
+    {
+      "path": "supabase/functions/sync-employees-from-registro/index.ts",
+      "sha1": "cc67de902960cc5bdd1f2318e4b97e4cd33b69a9"
+    },
+    {
+      "path": "supabase/functions/verify-portal-bypass/index.ts",
+      "sha1": "5e6484cd89d4a7288b143f6463cfa85e936b9595"
+    },
+    {
+      "path": "supabase/functions/whatsapp-webhook/index.ts",
+      "sha1": "096e20ea4ea00d52af5d6165ee80e5d04e5495d0"
+    },
+    {
+      "path": "supabase/migrations/20250610114549-b90c24e0-c138-4463-9211-7c46b123d04f.sql",
+      "sha1": "6268e8880f223e642380297da0093eafea532d49"
+    },
+    {
+      "path": "supabase/migrations/20250610115140-4cc60c7a-dc81-45e4-9428-fbdfbfef42e3.sql",
+      "sha1": "614ca90b6090a7602c8b3a63a7814ca9e5b7e0bb"
+    },
+    {
+      "path": "supabase/migrations/20250610183105-e7bfa0a9-aa08-4f51-81ac-feaaf403265c.sql",
+      "sha1": "b6be031ab7455a32217f153b11ad887f6a69e11a"
+    },
+    {
+      "path": "supabase/migrations/20250611184331-0c7d8f8b-4426-42f1-8da0-bb47160a6a8e.sql",
+      "sha1": "0028c4ee8a522a783428656548296a6a2a79cb3c"
+    },
+    {
+      "path": "supabase/migrations/20250613095214-6935cc4e-7696-4fa3-bef3-798e44983465.sql",
+      "sha1": "6c46b103f08fe71b6ca764658f64fc1b54058ded"
+    },
+    {
+      "path": "supabase/migrations/20250613131546-b16d20a6-1406-45bd-a0a0-f095cba88c68.sql",
+      "sha1": "1abdf6f77c321775890d034b486e35c1b5c4943c"
+    },
+    {
+      "path": "supabase/migrations/20250615135036-24a15879-8275-432d-80ad-9e742990ab8e.sql",
+      "sha1": "b5d16c524dff3481274996b1334e4fbe1cb8d841"
+    },
+    {
+      "path": "supabase/migrations/20250615163527-6be5371a-1764-4a42-8574-6de5111c6699.sql",
+      "sha1": "5547676bc90df1aee188d7ede6c08972b819dd90"
+    },
+    {
+      "path": "supabase/migrations/20250615204329-1a5fe675-fd7a-4d5d-bbd4-27376f8759a5.sql",
+      "sha1": "6687be037e49fccefce2c1042e78c702b63bccd2"
+    },
+    {
+      "path": "supabase/migrations/20250617183133-54f08756-b675-4796-94b6-acb5e630c206.sql",
+      "sha1": "e607e4cbc8cc463f03515114411be791ac149728"
+    },
+    {
+      "path": "supabase/migrations/20250618231406-3c61b87e-7660-4831-9bef-5b8a04aae606.sql",
+      "sha1": "b6f656d562a80deff3ac716358d9daa3808a8453"
+    },
+    {
+      "path": "supabase/migrations/20250622214836-430a3b14-972a-42ee-9c17-c591da484917.sql",
+      "sha1": "e0e59f01b51b1406428fffeeb98b3edd2c1f4f44"
+    },
+    {
+      "path": "supabase/migrations/20250622220425-a82cb07a-5903-4216-b10c-c78afdbd4256.sql",
+      "sha1": "9bbeb7c832b1b0f27b3ac82f2aa18cc0ba458d73"
+    },
+    {
+      "path": "supabase/migrations/20250625175718-669074aa-d318-4b3e-a0f9-3157e36b8e52.sql",
+      "sha1": "6b267e1a53458d084191c3615a8999f81315b0c5"
+    },
+    {
+      "path": "supabase/migrations/20250701120958-f62ef8f9-e81a-4aed-92ad-fdc176ab0135.sql",
+      "sha1": "b728f5ae0040eb9451447eb9ba37d2ed36b0c6de"
+    },
+    {
+      "path": "supabase/migrations/20250702161946-318e0f9f-d88a-40ad-8590-3fb8e6b4caf0.sql",
+      "sha1": "da8663ac5736444e03a36ccc9f41d860af7862c6"
+    },
+    {
+      "path": "supabase/migrations/20250702165532-647e659d-9101-4d0a-833a-22169320aaa1.sql",
+      "sha1": "4eacebf105a11339f7ea687bddaa8ea739430f35"
+    },
+    {
+      "path": "supabase/migrations/20250702165826-deb08d51-abf9-45c7-b5ed-7ab8e6d4bb18.sql",
+      "sha1": "7b8c02c22ef767d112121cefb8ad872d3c20d17b"
+    },
+    {
+      "path": "supabase/migrations/20250702170834-0f992ff2-593f-4711-9d00-715ffb96f54e.sql",
+      "sha1": "52830791185c66c5051f7ec9be4de665e819b705"
+    },
+    {
+      "path": "supabase/migrations/20250702171101-2fc6e0ec-24e7-46ac-800f-e6a3b67a2ed7.sql",
+      "sha1": "0ed6c445386ecefba91560f8b00f99a2445b3140"
+    },
+    {
+      "path": "supabase/migrations/20250702171146-2356960e-7a11-4802-b325-db3accbac114.sql",
+      "sha1": "7093a7115c14d5c6a137efc0f1921d12bca56efd"
+    },
+    {
+      "path": "supabase/migrations/20250702171421-56a19fc5-4d22-4dcd-9c4b-c61e7e864909.sql",
+      "sha1": "61fb79552bebe3b904752544a1d1a4f631b50b1b"
+    },
+    {
+      "path": "supabase/migrations/20250702172105-bfcf9fa5-9914-4d0c-92c5-e6929ebfe3e6.sql",
+      "sha1": "7ada272836f46ce750f69828cfd3f4178dda5945"
+    },
+    {
+      "path": "supabase/migrations/20250702172510-39c9ef09-9a53-436e-badd-81e39dbf34da.sql",
+      "sha1": "71183f87feaf605e18fdb0705d733192bc77b4e8"
+    },
+    {
+      "path": "supabase/migrations/20250702173504-78f17a59-83f4-410d-839b-c4e4bf73d109.sql",
+      "sha1": "8996edec4bd477320702264a8f67b6272a3064ee"
+    },
+    {
+      "path": "supabase/migrations/20250702173607-a70fae8b-c3df-4c40-8bfc-5fbb671e19d2.sql",
+      "sha1": "a21d9a66eefd7f79f6330f981c661084da7321d4"
+    },
+    {
+      "path": "supabase/migrations/20250702174202-8befca23-bee1-4293-a5e5-ef1e8e330367.sql",
+      "sha1": "68958332441ed1bd8a74a474ad6672ef9811273b"
+    },
+    {
+      "path": "supabase/migrations/20250702175510-a3b19135-8b1b-4f2e-a322-6b4750f56dbe.sql",
+      "sha1": "811067c2ce7e709c6b33b9d538edc2672e8bbfd7"
+    },
+    {
+      "path": "supabase/migrations/20250703182625-20f811c2-30b2-425e-b5b1-5fe10c497d57.sql",
+      "sha1": "e2cd8878e5f8703c09bb8097dd0e67c3da096b5f"
+    },
+    {
+      "path": "supabase/migrations/20250703214631-b8b84ca1-1cc2-4af8-942a-46619fb671e3.sql",
+      "sha1": "498542d5a2a11468cd4be3cc8b15a96387b97ba2"
+    },
+    {
+      "path": "supabase/migrations/20250704093429-953c2514-daa7-4ba9-b8c7-32d5970a8601.sql",
+      "sha1": "04d886689a6a036f55904fecf263fd2c4bf17eac"
+    },
+    {
+      "path": "supabase/migrations/20250704105537-fc239111-2002-4b38-a323-7f8f6d51231e.sql",
+      "sha1": "b4248be510ce710c99eefb2a2108d4b4552f0b26"
+    },
+    {
+      "path": "supabase/migrations/20250704110456-3cf9e11f-5e28-4961-9bd0-59c5c056ed5d.sql",
+      "sha1": "acfbc48f33221933198e2d8a5a031eba6553ab0d"
+    },
+    {
+      "path": "supabase/migrations/20250705090511-5aaf04c2-5c12-44c9-aab9-0732b1f364e8.sql",
+      "sha1": "3258ccdcd5c87a2a99a7387d41a82c9cfad17416"
+    },
+    {
+      "path": "supabase/migrations/20250707185919-b0fc726e-4b31-4239-9846-3eca9ea8d815.sql",
+      "sha1": "3efd87c37fa1cf5efdb8100d1202f8ad70c35d15"
+    },
+    {
+      "path": "supabase/migrations/20250709083331-d40b5b17-0fdb-41f3-9237-923b1d51fb63.sql",
+      "sha1": "6fe3bc67d5e39e381c8047cb3f2a97a2416c0765"
+    },
+    {
+      "path": "supabase/migrations/20250709083524-00cae994-3381-43b6-9aed-08e62fc1811d.sql",
+      "sha1": "c65a7c888e83556dc03a09e7f602070aaea05155"
+    },
+    {
+      "path": "supabase/migrations/20250709090231-d184ecea-697b-4b2d-92bb-148f14e147e9.sql",
+      "sha1": "eb36543410a6e4ccf4ce1cab3015681a9a46b287"
+    },
+    {
+      "path": "supabase/migrations/20250709090331-545cc39c-384b-46a1-9847-211af7f78ee4.sql",
+      "sha1": "a777cde4ef73e706eb56f73bcbf854e0db76896c"
+    },
+    {
+      "path": "supabase/migrations/20250709091407-956a37c4-5f55-45b6-85c7-3393e8d647a1.sql",
+      "sha1": "628bc24a37aad2eeb7543b11e6f7aa659ddf3c80"
+    },
+    {
+      "path": "supabase/migrations/20250709091858-36bb7ef0-5f92-427f-a797-13f57621ae6c.sql",
+      "sha1": "164fb31f6c6af8414b6dc473f9f4cecce8e6ee07"
+    },
+    {
+      "path": "supabase/migrations/20250709094022-710ccbe6-988a-4215-9aa6-1ce53bd456a6.sql",
+      "sha1": "529197e2b1452cec7ff9a83f551d089014aadeca"
+    },
+    {
+      "path": "supabase/migrations/20250709094105-eca00d15-cc1d-47a9-b7dd-c211050704c8.sql",
+      "sha1": "dc4162cdc8b2ffd86b5167ae548894ed603c5a3e"
+    },
+    {
+      "path": "supabase/migrations/20250709094708-5439d2ed-96ff-4682-8d6b-eff1add775f0.sql",
+      "sha1": "df75d03e57e4a977b6a663bc516b6409cad5f611"
+    },
+    {
+      "path": "supabase/migrations/20250709115345-b2069121-498e-4636-b34b-d5d884b30f51.sql",
+      "sha1": "a7ee6517ffa6d73919b82a8e45acd726d913ffa0"
+    },
+    {
+      "path": "supabase/migrations/20250714164749-d17dd21b-f500-4943-b5b1-213dd1162def.sql",
+      "sha1": "0574f48c3cd794ace44c54201c8583985d7a7ead"
+    },
+    {
+      "path": "supabase/migrations/20250714185523-b8ec3b80-294f-4036-bcc1-4966c92548bd.sql",
+      "sha1": "d92534890f64db54fa37c103b257aa18d1c80b3b"
+    },
+    {
+      "path": "supabase/migrations/20250714190133-d7f7a3a9-42f2-4449-8744-5ee9a855c5b2.sql",
+      "sha1": "cad676a5e1580d4167a0e70b575551bb8c228ffc"
+    },
+    {
+      "path": "supabase/migrations/20250715163049-5485e0d3-19de-4af5-b30c-f03d598b9d5b.sql",
+      "sha1": "e20b3a85d9af31e08c2418748963f880917714d7"
+    },
+    {
+      "path": "supabase/migrations/20250715163807-ad0dd6bb-e140-4220-9741-8c7fbce32212.sql",
+      "sha1": "a34ce506e71ee39baabc216aed70a126c85860b8"
+    },
+    {
+      "path": "supabase/migrations/20250715164723-4a569dec-b62e-48cd-8bfa-5f446981175c.sql",
+      "sha1": "2e2264f9d4cd0927a488dad9d1f08e2ce2cc58cf"
+    },
+    {
+      "path": "supabase/migrations/20250715164751-f9a5158f-f506-40dd-a5f6-80c8a2e90738.sql",
+      "sha1": "ffe8410d621b929966b1c16148ffae4004373e5c"
+    },
+    {
+      "path": "supabase/migrations/20250715164846-7f83f5fc-fbb1-4e20-b322-cd154045536b.sql",
+      "sha1": "f1b6929a26ce0c48523fc68227e77b126481bb10"
+    },
+    {
+      "path": "supabase/migrations/20250715165051-b2dd3afd-0359-49c7-ba96-0f3771a41045.sql",
+      "sha1": "83cf8faee6b4835f33ed1b497af569087aff78b5"
+    },
+    {
+      "path": "supabase/migrations/20250716115610-697f4e85-ca09-41b0-be4a-766bc0f50650.sql",
+      "sha1": "4d93c3a2864c6d9622cc9b7afd4ca7a441071ef0"
+    },
+    {
+      "path": "supabase/migrations/20250716115920-5fb91e2b-56a3-4992-b882-3371e4ef69d4.sql",
+      "sha1": "14d589e15e562ada9f62f8f44edeb115e32f39df"
+    },
+    {
+      "path": "supabase/migrations/20250716154221-aa360948-908f-4b08-9780-18b864909c3c.sql",
+      "sha1": "2c3d37561433ff7c2fe8065d9ddd33b661f7a344"
+    },
+    {
+      "path": "supabase/migrations/20250717080822-687f2d86-b948-45b0-a404-cae7a0f0f3ef.sql",
+      "sha1": "d85773c4b10bc7e21adc10824221a56aeb736c5c"
+    },
+    {
+      "path": "supabase/migrations/20250718160854-e0930100-180c-418f-baef-5fecb288f2a4.sql",
+      "sha1": "d4fd4d6ffc538d952090934f8ef0f44de59ae4cf"
+    },
+    {
+      "path": "supabase/migrations/20250718160950-0777bb20-983c-405c-9932-d882f6164933.sql",
+      "sha1": "6c5fff826f0fc9ecaaf958d457192329e232d674"
+    },
+    {
+      "path": "supabase/migrations/20250718161038-26b57cc0-94f1-4caa-99ff-a870d021d539.sql",
+      "sha1": "36aee140c7deab43c095100f77a74f6ec908037d"
+    },
+    {
+      "path": "supabase/migrations/20250719065733-cd017539-46f8-4637-b20d-1a40cd504efd.sql",
+      "sha1": "3f8c1a5d1b00ccae93b9aed155db7bb0c42bade0"
+    },
+    {
+      "path": "supabase/migrations/20250719071150-ce35ae30-a514-431f-b368-0403ba7736e9.sql",
+      "sha1": "7c5d5f8aa9b6a8bddd4f960392723c8de2dfb9a6"
+    },
+    {
+      "path": "supabase/migrations/20250724184833-50308820-f935-4282-8ffb-76fb966abc6e.sql",
+      "sha1": "68c47926b03d4e11d3d1ed699762f2276a5c5bb2"
+    },
+    {
+      "path": "supabase/migrations/20250724185109-f834be3d-353f-4600-a710-8f693ac26183.sql",
+      "sha1": "6848500c3a14bb409c8312508ccf505f76936e0b"
+    },
+    {
+      "path": "supabase/migrations/20250724191451-c569c0bd-2a67-464e-b8d8-1b958cf4ce49.sql",
+      "sha1": "f9244059af7a6a7b41b9f7e94593e2909b7c23f3"
+    },
+    {
+      "path": "supabase/migrations/20250724191718-20fdbf24-0e83-4610-8b19-b35feb711c81.sql",
+      "sha1": "9f927c441b8dd232300e4cdddf986d3c802aec74"
+    },
+    {
+      "path": "supabase/migrations/20250724191858-f7a9b8cf-e827-4bfb-8e76-7bc9279dd47f.sql",
+      "sha1": "854172589d61041eed16e4c2b86146cdc0b3f8b1"
+    },
+    {
+      "path": "supabase/migrations/20250725073634-c9f621b2-8a2b-4605-8dcc-046d8e2e4782.sql",
+      "sha1": "bf204ae2570dcd78bf9394a4392f0d84d2bbc9ae"
+    },
+    {
+      "path": "supabase/migrations/20250725073936-70201b4d-2672-42e5-a13b-6ccea7a8196a.sql",
+      "sha1": "b729b3f9bc0aeb2c4608d9a974a544a8d461d8e9"
+    },
+    {
+      "path": "supabase/migrations/20250728202555-44b3772c-82f1-4c08-ba82-a6f0a16b03e8.sql",
+      "sha1": "eb94e646a529f017a524e19e14f2bd2e1822d0a2"
+    },
+    {
+      "path": "supabase/migrations/20250728202750-2c737b0a-615a-4293-83da-b1dae3b11c18.sql",
+      "sha1": "1ecb82b1a59f7ba9e2825156a90b17874a2f799c"
+    },
+    {
+      "path": "supabase/migrations/20250729081050-e8418f05-88d6-44e0-9e85-3d4572ebd18b.sql",
+      "sha1": "1a5d27653bb7e3523754c8ab946f061376186606"
+    },
+    {
+      "path": "supabase/migrations/20250729081823-8c5a90cb-e7bb-4041-b596-57b2fddeb5ea.sql",
+      "sha1": "44ee1c371fd566b771a84cba98f4982a56c49a34"
+    },
+    {
+      "path": "supabase/migrations/20250729082347-57a43f2e-0cf1-4a5d-a626-3b2ba6a3af87.sql",
+      "sha1": "7567316f03e6887c12e747e2f14ead306bda8748"
+    },
+    {
+      "path": "supabase/migrations/20250729083033-d0129352-c676-4848-b648-16c352af8bdf.sql",
+      "sha1": "d9cf3b97f2c304ac35c90c9888f8513675f2e988"
+    },
+    {
+      "path": "supabase/migrations/20250729085531-5e25f07f-ff38-496f-83b2-055dfdd090ae.sql",
+      "sha1": "c149e9f14d44ad5cffea86913018cd9b1cc655e0"
+    },
+    {
+      "path": "supabase/migrations/20250729090122-afbb5d3b-30ca-4410-af18-82ab631cefec.sql",
+      "sha1": "66bf8373abd594026fa3dd77fe3ad528ab579aec"
+    },
+    {
+      "path": "supabase/migrations/20250729184310-dec01f5d-6b36-45fa-ad5d-d14c4ad3df68.sql",
+      "sha1": "59e6831499220c567803a4a730125521642773d8"
+    },
+    {
+      "path": "supabase/migrations/20250803160900_1a112543-9f4f-46b0-903e-eae8773be1af.sql",
+      "sha1": "eac48e1ee14c7135075d170af9071c0a7d32a2a0"
+    },
+    {
+      "path": "supabase/migrations/20250804114752_1b1a6b5f-15fb-4243-b5fa-5c4b4531de74.sql",
+      "sha1": "a4b02530d92b5b96e322b3d67ac56b3e48f1995a"
+    },
+    {
+      "path": "supabase/migrations/20250806180324_1ae20774-7062-402f-b49f-4b6ea9d16b38.sql",
+      "sha1": "e76a811e1730da5be7a9087fbceaf8da5564da6e"
+    },
+    {
+      "path": "supabase/migrations/20250806181658_3ee68c45-6da1-4aad-aee0-e48a369dfeb4.sql",
+      "sha1": "fe77ca8f25360163984e5501f4523b1a5291a95b"
+    },
+    {
+      "path": "supabase/migrations/20250807162157_05f97421-660e-4a8e-9a11-b7fec8ff6fdb.sql",
+      "sha1": "b9b7f31f2b2ce4a824ec66c216c9b2a0d660245c"
+    },
+    {
+      "path": "supabase/migrations/20250810180845_5980f85b-a03f-4dd2-9f08-fe94823ee5c6.sql",
+      "sha1": "8225d014a3789233fff5221988541ac441acd782"
+    },
+    {
+      "path": "supabase/migrations/20250810181718_f4460136-d554-4556-82d5-dab16c5246a9.sql",
+      "sha1": "8242c1dc647629a0ddbbd6286850e9a18d0918a8"
+    },
+    {
+      "path": "supabase/migrations/20250810182132_c33eb0f6-0036-44d6-8bd2-73242d0b3117.sql",
+      "sha1": "ead79ab68b76158d588ad839b10217e50a6b8437"
+    },
+    {
+      "path": "supabase/migrations/20250810182234_89481894-88bb-4a38-87ec-37386f77df8c.sql",
+      "sha1": "9e3cddd5b7262bc9bb54e32c7ed20e02f2147c52"
+    },
+    {
+      "path": "supabase/migrations/20250810183000_533690d7-7069-4680-bbe4-27811271c3d9.sql",
+      "sha1": "3e46fb21e79fcc55d7070a43aa7f59834c1936ca"
+    },
+    {
+      "path": "supabase/migrations/20250810183221_a7feffbf-6061-407a-9633-6d6822c12542.sql",
+      "sha1": "cc11c5a850b638f620894621e008f80a6f21e804"
+    },
+    {
+      "path": "supabase/migrations/20250811082420_6cbba203-f6aa-4ef1-a8b6-001f3b68901c.sql",
+      "sha1": "5130b74f95c5638d51b83ee833b7268afced70bd"
+    },
+    {
+      "path": "supabase/migrations/20250811102733_2459200a-1018-4831-a900-2705e8a0c716.sql",
+      "sha1": "98249920fbe9713c5bfe5a3b098c8309ac7964bf"
+    },
+    {
+      "path": "supabase/migrations/20250811102842_aaa08c2d-28f3-4825-b15b-b9d5127c78a2.sql",
+      "sha1": "21b4788d8d458d44afbab78ce42188ae42eb2c8b"
+    },
+    {
+      "path": "supabase/migrations/20250811123050_e3468d6a-4305-416c-866c-efae368c567e.sql",
+      "sha1": "caa1f2a970dcd8906b4bad505aa271788c8a4636"
+    },
+    {
+      "path": "supabase/migrations/20250821153138_bf446c1b-00a6-4166-9c25-06361b707de4.sql",
+      "sha1": "285e0a5058e578ff07b25b99e9ed3933534fb753"
+    },
+    {
+      "path": "supabase/migrations/20250821153247_d419ca3c-dc6c-4d6e-a1a2-8e5b12271830.sql",
+      "sha1": "ebaab594c645219815940167c141adf6f98f4451"
+    },
+    {
+      "path": "supabase/migrations/20250821153404_9d58c51b-854b-4aa6-b630-7dd258d2e592.sql",
+      "sha1": "bc25d368d7455679f28f4b4fa47ea695be53d42f"
+    },
+    {
+      "path": "supabase/migrations/20250821171405_d162989e-f9f8-4f5e-a510-74f57d69538a.sql",
+      "sha1": "fcd5d63cb75cabdb389044e8ce90827006ef6d6d"
+    },
+    {
+      "path": "supabase/migrations/20250821171439_d3f39b7b-d413-4863-8584-459619d9888f.sql",
+      "sha1": "f87352ee697fd7ce5281f087398caae752a9f2ee"
+    },
+    {
+      "path": "supabase/migrations/20250822101651_dc16868b-203d-427c-b0c3-5d67d4863813.sql",
+      "sha1": "cdb7523d73c0082d8321afdca5c9f532cdf04a8f"
+    },
+    {
+      "path": "supabase/migrations/20250826171741_62aac1b6-73d2-4483-b58a-67c388a7f1f1.sql",
+      "sha1": "199f32176d1532921ba7843e9cbf689e82516d2e"
+    },
+    {
+      "path": "supabase/migrations/20250829072309_01058a27-823d-4101-9f8b-726676ecd41b.sql",
+      "sha1": "4172f8c3a0532aefe05c8a6fbdd0bcd2b3ff70ba"
+    },
+    {
+      "path": "supabase/migrations/20250829072408_63ef91fe-ee64-4f7b-81d0-512f1c7c7717.sql",
+      "sha1": "4172f8c3a0532aefe05c8a6fbdd0bcd2b3ff70ba"
+    },
+    {
+      "path": "supabase/migrations/20250829072642_4353bd55-9cf6-4cd6-a690-48c081092c36.sql",
+      "sha1": "f01ddf8758c0e93c4d6ab985077b74e00814b488"
+    },
+    {
+      "path": "supabase/migrations/20250829085446_2a1e0c5e-f72b-4e0b-b8e4-83e8a45e7eb9.sql",
+      "sha1": "3a651f493bb18c082535d66fb512c1c32145b114"
+    },
+    {
+      "path": "supabase/migrations/20250829085941_00470183-0512-45ed-bb7b-566fcedf21ad.sql",
+      "sha1": "a27942c89a8a98e13611e7a579eb66af5294b787"
+    },
+    {
+      "path": "supabase/migrations/20250903153554_6cad7a95-4228-4e91-b56f-7c178c49af8c.sql",
+      "sha1": "9a83e2c67f5ece524d01d28b1f0bee1db83c90cc"
+    },
+    {
+      "path": "supabase/migrations/20250903165119_5ef53388-1e3d-48f1-b0c2-7265102598c4.sql",
+      "sha1": "3d27b250cddd38d1bb40391152024f7bad7d6ec0"
+    },
+    {
+      "path": "supabase/migrations/20250903174906_2347ea7f-435f-4df5-86a8-2c399d882aa9.sql",
+      "sha1": "8899f1af04b8743bbb17be6cdc6eee2ff75cc429"
+    },
+    {
+      "path": "supabase/migrations/20250905112653_d2b2b2ef-c9fd-424b-8b7c-26519d793354.sql",
+      "sha1": "213cb40b017fd457792b7347e88e60c464ffdca7"
+    },
+    {
+      "path": "supabase/migrations/20250905203103_1e1090d3-ee45-4bb1-84a8-a9e4dd26e0f7.sql",
+      "sha1": "5a8f181587d2940bb14a09305dc0eea0031c624d"
+    },
+    {
+      "path": "supabase/migrations/20250905203207_5eebc3ef-7a4e-44cc-b8e5-c3cc0519ac52.sql",
+      "sha1": "5a8f181587d2940bb14a09305dc0eea0031c624d"
+    },
+    {
+      "path": "supabase/migrations/20250912075031_1bc1c467-fc64-40bd-a436-5ab741f6bbc2.sql",
+      "sha1": "ea860663dab8992a5126dddc84c3e75eb16782ba"
+    },
+    {
+      "path": "supabase/migrations/20250914111130_7048e8d8-f428-41e3-919a-f1c506bed8c2.sql",
+      "sha1": "6cd7e931aac1f704b46b8a1efcc841f1e8e5f0b8"
+    },
+    {
+      "path": "supabase/migrations/20250914112129_5f2673a7-8eb0-4e46-b8a1-a6d37ce02b66.sql",
+      "sha1": "e660764e4feff84c9f21c0edb31f93fa8db4ad4f"
+    },
+    {
+      "path": "supabase/migrations/20250915101211_e78f0a22-355b-44be-83e1-7d530fde2c36.sql",
+      "sha1": "7de853d7dedde2877a03baa7b4cd21e8903949fd"
+    },
+    {
+      "path": "supabase/migrations/20250915103747_9400f14a-c8e8-4923-ac27-dbc812977d2f.sql",
+      "sha1": "18d69fda0db6381cbb0f0f378157d2f22e821192"
+    },
+    {
+      "path": "supabase/migrations/20250926101438_e0d57a84-f9c6-4dcb-8b45-f46987f20064.sql",
+      "sha1": "81c4e54da8b2e3d0d7d685afe0d5fad85361a73f"
+    },
+    {
+      "path": "supabase/migrations/20250926141244_e20d3d8b-62c2-418e-886b-960df91a3c4a.sql",
+      "sha1": "8abca37e64412c48f4183a0aa1aeb2cd7901adb9"
+    },
+    {
+      "path": "supabase/migrations/20250929080318_3af1d30b-1878-4cbf-91b2-786a5857f21c.sql",
+      "sha1": "b73de41078b9464666489a8737a68eee81298ff0"
+    },
+    {
+      "path": "supabase/migrations/20250930081856_e3901f65-5ab8-4254-9a4b-12ea87b5dec7.sql",
+      "sha1": "7da5ae32e58ebdb8e9a480bea8605301e15444e7"
+    },
+    {
+      "path": "supabase/migrations/20250930092416_0c0af442-4ac9-4d69-a516-fb1008fb6cf7.sql",
+      "sha1": "c4d9b00f78546a8380ad7d199bcb03b37aea99bc"
+    },
+    {
+      "path": "supabase/migrations/20251202172023_d1480ed6-2acb-4351-b7f6-e589c7351a31.sql",
+      "sha1": "6c8329aee935d6640d044854e3024d50a0981a5e"
+    },
+    {
+      "path": "supabase/migrations/20251205121000_496ef1e8-438e-43d9-96be-e68a2d7b5851.sql",
+      "sha1": "220efcf9a1ceaef7963d0988d4816904c65cf62f"
+    },
+    {
+      "path": "supabase/migrations/20251205123415_1645af22-00f2-40ff-a819-ac473e321f7d.sql",
+      "sha1": "f34034a63234a045746a241c2d5ba18057ff6c1c"
+    },
+    {
+      "path": "supabase/migrations/20251205123816_19a1f9c6-2ba7-4619-8c38-332ab3efa5ec.sql",
+      "sha1": "19d38f0b2be5c14004db0e192a32d13061a80730"
+    },
+    {
+      "path": "supabase/migrations/20251205185102_67b0bdcc-1a9c-4270-a424-f09412b6f4c3.sql",
+      "sha1": "5ed36b0748dd0a8b95ef44357c3b01230ef25827"
+    },
+    {
+      "path": "supabase/migrations/20251207132604_28a3c0b3-a2e6-47fc-aa4a-cd51e9235bef.sql",
+      "sha1": "4d1e06ead0b77560a23ed721d2d1dfbf8ca17793"
+    },
+    {
+      "path": "supabase/migrations/20251207210409_e5498fef-0a75-4648-89d9-848efe4e5920.sql",
+      "sha1": "46211ee72796b1a8138061e99227c0ecf5d994bf"
+    },
+    {
+      "path": "supabase/migrations/20251211122619_350321ea-0acc-46c8-990a-7d1c157ebbd0.sql",
+      "sha1": "34ed66f96438d6883507b754167483b585d72d53"
+    },
+    {
+      "path": "supabase/migrations/20251215093016_fa131aac-0e16-468a-90eb-06058743f36e.sql",
+      "sha1": "8c2747b19c68f5c5b48b8c24173b4c0d95c5fe8a"
+    },
+    {
+      "path": "supabase/migrations/20251217160038_800b1573-5420-4b1b-b86e-8b0e2eb0a0ff.sql",
+      "sha1": "5932b5ea2074ff9f4a4827124023bc1e01c9ca58"
+    },
+    {
+      "path": "supabase/migrations/20251217171520_05f914ca-31bf-4375-8200-75c3723b6d26.sql",
+      "sha1": "eeb32cf5909c80d7485e297191e98f1f80a7b55e"
+    },
+    {
+      "path": "supabase/migrations/20260105084200_5d603943-eb23-4fd0-863b-f1a3a4b64a60.sql",
+      "sha1": "0beb4b68c11f3b178bec296c91c69d9135a260b4"
+    },
+    {
+      "path": "supabase/migrations/20260108172748_20f93582-6fa6-47e8-9c8e-1ff3ecae7abe.sql",
+      "sha1": "7243ae8e698e37828b918b778786666071442a42"
+    },
+    {
+      "path": "supabase/migrations/20260113084355_047bd228-7cde-45a9-b9a8-0ff2f3305706.sql",
+      "sha1": "d7c43a1ca91510b13ac7a316ae69a6157976f0b3"
+    },
+    {
+      "path": "supabase/migrations/20260114183453_d5b48fac-58c5-4248-9e03-8114ed757d10.sql",
+      "sha1": "d966afb93df9552906b1067f165cc13f1da54dfa"
+    },
+    {
+      "path": "supabase/migrations/20260115105837_6983e5cb-f41d-4131-aeeb-843703cfd4bd.sql",
+      "sha1": "b8f1fca66a349651b746f3f9c8d9935d81ddba3d"
+    },
+    {
+      "path": "supabase/migrations/20260116121719_8a3cb51c-cd1a-48d1-84c0-5e0768b50e54.sql",
+      "sha1": "85ddbf5185f0f53989af589fa562c43de093137c"
+    },
+    {
+      "path": "supabase/migrations/20260123100312_2fc75339-7b99-415b-aa9d-068696c55100.sql",
+      "sha1": "e59bda08a3ae95d3779ad1fffd0639099ba62686"
+    },
+    {
+      "path": "supabase/migrations/20260129101300_9f982230-e6af-43c0-a8af-8a032d06da5f.sql",
+      "sha1": "3b90b7eae030d332fa308cdad5425a551bccb1b6"
+    },
+    {
+      "path": "supabase/migrations/20260130121023_0ba66f9b-04c9-4a77-81a7-7b731b5d0b0c.sql",
+      "sha1": "b83e8f2f8fce0aa8bfaf2ec4f45a8e1ebcf1e07e"
+    },
+    {
+      "path": "supabase/migrations/20260202094637_5d8b4d96-fd78-4f73-8165-3213727f124c.sql",
+      "sha1": "b618c902a54fb4ba537b41dd1c8db1a4e12dba60"
+    },
+    {
+      "path": "supabase/migrations/20260208114024_03125987-0760-4270-97db-85176b0b3788.sql",
+      "sha1": "10bfcae06141678ed430e2ad26b6dea9806f2309"
+    },
+    {
+      "path": "supabase/migrations/20260211133917_601deb6b-1c76-44ae-9b08-c62c4481e2ca.sql",
+      "sha1": "ca871936851796d1cdc1bad77d61d68510b885ec"
+    },
+    {
+      "path": "supabase/migrations/20260212090959_93e56d55-6c52-4f92-875e-2be57f15eaf6.sql",
+      "sha1": "3b0254df9280e7baa40b29c5ef335a8ba0152ab7"
+    },
+    {
+      "path": "supabase/migrations/20260218131142_8a76702d-4665-48bc-9dda-5ba05a73dbc7.sql",
+      "sha1": "8ea97006c718f660f126657fecb33df28010df79"
+    },
+    {
+      "path": "supabase/migrations/20260224095531_9ec25bd2-0b9a-4ec1-8af0-23d52040df4d.sql",
+      "sha1": "26b45ee23affe7701de77712ebbd64975876b659"
+    },
+    {
+      "path": "supabase/migrations/20260301133959_538ad072-4fb4-4a8e-b03b-c6363f5bb1c4.sql",
+      "sha1": "c937753daf4f740b61a3dd7d125abf5cfa9e5dfd"
+    },
+    {
+      "path": "supabase/migrations/20260304145455_fa47c332-5f29-4b61-955b-094aa9203532.sql",
+      "sha1": "e84d96c2d27a4192dd9854f6e1d1f6589dda2382"
+    },
+    {
+      "path": "supabase/migrations/20260306191429_bed9948a-3193-4264-ad1a-800b8c157a60.sql",
+      "sha1": "c5b87ca6bee35f5ca5e79b69cc620a6e00c9537f"
+    },
+    {
+      "path": "supabase/migrations/20260306200422_c7514c81-3123-4946-9851-bd03b8c3566c.sql",
+      "sha1": "1be9a0b988a21d4701635a0e608f261c66b74d99"
+    },
+    {
+      "path": "supabase/migrations/20260311163850_502038f7-7c0b-4e18-bc47-b189f826325a.sql",
+      "sha1": "39e20dd3570689eef6ab3b83a73b38f9b4b8b726"
+    },
+    {
+      "path": "supabase/migrations/20260316122005_47e06431-a535-455d-b466-4a157ee9762c.sql",
+      "sha1": "6bab9ce62e697f60df7165348558f91f739aa09e"
+    },
+    {
+      "path": "supabase/migrations/20260316134647_39e3ce7a-9ca5-40c9-a53f-d9167bb93311.sql",
+      "sha1": "766beffedc8e0d8a7752909bd30f2d60ba63999c"
+    },
+    {
+      "path": "supabase/migrations/20260316134648_d24ba3a5-f931-41e8-b1f1-2574405f2831.sql",
+      "sha1": "86cc4f98cd1288a7d5c0a1ff01e54e3a7d5f11ee"
+    },
+    {
+      "path": "supabase/migrations/20260317121627_a118da8c-0fe2-48fc-9d68-288e5626c01c.sql",
+      "sha1": "f5be63808af39eca8b1bc9b6a794b427f39bd02c"
+    },
+    {
+      "path": "supabase/migrations/20260317121749_f6a47afe-f70b-4f71-8275-be5fd994367e.sql",
+      "sha1": "d83d8883df83c551caab8111d9f2b849bcb269f8"
+    },
+    {
+      "path": "supabase/migrations/20260317121818_d7fa80fa-3693-49af-a9d5-d8be9d21315c.sql",
+      "sha1": "1e0923abbe6653e4842a74587f79cab24be0a138"
+    },
+    {
+      "path": "supabase/migrations/20260320170858_43a517ea-7807-4463-83d1-182d12849b3e.sql",
+      "sha1": "ae748f14aff8aa2e4a4ea8d90bfff00d5e2a2c69"
+    },
+    {
+      "path": "supabase/migrations/20260408074406_7a676902-7a05-4e49-9a6c-cece0cd345cc.sql",
+      "sha1": "d58a596b6d4fa8e337ee8f352305208715c20a65"
+    },
+    {
+      "path": "supabase/migrations/20260414160653_48138688-2c3b-405e-9d94-d2919024d423.sql",
+      "sha1": "e9f6e3d7e2f1aed69516287771dda6fb0c6a341b"
+    },
+    {
+      "path": "supabase/migrations/20260414161812_d64032ce-05c1-4922-a018-d79f35a4a4e9.sql",
+      "sha1": "4adced2ee963cde764a60ddaaca22119965bade0"
+    },
+    {
+      "path": "supabase/migrations/20260415110111_9bf376f7-fd80-4653-912e-c9858ad2f1d2.sql",
+      "sha1": "a1c0173ce9dae93e42d8cd3c876210a7dc863994"
+    },
+    {
+      "path": "supabase/migrations/20260415162732_715d4531-efb9-439d-8ec9-25fdfeb82429.sql",
+      "sha1": "f9fcac83b520592a92b312448d5847107d772005"
+    },
+    {
+      "path": "supabase/migrations/20260418154201_f23528f0-47e7-45bc-af58-71829fe029f6.sql",
+      "sha1": "874cf37ff70edd144c3ad4a3e9bb4c8a65e5a393"
+    },
+    {
+      "path": "supabase/migrations/20260420070356_ad90fc78-339f-4751-8013-9f0e204e68fe.sql",
+      "sha1": "cc40c92169d1dcd6824790da7fd66073f0d13380"
+    },
+    {
+      "path": "supabase/migrations/20260421090302_69c74c6a-8079-4bb1-9b4e-dc6fa3e2a6ab.sql",
+      "sha1": "6fcb0f5c35725597f7bce6aa9d2d6ef3300581b2"
+    },
+    {
+      "path": "supabase/migrations/20260421111706_79aeab93-ccb9-4a7e-8e3c-7eb5f4421821.sql",
+      "sha1": "02ffcd85f6e6bcc619cea402911f4876013eb640"
+    },
+    {
+      "path": "supabase/migrations/20260421123839_4b75d79c-cc2a-4a46-8320-05a898b3dc76.sql",
+      "sha1": "45ab2ad0d47290d776e2b6869edf2eb6b1ee831f"
+    },
+    {
+      "path": "supabase/migrations/20260421124131_d6b8276b-77fb-467b-a89f-947833a1659d.sql",
+      "sha1": "b540e3a255cf2960df6e058ad2a01402f6c928e1"
+    },
+    {
+      "path": "supabase/migrations/20260421150405_796ea65a-c95f-4b81-a0a6-64cf128825bf.sql",
+      "sha1": "d819f551c07cd0512480315a82ffbffd3ae2451d"
+    },
+    {
+      "path": "supabase/migrations/20260421164150_c9323ab8-5901-41e7-bcb1-9e0e7be62a70.sql",
+      "sha1": "66a4ce9a30fdff2681833d10da295ddcb47d26bf"
+    },
+    {
+      "path": "supabase/migrations/20260421171449_f391df7b-60ca-4abe-9f75-efc8ca592463.sql",
+      "sha1": "6d6c325e3a933a39c348d2de3c7c84416821b5cd"
+    },
+    {
+      "path": "supabase/migrations/20260421172527_a7b92812-f9e0-4bbb-bd8b-da5df4b235e8.sql",
+      "sha1": "462fb93b568d9b3cb0703468587da45785c49cd7"
+    },
+    {
+      "path": "supabase/migrations/20260421173248_d5af7c38-7837-4516-8334-e0bea89d15cd.sql",
+      "sha1": "c03509b8b7bd045927274ec110e95190cc3283ce"
+    },
+    {
+      "path": "supabase/migrations/20260421174119_4c223dc2-58e3-4adb-87f8-cf4addfe30a6.sql",
+      "sha1": "ad506382ca6ac6dcf4ca08a37b22eb6df82d2d24"
+    },
+    {
+      "path": "supabase/migrations/20260421214219_19920b63-6533-4b77-a2c9-4bd2982902e4.sql",
+      "sha1": "3f6082aa798c36fb7c38d553f8e2ba5ba9f77bf2"
+    },
+    {
+      "path": "supabase/migrations/20260421215804_e0fc3cb9-70f7-4d10-ab6a-cb33175ff92d.sql",
+      "sha1": "a0f4bfabf56f7d69acc8abe6239b58e36cd499f8"
+    },
+    {
+      "path": "supabase/migrations/20260422180843_f2f47c68-20d8-4971-977f-57a170b18bc4.sql",
+      "sha1": "ef9e19539c754ddd5f0af622fa1c89ed8283d153"
+    },
+    {
+      "path": "supabase/migrations/20260423101002_d5fbb4e5-c2f8-428e-ae3b-1d535e30ce51.sql",
+      "sha1": "01cf7b69218b07efa4b90957a05ca9fd081696e7"
+    },
+    {
+      "path": "supabase/migrations/20260423104412_27e03cd0-df20-4909-abe0-38fa8d6ee67a.sql",
+      "sha1": "74c733689480f2f2237aefb4c1f619338e39ce9e"
+    },
+    {
+      "path": "supabase/migrations/20260423163249_11530845-2e48-4ce6-90e6-68337cec865f.sql",
+      "sha1": "1614a81bcb54b6837bb1c60555b7fe160309f742"
+    },
+    {
+      "path": "supabase/migrations/20260424173901_0d0e747c-a011-4492-a2e7-96dc39d33005.sql",
+      "sha1": "47abe065a1a3b7bfb5586429248277d76041719b"
+    },
+    {
+      "path": "supabase/migrations/20260424174311_36ef9399-cb84-440d-909c-73aadd1f3e5f.sql",
+      "sha1": "1872bf7c59ae57ac362793ec7fdc8e5675e02cf5"
+    },
+    {
+      "path": "supabase/migrations/20260424180459_dd25cb30-2b69-446a-aed0-29182212e8d5.sql",
+      "sha1": "8098dda9cf1543d61a6fc2f9cdb6ec8d6e25138e"
+    },
+    {
+      "path": "supabase/migrations/20260424181626_64e3ae6a-dc99-4f60-9253-88501b1297ea.sql",
+      "sha1": "6d3e669eac5486e27aeecd941c9044d81b07a8ae"
+    },
+    {
+      "path": "supabase/migrations/20260427114603_2041e4fe-9872-4cbc-9633-243e0f639bce.sql",
+      "sha1": "11f042aa651ef384ac63b84bae1732008aa391c8"
+    },
+    {
+      "path": "supabase/migrations/20260501102530_dc409eb3-a4fd-4745-9434-f1889d107e9a.sql",
+      "sha1": "86ace3441b4491c14d62cbc9893864f53ac572a9"
+    },
+    {
+      "path": "supabase/migrations/20260501102612_3cf08bcf-41e6-4d87-92a2-244c9bc59e9e.sql",
+      "sha1": "acda94f7448d79483cc0b12e7b549ca3edcc9afd"
+    },
+    {
+      "path": "supabase/migrations/20260511095945_374ca0a3-4a50-45e7-977b-4c4cb4b9c3e2.sql",
+      "sha1": "3a69f401bf4438232d64ec54c6cbb01f56268d5d"
+    },
+    {
+      "path": "supabase/migrations/20260511100546_82d2c54a-7328-490f-8b08-bdda4f268140.sql",
+      "sha1": "83675ea0e3ec199ed494aded405c474873539546"
+    },
+    {
+      "path": "supabase/migrations/20260511144104_665cb6df-560c-4810-8283-a7a1dd8d0907.sql",
+      "sha1": "799046c6f9ba0cf4430f6b2ea7ba0cfc7a1f8138"
+    },
+    {
+      "path": "supabase/migrations/20260511162917_64f982e5-6b42-4878-8c91-4342517579df.sql",
+      "sha1": "65f27fff7bb9480d14c34d070a7e88a1219b3dcd"
+    },
+    {
+      "path": "supabase/migrations/20260518113707_ef6e5150-9088-4aa1-b56c-e805261ca444.sql",
+      "sha1": "f0c7141698b794051b296948db41c11afd6416ca"
+    },
+    {
+      "path": "supabase/migrations/20260518114327_c71e8d55-c31c-4490-a4a9-054cacd8ff96.sql",
+      "sha1": "8c5b8126f7919120c7c32ddbcd679f99efd60477"
+    },
+    {
+      "path": "supabase/migrations/20260518115420_d2fac0ae-8455-4814-b831-bdb21d926e55.sql",
+      "sha1": "194fb5a555471de4006d69833c3d3444f5fa8134"
+    },
+    {
+      "path": "supabase/migrations/20260518124121_254af9d1-b06b-4403-ae97-10fdb3352541.sql",
+      "sha1": "cf320c5f319350af30e12ffd67d7ba206277c15c"
+    },
+    {
+      "path": "supabase/migrations/20260519094610_d9af6e78-2a49-4172-a90b-f0a166f36d7a.sql",
+      "sha1": "7bde44ffecc82b9a70f9d7faaf75bb0c5158c3c2"
+    },
+    {
+      "path": "supabase/migrations/20260519110617_4e19271b-1fe8-4640-b0fc-855b8e8c31fa.sql",
+      "sha1": "24436c4bf3a521390fec0c740d2cf99e229d2558"
+    },
+    {
+      "path": "supabase/migrations/20260525085731_688a9c31-ddb6-4e8c-b3a5-f7840aa2dd71.sql",
+      "sha1": "b47fa4bf14608bc9e64c0211da4eb999f404c5ae"
+    },
+    {
+      "path": "supabase/migrations/20260525103048_6a852ef5-8dc5-4db2-9e5b-4694c9251b37.sql",
+      "sha1": "61fbf7e915ebc8570447704aa7a7b163c559039a"
+    },
+    {
+      "path": "supabase/migrations/20260525171835_a53cd0d5-f4ea-4876-b17c-05fc063361bd.sql",
+      "sha1": "2107f421ab5c7979cebd7acd29c0f1cf54529ea5"
+    },
+    {
+      "path": "supabase/migrations/20260525174032_66d43e00-1cb0-40a8-9b5d-1ce5cee0cc4a.sql",
+      "sha1": "65331e3705e1ac6f1637142f2be87f648e916d7d"
+    },
+    {
+      "path": "supabase/migrations/20260528082040_20d650ec-1bca-496d-b95b-66bd366361e4.sql",
+      "sha1": "345eb57ef9a462e0bf6256853c4a486e54d1b18c"
+    },
+    {
+      "path": "supabase/migrations/20260528095250_b35d0d8a-d31e-4e51-90f5-3ed54c1fd98f.sql",
+      "sha1": "3f543b0609eb8ca01eb1e139f56ad93372cd9560"
+    },
+    {
+      "path": "supabase/migrations/20260528095502_ae786c89-5164-4cdf-a6fa-7a18a13c4cfe.sql",
+      "sha1": "a5da8c87c30853fd6586327c15e0d80bbe828576"
+    },
+    {
+      "path": "supabase/migrations/20260603114748_stock_warehouses_v1.sql",
+      "sha1": "d6c7c282b17db7a46f89c1e7c0a57411c181485b"
+    },
+    {
+      "path": "supabase/migrations/20260603120145_stock_consumption_transfer_functions.sql",
+      "sha1": "4d3f97fed8b280eea6511c9157da0c581028b9bc"
+    },
+    {
+      "path": "supabase/migrations/20260603123240_stock_warehouse_rpc.sql",
+      "sha1": "f09f01b8e46a6f1fb8748c5ab70346ef4dcf7558"
+    },
+    {
+      "path": "supabase/migrations/20260603161317_public_laundry_stock_consumptions.sql",
+      "sha1": "b098349cdca0ce6a951093cb79ce76904bbb87ca"
+    },
+    {
+      "path": "supabase/migrations/20260610151838_stock_operational_controls.sql",
+      "sha1": "c7209d39b686d7406bce276ddcc68a2594caa78c"
+    },
+    {
+      "path": "supabase/migrations/20260611162505_avirato_hotel_integration.sql",
+      "sha1": "e8ef510dd68f6c428e555b3982a05fecf1889549"
+    },
+    {
+      "path": "supabase/migrations/20260612072142_allow_exact_avirato_mapping_duration.sql",
+      "sha1": "abb6f6ddc6678e00cb35a897d2ee2fbf1254ba32"
+    },
+    {
+      "path": "supabase/migrations/20260612083143_make_avirato_cron_dst_safe.sql",
+      "sha1": "1eb6b22e70f32036630b959e79b295f4fad22c4e"
+    },
+    {
+      "path": "supabase/migrations/20260613141005_ai_copilot_private_mvp.sql",
+      "sha1": "546561e0b4183af19a1cc2e6b93c6201de6e9ed6"
+    },
+    {
+      "path": "supabase/migrations/20260614185432_laundry_route_v2.sql",
+      "sha1": "773ee55abf46eaa21de0c479a3ac42fb05ec9c75"
+    },
+    {
+      "path": "supabase/migrations/20260615145333_add_property_kitchen_count.sql",
+      "sha1": "1cba297281dff87cbd33a6d2c8419643ecf10dbd"
+    },
+    {
+      "path": "supabase/migrations/20260622142108_allow_recurring_task_execution_writes.sql",
+      "sha1": "a013e4b94ecfa09effe68e978f447f7fa1e33cef"
+    },
+    {
+      "path": "supabase/migrations/20260624100004_professional_incidents_remove_legacy.sql",
+      "sha1": "b53329fb83e19146de441a8c1bfa4ddf06cbd233"
+    },
+    {
+      "path": "supabase/migrations/20260630120000_add_whatsapp_task_approval_notifications.sql",
+      "sha1": "57efd3bf692ef6ba65da7730e9c4be973a1130cf"
+    },
+    {
+      "path": "supabase/migrations/20260701130500_operational_planning_mvp.sql",
+      "sha1": "b8833956152b9ba428afb17b0f637f3bc0199df0"
+    },
+    {
+      "path": "supabase/migrations/20260702114854_planning_access_grants.sql",
+      "sha1": "5df736c565c76a06577c0a680dfec482f70d5ab5"
+    },
+    {
+      "path": "supabase/migrations/20260705141000_grant_notification_events_insert.sql",
+      "sha1": "b33d17bb9f447c49e87c5327b843834d264e8404"
+    },
+    {
+      "path": "supabase/migrations/20260706113000_task_assignment_counts_rpc.sql",
+      "sha1": "1ae214d770d2daf66b4633c61774d3a7b50c436a"
+    },
+    {
+      "path": "supabase/migrations/20260713120000_admin_next_client_entry.sql",
+      "sha1": "c0a4e8c80e417147fdec4cd4a43111072a30f249"
+    },
+    {
+      "path": "supabase/migrations/20260713130000_include_avantio_in_admin_next_entry.sql",
+      "sha1": "565461b057089797524a6838671484c51da56be6"
+    },
+    {
+      "path": "supabase/migrations/20260714165405_dedupe_whatsapp_button_callbacks.sql",
+      "sha1": "50e867df556fd274c1ad15b6f340611c4c933425"
+    },
+    {
+      "path": "supabase/migrations/20260714190138_dedupe_whatsapp_admin_email_fallback.sql",
+      "sha1": "f4ed6da6d65bef6430eed7254951d527aa3793ff"
+    },
+    {
+      "path": "supabase/migrations/20260715082216_schedule_whatsapp_notification_reminders.sql",
+      "sha1": "3d1752bce99606920618457da090c38940ff23c9"
+    },
+    {
+      "path": "supabase/migrations/20260717160000_notify_all_assigned_cleaners_on_task_changes.sql",
+      "sha1": "b0805963d997817795a35e185efe2d2e27ccf25b"
+    },
+    {
+      "path": "supabase/migrations/20260718101420_atomic_recurring_task_materialization.sql",
+      "sha1": "8d0394655cbdcba4ec0461e6ed749a180d77b998"
+    },
+    {
+      "path": "supabase/migrations/20260718131304_secure_recurring_tasks_cron.sql",
+      "sha1": "ed57be11acecc272e8cc047052f2b336b32b7481"
+    },
+    {
+      "path": "supabase/migrations/20260718162319_disable_dormant_hostaway.sql",
+      "sha1": "0f97b9a8e5c0a4cfe80511bb3c4c22b42d07a57f"
+    },
+    {
+      "path": "supabase/migrations/20260718193000_enqueue_task_assignment_notifications.sql",
+      "sha1": "fb40b7cc72e90b0c65feb3fe52d3c6eed56b6aa8"
+    },
+    {
+      "path": "supabase/migrations/20260718225000_atomic_cleaner_deactivation.sql",
+      "sha1": "e83b56c3493abe3effc3bfeb61579dfd82cbabf4"
+    },
+    {
+      "path": "supabase/migrations/20260718230500_harden_cleaner_deactivation_permissions.sql",
+      "sha1": "886f6ca239af81fee221fd4a8c2d0eb64cb33d56"
+    },
+    {
+      "path": "supabase/migrations/20260720191000_secure_whatsapp_delivery_monitor.sql",
+      "sha1": "ebdd08c226b640834a7b7587ca32dd748921eebc"
+    },
+    {
+      "path": "supabase/migrations/20260720220000_prevent_hidden_tasks_on_cleaner_deactivation.sql",
+      "sha1": "478fba201cdd674346c7c39657b37c202118035a"
+    },
+    {
+      "path": "supabase/migrations/20260720230000_harden_task_approval_event_permissions.sql",
+      "sha1": "5bee6530a52995c3560f6ea938e2ae7f6b51aee0"
+    },
+    {
+      "path": "supabase/migrations/20260720240000_harden_whatsapp_webhook_state.sql",
+      "sha1": "3dc207aa365ad914a5e93046cdd8c7bf27f29f67"
+    },
+    {
+      "path": "supabase/migrations/20260720260000_add_manual_send_reconciliation.sql",
+      "sha1": "af8f6861e4ca16d772be11c8e0a3d3781a16299d"
+    },
+    {
+      "path": "supabase/migrations/20260721070000_schedule_whatsapp_notification_recovery.sql",
+      "sha1": "7ad5de61c053c1f865c1e24b26b1f3934f89cee9"
+    },
+    {
+      "path": "supabase/migrations/20260721102400_add_bounded_whatsapp_retry.sql",
+      "sha1": "2d0f44f24bfb6b9517adf7a91a25c2c1318365db"
+    },
+    {
+      "path": "supabase/migrations/20260721130000_transactional_canonical_assignment_writers.sql",
+      "sha1": "4d5c15f48b168fbba243b76edadd4f997ec66249"
+    },
+    {
+      "path": "supabase/migrations/20260721150000_planning_batch_transactional_apply.sql",
+      "sha1": "4bfa34d0e5f5ae49a6101ffc0e378b99e7412226"
+    },
+    {
+      "path": "supabase/migrations/20260721151000_fix_deleted_task_cancellation_notifications.sql",
+      "sha1": "2b3627aac6e2d2490e089c90ae1f439bd3b00ac0"
+    },
+    {
+      "path": "supabase/migrations/20260721152000_add_whatsapp_attempt_history_and_recipient_snapshot.sql",
+      "sha1": "1c98e52908edf520c2f4c8b9cda636329bd01d9f"
+    },
+    {
+      "path": "supabase/migrations/20260721164500_ignore_planning_version_in_task_modified_notifications.sql",
+      "sha1": "ca7d72a33d5b1379dc0c683db6e4a3cec830d406"
+    },
+    {
+      "path": "supabase/migrations/20260721171000_restore_legacy_assignment_overrides.sql",
+      "sha1": "eada22b0c532632702c92d6c9e5bb5c5e82fe29e"
+    },
+    {
+      "path": "supabase/migrations/20260722135500_ignore_report_completion_task_modified.sql",
+      "sha1": "3360232a634e11604a4741c0d885c3b213489007"
+    },
+    {
+      "path": "supabase/migrations/20260722170000_enable_turquoise_operational_portal.sql",
+      "sha1": "7f0024ff537e58ede97c8cc91a1f9d000c3c7242"
+    },
+    {
+      "path": "supabase/migrations/20260723141226_notify_only_schedule_task_modifications.sql",
+      "sha1": "fc5fc0f67be703a8d528a697bb99811fe04528c7"
+    },
+    {
+      "path": "supabase/migrations/20260724114500_add_client_portal_operational_statuses.sql",
+      "sha1": "50bf7f0d6744fb0fcd8d1ace0dbb68179cf67514"
+    },
+    {
+      "path": "supabase/migrations/20260810120000_budget_estimator_full_module.sql",
+      "sha1": "95d8970d1c6f876e5b2733af1b322184068d0b6b"
+    },
+    {
+      "path": "supabase/migrations/20260810130000_budget_estimator_pdf_storage.sql",
+      "sha1": "fc6efbf452dca8213f66985fb5ab564bfdde519d"
+    },
+    {
+      "path": "supabase/migrations/20260814120000_supervision_quality_mvp.sql",
+      "sha1": "33552bc99b2764e4de4b4a84ee099d542ed5ae46"
+    },
+    {
+      "path": "supabase/migrations/20260814121000_supervision_report_cron.sql",
+      "sha1": "b2e5509dc6111f8e55930d85819c8313ceeeb915"
+    },
+    {
+      "path": "supabase/migrations/20260814122000_supervision_media_scope.sql",
+      "sha1": "25b35b5dcd34a906e7685006f375b3841b476daa"
+    },
+    {
+      "path": "supabase/migrations/20260815210000_supervision_rls_hardening.sql",
+      "sha1": "30658b9d1d3faed850c6b5aee9555911b6663f80"
+    },
+    {
+      "path": "supabase/migrations/20260815220000_supervision_closed_route_guard.sql",
+      "sha1": "2ff0b6975f9de70a065ca8641b4acaf60024b3a4"
+    },
+    {
+      "path": "supabase/migrations/20260815223000_supervision_incident_notification_guard.sql",
+      "sha1": "9986c8d6010c8c842213117063148cdeb2979ce6"
+    },
+    {
+      "path": "supabase/migrations/20260815230000_supervision_operational_guards.sql",
+      "sha1": "7e08cd554837a116a10119161bc840112ef57ec9"
+    },
+    {
+      "path": "supabase/migrations/20260815231000_supervision_reorder_rpc.sql",
+      "sha1": "690e0b9437154af442ad8085b721aeb2a990014a"
+    },
+    {
+      "path": "supabase/migrations/20260815232000_supervision_audit_immutability.sql",
+      "sha1": "677330aa9edba48b362d13a0d9d3000054b79dc2"
+    },
+    {
+      "path": "supabase/migrations/20260818130000_allow_requested_avantio_next_entry.sql",
+      "sha1": "dc47aa015e640be5205962a34256937130cd6c97"
+    },
+    {
+      "path": "supabase/migrations/20260818150000_refine_admin_next_avantio_entry.sql",
+      "sha1": "513d2dcccffcea10377655ae6eb433500959ed77"
+    },
+    {
+      "path": "supabase/migrations/20260819101007_fix_admin_next_client_entry_same_day.sql",
+      "sha1": "79b76eaf89314da6886e7a0eef54173e92948f2e"
+    },
+    {
+      "path": "supabase/migrations/20260819120000_snapshot_multiworker_schedule.sql",
+      "sha1": "fa4240af04964584e4495149b532e88c9ce4c41e"
+    },
+    {
+      "path": "supabase/migrations/20260821085952_allow_absence_registration_with_planning_conflicts.sql",
+      "sha1": "0350dfffa50d41c34b87028c62716ecd8afda1bb"
+    },
+    {
+      "path": "supabase/migrations/20260821143448_laundry_classic_route_order.sql",
+      "sha1": "856f8b18e409c08b3f8774050a7a6689cde26f06"
+    },
+    {
+      "path": "supabase/migrations/20260821151329_laundry_classic_global_route_order.sql",
+      "sha1": "1b5c7613a9413e9b8332e3b62ee4e215ac858b66"
+    },
+    {
+      "path": "supabase/migrations/20260824090758_optimize_task_assignment_lookup.sql",
+      "sha1": "c7626d3ecd2d37be261d0c1855a911f182ad16a0"
+    },
+    {
+      "path": "supabase/migrations/20260824130000_supervision_building_assignments.sql",
+      "sha1": "ada677dc9a03eafbf8c323e83b1dd0f3d24c8e0c"
+    },
+    {
+      "path": "supabase/migrations/20260824131000_supervision_building_routes.sql",
+      "sha1": "65b8eb6bf248bff0bb1a7b632e25325df0b63645"
+    },
+    {
+      "path": "supabase/migrations/20260824140000_supervision_work_items.sql",
+      "sha1": "9a8e97637f239ea74547ef986b2c178b0d201d62"
+    },
+    {
+      "path": "supabase/migrations/20260824141000_supervision_route_assignment_guard.sql",
+      "sha1": "b89dedbe6c5edc0906bd7db23985f086d75f16b9"
+    },
+    {
+      "path": "supabase/migrations/20260824150000_supervision_stock_locations_checks.sql",
+      "sha1": "671ebb767fa9b39e82cf8995e3704306819f2513"
+    },
+    {
+      "path": "supabase/migrations/20260824151000_supervision_stock_count_delta_fix.sql",
+      "sha1": "b807eff846744ea0559964a037bd12410a00e2f9"
+    },
+    {
+      "path": "supabase/migrations/20260824152000_supervision_stock_location_guard.sql",
+      "sha1": "d3caacb7510b2de2ed8fe65562c5d406b534f5b7"
+    },
+    {
+      "path": "supabase/migrations/20260824153000_supervision_empty_building_assignment_fix.sql",
+      "sha1": "1929ae7129b02a577aed99f6aef8fccd2a2c69a0"
+    },
+    {
+      "path": "supabase/migrations/20260824154000_supervision_assigned_building_read_scope.sql",
+      "sha1": "bdaa36acaae15ba2959b71aac487ab38d54e0549"
+    },
+    {
+      "path": "supabase/migrations/20260824155000_supervision_review_vacancy_guard.sql",
+      "sha1": "af8edf52c72d98c5c959a706f2c22fd527856272"
+    },
+    {
+      "path": "supabase/migrations/20260824156000_supervision_reservation_sources_rpc.sql",
+      "sha1": "26528f1939a479a82e4e75bfce565d589e1fa7fd"
+    },
+    {
+      "path": "supabase/migrations/20260824157000_supervision_review_all_reservation_sources_guard.sql",
+      "sha1": "1a883c26366b9527bf79433d654864b3a31fc3eb"
+    },
+    {
+      "path": "supabase/migrations/20260824158000_supervision_reservation_sources_window.sql",
+      "sha1": "bde0b6ff7fbaf1642cd80a8b17e2c918ef28a047"
+    },
+    {
+      "path": "supabase/migrations/20260826083006_laundry_protocolized_classic_links.sql",
+      "sha1": "5f51c8260d2678558eebe255642f453d25ea1238"
+    },
+    {
+      "path": "supabase/migrations/20260826101000_fix_laundry_classic_cron_payload.sql",
+      "sha1": "cedd2f5c40157f0c66cf683da572a28db0c615c2"
+    },
+    {
+      "path": "supabase/migrations/20260826121354_laundry_route_v2_protocol.sql",
+      "sha1": "ce3cd64bc7b5838003953d61861d4d9c912988f9"
+    },
+    {
+      "path": "supabase/migrations/20260826151118_disable_removed_admin_modules.sql",
+      "sha1": "924465f7ea006558f3a64ffdef77b7e385778734"
+    },
+    {
+      "path": "supabase/migrations/20260828144516_laundry_route_worker_pin_access.sql",
+      "sha1": "1210364738222c4443d9630db2d68d0ba5cd78bc"
+    },
+    {
+      "path": "supabase/migrations/20260906120000_default_cleaner_contract_hours_zero.sql",
+      "sha1": "7f1ba3ca54c13430300a3a38e52a818aad281f7e"
+    },
+    {
+      "path": "supabase/migrations/20260909104357_laundry_preparation_timings.sql",
+      "sha1": "8def5dfa9a37680b6602015b67ac8291ca9a96f1"
+    },
+    {
+      "path": "supabase/migrations/20260911122231_worker_schedule_availability.sql",
+      "sha1": "ae770f7b9a527d84edcbd8f4b080e72ea5b2aa31"
+    },
+    {
+      "path": "supabase/migrations/20260911122934_allow_schedule_classification_change.sql",
+      "sha1": "a4e137a16b1ac88ba4e18e56ff58b0e4dcf184ff"
+    },
+    {
+      "path": "supabase/migrations/20260911123912_replace_worker_schedule_days.sql",
+      "sha1": "6b7098fcec3d337601532b1081772cc326a52556"
+    },
+    {
+      "path": "supabase/migrations/20260911124630_ignore_past_weekly_schedule_conflicts.sql",
+      "sha1": "849bedf6116b7f4624eedd26f5ca7656728627b2"
+    },
+    {
+      "path": "supabase/migrations/20260911133619_worker_hours_history.sql",
+      "sha1": "5a50f82637c1aa3f3e1be7ce0359aa448af7113d"
+    },
+    {
+      "path": "supabase/migrations/20260911135449_worker_initial_hours_reference.sql",
+      "sha1": "e29671cd93590859e6199ea031fa4d955c31f60e"
+    },
+    {
+      "path": "tailwind.config.ts",
+      "sha1": "3e32b75996d69f32f86e9fe0992eb4015c96376d"
+    },
+    {
+      "path": "tsconfig.app.json",
+      "sha1": "90da4bc9f87a1a02a4216c56e3350c7b31b15ab3"
+    },
+    {
+      "path": "tsconfig.json",
+      "sha1": "406552d5c88be653321c02b054365569452815b2"
+    },
+    {
+      "path": "tsconfig.node.json",
+      "sha1": "72897858460f2ddfbf5d52b2330471f70fb437f1"
+    },
+    {
+      "path": "vercel.json",
+      "sha1": "a5cb79f47b8aabf019be5db4ef8598fba63e2170"
+    },
+    {
+      "path": "vite.config.ts",
+      "sha1": "eee6df9edc546d9271d1fa4c21f60ab30436a958"
+    }
+  ],
+  "administrativeChanges": [
+    "AGENTS.md",
+    "vercel.json",
+    ".gitignore",
+    "docs/TRASPASO_HERMES.md",
+    "docs/production-source-manifest-20260914.json",
+    "supabase/production-snapshot/"
+  ]
+}

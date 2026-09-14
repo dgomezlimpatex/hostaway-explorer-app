@@ -146,10 +146,10 @@ export function StockProductDialog({ open, onOpenChange, kind, product }: StockP
               </div>
               {!isEditing && (
                 <div className="space-y-2">
-                  <Label>Almacen inicial</Label>
+                  <Label>Almacén inicial</Label>
                   <Select value={warehouseId || defaultWarehouseId} onValueChange={setWarehouseId}>
                     <SelectTrigger>
-                      <SelectValue placeholder="Selecciona almacen" />
+                      <SelectValue placeholder="Selecciona almacén" />
                     </SelectTrigger>
                     <SelectContent>
                       {warehouses.map((warehouse) => (
@@ -180,7 +180,7 @@ export function StockProductDialog({ open, onOpenChange, kind, product }: StockP
                     <Input id="initial_quantity" name="initial_quantity" type="number" min="0" step="0.01" defaultValue="0" />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="minimum_quantity">Stock minimo</Label>
+                    <Label htmlFor="minimum_quantity">Stock mínimo</Label>
                     <Input id="minimum_quantity" name="minimum_quantity" type="number" min="0" step="0.01" defaultValue="0" />
                   </div>
                   <div className="space-y-2">

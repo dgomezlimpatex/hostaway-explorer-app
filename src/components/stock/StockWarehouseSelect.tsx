@@ -12,14 +12,14 @@ export function StockWarehouseSelect() {
 
   return (
     <Select value={selectedWarehouseId} onValueChange={setSelectedWarehouseId}>
-      <SelectTrigger className="w-full sm:w-56">
-        <SelectValue placeholder="Almacen" />
+      <SelectTrigger aria-label="Almacén consultado" className="w-full sm:w-64">
+        <SelectValue placeholder="Almacén" />
       </SelectTrigger>
       <SelectContent>
         <SelectItem value="all">Todos los almacenes</SelectItem>
         {warehouses.map((warehouse) => (
           <SelectItem key={warehouse.id} value={warehouse.id}>
-            {warehouse.name}{warehouse.is_default ? ' (default)' : ''}
+            {warehouse.name}{warehouse.is_default ? ' (principal)' : ''}
           </SelectItem>
         ))}
       </SelectContent>

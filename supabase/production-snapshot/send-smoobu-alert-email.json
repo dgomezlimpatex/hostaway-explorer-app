@@ -1,0 +1,19 @@
+{
+  "id": "f9c6fb16-7049-4452-a49b-08b2e7790588",
+  "slug": "send-smoobu-alert-email",
+  "name": "send-smoobu-alert-email",
+  "status": "ACTIVE",
+  "version": 3,
+  "created_at": 1786634395310,
+  "updated_at": 1786634395310,
+  "verify_jwt": false,
+  "import_map": false,
+  "entrypoint_path": "/tmp/user_fn_qyipyygojlfhdghnraus_f9c6fb16-7049-4452-a49b-08b2e7790588_1/source/supabase/functions/send-smoobu-alert-email/index.ts",
+  "ezbr_sha256": "84a1c1bfbbbe23671d28cdc510fa4ad1a92753f7904b914e1665cf59cee0fecf",
+  "files": [
+    {
+      "name": "send-smoobu-alert-email/index.ts",
+      "content": "import { Resend } from \"npm:resend@6.17.2\";\n\nconst ALERT_RECIPIENT = \"dgomez@limpatex.com\";\nconst DEFAULT_FROM = \"Sistema Smoobu <alertas@limpatexgestion.es>\";\n\nconst json = (body: unknown, status = 200) => new Response(JSON.stringify(body), {\n  status,\n  headers: {\n    \"Content-Type\": \"application/json\",\n    \"Access-Control-Allow-Origin\": \"*\",\n    \"Access-Control-Allow-Headers\": \"authorization, content-type, x-smoobu-alert-token\",\n    \"Access-Control-Allow-Methods\": \"POST, OPTIONS\",\n  },\n});\n\nconst textValue = (value: unknown, maxLength: number): string =>\n  typeof value === \"string\" ? value.trim().slice(0, maxLength) : \"\";\n\nDeno.serve(async (req: Request): Promise<Response> => {\n  if (req.method === \"OPTIONS\") return json({ ok: true });\n  if (req.method !== \"POST\") return json({ error: \"method_not_allowed\" }, 405);\n\n  const configuredToken = Deno.env.get(\"SMOOBU_ALERT_FUNCTION_TOKEN\")?.trim() ?? \"\";\n  const receivedToken = req.headers.get(\"x-smoobu-alert-token\")?.trim() ?? \"\";\n  if (!configuredToken || receivedToken !== configuredToken) {\n    return json({ error: \"unauthorized\" }, 401);\n  }\n\n  const resendApiKey = Deno.env.get(\"RESEND_API_KEY\")?.trim() ?? \"\";\n  if (!resendApiKey) return json({ error: \"resend_not_configured\" }, 503);\n\n  let payload: { source?: unknown; subject?: unknown; body?: unknown };\n  try {\n    payload = await req.json();\n  } catch {\n    return json({ error: \"invalid_json\" }, 400);\n  }\n\n  if (payload.source !== \"smoobu\") return json({ error: \"invalid_source\" }, 400);\n  const subject = textValue(payload.subject, 180);\n  const body = textValue(payload.body, 20_000);\n  if (!subject || !body) return json({ error: \"subject_and_body_required\" }, 400);\n\n  try {\n    const response = await new Resend(resendApiKey).emails.send({\n      from: Deno.env.get(\"SMOOBU_ALERT_FROM\")?.trim() || DEFAULT_FROM,\n      to: [ALERT_RECIPIENT],\n      subject,\n      text: body,\n    });\n\n    if (response.error) {\n      console.error(\"Smoobu Resend error:\", response.error.message ?? \"provider_error\");\n      return json({ error: \"resend_error\" }, 502);\n    }\n\n    const messageId = response.data?.id?.trim();\n    if (!messageId) {\n      console.error(\"Smoobu Resend response did not include a message id\");\n      return json({ error: \"resend_missing_message_id\" }, 502);\n    }\n\n    return json({ status: \"sent\", id: messageId });\n  } catch (error) {\n    console.error(\n      \"Smoobu Resend exception:\",\n      error instanceof Error ? error.message : \"provider_exception\",\n    );\n    return json({ error: \"resend_exception\" }, 502);\n  }\n});\n"
+    }
+  ]
+}

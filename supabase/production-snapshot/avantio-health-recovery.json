@@ -1,0 +1,19 @@
+{
+  "id": "335464cb-db89-4630-81b3-a8e669e5cdad",
+  "slug": "avantio-health-recovery",
+  "name": "avantio-health-recovery",
+  "status": "ACTIVE",
+  "version": 7,
+  "created_at": 1785075862946,
+  "updated_at": 1785077914087,
+  "verify_jwt": true,
+  "import_map": false,
+  "entrypoint_path": "/tmp/user_fn_qyipyygojlfhdghnraus_335464cb-db89-4630-81b3-a8e669e5cdad_4/source/supabase/functions/avantio-health-recovery/index.ts",
+  "ezbr_sha256": "ee5deaffa1fd9437876656cf689a8ce8adbb7bbab5b2e0c03f0d7bf56bd7b650",
+  "files": [
+    {
+      "name": "avantio-health-recovery/index.ts",
+      "content": "import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.50.0';\n\nconst API_BASE_URL = 'https://api.avantio.pro/pms/v1';\nconst INCIDENT_STARTED_AT = '2026-07-26T13:00:00Z';\nconst PROBE_TIMEOUT_MS = 2000;\n\nasync function probe(token: string, path: string) {\n  const controller = new AbortController();\n  const timeout = setTimeout(() => controller.abort(), PROBE_TIMEOUT_MS);\n  try {\n    const response = await fetch(`${API_BASE_URL}${path}`, {\n      headers: {\n        accept: 'application/json',\n        'X-Avantio-Auth': token.replace(/^[\"'\\s]+|[\"'\\s]+$/g, ''),\n      },\n      signal: controller.signal,\n    });\n    return { ok: response.ok, status: response.status };\n  } catch (error) {\n    return {\n      ok: false,\n      status: error instanceof Error && error.name === 'AbortError' ? 'timeout' : 'network_error',\n    };\n  } finally {\n    clearTimeout(timeout);\n  }\n}\n\nDeno.serve(async () => {\n  const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';\n  const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';\n  const avantioToken = Deno.env.get('AVANTIO_API_TOKEN') ?? '';\n  if (!supabaseUrl || !serviceKey || !avantioToken) {\n    return Response.json({ status: 'configuration_error' }, { status: 500 });\n  }\n\n  const supabase = createClient(supabaseUrl, serviceKey);\n  const { data: recovered } = await supabase\n    .from('avantio_sync_logs')\n    .select('id, sync_started_at')\n    .eq('status', 'completed')\n    .gte('sync_started_at', INCIDENT_STARTED_AT)\n    .order('sync_started_at', { ascending: false })\n    .limit(1)\n    .maybeSingle();\n  if (recovered) {\n    return Response.json({ status: 'already_recovered', syncLogId: recovered.id });\n  }\n\n  const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000).toISOString();\n  const { data: running } = await supabase\n    .from('avantio_sync_logs')\n    .select('id')\n    .eq('status', 'running')\n    .gte('sync_started_at', thirtyMinutesAgo)\n    .limit(1)\n    .maybeSingle();\n  if (running) {\n    return Response.json({ status: 'sync_already_running', syncLogId: running.id });\n  }\n\n  const [listProbe, accommodationProbe] = await Promise.all([\n    probe(avantioToken, '/bookings?limit=1'),\n    probe(avantioToken, '/accommodations/774600'),\n  ]);\n  if (!listProbe.ok || !accommodationProbe.ok) {\n    return Response.json({ status: 'provider_unhealthy', listProbe, accommodationProbe });\n  }\n\n  const trigger = await fetch(`${supabaseUrl}/functions/v1/avantio-sync`, {\n    method: 'POST',\n    headers: {\n      authorization: `Bearer ${serviceKey}`,\n      apikey: serviceKey,\n      'content-type': 'application/json',\n    },\n    body: JSON.stringify({\n      triggered_by: 'incident_recovery',\n      schedule_name: 'avantio-health-recovery',\n      source: 'provider-health-gate',\n    }),\n  });\n  const triggerBody = await trigger.text();\n  return Response.json({\n    status: trigger.ok ? 'recovery_triggered' : 'trigger_failed',\n    triggerStatus: trigger.status,\n    triggerBody: triggerBody.slice(0, 500),\n  }, { status: trigger.ok ? 200 : 502 });\n});\n"
+    }
+  ]
+}

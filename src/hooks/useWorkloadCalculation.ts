@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useCleaners } from './useCleaners';
-import { useWorkerContracts } from './useWorkerContracts';
+import { buildRecurringExecutionSet, recurringExecutionBounds } from '@/utils/recurringExecutions';
 import { WorkloadSummary, HourAdjustment } from '@/types/workload';
 import { WorkerMaintenanceCleaning } from '@/types/workerAbsence';
 import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, eachDayOfInterval, getDay } from 'date-fns';
@@ -23,7 +23,7 @@ const calculateMaintenanceHoursForPeriod = (
   const daysInPeriod = eachDayOfInterval({ start: startDate, end: endDate });
   
   for (const cleaning of maintenanceCleanings) {
-    if (!cleaning.isActive) continue;
+    if (!cleaning.isActive || cleaning.scheduleType === 'unavailability') continue;
     
     for (const day of daysInPeriod) {
       const dayOfWeek = getDay(day); // 0 = Sunday
@@ -119,10 +119,15 @@ interface UseWorkloadCalculationOptions {
 export const useWorkloadCalculation = (options: UseWorkloadCalculationOptions) => {
   const { startDate, endDate, cleanerId } = options;
   const { cleaners } = useCleaners();
-  const { data: contracts = [], isLoading: contractsLoading } = useWorkerContracts();
 
   return useQuery({
-    queryKey: ['workload', startDate, endDate, cleanerId, contracts.length],
+    queryKey: [
+      'workload',
+      startDate,
+      endDate,
+      cleanerId,
+      cleaners.map(c => `${c.id}:${c.contractHoursPerWeek ?? 0}`).join('|'),
+    ],
     queryFn: async (): Promise<WorkloadSummary[]> => {
       const start = new Date(startDate);
       const end = new Date(endDate);
@@ -141,8 +146,7 @@ export const useWorkloadCalculation = (options: UseWorkloadCalculationOptions) =
         // Tasks: all assigned, not cancelled
         supabase
           .from('tasks')
-          .select('cleaner_id, start_time, end_time, duracion, status')
-          .in('cleaner_id', cleanerIds)
+          .select('cleaner_id, start_time, end_time, duracion, status, task_assignments(cleaner_id)')
           .gte('date', startDate)
           .lte('date', endDate)
           .neq('status', 'cancelled'),
@@ -183,20 +187,21 @@ export const useWorkloadCalculation = (options: UseWorkloadCalculationOptions) =
       let executedSet = new Set<string>();
       
       if (recurringTaskIds.length > 0) {
-        const { data: executions } = await supabase
+        const bounds = recurringExecutionBounds(startDate, endDate);
+        const { data: executions, error: executionsError } = await supabase
           .from('recurring_task_executions')
           .select('recurring_task_id, execution_date')
           .in('recurring_task_id', recurringTaskIds)
-          .gte('execution_date', startDate)
-          .lte('execution_date', endDate)
+          .gte('execution_date', bounds.from)
+          .lt('execution_date', bounds.until)
           .eq('success', true);
         
-        if (executions) {
-          executions.forEach(e => executedSet.add(`${e.recurring_task_id}_${e.execution_date}`));
-        }
+        if (executionsError) throw executionsError;
+        executedSet = buildRecurringExecutionSet(executions || []);
       }
 
       const maintenanceCleanings: WorkerMaintenanceCleaning[] = (maintenanceResult.data || []).map(row => ({
+        scheduleType: (row as typeof row & { schedule_type?: WorkerMaintenanceCleaning['scheduleType'] }).schedule_type,
         id: row.id,
         cleanerId: row.cleaner_id,
         daysOfWeek: row.days_of_week,
@@ -228,13 +233,19 @@ export const useWorkloadCalculation = (options: UseWorkloadCalculationOptions) =
 
       // Calculate workload for each cleaner
       const summaries: WorkloadSummary[] = targetCleaners.map(cleaner => {
-        // Get contract for this cleaner
-        const contract = contracts.find(c => c.cleanerId === cleaner.id && c.isActive);
-        const contractHoursPerWeek = contract?.contractHoursPerWeek ?? cleaner.contractHoursPerWeek ?? 0;
+        // The worker profile is the only source of weekly hours, including zero.
+        const contractHoursPerWeek = cleaner.contractHoursPerWeek ?? 0;
         const contractHoursForPeriod = contractHoursPerWeek * weeksInPeriod;
 
         // Calculate tourist hours from tasks
-        const cleanerTasks = tasks.filter(t => t.cleaner_id === cleaner.id);
+        const cleanerTasks = tasks.filter(t => {
+          const assignmentIds = (t.task_assignments || [])
+            .map(assignment => assignment.cleaner_id)
+            .filter(Boolean);
+          return assignmentIds.length > 0
+            ? assignmentIds.includes(cleaner.id)
+            : t.cleaner_id === cleaner.id;
+        });
         let touristMinutes = 0;
         
         for (const task of cleanerTasks) {
@@ -291,8 +302,11 @@ export const useWorkloadCalculation = (options: UseWorkloadCalculationOptions) =
 
       return summaries;
     },
-    enabled: !!startDate && !!endDate && cleaners.length > 0 && !contractsLoading,
-    staleTime: 30000, // 30 seconds
+    enabled: !!startDate && !!endDate && cleaners.length > 0,
+    staleTime: 0,
+    // Realtime is used below for immediate updates; this is a safe fallback
+    // when the browser or Supabase temporarily loses the realtime connection.
+    refetchInterval: 15000,
   });
 };
 

@@ -67,7 +67,7 @@ export const CalendarLayout = ({
         <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
           {/* Headers Row */}
           <div className="flex flex-shrink-0">
-            <div className="w-52 h-12 bg-muted/50 border-b border-border flex items-center px-3 border-r border-border flex-shrink-0">
+            <div className="w-64 h-12 bg-muted/50 border-b border-border flex items-center px-3 border-r border-border flex-shrink-0">
               <span className="text-[11px] font-bold tracking-widest text-muted-foreground uppercase">Equipo</span>
             </div>
             {/* Time Header - Sincronizado con el scroll */}

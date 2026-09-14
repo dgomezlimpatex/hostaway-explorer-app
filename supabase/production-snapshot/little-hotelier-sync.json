@@ -1,0 +1,19 @@
+{
+  "id": "b29c29e3-0387-4c2a-8caa-77ebf5ce998a",
+  "slug": "little-hotelier-sync",
+  "name": "little-hotelier-sync",
+  "status": "ACTIVE",
+  "version": 84,
+  "created_at": 1779184352553,
+  "updated_at": 1788733548685,
+  "verify_jwt": false,
+  "import_map": false,
+  "entrypoint_path": "/tmp/user_fn_qyipyygojlfhdghnraus_b29c29e3-0387-4c2a-8caa-77ebf5ce998a_84/source/supabase/functions/little-hotelier-sync/index.ts",
+  "ezbr_sha256": "132b05486729d4e2a3c0df462326547127e5547c08105225b813e053c7237999",
+  "files": [
+    {
+      "name": "little-hotelier-sync/index.ts",
+      "content": "// Little Hotelier: auth/HTTP adapter only. All business writes belong to ONE DB transaction.\nimport { createClient } from 'npm:@supabase/supabase-js@2';\nconst corsHeaders = {\n  'Access-Control-Allow-Origin': '*',\n  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',\n};\nfunction json(body: unknown, status = 200): Response {\n  return new Response(JSON.stringify(body), {status, headers: {...corsHeaders, 'Content-Type': 'application/json'}});\n}\nDeno.serve(async (req: Request): Promise<Response> => {\n  if (req.method === 'OPTIONS') return new Response('ok', {headers: corsHeaders});\n  if (req.method !== 'POST') return json({error: 'Method not allowed'}, 405);\n  const expectedKey = Deno.env.get('LH_SYNC_API_KEY');\n  if (!expectedKey || req.headers.get('Authorization') !== `Bearer ${expectedKey}`) return json({error: 'Unauthorized'}, 401);\n  let payload: Record<string, unknown>;\n  try {\n    const body = await req.json();\n    if (!body || typeof body !== 'object' || Array.isArray(body)) return json({error: 'Invalid JSON body'}, 400);\n    payload = body;\n    if (['external_id','check_in','check_out'].some(k => typeof payload[k] !== 'string' || !(payload[k] as string).trim())) {\n      return json({error: 'Missing required fields'}, 400);\n    }\n  } catch {\n    return json({error: 'Invalid JSON body'}, 400);\n  }\n  const url = Deno.env.get('SUPABASE_URL');\n  const key = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');\n  if (!url || !key) return json({error: 'Backend configuration missing'}, 503);\n  try {\n    const client = createClient(url, key, {auth: {persistSession: false, autoRefreshToken: false}});\n    const {data, error} = await client.rpc('lh_apply_reservation_atomic', {p_payload: payload});\n    if (error) {\n      // Do not echo SQL messages, payloads or guest data. Do not retry an ambiguous call here.\n      console.error('LH atomic RPC failed', typeof error.code === 'string' ? error.code : 'unknown');\n      return json({error: 'Synchronization failed; reconcile before retry', code: 'lh_atomic_rpc_failed'}, 500);\n    }\n    if (!data || data.success !== true || data.external_id !== payload.external_id || !data.reservation_id ||\n        !Array.isArray(data.warnings) || !Array.isArray(data.tasks_created) || !Array.isArray(data.tasks_cancelled)) {\n      return json({error: 'Unexpected synchronization response; reconcile before retry', code: 'lh_invalid_rpc_result'}, 502);\n    }\n    return json(data);\n  } catch {\n    console.error('LH atomic RPC transport failed');\n    return json({error: 'Synchronization outcome unknown; reconcile before retry', code: 'lh_outcome_unknown'}, 503);\n  }\n});\n"
+    }
+  ]
+}

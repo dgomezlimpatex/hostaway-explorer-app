@@ -1,0 +1,132 @@
+{
+  "migrations": [
+    {
+      "version": "20260826121354",
+      "name": "laundry_route_v2_protocol"
+    },
+    {
+      "version": "20260831093730",
+      "name": "remote_schema"
+    },
+    {
+      "version": "20260831101847",
+      "name": "tourism_tasks_calendar"
+    },
+    {
+      "version": "20260831102143",
+      "name": "tourism_tasks_calendar_permissions"
+    },
+    {
+      "version": "20260831150045",
+      "name": "whatsapp_notification_health_monitor"
+    },
+    {
+      "version": "20260831150228",
+      "name": "fix_whatsapp_health_alert_ambiguity"
+    },
+    {
+      "version": "20260831150751",
+      "name": "filter_whatsapp_health_to_current_window"
+    },
+    {
+      "version": "20260831151314",
+      "name": "harden_whatsapp_health_ui_access"
+    },
+    {
+      "version": "20260831151403",
+      "name": "optimize_whatsapp_health_rls"
+    },
+    {
+      "version": "20260831160207",
+      "name": "set_whatsapp_health_monitor_hourly"
+    },
+    {
+      "version": "20260831164106",
+      "name": "inventory_logistics_operational_access"
+    },
+    {
+      "version": "20260831164359",
+      "name": "inventory_logistics_dirty_sede_guard"
+    },
+    {
+      "version": "20260831211310",
+      "name": "laundry_inventory_route_lifecycle"
+    },
+    {
+      "version": "20260831211416",
+      "name": "laundry_inventory_receive_batch"
+    },
+    {
+      "version": "20260831211602",
+      "name": "laundry_inventory_control_summary"
+    },
+    {
+      "version": "20260901125307",
+      "name": "laundry_initial_setup"
+    },
+    {
+      "version": "20260901131113",
+      "name": "notification_reconciliation_worker_and_dismissal"
+    },
+    {
+      "version": "20260901131115",
+      "name": "sync_future_task_duration_on_property_change"
+    },
+    {
+      "version": "20260901133620",
+      "name": "laundry_initial_setup_respect_linen_setting"
+    },
+    {
+      "version": "20260901135210",
+      "name": "create_building_laundry_storage_locations"
+    },
+    {
+      "version": "20260901140441",
+      "name": "fix_laundry_setup_storage_resolution"
+    },
+    {
+      "version": "20260901142036",
+      "name": "auto_create_building_storage_warehouse"
+    },
+    {
+      "version": "20260901181522",
+      "name": "amenities_initial_setup"
+    },
+    {
+      "version": "20260906215711",
+      "name": "lh_apply_reservation_atomic"
+    },
+    {
+      "version": "20260909104533",
+      "name": "laundry_preparation_timings"
+    },
+    {
+      "version": "20260910084402",
+      "name": "ourense_portal_email"
+    },
+    {
+      "version": "20260911122444",
+      "name": "worker_schedule_availability"
+    },
+    {
+      "version": "20260911122939",
+      "name": "allow_schedule_classification_change"
+    },
+    {
+      "version": "20260911124112",
+      "name": "replace_worker_schedule_days"
+    },
+    {
+      "version": "20260911124724",
+      "name": "ignore_past_weekly_schedule_conflicts"
+    },
+    {
+      "version": "20260911134759",
+      "name": "worker_hours_history"
+    },
+    {
+      "version": "20260911135549",
+      "name": "worker_initial_hours_reference"
+    }
+  ]
+}

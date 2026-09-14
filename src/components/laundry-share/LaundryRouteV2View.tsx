@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -14,15 +15,16 @@ import {
   CheckCircle2,
   ChevronDown,
   Loader2,
+  Layers,
   LockKeyhole,
   LogOut,
   MapPin,
   PackageCheck,
   Shirt,
   Truck,
-  XCircle,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { formatMadridDate } from '@/utils/date';
 
 type BagStatus = 'pending' | 'prepared' | 'issue';
 type DeliveryStatus = 'pending' | 'prepared' | 'delivered';
@@ -287,7 +289,7 @@ const buildBagGuideLayers = (bag: RouteBag): BagGuideLayer[] => {
 
   const kitchenClothsQuantity = bag.amenities.kitchenCloths || 0;
   const pushItem = (layer: BagLayerId, quantity: number, label: QuantityLabel | string) => {
-    if (quantity <= 0) return;
+    if (!Number.isFinite(quantity) || quantity <= 0) return;
     itemsByLayer[layer].push({ quantity, label: formatQuantityLabel(quantity, label) });
   };
 
@@ -356,70 +358,63 @@ const buildBagGuideLayers = (bag: RouteBag): BagGuideLayer[] => {
 };
 
 const BagAssemblyGuide = ({ bag }: { bag: RouteBag }) => {
-  const layers = buildBagGuideLayers(bag);
-  const visibleLayers = layers.filter((layer) => layer.id !== 'other');
-  const otherLayer = layers.find((layer) => layer.id === 'other');
+  const containerRef = useRef<HTMLDivElement>(null);
+  const items = buildBagGuideLayers(bag).flatMap((layer) =>
+    layer.items.map((item, index) => ({ ...item, step: index === 0 ? layer.step : null })),
+  );
 
-  if (layers.length === 0) {
-    return (
-      <div className="rounded-xl bg-white/80 p-3">
-        <p className="flex items-center gap-2 text-xs font-black uppercase tracking-wide text-[#7a604b]">
-          <Shirt className="h-4 w-4" />
-          Contenido de la bolsa
-        </p>
-        <p className="mt-2 text-sm text-[#7a604b]">Sin consumos configurados</p>
-      </div>
-    );
+  useLayoutEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+    const fit = () => {
+      const setColumns = (columns: number) => {
+        container.style.gridTemplateColumns = `repeat(${columns}, minmax(0, 1fr))`;
+        container.style.gridTemplateRows = `repeat(${Math.max(1, Math.ceil(items.length / columns))}, minmax(0, 1fr))`;
+      };
+      const fits = () => Array.from(container.querySelectorAll<HTMLElement>('[data-bag-item]')).every((row) =>
+        Array.from(row.children).every((child) => {
+          const element = child as HTMLElement;
+          return element.scrollHeight <= row.clientHeight - 4 && element.scrollWidth <= element.clientWidth + 1;
+        }),
+      );
+      // Maximise readable type for the actual viewport and each bag's labels.
+      let best = { columns: 1, size: 6 };
+      for (const columns of container.clientWidth >= 560 ? [1, 2, 3, 4] : [1]) {
+        setColumns(columns);
+        let low = 6;
+        let high = 28;
+        for (let attempt = 0; attempt < 9; attempt += 1) {
+          const size = (low + high) / 2;
+          container.style.setProperty('--bag-font', `${size}px`);
+          if (fits()) low = size;
+          else high = size;
+        }
+        if (low > best.size) best = { columns, size: low };
+      }
+      setColumns(best.columns);
+      container.style.setProperty('--bag-font', `${best.size}px`);
+    };
+    const observer = new ResizeObserver(fit);
+    observer.observe(container);
+    fit();
+    return () => observer.disconnect();
+  }, [bag, items.length]);
+
+  if (items.length === 0) {
+    return <div className="grid min-h-0 flex-1 place-items-center rounded-xl bg-white text-sm text-[#7a604b]">Sin consumos configurados</div>;
   }
 
   return (
-    <div className="space-y-1.5">
-      <div className="grid gap-1.5">
-        {visibleLayers.map((layer) => (
-          <div
-            key={layer.id}
-            className="rounded-xl border border-[#e7d8c7] bg-white px-2.5 py-2 shadow-sm"
-          >
-            <div className="flex items-center gap-2">
-              <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-[#c4512e] text-[13px] font-black text-white shadow-sm">
-                {layer.step}º
-              </span>
-
-              <div className="flex min-w-0 flex-1 flex-wrap gap-1">
-                {layer.items.map((guideItem, index) => (
-                  <span
-                    key={`${layer.id}-${guideItem.label}-${index}`}
-                    className="inline-flex min-w-0 items-center rounded-md bg-[#f5efe5] pr-2 text-[12px] font-black uppercase leading-6 tracking-tight text-[#17130f]"
-                  >
-                    <span className="mr-1.5 grid h-6 min-w-6 place-items-center rounded bg-[#1f1a14] px-1 text-[12px] font-black text-white">
-                      {guideItem.quantity}
-                    </span>
-                    <span className="truncate">
-                      {guideItem.label}
-                    </span>
-                  </span>
-                ))}
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {otherLayer && (
-        <div className="rounded-xl border border-amber-200 bg-amber-50 p-2">
-          <p className="text-[11px] font-black uppercase text-amber-900">Otros consumibles</p>
-          <div className="mt-1 flex flex-wrap gap-1">
-            {otherLayer.items.map((guideItem, index) => (
-              <span
-                key={`other-${guideItem.label}-${index}`}
-                className="rounded bg-white px-1.5 py-0.5 text-[11px] font-bold uppercase text-amber-950"
-              >
-                {guideItem.quantity} {guideItem.label}
-              </span>
-            ))}
-          </div>
+    <div ref={containerRef} data-bag-contents className="grid min-h-0 flex-1 grid-flow-col overflow-clip rounded-xl border border-[#e8e1d7] bg-white" style={{ fontSize: 'var(--bag-font, 16px)' }}>
+      {items.map((item, index) => (
+        <div key={index} data-bag-item className="grid min-h-0 min-w-0 grid-cols-[1.2em_1.7em_minmax(0,1fr)] items-center gap-1 border-b border-[#eee8df] px-2 py-0.5 last:border-b-0">
+          <span className="text-center text-[#8c8378]" style={{ fontSize: '0.65em', lineHeight: 1.1 }}>{item.step ? `${item.step}º` : ''}</span>
+          <span className="text-center font-bold tabular-nums text-[#17130f]" style={{ fontSize: '1.35em', lineHeight: 1.05 }}>{item.quantity}</span>
+          <span className="min-w-0 break-words text-[#27231e]" style={{ lineHeight: 1.12 }}>
+            {item.label.charAt(0).toLocaleUpperCase('es') + item.label.slice(1).toLocaleLowerCase('es')}
+          </span>
         </div>
-      )}
+      ))}
     </div>
   );
 };
@@ -430,8 +425,8 @@ const isRouteBagComplete = (bag: RouteBag) => (
 );
 
 const recalculateWorkflowStats = (workflow: RouteWorkflow): RouteWorkflow => {
-  const allUrgentBags = workflow.currentRouteBags.filter((bag) => bag.bagStatus.status === 'pending' || bag.noveltyResolved === false);
-  const urgentBags = workflow.authorizedToContinue ? [] : allUrgentBags;
+  const allUrgentBags = workflow.currentRouteBags.filter((bag) => bag.bagStatus.status === 'pending');
+  const urgentBags = allUrgentBags;
   const nextPendingBags = workflow.nextRouteBags.filter((bag) => bag.bagStatus.status === 'pending');
   const routePending = ROUTE_DELIVERY_ENABLED && workflow.currentRouteBags
     .filter((bag) => !bag.isCancelled)
@@ -499,27 +494,35 @@ const findWorkflowBag = (workflow: RouteWorkflow | undefined, taskId: string) =>
 
 const BagCard = ({
   bag,
-  tone,
   progress,
   isCompleteFlash = false,
+  onDockHeight,
   children,
 }: {
   bag: RouteBag;
-  tone: 'urgent' | 'next';
   progress: {
-    pending: number;
+    prepared: number;
     total: number;
   };
   isCompleteFlash?: boolean;
+  onDockHeight: (height: number) => void;
   children: ReactNode;
 }) => {
-  const progressCompleted = Math.max(progress.total - progress.pending, 0);
+  const dockRef = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    const dock = dockRef.current;
+    if (!dock) return;
+    const observer = new ResizeObserver(() => onDockHeight(dock.getBoundingClientRect().height));
+    observer.observe(dock);
+    onDockHeight(dock.getBoundingClientRect().height);
+    return () => observer.disconnect();
+  }, [onDockHeight]);
+  const progressCompleted = progress.prepared;
   const progressPercent = progress.total > 0 ? (progressCompleted / progress.total) * 100 : 0;
 
   return (
     <Card className={cn(
-      'relative overflow-hidden rounded-[1.6rem] border bg-[#fbf6ec] shadow-sm transition-colors duration-200',
-      tone === 'urgent' ? 'border-[#e2b29b]' : 'border-[#dac8b2]',
+      'relative flex min-h-0 flex-1 rounded-none border-0 bg-transparent shadow-none transition-colors duration-200',
       isCompleteFlash && 'laundry-bag-complete-card border-emerald-400 bg-emerald-50',
     )}>
       {isCompleteFlash && (
@@ -532,23 +535,20 @@ const BagCard = ({
           </div>
         </div>
       )}
-      <CardContent className="space-y-2.5 p-3">
-        <div className="flex items-end justify-between gap-3">
+      <CardContent className="flex min-h-0 flex-1 flex-col gap-2 p-0">
+        <div className="flex shrink-0 items-center justify-between gap-2">
           <div className="min-w-0 flex-1">
-            <p className="text-[10px] font-black uppercase tracking-[0.18em] text-[#a18465]">Bolsa actual</p>
+            <p className="text-[9px] font-semibold uppercase tracking-wider text-[#a18465]">Bolsa actual</p>
             <div className="flex items-center gap-1.5">
-              <h2 className="text-3xl font-black leading-none tracking-tight text-[#070b18]">{bag.propertyCode}</h2>
+              <h2 className="min-w-0 break-words text-2xl font-bold leading-tight tracking-tight text-[#17130f]">{bag.propertyCode}</h2>
               {bag.isNew && <Badge className="bg-[#c4512e] text-white">Nueva</Badge>}
             </div>
           </div>
-          <div className="w-[124px] shrink-0 text-right">
-            <p className="text-[11px] font-black uppercase leading-tight text-[#17130f]">
-              {progress.pending} pendientes
+          <div className="w-[148px] shrink-0 text-right">
+            <p data-bag-progress className="text-[11px] leading-4 text-[#766b5e]">
+              {progressCompleted} de {progress.total} bolsas preparadas
             </p>
-            <p className="text-[8px] font-black uppercase tracking-wider text-[#a18465]">
-              {progressCompleted}/{progress.total} preparadas
-            </p>
-            <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-[#e8d9c6]">
+            <div className="mt-1 h-1 overflow-hidden rounded-full bg-[#e8d9c6]">
               <div
                 className="h-full rounded-full bg-[#c4512e] transition-all duration-300"
                 style={{ width: `${progressPercent}%` }}
@@ -557,16 +557,87 @@ const BagCard = ({
           </div>
         </div>
 
-        <p className="text-[11px] font-black uppercase tracking-wide text-[#c4512e]">
+        <p className="flex shrink-0 items-center gap-1.5 text-xs font-semibold text-[#a94427]">
+          <Layers className="h-3.5 w-3.5" aria-hidden="true" />
           Coloca de abajo hacia arriba
         </p>
 
         <BagAssemblyGuide bag={bag} />
 
-        {children}
+        {createPortal(
+          <div ref={dockRef} data-laundry-actions className="fixed inset-x-0 bottom-0 z-30 border-t border-[#e8e1d7] bg-[#faf7f1] px-4 pt-3 font-sans shadow-[0_-4px_20px_rgba(39,35,30,0.04)]" style={{ paddingBottom: 'max(12px, env(safe-area-inset-bottom))' }}>
+            <div className="mx-auto max-w-[416px]">{children}</div>
+          </div>,
+          document.body,
+        )}
       </CardContent>
     </Card>
   );
+};
+
+const PreparationPhaseHeader = ({ urgent, pending, deliveryDate }: {
+  urgent: boolean;
+  pending: number;
+  deliveryDate: string;
+}) => {
+  const { toast } = useToast();
+  const previousUrgent = useRef(urgent);
+  useEffect(() => {
+    if (previousUrgent.current && !urgent) {
+      toast({ title: 'Pendientes de hoy terminadas', description: 'Ahora preparas las bolsas de la siguiente ruta.' });
+    }
+    previousUrgent.current = urgent;
+  }, [urgent, toast]);
+  const deliveryIsToday = deliveryDate === formatMadridDate(new Date());
+  return (
+    <section aria-label="Fase de preparación" className={cn('shrink-0 rounded-xl border p-2.5', urgent ? 'border-orange-300 bg-orange-50 text-orange-950' : 'border-blue-300 bg-blue-50 text-blue-950')}>
+      <ol className="mb-2 grid grid-cols-2 gap-2 text-[11px] font-semibold">
+        <li aria-current={urgent ? 'step' : undefined} className={cn('rounded-md px-2 py-1', urgent ? 'bg-orange-600 text-white' : 'text-blue-800')}>① Pendientes para hoy</li>
+        <li aria-current={!urgent ? 'step' : undefined} className={cn('rounded-md px-2 py-1', !urgent ? 'bg-blue-600 text-white' : 'text-orange-800')}>② Siguiente ruta</li>
+      </ol>
+      <h2 className="text-sm font-black leading-tight">{urgent ? 'PREPARANDO BOLSAS PARA HOY' : 'PREPARANDO LA SIGUIENTE RUTA'}</h2>
+      <p className="mt-1 text-[11px] leading-tight">{urgent ? 'Pendientes de la ruta anterior y nuevas reservas' : 'Bolsas para el próximo día de reparto'}</p>
+      <p className="mt-1.5 text-xs font-bold">{pending} {pending === 1 ? 'bolsa pendiente' : 'bolsas pendientes'} · Entrega {deliveryIsToday ? 'hoy, ' : ''}{formatDate(deliveryDate)}</p>
+    </section>
+  );
+};
+
+const PreparationBuildingList = ({ bags, currentIds, busy, onPrepare }: {
+  bags: RouteBag[];
+  currentIds: Set<string>;
+  busy: boolean;
+  onPrepare: (taskId: string) => void;
+}) => {
+  const groups = new Map<string, RouteBag[]>();
+  for (const bag of new Map(bags.filter((bag) => !bag.isCancelled).map((bag) => [bag.taskId, bag])).values()) {
+    const code = bag.propertyCode.trim().toLocaleUpperCase('es-ES');
+    const building = extractRouteBuildingCode(code);
+    groups.set(building, [...(groups.get(building) || []), bag]);
+  }
+  return <section className="space-y-2" aria-label="Bolsas por edificio">
+    {!groups.size && <p className="p-3 text-sm">No hay bolsas para preparar.</p>}
+    {[...groups].sort(([a], [b]) => a.localeCompare(b, 'es', { numeric: true })).map(([building, items]) => (
+      <details key={building} className="rounded-xl border border-[#dfd2bf] bg-[#fffaf2]">
+        <summary className="cursor-pointer p-3 font-bold">{building}<span className="ml-2 text-xs font-normal">{items.length} pendientes</span></summary>
+        <div className="space-y-2 px-3 pb-3">
+          {[...items].sort((a, b) => a.propertyCode.localeCompare(b.propertyCode, 'es', { numeric: true }) || a.date.localeCompare(b.date)).map((bag) => (
+            <article key={bag.taskId} className="rounded-lg border bg-white">
+              <header className="p-3 text-sm">
+                <strong>{bag.propertyCode}</strong> · {formatDate(bag.date)}
+                <span className="mt-1 block text-xs">{currentIds.has(bag.taskId) ? 'Ruta actual' : 'Siguiente ruta'} · {bag.bagStatus.status === 'prepared' ? '✓ Preparada' : bag.bagStatus.status === 'issue' ? 'Incidencia' : 'Pendiente'}</span>
+              </header>
+              <div className="space-y-3 px-3 pb-3">
+                <p className="text-xs">{bag.propertyName}</p>
+                <div className="space-y-1">{buildBagGuideLayers(bag).flatMap((layer) => layer.items.map((item, index) => <div key={layer.id + '-' + index} className="flex gap-2 rounded bg-[#faf7f1] p-2 text-sm"><strong>{item.quantity}</strong><span>{item.label}</span></div>))}</div>
+                {bag.bagStatus.issueReason && <p className="text-sm text-red-700">{bag.bagStatus.issueReason}</p>}
+                <Button className="min-h-12 w-full" disabled={busy || bag.bagStatus.status === 'prepared'} onClick={() => onPrepare(bag.taskId)}><PackageCheck className="mr-2 h-4 w-4" />{bag.bagStatus.status === 'prepared' ? 'Preparada' : 'Marcar bolsa preparada'}</Button>
+              </div>
+            </article>
+          ))}
+        </div>
+      </details>
+    ))}
+  </section>;
 };
 
 export const LaundryRouteV2View = ({ token }: LaundryRouteV2ViewProps) => {
@@ -582,6 +653,7 @@ export const LaundryRouteV2View = ({ token }: LaundryRouteV2ViewProps) => {
     }
   });
   const [pin, setPin] = useState('');
+  const [showBuildings, setShowBuildings] = useState(false);
   const [issueTaskId, setIssueTaskId] = useState<string | null>(null);
   const [issueReason, setIssueReason] = useState('');
   const [completeFlashTaskId, setCompleteFlashTaskId] = useState<string | null>(null);
@@ -659,7 +731,8 @@ export const LaundryRouteV2View = ({ token }: LaundryRouteV2ViewProps) => {
     queryKey,
     queryFn: () => invokeWorkflow(token, routeAccess?.sessionToken),
     enabled: Boolean(accessInfo) && hasValidAccess,
-    refetchOnWindowFocus: true,
+    refetchOnWindowFocus: pendingActionKeys.size === 0 && !issueTaskId,
+    refetchInterval: pendingActionKeys.size === 0 && !issueTaskId ? 10_000 : false,
   });
 
   const actionMutation = useMutation({
@@ -882,6 +955,28 @@ export const LaundryRouteV2View = ({ token }: LaundryRouteV2ViewProps) => {
     [workflow?.nextRouteBags],
   );
 
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const [dockHeight, setDockHeight] = useState(144);
+  const activeBagId = workflow?.urgentBags[0]?.taskId || nextPendingBag?.taskId;
+  const hasWorkflow = Boolean(workflow);
+  useEffect(() => {
+    if (!hasWorkflow) return;
+    const elements = [document.documentElement, document.body];
+    const previous = elements.map((element) => ({ overflow: element.style.overflow, overscrollBehavior: element.style.overscrollBehavior }));
+    elements.forEach((element) => {
+      element.style.overflow = 'hidden';
+      element.style.overscrollBehavior = 'none';
+    });
+    return () => elements.forEach((element, index) => {
+      element.style.overflow = previous[index].overflow;
+      element.style.overscrollBehavior = previous[index].overscrollBehavior;
+    });
+  }, [hasWorkflow]);
+  useEffect(() => {
+    // Start each new bag at its heading without moving the fixed action dock.
+    if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0;
+  }, [activeBagId]);
+
   const logoutRouteWorker = async () => {
     const sessionToken = routeAccess?.sessionToken;
     window.localStorage.removeItem(accessStorageKey);
@@ -990,15 +1085,18 @@ export const LaundryRouteV2View = ({ token }: LaundryRouteV2ViewProps) => {
   }
 
   const urgentBag = workflow.urgentBags[0] || null;
-  const nextResolved = workflow.nextRouteBags.filter((bag) => bag.bagStatus.status !== 'pending').length;
-  const nextCurrentPosition = nextPendingBag ? nextResolved + 1 : workflow.nextRouteBags.length;
+  const preparationBags = (urgentBag
+    ? workflow.urgentBags
+    : workflow.blockingStep === 'prepare_next' ? workflow.nextRouteBags : []
+  ).filter((bag) => !bag.isCancelled && bag.bagStatus.status === 'pending');
+  const buildingViewActive = showBuildings && preparationBags.length > 0;
   const deliveryGroups = groupRouteBagsByBuilding(workflow.currentRouteBags.filter((bag) => !bag.isCancelled));
   const urgentProgress = {
-    pending: workflow.stats.urgentPending,
+    prepared: workflow.currentRouteBags.filter((bag) => bag.bagStatus.status === 'prepared').length,
     total: workflow.currentRouteBags.length,
   };
   const nextProgress = {
-    pending: workflow.nextRouteBags.filter((bag) => bag.bagStatus.status === 'pending').length,
+    prepared: workflow.nextRouteBags.filter((bag) => bag.bagStatus.status === 'prepared').length,
     total: workflow.stats.nextTotal,
   };
 
@@ -1021,33 +1119,29 @@ export const LaundryRouteV2View = ({ token }: LaundryRouteV2ViewProps) => {
   };
 
   return (
-    <div className="min-h-screen bg-[#eee8dc]">
-      <main className="mx-auto max-w-md space-y-2 px-4 py-3 pb-6">
+    <div ref={scrollContainerRef} className="fixed inset-x-0 top-0 h-dvh overflow-clip overscroll-none bg-[#faf7f1] font-sans" data-laundry-scroll>
+      <main className="mx-auto flex h-full max-w-md flex-col gap-2 px-4 py-1.5 landscape:max-w-3xl" style={{ paddingBottom: buildingViewActive ? 12 : dockHeight + 12 }}>
         {accessRequired && routeAccess?.worker && (
-          <div className="flex items-center justify-between rounded-xl border border-[#dfd2bf] bg-[#fffaf2] px-3 py-2">
+          <div className="flex shrink-0 items-center justify-between gap-2 border-b border-[#e8e1d7] pb-1">
             <div className="min-w-0">
-              <p className="text-[9px] font-black uppercase tracking-[0.18em] text-[#a18465]">Ruta iniciada por</p>
-              <p className="truncate text-sm font-black text-[#17130f]">{routeAccess.worker.workerName}</p>
+              <p className="text-[10px] leading-3 text-[#766b5e]">Ruta iniciada por</p>
+              <p className="truncate text-xs font-semibold leading-4 text-[#17130f]">{routeAccess.worker.workerName}</p>
             </div>
-            <Button variant="ghost" size="sm" onClick={logoutRouteWorker} className="text-[#8d351e]">
+            <Button variant="ghost" size="sm" onClick={logoutRouteWorker} className="h-11 shrink-0 px-2 text-xs text-[#8d351e]">
               <LogOut className="mr-1.5 h-4 w-4" />
               Cambiar
             </Button>
           </div>
         )}
-        {urgentBag && (
-          <section className="space-y-2">
-            <div className="rounded-xl border border-[#e2a993] bg-[#f7ded3] px-3 py-2 text-[#8d351e]">
-              <p className="flex items-center gap-2 text-xs font-black leading-tight">
-                <AlertTriangle className="h-4 w-4 shrink-0" />
-                Hay {workflow.stats.urgentPending} {workflow.stats.urgentPending === 1 ? 'bolsa pendiente' : 'bolsas pendientes'} de preparar hoy.
-              </p>
-            </div>
-
+        {preparationBags.length > 0 && <PreparationPhaseHeader urgent={Boolean(urgentBag)} pending={preparationBags.length} deliveryDate={urgentBag ? workflow.route.deliveryDate : workflow.route.nextDeliveryDate} />}
+        {preparationBags.length > 0 && <Button variant="outline" className="w-full shrink-0" aria-pressed={showBuildings} onClick={() => setShowBuildings(!showBuildings)}>{showBuildings ? 'Ver bolsas una a una' : 'Ver bolsas por edificio'}</Button>}
+        {buildingViewActive && <div key={urgentBag ? 'urgent' : 'prepare_next'} className="min-h-0 flex-1 overflow-y-auto pb-3"><PreparationBuildingList bags={preparationBags} currentIds={new Set(workflow.currentRouteBags.map((bag) => bag.taskId))} busy={pendingActionKeys.size > 0} onPrepare={(taskId) => runAction({ action: 'prepare', taskId })} /></div>}
+        {!buildingViewActive && urgentBag && (
+          <section className="flex min-h-0 flex-1 flex-col gap-2">
             <BagCard
               bag={urgentBag}
-              tone="urgent"
               progress={urgentProgress}
+              onDockHeight={setDockHeight}
               isCompleteFlash={completeFlashTaskId === urgentBag.taskId}
             >
               {urgentBag.isCancelled ? (
@@ -1106,11 +1200,11 @@ export const LaundryRouteV2View = ({ token }: LaundryRouteV2ViewProps) => {
                   </div>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 gap-2">
+                <div className="grid grid-cols-1 items-center gap-2 [@media(max-height:450px)_and_(orientation:landscape)]:grid-cols-2">
                   <Button
                     size="lg"
                     onClick={() => runAction({ action: 'prepare', taskId: urgentBag.taskId })}
-                    className="h-[clamp(4rem,10dvh,6rem)] touch-manipulation rounded-xl bg-[#c4512e] text-base font-black hover:bg-[#a94427] active:scale-[0.99]"
+                    className="h-16 touch-manipulation rounded-xl bg-[#c4512e] text-base font-semibold hover:bg-[#a94427]"
                   >
                     <PackageCheck className="mr-2 h-5 w-5" />
                     Bolsa preparada
@@ -1119,9 +1213,9 @@ export const LaundryRouteV2View = ({ token }: LaundryRouteV2ViewProps) => {
                     variant="outline"
                     size="lg"
                     onClick={() => openIssueForm(urgentBag.taskId)}
-                    className="h-[clamp(3.5rem,8dvh,4.5rem)] touch-manipulation rounded-xl border border-[#dfb69f] bg-white/60 text-base font-bold text-[#c4512e] hover:bg-[#f1dfcf] active:scale-[0.99]"
+                    className="h-12 touch-manipulation rounded-xl border-transparent bg-transparent text-sm font-medium text-[#a94427] hover:bg-[#f1e8dc]"
                   >
-                    <XCircle className="mr-2 h-5 w-5" />
+                    <AlertTriangle className="mr-2 h-4 w-4" />
                     Marcar incidencia
                   </Button>
                 </div>
@@ -1130,24 +1224,13 @@ export const LaundryRouteV2View = ({ token }: LaundryRouteV2ViewProps) => {
           </section>
         )}
 
-        {!urgentBag && workflow.blockingStep === 'prepare_next' && nextPendingBag && (
-          <section className="space-y-2">
-            <div className="rounded-xl border border-[#dfd2bf] bg-[#fbf6ec] px-3 py-2">
-              <p className="text-[10px] font-black uppercase tracking-wide text-[#a18465]">
-                Preparación de la siguiente ruta
-              </p>
-              <h2 className="text-sm font-black text-[#17130f]">
-                Bolsa {nextCurrentPosition} de {workflow.stats.nextTotal}
-              </h2>
-              <p className="text-[11px] text-[#7a604b]">
-                Se prepara para {workflow.route.nextRouteName} {formatDate(workflow.route.nextDeliveryDate)}.
-              </p>
-            </div>
+        {!buildingViewActive && !urgentBag && workflow.blockingStep === 'prepare_next' && nextPendingBag && (
+          <section className="flex min-h-0 flex-1 flex-col gap-2">
 
             <BagCard
               bag={nextPendingBag}
-              tone="next"
               progress={nextProgress}
+              onDockHeight={setDockHeight}
               isCompleteFlash={completeFlashTaskId === nextPendingBag.taskId}
             >
               {issueTaskId === nextPendingBag.taskId ? (
@@ -1174,11 +1257,11 @@ export const LaundryRouteV2View = ({ token }: LaundryRouteV2ViewProps) => {
                   </div>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 gap-2">
+                <div className="grid grid-cols-1 items-center gap-2 [@media(max-height:450px)_and_(orientation:landscape)]:grid-cols-2">
                   <Button
                     size="lg"
                     onClick={() => runAction({ action: 'prepare', taskId: nextPendingBag.taskId })}
-                    className="h-[clamp(4rem,10dvh,6rem)] touch-manipulation rounded-xl bg-[#c4512e] text-base font-black hover:bg-[#a94427] active:scale-[0.99]"
+                    className="h-16 touch-manipulation rounded-xl bg-[#c4512e] text-base font-semibold hover:bg-[#a94427]"
                   >
                     <PackageCheck className="mr-2 h-5 w-5" />
                     Bolsa preparada
@@ -1187,9 +1270,9 @@ export const LaundryRouteV2View = ({ token }: LaundryRouteV2ViewProps) => {
                     variant="outline"
                     size="lg"
                     onClick={() => openIssueForm(nextPendingBag.taskId)}
-                    className="h-[clamp(3.5rem,8dvh,4.5rem)] touch-manipulation rounded-xl border border-[#dfb69f] bg-white/60 text-base font-bold text-[#c4512e] hover:bg-[#f1dfcf] active:scale-[0.99]"
+                    className="h-12 touch-manipulation rounded-xl border-transparent bg-transparent text-sm font-medium text-[#a94427] hover:bg-[#f1e8dc]"
                   >
-                    <XCircle className="mr-2 h-5 w-5" />
+                    <AlertTriangle className="mr-2 h-4 w-4" />
                     Marcar incidencia
                   </Button>
                 </div>
@@ -1198,7 +1281,7 @@ export const LaundryRouteV2View = ({ token }: LaundryRouteV2ViewProps) => {
           </section>
         )}
 
-        {ROUTE_DELIVERY_ENABLED && !urgentBag && workflow.blockingStep === 'deliver' && (
+        {!buildingViewActive && ROUTE_DELIVERY_ENABLED && !urgentBag && workflow.blockingStep === 'deliver' && (
           <section className="space-y-2">
             <div className="rounded-lg border border-[#dfd2bf] bg-[#fbf6ec] p-2.5 text-[#17130f]">
               <div className="flex items-center gap-1.5">
@@ -1336,7 +1419,7 @@ export const LaundryRouteV2View = ({ token }: LaundryRouteV2ViewProps) => {
           </section>
         )}
 
-        {!urgentBag && workflow.blockingStep === 'complete' && (
+        {!buildingViewActive && !urgentBag && workflow.blockingStep === 'complete' && (
           <div className="rounded-xl border border-green-200 bg-green-50 p-4 text-center text-green-950">
             <CheckCircle2 className="mx-auto h-7 w-7" />
             <h2 className="mt-2 text-base font-black">Ruta completada</h2>

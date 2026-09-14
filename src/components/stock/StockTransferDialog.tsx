@@ -61,11 +61,11 @@ export function StockTransferDialog({ open, onOpenChange, level }: StockTransfer
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent className="max-h-[90dvh] overflow-y-auto rounded-2xl">
         <DialogHeader>
           <DialogTitle>Transferir stock</DialogTitle>
           <DialogDescription>
-            {level?.product?.name || 'Producto'} desde {level?.warehouse?.name || 'almacen'}
+            {level?.product?.name || 'Producto'} desde {level?.warehouse?.name || 'almacén'}
           </DialogDescription>
         </DialogHeader>
 
@@ -75,10 +75,10 @@ export function StockTransferDialog({ open, onOpenChange, level }: StockTransfer
           </div>
 
           <div className="space-y-2">
-            <Label>Almacen destino</Label>
+            <Label>Almacén destino</Label>
             <Select value={toWarehouseId} onValueChange={setToWarehouseId}>
               <SelectTrigger>
-                <SelectValue placeholder="Seleccionar almacen" />
+                <SelectValue placeholder="Seleccionar almacén" />
               </SelectTrigger>
               <SelectContent>
                 {availableWarehouses.map((warehouse) => (
@@ -97,7 +97,7 @@ export function StockTransferDialog({ open, onOpenChange, level }: StockTransfer
 
           <div className="space-y-2">
             <Label htmlFor="transfer_reason">Motivo</Label>
-            <Input id="transfer_reason" name="reason" required placeholder="Reposicion, traslado entre almacenes..." />
+            <Input id="transfer_reason" name="reason" required placeholder="Reposición, traslado entre almacenes..." />
           </div>
 
           <DialogFooter>

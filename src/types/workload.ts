@@ -24,6 +24,7 @@ export interface CreateHourAdjustmentInput {
 
 export interface UpdateHourAdjustmentInput {
   id: string;
+  date?: string;
   hours?: number;
   category?: HourAdjustment['category'];
   reason?: string;

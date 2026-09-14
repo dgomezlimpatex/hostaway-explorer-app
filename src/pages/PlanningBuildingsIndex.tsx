@@ -1,80 +1,42 @@
+import { normalizeDirectorySearch } from '@/components/directory/directorySearch';
 import { useMemo, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { AlertTriangle, ArrowRight, Building2, Home, Loader2, Plus, RefreshCw, Search, Trash2, Users } from 'lucide-react';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from '@/components/ui/alert-dialog';
-import { Badge } from '@/components/ui/badge';
+import { useNavigate } from 'react-router-dom';
+import { Building2, ChevronRight, Loader2, Plus, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { DirectoryEmpty, DirectoryPage, DirectorySearch, DirectorySegments } from '@/components/directory/DirectoryPage';
+import { BuildingDetailPanel } from '@/components/buildings/BuildingDetailPanel';
+import { buildingSetup, type BuildingDirectoryItem } from '@/components/buildings/buildingPresentation';
 import { useToast } from '@/hooks/use-toast';
+import { useDeviceType } from '@/hooks/use-mobile';
 import { useCleaningPlanningBuildingData } from '@/hooks/useCleaningPlanningBuildingData';
 import { useSupervisionBuildingCoverage } from '@/hooks/useSupervisionBuildingCoverage';
 import { propertyGroupStorage } from '@/services/storage/propertyGroupStorage';
+import { useSede } from '@/contexts/SedeContext';
+import { cn } from '@/lib/utils';
 import type { PropertyGroup } from '@/types/propertyGroups';
-
-const getSetupState = (
-  group: PropertyGroup,
-  propertyCount: number,
-  teamCount: number,
-) => {
-  if (propertyCount === 0) {
-    return {
-      rank: 0,
-      label: 'Faltan propiedades',
-      helper: 'Vincula apartamentos/propiedades antes de automatizar.',
-      className: 'border-red-200 bg-red-50 text-red-800',
-    };
-  }
-
-  if (teamCount === 0) {
-    return {
-      rank: 1,
-      label: 'Falta equipo',
-      helper: 'Añade titulares, suplentes, backups o No aptas.',
-      className: 'border-amber-200 bg-amber-50 text-amber-800',
-    };
-  }
-
-  if (!group.autoAssignEnabled) {
-    return {
-      rank: 2,
-      label: 'Listo para probar',
-      helper: 'Ya tiene base operativa; prueba propuesta revisable.',
-      className: 'border-sky-200 bg-sky-50 text-sky-800',
-    };
-  }
-
-  return {
-    rank: 3,
-    label: 'Configurado',
-    helper: 'Tiene propiedades, equipo y auto-asignación activada.',
-    className: 'border-emerald-200 bg-emerald-50 text-emerald-800',
-  };
-};
-
-const normalize = (value?: string | null) => (value || '').toLowerCase().trim();
 
 const initialBuildingForm = { name: '', internalCode: '', checkOutTime: '11:00', checkInTime: '17:00' };
 
-const PlanningBuildingsIndex = () => {
-  const { data, isLoading, isError, error, refetch, isFetching } = useCleaningPlanningBuildingData();
-  const { data: supervisionCoverage = {} } = useSupervisionBuildingCoverage();
+export default function PlanningBuildingsIndex() {
+  const { activeSede } = useSede();
+  return <BuildingsWorkspace key={activeSede?.id || 'pending-sede'} />;
+}
+
+function BuildingsWorkspace() {
+  const { data, isLoading, isError, refetch, isFetching } = useCleaningPlanningBuildingData();
+  const coverageQuery = useSupervisionBuildingCoverage();
+  const { isDesktop } = useDeviceType();
   const { toast } = useToast();
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
+  const [setupFilter, setSetupFilter] = useState('all');
+  const [zoneFilter, setZoneFilter] = useState('all');
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [deletingGroupId, setDeletingGroupId] = useState<string | null>(null);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
@@ -83,23 +45,32 @@ const PlanningBuildingsIndex = () => {
   const propertyGroups = useMemo(() => data?.propertyGroups || [], [data?.propertyGroups]);
   const propertyAssignments = useMemo(() => data?.propertyAssignments || [], [data?.propertyAssignments]);
   const cleanerAssignments = useMemo(() => data?.cleanerAssignments || [], [data?.cleanerAssignments]);
-
-  const buildingCards = useMemo(() => {
-    const query = normalize(searchTerm);
-
-    return propertyGroups
-      .map((group) => {
-        const propertyCount = propertyAssignments.filter((assignment) => assignment.propertyGroupId === group.id).length;
-        const teamCount = cleanerAssignments.filter((assignment) => assignment.propertyGroupId === group.id && assignment.roleType !== 'excluded').length;
-        const excludedCount = cleanerAssignments.filter((assignment) => assignment.propertyGroupId === group.id && assignment.roleType === 'excluded').length;
-        const setup = getSetupState(group, propertyCount, teamCount);
-        const searchable = [group.name, group.displayName, group.internalCode, group.zone, group.clientName, group.planningNotes].map(normalize).join(' ');
-        return { group, propertyCount, teamCount, excludedCount, setup, coverage: supervisionCoverage[group.id], matches: !query || searchable.includes(query) };
-      })
-      .filter((item) => item.matches)
-      .sort((a, b) => a.setup.rank - b.setup.rank || (a.group.displayName || a.group.name).localeCompare(b.group.displayName || b.group.name, 'es', { numeric: true }));
-  }, [cleanerAssignments, propertyAssignments, propertyGroups, searchTerm, supervisionCoverage]);
-
+  const excludedAssignments = useMemo(() => data?.excludedCleanerAssignments || cleanerAssignments.filter(item => item.roleType === 'excluded'), [data?.excludedCleanerAssignments, cleanerAssignments]);
+  const buildings = useMemo<BuildingDirectoryItem[]>(() => propertyGroups.map(group => {
+    const team = cleanerAssignments.filter(item => item.propertyGroupId === group.id && item.roleType !== 'excluded');
+    const propertyCount = propertyAssignments.filter(item => item.propertyGroupId === group.id).length;
+    return {
+      group, propertyCount, teamCount: team.length,
+      excludedCount: excludedAssignments.filter(item => item.propertyGroupId === group.id).length,
+      primaryCount: team.filter(item => !item.roleType || item.roleType === 'primary').length,
+      secondaryCount: team.filter(item => item.roleType === 'secondary').length,
+      backupCount: team.filter(item => item.roleType === 'backup').length,
+      setup: buildingSetup(group, propertyCount, team.length), coverage: coverageQuery.data?.[group.id],
+    };
+  }).sort((a, b) => (a.group.displayName || a.group.name).localeCompare(b.group.displayName || b.group.name, 'es', { numeric: true, sensitivity: 'base' })), [propertyGroups, propertyAssignments, cleanerAssignments, excludedAssignments, coverageQuery.data]);
+  const configured = buildings.filter(item => item.setup.rank === 3).length;
+  const zones = [...new Set(propertyGroups.map(group => group.zone).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'es'));
+  const visible = buildings.filter(item => {
+    const group = item.group;
+    const matchesSearch = !searchTerm.trim() || [group.name, group.displayName, group.internalCode, group.zone, group.clientName, group.planningNotes].some(value => normalizeDirectorySearch(value).includes(normalizeDirectorySearch(searchTerm)));
+    return matchesSearch && (setupFilter === 'all' || (setupFilter === 'configured' ? item.setup.rank === 3 : item.setup.rank < 3))
+      && (zoneFilter === 'all' || (zoneFilter === 'unassigned' ? !group.zone : group.zone === zoneFilter));
+  });
+  const selected = visible.find(item => item.group.id === selectedId);
+  const desktopBuilding = selected || visible[0];
+  const hasFilters = !!searchTerm || setupFilter !== 'all' || zoneFilter !== 'all';
+  const reset = () => { setSearchTerm(''); setSetupFilter('all'); setZoneFilter('all'); setSelectedId(null); };
+  const count = (value: number) => isLoading || isError ? '—' : value;
   const handleCreateBuilding = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const name = buildingForm.name.trim();
@@ -141,7 +112,7 @@ const PlanningBuildingsIndex = () => {
   const handleDeleteEmptyBuilding = async (group: PropertyGroup) => {
     const propertyCount = propertyAssignments.filter((assignment) => assignment.propertyGroupId === group.id).length;
     const teamCount = cleanerAssignments.filter((assignment) => assignment.propertyGroupId === group.id && assignment.roleType !== 'excluded').length;
-    const excludedCount = cleanerAssignments.filter((assignment) => assignment.propertyGroupId === group.id && assignment.roleType === 'excluded').length;
+    const excludedCount = excludedAssignments.filter((assignment) => assignment.propertyGroupId === group.id).length;
 
     if (!(propertyCount === 0 && teamCount === 0 && excludedCount === 0)) {
       toast({
@@ -171,27 +142,64 @@ const PlanningBuildingsIndex = () => {
     }
   };
 
-  return (
-    <div className="min-h-screen bg-[#f7f4fb] px-4 py-5 text-[#171321] md:px-6 lg:px-8">
-      <div className="mx-auto max-w-7xl space-y-5">
-        <header className="rounded-3xl border border-[#310984]/10 bg-white p-4 shadow-sm sm:p-5 md:p-6">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <h1 className="text-3xl font-bold tracking-tight text-[#171321]">Edificios</h1>
-              <p className="mt-1 text-sm text-[#6b627a]">Consulta y gestiona cada centro desde una sola ficha.</p>
-            </div>
-            <div className="flex items-center gap-2">
-              <Button type="button" className="min-h-11 flex-1 bg-[#310984] text-white hover:bg-[#4c1bb0] sm:flex-none" onClick={() => setIsCreateOpen(true)}>
-                <Plus className="mr-2 h-4 w-4" />
-                Añadir edificio
-              </Button>
-              <Button type="button" variant="outline" size="icon" className="h-11 w-11 shrink-0 border-[#310984]/15" onClick={() => refetch()} disabled={isFetching} aria-label="Actualizar edificios">
-                <RefreshCw className={`h-4 w-4 ${isFetching ? 'animate-spin' : ''}`} />
-              </Button>
-            </div>
-          </div>
-        </header>
 
+  const detail = (item: BuildingDirectoryItem) => (
+    <BuildingDetailPanel key={item.group.id} item={item} coverageLoading={coverageQuery.isLoading} coverageError={coverageQuery.isError} onRetryCoverage={() => void coverageQuery.refetch()} deleting={deletingGroupId === item.group.id} onDelete={() => handleDeleteEmptyBuilding(item.group)} />
+  );
+
+  return (
+    <DirectoryPage title="Edificios" eyebrow="Centros operativos" description="Propiedades, equipo y supervisión en una única ficha." icon={Building2} actions={<>
+      <Button className="rounded-xl" onClick={() => setIsCreateOpen(true)}><Plus className="mr-2 h-4 w-4" />Añadir edificio</Button>
+      <Button variant="outline" size="icon" className="rounded-xl" disabled={isFetching} aria-label="Actualizar edificios" onClick={() => { void refetch(); void coverageQuery.refetch(); }}><RefreshCw className={cn('h-4 w-4', isFetching && 'animate-spin')} /></Button>
+    </>} stats={[
+      { label: 'Edificios', value: count(buildings.length), helper: 'centros activos', tone: 'sky' },
+      { label: 'Configurados', value: count(configured), helper: 'con asignación automática', tone: 'green' },
+      { label: 'Por revisar', value: count(buildings.length - configured), helper: 'configuración pendiente', tone: 'muted' },
+      { label: 'Propiedades', value: count(new Set(propertyAssignments.filter(assignment => propertyGroups.some(group => group.id === assignment.propertyGroupId)).map(assignment => assignment.propertyId)).size), helper: 'vinculadas a edificios', tone: 'violet' },
+    ]}>
+      <div className="grid items-stretch gap-4 lg:grid-cols-[320px_minmax(0,1fr)] 2xl:grid-cols-[440px_minmax(0,1fr)]">
+        <Card className="flex min-h-0 min-w-0 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm lg:h-[calc(100dvh-270px)] lg:min-h-[640px]">
+          <div className="space-y-4 p-4 sm:p-5">
+            <div className="flex items-start justify-between gap-2"><div><h2 className="font-bold">Directorio de edificios</h2><p className="mt-1 text-sm text-slate-500">Selecciona un centro para ver su actividad.</p></div>{hasFilters && <Button variant="ghost" size="sm" onClick={reset}>Limpiar</Button>}</div>
+            <DirectorySearch value={searchTerm} onChange={setSearchTerm} placeholder="Buscar edificio, código, zona o cliente" />
+            <DirectorySegments value={setupFilter} onChange={setSetupFilter} options={[
+              { value: 'all', label: 'Todos', count: count(buildings.length) },
+              { value: 'configured', label: 'Configurados', count: count(configured) },
+              { value: 'pending', label: 'Por revisar', count: count(buildings.length - configured) },
+            ]} />
+            <Select value={zoneFilter} onValueChange={setZoneFilter}><SelectTrigger aria-label="Filtrar por zona" className="rounded-xl bg-white"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">Todas las zonas</SelectItem><SelectItem value="unassigned">Sin zona asignada</SelectItem>{zones.map(zone => <SelectItem key={zone} value={zone}>{zone}</SelectItem>)}</SelectContent></Select>
+          </div>
+          <div className="min-h-0 flex-1 px-3 pb-3 lg:overflow-y-auto">
+            {isLoading ? <p role="status" className="py-10 text-center text-sm text-slate-500">Cargando edificios…</p> : isError ? (
+              <div role="alert" className="rounded-xl bg-red-50 p-4 text-sm text-red-700">No se han podido cargar los edificios.<Button variant="outline" className="mt-3" onClick={() => void refetch()}>Reintentar</Button></div>
+            ) : !visible.length ? (
+              <DirectoryEmpty title={buildings.length ? 'No hay coincidencias' : 'Todavía no hay edificios'} description={buildings.length ? 'Prueba con otro nombre o ajusta los filtros.' : 'Añade un edificio para vincular sus propiedades y configurar el equipo.'} action={hasFilters && <Button variant="outline" onClick={reset}>Limpiar filtros</Button>} />
+            ) : <>
+              <p aria-live="polite" className="pb-3 text-xs text-slate-500">{visible.length} de {buildings.length} edificios</p>
+              <div className="space-y-2">
+                {visible.map(item => {
+                  const isSelected = item.group.id === (isDesktop ? desktopBuilding?.group.id : selected?.group.id);
+                  return <button key={item.group.id} type="button" aria-pressed={isSelected} onClick={() => setSelectedId(item.group.id)} className={cn(
+                    'flex w-full items-start gap-3 rounded-xl border p-2.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#310984] focus-visible:ring-offset-2',
+                    isSelected ? 'border-[#310984]/30 bg-violet-50 ring-1 ring-[#310984]/20' : 'border-slate-200 bg-white hover:border-violet-300 hover:bg-slate-50',
+                  )}>
+                    <span className={cn('flex h-10 w-10 shrink-0 items-center justify-center rounded-xl', isSelected ? 'bg-white text-[#310984]' : 'bg-slate-100 text-slate-600')}><Building2 className="h-5 w-5" /></span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block break-words text-sm font-black leading-tight">{item.group.displayName || item.group.name}</span>
+                      <span className="mt-1 block truncate text-xs text-slate-500">{[item.group.internalCode, item.group.zone].filter(Boolean).join(' · ') || 'Sin zona asignada'}</span>
+                      <span className={cn('mt-1 inline-flex rounded-full px-2 py-0.5 text-[11px] font-bold', item.setup.className)}>{item.setup.label}</span>
+                      <span className="mt-1 block text-[11px] text-slate-500">{item.propertyCount} {item.propertyCount === 1 ? 'propiedad' : 'propiedades'} · {item.teamCount} {item.teamCount === 1 ? 'persona' : 'personas'}</span>
+                    </span>
+                    <ChevronRight className="mt-3 h-4 w-4 shrink-0 text-slate-400" />
+                  </button>;
+                })}
+              </div>
+            </>}
+          </div>
+        </Card>
+        {isDesktop && !isLoading && !isError && (desktopBuilding ? detail(desktopBuilding) : <DirectoryEmpty title="La actividad de tu edificio" description="Selecciona un centro para consultar su configuración, equipo y supervisión." />)}
+      </div>
+      {!isDesktop && <Dialog open={!!selected && !isLoading && !isError} onOpenChange={open => !open && setSelectedId(null)}><DialogContent className="max-h-[90dvh] w-[calc(100%-1rem)] max-w-2xl overflow-y-auto rounded-2xl p-0 pt-10"><DialogTitle className="sr-only">Ficha de {selected?.group.displayName || selected?.group.name}</DialogTitle><DialogDescription className="sr-only">Propiedades, equipo y supervisión del edificio.</DialogDescription>{selected && detail(selected)}</DialogContent></Dialog>}
         <Dialog open={isCreateOpen} onOpenChange={(open) => {
           if (isCreating) return;
           setIsCreateOpen(open);
@@ -200,7 +208,7 @@ const PlanningBuildingsIndex = () => {
             setBuildingForm(initialBuildingForm);
           }
         }}>
-          <DialogContent className="sm:max-w-lg">
+          <DialogContent className="max-h-[90dvh] w-[calc(100%-1rem)] overflow-y-auto rounded-2xl sm:max-w-lg">
             <DialogHeader>
               <DialogTitle>Añadir edificio</DialogTitle>
               <DialogDescription>Crea el centro operativo y continúa en su ficha para vincular propiedades y equipo.</DialogDescription>
@@ -236,141 +244,6 @@ const PlanningBuildingsIndex = () => {
             </form>
           </DialogContent>
         </Dialog>
-
-        <div className="relative w-full sm:max-w-md">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#6b627a]" />
-          <Input
-            aria-label="Buscar edificio por nombre, código, zona o cliente"
-            className="h-11 border-[#310984]/12 bg-white pl-9 shadow-sm"
-            placeholder="Buscar edificio, código o zona…"
-            value={searchTerm}
-            onChange={(event) => setSearchTerm(event.target.value)}
-          />
-        </div>
-
-        {isError && (
-          <Alert variant="destructive">
-            <AlertTriangle className="h-4 w-4" />
-            <AlertTitle>No se pudieron cargar los edificios</AlertTitle>
-            <AlertDescription>{error instanceof Error ? error.message : 'Revisa permisos, sede activa o conexión.'}</AlertDescription>
-          </Alert>
-        )}
-
-        {isLoading ? (
-          <Card className="border-[#310984]/10 bg-white shadow-sm">
-            <CardContent className="flex min-h-[240px] flex-col items-center justify-center gap-3 text-center text-[#6b627a]">
-              <Building2 className="h-10 w-10 animate-pulse text-[#310984]" />
-              <p className="font-semibold text-[#171321]">Cargando edificios…</p>
-              <p className="text-sm">Hermes está leyendo grupos, propiedades y equipos operativos.</p>
-            </CardContent>
-          </Card>
-        ) : propertyGroups.length === 0 ? (
-          <Card className="border-[#310984]/10 bg-white shadow-sm">
-            <CardContent className="flex min-h-[240px] flex-col items-center justify-center gap-3 text-center text-[#6b627a]">
-              <Home className="h-10 w-10 text-[#310984]" />
-              <p className="font-semibold text-[#171321]">No hay edificios activos visibles</p>
-              <p className="max-w-xl text-sm">Si deberían aparecer MD18 u otros centros, probablemente falta permiso de lectura sobre grupos o hay que revisar los datos activos.</p>
-            </CardContent>
-          </Card>
-        ) : buildingCards.length === 0 ? (
-          <Card className="border-[#310984]/10 bg-white shadow-sm">
-            <CardContent className="flex min-h-[220px] flex-col items-center justify-center gap-3 text-center text-[#6b627a]">
-              <Search className="h-10 w-10 text-[#310984]" />
-              <p className="font-semibold text-[#171321]">No hay edificios con esa búsqueda</p>
-              <p className="max-w-xl text-sm">Prueba por código, nombre, zona o cliente.</p>
-            </CardContent>
-          </Card>
-        ) : (
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-            {buildingCards.map(({ group, propertyCount, teamCount, excludedCount, setup, coverage }) => (
-              <Card key={group.id} className="group border-[#310984]/10 bg-white shadow-sm shadow-[#310984]/5 transition hover:-translate-y-0.5 hover:shadow-lg hover:shadow-[#310984]/10">
-                <CardHeader className="pb-3">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <div className="flex flex-wrap gap-2">
-                        <Badge variant="outline" className="border-[#310984]/15 bg-[#faf8ff] text-[#310984]">
-                          {group.internalCode || group.name}
-                        </Badge>
-                        <Badge variant="outline" className={setup.className}>{setup.label}</Badge>
-                      </div>
-                      <CardTitle className="mt-3 break-words text-xl text-[#171321]">
-                        {group.displayName || group.name}
-                      </CardTitle>
-                      {group.zone && <p className="mt-1 text-sm text-[#6b627a]">Zona: {group.zone}</p>}
-                    </div>
-                    <div className="rounded-2xl bg-[#310984]/10 p-3 text-[#310984]">
-                      <Building2 className="h-5 w-5" />
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="grid grid-cols-2 gap-2 text-sm">
-                    <div className="rounded-2xl bg-[#faf8ff] p-3">
-                      <p className="text-xs text-[#6b627a]">Propiedades</p>
-                      <p className="text-lg font-semibold text-[#171321]">{propertyCount}</p>
-                    </div>
-                    <div className="rounded-2xl bg-[#faf8ff] p-3">
-                      <p className="text-xs text-[#6b627a]">Personal</p>
-                      <p className="text-lg font-semibold text-[#171321]">{teamCount}</p>
-                    </div>
-                  </div>
-                  <div className="rounded-2xl border border-violet-100 bg-violet-50/60 p-3 text-xs text-violet-950"><p className="font-semibold">Supervisión de hoy</p><p className="mt-1">{coverage?.assignedSupervisors || 0} supervisoras · {coverage?.pending || 0} pendientes · {coverage?.completed || 0} completadas</p>{(coverage?.deferred || 0) > 0 && <p className="mt-1 text-amber-800">{coverage?.deferred} aplazadas</p>}{(coverage?.blocked || 0) > 0 && <p className="mt-1 text-red-800">{coverage?.blocked} bloqueadas</p>}</div>
-                  <div className="flex flex-col gap-2 sm:flex-row">
-                    <Button asChild className="min-h-11 flex-1 bg-[#310984] text-white hover:bg-[#4c1bb0]">
-                      <Link to={`/planning/buildings/${group.id}`}>
-                        Ver edificio
-                        <ArrowRight className="ml-2 h-4 w-4" />
-                      </Link>
-                    </Button>
-                    {propertyCount === 0 && teamCount === 0 && excludedCount === 0 && (
-                      <details className="rounded-xl border border-[#310984]/10 px-3 py-2 text-sm">
-                        <summary className="cursor-pointer list-none text-center font-medium text-[#6b627a] hover:text-[#310984]">Acciones</summary>
-                        <div className="mt-2">
-                          <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                          <Button
-                            type="button"
-                            variant="outline"
-                            className="border-red-200 text-red-700 hover:bg-red-50 hover:text-red-800"
-                            disabled={deletingGroupId === group.id}
-                          >
-                            {deletingGroupId === group.id
-                              ? <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                              : <Trash2 className="mr-2 h-4 w-4" />}
-                            Eliminar edificio vacío
-                          </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>¿Eliminar {group.displayName || group.name}?</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              Este edificio no tiene propiedades, equipo ni personas marcadas como No aptas. Se eliminará permanentemente y esta acción no se puede deshacer.
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                            <AlertDialogAction
-                              className="bg-red-600 text-white hover:bg-red-700"
-                              onClick={() => void handleDeleteEmptyBuilding(group)}
-                            >
-                              Sí, eliminar edificio
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                            </AlertDialogContent>
-                          </AlertDialog>
-                        </div>
-                      </details>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        )}
-
-      </div>
-    </div>
+    </DirectoryPage>
   );
-};
-
-export default PlanningBuildingsIndex;
+}

@@ -114,6 +114,7 @@ export const useUpdateWorkerHourAdjustment = () => {
   return useMutation({
     mutationFn: async (input: UpdateHourAdjustmentInput) => {
       const updateData: any = {};
+      if (input.date !== undefined) updateData.date = input.date;
       
       if (input.hours !== undefined) updateData.hours = input.hours;
       if (input.category !== undefined) updateData.category = input.category;

@@ -18,7 +18,7 @@ interface InventoryStockProps {
 export default function InventoryStock({
   kind,
   title = 'Stock global',
-  description = 'Consulta y ajusta stock por producto y almacen.',
+  description = 'Consulta y ajusta stock por producto y almacén.',
 }: InventoryStockProps) {
   const { queryWarehouseId } = useSelectedStockWarehouse();
   const { data: levels = [], isLoading } = useStockLevels(queryWarehouseId, kind);

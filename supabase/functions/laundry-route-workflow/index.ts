@@ -1,4 +1,6 @@
+import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.50.0";
+import { bagRequirementsChanged } from "../_shared/laundryBagRequirements.ts";
 import {
   listActiveRouteWorkers,
   type RouteWorkerIdentity,
@@ -12,13 +14,8 @@ const corsHeaders = {
 };
 
 type JsonRecord = Record<string, unknown>;
-type RouteAction = "load" | "prepare" | "issue" | "critical_block" | "collect" | "deliver" | "confirm_no_carry" | "undo_bag" | "complete_building";
+type RouteAction = "load" | "prepare" | "issue" | "collect" | "deliver";
 type SupabaseClientLike = any;
-
-const ROUTE_V2_DAYS = new Set([0, 1, 3, 5]);
-// Conservamos la recogida y entrega para una futura reactivación, pero por
-// ahora no forma parte del avance obligatorio del nuevo sistema de ruta.
-const ROUTE_DELIVERY_ENABLED = false;
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -94,15 +91,6 @@ function getProperty(task: JsonRecord): JsonRecord | null {
   return property && typeof property === "object" ? property as JsonRecord : null;
 }
 
-function getObject(value: unknown): JsonRecord | null {
-  return value && typeof value === "object" && !Array.isArray(value) ? value as JsonRecord : null;
-}
-
-function getSnapshotContent(preparation: JsonRecord | undefined): JsonRecord | null {
-  const content = getObject(preparation?.content_snapshot);
-  return content && Object.keys(content).length > 0 ? content : null;
-}
-
 function propertyIsLaundryEnabled(property: JsonRecord | null): boolean {
   if (!property) return false;
   const clients = property.clients && typeof property.clients === "object" ? property.clients as JsonRecord : null;
@@ -122,6 +110,7 @@ async function fetchTasksForDates(
   supabase: SupabaseClientLike,
   dates: string[],
   sedeId: string | null,
+  deliveryDay = -1,
 ) {
   if (dates.length === 0) return [];
 
@@ -138,6 +127,7 @@ async function fetchTasksForDates(
       propiedad_id,
       sede_id,
       type,
+      status,
       properties:propiedad_id (
         id,
         codigo,
@@ -188,7 +178,24 @@ async function fetchTasksForDates(
   const { data, error } = await query;
   if (error) throw error;
 
+  // Use the same authoritative base order as the route management page.
+  // Day-specific orders are only a fallback for installations without a base order.
+  const positions = new Map<string, number>();
+  if (sedeId) {
+    const { data: orderData, error: orderError } = await supabase
+      .from("laundry_classic_route_order")
+      .select("property_id, position, delivery_day")
+      .eq("sede_id", sedeId)
+      .in("delivery_day", [-1, deliveryDay]);
+    if (orderError) throw orderError;
+    const rows = (orderData ?? []) as JsonRecord[];
+    const baseRows = rows.filter((row) => Number(row.delivery_day) === -1);
+    const applicable = baseRows.length ? baseRows : rows.filter((row) => Number(row.delivery_day) === deliveryDay);
+    applicable.forEach((row) => positions.set(String(row.property_id), numberValue(row.position)));
+  }
+
   return ((data ?? []) as JsonRecord[])
+    .filter((task) => String(task.status ?? '').toLowerCase() !== 'cancelled')
     .filter((task) => !isNotCountCleaner(task.cleaner))
     .filter((task) => propertyIsLaundryEnabled(getProperty(task)))
     .sort((a, b) => {
@@ -196,7 +203,13 @@ async function fetchTasksForDates(
       const propB = getProperty(b);
       const codeA = String(propA?.codigo ?? a.property ?? "");
       const codeB = String(propB?.codigo ?? b.property ?? "");
-      return codeA.localeCompare(codeB, "es", { numeric: true });
+      const posA = positions.get(String(propA?.id ?? a.propiedad_id)) ?? Number.MAX_SAFE_INTEGER;
+      const posB = positions.get(String(propB?.id ?? b.propiedad_id)) ?? Number.MAX_SAFE_INTEGER;
+      return posA - posB
+        || String(a.date ?? "").localeCompare(String(b.date ?? ""))
+        || String(a.start_time ?? "").localeCompare(String(b.start_time ?? ""))
+        || codeA.localeCompare(codeB, "es", { numeric: true })
+        || String(a.id).localeCompare(String(b.id));
     });
 }
 
@@ -300,141 +313,6 @@ async function loadDeliveryTracking(
   return new Map(((data ?? []) as JsonRecord[]).map((row) => [String(row.task_id), row]));
 }
 
-async function loadRouteEvents(
-  supabase: SupabaseClientLike,
-  shareLinkId: string,
-) {
-  const { data, error } = await supabase
-    .from("laundry_route_v2_events")
-    .select("id, share_link_id, task_id, delivery_date, event_type, novelty_type, property_code, payload, actor_name, created_at")
-    .eq("share_link_id", shareLinkId)
-    .order("created_at", { ascending: false })
-    .limit(200);
-  if (error) throw error;
-  return (data ?? []) as JsonRecord[];
-}
-
-async function recordEvent(
-  supabase: SupabaseClientLike,
-  payload: JsonRecord,
-) {
-  const { error } = await supabase.from("laundry_route_v2_events").upsert(payload, {
-    onConflict: "event_key",
-    ignoreDuplicates: true,
-  });
-  if (error) throw error;
-}
-
-async function recordIssueForNextRoute(
-  supabase: SupabaseClientLike,
-  workflow: JsonRecord,
-  taskId: string,
-  issueReason: string,
-  content: JsonRecord | undefined,
-) {
-  const route = getObject(workflow.route);
-  const link = getObject(workflow.link);
-  const nextDeliveryDate = String(route?.nextDeliveryDate ?? "");
-  if (!nextDeliveryDate) return;
-
-  let nextLinkQuery = supabase
-    .from("laundry_share_links")
-    .select("id, sede_id, delivery_date")
-    .eq("workflow_version", "route_v2")
-    .eq("is_active", true)
-    .eq("delivery_date", nextDeliveryDate);
-  nextLinkQuery = link?.sedeId
-    ? nextLinkQuery.eq("sede_id", String(link.sedeId))
-    : nextLinkQuery.is("sede_id", null);
-
-  const { data: nextLink, error } = await nextLinkQuery
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-  if (error) throw error;
-  if (!nextLink) return;
-
-  await recordEvent(supabase, {
-    sede_id: nextLink.sede_id,
-    share_link_id: nextLink.id,
-    delivery_date: nextDeliveryDate,
-    task_id: taskId,
-    event_type: "bag_issue",
-    novelty_type: "carryover",
-    property_code: content?.propertyCode ?? null,
-    event_key: `bag-carryover:${nextLink.id}:${taskId}`,
-    payload: { issueReason, content: content ?? null },
-    actor_name: "Equipo de ruta",
-  });
-}
-
-async function loadLatestRouteAuthorization(
-  supabase: SupabaseClientLike,
-  shareLinkId: string,
-) {
-  const { data, error } = await supabase
-    .from("laundry_route_v2_authorizations")
-    .select("id, reason, affected_task_ids, actor_name, created_at")
-    .eq("share_link_id", shareLinkId)
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-  if (error) throw error;
-  return (data ?? null) as JsonRecord | null;
-}
-
-async function refreshManagedRouteOnOpen(linkId: string, serviceKey: string) {
-  const url = `${Deno.env.get("SUPABASE_URL")}/functions/v1/manage-laundry-route-v2-links`;
-  try {
-    const response = await fetch(url, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${serviceKey}`,
-      },
-      body: JSON.stringify({ action: "reconcile_link", linkId, source: "public_open" }),
-      signal: AbortSignal.timeout(2500),
-    });
-    if (!response.ok) console.warn("No se pudo actualizar la ruta al abrir el enlace", response.status);
-  } catch (error) {
-    // A public link must remain usable if the administrative refresher is unavailable.
-    console.warn("Actualización de ruta al abrir omitida", error);
-  }
-}
-
-async function loadRouteOrder(
-  supabase: SupabaseClientLike,
-  sedeId: string | null,
-  deliveryDay: number,
-) {
-  if (!sedeId) return new Map<string, number>();
-  const { data, error } = await supabase
-    .from("laundry_classic_route_order")
-    .select("property_id, position, delivery_day")
-    .eq("sede_id", sedeId)
-    .in("delivery_day", [-1, deliveryDay]);
-  if (error) throw error;
-  const rows = (data ?? []) as JsonRecord[];
-  const globalRows = rows.filter((row) => Number(row.delivery_day) === -1);
-  const specificRows = rows.filter((row) => Number(row.delivery_day) === deliveryDay);
-  const selectedRows = globalRows.length > 0 ? globalRows : specificRows;
-  return new Map(selectedRows.map((row) => [String(row.property_id), numberValue(row.position)]));
-}
-
-function sortRouteTasks(tasks: JsonRecord[], order: Map<string, number>) {
-  return tasks.slice().sort((a, b) => {
-    const propertyA = getProperty(a);
-    const propertyB = getProperty(b);
-    const idA = String(propertyA?.id ?? a.propiedad_id ?? "");
-    const idB = String(propertyB?.id ?? b.propiedad_id ?? "");
-    const codeA = String(propertyA?.codigo ?? a.property ?? "");
-    const codeB = String(propertyB?.codigo ?? b.property ?? "");
-    return (order.get(idA) ?? Number.MAX_SAFE_INTEGER) - (order.get(idB) ?? Number.MAX_SAFE_INTEGER)
-      || codeA.localeCompare(codeB, "es", { numeric: true })
-      || String(a.date ?? "").localeCompare(String(b.date ?? ""));
-  });
-}
-
 function mapTask(
   task: JsonRecord,
   preparations: Map<string, JsonRecord>,
@@ -447,28 +325,18 @@ function mapTask(
   const propertyId = String(property?.id ?? task.propiedad_id ?? "");
   const preparation = preparations.get(taskId);
   const deliveryTracking = tracking.get(taskId);
-  const frozenContent = getSnapshotContent(preparation);
   const bagStatus = String(preparation?.status ?? "pending");
-  const frozenTextiles = getObject(frozenContent?.textiles);
-  const frozenAmenities = getObject(frozenContent?.amenities);
-  const routeNoveltyType = String(preparation?.route_novelty_type ?? (originalTaskIds.has(taskId) ? "normal" : "new"));
 
-  return {
+  const bag = {
     taskId,
     propertyId,
-    propertyCode: String(frozenContent?.propertyCode ?? property?.codigo ?? task.property ?? ""),
-    propertyName: String(frozenContent?.propertyName ?? property?.nombre ?? task.property ?? ""),
-    address: String(frozenContent?.address ?? task.address ?? ""),
-    date: String(frozenContent?.date ?? task.date ?? ""),
-    serviceTime: String(frozenContent?.serviceTime ?? formatServiceTime(task)),
-    cleaner: frozenContent?.cleaner ?? task.cleaner ?? null,
+    propertyCode: String(property?.codigo ?? task.property ?? ""),
+    propertyName: String(property?.nombre ?? task.property ?? ""),
+    address: String(task.address ?? ""),
+    date: String(task.date ?? ""),
+    serviceTime: formatServiceTime(task),
+    cleaner: task.cleaner ?? null,
     isNew: !originalTaskIds.has(taskId),
-    noveltyType: routeNoveltyType,
-    noveltyResolved: routeNoveltyType === "carryover"
-      ? preparation?.status === "prepared"
-      : preparation?.route_novelty_resolved !== false,
-    isCancelled: routeNoveltyType === "cancelled_before" || routeNoveltyType === "cancelled_after",
-    cancellationStage: routeNoveltyType === "cancelled_after" ? "after_preparation" : routeNoveltyType === "cancelled_before" ? "before_preparation" : null,
     bagStatus: {
       status: bagStatus,
       preparedAt: preparation?.prepared_at ?? null,
@@ -478,112 +346,50 @@ function mapTask(
       issueReason: preparation?.issue_reason ?? null,
     },
     deliveryTracking: {
-      collectionStatus: preparation?.route_collection_status === "collected" ? "collected" : deliveryTracking?.collection_status ?? "pending",
-      deliveryStatus: preparation?.route_delivery_status === "delivered" ? "delivered" : deliveryTracking?.status ?? "pending",
-      collectedAt: preparation?.route_collection_status === "collected" ? preparation?.updated_at ?? null : deliveryTracking?.collected_at ?? null,
-      deliveredAt: preparation?.route_delivery_status === "delivered" ? preparation?.updated_at ?? null : deliveryTracking?.delivered_at ?? null,
+      collectionStatus: deliveryTracking?.collection_status ?? "pending",
+      deliveryStatus: deliveryTracking?.status ?? "pending",
+      collectedAt: deliveryTracking?.collected_at ?? null,
+      deliveredAt: deliveryTracking?.delivered_at ?? null,
     },
     textiles: {
-      sheets: numberValue(frozenTextiles?.sheets ?? property?.numero_sabanas),
-      sheetsSmall: numberValue(frozenTextiles?.sheetsSmall ?? property?.numero_sabanas_pequenas),
-      sheetsSuite: numberValue(frozenTextiles?.sheetsSuite ?? property?.numero_sabanas_suite),
-      pillowCases: numberValue(frozenTextiles?.pillowCases ?? property?.numero_fundas_almohada),
-      towelsLarge: numberValue(frozenTextiles?.towelsLarge ?? property?.numero_toallas_grandes),
-      towelsSmall: numberValue(frozenTextiles?.towelsSmall ?? property?.numero_toallas_pequenas),
-      bathMats: numberValue(frozenTextiles?.bathMats ?? property?.numero_alfombrines),
+      sheets: numberValue(property?.numero_sabanas),
+      sheetsSmall: numberValue(property?.numero_sabanas_pequenas),
+      sheetsSuite: numberValue(property?.numero_sabanas_suite),
+      pillowCases: numberValue(property?.numero_fundas_almohada),
+      towelsLarge: numberValue(property?.numero_toallas_grandes),
+      towelsSmall: numberValue(property?.numero_toallas_pequenas),
+      bathMats: numberValue(property?.numero_alfombrines),
     },
     amenities: {
-      toiletPaper: numberValue(frozenAmenities?.toiletPaper ?? property?.papel_higienico),
-      kitchenPaper: numberValue(frozenAmenities?.kitchenPaper ?? property?.papel_cocina),
-      shampoo: numberValue(frozenAmenities?.shampoo ?? property?.champu),
-      conditioner: numberValue(frozenAmenities?.conditioner ?? property?.acondicionador),
-      showerGel: numberValue(frozenAmenities?.showerGel ?? property?.gel_ducha),
-      liquidSoap: numberValue(frozenAmenities?.liquidSoap ?? property?.jabon_liquido),
-      bathroomAmenities: numberValue(frozenAmenities?.bathroomAmenities ?? property?.amenities_bano),
-      kitchenAmenities: numberValue(frozenAmenities?.kitchenAmenities ?? property?.amenities_cocina),
-      bathroomAirFreshener: numberValue(frozenAmenities?.bathroomAirFreshener ?? property?.ambientador_bano),
-      trashBags: numberValue(frozenAmenities?.trashBags ?? property?.bolsas_basura),
-      dishwasherDetergent: numberValue(frozenAmenities?.dishwasherDetergent ?? property?.detergente_lavavajillas),
-      kitchenCloths: numberValue(frozenAmenities?.kitchenCloths ?? property?.bayetas_cocina),
-      sponges: numberValue(frozenAmenities?.sponges ?? property?.estropajos),
-      glassCleaner: numberValue(frozenAmenities?.glassCleaner ?? property?.limpiacristales),
-      bathroomDisinfectant: numberValue(frozenAmenities?.bathroomDisinfectant ?? property?.desinfectante_bano),
-      oil: numberValue(frozenAmenities?.oil ?? property?.aceite),
-      vinegar: numberValue(frozenAmenities?.vinegar ?? property?.vinagre),
-      salt: numberValue(frozenAmenities?.salt ?? property?.sal),
-      sugar: numberValue(frozenAmenities?.sugar ?? property?.azucar),
-      foodKit: numberValue(frozenAmenities?.foodKit ?? property?.kit_alimentario),
+      toiletPaper: numberValue(property?.papel_higienico),
+      kitchenPaper: numberValue(property?.papel_cocina),
+      shampoo: numberValue(property?.champu),
+      conditioner: numberValue(property?.acondicionador),
+      showerGel: numberValue(property?.gel_ducha),
+      liquidSoap: numberValue(property?.jabon_liquido),
+      bathroomAmenities: numberValue(property?.amenities_bano),
+      kitchenAmenities: numberValue(property?.amenities_cocina),
+      bathroomAirFreshener: numberValue(property?.ambientador_bano),
+      trashBags: numberValue(property?.bolsas_basura),
+      dishwasherDetergent: numberValue(property?.detergente_lavavajillas),
+      kitchenCloths: numberValue(property?.bayetas_cocina),
+      sponges: numberValue(property?.estropajos),
+      glassCleaner: numberValue(property?.limpiacristales),
+      bathroomDisinfectant: numberValue(property?.desinfectante_bano),
+      oil: numberValue(property?.aceite),
+      vinegar: numberValue(property?.vinagre),
+      salt: numberValue(property?.sal),
+      sugar: numberValue(property?.azucar),
+      foodKit: numberValue(property?.kit_alimentario),
     },
     stockConsumables: stockConsumablesByProperty.get(propertyId) ?? [],
   };
-}
-
-function mapEventBag(
-  event: JsonRecord,
-  preparation: JsonRecord | undefined,
-  originalTaskIds: Set<string>,
-) {
-  const payload = getObject(event.payload);
-  const content = getObject(payload?.content) ?? {};
-  const taskId = String(event.task_id ?? content.taskId ?? "");
-  const noveltyType = String(event.novelty_type ?? "cancelled_before");
-  const textiles = getObject(content.textiles) ?? {};
-  const amenities = getObject(content.amenities) ?? {};
-  return {
-    taskId,
-    propertyId: String(content.propertyId ?? ""),
-    propertyCode: String(content.propertyCode ?? event.property_code ?? ""),
-    propertyName: String(content.propertyName ?? event.property_code ?? ""),
-    address: String(content.address ?? ""),
-    date: String(content.date ?? event.delivery_date ?? ""),
-    serviceTime: String(content.serviceTime ?? ""),
-    cleaner: content.cleaner ?? null,
-    isNew: !originalTaskIds.has(taskId),
-    noveltyType,
-    noveltyResolved: noveltyType === "carryover"
-      ? preparation?.status === "prepared"
-      : preparation?.route_novelty_resolved !== false,
-    isCancelled: noveltyType === "cancelled_before" || noveltyType === "cancelled_after",
-    cancellationStage: noveltyType === "cancelled_after" ? "after_preparation" : "before_preparation",
-    bagStatus: {
-      status: String(preparation?.status ?? "pending"),
-      preparedAt: preparation?.prepared_at ?? null,
-      preparedByName: preparation?.prepared_by_name ?? null,
-      issueAt: preparation?.issue_at ?? null,
-      issueByName: preparation?.issue_by_name ?? null,
-      issueReason: preparation?.issue_reason ?? null,
-    },
-    deliveryTracking: {
-      collectionStatus: preparation?.route_collection_status ?? "pending",
-      deliveryStatus: preparation?.route_delivery_status ?? "pending",
-      collectedAt: preparation?.updated_at ?? null,
-      deliveredAt: preparation?.updated_at ?? null,
-    },
-    textiles,
-    amenities,
-    stockConsumables: [],
-  };
-}
-
-function contentFromMappedBag(bag: JsonRecord): JsonRecord {
-  return {
-    taskId: bag.taskId,
-    propertyId: bag.propertyId,
-    propertyCode: bag.propertyCode,
-    propertyName: bag.propertyName,
-    address: bag.address,
-    date: bag.date,
-    serviceTime: bag.serviceTime,
-    cleaner: bag.cleaner ?? null,
-    textiles: bag.textiles ?? {},
-    amenities: bag.amenities ?? {},
-  };
-}
-
-function authorizationCoversBags(authorization: JsonRecord | null, bags: JsonRecord[]): boolean {
-  if (!authorization || bags.length === 0) return false;
-  const affectedTaskIds = new Set(stringArray(authorization.affected_task_ids));
-  return bags.every((bag) => affectedTaskIds.has(String(bag.taskId)));
+  const previous = preparation?.content_snapshot;
+  if (bagStatus === 'prepared' && previous && typeof previous === 'object'
+    && bagRequirementsChanged(previous as JsonRecord, bag)) {
+    bag.bagStatus.status = 'pending';
+  }
+  return bag;
 }
 
 async function upsertPreparation(
@@ -592,28 +398,18 @@ async function upsertPreparation(
   taskId: string,
   status: "prepared" | "issue",
   issueReason?: string,
-  contentSnapshot?: JsonRecord,
   actor?: RouteWorkerIdentity | null,
+  contentSnapshot?: JsonRecord,
 ) {
   const now = new Date().toISOString();
-  const { data: existing, error: existingError } = await supabase
-    .from("laundry_bag_preparations")
-    .select("*")
-    .eq("task_id", taskId)
-    .maybeSingle();
-  if (existingError) throw existingError;
   const payload: JsonRecord = {
     task_id: taskId,
     status,
     last_share_link_id: shareLinkId,
     updated_at: now,
+    route_novelty_resolved: true,
+    ...(contentSnapshot ? { content_snapshot: contentSnapshot, snapshot_locked_at: now } : {}),
   };
-
-  const currentContent = getSnapshotContent(existing as JsonRecord | undefined);
-  if (!currentContent && contentSnapshot) {
-    payload.content_snapshot = contentSnapshot;
-    payload.snapshot_locked_at = now;
-  }
 
   if (status === "prepared") {
     payload.prepared_at = now;
@@ -623,116 +419,17 @@ async function upsertPreparation(
     payload.issue_by_name = null;
     payload.issue_by_worker_id = null;
     payload.issue_reason = null;
-    payload.route_novelty_type = "normal";
-    payload.route_novelty_resolved = true;
   } else {
     payload.issue_at = now;
     payload.issue_by_name = actor?.workerName ?? "Lavanderia";
     payload.issue_by_worker_id = actor?.cleanerId ?? null;
     payload.issue_reason = String(issueReason ?? "").trim();
-    // The bag is deferred, not blocked in the route where the issue is filed.
-    // The route manager will reactivate it as a carryover on its next route.
-    payload.route_novelty_resolved = true;
   }
 
   const { error } = await supabase
     .from("laundry_bag_preparations")
     .upsert(payload, { onConflict: "task_id" });
   if (error) throw error;
-}
-
-async function updateRoutePreparationAction(
-  supabase: SupabaseClientLike,
-  shareLinkId: string,
-  taskId: string,
-  action: "confirm_no_carry" | "undo_bag",
-  contentSnapshot?: JsonRecord,
-) {
-  const now = new Date().toISOString();
-  const { data: existing, error: existingError } = await supabase
-    .from("laundry_bag_preparations")
-    .select("*")
-    .eq("task_id", taskId)
-    .maybeSingle();
-  if (existingError) throw existingError;
-  const payload: JsonRecord = {
-    task_id: taskId,
-    last_share_link_id: shareLinkId,
-    updated_at: now,
-  };
-  if (!getSnapshotContent(existing as JsonRecord | undefined) && contentSnapshot) {
-    payload.content_snapshot = contentSnapshot;
-    payload.snapshot_locked_at = now;
-  }
-  if (action === "confirm_no_carry") {
-    payload.route_novelty_resolved = true;
-    payload.route_novelty_type = "cancelled_before";
-    payload.status = "pending";
-  } else {
-    payload.status = "prepared";
-    payload.route_novelty_type = "undone";
-    payload.route_novelty_resolved = true;
-    payload.undone_at = now;
-    payload.undone_by_name = "Lavanderia";
-    payload.undone_reason = "Bolsa deshecha durante el reparto";
-    payload.issue_at = null;
-    payload.issue_by_name = null;
-    payload.issue_reason = null;
-  }
-  const { error } = await supabase.from("laundry_bag_preparations").upsert(payload, { onConflict: "task_id" });
-  if (error) throw error;
-}
-
-async function updateRouteDeliveryStatus(
-  supabase: SupabaseClientLike,
-  shareLinkId: string,
-  taskId: string,
-  action: "collect" | "deliver",
-) {
-  const now = new Date().toISOString();
-  const payload: JsonRecord = {
-    task_id: taskId,
-    last_share_link_id: shareLinkId,
-    updated_at: now,
-  };
-  if (action === "collect") payload.route_collection_status = "collected";
-  if (action === "deliver") payload.route_delivery_status = "delivered";
-  const { error } = await supabase.from("laundry_bag_preparations").upsert(payload, { onConflict: "task_id" });
-  if (error) throw error;
-}
-
-async function completeRouteBuilding(
-  supabase: SupabaseClientLike,
-  shareLinkId: string,
-  taskIds: string[],
-  issueTaskIds: Set<string>,
-) {
-  const now = new Date().toISOString();
-  const regularPayload = taskIds
-    .filter((taskId) => !issueTaskIds.has(taskId))
-    .map((taskId) => ({
-      task_id: taskId,
-      last_share_link_id: shareLinkId,
-      route_collection_status: "collected",
-      route_delivery_status: "delivered",
-      updated_at: now,
-    }));
-  const issuePayload = taskIds
-    .filter((taskId) => issueTaskIds.has(taskId))
-    .map((taskId) => ({
-    task_id: taskId,
-    last_share_link_id: shareLinkId,
-    route_collection_status: "collected",
-    updated_at: now,
-  }));
-
-  for (const payload of [regularPayload, issuePayload]) {
-    if (payload.length === 0) continue;
-    const { error } = await supabase
-      .from("laundry_bag_preparations")
-      .upsert(payload, { onConflict: "task_id" });
-    if (error) throw error;
-  }
 }
 
 async function upsertDeliveryTracking(
@@ -785,6 +482,23 @@ async function upsertDeliveryTracking(
   if (error) throw error;
 }
 
+async function processRouteInventory(
+  supabase: SupabaseClientLike,
+  taskId: string,
+  action: "collect" | "deliver",
+  actor?: RouteWorkerIdentity | null,
+) {
+  const { data, error } = await supabase.rpc("process_laundry_route_inventory_event", {
+    task_id_param: taskId,
+    action_param: action,
+    event_key_param: `laundry-route:${taskId}:${action}`,
+    actor_id_param: null,
+    actor_name_param: actor?.workerName ?? "Repartidor",
+  });
+  if (error) throw error;
+  return data;
+}
+
 async function resolveRouteActor(
   supabase: SupabaseClientLike,
   workflow: JsonRecord,
@@ -807,11 +521,10 @@ async function resolveRouteActor(
 async function logRouteWorkerAction(
   supabase: SupabaseClientLike,
   shareLinkId: string,
-  taskId: string | null,
+  taskId: string,
   action: RouteAction,
   actor: RouteWorkerIdentity | null,
   issueReason = "",
-  taskIds: string[] = [],
 ) {
   if (!actor) return;
   const { error } = await supabase.from("laundry_route_worker_events").insert({
@@ -820,10 +533,7 @@ async function logRouteWorkerAction(
     route_worker_id: actor.routeWorkerId,
     worker_name: actor.workerName,
     action,
-    details: {
-      ...(action === "issue" || action === "critical_block" ? { issueReason } : {}),
-      ...(taskIds.length > 0 ? { taskIds } : {}),
-    },
+    details: action === "issue" ? { issueReason } : {},
   });
   if (error) console.error("Could not record route worker action", error);
 }
@@ -831,9 +541,8 @@ async function logRouteWorkerAction(
 async function loadWorkflow(
   supabase: SupabaseClientLike,
   token: string,
-  serviceKey: string,
 ) {
-  let { data: link, error: linkError } = await supabase
+  const { data: link, error: linkError } = await supabase
     .from("laundry_share_links")
     .select("*")
     .eq("token", token)
@@ -841,21 +550,12 @@ async function loadWorkflow(
     .maybeSingle();
   if (linkError) throw linkError;
   if (!link) return { notFound: true };
-  if (link.expires_at && new Date(link.expires_at) < new Date()) return { expired: true };
+  if (link.expires_at && new Date(String(link.expires_at)) < new Date()) return { expired: true };
 
   const workflowVersion = String(link.workflow_version ?? "legacy");
   if (workflowVersion !== "route_v2") {
     return { workflowVersion: "legacy", link };
   }
-
-  await refreshManagedRouteOnOpen(String(link.id), serviceKey);
-  const { data: refreshedLink, error: refreshedLinkError } = await supabase
-    .from("laundry_share_links")
-    .select("*")
-    .eq("id", link.id)
-    .maybeSingle();
-  if (refreshedLinkError) throw refreshedLinkError;
-  if (refreshedLink) link = refreshedLink;
 
   const filters = (link.filters && typeof link.filters === "object" ? link.filters : {}) as JsonRecord;
   const deliveryDate = String(filters.deliveryDate ?? link.date_end);
@@ -868,8 +568,8 @@ async function loadWorkflow(
     .order("sort_order", { ascending: true });
   if (schedulesError) throw schedulesError;
 
-  const schedules = pickSchedules((schedulesData ?? []) as JsonRecord[], link.sede_id ?? null)
-    .filter((schedule) => ROUTE_V2_DAYS.has(schedule.dayOfWeek));
+  const sedeId = typeof link.sede_id === "string" ? link.sede_id : null;
+  const schedules = pickSchedules((schedulesData ?? []) as JsonRecord[], sedeId);
   const currentSchedule = schedules.find((schedule) => schedule.dayOfWeek === getDayOfWeek(deliveryDate));
   if (!currentSchedule) throw new Error("No hay configuracion de ruta para este dia");
   const currentIndex = schedules.findIndex((schedule) => schedule.dayOfWeek === currentSchedule.dayOfWeek);
@@ -888,31 +588,22 @@ async function loadWorkflow(
     ? stringArray(filters.nextRouteDates)
     : calculateRouteDates(nextDate, nextSchedule.collectionDays);
 
-  const [currentTasksRaw, nextTasksRaw] = await Promise.all([
-    fetchTasksForDates(supabase, currentRouteDates, link.sede_id ?? null),
-    fetchTasksForDates(supabase, nextRouteDates, link.sede_id ?? null),
+  const [currentTasks, nextTasks] = await Promise.all([
+    fetchTasksForDates(supabase, currentRouteDates, sedeId, getDayOfWeek(deliveryDate)),
+    fetchTasksForDates(supabase, nextRouteDates, sedeId, getDayOfWeek(nextDate)),
   ]);
-
-  const [currentOrder, nextOrder] = await Promise.all([
-    loadRouteOrder(supabase, link.sede_id ?? null, getDayOfWeek(deliveryDate)),
-    loadRouteOrder(supabase, link.sede_id ?? null, getDayOfWeek(nextDate)),
-  ]);
-  const currentTasks = sortRouteTasks(currentTasksRaw as JsonRecord[], currentOrder);
-  const nextTasks = sortRouteTasks(nextTasksRaw as JsonRecord[], nextOrder);
 
   const currentTaskIds = currentTasks.map((task) => String(task.id));
   const nextTaskIds = nextTasks.map((task) => String(task.id));
-  const routeEvents = await loadRouteEvents(supabase, String(link.id));
-  const eventTaskIds = routeEvents.map((event) => String(event.task_id ?? "")).filter(Boolean);
-  const allTaskIds = Array.from(new Set([...currentTaskIds, ...nextTaskIds, ...eventTaskIds]));
+  const allTaskIds = Array.from(new Set([...currentTaskIds, ...nextTaskIds]));
 
   const existingSnapshotIds = stringArray(link.snapshot_task_ids);
   const existingOriginalIds = stringArray(link.original_task_ids);
-  const snapshotSet = new Set([...existingSnapshotIds, ...currentTaskIds]);
+  const snapshotSet = new Set([...currentTaskIds, ...nextTaskIds]);
   const nextSnapshot = Array.from(snapshotSet);
   const nextOriginal = existingOriginalIds.length > 0 ? existingOriginalIds : currentTaskIds;
   if (
-    nextSnapshot.length !== existingSnapshotIds.length ||
+    JSON.stringify(nextSnapshot.slice().sort()) !== JSON.stringify(existingSnapshotIds.slice().sort()) ||
     nextOriginal.length !== existingOriginalIds.length
   ) {
     await supabase
@@ -921,59 +612,30 @@ async function loadWorkflow(
         snapshot_task_ids: nextSnapshot,
         original_task_ids: nextOriginal,
       })
-      .eq("id", link.id);
+      .eq("id", String(link.id));
   }
 
   const originalSet = new Set(nextOriginal);
-  const [preparations, tracking, authorization] = await Promise.all([
+  const [preparations, tracking, stockConsumablesByProperty] = await Promise.all([
     loadPreparations(supabase, allTaskIds),
     loadDeliveryTracking(supabase, String(link.id)),
-    loadLatestRouteAuthorization(supabase, String(link.id)),
+    fetchStockConsumablesByProperty(supabase, [...currentTasks, ...nextTasks]),
   ]);
 
-  const currentRouteBags: any[] = currentTasks.map((task) =>
-    mapTask(task, preparations, tracking, new Map(), originalSet)
+  const currentRouteBags = currentTasks.map((task) =>
+    mapTask(task, preparations, tracking, stockConsumablesByProperty, originalSet)
   );
   const nextRouteBags = nextTasks.map((task) =>
-    mapTask(task, preparations, new Map(), new Map(), originalSet)
+    mapTask(task, preparations, new Map(), stockConsumablesByProperty, originalSet)
   );
 
-  const currentTaskSet = new Set(currentTaskIds);
-  const cancellationBags = routeEvents
-    .filter((event) => event.event_type === "task_cancelled" && !currentTaskSet.has(String(event.task_id ?? "")))
-    .map((event) => mapEventBag(event, preparations.get(String(event.task_id ?? "")), originalSet))
-    .filter((bag) => !bag.noveltyResolved);
-  const carryoverEventsByTask = new Map<string, JsonRecord>();
-  routeEvents.forEach((event) => {
-    if (event.event_type === "bag_issue"
-      && event.novelty_type === "carryover"
-      && !currentTaskSet.has(String(event.task_id ?? ""))) {
-      carryoverEventsByTask.set(String(event.task_id ?? ""), event);
-    }
-  });
-  const carryoverEvents = Array.from(carryoverEventsByTask.values());
-  const carryoverBags = carryoverEvents
-    .map((event) => mapEventBag(event, preparations.get(String(event.task_id ?? "")), originalSet))
-    .filter((bag) => !bag.noveltyResolved);
-  currentRouteBags.push(...cancellationBags, ...carryoverBags);
-
-  const actualUrgentBags = currentRouteBags.filter((bag) => bag.bagStatus.status === "pending" || bag.noveltyResolved === false);
-  const authorizedToContinue = authorizationCoversBags(authorization, actualUrgentBags);
-  const urgentBags = authorizedToContinue ? [] : actualUrgentBags;
+  const urgentBags = currentRouteBags.filter((bag) => bag.bagStatus.status === "pending");
   const nextPendingBags = nextRouteBags.filter((bag) => bag.bagStatus.status === "pending");
-  const routePending = ROUTE_DELIVERY_ENABLED && currentRouteBags
-    .filter((bag) => !bag.isCancelled)
-    .some((bag) => (
-      bag.deliveryTracking.collectionStatus !== "collected"
-      || (bag.bagStatus.status !== "issue" && bag.deliveryTracking.deliveryStatus !== "delivered")
-    ));
   const blockingStep = urgentBags.length > 0
     ? "urgent"
-    : routePending
-      ? "deliver"
-      : nextPendingBags.length > 0
-        ? "prepare_next"
-        : "complete";
+    : nextPendingBags.length > 0
+      ? "prepare_next"
+      : "deliver";
 
   return {
     workflowVersion,
@@ -993,13 +655,11 @@ async function loadWorkflow(
       nextRouteDates,
     },
     blockingStep,
-    authorizedToContinue,
-    authorization,
     urgentBags,
     nextRouteBags,
     currentRouteBags,
     stats: {
-      urgentPending: actualUrgentBags.length,
+      urgentPending: urgentBags.length,
       nextTotal: nextRouteBags.length,
       nextPrepared: nextRouteBags.filter((bag) => bag.bagStatus.status === "prepared").length,
       nextIssues: nextRouteBags.filter((bag) => bag.bagStatus.status === "issue").length,
@@ -1015,42 +675,17 @@ function recalculateWorkflowStats(workflow: JsonRecord): JsonRecord {
   const nextRouteBags = Array.isArray(workflow.nextRouteBags) ? workflow.nextRouteBags as JsonRecord[] : [];
   const urgentBags = currentRouteBags.filter((bag) => {
     const bagStatus = bag.bagStatus && typeof bag.bagStatus === "object" ? bag.bagStatus as JsonRecord : {};
-    return bagStatus.status === "pending" || bag.noveltyResolved === false;
+    return bagStatus.status === "pending";
   });
   const nextPendingBags = nextRouteBags.filter((bag) => {
     const bagStatus = bag.bagStatus && typeof bag.bagStatus === "object" ? bag.bagStatus as JsonRecord : {};
     return bagStatus.status === "pending";
   });
 
-  const authorization = workflow.authorization && typeof workflow.authorization === "object"
-    ? workflow.authorization as JsonRecord
-    : null;
-  const authorizedToContinue = authorizationCoversBags(authorization, urgentBags);
-  const visibleUrgentBags = authorizedToContinue ? [] : urgentBags;
-  const routePending = ROUTE_DELIVERY_ENABLED && currentRouteBags
-    .filter((bag) => bag.isCancelled !== true)
-    .some((bag) => {
-      const tracking = bag.deliveryTracking && typeof bag.deliveryTracking === "object"
-        ? bag.deliveryTracking as JsonRecord
-        : {};
-      const bagStatus = bag.bagStatus && typeof bag.bagStatus === "object"
-        ? bag.bagStatus as JsonRecord
-        : {};
-      return tracking.collectionStatus !== "collected"
-        || (bagStatus.status !== "issue" && tracking.deliveryStatus !== "delivered");
-    });
-
   return {
     ...workflow,
-    urgentBags: visibleUrgentBags,
-    authorizedToContinue,
-    blockingStep: visibleUrgentBags.length > 0
-      ? "urgent"
-      : routePending
-        ? "deliver"
-        : nextPendingBags.length > 0
-          ? "prepare_next"
-          : "complete",
+    urgentBags,
+    blockingStep: urgentBags.length > 0 ? "urgent" : nextPendingBags.length > 0 ? "prepare_next" : "deliver",
     stats: {
       urgentPending: urgentBags.length,
       nextTotal: nextRouteBags.length,
@@ -1078,7 +713,7 @@ function recalculateWorkflowStats(workflow: JsonRecord): JsonRecord {
 function applyActionToWorkflow(
   workflow: JsonRecord,
   taskId: string,
-  action: "prepare" | "issue" | "critical_block" | "collect" | "deliver" | "confirm_no_carry" | "undo_bag",
+  action: "prepare" | "issue" | "collect" | "deliver",
   issueReason = "",
 ): JsonRecord {
   const updateBag = (bag: JsonRecord): JsonRecord => {
@@ -1091,39 +726,17 @@ function applyActionToWorkflow(
           ...(bag.bagStatus && typeof bag.bagStatus === "object" ? bag.bagStatus as JsonRecord : {}),
           status: "prepared",
           issueReason: null,
-          preparedAt: new Date().toISOString(),
         },
-        noveltyResolved: true,
-        isCancelled: false,
       };
     }
 
-    if (action === "issue" || action === "critical_block") {
+    if (action === "issue") {
       return {
         ...bag,
         bagStatus: {
           ...(bag.bagStatus && typeof bag.bagStatus === "object" ? bag.bagStatus as JsonRecord : {}),
           status: "issue",
           issueReason,
-        },
-        noveltyResolved: true,
-      };
-    }
-
-    if (action === "confirm_no_carry") {
-      return { ...bag, noveltyResolved: true };
-    }
-
-    if (action === "undo_bag") {
-      return {
-        ...bag,
-        noveltyResolved: true,
-        noveltyType: "undone",
-        isCancelled: true,
-        cancellationStage: "after_preparation",
-        bagStatus: {
-          ...(bag.bagStatus && typeof bag.bagStatus === "object" ? bag.bagStatus as JsonRecord : {}),
-          status: "prepared",
         },
       };
     }
@@ -1153,31 +766,7 @@ function applyActionToWorkflow(
   });
 }
 
-function applyBuildingCompletionToWorkflow(workflow: JsonRecord, taskIds: string[]): JsonRecord {
-  const selectedTaskIds = new Set(taskIds);
-  const currentRouteBags = Array.isArray(workflow.currentRouteBags)
-    ? (workflow.currentRouteBags as JsonRecord[]).map((bag) => {
-      if (!selectedTaskIds.has(String(bag.taskId))) return bag;
-      const tracking = bag.deliveryTracking && typeof bag.deliveryTracking === "object"
-        ? bag.deliveryTracking as JsonRecord
-        : {};
-      const bagStatus = bag.bagStatus && typeof bag.bagStatus === "object"
-        ? bag.bagStatus as JsonRecord
-        : {};
-      return {
-        ...bag,
-        deliveryTracking: {
-          ...tracking,
-          collectionStatus: "collected",
-          deliveryStatus: bagStatus.status === "issue" ? tracking.deliveryStatus : "delivered",
-        },
-      };
-    })
-    : [];
-  return recalculateWorkflowStats({ ...workflow, currentRouteBags });
-}
-
-Deno.serve(async (req) => {
+serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
   if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
 
@@ -1189,73 +778,22 @@ Deno.serve(async (req) => {
     const token = typeof body.token === "string" ? body.token.trim() : "";
     const action = (typeof body.action === "string" ? body.action : "load") as RouteAction;
     const taskId = typeof body.taskId === "string" ? body.taskId : null;
-    const taskIds: string[] = Array.isArray(body.taskIds)
-      ? Array.from(new Set<string>(body.taskIds.filter((value: unknown): value is string => typeof value === "string" && value.length > 0)))
-      : [];
     const issueReason = typeof body.issueReason === "string" ? body.issueReason.trim() : "";
     const sessionToken = typeof body.sessionToken === "string" ? body.sessionToken.trim() : "";
 
     if (!token) return json({ error: "Token requerido" }, 400);
 
     if (action !== "load") {
-      const workflow = await loadWorkflow(supabase, token, serviceKey);
+      const workflow = await loadWorkflow(supabase, token);
       if ("notFound" in workflow) return json({ error: "Enlace no valido" }, 404);
       if ("expired" in workflow) return json({ error: "Enlace expirado" }, 410);
       if (workflow.workflowVersion !== "route_v2" || !("link" in workflow)) {
         return json({ error: "El enlace no usa el flujo nuevo" }, 400);
       }
-
       const access = await resolveRouteActor(supabase, workflow as JsonRecord, sessionToken);
       if (access.required && !access.actor) {
         return json({ error: "Identificate con tu PIN para continuar", code: "ROUTE_SESSION_REQUIRED" }, 401);
       }
-
-      if (action === "complete_building") {
-        if (taskIds.length === 0 || taskIds.length > 100) {
-          return json({ error: "Seleccion de apartamentos no valida" }, 400);
-        }
-        const currentTaskIds = new Set((workflow.currentRouteBags ?? []).map((bag: JsonRecord) => String(bag.taskId)));
-        if (taskIds.some((selectedTaskId) => !currentTaskIds.has(selectedTaskId))) {
-          return json({ error: "Alguna tarea no pertenece a la ruta actual" }, 400);
-        }
-        const issueTaskIds = new Set((workflow.currentRouteBags ?? [])
-          .filter((bag: JsonRecord) => {
-            const bagStatus = bag.bagStatus && typeof bag.bagStatus === "object"
-              ? bag.bagStatus as JsonRecord
-              : {};
-            return taskIds.includes(String(bag.taskId)) && bagStatus.status === "issue";
-          })
-          .map((bag: JsonRecord) => String(bag.taskId)));
-        await completeRouteBuilding(supabase, String(workflow.link.id), taskIds, issueTaskIds);
-        const issueBags = (workflow.currentRouteBags ?? [])
-          .filter((bag: JsonRecord) => issueTaskIds.has(String(bag.taskId)));
-        await Promise.all(issueBags.map((bag: JsonRecord) => {
-          const bagStatus = bag.bagStatus && typeof bag.bagStatus === "object"
-            ? bag.bagStatus as JsonRecord
-            : {};
-          return recordIssueForNextRoute(
-            supabase,
-            workflow as JsonRecord,
-            String(bag.taskId),
-            String(bagStatus.issueReason ?? "Incidencia pendiente de la ruta anterior"),
-            contentFromMappedBag(bag),
-          );
-        }));
-        await logRouteWorkerAction(
-          supabase,
-          String(workflow.link.id),
-          null,
-          action,
-          access.actor,
-          "",
-          taskIds,
-        );
-        return json({
-          success: true,
-          workflow: applyBuildingCompletionToWorkflow(workflow as JsonRecord, taskIds),
-        });
-      }
-
       if (!taskId) return json({ error: "taskId requerido" }, 400);
 
       const allowedTaskIds = new Set([
@@ -1264,71 +802,17 @@ Deno.serve(async (req) => {
       ]);
       if (!allowedTaskIds.has(taskId)) return json({ error: "La tarea no pertenece a esta ruta" }, 400);
 
-      const targetBag = [
-        ...(workflow.currentRouteBags ?? []),
-        ...(workflow.nextRouteBags ?? []),
-      ].find((bag: JsonRecord) => String(bag.taskId) === taskId) as JsonRecord | undefined;
-      const contentSnapshot = targetBag ? contentFromMappedBag(targetBag) : undefined;
-
       if (action === "prepare") {
-        await upsertPreparation(supabase, String(workflow.link.id), taskId, "prepared", undefined, contentSnapshot, access.actor);
-      } else if (action === "issue" || action === "critical_block") {
+        const bag = [...workflow.currentRouteBags, ...workflow.nextRouteBags].find((item) => item.taskId === taskId);
+        await upsertPreparation(supabase, String(workflow.link.id), taskId, "prepared", undefined, access.actor, bag);
+      } else if (action === "issue") {
         if (issueReason.length < 3) return json({ error: "El motivo de incidencia es obligatorio" }, 400);
-        await upsertPreparation(supabase, String(workflow.link.id), taskId, "issue", issueReason, contentSnapshot, access.actor);
-        await recordIssueForNextRoute(supabase, workflow as JsonRecord, taskId, issueReason, contentSnapshot);
-      } else if (action === "confirm_no_carry" || action === "undo_bag") {
-        if (action === "confirm_no_carry" && (!targetBag?.isCancelled || targetBag.cancellationStage === "after_preparation")) {
-          return json({ error: "Esta bolsa debe marcarse como deshecha" }, 400);
-        }
-        if (action === "undo_bag" && (!targetBag?.isCancelled || targetBag.cancellationStage !== "after_preparation")) {
-          return json({ error: "Solo se puede deshacer una bolsa cancelada después de prepararla" }, 400);
-        }
-        await updateRoutePreparationAction(supabase, String(workflow.link.id), taskId, action, contentSnapshot);
+        await upsertPreparation(supabase, String(workflow.link.id), taskId, "issue", issueReason, access.actor);
       } else if (action === "collect" || action === "deliver") {
         const currentTaskIds = new Set((workflow.currentRouteBags ?? []).map((bag: JsonRecord) => String(bag.taskId)));
         if (!currentTaskIds.has(taskId)) return json({ error: "Solo se puede recoger o entregar la ruta actual" }, 400);
-        const targetBagStatus = targetBag?.bagStatus && typeof targetBag.bagStatus === "object"
-          ? targetBag.bagStatus as JsonRecord
-          : {};
-        if (action === "deliver" && targetBagStatus.status === "issue") {
-          return json({ error: "Una bolsa con incidencia solo se puede recoger" }, 400);
-        }
-        await updateRouteDeliveryStatus(supabase, String(workflow.link.id), taskId, action);
-        if (action === "collect" && targetBagStatus.status === "issue") {
-          await recordIssueForNextRoute(
-            supabase,
-            workflow as JsonRecord,
-            taskId,
-            String(targetBagStatus.issueReason ?? "Incidencia pendiente de la ruta anterior"),
-            contentSnapshot,
-          );
-        }
-      }
-
-      const eventType = action === "prepare"
-        ? "bag_prepared"
-        : action === "issue"
-          ? "bag_issue"
-          : action === "critical_block"
-            ? "critical_block"
-          : action === "confirm_no_carry"
-            ? "bag_no_carry"
-            : action === "undo_bag"
-              ? "bag_undo"
-              : null;
-      if (eventType) {
-        await recordEvent(supabase, {
-          sede_id: workflow.link.sedeId,
-          share_link_id: workflow.link.id,
-          delivery_date: (workflow.route as JsonRecord).deliveryDate,
-          task_id: taskId,
-          event_type: eventType,
-          novelty_type: action === "undo_bag" ? "undone" : targetBag?.noveltyType ?? null,
-          property_code: targetBag?.propertyCode ?? null,
-          event_key: `bag-action:${eventType}:${workflow.link.id}:${taskId}:${Date.now()}`,
-          payload: { issueReason: issueReason || null, content: contentSnapshot ?? null },
-          actor_name: access.actor?.workerName ?? "Equipo de ruta",
-        });
+        await processRouteInventory(supabase, taskId, action, access.actor);
+        await upsertDeliveryTracking(supabase, String(workflow.link.id), taskId, action, access.actor);
       }
 
       await logRouteWorkerAction(
@@ -1346,7 +830,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    const workflow = await loadWorkflow(supabase, token, serviceKey);
+    const workflow = await loadWorkflow(supabase, token);
     if ("notFound" in workflow) return json({ error: "Enlace no valido" }, 404);
     if ("expired" in workflow) return json({ error: "Enlace expirado" }, 410);
     if (workflow.workflowVersion === "route_v2" && "link" in workflow) {

@@ -24,11 +24,11 @@ import { cn } from '@/lib/utils';
 const stockItems = [
   { title: 'Dashboard', href: '/inventory', icon: BarChart3 },
   { title: 'Stock global', href: '/inventory/stock', icon: Package },
-  { title: 'Lavanderia', href: '/inventory/laundry', icon: Shirt },
+  { title: 'Lavandería', href: '/inventory/laundry', icon: Shirt },
   { title: 'Amenities', href: '/inventory/amenities', icon: Droplets },
   { title: 'Almacenes', href: '/inventory/warehouses', icon: Building2 },
   { title: 'Movimientos', href: '/inventory/movements', icon: ArchiveRestore },
-  { title: 'Configuracion', href: '/inventory/config', icon: Settings2 },
+  { title: 'Configuración', href: '/inventory/config', icon: Settings2 },
 ];
 
 const navItemClass = ({ isActive }: { isActive: boolean }) =>

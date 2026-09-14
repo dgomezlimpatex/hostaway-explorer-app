@@ -172,7 +172,7 @@ export default function WorkersPage() {
                 Trabajadores
               </h1>
               <p className="text-sm text-slate-500">
-                Edita datos, contratos, ausencias y acceso desde una única ficha.
+                Edita datos, horas, ausencias y acceso desde una única ficha.
               </p>
             </div>
           </div>

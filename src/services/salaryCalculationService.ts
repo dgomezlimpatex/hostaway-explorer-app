@@ -1,6 +1,7 @@
 import { TimeLog, WorkerContract, SalaryCalculation } from '@/types/calendar';
 import { timeLogsStorage } from './storage/timeLogsStorage';
 import { workerContractsStorage } from './storage/workerContractsStorage';
+import { cleanerStorage } from './storage/cleanerStorage';
 
 export interface SalaryPeriod {
   startDate: Date;
@@ -14,10 +15,14 @@ export class SalaryCalculationService {
     
     // Get worker contract
     const contracts = await workerContractsStorage.getByCleanerId(cleanerId);
-    const contract = contracts.find(c => c.isActive);
-    if (!contract) {
+    const storedContract = contracts.find(c => c.isActive);
+    if (!storedContract) {
       throw new Error('No se encontró contrato activo para el trabajador');
     }
+    const worker = await cleanerStorage.getById(cleanerId);
+    if (!worker) throw new Error('No se encontró la ficha del trabajador');
+    // Keep payment terms, but weekly hours always come from the worker profile.
+    const contract = { ...storedContract, contractHoursPerWeek: worker.contractHoursPerWeek ?? 0 };
 
     // Get time logs for the period
     const timeLogs = await timeLogsStorage.getByCleanerAndDateRange(

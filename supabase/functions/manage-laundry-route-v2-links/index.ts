@@ -1,4 +1,5 @@
 import { createClient } from "npm:@supabase/supabase-js@2.50.0";
+import { bagRequirementsSignature } from "../_shared/laundryBagRequirements.ts";
 import {
   assertAdminManagerOrServiceRole,
   authorizationErrorResponse,
@@ -225,13 +226,7 @@ function bagContent(task: JsonRecord): JsonRecord {
 }
 
 function taskSignature(task: JsonRecord): string {
-  const content = bagContent(task);
-  return JSON.stringify({
-    ...content,
-    checkOut: task.check_out ?? null,
-    checkIn: task.check_in ?? null,
-    status: task.status ?? null,
-  });
+  return bagRequirementsSignature(bagContent(task));
 }
 
 async function loadSchedules(supabase: ReturnType<typeof createClient>, sedeId: string): Promise<RouteSchedule[]> {
@@ -466,7 +461,9 @@ async function reconcileLink(
     const snapshot = snapshots.get(taskId);
     const knownBefore = previousTaskIds.has(taskId) || Boolean(snapshot);
     const isNew = !isInitialSnapshot && !knownBefore;
-    const isChanged = Boolean(snapshot && getString(snapshot.task_signature) !== signature);
+    const previousContent = preparation?.content_snapshot ?? snapshot?.content;
+    const isChanged = Boolean(previousContent && typeof previousContent === "object"
+      && bagRequirementsSignature(previousContent as JsonRecord) !== signature);
     const wasCancelled = preparation?.route_novelty_type === "cancelled_before"
       || preparation?.route_novelty_type === "cancelled_after";
     const isCurrentRouteTask = currentTasks.some((currentTask) => getString(currentTask.id) === taskId);
@@ -486,7 +483,7 @@ async function reconcileLink(
         content,
       });
       if (error) throw error;
-    } else if (!preparation || preparation.status !== "prepared") {
+    } else if (getString(snapshot.task_signature) !== signature || JSON.stringify(snapshot.content) !== JSON.stringify(content)) {
       const { error } = await supabase
         .from("laundry_route_v2_bag_snapshots")
         .update({ task_signature: signature, content, updated_at: now })
@@ -502,7 +499,7 @@ async function reconcileLink(
         content_snapshot: content,
         snapshot_locked_at: now,
         route_novelty_type: isNew ? "new" : "normal",
-        route_novelty_resolved: !isNew,
+        route_novelty_resolved: true,
         route_last_seen_signature: signature,
       }).select("*").single();
       if (error) throw error;
@@ -510,25 +507,27 @@ async function reconcileLink(
     } else {
       const patch: JsonRecord = {
         route_last_seen_signature: signature,
+        route_novelty_resolved: true,
         updated_at: now,
       };
       if ((!preparation.content_snapshot || typeof preparation.content_snapshot !== "object" || Object.keys(preparation.content_snapshot as JsonRecord).length === 0)
-        || preparation.status !== "prepared") {
-        patch.content_snapshot = content;
+        || preparation.status !== "prepared" || isChanged) {
+        const existingContent = preparation.content_snapshot as JsonRecord | null;
+        patch.content_snapshot = { ...content, ...(Array.isArray(existingContent?.stockConsumables) ? { stockConsumables: existingContent.stockConsumables } : {}) };
         patch.snapshot_locked_at = preparation.snapshot_locked_at ?? now;
       }
       if (wasCancelled) {
         patch.route_novelty_type = "changed";
-        patch.route_novelty_resolved = false;
+        patch.route_novelty_resolved = true;
         patch.cancelled_at = null;
         patch.cancelled_by_name = null;
         if (preparation.status === "prepared") patch.status = "pending";
       } else if (isNew) {
         patch.route_novelty_type = "new";
-        patch.route_novelty_resolved = false;
+        patch.route_novelty_resolved = true;
       } else if (isChanged) {
         patch.route_novelty_type = "changed";
-        patch.route_novelty_resolved = false;
+        patch.route_novelty_resolved = true;
         if (preparation.status === "prepared") patch.status = "pending";
       } else if (isIssueCarryover) {
         patch.route_novelty_type = "carryover";
@@ -583,7 +582,7 @@ async function reconcileLink(
       const noveltyType: RouteNovelty = wasPrepared ? "cancelled_after" : "cancelled_before";
       const patch: JsonRecord = {
         route_novelty_type: noveltyType,
-        route_novelty_resolved: false,
+        route_novelty_resolved: true,
         cancelled_at: now,
         cancelled_by_name: "Sincronización de ruta",
         last_share_link_id: link.id,
@@ -844,46 +843,7 @@ Deno.serve(async (req) => {
     const requestedSedeId = typeof body.sedeId === "string" ? body.sedeId : null;
 
     if (action === "authorize_continue") {
-      if (actor.kind === "user" && actor.role !== "admin") {
-        return json({ error: "Solo un administrador puede autorizar una ruta incompleta" }, 403);
-      }
-      const shareLinkId = typeof body.shareLinkId === "string" ? body.shareLinkId : "";
-      const reason = typeof body.reason === "string" ? body.reason.trim() : "";
-      const affectedTaskIds = Array.isArray(body.affectedTaskIds) ? body.affectedTaskIds.filter((id: unknown) => typeof id === "string") : [];
-      if (!shareLinkId || reason.length < 3) return json({ error: "El motivo de autorización es obligatorio" }, 400);
-      const { data: link, error: linkError } = await supabase
-        .from("laundry_share_links")
-        .select("id, sede_id, delivery_date, workflow_version, auto_managed")
-        .eq("id", shareLinkId)
-        .eq("workflow_version", "route_v2")
-        .eq("auto_managed", true)
-        .maybeSingle();
-      if (linkError) throw linkError;
-      if (!link) return json({ error: "Ruta nueva no encontrada" }, 404);
-      if (!(await canAccessSede(supabase, actor, String(link.sede_id)))) return json({ error: "Sin acceso a esta sede" }, 403);
-      const { data: authUser } = actor.userId ? await supabase.auth.admin.getUserById(actor.userId) : { data: null };
-      const actorName = authUser?.user?.user_metadata?.full_name || authUser?.user?.email || (actor.kind === "service-role" ? "Automatización" : "Administrador");
-      const { data: authorization, error } = await supabase.from("laundry_route_v2_authorizations").insert({
-        sede_id: link.sede_id,
-        share_link_id: link.id,
-        delivery_date: link.delivery_date,
-        reason,
-        affected_task_ids: affectedTaskIds,
-        actor_id: actor.userId ?? null,
-        actor_name: actorName,
-      }).select("*").single();
-      if (error) throw error;
-      await recordEvent(supabase, {
-        sede_id: link.sede_id,
-        share_link_id: link.id,
-        delivery_date: link.delivery_date,
-        event_type: "admin_authorized",
-        event_key: `authorization:${authorization.id}`,
-        payload: { reason, affectedTaskIds },
-        actor_id: actor.userId ?? null,
-        actor_name: actorName,
-      });
-      return json({ success: true, authorization });
+      return json({ error: "La ruta se actualiza automáticamente y ya no requiere autorizaciones" }, 410);
     }
 
     if (action === "list") {

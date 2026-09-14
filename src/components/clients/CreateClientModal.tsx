@@ -62,9 +62,9 @@ export const CreateClientModal = () => {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button className="flex items-center gap-2">
+        <Button className="flex items-center gap-2 rounded-xl">
           <Plus className="h-4 w-4" />
-          Nuevo Cliente
+          Nuevo cliente
         </Button>
       </DialogTrigger>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">

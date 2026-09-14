@@ -1,129 +1,39 @@
-import React from 'react';
+import type { ReactNode } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
-import {
-  ArchiveRestore,
-  BarChart3,
-  Boxes,
-  Building2,
-  ClipboardList,
-  Droplets,
-  Home,
-  Package,
-  Settings2,
-  Shirt,
-} from 'lucide-react';
-import { AppHeader } from '@/components/layout/AppHeader';
-import { Button } from '@/components/ui/button';
-import {
-  Sidebar,
-  SidebarContent,
-  SidebarGroup,
-  SidebarGroupContent,
-  SidebarGroupLabel,
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
-  SidebarProvider,
-} from '@/components/ui/sidebar';
+import { ArchiveRestore, BarChart3, Boxes, Building2, ClipboardList, Droplets, Package, Settings2, Shirt } from 'lucide-react';
+import { SedeSelector } from '@/components/sede/SedeSelector';
 import { cn } from '@/lib/utils';
 import { StockWarehouseSelect } from './StockWarehouseSelect';
+import './inventory.css';
 
 const stockItems = [
-  { title: 'Dashboard', href: '/inventory', icon: BarChart3 },
+  { title: 'Resumen', href: '/inventory', icon: BarChart3 },
   { title: 'Stock global', href: '/inventory/stock', icon: Package },
-  { title: 'Lavanderia', href: '/inventory/laundry', icon: Shirt },
+  { title: 'Lavandería', href: '/inventory/laundry', icon: Shirt },
   { title: 'Amenities', href: '/inventory/amenities', icon: Droplets },
   { title: 'Almacenes', href: '/inventory/warehouses', icon: Building2 },
   { title: 'Movimientos', href: '/inventory/movements', icon: ArchiveRestore },
-  { title: 'Configuracion', href: '/inventory/config', icon: Settings2 },
-  { title: 'Reportes', href: '/inventory/reports', icon: ClipboardList },
+  { title: 'Informes', href: '/inventory/reports', icon: ClipboardList },
+  { title: 'Configuración', href: '/inventory/config', icon: Settings2 },
 ];
-
-function StockSidebar() {
+interface StockLayoutProps { title?: string; description?: string; children: ReactNode; actions?: ReactNode; showWarehouseSelect?: boolean; }
+export function StockLayout({ title = 'Inventario', description, children, actions, showWarehouseSelect = true }: StockLayoutProps) {
   const location = useLocation();
-
-  return (
-    <Sidebar className="w-64">
-      <SidebarContent>
-        <div className="p-4 border-b">
-          <NavLink
-            to="/"
-            className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
-          >
-            <Home className="h-4 w-4" />
-            Dashboard principal
-          </NavLink>
-        </div>
-
-        <SidebarGroup>
-          <SidebarGroupLabel className="flex items-center gap-2">
-            <Boxes className="h-4 w-4" />
-            Stock profesional
-          </SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {stockItems.map((item) => (
-                <SidebarMenuItem key={item.href}>
-                  <SidebarMenuButton asChild>
-                    <NavLink
-                      to={item.href}
-                      className={cn(
-                        'flex items-center gap-2 px-3 py-2 text-sm transition-colors',
-                        location.pathname === item.href
-                          ? 'bg-primary text-primary-foreground'
-                          : 'text-muted-foreground hover:text-foreground hover:bg-muted'
-                      )}
-                    >
-                      <item.icon className="h-4 w-4" />
-                      <span>{item.title}</span>
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-      </SidebarContent>
-    </Sidebar>
-  );
-}
-
-interface StockLayoutProps {
-  title?: string;
-  description?: string;
-  children: React.ReactNode;
-  actions?: React.ReactNode;
-  showWarehouseSelect?: boolean;
-}
-
-export function StockLayout({
-  title = 'Stock profesional',
-  description,
-  children,
-  actions,
-  showWarehouseSelect = true,
-}: StockLayoutProps) {
-  return (
-    <SidebarProvider>
-      <div className="flex min-h-screen w-full flex-col">
-        <AppHeader title="Stock profesional" showSidebarTrigger={true} />
-        <div className="flex flex-1">
-          <StockSidebar />
-          <main className="flex-1 p-4 md:p-6">
-            <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-              <div>
-                <h1 className="text-2xl font-bold tracking-tight md:text-3xl">{title}</h1>
-                {description && <p className="text-sm text-muted-foreground">{description}</p>}
-              </div>
-              <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-                {showWarehouseSelect && <StockWarehouseSelect />}
-                {actions}
-              </div>
-            </div>
-            {children}
-          </main>
-        </div>
+  const Icon = stockItems.find(item => item.href === location.pathname)?.icon || Boxes;
+  return <div className="inventory-workspace min-h-screen bg-slate-50/60">
+    <header className="border-b border-border/60 bg-background/90">
+      <div className="mx-auto flex max-w-[1440px] flex-wrap items-center justify-between gap-4 px-4 py-5 sm:px-6 lg:px-8">
+        <div className="flex min-w-0 items-center gap-3"><span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-primary text-primary-foreground shadow-sm"><Icon className="h-5 w-5" /></span><div><p className="text-[10px] font-bold uppercase tracking-[0.18em] text-primary">Inventario · Limpatex</p><h1 className="mt-0.5 text-xl font-bold tracking-tight sm:text-2xl">{title}</h1></div></div>
+        <SedeSelector />
+        {description && <p className="w-full text-sm text-muted-foreground">{description}</p>}
       </div>
-    </SidebarProvider>
-  );
+      <nav aria-label="Secciones de inventario" className="mx-auto flex max-w-[1440px] gap-1 overflow-x-auto px-4 pb-3 sm:px-6 lg:px-8">
+        {stockItems.map(item => <NavLink end key={item.href} to={item.href} className={({ isActive }) => cn('flex min-h-10 shrink-0 items-center gap-2 rounded-xl px-3 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary', isActive ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:bg-muted hover:text-foreground')}><item.icon className="h-4 w-4" />{item.title}</NavLink>)}
+      </nav>
+    </header>
+    <div className="mx-auto max-w-[1440px] space-y-5 p-4 sm:p-6 lg:p-8">
+      {(showWarehouseSelect || actions) && <div className="flex flex-wrap items-end justify-between gap-3 rounded-2xl border border-border/60 bg-background p-4">{showWarehouseSelect && <div className="min-w-0"><p className="mb-1.5 text-[11px] font-semibold text-muted-foreground">Consultar almacén</p><StockWarehouseSelect /></div>}<div className="flex flex-wrap items-center gap-2">{actions}</div></div>}
+      {children}
+    </div>
+  </div>;
 }

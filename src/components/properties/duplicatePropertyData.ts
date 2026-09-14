@@ -1,0 +1,35 @@
+import type { CreatePropertyData, Property } from '@/types/property';
+
+export function duplicatePropertyData(property: Property): CreatePropertyData {
+  return {
+        codigo: property.codigo ? `${property.codigo}-copia` : '',
+        nombre: `${property.nombre} (copia)`,
+        direccion: property.direccion,
+        numeroCamas: property.numeroCamas,
+        numeroCamasPequenas: property.numeroCamasPequenas,
+        numeroCamasSuite: property.numeroCamasSuite,
+        numeroSofasCama: property.numeroSofasCama,
+        numeroBanos: property.numeroBanos,
+        numeroCocinas: property.numeroCocinas ?? 1,
+        duracionServicio: property.duracionServicio,
+        costeServicio: property.costeServicio,
+        checkInPredeterminado: property.checkInPredeterminado,
+        checkOutPredeterminado: property.checkOutPredeterminado,
+        numeroSabanas: property.numeroSabanas,
+        numeroSabanasRequenas: property.numeroSabanasRequenas,
+        numeroSabanasSuite: property.numeroSabanasSuite,
+        numeroToallasGrandes: property.numeroToallasGrandes,
+        numeroTotallasPequenas: property.numeroTotallasPequenas,
+        numeroAlfombrines: property.numeroAlfombrines,
+        numeroFundasAlmohada: property.numeroFundasAlmohada,
+        kitAlimentario: property.kitAlimentario,
+        amenitiesBano: property.amenitiesBano,
+        amenitiesCocina: property.amenitiesCocina,
+        cantidadRollosPapelHigienico: property.cantidadRollosPapelHigienico,
+        cantidadRollosPapelCocina: property.cantidadRollosPapelCocina,
+        bayetasCocina: property.bayetasCocina,
+        bolsasBasura: property.bolsasBasura,
+        notas: property.notas,
+        clienteId: property.clienteId,
+      };
+}

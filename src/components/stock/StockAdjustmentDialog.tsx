@@ -57,11 +57,11 @@ export function StockAdjustmentDialog({ open, onOpenChange, level }: StockAdjust
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent className="max-h-[90dvh] overflow-y-auto rounded-2xl">
         <DialogHeader>
           <DialogTitle>Ajustar stock</DialogTitle>
           <DialogDescription>
-            {level?.product?.name || 'Producto'} en {level?.warehouse?.name || 'almacen'}
+            {level?.product?.name || 'Producto'} en {level?.warehouse?.name || 'almacén'}
           </DialogDescription>
         </DialogHeader>
 

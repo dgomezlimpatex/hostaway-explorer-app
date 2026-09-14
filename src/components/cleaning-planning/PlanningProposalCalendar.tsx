@@ -1,4 +1,7 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { usePlanningCalendarWeek } from '@/hooks/usePlanningCalendarWeek';
+import { planningCalendarWeeklyHours } from '@/utils/planningCalendarWeeklyHours';
+import { planningTaskLanes } from '@/utils/planningTaskLanes';
 import {
   DndContext,
   KeyboardSensor,
@@ -36,7 +39,6 @@ import {
   EffectiveWorkerAvailability,
 } from '@/types/cleaningPlanning';
 import { CleanerGroupAssignment } from '@/types/propertyGroups';
-import { minutesToHoursLabel } from '@/utils/cleaningPlanning';
 import { isTaskAssignedToCleaner } from '@/utils/taskAssignments';
 import {
   getTaskWorkerCount,
@@ -59,6 +61,7 @@ export interface PlanningProposalDraftWarning {
 }
 
 interface PlanningProposalCalendarProps {
+  selectedDay?: string;
   originalProposals: AssignmentProposal[];
   draftProposals: AssignmentProposal[];
   tasks: CleaningPlanningTask[];
@@ -77,7 +80,7 @@ type DragPayload = {
   proposalIndex?: number;
   sourceCleanerId?: string;
 };
-type SelectedTask = { taskId: string; proposalIndex?: number };
+type SelectedTask = { taskId: string; proposalIndex?: number; sourceCleanerId?: string };
 
 interface CalendarItem {
   id: string;
@@ -95,7 +98,6 @@ interface CalendarItem {
 }
 
 const PIXELS_PER_MINUTE = 1.4;
-const MIN_CARD_WIDTH = 112;
 const SNAP_MINUTES = 15;
 const QUARTER_HOUR_GRID_SIZE = SNAP_MINUTES * PIXELS_PER_MINUTE;
 const UNASSIGNED_PLACEMENT_ID = '__unassigned__';
@@ -104,10 +106,12 @@ const DraggableHandle = ({
   id,
   payload,
   disabled,
+  compact = false,
 }: {
   id: string;
   payload: DragPayload;
   disabled?: boolean;
+  compact?: boolean;
 }) => {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id,
@@ -120,7 +124,7 @@ const DraggableHandle = ({
       type="button"
       aria-label="Arrastrar para cambiar responsable u horario"
       data-dnd-handle
-      className={`min-h-[36px] min-w-[32px] touch-none rounded-lg p-1 text-[#310984] hover:bg-[#efe9fb] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#310984] ${isDragging ? 'opacity-40' : ''}`}
+      className={`${compact ? 'h-5 w-full shrink-0' : 'min-h-[36px] min-w-[32px] shrink-0 p-1'} touch-none rounded-lg text-[#310984] hover:bg-[#efe9fb] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#310984] ${isDragging ? 'opacity-40' : ''}`}
       onClick={(event) => event.stopPropagation()}
       {...listeners}
       {...attributes}
@@ -197,12 +201,12 @@ const toMinutes = (value?: string): number => {
   if (!match) return 9 * 60;
   return Math.max(
     0,
-    Math.min(23 * 60 + 59, Number(match[1]) * 60 + Number(match[2])),
+    Math.min(24 * 60, Number(match[1]) * 60 + Number(match[2])),
   );
 };
 
 const fromMinutes = (value: number): string => {
-  const clamped = Math.max(0, Math.min(23 * 60 + 59, value));
+  const clamped = Math.max(0, Math.min(24 * 60, value));
   return `${Math.floor(clamped / 60)
     .toString()
     .padStart(2, '0')}:${(clamped % 60).toString().padStart(2, '0')}`;
@@ -404,6 +408,7 @@ const buildDraftWarnings = ({
 };
 
 export const PlanningProposalCalendar = ({
+  selectedDay,
   originalProposals,
   draftProposals,
   calendarTasks,
@@ -416,14 +421,20 @@ export const PlanningProposalCalendar = ({
   onDraftWarningsChange,
 }: PlanningProposalCalendarProps) => {
   const dates = useMemo(
-    () => uniqueDates(calendarTasks, draftProposals),
-    [calendarTasks, draftProposals],
+    () => selectedDay ? [selectedDay] : uniqueDates(calendarTasks, draftProposals),
+    [calendarTasks, draftProposals, selectedDay],
   );
   const [selectedDate, setSelectedDate] = useState(() => dates[0] || '');
+  const weeklyQuery = usePlanningCalendarWeek(selectedDate);
+  const hoursScrollRef = useRef<HTMLDivElement>(null);
+  const timelineScrollRef = useRef<HTMLDivElement>(null);
   const [reassignment, setReassignment] = useState<SelectedTask | null>(null);
   const [selectedTask, setSelectedTask] = useState<SelectedTask | null>(null);
   const [placementCleanerId, setPlacementCleanerId] = useState('');
   const [placementStartTime, setPlacementStartTime] = useState('09:00');
+  const [editedExistingTaskIds, setEditedExistingTaskIds] = useState<Set<string>>(
+    () => new Set(),
+  );
   const [activeDrag, setActiveDrag] = useState<DragPayload | null>(null);
   const [dragHover, setDragHover] = useState<{
     cleanerId: string;
@@ -477,7 +488,7 @@ export const PlanningProposalCalendar = ({
   const calendarItems = useMemo<CalendarItem[]>(() => {
     const items: CalendarItem[] = [];
     calendarTasks.forEach((task) => {
-      if (draftedTaskIds.has(task.id)) return;
+      if (draftedTaskIds.has(task.id) || editedExistingTaskIds.has(task.id)) return;
       getAssignedCleanerIds(task, cleaners).forEach((cleanerId) => {
         items.push({
           id: `existing:${task.id}:${cleanerId}`,
@@ -489,7 +500,7 @@ export const PlanningProposalCalendar = ({
             cleanerById.get(cleanerId)?.name || task.cleaner || 'Sin nombre',
           startMinute: getTaskStart(task),
           endMinute: getTaskEnd(task),
-          editable: false,
+          editable: true,
           isManualChange: false,
         });
       });
@@ -525,7 +536,13 @@ export const PlanningProposalCalendar = ({
     draftProposals,
     originalProposals,
     taskById,
+    editedExistingTaskIds,
   ]);
+
+  const weeklyHours = useMemo(() => planningCalendarWeeklyHours(
+    weeklyQuery.data ?? [], cleaners, new Set(calendarTasks.map(task => task.id)), calendarItems,
+    weeklyQuery.startDate, weeklyQuery.endDate,
+  ), [weeklyQuery.data, weeklyQuery.startDate, weeklyQuery.endDate, cleaners, calendarTasks, calendarItems]);
 
   const warnings = useMemo(
     () =>
@@ -618,7 +635,7 @@ export const PlanningProposalCalendar = ({
       ),
       end: Math.min(
         23 * 60 + 59,
-        Math.ceil(Math.max(...(ends.length ? ends : [18 * 60]), 18 * 60) / 60) *
+        Math.ceil(Math.max(...(ends.length ? ends : [24 * 60]), 24 * 60) / 60) *
           60,
       ),
     };
@@ -752,26 +769,89 @@ export const PlanningProposalCalendar = ({
             fallbackMinute,
           );
     applyPlacement(
-      { taskId: payload.taskId, proposalIndex: payload.proposalIndex },
+      { taskId: payload.taskId, proposalIndex: payload.proposalIndex, sourceCleanerId: payload.sourceCleanerId },
       destinationId.slice(cleanerPrefix.length),
       fromMinutes(dropMinute),
     );
   };
 
-  const resetDraft = () =>
+  const resetDraft = () => {
+    setEditedExistingTaskIds(new Set());
     onDraftProposalsChange(
       originalProposals.map((proposal) => ({ ...proposal })),
     );
-  const openReassignment = (taskId: string, proposalIndex?: number) => {
+  };
+  const makeExistingProposal = (
+    task: CleaningPlanningTask,
+    cleanerId: string,
+    assignmentIndex: number,
+  ): AssignmentProposal => {
+    const cleaner = cleanerById.get(cleanerId);
+    const durationMinutes = getTaskWorkerPlannedDurationMinutes(task);
+    return {
+      taskId: task.id,
+      cleanerId,
+      cleanerName: cleaner?.name || task.cleaner || 'Sin nombre',
+      propertyGroupId:
+        task.detectedBuilding?.status === 'detected'
+          ? task.detectedBuilding.propertyGroupId
+          : undefined,
+      propertyGroupName:
+        task.detectedBuilding?.status === 'detected'
+          ? task.detectedBuilding.propertyGroupName
+          : undefined,
+      assignmentRole: assignmentIndex === 0 ? 'primary' : 'secondary',
+      durationMinutes,
+      proposedStartTime: task.startTime,
+      proposedEndTime: task.endTime,
+      requiredCleaners: Math.max(1, task.requiredCleaners || 1),
+      assignmentIndex,
+      confidence: 1,
+      reasons: ['Asignación existente editable durante la revisión'],
+      warnings: [],
+      capacityAfterAssignment: {
+        assignedMinutes: 0,
+        remainingMinutes: 0,
+      },
+    };
+  };
+  const openReassignment = (taskId: string, proposalIndex?: number, sourceCleanerId?: string) => {
     if (isStale) return;
     const task = taskById.get(taskId);
     if (!task) return;
+    let nextProposalIndex = proposalIndex;
+    if (proposalIndex === undefined) {
+      const existingCleanerIds = getAssignedCleanerIds(task, cleaners);
+      const existingProposals = existingCleanerIds.map((cleanerId, assignmentIndex) =>
+        makeExistingProposal(task, cleanerId, assignmentIndex),
+      );
+      const next = [
+        ...draftProposals,
+        ...existingProposals.filter(
+          (candidate) =>
+            !draftProposals.some(
+              (proposal) =>
+                proposal.taskId === candidate.taskId &&
+                proposal.cleanerId === candidate.cleanerId,
+            ),
+        ),
+      ];
+      nextProposalIndex = next.findIndex(
+        (proposal) =>
+          proposal.taskId === taskId &&
+          proposal.cleanerId === (sourceCleanerId || existingCleanerIds[0] || task.cleanerId),
+      );
+      setEditedExistingTaskIds((current) => new Set(current).add(taskId));
+      onDraftProposalsChange(next);
+    }
     const proposal =
-      proposalIndex === undefined ? undefined : draftProposals[proposalIndex];
+      nextProposalIndex === undefined ? undefined :
+        (draftProposals[nextProposalIndex] ||
+          makeExistingProposal(task, sourceCleanerId || getAssignedCleanerIds(task, cleaners)[0] || task.cleanerId || '', 0));
     setPlacementCleanerId(proposal?.cleanerId || '');
     setPlacementStartTime(fromMinutes(getTaskStart(task, proposal)));
-    setSelectedTask({ taskId, proposalIndex });
-    setReassignment({ taskId, proposalIndex });
+    setSelectedTask({ taskId, proposalIndex: nextProposalIndex });
+    setReassignment({ taskId, proposalIndex: nextProposalIndex });
   };
 
   const reassignmentTask = reassignment
@@ -911,15 +991,27 @@ export const PlanningProposalCalendar = ({
         remainingMinutes: 0,
       },
     };
+    // Dragging a saved assignment must preserve its coworkers in the replacement batch.
+    const base = [...draftProposals];
+    let targetIndex = directPlacement.proposalIndex;
+    if (targetIndex === undefined && directPlacement.sourceCleanerId) {
+      getAssignedCleanerIds(task, cleaners).forEach((id, index) => {
+        if (!base.some(proposal => proposal.taskId === task.id && proposal.cleanerId === id)) {
+          base.push(makeExistingProposal(task, id, index));
+        }
+      });
+      const found = base.findIndex(proposal => proposal.taskId === task.id && proposal.cleanerId === directPlacement.sourceCleanerId);
+      if (found >= 0) targetIndex = found;
+    }
     const next =
-      directPlacement.proposalIndex !== undefined
-        ? draftProposals.map((proposal, index) =>
-            index === directPlacement.proposalIndex
+      targetIndex !== undefined
+        ? base.map((proposal, index) =>
+            index === targetIndex
               ? { ...proposal, ...fields }
               : proposal,
           )
         : [
-            ...draftProposals,
+            ...base,
             {
               taskId: task.id,
               ...fields,
@@ -939,7 +1031,7 @@ export const PlanningProposalCalendar = ({
     onDraftProposalsChange(next);
     setSelectedTask({
       taskId: task.id,
-      proposalIndex: directPlacement.proposalIndex ?? next.length - 1,
+      proposalIndex: targetIndex ?? next.length - 1,
     });
     setMoveNotice({
       message: `${task.property} colocada con ${cleaner.name} a las ${startTime}.`,
@@ -1069,7 +1161,7 @@ export const PlanningProposalCalendar = ({
                   className="min-w-0 flex-1 p-2 text-left"
                   onClick={() =>
                     item.editable &&
-                    openReassignment(item.taskId, item.proposalIndex)
+                    openReassignment(item.taskId, item.proposalIndex, item.cleanerId)
                   }
                 >
                   <span
@@ -1092,7 +1184,7 @@ export const PlanningProposalCalendar = ({
                 </button>
                 {item.editable && (
                   <DraggableHandle
-                    id={`mobile:${item.proposalIndex}`}
+                    id={`mobile:${item.id}`}
                     payload={{
                       taskId: item.taskId,
                       proposalIndex: item.proposalIndex,
@@ -1105,8 +1197,8 @@ export const PlanningProposalCalendar = ({
             ))}
         </div>
 
-        <div className="hidden min-h-[620px] gap-3 lg:grid lg:grid-cols-1">
-          <aside className="rounded-2xl border border-red-200 bg-[#fffafa] shadow-sm lg:col-start-1 lg:row-start-1">
+        <div data-planning-board className="hidden min-h-[620px] items-start gap-3 lg:grid lg:grid-cols-[240px_minmax(0,1fr)] xl:grid-cols-[280px_minmax(0,1fr)]">
+          <aside aria-label="Tareas sin cubrir" data-planning-unassigned className="sticky top-4 flex max-h-[calc(100dvh-12rem)] min-h-0 flex-col self-start rounded-2xl border border-red-200 bg-[#fffafa] shadow-sm lg:col-start-1 lg:row-start-1">
             <div className="flex items-center justify-between border-b border-red-100 px-4 py-3">
               <div>
                 <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-red-600">
@@ -1120,7 +1212,7 @@ export const PlanningProposalCalendar = ({
                 {unassignedTasks.length}
               </span>
             </div>
-            <div className="grid max-h-[240px] gap-2 overflow-y-auto p-3 sm:grid-cols-2 xl:grid-cols-3">
+            <div data-planning-unassigned-list className="grid min-h-0 gap-2 overflow-y-auto overscroll-contain p-3">
               {unassignedTasks.length === 0 ? (
                 <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-center text-sm text-emerald-800">
                   <CheckCircle2 className="mx-auto mb-2 h-5 w-5" /> Todo
@@ -1166,7 +1258,7 @@ export const PlanningProposalCalendar = ({
 
           <section
             aria-label="Ver calendario por horas"
-            className="min-w-0 overflow-hidden rounded-2xl border border-[#310984]/10 bg-white shadow-sm lg:col-start-1 lg:row-start-2"
+            className="min-w-0 rounded-2xl border border-[#310984]/10 bg-white shadow-sm lg:col-start-2 lg:row-start-1"
           >
             <div className="flex items-center justify-between border-b border-[#310984]/10 px-4 py-3">
               <div>
@@ -1191,10 +1283,18 @@ export const PlanningProposalCalendar = ({
                 )}
               </div>
             </div>
-            <div className="overflow-x-auto">
+            <div data-planning-hours-sticky className="sticky top-0 z-30 bg-[#faf9fd] shadow-sm">
+              <div
+                ref={hoursScrollRef}
+                data-planning-hours-scroll
+                className="overflow-x-hidden"
+                onScroll={(event) => {
+                  if (timelineScrollRef.current) timelineScrollRef.current.scrollLeft = event.currentTarget.scrollLeft;
+                }}
+              >
               <div className="min-w-max">
                 <div className="flex h-11 border-b border-[#310984]/10 bg-[#faf9fd]">
-                  <div className="sticky left-0 z-20 flex w-[170px] shrink-0 items-center border-r border-[#310984]/10 bg-[#faf9fd] px-3 text-[11px] font-bold uppercase tracking-[0.14em] text-[#6b627a]">
+                  <div className="sticky left-0 z-20 flex w-[300px] shrink-0 items-center border-r border-[#310984]/10 bg-[#faf9fd] px-3 text-[11px] font-bold uppercase tracking-[0.14em] text-[#6b627a]">
                     Trabajadora
                   </div>
                   <div className="relative" style={{ width: timelineWidth }}>
@@ -1211,6 +1311,18 @@ export const PlanningProposalCalendar = ({
                     ))}
                   </div>
                 </div>
+              </div>
+              </div>
+            </div>
+            <div
+              ref={timelineScrollRef}
+              data-planning-timeline-scroll
+              className="overflow-x-auto rounded-b-2xl"
+              onScroll={(event) => {
+                if (hoursScrollRef.current) hoursScrollRef.current.scrollLeft = event.currentTarget.scrollLeft;
+              }}
+            >
+              <div className="min-w-max">
                 {visibleCleaners.length === 0 ? (
                   <div className="flex min-h-[300px] items-center justify-center text-sm text-[#6b627a]">
                     No hay trabajadoras disponibles.
@@ -1222,29 +1334,23 @@ export const PlanningProposalCalendar = ({
                       .sort(
                         (left, right) => left.startMinute - right.startMinute,
                       );
+                    const layout = planningTaskLanes(cleanerItems, bounds.start, PIXELS_PER_MINUTE);
                     const availability = effectiveAvailability.find(
                       (item) =>
                         item.date === selectedDate &&
                         item.cleanerId === cleaner.id,
                     );
-                    const usedMinutes = cleanerItems.reduce(
-                      (sum, item) => sum + item.endMinute - item.startMinute,
-                      0,
-                    );
-                    const capacityPercent = Math.min(
-                      100,
-                      Math.round(
-                        (usedMinutes /
-                          Math.max(1, availability?.availableMinutes || 480)) *
-                          100,
-                      ),
-                    );
+                    const assignedHours = weeklyHours.get(cleaner.id) ?? 0;
+                    const contractHours = Math.max(0, Number(cleaner.contractHoursPerWeek) || 0);
+                    const capacityPercent = contractHours > 0 ? Math.min(100, assignedHours / contractHours * 100) : 0;
+                    const weeklyReady = !weeklyQuery.isPending && !weeklyQuery.isError;
+                    const hoursLabel = (hours:number) => hours.toLocaleString('es-ES',{maximumFractionDigits:2});
                     return (
                       <div
                         key={cleaner.id}
                         className="flex min-h-[92px] border-b border-[#310984]/8 last:border-b-0"
                       >
-                        <div className="sticky left-0 z-10 flex w-[170px] shrink-0 items-center gap-2 border-r border-[#310984]/10 bg-white px-3">
+                        <div className="sticky left-0 z-10 flex w-[300px] shrink-0 items-center gap-2 border-r border-[#310984]/10 bg-white px-3 py-2">
                           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#efe9fb] text-xs font-bold text-[#310984]">
                             {cleaner.name
                               .split(' ')
@@ -1253,20 +1359,22 @@ export const PlanningProposalCalendar = ({
                               .join('')}
                           </div>
                           <div className="min-w-0 flex-1">
-                            <p className="truncate text-sm font-bold text-[#171321]">
+                            <p className="break-words text-sm font-bold leading-tight text-[#171321]">
                               {cleaner.name}
                             </p>
                             <p
+                              title={`Semana ${weeklyQuery.startDate} — ${weeklyQuery.endDate}. Horas asignadas, incluida esta propuesta, / horas de contrato de la ficha.`}
                               className={`text-[11px] font-semibold ${availability?.isAvailable === false ? 'text-red-600' : 'text-emerald-700'}`}
                             >
-                              {availability?.isAvailable === false
-                                ? 'No disponible'
-                                : `${minutesToHoursLabel(usedMinutes)} planificadas`}
+                              {weeklyQuery.isError ? 'No se pudo cargar la semana' : !weeklyReady ? 'Cargando semana…'
+                                : `${hoursLabel(assignedHours)} / ${contractHours > 0 ? hoursLabel(contractHours) : '—'} h · semana`}
                             </p>
+                            {weeklyReady && contractHours === 0 && <p className="text-[10px] text-[#6b627a]">Sin horas de contrato</p>}
+                            {availability?.isAvailable === false && <p className="text-[10px] text-red-600">No disponible hoy</p>}
                             <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-[#eeeaf5]">
                               <div
-                                className={`h-full rounded-full ${capacityPercent > 90 ? 'bg-amber-500' : 'bg-emerald-500'}`}
-                                style={{ width: `${capacityPercent}%` }}
+                                className={`h-full rounded-full ${assignedHours > contractHours && contractHours > 0 ? 'bg-red-500' : capacityPercent >= 85 ? 'bg-amber-500' : 'bg-emerald-500'}`}
+                                style={{ width: `${weeklyReady ? capacityPercent : 0}%` }}
                               />
                             </div>
                           </div>
@@ -1278,8 +1386,9 @@ export const PlanningProposalCalendar = ({
                         >
                           <div
                             data-quarter-hour-grid
-                            className="relative h-[92px]"
+                            className="relative"
                             style={{
+                              height: layout.height,
                               width: timelineWidth,
                               backgroundImage:
                                 'linear-gradient(to right, rgba(49,9,132,0.045) 1px, transparent 1px), linear-gradient(to right, rgba(49,9,132,0.12) 1px, transparent 1px)',
@@ -1298,18 +1407,7 @@ export const PlanningProposalCalendar = ({
                                 }}
                               />
                             )}
-                            {cleanerItems.map((item) => {
-                              const left = Math.max(
-                                0,
-                                (item.startMinute - bounds.start) *
-                                  PIXELS_PER_MINUTE,
-                              );
-                              const width = Math.max(
-                                MIN_CARD_WIDTH,
-                                (item.endMinute - item.startMinute) *
-                                  PIXELS_PER_MINUTE -
-                                  5,
-                              );
+                            {layout.cards.map(({ item, left, width, lane, overlaps }) => {
                               const selected =
                                 selectedTask?.taskId === item.taskId &&
                                 selectedTask.proposalIndex ===
@@ -1323,24 +1421,29 @@ export const PlanningProposalCalendar = ({
                               return (
                                 <div
                                   key={item.id}
-                                  className={`absolute top-2 flex h-[76px] overflow-hidden rounded-xl border shadow-sm ${tone} ${selected ? 'ring-2 ring-[#310984] ring-offset-1' : ''}`}
-                                  style={{ left, width }}
+                                  title={`${item.task.propertyCode || item.task.property} · ${fromMinutes(item.startMinute)}-${fromMinutes(item.endMinute)}${overlaps ? ' · Coincide en horario con otra tarea de este trabajador' : ''}`}
+                                  className={`absolute flex ${width < 140 ? 'flex-col' : ''} h-[76px] overflow-hidden rounded-xl border shadow-sm ${tone} ${selected ? 'ring-2 ring-[#310984] ring-offset-1' : ''}`}
+                                  style={{ left, width, top: 8 + lane * 84 }}
                                 >
                                   <button
                                     type="button"
-                                    className="min-w-0 flex-1 p-2 text-left"
+                                    className="min-h-0 min-w-0 flex-1 overflow-hidden p-1 text-left"
                                     onClick={() =>
                                       openReassignment(
                                         item.taskId,
                                         item.proposalIndex,
+                                        item.cleanerId,
                                       )
                                     }
                                   >
-                                    <p className="truncate text-xs font-black">
+                                    <p className="flex items-center gap-1 text-[15px] font-semibold leading-tight text-[#171321]">
+                                      {overlaps && <AlertTriangle aria-label="Solapamiento de horario" className="h-3 w-3 shrink-0 text-amber-700" />}
+                                      <span className="truncate" title={item.task.propertyCode || item.task.property}>
                                       {item.task.propertyCode ||
                                         item.task.property}
+                                      </span>
                                     </p>
-                                    <p className="mt-1 truncate text-[10px] opacity-75">
+                                    <p className={`${width < 140 ? 'hidden' : ''} mt-1 truncate text-[10px] opacity-75`}>
                                       {item.task.detectedBuilding
                                         ?.propertyGroupName ||
                                         item.task.property}
@@ -1353,7 +1456,8 @@ export const PlanningProposalCalendar = ({
                                   </button>
                                   {item.editable && (
                                     <DraggableHandle
-                                      id={`desktop:${item.proposalIndex}`}
+                                      id={`desktop:${item.id}`}
+                                      compact={width < 140}
                                       payload={{
                                         taskId: item.taskId,
                                         proposalIndex: item.proposalIndex,

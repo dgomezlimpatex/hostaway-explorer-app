@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { addDays } from 'date-fns';
 import { useCleaningPlanning } from '@/hooks/useCleaningPlanning';
 import { useCleaningPlanningActions } from '@/hooks/useCleaningPlanningActions';
@@ -17,7 +17,9 @@ import {
 import { PropertyGroup, PropertyGroupAssignment } from '@/types/propertyGroups';
 import { Sede } from '@/types/sede';
 import { isOperationalCleaner } from '@/utils/cleaningPlanning';
-import { getTodayMadrid } from '@/utils/date';
+import { getTodayMadrid, formatMadridDate } from '@/utils/date';
+import { PlanningDayNavigation } from './PlanningDayNavigation';
+import { Button } from '@/components/ui/button';
 import { buildAssignmentProposal } from '@/utils/cleaning-planning/proposalEngine';
 import { applyBuildingOperationalWindow } from '@/utils/cleaning-planning/buildingOperationalWindow';
 import { buildProposalSignature } from '@/utils/cleaning-planning/proposalBatchApply';
@@ -190,9 +192,13 @@ export const CleaningPlanningPage = () => {
   const [preset, setPreset] = useState<PlanningRangePreset>('today');
   const [filters, setFilters] = useState<CleaningPlanningFilters>(defaultFilters);
   const [proposalState, setProposalState] = useState<ProposalState | null>(null);
+  const [calendarNavigation, setCalendarNavigation] = useState(false);
+  const [isSavingDay, setIsSavingDay] = useState(false);
+  const dayProposals = useRef(new Map<string, ProposalState>());
   const { planning, range, effectiveAvailability, isLoading, isError, refetch } = useCleaningPlanning({ date, preset });
   const { cleaners, refetch: refetchCleaners } = useCleaners();
   const { activeSede, availableSedes, setActiveSede } = useSede();
+  const dayKey = `${activeSede?.id}:${formatMadridDate(date)}:${preset}:${JSON.stringify(filters)}`;
   const buildingDataQuery = useCleaningPlanningBuildingData();
   const { applyProposal, isApplyingProposal } = useCleaningPlanningActions();
 
@@ -292,9 +298,34 @@ export const CleaningPlanningPage = () => {
     return nextProposal;
   };
 
+  const handleCalendarDateChange = (nextDate: Date) => {
+    if (isSavingDay || isApplyingProposal || formatMadridDate(nextDate) === formatMadridDate(date)) return;
+    if (proposalState) dayProposals.current.set(dayKey, proposalState);
+    setProposalState(null);
+    setCalendarNavigation(true);
+    setPreset('today');
+    setDate(nextDate);
+  };
+
+  useEffect(() => {
+    if (!calendarNavigation || isLoading || isError || !buildingDataReady || buildingDataQuery.isError) return;
+    if (range.startDate !== formatMadridDate(date) || range.endDate !== range.startDate) return;
+    const cached = dayProposals.current.get(dayKey);
+    const result = cached ?? {
+      result: buildAssignmentProposal({tasks:filteredUnassignedTasks,cleaners:operationalCleaners,availability:effectiveAvailability,cleanerGroupAssignments:buildingData.cleanerAssignments}),
+      contextKey:proposalContextKey,
+      tasksSnapshot:filteredUnassignedTasks,
+    };
+    setProposalState(result);
+    setCalendarNavigation(false);
+  }, [calendarNavigation,isLoading,isError,buildingDataReady,buildingDataQuery.isError,range.startDate,range.endDate,date,dayKey,filteredUnassignedTasks,operationalCleaners,effectiveAvailability,buildingData.cleanerAssignments,proposalContextKey]);
+
   const handleApplyProposal = async (draftProposals?: AssignmentProposal[]) => {
-    if (!proposal || proposal.proposals.length === 0 || isProposalStale) return;
+    if (!proposal || isProposalStale) return;
+    setIsSavingDay(true);
+    try {
     const proposalsToApply = draftProposals && draftProposals.length > 0 ? draftProposals : proposal.proposals;
+    if (proposalsToApply.length === 0) return;
     const proposalSignature = buildProposalSignature(proposalsToApply);
     const freshTasksResult = await refetch();
     if (freshTasksResult.isError || !freshTasksResult.data) {
@@ -305,11 +336,15 @@ export const CleaningPlanningPage = () => {
       proposalSignature,
       activeSedeId: activeSede?.id,
       activeCleanerIds: operationalCleaners.map((cleaner) => cleaner.id),
-      expectedTasks: proposalTasks,
+      expectedTasks: filteredTasks,
       freshTasks: freshTasksResult.data,
     });
+    dayProposals.current.delete(dayKey);
     setProposalState(null);
     await Promise.all([buildingDataQuery.refetch(), refetchCleaners()]);
+    } finally {
+      setIsSavingDay(false);
+    }
   };
 
   const advancedContent = (
@@ -351,9 +386,13 @@ export const CleaningPlanningPage = () => {
 
   return (
     <div className="min-h-screen bg-[#f7f5fb] p-3 text-[#171321] md:p-6">
+      {(proposalState || calendarNavigation) && <div className="mx-auto w-full max-w-[1920px]"><PlanningDayNavigation date={date} disabled={isApplyingProposal || isSavingDay} onChange={handleCalendarDateChange} /></div>}
       {proposalState ? (
         <div className="mx-auto w-full max-w-[1920px]">
           <AssignmentProposalPanel
+            key={dayKey}
+            draftScopeKey={dayKey}
+            selectedDay={range.startDate === range.endDate ? range.startDate : undefined}
             proposal={proposal}
             tasks={proposalTasks}
             calendarTasks={filteredTasks}
@@ -361,14 +400,18 @@ export const CleaningPlanningPage = () => {
             effectiveAvailability={effectiveAvailability}
             activeCleanerAssignments={buildingData.cleanerAssignments}
             excludedCleanerAssignments={buildingData.excludedCleanerAssignments}
-            isApplying={isApplyingProposal}
+            isApplying={isApplyingProposal || isSavingDay}
             isStale={isProposalStale}
             sedeName={activeSede?.nombre}
             isPartialScope={hasPartialScope}
             totalPendingTaskCount={enhancedUnassignedTasks.length}
             onApply={handleApplyProposal}
-            onClear={() => setProposalState(null)}
+            onClear={() => {dayProposals.current.delete(dayKey);setProposalState(null);setCalendarNavigation(false);}}
           />
+        </div>
+      ) : calendarNavigation ? (
+        <div className="mx-auto max-w-[1920px] rounded-2xl border bg-white p-8" role="status">
+          {isError || buildingDataQuery.isError ? <><p>No se pudo cargar este día. Tu borrador anterior se conserva.</p><Button variant="outline" onClick={()=>{void refetch();void buildingDataQuery.refetch();}}>Reintentar</Button></> : 'Cargando calendario…'}
         </div>
       ) : (
         <PlanningStartScreen
@@ -381,7 +424,7 @@ export const CleaningPlanningPage = () => {
           isLoading={isLoading || buildingDataQuery.isLoading}
           isError={isError}
           buildingDataError={buildingDataQuery.isError}
-          canGenerateProposal={filteredUnassignedTasks.length > 0 && buildingDataReady && !isError && !buildingDataQuery.isError}
+          canGenerateProposal={filteredTasks.length > 0 && buildingDataReady && !isError && !buildingDataQuery.isError}
           onDateChange={setDate}
           onSedeChange={handleSedeChange}
           onGenerateProposal={handleGenerateProposal}

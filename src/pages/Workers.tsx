@@ -1,5 +1,5 @@
 
-import WorkersPage from '@/components/workers/WorkersPage';
+import WorkersPage from '@/features/personnel/PersonnelDirectory';
 
 const Workers = () => {
   return <WorkersPage />;

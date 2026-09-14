@@ -101,6 +101,7 @@ const mapFixedDayOffFromDB = (row: WorkerFixedDayOffRow): WorkerFixedDayOff => (
 });
 
 const mapMaintenanceFromDB = (row: WorkerMaintenanceCleaningRow): WorkerMaintenanceCleaning => ({
+  scheduleType: (row as WorkerMaintenanceCleaningRow & { schedule_type?: WorkerMaintenanceCleaning["scheduleType"] }).schedule_type,
   id: row.id,
   cleanerId: row.cleaner_id,
   daysOfWeek: row.days_of_week,

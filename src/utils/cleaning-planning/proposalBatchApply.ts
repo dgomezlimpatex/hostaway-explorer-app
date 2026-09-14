@@ -231,7 +231,9 @@ export const validateProposalBatchForApply = ({
       return buildBlockedItem(plan, 'stale_task', 'La asignación actual de la tarea cambió desde que se generó la propuesta.');
     }
 
-    if (sameCleanerSet(plan.cleanerIds, freshCleanerIds)) {
+    if (sameCleanerSet(plan.cleanerIds, freshCleanerIds)
+      && (plan.proposedStartTime ?? freshTask.startTime) === freshTask.startTime
+      && (plan.proposedEndTime ?? freshTask.endTime) === freshTask.endTime) {
       return buildBlockedItem(plan, 'already_assigned', 'La propuesta no cambia la asignación actual de la tarea.');
     }
 

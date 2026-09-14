@@ -128,9 +128,14 @@ assert.match(proposalPanel, /max-w-\[1920px\]/, 'The approval bar must align wit
 assert.match(proposalPanel, /useSidebar\(\)/, 'The approval bar must follow the current desktop sidebar state');
 assert.match(proposalPanel, /sidebarState === 'expanded' \? '18rem' : '4rem'/, 'The approval bar must not overlap either sidebar width');
 assert.match(proposalCalendar, /PIXELS_PER_MINUTE = 1\.4/, 'The desktop timeline must reserve enough horizontal space for readable tasks');
-assert.match(proposalCalendar, /MIN_CARD_WIDTH = 112/, 'Short tasks must keep a readable minimum card width');
-assert.match(proposalCalendar, /lg:grid lg:grid-cols-1/, 'The calendar must use the full desktop workspace without a decision sidebar');
-assert.match(proposalCalendar, /sm:grid-cols-2 xl:grid-cols-3/, 'Uncovered tasks must move to a compact horizontal tray above the calendar');
+assert.match(proposalCalendar, /compact=\{width < 140\}/, 'Short tasks retain a dedicated drag handle without extending their time slot');
+assert.match(proposalCalendar, /source: 'existing'/, 'Previously assigned tasks must remain visible in the planning calendar');
+assert.match(proposalCalendar, /editedExistingTaskIds/, 'Previously assigned tasks must have an explicit editable state in the review draft');
+assert.match(proposalCalendar, /makeExistingProposal/, 'Opening a previously assigned task must convert its current assignment into an editable proposal');
+assert.match(proposalCalendar, /setEditedExistingTaskIds\(new Set\(\)\)/, 'Resetting the draft must restore previously assigned tasks as existing assignments');
+assert.match(proposalCalendar, /queda sin cubrir/, 'Previously assigned tasks must support being left unassigned');
+assert.match(proposalCalendar, /24 \* 60/, 'The planning timeline must support scheduling through 24:00');
+assert.match(proposalCalendar, /Math\.max\(\.\.\.\(ends\.length \? ends : \[24 \* 60\]\), 24 \* 60\)/, 'The planning timeline must always expose the full evening range through 24:00');
 assert.match(proposalCalendar, /Lista del reparto propuesto/, 'Proposal must provide a simple list before the technical timeline');
 assert.match(proposalCalendar, /Ver calendario por horas/, 'Technical timeline must be explicitly optional');
 assert.match(proposalCalendar, /manualChangeCount > 0/, 'Reset controls must appear only when the draft has manual changes');

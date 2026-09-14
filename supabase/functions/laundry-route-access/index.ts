@@ -22,6 +22,34 @@ const randomToken = () => {
   return Array.from(bytes).map((byte) => byte.toString(16).padStart(2, '0')).join('');
 };
 
+const COOLDOWN_MS = 10 * 60 * 1000;
+function attemptState(attempts: {successful: boolean; attempted_at: string}[], now: number) {
+  let failures: number[] = [];
+  let blockedUntil = 0;
+  for (const attempt of attempts) {
+    const at = Date.parse(attempt.attempted_at);
+    if (at < blockedUntil) continue;
+    if (blockedUntil) { failures = []; blockedUntil = 0; }
+    if (attempt.successful) { failures = []; continue; }
+    failures = failures.filter(time => time > at - COOLDOWN_MS);
+    failures.push(at);
+    if (failures.length >= 10) blockedUntil = at + COOLDOWN_MS;
+  }
+  if (blockedUntil <= now) {
+    if (blockedUntil) failures = [];
+    blockedUntil = 0;
+  }
+  return {blockedUntil, failures: failures.filter(time => time > now - COOLDOWN_MS).length};
+}
+
+function blockedResponse(blockedUntil: number, now: number) {
+  const retryAfterSeconds = Math.max(1, Math.ceil((blockedUntil - now) / 1000));
+  return new Response(JSON.stringify({
+    error: `Demasiados intentos desde esta IP. Espera ${Math.ceil(retryAfterSeconds / 60)} minutos antes de volver a probar.`,
+    retryAfterSeconds,
+  }), {status:429, headers:{...corsHeaders, 'Content-Type':'application/json', 'Retry-After':String(retryAfterSeconds)}});
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
   if (req.method !== 'POST') return json({ error: 'Method not allowed' }, 405);
@@ -71,22 +99,23 @@ Deno.serve(async (req) => {
       return json({ error: 'Introduce un PIN valido' }, 400);
     }
 
-    const ip = (req.headers.get('x-forwarded-for') || req.headers.get('cf-connecting-ip') || 'unknown')
+    const ip = (req.headers.get('x-forwarded-for') || req.headers.get('cf-connecting-ip') || '')
       .split(',')[0]
       .trim();
+    if (!ip) return json({ error: 'No se pudo identificar la conexion. Vuelve a intentarlo.' }, 503);
     const ipFingerprint = await sha256(`${link.id}:${ip}`);
-    const fifteenMinutesAgo = new Date(Date.now() - 15 * 60 * 1000).toISOString();
-    const { count: failedAttempts, error: attemptsError } = await supabase
+    const now = Date.now();
+    // Two windows retain the tenth failure for its full ten-minute cooldown.
+    const { data: attempts, error: attemptsError } = await supabase
       .from('laundry_route_access_attempts')
-      .select('id', { count: 'exact', head: true })
+      .select('successful, attempted_at')
       .eq('share_link_id', link.id)
       .eq('ip_fingerprint', ipFingerprint)
-      .eq('successful', false)
-      .gte('attempted_at', fifteenMinutesAgo);
+      .gte('attempted_at', new Date(now - 2 * COOLDOWN_MS).toISOString())
+      .order('attempted_at', { ascending: true });
     if (attemptsError) throw attemptsError;
-    if ((failedAttempts ?? 0) >= 5) {
-      return json({ error: 'Demasiados intentos. Espera 15 minutos antes de volver a probar.' }, 429);
-    }
+    const state = attemptState(attempts ?? [], now);
+    if (state.blockedUntil > now) return blockedResponse(state.blockedUntil, now);
 
     const workers = await listActiveRouteWorkers(supabase, link.sede_id);
     const pinChecks = await Promise.all(workers.map(async (worker) => {
@@ -105,7 +134,10 @@ Deno.serve(async (req) => {
       route_worker_id: routeWorker?.id ?? null,
       ip_fingerprint: ipFingerprint,
       successful: Boolean(routeWorker),
+      attempted_at: new Date(now).toISOString(),
     });
+
+    if (!routeWorker && state.failures >= 9) return blockedResponse(now + COOLDOWN_MS, now);
 
     if (matchingWorkers.length > 1) {
       return json({ error: 'Este PIN esta duplicado. Contacta con el administrador.' }, 409);

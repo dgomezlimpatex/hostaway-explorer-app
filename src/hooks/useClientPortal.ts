@@ -12,6 +12,7 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { useSede } from '@/contexts/SedeContext';
 import { buildReservationLogActor } from '@/lib/clientReservationLog';
+import { getClientPortalHistoryCutoff } from '@/components/client-portal/clientPortalVisibility';
 import {
   applyPortalOperationalStatuses,
   type PortalOperationalStatusRow,
@@ -972,11 +973,8 @@ export const useClientPortalBookings = (clientId: string | undefined) => {
     queryFn: async (): Promise<PortalBooking[]> => {
       if (!clientId) return [];
 
-      // Cutoff: only show reservations/tasks from the last 7 days onwards (incl. future)
-      const cutoffDate = new Date();
-      cutoffDate.setDate(cutoffDate.getDate() - 7);
-      cutoffDate.setHours(0, 0, 0, 0);
-      const cutoffIso = cutoffDate.toISOString().slice(0, 10);
+      // Rolling 30-day history in Madrid, recalculated on every refresh; future dates remain visible.
+      const cutoffIso = getClientPortalHistoryCutoff();
 
       // 0) Active property IDs for this client (exclude deactivated properties)
       const { data: activeProps, error: pErr } = await supabase

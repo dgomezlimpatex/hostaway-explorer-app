@@ -1,0 +1,34 @@
+import assert from 'node:assert/strict';
+import {build} from 'esbuild';
+import {readFileSync,readdirSync} from 'node:fs';
+import {chromium} from '@playwright/test';
+const result=await build({entryPoints:['src/utils/planningCalendarWeeklyHours.ts'],bundle:true,write:false,format:'esm',platform:'node'});
+const {planningWeekDates,planningCalendarWeeklyHours:sum}=await import(`data:text/javascript;base64,${Buffer.from(result.outputFiles[0].text).toString('base64')}`);
+assert.deepEqual(planningWeekDates('2026-09-15'),{startDate:'2026-09-14',endDate:'2026-09-20'});
+assert.deepEqual(planningWeekDates('2026-03-29'),{startDate:'2026-03-23',endDate:'2026-03-29'});
+assert.deepEqual(planningWeekDates('2027-01-01'),{startDate:'2026-12-28',endDate:'2027-01-03'});
+const task=(id,date,more={})=>({id,date,status:'pending',cleanerId:'a',propertyDurationMinutes:120,...more});
+const saved=[task('mon','2026-09-14'),task('edit','2026-09-15'),task('sun','2026-09-20'),task('outside','2026-09-21'),task('cancel','2026-09-16',{status:'cancelled'}),task('hotel','2026-09-17',{propertyDurationMinutes:null,startTime:'09:00',endTime:'13:30'})];
+const preview=[{taskId:'edit',cleanerId:'b',task:{date:'2026-09-15',status:'pending'},startMinute:600,endMinute:690}];
+const totals=sum(saved,[{id:'a'},{id:'b'}],new Set(['edit']),preview,'2026-09-14','2026-09-20');
+assert.equal(totals.get('a'),8.5,'Other days and hotel shifts retained; old assignment removed');
+assert.equal(totals.get('b'),1.5,'Draft counted once for new assignee');
+const split=sum([task('split','2026-09-16',{propertyDurationMinutes:540,assignments:[{cleaner_id:'a'},{cleaner_id:'b'}],assignmentCount:2})],[{id:'a'},{id:'b'}],new Set(),[],'2026-09-14','2026-09-20');
+assert.equal(split.get('a'),4.5);assert.equal(split.get('b'),4.5);
+const source=readFileSync('src/components/cleaning-planning/PlanningProposalCalendar.tsx','utf8');
+assert.equal((source.match(/w-\[300px\]/g)||[]).length,2,'Header and worker column widths match');
+assert.doesNotMatch(source,/planificadas/);
+assert.match(source,/Number\(cleaner.contractHoursPerWeek\)/,'Uses worker profile contract hours');
+assert.match(source,/break-words text-sm font-bold leading-tight/,'Names wrap instead of truncating');
+console.log('PASS: Monday-Sunday, DST/year boundary, reassignment without duplication, multi-worker split, shifts, cancellations, profile hours and wider names');
+const browser=await chromium.launch({channel:'msedge',headless:true});
+try {
+  const page=await browser.newPage({viewport:{width:1024,height:768}});
+  const css=readdirSync('dist/assets').filter(f=>f.endsWith('.css')).map(f=>readFileSync(`dist/assets/${f}`,'utf8')).join('\n');
+  const column=source.match(/className="(sticky left-0 z-10[^"]+)"/)[1];
+  const nameClass=source.match(/className="(break-words text-sm font-bold leading-tight[^"]+)"/)[1];
+  const names=['ILIANA MARIA FERNÁNDEZ RODRÍGUEZ','JONNATHAN PÉREZ','CARLOS STIVEN RODRÍGUEZ'];
+  await page.setContent(`<style>${css}</style><main style="padding:24px">${names.map(name=>`<div style="display:flex;min-height:92px;border-bottom:1px solid #ddd"><div class="${column}"><div class="h-9 w-9 shrink-0">IM</div><div class="min-w-0 flex-1"><p data-name class="${nameClass}">${name}</p><p>28 / 40 h · semana</p></div></div><div style="background:#faf9fd;flex:1">Horario</div></div>`).join('')}</main>`);
+  assert.ok(await page.locator('[data-name]').evaluateAll(nodes=>nodes.every(node=>node.scrollWidth<=node.clientWidth && getComputedStyle(node).textOverflow!=='ellipsis')),'Full names remain readable');
+  await page.screenshot({path:`${process.env.TEMP}/planning-weekly-worker-column.png`});
+} finally {await browser.close();}
