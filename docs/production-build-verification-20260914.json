@@ -1,0 +1,16 @@
+{
+  "deployment": "dpl_AnvaJq91u2jQRmPtXXc6yXE3GUjR",
+  "sourceFilesVerifiedSha1": 1645,
+  "npmCi": "passed",
+  "npmRunBuild": "passed",
+  "tscNoEmit": "passed",
+  "uploadedDistFilesReproducedWithoutVercelMetadata": 251,
+  "publicVercelMetadataVariablesUsedForReproduction": 18,
+  "publicBuildFilesComparedByteForByte": 245,
+  "publicBuildFileDifferences": 0,
+  "domainsServeSameHtml": true,
+  "productionDeploymentChanged": false,
+  "supabaseFunctionsSnapshotted": 50,
+  "supabaseMigrationHistoryEntriesRecorded": 32,
+  "databaseOrFunctionMutations": false
+}

@@ -11,7 +11,9 @@ GitHub `main` es la fuente central. El trabajo nuevo y las publicaciones se hace
 - Vercel: equipo `limpatex`, proyecto `gestion_limpatex`, ID `prj_ArBhKZEr9xPqgcIoyioylFc9BMk7`.
 - Supabase existente: `qyipyygojlfhdghnraus`. Se conserva este proyecto y sus datos.
 
-La producción se publicó con cambios sin commit (`gitDirty=1`). Su antiguo SHA `3fb713f7d8684fcdb1ff3f502b9338f7fa1a3329` NO representa por sí solo la versión publicada. El código se recuperó directamente de Vercel, verificando sus 1.645 archivos por SHA-1. Una instalación independiente con `npm ci` pasó `npm run build` y `npx tsc --noEmit --pretty false`. Los 251 archivos generados de `dist` coincidieron byte a byte con los conservados en el despliegue.
+La producción se publicó con cambios sin commit (`gitDirty=1`). Su antiguo SHA `3fb713f7d8684fcdb1ff3f502b9338f7fa1a3329` NO representa por sí solo la versión publicada. El código se recuperó directamente de Vercel, verificando sus 1.645 archivos por SHA-1. Una instalación independiente con `npm ci` pasó `npm run build` y `npx tsc --noEmit --pretty false`.
+
+La compilación local inicial reprodujo los 251 archivos de `dist` incluidos entre los archivos subidos a Vercel. El build que Vercel sirve al público añade 18 variables públicas `VITE_VERCEL_*` (identificador del despliegue, URLs y otros metadatos), lo que cambia el contenido y los nombres de algunos bundles. Una segunda compilación con esos mismos metadatos reprodujo byte a byte los 245 archivos HTML, JavaScript, CSS y fuentes enumerados en el build público; se descargaron las respuestas públicas para verificarlo. Ambos dominios devolvieron el mismo HTML y siguieron apuntando al despliegue original. Un nuevo despliegue tendrá sus propios metadatos: no copiar identificadores antiguos a la configuración permanente de Hermes.
 
 Se han cambiado únicamente instrucciones y configuración del traspaso sobre esa fuente: este documento, AGENTS.md, las reglas de exclusión de Git, los inventarios y `git.deploymentEnabled: false` en `vercel.json`. Las subidas a GitHub no deben publicar automáticamente; la publicación manual desde Hermes sigue siendo posible. Documentación: https://vercel.com/docs/project-configuration/git-configuration.
 
@@ -66,5 +68,7 @@ Carpeta privada: `C:\Users\danig\Downloads\traspaso-hermes-20260914`.
 - `supabase-produccion`: paquetes recuperados de las funciones desplegadas.
 
 El respaldo privado puede contener `.env`, configuración y material operativo. No subir esa carpeta ni el bundle de historial antiguo al repositorio. Para continuar en Hermes basta el clon limpio de `main`; no necesita importar el respaldo completo.
+
+Los archivos originales se trasladaron a `archivo-carpeta-original`, y las otras 13 carpetas de trabajo a `archivo-worktrees`. La ruta original de Windows contiene una copia limpia de la versión central, en una rama de archivo. Su URL de push y un hook local bloquean subidas de Git; el enlace local `.vercel` quedó dentro del archivo antiguo. Estas medidas evitan el uso habitual accidental, pero no revocan los accesos de la cuenta ni impiden una publicación manual si se ignoran deliberadamente las instrucciones. No ejecutar proyectos desde las carpetas archivadas.
 
 La preparación en el ordenador anterior no instala ni verifica Hermes de forma remota. El traspaso queda operativo cuando Hermes haya completado los pasos de instalación y las tareas antiguas de ambos equipos hayan dejado de publicar.
