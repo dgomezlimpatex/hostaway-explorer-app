@@ -341,7 +341,8 @@ test('24-week / 20-worker / 2016-service forecast stays within the synchronous c
 });
 test('engine rejects horizons above 28 weeks and declines oversized input without partial totals', () => {
     assert.throws(() => buildStaffingForecast(dataset(), { ...options, weeks: 29 }), RangeError);
-  assert.doesNotThrow(() => buildStaffingForecast(dataset(), { ...options, weeks: 28 }));
+  const maximum = buildStaffingForecast(dataset(), { ...options, weeks: 28 });
+  assert.equal(maximum.weeks.length, 28);
     const inputs = [
         dataset([], Array.from({ length: 101 }, (_, i) => worker(`w${i}`))),
         dataset(Array.from({ length: 10001 }, (_, i) => service(`s${i}`))),

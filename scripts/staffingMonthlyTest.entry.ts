@@ -71,6 +71,10 @@ test('supports six complete calendar months with weekly context', () => {
   assert.equal(view.months[5].endDate, '2027-02-28');
 });
 
+test('supports the maximum six-month range without dropping the final week', () => {
+  assert.deepEqual(getMonthlyForecastRange('2026-03-01', 6), { from: '2026-02-23', to: '2026-09-06', weeks: 28 });
+});
+
 test('handles December to February and Madrid DST as civil dates', () => {
   const view = buildStaffingMonthlyView({ days: [], weeks: [], centers: [], issues: [] }, '2026-12-15', 3, '2026-12-15');
   assert.deepEqual(view.months.map(month => month.month), ['2026-12', '2027-01', '2027-02']);

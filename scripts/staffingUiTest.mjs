@@ -20,6 +20,7 @@ try {
   assert.equal((html.match(/Datos y criterios/g) || []).length, 1, 'criteria link stays in the monthly header');
   assert.equal((html.match(/Horas de trabajo previsto/g) || []).length, 3, 'monthly cards label planned work');
   assert.equal((html.match(/Horas de trabajo posibles/g) || []).length, 3, 'monthly cards label possible work');
+  assert.ok(html.includes('la reserva cercana no se extiende automáticamente a todo el horizonte'));
   assert.equal((html.match(/Equipo actual/g) || []).length, 3, 'monthly cards label current team');
   assert.ok(!html.includes('Solo se agregan días civiles únicos dentro del mes'), 'monthly criteria subtitle is removed');
   assert.ok(!html.includes('visión de conjunto'), 'monthly overview suffix is removed');

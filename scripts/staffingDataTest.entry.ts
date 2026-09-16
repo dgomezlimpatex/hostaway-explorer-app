@@ -698,4 +698,7 @@ export async function run(focus?: string) {
   await inactivePropertiesExcluded();
   await recurrenceBoundaries();
   await paginatedHotelChildren();
+  await assert.doesNotReject(() => readStaffingDataset(async () => [], 's', '2026-02-23', '2026-09-06'), 'six-month context range at the 195-day limit is accepted');
+  await assert.rejects(() => readStaffingDataset(async () => [], 's', '2026-02-23', '2026-09-07'), /máximo seis meses/, 'ranges over six-month context are rejected');
+  console.log('PASS six-month reader range boundary 195/196 days');
 }
