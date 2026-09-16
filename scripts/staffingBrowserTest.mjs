@@ -34,6 +34,8 @@ try {
   await expect(page.getByLabel('Semana de análisis')).toHaveCount(0);
   await page.getByLabel('Mes de análisis').selectOption('2026-10');
   await expect(page.getByRole('heading', { name: 'octubre', exact: true })).toBeVisible();
+  await expect(page.locator('svg g[role="button"][aria-pressed="true"]')).toHaveCount(0);
+  await expect(page.locator('[aria-label="Semanas dentro de octubre"] button[aria-pressed="true"]')).toHaveCount(0);
   await page.getByLabel('Periodicidad').selectOption('week');
   await expect(page.getByLabel('Semana de análisis')).toBeVisible();
   await expect(page.getByLabel('Mes de análisis')).toHaveCount(0);

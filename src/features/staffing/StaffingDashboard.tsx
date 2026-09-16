@@ -48,9 +48,20 @@ export function StaffingDashboard({ dataset, dateFrom, asOf, weeks, compute, sed
     setReinforcements(current => [...current, { id: `hypothetical:${current.length + 1}`, name: `Refuerzo hipotético ${current.length + 1}`, weeklyMinutes: 900, homeCenterIds: [center.id], availability: weekdays.map((_, day) => ({ day, startMinute: center.startMinute, endMinute: center.endMinute })), restDay: 0, flexibleRest: false, canMove: true, unavailableDates: [], confirmedRestDates: [], activeFrom: dateFrom }]);
   };
   const selectMonth = (month: string) => {
-    const next = monthlyView.months.find(item => item.month === month)?.weeks.find(week => availableWeeks.includes(week.week));
+    const selected = monthlyView.months.find(item => item.month === month);
+    const next = selected?.weeks.find(week => week.week >= selected.startDate && availableWeeks.includes(week.week)) || selected?.weeks.find(week => availableWeeks.includes(week.week));
     setSelectedMonth(month);
-    setSelectedWeek(next?.week || '');
+    setSelectedWeek(periodMode === 'month' ? '' : next?.week || '');
+  };
+  const changePeriodMode = (mode: PeriodMode) => {
+    setPeriodMode(mode);
+    if (mode === 'month') {
+      setSelectedWeek('');
+      return;
+    }
+    const month = monthlyView.months.find(item => item.month === selectedMonth) || monthlyView.months[0];
+    const next = month?.weeks.find(week => week.week >= month.startDate && availableWeeks.includes(week.week)) || month?.weeks.find(week => availableWeeks.includes(week.week));
+    setSelectedWeek(next?.week || (selectedMonth ? '' : availableWeeks[0] || ''));
   };
   const selectWeek = (week: string) => {
     setSelectedWeek(week);
@@ -63,7 +74,7 @@ export function StaffingDashboard({ dataset, dateFrom, asOf, weeks, compute, sed
 
     {failures.length > 0 && <div role="alert" className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-rose-300 bg-white p-3 text-sm text-rose-900"><span>No se pudieron leer todas las fuentes. Resultado parcial, no ausencia de actividad.</span>{onRetry && <button type="button" className={fieldClass} onClick={onRetry}>Reintentar</button>}<button type="button" className={fieldClass} onClick={() => setPanel('data')}>Ver fuentes fallidas</button></div>}
     <StaffingMonthly view={monthlyView} selectedMonth={selectedMonth || monthlyView.months[0]?.month} selectedWeek={selected?.week} availableWeeks={availableWeeks} onMonth={selectMonth} onWeek={selectWeek} onOpenScenario={week => { selectWeek(week); setPanel('scenario'); }} onOpenData={() => setPanel('data')} />
-    <div className="flex flex-wrap items-end gap-3"><label className="grid gap-1 text-xs font-medium">Periodicidad<select aria-label="Periodicidad" className={fieldClass} value={periodMode} onChange={event => setPeriodMode(event.target.value as PeriodMode)}><option value="month">Mensual</option><option value="week">Semanal</option></select></label>{periodMode === 'month' ? <label className="grid gap-1 text-xs font-medium">Mes de análisis<select aria-label="Mes de análisis" className={fieldClass} value={selectedMonth || monthlyView.months[0]?.month || ''} onChange={event => selectMonth(event.target.value)}>{monthlyView.months.map(item => <option key={item.month} value={item.month}>{item.label}</option>)}</select></label> : selected ? <label className="grid gap-1 text-xs font-medium">Semana de análisis<select aria-label="Semana de análisis" className={fieldClass} value={selected.week} onChange={event => selectWeek(event.target.value)}>{result.weeks.map(week => <option key={week.week} value={week.week}>Desde {shortDate(week.week)}</option>)}</select></label> : <label className="grid gap-1 text-xs font-medium">Semana de análisis<select aria-label="Semana de análisis" className={fieldClass} value="" disabled><option value="">Sin semanas calculables para este mes</option></select></label>}<span className="pb-3 text-sm font-medium">{changes ? 'Escenario modificado · sin guardar' : 'Escenario base'}</span>{uncertain && <button type="button" aria-label="Parcial: consultar datos y criterios" className="mb-1 min-h-11 rounded-md border border-stone-300 bg-white px-3 text-sm" onClick={() => setPanel('data')}>Parcial</button>}</div>
+    <div className="flex flex-wrap items-end gap-3"><label className="grid gap-1 text-xs font-medium">Periodicidad<select aria-label="Periodicidad" className={fieldClass} value={periodMode} onChange={event => changePeriodMode(event.target.value as PeriodMode)}><option value="month">Mensual</option><option value="week">Semanal</option></select></label>{periodMode === 'month' ? <label className="grid gap-1 text-xs font-medium">Mes de análisis<select aria-label="Mes de análisis" className={fieldClass} value={selectedMonth || monthlyView.months[0]?.month || ''} onChange={event => selectMonth(event.target.value)}>{monthlyView.months.map(item => <option key={item.month} value={item.month}>{item.label}</option>)}</select></label> : selected ? <label className="grid gap-1 text-xs font-medium">Semana de análisis<select aria-label="Semana de análisis" className={fieldClass} value={selected.week} onChange={event => selectWeek(event.target.value)}>{result.weeks.map(week => <option key={week.week} value={week.week}>Desde {shortDate(week.week)}</option>)}</select></label> : <label className="grid gap-1 text-xs font-medium">Semana de análisis<select aria-label="Semana de análisis" className={fieldClass} value="" disabled><option value="">Sin semanas calculables para este mes</option></select></label>}<span className="pb-3 text-sm font-medium">{changes ? 'Escenario modificado · sin guardar' : 'Escenario base'}</span>{uncertain && <button type="button" aria-label="Parcial: consultar datos y criterios" className="mb-1 min-h-11 rounded-md border border-stone-300 bg-white px-3 text-sm" onClick={() => setPanel('data')}>Parcial</button>}</div>
     {!selected && <p role="status" className="text-sm text-stone-600">Sin semanas/datos calculables para este mes. Amplía el horizonte técnico o elige otro mes.</p>}
     <p className="text-xs font-medium text-stone-600">Semana {shortDate(selected?.week || '')} · resumen total de sede</p>
     <div className="grid divide-y border-y border-stone-300 py-1 sm:grid-cols-3 sm:divide-x sm:divide-y-0" aria-label="Resumen semanal de sede">{[
