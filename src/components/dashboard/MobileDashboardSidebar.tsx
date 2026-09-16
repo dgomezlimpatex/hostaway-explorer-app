@@ -62,6 +62,12 @@ const managementItems: NavigationItem[] = [
   { title: 'Clientes', href: '/clients', icon: Building2, permission: 'clients' },
   { title: 'Propiedades', href: '/properties', icon: MapPin, permission: 'properties' },
   {
+    title: 'Previsión de personal',
+    href: '/staffing-forecast',
+    icon: Users,
+    permission: 'admin-only',
+  },
+  {
     title: 'Planificación diaria',
     href: '/planning',
     icon: Bot,

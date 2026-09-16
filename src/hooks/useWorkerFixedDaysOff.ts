@@ -1,10 +1,11 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import type { Tables } from '@/integrations/supabase/types';
 import { WorkerFixedDayOff } from '@/types/workerAbsence';
 import { toast } from 'sonner';
 
 // Map database row to TypeScript type
-const mapFixedDayOffFromDB = (row: any): WorkerFixedDayOff => ({
+const mapFixedDayOffFromDB = (row: Tables<'worker_fixed_days_off'>): WorkerFixedDayOff => ({
   id: row.id,
   cleanerId: row.cleaner_id,
   dayOfWeek: row.day_of_week,
@@ -63,12 +64,14 @@ export const useToggleWorkerFixedDayOff = () => {
       isActive: boolean 
     }) => {
       // First check if record exists
-      const { data: existing } = await supabase
+      const { data: existing, error: existingError } = await supabase
         .from('worker_fixed_days_off')
         .select('id')
         .eq('cleaner_id', cleanerId)
         .eq('day_of_week', dayOfWeek)
-        .single();
+        .maybeSingle();
+
+      if (existingError) throw existingError;
 
       if (existing) {
         // Update existing
@@ -104,7 +107,11 @@ export const useToggleWorkerFixedDayOff = () => {
     },
     onError: (error: Error) => {
       console.error('Error toggling fixed day off:', error);
-      toast.error('Error al actualizar el día libre fijo');
+      toast.error(
+        error.message.includes('PLANNING_FIXED_DAY_OFF_CONFLICT')
+          ? 'No se puede activar porque todavía hay tareas asignadas en ese día. Revisa la planificación y vuelve a intentarlo.'
+          : 'Error al actualizar el día libre fijo',
+      );
     },
   });
 };

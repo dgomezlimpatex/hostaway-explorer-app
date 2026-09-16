@@ -22,6 +22,7 @@
     "test:supervision-domain": "node scripts/supervisionDomainTest.mjs",
     "test:supervision-ui": "node scripts/supervisionUiContractTest.mjs",
     "test:role-modes": "node scripts/roleModeTest.mjs",
+    "test:worker-fixed-days-off-planning": "node scripts/workerFixedDaysOffPlanningTest.mjs",
     "test:cleaning-planning-proposal-engine": "node scripts/cleaningPlanningProposalEngineTest.mjs",
     "test:cleaning-planning-domain-safety": "node scripts/cleaningPlanningDomainSafetyTest.mjs",
     "test:cleaning-planning-ui": "node scripts/cleaningPlanningUiContractTest.mjs",
@@ -72,7 +73,9 @@
     "test:planning-hermes-150": "node scripts/planningHermes150Harness.mjs",
     "test:planning-hermes-150:red": "node scripts/planningHermes150RedHarness.mjs",
     "preview": "vite preview",
-    "test:properties-ui": "node scripts/propertiesUiContractTest.mjs"
+    "test:properties-ui": "node scripts/propertiesUiContractTest.mjs",
+    "test:staffing": "node scripts/staffingEngineTest.mjs && node scripts/staffingDataTest.mjs && node scripts/staffingCollaboratorsTest.mjs && node scripts/staffingShiftsTest.mjs && node scripts/staffingBusinessRulesTest.mjs && node scripts/staffingPageRulesTest.mjs && node scripts/staffingReadClientTest.mjs && node scripts/staffingAccessTest.mjs && node scripts/staffingUiTest.mjs && node scripts/staffingMonthlyTest.mjs",
+    "test:staffing:browser": "node scripts/staffingBrowserTest.mjs"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

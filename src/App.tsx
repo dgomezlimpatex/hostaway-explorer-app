@@ -70,6 +70,7 @@ const Integraciones = React.lazy(() => import("./pages/Integraciones"));
 const LittleHotelierAdmin = React.lazy(() => import("./pages/LittleHotelierAdmin"));
 const AviratoAdmin = React.lazy(() => import("./pages/AviratoAdmin"));
 const CleaningPlanning = React.lazy(() => import("./pages/CleaningPlanning"));
+const StaffingForecastPage = React.lazy(() => import("./pages/StaffingForecastPage"));
 const PlanningPage = React.lazy(() => import("./pages/PlanningPage"));
 const PlanningBuildingsIndex = React.lazy(() => import("./pages/PlanningBuildingsIndex"));
 const PlanningBuildingDetail = React.lazy(() => import("./pages/PlanningBuildingDetail"));
@@ -230,6 +231,9 @@ function App() {
                     <Route path="/workers/hours" element={<RoleProtectedRoute requiredModule="workers" excludedRoles={['supervisor','cleaner','client']}><PersonnelHours /></RoleProtectedRoute>} />
                     <Route path="/workers/:workerId/hours" element={<RoleProtectedRoute requiredModule="workers" excludedRoles={['supervisor','cleaner','client']}><PersonnelHours /></RoleProtectedRoute>} />
                     <Route path="/workers/:workerId" element={<RoleProtectedRoute requiredModule="workers"><PersonnelProfile /></RoleProtectedRoute>} />
+                    <Route path="/staffing-forecast" element={
+                      <RoleProtectedRoute requiredModule="workers" excludedRoles={['supervisor', 'cleaner', 'client']}><StaffingForecastPage /></RoleProtectedRoute>
+                    } />
                     <Route path="/planning" element={
                       <RoleProtectedRoute requiredModule="tasks" requiredAction="canEdit"><CleaningPlanning /></RoleProtectedRoute>
                     } />
