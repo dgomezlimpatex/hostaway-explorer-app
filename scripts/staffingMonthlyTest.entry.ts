@@ -62,6 +62,15 @@ test('returns a bounded fetch range aligned to complete weeks around three month
   assert.deepEqual(getMonthlyForecastRange('2026-09-16', 3), { from: '2026-08-31', to: '2026-12-06', weeks: 14 });
 });
 
+test('supports six complete calendar months with weekly context', () => {
+  const range = getMonthlyForecastRange('2026-09-16', 6);
+  assert.deepEqual(range, { from: '2026-08-31', to: '2027-02-28', weeks: 26 });
+  const result = makeResult(range.from, range.to);
+  const view = buildStaffingMonthlyView(result, '2026-09-16', 6, '2026-09-16');
+  assert.deepEqual(view.months.map(month => month.month), ['2026-09', '2026-10', '2026-11', '2026-12', '2027-01', '2027-02']);
+  assert.equal(view.months[5].endDate, '2027-02-28');
+});
+
 test('handles December to February and Madrid DST as civil dates', () => {
   const view = buildStaffingMonthlyView({ days: [], weeks: [], centers: [], issues: [] }, '2026-12-15', 3, '2026-12-15');
   assert.deepEqual(view.months.map(month => month.month), ['2026-12', '2027-01', '2027-02']);

@@ -103,7 +103,7 @@ function knownUncovered(day: StaffingDay): number {
 
 export function getMonthlyForecastRange(anchorDate: string, count = 3): { from: string; to: string; weeks: number } {
   assertCivilDate(anchorDate);
-  if (!Number.isInteger(count) || count < 1 || count > 3) throw new RangeError('El número de meses debe estar entre 1 y 3.');
+  if (!Number.isInteger(count) || count < 1 || count > 6) throw new RangeError('El número de meses debe estar entre 1 y 6.');
   const from = monday(monthStart(anchorDate));
   const to = sunday(monday(monthEnd(addCivilMonths(anchorDate, count - 1))));
   return { from, to, weeks: Math.round((Date.parse(`${to}T12:00:00Z`) - Date.parse(`${from}T12:00:00Z`)) / 86400000 + 1) / 7 };
@@ -112,7 +112,7 @@ export function getMonthlyForecastRange(anchorDate: string, count = 3): { from: 
 export function buildStaffingMonthlyView(result: StaffingResult, anchorDate: string, count = 3, asOf = anchorDate): StaffingMonthlyView {
   assertCivilDate(anchorDate);
   assertCivilDate(asOf);
-  if (!Number.isInteger(count) || count < 1 || count > 3) throw new RangeError('El número de meses debe estar entre 1 y 3.');
+  if (!Number.isInteger(count) || count < 1 || count > 6) throw new RangeError('El número de meses debe estar entre 1 y 6.');
   const dayByDate = new Map<string, StaffingDay>();
   const issues: StaffingIssue[] = [];
   for (const day of result.days) {

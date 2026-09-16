@@ -9,9 +9,9 @@ import { fieldClass, fullDate, hours, informationalIssues, knownUncovered, money
 
 type Compute = (dataset: StaffingDataset, options: StaffingOptions) => StaffingResult;
 type PeriodMode = 'month' | 'week';
-interface Props { dataset: StaffingDataset; dateFrom: string; asOf: string; weeks: number; compute: Compute; sedeName?: string; controls?: ReactNode; monthAnchor?: string; onDirtyChange?: (dirty: boolean) => void; onRetry?: () => void }
+interface Props { dataset: StaffingDataset; dateFrom: string; asOf: string; weeks: number; compute: Compute; sedeName?: string; controls?: ReactNode; monthAnchor?: string; horizonMonths?: number; onDirtyChange?: (dirty: boolean) => void; onRetry?: () => void }
 
-export function StaffingDashboard({ dataset, dateFrom, asOf, weeks, compute, sedeName, controls, monthAnchor = dateFrom, onDirtyChange, onRetry }: Props) {
+export function StaffingDashboard({ dataset, dateFrom, asOf, weeks, compute, sedeName, controls, monthAnchor = dateFrom, horizonMonths = 3, onDirtyChange, onRetry }: Props) {
   const [lateReservePercent, setLateReservePercent] = useState(20);
   const [seasonalPercent, setSeasonalPercent] = useState(0);
   const [travelMinutes, setTravelMinutes] = useState(20);
@@ -29,7 +29,7 @@ export function StaffingDashboard({ dataset, dateFrom, asOf, weeks, compute, sed
   const simulationData = useMemo(() => ({ ...dataset, workers: [...dataset.workers, ...reinforcements].map(worker => ({ ...worker, ...overrides[worker.id] })) }), [dataset, overrides, reinforcements]);
   const baseline = useMemo(() => compute(dataset, baseOptions), [compute, dataset, baseOptions]);
   const result = useMemo(() => changes ? compute(simulationData, options) : baseline, [compute, simulationData, options, changes, baseline]);
-  const monthlyView = useMemo(() => buildStaffingMonthlyView(result, monthAnchor, 3, asOf), [result, monthAnchor, asOf]);
+  const monthlyView = useMemo(() => buildStaffingMonthlyView(result, monthAnchor, horizonMonths, asOf), [result, monthAnchor, horizonMonths, asOf]);
   const selected = result.weeks.find(week => week.week === selectedWeek);
   const availableWeeks = result.weeks.map(week => week.week);
   const baselineWeek = baseline.weeks.find(week => week.week === selected?.week);

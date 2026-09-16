@@ -84,8 +84,8 @@ function groupBy<T>(rows: T[], key: (row: T) => string): Map<string, T[]> {
 }
 export function buildStaffingForecast(dataset: StaffingDataset, options: StaffingOptions): StaffingResult {
     const deadline = performance.now() + 200;
-    if (!Number.isInteger(options.weeks) || options.weeks <= 0 || options.weeks > 24 || ![options.travelMinutes, options.lateReservePercent, options.seasonalPercent].every(n => Number.isFinite(n) && n >= 0))
-        throw new RangeError('Horizonte de 1 a 24 semanas enteras; traslado y porcentajes finitos y no negativos.');
+    if (!Number.isInteger(options.weeks) || options.weeks <= 0 || options.weeks > 28 || ![options.travelMinutes, options.lateReservePercent, options.seasonalPercent].every(n => Number.isFinite(n) && n >= 0))
+        throw new RangeError('Horizonte de 1 a 28 semanas enteras; traslado y porcentajes finitos y no negativos.');
     // Bound allocation and input validation too, not just the scheduling search.
     if (dataset.workers.length > 100 || dataset.centers.length > 100 || dataset.services.length > 10000 || dataset.issues.length > 10000
         || dataset.workers.some(w => [w.availability, w.blockedSlots ?? [], w.homeCenterIds, w.excludedCenterIds ?? [], w.unavailableDates, w.confirmedRestDates].some(rows => rows.length > 512)))

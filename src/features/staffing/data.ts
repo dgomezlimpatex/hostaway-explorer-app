@@ -20,7 +20,8 @@ const active = (row: StaffingRow) => !['cancelled', 'canceled', 'cancelado', 'ca
 const PAGE = 500;
 export async function readStaffingDataset(read: StaffingReadPage, sedeId: string, from: string, to: string, rules: StaffingReadRules = {}): Promise<StaffingDataset> {
   if (!sedeId) throw new Error('Selecciona una sede para consultar la previsión.');
-  if (!validDate(from) || !validDate(to) || to < from || (Date.parse(to) - Date.parse(from)) / 86400000 > 183) throw new Error('Rango de previsión inválido (máximo seis meses).');
+  // Six natural months need a few extra days for the Monday–Sunday context.
+  if (!validDate(from) || !validDate(to) || to < from || (Date.parse(to) - Date.parse(from)) / 86400000 > 195) throw new Error('Rango de previsión inválido (máximo seis meses).');
   const issues: StaffingIssue[] = [];
   const all = async (spec: Omit<StaffingReadSpec, 'from' | 'to'>): Promise<StaffingRow[]> => {
     const rows = new Map<string, StaffingRow>();

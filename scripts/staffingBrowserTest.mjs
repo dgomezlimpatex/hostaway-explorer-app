@@ -27,6 +27,7 @@ try {
   await expect(page.getByText('DEMOSTRACIÓN CON DATOS SINTÉTICOS', { exact: false })).toBeVisible();
   const monthTabs = page.locator('[role="tablist"][aria-label="Meses de previsión"] [role="tab"]');
   await expect(monthTabs).toHaveCount(3);
+
   await expect(page.getByLabel('Periodicidad')).toHaveValue('week');
   await expect(page.getByLabel('Semana de análisis')).toBeVisible();
   await page.getByLabel('Periodicidad').selectOption('month');
