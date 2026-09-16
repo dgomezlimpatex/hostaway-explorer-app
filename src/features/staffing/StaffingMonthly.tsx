@@ -17,24 +17,23 @@ function weekRange(week: StaffingMonth['weeks'][number]): string {
   return `${start}–${end} ${startMonth === endMonth ? startMonth : `${startMonth}–${endMonth}`}`;
 }
 
-export function StaffingMonthly({ view, selectedMonth, selectedWeek, onMonth, onWeek, onOpenScenario, onOpenData, availableWeeks }: {
+export function StaffingMonthly({ view, selectedMonth, selectedWeek, onMonth, onWeek, onOpenScenario, availableWeeks }: {
   view: StaffingMonthlyView;
   selectedMonth?: string;
   selectedWeek?: string;
   onMonth: (month: string) => void;
   onWeek: (week: string) => void;
   onOpenScenario: (week: string) => void;
-  onOpenData: () => void;
   availableWeeks: string[];
 }) {
   const month = view.months.find(item => item.month === selectedMonth) || view.months[0];
   if (!month) return null;
-  const comparableWeek = month.weeks.find(week => availableWeeks.includes(week.week));
+  const comparableWeek = month.weeks.find(week => week.week >= month.startDate && availableWeeks.includes(week.week));
   const max = Math.max(1, ...view.months.flatMap(item => [item.knownMinutes + item.estimatedMinutes, item.capacityMinutes]));
   const monthScale = Math.max(1, month.knownMinutes + month.estimatedMinutes, month.capacityMinutes);
   const incomplete = (item: StaffingMonth) => item.status === 'future' && item.estimatedMinutes === 0;
   return <section aria-label="Previsión mensual" className="space-y-4">
-    <header className="flex items-center justify-between gap-3"><p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#310984]">Previsión mensual</p><button type="button" className="min-h-11 rounded px-2 text-xs text-stone-600 underline underline-offset-4" onClick={onOpenData}>Datos y criterios</button></header>
+    <header className="flex items-center justify-between gap-3"><p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#310984]">Previsión mensual</p></header>
     <div role="tablist" aria-label="Meses de previsión" className="grid min-w-0 gap-3 sm:grid-cols-3">
       {view.months.map(item => <button key={item.month} type="button" role="tab" aria-selected={item.month === month.month} aria-label={`${item.label}: ${hours(item.knownMinutes)} ${incomplete(item) ? 'solo registradas, previsión incompleta' : 'horas de trabajo previsto'}; equipo actual ${hours(item.capacityMinutes)} horas posibles${item.status === 'current-partial' ? ', mes en curso parcial' : ''}`} onClick={() => onMonth(item.month)} className={`min-w-0 rounded-lg border bg-white p-4 text-left transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#310984] ${item.month === month.month ? 'border-[#310984] bg-[#f3eff8] ring-1 ring-[#310984]' : 'border-stone-200'}`}>
         <span className="block text-xs font-bold uppercase tracking-[0.12em] text-[#310984]">{item.label}</span><strong className="mt-2 block text-2xl tabular-nums sm:text-3xl">{hours(item.knownMinutes)}</strong><span className="mt-1 block text-xs text-stone-600">{incomplete(item) ? 'Solo registrado · previsión incompleta' : 'Horas de trabajo previsto'}</span><span className="mt-2 block text-xs text-stone-600">{incomplete(item) ? 'No hay estimación adicional validada para este mes.' : `${hours(item.knownMinutes + item.estimatedMinutes)} · Horas de trabajo posibles (hipótesis; la reserva cercana no se extiende automáticamente a todo el horizonte)`}</span><span className="mt-2 block text-xs font-medium text-stone-600">Equipo actual · {hours(item.capacityMinutes)} h posibles</span>

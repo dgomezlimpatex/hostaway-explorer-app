@@ -37,7 +37,7 @@ try {
   await expect(page.getByLabel('Resumen semanal de sede')).toBeVisible();
   await expect(page.locator('h1')).toHaveCount(1);
   await page.getByRole('button', { name: 'Simular cambios', exact: true }).click();
-  await page.getByLabel('Horas de Persona sintética', { exact: true }).fill('10');
+  await page.getByRole('dialog', { name: 'Simular cambios' }).getByLabel('Horas de Persona sintética', { exact: true }).fill('10');
   await page.getByRole('button', { name: 'Cerrar Simular cambios' }).click();
   const defaultMonths = await page.getByLabel('Horizonte de previsión').inputValue();
   page.once('dialog', dialog => dialog.dismiss());
@@ -53,14 +53,21 @@ try {
   await page.getByRole('button', { name: 'Consultar datos de la sede' }).click();
   await page.evaluate(() => window.finish());
   await page.getByLabel('Periodicidad').selectOption('month');
-  await expect(page.locator('[role="tablist"][aria-label="Meses de previsión"] [role="tab"]')).toHaveCount(6);
+  await expect(page.getByLabel('Mes de análisis')).toBeVisible();
+  await page.getByLabel('Mes de análisis').selectOption('2026-10');
+  await expect(page.getByLabel('Mes de análisis')).toHaveValue('2026-10');
+  await page.getByRole('button', { name: 'Meses', exact: true }).click();
+  await expect(page.getByRole('button', { name: /octubre/i }).first()).toBeVisible();
+  await page.getByRole('button', { name: 'Semanas', exact: true }).click();
   await page.getByLabel('Periodicidad').selectOption('week');
-  await expect(page.getByLabel('Semana de análisis').locator('option')).toHaveCount(27);
+  await expect(page.getByLabel('Semana de análisis')).toBeVisible();
+  await expect(page.getByLabel('Mes de análisis')).toHaveCount(0);
   expect(await page.evaluate(() => window.lastRange)).toEqual({ from: '2026-09-28', to: '2027-04-04', sede: 's' });
   await page.getByRole('button', { name: 'Actualizar', exact: true }).click();
   await expect(page.getByLabel('Resumen semanal de sede')).toHaveCount(0);
   await page.evaluate(() => window.finish());
   await expect(page.getByLabel('Resumen semanal de sede')).toBeVisible();
+  await expect(page.getByLabel('Semana de análisis')).toHaveValue('2026-10-05');
   expect(errors).toEqual([]); expect(requests).toEqual([]);
   console.log('PASS real page + React Query with synthetic reader: explicit read, loading, cancellation, error/retry, one header, confirmed period discard, Monday normalization, refresh hides stale result; zero network/errors');
 } finally { await browser.close(); }

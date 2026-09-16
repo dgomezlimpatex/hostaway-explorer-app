@@ -5,7 +5,7 @@ export const shortDate = (date: string) => date ? `${date.slice(8, 10)}/${date.s
 export const fullDate = (date?: string) => date ? `${date.slice(8, 10)}/${date.slice(5, 7)}/${date.slice(0, 4)}` : 'Sin fecha observada';
 export const clock = (minute: number) => Number.isFinite(minute) ? `${Math.floor(minute / 60).toString().padStart(2, '0')}:${Math.round(minute % 60).toString().padStart(2, '0')}` : '—';
 export const weekdays = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
-export const fieldClass = 'min-h-11 max-w-full rounded-md border border-stone-300 bg-white px-3 py-2 text-sm text-stone-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#310984]';
-export const panelClass = 'rounded-lg border border-stone-200 bg-white p-4 sm:p-6';
+export const fieldClass = 'min-h-10 max-w-full rounded-lg border border-[#dcd7e7] bg-white px-3 py-2 text-sm text-[#1c1730] shadow-sm transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#390b92]';
+export const panelClass = 'rounded-xl border border-[#e3deed] bg-white p-4 shadow-[0_8px_24px_rgba(57,11,146,0.06)] sm:p-5';
 export const statusCopy = { covered: 'Encaje habitual calculado', support: 'Con apoyo calculado', shortage: 'Sin encaje calculado', unknown: 'Parcial', empty: 'Sin actividad' };
 export const informationalIssues = new Set(['boundary-history', 'provider-coverage', 'inactive-properties-excluded', 'non-atomic-read', 'duration-assumption', 'no-snapshots', 'reserve-baseline', 'provisional-reserve', 'seasonal-scenario']);
