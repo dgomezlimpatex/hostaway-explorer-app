@@ -27,6 +27,26 @@ try {
   await expect(page.getByText('DEMOSTRACIÓN CON DATOS SINTÉTICOS', { exact: false })).toBeVisible();
   const monthTabs = page.locator('[role="tablist"][aria-label="Meses de previsión"] [role="tab"]');
   await expect(monthTabs).toHaveCount(3);
+  const sectionTabs = page.getByRole('tablist', { name: 'Secciones de previsión' }).getByRole('tab');
+  await expect(sectionTabs).toHaveCount(3);
+  await page.getByRole('tab', { name: 'Equipo', exact: true }).click();
+  await expect(page.getByRole('tabpanel', { name: 'Vista de equipo' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Distribución del trabajo', exact: true })).toBeVisible();
+  await expect(page.getByLabel('Periodicidad')).toBeVisible();
+  await expect(page.getByLabel('Semana de análisis')).toBeVisible();
+  await page.getByLabel('Semana de análisis').selectOption('2026-09-21');
+  await expect(page.getByLabel('Semana de análisis')).toHaveValue('2026-09-21');
+  await page.getByRole('tab', { name: 'Escenarios', exact: true }).click();
+  await expect(page.getByRole('tabpanel', { name: 'Vista de escenarios' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Prueba una alternativa antes de decidir', exact: true })).toBeVisible();
+  await expect(page.getByLabel('Periodicidad')).toBeVisible();
+  await expect(page.getByLabel('Semana de análisis')).toHaveValue('2026-09-21');
+  await page.getByRole('tab', { name: 'Previsión', exact: true }).click();
+  await expect(page.getByRole('tabpanel', { name: 'Vista de previsión' })).toBeVisible();
+  await sectionTabs.first().focus(); await page.keyboard.press('End');
+  await expect(page.getByRole('tab', { name: 'Escenarios', exact: true })).toBeFocused();
+  await page.getByRole('tab', { name: 'Previsión', exact: true }).click();
+  checks.push('forecast/team/scenario navigation and real worker table');
 
   await expect(page.getByLabel('Periodicidad')).toHaveValue('week');
   await expect(page.getByLabel('Semana de análisis')).toBeVisible();
@@ -35,6 +55,7 @@ try {
   await expect(page.getByLabel('Semana de análisis')).toHaveCount(0);
   await page.getByLabel('Mes de análisis').selectOption('2026-10');
   await expect(page.getByRole('heading', { name: 'octubre', exact: true })).toBeVisible();
+  await expect(page.getByText('Horas sin asignar en la simulación', { exact: true })).toHaveCount(0);
   await expect(page.locator('svg g[role="button"][aria-pressed="true"]')).toHaveCount(0);
   await expect(page.locator('[aria-label="Semanas dentro de octubre"] button[aria-pressed="true"]')).toHaveCount(0);
   await page.getByLabel('Periodicidad').selectOption('week');
@@ -44,8 +65,9 @@ try {
   await expect(page.getByRole('heading', { name: 'octubre', exact: true })).toBeVisible();
   await page.getByLabel('Semana de análisis').selectOption('2026-09-14');
   await expect(page.getByRole('heading', { name: 'septiembre', exact: true })).toBeVisible();
-  await expect(page.locator('[role="tab"]').filter({ hasText: 'Horas de trabajo previsto' })).toHaveCount(3);
-  await expect(page.locator('[role="tab"]').filter({ hasText: 'Horas de trabajo posibles' })).toHaveCount(3);
+  await expect(page.locator('[role="tab"]').filter({ hasText: 'Horas de trabajo previsto' })).toHaveCount(1);
+  await expect(page.locator('[role="tab"]').filter({ hasText: 'Solo registrado · previsión incompleta' })).toHaveCount(2);
+  await expect(page.getByText('Previsión pendiente', { exact: false })).toBeVisible();
   await expect(page.locator('[role="tab"]').filter({ hasText: 'Equipo actual' })).toHaveCount(3);
   await expect(page.getByText('Capacidad mensual y encaje diario son distintos', { exact: true })).toBeVisible();
   await expect(page.getByText('El total mensual no basta', { exact: true })).toHaveCount(0);

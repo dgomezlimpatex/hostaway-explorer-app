@@ -18,8 +18,8 @@ try {
   assert.ok(!html.includes('Vistas de detalle'));
   assert.ok(html.includes('Previsión mensual'));
   assert.equal((html.match(/Datos y criterios/g) || []).length, 1, 'criteria link stays in the monthly header');
-  assert.equal((html.match(/Horas de trabajo previsto/g) || []).length, 3, 'monthly cards label planned work');
-  assert.equal((html.match(/Horas de trabajo posibles/g) || []).length, 3, 'monthly cards label possible work');
+  assert.equal((html.match(/Horas de trabajo previsto/g) || []).length, 1, 'only the current complete card labels planned work');
+  assert.equal((html.match(/Solo registrado · previsión incompleta/g) || []).length, 2, 'future cards disclose incomplete forecast');
   assert.ok(html.includes('la reserva cercana no se extiende automáticamente a todo el horizonte'));
   assert.equal((html.match(/Equipo actual/g) || []).length, 3, 'monthly cards label current team');
   assert.ok(!html.includes('Solo se agregan días civiles únicos dentro del mes'), 'monthly criteria subtitle is removed');
@@ -53,6 +53,7 @@ try {
     export let calls=0;
     const render=(dataset, compute=(...args)=>{calls++;return buildStaffingForecast(...args)} )=>renderToStaticMarkup(React.createElement(StaffingDashboard,{dataset,dateFrom:'2026-09-14',asOf:'2026-09-14',weeks:1,compute}));
     export const valid=render(base); export const initialCalls=calls;
+    export const estimatedOverload=render(base,()=>({weeks:[{week:'2026-09-14',knownMinutes:60,estimatedMinutes:600,capacityMinutes:60,contractedMinutes:60,uncoveredMinutes:600,criticalDays:1,idleMinutes:0,cost:null}],days:[],centers:[],issues:[]}));
     export const invalid=render({...base,services:base.services.map(s=>({...s,personMinutes:0}))});
     export const incomplete=render({...base,issues:[{code:'source-unavailable',message:'Fuente no disponible'}]});
     export const estimated=render({...base,services:base.services.map(s=>({...s,kind:'checkout'}))});
@@ -69,6 +70,9 @@ try {
   assert.ok(!regression.duplicate.includes('Mes completo'), 'duplicate monthly data must not look complete');
   assert.equal(regression.initialCalls,1,'identical baseline and scenario evaluated only once');
   assert.ok(regression.valid.includes('Capacidad potencial'));
+  assert.ok(regression.valid.includes('Sin hipótesis adicional configurada'), 'future months without known work still need an explicit incomplete-forecast attention card');
+  assert.ok(regression.valid.includes('octubre y noviembre'), 'attention card names future months without known work');
+  assert.ok(!regression.estimatedOverload.includes('Carga conocida por encima de la capacidad'), 'estimated workload alone must not create a factual overload alert');
   assert.ok(regression.estimated.includes('estimadas sin comprobar'));
   assert.ok(!regression.estimated.includes('0,2 h sin encaje cuantificadas'),'expected minutes are not proven uncovered work');
   assert.ok(regression.collaborators.includes('10 h de autónomos ya incluidas'), 'collaborator share must be shown as included, not added to total');
