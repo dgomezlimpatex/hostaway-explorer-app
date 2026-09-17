@@ -141,7 +141,10 @@ async function collaboratorRuleForwarding() {
   const enabled = await readStaffingDataset(fixture(tables), 's', day, day, { ...rules, useHabitualCollaborators: true });
   assert.equal(enabled.workers[0].engagement, 'collaborator', 'read rules forwarded to worker mapper');
   const disabled = await readStaffingDataset(fixture(tables), 's', day, day, { ...rules, useHabitualCollaborators: false });
-  assert.notEqual(disabled.workers[0].engagement, 'collaborator');
+  // Sin la regla de colaboración y con 0 h (ni contrato ni ficha) la persona sale de
+  // la previsión completa: no es colaborador ni cuenta como empleado (regla de Dani).
+  assert.equal(disabled.workers.length, 0, 'zero-hour worker is not a collaborator and is excluded like nonexistent');
+  assert.ok(disabled.issues.some(i => i.code === 'zero-hour-rule-excluded'), 'exclusion is visible in criteria');
   console.log('PASS habitual collaborator read rule forwarded without global opt-in');
 }
 async function exactClockAndDiagnostics() {

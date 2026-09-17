@@ -22,6 +22,7 @@ try {
         const day=globalThis.__staffingDay;
         const tables={properties:[{id:'${property}',sede_id:'${sede}',is_active:true,nombre:'Synthetic, not used as identity',duracion_servicio:270,check_out_predeterminado:'11:00',check_in_predeterminado:'17:00'}],
           cleaners:[{id:'w',name:'Synthetic collaborator',sede_id:'${sede}',is_active:true,contract_hours_per_week:0}],
+          cleaner_availability:[{id:'slot',cleaner_id:'w',day_of_week:1,is_available:true,start_time:'07:00',end_time:'12:00'}],
           tasks:[{id:'t',sede_id:'${sede}',propiedad_id:'${property}',date:day,status:'pending',type:'limpieza-turistica',duracion:270,start_time:'09:30',end_time:'14:00'}]};
         return (tables[spec.table]||[]).filter(r=>Object.entries(spec.equals||{}).every(([k,v])=>r[k]===v)&&(!spec.within||spec.within.ids.includes(r[spec.within.column]))).slice(spec.from,spec.to+1).map(r=>Object.fromEntries(spec.columns.split(',').map(k=>[k,r[k]])));
       };`,
@@ -35,7 +36,8 @@ try {
     const dataset = await page.request();
     assert.equal(dataset.services[0].personMinutes, sede===configuredSede ? 270 : 300, 'actual page query must pass scoped rules into real reader');
     assert.equal(dataset.services[0].kind, sede===configuredSede ? 'fixed' : 'checkout');
-    assert.equal(dataset.workers[0].engagement, sede===configuredSede ? 'collaborator' : 'employee');
+    assert.equal(dataset.workers.length, sede===configuredSede ? 1 : 0, 'scoped rules forwarded: collaborator capacity only under opt-in sede; zero-hour worker excluded elsewhere');
+    if (sede===configuredSede) assert.equal(dataset.workers[0].engagement, 'collaborator');
   }
   console.log('PASS real page query → site rules → real reader; synthetic data, no automatic reads or cross-sede rules');
 } finally { globalThis.fetch = originalFetch; rmSync(dir,{recursive:true,force:true}); }
