@@ -4,7 +4,7 @@ import { StaffingEvolution, StaffingHeader, StaffingPanel } from './StaffingChro
 import { StaffingScenario } from './StaffingScenario';
 import { StaffingDetails } from './StaffingDetails';
 import { StaffingAttention } from './StaffingAttention';
-import { StaffingTeam } from './StaffingTeam';
+import { StaffingTeam, availableMinutesForPeriod } from './StaffingTeam';
 
 import { StaffingWeekOptions } from './StaffingWeekOptions';
 import { StaffingComparison } from './StaffingComparison';
@@ -62,17 +62,37 @@ export function StaffingDashboard({ dataset, dateFrom, asOf, weeks, compute, sed
         : result.weeks, [periodMode, result.weeks, monthWeekKeys, selected]);
     const attentionMonths = periodMode === 'month' ? (selectedMonthData ? [selectedMonthData] : []) : monthlyView.months;
     const weekEnd = selected ? new Date(Date.parse(`${selected.week}T12:00:00Z`) + 6 * 86400000).toISOString().slice(0, 10) : '';
-    const attentionScope = periodMode === 'month'
-        ? { label: `Total de ${selectedMonthData?.label || 'mes seleccionado'}`, subtitle: selectedMonthData ? `${shortDate(selectedMonthData.includedFrom)} – ${shortDate(selectedMonthData.includedTo)} · ${attentionWeeks.length} semanas` : `${attentionWeeks.length} semanas` }
-        : periodMode === 'week' && selected
-          ? { label: `Semana del ${shortDate(selected.week)}`, subtitle: `${shortDate(selected.week)} – ${shortDate(weekEnd)}` }
-          : { label: 'Total del periodo', subtitle: `${attentionWeeks.length} semanas · ${monthlyView.months.length} meses` };
-      // El selector de fechas es el maestro: el equipo sigue al mismo periodo (mes completo o semana).
+      // El selector de fechas es el maestro: días, equipo y resumen comparten el mismo periodo.
       const periodDays = useMemo(() => {
         if (periodMode === 'period') return result.days;
         if (periodMode === 'month' && selectedMonthData) return result.days.filter(day => day.date >= selectedMonthData.includedFrom && day.date <= selectedMonthData.includedTo);
         return selectedDays;
       }, [periodMode, selectedMonthData, result.days, selectedDays]);
+      // Los totales del periodo se suman por días civiles: nunca por semanas completas que se salen del mes.
+      const periodTotals = useMemo(() => periodDays.reduce((acc, day) => ({
+        knownMinutes: acc.knownMinutes + day.knownMinutes,
+        estimatedMinutes: acc.estimatedMinutes + day.estimatedMinutes,
+        capacityMinutes: acc.capacityMinutes + day.capacityMinutes,
+      }), { knownMinutes: 0, estimatedMinutes: 0, capacityMinutes: 0 }), [periodDays]);
+      // Jornada comprometida: lo que se paga y hay que cubrir, con el mismo criterio que la tabla de Equipo.
+      const teamCommittedMinutes = useMemo(() => {
+        const factor = periodDays.length / 7;
+        return simulationData.workers.reduce((total, worker) => total + availableMinutesForPeriod(worker, periodDays, worker.weeklyMinutes * factor), 0);
+      }, [simulationData.workers, periodDays]);
+      const periodPeak = periodMode === 'month' && selectedMonthData
+        ? [...selectedMonthData.weeks].sort((a, b) => (b.knownMinutes + b.estimatedMinutes) - (a.knownMinutes + a.estimatedMinutes) || a.week.localeCompare(b.week))[0]
+        : undefined;
+      const overloadedPeriod = periodMode === 'month' && selectedMonthData
+        ? selectedMonthData.weeks.filter(segment => segment.knownMinutes > segment.capacityMinutes).map(segment => ({ week: segment.week, knownMinutes: segment.knownMinutes, capacityMinutes: segment.capacityMinutes }))
+        : undefined;
+      const periodWork = periodTotals.knownMinutes + periodTotals.estimatedMinutes;
+      const periodGap = periodWork - teamCommittedMinutes;
+      const periodOverCeiling = periodWork - periodTotals.capacityMinutes;
+      const attentionScope = periodMode === 'month'
+        ? { label: `Total de ${selectedMonthData?.label || 'mes seleccionado'}`, subtitle: selectedMonthData ? `${shortDate(selectedMonthData.includedFrom)} – ${shortDate(selectedMonthData.includedTo)} · ${periodDays.length} días` : `${periodDays.length} días` }
+        : periodMode === 'week' && selected
+          ? { label: `Semana del ${shortDate(selected.week)}`, subtitle: `${shortDate(selected.week)} – ${shortDate(weekEnd)}` }
+          : { label: 'Total del periodo', subtitle: `${attentionWeeks.length} semanas · ${monthlyView.months.length} meses` };
       const teamPeriodLabel = periodMode === 'month' ? (selectedMonthData ? `${selectedMonthData.label} · total del mes` : undefined) : periodMode === 'period' ? 'Periodo completo · total del horizonte' : undefined;
     useEffect(() => { onDirtyChange?.(changes); return () => onDirtyChange?.(false); }, [changes, onDirtyChange]);
   useEffect(() => { if (!changes) return; const guard = (event: BeforeUnloadEvent) => { event.preventDefault(); event.returnValue = ''; }; window.addEventListener('beforeunload', guard); return () => window.removeEventListener('beforeunload', guard); }, [changes]);
@@ -120,14 +140,15 @@ export function StaffingDashboard({ dataset, dateFrom, asOf, weeks, compute, sed
       <div className="flex flex-wrap items-center gap-1">{[['forecast', 'Previsión'], ['team', 'Equipo'], ['scenarios', 'Escenarios']].map(([value, label], index, links) => <button key={value} id={`staffing-section-tab-${value}`} type="button" aria-current={activeView === value ? 'page' : undefined} className={`min-h-12 border-b-2 px-4 text-sm font-bold transition ${activeView === value ? 'border-[#390b92] text-[#390b92]' : 'border-transparent text-[#716a7d] hover:border-[#c9bce0] hover:text-[#201936]'}`} onClick={() => jumpToView(value as typeof activeView)} onKeyDown={event => { if (!['ArrowRight', 'ArrowLeft', 'Home', 'End'].includes(event.key)) return; event.preventDefault(); const next = event.key === 'Home' ? 0 : event.key === 'End' ? links.length - 1 : (index + (event.key === 'ArrowRight' ? 1 : -1) + links.length) % links.length; const nextValue = links[next][0]; jumpToView(nextValue as typeof activeView); document.getElementById(`staffing-section-tab-${nextValue}`)?.focus(); }}>{label}</button>)}</div><button type="button" className="mb-2 inline-flex min-h-9 items-center gap-2 rounded-lg border border-[#dcd5e8] bg-white px-3 text-xs font-bold text-[#390b92] shadow-sm" onClick={() => setPanel('data')}>Datos y criterios</button>
     </nav>
     {periodControls}
-    <StaffingAttention weeks={attentionWeeks} months={attentionMonths} periodLabel={attentionScope.label} periodSubtitle={attentionScope.subtitle} selectedWeek={selected?.week} selectedDays={selectedDays} workers={simulationData.workers} onWeek={selectWeek} onTeam={() => jumpToView('team')} onScenario={() => jumpToView('scenarios')} uncertain={uncertain} />
+    <StaffingAttention weeks={attentionWeeks} months={attentionMonths} periodLabel={attentionScope.label} periodSubtitle={attentionScope.subtitle} totals={periodTotals} committedMinutes={teamCommittedMinutes} maxMinutes={periodTotals.capacityMinutes} peak={periodPeak ? { week: periodPeak.week, minutes: periodPeak.knownMinutes + periodPeak.estimatedMinutes } : undefined} overloadedPeriod={overloadedPeriod} unassignedDays={periodMode === 'period' ? [] : periodDays} unassignedScope={periodMode === 'month' ? 'en el mes elegido' : periodMode === 'week' ? 'en la semana elegida' : undefined} workers={simulationData.workers} onWeek={selectWeek} onTeam={() => jumpToView('team')} onScenario={() => jumpToView('scenarios')} uncertain={uncertain} />
     <div id="staffing-view-forecast" aria-label="Vista de previsión">
     {periodMode === 'week' && !selected && <p role="status" className="text-sm text-stone-600">Sin semanas/datos calculables para este mes. Amplía el horizonte técnico o elige otro mes.</p>}
     <p className="text-xs font-medium text-stone-600">{periodMode === 'period' ? 'Periodo completo · resumen de la sede' : periodMode === 'month' ? `Mes ${selectedMonthData?.label || '—'} · resumen mensual de sede` : `Semana ${shortDate(selected?.week || '')} · resumen total de sede`}</p>
-    <div className="grid divide-y border-y border-stone-300 py-1 sm:grid-cols-3 sm:divide-x sm:divide-y-0" aria-label={`Resumen ${periodMode === 'month' ? 'mensual' : periodMode === 'period' ? 'del periodo' : 'semanal'} de sede`}>{[
-      ['Trabajo previsto', summaryPeriod ? hours(summaryPeriod.knownMinutes + summaryPeriod.estimatedMinutes) : '—', summaryPeriod ? `${hours(summaryPeriod.knownMinutes)} ya registradas + ${hours(summaryPeriod.estimatedMinutes)} estimadas` : 'Sin semanas calculables'],
-      ['Horas del equipo', summaryPeriod ? hours(summaryPeriod.capacityMinutes) : '—', periodMode === 'period' ? 'Horas de ficha de todo el periodo' : periodMode === 'month' ? 'Horas posibles del mes · no son horas libres de verdad' : selected ? `${hours(selected.contractedMinutes)} h de ficha ya incluidas` : 'Sin disponibilidad calculable'],
-      ['Holgura del equipo', summaryPeriod ? (summaryPeriod.capacityMinutes >= summaryPeriod.knownMinutes + summaryPeriod.estimatedMinutes ? `Sobran ${hours(summaryPeriod.capacityMinutes - summaryPeriod.knownMinutes - summaryPeriod.estimatedMinutes)}` : `Faltan ${hours(summaryPeriod.knownMinutes + summaryPeriod.estimatedMinutes - summaryPeriod.capacityMinutes)}`) : '—', summaryPeriod ? (summaryPeriod.capacityMinutes >= summaryPeriod.knownMinutes + summaryPeriod.estimatedMinutes ? 'Con el trabajo registrado, el equipo llega' : 'Con el trabajo registrado, el equipo no llega') : 'Sin semanas calculables'],
+    <div className="grid divide-y border-y border-stone-300 py-1 sm:grid-cols-2 sm:divide-x lg:grid-cols-4" aria-label={`Resumen ${periodMode === 'month' ? 'mensual' : periodMode === 'period' ? 'del periodo' : 'semanal'} de sede`}>{[
+      ['Trabajo previsto', hours(periodWork), `${hours(periodTotals.knownMinutes)} ya registradas + ${hours(periodTotals.estimatedMinutes)} estimadas`],
+      ['Jornada comprometida', hours(teamCommittedMinutes), 'Horas de ficha que se pagan y hay que cubrir'],
+      ['Horas posibles del equipo', hours(periodTotals.capacityMinutes), 'Con la disponibilidad registrada y hasta un 30 % más de jornada'],
+      [periodGap <= 0 ? 'Jornada sin trabajo asignado' : periodWork <= periodTotals.capacityMinutes ? 'Falta sobre la jornada de ficha' : 'Lo que falta', hours(Math.abs(periodGap <= 0 ? periodGap : periodWork <= periodTotals.capacityMinutes ? periodGap : periodOverCeiling)), periodGap <= 0 ? 'Se paga igual: falta trabajo registrado para esa jornada' : periodWork <= periodTotals.capacityMinutes ? 'Cabe usando el margen de hasta un 30 % más de jornada' : 'Ni con un 30 % más de jornada llega el equipo'],
     ].map(([label, value, detail]) => <div key={label} className="px-3 py-4"><h2 className="text-sm text-stone-600">{label}</h2><p className="my-2 text-2xl font-semibold tracking-tight tabular-nums sm:text-3xl">{value}</p><p className="text-xs text-stone-600">{detail}</p></div>)}</div>
     {(!dataset.services.length || !dataset.workers.length) && <p role="status" className="text-sm text-stone-600">Sin datos suficientes: falta demanda o equipo en este periodo. No se concluye que sobre personal.</p>}
     <StaffingEvolution weeks={result.weeks} months={monthlyView.months} selectedMonth={selectedMonth || monthlyView.months[0]?.month} selectedWeek={selected?.week} onSelect={selectWeek} onMonth={selectMonth} incompleteWeeks={incompleteWeeks} />

@@ -41,12 +41,19 @@ try {
   await expect(page.getByLabel('Barras diarias').getByRole('button')).toHaveCount(7);
   await expect(page.getByRole('columnheader', { name: 'Debe trabajar' }).first()).toBeVisible();
   await expect(page.getByRole('columnheader', { name: 'Limpiezas asignadas' }).first()).toBeVisible();
-  await expect(page.getByRole('columnheader', { name: 'Horas libres' }).first()).toBeVisible();
+  await expect(page.getByRole('columnheader', { name: 'Sin asignar' }).first()).toBeVisible();
+  await expect(page.getByRole('columnheader', { name: 'Puede llegar a' }).first()).toBeVisible();
   await expect(page.getByRole('columnheader', { name: 'Aviso' }).first()).toBeVisible();
+  // «Sin asignar» es jornada comprometida menos lo asignado: nunca puede superar «Debe trabajar».
+  const firstTeamRow = await page.locator('#staffing-view-team table tbody tr').first().locator('td').evaluateAll(cells => cells.map(cell => Number((cell.innerText.match(/([\d,.]+) h/) || [])[1]?.replace(',', '.') || 'NaN')));
+  expect(firstTeamRow[0]).toBeGreaterThan(0);
+  expect(firstTeamRow[2]).toBeLessThanOrEqual(firstTeamRow[0] + 0.01);
+  expect(Math.abs(firstTeamRow[0] - firstTeamRow[1] - firstTeamRow[2])).toBeLessThan(0.2);
+  expect(firstTeamRow[3]).toBeGreaterThanOrEqual(firstTeamRow[0] - 0.01);
   await expect(page.locator('p:visible', { hasText: 'de trabajo conocido sin repartir' }).first()).toBeVisible();
   await expect(page.getByRole('region', { name: 'Comparación de escenarios' })).toContainText('Trabajo sin repartir');
   const capacities = await page.getByLabel('Barras diarias').getByRole('button').evaluateAll(buttons => buttons.map(button => Number((button.getAttribute('aria-label')?.match(/el equipo puede hacer ([\d,.]+) h/)?.[1] || '0').replace(',', '.'))));
-  const weeklyCapacity = Number((await page.getByLabel('Resumen semanal de sede').innerText()).match(/Horas del equipo\s+([\d,.]+) h/)?.[1]?.replace(',', '.') || '0');
+  const weeklyCapacity = Number((await page.getByLabel('Resumen semanal de sede').innerText()).match(/Horas posibles del equipo\s+([\d,.]+) h/)?.[1]?.replace(',', '.') || '0');
   expect(Math.abs(capacities.reduce((sum, value) => sum + value, 0) - weeklyCapacity)).toBeLessThan(1);
   await page.getByRole('button', { name: /Probar refuerzo/ }).click();
   await expect(page.getByRole('dialog', { name: 'Simular cambios' })).toBeVisible();
@@ -79,8 +86,17 @@ try {
   // El resumen ejecutivo sigue al periodo elegido (regresión del selector de fechas).
     await page.getByLabel('Periodicidad').selectOption('month');
         await expect(page.getByRole('article', { name: /^Total de / })).toBeVisible();
-        await expect(page.getByRole('article', { name: /^Total de / })).toContainText('semanas');
-        await expect(page.locator('#staffing-view-team').getByText('total del mes', { exact: false })).toBeVisible();
+        await expect(page.getByRole('article', { name: /^Total de / })).toContainText('días');
+        await expect(page.getByRole('article', { name: /^Total de / })).toContainText('Jornada comprometida');
+        // El resumen mensual suma los días del mes, no las semanas completas que se solapan con él.
+        await page.getByRole('button', { name: 'Meses', exact: true }).click();
+        const monthLabel = (((await page.getByRole('article', { name: /^Total de / }).innerText()).match(/Total de (\w+)/i) || [])[1] || '').toLowerCase();
+        const monthBar = page.getByRole('button', { name: new RegExp(`^${monthLabel}: `) }).first();
+        const monthCapacity = Number((await monthBar.getAttribute('aria-label') || '').match(/([\d,.]+) h capacidad/)?.[1]?.replace(',', '.') || '0');
+        const monthPanelCapacity = Number((await page.getByLabel('Resumen mensual de sede').innerText()).match(/Horas posibles del equipo\s+([\d,.]+) h/)?.[1]?.replace(',', '.') || '0');
+        expect(monthCapacity).toBeGreaterThan(0);
+        expect(Math.abs(monthCapacity - monthPanelCapacity)).toBeLessThan(1);
+        await expect(page.locator('#staffing-view-team').getByText('total del mes', { exact: false }).first()).toBeVisible();
         await page.getByLabel('Periodicidad').selectOption('period');
         await expect(page.getByRole('article', { name: 'Total del periodo', exact: true })).toBeVisible();
   expect(errors).toEqual([]);
