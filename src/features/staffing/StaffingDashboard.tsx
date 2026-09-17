@@ -38,11 +38,13 @@ export function StaffingDashboard({ dataset, dateFrom, asOf, weeks, compute, sed
   const monthlyView = useMemo(() => buildStaffingMonthlyView(result, monthAnchor, horizonMonths, asOf), [result, monthAnchor, horizonMonths, asOf]);
   const incompleteWeeks = useMemo(() => new Set(monthlyView.months.filter(month => month.status === 'future' && month.estimatedMinutes === 0).flatMap(month => month.weeks.map(week => week.week))), [monthlyView]);
   const selected = result.weeks.find(week => week.week === selectedWeek);
+  const selectedMonthData = monthlyView.months.find(item => item.month === (selectedMonth || monthlyView.months[0]?.month));
   const availableWeeks = result.weeks.map(week => week.week);
   const baselineWeek = baseline.weeks.find(week => week.week === selected?.week);
   const issues = [...dataset.issues, ...result.issues, ...monthlyView.issues].filter((issue, index, all) => all.findIndex(other => other.code === issue.code && other.message === issue.message && other.centerId === issue.centerId) === index);
   const selectedDays = result.days.filter(day => selected && day.date >= selected.week && day.date < new Date(Date.parse(`${selected.week}T12:00:00Z`) + 7 * 86400000).toISOString().slice(0, 10));
-  const uncertain = !dataset.services.length || !dataset.workers.length || !selected || issues.some(issue => !informationalIssues.has(issue.code)) || result.centers.some(cell => cell.week === selected.week && cell.status === 'unknown');
+  const summaryPeriod = periodMode === 'month' ? selectedMonthData : selected;
+  const uncertain = !dataset.services.length || !dataset.workers.length || !summaryPeriod || issues.some(issue => !informationalIssues.has(issue.code)) || (selected && result.centers.some(cell => cell.week === selected.week && cell.status === 'unknown'));
   const failures = issues.filter(issue => ['source-unavailable', 'client-state-unavailable', 'extension-unavailable'].includes(issue.code));
   const dateTo = new Date(Date.parse(`${dateFrom}T12:00:00Z`) + (weeks * 7 - 1) * 86400000).toISOString().slice(0, 10);
   useEffect(() => { onDirtyChange?.(changes); return () => onDirtyChange?.(false); }, [changes, onDirtyChange]);
@@ -88,12 +90,12 @@ export function StaffingDashboard({ dataset, dateFrom, asOf, weeks, compute, sed
     {periodControls}
     <StaffingAttention weeks={result.weeks} months={monthlyView.months} selectedWeek={selected?.week} selectedDays={selectedDays} workers={simulationData.workers} onWeek={selectWeek} onTeam={() => jumpToView('team')} onScenario={() => jumpToView('scenarios')} uncertain={uncertain} />
     <div id="staffing-view-forecast" aria-label="Vista de previsión">
-    {!selected && <p role="status" className="text-sm text-stone-600">Sin semanas/datos calculables para este mes. Amplía el horizonte técnico o elige otro mes.</p>}
-    <p className="text-xs font-medium text-stone-600">Semana {shortDate(selected?.week || '')} · resumen total de sede</p>
-    <div className="grid divide-y border-y border-stone-300 py-1 sm:grid-cols-3 sm:divide-x sm:divide-y-0" aria-label="Resumen semanal de sede">{[
-      ['Carga prevista', selected ? hours(selected.knownMinutes + selected.estimatedMinutes) : '—', selected ? `${hours(selected.knownMinutes)} conocidas + ${hours(selected.estimatedMinutes)} estimadas` : 'Sin semanas calculables'],
-      ['Capacidad potencial', selected ? hours(selected.capacityMinutes) : '—', selected ? `${hours(selected.contractedMinutes)} contratadas · ${hours(selected.collaboratorCapacityMinutes ?? 0)} de autónomos ya incluidas` : 'Sin disponibilidad calculable'],
-      ['Diferencia agregada', selected ? `${hours(Math.max(0, selected.knownMinutes - selected.capacityMinutes))} → ${hours(Math.max(0, selected.knownMinutes + selected.estimatedMinutes - selected.capacityMinutes))}` : '—', selected ? `${hours(Math.max(0, selected.knownMinutes - selected.capacityMinutes))} conocida · ${hours(Math.max(0, selected.knownMinutes + selected.estimatedMinutes - selected.capacityMinutes))} con hipótesis` : 'Sin semanas calculables'],
+    {periodMode === 'week' && !selected && <p role="status" className="text-sm text-stone-600">Sin semanas/datos calculables para este mes. Amplía el horizonte técnico o elige otro mes.</p>}
+    <p className="text-xs font-medium text-stone-600">{periodMode === 'month' ? `Mes ${selectedMonthData?.label || '—'} · resumen mensual de sede` : `Semana ${shortDate(selected?.week || '')} · resumen total de sede`}</p>
+    <div className="grid divide-y border-y border-stone-300 py-1 sm:grid-cols-3 sm:divide-x sm:divide-y-0" aria-label={`Resumen ${periodMode === 'month' ? 'mensual' : 'semanal'} de sede`}>{[
+      ['Carga prevista', summaryPeriod ? hours(summaryPeriod.knownMinutes + summaryPeriod.estimatedMinutes) : '—', summaryPeriod ? `${hours(summaryPeriod.knownMinutes)} conocidas + ${hours(summaryPeriod.estimatedMinutes)} estimadas` : 'Sin semanas calculables'],
+      ['Capacidad potencial', summaryPeriod ? hours(summaryPeriod.capacityMinutes) : '—', periodMode === 'month' ? 'Capacidad potencial del mes · no es cobertura libre' : selected ? `${hours(selected.contractedMinutes)} contratadas · ${hours(selected.collaboratorCapacityMinutes ?? 0)} de autónomos ya incluidas` : 'Sin disponibilidad calculable'],
+      ['Diferencia agregada', summaryPeriod ? `${hours(Math.max(0, summaryPeriod.knownMinutes - summaryPeriod.capacityMinutes))} → ${hours(Math.max(0, summaryPeriod.knownMinutes + summaryPeriod.estimatedMinutes - summaryPeriod.capacityMinutes))}` : '—', summaryPeriod ? `${hours(Math.max(0, summaryPeriod.knownMinutes - summaryPeriod.capacityMinutes))} conocida · ${hours(Math.max(0, summaryPeriod.knownMinutes + summaryPeriod.estimatedMinutes - summaryPeriod.capacityMinutes))} con hipótesis` : 'Sin semanas calculables'],
     ].map(([label, value, detail]) => <div key={label} className="px-3 py-4"><h2 className="text-sm text-stone-600">{label}</h2><p className="my-2 text-2xl font-semibold tracking-tight tabular-nums sm:text-3xl">{value}</p><p className="text-xs text-stone-600">{detail}</p></div>)}</div>
     {(!dataset.services.length || !dataset.workers.length) && <p role="status" className="text-sm text-stone-600">Sin datos suficientes: falta demanda o equipo en este periodo. No se concluye que sobre personal.</p>}
     <StaffingEvolution weeks={result.weeks} months={monthlyView.months} selectedMonth={selectedMonth || monthlyView.months[0]?.month} selectedWeek={selected?.week} onSelect={selectWeek} onMonth={selectMonth} incompleteWeeks={incompleteWeeks} />

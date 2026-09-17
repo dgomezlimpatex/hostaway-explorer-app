@@ -56,8 +56,12 @@ try {
   await expect(page.getByLabel('Mes de análisis')).toBeVisible();
   await page.getByLabel('Mes de análisis').selectOption('2026-10');
   await expect(page.getByLabel('Mes de análisis')).toHaveValue('2026-10');
+  await expect(page.getByText('Mes octubre · resumen mensual de sede', { exact: true })).toBeVisible();
+  await page.getByLabel('Mes de análisis').selectOption('2026-11');
+  await expect(page.getByLabel('Mes de análisis')).toHaveValue('2026-11');
+  await expect(page.getByText('Mes noviembre · resumen mensual de sede', { exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Meses', exact: true }).click();
-  await expect(page.getByRole('button', { name: /octubre/i }).first()).toBeVisible();
+  await expect(page.locator('svg [aria-pressed="true"]').first()).toHaveAttribute('aria-label', /noviembre/i);
   await page.getByRole('button', { name: 'Semanas', exact: true }).click();
   await page.getByLabel('Periodicidad').selectOption('week');
   await expect(page.getByLabel('Semana de análisis')).toBeVisible();
