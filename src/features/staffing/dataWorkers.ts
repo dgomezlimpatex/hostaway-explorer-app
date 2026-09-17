@@ -3,13 +3,11 @@ import type { StaffingIssue, StaffingWorker } from './types';
 import { datePlus, timeMinutes, validDate } from './dataUtils';
 
 export interface WorkerInputs {
-  /** Opt in only for a scope with confirmed habitual-collaborator rules. Default false. */
-  useHabitualCollaborators?: boolean;
   /** Explicit sede rule; mobility is not inferred from missing exclusions. */
   allowCrossCenterMobility?: boolean;
   workers: StaffingRow[]; availability: StaffingRow[]; rests: StaffingRow[]; staffing: StaffingRow[];
   absences: StaffingRow[]; maintenance: StaffingRow[]; maintenanceTypes: StaffingRow[];
-  contracts: StaffingRow[]; planning: StaffingRow[]; groupIds: string[];
+  planning: StaffingRow[]; groupIds: string[];
   from: string; to: string; issues: StaffingIssue[];
 }
 const text = (value: unknown) => typeof value === 'string' ? value : '';
@@ -80,36 +78,22 @@ export function mapStaffingWorkers(input: WorkerInputs): StaffingWorker[] {
     const excludedCenterIds = [...new Set(assignments.filter(item => item.is_active === false || number(item.priority) >= 90).map(item => text(item.property_group_id)))];
     // propertyStaffingService: <20 primary, <30 secondary, <90 backup (mobile support).
     const homeCenterIds = [...new Set(assignments.filter(item => item.is_active === true && number(item.priority) < 30 && !excludedCenterIds.includes(text(item.property_group_id))).map(item => text(item.property_group_id)))];
-    const contracts = input.contracts.filter(item => item.cleaner_id === id && text(item.start_date) <= to && (!item.end_date || text(item.end_date) >= from));
-    const currentContracts = contracts.filter(item => item.is_active === true && text(item.start_date) <= from && (!item.end_date || text(item.end_date) >= from) && (!item.status || !['cancelled', 'canceled', 'terminated', 'inactive'].includes(text(item.status).toLowerCase())));
-    const currentContract = [...currentContracts].sort((a, b) => text(b.start_date).localeCompare(text(a.start_date)))[0];
-    const contractHours = number(currentContract?.contract_hours_per_week);
-    const hasCurrentContract = !!currentContract;
     const fichaHours = number(row.contract_hours_per_week);
-    const contractHoursValid = Number.isFinite(contractHours) && contractHours > 0;
-    const fichaHoursValid = Number.isFinite(fichaHours) && fichaHours > 0;
-    // Las horas de la ficha son las que ve dirección: un contrato a 0 h no las anula.
-    if (hasCurrentContract && !contractHoursValid && fichaHoursValid) workerIssues.push({ code: 'zero-contract-ficha-hours', message: `${text(row.name)}: contrato a 0 h y ficha con ${fichaHours} h; se usan las de la ficha. Revisa el contrato.` });
-    else if (contractHoursValid && fichaHoursValid && contractHours !== fichaHours) workerIssues.push({ code: 'hours-mismatch', message: `${text(row.name)}: contrato ${contractHours} h y ficha ${fichaHours} h; se usa el contrato. Revisa cuál está vigente.` });
-    const collaborator = input.useHabitualCollaborators === true && !hasCurrentContract && (row.contract_hours_per_week === null || row.contract_hours_per_week === 0);
-    if (collaborator) workerIssues.push({ code: 'habitual-collaborator-availability', message: 'Colaboración habitual con 0 h: la disponibilidad registrada ya no genera capacidad; solo podría contar un contrato o ficha con horas.' });
-    else workerIssues.push({ code: 'contract-current-assumption', message: contracts.length ? 'Hay contratos fechados; el motor no representa cambios por fecha. Se usan horas actuales de plantilla sin fusionarlas con contratos históricos; revisar vigencias.' : 'Horas actuales de plantilla como hipótesis para el periodo; no acreditan contrato histórico ni fecha de baja.' });
+    // Los contratos laborales son una herencia en desuso (Dani 17/09/2026): la única
+    // fuente de horas es la FICHA (cleaners.contract_hours_per_week), la que ve dirección.
     const maxDaily = number(input.planning.find(item => item.id === id)?.planning_max_daily_minutes);
-    // Contrato con horas > 0 manda; si viene a 0 h, mandan las de la ficha.
-    // Si no hay dato válido en ninguno, la persona queda fuera de la previsión.
-    const effectiveHours = contractHoursValid ? contractHours : fichaHoursValid ? fichaHours : (Number.isFinite(contractHours) ? contractHours : fichaHours);
-    // Regla confirmada por Dani (17/09/2026): la disponibilidad registrada ya NO
-    // genera capacidad. Solo cuentan horas de contrato o ficha; quien se queda con
-    // 0 h (o sin dato válido) no cuenta en la previsión, da igual que tenga tareas
-    // asignadas o disponibilidad: "como si no existiera". Su trabajo sí sigue
-    // contando como carga.
-    const weeklyMinutes = effectiveHours * 60;
+    // Regla confirmada por Dani: la disponibilidad registrada ya NO genera capacidad
+    // y los contratos legacy no aportan horas. Solo cuenta la ficha; quien se queda
+    // con 0 h (o sin dato válido) no cuenta en la previsión, da igual que tenga
+    // tareas asignadas o disponibilidad: "como si no existiera". Su trabajo sí
+    // sigue contando como carga.
+    const weeklyMinutes = fichaHours * 60;
     if (!(Number.isFinite(weeklyMinutes) && weeklyMinutes > 0)) {
       excludedZeroHour.push(text(row.name));
       continue;
     }
     issues.push(...workerIssues);
-    kept.push({ id, name: text(row.name), engagement: collaborator ? 'collaborator' : 'employee', weeklyMinutes,
+    kept.push({ id, name: text(row.name), engagement: 'employee', weeklyMinutes,
       homeCenterIds, excludedCenterIds, availability, restDay: restDays[0] ?? null, flexibleRest: false, canMove: input.allowCrossCenterMobility === true,
       unavailableDates: [...unavailableDates].sort(), confirmedRestDates: [...confirmedRestDates].sort(), blockedSlots,
       activeFrom: text(row.start_date) || undefined, maxDailyMinutes: Number.isFinite(maxDaily) && maxDaily >= 0 ? maxDaily : undefined });

@@ -14,12 +14,12 @@ const outOfForecast = [
 const expected = { shiftPropertyIds: [property], allowCrossCenterMobility: true, excludedWorkerIds: outOfForecast };
 assert.deepEqual(staffingRulesForSede(sede), expected, 'explicit confirmed site rules use canonical scoped identity');
 for (const other of ['', 'another-sede', 'A Coruña', ` ${sede}`]) {
-  assert.deepEqual(staffingRulesForSede(other), { shiftPropertyIds: [], useHabitualCollaborators: false, allowCrossCenterMobility: false, excludedWorkerIds: [] }, 'never apply business rules by a similar name or normalize malformed IDs');
+  assert.deepEqual(staffingRulesForSede(other), { shiftPropertyIds: [], allowCrossCenterMobility: false, excludedWorkerIds: [] }, 'never apply business rules by a similar name or normalize malformed IDs');
 }
 const changed = staffingRulesForSede(sede);
 changed.shiftPropertyIds.push('untrusted-property');
 changed.excludedWorkerIds.push('untrusted-worker');
-changed.useHabitualCollaborators = false;
+changed.allowCrossCenterMobility = false;
 assert.deepEqual(staffingRulesForSede(sede), expected, 'consumer cannot mutate shared configuration');
 // La regla se aplica al leer: las personas de la lista no aportan horas, pero su
 // trabajo SÍ cuenta como carga (solo NOT COUNT sale también de la carga).

@@ -195,7 +195,6 @@ async function workerConstraints() {
       { id: 'maintenance', cleaner_id: 'w', days_of_week: [1], start_time: '10:00', end_time: '11:00', is_active: true, schedule_type: 'maintenance' },
       { id: 'unavailability', cleaner_id: 'w', days_of_week: [2], start_time: '11:00', end_time: '12:00', is_active: true, schedule_type: 'unavailability' },
     ],
-    worker_contracts: [{ id: 'contract', cleaner_id: 'w', start_date: '2026-09-16', end_date: null, contract_hours_per_week: 30, is_active: true }],
   }), 's', '2026-09-14', '2026-09-20');
   const worker = result.workers[0];
   assert.deepEqual(worker.excludedCenterIds, ['g'], 'priority 90 excludes, not a home team');
@@ -203,8 +202,7 @@ async function workerConstraints() {
   assert.deepEqual(worker.confirmedRestDates, ['2026-09-15']);
   assert.equal(worker.flexibleRest, false);
   assert.equal(worker.maxDailyMinutes, 300);
-  assert.equal(worker.weeklyMinutes, 1200, 'dated contract not arbitrarily merged with current contract');
-  assert.ok(result.issues.some(i => i.code === 'contract-current-assumption'));
+  assert.equal(worker.weeklyMinutes, 1200, 'ficha is the only capacity source; legacy contracts are not read');
   const blocks = worker.blockedSlots!;
   assert.ok(blocks.some(b => b.day === 1 && b.startMinute === 720 && !b.consumesContract));
   assert.ok(blocks.some(b => b.day === 6 && b.startMinute === 0 && b.endMinute === 1440));
@@ -212,7 +210,7 @@ async function workerConstraints() {
   assert.ok(blocks.some(b => b.date === '2026-09-17' && b.consumesContract));
   assert.ok(blocks.some(b => b.day === 1 && b.startMinute === 600 && b.consumesContract));
   assert.ok(blocks.some(b => b.day === 2 && b.startMinute === 660 && !b.consumesContract));
-  console.log('PASS fixed and dated rests, partial absence, maintenance, contract warning and exclusions');
+  console.log('PASS fixed and dated rests, partial absence, maintenance and exclusions');
 }
 async function planningAndQuality() {
   const tables = { properties: [{ ...property, planning_required_cleaners: 2, planning_estimated_checkout_minutes: 180 }],

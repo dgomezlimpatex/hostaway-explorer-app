@@ -138,15 +138,12 @@ async function materializationAndMargins() {
 }
 async function collaboratorRuleForwarding() {
   const tables = { properties: [property], cleaners: [{ id: 'collaborator', name: 'Synthetic', sede_id: 's', is_active: true, contract_hours_per_week: 0 }], cleaner_availability: [{ id: 'slot', cleaner_id: 'collaborator', day_of_week: 1, is_available: true, start_time: '07:00', end_time: '12:00' }] };
-  const enabled = await readStaffingDataset(fixture(tables), 's', day, day, { ...rules, useHabitualCollaborators: true });
-  // Regla de Dani: disponibilidad registrada ya no genera capacidad; 0 h en ficha
-  // queda fuera de la previsión, da igual que tenga disponibilidad o tareas.
-  assert.equal(enabled.workers.length, 0, '0-hour worker is excluded even with availability and opt-in rule');
-  assert.ok(enabled.issues.some(i => i.code === 'zero-hour-rule-excluded'), 'exclusion is visible in criteria');
-  const disabled = await readStaffingDataset(fixture(tables), 's', day, day, { ...rules, useHabitualCollaborators: false });
-  assert.equal(disabled.workers.length, 0, '0-hour worker is excluded without opt-in too');
-  assert.ok(disabled.issues.some(i => i.code === 'zero-hour-rule-excluded'));
-  console.log('PASS 0-hour workers excluded from forecast even with availability and opt-in rule');
+  // Regla de Dani: la ficha es la única fuente de horas; la disponibilidad registrada
+  // no genera capacidad. 0 h en ficha queda fuera de la previsión, da igual que tenga.
+  const result = await readStaffingDataset(fixture(tables), 's', day, day, rules);
+  assert.equal(result.workers.length, 0, '0-hour worker is excluded even with availability');
+  assert.ok(result.issues.some(i => i.code === 'zero-hour-rule-excluded'), 'exclusion is visible in criteria');
+  console.log('PASS 0-hour workers excluded from forecast even with availability');
 }
 async function exactClockAndDiagnostics() {
   const result = await readStaffingDataset(fixture({ properties: [{ ...property, duracion_servicio: null }], tasks: [{ ...task, start_time: '07:00:30', end_time: '11:30:30' }], recurring_tasks: [recurrence] }), 's', day, day, rules);

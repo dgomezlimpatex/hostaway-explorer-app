@@ -23,5 +23,5 @@ export function staffingRulesForSede(sedeId: string) {
       ],
     };
   }
-  return { shiftPropertyIds: [] as string[], useHabitualCollaborators: false, allowCrossCenterMobility: false, excludedWorkerIds: [] as string[] };
+  return { shiftPropertyIds: [] as string[], allowCrossCenterMobility: false, excludedWorkerIds: [] as string[] };
 }

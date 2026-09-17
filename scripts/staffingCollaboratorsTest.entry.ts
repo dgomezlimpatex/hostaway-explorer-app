@@ -47,23 +47,21 @@ test('collaborator service activity makes total cost unknown even with a supplie
 });
 
 test('availability alone never creates capacity: 0-hour workers are excluded entirely', () => {
-  for (const flag of [true, false, undefined]) {
-    const source = inputs({ useHabitualCollaborators: flag });
-    assert.equal(mapStaffingWorkers(source).length, 0, `0 h ficha + availability is excluded (flag ${String(flag)})`);
-    assert.ok(source.issues.some(i => i.code === 'zero-hour-rule-excluded'), 'exclusion is visible in criteria');
-  }
-  const [twenty] = mapStaffingWorkers(inputs({ useHabitualCollaborators: true, workers: [{ id: 'c', is_active: true, contract_hours_per_week: 20 }] }));
+  const source = inputs();
+  assert.equal(mapStaffingWorkers(source).length, 0, '0 h ficha + availability is excluded');
+  assert.ok(source.issues.some(i => i.code === 'zero-hour-rule-excluded'), 'exclusion is visible in criteria');
+  const [twenty] = mapStaffingWorkers(inputs({ workers: [{ id: 'c', is_active: true, contract_hours_per_week: 20 }] }));
   assert.equal(twenty.weeklyMinutes, 1200, 'ficha hours still create capacity');
 });
 
 const inputs = (patch: Partial<Parameters<typeof mapStaffingWorkers>[0]> = {}): Parameters<typeof mapStaffingWorkers>[0] => ({
   workers: [{ id: 'c', name: 'Synthetic collaborator', is_active: true, contract_hours_per_week: null, contract_type: 'full-time' }],
   availability: Array.from({ length: 7 }, (_, day_of_week) => ({ cleaner_id: 'c', day_of_week, start_time: '08:00', end_time: '10:00', is_available: true })),
-  rests: [{ cleaner_id: 'c', is_active: true, day_of_week: 0 }], staffing: [], absences: [], maintenance: [], maintenanceTypes: [], contracts: [], planning: [],
+  rests: [{ cleaner_id: 'c', is_active: true, day_of_week: 0 }], staffing: [], absences: [], maintenance: [], maintenanceTypes: [], planning: [],
   groupIds: ['a'], from: '2026-09-14', to: '2026-09-20', issues: [], allowCrossCenterMobility: true, ...patch,
 });
 test('0-hour workers are out of capacity and candidates; their assigned work stays as load', () => {
-  const source = inputs({ useHabitualCollaborators: true, absences: [{ cleaner_id: 'c', start_date: '2026-09-14', end_date: '2026-09-14' }] });
+  const source = inputs({ absences: [{ cleaner_id: 'c', start_date: '2026-09-14', end_date: '2026-09-14' }] });
   const mapped = mapStaffingWorkers(source);
   assert.equal(mapped.length, 0, 'availability, rest and absence rows do not resurrect a 0-hour worker');
   assert.ok(source.issues.some(i => i.code === 'zero-hour-rule-excluded'), 'exclusion is visible in criteria');
@@ -117,28 +115,13 @@ test('invalid or duplicate collaborator input is quarantined without making a la
   assert.ok(duplicate.issues.some(i => i.code === 'duplicate-worker'));
 });
 
-test('ficha and contract hours are the only capacity sources; 0 h or invalid never count', () => {
+test('ficha is the only capacity source; 0 h or invalid never count', () => {
   for (const hours of [null, 0, -1, NaN, Infinity, -Infinity]) {
-    const source = inputs({ useHabitualCollaborators: true, workers: [{ id: 'c', is_active: true, contract_hours_per_week: hours } as StaffingRow] });
-    // Regla de Dani: ni disponibilidad ni tareas dan capacidad; solo ficha o contrato con horas.
+    const source = inputs({ workers: [{ id: 'c', is_active: true, contract_hours_per_week: hours } as StaffingRow] });
+    // Regla de Dani: ni disponibilidad ni tareas ni contratos dan capacidad; solo la ficha.
     assert.equal(mapStaffingWorkers(source).length, 0, `${String(hours)} never creates capacity nor presence`);
   }
   const [twenty] = mapStaffingWorkers(inputs({ workers: [{ id: 'c', is_active: true, contract_hours_per_week: 20 }] }));
-  assert.notEqual(twenty.engagement, 'collaborator');
-  assert.equal(twenty.weeklyMinutes, 1200);
-  const [contract] = mapStaffingWorkers(inputs({ workers: [{ id: 'c', is_active: true, contract_hours_per_week: 0 }], contracts: [{ id: 'k', cleaner_id: 'c', is_active: true, status: 'active', start_date: '2026-01-01', end_date: null, contract_hours_per_week: 40 }] }));
-  assert.equal(contract.weeklyMinutes, 2400, 'active contract with hours counts even with ficha 0');
-});
-
-test('active contract takes precedence over habitual collaborator opt-in and supplies its hours', () => {
-  const source = inputs({
-    useHabitualCollaborators: true,
-    workers: [{ id: 'c', is_active: true, contract_hours_per_week: 20, contract_type: 'full-time' }],
-    contracts: [{ id: 'contract', cleaner_id: 'c', is_active: true, status: 'active', start_date: '2026-01-01', end_date: null, contract_hours_per_week: 40 }],
-  });
-  const [mapped] = mapStaffingWorkers(source);
-  assert.equal(mapped.engagement, 'employee');
-  assert.equal(mapped.weeklyMinutes, 2400);
-  assert.ok(source.issues.some(i => i.code === 'contract-current-assumption'));
-  assert.ok(!source.issues.some(i => i.code === 'habitual-collaborator-availability'));
+  assert.equal(twenty.weeklyMinutes, 1200, 'ficha hours create capacity');
+  assert.equal(twenty.engagement, 'employee');
 });

@@ -11,7 +11,6 @@ export interface StaffingReadSpec {
 export type StaffingReadPage = (spec: StaffingReadSpec) => Promise<StaffingRow[]>;
 export interface StaffingReadRules {
   shiftPropertyIds?: readonly string[];
-  useHabitualCollaborators?: boolean;
   allowCrossCenterMobility?: boolean;
   /** Personas confirmadas fuera de la previsión general (dirección, solo urgencias…). */
   excludedWorkerIds?: readonly string[];
@@ -138,11 +137,10 @@ export async function readStaffingDataset(read: StaffingReadPage, sedeId: string
   const optional = async (load: () => Promise<StaffingRow[]>, label: string) => {
     try { return await load(); } catch { issues.push({ code: 'extension-unavailable', message: `${label} no disponible; se conserva contrato base con incertidumbre explícita.` }); return []; }
   };
-  const [absences, maintenance, maintenanceTypes, contracts, workerPlanning] = await Promise.all([
+  const [absences, maintenance, maintenanceTypes, workerPlanning] = await Promise.all([
     safeChildren('worker_absences', 'id,cleaner_id,start_date,end_date,start_time,end_time,absence_type', 'cleaner_id', workerIds, { since: { column: 'end_date', value: from }, until: { column: 'start_date', value: to } }),
     safeChildren('worker_maintenance_cleanings', 'id,cleaner_id,days_of_week,start_time,end_time,is_active', 'cleaner_id', workerIds, { equals: { is_active: true } }),
     optional(() => children('worker_maintenance_cleanings', 'id,cleaner_id,schedule_type', 'cleaner_id', workerIds), 'schedule_type de compromisos'),
-    safeChildren('worker_contracts', 'id,cleaner_id,start_date,end_date,is_active,status,contract_hours_per_week', 'cleaner_id', workerIds, { until: { column: 'start_date', value: to } }),
     optional(() => all({ table: 'cleaners', columns: 'id,sede_id,planning_max_daily_minutes', equals: { sede_id: sedeId } }), 'Límites diarios avanzados'),
   ]);
   const preferred = await safeChildren('property_preferred_cleaners', 'id,property_id,cleaner_id,priority', 'property_id', propertyIds);
@@ -151,7 +149,7 @@ export async function readStaffingDataset(read: StaffingReadPage, sedeId: string
     issues.push({ code: 'scope-violation', message: 'Preferencia de propiedad con trabajador no autorizado; vínculo descartado.' }); return false;
   }).map(row => ({ ...row, property_group_id: centerFor(text(row.property_id)), is_active: true }));
   if (rules.allowCrossCenterMobility === true) issues.push({ code: 'mobility-policy-assumption', message: 'Movilidad entre centros habilitada por regla explícita de esta sede; excepciones individuales no están modeladas y requieren confirmación.' });
-  const workers = mapStaffingWorkers({ allowCrossCenterMobility: rules.allowCrossCenterMobility, useHabitualCollaborators: rules.useHabitualCollaborators, workers: staffingWorkers, availability, rests: fixedRests, staffing: [...staffing, ...preferredStaffing], absences, maintenance, maintenanceTypes, contracts, planning: workerPlanning, groupIds: [...centerMap.keys()], from, to, issues });
+  const workers = mapStaffingWorkers({ allowCrossCenterMobility: rules.allowCrossCenterMobility, workers: staffingWorkers, availability, rests: fixedRests, staffing: [...staffing, ...preferredStaffing], absences, maintenance, maintenanceTypes, planning: workerPlanning, groupIds: [...centerMap.keys()], from, to, issues });
   if (['cleaner_availability', 'worker_absences', 'worker_maintenance_cleanings', 'worker_fixed_days_off', 'cleaner_group_assignments', 'property_preferred_cleaners'].some(table => failedSources.has(table))) {
     for (const worker of workers) worker.availability = [];
     issues.push({ code: 'capacity-incomplete', message: 'Fuentes de disponibilidad o exclusión incompletas: capacidad de asignación retenida hasta verificar restricciones.' });
