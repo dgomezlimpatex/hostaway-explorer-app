@@ -43,10 +43,10 @@ try {
   await expect(page.getByRole('columnheader', { name: 'Limpiezas asignadas' }).first()).toBeVisible();
   await expect(page.getByRole('columnheader', { name: 'Horas libres' }).first()).toBeVisible();
   await expect(page.getByRole('columnheader', { name: 'Aviso' }).first()).toBeVisible();
-  await expect(page.getByText('de servicios conocidos sin encaje calculado', { exact: false })).toBeVisible();
-  await expect(page.getByRole('region', { name: 'Comparación de escenarios' })).toContainText('Horas sin encajar');
-  const capacities = await page.getByLabel('Barras diarias').getByRole('button').evaluateAll(buttons => buttons.map(button => Number((button.getAttribute('aria-label')?.match(/capacidad potencial ([\d,.]+) h/)?.[1] || '0').replace(',', '.'))));
-  const weeklyCapacity = Number((await page.getByLabel('Resumen semanal de sede').innerText()).match(/Capacidad potencial\s+([\d,.]+) h/)?.[1]?.replace(',', '.') || '0');
+  await expect(page.locator('p:visible', { hasText: 'de trabajo conocido sin repartir' }).first()).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Comparación de escenarios' })).toContainText('Trabajo sin repartir');
+  const capacities = await page.getByLabel('Barras diarias').getByRole('button').evaluateAll(buttons => buttons.map(button => Number((button.getAttribute('aria-label')?.match(/el equipo puede hacer ([\d,.]+) h/)?.[1] || '0').replace(',', '.'))));
+  const weeklyCapacity = Number((await page.getByLabel('Resumen semanal de sede').innerText()).match(/Horas del equipo\s+([\d,.]+) h/)?.[1]?.replace(',', '.') || '0');
   expect(Math.abs(capacities.reduce((sum, value) => sum + value, 0) - weeklyCapacity)).toBeLessThan(1);
   await page.getByRole('button', { name: /Probar refuerzo/ }).click();
   await expect(page.getByRole('dialog', { name: 'Simular cambios' })).toBeVisible();

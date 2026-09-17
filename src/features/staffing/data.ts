@@ -13,6 +13,8 @@ export interface StaffingReadRules {
   shiftPropertyIds?: readonly string[];
   useHabitualCollaborators?: boolean;
   allowCrossCenterMobility?: boolean;
+  /** Personas confirmadas fuera de la previsión general (dirección, solo urgencias…). */
+  excludedWorkerIds?: readonly string[];
 }
 import { text, numeric, timeMinutes, datePlus, validDate, accessWindow } from './dataUtils';
 export { timeMinutes, datePlus } from './dataUtils';
@@ -73,8 +75,12 @@ export async function readStaffingDataset(read: StaffingReadPage, sedeId: string
   // NOT COUNT es el marcador interno del trabajo que no se realiza (no se factura):
   // queda fuera de la previsión, ni como capacidad ni como carga de sus tareas.
   const internalWorkerIds = new Set(rawWorkers.filter(row => /^not[\s_-]*count$/i.test(text(row.name).trim())).map(row => text(row.id)));
-  const staffingWorkers = rawWorkers.filter(row => !internalWorkerIds.has(text(row.id)));
-  const tasks = rawTasks.filter(task => !internalWorkerIds.has(text(task.cleaner_id)));
+  const ruleExcludedIds = new Set(rules.excludedWorkerIds ?? []);
+  const outOfForecastIds = new Set([...internalWorkerIds, ...ruleExcludedIds]);
+  const staffingWorkers = rawWorkers.filter(row => !outOfForecastIds.has(text(row.id)));
+  const tasks = rawTasks.filter(task => !outOfForecastIds.has(text(task.cleaner_id)));
+  const ruleExcludedWorkers = rawWorkers.filter(row => ruleExcludedIds.has(text(row.id)));
+  if (ruleExcludedWorkers.length) issues.push({ code: 'worker-rule-excluded', message: `Fuera de la previsión por regla de sede (no hacen limpieza general): ${ruleExcludedWorkers.map(row => text(row.name)).join(', ')}. No cuentan ni sus horas ni sus tareas.` });
   // Directory precedence: explicit property state wins; NULL inherits its client.
   // Read only clients needed for inheritance, scoped by already-authorized properties.
   const clientIds = [...new Set(properties.filter(row => row.is_active == null).map(row => text(row.cliente_id)).filter(Boolean))];
