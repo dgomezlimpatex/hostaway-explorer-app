@@ -84,13 +84,16 @@ async function setupCronJobs(supabase: any, supabaseUrl: string, supabaseAnonKey
   const results = [];
   
   for (const schedule of schedules) {
-    // Convertir hora local a UTC para el cron
-    const cronSchedule = `${schedule.minute} ${schedule.hour} * * *`;
+    // Convertir hora local a UTC para el cron (days_of_week NULL = todos los días)
+    const daysOfWeek = typeof schedule.days_of_week === 'string' ? schedule.days_of_week.trim() : '';
+    const cronSchedule = `${schedule.minute} ${schedule.hour} * * ${daysOfWeek || '*'}`;
     const jobName = `avantio_sync_${schedule.id.substring(0, 8)}`;
-    const requestBody = JSON.stringify({ 
+    const requestBody = JSON.stringify({
       triggered_by: 'scheduled',
       schedule_id: schedule.id,
-      schedule_name: schedule.name
+      schedule_name: schedule.name,
+      ...(Number.isInteger(schedule.days_ahead) ? { daysAhead: schedule.days_ahead } : {}),
+      ...(Number.isInteger(schedule.task_horizon_days) ? { taskHorizonDays: schedule.task_horizon_days } : {})
     });
     
     console.log(`📅 Configurando: ${schedule.name} (${schedule.hour}:${schedule.minute.toString().padStart(2, '0')})`);

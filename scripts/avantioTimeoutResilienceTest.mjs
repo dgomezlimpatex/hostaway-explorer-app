@@ -42,7 +42,10 @@ try {
   assert.match(apiSource, /window\.label === 'arrival'/);
   assert.match(orchestratorSource, /const SYNC_WORK_BUDGET_MS = 110000/);
   assert.match(orchestratorSource, /const SOURCE_FETCH_BUDGET_MS = 70000/);
-  assert.match(orchestratorSource, /fetchAllAvantioReservations\(token, \{ deadlineAt: sourceDeadlineAt \}\)/);
+  assert.match(
+    orchestratorSource,
+    /fetchAllAvantioReservations\(token, \{\s*deadlineAt: sourceDeadlineAt,\s*futureDays: this\.options\.daysAhead,?\s*\}\)/,
+  );
   assert.match(orchestratorSource, /assertWithinSyncBudget\(`process reservation/);
 
   console.log('avantio-timeout-resilience-tests: OK');

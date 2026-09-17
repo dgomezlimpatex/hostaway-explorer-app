@@ -18,7 +18,11 @@ import { shouldCreateTaskForReservation } from './reservation-validator.ts';
 export class ReservationProcessor {
   private supabase;
 
-  constructor(supabaseUrl: string, supabaseServiceKey: string) {
+  constructor(
+    supabaseUrl: string,
+    supabaseServiceKey: string,
+    private taskHorizonDays?: number,
+  ) {
     this.supabase = createClient(supabaseUrl, supabaseServiceKey);
   }
 
@@ -88,7 +92,7 @@ export class ReservationProcessor {
     syncLogId?: string | null
   ): Promise<void> {
     try {
-      const shouldCreate = shouldCreateTaskForReservation(reservation);
+      const shouldCreate = shouldCreateTaskForReservation(reservation, this.taskHorizonDays);
       let taskId = null;
       
       if (shouldCreate) {

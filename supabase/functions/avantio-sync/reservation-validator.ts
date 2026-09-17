@@ -1,6 +1,17 @@
 import { AvantioReservation } from './types.ts';
+import { envValue, resolveDaysAhead } from '../_shared/syncHorizon.ts';
 
-export const TASK_CREATION_HORIZON_DAYS = 30;
+export const DEFAULT_TASK_CREATION_HORIZON_DAYS = 30;
+export const AVANTIO_TASK_HORIZON_ENV = 'AVANTIO_TASK_CREATION_HORIZON_DAYS';
+
+/**
+ * Días hacia el futuro en los que se crea la tarea de limpieza (una por
+ * check-out). Se puede sobrescribir por invocación para los pases de más
+ * alcance; sin valor, el comportamiento es el histórico (30 días).
+ */
+export function taskCreationHorizonDays(): number {
+  return resolveDaysAhead(envValue(AVANTIO_TASK_HORIZON_ENV), DEFAULT_TASK_CREATION_HORIZON_DAYS);
+}
 
 /**
  * Determines if a task should be created for a reservation.
@@ -8,7 +19,10 @@ export const TASK_CREATION_HORIZON_DAYS = 30;
  * the operational sync horizon. Reservations arriving in that horizon may be
  * stored for future-entry display even when their checkout is later.
  */
-export function shouldCreateTaskForReservation(reservation: AvantioReservation): boolean {
+export function shouldCreateTaskForReservation(
+  reservation: AvantioReservation,
+  horizonDays: number = taskCreationHorizonDays(),
+): boolean {
   const statusUpper = reservation.status.toUpperCase();
   
   // Cancelled or unavailable reservations don't get tasks
@@ -36,7 +50,7 @@ export function shouldCreateTaskForReservation(reservation: AvantioReservation):
   }
 
   const lastTaskDate = new Date(today);
-  lastTaskDate.setDate(lastTaskDate.getDate() + TASK_CREATION_HORIZON_DAYS);
+  lastTaskDate.setDate(lastTaskDate.getDate() + horizonDays);
   if (checkoutDate > lastTaskDate) {
     return false;
   }

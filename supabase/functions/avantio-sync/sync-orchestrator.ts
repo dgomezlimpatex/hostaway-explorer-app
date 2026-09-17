@@ -27,9 +27,13 @@ export class SyncOrchestrator {
     reservations_details: []
   };
 
-  constructor(supabaseUrl: string, supabaseServiceKey: string) {
+  constructor(
+    supabaseUrl: string,
+    supabaseServiceKey: string,
+    private options: { daysAhead?: number; taskHorizonDays?: number } = {},
+  ) {
     this.supabase = createClient(supabaseUrl, supabaseServiceKey);
-    this.processor = new ReservationProcessor(supabaseUrl, supabaseServiceKey);
+    this.processor = new ReservationProcessor(supabaseUrl, supabaseServiceKey, options.taskHorizonDays);
   }
 
   async initializeSyncLog(triggerMeta?: { triggered_by?: string; schedule_name?: string }): Promise<void> {
@@ -62,7 +66,10 @@ export class SyncOrchestrator {
     try {
       // Fetch all reservations using real API (pagination + detail included).
       // The source phase gets a smaller budget so DB processing and log finalization keep headroom.
-      const reservations = await fetchAllAvantioReservations(token, { deadlineAt: sourceDeadlineAt });
+      const reservations = await fetchAllAvantioReservations(token, {
+        deadlineAt: sourceDeadlineAt,
+        futureDays: this.options.daysAhead,
+      });
       this.assertWithinSyncBudget('preload reservations and tasks');
 
       console.log(`📊 Total de reservas a procesar: ${reservations.length}`);

@@ -60,6 +60,8 @@
     "test:recurring-task-schedule": "node scripts/recurringTaskScheduleTest.mjs",
     "test:pms-cancellation-safety": "node scripts/pmsCancellationSafetyTest.mjs",
     "test:avantio-timeout-resilience": "node scripts/avantioTimeoutResilienceTest.mjs",
+    "test:sync-horizon": "node scripts/syncHorizonTest.mjs",
+    "test:trimestral-schedule": "node scripts/trimestralScheduleContractTest.mjs",
     "test:edge-authorization-safety": "node scripts/edgeAuthorizationSafetyTest.mjs",
     "test:hostaway-dormancy": "node scripts/hostawayDormancyTest.mjs",
     "test:planning-batch-contract": "node scripts/planningBatchContractTest.mjs",
