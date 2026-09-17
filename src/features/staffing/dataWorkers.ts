@@ -38,7 +38,12 @@ export function mapStaffingWorkers(input: WorkerInputs): StaffingWorker[] {
     const blockedSlots: NonNullable<StaffingWorker['blockedSlots']> = [];
     const slots = input.availability.filter(item => item.cleaner_id === id);
     const rests = input.rests.filter(item => item.cleaner_id === id && item.is_active === true && weekday(item.day_of_week));
-    const restDays = [...new Set(rests.map(item => number(item.day_of_week)))].sort();
+    const declaredRestDays = [...new Set(rests.map(item => number(item.day_of_week)))].sort();
+    // Libranza en los siete días junto a horas en ficha: dato contradictorio.
+    // Se conserva la persona y se avisa, pero no se anula su semana entera.
+    const restCoverWholeWeek = declaredRestDays.length >= 7;
+    const restDays = restCoverWholeWeek ? [] : declaredRestDays;
+    if (restCoverWholeWeek) issues.push({ code: 'rest-every-day', message: `${text(row.name)}: libranza registrada en los 7 días con horas en ficha; dato contradictorio, se ignoran las libranzas para no anular su capacidad. Revisa su ficha.` });
     for (const day of restDays) blockedSlots.push({ day, startMinute: 0, endMinute: 1440, consumesContract: false });
     const availability: StaffingWorker['availability'] = [];
     for (const slot of slots) {
@@ -51,7 +56,7 @@ export function mapStaffingWorkers(input: WorkerInputs): StaffingWorker[] {
       else issues.push({ code: 'invalid-availability', message: 'Disponibilidad sin intervalo válido; no se infiere jornada completa.' });
     }
     if (slots.length < 7) issues.push({ code: 'availability-incomplete', message: 'Faltan días de disponibilidad explícita; ausencia de fila no implica jornada disponible.' });
-    if (!restDays.length) issues.push({ code: 'missing-rest', message: 'Libranza semanal no confirmada; no se infiere modalidad flexible.' });
+    if (!declaredRestDays.length) issues.push({ code: 'missing-rest', message: 'Libranza semanal no confirmada; no se infiere modalidad flexible.' });
     const unavailableDates = new Set<string>(); const confirmedRestDates = new Set<string>();
     for (const absence of input.absences.filter(item => item.cleaner_id === id)) {
       const start = text(absence.start_date); const end = text(absence.end_date);
@@ -87,12 +92,20 @@ export function mapStaffingWorkers(input: WorkerInputs): StaffingWorker[] {
     const currentContract = [...currentContracts].sort((a, b) => text(b.start_date).localeCompare(text(a.start_date)))[0];
     const contractHours = number(currentContract?.contract_hours_per_week);
     const hasCurrentContract = !!currentContract;
+    const fichaHours = number(row.contract_hours_per_week);
+    const contractHoursValid = Number.isFinite(contractHours) && contractHours > 0;
+    const fichaHoursValid = Number.isFinite(fichaHours) && fichaHours > 0;
+    // Las horas de la ficha son las que ve dirección: un contrato a 0 h no las anula.
+    if (hasCurrentContract && !contractHoursValid && fichaHoursValid) issues.push({ code: 'zero-contract-ficha-hours', message: `${text(row.name)}: contrato a 0 h y ficha con ${fichaHours} h; se usan las de la ficha. Revisa el contrato.` });
+    else if (contractHoursValid && fichaHoursValid && contractHours !== fichaHours) issues.push({ code: 'hours-mismatch', message: `${text(row.name)}: contrato ${contractHours} h y ficha ${fichaHours} h; se usa el contrato. Revisa cuál está vigente.` });
     const collaborator = input.useHabitualCollaborators === true && !hasCurrentContract && (row.contract_hours_per_week === null || row.contract_hours_per_week === 0);
     if (collaborator) issues.push({ code: 'habitual-collaborator-availability', message: 'Colaboración habitual: disponibilidad semanal registrada salvo aviso; presupuesto operativo, no horas contratadas ni coste de servicio. Se conservan libranzas, ausencias y bloqueos.' });
     else issues.push({ code: 'contract-current-assumption', message: contracts.length ? 'Hay contratos fechados; el motor no representa cambios por fecha. Se usan horas actuales de plantilla sin fusionarlas con contratos históricos; revisar vigencias.' : 'Horas actuales de plantilla como hipótesis para el periodo; no acreditan contrato histórico ni fecha de baja.' });
     const maxDaily = number(input.planning.find(item => item.id === id)?.planning_max_daily_minutes);
-    const currentHours = number(row.contract_hours_per_week);
-    const weeklyMinutes = collaborator ? collaboratorBudget(availability, Number.isFinite(maxDaily) && maxDaily >= 0 ? maxDaily : 1440) : (Number.isFinite(contractHours) && contractHours >= 0 ? contractHours : currentHours) * 60;
+    // Contrato con horas > 0 manda; si viene a 0 h, mandan las de la ficha.
+    // Si no hay dato válido en ninguno, se conserva el valor desconocido (nunca 0 por defecto).
+    const effectiveHours = contractHoursValid ? contractHours : fichaHoursValid ? fichaHours : (Number.isFinite(contractHours) ? contractHours : fichaHours);
+    const weeklyMinutes = collaborator ? collaboratorBudget(availability, Number.isFinite(maxDaily) && maxDaily >= 0 ? maxDaily : 1440) : effectiveHours * 60;
     return { id, name: text(row.name), engagement: collaborator ? 'collaborator' : 'employee', weeklyMinutes,
       homeCenterIds, excludedCenterIds, availability, restDay: restDays[0] ?? null, flexibleRest: false, canMove: input.allowCrossCenterMobility === true,
       unavailableDates: [...unavailableDates].sort(), confirmedRestDates: [...confirmedRestDates].sort(), blockedSlots,

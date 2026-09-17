@@ -39,10 +39,10 @@ try {
   if (await octoberPeriod.count()) { await octoberPeriod.click(); await expect(page.getByLabel('Semana de análisis')).toHaveValue('2026-10-05'); }
   await page.getByRole('button', { name: 'Semanas', exact: true }).click();
   await expect(page.getByLabel('Barras diarias').getByRole('button')).toHaveCount(7);
-  await expect(page.getByRole('columnheader', { name: 'Horas disponibles' }).first()).toBeVisible();
-  await expect(page.getByRole('columnheader', { name: 'Trabajo simulado' }).first()).toBeVisible();
-  await expect(page.getByRole('columnheader', { name: 'Sin asignar' }).first()).toBeVisible();
-  await expect(page.getByRole('columnheader', { name: 'Revisar' }).first()).toBeVisible();
+  await expect(page.getByRole('columnheader', { name: 'Puede trabajar' }).first()).toBeVisible();
+  await expect(page.getByRole('columnheader', { name: 'Limpiezas asignadas' }).first()).toBeVisible();
+  await expect(page.getByRole('columnheader', { name: 'Horas libres' }).first()).toBeVisible();
+  await expect(page.getByRole('columnheader', { name: 'Aviso' }).first()).toBeVisible();
   await expect(page.getByText('de servicios conocidos sin encaje calculado', { exact: false })).toBeVisible();
   await expect(page.getByRole('region', { name: 'Comparación de escenarios' })).toContainText('Horas sin encajar');
   const capacities = await page.getByLabel('Barras diarias').getByRole('button').evaluateAll(buttons => buttons.map(button => Number((button.getAttribute('aria-label')?.match(/capacidad potencial ([\d,.]+) h/)?.[1] || '0').replace(',', '.'))));
@@ -62,8 +62,8 @@ try {
   expect(size.document).toBeLessThanOrEqual(size.viewport);
   await expect(mobile.getByText('Desliza para ver más semanas →', { exact: true })).toBeVisible();
   const partial = await open(390, 'data-staffing-mode="error"');
-  await expect(partial.getByText('Resultado parcial · revisa fuentes y criterios', { exact: true })).toBeVisible();
-  await expect(partial.getByRole('alert')).toContainText('Resultado parcial');
+  await expect(partial.getByText('Faltan datos · revisa las fuentes', { exact: true })).toBeVisible();
+  await expect(partial.getByRole('alert')).toContainText('incompleta');
   const empty = await open(1440, 'data-staffing-mode="empty"');
   await expect(empty.getByText('Sin datos suficientes:', { exact: false })).toBeVisible();
   const short = await open(1440, 'data-staffing-mode="short"');

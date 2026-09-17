@@ -63,13 +63,18 @@ export async function readStaffingDataset(read: StaffingReadPage, sedeId: string
       issues.push({ code: 'source-unavailable', message: `No se pudo completar ${args[0]}; datos desconocidos, no vacío certificado.` }); return [];
     }
   };
-  const [properties, rawWorkers, tasks] = await Promise.all([
+  const [properties, rawWorkers, rawTasks] = await Promise.all([
     safeAll({ table: 'properties', columns: 'id,nombre,sede_id,cliente_id,is_active,duracion_servicio,check_out_predeterminado,check_in_predeterminado', equals: { sede_id: sedeId } }),
     safeAll({ table: 'cleaners', columns: 'id,name,sede_id,is_active,contract_hours_per_week,start_date', equals: { sede_id: sedeId, is_active: true } }),
-    safeAll({ table: 'tasks', columns: 'id,propiedad_id,sede_id,date,status,duracion,check_out,check_in,start_time,end_time,type', equals: { sede_id: sedeId }, since: { column: 'date', value: `${from.slice(0, 4)}-01-01` }, until: { column: 'date', value: to } }),
+    safeAll({ table: 'tasks', columns: 'id,propiedad_id,sede_id,date,status,duracion,check_out,check_in,start_time,end_time,type,cleaner_id', equals: { sede_id: sedeId }, since: { column: 'date', value: `${from.slice(0, 4)}-01-01` }, until: { column: 'date', value: to } }),
   ]);
   // Defense in depth: validate returned parent scopes as well as query predicates.
-  if ([...properties, ...rawWorkers, ...tasks].some(row => row.sede_id !== sedeId)) throw new Error('La lectura devolvió datos fuera de la sede solicitada.');
+  if ([...properties, ...rawWorkers, ...rawTasks].some(row => row.sede_id !== sedeId)) throw new Error('La lectura devolvió datos fuera de la sede solicitada.');
+  // NOT COUNT es el marcador interno del trabajo que no se realiza (no se factura):
+  // queda fuera de la previsión, ni como capacidad ni como carga de sus tareas.
+  const internalWorkerIds = new Set(rawWorkers.filter(row => /^not[\s_-]*count$/i.test(text(row.name).trim())).map(row => text(row.id)));
+  const staffingWorkers = rawWorkers.filter(row => !internalWorkerIds.has(text(row.id)));
+  const tasks = rawTasks.filter(task => !internalWorkerIds.has(text(task.cleaner_id)));
   // Directory precedence: explicit property state wins; NULL inherits its client.
   // Read only clients needed for inheritance, scoped by already-authorized properties.
   const clientIds = [...new Set(properties.filter(row => row.is_active == null).map(row => text(row.cliente_id)).filter(Boolean))];
@@ -88,7 +93,7 @@ export async function readStaffingDataset(read: StaffingReadPage, sedeId: string
   };
   const excludedPropertyIds = new Set(properties.filter(row => !effectiveActive(row)).map(row => text(row.id)));
   const propertyIds = properties.filter(row => !excludedPropertyIds.has(text(row.id))).map(row => text(row.id));
-  const workerIds = rawWorkers.map(row => text(row.id));
+  const workerIds = staffingWorkers.map(row => text(row.id));
   const [memberships, availability, fixedRests] = await Promise.all([
     safeChildren('property_group_assignments', 'id,property_id,property_group_id', 'property_id', propertyIds),
     safeChildren('cleaner_availability', 'id,cleaner_id,day_of_week,is_available,start_time,end_time', 'cleaner_id', workerIds),
@@ -138,7 +143,7 @@ export async function readStaffingDataset(read: StaffingReadPage, sedeId: string
     issues.push({ code: 'scope-violation', message: 'Preferencia de propiedad con trabajador no autorizado; vínculo descartado.' }); return false;
   }).map(row => ({ ...row, property_group_id: centerFor(text(row.property_id)), is_active: true }));
   if (rules.allowCrossCenterMobility === true) issues.push({ code: 'mobility-policy-assumption', message: 'Movilidad entre centros habilitada por regla explícita de esta sede; excepciones individuales no están modeladas y requieren confirmación.' });
-  const workers = mapStaffingWorkers({ allowCrossCenterMobility: rules.allowCrossCenterMobility, useHabitualCollaborators: rules.useHabitualCollaborators, workers: rawWorkers, availability, rests: fixedRests, staffing: [...staffing, ...preferredStaffing], absences, maintenance, maintenanceTypes, contracts, planning: workerPlanning, groupIds: [...centerMap.keys()], from, to, issues });
+  const workers = mapStaffingWorkers({ allowCrossCenterMobility: rules.allowCrossCenterMobility, useHabitualCollaborators: rules.useHabitualCollaborators, workers: staffingWorkers, availability, rests: fixedRests, staffing: [...staffing, ...preferredStaffing], absences, maintenance, maintenanceTypes, contracts, planning: workerPlanning, groupIds: [...centerMap.keys()], from, to, issues });
   if (['cleaner_availability', 'worker_absences', 'worker_maintenance_cleanings', 'worker_fixed_days_off', 'cleaner_group_assignments', 'property_preferred_cleaners'].some(table => failedSources.has(table))) {
     for (const worker of workers) worker.availability = [];
     issues.push({ code: 'capacity-incomplete', message: 'Fuentes de disponibilidad o exclusión incompletas: capacidad de asignación retenida hasta verificar restricciones.' });
