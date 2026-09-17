@@ -24,6 +24,7 @@
     "test:role-modes": "node scripts/roleModeTest.mjs",
     "test:worker-fixed-days-off-planning": "node scripts/workerFixedDaysOffPlanningTest.mjs",
     "test:worker-maintenance-conflict": "node scripts/workerMaintenanceConflictTest.mjs",
+    "test:worker-task-overlap": "node scripts/workerTaskOverlapTest.mjs",
     "test:cleaning-planning-proposal-engine": "node scripts/cleaningPlanningProposalEngineTest.mjs",
     "test:cleaning-planning-domain-safety": "node scripts/cleaningPlanningDomainSafetyTest.mjs",
     "test:cleaning-planning-ui": "node scripts/cleaningPlanningUiContractTest.mjs",
