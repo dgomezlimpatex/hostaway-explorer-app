@@ -12,7 +12,7 @@ import { buildStaffingMonthlyView } from './monthly';
 import { fieldClass, fullDate, hours, informationalIssues, knownUncovered, money, panelClass, shortDate, weekdays } from './presentation';
 
 type Compute = (dataset: StaffingDataset, options: StaffingOptions) => StaffingResult;
-type PeriodMode = 'month' | 'week';
+type PeriodMode = 'month' | 'week' | 'period';
 interface Props { dataset: StaffingDataset; dateFrom: string; asOf: string; weeks: number; compute: Compute; sedeName?: string; controls?: ReactNode; monthAnchor?: string; horizonMonths?: number; onDirtyChange?: (dirty: boolean) => void; onRetry?: () => void; demo?: boolean }
 
 export function StaffingDashboard({ dataset, dateFrom, asOf, weeks, compute, sedeName, controls, monthAnchor = dateFrom, horizonMonths = 3, onDirtyChange, onRetry, demo = false }: Props) {
@@ -36,6 +36,12 @@ export function StaffingDashboard({ dataset, dateFrom, asOf, weeks, compute, sed
   const baseline = useMemo(() => compute(dataset, baseOptions), [compute, dataset, baseOptions]);
   const result = useMemo(() => changes ? compute(simulationData, options) : baseline, [compute, simulationData, options, changes, baseline]);
   const monthlyView = useMemo(() => buildStaffingMonthlyView(result, monthAnchor, horizonMonths, asOf), [result, monthAnchor, horizonMonths, asOf]);
+  const periodSummary = useMemo(() => {
+    const knownMinutes = result.weeks.reduce((n, w) => n + w.knownMinutes, 0);
+    const estimatedMinutes = result.weeks.reduce((n, w) => n + w.estimatedMinutes, 0);
+    const capacityMinutes = result.weeks.reduce((n, w) => n + w.capacityMinutes, 0);
+    return { knownMinutes, estimatedMinutes, capacityMinutes };
+  }, [result.weeks]);
   const incompleteWeeks = useMemo(() => new Set(monthlyView.months.filter(month => month.status === 'future' && month.estimatedMinutes === 0).flatMap(month => month.weeks.map(week => week.week))), [monthlyView]);
   const selected = result.weeks.find(week => week.week === selectedWeek);
   const selectedMonthData = monthlyView.months.find(item => item.month === (selectedMonth || monthlyView.months[0]?.month));
@@ -43,10 +49,23 @@ export function StaffingDashboard({ dataset, dateFrom, asOf, weeks, compute, sed
   const baselineWeek = baseline.weeks.find(week => week.week === selected?.week);
   const issues = [...dataset.issues, ...result.issues, ...monthlyView.issues].filter((issue, index, all) => all.findIndex(other => other.code === issue.code && other.message === issue.message && other.centerId === issue.centerId) === index);
   const selectedDays = result.days.filter(day => selected && day.date >= selected.week && day.date < new Date(Date.parse(`${selected.week}T12:00:00Z`) + 7 * 86400000).toISOString().slice(0, 10));
-  const summaryPeriod = periodMode === 'month' ? selectedMonthData : selected;
+  const summaryPeriod = periodMode === 'period' ? periodSummary : periodMode === 'month' ? selectedMonthData : selected;
   const uncertain = !dataset.services.length || !dataset.workers.length || !summaryPeriod || issues.some(issue => !informationalIssues.has(issue.code)) || (selected && result.centers.some(cell => cell.week === selected.week && cell.status === 'unknown'));
   const failures = issues.filter(issue => ['source-unavailable', 'client-state-unavailable', 'extension-unavailable'].includes(issue.code));
   const dateTo = new Date(Date.parse(`${dateFrom}T12:00:00Z`) + (weeks * 7 - 1) * 86400000).toISOString().slice(0, 10);
+  // El resumen ejecutivo sigue al periodo elegido: mes/mes, semana/semana o el horizonte completo.
+  const monthWeekKeys = useMemo(() => new Set((selectedMonthData?.weeks ?? []).map(segment => segment.week)), [selectedMonthData]);
+  const attentionWeeks = useMemo(() => periodMode === 'month'
+    ? result.weeks.filter(week => monthWeekKeys.has(week.week))
+    : periodMode === 'week' && selected
+      ? result.weeks.filter(week => week.week === selected.week)
+      : result.weeks, [periodMode, result.weeks, monthWeekKeys, selected]);
+  const attentionMonths = periodMode === 'month' ? (selectedMonthData ? [selectedMonthData] : []) : monthlyView.months;
+  const attentionScope = periodMode === 'month'
+    ? { label: `Total de ${selectedMonthData?.label || 'mes seleccionado'}`, subtitle: `${attentionWeeks.length} semanas` }
+    : periodMode === 'week' && selected
+      ? { label: `Semana del ${shortDate(selected.week)}`, subtitle: '7 días' }
+      : { label: 'Total del periodo', subtitle: `${attentionWeeks.length} semanas · ${monthlyView.months.length} meses` };
   useEffect(() => { onDirtyChange?.(changes); return () => onDirtyChange?.(false); }, [changes, onDirtyChange]);
   useEffect(() => { if (!changes) return; const guard = (event: BeforeUnloadEvent) => { event.preventDefault(); event.returnValue = ''; }; window.addEventListener('beforeunload', guard); return () => window.removeEventListener('beforeunload', guard); }, [changes]);
   const changeWorker = (id: string, change: Partial<StaffingWorker>) => setOverrides(current => ({ ...current, [id]: { ...current[id], ...change } }));
@@ -63,21 +82,26 @@ export function StaffingDashboard({ dataset, dateFrom, asOf, weeks, compute, sed
     setSelectedWeek(periodMode === 'month' ? '' : next?.week || '');
   };
   const changePeriodMode = (mode: PeriodMode) => {
-    setPeriodMode(mode);
-    if (mode === 'month') {
-      setSelectedWeek('');
-      return;
-    }
-    const month = monthlyView.months.find(item => item.month === selectedMonth) || monthlyView.months[0];
-    const next = month?.weeks.find(week => week.week >= month.startDate && availableWeeks.includes(week.week)) || month?.weeks.find(week => availableWeeks.includes(week.week));
-    setSelectedWeek(next?.week || (selectedMonth ? '' : availableWeeks[0] || ''));
-  };
+      setPeriodMode(mode);
+      if (mode === 'month') {
+        setSelectedWeek('');
+        return;
+      }
+      if (mode === 'period') {
+        setSelectedWeek('');
+        setSelectedMonth('');
+        return;
+      }
+      const month = monthlyView.months.find(item => item.month === selectedMonth) || monthlyView.months[0];
+      const next = month?.weeks.find(week => week.week >= month.startDate && availableWeeks.includes(week.week)) || month?.weeks.find(week => availableWeeks.includes(week.week));
+      setSelectedWeek(next?.week || (selectedMonth ? '' : availableWeeks[0] || ''));
+    };
   const selectWeek = (week: string) => {
     setSelectedWeek(week);
     const month = monthlyView.months.find(item => item.weeks.some(segment => segment.week === week));
     if (month) setSelectedMonth(month.month);
   };
-  const periodControls = <div aria-label="Contexto del periodo" className="flex flex-wrap items-end gap-3"><label className="grid gap-1 text-xs font-medium">Periodicidad<select aria-label="Periodicidad" className={fieldClass} value={periodMode} onChange={event => changePeriodMode(event.target.value as PeriodMode)}><option value="month">Mensual</option><option value="week">Semanal</option></select></label>{periodMode === 'month' ? <label className="grid gap-1 text-xs font-medium">Mes de análisis<select aria-label="Mes de análisis" className={fieldClass} value={selectedMonth || monthlyView.months[0]?.month || ''} onChange={event => selectMonth(event.target.value)}>{monthlyView.months.map(item => <option key={item.month} value={item.month}>{item.label}</option>)}</select></label> : selected ? <label className="grid gap-1 text-xs font-medium">Semana de análisis<select aria-label="Semana de análisis" className={fieldClass} value={selected.week} onChange={event => selectWeek(event.target.value)}>{result.weeks.map(week => <option key={week.week} value={week.week}>Desde {shortDate(week.week)}</option>)}</select></label> : <label className="grid gap-1 text-xs font-medium">Semana de análisis<select aria-label="Semana de análisis" className={fieldClass} value="" disabled><option value="">Sin semanas calculables para este mes</option></select></label>}<span className="pb-3 text-sm font-medium">{changes ? 'Escenario modificado · sin guardar' : 'Escenario base'}</span>{uncertain && <button type="button" aria-label="Parcial: consultar datos y criterios" className="mb-1 min-h-11 rounded-md border border-stone-300 bg-white px-3 text-sm" onClick={() => setPanel('data')}>Parcial</button>}</div>;
+  const periodControls = <div aria-label="Contexto del periodo" className="flex flex-wrap items-end gap-3"><label className="grid gap-1 text-xs font-medium">Periodicidad<select aria-label="Periodicidad" className={fieldClass} value={periodMode} onChange={event => changePeriodMode(event.target.value as PeriodMode)}><option value="period">Periodo completo</option><option value="month">Mensual</option><option value="week">Semanal</option></select></label>{periodMode === 'month' ? <label className="grid gap-1 text-xs font-medium">Mes de análisis<select aria-label="Mes de análisis" className={fieldClass} value={selectedMonth || monthlyView.months[0]?.month || ''} onChange={event => selectMonth(event.target.value)}>{monthlyView.months.map(item => <option key={item.month} value={item.month}>{item.label}</option>)}</select></label> : periodMode === 'week' ? selected ? <label className="grid gap-1 text-xs font-medium">Semana de análisis<select aria-label="Semana de análisis" className={fieldClass} value={selected.week} onChange={event => selectWeek(event.target.value)}>{result.weeks.map(week => <option key={week.week} value={week.week}>Desde {shortDate(week.week)}</option>)}</select></label> : <label className="grid gap-1 text-xs font-medium">Semana de análisis<select aria-label="Semana de análisis" className={fieldClass} value="" disabled><option value="">Sin semanas calculables para este mes</option></select></label> : null}<span className="pb-3 text-sm font-medium">{changes ? 'Escenario modificado · sin guardar' : 'Escenario base'}</span>{uncertain && <button type="button" aria-label="Parcial: consultar datos y criterios" className="mb-1 min-h-11 rounded-md border border-stone-300 bg-white px-3 text-sm" onClick={() => setPanel('data')}>Parcial</button>}</div>;
   const comparison = <StaffingComparison baseline={baselineWeek} current={selected} changed={changes} uncertain={uncertain} days={selectedDays} onOpenScenario={() => setPanel('scenario')} />;
   const jumpToView = (view: typeof activeView) => { setActiveView(view); const target = view === 'forecast' ? 'staffing-view-forecast' : view === 'team' ? 'staffing-view-team' : 'staffing-view-scenarios'; window.requestAnimationFrame(() => document.getElementById(target)?.scrollIntoView({ behavior: 'smooth', block: 'start' })); };
   return <section className="mx-auto w-full min-w-0 max-w-[1600px] space-y-6 bg-[#f4f2fa] p-3 text-[#201936] sm:p-6 lg:p-8" aria-label="Previsión de personal">
@@ -88,13 +112,13 @@ export function StaffingDashboard({ dataset, dateFrom, asOf, weeks, compute, sed
       <div className="flex flex-wrap items-center gap-1">{[['forecast', 'Previsión'], ['team', 'Equipo'], ['scenarios', 'Escenarios']].map(([value, label], index, links) => <button key={value} id={`staffing-section-tab-${value}`} type="button" aria-current={activeView === value ? 'page' : undefined} className={`min-h-12 border-b-2 px-4 text-sm font-bold transition ${activeView === value ? 'border-[#390b92] text-[#390b92]' : 'border-transparent text-[#716a7d] hover:border-[#c9bce0] hover:text-[#201936]'}`} onClick={() => jumpToView(value as typeof activeView)} onKeyDown={event => { if (!['ArrowRight', 'ArrowLeft', 'Home', 'End'].includes(event.key)) return; event.preventDefault(); const next = event.key === 'Home' ? 0 : event.key === 'End' ? links.length - 1 : (index + (event.key === 'ArrowRight' ? 1 : -1) + links.length) % links.length; const nextValue = links[next][0]; jumpToView(nextValue as typeof activeView); document.getElementById(`staffing-section-tab-${nextValue}`)?.focus(); }}>{label}</button>)}</div><button type="button" className="mb-2 inline-flex min-h-9 items-center gap-2 rounded-lg border border-[#dcd5e8] bg-white px-3 text-xs font-bold text-[#390b92] shadow-sm" onClick={() => setPanel('data')}>Datos y criterios</button>
     </nav>
     {periodControls}
-    <StaffingAttention weeks={result.weeks} months={monthlyView.months} selectedWeek={selected?.week} selectedDays={selectedDays} workers={simulationData.workers} onWeek={selectWeek} onTeam={() => jumpToView('team')} onScenario={() => jumpToView('scenarios')} uncertain={uncertain} />
+    <StaffingAttention weeks={attentionWeeks} months={attentionMonths} periodLabel={attentionScope.label} periodSubtitle={attentionScope.subtitle} selectedWeek={selected?.week} selectedDays={selectedDays} workers={simulationData.workers} onWeek={selectWeek} onTeam={() => jumpToView('team')} onScenario={() => jumpToView('scenarios')} uncertain={uncertain} />
     <div id="staffing-view-forecast" aria-label="Vista de previsión">
     {periodMode === 'week' && !selected && <p role="status" className="text-sm text-stone-600">Sin semanas/datos calculables para este mes. Amplía el horizonte técnico o elige otro mes.</p>}
-    <p className="text-xs font-medium text-stone-600">{periodMode === 'month' ? `Mes ${selectedMonthData?.label || '—'} · resumen mensual de sede` : `Semana ${shortDate(selected?.week || '')} · resumen total de sede`}</p>
-    <div className="grid divide-y border-y border-stone-300 py-1 sm:grid-cols-3 sm:divide-x sm:divide-y-0" aria-label={`Resumen ${periodMode === 'month' ? 'mensual' : 'semanal'} de sede`}>{[
+    <p className="text-xs font-medium text-stone-600">{periodMode === 'period' ? 'Periodo completo · resumen de la sede' : periodMode === 'month' ? `Mes ${selectedMonthData?.label || '—'} · resumen mensual de sede` : `Semana ${shortDate(selected?.week || '')} · resumen total de sede`}</p>
+    <div className="grid divide-y border-y border-stone-300 py-1 sm:grid-cols-3 sm:divide-x sm:divide-y-0" aria-label={`Resumen ${periodMode === 'month' ? 'mensual' : periodMode === 'period' ? 'del periodo' : 'semanal'} de sede`}>{[
       ['Trabajo previsto', summaryPeriod ? hours(summaryPeriod.knownMinutes + summaryPeriod.estimatedMinutes) : '—', summaryPeriod ? `${hours(summaryPeriod.knownMinutes)} ya registradas + ${hours(summaryPeriod.estimatedMinutes)} estimadas` : 'Sin semanas calculables'],
-      ['Horas del equipo', summaryPeriod ? hours(summaryPeriod.capacityMinutes) : '—', periodMode === 'month' ? 'Horas posibles del mes · no son horas libres de verdad' : selected ? `${hours(selected.contractedMinutes)} h de ficha ya incluidas` : 'Sin disponibilidad calculable'],
+      ['Horas del equipo', summaryPeriod ? hours(summaryPeriod.capacityMinutes) : '—', periodMode === 'period' ? 'Horas de ficha de todo el periodo' : periodMode === 'month' ? 'Horas posibles del mes · no son horas libres de verdad' : selected ? `${hours(selected.contractedMinutes)} h de ficha ya incluidas` : 'Sin disponibilidad calculable'],
       ['Holgura del equipo', summaryPeriod ? (summaryPeriod.capacityMinutes >= summaryPeriod.knownMinutes + summaryPeriod.estimatedMinutes ? `Sobran ${hours(summaryPeriod.capacityMinutes - summaryPeriod.knownMinutes - summaryPeriod.estimatedMinutes)}` : `Faltan ${hours(summaryPeriod.knownMinutes + summaryPeriod.estimatedMinutes - summaryPeriod.capacityMinutes)}`) : '—', summaryPeriod ? (summaryPeriod.capacityMinutes >= summaryPeriod.knownMinutes + summaryPeriod.estimatedMinutes ? 'Con el trabajo registrado, el equipo llega' : 'Con el trabajo registrado, el equipo no llega') : 'Sin semanas calculables'],
     ].map(([label, value, detail]) => <div key={label} className="px-3 py-4"><h2 className="text-sm text-stone-600">{label}</h2><p className="my-2 text-2xl font-semibold tracking-tight tabular-nums sm:text-3xl">{value}</p><p className="text-xs text-stone-600">{detail}</p></div>)}</div>
     {(!dataset.services.length || !dataset.workers.length) && <p role="status" className="text-sm text-stone-600">Sin datos suficientes: falta demanda o equipo en este periodo. No se concluye que sobre personal.</p>}

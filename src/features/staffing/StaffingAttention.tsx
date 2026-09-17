@@ -14,9 +14,12 @@ interface Props {
   onTeam: () => void;
   onScenario: () => void;
   uncertain?: boolean;
+  /** Alcance del resumen: por defecto «Total del periodo» (todo el horizonte). */
+  periodLabel?: string;
+  periodSubtitle?: string;
 }
 
-export function StaffingAttention({ weeks, months, selectedWeek, selectedDays, workers, onWeek, onTeam, onScenario, uncertain = false }: Props) {
+export function StaffingAttention({ weeks, months, selectedWeek, selectedDays, workers, onWeek, onTeam, onScenario, uncertain = false, periodLabel, periodSubtitle }: Props) {
   const overloaded = weeks.filter(week => week.knownMinutes > week.capacityMinutes).sort((a, b) => a.week.localeCompare(b.week));
   const unassignedWorkers = selectedWeek && selectedDays.length > 0 ? workers.map(worker => {
     const assignedMinutes = selectedDays.flatMap(day => day.assignments).filter(assignment => assignment.workerId === worker.id).reduce((total, assignment) => total + assignment.personMinutes, 0);
@@ -36,8 +39,8 @@ export function StaffingAttention({ weeks, months, selectedWeek, selectedDays, w
     : slack >= 0
       ? `Con el trabajo ya registrado, tu equipo llega: ${hours(totalWork)} de trabajo frente a ${hours(totalCapacity)} de equipo, te sobran ${hours(slack)}.`
       : `Con el trabajo ya registrado, tu equipo no llega: ${hours(totalWork)} de trabajo frente a ${hours(totalCapacity)} de equipo, te faltan ${hours(-slack)}.`;
-  const focus = busiestWeek
-    ? ` Lo más cargado es la semana del ${shortDate(busiestWeek.week)} (${hours(busiestWeek.knownMinutes + busiestWeek.estimatedMinutes)})${busiestMonth ? `, y el mes con más trabajo es ${busiestMonth.label}` : ''}.`
+  const focus = busiestWeek && weeks.length > 1
+    ? ` Lo más cargado es la semana del ${shortDate(busiestWeek.week)} (${hours(busiestWeek.knownMinutes + busiestWeek.estimatedMinutes)})${busiestMonth && months.length > 1 ? `, y el mes con más trabajo es ${busiestMonth.label}` : ''}.`
     : '';
   const cards = [
     overloaded.length ? { key: 'overload', tone: 'amber', icon: AlertTriangle, value: `${overloaded.length} ${overloaded.length === 1 ? 'semana' : 'semanas'}`, title: `Semanas con más trabajo que equipo${uncertain ? ' · datos incompletos' : ''}`, detail: `Trabajo ya registrado entre el ${shortDate(overloaded[0].week)} y el ${shortDate(overloaded[overloaded.length - 1].week)}${uncertain ? ' · confirma las fuentes antes de decidir' : ''}`, action: 'Ver semanas', onClick: () => onWeek(overloaded[0].week) } : null,
@@ -46,12 +49,12 @@ export function StaffingAttention({ weeks, months, selectedWeek, selectedDays, w
   ].filter(Boolean) as { key: string; tone: string; icon: typeof AlertTriangle; value: string; title: string; detail: string; action: string; onClick: () => void }[];
   const totals = [
     { label: 'Trabajo ya registrado', value: hours(totalKnown), note: totalEstimated > 0 ? `+ ${hours(totalEstimated)} estimado` : 'Sin estimaciones adicionales' },
-    { label: 'Horas que puede hacer tu equipo', value: hours(totalCapacity), note: 'Contratos y horas registradas del equipo actual' },
+    { label: 'Horas que puede hacer tu equipo', value: hours(totalCapacity), note: 'Horas de ficha del equipo actual' },
     { label: slack >= 0 ? 'Holgura' : 'Lo que falta', value: hours(Math.abs(slack)), note: slack >= 0 ? 'Te sobran estas horas en el periodo' : 'Trabajo sin equipo suficiente con los datos actuales' },
   ];
   return <section aria-label="Qué necesita atención" className="space-y-4"><header className="flex flex-wrap items-end justify-between gap-3"><div><p className="text-[11px] font-bold uppercase tracking-[0.17em] text-[#390b92]">Resumen ejecutivo</p><h2 className="mt-1 text-xl font-bold tracking-tight text-[#201936]">Qué necesita atención</h2></div><span className="inline-flex items-center gap-1.5 text-xs text-[#817a8c]"><CalendarClock className="h-3.5 w-3.5" />{uncertain ? 'Faltan datos · revisa las fuentes' : 'Datos leídos correctamente'}</span></header>
-    <article className={`${panelClass} space-y-4`} aria-label="Total del periodo">
-      <div className="flex flex-wrap items-baseline justify-between gap-2"><p className="text-[11px] font-bold uppercase tracking-[0.17em] text-[#390b92]">Total del periodo</p><p className="text-xs text-[#817a8c]">{weeks.length} semanas · {months.length} meses</p></div>
+    <article className={`${panelClass} space-y-4`} aria-label={periodLabel || 'Total del periodo'}>
+      <div className="flex flex-wrap items-baseline justify-between gap-2"><p className="text-[11px] font-bold uppercase tracking-[0.17em] text-[#390b92]">{periodLabel || 'Total del periodo'}</p><p className="text-xs text-[#817a8c]">{periodSubtitle || `${weeks.length} semanas · ${months.length} meses`}</p></div>
       <p className="text-base font-bold leading-6 text-[#201936] sm:text-lg">{verdict}{focus}</p>
       <dl className="grid gap-3 sm:grid-cols-3">{totals.map(item => <div key={item.label} className="rounded-lg border border-[#eeeaf4] bg-[#faf9fc] p-3"><dt className="text-xs font-medium text-[#817a8c]">{item.label}</dt><dd className="mt-1 text-xl font-bold tabular-nums text-[#201936]">{item.value}</dd><dd className="mt-1 text-xs leading-4 text-[#716a7d]">{item.note}</dd></div>)}</dl>
     </article>
