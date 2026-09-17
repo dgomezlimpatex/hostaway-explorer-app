@@ -55,18 +55,19 @@ export function StaffingDashboard({ dataset, dateFrom, asOf, weeks, compute, sed
   const dateTo = new Date(Date.parse(`${dateFrom}T12:00:00Z`) + (weeks * 7 - 1) * 86400000).toISOString().slice(0, 10);
   // El resumen ejecutivo sigue al periodo elegido: mes/mes, semana/semana o el horizonte completo.
   const monthWeekKeys = useMemo(() => new Set((selectedMonthData?.weeks ?? []).map(segment => segment.week)), [selectedMonthData]);
-  const attentionWeeks = useMemo(() => periodMode === 'month'
-    ? result.weeks.filter(week => monthWeekKeys.has(week.week))
-    : periodMode === 'week' && selected
-      ? result.weeks.filter(week => week.week === selected.week)
-      : result.weeks, [periodMode, result.weeks, monthWeekKeys, selected]);
-  const attentionMonths = periodMode === 'month' ? (selectedMonthData ? [selectedMonthData] : []) : monthlyView.months;
-  const attentionScope = periodMode === 'month'
-    ? { label: `Total de ${selectedMonthData?.label || 'mes seleccionado'}`, subtitle: `${attentionWeeks.length} semanas` }
-    : periodMode === 'week' && selected
-      ? { label: `Semana del ${shortDate(selected.week)}`, subtitle: '7 días' }
-      : { label: 'Total del periodo', subtitle: `${attentionWeeks.length} semanas · ${monthlyView.months.length} meses` };
-  useEffect(() => { onDirtyChange?.(changes); return () => onDirtyChange?.(false); }, [changes, onDirtyChange]);
+    const attentionWeeks = useMemo(() => periodMode === 'month'
+      ? result.weeks.filter(week => monthWeekKeys.has(week.week))
+      : periodMode === 'week' && selected
+        ? result.weeks.filter(week => week.week === selected.week)
+        : result.weeks, [periodMode, result.weeks, monthWeekKeys, selected]);
+    const attentionMonths = periodMode === 'month' ? (selectedMonthData ? [selectedMonthData] : []) : monthlyView.months;
+    const weekEnd = selected ? new Date(Date.parse(`${selected.week}T12:00:00Z`) + 6 * 86400000).toISOString().slice(0, 10) : '';
+    const attentionScope = periodMode === 'month'
+      ? { label: `Total de ${selectedMonthData?.label || 'mes seleccionado'}`, subtitle: selectedMonthData ? `${shortDate(selectedMonthData.includedFrom)} – ${shortDate(selectedMonthData.includedTo)} · ${attentionWeeks.length} semanas` : `${attentionWeeks.length} semanas` }
+      : periodMode === 'week' && selected
+        ? { label: `Semana del ${shortDate(selected.week)}`, subtitle: `${shortDate(selected.week)} – ${shortDate(weekEnd)}` }
+        : { label: 'Total del periodo', subtitle: `${attentionWeeks.length} semanas · ${monthlyView.months.length} meses` };
+    useEffect(() => { onDirtyChange?.(changes); return () => onDirtyChange?.(false); }, [changes, onDirtyChange]);
   useEffect(() => { if (!changes) return; const guard = (event: BeforeUnloadEvent) => { event.preventDefault(); event.returnValue = ''; }; window.addEventListener('beforeunload', guard); return () => window.removeEventListener('beforeunload', guard); }, [changes]);
   const changeWorker = (id: string, change: Partial<StaffingWorker>) => setOverrides(current => ({ ...current, [id]: { ...current[id], ...change } }));
   const reset = () => { if (changes && !window.confirm('¿Descartar todos los cambios del escenario? No se han guardado.')) return; setOverrides({}); setAbsenceWorkerId(''); setReinforcements([]); setLateReservePercent(20); setSeasonalPercent(0); setTravelMinutes(20); };
