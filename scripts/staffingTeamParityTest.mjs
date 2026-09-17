@@ -11,7 +11,7 @@ try {
   await build({
     stdin: { contents: `import { availableMinutesForPeriod } from './src/features/staffing/StaffingTeam';
       import { buildStaffingForecast } from './src/features/staffing/engine';
-      const base = { id: 'w', name: 'Persona', weeklyMinutes: 720, homeCenterIds: ['c'], availability: Array.from({length: 7}, (_, day) => ({day, startMinute: 480, endMinute: 1200})), restDay: null, flexibleRest: false, canMove: true, unavailableDates: [], confirmedRestDates: [] };
+      const base = { id: 'w', name: 'Persona', weeklyMinutes: 720, weeklyMinutesMax: 936, homeCenterIds: ['c'], availability: Array.from({length: 7}, (_, day) => ({day, startMinute: 480, endMinute: 1200})), restDay: null, flexibleRest: false, canMove: true, unavailableDates: [], confirmedRestDates: [] };
       const day = date => ({ date, assignments: [], knownMinutes: 0, estimatedMinutes: 0, capacityMinutes: 0, uncoveredMinutes: 0, criticalDays: 0, rests: [], reasons: [] });
       const options = { dateFrom: '2026-09-14', asOf: '2026-09-14', weeks: 1, lateReservePercent: 0, seasonalPercent: 0, travelMinutes: 0 };
       const engineCapacity = worker => buildStaffingForecast({ centers: [{id:'c', name:'Centro', startMinute:0, endMinute:1440}], workers:[worker], services:[], issues:[], inventory:[] }, options).weeks[0].capacityMinutes;
