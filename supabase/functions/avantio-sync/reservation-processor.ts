@@ -227,7 +227,7 @@ export class ReservationProcessor {
         }
         
         // Create new task for the new property
-        if (shouldCreateTaskForReservation(reservation)) {
+        if (shouldCreateTaskForReservation(reservation, this.taskHorizonDays)) {
           try {
             const task = await createTaskForReservation(reservation, property);
             existingReservation.task_id = task.id; // Update reference for later
@@ -286,7 +286,7 @@ export class ReservationProcessor {
         }
 
         // If no task exists yet but should have one, create it
-        if (!existingReservation.task_id && shouldCreateTaskForReservation(reservation)) {
+        if (!existingReservation.task_id && shouldCreateTaskForReservation(reservation, this.taskHorizonDays)) {
           try {
             const task = await createTaskForReservation(reservation, property);
             stats.tasks_created++;

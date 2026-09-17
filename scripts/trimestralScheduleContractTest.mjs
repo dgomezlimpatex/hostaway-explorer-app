@@ -9,7 +9,17 @@ const read = (relative) => readFileSync(join(repoRoot, relative), 'utf8');
 
 const manageCron = read('supabase/functions/manage-avantio-cron/index.ts');
 const avantioIndex = read('supabase/functions/avantio-sync/index.ts');
+const processor = read('supabase/functions/avantio-sync/reservation-processor.ts');
 const migration = read('supabase/migrations/20260917150000_add_trimestral_schedule_fields.sql');
+
+// El import debe ser npm: (el especificador https://esm.sh dejaba la función sin
+// arrancar: WORKER_ERROR en cualquier petición, incluso OPTIONS).
+assert.match(
+  manageCron,
+  /import \{ createClient \} from "npm:@supabase\/supabase-js@2\.50\.0";/,
+  'importa el cliente con el especificador npm:',
+);
+assert.doesNotMatch(manageCron, /esm\.sh/, 'no debe depender de esm.sh para arrancar');
 
 // El alta de horarios debe traducir días de la semana y horizonte al job.
 assert.match(
@@ -58,6 +68,17 @@ assert.match(
   avantioIndex,
   /daysAhead\?: number;\s*taskHorizonDays\?: number;/,
   'el tipo de triggerMeta admite el horizonte',
+);
+
+// TODAS las rutas del procesador que deciden crear tarea deben aplicar el
+// horizonte de la invocación. Sin esto, una reserva ya existente cuyo checkout
+// cae dentro del pase trimestral pero fuera de los 30 días por defecto se queda
+// sin tarea (comprobado en producción el 2026-09-17).
+const validatorCalls = processor.match(/shouldCreateTaskForReservation\(reservation[^)]*\)/g) || [];
+assert.ok(validatorCalls.length >= 3, `el procesador valida en varias rutas, encontradas ${validatorCalls.length}`);
+assert.ok(
+  validatorCalls.every((call) => call.includes('this.taskHorizonDays')),
+  `toda ruta debe aplicar el horizonte: ${validatorCalls.join(' | ')}`,
 );
 
 // La migración añade las columnas y el pase trimestral, y no toca Avirato.
