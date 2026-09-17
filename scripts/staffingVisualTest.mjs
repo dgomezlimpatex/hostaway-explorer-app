@@ -77,11 +77,11 @@ try {
   expect(Number(await stress.evaluate(() => document.documentElement.dataset.computeCount || '0'))).toBeGreaterThan(0);
   await expect(mobile.getByRole('heading', { name: 'Qué necesita atención', exact: true })).toBeVisible();
   // El resumen ejecutivo sigue al periodo elegido (regresión del selector de fechas).
-  await page.getByLabel('Periodicidad').selectOption('month');
-  await expect(page.getByRole('region', { name: /^Total de / })).toBeVisible();
-  await expect(page.getByRole('region', { name: /^Total de / })).toContainText('semanas');
-  await page.getByLabel('Periodicidad').selectOption('period');
-  await expect(page.getByRole('region', { name: 'Total del periodo', exact: true })).toBeVisible();
+    await page.getByLabel('Periodicidad').selectOption('month');
+    await expect(page.getByRole('article', { name: /^Total de / })).toBeVisible();
+    await expect(page.getByRole('article', { name: /^Total de / })).toContainText('semanas');
+    await page.getByLabel('Periodicidad').selectOption('period');
+    await expect(page.getByRole('article', { name: 'Total del periodo', exact: true })).toBeVisible();
   expect(errors).toEqual([]);
   expect(requests).toEqual([]);
   console.log('staffing-visual-tests: OK (prompt layout, interaction and responsive no-network fixture)');
