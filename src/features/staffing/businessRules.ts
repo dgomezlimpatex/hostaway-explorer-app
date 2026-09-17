@@ -10,7 +10,8 @@ export function staffingRulesForSede(sedeId: string) {
   if (sedeId === '1e0759ec-5e63-4edd-9dad-e493c715bbba') {
     return {
       shiftPropertyIds: ['e0c82e3d-f702-4842-8c34-c987a6fd9c2e'],
-      useHabitualCollaborators: true,
+      // Confirmado por Dani: la disponibilidad registrada ya no genera capacidad.
+      // Solo cuentan horas de contrato o ficha (regla registrada en dataWorkers).
       allowCrossCenterMobility: true,
       // Confirmado por Dani: quedan fuera de la previsión como personas, porque no
       // hacen limpieza general (dirección; Azzeddine y Vicente solo urgencias o un

@@ -36,8 +36,8 @@ try {
     const dataset = await page.request();
     assert.equal(dataset.services[0].personMinutes, sede===configuredSede ? 270 : 300, 'actual page query must pass scoped rules into real reader');
     assert.equal(dataset.services[0].kind, sede===configuredSede ? 'fixed' : 'checkout');
-    assert.equal(dataset.workers.length, sede===configuredSede ? 1 : 0, 'scoped rules forwarded: collaborator capacity only under opt-in sede; zero-hour worker excluded elsewhere');
-    if (sede===configuredSede) assert.equal(dataset.workers[0].engagement, 'collaborator');
+    assert.equal(dataset.workers.length, 0, '0-hour worker is excluded in both sedes: availability never creates capacity');
+    assert.ok(dataset.issues.some(i => i.code === 'zero-hour-rule-excluded'), 'exclusion is visible in criteria');
   }
   console.log('PASS real page query → site rules → real reader; synthetic data, no automatic reads or cross-sede rules');
 } finally { globalThis.fetch = originalFetch; rmSync(dir,{recursive:true,force:true}); }

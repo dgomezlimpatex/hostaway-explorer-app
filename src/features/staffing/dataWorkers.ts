@@ -16,21 +16,10 @@ const text = (value: unknown) => typeof value === 'string' ? value : '';
 const number = (value: unknown) => value == null || value === '' ? NaN : Number(value);
 const weekday = (value: unknown) => Number.isInteger(number(value)) && number(value) >= 0 && number(value) <= 6;
 
-/** Template budget only: daily interval union, daily cap, six largest days.
- * Do not subtract dated absences/rest/blocks here: the engine applies them to capacity.
+/** Input rows have already been scoped by parent ids. Overlaps remain intervals for the engine's union, never summed here.
+ * Capacity comes ONLY from ficha or contract hours (rule confirmed by Dani: recorded
+ * availability never generates capacity). Availability still shapes blocks/engines.
  */
-function collaboratorBudget(availability: StaffingWorker['availability'], maxDaily: number): number {
-  return Array.from({ length: 7 }, (_, day) => {
-    let end = 0; let minutes = 0;
-    for (const slot of availability.filter(a => a.day === day).sort((a, b) => a.startMinute - b.startMinute)) {
-      minutes += Math.max(0, slot.endMinute - Math.max(end, slot.startMinute));
-      end = Math.max(end, slot.endMinute);
-    }
-    return Math.min(minutes, maxDaily);
-  }).sort((a, b) => b - a).slice(0, 6).reduce((n, minutes) => n + minutes, 0);
-}
-
-/** Input rows have already been scoped by parent ids. Overlaps remain intervals for the engine's union, never summed here. */
 export function mapStaffingWorkers(input: WorkerInputs): StaffingWorker[] {
   const { issues, from, to } = input;
   const kept: StaffingWorker[] = [];
@@ -103,18 +92,19 @@ export function mapStaffingWorkers(input: WorkerInputs): StaffingWorker[] {
     if (hasCurrentContract && !contractHoursValid && fichaHoursValid) workerIssues.push({ code: 'zero-contract-ficha-hours', message: `${text(row.name)}: contrato a 0 h y ficha con ${fichaHours} h; se usan las de la ficha. Revisa el contrato.` });
     else if (contractHoursValid && fichaHoursValid && contractHours !== fichaHours) workerIssues.push({ code: 'hours-mismatch', message: `${text(row.name)}: contrato ${contractHours} h y ficha ${fichaHours} h; se usa el contrato. Revisa cuál está vigente.` });
     const collaborator = input.useHabitualCollaborators === true && !hasCurrentContract && (row.contract_hours_per_week === null || row.contract_hours_per_week === 0);
-    if (collaborator) workerIssues.push({ code: 'habitual-collaborator-availability', message: 'Colaboración habitual: disponibilidad semanal registrada salvo aviso; presupuesto operativo, no horas contratadas ni coste de servicio. Se conservan libranzas, ausencias y bloqueos.' });
+    if (collaborator) workerIssues.push({ code: 'habitual-collaborator-availability', message: 'Colaboración habitual con 0 h: la disponibilidad registrada ya no genera capacidad; solo podría contar un contrato o ficha con horas.' });
     else workerIssues.push({ code: 'contract-current-assumption', message: contracts.length ? 'Hay contratos fechados; el motor no representa cambios por fecha. Se usan horas actuales de plantilla sin fusionarlas con contratos históricos; revisar vigencias.' : 'Horas actuales de plantilla como hipótesis para el periodo; no acreditan contrato histórico ni fecha de baja.' });
     const maxDaily = number(input.planning.find(item => item.id === id)?.planning_max_daily_minutes);
     // Contrato con horas > 0 manda; si viene a 0 h, mandan las de la ficha.
-    // Si no hay dato válido en ninguno, se conserva el valor desconocido (nunca 0 por defecto).
+    // Si no hay dato válido en ninguno, la persona queda fuera de la previsión.
     const effectiveHours = contractHoursValid ? contractHours : fichaHoursValid ? fichaHours : (Number.isFinite(contractHours) ? contractHours : fichaHours);
-    const weeklyMinutes = collaborator ? collaboratorBudget(availability, Number.isFinite(maxDaily) && maxDaily >= 0 ? maxDaily : 1440) : effectiveHours * 60;
-    // Regla confirmada por Dani: quien tiene 0 h semanales (p. ej. solo refuerzo)
-    // no cuenta como capacidad ni como candidato, "como si no existiera". Su trabajo
-    // sí sigue contando como carga. Un dato desconocido (NaN) se conserva visible:
-    // no se convierte en 0 ni se oculta.
-    if (weeklyMinutes <= 0) {
+    // Regla confirmada por Dani (17/09/2026): la disponibilidad registrada ya NO
+    // genera capacidad. Solo cuentan horas de contrato o ficha; quien se queda con
+    // 0 h (o sin dato válido) no cuenta en la previsión, da igual que tenga tareas
+    // asignadas o disponibilidad: "como si no existiera". Su trabajo sí sigue
+    // contando como carga.
+    const weeklyMinutes = effectiveHours * 60;
+    if (!(Number.isFinite(weeklyMinutes) && weeklyMinutes > 0)) {
       excludedZeroHour.push(text(row.name));
       continue;
     }
@@ -124,6 +114,6 @@ export function mapStaffingWorkers(input: WorkerInputs): StaffingWorker[] {
       unavailableDates: [...unavailableDates].sort(), confirmedRestDates: [...confirmedRestDates].sort(), blockedSlots,
       activeFrom: text(row.start_date) || undefined, maxDailyMinutes: Number.isFinite(maxDaily) && maxDaily >= 0 ? maxDaily : undefined });
   }
-  if (excludedZeroHour.length) issues.push({ code: 'zero-hour-rule-excluded', message: `Fuera de la previsión por tener 0 h registradas (solo refuerzo): ${excludedZeroHour.join(', ')}. No cuentan como capacidad ni como candidatas; su trabajo sí sigue como carga.` });
+  if (excludedZeroHour.length) issues.push({ code: 'zero-hour-rule-excluded', message: `Fuera de la previsión por tener 0 h en su ficha y sin contrato con horas: ${excludedZeroHour.join(', ')}. No cuentan como capacidad ni como candidatas aunque tengan disponibilidad o tareas asignadas; su trabajo sí sigue como carga.` });
   return kept;
 }

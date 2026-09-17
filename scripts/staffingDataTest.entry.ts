@@ -308,22 +308,30 @@ async function paginatedInventory() {
   console.log('PASS offset pages, dedup, parent batching, concurrent rows and partial-source failure');
 }
 async function preferredAndForeignChildren() {
-  const base = fixture({ properties: [property], cleaners: [{ id: 'w', sede_id: 's', is_active: true, contract_hours_per_week: null }],
-    property_preferred_cleaners: [{ id: 'excluded', property_id: 'p', cleaner_id: 'w', priority: 95 }],
+  const base = fixture({ properties: [property], cleaners: [
+    { id: 'w', sede_id: 's', is_active: true, contract_hours_per_week: 20 },
+    { id: 'u', sede_id: 's', is_active: true, contract_hours_per_week: null },
+  ],
+    property_preferred_cleaners: [
+      { id: 'excluded', property_id: 'p', cleaner_id: 'w', priority: 95 },
+      { id: 'unknown', property_id: 'p', cleaner_id: 'u', priority: 95 },
+    ],
   });
   const result = await readStaffingDataset(async spec => {
     if (spec.table === 'cleaner_availability') return [{ id: 'foreign-slot', cleaner_id: 'other-sede', day_of_week: 1, is_available: true, start_time: '09:00', end_time: '17:00' }];
     if (spec.table === 'worker_absences') return [{ id: 'foreign-absence', cleaner_id: 'other-sede', start_date: '2026-09-14', end_date: '2026-09-20', absence_type: 'day_off' }];
     return base(spec);
   }, 's', '2026-09-14', '2026-09-20');
+  assert.equal(result.workers.length, 1, 'unknown hours (null ficha) exclude the worker; hours keep the other');
+  assert.ok(result.issues.some(i => i.code === 'zero-hour-rule-excluded'), 'unknown-hours exclusion is visible in criteria');
   assert.deepEqual(result.workers[0].excludedCenterIds, ['p'], 'property exclusions apply also to ungrouped centers');
   assert.deepEqual(result.workers[0].availability, []);
   assert.deepEqual(result.workers[0].confirmedRestDates, []);
-  assert.ok(Number.isNaN(result.workers[0].weeklyMinutes));
+  assert.equal(result.workers[0].weeklyMinutes, 1200);
   assert.equal(result.workers[0].restDay, null);
   assert.equal(result.workers[0].flexibleRest, false);
   assert.ok(result.issues.some(i => i.code === 'scope-violation'));
-  console.log('PASS property exclusions, foreign worker children rejected, unknown hours/rest not invented');
+  console.log('PASS property exclusions, foreign worker children rejected and unknown hours excluded, never invented');
 }
 async function sourceFailureQuality() {
   const read = fixture({ properties: [property], cleaners: [{ id: 'w', sede_id: 's', is_active: true, contract_hours_per_week: 20 }], worker_fixed_days_off: [{ id: 'off', cleaner_id: 'w', day_of_week: 0, is_active: true }], cleaner_availability: [{ id: 'a', cleaner_id: 'w', day_of_week: 1, is_available: true, start_time: '09:00', end_time: '17:00' }] });

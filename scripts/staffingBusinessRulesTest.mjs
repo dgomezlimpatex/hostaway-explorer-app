@@ -11,7 +11,7 @@ const outOfForecast = [
   'acffe4d5-05c2-4ff7-82b9-c6c4db85ee34', // AZZEDDINE CHAMSSI
   'fed80a4e-1c18-4f8e-a85d-4ff94d119064', // VICENTE MORENO LOUREDA
 ];
-const expected = { shiftPropertyIds: [property], useHabitualCollaborators: true, allowCrossCenterMobility: true, excludedWorkerIds: outOfForecast };
+const expected = { shiftPropertyIds: [property], allowCrossCenterMobility: true, excludedWorkerIds: outOfForecast };
 assert.deepEqual(staffingRulesForSede(sede), expected, 'explicit confirmed site rules use canonical scoped identity');
 for (const other of ['', 'another-sede', 'A Coruña', ` ${sede}`]) {
   assert.deepEqual(staffingRulesForSede(other), { shiftPropertyIds: [], useHabitualCollaborators: false, allowCrossCenterMobility: false, excludedWorkerIds: [] }, 'never apply business rules by a similar name or normalize malformed IDs');

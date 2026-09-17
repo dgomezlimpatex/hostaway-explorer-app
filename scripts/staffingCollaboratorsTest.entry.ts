@@ -46,20 +46,14 @@ test('collaborator service activity makes total cost unknown even with a supplie
   }
 });
 
-test('collaborator budget unions daily overlaps, caps each day and uses at most six days before engine restrictions', () => {
-  const source = inputs({ useHabitualCollaborators: true });
-  source.availability.push(...source.availability.map(a => ({ ...a, start_time: '09:00', end_time: '11:00' })));
-  assert.equal(mapStaffingWorkers(source)[0].weeklyMinutes, 1080, 'union is 180 per day, top six');
-  assert.equal(mapStaffingWorkers({ ...source, planning: [{ id: 'c', planning_max_daily_minutes: 150 }] })[0].weeklyMinutes, 900);
-  // Regla de Dani: quien queda con 0 h de capacidad queda fuera de la previsión,
-  // como si no existiera, aunque luego se use de refuerzo.
-  assert.equal(mapStaffingWorkers({ ...source, planning: [{ id: 'c', planning_max_daily_minutes: 0 }] }).length, 0, 'zero capacity worker is excluded entirely');
-  for (const invalid of [-1, NaN, Infinity]) assert.equal(mapStaffingWorkers({ ...source, planning: [{ id: 'c', planning_max_daily_minutes: invalid }] })[0].weeklyMinutes, 1080);
-  assert.equal(mapStaffingWorkers({ ...source, availability: [] }).length, 0, 'missing availability never creates capacity nor presence');
-  assert.equal(mapStaffingWorkers({ ...source, rests: [] })[0].flexibleRest, false);
-  const restricted = mapStaffingWorkers({ ...source, absences: [{ cleaner_id: 'c', start_date: source.from, end_date: source.to }] })[0];
-  assert.equal(restricted.weeklyMinutes, 1080, 'dated absence is applied by engine, not twice in template budget');
-  assert.equal(restricted.unavailableDates.length, 7);
+test('availability alone never creates capacity: 0-hour workers are excluded entirely', () => {
+  for (const flag of [true, false, undefined]) {
+    const source = inputs({ useHabitualCollaborators: flag });
+    assert.equal(mapStaffingWorkers(source).length, 0, `0 h ficha + availability is excluded (flag ${String(flag)})`);
+    assert.ok(source.issues.some(i => i.code === 'zero-hour-rule-excluded'), 'exclusion is visible in criteria');
+  }
+  const [twenty] = mapStaffingWorkers(inputs({ useHabitualCollaborators: true, workers: [{ id: 'c', is_active: true, contract_hours_per_week: 20 }] }));
+  assert.equal(twenty.weeklyMinutes, 1200, 'ficha hours still create capacity');
 });
 
 const inputs = (patch: Partial<Parameters<typeof mapStaffingWorkers>[0]> = {}): Parameters<typeof mapStaffingWorkers>[0] => ({
@@ -68,18 +62,14 @@ const inputs = (patch: Partial<Parameters<typeof mapStaffingWorkers>[0]> = {}): 
   rests: [{ cleaner_id: 'c', is_active: true, day_of_week: 0 }], staffing: [], absences: [], maintenance: [], maintenanceTypes: [], contracts: [], planning: [],
   groupIds: ['a'], from: '2026-09-14', to: '2026-09-20', issues: [], allowCrossCenterMobility: true, ...patch,
 });
-test('registered collaborator absence, rest and blocks remain hard constraints end to end', () => {
+test('0-hour workers are out of capacity and candidates; their assigned work stays as load', () => {
   const source = inputs({ useHabitualCollaborators: true, absences: [{ cleaner_id: 'c', start_date: '2026-09-14', end_date: '2026-09-14' }] });
   const mapped = mapStaffingWorkers(source);
+  assert.equal(mapped.length, 0, 'availability, rest and absence rows do not resurrect a 0-hour worker');
+  assert.ok(source.issues.some(i => i.code === 'zero-hour-rule-excluded'), 'exclusion is visible in criteria');
   const result = forecast(mapped, [service(), service('rest', { date: '2026-09-20' })]);
-  assert.equal(result.weeks[0].collaboratorCapacityMinutes, 600);
-  assert.equal(result.weeks[0].uncoveredMinutes, 120);
-  assert.equal(result.weeks[0].contractedMinutes, 0);
-  const missingRestSource = { ...source, rests: [] };
-  const missingRest = forecast(mapStaffingWorkers(missingRestSource));
-  assert.equal(missingRest.weeks[0].collaboratorCapacityMinutes, 720, 'registered availability remains potential capacity without a fixed rest row');
-  assert.ok(missingRestSource.issues.some(i => i.code === 'missing-rest'));
-  assert.ok(!missingRest.issues.some(i => i.code === 'incomplete-worker'));
+  assert.equal(result.weeks[0].collaboratorCapacityMinutes, 0);
+  assert.equal(result.weeks[0].uncoveredMinutes, 120, 'their assigned work remains demand to cover');
   for (const patch of [{ confirmedRestDates: [options.dateFrom] }, { unavailableDates: [options.dateFrom] }, { activeFrom: '2026-09-15' }, { activeTo: '2026-09-13' }, { blockedSlots: [{ day: 1, startMinute: 480, endMinute: 540, consumesContract: false }] }, { excludedCenterIds: ['a'] }]) {
     const restricted = forecast([worker('c', { engagement: 'collaborator', ...patch })], [service()]);
     assert.equal(restricted.days[0].assignments.length, 0);
@@ -127,37 +117,17 @@ test('invalid or duplicate collaborator input is quarantined without making a la
   assert.ok(duplicate.issues.some(i => i.code === 'duplicate-worker'));
 });
 
-test('explicit habitual policy maps null/zero hours to operational availability, never inferred from contract_type', () => {
-  for (const hours of [null, 0]) {
-    const source = inputs({ useHabitualCollaborators: true });
-    source.workers[0].contract_hours_per_week = hours;
-    const [mapped] = mapStaffingWorkers(source);
-    assert.equal(mapped.engagement, 'collaborator');
-    assert.equal(mapped.weeklyMinutes, 720);
-    assert.equal(mapped.flexibleRest, false);
-    assert.equal(mapped.restDay, 0);
-    assert.ok(source.issues.some(i => i.code === 'habitual-collaborator-availability'));
-    assert.ok(!source.issues.some(i => i.code === 'contract-current-assumption'));
+test('ficha and contract hours are the only capacity sources; 0 h or invalid never count', () => {
+  for (const hours of [null, 0, -1, NaN, Infinity, -Infinity]) {
+    const source = inputs({ useHabitualCollaborators: true, workers: [{ id: 'c', is_active: true, contract_hours_per_week: hours } as StaffingRow] });
+    // Regla de Dani: ni disponibilidad ni tareas dan capacidad; solo ficha o contrato con horas.
+    assert.equal(mapStaffingWorkers(source).length, 0, `${String(hours)} never creates capacity nor presence`);
   }
-  for (const flag of [undefined, false]) {
-    const [legacy] = mapStaffingWorkers(inputs({ useHabitualCollaborators: flag }));
-    assert.notEqual(legacy.engagement, 'collaborator');
-    assert.ok(Number.isNaN(legacy.weeklyMinutes));
-  }
-  for (const hours of [-1, -Infinity]) {
-    const source = inputs({ useHabitualCollaborators: true, workers: [{ id: 'c', is_active: true, contract_hours_per_week: hours, contract_type: 'full-time' } as StaffingRow] });
-    // Regla de Dani: horas no positivas dejan la persona fuera de la previsión (0 h o inválidas).
-    assert.equal(mapStaffingWorkers(source).length, 0, `negative hours ${hours} exclude the worker entirely`);
-  }
-  for (const hours of [NaN, Infinity]) {
-    const source = inputs({ useHabitualCollaborators: true, workers: [{ id: 'c', is_active: true, contract_hours_per_week: hours, contract_type: 'full-time' } as StaffingRow] });
-    const [invalid] = mapStaffingWorkers(source);
-    assert.notEqual(invalid.engagement, 'collaborator', 'invalid data is never inferred as collaboration');
-    assert.ok(!Number.isFinite(invalid.weeklyMinutes), 'unknown/invalid hours stay visible and never create capacity');
-  }
-  const fullTime = mapStaffingWorkers(inputs({ useHabitualCollaborators: true, workers: [{ id: 'c', is_active: true, contract_hours_per_week: 20, contract_type: 'full-time' }] }))[0];
-  assert.notEqual(fullTime.engagement, 'collaborator');
-  assert.equal(fullTime.weeklyMinutes, 1200);
+  const [twenty] = mapStaffingWorkers(inputs({ workers: [{ id: 'c', is_active: true, contract_hours_per_week: 20 }] }));
+  assert.notEqual(twenty.engagement, 'collaborator');
+  assert.equal(twenty.weeklyMinutes, 1200);
+  const [contract] = mapStaffingWorkers(inputs({ workers: [{ id: 'c', is_active: true, contract_hours_per_week: 0 }], contracts: [{ id: 'k', cleaner_id: 'c', is_active: true, status: 'active', start_date: '2026-01-01', end_date: null, contract_hours_per_week: 40 }] }));
+  assert.equal(contract.weeklyMinutes, 2400, 'active contract with hours counts even with ficha 0');
 });
 
 test('active contract takes precedence over habitual collaborator opt-in and supplies its hours', () => {
