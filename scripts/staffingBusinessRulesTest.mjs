@@ -21,4 +21,10 @@ changed.shiftPropertyIds.push('untrusted-property');
 changed.excludedWorkerIds.push('untrusted-worker');
 changed.useHabitualCollaborators = false;
 assert.deepEqual(staffingRulesForSede(sede), expected, 'consumer cannot mutate shared configuration');
+// La regla se aplica al leer: las personas de la lista no aportan horas, pero su
+// trabajo SÍ cuenta como carga (solo NOT COUNT sale también de la carga).
+const reader = (await import('node:fs')).readFileSync('src/features/staffing/data.ts', 'utf8');
+assert.match(reader, /const staffingWorkers = rawWorkers\.filter\(row => !internalWorkerIds\.has\(text\(row\.id\)\) && !ruleExcludedIds\.has\(text\(row\.id\)\)\)/, 'las personas de la regla salen del equipo');
+assert.match(reader, /const tasks = rawTasks\.filter\(task => !internalWorkerIds\.has\(text\(task\.cleaner_id\)\)\)/, 'solo NOT COUNT sale de la carga');
+assert.doesNotMatch(reader, /rawTasks\.filter\(task => !outOfForecastIds/, 'el trabajo de las personas fuera de previsión sí suma como carga');
 console.log('PASS scoped canonical hotel, collaborator and out-of-forecast worker rules, isolation and fresh copies');

@@ -12,9 +12,9 @@ export function staffingRulesForSede(sedeId: string) {
       shiftPropertyIds: ['e0c82e3d-f702-4842-8c34-c987a6fd9c2e'],
       useHabitualCollaborators: true,
       allowCrossCenterMobility: true,
-      // Confirmado por Dani: quedan fuera de la previsión general de limpieza.
-      // Daniel lleva la dirección y no hace limpiezas; Azzeddine y Vicente solo
-      // cubren urgencias o un apartamento concreto. Ni sus horas ni sus tareas cuentan.
+      // Confirmado por Dani: quedan fuera de la previsión como personas, porque no
+      // hacen limpieza general (dirección; Azzeddine y Vicente solo urgencias o un
+      // apartamento concreto). Sus horas no cuentan; su trabajo sí suma como carga.
       excludedWorkerIds: [
         '3da6d3e9-9e0b-4863-aab2-d371a20d2bb7', // DANIEL GOMEZ HERMIDA
         'acffe4d5-05c2-4ff7-82b9-c6c4db85ee34', // AZZEDDINE CHAMSSI

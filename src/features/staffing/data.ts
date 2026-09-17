@@ -76,11 +76,13 @@ export async function readStaffingDataset(read: StaffingReadPage, sedeId: string
   // queda fuera de la previsión, ni como capacidad ni como carga de sus tareas.
   const internalWorkerIds = new Set(rawWorkers.filter(row => /^not[\s_-]*count$/i.test(text(row.name).trim())).map(row => text(row.id)));
   const ruleExcludedIds = new Set(rules.excludedWorkerIds ?? []);
-  const outOfForecastIds = new Set([...internalWorkerIds, ...ruleExcludedIds]);
-  const staffingWorkers = rawWorkers.filter(row => !outOfForecastIds.has(text(row.id)));
-  const tasks = rawTasks.filter(task => !outOfForecastIds.has(text(task.cleaner_id)));
+  // Fuera de la previsión como PERSONAS (dirección, solo urgencias): no aportan horas.
+  const staffingWorkers = rawWorkers.filter(row => !internalWorkerIds.has(text(row.id)) && !ruleExcludedIds.has(text(row.id)));
+  // En cambio su TRABAJO sí cuenta como carga del equipo general: solo se descarta
+  // la carga de NOT COUNT, que son limpiezas que no se realizan ni se facturan.
+  const tasks = rawTasks.filter(task => !internalWorkerIds.has(text(task.cleaner_id)));
   const ruleExcludedWorkers = rawWorkers.filter(row => ruleExcludedIds.has(text(row.id)));
-  if (ruleExcludedWorkers.length) issues.push({ code: 'worker-rule-excluded', message: `Fuera de la previsión por regla de sede (no hacen limpieza general): ${ruleExcludedWorkers.map(row => text(row.name)).join(', ')}. No cuentan ni sus horas ni sus tareas.` });
+  if (ruleExcludedWorkers.length) issues.push({ code: 'worker-rule-excluded', message: `Fuera de la previsión por regla de sede (no hacen limpieza general): ${ruleExcludedWorkers.map(row => text(row.name)).join(', ')}. No cuentan sus horas; el trabajo que tengan asignado sí suma como carga.` });
   // Directory precedence: explicit property state wins; NULL inherits its client.
   // Read only clients needed for inheritance, scoped by already-authorized properties.
   const clientIds = [...new Set(properties.filter(row => row.is_active == null).map(row => text(row.cliente_id)).filter(Boolean))];
