@@ -16,7 +16,7 @@ try {
       const options = { dateFrom: '2026-09-14', asOf: '2026-09-14', weeks: 1, lateReservePercent: 0, seasonalPercent: 0, travelMinutes: 0 };
       const engineCapacity = worker => buildStaffingForecast({ centers: [{id:'c', name:'Centro', startMinute:0, endMinute:1440}], workers:[worker], services:[], issues:[], inventory:[] }, options).weeks[0].capacityMinutes;
       const periodDays = Array.from({length: 7}, (_, offset) => day(new Date(Date.parse('2026-09-14T12:00:00Z') + offset * 86400000).toISOString().slice(0, 10)));
-      const compare = worker => ({ ui: availableMinutesForPeriod(worker, periodDays), engine: engineCapacity(worker) });
+      const compare = worker => ({ ui: availableMinutesForPeriod(worker, periodDays, worker.weeklyMinutesMax ?? worker.weeklyMinutes), engine: engineCapacity(worker) });
       export const overlapping = compare({...base, blockedSlots: [{date:'2026-09-14', startMinute:600, endMinute:660, consumesContract:false}, {date:'2026-09-14', startMinute:630, endMinute:690, consumesContract:false}]});
       export const paidOutsideVisible = compare({...base, blockedSlots: [{date:'2026-09-20', startMinute:600, endMinute:720, consumesContract:true}]});
       export const paidDailyLimit = compare({...base, maxDailyMinutes:90, blockedSlots: [{date:'2026-09-14', startMinute:480, endMinute:510, consumesContract:true}, {date:'2026-09-14', startMinute:495, endMinute:525, consumesContract:true}]});

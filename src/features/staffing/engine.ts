@@ -324,7 +324,7 @@ function computeStaffingForecast(dataset: StaffingDataset, options: StaffingOpti
                         const nextPaid = routeMinutes([...route, assignment(w)]);
                         if (w.maxDailyMinutes !== undefined && current.paid + nextPaid > w.maxDailyMinutes)
                             return false;
-                        return paidWeek(w, day.date) + nextPaid - current.routePaid <= w.weeklyMinutes;
+                        return paidWeek(w, day.date) + nextPaid - current.routePaid <= (w.weeklyMinutesMax ?? w.weeklyMinutes);
                     }).sort((a, b) => Number(b.homeCenterIds.includes(service.centerId)) - Number(a.homeCenterIds.includes(service.centerId)) || a.id.localeCompare(b.id)).slice(0, service.requiredWorkers);
                     if (team.length !== service.requiredWorkers)
                         continue;
@@ -378,7 +378,7 @@ function computeStaffingForecast(dataset: StaffingDataset, options: StaffingOpti
             const cleaning = assigned.reduce((n, m) => n + m, 0);
             const paid = paidWeek(w, matching[0].date);
             const raw = matching.map(d => potential(w, d));
-            const capacity = Math.max(cleaning, Math.min(raw.reduce((n, m) => n + m, 0), w.weeklyMinutes - paid + cleaning));
+            const capacity = Math.max(cleaning, Math.min(raw.reduce((n, m) => n + m, 0), (w.weeklyMinutesMax ?? w.weeklyMinutes) - paid + cleaning));
             if (w.engagement === 'collaborator') collaboratorCapacityMinutes += capacity;
             const spare = raw.map((m, i) => Math.max(0, m - assigned[i]));
             const totalSpare = spare.reduce((n, m) => n + m, 0);

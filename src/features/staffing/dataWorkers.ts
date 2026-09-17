@@ -94,6 +94,8 @@ export function mapStaffingWorkers(input: WorkerInputs): StaffingWorker[] {
     }
     issues.push(...workerIssues);
     kept.push({ id, name: text(row.name), engagement: 'employee', weeklyMinutes,
+      // Jornada comprometida (ficha) como mínimo; el tope operativo es +30 % de la jornada semanal.
+      weeklyMinutesMax: Math.round(weeklyMinutes * 1.3),
       homeCenterIds, excludedCenterIds, availability, restDay: restDays[0] ?? null, flexibleRest: false, canMove: input.allowCrossCenterMobility === true,
       unavailableDates: [...unavailableDates].sort(), confirmedRestDates: [...confirmedRestDates].sort(), blockedSlots,
       activeFrom: text(row.start_date) || undefined, maxDailyMinutes: Number.isFinite(maxDaily) && maxDaily >= 0 ? maxDaily : undefined });

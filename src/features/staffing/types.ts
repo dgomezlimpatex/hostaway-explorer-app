@@ -12,7 +12,9 @@ export interface StaffingWorker {
   engagement?: 'employee' | 'collaborator';
   id: string; name: string;
   /** Employee contract budget, or collaborator operational availability budget; never a service price. */
-  weeklyMinutes: number; homeCenterIds: string[];
+  weeklyMinutes: number;
+  /** Tope de asignación semanal (jornada comprometida + 30 % como máximo, regla de Dani). Si falta, se usa weeklyMinutes. */
+  weeklyMinutesMax?: number; homeCenterIds: string[];
   availability: StaffingAvailability[]; restDay: number | null; flexibleRest: boolean;
   canMove: boolean; unavailableDates: string[]; confirmedRestDates: string[];
   activeFrom?: string; activeTo?: string;

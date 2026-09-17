@@ -7,6 +7,8 @@ interface Props {
   workers: StaffingWorker[];
   days: StaffingDay[];
   week?: string;
+  /** Rótulo del periodo mostrado (p. ej. «Septiembre · total del mes»); sin él se muestra la semana. */
+  periodLabel?: string;
   onSimulate: () => void;
 }
 
@@ -21,7 +23,7 @@ function initials(name: string): string {
   return name.split(/\s+/).filter(Boolean).slice(0, 2).map(part => part[0]?.toUpperCase() || '').join('');
 }
 
-export function availableMinutesForPeriod(worker: StaffingWorker, days: StaffingDay[]): number {
+export function availableMinutesForPeriod(worker: StaffingWorker, days: StaffingDay[], limitMinutes?: number): number {
   const weekDates = (date: string) => {
     const value = new Date(`${date}T12:00:00Z`);
     const monday = new Date(value.getTime() - ((value.getUTCDay() + 6) % 7) * 86400000);
@@ -53,17 +55,21 @@ export function availableMinutesForPeriod(worker: StaffingWorker, days: Staffing
     return sum + Math.min(Math.max(0, (worker.maxDailyMinutes ?? 1440) - paid), minutes);
   }, 0);
   const paidOutsidePeriod = days.length ? Math.max(...days.map(day => paidWeekMinutes(day.date))) : 0;
-  return Math.min(Math.max(0, worker.weeklyMinutes - paidOutsidePeriod), total);
+  return Math.min(Math.max(0, (limitMinutes ?? worker.weeklyMinutes) - paidOutsidePeriod), total);
 }
 
-export function StaffingTeam({ workers, days, week, onSimulate }: Props) {
+export function StaffingTeam({ workers, days, week, periodLabel, onSimulate }: Props) {
   const [search, setSearch] = useState('');
   const [engagement, setEngagement] = useState<'all' | 'employee' | 'collaborator'>('all');
   const [sort, setSort] = useState<'unassigned' | 'name'>('unassigned');
   const rows = useMemo<TeamRow[]>(() => workers.map(worker => {
     const assignedMinutes = days.flatMap(day => day.assignments).filter(assignment => assignment.workerId === worker.id).reduce((total, assignment) => total + assignment.personMinutes, 0);
-    const availableMinutes = availableMinutesForPeriod(worker, days);
-    return { worker, assignedMinutes, availableMinutes, unassignedMinutes: Math.max(0, availableMinutes - assignedMinutes) };
+    // La jornada de la ficha es lo que la persona DEBE trabajar (se paga aunque no se asigne);
+    // el tope operativo es +30 %. Para periodos de varias semanas se escala por días/7.
+    const periodFactor = days.length / 7;
+    const availableMinutes = availableMinutesForPeriod(worker, days, worker.weeklyMinutes * periodFactor);
+    const maxAvailableMinutes = availableMinutesForPeriod(worker, days, (worker.weeklyMinutesMax ?? worker.weeklyMinutes) * periodFactor);
+    return { worker, assignedMinutes, availableMinutes, unassignedMinutes: Math.max(0, maxAvailableMinutes - assignedMinutes) };
   }).filter(row => (row.worker.engagement || 'employee') === engagement || engagement === 'all')
     .filter(row => row.worker.name.toLocaleLowerCase('es').includes(search.toLocaleLowerCase('es')))
     .sort((a, b) => sort === 'name' ? a.worker.name.localeCompare(b.worker.name, 'es') : b.unassignedMinutes - a.unassignedMinutes || a.worker.name.localeCompare(b.worker.name, 'es')),
@@ -72,7 +78,7 @@ export function StaffingTeam({ workers, days, week, onSimulate }: Props) {
 
   const table = (title: string, group: TeamRow[]) => <section aria-label={title} className="min-w-0">
     <header className="flex flex-wrap items-baseline justify-between gap-2 border-b border-[#eeeaf4] pb-3"><h3 className="text-base font-bold text-[#201936]">{title}</h3><span className="text-xs text-[#817a8c]">{group.length} {group.length === 1 ? 'persona' : 'personas'}</span></header>
-    {group.length === 0 ? <p className="py-6 text-sm text-[#716a7d]">No hay personas que coincidan con el filtro.</p> : <div className="mt-2 overflow-x-auto"><table className="w-full min-w-[700px] text-left text-sm"><caption className="sr-only">{title} · semana {week || 'seleccionada'}</caption><thead className="text-xs text-[#817a8c]"><tr><th className="py-2 pr-3">Persona</th><th className="px-3 py-2 text-right">Puede trabajar</th><th className="px-3 py-2 text-right">Limpiezas asignadas</th><th className="px-3 py-2 text-right">Horas libres</th><th className="px-3 py-2">Aviso</th></tr></thead><tbody>{group.map(row => {
+    {group.length === 0 ? <p className="py-6 text-sm text-[#716a7d]">No hay personas que coincidan con el filtro.</p> : <div className="mt-2 overflow-x-auto"><table className="w-full min-w-[700px] text-left text-sm"><caption className="sr-only">{title} · semana {week || 'seleccionada'}</caption><thead className="text-xs text-[#817a8c]"><tr><th className="py-2 pr-3">Persona</th><th className="px-3 py-2 text-right">Debe trabajar</th><th className="px-3 py-2 text-right">Limpiezas asignadas</th><th className="px-3 py-2 text-right">Horas libres</th><th className="px-3 py-2">Aviso</th></tr></thead><tbody>{group.map(row => {
       const progress = row.availableMinutes ? Math.min(100, row.assignedMinutes / row.availableMinutes * 100) : 0;
       // Un cero sin motivo parece un fallo de la aplicación: aquí se dice por qué.
       const reason = !Number.isFinite(row.worker.weeklyMinutes) || row.worker.weeklyMinutes === 0
@@ -85,9 +91,8 @@ export function StaffingTeam({ workers, days, week, onSimulate }: Props) {
   </section>;
 
   return <section aria-label="Equipo de previsión" className={`${panelClass} space-y-5`}>
-    <header className="flex flex-wrap items-start justify-between gap-3"><div><p className="text-[11px] font-bold uppercase tracking-[0.17em] text-[#390b92]">Equipo</p><h2 className="mt-1 text-xl font-bold tracking-tight text-[#201936]">Equipo y carga simulada</h2><p className="mt-1 text-sm text-[#716a7d]">Semana {week || 'seleccionada'} · calculado con la disponibilidad registrada, no con el cuadrante real.</p></div><button type="button" className="inline-flex min-h-9 items-center gap-1 text-xs font-bold text-[#390b92]" onClick={onSimulate}>Editar escenario <ArrowRight className="h-3.5 w-3.5" /></button></header>
+    <header className="flex flex-wrap items-start justify-between gap-3"><div><p className="text-[11px] font-bold uppercase tracking-[0.17em] text-[#390b92]">Equipo</p><h2 className="mt-1 text-xl font-bold tracking-tight text-[#201936]">Equipo y carga simulada</h2><p className="mt-1 text-sm text-[#716a7d]">{periodLabel || `Semana ${week || 'seleccionada'}`} · calculado con la disponibilidad registrada, no con el cuadrante real.</p></div><button type="button" className="inline-flex min-h-9 items-center gap-1 text-xs font-bold text-[#390b92]" onClick={onSimulate}>Editar escenario <ArrowRight className="h-3.5 w-3.5" /></button></header>
     <div className="flex flex-wrap items-end gap-3"><label className="grid gap-1 text-xs font-medium">Buscar persona<span className="relative"><Search className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-[#a19aab]" /><input aria-label="Buscar persona en equipo" type="search" className={`${fieldClass} pl-9`} placeholder="Nombre" value={search} onChange={event => setSearch(event.target.value)} /></span></label><label className="grid gap-1 text-xs font-medium">Vinculación<select aria-label="Filtrar vinculación" className={fieldClass} value={engagement} onChange={event => setEngagement(event.target.value as typeof engagement)}><option value="all">Todas</option><option value="employee">Plantilla</option></select></label><label className="grid gap-1 text-xs font-medium">Ordenar por<select aria-label="Ordenar equipo" className={fieldClass} value={sort} onChange={event => setSort(event.target.value as typeof sort)}><option value="unassigned">Horas libres</option><option value="name">Nombre</option></select></label></div>
-    <p className="rounded-lg border border-[#eee5c9] bg-[#fffaf0] p-3 text-xs leading-5 text-[#80621b]">Las horas libres dependen del reparto simulado y de los datos disponibles. No significan automáticamente exceso de jornada ni necesidad de reducir personal.</p>
     {engagement === 'all' || engagement === 'employee' ? table('Plantilla', employees) : null}
   </section>;
 }

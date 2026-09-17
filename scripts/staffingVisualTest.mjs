@@ -39,7 +39,7 @@ try {
   if (await octoberPeriod.count()) { await octoberPeriod.click(); await expect(page.getByLabel('Semana de análisis')).toHaveValue('2026-10-05'); }
   await page.getByRole('button', { name: 'Semanas', exact: true }).click();
   await expect(page.getByLabel('Barras diarias').getByRole('button')).toHaveCount(7);
-  await expect(page.getByRole('columnheader', { name: 'Puede trabajar' }).first()).toBeVisible();
+  await expect(page.getByRole('columnheader', { name: 'Debe trabajar' }).first()).toBeVisible();
   await expect(page.getByRole('columnheader', { name: 'Limpiezas asignadas' }).first()).toBeVisible();
   await expect(page.getByRole('columnheader', { name: 'Horas libres' }).first()).toBeVisible();
   await expect(page.getByRole('columnheader', { name: 'Aviso' }).first()).toBeVisible();
@@ -78,10 +78,11 @@ try {
   await expect(mobile.getByRole('heading', { name: 'Qué necesita atención', exact: true })).toBeVisible();
   // El resumen ejecutivo sigue al periodo elegido (regresión del selector de fechas).
     await page.getByLabel('Periodicidad').selectOption('month');
-    await expect(page.getByRole('article', { name: /^Total de / })).toBeVisible();
-    await expect(page.getByRole('article', { name: /^Total de / })).toContainText('semanas');
-    await page.getByLabel('Periodicidad').selectOption('period');
-    await expect(page.getByRole('article', { name: 'Total del periodo', exact: true })).toBeVisible();
+        await expect(page.getByRole('article', { name: /^Total de / })).toBeVisible();
+        await expect(page.getByRole('article', { name: /^Total de / })).toContainText('semanas');
+        await expect(page.locator('#staffing-view-team').getByText('total del mes', { exact: false })).toBeVisible();
+        await page.getByLabel('Periodicidad').selectOption('period');
+        await expect(page.getByRole('article', { name: 'Total del periodo', exact: true })).toBeVisible();
   expect(errors).toEqual([]);
   expect(requests).toEqual([]);
   console.log('staffing-visual-tests: OK (prompt layout, interaction and responsive no-network fixture)');
