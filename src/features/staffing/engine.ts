@@ -120,13 +120,13 @@ function computeStaffingForecast(dataset: StaffingDataset, options: StaffingOpti
     const daysByWeek = groupBy(days, d => dateInfo(d.date).week);
     const calendarWeeks = new Map([...daysByWeek.keys()].map(week => [week, Array.from({ length: 7 }, (_, i) => addDays(week, i))]));
     const issues = dataset.issues.map(i => ({ ...i }));
-    issues.push({ code: 'boundary-history', message: 'Sin historial de asignaciones anterior al rango: continuidad verificada dentro de la propuesta y bloqueos conocidos, no jornadas previas desconocidas. Semanas parciales muestran contrato/coste semanal completo, no prorrateado.' });
+    issues.push({ code: 'boundary-history', message: 'Sin historial de asignaciones anterior al rango: continuidad verificada dentro de la propuesta y bloqueos conocidos, no jornadas previas desconocidas. Semanas parciales muestran el total semanal completo, no prorrateado.' });
     const unknownCenters = new Set(dataset.centers.filter(c => dataset.issues.some(i => !i.centerId || i.centerId === c.id)).map(c => c.id));
     const duplicateWorkers = duplicateIds(dataset.workers);
     const duplicateCenters = duplicateIds(dataset.centers);
     const duplicateServices = duplicateIds(dataset.services);
     for (const id of duplicateWorkers) {
-        issues.push({ code: 'duplicate-worker', message: `${id}: identidad repetida; todas sus filas excluidas de asignación, contrato y coste, sin fusionar restricciones.` });
+        issues.push({ code: 'duplicate-worker', message: `${id}: identidad repetida; todas sus filas excluidas de asignación y coste, sin fusionar restricciones.` });
         dataset.centers.forEach(c => unknownCenters.add(c.id));
     }
     for (const id of duplicateCenters) {
@@ -150,7 +150,7 @@ function computeStaffingForecast(dataset: StaffingDataset, options: StaffingOpti
             dataset.centers.forEach(c => unknownCenters.add(c.id));
         }
         if (w.blockedSlots?.some(b => b.consumesContract)) {
-            issues.push({ code: 'maintenance-unreconciled', message: `${w.id}: mantenimiento descontado; el contrato no permite vincularlo con tareas para descartar duplicados. Revisar antes de decidir refuerzos.` });
+            issues.push({ code: 'maintenance-unreconciled', message: `${w.id}: mantenimiento descontado; no hay vínculo directo con las tareas para descartar duplicados. Revisar antes de decidir refuerzos.` });
         }
         return valid && w.id !== options.absenceWorkerId;
     });

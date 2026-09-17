@@ -65,7 +65,7 @@ export function mapStaffingWorkers(input: WorkerInputs): StaffingWorker[] {
     const maintenanceTypes = new Map(input.maintenanceTypes.map(item => [text(item.id), item.schedule_type]));
     for (const item of input.maintenance.filter(item => item.cleaner_id === id && item.is_active === true)) {
       const type = maintenanceTypes.get(text(item.id));
-      if (type !== 'maintenance' && type !== 'unavailability') workerIssues.push({ code: 'maintenance-type-assumption', message: 'Compromiso semanal sin schedule_type: bloqueado y descontado del contrato como hipótesis prudente.' });
+      if (type !== 'maintenance' && type !== 'unavailability') workerIssues.push({ code: 'maintenance-type-assumption', message: 'Compromiso semanal sin schedule_type: bloqueado como hipótesis prudente.' });
       const startMinute = timeMinutes(item.start_time); const endMinute = timeMinutes(item.end_time);
       const valid = Number.isFinite(startMinute) && endMinute > startMinute;
       if (!valid) workerIssues.push({ code: 'invalid-maintenance', message: 'Compromiso semanal con horas inválidas: día bloqueado como hipótesis prudente.' });
@@ -98,6 +98,6 @@ export function mapStaffingWorkers(input: WorkerInputs): StaffingWorker[] {
       unavailableDates: [...unavailableDates].sort(), confirmedRestDates: [...confirmedRestDates].sort(), blockedSlots,
       activeFrom: text(row.start_date) || undefined, maxDailyMinutes: Number.isFinite(maxDaily) && maxDaily >= 0 ? maxDaily : undefined });
   }
-  if (excludedZeroHour.length) issues.push({ code: 'zero-hour-rule-excluded', message: `Fuera de la previsión por tener 0 h en su ficha y sin contrato con horas: ${excludedZeroHour.join(', ')}. No cuentan como capacidad ni como candidatas aunque tengan disponibilidad o tareas asignadas; su trabajo sí sigue como carga.` });
+  if (excludedZeroHour.length) issues.push({ code: 'zero-hour-rule-excluded', message: `Fuera de la previsión por tener 0 h en su ficha: ${excludedZeroHour.join(', ')}. No cuentan como capacidad ni como candidatas aunque tengan disponibilidad o tareas asignadas; su trabajo sí sigue como carga.` });
   return kept;
 }

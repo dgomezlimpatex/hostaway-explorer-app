@@ -135,7 +135,7 @@ export async function readStaffingDataset(read: StaffingReadPage, sedeId: string
     if (!centerMap.has(id)) centerMap.set(id, { id, name: text(group?.name) || text(property.nombre) || 'Centro sin nombre', startMinute: timeMinutes(group?.check_out_time ?? property.check_out_predeterminado), endMinute: timeMinutes(group?.check_in_time ?? property.check_in_predeterminado) });
   }
   const optional = async (load: () => Promise<StaffingRow[]>, label: string) => {
-    try { return await load(); } catch { issues.push({ code: 'extension-unavailable', message: `${label} no disponible; se conserva contrato base con incertidumbre explícita.` }); return []; }
+    try { return await load(); } catch { issues.push({ code: 'extension-unavailable', message: `${label} no disponible; se conserva el resto con incertidumbre explícita.` }); return []; }
   };
   const [absences, maintenance, maintenanceTypes, workerPlanning] = await Promise.all([
     safeChildren('worker_absences', 'id,cleaner_id,start_date,end_date,start_time,end_time,absence_type', 'cleaner_id', workerIds, { since: { column: 'end_date', value: from }, until: { column: 'start_date', value: to } }),
