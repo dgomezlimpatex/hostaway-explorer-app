@@ -2,9 +2,10 @@ import { useState } from 'react';
 import type { StaffingWorker } from './types';
 import { clock, fieldClass, weekdays } from './presentation';
 
-export function StaffingScenario({ workers, absence, onAbsence, onChange, onAdd, onReset, canAdd, children }: { workers: StaffingWorker[]; absence: string; onAbsence: (id: string) => void; onChange: (id: string, change: Partial<StaffingWorker>) => void; onAdd: () => void; onReset: () => void; canAdd: boolean; children: React.ReactNode }) {
+export function StaffingScenario({ workers, absence, onAbsence, onChange, onAdd, onReset, canAdd, balance, children }: { workers: StaffingWorker[]; absence: string; onAbsence: (id: string) => void; onChange: (id: string, change: Partial<StaffingWorker>) => void; onAdd: () => void; onReset: () => void; canAdd: boolean; balance?: React.ReactNode; children: React.ReactNode }) {
   const [search, setSearch] = useState('');
   return <><p className="text-sm text-stone-600">Solo en memoria. Horas y libranza afectan a todo el periodo; fin de actividad desde la fecha indicada. No cambia contratos ni servicios.</p>
+    {balance}
     {children}
     <div className="flex flex-wrap gap-2"><button type="button" className={fieldClass} disabled={!canAdd} onClick={() => { setSearch(''); onAdd(); }}>Añadir refuerzo hipotético</button><button type="button" className={fieldClass} onClick={onReset}>Descartar cambios</button></div>
     <p className="text-xs text-stone-600">Refuerzo inicial: 15 h/semana, domingo libre, movilidad habilitada y ventana del centro seleccionado (o primero). Parámetros editables abajo; disponibilidad no confirmada.</p>

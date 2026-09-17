@@ -58,6 +58,18 @@ try {
   await page.getByRole('button', { name: /Probar refuerzo/ }).click();
   await expect(page.getByRole('dialog', { name: 'Simular cambios' })).toBeVisible();
   await expect(page.getByRole('dialog')).toContainText('Escenario base');
+  // Cuadre de plantilla: carga → objetivo con colchón → plantilla actual, y el ajuste cambia el total.
+  await expect(page.getByRole('heading', { name: 'Cuadre de plantilla con la carga', exact: true })).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Cuadre de plantilla' })).toContainText('Objetivo de plantilla');
+  const balanceTotal = async () => Number(((await page.getByRole('region', { name: 'Cuadre de plantilla' }).innerText()).match(/Plantilla actual\s+([\d.,]+) h/) || [])[1]?.replace('.', '').replace(',', '.') || '0');
+  const beforeAdjust = await balanceTotal();
+  await expect(beforeAdjust).toBeGreaterThan(0);
+  await page.getByRole('button', { name: /^Quitar media hora a / }).first().click();
+  const afterAdjust = await balanceTotal();
+  expect(afterAdjust).toBeLessThan(beforeAdjust);
+  await expect(page.getByRole('region', { name: 'Cuadre de plantilla' })).toContainText('Editada en el escenario');
+  await page.getByRole('button', { name: /^Restaurar$/ }).first().click();
+  await expect(await balanceTotal()).toBeCloseTo(beforeAdjust, 1);
   await page.keyboard.press('Escape');
   await expect(page.getByRole('dialog')).toHaveCount(0);
   await page.getByRole('button', { name: 'Escenarios', exact: true }).click();
