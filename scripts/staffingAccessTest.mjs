@@ -12,8 +12,9 @@ try {
       '@/contexts/SedeContext': `export const useSede=()=>({activeSede:${mode === 'missing-sede' ? 'null' : "{id:'s',nombre:'Sede de prueba'}"},isInitialized:true});`,
       '@/hooks/useRolePermissions': `export const useRolePermissions=()=>({isAdminOrManager:()=>${mode !== 'denied'}});`,
       '@/hooks/useAuth': "export const useAuth=()=>({user:{id:'u'}});",
+      '@/components/sede/SedeSelector': 'export const SedeSelector=()=>null;',
       '@/features/staffing/readClient': "export const createStaffingPageReader=()=>()=>{throw new Error('Unexpected data read before explicit request')};",
-      '@tanstack/react-query': "export const useQuery=(options)=>{if(options.enabled)throw new Error('Automatic data read');return {isFetching:false,isError:false,data:null}};export const useQueryClient=()=>({cancelQueries:async()=>{}});",
+      '@tanstack/react-query': "export const useQuery=(options)=>{if(options.enabled)throw new Error('Automatic data read');return {isFetching:false,isError:false,data:null}};export const useQueryClient=()=>({cancelQueries:async()=>{}});export const useMutation=()=>({mutate:()=>{},mutateAsync:async()=>{}});",
     };
     await build({ stdin: { contents: `import React from 'react';import {renderToStaticMarkup} from 'react-dom/server';import Page from './src/pages/StaffingForecastPage';export const html=renderToStaticMarkup(React.createElement(Page));`, resolveDir: process.cwd(), loader: 'tsx' }, bundle: true, platform: 'node', format: 'cjs', jsx: 'automatic', outfile, logLevel: 'silent', plugins: [{ name: 'isolated-auth-hooks', setup(plugin) { plugin.onResolve({filter: /.*/}, args => Object.hasOwn(modules,args.path) ? {path:args.path,namespace:'test-only'} : null); plugin.onLoad({filter: /.*/,namespace:'test-only'},args=>({contents:modules[args.path],loader:'js'})); } }] });
     const {html} = (await import(pathToFileURL(outfile).href)).default;

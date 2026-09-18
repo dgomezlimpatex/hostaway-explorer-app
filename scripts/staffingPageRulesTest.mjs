@@ -16,7 +16,8 @@ try {
       '@/contexts/SedeContext': `export const useSede=()=>({activeSede:{id:${JSON.stringify(sede)},nombre:'Sede sintética'},isInitialized:true});`,
       '@/hooks/useRolePermissions': 'export const useRolePermissions=()=>({isAdminOrManager:()=>true});',
       '@/hooks/useAuth': "export const useAuth=()=>({user:{id:'u'}});",
-      '@tanstack/react-query': 'export const useQuery=o=>{if(o.enabled)throw Error("unexpected automatic read");globalThis.__staffingQuery=o;return {isFetching:false,isError:false,data:null}};export const useQueryClient=()=>({cancelQueries:async()=>{}});',
+      '@/components/sede/SedeSelector': 'export const SedeSelector=()=>null;',
+      '@tanstack/react-query': 'export const useQuery=o=>{if(o.enabled)throw Error("unexpected automatic read");globalThis.__staffingQuery=o;return {isFetching:false,isError:false,data:null}};export const useQueryClient=()=>({cancelQueries:async()=>{}});export const useMutation=()=>({mutate:()=>{},mutateAsync:async()=>{}});',
       '@/features/staffing/readClient': `export const createStaffingPageReader=()=>async spec=>{
         globalThis.__staffingReadCount++;
         const day=globalThis.__staffingDay;

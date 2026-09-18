@@ -19,9 +19,10 @@ export default function StaffingForecastPage() {
   const { user } = useAuth();
   if (!isAdminOrManager()) return <p role="alert" className="p-6">La previsión de plantilla está reservada a administración y responsables.</p>;
   if (!isInitialized || !activeSede || !user) return <p role="status" className="p-6">Selecciona una sede para consultar su plantilla.</p>;
-  return <StaffingWorkspace key={`${user.id}:${activeSede.id}`} sedeId={activeSede.id} sedeName={activeSede.nombre} userId={user.id} />;
+  const userName = typeof user.user_metadata?.full_name === 'string' ? user.user_metadata.full_name : typeof user.user_metadata?.name === 'string' ? user.user_metadata.name : 'Responsable de operaciones';
+  return <StaffingWorkspace key={`${user.id}:${activeSede.id}`} sedeId={activeSede.id} sedeName={activeSede.nombre} userId={user.id} userName={userName} />;
 }
-function StaffingWorkspace({ sedeId, sedeName, userId }: { sedeId: string; sedeName: string; userId: string }) {
+function StaffingWorkspace({ sedeId, sedeName, userId, userName }: { sedeId: string; sedeName: string; userId: string; userName: string }) {
   const today = formatMadridDate(new Date());
   const initialHorizonMonths = 3;
   const initialRange = getMonthlyForecastRange(today, initialHorizonMonths);
@@ -49,7 +50,8 @@ function StaffingWorkspace({ sedeId, sedeName, userId }: { sedeId: string; sedeN
     <label className="grid gap-1 text-xs font-medium">Horizonte de previsión<select aria-label="Horizonte de previsión" className={fieldClass} value={horizonMonths} disabled={query.isFetching} onChange={event => { if (!allowReset()) return; const value = Number(event.target.value); const range = getMonthlyForecastRange(monthAnchor, value); setHorizonMonths(value); setDateFrom(range.from); setWeeks(range.weeks); setRequested(false); }}>{[1, 3, 6].map(value => <option key={value} value={value}>{value === 1 ? 'Cada mes' : `Próximos ${value} meses`}</option>)}</select></label>
     {query.isFetching ? <button type="button" className={fieldClass} onClick={() => { setRequested(false); void queryClient.cancelQueries({ queryKey: ['staffing-forecast', userId, sedeId, dateFrom, dateTo] }); }}>Cancelar consulta</button> : <button type="button" className={fieldClass} onClick={refresh}>{query.isError ? 'Reintentar' : requested ? 'Actualizar' : 'Consultar datos de la sede'}</button>}
   </>;
-  if (requested && query.data && !query.isFetching && !query.isError) return <StaffingDashboard key={`${sedeId}:${dateFrom}:${weeks}:${query.data.fetchedAt}`} dataset={query.data} dateFrom={dateFrom} monthAnchor={monthAnchor} horizonMonths={horizonMonths} asOf={today} weeks={weeks} compute={buildStaffingForecast} sedeName={sedeName} controls={controls} onDirtyChange={setDirty} onRetry={refresh} />;
+  const displayName = typeof userName === 'string' ? userName : 'Responsable de operaciones';
+  if (requested && query.data && !query.isFetching && !query.isError) return <StaffingDashboard key={`${sedeId}:${dateFrom}:${weeks}:${query.data.fetchedAt}`} dataset={query.data} dateFrom={dateFrom} monthAnchor={monthAnchor} horizonMonths={horizonMonths} asOf={today} weeks={weeks} compute={buildStaffingForecast} sedeName={sedeName} userName={displayName} controls={controls} onDirtyChange={setDirty} onRetry={refresh} />;
   return <section className="min-w-0 space-y-6 bg-[#f7f6f3] p-3 text-stone-900 sm:p-6"><StaffingHeader sedeName={sedeName} dateFrom={dateFrom} dateTo={dateTo}>{controls}</StaffingHeader>
     {!requested && <p className="py-10 text-center text-sm text-stone-600">Selecciona el periodo y consulta los datos para empezar. Los escenarios solo se mantienen en esta pantalla.</p>}
     {query.isFetching && <p role="status" className="py-10 text-center text-sm text-stone-600">Leyendo fuentes… El resultado anterior permanece oculto durante la actualización.</p>}

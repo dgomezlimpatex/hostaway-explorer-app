@@ -15,6 +15,8 @@ export interface StaffingWorker {
   weeklyMinutes: number;
   /** Tope de asignación semanal (jornada comprometida + 30 % como máximo, regla de Dani). Si falta, se usa weeklyMinutes. */
   weeklyMinutesMax?: number; homeCenterIds: string[];
+  /** Prioridad explícita por centro: 0–19 titular, 20–29 suplente, 30–89 backup. */
+  centerPriorities?: { centerId: string; priority: number }[];
   availability: StaffingAvailability[]; restDay: number | null; flexibleRest: boolean;
   canMove: boolean; unavailableDates: string[]; confirmedRestDates: string[];
   activeFrom?: string; activeTo?: string;

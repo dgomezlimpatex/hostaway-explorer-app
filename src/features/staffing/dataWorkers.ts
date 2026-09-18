@@ -77,7 +77,16 @@ export function mapStaffingWorkers(input: WorkerInputs): StaffingWorker[] {
     const assignments = input.staffing.filter(item => item.cleaner_id === id && input.groupIds.includes(text(item.property_group_id)));
     const excludedCenterIds = [...new Set(assignments.filter(item => item.is_active === false || number(item.priority) >= 90).map(item => text(item.property_group_id)))];
     // propertyStaffingService: <20 primary, <30 secondary, <90 backup (mobile support).
-    const homeCenterIds = [...new Set(assignments.filter(item => item.is_active === true && number(item.priority) < 30 && !excludedCenterIds.includes(text(item.property_group_id))).map(item => text(item.property_group_id)))];
+    const priorityByCenter = new Map<string, number>();
+    for (const assignment of assignments) {
+      const centerId = text(assignment.property_group_id);
+      const priority = number(assignment.priority);
+      if (assignment.is_active === true && Number.isFinite(priority) && priority < 90 && !excludedCenterIds.includes(centerId)) {
+        priorityByCenter.set(centerId, Math.min(priorityByCenter.get(centerId) ?? priority, priority));
+      }
+    }
+    const centerPriorities = [...priorityByCenter.entries()].map(([centerId, priority]) => ({ centerId, priority })).filter(item => item.centerId);
+    const homeCenterIds = centerPriorities.filter(item => item.priority < 30).map(item => item.centerId);
     const fichaHours = number(row.contract_hours_per_week);
     // Los contratos laborales son una herencia en desuso (Dani 17/09/2026): la única
     // fuente de horas es la FICHA (cleaners.contract_hours_per_week), la que ve dirección.
@@ -96,7 +105,7 @@ export function mapStaffingWorkers(input: WorkerInputs): StaffingWorker[] {
     kept.push({ id, name: text(row.name), engagement: 'employee', weeklyMinutes,
       // Jornada comprometida (ficha) como mínimo; el tope operativo es +30 % de la jornada semanal.
       weeklyMinutesMax: Math.round(weeklyMinutes * 1.3),
-      homeCenterIds, excludedCenterIds, availability, restDay: restDays[0] ?? null, flexibleRest: false, canMove: input.allowCrossCenterMobility === true,
+      homeCenterIds, centerPriorities, excludedCenterIds, availability, restDay: restDays[0] ?? null, flexibleRest: false, canMove: input.allowCrossCenterMobility === true,
       unavailableDates: [...unavailableDates].sort(), confirmedRestDates: [...confirmedRestDates].sort(), blockedSlots,
       activeFrom: text(row.start_date) || undefined, maxDailyMinutes: Number.isFinite(maxDaily) && maxDaily >= 0 ? maxDaily : undefined });
   }

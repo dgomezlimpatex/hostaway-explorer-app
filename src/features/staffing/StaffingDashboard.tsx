@@ -1,173 +1,303 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import type { StaffingDataset, StaffingOptions, StaffingResult, StaffingWorker } from './types';
-import { StaffingEvolution, StaffingHeader, StaffingPanel } from './StaffingChrome';
+import { StaffingPanel } from './StaffingChrome';
 import { StaffingScenario } from './StaffingScenario';
-import { StaffingDetails } from './StaffingDetails';
-import { StaffingAttention } from './StaffingAttention';
-import { StaffingBalance } from './StaffingBalance';
-import { staffingBalance, suggestedWeeklyMinutes } from './balance';
-import { StaffingTeam, availableMinutesForPeriod } from './StaffingTeam';
-
-import { StaffingWeekOptions } from './StaffingWeekOptions';
-import { StaffingComparison } from './StaffingComparison';
 import { buildStaffingMonthlyView } from './monthly';
-import { fieldClass, fullDate, hours, informationalIssues, knownUncovered, money, panelClass, shortDate, weekdays } from './presentation';
+import { informationalIssues } from './presentation';
+import { staffingBalance } from './balance';
+import { availableMinutesForPeriod } from './StaffingTeam';
+import {
+  ForecastCandidates,
+  ForecastSummary,
+  ForecastWeek,
+} from './StaffingRedesign';
+import {
+  applyForecastReserve,
+  buildCandidateGroups,
+  centerPriority,
+  mergeCandidateGroups,
+  weekEnd,
+} from './StaffingRedesignUtils';
+import type { ForecastDailyRow, ForecastPeriod, ForecastPoint, ForecastScreen, ForecastWeeklyRow } from './StaffingRedesignUtils';
 
 type Compute = (dataset: StaffingDataset, options: StaffingOptions) => StaffingResult;
-type PeriodMode = 'month' | 'week' | 'period';
-interface Props { dataset: StaffingDataset; dateFrom: string; asOf: string; weeks: number; compute: Compute; sedeName?: string; controls?: ReactNode; monthAnchor?: string; horizonMonths?: number; onDirtyChange?: (dirty: boolean) => void; onRetry?: () => void; demo?: boolean }
+interface Props {
+  dataset: StaffingDataset;
+  dateFrom: string;
+  asOf: string;
+  weeks: number;
+  compute: Compute;
+  sedeName?: string;
+  controls?: ReactNode;
+  monthAnchor?: string;
+  horizonMonths?: number;
+  onDirtyChange?: (dirty: boolean) => void;
+  onRetry?: () => void;
+  demo?: boolean;
+  userName?: string;
+}
 
-export function StaffingDashboard({ dataset, dateFrom, asOf, weeks, compute, sedeName, controls, monthAnchor = dateFrom, horizonMonths = 3, onDirtyChange, onRetry, demo = false }: Props) {
-  const [lateReservePercent, setLateReservePercent] = useState(20);
-  const [cushionPercent, setCushionPercent] = useState(20);
-  const [seasonalPercent, setSeasonalPercent] = useState(0);
-  const [travelMinutes, setTravelMinutes] = useState(20);
+type Panel = 'scenario' | 'data' | null;
+
+function addDays(date: string, count: number): string {
+  const value = new Date(`${date}T12:00:00Z`);
+  value.setUTCDate(value.getUTCDate() + count);
+  return value.toISOString().slice(0, 10);
+}
+
+function inRange(date: string, from: string, to: string): boolean {
+  return date >= from && date <= to;
+}
+
+function weekForDate(date: string): string {
+  const value = new Date(`${date}T12:00:00Z`);
+  value.setUTCDate(value.getUTCDate() - ((value.getUTCDay() + 6) % 7));
+  return value.toISOString().slice(0, 10);
+}
+
+function unionMinutes(intervals: { startMinute: number; endMinute: number }[]): number {
+  let end = 0;
+  let total = 0;
+  for (const interval of [...intervals].filter(item => item.endMinute > item.startMinute).sort((a, b) => a.startMinute - b.startMinute)) {
+    total += Math.max(0, interval.endMinute - Math.max(end, interval.startMinute));
+    end = Math.max(end, interval.endMinute);
+  }
+  return total;
+}
+
+function paidMinutes(worker: StaffingWorker, date: string): number {
+  return unionMinutes((worker.blockedSlots || []).filter(block => block.consumesContract && (!block.date ? block.day === new Date(`${date}T12:00:00Z`).getUTCDay() : block.date === date)));
+}
+
+function taskAssignments(result: StaffingResult, serviceId: string) {
+  return result.days.flatMap(day => day.assignments).filter(assignment => assignment.serviceId === serviceId);
+}
+
+function assignedForWorker(result: StaffingResult, workerId: string, from: string, to: string): number {
+  return result.days.filter(day => inRange(day.date, from, to)).flatMap(day => day.assignments).filter(assignment => assignment.workerId === workerId).reduce((total, assignment) => total + assignment.personMinutes, 0);
+}
+
+function contractMinimumForMonth(worker: StaffingWorker, month: string): number {
+  const monthStart = `${month}-01`;
+  const start = new Date(`${monthStart}T12:00:00Z`);
+  const monthEnd = new Date(start.getTime());
+  monthEnd.setUTCMonth(monthEnd.getUTCMonth() + 1, 0);
+  const end = monthEnd.toISOString().slice(0, 10);
+  const activeFrom = worker.activeFrom && worker.activeFrom > monthStart ? worker.activeFrom : monthStart;
+  const activeTo = worker.activeTo && worker.activeTo < end ? worker.activeTo : end;
+  if (activeFrom > activeTo) return 0;
+  const activeDays = Math.floor((new Date(`${activeTo}T12:00:00Z`).getTime() - new Date(`${activeFrom}T12:00:00Z`).getTime()) / 86400000) + 1;
+  const expectedWorkDays = Math.max(1, 7 - (worker.restDay == null ? 0 : 1));
+  const absentDays = worker.unavailableDates.filter(date => inRange(date, activeFrom, activeTo)).length;
+  return Math.max(0, worker.weeklyMinutes * activeDays / 7 - absentDays * (worker.weeklyMinutes / expectedWorkDays));
+}
+
+function availabilityForService(worker: StaffingWorker, service: StaffingDataset['services'][number], result: StaffingResult, travelMinutes: number): { start: number; end: number } | null {
+  const dayOfWeek = new Date(`${service.date}T12:00:00Z`).getUTCDay();
+  if (worker.activeFrom && service.date < worker.activeFrom) return null;
+  if (worker.activeTo && service.date > worker.activeTo) return null;
+  if (worker.excludedCenterIds?.includes(service.centerId)) return null;
+  if (!worker.canMove && !worker.homeCenterIds.includes(service.centerId)) return null;
+  if (worker.unavailableDates.includes(service.date) || worker.confirmedRestDates.includes(service.date) || (!worker.flexibleRest && worker.restDay === dayOfWeek)) return null;
+  const requiredMinutes = service.personMinutes / Math.max(1, service.requiredWorkers);
+  const dayResult = result.days.find(day => day.date === service.date);
+  const existing = dayResult?.assignments.filter(assignment => assignment.workerId === worker.id && assignment.serviceId !== service.id) || [];
+  const blocks = (worker.blockedSlots || []).filter(block => block.date === service.date || (!block.date && block.day === dayOfWeek));
+  const slots = worker.availability.filter(slot => slot.day === dayOfWeek);
+  const paidToday = paidMinutes(worker, service.date);
+  const workToday = existing.reduce((total, assignment) => total + assignment.personMinutes, 0) + paidToday;
+  if (worker.maxDailyMinutes !== undefined && workToday + requiredMinutes > worker.maxDailyMinutes) return null;
+  let consecutiveDays = 1;
+  for (const direction of [-1, 1]) {
+    for (let offset = 1; offset <= 6; offset += 1) {
+      const date = addDays(service.date, direction * offset);
+      const adjacent = result.days.find(day => day.date === date);
+      const worked = adjacent?.assignments.some(assignment => assignment.workerId === worker.id) || paidMinutes(worker, date) > 0;
+      if (!worked) break;
+      consecutiveDays += 1;
+    }
+  }
+  if (consecutiveDays > 6) return null;
+  for (const slot of slots) {
+    const start = Math.max(slot.startMinute, service.startMinute);
+    const end = Math.min(slot.endMinute, service.endMinute);
+    if (end - start < requiredMinutes) continue;
+    if (blocks.some(block => block.startMinute < end && block.endMinute > start)) continue;
+    if (existing.some(assignment => assignment.startMinute < end && assignment.endMinute > start)) continue;
+    const previous = existing.filter(assignment => assignment.endMinute <= start).sort((a, b) => b.endMinute - a.endMinute)[0];
+    const next = existing.filter(assignment => assignment.startMinute >= end).sort((a, b) => a.startMinute - b.startMinute)[0];
+    if (previous && previous.centerId !== service.centerId && previous.endMinute + travelMinutes > start) continue;
+    if (next && next.centerId !== service.centerId && end + travelMinutes > next.startMinute) continue;
+    return { start, end };
+  }
+  return null;
+}
+
+export function StaffingDashboard({ dataset, dateFrom, asOf, weeks, compute, sedeName, controls, monthAnchor = dateFrom, horizonMonths = 3, onDirtyChange, onRetry, demo = false, userName }: Props) {
+  const [screen, setScreen] = useState<ForecastScreen>('summary');
+  const [period, setPeriod] = useState<ForecastPeriod>('monthly');
+  const [selectedWeek, setSelectedWeek] = useState(dateFrom);
+  const [centerFilter, setCenterFilter] = useState('');
+  const [selectedServiceId, setSelectedServiceId] = useState('');
+  const [weekForecast, setWeekForecast] = useState(false);
+  const [panel, setPanel] = useState<Panel>(null);
   const [absenceWorkerId, setAbsenceWorkerId] = useState('');
   const [overrides, setOverrides] = useState<Record<string, Partial<StaffingWorker>>>({});
   const [reinforcements, setReinforcements] = useState<StaffingWorker[]>([]);
-  const [periodMode, setPeriodMode] = useState<PeriodMode>('week');
-  const initialWeek = (() => { const monthStart = `${monthAnchor.slice(0, 7)}-01`; if (dateFrom >= monthStart) return dateFrom; const start = new Date(`${monthStart}T12:00:00Z`); start.setUTCDate(1 + ((8 - start.getUTCDay()) % 7)); const candidate = start.toISOString().slice(0, 10); return candidate >= dateFrom ? candidate : dateFrom; })();
-  const [selectedWeek, setSelectedWeek] = useState(initialWeek);
-  const [selectedMonth, setSelectedMonth] = useState('');
-  const [centerFilter, setCenterFilter] = useState('');
-  const [activeView, setActiveView] = useState<'forecast' | 'team' | 'scenarios'>('forecast');
-  const [panel, setPanel] = useState<'scenario' | 'data' | null>(null);
-  const baseOptions = useMemo(() => ({ dateFrom, asOf, weeks, lateReservePercent: 20, seasonalPercent: 0, travelMinutes: 20 }), [dateFrom, asOf, weeks]);
-  const options = useMemo(() => ({ ...baseOptions, lateReservePercent, seasonalPercent, travelMinutes, absenceWorkerId: absenceWorkerId || undefined }), [baseOptions, lateReservePercent, seasonalPercent, travelMinutes, absenceWorkerId]);
-  const changes = Object.keys(overrides).length > 0 || !!absenceWorkerId || reinforcements.length > 0 || lateReservePercent !== 20 || cushionPercent !== 20 || seasonalPercent !== 0 || travelMinutes !== 20;
+  const [seasonalPercent, setSeasonalPercent] = useState(0);
+  const [travelMinutes, setTravelMinutes] = useState(15);
+  const initialMonth = monthAnchor.slice(0, 7);
+
+  const baseOptions = useMemo<StaffingOptions>(() => ({ dateFrom, asOf, weeks, lateReservePercent: 0, seasonalPercent: 0, travelMinutes: 15 }), [dateFrom, asOf, weeks]);
+  const options = useMemo<StaffingOptions>(() => ({ ...baseOptions, seasonalPercent, travelMinutes, absenceWorkerId: absenceWorkerId || undefined }), [baseOptions, seasonalPercent, travelMinutes, absenceWorkerId]);
+  const changes = Object.keys(overrides).length > 0 || reinforcements.length > 0 || !!absenceWorkerId || seasonalPercent !== 0 || travelMinutes !== 15;
   const simulationData = useMemo(() => ({ ...dataset, workers: [...dataset.workers, ...reinforcements].map(worker => ({ ...worker, ...overrides[worker.id] })) }), [dataset, overrides, reinforcements]);
   const baseline = useMemo(() => compute(dataset, baseOptions), [compute, dataset, baseOptions]);
   const result = useMemo(() => changes ? compute(simulationData, options) : baseline, [compute, simulationData, options, changes, baseline]);
   const monthlyView = useMemo(() => buildStaffingMonthlyView(result, monthAnchor, horizonMonths, asOf), [result, monthAnchor, horizonMonths, asOf]);
-  const periodSummary = useMemo(() => {
-    const knownMinutes = result.weeks.reduce((n, w) => n + w.knownMinutes, 0);
-    const estimatedMinutes = result.weeks.reduce((n, w) => n + w.estimatedMinutes, 0);
-    const capacityMinutes = result.weeks.reduce((n, w) => n + w.capacityMinutes, 0);
-    return { knownMinutes, estimatedMinutes, capacityMinutes };
-  }, [result.weeks]);
-  const incompleteWeeks = useMemo(() => new Set(monthlyView.months.filter(month => month.status === 'future' && month.estimatedMinutes === 0).flatMap(month => month.weeks.map(week => week.week))), [monthlyView]);
-  const selected = result.weeks.find(week => week.week === selectedWeek);
-  const selectedMonthData = monthlyView.months.find(item => item.month === (selectedMonth || monthlyView.months[0]?.month));
-  const availableWeeks = result.weeks.map(week => week.week);
-  const baselineWeek = baseline.weeks.find(week => week.week === selected?.week);
-  const issues = [...dataset.issues, ...result.issues, ...monthlyView.issues].filter((issue, index, all) => all.findIndex(other => other.code === issue.code && other.message === issue.message && other.centerId === issue.centerId) === index);
-  const selectedDays = result.days.filter(day => selected && day.date >= selected.week && day.date < new Date(Date.parse(`${selected.week}T12:00:00Z`) + 7 * 86400000).toISOString().slice(0, 10));
-  const summaryPeriod = periodMode === 'period' ? periodSummary : periodMode === 'month' ? selectedMonthData : selected;
-  const uncertain = !dataset.services.length || !dataset.workers.length || !summaryPeriod || issues.some(issue => !informationalIssues.has(issue.code)) || (selected && result.centers.some(cell => cell.week === selected.week && cell.status === 'unknown'));
-  const failures = issues.filter(issue => ['source-unavailable', 'client-state-unavailable', 'extension-unavailable'].includes(issue.code));
-  const dateTo = new Date(Date.parse(`${dateFrom}T12:00:00Z`) + (weeks * 7 - 1) * 86400000).toISOString().slice(0, 10);
-  // El resumen ejecutivo sigue al periodo elegido: mes/mes, semana/semana o el horizonte completo.
-  const monthWeekKeys = useMemo(() => new Set((selectedMonthData?.weeks ?? []).map(segment => segment.week)), [selectedMonthData]);
-    const attentionWeeks = useMemo(() => periodMode === 'month'
-      ? result.weeks.filter(week => monthWeekKeys.has(week.week))
-      : periodMode === 'week' && selected
-        ? result.weeks.filter(week => week.week === selected.week)
-        : result.weeks, [periodMode, result.weeks, monthWeekKeys, selected]);
-    const attentionMonths = periodMode === 'month' ? (selectedMonthData ? [selectedMonthData] : []) : monthlyView.months;
-    const weekEnd = selected ? new Date(Date.parse(`${selected.week}T12:00:00Z`) + 6 * 86400000).toISOString().slice(0, 10) : '';
-      // El selector de fechas es el maestro: días, equipo y resumen comparten el mismo periodo.
-      const periodDays = useMemo(() => {
-        if (periodMode === 'period') return result.days;
-        if (periodMode === 'month' && selectedMonthData) return result.days.filter(day => day.date >= selectedMonthData.includedFrom && day.date <= selectedMonthData.includedTo);
-        return selectedDays;
-      }, [periodMode, selectedMonthData, result.days, selectedDays]);
-      // Los totales del periodo se suman por días civiles: nunca por semanas completas que se salen del mes.
-      const periodTotals = useMemo(() => periodDays.reduce((acc, day) => ({
-        knownMinutes: acc.knownMinutes + day.knownMinutes,
-        estimatedMinutes: acc.estimatedMinutes + day.estimatedMinutes,
-        capacityMinutes: acc.capacityMinutes + day.capacityMinutes,
-      }), { knownMinutes: 0, estimatedMinutes: 0, capacityMinutes: 0 }), [periodDays]);
-      // Jornada comprometida: lo que se paga y hay que cubrir, con el mismo criterio que la tabla de Equipo.
-      const teamCommittedMinutes = useMemo(() => {
-        const factor = periodDays.length / 7;
-        return simulationData.workers.reduce((total, worker) => total + availableMinutesForPeriod(worker, periodDays, worker.weeklyMinutes * factor), 0);
-      }, [simulationData.workers, periodDays]);
-      const periodPeak = periodMode === 'month' && selectedMonthData
-        ? [...selectedMonthData.weeks].sort((a, b) => (b.knownMinutes + b.estimatedMinutes) - (a.knownMinutes + a.estimatedMinutes) || a.week.localeCompare(b.week))[0]
-        : undefined;
-      const overloadedPeriod = periodMode === 'month' && selectedMonthData
-        ? selectedMonthData.weeks.filter(segment => segment.knownMinutes > segment.capacityMinutes).map(segment => ({ week: segment.week, knownMinutes: segment.knownMinutes, capacityMinutes: segment.capacityMinutes }))
-        : undefined;
-      const periodWork = periodTotals.knownMinutes + periodTotals.estimatedMinutes;
-      const periodGap = periodWork - teamCommittedMinutes;
-      const periodOverCeiling = periodWork - periodTotals.capacityMinutes;
-      // Cuadre de plantilla: carga prevista → objetivo con colchón → horas comprometidas del escenario.
-      const balance = useMemo(() => staffingBalance(simulationData.workers, periodDays, periodWork, cushionPercent), [simulationData.workers, periodDays, periodWork, cushionPercent]);
-      const editedIds = useMemo(() => new Set([...Object.keys(overrides), ...reinforcements.map(item => item.id)]), [overrides, reinforcements]);
-      const attentionScope = periodMode === 'month'
-        ? { label: `Total de ${selectedMonthData?.label || 'mes seleccionado'}`, subtitle: selectedMonthData ? `${shortDate(selectedMonthData.includedFrom)} – ${shortDate(selectedMonthData.includedTo)} · ${periodDays.length} días` : `${periodDays.length} días` }
-        : periodMode === 'week' && selected
-          ? { label: `Semana del ${shortDate(selected.week)}`, subtitle: `${shortDate(selected.week)} – ${shortDate(weekEnd)}` }
-          : { label: 'Total del periodo', subtitle: `${attentionWeeks.length} semanas · ${monthlyView.months.length} meses` };
-      const teamPeriodLabel = periodMode === 'month' ? (selectedMonthData ? `${selectedMonthData.label} · total del mes` : undefined) : periodMode === 'period' ? 'Periodo completo · total del horizonte' : undefined;
-    useEffect(() => { onDirtyChange?.(changes); return () => onDirtyChange?.(false); }, [changes, onDirtyChange]);
+  const availableWeeks = useMemo(() => result.weeks.map(week => week.week), [result.weeks]);
+  const selectedWeekData = result.weeks.find(week => week.week === selectedWeek) || result.weeks[0];
+  const selectedWeekKey = selectedWeekData?.week || selectedWeek;
+  const selectedWeekDays = useMemo(() => result.days.filter(day => day.date >= selectedWeekKey && day.date <= weekEnd(selectedWeekKey)), [result.days, selectedWeekKey]);
+  const allIssues = useMemo(() => [...dataset.issues, ...result.issues, ...monthlyView.issues].filter((issue, index, all) => all.findIndex(other => other.code === issue.code && other.message === issue.message && other.centerId === issue.centerId) === index), [dataset.issues, result.issues, monthlyView.issues]);
+  const failures = allIssues.filter(issue => ['source-unavailable', 'client-state-unavailable', 'extension-unavailable'].includes(issue.code));
+  const uncertain = !dataset.services.length || !dataset.workers.length || allIssues.some(issue => !informationalIssues.has(issue.code));
+
+  useEffect(() => { onDirtyChange?.(changes); return () => onDirtyChange?.(false); }, [changes, onDirtyChange]);
   useEffect(() => { if (!changes) return; const guard = (event: BeforeUnloadEvent) => { event.preventDefault(); event.returnValue = ''; }; window.addEventListener('beforeunload', guard); return () => window.removeEventListener('beforeunload', guard); }, [changes]);
-  const changeWorker = (id: string, change: Partial<StaffingWorker>) => setOverrides(current => ({ ...current, [id]: { ...current[id], ...change } }));
-  const reset = () => { if (changes && !window.confirm('¿Descartar todos los cambios del escenario? No se han guardado.')) return; setOverrides({}); setAbsenceWorkerId(''); setReinforcements([]); setLateReservePercent(20); setCushionPercent(20); setSeasonalPercent(0); setTravelMinutes(20); };
-  const restoreWorker = (id: string) => setOverrides(current => { const next = { ...current }; delete next[id]; return next; });
-  const applySuggestion = () => { const plan = suggestedWeeklyMinutes(balance); for (const [id, weeklyMinutes] of Object.entries(plan)) changeWorker(id, { weeklyMinutes }); };
+
+  const selectWeek = (week: string) => { if (availableWeeks.includes(week)) setSelectedWeek(week); };
+  const changeWorker = (id: string, change: Partial<StaffingWorker>) => setOverrides(current => {
+    const currentWorker = simulationData.workers.find(worker => worker.id === id);
+    const nextWeeklyMinutes = change.weeklyMinutes ?? currentWorker?.weeklyMinutes;
+    return { ...current, [id]: { ...current[id], ...change, ...(nextWeeklyMinutes !== undefined ? { weeklyMinutesMax: Math.round(nextWeeklyMinutes * 1.3) } : {}) } };
+  });
+  const reset = () => { if (changes && !window.confirm('¿Descartar todos los cambios del escenario? No se han guardado.')) return; setOverrides({}); setAbsenceWorkerId(''); setReinforcements([]); setSeasonalPercent(0); setTravelMinutes(15); };
   const addReinforcement = () => {
     const center = dataset.centers.find(item => item.id === centerFilter) || dataset.centers[0];
     if (!center) return;
-    setReinforcements(current => [...current, { id: `hypothetical:${current.length + 1}`, name: `Refuerzo hipotético ${current.length + 1}`, weeklyMinutes: 900, homeCenterIds: [center.id], availability: weekdays.map((_, day) => ({ day, startMinute: center.startMinute, endMinute: center.endMinute })), restDay: 0, flexibleRest: false, canMove: true, unavailableDates: [], confirmedRestDates: [], activeFrom: dateFrom }]);
+    setReinforcements(current => [...current, { id: `hypothetical:${current.length + 1}`, name: `Refuerzo hipotético ${current.length + 1}`, weeklyMinutes: 900, weeklyMinutesMax: 1170, homeCenterIds: [center.id], availability: Array.from({ length: 7 }, (_, day) => ({ day, startMinute: center.startMinute, endMinute: center.endMinute })), restDay: 0, flexibleRest: false, canMove: true, unavailableDates: [], confirmedRestDates: [], activeFrom: dateFrom }]);
   };
-  const selectMonth = (month: string) => {
-    const selected = monthlyView.months.find(item => item.month === month);
-    const next = selected?.weeks.find(week => week.week >= selected.startDate && availableWeeks.includes(week.week)) || selected?.weeks.find(week => availableWeeks.includes(week.week));
-    setSelectedMonth(month);
-    setSelectedWeek(periodMode === 'month' ? '' : next?.week || '');
+  const openCandidates = (serviceId?: string) => {
+    const candidate = serviceId && candidateServices.some(service => service.id === serviceId)
+      ? serviceId
+      : candidateServices.find(service => !taskAssignments(result, service.id).length)?.id || candidateServices[0]?.id || '';
+    setSelectedServiceId(candidate);
+    setScreen('candidates');
   };
-  const changePeriodMode = (mode: PeriodMode) => {
-      setPeriodMode(mode);
-      if (mode === 'month') {
-        setSelectedWeek('');
-        return;
-      }
-      if (mode === 'period') {
-        setSelectedWeek('');
-        setSelectedMonth('');
-        return;
-      }
-      const month = monthlyView.months.find(item => item.month === selectedMonth) || monthlyView.months[0];
-      const next = month?.weeks.find(week => week.week >= month.startDate && availableWeeks.includes(week.week)) || month?.weeks.find(week => availableWeeks.includes(week.week));
-      setSelectedWeek(next?.week || (selectedMonth ? '' : availableWeeks[0] || ''));
-    };
-  const selectWeek = (week: string) => {
-    setSelectedWeek(week);
-    const month = monthlyView.months.find(item => item.weeks.some(segment => segment.week === week));
-    if (month) setSelectedMonth(month.month);
+  const openCalendar = () => {
+    const query = selectedService ? `?date=${encodeURIComponent(selectedService.date)}&task=${encodeURIComponent(selectedService.id)}` : '';
+    if (typeof window !== 'undefined') window.location.assign(`/calendar${query}`);
   };
-  const periodControls = <div aria-label="Contexto del periodo" className="flex flex-wrap items-end gap-3"><label className="grid gap-1 text-xs font-medium">Periodicidad<select aria-label="Periodicidad" className={fieldClass} value={periodMode} onChange={event => changePeriodMode(event.target.value as PeriodMode)}><option value="period">Periodo completo</option><option value="month">Mensual</option><option value="week">Semanal</option></select></label>{periodMode === 'month' ? <label className="grid gap-1 text-xs font-medium">Mes de análisis<select aria-label="Mes de análisis" className={fieldClass} value={selectedMonth || monthlyView.months[0]?.month || ''} onChange={event => selectMonth(event.target.value)}>{monthlyView.months.map(item => <option key={item.month} value={item.month}>{item.label}</option>)}</select></label> : periodMode === 'week' ? selected ? <label className="grid gap-1 text-xs font-medium">Semana de análisis<select aria-label="Semana de análisis" className={fieldClass} value={selected.week} onChange={event => selectWeek(event.target.value)}>{result.weeks.map(week => <option key={week.week} value={week.week}>Desde {shortDate(week.week)}</option>)}</select></label> : <label className="grid gap-1 text-xs font-medium">Semana de análisis<select aria-label="Semana de análisis" className={fieldClass} value="" disabled><option value="">Sin semanas calculables para este mes</option></select></label> : null}<span className="pb-3 text-sm font-medium">{changes ? 'Escenario modificado · sin guardar' : 'Escenario base'}</span>{uncertain && <button type="button" aria-label="Parcial: consultar datos y criterios" className="mb-1 min-h-11 rounded-md border border-stone-300 bg-white px-3 text-sm" onClick={() => setPanel('data')}>Parcial</button>}</div>;
-  const comparison = <StaffingComparison baseline={baselineWeek} current={selected} changed={changes} uncertain={uncertain} days={selectedDays} onOpenScenario={() => setPanel('scenario')} />;
-  const balancePanel = <StaffingBalance balance={balance} periodLabel={teamPeriodLabel || `Semana del ${shortDate(selected?.week || '')}`} cushionPercent={cushionPercent} onCushion={setCushionPercent} editedIds={editedIds} onWeeklyMinutes={(id, minutes) => changeWorker(id, { weeklyMinutes: minutes })} onRestore={restoreWorker} onApplySuggestion={applySuggestion} />;
-  const jumpToView = (view: typeof activeView) => { setActiveView(view); const target = view === 'forecast' ? 'staffing-view-forecast' : view === 'team' ? 'staffing-view-team' : 'staffing-view-scenarios'; window.requestAnimationFrame(() => document.getElementById(target)?.scrollIntoView({ behavior: 'smooth', block: 'start' })); };
-  return <section className="mx-auto w-full min-w-0 max-w-[1600px] space-y-6 bg-[#f4f2fa] p-3 text-[#201936] sm:p-6 lg:p-8" aria-label="Previsión de personal">
-    <StaffingHeader sedeName={sedeName} dateFrom={dateFrom} dateTo={dateTo} demo={demo}>{controls}<button type="button" className={`${fieldClass} !border-[#310984] !bg-[#310984] !text-white`} onClick={() => setPanel('scenario')}>Simular cambios</button></StaffingHeader>
+  const changePeriod = (value: ForecastPeriod) => { setPeriod(value); if (value === 'weekly' && !selectedWeekData && availableWeeks[0]) setSelectedWeek(availableWeeks[0]); };
 
-    {failures.length > 0 && <div role="alert" className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-rose-300 bg-white p-3 text-sm text-rose-900"><span>No se pudieron leer todas las fuentes: la previsión está incompleta, y eso no significa que no haya actividad.</span>{onRetry && <button type="button" className={fieldClass} onClick={onRetry}>Reintentar</button>}<button type="button" className={fieldClass} onClick={() => setPanel('data')}>Ver fuentes fallidas</button></div>}
-    <nav aria-label="Secciones de previsión" className="flex flex-wrap items-center justify-between gap-3 border-b border-[#ded8eb]">
-      <div className="flex flex-wrap items-center gap-1">{[['forecast', 'Previsión'], ['team', 'Equipo'], ['scenarios', 'Escenarios']].map(([value, label], index, links) => <button key={value} id={`staffing-section-tab-${value}`} type="button" aria-current={activeView === value ? 'page' : undefined} className={`min-h-12 border-b-2 px-4 text-sm font-bold transition ${activeView === value ? 'border-[#390b92] text-[#390b92]' : 'border-transparent text-[#716a7d] hover:border-[#c9bce0] hover:text-[#201936]'}`} onClick={() => jumpToView(value as typeof activeView)} onKeyDown={event => { if (!['ArrowRight', 'ArrowLeft', 'Home', 'End'].includes(event.key)) return; event.preventDefault(); const next = event.key === 'Home' ? 0 : event.key === 'End' ? links.length - 1 : (index + (event.key === 'ArrowRight' ? 1 : -1) + links.length) % links.length; const nextValue = links[next][0]; jumpToView(nextValue as typeof activeView); document.getElementById(`staffing-section-tab-${nextValue}`)?.focus(); }}>{label}</button>)}</div><button type="button" className="mb-2 inline-flex min-h-9 items-center gap-2 rounded-lg border border-[#dcd5e8] bg-white px-3 text-xs font-bold text-[#390b92] shadow-sm" onClick={() => setPanel('data')}>Datos y criterios</button>
-    </nav>
-    {periodControls}
-    <StaffingAttention weeks={attentionWeeks} months={attentionMonths} periodLabel={attentionScope.label} periodSubtitle={attentionScope.subtitle} totals={periodTotals} committedMinutes={teamCommittedMinutes} maxMinutes={periodTotals.capacityMinutes} peak={periodPeak ? { week: periodPeak.week, minutes: periodPeak.knownMinutes + periodPeak.estimatedMinutes } : undefined} overloadedPeriod={overloadedPeriod} unassignedDays={periodMode === 'period' ? [] : periodDays} unassignedScope={periodMode === 'month' ? 'en el mes elegido' : periodMode === 'week' ? 'en la semana elegida' : undefined} workers={simulationData.workers} onWeek={selectWeek} onTeam={() => jumpToView('team')} onScenario={() => jumpToView('scenarios')} uncertain={uncertain} />
-    <div id="staffing-view-forecast" aria-label="Vista de previsión">
-    {periodMode === 'week' && !selected && <p role="status" className="text-sm text-stone-600">Sin semanas/datos calculables para este mes. Amplía el horizonte técnico o elige otro mes.</p>}
-    <p className="text-xs font-medium text-stone-600">{periodMode === 'period' ? 'Periodo completo · resumen de la sede' : periodMode === 'month' ? `Mes ${selectedMonthData?.label || '—'} · resumen mensual de sede` : `Semana ${shortDate(selected?.week || '')} · resumen total de sede`}</p>
-    <div className="grid divide-y border-y border-stone-300 py-1 sm:grid-cols-2 sm:divide-x lg:grid-cols-4" aria-label={`Resumen ${periodMode === 'month' ? 'mensual' : periodMode === 'period' ? 'del periodo' : 'semanal'} de sede`}>{[
-      ['Trabajo previsto', hours(periodWork), `${hours(periodTotals.knownMinutes)} ya registradas + ${hours(periodTotals.estimatedMinutes)} estimadas`],
-      ['Jornada comprometida', hours(teamCommittedMinutes), 'Horas de ficha que se pagan y hay que cubrir'],
-      ['Horas posibles del equipo', hours(periodTotals.capacityMinutes), 'Con la disponibilidad registrada y hasta un 30 % más de jornada'],
-      [periodGap <= 0 ? 'Jornada sin trabajo asignado' : periodWork <= periodTotals.capacityMinutes ? 'Falta sobre la jornada de ficha' : 'Lo que falta', hours(Math.abs(periodGap <= 0 ? periodGap : periodWork <= periodTotals.capacityMinutes ? periodGap : periodOverCeiling)), periodGap <= 0 ? 'Se paga igual: falta trabajo registrado para esa jornada' : periodWork <= periodTotals.capacityMinutes ? 'Cabe usando el margen de hasta un 30 % más de jornada' : 'Ni con un 30 % más de jornada llega el equipo'],
-    ].map(([label, value, detail]) => <div key={label} className="px-3 py-4"><h2 className="text-sm text-stone-600">{label}</h2><p className="my-2 text-2xl font-semibold tracking-tight tabular-nums sm:text-3xl">{value}</p><p className="text-xs text-stone-600">{detail}</p></div>)}</div>
-    {(!dataset.services.length || !dataset.workers.length) && <p role="status" className="text-sm text-stone-600">Sin datos suficientes: falta demanda o equipo en este periodo. No se concluye que sobre personal.</p>}
-    <StaffingEvolution weeks={result.weeks} months={monthlyView.months} selectedMonth={selectedMonth || monthlyView.months[0]?.month} selectedWeek={selected?.week} onSelect={selectWeek} onMonth={selectMonth} incompleteWeeks={incompleteWeeks} />
+  const dailyRows = useMemo<ForecastDailyRow[]>(() => result.days.map(day => {
+    const services = dataset.services.filter(service => service.date === day.date && (!centerFilter || service.centerId === centerFilter) && Number.isFinite(service.personMinutes) && service.personMinutes > 0);
+    const tourismMinutes = services.filter(service => service.kind !== 'fixed').reduce((total, service) => total + service.personMinutes, 0);
+    const fixedMinutes = services.filter(service => service.kind === 'fixed').reduce((total, service) => total + service.personMinutes, 0);
+    const otherMinutes = fixedMinutes + simulationData.workers.reduce((total, worker) => total + paidMinutes(worker, day.date), 0);
+    const allAssignments = [...day.assignments].sort((a, b) => a.startMinute - b.startMinute || a.workerId.localeCompare(b.workerId));
+    const travel = allAssignments.reduce((total, assignment, index, assignments) => {
+      const previous = assignments.slice(0, index).filter(item => item.workerId === assignment.workerId).at(-1);
+      const transitionIsInScope = !centerFilter || assignment.centerId === centerFilter || previous?.centerId === centerFilter;
+      return total + (transitionIsInScope && previous && previous.centerId !== assignment.centerId ? travelMinutes : 0);
+    }, 0);
+    const estimatedMinutes = centerFilter
+      ? services.filter(service => service.kind !== 'fixed').reduce((total, service) => total + service.personMinutes * seasonalPercent / 100, 0)
+      : day.estimatedMinutes;
+    const workloadMinutes = tourismMinutes + otherMinutes + travel;
+    const forecastMinutes = applyForecastReserve(tourismMinutes) + otherMinutes + travel + estimatedMinutes;
+    const capacityMinutes = day.capacityMinutes;
+    return { date: day.date, taskCount: services.length, tourismMinutes, otherMinutes, travelMinutes: travel, estimatedMinutes, workloadMinutes, forecastMinutes, capacityMinutes, balanceMinutes: capacityMinutes - forecastMinutes, deficitMinutes: Math.max(0, forecastMinutes - capacityMinutes) };
+  }), [result.days, simulationData.workers, travelMinutes, centerFilter, dataset.services, seasonalPercent]);
+  const summaryDays = period === 'weekly' ? selectedWeekDays.map(day => dailyRows.find(row => row.date === day.date)).filter((row): row is ForecastDailyRow => !!row) : dailyRows;
+  const summaryPoints = useMemo<ForecastPoint[]>(() => {
+    if (period === 'weekly') return summaryDays.map(row => ({ key: row.date, label: row.date.slice(8), secondaryLabel: `Día ${new Date(`${row.date}T12:00:00Z`).getUTCDay()}`, workloadMinutes: row.workloadMinutes, forecastMinutes: row.forecastMinutes, capacityMinutes: row.capacityMinutes, deficitMinutes: row.deficitMinutes }));
+    return result.weeks.map(week => {
+      const days = dailyRows.filter(day => day.date >= week.week && day.date <= weekEnd(week.week));
+      const workloadMinutes = days.reduce((total, day) => total + day.workloadMinutes, 0);
+      const forecastMinutes = days.reduce((total, day) => total + day.forecastMinutes, 0);
+      const capacityMinutes = days.reduce((total, day) => total + day.capacityMinutes, 0);
+      return { key: week.week, label: formatWeekShort(week.week), secondaryLabel: `Sem. ${weekNumber(week.week)}`, workloadMinutes, forecastMinutes, capacityMinutes, deficitMinutes: Math.max(0, forecastMinutes - capacityMinutes) };
+    });
+  }, [period, summaryDays, result.weeks, dailyRows]);
+  const weeklyRows = useMemo<ForecastWeeklyRow[]>(() => {
+    const source = period === 'weekly' && selectedWeekData ? [selectedWeekData] : result.weeks;
+    return source.map(week => {
+      const days = dailyRows.filter(day => day.date >= week.week && day.date <= weekEnd(week.week));
+      const knownMinutes = days.reduce((total, day) => total + day.workloadMinutes, 0);
+      const forecastMinutes = days.reduce((total, day) => total + day.forecastMinutes, 0);
+      const capacityMinutes = days.reduce((total, day) => total + day.capacityMinutes, 0);
+      const balanceMinutes = capacityMinutes - forecastMinutes;
+      return { week: week.week, label: `Sem. ${weekNumber(week.week)}`, dates: `${formatWeekShort(week.week)} – ${formatWeekShort(weekEnd(week.week))}`, knownMinutes, forecastMinutes, capacityMinutes, balanceMinutes, status: balanceMinutes < 0 ? 'deficit' : 'covered' };
+    });
+  }, [period, selectedWeekData, result.weeks, dailyRows]);
+  const hoursExpected = summaryPoints.reduce((total, point) => total + point.forecastMinutes, 0);
+  const capacity = summaryPoints.reduce((total, point) => total + point.capacityMinutes, 0);
+  const peak = summaryDays.reduce<ForecastDailyRow | undefined>((best, row) => !best || row.forecastMinutes - row.capacityMinutes > best.forecastMinutes - best.capacityMinutes ? row : best, undefined);
+  const summaryFrom = period === 'weekly' && selectedWeekData ? selectedWeekData.week : dateFrom;
+  const summaryTo = period === 'weekly' && selectedWeekData ? weekEnd(selectedWeekData.week) : addDays(dateFrom, weeks * 7 - 1);
+  const periodServices = dataset.services.filter(service => inRange(service.date, summaryFrom, summaryTo) && (!centerFilter || service.centerId === centerFilter) && Number.isFinite(service.personMinutes) && service.personMinutes > 0);
+  const candidateFrom = screen === 'week' || screen === 'candidates' ? selectedWeekKey : summaryFrom;
+  const candidateTo = screen === 'week' || screen === 'candidates' ? weekEnd(selectedWeekKey) : summaryTo;
+  const candidateServices = dataset.services.filter(service => inRange(service.date, candidateFrom, candidateTo) && (!centerFilter || service.centerId === centerFilter) && Number.isFinite(service.personMinutes) && service.personMinutes > 0);
+  useEffect(() => {
+    if (selectedServiceId && !candidateServices.some(service => service.id === selectedServiceId)) setSelectedServiceId('');
+  }, [candidateServices, selectedServiceId]);
+  const unassignedCount = periodServices.filter(service => !taskAssignments(result, service.id).length).length;
+  const selectedService = candidateServices.find(service => service.id === selectedServiceId) || candidateServices.find(service => !taskAssignments(result, service.id).length) || candidateServices[0];
+  const selectedCenterName = selectedService ? dataset.centers.find(center => center.id === selectedService.centerId)?.name || 'Centro sin nombre' : 'Centro sin nombre';
+  const assignedCount = selectedService ? taskAssignments(result, selectedService.id).length : 0;
+  const atRiskWorkers = useMemo(() => {
+    const month = selectedService?.date?.slice(0, 7) || initialMonth;
+    return simulationData.workers.filter(worker => {
+      const minimum = contractMinimumForMonth(worker, month);
+      const monthStart = `${month}-01`;
+      const monthEndDate = new Date(`${monthStart}T12:00:00Z`);
+      monthEndDate.setUTCMonth(monthEndDate.getUTCMonth() + 1, 0);
+      const monthEnd = monthEndDate.toISOString().slice(0, 10);
+      const worked = assignedForWorker(result, worker.id, monthStart, monthEnd) + result.days.filter(day => inRange(day.date, monthStart, monthEnd)).reduce((total, day) => total + paidMinutes(worker, day.date), 0);
+      return worked + 0.01 < minimum;
+    });
+  }, [simulationData.workers, result, selectedService?.date, initialMonth]);
+  const candidateGroups = useMemo(() => {
+    if (!selectedService) return [];
+    const service = selectedService;
+    const month = service.date.slice(0, 7);
+    const week = weekForDate(service.date);
+    const monthStart = `${month}-01`;
+    const monthEndDate = new Date(`${monthStart}T12:00:00Z`);
+    monthEndDate.setUTCMonth(monthEndDate.getUTCMonth() + 1, 0);
+    const monthEnd = monthEndDate.toISOString().slice(0, 10);
+    const candidates = simulationData.workers.map(worker => {
+      const availability = availabilityForService(worker, service, result, travelMinutes);
+      if (!availability) return null;
+      const weeklyWorked = assignedForWorker(result, worker.id, week, weekEnd(week)) + result.days.filter(day => inRange(day.date, week, weekEnd(week))).reduce((total, day) => total + paidMinutes(worker, day.date), 0);
+      const requiredMinutes = service.personMinutes / Math.max(1, service.requiredWorkers);
+      if (weeklyWorked + requiredMinutes > (worker.weeklyMinutesMax ?? worker.weeklyMinutes)) return null;
+      const minimum = contractMinimumForMonth(worker, month);
+      const worked = assignedForWorker(result, worker.id, monthStart, monthEnd) + result.days.filter(day => inRange(day.date, monthStart, monthEnd)).reduce((total, day) => total + paidMinutes(worker, day.date), 0);
+      return { worker, group: centerPriority(worker, service.centerId), pendingMinutes: Math.max(0, minimum - worked), availabilityStart: availability.start, availabilityEnd: availability.end };
+    }).filter((candidate): candidate is NonNullable<typeof candidate> => !!candidate);
+    return mergeCandidateGroups(buildCandidateGroups(candidates));
+  }, [selectedService, simulationData.workers, result, travelMinutes]);
+  const teamBalance = useMemo(() => staffingBalance(simulationData.workers, summaryDays.map(row => result.days.find(day => day.date === row.date)!).filter(Boolean), hoursExpected, 0), [simulationData.workers, summaryDays, result.days, hoursExpected]);
+  const editedIds = useMemo(() => new Set([...Object.keys(overrides), ...reinforcements.map(worker => worker.id)]), [overrides, reinforcements]);
+  const restoreWorker = (id: string) => setOverrides(current => { const next = { ...current }; delete next[id]; return next; });
+  const applySuggestion = () => { for (const row of teamBalance.rows) if (row.headroomMinutes > 0) changeWorker(row.worker.id, { weeklyMinutes: row.worker.weeklyMinutes + Math.round(row.headroomMinutes / Math.max(1, teamBalance.factor) / 15) * 15 }); };
+  const scenario = <StaffingScenario workers={simulationData.workers} absence={absenceWorkerId} onAbsence={setAbsenceWorkerId} onChange={changeWorker} onAdd={addReinforcement} onReset={reset} canAdd={!!dataset.centers.length && reinforcements.length < 20}><div className="rounded-lg border border-[#dbe5ef] bg-white p-3 text-xs text-[#617594]">{Object.keys(overrides).length} personas editadas · {reinforcements.length} refuerzos · {absenceWorkerId ? '1 ausencia simulada' : 'sin ausencia adicional'} · {editedIds.size} cambios en memoria</div></StaffingScenario>;
 
-    <div className="grid gap-5 xl:grid-cols-[minmax(0,1.35fr)_minmax(280px,0.65fr)]">{selected ? <StaffingDetails dataset={simulationData} result={result} week={selected.week} days={selectedDays} issues={issues} centerFilter={centerFilter} onCenter={setCenterFilter} onSimulate={() => setPanel('scenario')} /> : <p role="status" className={`${panelClass} text-sm text-[#716a7d]`}>Sin semana seleccionada para mostrar el detalle.</p>}<StaffingWeekOptions week={selected} days={selectedDays} onScenario={() => setPanel('scenario')} /></div>
-    </div>
-    <section id="staffing-view-team" aria-label="Vista de equipo"><StaffingTeam workers={simulationData.workers} days={periodDays} week={selected?.week} periodLabel={teamPeriodLabel} onSimulate={() => setPanel('scenario')} /></section>
-    {comparison}
-    <section id="staffing-view-scenarios" aria-label="Vista de escenarios" className={activeView === 'scenarios' ? '' : 'hidden'}><section className={`${panelClass} space-y-5`}><header><p className="text-[11px] font-bold uppercase tracking-[0.17em] text-[#390b92]">Escenarios</p><h2 className="mt-1 text-xl font-bold">Prueba una alternativa antes de decidir</h2><p className="mt-1 text-sm text-[#716a7d]">Los cambios solo afectan a esta simulación y se comparan con el escenario base.</p></header><StaffingScenario workers={simulationData.workers} absence={absenceWorkerId} onAbsence={setAbsenceWorkerId} onChange={changeWorker} onAdd={addReinforcement} onReset={reset} canAdd={!!dataset.centers.length && reinforcements.length < 20} balance={balancePanel}><div aria-label="Resumen de cambios" className="text-xs text-[#716a7d]">{Object.keys(overrides).length} {Object.keys(overrides).length === 1 ? 'persona editada' : 'personas editadas'} · {reinforcements.length} refuerzos · {absenceWorkerId ? '1 ausencia' : 'Sin ausencia adicional'}</div></StaffingScenario></section></section>
-    {panel === 'scenario' && <StaffingPanel title="Simular cambios" onClose={() => setPanel(null)}><p className="text-xs text-stone-600">{fullDate(dateFrom)} — {fullDate(dateTo)} · {changes ? 'Escenario modificado' : 'Escenario base'} · {centerFilter ? dataset.centers.find(c => c.id === centerFilter)?.name : 'Todos los centros'}</p><StaffingScenario workers={simulationData.workers} absence={absenceWorkerId} onAbsence={setAbsenceWorkerId} onChange={changeWorker} onAdd={addReinforcement} onReset={reset} canAdd={!!dataset.centers.length && reinforcements.length < 20} balance={balancePanel}>{comparison}<div aria-label="Resumen de cambios" className="text-xs text-stone-600">{Object.keys(overrides).length} {Object.keys(overrides).length === 1 ? 'persona editada' : 'personas editadas'} · {reinforcements.length} refuerzos · {absenceWorkerId ? '1 ausencia' : 'Sin ausencia adicional'}{Object.keys(overrides).map(id => <p key={id}>{simulationData.workers.find(worker => worker.id === id)?.name}: {Object.keys(overrides[id]).map(key => ({ weeklyMinutes: 'horas', restDay: 'libranza', flexibleRest: 'libranza flexible', canMove: 'movilidad', activeTo: 'fin de actividad', costPerHour: 'coste' })[key] || key).join(', ')}</p>)}</div></StaffingScenario><details className={panelClass}><summary className="min-h-11 cursor-pointer text-base font-semibold">Ajustes</summary><div className="mt-3 grid gap-3"><label className="grid gap-1 text-sm">Reservas adicionales a una semana (%)<input aria-label="Margen a una semana" className={fieldClass} type="number" min="0" max="100" value={lateReservePercent} onChange={event => setLateReservePercent(Math.max(0, Math.min(100, Number(event.target.value))))}/></label><label className="grid gap-1 text-sm">Reservas adicionales después de una semana (%)<input aria-label="Escenario lejano" className={fieldClass} type="number" min="0" max="200" value={seasonalPercent} onChange={event => setSeasonalPercent(Math.max(0, Math.min(200, Number(event.target.value))))}/></label><label className="grid gap-1 text-sm">Traslado entre centros (min)<input aria-label="Minutos de traslado" className={fieldClass} type="number" min="0" max="180" value={travelMinutes} onChange={event => setTravelMinutes(Math.max(0, Math.min(180, Number(event.target.value))))}/></label></div><p className="mt-3 text-xs text-stone-600">Hipótesis comunes, no ocupación ni rutas verificadas. La comparación conserva la base 20 % / 0 % / 20 min.</p></details></StaffingPanel>}
-    {panel === 'data' && <StaffingPanel title="Datos y criterios" onClose={() => setPanel(null)}><p className="text-sm">Las horas son horas de trabajo. Las horas del equipo son las que puede hacer con lo que hay registrado, no horas recortables. Los servicios sin encaje en el ajuste automático no prueban que su cobertura sea imposible.</p><p className="text-xs text-stone-600">Lectura {dataset.fetchedAt || 'sin fecha'} · {issues.length} incidencias y criterios · total de sede</p><h3 className="font-semibold">Antelación de reservas por proveedor</h3><p className="text-xs text-stone-600">La última salida observada no garantiza cobertura de reservas hasta esa fecha.</p>{dataset.providerCoverage?.map(provider => <article key={provider.provider} className="border-b pb-3 text-sm"><strong>{provider.label}</strong><p>{provider.status === 'unknown' ? 'Fuente no verificable' : provider.status === 'none' ? 'Sin reservas activas observadas' : `${provider.reservations30} reservas en 30 días · ${provider.reservations31to60} entre días 31–60`}</p><p className="text-xs text-stone-600">Última salida observada: {fullDate(provider.latestDate)} · referencia {fullDate(provider.referenceDate)}</p></article>)}{[...new Set(issues.map(issue => issue.code))].map(code => <details key={code} className="border-b text-sm"><summary className="min-h-11 cursor-pointer py-3">{issues.find(issue => issue.code === code)?.message.split(';')[0]} ({issues.filter(issue => issue.code === code).length})</summary><ul className="space-y-2 pb-3 text-xs text-stone-600">{issues.filter(issue => issue.code === code).map((issue, index) => <li key={index}>{issue.centerId ? `${dataset.centers.find(center => center.id === issue.centerId)?.name || 'Centro'}: ` : 'Sede: '}{issue.message}</li>)}</ul></details>)}<details><summary className="min-h-11 cursor-pointer py-3 font-semibold">Inventario mensual</summary><p className="text-xs text-stone-600">Recuentos de tareas, no horas realizadas ni histórico completo.</p><div className="overflow-auto"><table className="w-full text-left text-xs"><thead><tr><th>Mes</th><th>Tareas</th><th>Completadas</th><th>Sin duración</th></tr></thead><tbody>{dataset.inventory.map(month => <tr key={month.month} className="border-t"><th className="py-3">{month.month}</th><td>{month.tasks}</td><td>{month.completed}</td><td>{month.missingDuration}</td></tr>)}</tbody></table></div></details></StaffingPanel>}
-  </section>;
+  if (screen === 'candidates') return <ForecastCandidates dataset={simulationData} service={selectedService} centerName={selectedCenterName} assignments={assignedCount} groups={candidateGroups} onBack={() => setScreen('week')} onCalendar={openCalendar} />;
+  if (screen === 'week') return <ForecastWeek sedeName={sedeName} week={selectedWeekKey} rows={selectedWeekDays.map(day => dailyRows.find(row => row.date === day.date)).filter((row): row is ForecastDailyRow => !!row)} assignedCount={selectedWeekDays.reduce((total, day) => total + day.assignments.filter(assignment => !centerFilter || assignment.centerId === centerFilter).length, 0)} unassignedCount={selectedWeekDays.reduce((total, day) => total + dataset.services.filter(service => service.date === day.date && (!centerFilter || service.centerId === centerFilter) && !taskAssignments(result, service.id).length).length, 0)} pendingWorkers={atRiskWorkers.length} showForecast={weekForecast} onShowForecast={setWeekForecast} onBack={() => setScreen('summary')} onCandidates={() => openCandidates()} onOpenTeam={() => setPanel('scenario')} uncertain={uncertain} />;
+
+  return <>
+    {failures.length > 0 && <div role="alert" className="mx-4 mt-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-[#f5cfd1] bg-[#fff3f4] p-3 text-sm text-[#8e1e24] sm:mx-6 lg:mx-7"><span>No se pudieron leer todas las fuentes: la previsión está incompleta y no se interpreta como ausencia de actividad.</span>{onRetry && <button type="button" className="font-semibold underline" onClick={onRetry}>Reintentar</button>}<button type="button" className="font-semibold underline" onClick={() => setPanel('data')}>Ver datos parciales</button></div>}
+    <ForecastSummary sedeName={sedeName} userName={userName} dateFrom={dateFrom} dateTo={dateToFor(dateFrom, weeks)} period={period} onPeriod={changePeriod} centerOptions={dataset.centers} centerId={centerFilter} onCenter={setCenterFilter} controls={controls} points={summaryPoints} weeklyRows={weeklyRows} hoursExpected={hoursExpected} capacity={capacity} maxDeficit={peak?.deficitMinutes || 0} maxDeficitDate={peak?.date} atRiskCount={atRiskWorkers.length} workerCount={simulationData.workers.length} unassignedCount={unassignedCount} onReviewTeam={() => setPanel('scenario')} onOpenWeek={week => { selectWeek(week); setScreen('week'); }} onOpenCandidates={() => openCandidates()} uncertain={uncertain} />
+    {panel === 'scenario' && <StaffingPanel title="Simular cambios" onClose={() => setPanel(null)}><p className="text-sm text-[#617594]">Solo en memoria. Las horas, libranzas y ausencias afectan a la simulación, no al calendario ni a las fichas reales.</p>{scenario}<details className="rounded-lg border border-[#dbe5ef] bg-white p-3"><summary className="cursor-pointer font-semibold">Ajustes avanzados</summary><div className="mt-3 grid gap-3"><label className="grid gap-1 text-sm">Incremento lejano de demanda (%)<input className="min-h-10 rounded-lg border border-[#dbe5ef] px-3" type="number" min="0" max="200" value={seasonalPercent} onChange={event => setSeasonalPercent(Math.max(0, Math.min(200, Number(event.target.value))))} /></label><label className="grid gap-1 text-sm">Traslado entre edificios (minutos)<input className="min-h-10 rounded-lg border border-[#dbe5ef] px-3" type="number" min="0" max="120" step="15" value={travelMinutes} onChange={event => setTravelMinutes(Math.max(0, Math.min(120, Number(event.target.value))))} /></label></div></details></StaffingPanel>}
+    {panel === 'data' && <StaffingPanel title="Datos y criterios" onClose={() => setPanel(null)}><p className="text-sm">Las cifras distinguen tareas conocidas, la previsión adicional del 20 %, capacidad diaria y horas trabajadas. Una tarea sin asignar sigue siendo carga pendiente, pero no cuenta para las horas de ninguna persona.</p><p className="text-xs text-[#617594]">Lectura {dataset.fetchedAt || 'sin fecha'} · {allIssues.length} incidencias y criterios.</p><h3 className="font-semibold">Fuentes y límites</h3>{dataset.providerCoverage?.map(provider => <article key={provider.provider} className="border-b border-[#eef3f8] py-3 text-sm"><strong>{provider.label}</strong><p>{provider.status === 'unknown' ? 'Fuente no verificable' : provider.status === 'none' ? 'Sin reservas activas observadas' : `${provider.reservations30} reservas en 30 días · ${provider.reservations31to60} entre días 31–60`}</p></article>)}{allIssues.slice(0, 30).map((issue, index) => <p key={`${issue.code}-${index}`} className="border-b border-[#eef3f8] py-2 text-xs text-[#617594]">{issue.message}</p>)}</StaffingPanel>}
+  </>;
 }
+
+function dateToFor(dateFrom: string, weeks: number): string { return addDays(dateFrom, weeks * 7 - 1); }
+function weekNumber(week: string): number { const date = new Date(`${week}T12:00:00Z`); const first = new Date(Date.UTC(date.getUTCFullYear(), 0, 1)); return Math.ceil((((date.getTime() - first.getTime()) / 86400000) + first.getUTCDay() + 1) / 7); }
+function formatWeekShort(date: string): string { return `${date.slice(8, 10)}/${date.slice(5, 7)}`; }

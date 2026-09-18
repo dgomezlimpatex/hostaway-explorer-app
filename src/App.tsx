@@ -133,6 +133,15 @@ function App() {
                     </ProtectedRoute>
                   } />
 
+                  {/* Previsión: pantalla completa para que su shell operativo coincida con el diseño del módulo. */}
+                  <Route path="/staffing-forecast" element={
+                    <ProtectedRoute>
+                      <RoleProtectedRoute requiredModule="workers" excludedRoles={['supervisor', 'cleaner', 'client']}>
+                        <FullPageSuspense><StaffingForecastPage /></FullPageSuspense>
+                      </RoleProtectedRoute>
+                    </ProtectedRoute>
+                  } />
+
                   {/* Layout persistente con sidebar - todas las páginas admin */}
                   <Route element={
                     <ProtectedRoute>
@@ -231,9 +240,7 @@ function App() {
                     <Route path="/workers/hours" element={<RoleProtectedRoute requiredModule="workers" excludedRoles={['supervisor','cleaner','client']}><PersonnelHours /></RoleProtectedRoute>} />
                     <Route path="/workers/:workerId/hours" element={<RoleProtectedRoute requiredModule="workers" excludedRoles={['supervisor','cleaner','client']}><PersonnelHours /></RoleProtectedRoute>} />
                     <Route path="/workers/:workerId" element={<RoleProtectedRoute requiredModule="workers"><PersonnelProfile /></RoleProtectedRoute>} />
-                    <Route path="/staffing-forecast" element={
-                      <RoleProtectedRoute requiredModule="workers" excludedRoles={['supervisor', 'cleaner', 'client']}><StaffingForecastPage /></RoleProtectedRoute>
-                    } />
+
                     <Route path="/planning" element={
                       <RoleProtectedRoute requiredModule="tasks" requiredAction="canEdit"><CleaningPlanning /></RoleProtectedRoute>
                     } />
