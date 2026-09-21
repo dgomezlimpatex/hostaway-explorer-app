@@ -243,7 +243,11 @@ export const useTasks = (currentDate: Date, currentView: ViewType) => {
       if (!cleaner) return;
 
       // Cancelar queries en vuelo
-      await queryClient.cancelQueries({ queryKey: ['tasks'] });
+      // Solo cancelamos consultas visibles. Las ventanas fuera de pantalla no
+      // participan en esta interacción y no deben provocar trabajo adicional.
+      await queryClient.cancelQueries({
+        predicate: (q) => Array.isArray(q.queryKey) && q.queryKey[0] === 'tasks' && q.isActive(),
+      });
       
       // Optimistic update across ALL cached task queries
       queryClient.setQueriesData(
@@ -284,7 +288,7 @@ export const useTasks = (currentDate: Date, currentView: ViewType) => {
       
       // Revertir actualización optimista forzando refetch
       queryClient.invalidateQueries({
-        predicate: (q) => Array.isArray(q.queryKey) && q.queryKey[0] === 'tasks',
+        predicate: (q) => Array.isArray(q.queryKey) && q.queryKey[0] === 'tasks' && q.isActive(),
       });
       
       toast({
@@ -322,8 +326,10 @@ export const useTasks = (currentDate: Date, currentView: ViewType) => {
       );
     },
     onMutate: async ({ taskId, cleanerId, cleanerName, startTime, endTime }) => {
-      // Cancel in-flight queries
-      await queryClient.cancelQueries({ queryKey: ['tasks'] });
+      // Cancelar únicamente las consultas visibles del calendario.
+      await queryClient.cancelQueries({
+        predicate: (q) => Array.isArray(q.queryKey) && q.queryKey[0] === 'tasks' && q.isActive(),
+      });
 
       // Optimistic update across ALL task queries
       queryClient.setQueriesData(
@@ -350,14 +356,14 @@ export const useTasks = (currentDate: Date, currentView: ViewType) => {
     onSuccess: () => {
       // Reconcile the optimistic assignment with the canonical database rows.
       queryClient.invalidateQueries({
-        predicate: (q) => Array.isArray(q.queryKey) && q.queryKey[0] === 'tasks',
+        predicate: (q) => Array.isArray(q.queryKey) && q.queryKey[0] === 'tasks' && q.isActive(),
       });
     },
     onError: (error: unknown) => {
       logger.error('Error in assignTaskWithSchedule:', error);
       // Revert by forcing refetch
       queryClient.invalidateQueries({
-        predicate: (q) => Array.isArray(q.queryKey) && q.queryKey[0] === 'tasks',
+        predicate: (q) => Array.isArray(q.queryKey) && q.queryKey[0] === 'tasks' && q.isActive(),
       });
       toast({
         title: 'Error',
