@@ -58,15 +58,12 @@ function fits(data: ForecastDataset, worker: ForecastWorker, task: ForecastTask,
   const effective = effectivePlacements(placements);
   const route = effective.filter(p => p.workerId === worker.id && p.date === task.date && p.taskId !== task.id);
   for (const p of route) {
-    const travel = p.centerId === task.centerId ? 0 : 15;
-    if (start < p.end + travel && end + travel > p.start) return false;
+    if (start < p.end && end > p.start) return false;
   }
   const ordered = [...route, { start, end, centerId: task.centerId }].sort((a, b) => a.start - b.start);
   for (let i = 1; i < ordered.length; i++) {
     const previous = ordered[i - 1], next = ordered[i];
     if (previous.centerId === next.centerId) continue;
-    const possible = [previous.end, ...blocks(data, worker, task.date).map(b => b.end)].some(s => s >= previous.end && s + 15 <= next.start && !blocks(data, worker, task.date).some(b => overlaps({ start: s, end: s + 15 }, b)));
-    if (!possible) return false;
   }
   const week = monday(task.date);
   const weekEnd = addCivilDays(week, 6);
@@ -83,7 +80,7 @@ export function findCandidates(data: ForecastDataset, task: ForecastTask, placem
   for (const worker of data.workers) {
     if (!available(data, worker, task, rests)) continue;
     const starts = new Set([earliest, ...worker.availability.filter(a => a.day === weekday(task.date)).map(a => Math.max(earliest, a.startMinute)), ...blocks(data, worker, task.date).map(b => Math.max(earliest, b.end)),
-      ...placements.filter(p => p.workerId === worker.id && p.date === task.date && p.taskId !== task.id).map(p => Math.max(earliest, p.end + (p.centerId === task.centerId ? 0 : 15)))]);
+      ...placements.filter(p => p.workerId === worker.id && p.date === task.date && p.taskId !== task.id).map(p => Math.max(earliest, p.end))]);
     const start = [...starts].sort((a, b) => a - b).find(s => fits(data, worker, task, s, placements, rests));
     if (start !== undefined) candidates.push({ worker, start, end: start + task.minutes, tier: candidateTier(worker, task.centerId), missing: ledgers.find(l => l.workerId === worker.id && l.month === task.date.slice(0, 7))?.missing ?? 0 });
   }
@@ -184,7 +181,7 @@ export function buildForecastModel(input: ForecastDataset, context: ForecastCont
     }
     const fitsReal = fits(data, worker, task, task.start, placements, rests);
     placements.push({ taskId: task.id, workerId: worker.id, centerId: task.centerId, date: task.date, start: task.start, end: task.end, minutes: task.minutes, real: true });
-    if (fitsReal) validated.add(task.id); else addIssue('actual-conflict', 'Asignación real incompatible con jornada, ausencia, viaje o ventana.', task);
+    if (fitsReal) validated.add(task.id); else addIssue('actual-conflict', 'Asignación real incompatible con jornada, ausencia o ventana.', task);
   }
   // Diagnose both sides of real overlaps; retaining real rows is not a coverage claim.
   for (const p of placements) if (placements.some(q => p.taskId !== q.taskId && p.workerId === q.workerId && p.date === q.date && overlaps(p, q))) validated.delete(p.taskId);
@@ -223,8 +220,7 @@ export function buildForecastModel(input: ForecastDataset, context: ForecastCont
         const spans = windows.flatMap(c => worker.id === 'hypothetical' ? [{ start: c.startMinute, end: c.endMinute }] : worker.availability.filter(a => a.day === weekday(day.date)).map(a => ({ start: Math.max(c.startMinute, a.startMinute), end: Math.min(c.endMinute, a.endMinute) }))).filter(w => w.end > w.start);
         const all = [...spans, ...busy];
         const route = rows.filter(p => p.date === day.date).sort((a, b) => a.start - b.start);
-        const travel = route.filter((p, i) => i > 0 && p.centerId !== route[i - 1].centerId).length * 15;
-        return Math.max(0, union(all) - union(busy) - travel);
+        return Math.max(0, union(all) - union(busy));
       });
       const otherCenters = sum(rows.filter(p => context.center && p.centerId !== context.center), p => p.minutes);
       const total = sum(potentials, n => n);
@@ -237,7 +233,7 @@ export function buildForecastModel(input: ForecastDataset, context: ForecastCont
       weekDays.forEach((day, i) => { day.capacity += (committedTotal ? Math.min(capacity, committedTotal) * committed[i] / committedTotal : 0) + (freeTotal ? remaining * free[i] / freeTotal : 0); });
       for (const day of weekDays) {
         const route = rows.filter(p => p.date === day.date).sort((a, b) => a.start - b.start);
-        day.travel += route.filter((p, i) => i > 0 && p.centerId !== route[i - 1].centerId && (!context.center || p.centerId === context.center)).length * 15;
+        day.travel += 0;
       }
     }
   }
