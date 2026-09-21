@@ -205,7 +205,8 @@ export function buildForecastModel(input: ForecastDataset, context: ForecastCont
     const daily = selectedTasks.filter(t => t.date === date);
     const otherServices = context.center ? 0 : sum(data.workers.filter(w => !w.excluded), w => paidBlocks(data, w, date));
     const incomplete = daily.some(t => !(t.minutes > 0));
-    return { date, known: incomplete ? NaN : sum(daily, t => t.minutes) + otherServices, tourism: incomplete ? NaN : sum(daily.filter(t => t.tourism), t => t.minutes), other: sum(daily.filter(t => !t.tourism), t => t.minutes) + otherServices, capacity: otherServices, uncovered: incomplete ? NaN : sum(daily.filter(t => !validated.has(t.id)), t => t.minutes), unassigned: daily.filter(t => !t.workerId).length, travel: 0 };
+    // Maintenance and other paid blocks reduce worker capacity, but are not demand in the forecast calendar.
+    return { date, known: incomplete ? NaN : sum(daily, t => t.minutes), tourism: incomplete ? NaN : sum(daily.filter(t => t.tourism), t => t.minutes), other: sum(daily.filter(t => !t.tourism), t => t.minutes), capacity: otherServices, uncovered: incomplete ? NaN : sum(daily.filter(t => !validated.has(t.id)), t => t.minutes), unassigned: daily.filter(t => !t.workerId).length, travel: 0 };
   });
   for (let week = monday(data.from); week <= data.to; week = addCivilDays(week, 7)) {
     const weekDays = days.filter(d => monday(d.date) === week);
