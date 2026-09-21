@@ -102,7 +102,8 @@ export async function readForecastDataset(read: StaffingReadPage, sedeId: string
       }
       days.forEach(day => blockedSlots.push({ day, startMinute, endMinute, consumesContract: item.schedule_type === 'maintenance' }));
     }
-    if (restDays.some(day => !Number.isInteger(day) || day < 0 || day > 6) || restDays.length === 7) issue('invalid-rest', 'Libranzas contradictorias o inválidas.', 'worker_fixed_days_off', 'capacity', [id]);
+    const excludedByRule = (rules.excludedWorkerIds as readonly string[]).includes(id);
+    if (!excludedByRule && (restDays.some(day => !Number.isInteger(day) || day < 0 || day > 6) || restDays.length === 7)) issue('invalid-rest', 'Libranzas contradictorias o inválidas.', 'worker_fixed_days_off', 'capacity', [id]);
     if (!Number.isFinite(contract) || contract < 0) issue('unknown-contract', 'Jornada de ficha desconocida.', 'cleaners', 'ledger', [id]);
     if (text(row.start_date) && !validDate(text(row.start_date))) issue('invalid-active-date', 'Fecha de alta no verificable.', 'cleaners', 'ledger', [id]);
     return { id, name: text(row.name), engagement: 'employee', weeklyMinutes: Number.isFinite(contract) && contract >= 0 ? contract * 60 : 0, weeklyMinutesMax: Number.isFinite(contract) ? contract * 78 : 0,
