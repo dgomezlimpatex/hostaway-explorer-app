@@ -1,92 +1,42 @@
-import { BarChart3, Building2, CalendarDays, Clock3, Home, Settings2, UsersRound } from 'lucide-react';
-import { Link } from 'react-router-dom';
-import {
-  OperationalCentersScreen,
-  OperationalForecastScreen,
-  OperationalHomeScreen,
-  OperationalReportsScreen,
-  OperationalSettingsScreen,
-  OperationalShiftsScreen,
-  OperationalTeamScreen,
-} from './StaffingOperationalScreens';
+import { useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useSede } from '@/contexts/SedeContext';
+import { useRolePermissions } from '@/hooks/useRolePermissions';
+import { useAuth } from '@/hooks/useAuth';
+import { SedeSelector } from '@/components/sede/SedeSelector';
+import { createStaffingPageReader } from './readClient';
+import { readForecastDataset } from './forecastReader';
+import { getMonthlyForecastRange } from './monthly';
+import { forecastQueryKey, madridNow, parseForecastContext, type ForecastScreen } from './forecastContract';
+import { ForecastWorkspaceView } from './ForecastWorkspaceView';
+import { computeForecastAsync } from './forecastCompute';
 
-export type StaffingOperationalScreen = 'home' | 'forecast' | 'team' | 'shifts' | 'centers' | 'reports' | 'settings';
-
-type NavigationItem = {
-  key: StaffingOperationalScreen;
-  label: string;
-  icon: typeof Home;
-};
-
-const navigationItems: NavigationItem[] = [
-  { key: 'home', label: 'Inicio', icon: Home },
-  { key: 'forecast', label: 'Previsión de personal', icon: CalendarDays },
-  { key: 'team', label: 'Equipo', icon: UsersRound },
-  { key: 'shifts', label: 'Turnos', icon: Clock3 },
-  { key: 'centers', label: 'Centros', icon: Building2 },
-  { key: 'reports', label: 'Informes', icon: BarChart3 },
-  { key: 'settings', label: 'Configuración', icon: Settings2 },
-];
-
-function screenPath(screen: StaffingOperationalScreen) {
-  return `/staffing-forecast/screens/${screen}`;
+export type StaffingOperationalScreen = ForecastScreen;
+export function StaffingOperationalWorkspace({ screen }: { screen: ForecastScreen }) {
+  const { activeSede, isInitialized } = useSede();
+  const { isAdminOrManager } = useRolePermissions();
+  const { user } = useAuth();
+  if (!isAdminOrManager()) return <p role="alert">La previsión está reservada a administración y responsables.</p>;
+  if (!isInitialized || !activeSede || !user) return <p role="status">Selecciona una sede para consultar su plantilla.</p>;
+  return <ConnectedForecast key={`${user.id}:${activeSede.id}`} screen={screen} sedeId={activeSede.id} sedeName={activeSede.nombre} userId={user.id} />;
 }
-
-function ScreenBody({ screen }: { screen: StaffingOperationalScreen }) {
-  switch (screen) {
-    case 'home': return <OperationalHomeScreen />;
-    case 'forecast': return <OperationalForecastScreen />;
-    case 'team': return <OperationalTeamScreen />;
-    case 'shifts': return <OperationalShiftsScreen />;
-    case 'centers': return <OperationalCentersScreen />;
-    case 'reports': return <OperationalReportsScreen />;
-    case 'settings': return <OperationalSettingsScreen />;
-  }
-}
-
-function Navigation({ current, mobile = false }: { current: StaffingOperationalScreen; mobile?: boolean }) {
-  return (
-    <nav aria-label="Navegación del previsor" className={mobile ? 'flex gap-2 overflow-x-auto p-3' : 'space-y-2 px-2 py-7'}>
-      {navigationItems.map(({ key, label, icon: Icon }) => {
-        const active = key === current;
-        return (
-          <Link
-            key={key}
-            to={screenPath(key)}
-            aria-current={active ? 'page' : undefined}
-            className={mobile
-              ? `flex min-h-10 shrink-0 items-center gap-2 rounded-lg px-3 text-xs font-semibold ${active ? 'bg-[#285da4] text-white' : 'text-[#c3d2dd]'}`
-              : `relative flex min-h-12 items-center gap-3 rounded-lg px-3 text-sm transition ${active ? 'bg-[#285da4] text-white shadow-sm' : 'text-[#c3d2dd] hover:bg-[#21465e] hover:text-white'}`}
-          >
-            {active && !mobile && <span aria-hidden="true" className="absolute left-0 top-2 h-8 w-1 rounded-r bg-[#5fc2cf]" />}
-            <Icon className="h-5 w-5 shrink-0" />
-            <span>{label}</span>
-          </Link>
-        );
-      })}
-    </nav>
-  );
-}
-
-export function StaffingOperationalWorkspace({ screen }: { screen: StaffingOperationalScreen }) {
-  return (
-    <div className="min-h-screen bg-[#f5f9fc] text-[#10223f]">
-      <div className="flex min-h-screen">
-        <aside className="hidden min-h-screen w-[210px] shrink-0 border-r border-[#234760] bg-[#173246] md:block">
-          <div className="border-b border-[#234760] px-4 py-5">
-            <span className="text-sm font-bold tracking-[0.18em] text-white">LIMPATEX</span>
-            <p className="mt-2 text-xs text-[#a9bfcc]">Previsor de personal</p>
-          </div>
-          <Navigation current={screen} />
-        </aside>
-        <main className="min-w-0 flex-1">
-          <div className="border-b border-[#234760] bg-[#173246] md:hidden">
-            <div className="px-4 py-3 text-sm font-bold tracking-[0.14em] text-white">LIMPATEX · PREVISOR</div>
-            <Navigation current={screen} mobile />
-          </div>
-          <ScreenBody screen={screen} />
-        </main>
-      </div>
-    </div>
-  );
+function ConnectedForecast({ screen, sedeId, sedeName, userId }: { screen: ForecastScreen; sedeId: string; sedeName: string; userId: string }) {
+  const [params] = useSearchParams();
+  const [asOf, setAsOf] = useState(madridNow);
+  const context = parseForecastContext(params, sedeId, asOf);
+  const range = getMonthlyForecastRange(`${context.month}-01`, context.horizon);
+  const queryClient = useQueryClient();
+  const [cancelled, setCancelled] = useState('');
+  const queryKey = forecastQueryKey(userId, sedeId, range.from, range.to);
+  const requestId = queryKey.join(':');
+  const query = useQuery({ queryKey, queryFn: ({ signal }) => readForecastDataset(createStaffingPageReader(signal), sedeId, range.from, range.to, signal), enabled: cancelled !== requestId, retry: false, staleTime: 60_000, gcTime: 300_000, refetchOnWindowFocus: false });
+  const reinforcement = Number(params.get('refuerzo') ?? 0);
+  const calculationKey = ['staffing-calculation', ...queryKey.slice(1), query.data?.fetchedAt, context, reinforcement];
+  const calculation = useQuery({ queryKey: calculationKey, queryFn: ({ signal }) => computeForecastAsync(query.data!, context, reinforcement, signal), enabled: !!query.data && !query.isFetching && !query.isError && cancelled !== requestId, retry: false, staleTime: Infinity, gcTime: 300_000, refetchOnWindowFocus: false });
+  return <ForecastWorkspaceView screen={screen} context={context} sedeName={sedeName} sedeControl={<SedeSelector />} dataset={!query.isFetching && !query.isError && cancelled !== requestId ? query.data : undefined}
+    calculation={calculation.isFetching ? { pending: true } : calculation.isError ? { error: calculation.error instanceof Error ? calculation.error.message : 'Cálculo no disponible.' } : calculation.data ?? { pending: true }}
+    loading={query.isFetching} error={query.isError ? 'No se ha podido completar la consulta.' : cancelled === requestId ? 'Consulta cancelada.' : undefined}
+    refresh={() => { setCancelled(''); setAsOf(madridNow()); void queryClient.cancelQueries({ queryKey: calculationKey }); void query.refetch(); }}
+    cancel={() => { setCancelled(requestId); void queryClient.cancelQueries({ queryKey }); void queryClient.cancelQueries({ queryKey: calculationKey }); }} />;
 }

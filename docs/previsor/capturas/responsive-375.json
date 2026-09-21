@@ -1,0 +1,37 @@
+[
+  {
+    "page": "Inicio",
+    "scroll": 360,
+    "width": 360
+  },
+  {
+    "page": "Previsión de personal",
+    "scroll": 360,
+    "width": 360
+  },
+  {
+    "page": "Equipo",
+    "scroll": 360,
+    "width": 360
+  },
+  {
+    "page": "Turnos",
+    "scroll": 360,
+    "width": 360
+  },
+  {
+    "page": "Centros",
+    "scroll": 360,
+    "width": 360
+  },
+  {
+    "page": "Informes",
+    "scroll": 360,
+    "width": 360
+  },
+  {
+    "page": "Configuración",
+    "scroll": 375,
+    "width": 375
+  }
+]
