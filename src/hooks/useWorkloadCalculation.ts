@@ -5,6 +5,7 @@ import { buildRecurringExecutionSet, recurringExecutionBounds } from '@/utils/re
 import { WorkloadSummary, HourAdjustment } from '@/types/workload';
 import { WorkerMaintenanceCleaning } from '@/types/workerAbsence';
 import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, eachDayOfInterval, getDay } from 'date-fns';
+import { useSede } from '@/contexts/SedeContext';
 
 // Helper to parse time string to minutes
 const parseTimeToMinutes = (time: string): number => {
@@ -118,6 +119,7 @@ interface UseWorkloadCalculationOptions {
 
 export const useWorkloadCalculation = (options: UseWorkloadCalculationOptions) => {
   const { startDate, endDate, cleanerId } = options;
+  const { activeSede, isInitialized } = useSede();
   const { cleaners } = useCleaners();
 
   return useQuery({
@@ -126,6 +128,7 @@ export const useWorkloadCalculation = (options: UseWorkloadCalculationOptions) =
       startDate,
       endDate,
       cleanerId,
+      activeSede?.id || 'pending-sede',
       cleaners.map(c => `${c.id}:${c.contractHoursPerWeek ?? 0}`).join('|'),
     ],
     queryFn: async (): Promise<WorkloadSummary[]> => {
@@ -147,6 +150,7 @@ export const useWorkloadCalculation = (options: UseWorkloadCalculationOptions) =
         supabase
           .from('tasks')
           .select('cleaner_id, start_time, end_time, duracion, status, task_assignments(cleaner_id)')
+          .eq('sede_id', activeSede!.id)
           .gte('date', startDate)
           .lte('date', endDate)
           .neq('status', 'cancelled'),
@@ -302,11 +306,11 @@ export const useWorkloadCalculation = (options: UseWorkloadCalculationOptions) =
 
       return summaries;
     },
-    enabled: !!startDate && !!endDate && cleaners.length > 0,
-    staleTime: 0,
+    enabled: isInitialized && !!activeSede?.id && !!startDate && !!endDate && cleaners.length > 0,
+    staleTime: 60_000,
     // Realtime is used below for immediate updates; this is a safe fallback
     // when the browser or Supabase temporarily loses the realtime connection.
-    refetchInterval: 15000,
+    refetchInterval: 60_000,
   });
 };
 
