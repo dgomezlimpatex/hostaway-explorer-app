@@ -71,6 +71,7 @@ const LittleHotelierAdmin = React.lazy(() => import("./pages/LittleHotelierAdmin
 const AviratoAdmin = React.lazy(() => import("./pages/AviratoAdmin"));
 const CleaningPlanning = React.lazy(() => import("./pages/CleaningPlanning"));
 const StaffingForecastPage = React.lazy(() => import("./pages/StaffingForecastPage"));
+const StaffingOperationalPage = React.lazy(() => import("./pages/StaffingOperationalPage"));
 const PlanningPage = React.lazy(() => import("./pages/PlanningPage"));
 const PlanningBuildingsIndex = React.lazy(() => import("./pages/PlanningBuildingsIndex"));
 const PlanningBuildingDetail = React.lazy(() => import("./pages/PlanningBuildingDetail"));
@@ -138,6 +139,13 @@ function App() {
                     <ProtectedRoute>
                       <RoleProtectedRoute requiredModule="workers" excludedRoles={['supervisor', 'cleaner', 'client']}>
                         <FullPageSuspense><StaffingForecastPage /></FullPageSuspense>
+                      </RoleProtectedRoute>
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/staffing-forecast/screens/:screen" element={
+                    <ProtectedRoute>
+                      <RoleProtectedRoute requiredModule="workers" excludedRoles={['supervisor', 'cleaner', 'client']}>
+                        <FullPageSuspense><StaffingOperationalPage /></FullPageSuspense>
                       </RoleProtectedRoute>
                     </ProtectedRoute>
                   } />

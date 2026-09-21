@@ -35,29 +35,20 @@ function buttonClass(primary = false): string {
     : 'inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-[#c8d7e8] bg-white px-4 text-sm font-semibold text-[#084a98] transition hover:bg-[#eef5fc] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#084a98]';
 }
 
-function Sidebar({ dark, current }: { dark: boolean; current: 'summary' | 'week' }) {
-  const items = dark
-    ? [
-        { label: 'Planificación', href: '/staffing-forecast', icon: <CalendarDays className="h-5 w-5" /> },
-        { label: 'Tareas', href: '/tasks', icon: <LayoutDashboard className="h-5 w-5" /> },
-        { label: 'Personal', href: '/workers', icon: <UsersRound className="h-5 w-5" /> },
-        { label: 'Clientes', href: '/clients', icon: <UsersRound className="h-5 w-5" /> },
-        { label: 'Informes', href: '/operational-analytics', icon: <ArrowUpRight className="h-5 w-5" /> },
-        { label: 'Configuración', href: '/planning-settings', icon: <CircleHelp className="h-5 w-5" /> },
-      ]
-    : [
-        { label: 'Inicio', href: '/', icon: <LayoutDashboard className="h-5 w-5" /> },
-        { label: 'Previsión de personal', href: '/staffing-forecast', icon: <CalendarDays className="h-5 w-5" /> },
-        { label: 'Equipo', href: '/workers', icon: <UsersRound className="h-5 w-5" /> },
-        { label: 'Turnos', href: '/calendar', icon: <Clock3 className="h-5 w-5" /> },
-        { label: 'Centros', href: '/planning/buildings', icon: <MapPin className="h-5 w-5" /> },
-        { label: 'Informes', href: '/operational-analytics', icon: <ArrowUpRight className="h-5 w-5" /> },
-        { label: 'Configuración', href: '/planning-settings', icon: <CircleHelp className="h-5 w-5" /> },
-      ];
+function Sidebar({ dark }: { dark: boolean }) {
+  const items = [
+    { label: 'Inicio', href: '/staffing-forecast/screens/home', icon: <LayoutDashboard className="h-5 w-5" /> },
+    { label: 'Previsión de personal', href: '/staffing-forecast/screens/forecast', icon: <CalendarDays className="h-5 w-5" /> },
+    { label: 'Equipo', href: '/staffing-forecast/screens/team', icon: <UsersRound className="h-5 w-5" /> },
+    { label: 'Turnos', href: '/staffing-forecast/screens/shifts', icon: <Clock3 className="h-5 w-5" /> },
+    { label: 'Centros', href: '/staffing-forecast/screens/centers', icon: <MapPin className="h-5 w-5" /> },
+    { label: 'Informes', href: '/staffing-forecast/screens/reports', icon: <ArrowUpRight className="h-5 w-5" /> },
+    { label: 'Configuración', href: '/staffing-forecast/screens/settings', icon: <CircleHelp className="h-5 w-5" /> },
+  ];
   return <aside className={`hidden min-h-screen w-[193px] shrink-0 border-r md:block ${dark ? 'border-[#1b3b60] bg-[#13273f] text-[#c9d7e8]' : 'border-[#dbe5ef] bg-white text-[#617594]'}`}>
     <nav aria-label="Navegación de previsión" className="space-y-2 px-2 py-7">
       {items.map(item => {
-        const active = (current === 'summary' && item.label === 'Previsión de personal') || (current === 'week' && item.label === 'Planificación');
+        const active = item.label === 'Previsión de personal';
         return <a key={item.label} href={item.href} className={`relative flex min-h-12 items-center gap-3 rounded-lg px-3 text-sm transition ${active ? (dark ? 'bg-[#194783] text-white' : 'bg-[#e5effc] text-[#084a98]') : dark ? 'hover:bg-[#173755] hover:text-white' : 'hover:bg-[#f0f6fc] hover:text-[#084a98]'}`}>
           {active && <span aria-hidden="true" className={`absolute left-0 top-2 h-8 w-1 rounded-r ${dark ? 'bg-[#4db4d8]' : 'bg-[#084a98]'}`} />}
           {item.icon}<span>{item.label}</span>
@@ -69,9 +60,9 @@ function Sidebar({ dark, current }: { dark: boolean; current: 'summary' | 'week'
 
 export function StaffingShell({ screen, sedeName, userName, children }: { screen: ForecastScreen; sedeName?: string; userName?: string; children: ReactNode }) {
   if (screen === 'candidates') return <div className="min-h-screen bg-[#f5f9fc] text-[#10223f]">{children}</div>;
-  if (screen === 'week') return <div className="min-h-screen bg-[#f5f9fc] text-[#10223f]"><div className="flex min-h-screen"><Sidebar dark current="week" /><main className="min-w-0 flex-1">{children}</main></div></div>;
+  if (screen === 'week') return <div className="min-h-screen bg-[#f5f9fc] text-[#10223f]"><div className="flex min-h-screen"><Sidebar dark /><main className="min-w-0 flex-1">{children}</main></div></div>;
   const displayName = userName || 'Responsable de operaciones';
-  return <div className="min-h-screen bg-[#f5f9fc] text-[#10223f]"><header className="flex h-[60px] items-center justify-between border-b border-[#dbe5ef] bg-white px-5 sm:px-7"><span className="text-sm font-bold tracking-[0.18em] text-[#084a98]">LIMPATEX</span><div className="flex items-center gap-4 text-sm"><div className="hidden sm:block" aria-label="Selector de sede"><SedeSelector /></div><span className="hidden h-7 w-px bg-[#dbe5ef] sm:block" /><span className="grid h-9 w-9 place-items-center rounded-full bg-[#008b96] text-xs font-bold text-white">{initials(displayName)}</span><span className="hidden leading-tight sm:block"><strong className="block text-[#10223f]">{displayName}</strong><small className="block text-xs text-[#617594]">Responsable de operaciones</small></span><ChevronRight className="h-4 w-4 rotate-90 text-[#617594]" /></div></header><div className="flex min-h-[calc(100vh-60px)]"><Sidebar dark={false} current="summary" /><main className="min-w-0 flex-1">{children}</main></div></div>;
+  return <div className="min-h-screen bg-[#f5f9fc] text-[#10223f]"><header className="flex h-[60px] items-center justify-between border-b border-[#dbe5ef] bg-white px-5 sm:px-7"><span className="text-sm font-bold tracking-[0.18em] text-[#084a98]">LIMPATEX</span><div className="flex items-center gap-4 text-sm"><div className="hidden sm:block" aria-label="Selector de sede"><SedeSelector /></div><span className="hidden h-7 w-px bg-[#dbe5ef] sm:block" /><span className="grid h-9 w-9 place-items-center rounded-full bg-[#008b96] text-xs font-bold text-white">{initials(displayName)}</span><span className="hidden leading-tight sm:block"><strong className="block text-[#10223f]">{displayName}</strong><small className="block text-xs text-[#617594]">Responsable de operaciones</small></span><ChevronRight className="h-4 w-4 rotate-90 text-[#617594]" /></div></header><div className="flex min-h-[calc(100vh-60px)]"><Sidebar dark /><main className="min-w-0 flex-1">{children}</main></div></div>;
 }
 
 function QueryDetails({ controls, open, onOpenChange }: { controls?: ReactNode; open: boolean; onOpenChange: (open: boolean) => void }) {
