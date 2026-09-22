@@ -31,6 +31,8 @@ export interface ForecastModel {
   context: ForecastContext; days: ForecastDay[]; weeks: ForecastPeriod[]; months: ForecastPeriod[];
   tasks: ForecastTask[]; placements: ForecastPlacement[]; ledgers: WorkerMonthLedger[]; issues: ForecastIssue[];
   rests: { workerId: string; date: string }[]; workers: ForecastWorker[]; visibleWorkerIds: string[];
+  /** Task identities behind the residual workload, including unavailable/invalid tasks. */
+  uncoveredTaskIds?: string[];
 }
 export const weekday = (date: string) => new Date(`${date}T12:00:00Z`).getUTCDay();
 export const monday = (date: string) => addCivilDays(date, -((weekday(date) + 6) % 7));

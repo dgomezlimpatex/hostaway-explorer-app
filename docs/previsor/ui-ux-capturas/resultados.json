@@ -4,6 +4,8 @@
     "A03/A04: contador semanal y destino coinciden sin cambiar al mes",
     "A03/A08/A13/A15: tarea, ventana, propuesta, perfil de octubre y enlace operativo",
     "A05/A19/A23: filtros, exclusiones, apertura con teclado y retorno de foco",
+    "UI-10: tareas filtrables; apertura y regreso al perfil mantienen fecha, búsqueda y filtro del equipo",
+    "UI-07: recuento de registros afectados, incidencias desplegadas bajo demanda y enlace reconocible",
     "A11/A17: simulación semanal, validación decimal y restauración conservando reserva",
     "A07/A18/A21: datos desconocidos sin anillo, descarga real CSV con contexto y filtros",
     "A20: cancelación y reintento sin resultados anteriores aparentando vigencia",
@@ -12,6 +14,7 @@
     "A23/A24: gráfico consultable por teclado y tabla; pasado y futuro diferenciados",
     "A22: siete pantallas en 390/768/1024/1440 sin desbordamiento global; menú móvil y filtros",
     "A07/A13/A22: agenda diaria, calendario mensual y detalles móviles distintos y legibles",
+    "A22/A23: aumento de texto al 200 % en las siete pantallas, en móvil y escritorio",
     "A23: nueve pares de color de texto ≥4,5:1; no sustituye auditoría accesible con sesión real"
   ],
   "errors": [],

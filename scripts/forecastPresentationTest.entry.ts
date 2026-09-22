@@ -3,7 +3,7 @@ import test from 'node:test';
 import { context, dataset, task, worker } from './forecastFixture';
 import { buildForecastModel } from '../src/features/staffing/forecastModel';
 import { parseForecastContext, forecastLink } from '../src/features/staffing/forecastContract';
-import { focusMonth, viewScope, scopedTasks, scopeQuery, taskConflicts, coverageLabel, duration, sumComplete, teamSummary, centerLabel, workerWeek, groupIssues } from '../src/features/staffing/forecastPresentation';
+import { affectedRecords, closeForecastDetail, focusMonth, viewScope, scopedTasks, scopeQuery, taskConflicts, coverageLabel, duration, sumComplete, teamSummary, centerLabel, workerWeek, groupIssues } from '../src/features/staffing/forecastPresentation';
 import { buildReport, reportCsvRows } from '../src/features/staffing/forecastReportData';
 import { forecastCsv } from '../src/features/staffing/forecastExport';
 
@@ -58,6 +58,8 @@ test('A17: reinforcement is active only in the explicitly simulated week; base i
   assert.equal(simulated.placements.filter(p => p.workerId === 'hypothetical').length, 1);
   assert.equal(simulated.placements.find(p => p.workerId === 'hypothetical')?.taskId, 'in');
   assert.equal(base.placements.length, 0);
+  assert.deepEqual(base.uncoveredTaskIds, ['in', 'out']);
+  assert.deepEqual(simulated.uncoveredTaskIds, ['out']);
   assert.equal(JSON.stringify(data), before);
   const parsed = parseForecastContext(new URLSearchParams('month=2026-10&horizon=1&simFrom=2026-10-05&simTo=2026-10-11'), context.sedeId);
   assert.equal(parsed.reinforcementTo, '2026-10-11');
@@ -88,4 +90,41 @@ test('UI-07/UI-14: issues group by cause and unnamed centers keep distinct ident
   assert.equal(groupIssues([issue, issue]).length, 1);
   assert.equal(groupIssues([issue, issue])[0].issues.length, 1);
   assert.notEqual(centerLabel({ ...data.centers[0], name: 'Propiedad no identificada', id: 'unmapped:12345678' }), centerLabel({ ...data.centers[0], name: 'Propiedad no identificada', id: 'unmapped:87654321' }));
+});
+test('UI-07: affected records are counted once across repeated issues and property references', () => {
+  const data = dataset({ tasks: [task('a', { propertyId: 'p', workerId: 'w' }), task('b', { propertyId: 'p', workerId: 'w' })], properties: [{ id: 'p', centerId: 'c', name: 'Propiedad', minutes: NaN, windowStart: 660, windowEnd: 1020 }] });
+  const issue = { code: 'missing-duration', ids: ['p'], source: 'properties', message: 'Missing', impact: 'demand' as const };
+  const records = affectedRecords(data, [issue, issue]);
+  assert.deepEqual(Object.fromEntries(Object.entries(records).map(([key, value]) => [key, value.length])), { workers: 1, tasks: 2, centers: 1, properties: 1 });
+});
+test('UI-10: closing a task restores its person list and filters, then closes to the original team filters', () => {
+  const params = new URLSearchParams('task=a&returnPerson=w&personTaskQuery=marina&personTaskDate=2026-10-06&focusMonth=2026-10&q=ana');
+  const person = closeForecastDetail(params);
+  assert.equal(person.get('person'), 'w');
+  assert.equal(person.get('personTab'), 'tasks');
+  assert.equal(person.get('personTaskQuery'), 'marina');
+  assert.equal(person.get('task'), null);
+  const team = closeForecastDetail(person);
+  assert.equal(team.get('person'), null);
+  assert.equal(team.get('personTaskQuery'), null);
+  assert.equal(team.get('q'), 'ana');
+  assert.equal(closeForecastDetail(new URLSearchParams('task=a&returnCenter=c')).get('detail'), 'c');
+});
+test('A07: weekly paid services follow the registered employment dates and invalid intervals remain unknown', () => {
+  const w = worker('w', { activeFrom: '2026-10-07', blockedSlots: [{ day: 2, startMinute: 480, endMinute: 600, consumesContract: true }] });
+  const data = dataset({ workers: [w], tasks: [] });
+  assert.equal(workerWeek(data, buildForecastModel(data, context), w, context.week).committed, 0);
+  const invalid = { ...w, activeFrom: undefined, blockedSlots: [{ day: 2, startMinute: 600, endMinute: 480, consumesContract: true }] };
+  assert.ok(workerWeek(data, buildForecastModel(data, context), invalid, context.week).unknown);
+});
+test('A21: report order and its CSV rows are identical without sorting unknown balances as zero', () => {
+  const data = dataset({ tasks: [], workers: [worker('b', { name: 'Bea', weeklyMinutes: 1800 }), worker('a', { name: 'Ana' }), worker('u', { name: 'Por revisar', contractKnown: false })] });
+  const model = buildForecastModel(data, context);
+  const byName = buildReport(data, model, context.month, 'hours');
+  assert.deepEqual(byName.rows.map(r => r.key), ['a', 'b', 'u']);
+  const byMissing = buildReport(data, model, context.month, 'hours', '', '', 'pending');
+  assert.deepEqual(byMissing.rows.map(r => r.key), ['b', 'a', 'u']);
+  const csv = forecastCsv(reportCsvRows(byMissing, { sede: 's', center: 'Todos', scenario: 'Base', rules: 'test', issues: 0 }));
+  assert.ok(csv.indexOf('"Bea"') < csv.indexOf('"Ana"'));
+  assert.equal(byMissing.rows[2].cells[6], 'Por verificar');
 });

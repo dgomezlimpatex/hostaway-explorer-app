@@ -3,7 +3,7 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { Home, CalendarDays, UsersRound, Clock3, Building2, BarChart3, Settings2, Menu, SlidersHorizontal } from 'lucide-react';
 import { buildForecastModel } from './forecastModel';
 import { monthLabel, monday, forecastLink, validDate, type ForecastContext, type ForecastDataset, type ForecastScreen } from './forecastContract';
-import { focusMonth, fullDate, groupIssues, horizonScope, sourceLabel, viewScope, type ViewScope } from './forecastPresentation';
+import { closeForecastDetail, focusMonth, fullDate, groupIssues, horizonScope, sourceLabel, viewScope, type ViewScope } from './forecastPresentation';
 import { CenterPicker, ForecastDialog, Issues, Panel, type LinkTo } from './ForecastUi';
 import { ForecastHome, ForecastSummary, SimulationResult } from './ForecastOverview';
 import { Team, Shifts, Centers } from './ForecastOperations';
@@ -85,7 +85,7 @@ export function ForecastWorkspaceView(props: ViewProps) {
         </>}
         {reinforcement > 0 && screen === 'forecast' && <SimulationResult {...screenProps} scope={simScope} hoursPerWeek={reinforcement} />}
         <footer className="sf-footer">Datos actualizados a las {new Date(dataset.fetchedAt).toLocaleTimeString('es-ES', { timeZone: 'Europe/Madrid', hour: '2-digit', minute: '2-digit' })}<details><summary>Detalles técnicos de la consulta</summary><p>Lectura: {new Date(dataset.fetchedAt).toLocaleString('es-ES', { timeZone: 'Europe/Madrid' })}. Cómputo de horas a fecha: {context.asOf.replace('T', ' ')} (Europe/Madrid). Reglas: {dataset.rulesVersion}.</p></details></footer>
-        <ForecastDetails {...screenProps} close={() => { const next = new URLSearchParams(params); ['task', 'person', 'detail', 'personTab'].forEach(key => next.delete(key)); setParams(next); }} />
+        <ForecastDetails {...screenProps} close={() => setParams(closeForecastDetail(params))} />
       </>}
       {simulation && <ForecastDialog title="Simular refuerzo" description={`${sedeName} · ${simulation.label} · ${context.center ? dataset?.centers.find(c => c.id === context.center)?.name : 'Todos los centros'}`} close={() => setSimulation(null)}><form noValidate onSubmit={e => { e.preventDefault(); const raw = newHours.trim(); const value = Number(raw.replace(',', '.')); if (!/^\d+(?:[.,]\d+)?$/.test(raw) || !(value > 0) || !Number.isSafeInteger(value * 4)) { setFormError('Indica horas positivas en intervalos de 0,25 h; por ejemplo, 15 o 15,5.'); return; } change({ refuerzo: String(value), simFrom: simulation.from, simTo: simulation.to }); setSimulation(null); }}>
         <label>Horas semanales<input inputMode="decimal" value={newHours} onChange={e => { setNewHours(e.target.value); setFormError(''); }} aria-invalid={!!formError} aria-describedby="refuerzo-help refuerzo-error" /></label><p id="refuerzo-help">Se prueba primero el equipo actual, incluido el margen semanal hasta el 130 %. El refuerzo es una persona flexible durante estas fechas, sin libranza impuesta.</p><p id="refuerzo-error" role={formError ? 'alert' : undefined}>{formError}</p><button className="sf-primary" type="submit">Ver simulación</button><p>Las propuestas se revisan antes de asignarlas en el calendario. Esta simulación no guarda cambios.</p>

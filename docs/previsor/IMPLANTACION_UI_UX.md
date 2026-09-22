@@ -29,7 +29,7 @@ Conservar azul tinta #18334b, azul acción #285d94, turquesa #168486, fondo #f4f
 
 ## Validación
 
-La suite `test:forecast` pasa (34 casos de contrato más acceso, caché y lector). `test:forecast:ui-ux` añade 10 pruebas de presentación y 13 recorridos/comprobaciones de interfaz. Las pruebas visuales usan fixtures señalados como sintéticos y comprueban que no hay llamadas de red; la aplicación conserva el lector real. La compilación y el lint de archivos nuevos/modificados de interfaz pasan. Los 101 errores existentes del typecheck completo de la aplicación permanecen idénticos a la línea base.
+La suite `test:forecast` pasa (34 casos de contrato más acceso, caché y lector). `test:forecast:ui-ux` añade 14 pruebas de presentación y 16 recorridos/comprobaciones de interfaz. Las pruebas visuales usan fixtures señalados como sintéticos y comprueban que no hay llamadas de red; la aplicación conserva el lector real. La compilación y el lint de archivos nuevos/modificados de interfaz pasan. Los 101 errores existentes del typecheck completo de la aplicación permanecen idénticos a la línea base.
 
 Consulta [RESULTADOS_UI_UX.md](RESULTADOS_UI_UX.md) para el detalle de aceptación, incidencias anteriores, alcance y reversión. La prueba de comprensión con una persona ajena al desarrollo se registrará separada de la comprobación técnica, sin inventar resultados ni tiempos. La sesión local está en `/auth`; no se ha declarado realizada la QA con registros reales.
 

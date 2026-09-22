@@ -35,6 +35,15 @@ export function viewScope(context: ForecastContext, params: URLSearchParams, fal
   return { from: `${month}-01`, to: monthEnd(`${month}-01`), mode: 'month', label: monthLabel(month) };
 }
 export const scopeQuery = (scope: ViewScope) => ({ view: scope.mode, date: scope.mode === 'day' ? scope.from : '', week: monday(scope.from), focusMonth: scope.from.slice(0, 7) });
+export function closeForecastDetail(params: URLSearchParams) {
+  const next = new URLSearchParams(params);
+  const person = next.get('returnPerson'), center = next.get('returnCenter');
+  ['task', 'person', 'detail', 'personTab', 'returnPerson', 'returnCenter'].forEach(key => next.delete(key));
+  if (person) { next.set('person', person); next.set('personTab', 'tasks'); }
+  else if (center) next.set('detail', center);
+  else ['personTaskQuery', 'personTaskDate', 'personTaskKind'].forEach(key => next.delete(key));
+  return next;
+}
 export function issueInScope(issue: ForecastIssue, model: ForecastModel, scope: ViewScope) {
   if (issue.centerId && model.context.center && issue.centerId !== model.context.center) return false;
   if (issue.date) return within(issue.date, scope);
@@ -89,20 +98,32 @@ export function groupIssues(issues: ForecastIssue[]) {
   }
   return [...groups.values()].sort((a, b) => b.issues.filter(i => i.impact !== 'information').length - a.issues.filter(i => i.impact !== 'information').length);
 }
+export function affectedRecords(dataset: ForecastDataset, issues: ForecastIssue[]) {
+  const ids = new Set(issues.flatMap(i => [...i.ids, i.workerId, i.centerId].filter(Boolean)));
+  const properties = (dataset.properties ?? []).filter(p => ids.has(p.id));
+  const tasks = dataset.tasks.filter(t => ids.has(t.id) || properties.some(p => p.id === t.propertyId));
+  const workers = dataset.workers.filter(w => ids.has(w.id) || tasks.some(t => t.workerId === w.id));
+  const centers = dataset.centers.filter(c => ids.has(c.id) || properties.some(p => p.centerId === c.id) || tasks.some(t => t.centerId === c.id));
+  return { workers, tasks, centers, properties };
+}
 export function workerWeek(dataset: ForecastDataset, model: ForecastModel, worker: ForecastWorker, week: string) {
   const rows = dates(week, addCivilDays(week, 6));
   const intervals: { start: number; end: number }[] = [];
   let committed = 0;
-  let unknown = !worker.contractKnown || model.issues.some(i => i.impact !== 'information' && (!i.ids.length || i.ids.includes(worker.id)) && (!i.date || rows.includes(i.date)));
+  let unknown = !worker.contractKnown || model.issues.some(i => i.impact !== 'information' && (!i.ids.length || i.ids.includes(worker.id) || i.workerId === worker.id) && (!i.date || rows.includes(i.date)));
   for (const date of rows) {
     intervals.length = 0;
     for (const task of dataset.tasks.filter(t => t.workerId === worker.id && t.date === date)) {
-      if (task.ambiguous || !Number.isFinite(task.start) || !Number.isFinite(task.end)) unknown = true;
+      if (task.ambiguous || !Number.isFinite(task.start) || !Number.isFinite(task.end) || task.end <= task.start) unknown = true;
       else intervals.push({ start: task.start, end: task.end });
     }
-    for (const slot of worker.blockedSlots ?? []) if (slot.consumesContract && (slot.date ? slot.date === date : slot.day === weekday(date))) intervals.push({ start: slot.startMinute, end: slot.endMinute });
-    for (const absence of dataset.absences) if (absence.workerId === worker.id && absence.type === 'external_work' && date >= absence.from && date <= absence.to) {
-      if (absence.start === undefined || absence.end === undefined) unknown = true;
+    const active = (!worker.activeFrom || date >= worker.activeFrom) && (!worker.activeTo || date <= worker.activeTo);
+    for (const slot of worker.blockedSlots ?? []) if (active && slot.consumesContract && (slot.date ? slot.date === date : slot.day === weekday(date))) {
+      if (!Number.isFinite(slot.startMinute) || !Number.isFinite(slot.endMinute) || slot.endMinute <= slot.startMinute) unknown = true;
+      else intervals.push({ start: slot.startMinute, end: slot.endMinute });
+    }
+    for (const absence of dataset.absences) if (active && absence.workerId === worker.id && absence.type === 'external_work' && date >= absence.from && date <= absence.to) {
+      if (!Number.isFinite(absence.start) || !Number.isFinite(absence.end) || absence.end <= absence.start) unknown = true;
       else intervals.push({ start: absence.start, end: absence.end });
     }
     let end = -Infinity;

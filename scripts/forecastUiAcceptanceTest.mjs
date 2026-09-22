@@ -40,6 +40,7 @@ try {
   expect(await calendar.getAttribute('href')).toBe('/calendar?date=2026-10-19&task=window-conflict');
   await expect(calendar).toHaveAttribute('target', '_blank');
   const profile = dialog.getByRole('link', { name: 'Ver perfil' }).first();
+  await expect(profile).toBeVisible();
   if (await profile.count()) {
     await profile.click();
     await expect(page.getByLabel('Mes del balance')).toHaveValue('2026-10');
@@ -61,6 +62,33 @@ try {
   await expect(page.getByRole('dialog')).toHaveCount(0);
   await expect(opener).toBeFocused();
   record('A05/A19/A23: filtros, exclusiones, apertura con teclado y retorno de foco');
+  await go('team', '&focusMonth=2026-10&q=Ana');
+  await page.getByRole('link', { name: 'Ver detalle', exact: true }).click();
+  await page.getByRole('button', { name: 'Tareas', exact: true }).click();
+  await page.getByLabel('Buscar tarea o centro').fill('Marina');
+  await page.getByLabel('Fecha de la tarea').fill('2026-10-06');
+  await page.getByLabel('Tipo de tareas').selectOption('registered');
+  await expect(page.getByRole('dialog').locator('.sf-task-card')).toHaveCount(1);
+  await page.getByRole('link', { name: 'Ver tarea', exact: true }).click();
+  await page.getByRole('button', { name: 'Volver a las tareas de la persona' }).click();
+  await expect(page.getByLabel('Buscar tarea o centro')).toHaveValue('Marina');
+  await expect(page.getByLabel('Fecha de la tarea')).toHaveValue('2026-10-06');
+  await page.getByRole('link', { name: 'Ver tarea', exact: true }).click();
+  await page.keyboard.press('Escape');
+  await expect(page.getByLabel('Tipo de tareas')).toHaveValue('registered');
+  await page.getByLabel('Buscar tarea o centro').fill('sin-coincidencias');
+  await expect(page.getByText('No hay tareas con estos filtros.')).toBeVisible();
+  await page.getByRole('button', { name: 'Limpiar filtros de tareas' }).click();
+  await page.keyboard.press('Escape');
+  await expect(page.getByLabel('Buscar persona')).toHaveValue('Ana');
+  record('UI-10: tareas filtrables; apertura y regreso al perfil mantienen fecha, búsqueda y filtro del equipo');
+  await go('settings', '&tab=data');
+  const issueGroup = page.locator('.sf-issue-group').filter({ hasText: 'Revisar jornadas' });
+  await expect(issueGroup.locator('summary').first()).toContainText('1 persona');
+  await expect(issueGroup.getByRole('link')).toHaveCount(0);
+  await issueGroup.locator('summary').first().click();
+  await expect(issueGroup.getByRole('link', { name: 'Revisar Jornada Por Revisar' })).toBeVisible();
+  record('UI-07: recuento de registros afectados, incidencias desplegadas bajo demanda y enlace reconocible');
   await go('forecast', '&view=week&scenario=reserve');
   await page.getByRole('button', { name: 'Simular refuerzo', exact: true }).click();
   await page.getByLabel('Horas semanales').fill('-1');
@@ -71,20 +99,23 @@ try {
   await expect(page.locator('.sf-simulation')).toContainText('15.5 h/semana');
   expect(new URL(page.url()).searchParams.get('simFrom')).toBe('2026-10-19');
   expect(new URL(page.url()).searchParams.get('simTo')).toBe('2026-10-25');
+  await expect(page.getByText(/tareas? sin encaje planificado/)).toHaveCount(2);
   await page.getByRole('button', { name: 'Volver a situación actual' }).click();
   expect(new URL(page.url()).searchParams.get('scenario')).toBe('reserve');
   await expect(page.locator('.sf-simulation')).toHaveCount(0);
   record('A11/A17: simulación semanal, validación decimal y restauración conservando reserva');
   await go('reports', '&fixture=partial&focusMonth=2026-10');
   await expect(page.locator('.sf-donut')).toHaveCount(0);
+  await page.getByLabel('Orden del informe').selectOption('pending');
+  await expect(page.locator('tbody tr').first()).toContainText('Horas pendientes');
   await page.getByLabel('Buscar persona').fill('Jornada Por Revisar');
   const downloadEvent = page.waitForEvent('download');
   await page.getByRole('button', { name: 'Exportar CSV' }).click();
   const download = await downloadEvent;
   expect(download.suggestedFilename()).toBe('prevision-hours-2026-10.csv');
   const csv = readFileSync(await download.path(), 'utf8');
-  expect(csv).toContain('Jornada Por Revisar'); expect(csv).toContain('Por verificar'); expect(csv).not.toContain('Ana García');
-  await page.getByLabel('Informe').selectOption('absences');
+  expect(csv).toContain('Jornada Por Revisar'); expect(csv).toContain('Por verificar'); expect(csv).toContain('Búsqueda'); expect(csv).not.toContain('Ana García');
+  await page.getByLabel('Tipo de informe', { exact: true }).selectOption('absences');
   await expect(page.getByRole('table')).toContainText('Mantenimiento');
   const second = page.waitForEvent('download'); await page.getByRole('button', { name: 'Exportar CSV' }).click();
   const absenceDownload = await second;
@@ -158,6 +189,23 @@ try {
   expect(closeBounds.x + closeBounds.width).toBeLessThanOrEqual(390);
   await page.screenshot({ path: join(outputDir, 'person-availability-390.png') });
   record('A07/A13/A22: agenda diaria, calendario mensual y detalles móviles distintos y legibles');
+  for (const width of [390, 1440]) {
+    await page.setViewportSize({ width, height: 1000 });
+    for (const screen of ['home', 'forecast', 'team', 'shifts', 'centers', 'reports', 'settings']) {
+      await go(screen, '&focusMonth=2026-10');
+      // Text enlargement is applied to computed sizes, all measured before any mutation.
+      // It exercises reflow without pretending that deviceScaleFactor is browser zoom.
+      await page.evaluate(() => {
+        const sizes = [...document.querySelectorAll('.sf-workspace, .sf-workspace *')].map(el => [el, parseFloat(getComputedStyle(el).fontSize)]);
+        sizes.forEach(([el, size]) => { if (el instanceof HTMLElement || el instanceof SVGElement) el.style.fontSize = size * 2 + 'px'; });
+      });
+      const size = await page.evaluate(() => ({ content: document.documentElement.scrollWidth, viewport: innerWidth }));
+      if (size.content > size.viewport + 1) console.log(await page.evaluate(() => [...document.querySelectorAll('.sf-workspace *')].filter(e => e.getBoundingClientRect().right > innerWidth + 1 && !e.closest('.sf-table-scroll,.sf-chart-scroll,.sf-timeline-scroll')).slice(0, 12).map(e => ({ tag: e.tagName, class: e.className, text: e.textContent.slice(0, 100), right: e.getBoundingClientRect().right }))));
+      expect(size.content, `${screen} with 200% text at ${width}`).toBeLessThanOrEqual(size.viewport + 1);
+      if (screen === 'team') await page.screenshot({ path: join(outputDir, `team-text-200-${width}.png`), fullPage: true });
+    }
+  }
+  record('A22/A23: aumento de texto al 200 % en las siete pantallas, en móvil y escritorio');
   const luminance = hex => { const rgb = hex.match(/[0-9a-f]{2}/gi).map(v => parseInt(v, 16) / 255).map(v => v <= .04045 ? v / 12.92 : ((v + .055) / 1.055) ** 2.4); return rgb[0] * .2126 + rgb[1] * .7152 + rgb[2] * .0722; };
   const contrast = (a, b) => (Math.max(luminance(a), luminance(b)) + .05) / (Math.min(luminance(a), luminance(b)) + .05);
   for (const [fg, bg] of [['18334b', 'ffffff'], ['526b7c', 'f4f8fb'], ['405e75', 'eff5f8'], ['ffffff', '285d94'], ['795719', 'fff1d7'], ['206448', 'e6f4ee'], ['285d94', 'eef5fc'], ['e0eaf0', '19394f'], ['8e352f', 'fff0ee']]) expect(contrast(fg, bg), `text #${fg} on #${bg}`).toBeGreaterThanOrEqual(4.5);

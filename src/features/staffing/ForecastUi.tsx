@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import * as Dialog from '@radix-ui/react-dialog';
 import { ChevronRight, X } from 'lucide-react';
 import { clock, hours, type ForecastDataset, type ForecastModel, type ForecastScreen, type ForecastTask } from './forecastContract';
-import { centerKind, centerLabel, countLabel, duration, fullDate, groupIssues, normalize, personName, sourceLabel, taskConflicts } from './forecastPresentation';
+import { affectedRecords, centerKind, centerLabel, countLabel, duration, fullDate, groupIssues, normalize, personName, sourceLabel, taskConflicts } from './forecastPresentation';
 
 export type LinkTo = (screen: ForecastScreen, values?: Record<string, string>) => string;
 export type Change = (values: Record<string, string>) => void;
@@ -39,21 +39,51 @@ export function CenterPicker({ dataset, value, onChange }: { dataset?: ForecastD
 }
 export function Issues({ dataset, model, to, compact = false }: Pick<ScreenProps, 'dataset' | 'model' | 'to'> & { compact?: boolean }) {
   const groups = groupIssues(model.issues);
-  return <div className="sf-issues">{!groups.length && <Empty>No hay incidencias registradas en el contexto consultado.</Empty>}{groups.map(group => <details className="sf-issue-group" key={group.code}><summary><strong>{group.title}</strong><Badge>{countLabel(group.issues.length, 'aviso')}</Badge></summary><p>{group.impact}</p><ul>{group.issues.map((issue, index) => {
-    const workers = dataset.workers.filter(w => issue.workerId === w.id || issue.ids.includes(w.id));
-    const tasks = dataset.tasks.filter(t => issue.ids.includes(t.id));
-    const centers = dataset.centers.filter(c => issue.centerId === c.id || issue.ids.includes(c.id));
-    return <li key={index}><p>{issue.message}</p>{issue.date && <small>{fullDate(issue.date)}</small>}<div className="sf-inline-links">{workers.map(w => <Link key={w.id} to={to('team', { person: w.id })}>Revisar {personName(w.name)}</Link>)}{tasks.map(t => <Link key={t.id} to={to('shifts', { task: t.id, date: t.date, focusMonth: t.date.slice(0, 7), view: 'day' })}>Revisar {t.name}</Link>)}{centers.map(c => <Link key={c.id} to={to('centers', { detail: c.id })}>Revisar {centerLabel(c)}</Link>)}</div>{!workers.length && !tasks.length && !centers.length && <p>La administración de la sede debe revisar {sourceLabel(issue.source).toLowerCase()}. {issue.code === 'source-unavailable' ? 'Vuelve a actualizar los datos.' : 'Usa la referencia de soporte si no puedes identificar el registro.'}</p>}<details><summary>Referencia para soporte</summary><code>{issue.code} · {issue.source} · {issue.ids.join(', ') || 'Toda la consulta'}</code><button onClick={() => navigator.clipboard?.writeText(`${issue.message}\n${issue.source}: ${issue.ids.join(', ')}`).catch(() => {})}>Copiar referencia</button></details></li>;
-  })}</ul></details>)}{compact && groups.length > 0 && <Link className="sf-button" to={to('settings', { tab: 'data' })}>Abrir datos por revisar</Link>}</div>;
+  return <div className="sf-issues">
+    {!groups.length && <Empty>No hay incidencias registradas en el contexto consultado.</Empty>}
+    {groups.map(group => <IssueGroup key={group.code} group={group} dataset={dataset} to={to} />)}
+    {compact && groups.length > 0 && <Link className="sf-button" to={to('settings', { tab: 'data' })}>Abrir datos por revisar</Link>}
+  </div>;
 }
-export function TaskList({ tasks, dataset, model, to, screen, reset }: Pick<ScreenProps, 'dataset' | 'model' | 'to' | 'screen'> & { tasks: ForecastTask[]; reset?: () => void }) {
+function IssueGroup({ group, dataset, to }: { group: ReturnType<typeof groupIssues>[number]; dataset: ScreenProps['dataset']; to: LinkTo }) {
+  const [open, setOpen] = useState(false);
+  const affected = affectedRecords(dataset, group.issues);
+  const summary = Object.values(affected).some(records => records.length)
+    ? [countLabel(affected.workers.length, 'persona'), countLabel(affected.tasks.length, 'tarea'), countLabel(affected.centers.length, 'centro'), countLabel(affected.properties.length, 'propiedad', 'propiedades')].join(' · ')
+    : group.issues.some(i => i.ids.length || i.workerId || i.centerId) ? 'Pendientes de identificar' : 'Toda la consulta';
+  return <details className="sf-issue-group" onToggle={event => setOpen(event.currentTarget.open)}>
+    <summary><span><strong>{group.title}</strong><small>Registros afectados: {summary}</small></span><Badge>{countLabel(group.issues.length, 'aviso')}</Badge></summary>
+    {open && <><p>{group.impact}</p><ul>{group.issues.map((issue, index) => {
+      const records = affectedRecords(dataset, [issue]);
+      return <li key={index}><p>{issue.message}</p>{issue.date && <small>{fullDate(issue.date)}</small>}
+        <div className="sf-inline-links">
+          {records.workers.map(w => <Link key={w.id} to={to('team', { person: w.id })}>Revisar {personName(w.name)}</Link>)}
+          {records.tasks.map(t => <Link key={t.id} to={to('shifts', { task: t.id, date: t.date, focusMonth: t.date.slice(0, 7), view: 'day' })}>Revisar {t.name}</Link>)}
+          {records.centers.map(c => <Link key={c.id} to={to('centers', { detail: c.id })}>Revisar {centerLabel(c)}</Link>)}
+        </div>
+        {records.properties.length > 0 && <p>Propiedades: {records.properties.map(p => p.name).join(', ')}. Sus datos se consultan en el centro correspondiente.</p>}
+        {!records.workers.length && !records.tasks.length && !records.centers.length && <p>La administración de la sede debe revisar {sourceLabel(issue.source).toLowerCase()}. {issue.code === 'source-unavailable' ? 'Vuelve a actualizar los datos.' : 'Usa la referencia de soporte si no puedes identificar el registro.'}</p>}
+        <details><summary>Referencia para soporte</summary><code>{issue.code} · {issue.source} · {issue.ids.join(', ') || 'Toda la consulta'}</code><CopyReference value={issue.message + '\n' + issue.source + ': ' + issue.ids.join(', ')} /></details>
+      </li>;
+    })}</ul></>}
+  </details>;
+}
+function CopyReference({ value }: { value: string }) {
+  const [state, setState] = useState('');
+  return <><button onClick={async () => {
+    try { await navigator.clipboard.writeText(value); setState('Referencia copiada.'); }
+    catch { setState('No se pudo copiar. Selecciona y copia la referencia mostrada.'); }
+  }}>Copiar referencia</button>{state && <p role="status">{state}</p>}</>;
+}
+
+export function TaskList({ tasks, dataset, model, to, screen, reset, returnTo }: Pick<ScreenProps, 'dataset' | 'model' | 'to' | 'screen'> & { tasks: ForecastTask[]; reset?: () => void; returnTo?: Record<string, string> }) {
   const [limit, setLimit] = useState(25);
   if (!tasks.length) return <Empty reset={reset}>{reset ? 'No hay resultados con estos filtros.' : 'No hay tareas registradas en este periodo.'}</Empty>;
   return <div className="sf-task-list">{tasks.slice(0, limit).map(t => {
     const proposal = model.placements.find(p => p.taskId === t.id && !p.real);
     const conflicts = taskConflicts(t, model);
     const owner = dataset.workers.find(w => w.id === t.workerId);
-    const link = { task: t.id, person: '', detail: '', focusMonth: t.date.slice(0, 7) };
+    const link = { task: t.id, person: '', detail: '', focusMonth: t.date.slice(0, 7), ...returnTo };
     return <article className="sf-task-card" key={t.id}><div><Link className="sf-task-name" to={to(screen, link)}>{t.name}</Link><small>{fullDate(t.date)} · {dataset.centers.find(c => c.id === t.centerId)?.name}</small><span>Duración: {duration(t.minutes)} · Ventana: {clock(t.windowStart)}–{clock(t.windowEnd)}</span></div><div><Badge>{t.ambiguous ? 'Asignación por verificar' : owner ? 'Asignada' : t.workerId ? 'Persona por verificar' : 'Sin asignar'}</Badge>{owner && <p>{personName(owner.name)}</p>}<small>Horario registrado: {clock(t.start)}–{clock(t.end)}{!t.workerId && ' · sin responsable'}</small>{conflicts.length > 0 && <Badge>{conflicts[0]}</Badge>}</div>{proposal && <div className="sf-proposal"><Badge>Propuesta · sin guardar</Badge><p>{personName(model.workers.find(w => w.id === proposal.workerId)?.name ?? 'Persona por verificar')}</p><span>{clock(proposal.start)}–{clock(proposal.end)}</span>{t.workerId && <small>Recomendación de cambio de la asignación existente.</small>}</div>}<div className="sf-inline-links"><Link to={to(screen, link)}>Ver tarea</Link>{!t.workerId && !t.ambiguous && <Link to={to(screen, { ...link, detail: 'candidates' })}>Ver candidatos</Link>}</div></article>;
   })}{tasks.length > limit && <button onClick={() => setLimit(limit + 25)}>Mostrar más · {tasks.length - limit} restantes</button>}</div>;
 }

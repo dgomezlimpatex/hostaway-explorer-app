@@ -248,5 +248,5 @@ export function buildForecastModel(input: ForecastDataset, context: ForecastCont
   const weeks = [...new Set(days.map(d => monday(d.date)))].map(key => period(key, days.filter(d => monday(d.date) === key)));
   const months = Array.from({ length: context.horizon }, (_, i) => addCivilMonths(`${context.month}-01`, i).slice(0, 7)).map(key => period(key, days.filter(d => d.date >= `${key}-01` && d.date <= monthEnd(`${key}-01`))));
   const visibleWorkerIds = data.workers.filter(w => !context.center || w.centerPriorities?.some(p => p.centerId === context.center) || placements.some(p => p.workerId === w.id && p.centerId === context.center) || selectedTasks.some(t => t.workerId === w.id)).map(w => w.id);
-  return { context, days, weeks, months, tasks: selectedTasks, placements, ledgers, issues, rests, workers: data.workers, visibleWorkerIds };
+  return { context, days, weeks, months, tasks: selectedTasks, placements, ledgers, issues, rests, workers: data.workers, visibleWorkerIds, uncoveredTaskIds: selectedTasks.filter(t => !validated.has(t.id)).map(t => t.id) };
 }

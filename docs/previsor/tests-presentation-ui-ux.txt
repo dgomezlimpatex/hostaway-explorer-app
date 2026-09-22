@@ -2,59 +2,79 @@ TAP version 13
 # Subtest: A03/A12: horizon start is distinct from the week and monthly ledger; boundary months selectable
 ok 1 - A03/A12: horizon start is distinct from the week and monthly ledger; boundary months selectable
   ---
-  duration_ms: 2.292
+  duration_ms: 2.5216
   ...
 # Subtest: A04: scopeQuery opens the exact same weekly pending set, not the full month
 ok 2 - A04: scopeQuery opens the exact same weekly pending set, not the full month
   ---
-  duration_ms: 24.1327
+  duration_ms: 23.9785
   ...
 # Subtest: A02/A18: unknown goals and incomplete demand never become confirmed zero/success
 ok 3 - A02/A18: unknown goals and incomplete demand never become confirmed zero/success
   ---
-  duration_ms: 3.8886
+  duration_ms: 3.4892
   ...
 # Subtest: A08: successful planner proposal remains explicitly unrecorded
 ok 4 - A08: successful planner proposal remains explicitly unrecorded
   ---
-  duration_ms: 3.952
+  duration_ms: 3.9853
   ...
 # Subtest: A13: 33-minute unassigned record outside the client window is a concrete conflict
 ok 5 - A13: 33-minute unassigned record outside the client window is a concrete conflict
   ---
-  duration_ms: 5.5944
+  duration_ms: 5.9111
   ...
 # Subtest: A07/A06: worker margin includes maintenance and real tasks, excludes suggestions and no weekly minimum
 ok 6 - A07/A06: worker margin includes maintenance and real tasks, excludes suggestions and no weekly minimum
   ---
-  duration_ms: 5.0566
+  duration_ms: 4.5934
   ...
 # Subtest: A17: reinforcement is active only in the explicitly simulated week; base is unchanged
 ok 7 - A17: reinforcement is active only in the explicitly simulated week; base is unchanged
   ---
-  duration_ms: 5.8609
+  duration_ms: 5.9271
   ...
 # Subtest: A17: explicit hours validation accepts quarter-hours without an invented 60h UI ceiling
 ok 8 - A17: explicit hours validation accepts quarter-hours without an invented 60h UI ceiling
   ---
-  duration_ms: 3.6877
+  duration_ms: 3.5589
   ...
 # Subtest: A21: report and CSV share the same filtered rows, preserve unknowns and spreadsheet safety
 ok 9 - A21: report and CSV share the same filtered rows, preserve unknowns and spreadsheet safety
   ---
-  duration_ms: 6.0327
+  duration_ms: 4.979
   ...
 # Subtest: UI-07/UI-14: issues group by cause and unnamed centers keep distinct identity
 ok 10 - UI-07/UI-14: issues group by cause and unnamed centers keep distinct identity
   ---
-  duration_ms: 0.7868
+  duration_ms: 0.7366
   ...
-1..10
-# tests 10
+# Subtest: UI-07: affected records are counted once across repeated issues and property references
+ok 11 - UI-07: affected records are counted once across repeated issues and property references
+  ---
+  duration_ms: 0.4171
+  ...
+# Subtest: UI-10: closing a task restores its person list and filters, then closes to the original team filters
+ok 12 - UI-10: closing a task restores its person list and filters, then closes to the original team filters
+  ---
+  duration_ms: 0.2199
+  ...
+# Subtest: A07: weekly paid services follow the registered employment dates and invalid intervals remain unknown
+ok 13 - A07: weekly paid services follow the registered employment dates and invalid intervals remain unknown
+  ---
+  duration_ms: 5.6694
+  ...
+# Subtest: A21: report order and its CSV rows are identical without sorting unknown balances as zero
+ok 14 - A21: report order and its CSV rows are identical without sorting unknown balances as zero
+  ---
+  duration_ms: 5.5711
+  ...
+1..14
+# tests 14
 # suites 0
-# pass 10
+# pass 14
 # fail 0
 # cancelled 0
 # skipped 0
 # todo 0
-# duration_ms 72.951
+# duration_ms 84.8009
