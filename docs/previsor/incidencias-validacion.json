@@ -1,0 +1,30 @@
+{
+  "checkedAt": "2026-09-22T15:17:57.677Z",
+  "rulesVersion": "staffing-2026-09-22.3",
+  "baseCommit": "04187abe",
+  "branch": "codex/previsor-incidencias-n01-n03",
+  "build": "passed",
+  "rootTypecheck": "passed",
+  "toolTypecheck": "passed",
+  "appTypecheck": {
+    "current": 101,
+    "baseline": 101,
+    "newErrors": []
+  },
+  "focusedLint": {
+    "errors": 0,
+    "warnings": 1,
+    "note": "Advertencia existente de react-refresh en el arnés de pruebas"
+  },
+  "contractCases": 34,
+  "incidentCases": 9,
+  "priorRegressionCases": 10,
+  "presentationCases": 14,
+  "browserChecks": 31,
+  "unexpectedBrowserRequests": 0,
+  "browserErrors": 0,
+  "authenticatedBrowserQA": false,
+  "productionDeployment": false,
+  "databaseWrites": false,
+  "localServer": "http://127.0.0.1:8080/staffing-forecast"
+}

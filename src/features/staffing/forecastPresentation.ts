@@ -26,6 +26,7 @@ export function focusMonth(context: ForecastContext, params: URLSearchParams) {
 }
 export function viewScope(context: ForecastContext, params: URLSearchParams, fallback = 'month'): ViewScope {
   const mode = params.get('view') || fallback;
+  if (mode === 'simulation' && context.reinforcementFrom && context.reinforcementTo) return { from: context.reinforcementFrom, to: context.reinforcementTo, mode, label: `${fullDate(context.reinforcementFrom)} – ${fullDate(context.reinforcementTo)}` };
   if (mode === 'week') return weekScope(context.week);
   if (mode === 'horizon') return horizonScope(context);
   if (mode === 'day') {
@@ -55,29 +56,46 @@ export function issueInScope(issue: ForecastIssue, model: ForecastModel, scope: 
   return !tasks.length || tasks.some(t => within(t.date, scope));
 }
 export const scopedIssues = (model: ForecastModel, scope: ViewScope) => model.issues.filter(i => issueInScope(i, model, scope));
-export function taskConflicts(task: ForecastTask, model: ForecastModel): string[] {
-  const messages = new Set<string>();
-  if (!(task.minutes > 0)) messages.add('Falta la duración de la propiedad.');
-  if (!(task.windowEnd > task.windowStart)) messages.add('Falta una ventana de cliente válida.');
-  if (task.ambiguous) messages.add('La asignación tiene registros contradictorios.');
+export function taskAssessment(task: ForecastTask, model: ForecastModel) {
+  const dataIssues = new Set<string>(), records = new Set<string>();
+  if (!(task.minutes > 0) || !Number.isFinite(task.minutes)) dataIssues.add('Falta la duración de la propiedad.');
+  if (!Number.isFinite(task.windowStart) || !Number.isFinite(task.windowEnd) || !(task.windowEnd > task.windowStart)) dataIssues.add('Falta una ventana de cliente válida.');
+  if (task.ambiguous) { dataIssues.add('La asignación tiene registros contradictorios.'); records.add('La asignación tiene registros contradictorios.'); }
   if (Number.isFinite(task.start) && Number.isFinite(task.end)) {
-    if (task.start < task.windowStart || task.end > task.windowEnd) messages.add('El horario registrado queda fuera de la ventana del cliente.');
-    if (task.end <= task.start || Math.abs(task.end - task.start - task.minutes) > .01) messages.add('El horario registrado no corresponde a la duración completa.');
-  } else if (task.workerId) messages.add('La asignación no tiene un horario verificable.');
-  model.issues.filter(i => i.ids.includes(task.id) && i.impact !== 'information').forEach(i => messages.add(i.message));
-  return [...messages];
+    if (task.start < task.windowStart || task.end > task.windowEnd) records.add('El horario registrado queda fuera de la ventana del cliente.');
+    if (task.end <= task.start || Number.isFinite(task.minutes) && Math.abs(task.end - task.start - task.minutes) > .01) records.add('El horario registrado no corresponde a la duración completa.');
+  } else if (task.workerId) dataIssues.add('La asignación no tiene un horario verificable.');
+  for (const issue of model.issues.filter(i => i.impact !== 'information' && (i.ids.includes(task.id) || !i.ids.length && issueDuring(i, task.date)))) {
+    if (['actual-conflict', 'assignment-conflict', 'duplicate-task'].includes(issue.code)) records.add(issue.message);
+    else if (issue.code !== 'invalid-window' || !(task.minutes > 0) || !(task.windowEnd > task.windowStart)) dataIssues.add(issue.message);
+  }
+  const proposal = model.placements.find(p => p.taskId === task.id && !p.real);
+  const unresolved = model.uncoveredTaskIds ? model.uncoveredTaskIds.includes(task.id) : !model.placements.some(p => p.taskId === task.id);
+  return { unassigned: !task.workerId, dataIssues: [...dataIssues], records: [...records], proposal,
+    noFit: unresolved && !dataIssues.size && task.date >= model.context.asOf.slice(0, 10), unresolved };
 }
-export const taskNeedsReview = (task: ForecastTask, model: ForecastModel) => taskConflicts(task, model).length > 0 || !model.placements.some(p => p.taskId === task.id);
+export const taskConflicts = (task: ForecastTask, model: ForecastModel) => { const a = taskAssessment(task, model); return [...new Set([...a.dataIssues, ...a.records])]; };
+export const taskNeedsReview = (task: ForecastTask, model: ForecastModel) => { const a = taskAssessment(task, model); return a.dataIssues.length > 0 || a.records.length > 0 || a.unresolved; };
+export function taskStateLabels(task: ForecastTask, model: ForecastModel) {
+  const a = taskAssessment(task, model);
+  return [a.unassigned && 'Sin asignar', a.records.length && 'Registro por corregir', a.dataIssues.length && 'Datos insuficientes', a.proposal && 'Propuesta disponible · sin guardar', a.noFit && 'Sin propuesta viable'].filter(Boolean) as string[];
+}
 export function scopedTasks(model: ForecastModel, scope: ViewScope, filter = '') {
-  return model.tasks.filter(t => within(t.date, scope) && (filter !== 'pending' || !t.workerId) && (filter !== 'unknown-duration' || !(t.minutes > 0) || !Number.isFinite(t.minutes)) && (filter !== 'uncovered' || taskNeedsReview(t, model))).sort((a, b) => a.date.localeCompare(b.date) || (Number.isFinite(a.start) ? a.start : a.windowStart) - (Number.isFinite(b.start) ? b.start : b.windowStart) || a.name.localeCompare(b.name));
+  return model.tasks.filter(t => {
+    if (!within(t.date, scope)) return false;
+    if (!filter) return true;
+    if (filter === 'pending') return !t.workerId;
+    if (filter === 'unknown-duration') return !(t.minutes > 0) || !Number.isFinite(t.minutes);
+    const a = taskAssessment(t, model);
+    return filter === 'uncovered' ? a.records.length > 0 || a.dataIssues.length > 0 || a.unresolved : filter === 'record-with-fit' ? a.records.length > 0 && !a.unresolved && !a.dataIssues.length : filter === 'record-conflicts' ? a.records.length > 0 : filter === 'no-fit' ? a.noFit : filter === 'proposed' ? !!a.proposal : filter === 'insufficient' ? a.dataIssues.length > 0 : true;
+  }).sort((a, b) => a.date.localeCompare(b.date) || (Number.isFinite(a.start) ? a.start : a.windowStart) - (Number.isFinite(b.start) ? b.start : b.windowStart) || a.name.localeCompare(b.name));
 }
-export function coverageLabel(model: ForecastModel, scope: ViewScope) {
-  const tasks = scopedTasks(model, scope);
-  if (!tasks.length) return 'Sin tareas registradas';
-  if (tasks.some(t => !(t.minutes > 0) || !Number.isFinite(t.minutes) || !(t.windowEnd > t.windowStart))) return 'Datos de tareas incompletos';
-  if (tasks.some(t => t.workerId && taskConflicts(t, model).length)) return 'Asignaciones incompatibles';
-  if (tasks.some(t => taskNeedsReview(t, model))) return 'Tareas sin encaje';
-  return tasks.some(t => !t.workerId || model.placements.some(p => p.taskId === t.id && !p.real)) ? 'Encaje propuesto · sin guardar' : 'Asignaciones verificadas';
+export function coverageLabel(model: ForecastModel, scope: ViewScope, filter = '') {
+  const tasks = scopedTasks(model, scope, filter);
+  if (!tasks.length) return filter ? 'Sin coincidencias' : 'Sin tareas registradas';
+  const assessments = tasks.map(t => taskAssessment(t, model));
+  const labels = [assessments.some(a => a.dataIssues.length) && 'Datos de tareas incompletos', assessments.some(a => a.records.length) && 'Registro por corregir', assessments.some(a => a.noFit) && 'Sin propuesta viable', assessments.some(a => a.proposal) && 'Propuesta disponible · sin guardar'];
+  return labels.filter(Boolean).join(' · ') || (assessments.some(a => a.unassigned) ? 'Sin asignar' : 'Asignaciones verificadas');
 }
 export function demandSummary(tasks: ForecastTask[]) {
   const tourism = tasks.filter(t => t.tourism);
@@ -90,10 +108,10 @@ export function attentionDays(model: ForecastModel, scope: ViewScope) {
   const rows = model.days.filter(d => within(d.date, scope)).flatMap(day => {
     const local = { ...scope, from: day.date, to: day.date };
     const tasks = scopedTasks(model, local);
-    const pending = tasks.filter(t => !t.workerId).length;
-    const conflicts = tasks.filter(t => t.workerId && taskConflicts(t, model).length).length;
-    const incomplete = tasks.filter(t => !(t.minutes > 0) || !(t.windowEnd > t.windowStart)).length;
-    const reasons = [pending && `${countLabel(pending, 'tarea')} sin asignar`, conflicts && `${countLabel(conflicts, 'asignación', 'asignaciones')} incompatible${conflicts === 1 ? '' : 's'}`, incomplete && `${countLabel(incomplete, 'tarea')} con datos incompletos`].filter(Boolean) as string[];
+    const values = tasks.map(t => taskAssessment(t, model));
+    const pending = values.filter(a => a.unassigned).length, conflicts = values.filter(a => a.records.length).length, incomplete = values.filter(a => a.dataIssues.length).length;
+    const noFit = values.filter(a => a.noFit).length, proposed = values.filter(a => a.proposal).length;
+    const reasons = [pending && `${countLabel(pending, 'tarea')} sin asignar`, conflicts && `${countLabel(conflicts, 'registro')} por corregir`, incomplete && `${countLabel(incomplete, 'tarea')} con datos insuficientes`, noFit && `${countLabel(noFit, 'tarea')} sin propuesta viable`, proposed && `${countLabel(proposed, 'tarea')} con propuesta disponible`].filter(Boolean) as string[];
     return reasons.length ? [{ ...day, reasons, priority: pending + conflicts + incomplete }] : [];
   });
   return {
@@ -103,11 +121,11 @@ export function attentionDays(model: ForecastModel, scope: ViewScope) {
 }
 export function simulationChanges(base: ForecastModel, simulated: ForecastModel, scope: ViewScope) {
   const tasks = scopedTasks(simulated, scope);
-  const before = new Set(base.uncoveredTaskIds ?? []), after = new Set(simulated.uncoveredTaskIds ?? []);
+  const before = new Set(scopedTasks(base, scope, 'no-fit').map(t => t.id)), after = new Set(scopedTasks(simulated, scope, 'no-fit').map(t => t.id));
   const improved = tasks.filter(t => before.has(t.id) && !after.has(t.id));
   const lost = tasks.filter(t => !before.has(t.id) && after.has(t.id));
   const reinforcement = improved.filter(t => simulated.placements.some(p => !p.real && p.taskId === t.id && p.workerId === 'hypothetical'));
-  return { improved, lost, reinforcement, team: improved.filter(t => !reinforcement.includes(t)), remaining: tasks.filter(t => after.has(t.id)), before: tasks.filter(t => before.has(t.id)), conflicts: tasks.filter(t => t.workerId && taskConflicts(t, simulated).length), incomplete: demandSummary(tasks).unknown };
+  return { improved, lost, reinforcement, team: improved.filter(t => !reinforcement.includes(t)), remaining: tasks.filter(t => after.has(t.id)), before: tasks.filter(t => before.has(t.id)), conflicts: tasks.filter(t => taskAssessment(t, simulated).records.length), incomplete: tasks.filter(t => taskAssessment(t, simulated).dataIssues.length), recordsWithFit: tasks.filter(t => { const a = taskAssessment(t, simulated); return a.records.length && !a.unresolved && !a.dataIssues.length; }) };
 }
 export const ledgerLabel = (status: string) => ({ 'No verificable': 'Por verificar', 'Faltan horas': 'Horas pendientes', 'Cumple': 'Objetivo alcanzable con asignaciones' }[status] ?? status);
 export function teamSummary(model: ForecastModel, month: string) {
@@ -117,7 +135,7 @@ export function teamSummary(model: ForecastModel, month: string) {
 export const centerLabel = (center: ForecastDataset['centers'][number]) => !center.name.trim() || /no identificad|sin nombre/i.test(center.name) ? `Nombre pendiente de revisar · ${center.id.replace(/^[^:]+:/, '').slice(0, 8)}` : center.name;
 export const centerKind = (id: string) => id.startsWith('unmapped:') ? 'Propiedad por identificar' : id.startsWith('property:') ? 'Propiedad independiente' : 'Edificio';
 export const calendarTaskHref = (task: ForecastTask) => `/calendar?${new URLSearchParams({ date: task.date, task: task.id })}`;
-export const sourceLabel = (source: string) => ({ cleaners: 'Personas', tasks: 'Tareas', task_assignments: 'Asignaciones', worker_absences: 'Ausencias y otros servicios', worker_fixed_days_off: 'Libranzas', worker_maintenance_cleanings: 'Mantenimientos', properties: 'Propiedades', property_groups: 'Edificios', property_group_assignments: 'Relación de propiedades y edificios', staffingRulesForSede: 'Reglas de sede' }[source] ?? 'Datos de la previsión');
+export const sourceLabel = (source: string) => ({ cleaners: 'Personas', tasks: 'Tareas', recurring_tasks: 'Compromisos recurrentes', recurring_task_executions: 'Ejecuciones de recurrencias', task_assignments: 'Asignaciones', worker_absences: 'Ausencias y otros servicios', worker_fixed_days_off: 'Libranzas', worker_maintenance_cleanings: 'Mantenimientos', properties: 'Propiedades', property_groups: 'Edificios', property_group_assignments: 'Relación de propiedades y edificios', staffingRulesForSede: 'Reglas de sede' }[source] ?? 'Datos de la previsión');
 const issueTitles: Record<string, string> = {
   'missing-duration': 'Revisar duración de tareas', 'unknown-contract': 'Revisar jornadas', 'invalid-rest': 'Revisar libranzas', 'invalid-maintenance': 'Revisar horarios de mantenimiento',
   'unmapped-task': 'Identificar propiedades', 'ambiguous-center': 'Revisar edificio de propiedades', 'missing-window': 'Faltan ventanas de cliente', 'assignment-conflict': 'Revisar responsables de tareas',

@@ -1,7 +1,7 @@
 import type { StaffingCenter, StaffingWorker } from './types';
 import { addCivilDays, addCivilMonths, monthEnd } from './monthly';
 
-export const RULES_VERSION = 'staffing-2026-09-22.2';
+export const RULES_VERSION = 'staffing-2026-09-22.3';
 export type ForecastScreen = 'home' | 'forecast' | 'team' | 'shifts' | 'centers' | 'reports' | 'settings';
 export interface ForecastContext { sedeId: string; month: string; horizon: number; week: string; center: string; scenario: 'known' | 'reserve'; asOf: string; reinforcementFrom?: string; reinforcementTo?: string }
 export interface ForecastIssue { code: string; message: string; source: string; ids: string[]; impact: 'demand' | 'capacity' | 'ledger' | 'information'; date?: string; from?: string; to?: string; workerId?: string; centerId?: string }
@@ -9,6 +9,7 @@ export interface ForecastTask {
   id: string; propertyId: string; name: string; centerId: string; date: string;
   minutes: number; windowStart: number; windowEnd: number; start: number; end: number;
   workerId?: string; ambiguous: boolean; tourism: boolean; status: string;
+  source?: 'task' | 'recurring' | 'materialized'; recurringId?: string;
 }
 export interface ForecastAbsence { id: string; workerId: string; from: string; to: string; type: string; start?: number; end?: number }
 export interface ForecastWorker extends StaffingWorker { restDays: number[]; excluded: boolean; contractKnown: boolean }

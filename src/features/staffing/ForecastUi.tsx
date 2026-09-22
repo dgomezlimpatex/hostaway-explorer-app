@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import * as Dialog from '@radix-ui/react-dialog';
 import { ChevronRight, X } from 'lucide-react';
 import { clock, hours, type ForecastDataset, type ForecastModel, type ForecastScreen, type ForecastTask } from './forecastContract';
-import { affectedRecords, centerKind, centerLabel, countLabel, duration, fullDate, groupIssues, horizonScope, normalize, personName, scopeQuery, scopedIssues, sourceLabel, taskConflicts, type ViewScope } from './forecastPresentation';
+import { affectedRecords, centerKind, centerLabel, countLabel, duration, fullDate, groupIssues, horizonScope, normalize, personName, scopeQuery, scopedIssues, sourceLabel, taskConflicts, taskStateLabels, type ViewScope } from './forecastPresentation';
 
 export type LinkTo = (screen: ForecastScreen, values?: Record<string, string>) => string;
 export type Change = (values: Record<string, string>) => void;
@@ -16,7 +16,7 @@ export function Empty({ children = 'No hay registros en este contexto.', reset }
 }
 export function Badge({ children, tone }: { children: ReactNode; tone?: string }) {
   const value = String(children);
-  const state = tone ?? (/incompatible/i.test(value) ? 'red' : /verificar|resolver|pendiente|parcial|incomplet|sin encaje/i.test(value) ? 'amber' : /propuest|simulad/i.test(value) ? 'proposal' : /verificadas|alcanzable/i.test(value) ? 'green' : 'neutral');
+  const state = tone ?? (/incompatible|por corregir/i.test(value) ? 'red' : /verificar|resolver|pendiente|parcial|incomplet|insuficient|sin propuesta|sin encaje/i.test(value) ? 'amber' : /propuest|simulad/i.test(value) ? 'proposal' : /verificadas|alcanzable/i.test(value) ? 'green' : 'neutral');
   return <span className={`sf-badge sf-${state}`}>{children}</span>;
 }
 export function Metric({ label, value, note, to }: { label: string; value: ReactNode; note?: ReactNode; to?: string }) {
@@ -87,7 +87,7 @@ export function TaskList({ tasks, dataset, model, to, screen, reset, returnTo }:
     const conflicts = taskConflicts(t, model);
     const owner = dataset.workers.find(w => w.id === t.workerId);
     const link = { task: t.id, person: '', detail: '', focusMonth: t.date.slice(0, 7), ...returnTo };
-    return <article className="sf-task-card" key={t.id}><div><Link className="sf-task-name" to={to(screen, link)}>{t.name}</Link><small>{fullDate(t.date)} · {dataset.centers.find(c => c.id === t.centerId)?.name}</small><span>Duración: {duration(t.minutes)} · Ventana: {clock(t.windowStart)}–{clock(t.windowEnd)}</span></div><div><Badge>{t.ambiguous ? 'Asignación por verificar' : owner ? 'Asignada' : t.workerId ? 'Persona por verificar' : 'Sin asignar'}</Badge>{owner && <p>{personName(owner.name)}</p>}<small>Horario registrado: {clock(t.start)}–{clock(t.end)}{!t.workerId && ' · sin responsable'}</small>{conflicts.length > 0 && <Badge>{conflicts[0]}</Badge>}</div>{proposal && <div className="sf-proposal"><Badge>Propuesta · sin guardar</Badge><p>{personName(model.workers.find(w => w.id === proposal.workerId)?.name ?? 'Persona por verificar')}</p><span>{clock(proposal.start)}–{clock(proposal.end)}</span>{t.workerId && <small>Recomendación de cambio de la asignación existente.</small>}</div>}<div className="sf-inline-links"><Link to={to(screen, link)}>Ver tarea</Link>{!t.workerId && !t.ambiguous && <Link to={to(screen, { ...link, detail: 'candidates' })}>Ver candidatos</Link>}</div></article>;
+    return <article className="sf-task-card" key={t.id}><div><Link className="sf-task-name" to={to(screen, link)}>{t.name}</Link><small>{fullDate(t.date)} · {dataset.centers.find(c => c.id === t.centerId)?.name}</small><span>Duración: {duration(t.minutes)} · Ventana: {clock(t.windowStart)}–{clock(t.windowEnd)}</span></div><div><Badge>{t.ambiguous ? 'Asignación por verificar' : owner ? 'Asignada' : t.workerId ? 'Persona por verificar' : 'Sin asignar'}</Badge>{owner && <p>{personName(owner.name)}</p>}<div className="sf-task-states">{taskStateLabels(t, model).filter(label => label !== 'Sin asignar' && !label.startsWith('Propuesta')).map(label => <Badge key={label}>{label}</Badge>)}</div>{t.source === 'recurring' && <small>Compromiso recurrente · aún sin tarea materializada</small>}{t.source === 'materialized' && <small>Recurrencia materializada · contabilizada una sola vez</small>}<small>Horario registrado: {clock(t.start)}–{clock(t.end)}{!t.workerId && ' · sin responsable'}</small>{conflicts.length > 0 && <Badge>{conflicts[0]}</Badge>}</div>{proposal && <div className="sf-proposal"><Badge>Propuesta disponible · sin guardar</Badge><p>{personName(model.workers.find(w => w.id === proposal.workerId)?.name ?? 'Persona por verificar')}</p><span>{clock(proposal.start)}–{clock(proposal.end)}</span>{t.workerId && <small>Recomendación de cambio de la asignación existente.</small>}</div>}<div className="sf-inline-links"><Link to={to(screen, link)}>Ver tarea</Link>{!t.workerId && !t.ambiguous && <Link to={to(screen, { ...link, detail: 'candidates' })}>Ver candidatos</Link>}</div></article>;
   })}{tasks.length > limit && <button onClick={() => setLimit(limit + 25)}>Mostrar más · {tasks.length - limit} restantes</button>}</div>;
 }
 export interface ChartRow { key: string; label: string; known: number; capacity: number; reserve: number; phase?: string; partial?: boolean; reinforcement?: number }

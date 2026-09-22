@@ -1,0 +1,190 @@
+
+> vite_react_shadcn_ts@0.0.0 test:forecast
+> node scripts/forecastContractTest.mjs && node scripts/forecastAccessTest.mjs && node scripts/forecastQueryTest.mjs && node scripts/staffingReadClientTest.mjs
+
+TAP version 13
+# Subtest: 01. monthly minimum 15 × 4.345 and weekly maximum 19.5
+ok 1 - 01. monthly minimum 15 × 4.345 and weekly maximum 19.5
+  ---
+  duration_ms: 27.756
+  ...
+# Subtest: 02. compensates between weeks in same natural month
+ok 2 - 02. compensates between weeks in same natural month
+  ---
+  duration_ms: 5.4044
+  ...
+# Subtest: 03. two vacation workdays deduct hours; rest is not deducted twice
+ok 3 - 03. two vacation workdays deduct hours; rest is not deducted twice
+  ---
+  duration_ms: 4.481
+  ...
+# Subtest: 04. tourism + maintenance reduce worker capacity but are absent from demand, travel is ignored
+ok 4 - 04. tourism + maintenance reduce worker capacity but are absent from demand, travel is ignored
+  ---
+  duration_ms: 5.3781
+  ...
+# Subtest: 05. past assigned pending task counted exactly once using registered end
+ok 5 - 05. past assigned pending task counted exactly once using registered end
+  ---
+  duration_ms: 4.829
+  ...
+# Subtest: 06. unassigned task remains demand and never person actual hours
+ok 6 - 06. unassigned task remains demand and never person actual hours
+  ---
+  duration_ms: 3.3701
+  ...
+# Subtest: 07. indivisible task cannot fit shorter window even with many workers
+ok 7 - 07. indivisible task cannot fit shorter window even with many workers
+  ---
+  duration_ms: 7.5571
+  ...
+# Subtest: 08. standalone properties do not add travel time; same worker can encajar ambas
+ok 8 - 08. standalone properties do not add travel time; same worker can encajar ambas
+  ---
+  duration_ms: 6.8274
+  ...
+# Subtest: 09. 100 tourism + 40 other → exactly 20 reserve, never daily tasks
+ok 9 - 09. 100 tourism + 40 other → exactly 20 reserve, never daily tasks
+  ---
+  duration_ms: 3.4468
+  ...
+# Subtest: 10. reserve attributed to month by demand, no boundary duplication
+ok 10 - 10. reserve attributed to month by demand, no boundary duplication
+  ---
+  duration_ms: 4.5295
+  ...
+# Subtest: 11. shared person cannot be promised to two centers
+ok 11 - 11. shared person cannot be promised to two centers
+  ---
+  duration_ms: 3.7429
+  ...
+# Subtest: 12. strict priority then greater monthly need
+ok 12 - 12. strict priority then greater monthly need
+  ---
+  duration_ms: 6.2789
+  ...
+# Subtest: 13. zero-hour visible, not capacity or candidate
+ok 13 - 13. zero-hour visible, not capacity or candidate
+  ---
+  duration_ms: 3.4043
+  ...
+# Subtest: 14. missing source never confidently covered
+ok 14 - 14. missing source never confidently covered
+  ---
+  duration_ms: 4.6879
+  ...
+# Subtest: 15. flexible reinforcement works Sunday, leaves infeasible task residual
+ok 15 - 15. flexible reinforcement works Sunday, leaves infeasible task residual
+  ---
+  duration_ms: 7.7995
+  ...
+# Subtest: 16. context link preserves sede, month, week, center, scenario and identity
+ok 16 - 16. context link preserves sede, month, week, center, scenario and identity
+  ---
+  duration_ms: 1.5402
+  ...
+# Subtest: 17. assigned conflict remains real, not silently reassigned
+ok 17 - 17. assigned conflict remains real, not silently reassigned
+  ---
+  duration_ms: 5.2807
+  ...
+# Subtest: 18. unknown assigned time blocks speculative reuse
+ok 18 - 18. unknown assigned time blocks speculative reuse
+  ---
+  duration_ms: 4.3327
+  ...
+# Subtest: 19. flexible rest minimizes peak pressure, never writes real rest
+ok 19 - 19. flexible rest minimizes peak pressure, never writes real rest
+  ---
+  duration_ms: 22.9564
+  ...
+# Subtest: 20. Madrid reference and CSV formula protection
+ok 20 - 20. Madrid reference and CSV formula protection
+  ---
+  duration_ms: 7.6578
+  ...
+# Subtest: 21. SELECT reader honors scope, source duration, cancellation and NOT COUNT
+ok 21 - 21. SELECT reader honors scope, source duration, cancellation and NOT COUNT
+  ---
+  duration_ms: 3.0006
+  ...
+# Subtest: 22. cancellation rejects and retry is deduplicated; source failure visible
+ok 22 - 22. cancellation rejects and retry is deduplicated; source failure visible
+  ---
+  duration_ms: 3.5653
+  ...
+# Subtest: 23. partial employment and partial absence remain unverified
+ok 23 - 23. partial employment and partial absence remain unverified
+  ---
+  duration_ms: 3.078
+  ...
+# Subtest: 24. actual overlaps invalidate coverage despite aggregate capacity
+ok 24 - 24. actual overlaps invalidate coverage despite aggregate capacity
+  ---
+  duration_ms: 3.1283
+  ...
+# Subtest: 25. center filter does not change globally scheduled placements
+ok 25 - 25. center filter does not change globally scheduled placements
+  ---
+  duration_ms: 287.7568
+  ...
+# Subtest: 26. deterministic moderate-volume fixture performance
+ok 26 - 26. deterministic moderate-volume fixture performance
+  ---
+  duration_ms: 151.7078
+  ...
+# Subtest: 27. substitution is a separate proposal, original assignment and ledger preserved
+ok 27 - 27. substitution is a separate proposal, original assignment and ledger preserved
+  ---
+  duration_ms: 3.7019
+  ...
+# Subtest: 28. unknown duration gives unavailable total and unverified individual ledger
+ok 28 - 28. unknown duration gives unavailable total and unverified individual ledger
+  ---
+  duration_ms: 4.073
+  ...
+# Subtest: 29. do not suggest a time before the current Madrid reference
+ok 29 - 29. do not suggest a time before the current Madrid reference
+  ---
+  duration_ms: 0.4983
+  ...
+# Subtest: 30. invalid date is diagnosed across periods rather than silently removed
+ok 30 - 30. invalid date is diagnosed across periods rather than silently removed
+  ---
+  duration_ms: 4.7834
+  ...
+# Subtest: 31. repeated maintenance/task time not credited twice
+ok 31 - 31. repeated maintenance/task time not credited twice
+  ---
+  duration_ms: 6.2058
+  ...
+# Subtest: 32. valid timed other service counts without inventing a full-day duration
+ok 32 - 32. valid timed other service counts without inventing a full-day duration
+  ---
+  duration_ms: 23.0966
+  ...
+# Subtest: 33. changing context aborts the private calculation worker
+ok 33 - 33. changing context aborts the private calculation worker
+  ---
+  duration_ms: 0.903
+  ...
+# Subtest: 34. successful calculation terminates worker and returns only the requested snapshot
+ok 34 - 34. successful calculation terminates worker and returns only the requested snapshot
+  ---
+  duration_ms: 4.1205
+  ...
+1..34
+# tests 34
+# suites 0
+# pass 34
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 671.2746
+PASS current page access and cache scope: denied
+PASS current page access and cache scope: missing-sede
+PASS current page access and cache scope: allowed
+PASS current page access and cache scope: other-user
+PASS React Query lifecycle: abandoned response, user/sede/range isolation, failure and retry
+staffing-read-client-tests: OK (injected SELECT-only client)

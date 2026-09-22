@@ -3,12 +3,13 @@ import { staffingRulesForSede } from './businessRules';
 import { RULES_VERSION, validDate, dates, type ForecastDataset, type ForecastIssue, type ForecastTask, type ForecastWorker } from './forecastContract';
 import { timeMinutes } from './dataUtils';
 import { scopeIssue } from './forecastIssues';
+import { expandForecastRecurrences } from './forecastRecurrences';
 
 const text = (value: unknown) => typeof value === 'string' ? value : '';
 const numeric = (value: unknown) => value == null || value === '' ? NaN : Number(value);
 const canceled = (row: StaffingRow) => ['cancelled', 'canceled', 'cancelado', 'cancelada', 'deleted', 'no_show', 'block'].includes(text(row.status).toLowerCase());
 
-/** SELECT-only boundary. No reservations are synthesized: this forecast uses created tasks. */
+/** SELECT-only boundary. Tasks and the calendar's recurring commitments; no writes or inferred reservations. */
 export async function readForecastDataset(read: StaffingReadPage, sedeId: string, from: string, to: string, signal?: AbortSignal): Promise<ForecastDataset> {
   if (!sedeId || !validDate(from) || !validDate(to) || to < from || (Date.parse(to) - Date.parse(from)) / 86400000 > 195) throw new Error('Sede o periodo inválidos.');
   const issues: ForecastIssue[] = [];
@@ -51,14 +52,15 @@ export async function readForecastDataset(read: StaffingReadPage, sedeId: string
     for (let i = 0; i < ids.length; i += 100) rows.push(...await all({ table, columns, ...extra, within: { column, ids: ids.slice(i, i + 100) } }));
     return rows;
   }
-  const [properties, people, tasks] = await Promise.all([
+  const [properties, people, tasks, recurring] = await Promise.all([
     all({ table: 'properties', columns: 'id,nombre,sede_id,cliente_id,is_active,duracion_servicio,check_out_predeterminado,check_in_predeterminado', equals: { sede_id: sedeId } }),
     all({ table: 'cleaners', columns: 'id,name,sede_id,is_active,contract_hours_per_week,start_date', equals: { sede_id: sedeId, is_active: true } }),
     all({ table: 'tasks', columns: 'id,propiedad_id,sede_id,date,status,duracion,check_out,check_in,start_time,end_time,type,cleaner_id', equals: { sede_id: sedeId }, since: { column: 'date', value: from }, until: { column: 'date', value: to } }),
+    all({ table: 'recurring_tasks', columns: 'id,name,sede_id,propiedad_id,cleaner_id,type,start_time,end_time,check_out,check_in,duracion,frequency,interval_days,days_of_week,day_of_month,start_date,end_date,is_active', equals: { sede_id: sedeId, is_active: true }, until: { column: 'start_date', value: to } }),
   ]);
   const workerIds = people.map(row => text(row.id));
   const propertyIds = properties.map(row => text(row.id));
-  const [members, roles, rests, absences, maintenance, assignments, preferred] = await Promise.all([
+  const [members, roles, rests, absences, maintenance, assignments, preferred, executions] = await Promise.all([
     children('property_group_assignments', 'id,property_id,property_group_id', 'property_id', propertyIds),
     children('cleaner_group_assignments', 'id,cleaner_id,property_group_id,priority,is_active', 'cleaner_id', workerIds),
     children('worker_fixed_days_off', 'id,cleaner_id,day_of_week,is_active', 'cleaner_id', workerIds, { equals: { is_active: true } }),
@@ -66,6 +68,7 @@ export async function readForecastDataset(read: StaffingReadPage, sedeId: string
     children('worker_maintenance_cleanings', 'id,cleaner_id,days_of_week,start_time,end_time,schedule_type,is_active', 'cleaner_id', workerIds, { equals: { is_active: true } }),
     children('task_assignments', 'id,task_id,cleaner_id', 'task_id', tasks.map(row => text(row.id))),
     children('property_preferred_cleaners', 'id,property_id,cleaner_id,priority', 'property_id', propertyIds),
+    children('recurring_task_executions', 'id,recurring_task_id,execution_day,execution_date,generated_task_id,success', 'recurring_task_id', recurring.filter(r => !r.end_date || String(r.end_date) >= from).map(r => text(r.id)), { equals: { success: true } }),
   ]);
   const groups = await children('property_groups', 'id,name,check_out_time,check_in_time,is_active', 'id', [...new Set(members.map(row => text(row.property_group_id)))]);
   const groupsById = new Map(groups.map(row => [text(row.id), row]));
@@ -116,7 +119,8 @@ export async function readForecastDataset(read: StaffingReadPage, sedeId: string
       excluded: (rules.excludedWorkerIds as readonly string[]).includes(id), contractKnown: Number.isFinite(contract) && contract >= 0 };
   });
   const normalizedTasks: ForecastTask[] = [];
-  for (const row of tasks.filter(r => !canceled(r))) {
+  const commitments = expandForecastRecurrences(recurring, executions, tasks, from, to, issues, sources.get('recurring_task_executions')?.status !== 'unavailable');
+  for (const row of commitments.filter(r => !canceled(r))) {
     const id = text(row.id); const propertyId = text(row.propiedad_id); const property = propertyMap.get(propertyId);
     const owners = [...new Set([text(row.cleaner_id), ...assignments.filter(a => a.task_id === id).map(a => text(a.cleaner_id))].filter(Boolean))];
     if (owners.some(owner => notCount.has(owner))) continue;
@@ -125,8 +129,8 @@ export async function readForecastDataset(read: StaffingReadPage, sedeId: string
     if (!centers.has(centerId)) centers.set(centerId, { id: centerId, name: 'Propiedad no identificada', startMinute: NaN, endMinute: NaN, propertyCount: 0 });
     const center = centers.get(centerId)!;
     const tourism = /turistica|turística|checkout|check-out|salida|estancia|stay/i.test(text(row.type)) && !rules.shiftPropertyIds.includes(propertyId);
-    const minutes = numeric(property?.duracion_servicio);
     const start = timeMinutes(row.start_time), end = timeMinutes(row.end_time);
+    const minutes = tourism ? numeric(property?.duracion_servicio) : numeric(row.duracion) > 0 ? numeric(row.duracion) : Number.isFinite(start) && end > start ? end - start : numeric(property?.duracion_servicio);
     const windowStart = tourism ? timeMinutes(row.check_out ?? property?.check_out_predeterminado) : start;
     const windowEnd = tourism ? timeMinutes(row.check_in ?? property?.check_in_predeterminado) : end;
     if (!property) issue('unmapped-task', 'La tarea no tiene una propiedad autorizada identificada.', 'tasks', 'demand', [id]);
@@ -134,9 +138,9 @@ export async function readForecastDataset(read: StaffingReadPage, sedeId: string
     if (!Number.isFinite(windowStart) || !Number.isFinite(windowEnd)) issue('missing-window', 'La ventana propia de la tarea no está verificada; el horario del centro es solo referencia.', 'tasks', 'capacity', [id]);
     if (owners.length > 1) issue('assignment-conflict', 'La tarea tiene más de una persona o fuentes de asignación contradictorias.', 'task_assignments', 'capacity', [id, ...owners]);
     if (workerId && !workerIds.includes(workerId)) issue('unknown-assignee', 'La persona asignada no está en la plantilla autorizada activa.', 'tasks', 'capacity', [id]);
-    normalizedTasks.push({ id, propertyId, name: text(property?.nombre) || 'Propiedad no identificada', centerId, date: text(row.date), minutes,
+    normalizedTasks.push({ id, propertyId, name: text(property?.nombre) || text(row.name) || 'Propiedad no identificada', centerId, date: text(row.date), minutes,
       windowStart: Number.isFinite(windowStart) ? windowStart : center.startMinute, windowEnd: Number.isFinite(windowEnd) ? windowEnd : center.endMinute,
-      start, end, workerId, ambiguous: owners.length > 1, tourism, status: text(row.status) });
+      start, end, workerId, ambiguous: owners.length > 1, tourism, status: text(row.status), source: row.forecast_source === 'recurring' ? 'recurring' : row.forecast_source === 'materialized' ? 'materialized' : 'task', recurringId: text(row.recurring_id) || undefined });
   }
   const normalizedAbsences = absences.map(row => ({ id: text(row.id), workerId: text(row.cleaner_id), from: text(row.start_date), to: text(row.end_date), type: text(row.absence_type), start: row.start_time == null ? undefined : timeMinutes(row.start_time), end: row.end_time == null ? undefined : timeMinutes(row.end_time) }));
   for (const absence of normalizedAbsences) {

@@ -31,7 +31,7 @@ test('A02/A18: unknown goals and incomplete demand never become confirmed zero/s
 });
 test('A08: successful planner proposal remains explicitly unrecorded', () => {
   const model = buildForecastModel(dataset(), context);
-  assert.equal(coverageLabel(model, viewScope(context, new URLSearchParams())), 'Encaje propuesto · sin guardar');
+  assert.equal(coverageLabel(model, viewScope(context, new URLSearchParams())), 'Propuesta disponible · sin guardar');
   assert.equal(model.ledgers[0].computed + model.ledgers[0].future, 0);
 });
 test('A13: 33-minute unassigned record outside the client window is a concrete conflict', () => {

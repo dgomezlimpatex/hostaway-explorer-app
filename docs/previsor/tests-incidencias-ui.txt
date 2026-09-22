@@ -1,0 +1,115 @@
+
+> vite_react_shadcn_ts@0.0.0 test:forecast:ui-ux
+> node scripts/forecastPresentationTest.mjs && node scripts/forecastUiAcceptanceTest.mjs
+
+TAP version 13
+# Subtest: A03/A12: horizon start is distinct from the week and monthly ledger; boundary months selectable
+ok 1 - A03/A12: horizon start is distinct from the week and monthly ledger; boundary months selectable
+  ---
+  duration_ms: 2.248
+  ...
+# Subtest: A04: scopeQuery opens the exact same weekly pending set, not the full month
+ok 2 - A04: scopeQuery opens the exact same weekly pending set, not the full month
+  ---
+  duration_ms: 27.891
+  ...
+# Subtest: A02/A18: unknown goals and incomplete demand never become confirmed zero/success
+ok 3 - A02/A18: unknown goals and incomplete demand never become confirmed zero/success
+  ---
+  duration_ms: 5.0057
+  ...
+# Subtest: A08: successful planner proposal remains explicitly unrecorded
+ok 4 - A08: successful planner proposal remains explicitly unrecorded
+  ---
+  duration_ms: 4.4997
+  ...
+# Subtest: A13: 33-minute unassigned record outside the client window is a concrete conflict
+ok 5 - A13: 33-minute unassigned record outside the client window is a concrete conflict
+  ---
+  duration_ms: 8.9412
+  ...
+# Subtest: A07/A06: worker margin includes maintenance and real tasks, excludes suggestions and no weekly minimum
+ok 6 - A07/A06: worker margin includes maintenance and real tasks, excludes suggestions and no weekly minimum
+  ---
+  duration_ms: 6.6185
+  ...
+# Subtest: A17: reinforcement is active only in the explicitly simulated week; base is unchanged
+ok 7 - A17: reinforcement is active only in the explicitly simulated week; base is unchanged
+  ---
+  duration_ms: 6.473
+  ...
+# Subtest: A17: weekly reinforcement budget accepts positive decimals without an arbitrary step or ceiling
+ok 8 - A17: weekly reinforcement budget accepts positive decimals without an arbitrary step or ceiling
+  ---
+  duration_ms: 7.7842
+  ...
+# Subtest: A21: report and CSV share the same filtered rows, preserve unknowns and spreadsheet safety
+ok 9 - A21: report and CSV share the same filtered rows, preserve unknowns and spreadsheet safety
+  ---
+  duration_ms: 7.9088
+  ...
+# Subtest: UI-07/UI-14: issues group by cause and unnamed centers keep distinct identity
+ok 10 - UI-07/UI-14: issues group by cause and unnamed centers keep distinct identity
+  ---
+  duration_ms: 0.7873
+  ...
+# Subtest: UI-07: affected records are counted once across repeated issues and property references
+ok 11 - UI-07: affected records are counted once across repeated issues and property references
+  ---
+  duration_ms: 0.6233
+  ...
+# Subtest: UI-10: closing a task restores its person list and filters, then closes to the original team filters
+ok 12 - UI-10: closing a task restores its person list and filters, then closes to the original team filters
+  ---
+  duration_ms: 0.2354
+  ...
+# Subtest: A07: weekly paid services follow the registered employment dates and invalid intervals remain unknown
+ok 13 - A07: weekly paid services follow the registered employment dates and invalid intervals remain unknown
+  ---
+  duration_ms: 8.3138
+  ...
+# Subtest: A21: report order and its CSV rows are identical without sorting unknown balances as zero
+ok 14 - A21: report order and its CSV rows are identical without sorting unknown balances as zero
+  ---
+  duration_ms: 5.2418
+  ...
+1..14
+# tests 14
+# suites 0
+# pass 14
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 107.9976
+PASS A01/A02: Inicio prioriza datos y separa objetivos pendientes de evaluación
+PASS A03/A04: contador semanal y destino coinciden sin cambiar al mes
+PASS A03/A08/A13/A15: tarea, ventana, propuesta, perfil de octubre y enlace operativo
+PASS A05/A19/A23: filtros, exclusiones, apertura con teclado y retorno de foco
+PASS UI-10: tareas filtrables; apertura y regreso al perfil mantienen fecha, búsqueda y filtro del equipo
+PASS UI-07: recuento de registros afectados, incidencias desplegadas bajo demanda y enlace reconocible
+PASS A11/A17: simulación semanal, validación decimal y restauración conservando reserva
+PASS A07/A18/A21: datos desconocidos sin anillo, descarga real CSV con contexto y filtros
+PASS A20: cancelación y reintento sin resultados anteriores aparentando vigencia
+PASS A02/A12: mes fuera del horizonte sin falsos ceros; consulta explícita del mes completo
+PASS A19: búsqueda de centros vacía recuperable sin perder periodo
+PASS A23/A24: gráfico consultable por teclado y tabla; pasado y futuro diferenciados
+PASS A22: siete pantallas en 390/768/1024/1440 sin desbordamiento global; menú móvil y filtros
+PASS A07/A13/A22: agenda diaria, calendario mensual y detalles móviles distintos y legibles
+PASS A22/A23: aumento de texto al 200 % en las siete pantallas, en móvil y escritorio
+PASS A23: nueve pares de color de texto ≥4,5:1; no sustituye auditoría accesible con sesión real
+PASS R03/N05: evaluación pendiente y horas por completar tienen accesos separados
+PASS R10: subtotal incluye duraciones válidas del día incompleto y enlace abre exactamente su bloqueo
+PASS R04: fechas futuras separadas del histórico, motivo local y acceso al conjunto completo
+PASS R05/R11: centro sin tareas no hereda estados de tareas ajenas ni ofrece cero candidatos
+PASS R07/R08: cero encajes destacado junto a simulación; capacidad real sin mejora ficticia; decimal español
+PASS R08: contadores reconciliados por identidad y propuestas ordenadas por hora
+PASS R06: desglose diario consultable con bloqueos, cómputo de servicios y límite semanal
+PASS R12: el servicio incluido en el balance también aparece con su franja en disponibilidad
+PASS R13: semana partida da acceso a ambos balances y permite seleccionar el mes
+PASS R11: avisos con ámbito y acción principal; contadores irrelevantes ocultos
+PASS R09/R13/móvil: semanas parciales sin trazos engañosos, tendencia completa, tarjetas mensuales y Escape
+PASS N03: cuatro duraciones abren cuatro registros en cuatro fechas; detalle exacto y calendario completo secundario
+PASS N02: once registros por corregir con propuesta frente a cero sin capacidad; misma población hasta el detalle
+PASS N01: compromiso recurrente reconocible en balance, disponibilidad y detalle sin escrituras
+PASS N05: meses antes de problemas diarios, dos cifras iguales y mes integrado; filtros correctos en cuatro anchos

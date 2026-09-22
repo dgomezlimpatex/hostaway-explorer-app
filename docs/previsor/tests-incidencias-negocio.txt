@@ -1,0 +1,59 @@
+
+> vite_react_shadcn_ts@0.0.0 test:forecast:incidents
+> node scripts/forecastIncidentsTest.mjs
+
+TAP version 13
+# Subtest: N01: future recurring hotel commitment counts and blocks once, outside tourism demand
+ok 1 - N01: future recurring hotel commitment counts and blocks once, outside tourism demand
+  ---
+  duration_ms: 31.4354
+  ...
+# Subtest: N01: materialized, cancelled and handled occurrences suppress virtual duplicates
+ok 2 - N01: materialized, cancelled and handled occurrences suppress virtual duplicates
+  ---
+  duration_ms: 22.5402
+  ...
+# Subtest: N01: recurrence source failure cannot appear as verified zero commitments
+ok 3 - N01: recurrence source failure cannot appear as verified zero commitments
+  ---
+  duration_ms: 12.7539
+  ...
+# Subtest: N02: unassigned bad recorded time with feasible proposal is not lack of capacity
+ok 4 - N02: unassigned bad recorded time with feasible proposal is not lack of capacity
+  ---
+  duration_ms: 16.0825
+  ...
+# Subtest: N01: execution day owns identity across Madrid offset; missing links stay unverified
+ok 5 - N01: execution day owns identity across Madrid offset; missing links stay unverified
+  ---
+  duration_ms: 9.3337
+  ...
+# Subtest: N01: legacy execution timestamps match the calendar and do not suppress future commitments
+ok 6 - N01: legacy execution timestamps match the calendar and do not suppress future commitments
+  ---
+  duration_ms: 7.9992
+  ...
+# Subtest: N01: recurrence has calendar parity across weekly/daily/monthly intervals, bounds and cancellations
+ok 7 - N01: recurrence has calendar parity across weekly/daily/monthly intervals, bounds and cancellations
+  ---
+  duration_ms: 3.3066
+  ...
+# Subtest: N01: variable shift duration uses its registered service, tourism keeps property duration
+ok 8 - N01: variable shift duration uses its registered service, tourism keeps property duration
+  ---
+  duration_ms: 4.2951
+  ...
+# Subtest: N02: incomplete records and historical work do not become a reinforcement workload
+ok 9 - N02: incomplete records and historical work do not become a reinforcement workload
+  ---
+  duration_ms: 5.9233
+  ...
+1..9
+# tests 9
+# suites 0
+# pass 9
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 130.252

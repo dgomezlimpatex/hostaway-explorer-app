@@ -1,0 +1,409 @@
+{
+  "checkedAt": "2026-09-22T15:14:14.162Z",
+  "source": "SELECT de fuentes reales de la sede; lector y motor ejecutados localmente con copia privada, sin sesión de navegador",
+  "context": {
+    "sedeId": "1e0759ec-5e63-4edd-9dad-e493c715bbba",
+    "month": "2026-09",
+    "horizon": 3,
+    "week": "2026-10-19",
+    "center": "",
+    "scenario": "known",
+    "asOf": "2026-09-22T12:00",
+    "reinforcementFrom": "2026-10-19",
+    "reinforcementTo": "2026-10-25"
+  },
+  "sourceCounts": {
+    "tasks": 1473,
+    "cleaners": 28,
+    "properties": 176,
+    "property_groups": 21,
+    "recurring_tasks": 4,
+    "worker_absences": 12,
+    "task_assignments": 925,
+    "worker_fixed_days_off": 38,
+    "cleaner_group_assignments": 87,
+    "recurring_task_executions": 158,
+    "property_group_assignments": 111,
+    "property_preferred_cleaners": 252,
+    "worker_maintenance_cleanings": 19
+  },
+  "baseCalculationMs": 4446,
+  "N01": {
+    "ledger": {
+      "workerId": "0539c6ca-92f1-4429-acd4-46c0d13f2ea2",
+      "month": "2026-10",
+      "target": 5214,
+      "adjustment": 0,
+      "computed": 0,
+      "future": 7020,
+      "other": 7020,
+      "tourism": 0,
+      "proposed": 0,
+      "missing": 0,
+      "status": "No verificable"
+    },
+    "october19": [
+      {
+        "id": "recurring_fc27f47d-9d66-48a1-8dae-b9c5714691e3_2026-10-19",
+        "source": "recurring",
+        "start": 570,
+        "end": 840,
+        "minutes": 270
+      }
+    ],
+    "september22": [
+      {
+        "id": "aaebde0f-d464-4eb2-8500-0e5208ea86a3",
+        "source": "materialized",
+        "start": 570,
+        "end": 840,
+        "minutes": 270
+      }
+    ],
+    "overlappingCandidateExcluded": true
+  },
+  "N02": {
+    "task": {
+      "id": "01f808ee-fde0-4e27-93db-3789b6896816",
+      "date": "2026-10-19",
+      "minutes": 33,
+      "start": 660,
+      "end": 693,
+      "windowStart": 720,
+      "windowEnd": 900
+    },
+    "recordDetails": [
+      {
+        "id": "01f808ee-fde0-4e27-93db-3789b6896816",
+        "date": "2026-10-19",
+        "name": "101 Huésped",
+        "records": [
+          "El horario registrado queda fuera de la ventana del cliente."
+        ],
+        "labels": [
+          "Sin asignar",
+          "Registro por corregir",
+          "Propuesta disponible · sin guardar"
+        ]
+      },
+      {
+        "id": "5da82bc9-5233-4629-bede-ff9cfa1b012d",
+        "date": "2026-10-20",
+        "name": "101",
+        "records": [
+          "El horario registrado queda fuera de la ventana del cliente."
+        ],
+        "labels": [
+          "Sin asignar",
+          "Registro por corregir",
+          "Propuesta disponible · sin guardar"
+        ]
+      },
+      {
+        "id": "683a906f-4d99-419a-9817-8a8b89eca9f9",
+        "date": "2026-10-20",
+        "name": "102",
+        "records": [
+          "El horario registrado queda fuera de la ventana del cliente."
+        ],
+        "labels": [
+          "Sin asignar",
+          "Registro por corregir",
+          "Propuesta disponible · sin guardar"
+        ]
+      },
+      {
+        "id": "ebc2dfb1-e7ec-4cec-9cc8-e3be5ffeb382",
+        "date": "2026-10-20",
+        "name": "301  ",
+        "records": [
+          "El horario registrado queda fuera de la ventana del cliente."
+        ],
+        "labels": [
+          "Sin asignar",
+          "Registro por corregir",
+          "Propuesta disponible · sin guardar"
+        ]
+      },
+      {
+        "id": "2146eb2c-c065-4aad-af9f-6b614c9c3a95",
+        "date": "2026-10-20",
+        "name": "401",
+        "records": [
+          "El horario registrado queda fuera de la ventana del cliente."
+        ],
+        "labels": [
+          "Sin asignar",
+          "Registro por corregir",
+          "Propuesta disponible · sin guardar"
+        ]
+      },
+      {
+        "id": "9c586af0-f4c5-4117-938e-0ea36faaa9d0",
+        "date": "2026-10-20",
+        "name": "501",
+        "records": [
+          "El horario registrado queda fuera de la ventana del cliente."
+        ],
+        "labels": [
+          "Sin asignar",
+          "Registro por corregir",
+          "Propuesta disponible · sin guardar"
+        ]
+      },
+      {
+        "id": "cfc80594-0f38-4174-b77e-ec40a1f43386",
+        "date": "2026-10-20",
+        "name": "502",
+        "records": [
+          "El horario registrado queda fuera de la ventana del cliente."
+        ],
+        "labels": [
+          "Sin asignar",
+          "Registro por corregir",
+          "Propuesta disponible · sin guardar"
+        ]
+      },
+      {
+        "id": "recurring_491098be-84ab-4351-9511-6c15f5d269a6_2026-10-23",
+        "date": "2026-10-23",
+        "name": "Jornada Hotel SC (Hasta finalizar habs. asignadas)",
+        "records": [
+          "El horario registrado queda fuera de la ventana del cliente."
+        ],
+        "labels": [
+          "Sin asignar",
+          "Registro por corregir",
+          "Datos insuficientes"
+        ]
+      },
+      {
+        "id": "32a52ffb-ab46-44d8-b2f5-c031b485abbe",
+        "date": "2026-10-23",
+        "name": "101 Huésped",
+        "records": [
+          "El horario registrado queda fuera de la ventana del cliente."
+        ],
+        "labels": [
+          "Sin asignar",
+          "Registro por corregir",
+          "Propuesta disponible · sin guardar"
+        ]
+      },
+      {
+        "id": "e2a01bda-f160-479a-be51-a9da35261e50",
+        "date": "2026-10-24",
+        "name": "101",
+        "records": [
+          "El horario registrado queda fuera de la ventana del cliente."
+        ],
+        "labels": [
+          "Sin asignar",
+          "Registro por corregir",
+          "Propuesta disponible · sin guardar"
+        ]
+      },
+      {
+        "id": "6864f577-105e-4890-814f-2c78a7e3ab19",
+        "date": "2026-10-24",
+        "name": "501",
+        "records": [
+          "El horario registrado queda fuera de la ventana del cliente."
+        ],
+        "labels": [
+          "Sin asignar",
+          "Registro por corregir",
+          "Propuesta disponible · sin guardar"
+        ]
+      },
+      {
+        "id": "d1c38fb9-dc6d-4b71-bf7d-573982a1fb33",
+        "date": "2026-10-25",
+        "name": "101 Huésped",
+        "records": [
+          "El horario registrado queda fuera de la ventana del cliente."
+        ],
+        "labels": [
+          "Sin asignar",
+          "Registro por corregir",
+          "Propuesta disponible · sin guardar"
+        ]
+      }
+    ],
+    "labels": [
+      "Sin asignar",
+      "Registro por corregir",
+      "Propuesta disponible · sin guardar"
+    ],
+    "proposal": {
+      "taskId": "01f808ee-fde0-4e27-93db-3789b6896816",
+      "workerId": "108a5216-c3b8-45ff-a1bc-716cd5d27679",
+      "centerId": "67f92093-d5cb-4fb9-bff9-a7058e755bd8",
+      "date": "2026-10-19",
+      "start": 720,
+      "end": 753,
+      "minutes": 33,
+      "real": false
+    },
+    "proposalWorker": "DAIANE GONÇALVES LEMES",
+    "week": {
+      "review": [
+        "01f808ee-fde0-4e27-93db-3789b6896816",
+        "5da82bc9-5233-4629-bede-ff9cfa1b012d",
+        "683a906f-4d99-419a-9817-8a8b89eca9f9",
+        "ebc2dfb1-e7ec-4cec-9cc8-e3be5ffeb382",
+        "2146eb2c-c065-4aad-af9f-6b614c9c3a95",
+        "9c586af0-f4c5-4117-938e-0ea36faaa9d0",
+        "cfc80594-0f38-4174-b77e-ec40a1f43386",
+        "recurring_491098be-84ab-4351-9511-6c15f5d269a6_2026-10-23",
+        "32a52ffb-ab46-44d8-b2f5-c031b485abbe",
+        "e2a01bda-f160-479a-be51-a9da35261e50",
+        "6864f577-105e-4890-814f-2c78a7e3ab19",
+        "d1c38fb9-dc6d-4b71-bf7d-573982a1fb33"
+      ],
+      "recordConflicts": [
+        "01f808ee-fde0-4e27-93db-3789b6896816",
+        "5da82bc9-5233-4629-bede-ff9cfa1b012d",
+        "683a906f-4d99-419a-9817-8a8b89eca9f9",
+        "ebc2dfb1-e7ec-4cec-9cc8-e3be5ffeb382",
+        "2146eb2c-c065-4aad-af9f-6b614c9c3a95",
+        "9c586af0-f4c5-4117-938e-0ea36faaa9d0",
+        "cfc80594-0f38-4174-b77e-ec40a1f43386",
+        "recurring_491098be-84ab-4351-9511-6c15f5d269a6_2026-10-23",
+        "32a52ffb-ab46-44d8-b2f5-c031b485abbe",
+        "e2a01bda-f160-479a-be51-a9da35261e50",
+        "6864f577-105e-4890-814f-2c78a7e3ab19",
+        "d1c38fb9-dc6d-4b71-bf7d-573982a1fb33"
+      ],
+      "recordsWithFit": [
+        "01f808ee-fde0-4e27-93db-3789b6896816",
+        "5da82bc9-5233-4629-bede-ff9cfa1b012d",
+        "683a906f-4d99-419a-9817-8a8b89eca9f9",
+        "ebc2dfb1-e7ec-4cec-9cc8-e3be5ffeb382",
+        "2146eb2c-c065-4aad-af9f-6b614c9c3a95",
+        "9c586af0-f4c5-4117-938e-0ea36faaa9d0",
+        "cfc80594-0f38-4174-b77e-ec40a1f43386",
+        "32a52ffb-ab46-44d8-b2f5-c031b485abbe",
+        "e2a01bda-f160-479a-be51-a9da35261e50",
+        "6864f577-105e-4890-814f-2c78a7e3ab19",
+        "d1c38fb9-dc6d-4b71-bf7d-573982a1fb33"
+      ],
+      "noFitBefore": [],
+      "noFitAfter": [],
+      "insufficient": [
+        "recurring_491098be-84ab-4351-9511-6c15f5d269a6_2026-10-23"
+      ]
+    }
+  },
+  "N03": {
+    "unknownDuration": [
+      {
+        "id": "139042d4-0cb6-4971-a70a-1f04dc260092",
+        "date": "2026-09-04",
+        "name": "Propiedad no identificada",
+        "source": "materialized",
+        "recurringId": "491098be-84ab-4351-9511-6c15f5d269a6"
+      },
+      {
+        "id": "973c9209-4d49-4e19-a381-8a2c25b976a6",
+        "date": "2026-09-11",
+        "name": "Propiedad no identificada",
+        "source": "materialized",
+        "recurringId": "491098be-84ab-4351-9511-6c15f5d269a6"
+      },
+      {
+        "id": "b79fbabd-6b30-4b8f-9199-d341f2952575",
+        "date": "2026-09-18",
+        "name": "Propiedad no identificada",
+        "source": "materialized",
+        "recurringId": "491098be-84ab-4351-9511-6c15f5d269a6"
+      },
+      {
+        "id": "0258f0c9-c21d-4e8e-b316-5787bd66510a",
+        "date": "2026-09-25",
+        "name": "Propiedad no identificada",
+        "source": "materialized",
+        "recurringId": "491098be-84ab-4351-9511-6c15f5d269a6"
+      },
+      {
+        "id": "recurring_491098be-84ab-4351-9511-6c15f5d269a6_2026-10-02",
+        "date": "2026-10-02",
+        "name": "Jornada Hotel SC (Hasta finalizar habs. asignadas)",
+        "source": "recurring",
+        "recurringId": "491098be-84ab-4351-9511-6c15f5d269a6"
+      },
+      {
+        "id": "recurring_491098be-84ab-4351-9511-6c15f5d269a6_2026-10-09",
+        "date": "2026-10-09",
+        "name": "Jornada Hotel SC (Hasta finalizar habs. asignadas)",
+        "source": "recurring",
+        "recurringId": "491098be-84ab-4351-9511-6c15f5d269a6"
+      },
+      {
+        "id": "recurring_491098be-84ab-4351-9511-6c15f5d269a6_2026-10-16",
+        "date": "2026-10-16",
+        "name": "Jornada Hotel SC (Hasta finalizar habs. asignadas)",
+        "source": "recurring",
+        "recurringId": "491098be-84ab-4351-9511-6c15f5d269a6"
+      },
+      {
+        "id": "recurring_491098be-84ab-4351-9511-6c15f5d269a6_2026-10-23",
+        "date": "2026-10-23",
+        "name": "Jornada Hotel SC (Hasta finalizar habs. asignadas)",
+        "source": "recurring",
+        "recurringId": "491098be-84ab-4351-9511-6c15f5d269a6"
+      },
+      {
+        "id": "recurring_491098be-84ab-4351-9511-6c15f5d269a6_2026-10-30",
+        "date": "2026-10-30",
+        "name": "Jornada Hotel SC (Hasta finalizar habs. asignadas)",
+        "source": "recurring",
+        "recurringId": "491098be-84ab-4351-9511-6c15f5d269a6"
+      },
+      {
+        "id": "recurring_491098be-84ab-4351-9511-6c15f5d269a6_2026-11-06",
+        "date": "2026-11-06",
+        "name": "Jornada Hotel SC (Hasta finalizar habs. asignadas)",
+        "source": "recurring",
+        "recurringId": "491098be-84ab-4351-9511-6c15f5d269a6"
+      },
+      {
+        "id": "recurring_491098be-84ab-4351-9511-6c15f5d269a6_2026-11-13",
+        "date": "2026-11-13",
+        "name": "Jornada Hotel SC (Hasta finalizar habs. asignadas)",
+        "source": "recurring",
+        "recurringId": "491098be-84ab-4351-9511-6c15f5d269a6"
+      },
+      {
+        "id": "recurring_491098be-84ab-4351-9511-6c15f5d269a6_2026-11-20",
+        "date": "2026-11-20",
+        "name": "Jornada Hotel SC (Hasta finalizar habs. asignadas)",
+        "source": "recurring",
+        "recurringId": "491098be-84ab-4351-9511-6c15f5d269a6"
+      },
+      {
+        "id": "recurring_491098be-84ab-4351-9511-6c15f5d269a6_2026-11-27",
+        "date": "2026-11-27",
+        "name": "Jornada Hotel SC (Hasta finalizar habs. asignadas)",
+        "source": "recurring",
+        "recurringId": "491098be-84ab-4351-9511-6c15f5d269a6"
+      }
+    ],
+    "days": [
+      "2026-09-04",
+      "2026-09-11",
+      "2026-09-18",
+      "2026-09-25",
+      "2026-10-02",
+      "2026-10-09",
+      "2026-10-16",
+      "2026-10-23",
+      "2026-10-30",
+      "2026-11-06",
+      "2026-11-13",
+      "2026-11-20",
+      "2026-11-27"
+    ]
+  },
+  "authenticatedBrowserQA": false
+}

@@ -82,6 +82,7 @@
     "test:staffing:browser": "node scripts/staffingVisualTest.mjs && node scripts/forecastQueryTest.mjs && node scripts/staffingTeamParityTest.mjs && node scripts/staffingBalanceTest.mjs && node scripts/staffingSsrTest.mjs",
     "test:forecast": "node scripts/forecastContractTest.mjs && node scripts/forecastAccessTest.mjs && node scripts/forecastQueryTest.mjs && node scripts/staffingReadClientTest.mjs",
     "preview:forecast": "node scripts/forecastPreview.mjs",
+    "test:forecast:incidents": "node scripts/forecastIncidentsTest.mjs",
     "test:forecast:revision": "node scripts/forecastRevisionTest.mjs",
     "test:forecast:ui-ux": "node scripts/forecastPresentationTest.mjs && node scripts/forecastUiAcceptanceTest.mjs"
   },
