@@ -1,4 +1,5 @@
 import { addCivilDays, addCivilMonths, monthEnd } from './monthly';
+import { issueDuring, scopeIssue } from './forecastIssues';
 import { dates, monday, weekday, monthDates, validDate, type ForecastContext, type ForecastDataset, type ForecastModel, type ForecastWorker, type ForecastTask, type ForecastPlacement, type ForecastIssue, type WorkerMonthLedger, type ForecastDay, type ForecastPeriod } from './forecastContract';
 
 const sum = <T,>(rows: T[], value: (row: T) => number) => rows.reduce((total, row) => total + (Number.isFinite(value(row)) ? value(row) : 0), 0);
@@ -47,7 +48,7 @@ function paidBlocks(data: ForecastDataset, worker: ForecastWorker, date: string)
 }
 function available(data: ForecastDataset, worker: ForecastWorker, task: ForecastTask, rests: ForecastModel['rests']) {
   return usable(worker) && active(worker, task.date) && !resting(worker, task.date, rests) && eligibleCenter(worker, task.centerId)
-    && !data.issues.some(i => i.impact === 'capacity' && (!i.date || i.date === task.date) && (i.ids.includes(worker.id) || i.ids.includes(task.id) || i.ids.includes(task.propertyId) || !i.ids.length));
+    && !data.issues.some(i => i.impact === 'capacity' && issueDuring(i, task.date) && (i.ids.includes(worker.id) || i.workerId === worker.id || i.ids.includes(task.id) || i.ids.includes(task.propertyId) || !i.ids.length));
 }
 function validTask(task: ForecastTask) { return !task.ambiguous && task.minutes > 0 && Number.isFinite(task.minutes) && task.windowStart >= 0 && task.windowEnd <= 1440 && task.windowEnd - task.windowStart >= task.minutes; }
 function fits(data: ForecastDataset, worker: ForecastWorker, task: ForecastTask, start: number, placements: ForecastPlacement[], rests: ForecastModel['rests']) {
@@ -59,11 +60,6 @@ function fits(data: ForecastDataset, worker: ForecastWorker, task: ForecastTask,
   const route = effective.filter(p => p.workerId === worker.id && p.date === task.date && p.taskId !== task.id);
   for (const p of route) {
     if (start < p.end && end > p.start) return false;
-  }
-  const ordered = [...route, { start, end, centerId: task.centerId }].sort((a, b) => a.start - b.start);
-  for (let i = 1; i < ordered.length; i++) {
-    const previous = ordered[i - 1], next = ordered[i];
-    if (previous.centerId === next.centerId) continue;
   }
   const week = monday(task.date);
   const weekEnd = addCivilDays(week, 6);
@@ -110,7 +106,7 @@ function buildLedgers(data: ForecastDataset, context: ForecastContext, placement
       const computed = sum(assigned.filter(t => completeByTime(t.date, t.end)), t => t.minutes) + sum(activeDays, date => union(paidIntervals(data, worker, date).filter(b => completeByTime(date, b.end))));
       const future = sum(assigned.filter(t => Number.isFinite(t.end) && !completeByTime(t.date, t.end)), t => t.minutes) + sum(activeDays, date => union(paidIntervals(data, worker, date).filter(b => !completeByTime(date, b.end))));
       const other = sum(assigned.filter(t => !t.tourism), t => t.minutes) + sum(activeDays, date => paidBlocks(data, worker, date));
-      const unknown = activeDays.length !== days.length || !worker.contractKnown || allAssigned.some(t => !Number.isFinite(t.end) || !(t.minutes > 0) || t.ambiguous) || issues.some(i => i.impact !== 'information' && (i.ids.includes(worker.id) || i.workerId === worker.id || !i.ids.length || allAssigned.some(t => i.ids.includes(t.id))));
+      const unknown = activeDays.length !== days.length || !worker.contractKnown || allAssigned.some(t => !Number.isFinite(t.end) || !(t.minutes > 0) || t.ambiguous) || issues.some(i => i.impact !== 'information' && issueDuring(i, days[0], days.at(-1)!) && (i.ids.includes(worker.id) || i.workerId === worker.id || !i.ids.length || allAssigned.some(t => i.ids.includes(t.id))));
       ledgers.push({ workerId: worker.id, month, target, adjustment, computed, future, other, tourism: sum(assigned.filter(t => t.tourism), t => t.minutes),
         proposed: sum(placements.filter(p => !p.real && p.workerId === worker.id && p.date.startsWith(month)), p => p.minutes), missing: Math.max(0, target - computed - future),
         status: worker.excluded ? 'Excluido' : !worker.contractKnown ? 'No verificable' : worker.weeklyMinutes === 0 ? 'Sin jornada' : unknown ? 'No verificable' : computed + future >= target - 1e-8 ? 'Cumple' : 'Faltan horas' });
@@ -122,8 +118,8 @@ function buildLedgers(data: ForecastDataset, context: ForecastContext, placement
 /** One pure model for every production screen. Scheduling suggestions never become actual work. */
 export function buildForecastModel(input: ForecastDataset, context: ForecastContext, reinforcementHours = 0): ForecastModel {
   if (input.sedeId !== context.sedeId) throw new Error('La sede del resultado no corresponde a la consulta.');
-  if (!Number.isFinite(reinforcementHours) || reinforcementHours < 0 || !Number.isSafeInteger(reinforcementHours * 4)) throw new Error('Refuerzo inválido: indica horas positivas en intervalos de 0,25 h.');
-  const data: ForecastDataset = { ...input, workers: input.workers.map(w => ({ ...w, blockedSlots: [...(w.blockedSlots ?? [])] })), issues: [...input.issues] };
+  if (!Number.isFinite(reinforcementHours) || reinforcementHours < 0 || !Number.isFinite(reinforcementHours * 60 * 4.345)) throw new Error('Refuerzo inválido: indica una cantidad finita de horas positivas.');
+  const data: ForecastDataset = { ...input, workers: input.workers.map(w => ({ ...w, blockedSlots: [...(w.blockedSlots ?? [])] })), issues: input.issues.map(i => scopeIssue(i, input)) };
   const cache = new Map<string, number>(); paidCache.set(data, cache);
   const tasksByDate = new Map<string, ForecastTask[]>();
   for (const task of data.tasks) tasksByDate.set(task.date, [...(tasksByDate.get(task.date) ?? []), task]);
@@ -147,7 +143,7 @@ export function buildForecastModel(input: ForecastDataset, context: ForecastCont
       const score = (restDate: string) => Math.max(...dates(week, addCivilDays(week, 6)).map(date => {
         const daily = tasksByDate.get(date) ?? [];
         const demand = sum(daily, t => t.minutes);
-        const capacity = sum(data.workers.filter(w => usable(w) && active(w, date) && !resting(w, date, rests) && !(w.id === worker.id && date === restDate)), w => {
+        const capacity = sum(data.workers.filter(w => w.id !== 'hypothetical' && usable(w) && active(w, date) && !resting(w, date, rests) && !(w.id === worker.id && date === restDate)), w => {
           const windows = daily.filter(t => eligibleCenter(w, t.centerId)).map(t => ({ start: t.windowStart, end: t.windowEnd })).filter(s => s.end > s.start);
           const busy = blocks(data, w, date);
           const free = Math.max(0, union([...windows, ...busy]) - union(busy));
@@ -159,7 +155,7 @@ export function buildForecastModel(input: ForecastDataset, context: ForecastCont
       const scores = new Map(options.map(date => [date, score(date)]));
       options.sort((a, b) => scores.get(a)! - scores.get(b)! || sum(tasksByDate.get(a) ?? [], t => t.minutes) - sum(tasksByDate.get(b) ?? [], t => t.minutes) || a.localeCompare(b));
       if (options[0]) rests.push({ workerId: worker.id, date: options[0] });
-      else issues.push({ code: 'rest-unresolved', message: 'No hay un día libre sin compromisos reales; revisar la semana.', source: 'tasks', ids: [worker.id], workerId: worker.id, date: week, impact: 'capacity' });
+      else issues.push({ code: 'rest-unresolved', message: 'No hay un día libre sin compromisos reales; revisar la semana.', source: 'tasks', ids: [worker.id], workerId: worker.id, from: week, to: addCivilDays(week, 6), impact: 'capacity' });
     }
   }
   const placements: ForecastPlacement[] = [];
@@ -189,64 +185,80 @@ export function buildForecastModel(input: ForecastDataset, context: ForecastCont
   const existing = { ...data, workers: data.workers.filter(w => w.id !== 'hypothetical') };
   const reinforcement = { ...data, workers: data.workers.filter(w => w.id === 'hypothetical') };
   paidCache.set(existing, cache); paidCache.set(reinforcement, cache);
-  for (const task of tasks.filter(t => (!t.workerId || !validated.has(t.id)) && !t.ambiguous).sort((a, b) => a.date.localeCompare(b.date) || (a.windowEnd - a.windowStart - a.minutes) - (b.windowEnd - b.windowStart - b.minutes) || a.id.localeCompare(b.id))) {
+  const pendingTasks = tasks.filter(t => (!t.workerId || !validated.has(t.id)) && !t.ambiguous && t.tourism).sort((a, b) => a.date.localeCompare(b.date) || (a.windowEnd - a.windowStart - a.minutes) - (b.windowEnd - b.windowStart - b.minutes) || a.id.localeCompare(b.id));
+  // Complete the existing-team plan before attempting any hypothetical capacity.
+  for (const pool of reinforcementHours > 0 ? [existing, reinforcement] : [existing]) for (const task of pendingTasks) {
+    if (validated.has(task.id)) continue;
     if (!validTask(task)) { addIssue('invalid-window', 'La tarea no tiene una duración y ventana verificables.', task); continue; }
     if (task.date < context.asOf.slice(0, 10)) continue;
-    const options = findCandidates(existing, task, placements, rests, ledgers, context.asOf);
-    const best = options[0] ?? (reinforcementHours > 0 ? findCandidates(reinforcement, task, placements, rests, ledgers, context.asOf)[0] : undefined);
+    const best = findCandidates(pool, task, placements, rests, ledgers, context.asOf)[0];
     if (!best) continue;
     placements.push({ taskId: task.id, workerId: best.worker.id, centerId: task.centerId, date: task.date, start: best.start, end: best.end, minutes: task.minutes, real: false });
     validated.add(task.id);
     ledgers = ledgers.map(l => l.workerId === best.worker.id && l.month === task.date.slice(0, 7) ? { ...l, missing: Math.max(0, l.missing - task.minutes) } : l);
   }
   ledgers = buildLedgers(data, context, placements, rests, issues).filter(l => l.workerId !== 'hypothetical');
-  const selectedTasks = tasks.filter(t => !context.center || t.centerId === context.center);
+  const selectedTasks = tasks.filter(t => t.tourism && (!context.center || t.centerId === context.center));
   const days: ForecastDay[] = dates(data.from, data.to).map(date => {
     const daily = selectedTasks.filter(t => t.date === date);
-    const otherServices = context.center ? 0 : sum(data.workers.filter(w => !w.excluded), w => paidBlocks(data, w, date));
-    const incomplete = daily.some(t => !(t.minutes > 0));
+    const incomplete = daily.some(t => !(t.minutes > 0) || !Number.isFinite(t.minutes));
     // Maintenance and other paid blocks reduce worker capacity, but are not demand in the forecast calendar.
-    return { date, known: incomplete ? NaN : sum(daily, t => t.minutes), tourism: incomplete ? NaN : sum(daily.filter(t => t.tourism), t => t.minutes), other: sum(daily.filter(t => !t.tourism), t => t.minutes), capacity: otherServices, uncovered: incomplete ? NaN : sum(daily.filter(t => !validated.has(t.id)), t => t.minutes), unassigned: daily.filter(t => !t.workerId).length, travel: 0 };
+    return { date, known: incomplete ? NaN : sum(daily, t => t.minutes), tourism: incomplete ? NaN : sum(daily, t => t.minutes), other: 0, capacity: 0, uncovered: incomplete ? NaN : sum(daily.filter(t => !validated.has(t.id)), t => t.minutes), unassigned: daily.filter(t => !t.workerId).length, travel: 0 };
   });
+  const capacityRows: NonNullable<ForecastModel['capacityRows']> = [];
   for (let week = monday(data.from); week <= data.to; week = addCivilDays(week, 7)) {
     const weekDays = days.filter(d => monday(d.date) === week);
-    for (const worker of data.workers.filter(usable)) {
-      const rows = effectivePlacements(placements).filter(p => p.workerId === worker.id && monday(p.date) === week);
-      const paid = sum(dates(week, addCivilDays(week, 6)), date => paidBlocks(data, worker, date));
+    for (const worker of data.workers.filter(w => usable(w) && w.id !== 'hypothetical')) {
+      // Reference capacity is derived from recorded commitments; proposals never inflate it.
+      const rows = placements.filter(p => p.real && p.workerId === worker.id && monday(p.date) === week);
+      const services = rows.filter(p => !tasks.find(t => t.id === p.taskId)?.tourism);
+      const paid = sum(dates(week, addCivilDays(week, 6)), date => paidBlocks(data, worker, date)) + sum(services, p => p.minutes);
       const windows = data.centers.filter(c => (!context.center || c.id === context.center) && eligibleCenter(worker, c.id));
-      const potentials = weekDays.map(day => {
-        if (!active(worker, day.date) || resting(worker, day.date, rests)) return 0;
-        if (data.issues.some(i => i.impact === 'capacity' && (!i.date || i.date === day.date) && (!i.ids.length || i.ids.includes(worker.id)))) return 0;
-        const busy = [...blocks(data, worker, day.date), ...rows.filter(p => p.date === day.date && context.center && p.centerId !== context.center)];
-        const spans = windows.flatMap(c => worker.id === 'hypothetical' ? [{ start: c.startMinute, end: c.endMinute }] : worker.availability.filter(a => a.day === weekday(day.date)).map(a => ({ start: Math.max(c.startMinute, a.startMinute), end: Math.min(c.endMinute, a.endMinute) }))).filter(w => w.end > w.start);
-        const all = [...spans, ...busy];
-        const route = rows.filter(p => p.date === day.date).sort((a, b) => a.start - b.start);
-        return Math.max(0, union(all) - union(busy));
+      const breakdown = weekDays.map(day => {
+        const row = { workerId: worker.id, date: day.date, windows: 0, rest: 0, absence: 0, services: 0, otherCenters: 0, unverified: 0, weeklyReduction: 0, capacity: 0, paid: paidBlocks(data, worker, day.date) + sum(services.filter(p => p.date === day.date), p => p.minutes) };
+        if (!active(worker, day.date)) return row;
+        const spans = windows.flatMap(c => worker.availability.filter(a => a.day === weekday(day.date)).map(a => ({ start: Math.max(c.startMinute, a.startMinute), end: Math.min(c.endMinute, a.endMinute) }))).filter(w => w.end > w.start);
+        row.windows = union(spans);
+        if (resting(worker, day.date, rests)) { row.rest = row.windows; return row; }
+        const busy: { start: number; end: number }[] = [];
+        const remaining = () => Math.max(0, union([...spans, ...busy]) - union(busy));
+        const deduct = (slots: typeof busy) => { const before = remaining(); busy.push(...slots.filter(b => Number.isFinite(b.start) && Number.isFinite(b.end) && b.end > b.start)); return before - remaining(); };
+        const commitments = blocks(data, worker, day.date);
+        row.absence = deduct(commitments.filter(b => !b.paid));
+        row.services = deduct([...commitments.filter(b => b.paid), ...services.filter(p => p.date === day.date)]);
+        row.otherCenters = deduct(rows.filter(p => p.date === day.date && context.center && p.centerId !== context.center));
+        const unknown = commitments.some(b => !Number.isFinite(b.start) || !Number.isFinite(b.end)) || data.issues.some(i => i.impact === 'capacity' && issueDuring(i, day.date) && (!i.ids.length || i.ids.includes(worker.id) || i.workerId === worker.id));
+        row.unverified = unknown ? remaining() : 0;
+        row.capacity = unknown ? 0 : remaining();
+        return row;
       });
-      const otherCenters = sum(rows.filter(p => context.center && p.centerId !== context.center), p => p.minutes);
+      const potentials = breakdown.map(r => r.capacity);
+      const otherCenters = sum(rows.filter(p => context.center && p.centerId !== context.center && !services.includes(p)), p => p.minutes);
       const total = sum(potentials, n => n);
       const capacity = Math.max(0, Math.min(total, worker.weeklyMinutes * 1.3 - paid - otherCenters));
-      const committed = weekDays.map(day => sum(rows.filter(p => p.date === day.date && (!context.center || p.centerId === context.center)), p => p.minutes));
+      const committed = weekDays.map((day, i) => Math.min(potentials[i], sum(rows.filter(p => p.date === day.date && !services.includes(p) && (!context.center || p.centerId === context.center)), p => p.minutes)));
       const committedTotal = sum(committed, n => n);
       const remaining = Math.max(0, capacity - committedTotal);
       const free = potentials.map((n, i) => Math.max(0, n - committed[i]));
       const freeTotal = sum(free, n => n);
-      weekDays.forEach((day, i) => { day.capacity += (committedTotal ? Math.min(capacity, committedTotal) * committed[i] / committedTotal : 0) + (freeTotal ? remaining * free[i] / freeTotal : 0); });
-      for (const day of weekDays) {
-        const route = rows.filter(p => p.date === day.date).sort((a, b) => a.start - b.start);
-        day.travel += 0;
-      }
+      weekDays.forEach((day, i) => {
+        const contribution = (committedTotal ? Math.min(capacity, committedTotal) * committed[i] / committedTotal : 0) + (freeTotal ? remaining * free[i] / freeTotal : 0);
+        day.capacity += contribution;
+        breakdown[i].weeklyReduction = potentials[i] - contribution;
+        breakdown[i].capacity = contribution;
+      });
+      capacityRows.push(...breakdown);
     }
   }
   const period = (key: string, rows: ForecastDay[]): ForecastPeriod => {
-    const incompleteDemand = selectedTasks.some(t => rows.some(d => d.date === t.date) && !(t.minutes > 0));
+    const incompleteDemand = selectedTasks.some(t => rows.some(d => d.date === t.date) && (!(t.minutes > 0) || !Number.isFinite(t.minutes)));
     const demand = incompleteDemand ? NaN : sum(rows, d => d.known), uncovered = incompleteDemand ? NaN : sum(rows, d => d.uncovered);
-    const partial = issues.some(i => i.impact !== 'information' && (!i.centerId || !context.center || i.centerId === context.center) && (!i.date || rows.some(d => d.date === i.date)));
+    const partial = issues.some(i => i.impact !== 'information' && (!i.centerId || !context.center || i.centerId === context.center) && rows.some(d => issueDuring(i, d.date)));
     return { key, known: demand, tourism: incompleteDemand ? NaN : sum(rows, d => d.tourism), other: sum(rows, d => d.other), capacity: sum(rows, d => d.capacity), uncovered, unassigned: sum(rows, d => d.unassigned), travel: sum(rows, d => d.travel), reserve: incompleteDemand ? NaN : sum(rows, d => d.tourism) * 0.2,
       status: partial ? 'No verificable' : !demand ? 'Sin demanda' : uncovered > 0 ? 'Pendiente de encaje' : 'Cubierto' };
   };
   const weeks = [...new Set(days.map(d => monday(d.date)))].map(key => period(key, days.filter(d => monday(d.date) === key)));
   const months = Array.from({ length: context.horizon }, (_, i) => addCivilMonths(`${context.month}-01`, i).slice(0, 7)).map(key => period(key, days.filter(d => d.date >= `${key}-01` && d.date <= monthEnd(`${key}-01`))));
   const visibleWorkerIds = data.workers.filter(w => !context.center || w.centerPriorities?.some(p => p.centerId === context.center) || placements.some(p => p.workerId === w.id && p.centerId === context.center) || selectedTasks.some(t => t.workerId === w.id)).map(w => w.id);
-  return { context, days, weeks, months, tasks: selectedTasks, placements, ledgers, issues, rests, workers: data.workers, visibleWorkerIds, uncoveredTaskIds: selectedTasks.filter(t => !validated.has(t.id)).map(t => t.id) };
+  return { context, days, weeks, months, tasks: selectedTasks, placements, ledgers, issues, rests, workers: data.workers, visibleWorkerIds, uncoveredTaskIds: selectedTasks.filter(t => !validated.has(t.id)).map(t => t.id), capacityRows };
 }

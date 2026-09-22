@@ -1,0 +1,33 @@
+{
+  "checks": [
+    "A01/A02: Inicio prioriza datos y separa objetivos pendientes de evaluación",
+    "A03/A04: contador semanal y destino coinciden sin cambiar al mes",
+    "A03/A08/A13/A15: tarea, ventana, propuesta, perfil de octubre y enlace operativo",
+    "A05/A19/A23: filtros, exclusiones, apertura con teclado y retorno de foco",
+    "UI-10: tareas filtrables; apertura y regreso al perfil mantienen fecha, búsqueda y filtro del equipo",
+    "UI-07: recuento de registros afectados, incidencias desplegadas bajo demanda y enlace reconocible",
+    "A11/A17: simulación semanal, validación decimal y restauración conservando reserva",
+    "A07/A18/A21: datos desconocidos sin anillo, descarga real CSV con contexto y filtros",
+    "A20: cancelación y reintento sin resultados anteriores aparentando vigencia",
+    "A02/A12: mes fuera del horizonte sin falsos ceros; consulta explícita del mes completo",
+    "A19: búsqueda de centros vacía recuperable sin perder periodo",
+    "A23/A24: gráfico consultable por teclado y tabla; pasado y futuro diferenciados",
+    "A22: siete pantallas en 390/768/1024/1440 sin desbordamiento global; menú móvil y filtros",
+    "A07/A13/A22: agenda diaria, calendario mensual y detalles móviles distintos y legibles",
+    "A22/A23: aumento de texto al 200 % en las siete pantallas, en móvil y escritorio",
+    "A23: nueve pares de color de texto ≥4,5:1; no sustituye auditoría accesible con sesión real",
+    "R03: cifra principal abre las personas sin evaluar; déficit confirmado separado",
+    "R10: subtotal incluye duraciones válidas del día incompleto y enlace abre exactamente su bloqueo",
+    "R04: fechas futuras separadas del histórico, motivo local y acceso al conjunto completo",
+    "R05/R11: centro sin tareas no hereda estados de tareas ajenas ni ofrece cero candidatos",
+    "R07/R08: cero encajes destacado junto a simulación; capacidad real sin mejora ficticia; decimal español",
+    "R08: contadores reconciliados por identidad y propuestas ordenadas por hora",
+    "R06: desglose diario consultable con bloqueos, cómputo de servicios y límite semanal",
+    "R12: el servicio incluido en el balance también aparece con su franja en disponibilidad",
+    "R13: semana partida da acceso a ambos balances y permite seleccionar el mes",
+    "R11: avisos con ámbito y acción principal; contadores irrelevantes ocultos",
+    "R09/R13/móvil: semanas parciales sin trazos engañosos, tendencia completa, tarjetas mensuales y Escape"
+  ],
+  "errors": [],
+  "unexpectedRequests": []
+}

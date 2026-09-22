@@ -27,7 +27,7 @@ test('A02/A18: unknown goals and incomplete demand never become confirmed zero/s
   assert.equal(teamSummary(model, context.month).risk.length, 0);
   assert.equal(teamSummary(model, context.month).unknown.length, 1);
   assert.ok(Number.isNaN(sumComplete(model.months, m => m.known)));
-  assert.equal(coverageLabel(model, viewScope(context, new URLSearchParams())), 'Pendiente de verificar');
+  assert.equal(coverageLabel(model, viewScope(context, new URLSearchParams())), 'Datos de tareas incompletos');
 });
 test('A08: successful planner proposal remains explicitly unrecorded', () => {
   const model = buildForecastModel(dataset(), context);
@@ -64,9 +64,9 @@ test('A17: reinforcement is active only in the explicitly simulated week; base i
   const parsed = parseForecastContext(new URLSearchParams('month=2026-10&horizon=1&simFrom=2026-10-05&simTo=2026-10-11'), context.sedeId);
   assert.equal(parsed.reinforcementTo, '2026-10-11');
 });
-test('A17: explicit hours validation accepts quarter-hours without an invented 60h UI ceiling', () => {
+test('A17: weekly reinforcement budget accepts positive decimals without an arbitrary step or ceiling', () => {
   assert.throws(() => buildForecastModel(dataset(), context, -1));
-  assert.throws(() => buildForecastModel(dataset(), context, 15.1));
+  assert.doesNotThrow(() => buildForecastModel(dataset(), context, 15.1)); assert.throws(() => buildForecastModel(dataset(), context, Infinity));
   assert.doesNotThrow(() => buildForecastModel(dataset(), context, 60.25));
 });
 test('A21: report and CSV share the same filtered rows, preserve unknowns and spreadsheet safety', () => {

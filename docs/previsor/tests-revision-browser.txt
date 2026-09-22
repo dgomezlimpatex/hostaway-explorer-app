@@ -1,0 +1,11 @@
+PASS R03: cifra principal abre las personas sin evaluar; déficit confirmado separado
+PASS R10: subtotal incluye duraciones válidas del día incompleto y enlace abre exactamente su bloqueo
+PASS R04: fechas futuras separadas del histórico, motivo local y acceso al conjunto completo
+PASS R05/R11: centro sin tareas no hereda estados de tareas ajenas ni ofrece cero candidatos
+PASS R07/R08: cero encajes destacado junto a simulación; capacidad real sin mejora ficticia; decimal español
+PASS R08: contadores reconciliados por identidad y propuestas ordenadas por hora
+PASS R06: desglose diario consultable con bloqueos, cómputo de servicios y límite semanal
+PASS R12: el servicio incluido en el balance también aparece con su franja en disponibilidad
+PASS R13: semana partida da acceso a ambos balances y permite seleccionar el mes
+PASS R11: avisos con ámbito y acción principal; contadores irrelevantes ocultos
+PASS R09/R13/móvil: semanas parciales sin trazos engañosos, tendencia completa, tarjetas mensuales y Escape

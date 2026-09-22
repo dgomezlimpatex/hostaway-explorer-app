@@ -2,6 +2,7 @@ import type { StaffingReadPage, StaffingReadSpec, StaffingRow } from './data';
 import { staffingRulesForSede } from './businessRules';
 import { RULES_VERSION, validDate, dates, type ForecastDataset, type ForecastIssue, type ForecastTask, type ForecastWorker } from './forecastContract';
 import { timeMinutes } from './dataUtils';
+import { scopeIssue } from './forecastIssues';
 
 const text = (value: unknown) => typeof value === 'string' ? value : '';
 const numeric = (value: unknown) => value == null || value === '' ? NaN : Number(value);
@@ -129,7 +130,7 @@ export async function readForecastDataset(read: StaffingReadPage, sedeId: string
     const windowStart = tourism ? timeMinutes(row.check_out ?? property?.check_out_predeterminado) : start;
     const windowEnd = tourism ? timeMinutes(row.check_in ?? property?.check_in_predeterminado) : end;
     if (!property) issue('unmapped-task', 'La tarea no tiene una propiedad autorizada identificada.', 'tasks', 'demand', [id]);
-    if (!(minutes > 0)) issue('missing-duration', 'Duración desconocida; no equivale a cero trabajo.', 'properties', 'demand', [id]);
+    if (!(minutes > 0) || !Number.isFinite(minutes)) issue('missing-duration', 'Duración desconocida; no equivale a cero trabajo.', 'properties', 'demand', [id]);
     if (!Number.isFinite(windowStart) || !Number.isFinite(windowEnd)) issue('missing-window', 'La ventana propia de la tarea no está verificada; el horario del centro es solo referencia.', 'tasks', 'capacity', [id]);
     if (owners.length > 1) issue('assignment-conflict', 'La tarea tiene más de una persona o fuentes de asignación contradictorias.', 'task_assignments', 'capacity', [id, ...owners]);
     if (workerId && !workerIds.includes(workerId)) issue('unknown-assignee', 'La persona asignada no está en la plantilla autorizada activa.', 'tasks', 'capacity', [id]);
@@ -145,5 +146,5 @@ export async function readForecastDataset(read: StaffingReadPage, sedeId: string
     if (absence.type === 'external_work' ? !validInterval : !full) issue('absence-adjustment-unverified', 'Faltan datos para computar este servicio o ajustar una ausencia parcial.', 'worker_absences', 'ledger', [absence.workerId, absence.id]);
   }
   const propertyDetails = properties.map(row => ({ id: text(row.id), name: text(row.nombre), centerId: centerByProperty.get(text(row.id))!, minutes: numeric(row.duracion_servicio), windowStart: timeMinutes(row.check_out_predeterminado), windowEnd: timeMinutes(row.check_in_predeterminado) }));
-  return { sedeId, from, to, fetchedAt: new Date().toISOString(), rulesVersion: RULES_VERSION, centers: [...centers.values()], properties: propertyDetails, workers, tasks: normalizedTasks, absences: normalizedAbsences, issues, sources: [...sources.values()] };
+  return { sedeId, from, to, fetchedAt: new Date().toISOString(), rulesVersion: RULES_VERSION, centers: [...centers.values()], properties: propertyDetails, workers, tasks: normalizedTasks, absences: normalizedAbsences, issues: issues.map(i => scopeIssue(i, { tasks: normalizedTasks, absences: normalizedAbsences, properties: propertyDetails })), sources: [...sources.values()] };
 }

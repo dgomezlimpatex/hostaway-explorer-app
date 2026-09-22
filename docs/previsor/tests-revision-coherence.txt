@@ -1,0 +1,64 @@
+
+> vite_react_shadcn_ts@0.0.0 test:forecast:revision
+> node scripts/forecastRevisionTest.mjs
+
+TAP version 13
+# Subtest: R01: October ledger and capacity do not inherit a September absence warning
+ok 1 - R01: October ledger and capacity do not inherit a September absence warning
+  ---
+  duration_ms: 34.4816
+  ...
+# Subtest: R01: September task conflict cannot invalidate the October balance of its owner
+ok 2 - R01: September task conflict cannot invalidate the October balance of its owner
+  ---
+  duration_ms: 26.8528
+  ...
+# Subtest: R07: ineffective reinforcement never raises existing team daily capacity
+ok 3 - R07: ineffective reinforcement never raises existing team daily capacity
+  ---
+  duration_ms: 6.732
+  ...
+# Subtest: R06: maintenance uses availability and weekly budget; never gets added back to capacity
+ok 4 - R06: maintenance uses availability and weekly budget; never gets added back to capacity
+  ---
+  duration_ms: 3.7394
+  ...
+# Subtest: R01: injected SELECT reader preserves absence and task time bounds in narrow/wide reads
+ok 5 - R01: injected SELECT reader preserves absence and task time bounds in narrow/wide reads
+  ---
+  duration_ms: 28.1375
+  ...
+# Subtest: R06/R12: imported non-tourism services block time and count in ledger, outside tourism calendar
+ok 6 - R06/R12: imported non-tourism services block time and count in ledger, outside tourism calendar
+  ---
+  duration_ms: 3.4941
+  ...
+# Subtest: R06: the daily capacity deductions reconcile per worker, including overlapping services
+ok 7 - R06: the daily capacity deductions reconcile per worker, including overlapping services
+  ---
+  duration_ms: 4.8695
+  ...
+# Subtest: R08: existing-team proposals and rest recommendations remain stable with reinforcement
+ok 8 - R08: existing-team proposals and rest recommendations remain stable with reinforcement
+  ---
+  duration_ms: 48.9309
+  ...
+# Subtest: R04/R05: local empty days are distinct; upcoming actions exclude past records
+ok 9 - R04/R05: local empty days are distinct; upcoming actions exclude past records
+  ---
+  duration_ms: 4.5988
+  ...
+# Subtest: R10: valid durations on an incomplete day remain in subtotal and blocker link scope
+ok 10 - R10: valid durations on an incomplete day remain in subtotal and blocker link scope
+  ---
+  duration_ms: 8.9422
+  ...
+1..10
+# tests 10
+# suites 0
+# pass 10
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 188.2298

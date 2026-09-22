@@ -1,10 +1,10 @@
 import type { StaffingCenter, StaffingWorker } from './types';
 import { addCivilDays, addCivilMonths, monthEnd } from './monthly';
 
-export const RULES_VERSION = 'staffing-2026-09-22.1';
+export const RULES_VERSION = 'staffing-2026-09-22.2';
 export type ForecastScreen = 'home' | 'forecast' | 'team' | 'shifts' | 'centers' | 'reports' | 'settings';
 export interface ForecastContext { sedeId: string; month: string; horizon: number; week: string; center: string; scenario: 'known' | 'reserve'; asOf: string; reinforcementFrom?: string; reinforcementTo?: string }
-export interface ForecastIssue { code: string; message: string; source: string; ids: string[]; impact: 'demand' | 'capacity' | 'ledger' | 'information'; date?: string; workerId?: string; centerId?: string }
+export interface ForecastIssue { code: string; message: string; source: string; ids: string[]; impact: 'demand' | 'capacity' | 'ledger' | 'information'; date?: string; from?: string; to?: string; workerId?: string; centerId?: string }
 export interface ForecastTask {
   id: string; propertyId: string; name: string; centerId: string; date: string;
   minutes: number; windowStart: number; windowEnd: number; start: number; end: number;
@@ -26,6 +26,10 @@ export interface WorkerMonthLedger {
   status: 'Cumple' | 'Faltan horas' | 'No verificable' | 'Sin jornada' | 'Excluido';
 }
 export interface ForecastDay { date: string; known: number; tourism: number; other: number; capacity: number; uncovered: number; unassigned: number; travel: number }
+export interface ForecastCapacityRow {
+  workerId: string; date: string; windows: number; rest: number; absence: number; services: number;
+  otherCenters: number; unverified: number; weeklyReduction: number; capacity: number; paid: number;
+}
 export interface ForecastPeriod extends Omit<ForecastDay, 'date'> { key: string; reserve: number; status: 'Cubierto' | 'Pendiente de encaje' | 'No verificable' | 'Sin demanda' }
 export interface ForecastModel {
   context: ForecastContext; days: ForecastDay[]; weeks: ForecastPeriod[]; months: ForecastPeriod[];
@@ -33,6 +37,7 @@ export interface ForecastModel {
   rests: { workerId: string; date: string }[]; workers: ForecastWorker[]; visibleWorkerIds: string[];
   /** Task identities behind the residual workload, including unavailable/invalid tasks. */
   uncoveredTaskIds?: string[];
+  capacityRows?: ForecastCapacityRow[];
 }
 export const weekday = (date: string) => new Date(`${date}T12:00:00Z`).getUTCDay();
 export const monday = (date: string) => addCivilDays(date, -((weekday(date) + 6) % 7));
